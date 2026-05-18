@@ -25,6 +25,18 @@ const WANDER_SPEED = 1; // units per second
 const DETECTION_RADIUS = 8; // units
 const CHASE_SPEED = 2.5; // units per second
 
+// Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
+const CARD_DEFS = {
+  iron_sword: { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', damage: 15, charges: 5 },
+  flame_blade: { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', damage: 25, charges: 3 },
+  battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1 },
+  dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1 },
+};
+
+// Weapon attack parameters
+const ATTACK_RANGE = 5; // units — max distance to hit
+const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
+
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList() {
   return Object.entries(gameState.players).map(([id, p]) => ({
@@ -207,7 +219,59 @@ io.on('connection', (socket) => {
 
   socket.on('useCard', (data) => {
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
-    console.log(`Player ${socket.id} used card ${data.cardId} from slot ${data.slotIndex}`);
+
+    // (1) Validate slot index
+    if (data.slotIndex < 0 || data.slotIndex > 3) return;
+
+    // (2) Look up card definition and confirm it is a weapon
+    const cardDef = CARD_DEFS[data.cardId];
+    if (!cardDef || cardDef.type !== 'weapon') return;
+
+    // (3) Get player position and facing direction
+    const player = gameState.players[socket.id];
+    if (!player || player.dead) return;
+
+    const originX = player.x;
+    const originZ = player.z;
+    const rotation = player.rotation; // radians, 0 = +X axis
+
+    // Forward direction vector from player rotation (on x-z plane)
+    const dirX = Math.cos(rotation);
+    const dirZ = Math.sin(rotation);
+
+    // (4) Check each enemy for hit (forward cone + range)
+    const hits = [];
+    for (const enemy of gameState.enemies) {
+      const dx = enemy.x - originX;
+      const dz = enemy.z - originZ;
+      const dist = Math.hypot(dx, dz);
+
+      // Range check
+      if (dist > ATTACK_RANGE) continue;
+
+      // Cone check: dot product between forward dir and enemy direction
+      const enemyDirX = dx / dist;
+      const enemyDirZ = dz / dist;
+      const dot = dirX * enemyDirX + dirZ * enemyDirZ;
+
+      if (dot < Math.cos(ATTACK_CONE_ANGLE / 2)) continue;
+
+      // Hit — apply damage
+      enemy.hp -= cardDef.damage;
+      hits.push({ enemyId: enemy.id, hp: enemy.hp });
+    }
+
+    // (5) Remove dead enemies
+    gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
+
+    // (6) Broadcast result to all clients
+    io.emit('cardUsed', {
+      playerId: socket.id,
+      cardId: data.cardId,
+      origin: { x: originX, z: originZ },
+      direction: { x: dirX, z: dirZ },
+      hits: hits
+    });
   });
 
   socket.on('playerReady', (ready) => {
