@@ -1,6 +1,7 @@
 const express = require('express');
 const { Server } = require('socket.io');
 const http = require('http');
+const crypto = require('crypto');
 
 const app = express();
 const server = http.createServer(app);
@@ -65,6 +66,19 @@ function damagePlayer(playerId, amount) {
       p.y = 0.5;
       p.z = 0;
     }, 3000);
+  }
+}
+
+// Helper: spawn 5 enemies with random positions
+function spawnEnemies() {
+  for (let i = 0; i < 5; i++) {
+    gameState.enemies.push({
+      id: crypto.randomUUID(),
+      x: (Math.random() * 40) - 20,
+      z: (Math.random() * 40) - 20,
+      hp: 50,
+      state: 'idle'
+    });
   }
 }
 
@@ -172,4 +186,5 @@ setInterval(() => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
+  spawnEnemies();
 });
