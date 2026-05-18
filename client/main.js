@@ -1,0 +1,116 @@
+import * as THREE from 'three';
+import { io } from 'socket.io-client';
+
+const statusEl = document.getElementById('status');
+
+// Socket setup
+const socket = io('http://localhost:3000');
+let myId = null;
+let gameState = null;
+const playersMeshes = {};
+
+socket.on('connect', () => {
+  statusEl.innerText = 'Connected!';
+});
+
+socket.on('init', (data) => {
+  myId = data.id;
+  gameState = data.state;
+});
+
+socket.on('stateUpdate', (state) => {
+  gameState = state;
+});
+
+socket.on('playerDisconnected', (id) => {
+  if (playersMeshes[id]) {
+    scene.remove(playersMeshes[id]);
+    delete playersMeshes[id];
+  }
+});
+
+// Three.js setup
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f172a);
+
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+camera.position.set(0, 5, 10);
+camera.lookAt(0, 0, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+// Lighting
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+scene.add(ambientLight);
+const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+directionalLight.position.set(10, 20, 10);
+scene.add(directionalLight);
+
+// Floor
+const floorGeometry = new THREE.PlaneGeometry(50, 50);
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+floor.rotation.x = -Math.PI / 2;
+scene.add(floor);
+
+// Input tracking
+const keys = { w: false, a: false, s: false, d: false };
+window.addEventListener('keydown', (e) => {
+  if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true;
+});
+window.addEventListener('keyup', (e) => {
+  if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
+});
+
+// Game loop logic
+let myX = 0;
+let myZ = 0;
+const speed = 0.1;
+
+function updateMyPlayer() {
+  if (!myId) return;
+
+  let moved = false;
+  if (keys.w) { myZ -= speed; moved = true; }
+  if (keys.s) { myZ += speed; moved = true; }
+  if (keys.a) { myX -= speed; moved = true; }
+  if (keys.d) { myX += speed; moved = true; }
+
+  if (moved) {
+    socket.emit('move', { x: myX, y: 0.5, z: myZ, rotation: 0 });
+  }
+}
+
+// Render loop
+function animate() {
+  requestAnimationFrame(animate);
+
+  updateMyPlayer();
+
+  if (gameState) {
+    for (const [id, pData] of Object.entries(gameState.players)) {
+      if (!playersMeshes[id]) {
+        const geo = new THREE.BoxGeometry(1, 1, 1);
+        const mat = new THREE.MeshStandardMaterial({ color: id === myId ? 0x3b82f6 : 0xf43f5e });
+        const mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+        playersMeshes[id] = mesh;
+      }
+      
+      // Interpolate or set position
+      playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
+    }
+  }
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
