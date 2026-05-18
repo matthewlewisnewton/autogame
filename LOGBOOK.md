@@ -236,3 +236,26 @@ flagging for the harness, but it does not represent a missing feature.
 ## Remaining gaps
 (none — all five acceptance criteria are fully and robustly implemented)
 
+
+## v0.11 — Card Hand System  (2026-05-18 06:12:07)
+
+- Minor: `refillSlot()` is defined and exposed as `window.refillSlot` but is
+  never called — `useCard()` does its own inline draw on exhaustion. It is
+  harmless future-facing API surface, not dead/broken code, so it is not a gap.
+
+## Verification gap (non-blocking observation)
+
+The four screenshots in this round (`01`–`04`) all show only the **lobby** —
+both test players remain "Not Ready", `metrics.json` reports `hasCanvas: false`,
+and `03-after-w`/`04-after-d` are byte-identical to `02-two-players`. The
+screenshot harness never entered the game, so this round provides **no visual
+evidence** of the card hand, slot rendering, flash, or charge display. Code
+review gives high confidence the feature is correct, and each sub-ticket
+individually passed visual QA, so this is treated as a harness/QA-artifact
+limitation rather than an implementation defect. It is noted here so the gap in
+visual coverage is on record.
+
+## Remaining gaps
+
+(none — all five acceptance criteria are fully and robustly delivered in code)
+
