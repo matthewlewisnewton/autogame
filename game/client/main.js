@@ -29,6 +29,7 @@ let connectionState = 'connecting';
 let heartbeatTimer = null;
 let latency = null;
 let sceneInitialized = false;
+let currentLayoutSeed = null; // tracks the layout seed we last built from
 
 // ── Hand state ──
 let hand = [];       // array of 4 card objects: { id, name, type, charges, remainingCharges }
@@ -282,6 +283,38 @@ socket.io.on('reconnect', () => {
 socket.on('init', (data) => {
   myId = data.id;
   gameState = data.state;
+
+  // ── Layout consistency check ──
+  const receivedSeed = data.layoutSeed;
+
+  if (sceneInitialized && receivedSeed !== undefined) {
+    // Reconnect path: server sent us the layout — verify and rebuild if needed
+    if (receivedSeed !== currentLayoutSeed) {
+      // Seed changed (should not happen mid-session, but handle gracefully)
+      console.log(`[layout] Seed changed from ${currentLayoutSeed} to ${receivedSeed}, rebuilding dungeon`);
+      currentLayoutSeed = receivedSeed;
+      if (gameState && gameState.layout) {
+        buildDungeon(gameState.layout);
+        buildWallColliders(gameState.layout);
+      }
+    } else {
+      // Same seed — rebuild dungeon geometry in case scene was lost
+      if (gameState && gameState.layout) {
+        buildDungeon(gameState.layout);
+        buildWallColliders(gameState.layout);
+      }
+    }
+    // Reset local player position to spawn
+    myX = spawnPosition.x;
+    myZ = spawnPosition.z;
+    velocityX = 0;
+    velocityZ = 0;
+    requestDebugScenario();
+    return;
+  }
+
+  // Fresh connect path
+  currentLayoutSeed = receivedSeed;
   requestDebugScenario();
 
   // If the server is already in 'playing' phase, skip the lobby entirely
@@ -297,6 +330,15 @@ socket.on('init', (data) => {
 });
 
 socket.on('stateUpdate', (state) => {
+  // Verify layout seed consistency on every state update
+  if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
+    console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
+    currentLayoutSeed = state.layoutSeed;
+    if (state.layout && scene) {
+      buildDungeon(state.layout);
+      buildWallColliders(state.layout);
+    }
+  }
   gameState = state;
 });
 
@@ -558,8 +600,28 @@ const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, ro
 // Background ground plane (replaces the old 50x50 floor)
 const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
 
+// Track all meshes created by buildDungeon() so they can be cleared on rebuild
+const dungeonMeshes = [];
+
+/**
+ * Remove all dungeon geometry from the scene and dispose geometries.
+ * Shared materials are NOT disposed (they are reused across builds).
+ */
+function clearDungeon() {
+  for (const mesh of dungeonMeshes) {
+    if (scene) scene.remove(mesh);
+    if (mesh.geometry) mesh.geometry.dispose();
+    // Do NOT dispose materials — they are shared module-level constants
+  }
+  dungeonMeshes.length = 0;
+}
+
 function buildDungeon(layout) {
   if (!layout || !layout.rooms || !layout.passages) return;
+
+  // Clear any previous dungeon geometry before rebuilding
+  clearDungeon();
+  wallColliders.length = 0;
 
   // Background ground (large flat plane behind everything)
   const groundGeo = new THREE.PlaneGeometry(200, 200);
@@ -567,6 +629,7 @@ function buildDungeon(layout) {
   ground.rotation.x = -Math.PI / 2;
   ground.position.y = 0;
   scene.add(ground);
+  dungeonMeshes.push(ground);
 
   // Set spawn position to center of first room
   if (layout.rooms.length > 0) {
@@ -581,6 +644,7 @@ function buildDungeon(layout) {
     const floorMesh = new THREE.Mesh(floorGeo, floorMaterial);
     floorMesh.position.set(room.x, FLOOR_Y, room.z);
     scene.add(floorMesh);
+    dungeonMeshes.push(floorMesh);
 
     // Room walls
     for (const wall of room.walls) {
@@ -602,6 +666,7 @@ function buildDungeon(layout) {
       const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
       wallMesh.position.set(wallX, WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
       scene.add(wallMesh);
+      dungeonMeshes.push(wallMesh);
     }
   }
 
@@ -619,6 +684,7 @@ function buildDungeon(layout) {
     passageFloor.position.set(midX, FLOOR_Y, midZ);
     passageFloor.rotation.y = Math.atan2(dz, dx);
     scene.add(passageFloor);
+    dungeonMeshes.push(passageFloor);
 
     // Passage side walls
     for (const wall of passage.walls) {
@@ -638,6 +704,7 @@ function buildDungeon(layout) {
       const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
       wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
       scene.add(wallMesh);
+      dungeonMeshes.push(wallMesh);
     }
   }
 }
