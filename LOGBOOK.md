@@ -121,3 +121,26 @@ None.
 
 None.
 
+
+## v0.6 — Camera Follow Player  (2026-05-18 02:28:27)
+
+  movement still updates locally and broadcasts via `socket.emit('move', ...)`
+  (`main.js:140`).
+
+## Code Quality
+
+- No dead or broken code; the diff is minimal and focused.
+- `CAMERA_OFFSET` is defined once as `new THREE.Vector3(0, 5, 10)`
+  (`main.js:102`) per spec; `position.clone()` is used so the offset vector is
+  not mutated.
+- All new mesh/camera accesses are null-guarded; the camera block does not
+  depend on `gameState` being non-null, only on the local mesh existing.
+- Browser console log is clean — no errors. The `THREE.Clock` deprecation
+  warning predates this ticket (the `Clock` instance is unchanged) and is not
+  introduced here. The `EPIPE` entries in `client.log` are Vite ws-proxy
+  artifacts from screenshot-session teardown, not game-runtime errors.
+
+## Remaining Gaps
+
+None.
+
