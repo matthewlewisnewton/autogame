@@ -11,6 +11,9 @@ harness/*.new
 harness/**/*.new
 tickets/**/artifacts/
 tickets/**/review-round-*/
+tickets/**/.reviews/
+tickets/**/rescue/
+tickets/**/rescue-review/
 tickets/**/log.txt
 tickets/**/feedback.md
 tickets/**/handoff.md
