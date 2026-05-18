@@ -7,7 +7,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 ## Backlog — Server Foundation
 - [x] [001-server-heartbeat](tickets/001-server-heartbeat/)
 - [x] [002-input-validation](tickets/002-input-validation/)
-- [ ] [005-vite-socket-proxy](tickets/005-vite-socket-proxy/)
+- [x] [005-vite-socket-proxy](tickets/005-vite-socket-proxy/)
 
 ## Backlog — Client Foundation
 - [ ] [003-move-delta-time](tickets/003-move-delta-time/)

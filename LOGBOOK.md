@@ -52,3 +52,26 @@ None.
 
 None.
 
+
+## v0.3 — Vite Socket.IO Proxy  (2026-05-17 21:41:22)
+
+  constraints; this ticket is purely a dev-server wiring change and does not
+  conflict with it.
+- `game/docs/requirements.md` foundation item 2 ("frontend can successfully
+  connect to the backend server via WebSockets") is preserved and arguably
+  strengthened — the connection now works same-origin without CORS. Items 1, 3,
+  and 4 (3D rendering, player visualization, WASD movement sync) remain intact
+  per the screenshots and metrics. No regression.
+
+## Code Quality
+
+- No dead or broken code; the diff is minimal and surgical.
+- No console errors attributable to this change.
+- `vite.config.js` uses a plain object export (no `defineConfig` helper). This
+  is valid and functional; `defineConfig` would only add editor type hints and
+  is not required. Not a gap.
+
+## Remaining Gaps
+
+None.
+
