@@ -1,0 +1,9 @@
+{
+  "url": "http://localhost:5173",
+  "ok": true,
+  "status": "Connected!",
+  "hasCanvas": true,
+  "canvasCount": 1,
+  "title": "3D Multiplayer Action Game",
+  "bodyText": "Multiplayer Game\n\nConnected!"
+}

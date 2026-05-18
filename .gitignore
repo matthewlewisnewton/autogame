@@ -2,3 +2,15 @@ node_modules/
 dist/
 .env
 .DS_Store
+.claude/
+
+# harness run artifacts — transient. Progress is recorded via git tags + LOGBOOK.md.
+LOOPLOG.txt
+harness/diagnosis-*.txt
+tickets/**/artifacts/
+tickets/**/review-round-*/
+tickets/**/log.txt
+tickets/**/feedback.md
+tickets/**/review-feedback.md
+tickets/**/decompose-round-*.txt
+tickets/**/.passed

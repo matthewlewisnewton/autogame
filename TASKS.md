@@ -1,5 +1,9 @@
 # Tasks
 
+Top-level tickets, processed top-to-bottom by `harness/run_backlog.sh`. Each is
+decomposed by qwen into sub-tickets, built and QA'd by the qwen+gemini loop,
+then reviewed as a whole by claude. Order roughly respects dependencies.
+
 ## Backlog — Server Foundation
 - [ ] [001-server-heartbeat](tickets/001-server-heartbeat/)
 - [ ] [002-input-validation](tickets/002-input-validation/)
@@ -10,8 +14,20 @@
 - [ ] [004-client-reconnect-ui](tickets/004-client-reconnect-ui/)
 - [ ] [007-camera-follow](tickets/007-camera-follow/)
 
-## Backlog — Gameplay
+## Backlog — Lobby & HUD
 - [ ] [006-card-deck-ui](tickets/006-card-deck-ui/)
 - [ ] [008-lobby-screen](tickets/008-lobby-screen/)
+
+## Backlog — Combat
+- [ ] [009-player-health-system](tickets/009-player-health-system/)
+- [ ] [010-enemy-entities-ai](tickets/010-enemy-entities-ai/)
+- [ ] [011-card-hand-system](tickets/011-card-hand-system/)
+- [ ] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
+- [ ] [013-summon-cards](tickets/013-summon-cards/)
+- [ ] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
+
+## Backlog — World & Economy
+- [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
+- [ ] [016-loot-and-currency](tickets/016-loot-and-currency/)
 
 ## Done

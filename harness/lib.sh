@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Shared helpers for the autogame harness. Sourced by run_*.sh.
+# Provides: paths, config, logging, game process control, prompt rendering,
+# CLI wrappers, verdict parsing, and git helpers.
+
+HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$HARNESS_DIR/.." && pwd)"
+PROMPTS_DIR="$HARNESS_DIR/prompts"
+cd "$REPO_ROOT"
+
+# --- Tunables (override via environment) ---
+MAX_ITER="${MAX_ITER:-5}"                 # qwen+gemini iterations per sub-ticket
+TICKET_MAX_ROUNDS="${TICKET_MAX_ROUNDS:-3}" # decompose -> subs -> review cycles
+GAME_URL="${GAME_URL:-http://localhost:5173}"
+QWEN_MODEL="${QWEN_MODEL:-}"               # empty = qwen default
+GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
+CLAUDE_MODEL="${CLAUDE_MODEL:-}"           # empty = claude default
+QWEN_TIMEOUT="${QWEN_TIMEOUT:-1200}"
+GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
+CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
+CLI_RETRIES="${CLI_RETRIES:-2}"            # retries on timeout/empty output
+CLI_RETRY_BACKOFF="${CLI_RETRY_BACKOFF:-20}"
+
+# Exit-code convention used across run_*.sh:
+#   0 = passed   1 = genuine task failure   2 = harness/tool failure (escalate)
+
+# --- Logging ---
+log() { echo "[$(date '+%F %T')] $*"; }
+
+# --- Game process control ---
+GAME_PIDS=()
+start_game() {  # start_game <logdir>
+  local logdir="$1"
+  ( node game/server/index.js ) >"$logdir/server.log" 2>&1 &
+  GAME_PIDS+=("$!")
+  ( cd game/client && npx vite --port 5173 --strictPort ) >"$logdir/client.log" 2>&1 &
+  GAME_PIDS+=("$!")
+}
+
+stop_game() {
+  local p
+  for p in "${GAME_PIDS[@]:-}"; do
+    [ -n "$p" ] && kill "$p" 2>/dev/null
+  done
+  GAME_PIDS=()
+  pkill -f 'node game/server/index.js' 2>/dev/null
+  pkill -f 'vite --port 5173' 2>/dev/null
+  sleep 1
+}
+
+wait_for_game() {  # wait_for_game [timeout-seconds] ; 0 if both ports respond
+  local deadline=$(( $(date +%s) + ${1:-45} )) up_c=0 up_s=0
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    [ $up_c -eq 0 ] && curl -s -o /dev/null "http://localhost:5173/" && up_c=1
+    [ $up_s -eq 0 ] && curl -s -o /dev/null "http://localhost:3000/" && up_s=1
+    [ $up_c -eq 1 ] && [ $up_s -eq 1 ] && return 0
+    sleep 1
+  done
+  return 1
+}
+
+# --- Prompt rendering: render_prompt <template> <KEY> <val> [<KEY> <val>...] ---
+render_prompt() {
+  local content; content="$(cat "$1")"; shift
+  while [ "$#" -ge 2 ]; do
+    content="${content//__${1}__/$2}"
+    shift 2
+  done
+  printf '%s' "$content"
+}
+
+# --- CLI runner: retries on timeout / empty output. ---
+# _run_cli <label> <outfile> <timeout> <cmd...>  ->  0 = ok, 2 = tool-failure
+_run_cli() {
+  local label="$1" out="$2" tmo="$3"; shift 3
+  local attempt=1 rc
+  while :; do
+    timeout "$tmo" "$@" >"$out" 2>&1; rc=$?
+    if [ "$rc" -ne 124 ] && [ -s "$out" ]; then
+      return 0
+    fi
+    if [ "$attempt" -gt "$CLI_RETRIES" ]; then
+      log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, $([ "$rc" -eq 124 ] && echo timeout || echo 'empty output'))"
+      return 2
+    fi
+    log "[tool-retry] $label attempt $attempt failed (rc=$rc) — backoff ${CLI_RETRY_BACKOFF}s"
+    sleep "$CLI_RETRY_BACKOFF"
+    attempt=$((attempt + 1))
+  done
+}
+
+# CLI wrappers — all non-interactive / unattended. Return 0 = ok, 2 = tool-failure.
+run_qwen() {  # run_qwen <prompt> <outfile>
+  local a=(qwen -y); [ -n "$QWEN_MODEL" ] && a+=(-m "$QWEN_MODEL"); a+=("$1")
+  _run_cli qwen "$2" "$QWEN_TIMEOUT" "${a[@]}"
+}
+run_gemini() {  # run_gemini <prompt> <outfile>
+  local a=(gemini -y --skip-trust); [ -n "$GEMINI_MODEL" ] && a+=(-m "$GEMINI_MODEL"); a+=(-p "$1")
+  _run_cli gemini "$2" "$GEMINI_TIMEOUT" "${a[@]}"
+}
+run_claude() {  # run_claude <prompt> <outfile>
+  local a=(claude -p --dangerously-skip-permissions); [ -n "$CLAUDE_MODEL" ] && a+=(--model "$CLAUDE_MODEL"); a+=("$1")
+  _run_cli claude "$2" "$CLAUDE_TIMEOUT" "${a[@]}"
+}
+
+# gemini quota/auth error — caller should gracefully fall back to qwen for QA.
+gemini_unavailable() {  # gemini_unavailable <outfile>
+  [ ! -s "$1" ] && return 0
+  grep -qiE 'quota|exhausted|rate.?limit|unauthorized|not authenticated|429' "$1"
+}
+
+# --- Verdict parsing: a passing artifact ends with the exact line VERDICT: PASS ---
+is_pass() {  # is_pass <file>
+  [ -f "$1" ] && grep -qxF 'VERDICT: PASS' "$1"
+}
+
+# --- Git helpers ---
+# commit_verified <message> — HARD GATE for verified progress.
+# Stages everything, commits, and asserts HEAD advanced.
+#   0 = committed (or nothing to commit — state already in HEAD)
+#   2 = commit could not be made → caller MUST escalate, never proceed
+commit_verified() {
+  git add -A
+  if git diff --cached --quiet; then
+    log "[git] no changes to commit — verified state already in HEAD"
+    return 0
+  fi
+  local before; before="$(git rev-parse HEAD 2>/dev/null)"
+  if ! git commit -q -m "$1" -m "Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"; then
+    log "[git] ERROR: commit failed for: $1"
+    return 2
+  fi
+  if [ "$(git rev-parse HEAD 2>/dev/null)" = "$before" ]; then
+    log "[git] ERROR: HEAD did not advance after commit"
+    return 2
+  fi
+  log "[git] committed $(git rev-parse --short HEAD): $1"
+  return 0
+}
+
+# Discard uncommitted changes under game/. Safe: verified progress is always
+# committed (commit_verified) before the harness moves on, so this can only
+# ever discard the current failed attempt.
+revert_game_changes() {
+  git checkout -- game/ 2>/dev/null || true
+  git clean -fdq game/ 2>/dev/null || true
+}
+
+next_version_tag() {  # echoes v0.<n> where n = (#existing v0.* tags)+1
+  echo "v0.$(( $(git tag -l 'v0.*' | wc -l | tr -d ' ') + 1 ))"
+}
