@@ -29,14 +29,14 @@ const logs = [];
 const screenshots = [];
 const probes = [];
 const scenarios = new Set();
-const baseScenario = new URL(baseUrl).searchParams.get('debugScenario');
-if (baseScenario && SCENARIO_RE.test(baseScenario)) scenarios.add(baseScenario);
 
 // Benign headless-Chromium rendering noise - not game bugs. Filtered out so the
 // QA agent only sees real signal.
 const NOISE = /GL Driver Message|GPU stall|ReadPixels|fallback to software WebGL|Automatic fallback|CONTEXT_LOST_WEBGL|Context (Lost|Restored)|THREE\.WebGLRenderer|THREE\.Clock|deprecat/i;
 const PLAYER_RE = /^[A-Z]$/;
 const SCENARIO_RE = /^[a-z0-9_-]{1,64}$/i;
+const baseScenario = new URL(baseUrl).searchParams.get('debugScenario');
+if (baseScenario && SCENARIO_RE.test(baseScenario)) scenarios.add(baseScenario);
 const ACTIONS = new Set([
   'connectPlayer',
   'readyAll',

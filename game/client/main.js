@@ -734,6 +734,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
     player: me ? {
       hp: me.hp,
       magicStones: me.magicStones,
+      debugScenario: me.debugScenario,
       dead: me.dead,
       x: me.x,
       z: me.z,

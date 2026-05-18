@@ -165,6 +165,7 @@ function applyDebugScenario(socket, name) {
   player.x = 0;
   player.y = 0.5;
   player.z = 0;
+  player.debugScenario = name;
   player.pendingSummons.clear();
   enterPlayingPhase();
   ensureNearbyEnemy(player.x, player.z);
@@ -253,6 +254,7 @@ io.on('connection', (socket) => {
     lastActivity: Date.now(),
     ready: false,
     magicStones: MAX_MAGIC_STONES,
+    debugScenario: null,
     pendingSummons: new Set()
   };
 
@@ -462,7 +464,11 @@ setInterval(() => {
 
   // Regenerate Magic Stones and clear pending summons for each player
   for (const p of Object.values(gameState.players)) {
-    p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
+    if (p.debugScenario === 'summon-low-mana') {
+      p.magicStones = 0;
+    } else {
+      p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
+    }
     p.pendingSummons.clear(); // safety net: clear stale pending entries each tick
   }
 
