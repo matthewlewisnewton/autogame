@@ -25,6 +25,9 @@ const WANDER_SPEED = 1; // units per second
 const DETECTION_RADIUS = 8; // units
 const CHASE_SPEED = 2.5; // units per second
 
+const MAX_MAGIC_STONES = 100;
+const MAGIC_STONES_REGEN_PER_TICK = 0.5;
+
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
 const CARD_DEFS = {
   iron_sword: { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', damage: 15, charges: 5 },
@@ -172,7 +175,8 @@ io.on('connection', (socket) => {
     hp: 100,
     dead: false,
     lastActivity: Date.now(),
-    ready: false
+    ready: false,
+    magicStones: MAX_MAGIC_STONES
   };
 
   socket.emit('init', { id: socket.id, state: gameState });
@@ -309,6 +313,12 @@ io.on('connection', (socket) => {
 // Server Game Loop
 setInterval(() => {
   updateEnemies();
+
+  // Regenerate Magic Stones for each player
+  for (const p of Object.values(gameState.players)) {
+    p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
+  }
+
   io.emit('stateUpdate', gameState);
 }, 1000 / TICK_RATE);
 

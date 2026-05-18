@@ -11,6 +11,9 @@ const cardHandEl = document.getElementById('card-hand');
 const hpBarFill = document.getElementById('hp-bar-fill');
 const hpText = document.getElementById('hp-text');
 const hpLabel = document.getElementById('hp-label');
+const msBarFill = document.getElementById('ms-bar-fill');
+const msText = document.getElementById('ms-text');
+const msLabel = document.getElementById('ms-label');
 const cardSlots = document.querySelectorAll('.card-slot');
 
 // Socket setup
@@ -59,6 +62,7 @@ function updateStatus(text, state) {
 }
 
 const MAX_HP = 100;
+const MAX_MS = 100;
 
 function updateHpBar(hp) {
   const clamped = Math.max(0, Math.min(MAX_HP, hp));
@@ -75,6 +79,14 @@ function updateHpBar(hp) {
   } else {
     hpBarFill.style.background = '#ef4444';
   }
+}
+
+function updateMsBar(ms) {
+  const clamped = Math.max(0, Math.min(MAX_MS, ms));
+  const pct = (clamped / MAX_MS) * 100;
+  msBarFill.style.width = `${pct}%`;
+  msText.textContent = `${Math.floor(clamped)}/${MAX_MS}`;
+  msLabel.textContent = myId ? `${myId.slice(0, 5)} MS` : 'MS';
 }
 
 function drawCard() {
@@ -427,6 +439,7 @@ function animate() {
   // Update local player HP bar each frame
   if (gameState && myId && gameState.players[myId] != null) {
     updateHpBar(gameState.players[myId].hp);
+    updateMsBar(gameState.players[myId].magicStones);
   }
 
   if (gameState) {
