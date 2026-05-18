@@ -58,6 +58,22 @@ setInterval(() => {
   io.emit('stateUpdate', gameState);
 }, 1000 / TICK_RATE);
 
+// Periodic stale player cleanup (every 5 seconds)
+const STALE_THRESHOLD = 10000; // 10 seconds
+setInterval(() => {
+  for (const playerId in gameState.players) {
+    const player = gameState.players[playerId];
+    if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
+      const socket = io.sockets.sockets.get(playerId);
+      if (socket && socket.connected) {
+        socket.disconnect();
+      }
+      delete gameState.players[playerId];
+      console.log(`Player disconnected due to inactivity: ${playerId}`);
+    }
+  }
+}, 5000);
+
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
