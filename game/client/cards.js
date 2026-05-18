@@ -24,6 +24,8 @@ export const CARD_DEFS = {
     name: 'Battle Familiar',
     type: 'summon',
     charges: 1,
+    magicStoneCost: 50,
+    damage: 40,
   },
   dungeon_drake: {
     id: 'dungeon_drake',

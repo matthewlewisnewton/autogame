@@ -339,15 +339,48 @@ function updateAttackEffects() {
 }
 
 socket.on('cardUsed', (data) => {
-  // Only spawn visual for weapon attacks
-  if (!data || !weaponCardIds.has(data.cardId)) return;
-  if (!scene) return;
+  if (!data || !scene) return;
 
-  const origin = data.origin || { x: 0, z: 0 };
-  const direction = data.direction || { x: 1, z: 0 };
+  // Spawn visual for weapon attacks
+  if (weaponCardIds.has(data.cardId)) {
+    const origin = data.origin || { x: 0, z: 0 };
+    const direction = data.direction || { x: 1, z: 0 };
+    spawnAttackEffect(origin, direction);
+  }
 
-  spawnAttackEffect(origin, direction);
+  // Summon-type events: received without error; visual rendering is sub-ticket 03
 });
+
+socket.on('cardError', (data) => {
+  if (!data || !data.reason) return;
+  showCardErrorToast(data.reason);
+});
+
+function showCardErrorToast(message) {
+  const toast = document.createElement('div');
+  toast.textContent = message;
+  toast.style.cssText = `
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #dc2626;
+    color: #fff;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: sans-serif;
+    z-index: 9999;
+    pointer-events: none;
+    opacity: 1;
+    transition: opacity 0.3s;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
 
 // ── Lobby event wiring ──
 
