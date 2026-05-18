@@ -34,9 +34,29 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   log "[qwen] implementing..."
   CODER_PROMPT="$(render_prompt "$PROMPTS_DIR/implement.md" \
     TICKET_FILE "$TICKET_FILE" FEEDBACK_FILE "$FEEDBACK" HANDOFF_FILE "$HANDOFF")"
-  if ! run_qwen "$CODER_PROMPT" "$ARTI/qwen.txt"; then
+  handoff_before="$(stat -c %Y "$HANDOFF" 2>/dev/null || echo 0)"
+  run_qwen "$CODER_PROMPT" "$ARTI/qwen.txt"; coder_rc=$?
+
+  # Guarantee a handoff note exists for the next session. If qwen ran out of
+  # context / crashed before writing its own, the harness "moves it over" by
+  # synthesizing one from the attempt log — context continuity is the harness's
+  # job, not something we rely on qwen's in-session compaction to preserve.
+  if [ "$(stat -c %Y "$HANDOFF" 2>/dev/null || echo 0)" = "$handoff_before" ]; then
+    log "[handoff] no handoff left by qwen — harness synthesizing one"
+    {
+      printf '## Harness fallback handoff — attempt %d did not finish cleanly\n\n' "$iter"
+      printf 'The previous attempt left no handoff note — it likely ran out of\n'
+      printf 'context, timed out, or errored. Inspect the working tree under `game/`\n'
+      printf 'for partial changes and continue this sub-ticket from there.\n\n'
+      printf 'Tail of the previous attempt log:\n\n```\n'
+      tail -n 40 "$ARTI/qwen.txt" 2>/dev/null
+      printf '\n```\n'
+    } > "$HANDOFF"
+  fi
+
+  if [ "$coder_rc" -ne 0 ]; then
     coder_toolfail=$((coder_toolfail + 1))
-    log "[tool-failure] qwen coder unavailable ($coder_toolfail consecutive)"
+    log "[tool-failure] qwen coder call failed ($coder_toolfail consecutive)"
     if [ "$coder_toolfail" -ge 2 ]; then
       log "=== ABORT $LABEL: coder tool repeatedly unavailable — escalating ==="
       exit 2

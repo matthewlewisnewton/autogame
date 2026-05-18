@@ -17,7 +17,9 @@ MAX_ESCALATIONS="${MAX_ESCALATIONS:-3}"
 SUPLOG="$REPO_ROOT/LOOPLOG.txt"
 escalations=0
 
-slog() { log "$*" | tee -a "$SUPLOG"; }
+# Supervisor output is captured to LOOPLOG.txt by the launch-time `tee`;
+# slog is just log, kept as a distinct name for supervisor-level lines.
+slog() { log "$*"; }
 
 slog "######## supervisor started ($(date '+%F %T')) ########"
 
