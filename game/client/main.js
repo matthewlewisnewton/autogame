@@ -406,17 +406,14 @@ socket.on('cardUsed', (data) => {
 
   // Handle confirmed summon play for the local player: consume the card
   if (data.playerId === myId && summonCardIds.has(data.cardId)) {
-    // Find the slot holding this card and remove it, then draw replacement
-    for (let i = 0; i < hand.length; i++) {
-      if (hand[i] && hand[i].id === data.cardId) {
-        hand[i] = null;
-        const newCard = drawCard();
-        if (newCard) {
-          hand[i] = newCard;
-        }
-        renderHand();
-        break;
+    const idx = data.slotIndex;
+    if (idx >= 0 && idx < hand.length) {
+      hand[idx] = null;
+      const newCard = drawCard();
+      if (newCard) {
+        hand[idx] = newCard;
       }
+      renderHand();
     }
   }
 
