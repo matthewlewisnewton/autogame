@@ -15,7 +15,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [007-camera-follow](tickets/007-camera-follow/)
 
 ## Backlog — Lobby & HUD
-- [ ] [006-card-deck-ui](tickets/006-card-deck-ui/)
+- [x] [006-card-deck-ui](tickets/006-card-deck-ui/)
 - [ ] [008-lobby-screen](tickets/008-lobby-screen/)
 
 ## Backlog — Combat
