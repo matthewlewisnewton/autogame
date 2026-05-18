@@ -63,7 +63,9 @@ export const CARD_TYPE_STYLE = {
 // Pre-computed Sets for O(1) membership checks in hot paths (e.g. cardUsed handler).
 export const weaponCardIds = new Set();
 export const summonCardIds = new Set();
+export const monsterCardIds = new Set();
 for (const def of Object.values(CARD_DEFS)) {
   if (def.type === 'weapon') weaponCardIds.add(def.id);
   if (def.type === 'summon') summonCardIds.add(def.id);
+  if (def.type === 'monster') monsterCardIds.add(def.id);
 }
