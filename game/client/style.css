@@ -22,6 +22,7 @@ body, html {
   pointer-events: none;
   z-index: 10;
   text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  display: none;
 }
 
 h1 {
@@ -49,7 +50,7 @@ canvas {
   bottom: 0;
   left: 50%;
   transform: translateX(-50%);
-  display: flex;
+  display: none;
   gap: 12px;
   padding: 16px;
   pointer-events: none;
@@ -63,4 +64,78 @@ canvas {
   background: rgba(15, 23, 42, 0.75);
   border: 1px solid rgba(148, 163, 184, 0.3);
   pointer-events: none;
+}
+
+/* ── Lobby overlay ── */
+
+#lobby {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  background-color: #0f172a;
+  color: white;
+  z-index: 100;
+}
+
+#lobby h2 {
+  font-size: 36px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+#lobby-player-list-wrapper {
+  width: 320px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+#lobby-player-list-wrapper h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+}
+
+#lobby-player-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 40px;
+  text-align: center;
+  color: #cbd5e1;
+  font-size: 15px;
+}
+
+#lobby-player-list .empty-hint {
+  color: #64748b;
+  font-style: italic;
+  font-size: 14px;
+}
+
+#ready-btn {
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  background-color: #3b82f6;
+  color: white;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#ready-btn:hover {
+  background-color: #2563eb;
 }
