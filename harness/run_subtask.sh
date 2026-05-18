@@ -27,12 +27,14 @@ exec > >(tee -a "$SUBDIR/log.txt") 2>&1
 trap 'stop_game' EXIT
 
 log "=== sub-ticket: $LABEL — QA mode: $QA_MODE ==="
+emit_progress_event "subtask_start" "{\"label\":$(json_string "$LABEL"),\"ticketFile\":$(json_string "$TICKET_FILE"),\"qaMode\":$(json_string "$QA_MODE")}"
 coder_toolfail=0
 
 for (( iter=1; iter<=MAX_ITER; iter++ )); do
   log "--- $LABEL : iteration $iter/$MAX_ITER ---"
   ARTI="$SUBDIR/artifacts/iter-$iter"
   mkdir -p "$ARTI"
+  emit_progress_event "iteration_start" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"maxIterations\":$MAX_ITER,\"artifacts\":$(json_string "$ARTI")}"
 
   # 1. CODER (qwen)
   log "[qwen] implementing..."
@@ -75,10 +77,12 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   if wait_for_game 45; then
     log "[playwright] capturing screenshots..."
     node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$ARTI" </dev/null > "$ARTI/screenshot.log" 2>&1
+    emit_progress_event "capture_complete" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"artifacts\":$(json_string "$ARTI"),\"status\":\"captured\"}"
   else
     log "[game] SERVERS FAILED TO START"
     echo '{"ok":false,"error":"servers did not start"}' > "$ARTI/metrics.json"
     : > "$ARTI/console.log"; : > "$ARTI/server.log"; : > "$ARTI/client.log"
+    emit_progress_event "capture_complete" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"artifacts\":$(json_string "$ARTI"),\"status\":\"servers_failed\"}"
   fi
   stop_game
 
@@ -99,8 +103,10 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   # produced a real verdict line.
   if run_gemini "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by gemini ($QA_MODE)"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"gemini\",\"mode\":$(json_string "$QA_MODE")}"
   elif run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "cursor-agent/$AGENT_MODEL"),\"mode\":$(json_string "$QA_MODE")}"
   else
     log "[qa] gemini + agent produced no verdict — last-resort claude"
     if ! run_claude "$QA_PROMPT" "$ARTI/qa.txt"; then
@@ -112,11 +118,13 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
       exit 2
     fi
     log "[qa] verified by claude ($QA_MODE)"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"claude\",\"mode\":$(json_string "$QA_MODE")}"
   fi
 
   # 4. Verdict
   if is_pass "$ARTI/qa.txt"; then
     log "[qa] PASS — dispatching qwen to commit the verified change"
+    emit_progress_event "qa_verdict" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"verdict\":\"PASS\",\"qaFile\":$(json_string "$ARTI/qa.txt")}"
     head_before="$(git rev-parse HEAD)"
     COMMIT_PROMPT="$(render_prompt "$PROMPTS_DIR/commit.md" \
       TICKET_FILE "$TICKET_FILE" LABEL "$LABEL")"
@@ -137,10 +145,12 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
       log "[commit] no new changes — verified state already in HEAD"
     fi
     log "=== sub-ticket PASSED: $LABEL ==="
+    emit_progress_event "subtask_passed" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter}"
     exit 0
   fi
 
   log "[qa] FAIL — accumulating feedback"
+  emit_progress_event "qa_verdict" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"verdict\":\"FAIL\",\"qaFile\":$(json_string "$ARTI/qa.txt")}"
   {
     printf '\n## QA feedback — iteration %d (%s)\n\n' "$iter" "$(date '+%F %T')"
     cat "$ARTI/qa.txt"
@@ -149,5 +159,6 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
 done
 
 log "=== sub-ticket FAILED after $MAX_ITER iterations: $LABEL — reverting ==="
+emit_progress_event "subtask_failed" "{\"label\":$(json_string "$LABEL"),\"maxIterations\":$MAX_ITER}"
 revert_game_changes
 exit 1

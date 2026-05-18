@@ -4,6 +4,9 @@
   "private": true,
   "description": "Orchestration harness for the autogame agent loop",
   "type": "module",
+  "scripts": {
+    "progress": "node progress/server.mjs --port 8787"
+  },
   "dependencies": {
     "playwright": "^1.60.0"
   }

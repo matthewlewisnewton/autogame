@@ -30,6 +30,24 @@ CLI_RETRY_BACKOFF="${CLI_RETRY_BACKOFF:-20}"
 # Exit-code convention used across run_*.sh:
 #   0 = passed   1 = genuine task failure   2 = harness/tool failure (escalate)
 
+# --- Progress stream events (best-effort, never affects harness control flow) ---
+json_string() {  # json_string <value>
+  node -e 'process.stdout.write(JSON.stringify(process.argv[1] ?? ""))' "$1" 2>/dev/null || printf '""'
+}
+
+emit_progress_event() {  # emit_progress_event <type> [payload-json]
+  [ "${PROGRESS_EVENTS:-1}" = "0" ] && return 0
+  local type="$1" payload="${2:-{}}" ts line dir="$HARNESS_DIR/progress"
+  ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+  mkdir -p "$dir" 2>/dev/null || return 0
+  line="$(printf '{"ts":%s,"type":%s,"payload":%s}\n' "$(json_string "$ts")" "$(json_string "$type")" "$payload")"
+  printf '%s' "$line" >> "$dir/events.ndjson" 2>/dev/null || true
+  if [ -n "${PROGRESS_SERVER_URL:-}" ]; then
+    curl -sS -X POST -H 'content-type: application/json' --data-binary "$line" "$PROGRESS_SERVER_URL/events" >/dev/null 2>&1 || true
+  fi
+  return 0
+}
+
 # --- Logging ---
 log() { echo "[$(date '+%F %T')] $*"; }
 
@@ -37,6 +55,7 @@ log() { echo "[$(date '+%F %T')] $*"; }
 GAME_PIDS=()
 start_game() {  # start_game <logdir>
   local logdir="$1"
+  emit_progress_event "game_start" "{\"logdir\":$(json_string "$logdir")}"
   ( node game/server/index.js ) </dev/null >"$logdir/server.log" 2>&1 &
   GAME_PIDS+=("$!")
   ( cd game/client && npx vite --port 5173 --strictPort ) </dev/null >"$logdir/client.log" 2>&1 &
@@ -45,6 +64,7 @@ start_game() {  # start_game <logdir>
 
 stop_game() {
   local p
+  emit_progress_event "game_stop" "{}"
   for p in "${GAME_PIDS[@]:-}"; do
     [ -n "$p" ] && kill "$p" 2>/dev/null
   done
@@ -98,19 +118,23 @@ _run_cli() {
   local label="$1" out="$2" tmo="$3"; shift 3
   local attempt=1 rc
   while :; do
+    emit_progress_event "agent_start" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt}"
     # </dev/null: a CLI that reads stdin (gemini -p does) must NOT inherit the
     #   harness's TTY — a backgrounded process reading a TTY gets SIGTTIN and
     #   hangs in stopped state. -k 30: SIGKILL 30s after the SIGTERM so a wedged
     #   or stopped process is always reaped (rc 124 = SIGTERM'd, 137 = SIGKILL'd).
     timeout -k 30 "$tmo" "$@" </dev/null >"$out" 2>&1; rc=$?
     if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ]; then
+      emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"ok\"}"
       return 0
     fi
     if [ "$attempt" -gt "$CLI_RETRIES" ]; then
       log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, $([ "$rc" -eq 124 ] && echo timeout || echo 'empty output'))"
+      emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\"}"
       return 2
     fi
     log "[tool-retry] $label attempt $attempt failed (rc=$rc) — backoff ${CLI_RETRY_BACKOFF}s"
+    emit_progress_event "agent_retry" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc}"
     sleep "$CLI_RETRY_BACKOFF"
     attempt=$((attempt + 1))
   done
@@ -158,6 +182,7 @@ commit_verified() {
   git add -A
   if git diff --cached --quiet; then
     log "[git] no changes to commit — verified state already in HEAD"
+    emit_progress_event "commit_skipped" "{\"message\":$(json_string "$1"),\"reason\":\"no_changes\"}"
     return 0
   fi
   local before; before="$(git rev-parse HEAD 2>/dev/null)"
@@ -170,6 +195,7 @@ commit_verified() {
     return 2
   fi
   log "[git] committed $(git rev-parse --short HEAD): $1"
+  emit_progress_event "commit" "{\"message\":$(json_string "$1"),\"sha\":$(json_string "$(git rev-parse --short HEAD)")}"
   return 0
 }
 

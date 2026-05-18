@@ -48,6 +48,7 @@ trap 'stop_game' EXIT
 
 BASE_REF="$(git rev-parse HEAD)"
 log "########## top-level ticket: $NAME (baseline $BASE_REF) ##########"
+emit_progress_event "ticket_start" "{\"ticket\":$(json_string "$NAME"),\"ticketFile\":$(json_string "$TICKET_FILE"),\"baseline\":$(json_string "$BASE_REF")}"
 
 # --- helpers --------------------------------------------------------------
 
@@ -180,6 +181,7 @@ finalize() {  # finalize <artifacts_dir> <review_file>
 
 for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   log "========== $NAME : round $round/$TICKET_MAX_ROUNDS =========="
+  emit_progress_event "ticket_round_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"maxRounds\":$TICKET_MAX_ROUNDS}"
 
   # --- 1. DECOMPOSE (qwen) ---
   if [ "$round" -eq 1 ]; then
@@ -188,6 +190,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     REMEDIATION="REMEDIATION ROUND $round. Sub-ticket folders with a .passed marker are already done — never modify them. The file $REVIEW_FB holds the CURRENT open gaps; it is rewritten every round, so it fully supersedes anything from earlier rounds. It ends with a pointer to the full review — open that read-only file if the compact summary is not detailed enough, but never edit it or any earlier review. Read the gaps and add ONLY new sub-tickets that close those specific gaps."
   fi
   log "[qwen] decomposing into sub-tickets..."
+  emit_progress_event "decompose_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
   DECOMP_PROMPT="$(render_prompt "$PROMPTS_DIR/decompose.md" \
     TICKET_FILE "$TICKET_FILE" SUBTICKETS_DIR "$SUBROOT" REMEDIATION "$REMEDIATION")"
   run_qwen "$DECOMP_PROMPT" "$TDIR/decompose-round-$round.txt"
@@ -214,6 +217,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
       0)
         touch "$sub/.passed"
         log "[sub] $(basename "$sub") PASSED"
+        emit_progress_event "subtask_marked_passed" "{\"ticket\":$(json_string "$NAME"),\"subtask\":$(json_string "$(basename "$sub")")}"
         ;;
       2)
         log "[harness] $(basename "$sub") hit a tool failure — aborting ticket for escalation"
@@ -221,6 +225,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
         ;;
       *)
         log "[sub] $(basename "$sub") FAILED"
+        emit_progress_event "subtask_marked_failed" "{\"ticket\":$(json_string "$NAME"),\"subtask\":$(json_string "$(basename "$sub")")}"
         SUBS_OK=0
         FAILED_SUBS+=("$(basename "$sub")")
         ;;
@@ -241,13 +246,16 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
 
   # --- 3. CLAUDE REVIEW of the whole top-level ticket ---
   log "[review] all sub-tickets passed — running claude review"
+  emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
   RDIR="$TDIR/review-round-$round"
   capture_run "$RDIR"
   review_ticket "$RDIR"
   protect_review "review-round-$round" "$RDIR"   # archive + lock read-only
 
   if is_pass "$REVIEW_OUT"; then
+    emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"PASS\",\"review\":$(json_string "$REVIEW_OUT")}"
     if finalize "$RDIR" "$REVIEW_OUT"; then
+      emit_progress_event "ticket_complete" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
       exit 0
     fi
     # review said PASS but the game is not runnable — force another round.
@@ -262,6 +270,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
 
   # FAIL — hand qwen the compact open-gaps list claude wrote (overwrite).
   log "[review] FAIL — recording compacted feedback for remediation"
+  emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"FAIL\",\"review\":$(json_string "$REVIEW_OUT")}"
   if [ -s "$RDIR/gaps.md" ]; then
     cp "$RDIR/gaps.md" "$REVIEW_FB"
   else
@@ -276,6 +285,7 @@ done
 
 # --- 4. CLAUDE RESCUE — last resort: claude implements the fixes itself ----
 log "########## $NAME — $TICKET_MAX_ROUNDS rounds exhausted; starting claude rescue ##########"
+emit_progress_event "rescue_start" "{\"ticket\":$(json_string "$NAME"),\"maxRounds\":$TICKET_MAX_ROUNDS}"
 RES="$TDIR/rescue"
 mkdir -p "$RES"
 git diff "$BASE_REF"..HEAD > "$RES/ticket.diff"
