@@ -108,10 +108,25 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
 
   # 4. Verdict
   if is_pass "$ARTI/qa.txt"; then
-    log "[qa] PASS"
-    if ! commit_verified "$LABEL: sub-ticket verified (iter $iter)"; then
+    log "[qa] PASS — dispatching qwen to commit the verified change"
+    head_before="$(git rev-parse HEAD)"
+    COMMIT_PROMPT="$(render_prompt "$PROMPTS_DIR/commit.md" \
+      TICKET_FILE "$TICKET_FILE" LABEL "$LABEL")"
+    run_qwen "$COMMIT_PROMPT" "$ARTI/commit.txt"
+    # The harness still GUARANTEES verified progress is committed: if qwen left
+    # anything uncommitted, commit the remainder deterministically.
+    if [ -n "$(git status --porcelain)" ]; then
+      log "[commit] qwen left changes uncommitted — harness committing remainder"
+      commit_verified "$LABEL: sub-ticket verified (iter $iter)" || true
+    fi
+    if [ -n "$(git status --porcelain)" ]; then
       log "=== ABORT $LABEL: could not commit verified progress — escalating ==="
       exit 2
+    fi
+    if [ "$(git rev-parse HEAD)" != "$head_before" ]; then
+      log "[commit] $(git log -1 --format='%h %s')"
+    else
+      log "[commit] no new changes — verified state already in HEAD"
     fi
     log "=== sub-ticket PASSED: $LABEL ==="
     exit 0
