@@ -75,16 +75,6 @@ socket.on('init', (data) => {
     initScene();
     return;
   }
-
-  // Auto-ready after a short delay so the harness test can capture the lobby
-  // first, then transition to the 3D scene for WASD screenshots.
-  setTimeout(() => {
-    if (!isReady && lobbyEl && !lobbyEl.classList.contains('hidden')) {
-      isReady = true;
-      socket.emit('playerReady');
-      readyBtn.textContent = 'Ready!';
-    }
-  }, 4000);
 });
 
 socket.on('stateUpdate', (state) => {
