@@ -7,24 +7,51 @@ const statusEl = document.getElementById('status');
 const socket = io();
 let myId = null;
 let gameState = null;
-let heartbeatStarted = false;
+let connectionState = 'connecting';
+let heartbeatTimer = null;
 let latency = null;
 const playersMeshes = {};
 
+function startHeartbeat() {
+  if (heartbeatTimer) return;
+  heartbeatTimer = setInterval(() => {
+    socket.emit('heartbeat', { type: 'heartbeat', timestamp: Date.now() });
+  }, 2000);
+}
+
+function stopHeartbeat() {
+  clearInterval(heartbeatTimer);
+  heartbeatTimer = null;
+}
+
+function updateStatus(text, state) {
+  connectionState = state;
+  statusEl.innerText = text;
+  statusEl.className = state;
+}
+
 socket.on('connect', () => {
-  statusEl.innerText = 'Connected!';
+  updateStatus('Connected', 'connected');
+  startHeartbeat();
+});
+
+socket.on('disconnect', () => {
+  stopHeartbeat();
+  updateStatus('Disconnected', 'disconnected');
+});
+
+socket.on('reconnect_attempt', () => {
+  updateStatus('Reconnecting...', 'reconnecting');
+});
+
+socket.on('reconnect', () => {
+  updateStatus('Connected', 'connected');
+  startHeartbeat();
 });
 
 socket.on('init', (data) => {
   myId = data.id;
   gameState = data.state;
-
-  if (!heartbeatStarted) {
-    heartbeatStarted = true;
-    setInterval(() => {
-      socket.emit('heartbeat', { type: 'heartbeat', timestamp: Date.now() });
-    }, 2000);
-  }
 });
 
 socket.on('stateUpdate', (state) => {
@@ -32,8 +59,10 @@ socket.on('stateUpdate', (state) => {
 });
 
 socket.on('heartbeat_ack', (data) => {
-  latency = data.latency;
-  statusEl.innerText = `Latency: ${latency}ms`;
+  if (connectionState === 'connected') {
+    latency = data.latency;
+    statusEl.innerText = `Latency: ${latency}ms`;
+  }
 });
 
 socket.on('playerDisconnected', (id) => {
