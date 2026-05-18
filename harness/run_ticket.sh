@@ -122,16 +122,23 @@ append_review_pointer() {  # append_review_pointer <review_file>
 
 # File the reviewer's non-blocking nits as a new low-priority backlog ticket so
 # they get cleaned up later without blocking the ticket that is passing now.
+# The generated ticket carries a staleness note pinning the commit it was
+# written against — by the time the loop reaches it the code may have moved on.
 ingest_nits() {  # ingest_nits <nits_file>
-  local nf="$1" num slug
+  local nf="$1" num slug sha
   [ -s "$nf" ] || return 0
   num="$(ls -d tickets/*/ 2>/dev/null | sed -nE 's#^tickets/([0-9]{3})-.*#\1#p' | sort -n | tail -1)"
   [ -n "$num" ] || num=000
   num="$(printf '%03d' "$(( 10#$num + 1 ))")"
   slug="$num-cleanup-${NAME#[0-9][0-9][0-9]-}"
+  sha="$(git rev-parse --short HEAD)"
   mkdir -p "tickets/$slug"
   {
     printf '# Cleanup nits from %s\n\n' "$NAME"
+    printf '> **Staleness note.** This follow-up ticket was written against commit\n'
+    printf '> `%s` (%s). The codebase may have moved on since it was filed —\n' "$sha" "$(date '+%F')"
+    printf '> before acting, re-check every file path and code reference below\n'
+    printf '> against the CURRENT code, and skip any nit that is already resolved.\n\n'
     printf 'Minor, non-blocking nits the reviewer noted while passing `%s`.\n' "$NAME"
     printf 'None blocked acceptance — clean them up when convenient.\n\n'
     cat "$nf"
@@ -141,7 +148,7 @@ ingest_nits() {  # ingest_nits <nits_file>
   else
     printf -- '- [ ] [%s](tickets/%s/)\n' "$slug" "$slug" >> TASKS.md
   fi
-  log "[nits] filed backlog ticket $slug from the reviewer's notes"
+  log "[nits] filed backlog ticket $slug (written against $sha) from the reviewer's notes"
 }
 
 # Tag + record a completed ticket. 0 = done, 1 = review passed but game does
