@@ -179,7 +179,8 @@ io.on('connection', (socket) => {
     dead: false,
     lastActivity: Date.now(),
     ready: false,
-    magicStones: MAX_MAGIC_STONES
+    magicStones: MAX_MAGIC_STONES,
+    pendingSummons: new Set()
   };
 
   socket.emit('init', { id: socket.id, state: gameState });
@@ -288,11 +289,22 @@ io.on('connection', (socket) => {
 
     // ── Summon branch (radial AoE) ──
     if (cardDef.type === 'summon') {
+      const summonKey = `${data.slotIndex}:${data.cardId}`;
+
+      // Guard: reject duplicate activation while previous summon is still resolving
+      if (player.pendingSummons.has(summonKey)) {
+        socket.emit('cardError', { reason: 'Summon already resolving' });
+        return;
+      }
+
       // Validate Magic Stones
       if (player.magicStones < cardDef.magicStoneCost) {
         socket.emit('cardError', { reason: 'Not enough Magic Stones' });
         return;
       }
+
+      // Mark as pending before any side effects
+      player.pendingSummons.add(summonKey);
 
       // Deduct cost
       player.magicStones -= cardDef.magicStoneCost;
@@ -319,6 +331,10 @@ io.on('connection', (socket) => {
         radius: SUMMON_RADIUS,
         hits: hits
       });
+
+      // Do NOT delete pendingSummons here — leave the entry so any duplicate
+      // useCard events arriving in the same event-loop turn are rejected.
+      // The per-tick clear() below will purge it on the next stateUpdate.
 
       return;
     }
@@ -360,9 +376,10 @@ io.on('connection', (socket) => {
 setInterval(() => {
   updateEnemies();
 
-  // Regenerate Magic Stones for each player
+  // Regenerate Magic Stones and clear pending summons for each player
   for (const p of Object.values(gameState.players)) {
     p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
+    p.pendingSummons.clear(); // safety net: clear stale pending entries each tick
   }
 
   io.emit('stateUpdate', gameState);
