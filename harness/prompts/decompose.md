@@ -21,22 +21,18 @@ YOUR JOB — break the top-level ticket into small SUB-TICKETS:
    - a `## Acceptance Criteria` section with a concrete, checkable bullet list,
    - a `## Technical Specs` section naming the exact files under `game/` to
      change and the key implementation details.
-   - a `## Verification: visual` OR `## Verification: code` line. Classify by
-     what the sub-ticket's **acceptance criteria** can actually be checked
-     against — NOT by whether the feature happens to be on-screen:
-       `visual` — every criterion is confirmable from a few screenshots of one
-                  HAPPY-PATH run (game loads, two players join, WASD movement;
-                  an element appears, a cube moved, layout looks right). A
-                  state reached only by disconnecting, reconnecting, an error,
-                  or waiting on a timer is NOT in those screenshots — those
-                  criteria are `code`;
-       `code`   — any criterion involves values, rates, timing, frame-rate or
-                  refresh-rate behaviour, server state, or anything a handful
-                  of static screenshots cannot show (e.g. "equal at 60Hz and
-                  144Hz", "emits every 2s"). It is checked from the code diff
-                  and the server/console logs. When in doubt, use `code`.
-     A criterion that is not checkable by its declared mode will fail forever —
-     so make sure the mode matches the criteria.
+   - a `## Verification: visual` OR `## Verification: code` line.
+     **DEFAULT TO `code`.** `code` QA reads the whole diff plus the logs — it
+     can verify HTML, CSS, structure, logic, handlers, server state, and
+     "does X exist". `visual` QA only sees screenshots of ONE happy-path run
+     (game loads, two players join, WASD movement) and can verify nothing else.
+     Use `visual` ONLY when EVERY acceptance criterion is purely about how
+     something renders, looks, or animates on screen in that run — and NONE of
+     the criteria concern a function/handler/structure existing, server state,
+     timing, a value/rate, an error path, or a disconnect/reconnect. If a
+     sub-ticket mixes "it looks right" with "X exists" or "X behaves", it is
+     `code`. When unsure, `code`. (Mis-picking `code` only loses a pixel-level
+     look check; mis-picking `visual` makes the sub-ticket fail forever.)
 
 RULES:
 - Do NOT write any game code in this step. Only create the sub-ticket folders
