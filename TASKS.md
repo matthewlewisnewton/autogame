@@ -16,7 +16,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 
 ## Backlog — Lobby & HUD
 - [x] [006-card-deck-ui](tickets/006-card-deck-ui/)
-- [ ] [008-lobby-screen](tickets/008-lobby-screen/)
+- [x] [008-lobby-screen](tickets/008-lobby-screen/)
 
 ## Backlog — Combat
 - [ ] [009-player-health-system](tickets/009-player-health-system/)
