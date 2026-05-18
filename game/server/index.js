@@ -41,9 +41,11 @@ io.on('connection', (socket) => {
         ![data.x, data.y, data.z, data.rotation].every(Number.isFinite)) return;
 
     if (gameState.players[socket.id]) {
-      gameState.players[socket.id].x = data.x;
+      const clampedX = Math.max(-25, Math.min(25, data.x));
+      const clampedZ = Math.max(-25, Math.min(25, data.z));
+      gameState.players[socket.id].x = clampedX;
       gameState.players[socket.id].y = data.y;
-      gameState.players[socket.id].z = data.z;
+      gameState.players[socket.id].z = clampedZ;
       gameState.players[socket.id].rotation = data.rotation;
       gameState.players[socket.id].lastActivity = Date.now();
     }
