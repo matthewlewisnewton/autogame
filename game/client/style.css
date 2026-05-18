@@ -43,3 +43,24 @@ h1 {
 canvas {
   display: block;
 }
+
+#card-hand {
+  position: fixed;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.card-slot {
+  width: 80px;
+  height: 120px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.75);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  pointer-events: none;
+}
