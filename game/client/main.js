@@ -39,6 +39,7 @@ let slotCooldowns = [false, false, false, false];   // per-slot cooldown guard
 let scene, camera, renderer, clock;
 const playersMeshes = {};
 const enemiesMeshes = {};
+const minionsMeshes = {};
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 let myX = 0;
 let myZ = 0;
@@ -640,6 +641,30 @@ function animate() {
       if (!currentEnemyIds.has(id)) {
         scene.remove(enemiesMeshes[id]);
         delete enemiesMeshes[id];
+      }
+    }
+
+    // ── Minion mesh sync ──
+    const currentMinionIds = new Set(gameState.minions ? gameState.minions.map(m => m.id) : []);
+
+    for (const minion of (gameState.minions || [])) {
+      if (!minionsMeshes[minion.id]) {
+        const geo = new THREE.CylinderGeometry(0.4, 0.4, 1, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
+        const mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+        minionsMeshes[minion.id] = mesh;
+      }
+      minionsMeshes[minion.id].position.set(minion.x, 0.5, minion.z);
+    }
+
+    // Clean up removed minions
+    for (const id of Object.keys(minionsMeshes)) {
+      if (!currentMinionIds.has(id)) {
+        scene.remove(minionsMeshes[id]);
+        minionsMeshes[id].geometry.dispose();
+        minionsMeshes[id].material.dispose();
+        delete minionsMeshes[id];
       }
     }
   }
