@@ -53,6 +53,29 @@ h1 {
   padding: 6px 12px;
 }
 
+.top-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.gpu {
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  max-width: 460px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpu.active {
+  color: var(--gold);
+  border-color: rgba(255, 209, 102, 0.45);
+}
+
 .status.live {
   color: var(--green);
   border-color: rgba(61, 220, 151, 0.5);
@@ -186,6 +209,10 @@ h1 {
 }
 
 .actor.git {
+  color: var(--gold);
+}
+
+.actor.gpu {
   color: var(--gold);
 }
 

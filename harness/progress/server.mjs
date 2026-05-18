@@ -28,6 +28,7 @@ const fileOffsets = new Map();
 const fileDigests = new Map();
 let nextId = 1;
 let lastGitHead = '';
+let lastGpuDigest = '';
 
 const WATCH_ROOTS = [
   'LOOPLOG.txt',
@@ -295,6 +296,93 @@ function scanGit() {
   });
 }
 
+function parseCsvLine(line) {
+  return line.split(',').map(part => part.trim());
+}
+
+function scanGpu() {
+  if (process.env.GPU_PROGRESS === '0') return;
+
+  const gpuResult = spawnSync('nvidia-smi', [
+    '--query-gpu=index,name,utilization.gpu,utilization.memory,memory.used,memory.total,temperature.gpu,power.draw,power.limit',
+    '--format=csv,noheader,nounits',
+  ], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    timeout: 2000,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+
+  if (gpuResult.status !== 0 || !gpuResult.stdout.trim()) {
+    if (lastGpuDigest !== 'unavailable') {
+      lastGpuDigest = 'unavailable';
+      emit({
+        kind: 'gpu_sample',
+        actor: 'gpu',
+        title: 'GPU monitor unavailable',
+        text: 'nvidia-smi did not return GPU metrics. Run nvtop in a terminal for interactive monitoring.',
+        source: 'nvidia-smi',
+        payload: { available: false },
+      });
+    }
+    return;
+  }
+
+  const gpus = gpuResult.stdout.trim().split(/\r?\n/).map((line) => {
+    const [index, name, gpuUtil, memUtil, memUsed, memTotal, temp, powerDraw, powerLimit] = parseCsvLine(line);
+    return {
+      index: Number(index),
+      name,
+      gpuUtil: Number(gpuUtil),
+      memUtil: Number(memUtil),
+      memUsedMb: Number(memUsed),
+      memTotalMb: Number(memTotal),
+      tempC: Number(temp),
+      powerDrawW: Number(powerDraw),
+      powerLimitW: Number(powerLimit),
+    };
+  });
+
+  const procResult = spawnSync('nvidia-smi', [
+    '--query-compute-apps=pid,process_name,used_gpu_memory',
+    '--format=csv,noheader,nounits',
+  ], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    timeout: 2000,
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+
+  const processes = procResult.status === 0 && procResult.stdout.trim()
+    ? procResult.stdout.trim().split(/\r?\n/).map((line) => {
+      const [pid, name, usedMemory] = parseCsvLine(line);
+      return { pid: Number(pid), name, usedMemoryMb: Number(usedMemory) };
+    })
+    : [];
+
+  const digest = JSON.stringify({ gpus, processes });
+  if (digest === lastGpuDigest) return;
+  lastGpuDigest = digest;
+
+  const summary = gpus.map(gpu =>
+    `GPU${gpu.index} ${gpu.gpuUtil}% · ${gpu.memUsedMb}/${gpu.memTotalMb} MiB · ${gpu.tempC}C`
+  ).join(' | ');
+
+  emit({
+    kind: 'gpu_sample',
+    actor: 'gpu',
+    title: 'GPU usage',
+    text: summary,
+    source: 'nvidia-smi',
+    payload: {
+      available: true,
+      gpus,
+      processes: processes.slice(0, 8),
+      interactiveCommand: 'nvtop',
+    },
+  });
+}
+
 function contentType(path) {
   const ext = extname(path);
   if (ext === '.html') return 'text/html; charset=utf-8';
@@ -364,6 +452,13 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/gpu') {
+    const latest = [...events].reverse().find(event => event.kind === 'gpu_sample') || null;
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(latest ? latest.payload : { available: false }, null, 2));
+    return;
+  }
+
   if (url.pathname.startsWith('/artifacts/')) {
     const safe = safeRel(url.pathname);
     if (!safe) {
@@ -390,8 +485,11 @@ setInterval(() => {
   scanFiles();
   scanGit();
 }, 1500);
+const gpuPollInterval = Number(process.env.GPU_POLL_INTERVAL_MS || 5000);
+if (gpuPollInterval > 0) setInterval(scanGpu, gpuPollInterval);
 scanFiles();
 scanGit();
+if (gpuPollInterval > 0) scanGpu();
 
 server.listen(port, () => {
   writeFileSync(eventLogPath, existsSync(eventLogPath) ? readFileSync(eventLogPath) : '');
