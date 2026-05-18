@@ -24,7 +24,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [011-card-hand-system](tickets/011-card-hand-system/)
 - [x] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
 - [x] [013-summon-cards](tickets/013-summon-cards/)
-- [ ] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
+- [x] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
 
 ## Backlog — World & Economy
 - [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
