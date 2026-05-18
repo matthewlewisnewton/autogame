@@ -21,17 +21,30 @@ YOUR JOB — break the top-level ticket into small SUB-TICKETS:
    - a `## Acceptance Criteria` section with a concrete, checkable bullet list,
    - a `## Technical Specs` section naming the exact files under `game/` to
      change and the key implementation details.
-   - a `## Verification: visual` OR `## Verification: code` line — use
-     `visual` if the change is observable in the running game (UI, rendering,
-     on-screen behaviour — it will be checked from screenshots); use `code` if
-     it is server-side / logic / otherwise non-visual (it will be checked from
-     the code diff and the server/console logs, not screenshots).
+   - a `## Verification: visual` OR `## Verification: code` line. Classify by
+     what the sub-ticket's **acceptance criteria** can actually be checked
+     against — NOT by whether the feature happens to be on-screen:
+       `visual` — every criterion is confirmable from a few screenshots of one
+                  run (an element appears, a cube moved, layout looks right);
+       `code`   — any criterion involves values, rates, timing, frame-rate or
+                  refresh-rate behaviour, server state, or anything a handful
+                  of static screenshots cannot show (e.g. "equal at 60Hz and
+                  144Hz", "emits every 2s"). It is checked from the code diff
+                  and the server/console logs. When in doubt, use `code`.
+     A criterion that is not checkable by its declared mode will fail forever —
+     so make sure the mode matches the criteria.
 
 RULES:
 - Do NOT write any game code in this step. Only create the sub-ticket folders
   and their `ticket.md` files.
 - Do NOT run servers or git.
-- If existing sub-ticket folders are already present, do NOT modify or
-  renumber them — only add new ones numbered after the highest existing one.
+- Existing sub-ticket folders that contain a `.passed` marker are DONE —
+  never modify, rename, or delete them.
+- An existing sub-ticket folder WITHOUT a `.passed` marker failed in an
+  earlier round. If it is mis-scoped (e.g. wrong verification mode, or it
+  bundles two concerns), and you are creating a better-scoped replacement,
+  DELETE the old failed folder (`rm -rf` it) — a failed sub-ticket that is
+  never retired makes the whole ticket impossible to complete.
+- Number any new sub-tickets after the highest existing number.
 
 When finished, print the list of sub-ticket folder paths you created.
