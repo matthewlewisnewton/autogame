@@ -73,7 +73,7 @@ review_ticket() {  # review_ticket <dir>
   REVIEW_OUT="$dir/review.md"
   prompt="$(render_prompt "$PROMPTS_DIR/review.md" \
     TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$dir" \
-    DIFF_FILE "$dir/ticket.diff" REVIEW_OUT "$REVIEW_OUT" \
+    BASE_REF "$BASE_REF" REVIEW_OUT "$REVIEW_OUT" \
     GAPS_OUT "$dir/gaps.md" NITS_OUT "$dir/nits.md")"
   log "[claude] reviewing..."
   if ! run_claude "$prompt" "$dir/claude.txt"; then
@@ -281,7 +281,7 @@ mkdir -p "$RES"
 git diff "$BASE_REF"..HEAD > "$RES/ticket.diff"
 RESCUE_PROMPT="$(render_prompt "$PROMPTS_DIR/rescue.md" \
   TICKET_FILE "$TICKET_FILE" REVIEW_FB "$REVIEW_FB" \
-  DIFF_FILE "$RES/ticket.diff" ROUNDS "$TICKET_MAX_ROUNDS")"
+  BASE_REF "$BASE_REF" ROUNDS "$TICKET_MAX_ROUNDS")"
 log "[rescue] claude implementing the remaining fixes directly..."
 if ! run_claude "$RESCUE_PROMPT" "$RES/rescue.txt"; then
   log "[tool-failure] claude rescue unavailable — escalating"

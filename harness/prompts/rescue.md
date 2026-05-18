@@ -6,8 +6,12 @@ now your job to finish the work directly.
 READ:
 - the top-level ticket at `__TICKET_FILE__`,
 - `CONTEXT.md` and `game/docs/design.md`,
-- the CURRENT open gaps from the most recent review at `__REVIEW_FB__`,
-- the cumulative diff for this ticket so far at `__DIFF_FILE__`.
+- the CURRENT open gaps from the most recent review at `__REVIEW_FB__`.
+
+Work against the LIVE codebase — the implementation so far is in the working
+tree, which is the source of truth. Read the actual files under `game/`. To
+see what has been done on this ticket already, run `git diff __BASE_REF__ HEAD`
+yourself; do not rely on a static diff snapshot.
 
 YOUR JOB — implement the remaining fixes directly in the code under `game/`:
 
@@ -28,7 +32,9 @@ VERIFY before you finish: start the server and client, load the client, and
 confirm it runs cleanly. Stop both processes again before you exit.
 
 RULES:
-- Edit only files under `game/`. Do NOT run git — the harness commits for you.
+- Edit only files under `game/`. Do NOT commit, branch, or otherwise change
+  git state — the harness commits for you; running read-only `git diff` /
+  `git log` to inspect progress is fine.
 
 When done, briefly summarise what you fixed and explicitly state whether the
 game is runnable and whether anything still remains.

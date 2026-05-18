@@ -88,7 +88,7 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   if [ "$QA_MODE" = "code" ]; then
     log "[qa] code-review QA (non-visual sub-ticket)..."
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa-code.md" \
-      TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI" DIFF_FILE "$ARTI/changes.diff")"
+      TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
   else
     log "[qa] visual QA (screenshots)..."
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
