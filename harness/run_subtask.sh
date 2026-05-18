@@ -103,7 +103,15 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
   else
     log "[qa] gemini + agent produced no verdict — last-resort claude"
-    run_claude "$QA_PROMPT" "$ARTI/qa.txt"
+    if ! run_claude "$QA_PROMPT" "$ARTI/qa.txt"; then
+      log "[tool-failure] claude QA unavailable (timeout/empty) after gemini+agent — escalating"
+      exit 2
+    fi
+    if ! has_verdict "$ARTI/qa.txt"; then
+      log "[tool-failure] claude QA produced no VERDICT: PASS|FAIL line — escalating"
+      exit 2
+    fi
+    log "[qa] verified by claude ($QA_MODE)"
   fi
 
   # 4. Verdict
