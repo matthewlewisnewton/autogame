@@ -47,6 +47,22 @@ try {
   wire(pageB, 'B');
   await pageB.goto(url, { waitUntil: 'load', timeout: 30000 });
   await pageB.waitForTimeout(2500);
+
+  // Ready up — click through the lobby so the actual game (3D canvas) mounts.
+  // Without this the capture never leaves the lobby screen and visual QA can
+  // only ever see the lobby. Defensive: if there is no lobby (server already
+  // in 'playing' phase, or no ready button), each step is a tolerated no-op.
+  const readyUp = async (page) => {
+    const btn = page.locator('#ready-btn');
+    if ((await btn.count()) && (await btn.isVisible().catch(() => false))) {
+      await btn.click().catch(() => {});
+    }
+  };
+  await readyUp(pageA);
+  await readyUp(pageB);
+  // Wait for the game scene to start (lobby hidden / 3D canvas mounted).
+  await pageA.waitForSelector('canvas', { timeout: 15000 }).catch(() => {});
+  await pageA.waitForTimeout(2000);
   await pageA.screenshot({ path: `${outDir}/02-two-players.png` });
 
   // Movement on player A.
