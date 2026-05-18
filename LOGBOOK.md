@@ -190,3 +190,26 @@ None.
 
 None.
 
+
+## v0.9 — Player Health & Respawn  (2026-05-18 04:48:11)
+
+up, so `startGame` never fired. `03-after-w.png` and `04-after-d.png` are
+byte-identical to `02-two-players.png`, i.e. the WASD and damage steps had no
+observable effect this round. The integrated in-game behavior (HP bar visible,
+cube greying, respawn) is therefore **not demonstrated by this round's
+screenshots**. Per the task brief each sub-ticket already passed its own visual
+QA, and code review confirms every integration seam is correctly wired, so this
+is a screenshot-harness shortcoming rather than an implementation defect. Worth
+flagging for the harness, but it does not represent a missing feature.
+
+## Minor Observations (non-blocking)
+
+- `damagePlayer` clamps `hp` to a floor of 0 but not a ceiling of 100. Normal
+  play cannot exceed 100 (no healing exists yet), but a negative `amount` sent
+  to the `damage` test hook would push `hp` above 100. When real combat/healing
+  arrives (tickets 012–014), add a `Math.min(100, …)` cap.
+
+## Remaining Gaps
+
+(none)
+

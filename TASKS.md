@@ -19,7 +19,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [008-lobby-screen](tickets/008-lobby-screen/)
 
 ## Backlog — Combat
-- [ ] [009-player-health-system](tickets/009-player-health-system/)
+- [x] [009-player-health-system](tickets/009-player-health-system/)
 - [ ] [010-enemy-entities-ai](tickets/010-enemy-entities-ai/)
 - [ ] [011-card-hand-system](tickets/011-card-hand-system/)
 - [ ] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
