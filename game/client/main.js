@@ -37,6 +37,7 @@ let myX = 0;
 let myZ = 0;
 let velocityX = 0;
 let velocityZ = 0;
+let playerRotation = 0; // facing angle in radians, derived from movement velocity
 let wasDead = false; // tracks previous-frame dead state for respawn detection
 
 function startHeartbeat() {
@@ -405,8 +406,14 @@ function updateMyPlayer(delta) {
   velocityX *= f;
   velocityZ *= f;
 
+  // Update facing angle whenever there is meaningful movement
+  if (Math.abs(velocityX) > 0.01 || Math.abs(velocityZ) > 0.01) {
+    playerRotation = Math.atan2(velocityZ, velocityX);
+  }
+
+  // Always emit move while moving (preserves last non-zero rotation when stationary)
   if (Math.abs(velocityX) > 0.001 || Math.abs(velocityZ) > 0.001) {
-    socket.emit('move', { x: myX, y: 0.5, z: myZ, rotation: 0 });
+    socket.emit('move', { x: myX, y: 0.5, z: myZ, rotation: playerRotation });
   }
 }
 
@@ -455,6 +462,7 @@ function animate() {
         myZ = 0;
         velocityX = 0;
         velocityZ = 0;
+        playerRotation = 0;
       }
       wasDead = isDead;
 
