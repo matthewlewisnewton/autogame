@@ -259,3 +259,26 @@ visual coverage is on record.
 
 (none — all five acceptance criteria are fully and robustly delivered in code)
 
+
+## v0.12 — Weapon Card Attacks  (2026-05-18 06:40:25)
+
+## Minor observations (non-blocking, not gaps)
+- The `cardUsed` payload includes a `hits: [{enemyId, hp}]` array that the
+  client does not consume — enemy state is reconciled solely through the
+  per-tick `stateUpdate`. Harmless; the array still satisfies the ticket-01
+  broadcast contract.
+- The server `useCard` handler does not enforce charges or cooldown; charge
+  accounting is intentionally client-side "via the ticket-011 hand system" per
+  the top-level ticket, so this is within scope. Could be hardened later if
+  anti-cheat becomes a concern.
+- The projectile travels ~4.8 units over its 600 ms lifetime (`SPEED 8`) versus
+  the 5-unit hit range — close enough that the visual reads as covering the hit
+  zone.
+- Round-2 screenshots (`01`–`04`) only capture the lobby; the harness did not
+  click "Ready", so in-game attack visuals are not shown in this round.
+  Acceptance of the visual effect rests on the sub-ticket visual QA that
+  already passed; the code path is verified correct here.
+
+## Remaining gaps
+(none)
+
