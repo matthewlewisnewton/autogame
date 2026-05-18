@@ -195,6 +195,16 @@ io.on('connection', (socket) => {
     damagePlayer(data.targetId, data.amount);
   });
 
+  socket.on('damageEnemy', (data) => {
+    if (!data || !data.enemyId || typeof data.amount !== 'number') return;
+    const enemy = gameState.enemies.find(e => e.id === data.enemyId);
+    if (!enemy) return;
+    enemy.hp -= data.amount;
+    if (enemy.hp <= 0) {
+      gameState.enemies = gameState.enemies.filter(e => e.id !== data.enemyId);
+    }
+  });
+
   socket.on('playerReady', (ready) => {
     if (gameState.players[socket.id]) {
       gameState.players[socket.id].ready = !!ready;
