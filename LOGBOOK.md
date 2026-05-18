@@ -305,3 +305,26 @@ visual coverage is on record.
 ## Remaining Gaps
 (none)
 
+
+## v0.14 — Independent Monster Cards  (2026-05-18 08:11:00)
+
+  visualization, and movement sync are untouched. Server starts cleanly
+  (`server.log`), client loads with no page errors (`console.log` shows only
+  benign Vite/THREE noise).
+- Code quality: the monster branches on both client and server are small,
+  scoped, and mirror the existing weapon/summon branch structure. No dead or
+  broken code, no console errors.
+
+## Remaining gaps
+
+None blocking. The acceptance criteria are fully and robustly satisfied in the
+end-state code. Non-blocking nits are recorded separately for the backlog:
+
+1. Minion `hp` despawn path is currently inert — no game mechanic damages
+   minions, so a minion can only ever despawn via `ttl`. Future-facing only.
+2. Monster-card consumption in `useCard` is not gated by the per-slot cooldown,
+   so rapid key-spam can consume several monster cards (and spawn several
+   minions) in quick succession. Minor; matches weapon-card behavior.
+3. The review-round-1 capture never exercised the monster card, so visual QA of
+   the minion is unverified. This is a harness capture-plan issue.
+
