@@ -26,6 +26,7 @@ let sceneInitialized = false;
 // ── Hand state ──
 let hand = [];       // array of 4 card objects: { id, name, type, charges, remainingCharges }
 let deck = [];       // remaining card id strings to draw from
+let slotCooldowns = [false, false, false, false];   // per-slot cooldown guard
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -112,6 +113,7 @@ function initHand() {
   const deckIds = createStartingDeck();
   hand = [];
   deck = [];
+  slotCooldowns = [false, false, false, false];
 
   // Put all card IDs into deck, then pop 4 for the initial hand
   for (let i = deckIds.length - 1; i >= 0; i--) {
@@ -141,12 +143,36 @@ function refillSlot(index) {
 
 // ── Card input handling ──
 
+function playActivationEffect(slotIndex) {
+  const slot = cardSlots[slotIndex];
+  if (!slot) return;
+
+  // Flash: add .activating, remove after 200ms
+  slot.classList.add('activating');
+  setTimeout(() => {
+    slot.classList.remove('activating');
+    slot.classList.add('cooldown');
+  }, 200);
+
+  // Cooldown: ~1000ms of dimmed state after the flash ends (1200ms from activation)
+  setTimeout(() => {
+    slot.classList.remove('cooldown');
+    slotCooldowns[slotIndex] = false;
+  }, 1200);
+}
+
 function useCard(slotIndex) {
   if (slotIndex < 0 || slotIndex > 3) return;
   const card = hand[slotIndex];
   if (!card) return; // empty slot — no-op
 
   socket.emit('useCard', { slotIndex, cardId: card.id });
+
+  // If already in cooldown, skip flash — cooldown visual is idempotent
+  if (slotCooldowns[slotIndex]) return;
+
+  slotCooldowns[slotIndex] = true;
+  playActivationEffect(slotIndex);
 }
 
 // Keyboard: keys 1-4 map to hand slots 0-3
