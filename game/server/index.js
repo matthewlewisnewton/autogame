@@ -46,6 +46,28 @@ function checkAllReady() {
   }
 }
 
+// Helper: apply damage to a player, handle death + 3s respawn
+function damagePlayer(playerId, amount) {
+  const player = gameState.players[playerId];
+  if (!player) return;
+
+  player.hp = Math.max(0, player.hp - amount);
+
+  if (player.hp <= 0 && !player.dead) {
+    player.dead = true;
+
+    setTimeout(() => {
+      const p = gameState.players[playerId];
+      if (!p) return; // player may have disconnected
+      p.hp = 100;
+      p.dead = false;
+      p.x = 0;
+      p.y = 0.5;
+      p.z = 0;
+    }, 3000);
+  }
+}
+
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
@@ -57,6 +79,7 @@ io.on('connection', (socket) => {
     rotation: 0,
     deck: [],
     hp: 100,
+    dead: false,
     lastActivity: Date.now(),
     ready: false
   };
@@ -67,21 +90,30 @@ io.on('connection', (socket) => {
   broadcastLobbyUpdate();
 
   socket.on('move', (data) => {
+    const player = gameState.players[socket.id];
+
+    if (player && player.dead) return;
+
     if (!data || typeof data !== 'object' || Array.isArray(data) ||
         ![data.x, data.y, data.z, data.rotation].every(Number.isFinite)) {
       console.warn(`Rejected move from ${socket.id}: invalid payload`);
       return;
     }
 
-    if (gameState.players[socket.id]) {
+    if (player) {
       const clampedX = Math.max(-25, Math.min(25, data.x));
       const clampedZ = Math.max(-25, Math.min(25, data.z));
-      gameState.players[socket.id].x = clampedX;
-      gameState.players[socket.id].y = data.y;
-      gameState.players[socket.id].z = clampedZ;
-      gameState.players[socket.id].rotation = data.rotation;
-      gameState.players[socket.id].lastActivity = Date.now();
+      player.x = clampedX;
+      player.y = data.y;
+      player.z = clampedZ;
+      player.rotation = data.rotation;
+      player.lastActivity = Date.now();
     }
+  });
+
+  socket.on('damage', (data) => {
+    if (!data || !data.targetId || typeof data.amount !== 'number') return;
+    damagePlayer(data.targetId, data.amount);
   });
 
   socket.on('playerReady', (ready) => {
