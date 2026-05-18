@@ -107,10 +107,12 @@ run_claude() {  # run_claude <prompt> <outfile>
   _run_cli claude "$2" "$CLAUDE_TIMEOUT" "${a[@]}"
 }
 
-# gemini quota/auth error — caller should gracefully fall back to qwen for QA.
-gemini_unavailable() {  # gemini_unavailable <outfile>
-  [ ! -s "$1" ] && return 0
-  grep -qiE 'quota|exhausted|rate.?limit|unauthorized|not authenticated|429' "$1"
+# A QA/review output is usable iff it ended with a real verdict line. This is
+# the correct "did the agent actually do the job" signal — unlike grepping for
+# scary words, it is NOT fooled by transient retry noise (e.g. gemini printing
+# "exhausted ... retrying" before it goes on to succeed).
+has_verdict() {  # has_verdict <outfile>
+  [ -f "$1" ] && grep -qxE 'VERDICT: (PASS|FAIL)' "$1"
 }
 
 # --- Verdict parsing: a passing artifact ends with the exact line VERDICT: PASS ---

@@ -7,6 +7,7 @@ const statusEl = document.getElementById('status');
 const socket = io('http://localhost:3000');
 let myId = null;
 let gameState = null;
+let heartbeatStarted = false;
 const playersMeshes = {};
 
 socket.on('connect', () => {
@@ -16,6 +17,13 @@ socket.on('connect', () => {
 socket.on('init', (data) => {
   myId = data.id;
   gameState = data.state;
+
+  if (!heartbeatStarted) {
+    heartbeatStarted = true;
+    setInterval(() => {
+      socket.emit('heartbeat', { type: 'heartbeat', timestamp: Date.now() });
+    }, 2000);
+  }
 });
 
 socket.on('stateUpdate', (state) => {
