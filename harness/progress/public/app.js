@@ -5,6 +5,7 @@ const stageBody = document.querySelector('#stage-body');
 const stageMeta = document.querySelector('#stage-meta');
 const artifactLink = document.querySelector('#artifact-link');
 const clearBtn = document.querySelector('#clear');
+const gpuEl = document.querySelector('#gpu');
 
 let latestStage = null;
 
@@ -65,6 +66,31 @@ function renderEvent(event) {
   eventsEl.scrollTop = eventsEl.scrollHeight;
 }
 
+function updateGpu(event) {
+  if (!gpuEl || event.kind !== 'gpu_sample') return;
+  const payload = event.payload || {};
+  if (!payload.available) {
+    gpuEl.textContent = 'GPU: unavailable';
+    gpuEl.classList.remove('active');
+    return;
+  }
+
+  const gpus = Array.isArray(payload.gpus) ? payload.gpus : [];
+  const first = gpus[0];
+  if (!first) {
+    gpuEl.textContent = 'GPU: no samples';
+    gpuEl.classList.remove('active');
+    return;
+  }
+
+  const mem = `${first.memUsedMb}/${first.memTotalMb} MiB`;
+  const power = Number.isFinite(first.powerDrawW) ? ` · ${first.powerDrawW}W` : '';
+  const extra = gpus.length > 1 ? ` · +${gpus.length - 1} GPU` : '';
+  gpuEl.textContent = `GPU${first.index}: ${first.gpuUtil}% · ${mem} · ${first.tempC}C${power}${extra}`;
+  gpuEl.title = `Run nvtop for the interactive GPU view. ${payload.processes?.length || 0} GPU process(es) reported.`;
+  gpuEl.classList.add('active');
+}
+
 function maybeUpdateStage(event) {
   if (event.kind !== 'qa_scene' || !event.payload) return;
   const screenshots = Array.isArray(event.payload.screenshots) ? event.payload.screenshots : [];
@@ -112,6 +138,10 @@ function connect() {
 
   source.addEventListener('progress', (message) => {
     const event = JSON.parse(message.data);
+    if (event.kind === 'gpu_sample') {
+      updateGpu(event);
+      return;
+    }
     renderEvent(event);
     maybeUpdateStage(event);
     updateCurrent(event);
