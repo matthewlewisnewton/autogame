@@ -314,6 +314,7 @@ io.on('connection', (socket) => {
       io.emit('cardUsed', {
         playerId: socket.id,
         cardId: data.cardId,
+        slotIndex: data.slotIndex,
         origin: { x: originX, z: originZ },
         radius: SUMMON_RADIUS,
         hits: hits
