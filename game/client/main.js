@@ -281,7 +281,9 @@ function spawnAttackEffect(origin, direction) {
   const material = new THREE.MeshStandardMaterial({
     color: 0xffdd44,
     emissive: 0xffaa00,
-    emissiveIntensity: 0.8
+    emissiveIntensity: 0.8,
+    transparent: true,
+    opacity: 1.0
   });
   const mesh = new THREE.Mesh(geometry, material);
   mesh.position.set(origin.x, 1.0, origin.z);
@@ -313,7 +315,6 @@ function updateAttackEffects() {
     const scale = Math.max(0.01, lifeRatio);
     fx.mesh.scale.setScalar(scale);
     fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
-    fx.mesh.material.transparent = lifeRatio < 1.0;
 
     // Remove when expired
     if (elapsed >= fx.duration) {
