@@ -55,6 +55,7 @@ canvas {
   padding: 16px;
   pointer-events: none;
   z-index: 10;
+  flex-direction: row;
 }
 
 .card-slot {
@@ -138,4 +139,10 @@ canvas {
 
 #ready-btn:hover {
   background-color: #2563eb;
+}
+
+/* ── Utility ── */
+
+.hidden {
+  display: none !important;
 }
