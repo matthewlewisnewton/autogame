@@ -24,6 +24,7 @@ let sceneInitialized = false;
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
 const playersMeshes = {};
+const enemiesMeshes = {};
 let myX = 0;
 let myZ = 0;
 let velocityX = 0;
@@ -248,6 +249,28 @@ function animate() {
         playersMeshes[myId].material.color.setHex(0x808080);
       } else {
         playersMeshes[myId].material.color.setHex(0x3b82f6);
+      }
+    }
+
+    // ── Enemy mesh sync ──
+    const currentEnemyIds = new Set(gameState.enemies.map(e => e.id));
+
+    for (const enemy of gameState.enemies) {
+      if (!enemiesMeshes[enemy.id]) {
+        const geo = new THREE.ConeGeometry(0.5, 1, 8);
+        const mat = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
+        const mesh = new THREE.Mesh(geo, mat);
+        scene.add(mesh);
+        enemiesMeshes[enemy.id] = mesh;
+      }
+      enemiesMeshes[enemy.id].position.set(enemy.x, 0.5, enemy.z);
+    }
+
+    // Clean up removed enemies
+    for (const id of Object.keys(enemiesMeshes)) {
+      if (!currentEnemyIds.has(id)) {
+        scene.remove(enemiesMeshes[id]);
+        delete enemiesMeshes[id];
       }
     }
   }
