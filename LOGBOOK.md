@@ -167,3 +167,26 @@ None.
 
 None.
 
+
+## v0.8 — Lobby Screen  (2026-05-18 04:16:25)
+
+  multiplayer cube visualization, and WASD movement/sync are all preserved
+  intact inside `initScene()`/`animate()`; they are deferred behind the lobby
+  gate, not removed. The connection, heartbeat, and `move` paths are unchanged.
+
+## Code Quality
+
+- No console errors: `console.log` shows only Vite connection messages;
+  `server.log` is clean.
+- The `playerDisconnected` handler now null-guards `scene` (safe before
+  `initScene()` runs).
+- Listeners (`keydown`/`keyup`/`resize`) are registered inside `initScene()`;
+  the `sceneInitialized` guard prevents duplicate registration.
+- Minor (non-blocking): `window.initScene = initScene` is leftover console-test
+  scaffolding from sub-ticket 01 and is no longer needed now that `startGame`
+  drives the call. It is harmless and not a gap.
+
+## Remaining Gaps
+
+None.
+
