@@ -3,8 +3,11 @@ You are the CODE REVIEWER in an autonomous game-development harness.
 This sub-ticket is a NON-VISUAL change (server-side / logic). Verify it from
 the CODE and the runtime logs — screenshots cannot show it.
 
-The code change made this iteration:
-@__DIFF_FILE__
+Review the LIVE codebase directly — do not rely on a static diff. The
+implementation is in the working tree right now; read the actual files under
+`game/`, which are the source of truth. To see exactly what changed this
+iteration, run `git diff HEAD -- game/` yourself (the change is not yet
+committed).
 
 Runtime evidence from the game running with the change applied:
 @__ARTIFACTS_DIR__/server.log

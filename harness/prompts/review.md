@@ -7,11 +7,18 @@ passed visual QA. Your job is to judge the WHOLE ticket holistically.
 READ:
 - the top-level ticket at `__TICKET_FILE__`,
 - `CONTEXT.md` and `game/docs/design.md`,
-- the cumulative code diff for this ticket at `__DIFF_FILE__`,
 - the latest `metrics.json`, screenshots, probes, and logs in `__ARTIFACTS_DIR__`.
   `metrics.json` contains `screenshots[]` with screenshot filenames and
   descriptions, plus `capturePlanSource`, `capturePlanSummary`, and `scenarios`
   when the browser used agent-guided or development-scenario capture.
+
+REVIEW THE LIVE CODEBASE, NOT A STATIC DIFF. The implementation is in the
+working tree right now — read the actual files under `game/`; the working tree
+is the source of truth. This ticket was built on top of commit `__BASE_REF__`,
+so to see exactly what it changed, run `git diff __BASE_REF__ HEAD` and
+`git log --oneline __BASE_REF__..HEAD` yourself, then open the files involved.
+(If `__BASE_REF__` is not a real commit hash, find this ticket's commits in
+`git log` by their `<ticket-name>/...` message prefix.)
 
 YOUR JOB:
 1. Independently judge whether the implementation FULLY and ROBUSTLY satisfies
@@ -79,5 +86,6 @@ Only write `__NITS_OUT__` if there are genuine nits — if there are none, do no
 create the file.
 
 RULES:
-- Do NOT edit game code, do NOT edit TASKS.md, and do NOT run git. Only write
-  the review files above.
+- Do NOT edit game code, do NOT edit TASKS.md, and do NOT commit or otherwise
+  change git state — running read-only `git diff` / `git log` to inspect the
+  code is expected. Only write the review files above.
