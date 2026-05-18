@@ -166,15 +166,10 @@ function useCard(slotIndex) {
   const card = hand[slotIndex];
   if (!card) return; // empty slot — no-op
 
+  // (1) Emit useCard — fires on every call, including during cooldown
   socket.emit('useCard', { slotIndex, cardId: card.id });
 
-  // If already in cooldown, skip flash — cooldown visual is idempotent
-  if (slotCooldowns[slotIndex]) return;
-
-  slotCooldowns[slotIndex] = true;
-  playActivationEffect(slotIndex);
-
-  // Decrement remaining charges
+  // (2) Decrement charges + exhaust/redraw — runs regardless of cooldown
   card.remainingCharges -= 1;
 
   if (card.remainingCharges <= 0) {
@@ -189,6 +184,12 @@ function useCard(slotIndex) {
 
   // Refresh the slot display with updated charge count or new card
   renderHand();
+
+  // (3) Visual flash + cooldown flag — only when NOT already in cooldown
+  if (slotCooldowns[slotIndex]) return;
+
+  slotCooldowns[slotIndex] = true;
+  playActivationEffect(slotIndex);
 }
 
 // Keyboard: keys 1-4 map to hand slots 0-3
