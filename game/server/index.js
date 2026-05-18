@@ -22,6 +22,8 @@ const gameState = {
 
 const TICK_RATE = 20; // 20 times per second
 const WANDER_SPEED = 1; // units per second
+const DETECTION_RADIUS = 8; // units
+const CHASE_SPEED = 2.5; // units per second
 
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList() {
@@ -95,24 +97,53 @@ function spawnEnemies() {
 // Helper: update enemy wander AI each tick
 function updateEnemies() {
   const dt = 1 / TICK_RATE;
+  const players = Object.values(gameState.players).filter(p => !p.dead);
 
   for (const enemy of gameState.enemies) {
-    if (enemy.state !== 'idle') continue;
+    // Find nearest living player (Euclidean distance on x-z plane)
+    let nearestDist = Infinity;
+    let nearestPlayer = null;
+    for (const player of players) {
+      const dx = player.x - enemy.x;
+      const dz = player.z - enemy.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearestPlayer = player;
+      }
+    }
 
-    const dx = enemy.wanderTarget.x - enemy.x;
-    const dz = enemy.wanderTarget.z - enemy.z;
-    const dist = Math.hypot(dx, dz);
+    // Chase logic
+    if (nearestPlayer && nearestDist < DETECTION_RADIUS) {
+      enemy.state = 'chasing';
+      const dx = nearestPlayer.x - enemy.x;
+      const dz = nearestPlayer.z - enemy.z;
+      const dist = Math.hypot(dx, dz);
 
-    // Reached target — pick a new one
-    if (dist < 0.5) {
+      if (dist > 0.1) {
+        const move = CHASE_SPEED * dt;
+        enemy.x += (dx / dist) * move;
+        enemy.z += (dz / dist) * move;
+      }
+      continue;
+    }
+
+    // No player in range — revert to idle and wander
+    enemy.state = 'idle';
+    const wdx = enemy.wanderTarget.x - enemy.x;
+    const wdz = enemy.wanderTarget.z - enemy.z;
+    const wdist = Math.hypot(wdx, wdz);
+
+    // Reached wander target — pick a new one
+    if (wdist < 0.5) {
       enemy.wanderTarget = randomWanderTarget();
       continue;
     }
 
-    // Normalize and move toward target
+    // Normalize and move toward wander target
     const move = WANDER_SPEED * dt;
-    enemy.x += (dx / dist) * move;
-    enemy.z += (dz / dist) * move;
+    enemy.x += (wdx / wdist) * move;
+    enemy.z += (wdz / wdist) * move;
   }
 }
 
