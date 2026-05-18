@@ -28,6 +28,7 @@ let myX = 0;
 let myZ = 0;
 let velocityX = 0;
 let velocityZ = 0;
+let wasDead = false; // tracks previous-frame dead state for respawn detection
 
 function startHeartbeat() {
   if (heartbeatTimer) return;
@@ -173,6 +174,10 @@ const keys = { w: false, a: false, s: false, d: false };
 function updateMyPlayer(delta) {
   if (!myId) return;
 
+  // Block movement when dead
+  const me = gameState && gameState.players[myId];
+  if (me && me.dead) return;
+
   if (keys.w) velocityZ -= acceleration * delta;
   if (keys.s) velocityZ += acceleration * delta;
   if (keys.a) velocityX -= acceleration * delta;
@@ -218,6 +223,25 @@ function animate() {
 
     if (myId != null && playersMeshes[myId]) {
       playersMeshes[myId].position.set(myX, 0.5, myZ);
+
+      const me = gameState.players[myId];
+      const isDead = me && me.dead;
+
+      // Respawn detection: dead → alive resets local position to origin
+      if (wasDead && !isDead) {
+        myX = 0;
+        myZ = 0;
+        velocityX = 0;
+        velocityZ = 0;
+      }
+      wasDead = isDead;
+
+      // Visual feedback: grey when dead, blue when alive
+      if (isDead) {
+        playersMeshes[myId].material.color.setHex(0x808080);
+      } else {
+        playersMeshes[myId].material.color.setHex(0x3b82f6);
+      }
     }
   }
 
