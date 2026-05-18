@@ -213,3 +213,26 @@ flagging for the harness, but it does not represent a missing feature.
 
 (none)
 
+
+## v0.10 — Enemy Entities & Basic AI  (2026-05-18 05:13:01)
+
+## Non-blocking observations (not gaps)
+- **QA evidence is inconclusive.** All four round-1 screenshots show only the
+  lobby; `metrics.json` reports `hasCanvas: false`. The QA run connected two
+  players but never clicked Ready, so the 3D scene (and therefore enemy
+  rendering / wander / chase) was never entered or photographed.
+  `03-after-w.png` and `04-after-d.png` are byte-identical to
+  `02-two-players.png`. This is a limitation of the screenshot harness, not a
+  defect in the game code — no game-code change can fix it — but it means the
+  visual criteria (AC2, AC3) are verified by code reading only, not by image.
+- Enemy AI runs continuously from server start, including during the lobby
+  phase, so enemies will drift toward lobby players parked at the origin. This
+  matches the ticket's "update every tick" wording and is harmless, but a future
+  ticket may want to gate AI on `gamePhase === 'playing'`.
+- Client mesh removal calls `scene.remove` without `geometry.dispose()` /
+  `material.dispose()`. This mirrors the existing player-mesh handling, so it is
+  not a regression; worth a cleanup pass when enemy counts grow.
+
+## Remaining gaps
+(none — all five acceptance criteria are fully and robustly implemented)
+

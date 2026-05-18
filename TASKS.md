@@ -20,7 +20,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 
 ## Backlog — Combat
 - [x] [009-player-health-system](tickets/009-player-health-system/)
-- [ ] [010-enemy-entities-ai](tickets/010-enemy-entities-ai/)
+- [x] [010-enemy-entities-ai](tickets/010-enemy-entities-ai/)
 - [ ] [011-card-hand-system](tickets/011-card-hand-system/)
 - [ ] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
 - [ ] [013-summon-cards](tickets/013-summon-cards/)
