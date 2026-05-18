@@ -1,63 +1,73 @@
 #!/bin/bash
 
-# Usage: ./harness/run_task.sh <task_number>
-# Reads a task from TASKS.md by number, runs it through qwen -> gemini -> claude.
+# Usage: ./harness/run_task.sh 001-card-deck-ui
+# Reads ticket.md from the ticket folder, runs qwen -> gemini -> claude,
+# and accumulates feedback in the ticket folder.
 
 set -e
 
 if [ -z "$1" ]; then
-  echo "Usage: $0 <task_number>"
-  echo "Example: $0 1"
+  echo "Usage: $0 <ticket-folder-name>"
+  echo "Example: $0 001-card-deck-ui"
   exit 1
 fi
 
-TASK_NUM=$1
-TASK_LINE=$(grep -E "^\- \[ \] $TASK_NUM:" TASKS.md)
+TICKET_DIR="tickets/$1"
+TICKET_FILE="$TICKET_DIR/ticket.md"
 
-if [ -z "$TASK_LINE" ]; then
-  echo "Error: Task $TASK_NUM not found or already completed."
+if [ ! -f "$TICKET_FILE" ]; then
+  echo "Error: $TICKET_FILE not found."
   exit 1
 fi
 
-# Extract description after the number and colon
-TASK_DESC=$(echo "$TASK_LINE" | sed "s/^- \[ \] $TASK_NUM: //")
+TASK_DESC=$(cat "$TICKET_FILE")
 MAX_ITERATIONS=5
 ITERATION=1
+LOG_FILE="$TICKET_DIR/log.txt"
 
-echo "=== Task $TASK_NUM: $TASK_DESC ==="
+echo "=== Running: $1 ===" | tee "$LOG_FILE"
 
 while [ $ITERATION -le $MAX_ITERATIONS ]; do
-  echo ""
-  echo "--- Iteration $ITERATION/$MAX_ITERATIONS ---"
+  echo "" | tee -a "$LOG_FILE"
+  echo "--- Iteration $ITERATION/$MAX_ITERATIONS ---" | tee -a "$LOG_FILE"
 
-  echo "[qwen] Implementing..."
-  QWEN_OUT=$(qwen "Implement this in the game/ directory: $TASK_DESC" 2>&1) || true
+  # Step 1: qwen implements, given the ticket folder as context
+  echo "[qwen] Implementing..." | tee -a "$LOG_FILE"
+  QWEN_OUT=$(qwen "You are working in the game/ directory. Here is your task and all accumulated context from $TICKET_DIR: $TASK_DESC" 2>&1) || true
+  echo "$QWEN_OUT" > "$TICKET_DIR/qwen_iter${ITERATION}.txt"
 
   sleep 2
 
-  echo "[gemini] Verifying visually..."
-  GEMINI_OUT=$(gemini "Does the game at http://localhost:5173 now show: $TASK_DESC? Reply YES or describe what's wrong." 2>&1) || true
+  # Step 2: gemini verifies visually
+  echo "[gemini] Verifying visually..." | tee -a "$LOG_FILE"
+  GEMINI_OUT=$(gemini "Does the game at http://localhost:5173 satisfy these criteria? $TASK_DESC — Reply YES or list remaining issues." 2>&1) || true
+  echo "$GEMINI_OUT" > "$TICKET_DIR/gemini_iter${ITERATION}.txt"
 
   if echo "$GEMINI_OUT" | grep -qi "YES"; then
-    echo "[claude] Final review..."
-    CLAUDE_OUT=$(claude "Review the game/ codebase. Is this task complete and robust? $TASK_DESC Reply YES or describe issues." 2>&1) || true
+    echo "[gemini] PASSED" | tee -a "$LOG_FILE"
+
+    # Step 3: claude does final review
+    echo "[claude] Final code review..." | tee -a "$LOG_FILE"
+    CLAUDE_OUT=$(claude "Review the game/ codebase. Is this task fully complete and robust? $TASK_DESC — Reply YES or list issues." 2>&1) || true
+    echo "$CLAUDE_OUT" > "$TICKET_DIR/claude_iter${ITERATION}.txt"
 
     if echo "$CLAUDE_OUT" | grep -qi "YES"; then
-      echo ""
-      echo "✅ Task $TASK_NUM completed!"
-      sed -i "s/^- \[ \] $TASK_NUM:/- [x] $TASK_NUM:/" TASKS.md
+      echo "" | tee -a "$LOG_FILE"
+      echo "✅ DONE: $1" | tee -a "$LOG_FILE"
+      # Move from Backlog to Done in TASKS.md
+      sed -i "s/^- \[ \] \[$1\]/- [x] [$1]/" TASKS.md
       exit 0
     else
-      echo "[claude] Needs work: $CLAUDE_OUT"
-      TASK_DESC="$TASK_DESC | Claude feedback: $CLAUDE_OUT"
+      echo "[claude] Needs work." | tee -a "$LOG_FILE"
+      TASK_DESC="$TASK_DESC\n\n## Claude feedback (iter $ITERATION)\n$CLAUDE_OUT"
     fi
   else
-    echo "[gemini] Needs work: $GEMINI_OUT"
-    TASK_DESC="$TASK_DESC | Gemini feedback: $GEMINI_OUT"
+    echo "[gemini] Needs work." | tee -a "$LOG_FILE"
+    TASK_DESC="$TASK_DESC\n\n## Gemini feedback (iter $ITERATION)\n$GEMINI_OUT"
   fi
 
   ((ITERATION++))
 done
 
-echo "❌ Task $TASK_NUM failed after $MAX_ITERATIONS iterations."
+echo "❌ FAILED after $MAX_ITERATIONS iterations: $1" | tee -a "$LOG_FILE"
 exit 1
