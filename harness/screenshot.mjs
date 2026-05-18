@@ -20,7 +20,7 @@ mkdirSync(outDir, { recursive: true });
 const logs = [];
 // Benign headless-Chromium rendering noise — not game bugs. Filtered out so the
 // QA agent only sees real signal.
-const NOISE = /GL Driver Message|GPU stall|ReadPixels|fallback to software WebGL|Automatic fallback/i;
+const NOISE = /GL Driver Message|GPU stall|ReadPixels|fallback to software WebGL|Automatic fallback|CONTEXT_LOST_WEBGL|Context (Lost|Restored)|THREE\.WebGLRenderer|THREE\.Clock|deprecat/i;
 const wire = (page, tag) => {
   page.on('console', (m) => {
     const t = m.text();

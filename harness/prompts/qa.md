@@ -30,8 +30,12 @@ YOUR JOB:
    sub-ticket.
 3. For EACH acceptance criterion, state PASS or FAIL with the specific visual
    or log evidence that justifies it.
-4. Call out any runtime errors, blank/black screens, missing objects, or
-   crashes.
+4. Call out genuine problems — crashes, blank/black screens, missing objects,
+   or errors caused by the GAME'S OWN code. But IGNORE benign environment and
+   library noise — it is NOT a failure: THREE.js deprecation warnings,
+   headless-Chromium WebGL "context lost/restored" messages, and Vite
+   dev-server `ws proxy error` / `EPIPE` lines logged when browser connections
+   close. That noise comes from the test environment, not the game.
 
 Then, as the VERY LAST LINE of your reply, output exactly one of:
 
@@ -39,4 +43,5 @@ Then, as the VERY LAST LINE of your reply, output exactly one of:
   VERDICT: FAIL
 
 Output `VERDICT: PASS` only if every acceptance criterion is met and there are
-no runtime errors. Do NOT edit any files.
+no errors caused by the game's own code (environment/library noise as above
+does not count against it). Do NOT edit any files.
