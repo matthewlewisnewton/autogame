@@ -15,6 +15,10 @@ const msBarFill = document.getElementById('ms-bar-fill');
 const msText = document.getElementById('ms-text');
 const msLabel = document.getElementById('ms-label');
 const cardSlots = document.querySelectorAll('.card-slot');
+const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
+const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+let debugScenarioRequested = false;
+let debugScenarioResult = null;
 
 // Socket setup
 const socket = io();
@@ -42,6 +46,12 @@ let velocityX = 0;
 let velocityZ = 0;
 let playerRotation = 0; // facing angle in radians, derived from movement velocity
 let wasDead = false; // tracks previous-frame dead state for respawn detection
+
+function requestDebugScenario() {
+  if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
+  debugScenarioRequested = true;
+  socket.emit('debugScenario', { name: debugScenario });
+}
 
 function startHeartbeat() {
   if (heartbeatTimer) return;
@@ -256,6 +266,7 @@ socket.io.on('reconnect', () => {
 socket.on('init', (data) => {
   myId = data.id;
   gameState = data.state;
+  requestDebugScenario();
 
   // If the server is already in 'playing' phase, skip the lobby entirely
   if (data.state && data.state.gamePhase === 'playing') {
@@ -277,6 +288,15 @@ socket.on('heartbeat_ack', (data) => {
   if (connectionState === 'connected') {
     latency = data.latency;
     statusEl.innerText = `Latency: ${latency}ms`;
+  }
+});
+
+socket.on('debugScenarioResult', (data) => {
+  debugScenarioResult = data || null;
+  if (data && data.ok) {
+    console.log(`[debugScenario] applied ${data.scenario}`);
+  } else if (data && data.reason) {
+    console.warn(`[debugScenario] ${data.reason}`);
   }
 });
 
@@ -692,3 +712,40 @@ function initScene() {
 // Expose for later invocation (sub-ticket 03)
 window.initScene = initScene;
 window.refillSlot = refillSlot;
+window.__AUTOGAME_HARNESS_STATE__ = () => {
+  const me = gameState && myId ? gameState.players[myId] : null;
+  const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
+  const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
+
+  return {
+    debugScenario,
+    debugScenarioAllowed,
+    debugScenarioResult,
+    myId,
+    phase: gameState ? gameState.gamePhase : 'unknown',
+    connectionState,
+    sceneInitialized,
+    hasCanvas: !!document.querySelector('canvas'),
+    lobbyVisible,
+    cardHandVisible,
+    status: statusEl ? statusEl.innerText : '',
+    hpText: hpText ? hpText.textContent : '',
+    msText: msText ? msText.textContent : '',
+    player: me ? {
+      hp: me.hp,
+      magicStones: me.magicStones,
+      dead: me.dead,
+      x: me.x,
+      z: me.z,
+    } : null,
+    players: gameState ? Object.keys(gameState.players).length : 0,
+    enemies: gameState ? gameState.enemies.length : 0,
+    hand: hand.map(card => card ? {
+      id: card.id,
+      name: card.name,
+      type: card.type,
+      remainingCharges: card.remainingCharges,
+      charges: card.charges,
+    } : null),
+  };
+};

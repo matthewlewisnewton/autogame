@@ -8,7 +8,10 @@ READ:
 - the top-level ticket at `__TICKET_FILE__`,
 - `CONTEXT.md` and `game/docs/design.md`,
 - the cumulative code diff for this ticket at `__DIFF_FILE__`,
-- the latest screenshots and `metrics.json` in `__ARTIFACTS_DIR__`.
+- the latest `metrics.json`, screenshots, probes, and logs in `__ARTIFACTS_DIR__`.
+  `metrics.json` contains `screenshots[]` with screenshot filenames and
+  descriptions, plus `capturePlanSource`, `capturePlanSummary`, and `scenarios`
+  when the browser used agent-guided or development-scenario capture.
 
 YOUR JOB:
 1. Independently judge whether the implementation FULLY and ROBUSTLY satisfies

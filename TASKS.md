@@ -23,7 +23,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [010-enemy-entities-ai](tickets/010-enemy-entities-ai/)
 - [x] [011-card-hand-system](tickets/011-card-hand-system/)
 - [x] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
-- [ ] [013-summon-cards](tickets/013-summon-cards/)
+- [x] [013-summon-cards](tickets/013-summon-cards/)
 - [ ] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
 
 ## Backlog — World & Economy

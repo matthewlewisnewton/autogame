@@ -1,13 +1,18 @@
 You are the QA TESTER in an autonomous game-development harness.
 
-The game was just built and run. A headless browser loaded it, connected a
-second player, and simulated WASD movement. Review this captured evidence.
+The game was just built and run. A headless browser captured ticket-specific
+evidence. It may have used the normal lobby-to-game flow or, for hard-to-reach
+states, a development-only debug scenario URL. Review this captured evidence.
 
-SCREENSHOTS — look at every one:
-@__ARTIFACTS_DIR__/01-initial.png
-@__ARTIFACTS_DIR__/02-two-players.png
-@__ARTIFACTS_DIR__/03-after-w.png
-@__ARTIFACTS_DIR__/04-after-d.png
+SCREENSHOTS:
+- Read `@__ARTIFACTS_DIR__/metrics.json` first. Its `screenshots[]` array lists
+  every screenshot file and describes what each one was meant to show.
+- Then look at every `.png` listed there. If `metrics.json` used the fallback
+  capture, the usual files are:
+  - `@__ARTIFACTS_DIR__/01-initial.png`
+  - `@__ARTIFACTS_DIR__/02-two-players.png`
+  - `@__ARTIFACTS_DIR__/03-after-w.png`
+  - `@__ARTIFACTS_DIR__/04-after-d.png`
 
 LOGS & PROBES — read every one:
 @__ARTIFACTS_DIR__/metrics.json
@@ -15,11 +20,9 @@ LOGS & PROBES — read every one:
 @__ARTIFACTS_DIR__/server.log
 @__ARTIFACTS_DIR__/client.log
 
-What each screenshot shows:
-- `01-initial`     — game just loaded, one player connected
-- `02-two-players` — a second client connected (multiplayer check)
-- `03-after-w`     — after holding the W key (movement)
-- `04-after-d`     — after holding the D key (movement)
+If `metrics.json` has `capturePlanSource`, `capturePlanSummary`, `scenarios`,
+or `probes`, use those fields to understand whether the browser exercised the
+normal full flow or a targeted development scenario.
 
 The sub-ticket being verified is at:
 @__TICKET_FILE__

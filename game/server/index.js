@@ -27,6 +27,11 @@ const CHASE_SPEED = 2.5; // units per second
 
 const MAX_MAGIC_STONES = 100;
 const MAGIC_STONES_REGEN_PER_TICK = 0.5;
+const DEBUG_SCENARIOS = new Set([
+  'summon-low-mana',
+  'summon-ready',
+  'combat-damaged-player',
+]);
 
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
 const CARD_DEFS = {
@@ -110,6 +115,74 @@ function spawnEnemies() {
       wanderTarget: randomWanderTarget()
     });
   }
+}
+
+function isDebugScenarioAllowed(socket) {
+  if (process.env.ALLOW_DEBUG_SCENARIOS === '1') return true;
+  if (process.env.NODE_ENV === 'production') return false;
+
+  const address = socket.handshake.address || '';
+  const origin = socket.handshake.headers.origin || '';
+  const host = socket.handshake.headers.host || '';
+  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');
+  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin);
+  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
+
+  return localAddress || localOrigin || localHost;
+}
+
+function ensureNearbyEnemy(x, z) {
+  const nearby = gameState.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);
+  if (nearby) return;
+
+  gameState.enemies.push({
+    id: crypto.randomUUID(),
+    x: x + 3,
+    z,
+    hp: 50,
+    state: 'idle',
+    wanderTarget: { x: x + 3, z }
+  });
+}
+
+function enterPlayingPhase() {
+  if (gameState.gamePhase !== 'playing') {
+    gameState.gamePhase = 'playing';
+    io.emit('startGame');
+  }
+}
+
+function applyDebugScenario(socket, name) {
+  if (!DEBUG_SCENARIOS.has(name)) {
+    return { ok: false, reason: `Unknown debug scenario: ${name}` };
+  }
+
+  const player = gameState.players[socket.id];
+  if (!player) return { ok: false, reason: 'No player for debug scenario' };
+
+  player.ready = true;
+  player.dead = false;
+  player.x = 0;
+  player.y = 0.5;
+  player.z = 0;
+  player.pendingSummons.clear();
+  enterPlayingPhase();
+  ensureNearbyEnemy(player.x, player.z);
+
+  if (name === 'summon-low-mana') {
+    player.hp = 100;
+    player.magicStones = 0;
+  } else if (name === 'summon-ready') {
+    player.hp = 100;
+    player.magicStones = MAX_MAGIC_STONES;
+  } else if (name === 'combat-damaged-player') {
+    player.hp = 25;
+    player.magicStones = MAX_MAGIC_STONES;
+  }
+
+  broadcastLobbyUpdate();
+  io.emit('stateUpdate', gameState);
+  return { ok: true, scenario: name };
 }
 
 // Helper: update enemy wander AI each tick
@@ -348,6 +421,17 @@ io.on('connection', (socket) => {
         checkAllReady();
       }
     }
+  });
+
+  socket.on('debugScenario', (data) => {
+    const name = data && typeof data.name === 'string' ? data.name : '';
+    if (!isDebugScenarioAllowed(socket)) {
+      socket.emit('debugScenarioResult', { ok: false, reason: 'Debug scenarios are disabled' });
+      return;
+    }
+
+    const result = applyDebugScenario(socket, name);
+    socket.emit('debugScenarioResult', result);
   });
 
   socket.on('heartbeat', (data) => {
