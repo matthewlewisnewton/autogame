@@ -21,6 +21,7 @@ const gameState = {
 };
 
 const TICK_RATE = 20; // 20 times per second
+const WANDER_SPEED = 1; // units per second
 
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList() {
@@ -69,6 +70,14 @@ function damagePlayer(playerId, amount) {
   }
 }
 
+// Helper: pick a random position within [-20, 20] on x and z
+function randomWanderTarget() {
+  return {
+    x: (Math.random() * 40) - 20,
+    z: (Math.random() * 40) - 20
+  };
+}
+
 // Helper: spawn 5 enemies with random positions
 function spawnEnemies() {
   for (let i = 0; i < 5; i++) {
@@ -77,8 +86,33 @@ function spawnEnemies() {
       x: (Math.random() * 40) - 20,
       z: (Math.random() * 40) - 20,
       hp: 50,
-      state: 'idle'
+      state: 'idle',
+      wanderTarget: randomWanderTarget()
     });
+  }
+}
+
+// Helper: update enemy wander AI each tick
+function updateEnemies() {
+  const dt = 1 / TICK_RATE;
+
+  for (const enemy of gameState.enemies) {
+    if (enemy.state !== 'idle') continue;
+
+    const dx = enemy.wanderTarget.x - enemy.x;
+    const dz = enemy.wanderTarget.z - enemy.z;
+    const dist = Math.hypot(dx, dz);
+
+    // Reached target — pick a new one
+    if (dist < 0.5) {
+      enemy.wanderTarget = randomWanderTarget();
+      continue;
+    }
+
+    // Normalize and move toward target
+    const move = WANDER_SPEED * dt;
+    enemy.x += (dx / dist) * move;
+    enemy.z += (dz / dist) * move;
   }
 }
 
@@ -164,6 +198,7 @@ io.on('connection', (socket) => {
 
 // Server Game Loop
 setInterval(() => {
+  updateEnemies();
   io.emit('stateUpdate', gameState);
 }, 1000 / TICK_RATE);
 
