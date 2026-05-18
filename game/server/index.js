@@ -46,6 +46,13 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('heartbeat', (data) => {
+    if (gameState.players[socket.id]) {
+      gameState.players[socket.id].lastActivity = Date.now();
+    }
+    socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
+  });
+
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     delete gameState.players[socket.id];

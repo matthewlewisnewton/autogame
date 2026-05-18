@@ -8,6 +8,7 @@ const socket = io('http://localhost:3000');
 let myId = null;
 let gameState = null;
 let heartbeatStarted = false;
+let latency = null;
 const playersMeshes = {};
 
 socket.on('connect', () => {
@@ -28,6 +29,11 @@ socket.on('init', (data) => {
 
 socket.on('stateUpdate', (state) => {
   gameState = state;
+});
+
+socket.on('heartbeat_ack', (data) => {
+  latency = data.latency;
+  statusEl.innerText = `Latency: ${latency}ms`;
 });
 
 socket.on('playerDisconnected', (id) => {

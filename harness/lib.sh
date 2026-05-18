@@ -13,7 +13,7 @@ MAX_ITER="${MAX_ITER:-5}"                 # qwen+gemini iterations per sub-ticke
 TICKET_MAX_ROUNDS="${TICKET_MAX_ROUNDS:-3}" # decompose -> subs -> review cycles
 GAME_URL="${GAME_URL:-http://localhost:5173}"
 QWEN_MODEL="${QWEN_MODEL:-}"               # empty = qwen default
-GEMINI_MODEL="${GEMINI_MODEL:-gemini-2.5-flash}"
+GEMINI_MODEL="${GEMINI_MODEL:-gemini-3-flash-preview}"
 CLAUDE_MODEL="${CLAUDE_MODEL:-}"           # empty = claude default
 QWEN_TIMEOUT="${QWEN_TIMEOUT:-1200}"
 GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
