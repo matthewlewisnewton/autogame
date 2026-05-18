@@ -12,6 +12,9 @@
 # check restores any review file an agent modified in a later round, so the
 # record of past reviews can never be rewritten under the loop.
 #
+# A passing review may also list non-blocking NITS; the harness files those as
+# a new low-priority backlog ticket so they get cleaned up without blocking.
+#
 # If the rounds are exhausted, claude makes a last-resort RESCUE pass and
 # implements the remaining fixes itself. If the ticket still cannot be
 # completed, the BASELINE is protected: a game left in a broken (non-running)
@@ -61,15 +64,17 @@ capture_run() {  # capture_run <dir>
   stop_game
 }
 
-# Run claude's holistic review of the whole ticket. Sets global REVIEW_OUT and
-# writes a compact open-gaps file to <dir>/gaps.md. Escalates on tool failure.
+# Run claude's holistic review of the whole ticket. Sets global REVIEW_OUT,
+# writes a compact open-gaps file to <dir>/gaps.md and a nits file to
+# <dir>/nits.md. Escalates on tool failure.
 review_ticket() {  # review_ticket <dir>
   local dir="$1" prompt
   git diff "$BASE_REF"..HEAD > "$dir/ticket.diff"
   REVIEW_OUT="$dir/review.md"
   prompt="$(render_prompt "$PROMPTS_DIR/review.md" \
     TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$dir" \
-    DIFF_FILE "$dir/ticket.diff" REVIEW_OUT "$REVIEW_OUT" GAPS_OUT "$dir/gaps.md")"
+    DIFF_FILE "$dir/ticket.diff" REVIEW_OUT "$REVIEW_OUT" \
+    GAPS_OUT "$dir/gaps.md" NITS_OUT "$dir/nits.md")"
   log "[claude] reviewing..."
   if ! run_claude "$prompt" "$dir/claude.txt"; then
     log "[tool-failure] claude reviewer unavailable — escalating"
@@ -82,7 +87,7 @@ review_ticket() {  # review_ticket <dir>
 protect_review() {  # protect_review <label> <working_dir>
   local label="$1" dir="$2" arc="$REVIEWS_DIR/$label" f
   mkdir -p "$arc"
-  for f in review.md gaps.md; do
+  for f in review.md gaps.md nits.md; do
     [ -f "$dir/$f" ] && cp "$dir/$f" "$arc/$f"
   done
   chmod -R a-w "$arc" "$dir" 2>/dev/null || true
@@ -97,7 +102,7 @@ verify_reviews() {
   for arc in "$REVIEWS_DIR"/*/; do
     [ -d "$arc" ] || continue
     label="$(basename "$arc")"
-    for f in review.md gaps.md; do
+    for f in review.md gaps.md nits.md; do
       [ -f "$arc/$f" ] || continue
       if [ -f "$TDIR/$label/$f" ] && ! cmp -s "$arc/$f" "$TDIR/$label/$f"; then
         log "[integrity] $label/$f was modified after it was written — restoring from the protected archive"
@@ -115,6 +120,30 @@ append_review_pointer() {  # append_review_pointer <review_file>
   printf '\n---\nThis is a compact summary distilled from the full review of the\nprevious round. For per-criterion findings and the reasoning behind each\ngap, read the full review at: %s\n(That file is read-only — do not edit it.)\n' "$1" >> "$REVIEW_FB"
 }
 
+# File the reviewer's non-blocking nits as a new low-priority backlog ticket so
+# they get cleaned up later without blocking the ticket that is passing now.
+ingest_nits() {  # ingest_nits <nits_file>
+  local nf="$1" num slug
+  [ -s "$nf" ] || return 0
+  num="$(ls -d tickets/*/ 2>/dev/null | sed -nE 's#^tickets/([0-9]{3})-.*#\1#p' | sort -n | tail -1)"
+  [ -n "$num" ] || num=000
+  num="$(printf '%03d' "$(( 10#$num + 1 ))")"
+  slug="$num-cleanup-${NAME#[0-9][0-9][0-9]-}"
+  mkdir -p "tickets/$slug"
+  {
+    printf '# Cleanup nits from %s\n\n' "$NAME"
+    printf 'Minor, non-blocking nits the reviewer noted while passing `%s`.\n' "$NAME"
+    printf 'None blocked acceptance — clean them up when convenient.\n\n'
+    cat "$nf"
+  } > "tickets/$slug/ticket.md"
+  if grep -q '^## Backlog — Housekeeping' TASKS.md; then
+    sed -i "/^## Backlog — Housekeeping/a - [ ] [$slug](tickets/$slug/)" TASKS.md
+  else
+    printf -- '- [ ] [%s](tickets/%s/)\n' "$slug" "$slug" >> TASKS.md
+  fi
+  log "[nits] filed backlog ticket $slug from the reviewer's notes"
+}
+
 # Tag + record a completed ticket. 0 = done, 1 = review passed but game does
 # not actually run (caller must not treat the ticket as complete).
 finalize() {  # finalize <artifacts_dir> <review_file>
@@ -130,6 +159,7 @@ finalize() {  # finalize <artifacts_dir> <review_file>
     printf '\n## %s — %s  (%s)\n\n' "$tag" "$(head -1 "$TICKET_FILE" | sed 's/^# *//')" "$(date '+%F %T')"
     grep -v '^VERDICT:' "$rfile" | tail -20
   } >> LOGBOOK.md
+  ingest_nits "$adir/nits.md"
   if ! commit_verified "$NAME: top-level ticket complete ($tag)"; then
     log "=== ABORT: could not commit completed ticket — escalating ==="
     exit 2
