@@ -98,9 +98,10 @@ function updateMyPlayer(delta) {
   myX += velocityX * delta;
   myZ += velocityZ * delta;
 
-  // Continuous friction damping — applied every frame
-  velocityX *= friction;
-  velocityZ *= friction;
+  // Delta-scaled friction: 0.88 is the per-60Hz-frame factor; scale to actual frame time
+  const f = Math.pow(friction, delta * 60);
+  velocityX *= f;
+  velocityZ *= f;
 
   // Emit position whenever velocity is non-zero (covers both acceleration and coasting)
   if (Math.abs(velocityX) > 0.001 || Math.abs(velocityZ) > 0.001) {
