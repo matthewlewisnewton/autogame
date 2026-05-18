@@ -7,6 +7,8 @@ dist/
 # harness run artifacts — transient. Progress is recorded via git tags + LOGBOOK.md.
 LOOPLOG.txt
 harness/diagnosis-*.txt
+harness/*.new
+harness/**/*.new
 tickets/**/artifacts/
 tickets/**/review-round-*/
 tickets/**/log.txt
