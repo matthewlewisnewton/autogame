@@ -37,6 +37,9 @@ io.on('connection', (socket) => {
   socket.emit('init', { id: socket.id, state: gameState });
 
   socket.on('move', (data) => {
+    if (!data || typeof data !== 'object' || Array.isArray(data) ||
+        ![data.x, data.y, data.z, data.rotation].every(Number.isFinite)) return;
+
     if (gameState.players[socket.id]) {
       gameState.players[socket.id].x = data.x;
       gameState.players[socket.id].y = data.y;
