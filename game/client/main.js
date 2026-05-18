@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
+import { CARD_DEFS, createStartingDeck, CARD_TYPE_STYLE } from './cards.js';
 
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -10,6 +11,7 @@ const cardHandEl = document.getElementById('card-hand');
 const hpBarFill = document.getElementById('hp-bar-fill');
 const hpText = document.getElementById('hp-text');
 const hpLabel = document.getElementById('hp-label');
+const cardSlots = document.querySelectorAll('.card-slot');
 
 // Socket setup
 const socket = io();
@@ -20,6 +22,10 @@ let connectionState = 'connecting';
 let heartbeatTimer = null;
 let latency = null;
 let sceneInitialized = false;
+
+// ── Hand state ──
+let hand = [];       // array of 4 card objects: { id, name, type, charges, remainingCharges }
+let deck = [];       // remaining card id strings to draw from
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -68,6 +74,71 @@ function updateHpBar(hp) {
   }
 }
 
+function drawCard() {
+  if (deck.length === 0) return null;
+  const cardId = deck.pop();
+  const def = CARD_DEFS[cardId];
+  if (!def) return null;
+  return {
+    id: def.id,
+    name: def.name,
+    type: def.type,
+    charges: def.charges,
+    remainingCharges: def.charges,
+  };
+}
+
+function renderHand() {
+  for (let i = 0; i < 4; i++) {
+    const slot = cardSlots[i];
+    const card = hand[i];
+
+    if (card) {
+      const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
+      slot.style.borderColor = style.color;
+      slot.innerHTML = `
+        <span class="card-icon">${style.icon}</span>
+        <span class="card-name">${card.name}</span>
+        <span class="card-charges">${card.remainingCharges}/${card.charges}</span>
+      `;
+    } else {
+      slot.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+      slot.innerHTML = '';
+    }
+  }
+}
+
+function initHand() {
+  const deckIds = createStartingDeck();
+  hand = [];
+  deck = [];
+
+  // Put all card IDs into deck, then pop 4 for the initial hand
+  for (let i = deckIds.length - 1; i >= 0; i--) {
+    deck.push(deckIds[i]);
+  }
+
+  // Deal first 4 cards from deck into hand
+  for (let i = 0; i < 4; i++) {
+    const card = drawCard();
+    if (card) hand.push(card);
+  }
+
+  renderHand();
+}
+
+function refillSlot(index) {
+  if (index < 0 || index > 3) return null;
+  if (hand[index] != null) return hand[index]; // slot already has a card
+
+  const card = drawCard();
+  if (card) {
+    hand[index] = card;
+    renderHand();
+  }
+  return card;
+}
+
 socket.on('connect', () => {
   updateStatus('Connected', 'connected');
   startHeartbeat();
@@ -97,6 +168,7 @@ socket.on('init', (data) => {
     lobbyEl.classList.add('hidden');
     uiEl.style.display = 'block';
     cardHandEl.style.display = 'flex';
+    initHand();
     initScene();
     return;
   }
@@ -161,6 +233,7 @@ socket.on('startGame', () => {
   lobbyEl.classList.add('hidden');
   uiEl.style.display = 'block';
   cardHandEl.style.display = 'flex';
+  initHand();
   initScene();
 });
 
@@ -339,3 +412,4 @@ function initScene() {
 
 // Expose for later invocation (sub-ticket 03)
 window.initScene = initScene;
+window.refillSlot = refillSlot;
