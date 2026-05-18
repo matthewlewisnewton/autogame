@@ -69,6 +69,7 @@ socket.on('init', (data) => {
 
   // If the server is already in 'playing' phase, skip the lobby entirely
   if (data.state && data.state.gamePhase === 'playing') {
+    if (sceneInitialized) return;
     lobbyEl.classList.add('hidden');
     uiEl.style.display = 'block';
     cardHandEl.style.display = 'flex';
@@ -242,6 +243,8 @@ function initScene() {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
   });
+
+  sceneInitialized = true;
 }
 
 // Expose for later invocation (sub-ticket 03)
