@@ -11,7 +11,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 
 ## Backlog — Client Foundation
 - [x] [003-move-delta-time](tickets/003-move-delta-time/)
-- [ ] [004-client-reconnect-ui](tickets/004-client-reconnect-ui/)
+- [x] [004-client-reconnect-ui](tickets/004-client-reconnect-ui/)
 - [ ] [007-camera-follow](tickets/007-camera-follow/)
 
 ## Backlog — Lobby & HUD
