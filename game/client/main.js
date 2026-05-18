@@ -219,6 +219,13 @@ function animate() {
       if (id === myId) continue;
 
       playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
+
+      // Visual feedback: grey when dead, red when alive
+      if (pData.dead) {
+        playersMeshes[id].material.color.setHex(0x808080);
+      } else {
+        playersMeshes[id].material.color.setHex(0xf43f5e);
+      }
     }
 
     if (myId != null && playersMeshes[myId]) {
