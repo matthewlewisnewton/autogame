@@ -32,6 +32,7 @@ let slotCooldowns = [false, false, false, false];   // per-slot cooldown guard
 let scene, camera, renderer, clock;
 const playersMeshes = {};
 const enemiesMeshes = {};
+const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 let myX = 0;
 let myZ = 0;
 let velocityX = 0;
@@ -263,6 +264,77 @@ socket.on('playerDisconnected', (id) => {
   }
 });
 
+// ── Attack visual effects ──
+
+const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
+const ATTACK_EFFECT_SPEED = 8;     // units per second
+
+const weaponCardIds = new Set();
+for (const def of Object.values(CARD_DEFS)) {
+  if (def.type === 'weapon') weaponCardIds.add(def.id);
+}
+
+function spawnAttackEffect(origin, direction) {
+  // Bright yellow sphere projectile
+  const geometry = new THREE.SphereGeometry(0.3, 8, 8);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffdd44,
+    emissive: 0xffaa00,
+    emissiveIntensity: 0.8
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(origin.x, 1.0, origin.z);
+  scene.add(mesh);
+
+  activeEffects.push({
+    mesh,
+    origin: { x: origin.x, z: origin.z },
+    direction: { x: direction.x, z: direction.z },
+    createdAt: performance.now(),
+    duration: ATTACK_EFFECT_DURATION
+  });
+}
+
+function updateAttackEffects() {
+  const now = performance.now();
+  for (let i = activeEffects.length - 1; i >= 0; i--) {
+    const fx = activeEffects[i];
+    const elapsed = now - fx.createdAt;
+    const t = Math.min(elapsed / 1000, 1.0); // 0→1 over real time
+
+    // Move forward along direction
+    const travel = ATTACK_EFFECT_SPEED * t;
+    fx.mesh.position.x = fx.origin.x + fx.direction.x * travel;
+    fx.mesh.position.z = fx.origin.z + fx.direction.z * travel;
+
+    // Fade: scale down and reduce opacity as effect ages
+    const lifeRatio = 1.0 - (elapsed / fx.duration);
+    const scale = Math.max(0.01, lifeRatio);
+    fx.mesh.scale.setScalar(scale);
+    fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
+    fx.mesh.material.transparent = lifeRatio < 1.0;
+
+    // Remove when expired
+    if (elapsed >= fx.duration) {
+      scene.remove(fx.mesh);
+      fx.mesh.geometry.dispose();
+      fx.mesh.material.dispose();
+      activeEffects.splice(i, 1);
+    }
+  }
+}
+
+socket.on('cardUsed', (data) => {
+  // Only spawn visual for weapon attacks
+  if (!data || !weaponCardIds.has(data.cardId)) return;
+  if (!scene) return;
+
+  const origin = data.origin || { x: 0, z: 0 };
+  const direction = data.direction || { x: 1, z: 0 };
+
+  spawnAttackEffect(origin, direction);
+});
+
 // ── Lobby event wiring ──
 
 function renderPlayerList(players) {
@@ -422,6 +494,9 @@ function animate() {
     camera.position.lerp(target, 5.0 * delta);
     camera.lookAt(playersMeshes[myId].position);
   }
+
+  // Animate attack visual effects
+  updateAttackEffects();
 
   renderer.render(scene, camera);
 }
