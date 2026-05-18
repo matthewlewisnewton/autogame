@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 const statusEl = document.getElementById('status');
 
 // Socket setup
-const socket = io('http://localhost:3000');
+const socket = io();
 let myId = null;
 let gameState = null;
 let heartbeatStarted = false;
