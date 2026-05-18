@@ -98,3 +98,26 @@ None.
 
 (none)
 
+
+## v0.5 — Client Reconnect UI  (2026-05-18 02:17:15)
+
+  `init`/`stateUpdate`/`move`/`playerDisconnected` flow is preserved. The
+  heartbeat refactor (`heartbeatStarted` flag → `heartbeatTimer` +
+  start/stop helpers) is behavior-preserving and improves teardown.
+- **Console / logs**: `console.log` is clean. `server.log` shows normal
+  connect/disconnect. The `THREE.Clock` deprecation warning and the `vite ws
+  proxy EPIPE` in `client.log` are pre-existing library/harness noise unrelated
+  to this ticket.
+
+## Code Quality
+
+- No dead code remaining — the round-1 dead handlers are fixed.
+- `updateStatus` cleanly unifies text + class + state tracking.
+- Heartbeat lifecycle is correctly tied to connection state (stopped on
+  disconnect, restarted on connect/reconnect, idempotent start).
+- CSS classes match the hex values specified in the ticket exactly.
+
+## Remaining Gaps
+
+None.
+
