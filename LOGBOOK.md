@@ -75,3 +75,26 @@ None.
 
 None.
 
+
+## v0.4 — Delta-Time Movement  (2026-05-17 23:55:41)
+
+  socket connects, players are represented as cubes, WASD updates local position and
+  broadcasts. Screenshots `03-after-w` (blue cube moved north) and `04-after-d` (blue
+  cube moved right) confirm movement and multiplayer sync still work after the change.
+- `game/docs/design.md`: no conflict; this ticket is foundational movement plumbing and
+  does not touch combat/cards/lobby.
+
+## Code quality
+
+- No dead or broken code; the single diff hunk is minimal and the explanatory comment
+  (`main.js:101`) accurately describes the conversion.
+- `console.log` shows only the `THREE.Clock` deprecation warning on both clients — no
+  errors. `server.log` is clean (connect/disconnect only). `metrics.json` reports
+  `ok: true` with a canvas present.
+- Velocity is damped asymptotically and never hard-zeroed, but the `0.001` emit threshold
+  bounds network chatter to a finite settle period — acceptable.
+
+## Remaining gaps
+
+(none)
+

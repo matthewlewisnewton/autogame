@@ -10,7 +10,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [005-vite-socket-proxy](tickets/005-vite-socket-proxy/)
 
 ## Backlog — Client Foundation
-- [ ] [003-move-delta-time](tickets/003-move-delta-time/)
+- [x] [003-move-delta-time](tickets/003-move-delta-time/)
 - [ ] [004-client-reconnect-ui](tickets/004-client-reconnect-ui/)
 - [ ] [007-camera-follow](tickets/007-camera-follow/)
 
