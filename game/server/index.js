@@ -38,7 +38,10 @@ io.on('connection', (socket) => {
 
   socket.on('move', (data) => {
     if (!data || typeof data !== 'object' || Array.isArray(data) ||
-        ![data.x, data.y, data.z, data.rotation].every(Number.isFinite)) return;
+        ![data.x, data.y, data.z, data.rotation].every(Number.isFinite)) {
+      console.warn(`Rejected move from ${socket.id}: invalid payload`);
+      return;
+    }
 
     if (gameState.players[socket.id]) {
       const clampedX = Math.max(-25, Math.min(25, data.x));
@@ -52,6 +55,10 @@ io.on('connection', (socket) => {
   });
 
   socket.on('heartbeat', (data) => {
+    if (!data || !Number.isFinite(data.timestamp)) {
+      console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
+      return;
+    }
     if (gameState.players[socket.id]) {
       gameState.players[socket.id].lastActivity = Date.now();
     }
