@@ -7,6 +7,9 @@ const readyBtn = document.getElementById('ready-btn');
 const lobbyEl = document.getElementById('lobby');
 const uiEl = document.getElementById('ui');
 const cardHandEl = document.getElementById('card-hand');
+const hpBarFill = document.getElementById('hp-bar-fill');
+const hpText = document.getElementById('hp-text');
+const hpLabel = document.getElementById('hp-label');
 
 // Socket setup
 const socket = io();
@@ -42,6 +45,25 @@ function updateStatus(text, state) {
   connectionState = state;
   statusEl.innerText = text;
   statusEl.className = state;
+}
+
+const MAX_HP = 100;
+
+function updateHpBar(hp) {
+  const clamped = Math.max(0, Math.min(MAX_HP, hp));
+  const pct = (clamped / MAX_HP) * 100;
+  hpBarFill.style.width = `${pct}%`;
+  hpText.textContent = `${clamped}/${MAX_HP}`;
+  hpLabel.textContent = myId ? `${myId.slice(0, 5)} HP` : 'HP';
+
+  // Color shift: green → yellow → red as HP drops
+  if (pct > 50) {
+    hpBarFill.style.background = '#22c55e';
+  } else if (pct > 25) {
+    hpBarFill.style.background = '#eab308';
+  } else {
+    hpBarFill.style.background = '#ef4444';
+  }
 }
 
 socket.on('connect', () => {
@@ -173,6 +195,11 @@ function animate() {
 
   const delta = clock.getDelta();
   updateMyPlayer(delta);
+
+  // Update local player HP bar each frame
+  if (gameState && myId && gameState.players[myId] != null) {
+    updateHpBar(gameState.players[myId].hp);
+  }
 
   if (gameState) {
     for (const [id, pData] of Object.entries(gameState.players)) {

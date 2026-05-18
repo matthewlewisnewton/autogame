@@ -141,6 +141,54 @@ canvas {
   background-color: #2563eb;
 }
 
+/* ── HP Bar ── */
+
+#hp-bar-container {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 11;
+  pointer-events: none;
+}
+
+#hp-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #cbd5e1;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  min-width: 24px;
+}
+
+#hp-bar-bg {
+  width: 220px;
+  height: 18px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+#hp-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: #22c55e;
+  border-radius: 3px;
+  transition: width 0.15s ease-out, background 0.3s ease;
+}
+
+#hp-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: #e2e8f0;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  min-width: 48px;
+  text-align: right;
+}
+
 /* ── Utility ── */
 
 .hidden {
