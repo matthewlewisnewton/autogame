@@ -282,3 +282,26 @@ visual coverage is on record.
 ## Remaining gaps
 (none)
 
+
+## v0.13 — Summon Cards & Magic Stones  (2026-05-18 07:39:51)
+
+  `THREE.Clock` deprecation warning is pre-existing and not introduced here.
+
+## Minor Observations (non-blocking)
+- The slot activation flash (`playActivationEffect`) fires on summon press
+  before the server verdict is known, so a rejected summon briefly flashes the
+  slot as if activated. The dominant feedback (red `cardError` toast) is
+  unambiguous, so this is cosmetic only.
+- Server-side single-use enforcement is limited to the same-tick window
+  (`pendingSummons` is cleared every tick). True per-card-instance enforcement
+  is not possible because hand/deck/charge state is entirely client-side by
+  pre-existing architecture (weapon charges work the same way). The ticket scope
+  does not require server-side hand tracking, and normal gameplay consumes the
+  card correctly; full anti-cheat would be a separate architectural ticket.
+- `player.pendingSummons` is a `Set` and is serialized as `{}` inside the
+  `stateUpdate` payload — harmless dead weight on the wire; the client ignores
+  it.
+
+## Remaining Gaps
+(none)
+
