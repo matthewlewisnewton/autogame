@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, createStartingDeck, CARD_TYPE_STYLE, weaponCardIds, summonCardIds } from './cards.js';
+import { CARD_DEFS, createStartingDeck, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -193,6 +193,18 @@ function useCard(slotIndex) {
 
   // (1) Emit useCard — fires on every call, including during cooldown
   socket.emit('useCard', { slotIndex, cardId: card.id });
+
+  // (1b) For monster cards: single-use, consumed optimistically (like weapons)
+  if (monsterCardIds.has(card.id)) {
+    hand[slotIndex] = null;
+    const newCard = drawCard();
+    if (newCard) hand[slotIndex] = newCard;
+    renderHand();
+    if (slotCooldowns[slotIndex]) return;
+    slotCooldowns[slotIndex] = true;
+    playActivationEffect(slotIndex);
+    return;
+  }
 
   // (2) For summon cards: skip optimistic consumption — wait for server
   //     confirmation (cardUsed) before removing the card. This way, if the
