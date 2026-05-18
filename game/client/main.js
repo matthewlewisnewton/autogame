@@ -47,6 +47,7 @@ let velocityX = 0;
 let velocityZ = 0;
 let playerRotation = 0; // facing angle in radians, derived from movement velocity
 let wasDead = false; // tracks previous-frame dead state for respawn detection
+let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
 
 function requestDebugScenario() {
   if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
@@ -538,6 +539,107 @@ socket.on('startGame', () => {
   initScene();
 });
 
+// ── Dungeon geometry builder ──
+
+const WALL_HEIGHT = 2.5;
+const WALL_THICKNESS = 0.4;
+const FLOOR_Y = 0.05; // slightly above background to avoid z-fighting
+const PASSAGE_WIDTH = 4; // matches server constant
+const PASSAGE_WALL_HEIGHT = 1.5;
+const PASSAGE_WALL_THICKNESS = 0.3;
+
+const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
+const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7 });
+const passageFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d3a4a, roughness: 0.8 });
+const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, roughness: 0.7 });
+
+// Background ground plane (replaces the old 50x50 floor)
+const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
+
+function buildDungeon(layout) {
+  if (!layout || !layout.rooms || !layout.passages) return;
+
+  // Background ground (large flat plane behind everything)
+  const groundGeo = new THREE.PlaneGeometry(200, 200);
+  const ground = new THREE.Mesh(groundGeo, groundMaterial);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0;
+  scene.add(ground);
+
+  // Set spawn position to center of first room
+  if (layout.rooms.length > 0) {
+    spawnPosition.x = layout.rooms[0].x;
+    spawnPosition.z = layout.rooms[0].z;
+  }
+
+  // ── Build rooms ──
+  for (const room of layout.rooms) {
+    // Room floor tile (raised slightly)
+    const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
+    const floorMesh = new THREE.Mesh(floorGeo, floorMaterial);
+    floorMesh.position.set(room.x, FLOOR_Y, room.z);
+    scene.add(floorMesh);
+
+    // Room walls
+    for (const wall of room.walls) {
+      let wallGeo;
+      let wallX, wallZ;
+
+      if (wall.axis === 'x') {
+        // Wall runs along x-axis
+        wallGeo = new THREE.BoxGeometry(wall.length, WALL_HEIGHT, WALL_THICKNESS);
+        wallX = wall.x;
+        wallZ = wall.z;
+      } else {
+        // Wall runs along z-axis
+        wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, wall.length);
+        wallX = wall.x;
+        wallZ = wall.z;
+      }
+
+      const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
+      wallMesh.position.set(wallX, WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+      scene.add(wallMesh);
+    }
+  }
+
+  // ── Build passages ──
+  for (const passage of layout.passages) {
+    const dx = passage.x2 - passage.x1;
+    const dz = passage.z2 - passage.z1;
+    const dist = Math.hypot(dx, dz);
+
+    // Passage floor strip
+    const passageFloorGeo = new THREE.BoxGeometry(dist, 0.1, PASSAGE_WIDTH);
+    const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
+    const midX = (passage.x1 + passage.x2) / 2;
+    const midZ = (passage.z1 + passage.z2) / 2;
+    passageFloor.position.set(midX, FLOOR_Y, midZ);
+    passageFloor.rotation.y = Math.atan2(dz, dx);
+    scene.add(passageFloor);
+
+    // Passage side walls
+    for (const wall of passage.walls) {
+      let wallGeo;
+      let wallX, wallZ;
+
+      if (wall.axis === 'x') {
+        wallGeo = new THREE.BoxGeometry(wall.length, PASSAGE_WALL_HEIGHT, PASSAGE_WALL_THICKNESS);
+        wallX = wall.x;
+        wallZ = wall.z;
+      } else {
+        wallGeo = new THREE.BoxGeometry(PASSAGE_WALL_THICKNESS, PASSAGE_WALL_HEIGHT, wall.length);
+        wallX = wall.x;
+        wallZ = wall.z;
+      }
+
+      const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
+      wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+      scene.add(wallMesh);
+    }
+  }
+}
+
 // ── Scene initialization (deferred) ──
 
 const CAMERA_OFFSET = new THREE.Vector3(0, 5, 10);
@@ -616,10 +718,10 @@ function animate() {
       const me = gameState.players[myId];
       const isDead = me && me.dead;
 
-      // Respawn detection: dead → alive resets local position to origin
+      // Respawn detection: dead → alive resets local position to spawn
       if (wasDead && !isDead) {
-        myX = 0;
-        myZ = 0;
+        myX = spawnPosition.x;
+        myZ = spawnPosition.z;
         velocityX = 0;
         velocityZ = 0;
         playerRotation = 0;
@@ -702,8 +804,8 @@ function initScene() {
 
   // Camera
   camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-  camera.position.set(0, 5, 10);
-  camera.lookAt(0, 0, 0);
+  camera.position.set(spawnPosition.x, 5, spawnPosition.z + 10);
+  camera.lookAt(spawnPosition.x, 0, spawnPosition.z);
 
   // Renderer
   renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -717,12 +819,14 @@ function initScene() {
   directionalLight.position.set(10, 20, 10);
   scene.add(directionalLight);
 
-  // Floor
-  const floorGeometry = new THREE.PlaneGeometry(50, 50);
-  const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
-  const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
+  // Build dungeon geometry from server layout (replaces old 50x50 floor)
+  if (gameState && gameState.layout) {
+    buildDungeon(gameState.layout);
+  }
+
+  // Place player at spawn position (center of first room)
+  myX = spawnPosition.x;
+  myZ = spawnPosition.z;
 
   // Input tracking
   window.addEventListener('keydown', (e) => {
