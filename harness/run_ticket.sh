@@ -50,7 +50,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
 
   # --- 2. RUN SUB-TICKETS (skip ones already marked passed) ---
   SUBS_OK=1
-  for sub in $(ls -d "$SUBROOT"/*/ 2>/dev/null | sort); do
+  for sub in $(ls -d "$SUBROOT"/*/ 2>/dev/null | sort -V); do
     sub="${sub%/}"
     if [ -f "$sub/.passed" ]; then
       log "[sub] $(basename "$sub") already passed — skipping"
