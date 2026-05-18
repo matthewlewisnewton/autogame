@@ -9,6 +9,7 @@ LOOPLOG.txt
 harness/diagnosis-*.txt
 harness/*.new
 harness/**/*.new
+harness/tmp/
 harness/progress/events.ndjson
 tickets/**/artifacts/
 tickets/**/review-round-*/

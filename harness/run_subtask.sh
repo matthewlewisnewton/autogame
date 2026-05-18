@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Inner loop for ONE sub-ticket: qwen implements -> screenshot -> visual QA.
-# Visual QA is done by gemini-flash; if gemini is unavailable, claude does that
-# round's QA (qwen cannot see images, so qwen is never the QA agent).
+# Visual QA is done by gemini-flash, with cursor-agent/composer and claude
+# fallbacks. Qwen vision can be enabled as optional failed-QA feedback.
 #
 #   harness/run_subtask.sh <sub-ticket-dir>
 #
@@ -33,6 +33,8 @@ coder_toolfail=0
 for (( iter=1; iter<=MAX_ITER; iter++ )); do
   log "--- $LABEL : iteration $iter/$MAX_ITER ---"
   ARTI="$SUBDIR/artifacts/iter-$iter"
+  game_running=0
+  game_live=0
   mkdir -p "$ARTI"
   emit_progress_event "iteration_start" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"maxIterations\":$MAX_ITER,\"artifacts\":$(json_string "$ARTI")}"
 
@@ -74,7 +76,9 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   # 2. Start game + capture screenshots
   log "[game] starting servers..."
   start_game "$ARTI"
+  game_running=1
   if wait_for_game 45; then
+    game_live=1
     log "[playwright] capturing screenshots..."
     node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$ARTI" </dev/null > "$ARTI/screenshot.log" 2>&1
     emit_progress_event "capture_complete" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"artifacts\":$(json_string "$ARTI"),\"status\":\"captured\"}"
@@ -84,10 +88,13 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     : > "$ARTI/console.log"; : > "$ARTI/server.log"; : > "$ARTI/client.log"
     emit_progress_event "capture_complete" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"artifacts\":$(json_string "$ARTI"),\"status\":\"servers_failed\"}"
   fi
-  stop_game
+  if [ "$game_live" -ne 1 ] || [ "$QA_MODE" != "visual" ] || [ "$QWEN_VISION_FEEDBACK" != "1" ]; then
+    stop_game
+    game_running=0
+  fi
 
   # 3. QA — routed by the sub-ticket's verification mode.
-  #    gemini-flash primary; claude fallback (qwen cannot see images).
+  #    gemini-flash primary, cursor-agent/composer and claude fallback.
   git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
   if [ "$QA_MODE" = "code" ]; then
     log "[qa] code-review QA (non-visual sub-ticket)..."
@@ -125,6 +132,10 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   if is_pass "$ARTI/qa.txt"; then
     log "[qa] PASS — dispatching qwen to commit the verified change"
     emit_progress_event "qa_verdict" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"verdict\":\"PASS\",\"qaFile\":$(json_string "$ARTI/qa.txt")}"
+    if [ "$game_running" -eq 1 ]; then
+      stop_game
+      game_running=0
+    fi
     head_before="$(git rev-parse HEAD)"
     COMMIT_PROMPT="$(render_prompt "$PROMPTS_DIR/commit.md" \
       TICKET_FILE "$TICKET_FILE" LABEL "$LABEL")"
@@ -151,10 +162,31 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
 
   log "[qa] FAIL — accumulating feedback"
   emit_progress_event "qa_verdict" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"verdict\":\"FAIL\",\"qaFile\":$(json_string "$ARTI/qa.txt")}"
+  if [ "$QA_MODE" = "visual" ] && [ "$QWEN_VISION_FEEDBACK" = "1" ]; then
+    log "[qwen-vision] enriching failed visual QA feedback..."
+    QWEN_VISION_PROMPT="$(render_prompt "$PROMPTS_DIR/qwen-vision-feedback.md" \
+      TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI" QA_FILE "$ARTI/qa.txt" GAME_URL "$GAME_URL")"
+    if run_qwen_vision "$QWEN_VISION_PROMPT" "$ARTI/qwen-vision.txt" "$ARTI"; then
+      log "[qwen-vision] feedback captured"
+      emit_progress_event "qwen_visual_feedback" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"status\":\"captured\",\"outfile\":$(json_string "$ARTI/qwen-vision.txt")}"
+    else
+      log "[qwen-vision] unavailable — continuing with original QA feedback"
+      emit_progress_event "qwen_visual_feedback" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"status\":\"tool_failure\",\"outfile\":$(json_string "$ARTI/qwen-vision.txt")}"
+    fi
+  fi
+  if [ "$game_running" -eq 1 ]; then
+    stop_game
+    game_running=0
+  fi
   {
     printf '\n## QA feedback — iteration %d (%s)\n\n' "$iter" "$(date '+%F %T')"
     cat "$ARTI/qa.txt"
     printf '\n'
+    if [ -s "$ARTI/qwen-vision.txt" ]; then
+      printf '\n## Qwen visual feedback — iteration %d\n\n' "$iter"
+      cat "$ARTI/qwen-vision.txt"
+      printf '\n'
+    fi
   } >> "$FEEDBACK"
 done
 

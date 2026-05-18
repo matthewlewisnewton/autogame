@@ -26,6 +26,12 @@ AGENT_MODEL="${AGENT_MODEL:-composer-2}"   # cursor-agent QA fallback model
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-600}"
 CLI_RETRIES="${CLI_RETRIES:-2}"            # retries on timeout/empty output
 CLI_RETRY_BACKOFF="${CLI_RETRY_BACKOFF:-20}"
+QWEN_VISION_FEEDBACK="${QWEN_VISION_FEEDBACK:-0}" # opt-in screenshot feedback for failed visual QA
+QWEN_VISION_MODEL="${QWEN_VISION_MODEL:-${QWEN_MODEL:-qwen3.6:27b-q8_0}}"
+QWEN_VISION_BASE_URL="${QWEN_VISION_BASE_URL:-http://localhost:11434/v1}"
+QWEN_VISION_API_KEY="${QWEN_VISION_API_KEY:-ollama}"
+QWEN_VISION_TIMEOUT="${QWEN_VISION_TIMEOUT:-900}"
+QWEN_VISION_OPENAI_LOGGING="${QWEN_VISION_OPENAI_LOGGING:-0}"
 
 # Exit-code convention used across run_*.sh:
 #   0 = passed   1 = genuine task failure   2 = harness/tool failure (escalate)
@@ -144,6 +150,73 @@ _run_cli() {
 run_qwen() {  # run_qwen <prompt> <outfile>
   local a=(qwen -y); [ -n "$QWEN_MODEL" ] && a+=(-m "$QWEN_MODEL"); a+=("$1")
   _run_cli qwen "$2" "$QWEN_TIMEOUT" "${a[@]}"
+}
+write_qwen_vision_settings() {  # write_qwen_vision_settings <settings-file> <mcp-output-dir>
+  local settings_file="$1" mcp_output_dir="$2"
+  mkdir -p "$(dirname "$settings_file")" "$mcp_output_dir"
+  QWEN_VISION_MODEL="$QWEN_VISION_MODEL" \
+  QWEN_VISION_BASE_URL="$QWEN_VISION_BASE_URL" \
+  QWEN_VISION_API_KEY="$QWEN_VISION_API_KEY" \
+  QWEN_VISION_MCP_OUTPUT_DIR="$mcp_output_dir" \
+  node - "$settings_file" <<'NODE'
+const { writeFileSync } = require('node:fs');
+
+const out = process.argv[2];
+const model = process.env.QWEN_VISION_MODEL || 'qwen3.6:27b-q8_0';
+const baseUrl = process.env.QWEN_VISION_BASE_URL || 'http://localhost:11434/v1';
+const apiKey = process.env.QWEN_VISION_API_KEY || 'ollama';
+const outputDir = process.env.QWEN_VISION_MCP_OUTPUT_DIR;
+
+const config = {
+  env: { OLLAMA_API_KEY: apiKey },
+  model: {
+    name: model,
+    generationConfig: {
+      contextWindowSize: 131072,
+      modalities: { image: true },
+      splitToolMedia: true,
+      samplingParams: { temperature: 0.2, top_p: 0.95 },
+    },
+  },
+  modelProviders: {
+    openai: [{
+      id: model,
+      name: `${model} local vision`,
+      envKey: 'OLLAMA_API_KEY',
+      baseUrl,
+      generationConfig: {
+        contextWindowSize: 131072,
+        modalities: { image: true },
+        splitToolMedia: true,
+        samplingParams: { temperature: 0.2, top_p: 0.95 },
+      },
+    }],
+  },
+  mcpServers: {
+    playwright: {
+      command: 'npx',
+      args: ['-y', '@playwright/mcp', '--headless', '--isolated', '--caps', 'vision', '--output-dir', outputDir],
+      trust: true,
+      timeout: 30000,
+    },
+  },
+  mcp: { allowed: ['playwright'] },
+  $version: 4,
+};
+
+writeFileSync(out, `${JSON.stringify(config, null, 2)}\n`);
+NODE
+}
+run_qwen_vision() {  # run_qwen_vision <prompt> <outfile> <artifacts-dir>
+  local prompt="$1" out="$2" artifacts_dir="$3"
+  local settings_file="$artifacts_dir/qwen-vision-settings.json"
+  local mcp_output_dir="$artifacts_dir/qwen-vision-mcp"
+  write_qwen_vision_settings "$settings_file" "$mcp_output_dir" || return 2
+  local a=(env QWEN_CODE_SYSTEM_SETTINGS_PATH="$settings_file" qwen -y -p "$prompt")
+  if [ "$QWEN_VISION_OPENAI_LOGGING" = "1" ]; then
+    a+=(--openai-logging --openai-logging-dir "$artifacts_dir/qwen-openai-logs")
+  fi
+  _run_cli qwen-vision "$out" "$QWEN_VISION_TIMEOUT" "${a[@]}"
 }
 run_gemini() {  # run_gemini <prompt> <outfile>
   local a=(gemini -y --skip-trust); [ -n "$GEMINI_MODEL" ] && a+=(-m "$GEMINI_MODEL"); a+=(-p "$1")
