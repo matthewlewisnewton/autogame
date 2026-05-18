@@ -48,6 +48,8 @@ let velocityZ = 0;
 let playerRotation = 0; // facing angle in radians, derived from movement velocity
 let wasDead = false; // tracks previous-frame dead state for respawn detection
 let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
+let wallColliders = []; // flat array of wall AABBs: { minX, maxX, minZ, maxZ }
+const PLAYER_RADIUS = 0.5; // collision radius for the player
 
 function requestDebugScenario() {
   if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
@@ -640,6 +642,98 @@ function buildDungeon(layout) {
   }
 }
 
+// ── Wall collision helpers ──
+
+function wallAABB(wall, halfThickness) {
+  if (wall.axis === 'x') {
+    return {
+      minX: wall.x - wall.length / 2 - halfThickness,
+      maxX: wall.x + wall.length / 2 + halfThickness,
+      minZ: wall.z - halfThickness,
+      maxZ: wall.z + halfThickness
+    };
+  } else {
+    return {
+      minX: wall.x - halfThickness,
+      maxX: wall.x + halfThickness,
+      minZ: wall.z - wall.length / 2 - halfThickness,
+      maxZ: wall.z + wall.length / 2 + halfThickness
+    };
+  }
+}
+
+function buildWallColliders(layout) {
+  wallColliders = [];
+  if (!layout || !layout.rooms || !layout.passages) return;
+
+  for (const room of layout.rooms) {
+    for (const wall of room.walls) {
+      wallColliders.push(wallAABB(wall, WALL_THICKNESS / 2));
+    }
+  }
+  for (const passage of layout.passages) {
+    for (const wall of passage.walls) {
+      wallColliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
+    }
+  }
+}
+
+function resolveWallCollision(newX, newZ) {
+  // Player bounding box
+  const pMinX = newX - PLAYER_RADIUS;
+  const pMaxX = newX + PLAYER_RADIUS;
+  const pMinZ = newZ - PLAYER_RADIUS;
+  const pMaxZ = newZ + PLAYER_RADIUS;
+
+  let resolvedX = newX;
+  let resolvedZ = newZ;
+
+  for (const w of wallColliders) {
+    // Quick overlap test
+    if (pMaxX <= w.minX || pMinX >= w.maxX || pMaxZ <= w.minZ || pMinZ >= w.maxZ) continue;
+
+    // Compute overlap on each axis
+    const overlapX = Math.min(pMaxX - w.minX, w.maxX - pMinX);
+    const overlapZ = Math.min(pMaxZ - w.minZ, w.maxZ - pMinZ);
+
+    // Push out along the axis of least penetration
+    if (overlapX < overlapZ) {
+      const centerX = (pMinX + pMaxX) / 2;
+      const wallCX = (w.minX + w.maxX) / 2;
+      resolvedX = centerX + (centerX < wallCX ? -overlapX : overlapX);
+    } else {
+      const centerZ = (pMinZ + pMaxZ) / 2;
+      const wallCZ = (w.minZ + w.maxZ) / 2;
+      resolvedZ = centerZ + (centerZ < wallCZ ? -overlapZ : overlapZ);
+    }
+
+    // Update player box after push-out (colliders are static, so no infinite loop)
+    const rMinX = resolvedX - PLAYER_RADIUS;
+    const rMaxX = resolvedX + PLAYER_RADIUS;
+    const rMinZ = resolvedZ - PLAYER_RADIUS;
+    const rMaxZ = resolvedZ + PLAYER_RADIUS;
+
+    // Re-check: if still overlapping on one axis, clamp further
+    // (handles corner cases where pushing on one axis still overlaps another wall)
+    for (const w2 of wallColliders) {
+      if (rMaxX <= w2.minX || rMinX >= w2.maxX || rMaxZ <= w2.minZ || rMinZ >= w2.maxZ) continue;
+      const oX = Math.min(rMaxX - w2.minX, w2.maxX - rMinX);
+      const oZ = Math.min(rMaxZ - w2.minZ, w2.maxZ - rMinZ);
+      if (oX < oZ) {
+        const cX = (rMinX + rMaxX) / 2;
+        const wcX = (w2.minX + w2.maxX) / 2;
+        resolvedX = cX + (cX < wcX ? -oX : oX);
+      } else {
+        const cZ = (rMinZ + rMaxZ) / 2;
+        const wcZ = (w2.minZ + w2.maxZ) / 2;
+        resolvedZ = cZ + (cZ < wcZ ? -oZ : oZ);
+      }
+    }
+  }
+
+  return { x: resolvedX, z: resolvedZ };
+}
+
 // ── Scene initialization (deferred) ──
 
 const CAMERA_OFFSET = new THREE.Vector3(0, 5, 10);
@@ -662,6 +756,11 @@ function updateMyPlayer(delta) {
 
   myX += velocityX * delta;
   myZ += velocityZ * delta;
+
+  // Resolve wall collision before applying position
+  const resolved = resolveWallCollision(myX, myZ);
+  myX = resolved.x;
+  myZ = resolved.z;
 
   const f = Math.pow(friction, delta * 60);
   velocityX *= f;
@@ -822,6 +921,7 @@ function initScene() {
   // Build dungeon geometry from server layout (replaces old 50x50 floor)
   if (gameState && gameState.layout) {
     buildDungeon(gameState.layout);
+    buildWallColliders(gameState.layout);
   }
 
   // Place player at spawn position (center of first room)
