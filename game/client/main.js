@@ -40,11 +40,11 @@ socket.on('disconnect', () => {
   updateStatus('Disconnected', 'disconnected');
 });
 
-socket.on('reconnect_attempt', () => {
+socket.io.on('reconnect_attempt', () => {
   updateStatus('Reconnecting...', 'reconnecting');
 });
 
-socket.on('reconnect', () => {
+socket.io.on('reconnect', () => {
   updateStatus('Connected', 'connected');
   startHeartbeat();
 });
