@@ -8,8 +8,8 @@
 // Exit 0 if capture succeeded, 1 if the game failed to load, 2 on bad usage.
 
 import { chromium } from 'playwright';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
-import { dirname, join, resolve } from 'path';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { dirname, join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
 import { spawnSync } from 'child_process';
 
@@ -100,6 +100,21 @@ function readText(path, maxChars = 12000) {
     return readFileSync(path, 'utf8').slice(0, maxChars);
   } catch {
     return '';
+  }
+}
+
+function emitProgressEvent(type, payload = {}) {
+  if (process.env.PROGRESS_EVENTS === '0') return;
+  try {
+    const dir = join(harnessDir, 'progress');
+    mkdirSync(dir, { recursive: true });
+    appendFileSync(join(dir, 'events.ndjson'), JSON.stringify({
+      ts: new Date().toISOString(),
+      type,
+      payload,
+    }) + '\n');
+  } catch {
+    // Progress streaming is observational; capture must never fail because of it.
   }
 }
 
@@ -420,6 +435,13 @@ try {
   metrics.probes = probes;
   writeFileSync(join(outDirAbs, 'console.log'), logs.join('\n') + '\n');
   writeFileSync(join(outDirAbs, 'metrics.json'), JSON.stringify(metrics, null, 2));
+  emitProgressEvent('capture_metrics', {
+    artifacts: relative(repoRoot, outDirAbs),
+    ok: metrics.ok,
+    source: metrics.capturePlanSource,
+    scenarios: metrics.scenarios,
+    screenshots: metrics.screenshots,
+  });
   await browser.close().catch(() => {});
 }
 

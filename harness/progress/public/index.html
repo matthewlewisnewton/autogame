@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autogame Live</title>
+    <link rel="stylesheet" href="/style.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Autogame Live</div>
+        <h1>Building the Game</h1>
+      </div>
+      <div id="status" class="status">connecting...</div>
+    </header>
+
+    <main class="layout">
+      <section class="stage">
+        <div class="panel-title">
+          <span>Game Stage</span>
+          <a id="artifact-link" href="#" target="_blank" rel="noreferrer">artifact</a>
+        </div>
+        <div id="stage-body" class="stage-body">
+          <div class="empty">
+            Waiting for QA screenshots or a live game server...
+          </div>
+        </div>
+        <div id="stage-meta" class="stage-meta"></div>
+      </section>
+
+      <section class="feed">
+        <div class="panel-title">
+          <span>Agent Cast Feed</span>
+          <button id="clear" type="button">clear view</button>
+        </div>
+        <div id="current" class="current">Waiting for harness activity...</div>
+        <div id="events" class="events"></div>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

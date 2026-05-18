@@ -36,6 +36,8 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 ## Backlog — Housekeeping & Planning
 - [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
-- [ ] [020-next-milestone-planning](tickets/020-next-milestone-planning/)
+- [ ] [020-audit-client-server](tickets/020-audit-client-server/)
+- [ ] [021-persistence](tickets/021-persistence/)
+- [ ] [022-user-accounts](tickets/022-user-accounts/)
 
 ## Done
