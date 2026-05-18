@@ -29,3 +29,26 @@ None.
   such players first, so this state is not reachable; worth keeping in mind if
   future code paths add players without a live socket.
 
+
+## v0.2 — Input Validation on Server  (2026-05-17 21:35:21)
+
+  movement synchronization (requirement 4) still functions. The client-side
+  console log is clean (only Vite connection messages).
+- The diff also includes harness changes (`harness/lib.sh`,
+  `harness/run_subtask.sh`) and the three sub-ticket `ticket.md` files. These
+  are harness/QA tooling, not game code, and do not affect or regress the
+  game runtime.
+
+## Code Quality
+
+- No dead or broken code; both handlers guard-then-act with a single early
+  return.
+- No console errors in `console.log`; server log shows only normal
+  connect/disconnect lines.
+- Implementation matches the technical specs and is slightly more robust
+  (explicit `Array.isArray` rejection).
+
+## Remaining Gaps
+
+None.
+
