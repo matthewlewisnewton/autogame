@@ -196,6 +196,7 @@ function useCard(slotIndex) {
 window.addEventListener('keydown', (e) => {
   const slotMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
   if (e.key in slotMap) {
+    if (e.repeat) return;
     useCard(slotMap[e.key]);
   }
 });
