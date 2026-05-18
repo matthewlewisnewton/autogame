@@ -98,6 +98,9 @@ const floor = new THREE.Mesh(floorGeometry, floorMaterial);
 floor.rotation.x = -Math.PI / 2;
 scene.add(floor);
 
+// Camera constants
+const CAMERA_OFFSET = new THREE.Vector3(0, 5, 10);
+
 // Input tracking
 const keys = { w: false, a: false, s: false, d: false };
 window.addEventListener('keydown', (e) => {
@@ -165,6 +168,13 @@ function animate() {
     if (myId != null && playersMeshes[myId]) {
       playersMeshes[myId].position.set(myX, 0.5, myZ);
     }
+  }
+
+  // Camera follow: lerp toward player + offset, then lookAt player
+  if (myId != null && playersMeshes[myId]) {
+    const target = playersMeshes[myId].position.clone().add(CAMERA_OFFSET);
+    camera.position.lerp(target, 5.0 * delta);
+    camera.lookAt(playersMeshes[myId].position);
   }
 
   renderer.render(scene, camera);
