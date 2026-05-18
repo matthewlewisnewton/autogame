@@ -5,7 +5,7 @@ decomposed by qwen into sub-tickets, built and QA'd by the qwen+gemini loop,
 then reviewed as a whole by claude. Order roughly respects dependencies.
 
 ## Backlog — Server Foundation
-- [ ] [001-server-heartbeat](tickets/001-server-heartbeat/)
+- [x] [001-server-heartbeat](tickets/001-server-heartbeat/)
 - [ ] [002-input-validation](tickets/002-input-validation/)
 - [ ] [005-vite-socket-proxy](tickets/005-vite-socket-proxy/)
 
