@@ -96,14 +96,14 @@ function renderHand() {
 
     if (card) {
       const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
-      slot.style.borderColor = style.color;
+      slot.style.setProperty('--slot-color', style.color);
       slot.innerHTML = `
         <span class="card-icon">${style.icon}</span>
         <span class="card-name">${card.name}</span>
         <span class="card-charges">${card.remainingCharges}/${card.charges}</span>
       `;
     } else {
-      slot.style.borderColor = 'rgba(148, 163, 184, 0.3)';
+      slot.style.removeProperty('--slot-color');
       slot.innerHTML = '<span class="card-name">&mdash;</span>';
     }
   }
