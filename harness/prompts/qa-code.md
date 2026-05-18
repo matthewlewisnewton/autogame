@@ -15,8 +15,15 @@ The sub-ticket being verified:
 @__TICKET_FILE__
 
 YOUR JOB:
-1. Read the diff and confirm it implements every item in the sub-ticket's
-   `## Acceptance Criteria` correctly and completely.
+1. Confirm every item in the sub-ticket's `## Acceptance Criteria` is satisfied
+   in the CURRENT code. The diff shows what changed this iteration, but what
+   you are judging is the END STATE — read the relevant files under `game/` to
+   confirm, not just the diff. A criterion that is already satisfied by
+   pre-existing code still counts as met. In particular, if the ticket is
+   stale (its criteria were already fully implemented before this iteration),
+   an empty or minimal diff is the CORRECT outcome and is a PASS — do not fail
+   a ticket merely because the diff is small or empty. Judge whether the
+   acceptance criteria HOLD, not whether this particular diff implemented them.
 2. Check the logs and metrics confirm the game still starts and runs. IGNORE
    benign environment/library noise (THREE.js deprecation warnings, headless
    WebGL "context lost/restored" messages, Vite `ws proxy` / `EPIPE` lines on
@@ -29,5 +36,6 @@ Then, as the VERY LAST LINE of your reply, output exactly one of:
   VERDICT: PASS
   VERDICT: FAIL
 
-Output `VERDICT: PASS` only if every acceptance criterion is met in the code
-and there are no new errors from the game's own code. Do NOT edit any files.
+Output `VERDICT: PASS` if every acceptance criterion is satisfied in the
+current code — whether implemented this iteration or already present — and
+there are no new errors from the game's own code. Do NOT edit any files.
