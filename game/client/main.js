@@ -115,11 +115,20 @@ function renderPlayerList(players) {
 
 socket.on('lobbyUpdate', (data) => {
   renderPlayerList(data.players);
+
+  // Sync local ready state from server truth so the button never desyncs
+  if (data.players && myId) {
+    const me = data.players.find(p => p.id === myId);
+    if (me) {
+      isReady = me.ready;
+      readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
+    }
+  }
 });
 
 readyBtn.addEventListener('click', () => {
   isReady = !isReady;
-  socket.emit('playerReady');
+  socket.emit('playerReady', isReady);
   readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
 });
 

@@ -84,9 +84,9 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('playerReady', () => {
+  socket.on('playerReady', (ready) => {
     if (gameState.players[socket.id]) {
-      gameState.players[socket.id].ready = true;
+      gameState.players[socket.id].ready = !!ready;
       broadcastLobbyUpdate();
       if (gameState.gamePhase === 'lobby') {
         checkAllReady();
