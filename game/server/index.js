@@ -15,14 +15,40 @@ const io = new Server(server, {
 const gameState = {
   players: {},
   enemies: [],
-  lobby: []
+  lobby: [],
+  gamePhase: 'lobby'
 };
 
 const TICK_RATE = 20; // 20 times per second
 
+// Helper: build a compact player list for lobbyUpdate payloads
+function lobbyPlayerList() {
+  return Object.entries(gameState.players).map(([id, p]) => ({
+    id,
+    ready: p.ready
+  }));
+}
+
+// Helper: broadcast lobbyUpdate to all connected clients
+function broadcastLobbyUpdate() {
+  io.emit('lobbyUpdate', {
+    players: lobbyPlayerList(),
+    gamePhase: gameState.gamePhase
+  });
+}
+
+// Helper: check if all players are ready and transition if so
+function checkAllReady() {
+  const all = Object.values(gameState.players);
+  if (all.length > 0 && all.every(p => p.ready)) {
+    gameState.gamePhase = 'playing';
+    io.emit('startGame');
+  }
+}
+
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
-  
+
   // Initialize player
   gameState.players[socket.id] = {
     x: 0,
@@ -31,10 +57,14 @@ io.on('connection', (socket) => {
     rotation: 0,
     deck: [],
     hp: 100,
-    lastActivity: Date.now()
+    lastActivity: Date.now(),
+    ready: false
   };
 
   socket.emit('init', { id: socket.id, state: gameState });
+
+  // Broadcast updated lobby on connect
+  broadcastLobbyUpdate();
 
   socket.on('move', (data) => {
     if (!data || typeof data !== 'object' || Array.isArray(data) ||
@@ -54,6 +84,16 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('playerReady', () => {
+    if (gameState.players[socket.id]) {
+      gameState.players[socket.id].ready = true;
+      broadcastLobbyUpdate();
+      if (gameState.gamePhase === 'lobby') {
+        checkAllReady();
+      }
+    }
+  });
+
   socket.on('heartbeat', (data) => {
     if (!data || !Number.isFinite(data.timestamp)) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
@@ -69,6 +109,10 @@ io.on('connection', (socket) => {
     console.log(`Player disconnected: ${socket.id}`);
     delete gameState.players[socket.id];
     io.emit('playerDisconnected', socket.id);
+
+    if (gameState.gamePhase === 'lobby') {
+      broadcastLobbyUpdate();
+    }
   });
 });
 
