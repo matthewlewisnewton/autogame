@@ -81,17 +81,23 @@ window.addEventListener('keyup', (e) => {
 // Game loop logic
 let myX = 0;
 let myZ = 0;
+let velocityX = 0;
+let velocityZ = 0;
 const speed = 12;
+const acceleration = 15.0;
 const clock = new THREE.Clock();
 
 function updateMyPlayer(delta) {
   if (!myId) return;
 
   let moved = false;
-  if (keys.w) { myZ -= speed * delta; moved = true; }
-  if (keys.s) { myZ += speed * delta; moved = true; }
-  if (keys.a) { myX -= speed * delta; moved = true; }
-  if (keys.d) { myX += speed * delta; moved = true; }
+  if (keys.w) { velocityZ -= acceleration * delta; moved = true; }
+  if (keys.s) { velocityZ += acceleration * delta; moved = true; }
+  if (keys.a) { velocityX -= acceleration * delta; moved = true; }
+  if (keys.d) { velocityX += acceleration * delta; moved = true; }
+
+  myX += velocityX * delta;
+  myZ += velocityZ * delta;
 
   if (moved) {
     socket.emit('move', { x: myX, y: 0.5, z: myZ, rotation: 0 });
