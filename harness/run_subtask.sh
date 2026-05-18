@@ -94,10 +94,15 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
       TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
   fi
+  # QA agent chain: gemini-3-flash (primary) -> cursor-agent/composer-2
+  # (fallback) -> claude (last resort). Each tier is accepted only if it
+  # produced a real verdict line.
   if run_gemini "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by gemini ($QA_MODE)"
+  elif run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+    log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
   else
-    log "[qa] gemini produced no verdict — falling back to claude"
+    log "[qa] gemini + agent produced no verdict — last-resort claude"
     run_claude "$QA_PROMPT" "$ARTI/qa.txt"
   fi
 

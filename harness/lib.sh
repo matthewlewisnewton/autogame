@@ -8,6 +8,10 @@ REPO_ROOT="$(cd "$HARNESS_DIR/.." && pwd)"
 PROMPTS_DIR="$HARNESS_DIR/prompts"
 cd "$REPO_ROOT"
 
+# The harness may be launched with a minimal PATH (e.g. from tmux) that lacks
+# ~/.local/bin — where the cursor `agent` CLI lives. Ensure it is reachable.
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+
 # --- Tunables (override via environment) ---
 MAX_ITER="${MAX_ITER:-5}"                 # qwen+gemini iterations per sub-ticket
 TICKET_MAX_ROUNDS="${TICKET_MAX_ROUNDS:-3}" # decompose -> subs -> review cycles
@@ -18,6 +22,8 @@ CLAUDE_MODEL="${CLAUDE_MODEL:-}"           # empty = claude default
 QWEN_TIMEOUT="${QWEN_TIMEOUT:-1200}"
 GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
+AGENT_MODEL="${AGENT_MODEL:-composer-2}"   # cursor-agent QA fallback model
+AGENT_TIMEOUT="${AGENT_TIMEOUT:-600}"
 CLI_RETRIES="${CLI_RETRIES:-2}"            # retries on timeout/empty output
 CLI_RETRY_BACKOFF="${CLI_RETRY_BACKOFF:-20}"
 
@@ -101,6 +107,12 @@ run_qwen() {  # run_qwen <prompt> <outfile>
 run_gemini() {  # run_gemini <prompt> <outfile>
   local a=(gemini -y --skip-trust); [ -n "$GEMINI_MODEL" ] && a+=(-m "$GEMINI_MODEL"); a+=(-p "$1")
   _run_cli gemini "$2" "$GEMINI_TIMEOUT" "${a[@]}"
+}
+run_agent() {  # run_agent <prompt> <outfile> — cursor-agent, QA fallback
+  local a=(agent -p --force --trust --mode ask)
+  [ -n "$AGENT_MODEL" ] && a+=(--model "$AGENT_MODEL")
+  a+=("$1")
+  _run_cli agent "$2" "$AGENT_TIMEOUT" "${a[@]}"
 }
 run_claude() {  # run_claude <prompt> <outfile>
   local a=(claude -p --dangerously-skip-permissions); [ -n "$CLAUDE_MODEL" ] && a+=(--model "$CLAUDE_MODEL"); a+=("$1")
