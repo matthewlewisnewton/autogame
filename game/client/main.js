@@ -104,7 +104,7 @@ function renderHand() {
       `;
     } else {
       slot.style.borderColor = 'rgba(148, 163, 184, 0.3)';
-      slot.innerHTML = '';
+      slot.innerHTML = '<span class="card-name">&mdash;</span>';
     }
   }
 }
@@ -173,6 +173,22 @@ function useCard(slotIndex) {
 
   slotCooldowns[slotIndex] = true;
   playActivationEffect(slotIndex);
+
+  // Decrement remaining charges
+  card.remainingCharges -= 1;
+
+  if (card.remainingCharges <= 0) {
+    // Card exhausted — remove and draw replacement
+    hand[slotIndex] = null;
+    const newCard = drawCard();
+    if (newCard) {
+      hand[slotIndex] = newCard;
+    }
+    // else: deck is exhausted, hand[slotIndex] stays null
+  }
+
+  // Refresh the slot display with updated charge count or new card
+  renderHand();
 }
 
 // Keyboard: keys 1-4 map to hand slots 0-3
