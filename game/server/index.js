@@ -16,6 +16,7 @@ const io = new Server(server, {
 const gameState = {
   players: {},
   enemies: [],
+  minions: [],
   lobby: [],
   gamePhase: 'lobby'
 };
@@ -239,6 +240,15 @@ function updateEnemies() {
   }
 }
 
+// Helper: decrement minion TTL and remove expired/dead minions
+function updateMinions() {
+  const dt = 1 / TICK_RATE;
+  for (const minion of gameState.minions) {
+    minion.ttl -= dt;
+  }
+  gameState.minions = gameState.minions.filter(m => m.ttl > 0 && m.hp > 0);
+}
+
 io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
@@ -413,6 +423,28 @@ io.on('connection', (socket) => {
 
       return;
     }
+
+    // ── Monster branch (spawn persistent minion) ──
+    if (cardDef.type === 'monster') {
+      const minion = {
+        id: crypto.randomUUID(),
+        ownerId: socket.id,
+        x: originX,
+        z: originZ,
+        hp: 50,
+        ttl: 30
+      };
+      gameState.minions.push(minion);
+
+      io.emit('cardUsed', {
+        playerId: socket.id,
+        cardId: data.cardId,
+        slotIndex: data.slotIndex,
+        origin: { x: originX, z: originZ }
+      });
+
+      return;
+    }
   });
 
   socket.on('playerReady', (ready) => {
@@ -450,6 +482,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     delete gameState.players[socket.id];
+    gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.id);
     io.emit('playerDisconnected', socket.id);
 
     if (gameState.gamePhase === 'lobby') {
@@ -461,6 +494,7 @@ io.on('connection', (socket) => {
 // Server Game Loop
 setInterval(() => {
   updateEnemies();
+  updateMinions();
 
   // Regenerate Magic Stones and clear pending summons for each player
   for (const p of Object.values(gameState.players)) {
