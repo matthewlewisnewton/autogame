@@ -3,7 +3,15 @@
 #   qwen decomposes it into sub-tickets
 #   -> each sub-ticket runs the qwen+gemini loop (run_subtask.sh)
 #   -> claude reviews the whole ticket against its acceptance criteria
-# On a failed review, qwen adds remediation sub-tickets and the cycle repeats.
+# On a failed review, qwen adds remediation sub-tickets and the cycle repeats,
+# up to TICKET_MAX_ROUNDS times. The review feedback handed back to qwen is a
+# compact, current "open gaps" list (rewritten each round, never piled up).
+#
+# If the rounds are exhausted, claude makes a last-resort RESCUE pass and
+# implements the remaining fixes itself. If the ticket still cannot be
+# completed, the BASELINE is protected: a game left in a broken (non-running)
+# state is reverted to the ticket's starting commit, so later tickets are never
+# built on top of a broken game.
 #
 #   harness/run_ticket.sh <ticket-name>
 #
@@ -18,7 +26,7 @@ TICKET_FILE="$TDIR/ticket.md"
 [ -f "$TICKET_FILE" ] || { log "ERROR: $TICKET_FILE not found"; exit 1; }
 
 SUBROOT="$TDIR/subtickets"
-REVIEW_FB="$TDIR/review-feedback.md"
+REVIEW_FB="$TDIR/review-feedback.md"   # CURRENT compact open-gaps list for qwen
 mkdir -p "$SUBROOT"
 : > "$TDIR/log.txt"
 exec > >(tee -a "$TDIR/log.txt") 2>&1
@@ -27,6 +35,63 @@ trap 'stop_game' EXIT
 BASE_REF="$(git rev-parse HEAD)"
 log "########## top-level ticket: $NAME (baseline $BASE_REF) ##########"
 
+# --- helpers --------------------------------------------------------------
+
+# Capture a fresh run of the game into <dir> (server + client + screenshots).
+capture_run() {  # capture_run <dir>
+  local dir="$1"
+  mkdir -p "$dir"
+  start_game "$dir"
+  if wait_for_game 45; then
+    node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$dir" </dev/null > "$dir/screenshot.log" 2>&1
+  else
+    echo '{"ok":false,"error":"servers did not start"}' > "$dir/metrics.json"
+  fi
+  stop_game
+}
+
+# Run claude's holistic review of the whole ticket. Sets global REVIEW_OUT and
+# writes a compact open-gaps file to <dir>/gaps.md. Escalates on tool failure.
+review_ticket() {  # review_ticket <dir>
+  local dir="$1" prompt
+  git diff "$BASE_REF"..HEAD > "$dir/ticket.diff"
+  REVIEW_OUT="$dir/review.md"
+  prompt="$(render_prompt "$PROMPTS_DIR/review.md" \
+    TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$dir" \
+    DIFF_FILE "$dir/ticket.diff" REVIEW_OUT "$REVIEW_OUT" GAPS_OUT "$dir/gaps.md")"
+  log "[claude] reviewing..."
+  if ! run_claude "$prompt" "$dir/claude.txt"; then
+    log "[tool-failure] claude reviewer unavailable — escalating"
+    exit 2
+  fi
+}
+
+# Tag + record a completed ticket. 0 = done, 1 = review passed but game does
+# not actually run (caller must not treat the ticket as complete).
+finalize() {  # finalize <artifacts_dir> <review_file>
+  local adir="$1" rfile="$2" tag
+  if ! game_smoke_ok "$adir"; then
+    log "[finalize] review reported PASS but the game does not run cleanly — NOT completing"
+    return 1
+  fi
+  tag="$(next_version_tag)"
+  log "[review] PASS — finalizing as $tag"
+  sed -i "s/^- \[ \] \[$NAME\]/- [x] [$NAME]/" TASKS.md
+  {
+    printf '\n## %s — %s  (%s)\n\n' "$tag" "$(head -1 "$TICKET_FILE" | sed 's/^# *//')" "$(date '+%F %T')"
+    grep -v '^VERDICT:' "$rfile" | tail -20
+  } >> LOGBOOK.md
+  if ! commit_verified "$NAME: top-level ticket complete ($tag)"; then
+    log "=== ABORT: could not commit completed ticket — escalating ==="
+    exit 2
+  fi
+  git tag "$tag"
+  log "########## $NAME COMPLETE — tagged $tag ##########"
+  return 0
+}
+
+# --- remediation rounds ---------------------------------------------------
+
 for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   log "========== $NAME : round $round/$TICKET_MAX_ROUNDS =========="
 
@@ -34,7 +99,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   if [ "$round" -eq 1 ]; then
     REMEDIATION="This is the first decomposition of this ticket."
   else
-    REMEDIATION="REMEDIATION ROUND. Existing sub-tickets are done but the top-level review found gaps. Read the review feedback at $REVIEW_FB and add ONLY new sub-tickets that close those gaps."
+    REMEDIATION="REMEDIATION ROUND $round. Sub-ticket folders with a .passed marker are already done — never modify them. The file $REVIEW_FB holds the CURRENT open gaps; it is rewritten every round, so it fully supersedes anything from earlier rounds. Read it and add ONLY new sub-tickets that close those specific gaps."
   fi
   log "[qwen] decomposing into sub-tickets..."
   DECOMP_PROMPT="$(render_prompt "$PROMPTS_DIR/decompose.md" \
@@ -50,6 +115,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
 
   # --- 2. RUN SUB-TICKETS (skip ones already marked passed) ---
   SUBS_OK=1
+  FAILED_SUBS=()
   for sub in $(ls -d "$SUBROOT"/*/ 2>/dev/null | sort -V); do
     sub="${sub%/}"
     if [ -f "$sub/.passed" ]; then
@@ -69,15 +135,18 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
       *)
         log "[sub] $(basename "$sub") FAILED"
         SUBS_OK=0
-        {
-          printf '\n## Sub-ticket failed: %s (round %d)\n\n' "$(basename "$sub")" "$round"
-          printf 'Did not pass QA after %d iterations — likely mis-scoped or too large. Consider re-scoping it into smaller sub-tickets.\n' "$MAX_ITER"
-        } >> "$REVIEW_FB"
+        FAILED_SUBS+=("$(basename "$sub")")
         ;;
     esac
   done
 
   if [ "$SUBS_OK" -ne 1 ]; then
+    # Compact, current feedback — overwrites, never piles up across rounds.
+    {
+      printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
+      printf 'These sub-tickets did not pass QA after %d iterations. They are likely mis-scoped or too large — re-scope each into smaller, correctly-classified sub-tickets:\n\n' "$MAX_ITER"
+      printf -- '- %s\n' "${FAILED_SUBS[@]}"
+    } > "$REVIEW_FB"
     log "[round $round] some sub-tickets failed — re-decomposing next round"
     continue
   fi
@@ -85,50 +154,66 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   # --- 3. CLAUDE REVIEW of the whole top-level ticket ---
   log "[review] all sub-tickets passed — running claude review"
   RDIR="$TDIR/review-round-$round"
-  mkdir -p "$RDIR"
-  start_game "$RDIR"
-  if wait_for_game 45; then
-    node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$RDIR" </dev/null > "$RDIR/screenshot.log" 2>&1
-  else
-    echo '{"ok":false,"error":"servers did not start"}' > "$RDIR/metrics.json"
-  fi
-  stop_game
-
-  git diff "$BASE_REF"..HEAD > "$RDIR/ticket.diff"
-  REVIEW_OUT="$RDIR/review.md"
-  REVIEW_PROMPT="$(render_prompt "$PROMPTS_DIR/review.md" \
-    TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$RDIR" \
-    DIFF_FILE "$RDIR/ticket.diff" REVIEW_OUT "$REVIEW_OUT")"
-  log "[claude] reviewing..."
-  if ! run_claude "$REVIEW_PROMPT" "$RDIR/claude.txt"; then
-    log "[tool-failure] claude reviewer unavailable — escalating"
-    exit 2
-  fi
+  capture_run "$RDIR"
+  review_ticket "$RDIR"
 
   if is_pass "$REVIEW_OUT"; then
-    TAG="$(next_version_tag)"
-    log "[review] PASS — finalizing as $TAG"
-    sed -i "s/^- \[ \] \[$NAME\]/- [x] [$NAME]/" TASKS.md
-    {
-      printf '\n## %s — %s  (%s)\n\n' "$TAG" "$(head -1 "$TICKET_FILE" | sed 's/^# *//')" "$(date '+%F %T')"
-      grep -v '^VERDICT:' "$REVIEW_OUT" | tail -20
-    } >> LOGBOOK.md
-    if ! commit_verified "$NAME: top-level ticket complete ($TAG)"; then
-      log "=== ABORT: could not commit completed ticket — escalating ==="
-      exit 2
+    if finalize "$RDIR" "$REVIEW_OUT"; then
+      exit 0
     fi
-    git tag "$TAG"
-    log "########## $NAME COMPLETE — tagged $TAG ##########"
-    exit 0
+    # review said PASS but the game is not runnable — force another round.
+    {
+      printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
+      printf 'The review reported PASS, but the captured run shows the game does not start or load cleanly. Find and fix whatever stops the game from running — inspect server.log and console.log in %s.\n' "$RDIR"
+    } > "$REVIEW_FB"
+    log "[round $round] review PASS but game not runnable — re-decomposing next round"
+    continue
   fi
 
-  log "[review] FAIL — recording feedback for remediation"
-  {
-    printf '\n## Top-level review feedback — round %d (%s)\n\n' "$round" "$(date '+%F %T')"
-    cat "$REVIEW_OUT" 2>/dev/null || echo "(claude produced no review file)"
-    printf '\n'
-  } >> "$REVIEW_FB"
+  # FAIL — hand qwen the compact open-gaps list claude wrote (overwrite).
+  log "[review] FAIL — recording compacted feedback for remediation"
+  if [ -s "$RDIR/gaps.md" ]; then
+    cp "$RDIR/gaps.md" "$REVIEW_FB"
+  else
+    # Fallback: claude did not produce the compact file — trim the full review.
+    {
+      printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
+      grep -v '^VERDICT:' "$REVIEW_OUT" 2>/dev/null | tail -40
+    } > "$REVIEW_FB"
+  fi
 done
 
-log "########## $NAME NOT COMPLETED after $TICKET_MAX_ROUNDS rounds ##########"
+# --- 4. CLAUDE RESCUE — last resort: claude implements the fixes itself ----
+log "########## $NAME — $TICKET_MAX_ROUNDS rounds exhausted; starting claude rescue ##########"
+RES="$TDIR/rescue"
+mkdir -p "$RES"
+git diff "$BASE_REF"..HEAD > "$RES/ticket.diff"
+RESCUE_PROMPT="$(render_prompt "$PROMPTS_DIR/rescue.md" \
+  TICKET_FILE "$TICKET_FILE" REVIEW_FB "$REVIEW_FB" \
+  DIFF_FILE "$RES/ticket.diff" ROUNDS "$TICKET_MAX_ROUNDS")"
+log "[rescue] claude implementing the remaining fixes directly..."
+if ! run_claude "$RESCUE_PROMPT" "$RES/rescue.txt"; then
+  log "[tool-failure] claude rescue unavailable — escalating"
+  exit 2
+fi
+commit_verified "$NAME: claude rescue implementation pass" || true
+
+# Re-review the rescued ticket.
+RDIR="$TDIR/rescue-review"
+capture_run "$RDIR"
+review_ticket "$RDIR"
+if is_pass "$REVIEW_OUT" && finalize "$RDIR" "$REVIEW_OUT"; then
+  exit 0
+fi
+
+# --- 5. BASELINE PROTECTION — never advance the backlog on a broken game ---
+log "[gate] $NAME could not be completed — checking game health before moving on"
+if game_smoke_ok "$RDIR"; then
+  log "########## $NAME INCOMPLETE — game still runs; committed work kept, ticket left open ##########"
+  exit 1
+fi
+log "[gate] game is BROKEN after $NAME — reverting to baseline $BASE_REF to protect later tickets"
+git reset --hard "$BASE_REF"
+rm -rf "$SUBROOT" "$REVIEW_FB"
+log "########## $NAME REVERTED — baseline $BASE_REF restored, ticket left open ##########"
 exit 1
