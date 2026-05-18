@@ -4,11 +4,15 @@ Read `CONTEXT.md`, the sub-ticket at:
 
   __TICKET_FILE__
 
-and the accumulated review feedback at:
+the accumulated review feedback at:
 
   __FEEDBACK_FILE__
 
-(the feedback file may not exist on the first attempt — that is fine).
+and the progress/handoff note left by the previous attempt at:
+
+  __HANDOFF_FILE__
+
+(the feedback and handoff files may not exist on the first attempt — fine).
 
 YOUR JOB:
 1. Implement the sub-ticket so that every item in its `## Acceptance Criteria`
@@ -26,4 +30,9 @@ RULES:
 - Do NOT run the dev servers, take screenshots, or run git. The harness does
   all of that.
 
-When finished, print a short summary of what you changed and why.
+When finished:
+- print a short summary of what you changed and why, AND
+- write (overwriting it) a 3–6 line handoff note to `__HANDOFF_FILE__`: what you
+  completed, what still remains, and any blocker. The next attempt reads this
+  first — it is what carries progress forward if your session is compacted or
+  retried, so make it concrete.

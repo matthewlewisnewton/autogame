@@ -16,6 +16,7 @@ TICKET_FILE="$SUBDIR/ticket.md"
 [ -f "$TICKET_FILE" ] || { log "ERROR: $TICKET_FILE not found"; exit 1; }
 
 FEEDBACK="$SUBDIR/feedback.md"
+HANDOFF="$SUBDIR/handoff.md"
 LABEL="$(basename "$(dirname "$(dirname "$SUBDIR")")")/$(basename "$SUBDIR")"
 : > "$SUBDIR/log.txt"
 exec > >(tee -a "$SUBDIR/log.txt") 2>&1
@@ -32,7 +33,7 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   # 1. CODER (qwen)
   log "[qwen] implementing..."
   CODER_PROMPT="$(render_prompt "$PROMPTS_DIR/implement.md" \
-    TICKET_FILE "$TICKET_FILE" FEEDBACK_FILE "$FEEDBACK")"
+    TICKET_FILE "$TICKET_FILE" FEEDBACK_FILE "$FEEDBACK" HANDOFF_FILE "$HANDOFF")"
   if ! run_qwen "$CODER_PROMPT" "$ARTI/qwen.txt"; then
     coder_toolfail=$((coder_toolfail + 1))
     log "[tool-failure] qwen coder unavailable ($coder_toolfail consecutive)"

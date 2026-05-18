@@ -11,6 +11,7 @@ tickets/**/artifacts/
 tickets/**/review-round-*/
 tickets/**/log.txt
 tickets/**/feedback.md
+tickets/**/handoff.md
 tickets/**/review-feedback.md
 tickets/**/decompose-round-*.txt
 tickets/**/.passed
