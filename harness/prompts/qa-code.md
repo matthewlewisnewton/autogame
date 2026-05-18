@@ -17,8 +17,10 @@ The sub-ticket being verified:
 YOUR JOB:
 1. Read the diff and confirm it implements every item in the sub-ticket's
    `## Acceptance Criteria` correctly and completely.
-2. Check the logs and metrics confirm the game still starts and runs with no
-   new errors — a code change must not break startup or the existing game.
+2. Check the logs and metrics confirm the game still starts and runs. IGNORE
+   benign environment/library noise (THREE.js deprecation warnings, headless
+   WebGL "context lost/restored" messages, Vite `ws proxy` / `EPIPE` lines on
+   socket close) — only a genuine error from the game's own code counts.
 3. For EACH acceptance criterion, state PASS or FAIL with the specific code or
    log evidence that justifies it.
 
@@ -28,4 +30,4 @@ Then, as the VERY LAST LINE of your reply, output exactly one of:
   VERDICT: FAIL
 
 Output `VERDICT: PASS` only if every acceptance criterion is met in the code
-and there are no new runtime errors. Do NOT edit any files.
+and there are no new errors from the game's own code. Do NOT edit any files.

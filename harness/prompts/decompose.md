@@ -25,7 +25,11 @@ YOUR JOB — break the top-level ticket into small SUB-TICKETS:
      what the sub-ticket's **acceptance criteria** can actually be checked
      against — NOT by whether the feature happens to be on-screen:
        `visual` — every criterion is confirmable from a few screenshots of one
-                  run (an element appears, a cube moved, layout looks right);
+                  HAPPY-PATH run (game loads, two players join, WASD movement;
+                  an element appears, a cube moved, layout looks right). A
+                  state reached only by disconnecting, reconnecting, an error,
+                  or waiting on a timer is NOT in those screenshots — those
+                  criteria are `code`;
        `code`   — any criterion involves values, rates, timing, frame-rate or
                   refresh-rate behaviour, server state, or anything a handful
                   of static screenshots cannot show (e.g. "equal at 60Hz and
