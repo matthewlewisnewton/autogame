@@ -5,7 +5,12 @@
 #   -> claude reviews the whole ticket against its acceptance criteria
 # On a failed review, qwen adds remediation sub-tickets and the cycle repeats,
 # up to TICKET_MAX_ROUNDS times. The review feedback handed back to qwen is a
-# compact, current "open gaps" list (rewritten each round, never piled up).
+# compact, current "open gaps" list (rewritten each round, never piled up) that
+# also carries a pointer to the full review it was distilled from.
+#
+# Every review, once written, is archived and made read-only — and an integrity
+# check restores any review file an agent modified in a later round, so the
+# record of past reviews can never be rewritten under the loop.
 #
 # If the rounds are exhausted, claude makes a last-resort RESCUE pass and
 # implements the remaining fixes itself. If the ticket still cannot be
@@ -27,7 +32,13 @@ TICKET_FILE="$TDIR/ticket.md"
 
 SUBROOT="$TDIR/subtickets"
 REVIEW_FB="$TDIR/review-feedback.md"   # CURRENT compact open-gaps list for qwen
+REVIEWS_DIR="$TDIR/.reviews"           # immutable archive of every review
 mkdir -p "$SUBROOT"
+
+# Fresh start: clear any read-only review artifacts left by a previous attempt.
+chmod -R u+w "$REVIEWS_DIR" "$TDIR"/review-round-* "$TDIR"/rescue "$TDIR"/rescue-review 2>/dev/null || true
+rm -rf "$REVIEWS_DIR" "$TDIR"/review-round-* "$TDIR"/rescue "$TDIR"/rescue-review 2>/dev/null || true
+
 : > "$TDIR/log.txt"
 exec > >(tee -a "$TDIR/log.txt") 2>&1
 trap 'stop_game' EXIT
@@ -66,6 +77,44 @@ review_ticket() {  # review_ticket <dir>
   fi
 }
 
+# Archive a finished review and lock it (and its working dir) read-only so no
+# later agent round can rewrite the record of what a past review found.
+protect_review() {  # protect_review <label> <working_dir>
+  local label="$1" dir="$2" arc="$REVIEWS_DIR/$label" f
+  mkdir -p "$arc"
+  for f in review.md gaps.md; do
+    [ -f "$dir/$f" ] && cp "$dir/$f" "$arc/$f"
+  done
+  chmod -R a-w "$arc" "$dir" 2>/dev/null || true
+}
+
+# Integrity check: confirm no archived review file was edited since it was
+# written. Any tampering (e.g. by a later qwen round) is logged and the file is
+# restored from the protected archive. Call after each qwen round.
+verify_reviews() {
+  [ -d "$REVIEWS_DIR" ] || return 0
+  local arc label f
+  for arc in "$REVIEWS_DIR"/*/; do
+    [ -d "$arc" ] || continue
+    label="$(basename "$arc")"
+    for f in review.md gaps.md; do
+      [ -f "$arc/$f" ] || continue
+      if [ -f "$TDIR/$label/$f" ] && ! cmp -s "$arc/$f" "$TDIR/$label/$f"; then
+        log "[integrity] $label/$f was modified after it was written — restoring from the protected archive"
+        chmod u+w "$TDIR/$label/$f" 2>/dev/null || true
+        cp "$arc/$f" "$TDIR/$label/$f"
+        chmod a-w "$TDIR/$label/$f" 2>/dev/null || true
+      fi
+    done
+  done
+}
+
+# Append a pointer to the full review so the coder can drill in past the
+# compact summary if it needs the per-criterion findings and rationale.
+append_review_pointer() {  # append_review_pointer <review_file>
+  printf '\n---\nThis is a compact summary distilled from the full review of the\nprevious round. For per-criterion findings and the reasoning behind each\ngap, read the full review at: %s\n(That file is read-only — do not edit it.)\n' "$1" >> "$REVIEW_FB"
+}
+
 # Tag + record a completed ticket. 0 = done, 1 = review passed but game does
 # not actually run (caller must not treat the ticket as complete).
 finalize() {  # finalize <artifacts_dir> <review_file>
@@ -99,12 +148,13 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   if [ "$round" -eq 1 ]; then
     REMEDIATION="This is the first decomposition of this ticket."
   else
-    REMEDIATION="REMEDIATION ROUND $round. Sub-ticket folders with a .passed marker are already done — never modify them. The file $REVIEW_FB holds the CURRENT open gaps; it is rewritten every round, so it fully supersedes anything from earlier rounds. Read it and add ONLY new sub-tickets that close those specific gaps."
+    REMEDIATION="REMEDIATION ROUND $round. Sub-ticket folders with a .passed marker are already done — never modify them. The file $REVIEW_FB holds the CURRENT open gaps; it is rewritten every round, so it fully supersedes anything from earlier rounds. It ends with a pointer to the full review — open that read-only file if the compact summary is not detailed enough, but never edit it or any earlier review. Read the gaps and add ONLY new sub-tickets that close those specific gaps."
   fi
   log "[qwen] decomposing into sub-tickets..."
   DECOMP_PROMPT="$(render_prompt "$PROMPTS_DIR/decompose.md" \
     TICKET_FILE "$TICKET_FILE" SUBTICKETS_DIR "$SUBROOT" REMEDIATION "$REMEDIATION")"
   run_qwen "$DECOMP_PROMPT" "$TDIR/decompose-round-$round.txt"
+  verify_reviews
 
   # Fallback: if no sub-tickets exist, treat the ticket itself as one.
   if ! ls -d "$SUBROOT"/*/ >/dev/null 2>&1; then
@@ -139,6 +189,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
         ;;
     esac
   done
+  verify_reviews
 
   if [ "$SUBS_OK" -ne 1 ]; then
     # Compact, current feedback — overwrites, never piles up across rounds.
@@ -156,6 +207,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   RDIR="$TDIR/review-round-$round"
   capture_run "$RDIR"
   review_ticket "$RDIR"
+  protect_review "review-round-$round" "$RDIR"   # archive + lock read-only
 
   if is_pass "$REVIEW_OUT"; then
     if finalize "$RDIR" "$REVIEW_OUT"; then
@@ -166,6 +218,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
       printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
       printf 'The review reported PASS, but the captured run shows the game does not start or load cleanly. Find and fix whatever stops the game from running — inspect server.log and console.log in %s.\n' "$RDIR"
     } > "$REVIEW_FB"
+    append_review_pointer "$REVIEW_OUT"
     log "[round $round] review PASS but game not runnable — re-decomposing next round"
     continue
   fi
@@ -181,6 +234,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
       grep -v '^VERDICT:' "$REVIEW_OUT" 2>/dev/null | tail -40
     } > "$REVIEW_FB"
   fi
+  append_review_pointer "$REVIEW_OUT"
 done
 
 # --- 4. CLAUDE RESCUE — last resort: claude implements the fixes itself ----
@@ -197,11 +251,13 @@ if ! run_claude "$RESCUE_PROMPT" "$RES/rescue.txt"; then
   exit 2
 fi
 commit_verified "$NAME: claude rescue implementation pass" || true
+verify_reviews
 
 # Re-review the rescued ticket.
 RDIR="$TDIR/rescue-review"
 capture_run "$RDIR"
 review_ticket "$RDIR"
+protect_review "rescue-review" "$RDIR"
 if is_pass "$REVIEW_OUT" && finalize "$RDIR" "$REVIEW_OUT"; then
   exit 0
 fi
