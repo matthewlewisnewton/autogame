@@ -154,9 +154,16 @@ function animate() {
         scene.add(mesh);
         playersMeshes[id] = mesh;
       }
-      
-      // Interpolate or set position
+
+      // Skip the local player — its mesh is driven by client prediction below
+      if (id === myId) continue;
+
       playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
+    }
+
+    // Client-side prediction: drive the local player mesh from predicted values
+    if (myId != null && playersMeshes[myId]) {
+      playersMeshes[myId].position.set(myX, 0.5, myZ);
     }
   }
 
