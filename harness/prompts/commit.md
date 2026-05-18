@@ -15,7 +15,8 @@ STEPS:
    gets added.
 4. Make exactly ONE commit with a clear, meaningful message: a concise subject
    line describing WHAT changed and why, prefixed with `__LABEL__: `, plus a
-   short body if it adds clarity.
+   short body if it adds clarity. End the message with a trailer line
+   containing exactly `autogame` (no model names, no other attribution).
 5. Do NOT push, do NOT amend or rebase, do NOT touch any earlier commit.
 
 Print the resulting commit hash and subject line.

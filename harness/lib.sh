@@ -144,7 +144,7 @@ commit_verified() {
     return 0
   fi
   local before; before="$(git rev-parse HEAD 2>/dev/null)"
-  if ! git commit -q -m "$1" -m "Committed by the autogame harness — coder: qwen; QA: gemini-3-flash-preview / cursor-agent(composer-2); review: claude."; then
+  if ! git commit -q -m "$1" -m "autogame"; then
     log "[git] ERROR: commit failed for: $1"
     return 2
   fi
