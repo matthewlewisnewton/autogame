@@ -86,7 +86,8 @@ review_ticket() {  # review_ticket <dir>
 # Archive a finished review and lock it (and its working dir) read-only so no
 # later agent round can rewrite the record of what a past review found.
 protect_review() {  # protect_review <label> <working_dir>
-  local label="$1" dir="$2" arc="$REVIEWS_DIR/$label" f
+  local label="$1" dir="$2" f
+  local arc="$REVIEWS_DIR/$label"
   mkdir -p "$arc"
   for f in review.md gaps.md nits.md; do
     [ -f "$dir/$f" ] && cp "$dir/$f" "$arc/$f"
