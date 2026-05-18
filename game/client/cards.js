@@ -58,3 +58,12 @@ export const CARD_TYPE_STYLE = {
   summon: { color: '#f59e0b', icon: '✦' },
   monster: { color: '#a78bfa', icon: '🐉' },
 };
+
+// ── Card ID Sets by Type ──
+// Pre-computed Sets for O(1) membership checks in hot paths (e.g. cardUsed handler).
+export const weaponCardIds = new Set();
+export const summonCardIds = new Set();
+for (const def of Object.values(CARD_DEFS)) {
+  if (def.type === 'weapon') weaponCardIds.add(def.id);
+  if (def.type === 'summon') summonCardIds.add(def.id);
+}

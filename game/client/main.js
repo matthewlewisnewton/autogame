@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, createStartingDeck, CARD_TYPE_STYLE } from './cards.js';
+import { CARD_DEFS, createStartingDeck, CARD_TYPE_STYLE, weaponCardIds, summonCardIds } from './cards.js';
 
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -282,10 +282,8 @@ socket.on('playerDisconnected', (id) => {
 const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
 const ATTACK_EFFECT_SPEED = 8;     // units per second
 
-const weaponCardIds = new Set();
-for (const def of Object.values(CARD_DEFS)) {
-  if (def.type === 'weapon') weaponCardIds.add(def.id);
-}
+const SUMMON_EFFECT_DURATION = 1000;  // total lifetime: expand + fade
+const SUMMON_EXPAND_MS = 700;         // time to reach full radius
 
 function spawnAttackEffect(origin, direction) {
   // Bright yellow sphere projectile
@@ -310,11 +308,64 @@ function spawnAttackEffect(origin, direction) {
   });
 }
 
+// ── Summon AoE visual effect ──
+
+function spawnSummonEffect(origin, radius) {
+  // Expanding ring on the ground plane (y = 0.1 to avoid z-fighting with floor at y = 0)
+  const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xf59e0b,
+    emissive: 0xf59e0b,
+    emissiveIntensity: 1.0,
+    transparent: true,
+    opacity: 1.0,
+    side: THREE.DoubleSide,
+    depthWrite: false
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(origin.x, 0.1, origin.z);
+  mesh.rotation.x = -Math.PI / 2; // lie flat on ground
+  mesh.scale.setScalar(0.001); // start invisible, grows in updateAttackEffects
+  scene.add(mesh);
+
+  activeEffects.push({
+    mesh,
+    origin: { x: origin.x, z: origin.z },
+    radius,
+    createdAt: performance.now(),
+    duration: SUMMON_EFFECT_DURATION
+  });
+}
+
 function updateAttackEffects() {
   const now = performance.now();
   for (let i = activeEffects.length - 1; i >= 0; i--) {
     const fx = activeEffects[i];
     const elapsed = now - fx.createdAt;
+
+    // ── Summon AoE effect (has a radius field) ──
+    if (fx.radius !== undefined) {
+      const expandT = Math.min(elapsed / SUMMON_EXPAND_MS, 1.0);
+      const scale = fx.radius * expandT * 2; // RingGeometry inner+outer = visual radius
+      fx.mesh.scale.setScalar(Math.max(0.001, scale));
+
+      // Fade opacity during the fade phase (after expansion finishes)
+      if (elapsed > SUMMON_EXPAND_MS) {
+        const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
+        fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
+      }
+
+      // Remove when expired
+      if (elapsed >= fx.duration) {
+        scene.remove(fx.mesh);
+        fx.mesh.geometry.dispose();
+        fx.mesh.material.dispose();
+        activeEffects.splice(i, 1);
+      }
+      continue;
+    }
+
+    // ── Weapon projectile effect (has direction field) ──
     const t = Math.min(elapsed / 1000, 1.0); // 0→1 over real time
 
     // Move forward along direction
@@ -324,8 +375,8 @@ function updateAttackEffects() {
 
     // Fade: scale down and reduce opacity as effect ages
     const lifeRatio = 1.0 - (elapsed / fx.duration);
-    const scale = Math.max(0.01, lifeRatio);
-    fx.mesh.scale.setScalar(scale);
+    const weaponScale = Math.max(0.01, lifeRatio);
+    fx.mesh.scale.setScalar(weaponScale);
     fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
 
     // Remove when expired
@@ -348,7 +399,11 @@ socket.on('cardUsed', (data) => {
     spawnAttackEffect(origin, direction);
   }
 
-  // Summon-type events: received without error; visual rendering is sub-ticket 03
+  // Spawn visual for summon AoE
+  if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
+    const origin = data.origin || { x: 0, z: 0 };
+    spawnSummonEffect(origin, data.radius);
+  }
 });
 
 socket.on('cardError', (data) => {
