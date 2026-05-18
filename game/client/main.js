@@ -183,7 +183,19 @@ function useCard(slotIndex) {
   // (1) Emit useCard — fires on every call, including during cooldown
   socket.emit('useCard', { slotIndex, cardId: card.id });
 
-  // (2) Decrement charges + exhaust/redraw — runs regardless of cooldown
+  // (2) For summon cards: skip optimistic consumption — wait for server
+  //     confirmation (cardUsed) before removing the card. This way, if the
+  //     server rejects (e.g. not enough Magic Stones), the card stays in hand.
+  if (summonCardIds.has(card.id)) {
+    // Still fire the activation/cooldown visual
+    if (!slotCooldowns[slotIndex]) {
+      slotCooldowns[slotIndex] = true;
+      playActivationEffect(slotIndex);
+    }
+    return;
+  }
+
+  // (2) Decrement charges + exhaust/redraw — non-summon cards only
   card.remainingCharges -= 1;
 
   if (card.remainingCharges <= 0) {
@@ -391,6 +403,22 @@ function updateAttackEffects() {
 
 socket.on('cardUsed', (data) => {
   if (!data || !scene) return;
+
+  // Handle confirmed summon play for the local player: consume the card
+  if (data.playerId === myId && summonCardIds.has(data.cardId)) {
+    // Find the slot holding this card and remove it, then draw replacement
+    for (let i = 0; i < hand.length; i++) {
+      if (hand[i] && hand[i].id === data.cardId) {
+        hand[i] = null;
+        const newCard = drawCard();
+        if (newCard) {
+          hand[i] = newCard;
+        }
+        renderHand();
+        break;
+      }
+    }
+  }
 
   // Spawn visual for weapon attacks
   if (weaponCardIds.has(data.cardId)) {
