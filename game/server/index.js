@@ -205,6 +205,11 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('useCard', (data) => {
+    if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
+    console.log(`Player ${socket.id} used card ${data.cardId} from slot ${data.slotIndex}`);
+  });
+
   socket.on('playerReady', (ready) => {
     if (gameState.players[socket.id]) {
       gameState.players[socket.id].ready = !!ready;

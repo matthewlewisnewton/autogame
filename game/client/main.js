@@ -139,6 +139,31 @@ function refillSlot(index) {
   return card;
 }
 
+// ── Card input handling ──
+
+function useCard(slotIndex) {
+  if (slotIndex < 0 || slotIndex > 3) return;
+  const card = hand[slotIndex];
+  if (!card) return; // empty slot — no-op
+
+  socket.emit('useCard', { slotIndex, cardId: card.id });
+}
+
+// Keyboard: keys 1-4 map to hand slots 0-3
+window.addEventListener('keydown', (e) => {
+  const slotMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
+  if (e.key in slotMap) {
+    useCard(slotMap[e.key]);
+  }
+});
+
+// Click: delegate on #card-hand, read data-slot-index from .card-slot target
+cardHandEl.addEventListener('click', (e) => {
+  const slot = e.target.closest('.card-slot');
+  if (!slot) return;
+  useCard(parseInt(slot.dataset.slotIndex, 10));
+});
+
 socket.on('connect', () => {
   updateStatus('Connected', 'connected');
   startHeartbeat();
