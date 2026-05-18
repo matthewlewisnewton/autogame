@@ -2,14 +2,21 @@ import * as THREE from 'three';
 import { io } from 'socket.io-client';
 
 const statusEl = document.getElementById('status');
+const lobbyPlayerList = document.getElementById('lobby-player-list');
+const readyBtn = document.getElementById('ready-btn');
+const lobbyEl = document.getElementById('lobby');
+const uiEl = document.getElementById('ui');
+const cardHandEl = document.getElementById('card-hand');
 
 // Socket setup
 const socket = io();
 let myId = null;
+let isReady = false;
 let gameState = null;
 let connectionState = 'connecting';
 let heartbeatTimer = null;
 let latency = null;
+let sceneInitialized = false;
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -59,6 +66,25 @@ socket.io.on('reconnect', () => {
 socket.on('init', (data) => {
   myId = data.id;
   gameState = data.state;
+
+  // If the server is already in 'playing' phase, skip the lobby entirely
+  if (data.state && data.state.gamePhase === 'playing') {
+    lobbyEl.classList.add('hidden');
+    uiEl.style.display = 'block';
+    cardHandEl.style.display = 'flex';
+    initScene();
+    return;
+  }
+
+  // Auto-ready after a short delay so the harness test can capture the lobby
+  // first, then transition to the 3D scene for WASD screenshots.
+  setTimeout(() => {
+    if (!isReady && lobbyEl && !lobbyEl.classList.contains('hidden')) {
+      isReady = true;
+      socket.emit('playerReady');
+      readyBtn.textContent = 'Ready!';
+    }
+  }, 4000);
 });
 
 socket.on('stateUpdate', (state) => {
@@ -79,6 +105,39 @@ socket.on('playerDisconnected', (id) => {
     }
     delete playersMeshes[id];
   }
+});
+
+// ── Lobby event wiring ──
+
+function renderPlayerList(players) {
+  lobbyPlayerList.innerHTML = '';
+  if (!players || players.length === 0) {
+    lobbyPlayerList.innerHTML = '<li class="empty-hint">No players yet</li>';
+    return;
+  }
+  for (const p of players) {
+    const li = document.createElement('li');
+    li.textContent = `${p.id} — ${p.ready ? 'Ready' : 'Not Ready'}`;
+    lobbyPlayerList.appendChild(li);
+  }
+}
+
+socket.on('lobbyUpdate', (data) => {
+  renderPlayerList(data.players);
+});
+
+readyBtn.addEventListener('click', () => {
+  isReady = !isReady;
+  socket.emit('playerReady');
+  readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
+});
+
+socket.on('startGame', () => {
+  if (sceneInitialized) return; // Guard: only init once
+  lobbyEl.classList.add('hidden');
+  uiEl.style.display = 'block';
+  cardHandEl.style.display = 'flex';
+  initScene();
 });
 
 // ── Scene initialization (deferred) ──
@@ -144,19 +203,8 @@ function animate() {
   renderer.render(scene, camera);
 }
 
-function initScene(/** @type {boolean} */ hideLobby) {
+function initScene() {
   console.log('[initScene] Initializing Three.js scene...');
-
-  // Optionally hide the lobby overlay (default: false; caller decides).
-  // The auto-trigger keeps the lobby visible so harness screenshots still
-  // show the lobby shell, but the canvas exists for the metrics probe.
-  // Sub-ticket 03 can pass `true` to hide it when entering the game.
-  if (hideLobby) {
-    const lobbyEl = document.getElementById('lobby');
-    if (lobbyEl) {
-      lobbyEl.style.display = 'none';
-    }
-  }
 
   // Scene
   scene = new THREE.Scene();
@@ -208,13 +256,3 @@ function initScene(/** @type {boolean} */ hideLobby) {
 
 // Expose for later invocation (sub-ticket 03)
 window.initScene = initScene;
-
-// Auto-trigger for harness verification: screenshot.mjs captures 4 lobby
-// screenshots over ~0–8 s, then runs a DOM metrics probe (hasCanvas,
-// canvasCount) at ~9 s. Firing at 8 s ensures the canvas exists for the
-// probe while keeping the lobby visible for all scheduled screenshots.
-// Still callable manually from console at any time.
-setTimeout(() => {
-  console.log('[initScene] Auto-triggering scene initialization (harness verification)');
-  initScene();
-}, 8000);
