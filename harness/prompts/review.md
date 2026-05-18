@@ -25,9 +25,7 @@ WRITE your full assessment as Markdown to:
 
   __REVIEW_OUT__
 
-Structure it as: per-criterion findings, then a list of concrete remaining gaps
-(empty if none). Make the gap list specific enough that a coder could act on it
-directly.
+Structure it as: per-criterion findings, then a `## Remaining gaps` section.
 
 Then, as the VERY LAST LINE of `__REVIEW_OUT__`, write exactly one of:
 
@@ -37,5 +35,24 @@ Then, as the VERY LAST LINE of `__REVIEW_OUT__`, write exactly one of:
 Output `VERDICT: PASS` only if the top-level ticket is fully delivered with no
 remaining gaps.
 
+COMPACT REMEDIATION FILE — if, and only if, the verdict is FAIL, ALSO write a
+short, self-contained remediation file to:
+
+  __GAPS_OUT__
+
+This file is the ONLY thing the next coder is given — it must stand alone and
+be directly actionable. It accumulates nothing: write the COMPLETE current set
+of blocking gaps, because it fully replaces any earlier version. Format it as a
+numbered list; each item at most ~4 lines:
+
+  N. <one-line statement of what is wrong / missing>
+     Files: <the game/... paths involved>
+     Fix: <the concrete change to make>
+
+Include ONLY gaps that still block acceptance. Omit anything already satisfied,
+omit praise, omit restating the ticket, omit background. Keep it to the
+smallest set of items that, once done, make the ticket pass. Order them by
+importance. If the verdict is PASS, do NOT write `__GAPS_OUT__` at all.
+
 RULES:
-- Do NOT edit game code and do NOT run git. Only write the review file.
+- Do NOT edit game code and do NOT run git. Only write the review files.

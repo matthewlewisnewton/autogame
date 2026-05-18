@@ -14,7 +14,7 @@ case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$P
 
 # --- Tunables (override via environment) ---
 MAX_ITER="${MAX_ITER:-5}"                 # qwen+gemini iterations per sub-ticket
-TICKET_MAX_ROUNDS="${TICKET_MAX_ROUNDS:-3}" # decompose -> subs -> review cycles
+TICKET_MAX_ROUNDS="${TICKET_MAX_ROUNDS:-10}" # decompose -> subs -> review cycles
 GAME_URL="${GAME_URL:-http://localhost:5173}"
 QWEN_MODEL="${QWEN_MODEL:-}"               # empty = qwen default
 GEMINI_MODEL="${GEMINI_MODEL:-gemini-3-flash-preview}"
@@ -63,6 +63,23 @@ wait_for_game() {  # wait_for_game [timeout-seconds] ; 0 if both ports respond
     sleep 1
   done
   return 1
+}
+
+# game_smoke_ok <artifacts_dir> — 0 if a captured run shows a RUNNABLE game,
+# 1 if it is broken. Used as the baseline-protection gate: the harness must
+# never advance the backlog on top of a game that does not run. Deliberately
+# checks only explicit failure signals (ok:false / servers-did-not-start /
+# uncaught client exception) so an unknown metrics schema biases toward
+# "runnable" — reverting work is destructive, so do it only on hard evidence.
+game_smoke_ok() {  # game_smoke_ok <artifacts_dir>
+  local d="$1"
+  [ -f "$d/metrics.json" ] || return 1
+  grep -q 'servers did not start' "$d/metrics.json" && return 1
+  grep -qE '"ok"[[:space:]]*:[[:space:]]*false' "$d/metrics.json" && return 1
+  if [ -f "$d/console.log" ] && grep -qE '\[[A-Z]:pageerror\]|\[fatal\]' "$d/console.log"; then
+    return 1
+  fi
+  return 0
 }
 
 # --- Prompt rendering: render_prompt <template> <KEY> <val> [<KEY> <val>...] ---
