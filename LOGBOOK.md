@@ -144,3 +144,26 @@ None.
 
 None.
 
+
+## v0.7 — Card Deck UI Slots  (2026-05-18 02:38:26)
+
+
+## Consistency & Regression Checks
+
+- **design.md**: The "hand of up to 4 cards" concept is reflected — 4 slots is the
+  correct count per the Combat Mechanics section. This ticket scopes only the empty
+  visual shell, which is consistent with the design's incremental UI build-out.
+- **requirements.md**: No regression. `metrics.json` reports `ok: true`,
+  `hasCanvas: true`, `canvasCount: 1`; the 3D scene still renders, the client still
+  connects, and the player is visible and movable. The new `#card-hand` uses
+  `position: fixed` with `pointer-events: none` and does not touch `#ui`, the canvas,
+  or any JS, so movement sync and multiplayer visualization are untouched.
+- **Code quality**: Diff is minimal and exactly matches the technical spec. No JS
+  changes, no dead code, no broken markup. `console.log` shows only normal Vite
+  connection messages; the sole warning (`THREE.Clock` deprecation) is pre-existing
+  and unrelated to this ticket. No console errors.
+
+## Remaining Gaps
+
+None.
+
