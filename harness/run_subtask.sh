@@ -17,12 +17,16 @@ TICKET_FILE="$SUBDIR/ticket.md"
 
 FEEDBACK="$SUBDIR/feedback.md"
 HANDOFF="$SUBDIR/handoff.md"
+# QA routing: a sub-ticket declares `## Verification: visual|code`. Visual
+# changes are checked from screenshots; code/non-visual ones from the diff+logs.
+QA_MODE="$(grep -ioE 'verification[: ]+[a-z]+' "$TICKET_FILE" 2>/dev/null | grep -ioE 'visual|code' | head -1 | tr 'A-Z' 'a-z')"
+[ -z "$QA_MODE" ] && QA_MODE="visual"
 LABEL="$(basename "$(dirname "$(dirname "$SUBDIR")")")/$(basename "$SUBDIR")"
 : > "$SUBDIR/log.txt"
 exec > >(tee -a "$SUBDIR/log.txt") 2>&1
 trap 'stop_game' EXIT
 
-log "=== sub-ticket: $LABEL ==="
+log "=== sub-ticket: $LABEL — QA mode: $QA_MODE ==="
 coder_toolfail=0
 
 for (( iter=1; iter<=MAX_ITER; iter++ )); do
@@ -70,7 +74,7 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   start_game "$ARTI"
   if wait_for_game 45; then
     log "[playwright] capturing screenshots..."
-    node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$ARTI" > "$ARTI/screenshot.log" 2>&1
+    node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$ARTI" </dev/null > "$ARTI/screenshot.log" 2>&1
   else
     log "[game] SERVERS FAILED TO START"
     echo '{"ok":false,"error":"servers did not start"}' > "$ARTI/metrics.json"
@@ -78,14 +82,22 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
   stop_game
 
-  # 3. QA — gemini-flash primary, claude fallback (qwen cannot see images)
-  log "[qa] verifying against acceptance criteria..."
-  QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
-    TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
-  if run_gemini "$QA_PROMPT" "$ARTI/qa.txt" && ! gemini_unavailable "$ARTI/qa.txt"; then
-    log "[qa] verified by gemini-flash"
+  # 3. QA — routed by the sub-ticket's verification mode.
+  #    gemini-flash primary; claude fallback (qwen cannot see images).
+  git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
+  if [ "$QA_MODE" = "code" ]; then
+    log "[qa] code-review QA (non-visual sub-ticket)..."
+    QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa-code.md" \
+      TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI" DIFF_FILE "$ARTI/changes.diff")"
   else
-    log "[qa] gemini unavailable — falling back to claude for visual QA"
+    log "[qa] visual QA (screenshots)..."
+    QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
+      TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
+  fi
+  if run_gemini "$QA_PROMPT" "$ARTI/qa.txt" && ! gemini_unavailable "$ARTI/qa.txt"; then
+    log "[qa] verified by gemini-flash ($QA_MODE)"
+  else
+    log "[qa] gemini unavailable — falling back to claude"
     run_claude "$QA_PROMPT" "$ARTI/qa.txt"
   fi
 

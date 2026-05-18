@@ -21,6 +21,11 @@ YOUR JOB — break the top-level ticket into small SUB-TICKETS:
    - a `## Acceptance Criteria` section with a concrete, checkable bullet list,
    - a `## Technical Specs` section naming the exact files under `game/` to
      change and the key implementation details.
+   - a `## Verification: visual` OR `## Verification: code` line — use
+     `visual` if the change is observable in the running game (UI, rendering,
+     on-screen behaviour — it will be checked from screenshots); use `code` if
+     it is server-side / logic / otherwise non-visual (it will be checked from
+     the code diff and the server/console logs, not screenshots).
 
 RULES:
 - Do NOT write any game code in this step. Only create the sub-ticket folders

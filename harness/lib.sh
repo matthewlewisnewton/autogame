@@ -31,9 +31,9 @@ log() { echo "[$(date '+%F %T')] $*"; }
 GAME_PIDS=()
 start_game() {  # start_game <logdir>
   local logdir="$1"
-  ( node game/server/index.js ) >"$logdir/server.log" 2>&1 &
+  ( node game/server/index.js ) </dev/null >"$logdir/server.log" 2>&1 &
   GAME_PIDS+=("$!")
-  ( cd game/client && npx vite --port 5173 --strictPort ) >"$logdir/client.log" 2>&1 &
+  ( cd game/client && npx vite --port 5173 --strictPort ) </dev/null >"$logdir/client.log" 2>&1 &
   GAME_PIDS+=("$!")
 }
 
@@ -75,8 +75,12 @@ _run_cli() {
   local label="$1" out="$2" tmo="$3"; shift 3
   local attempt=1 rc
   while :; do
-    timeout "$tmo" "$@" >"$out" 2>&1; rc=$?
-    if [ "$rc" -ne 124 ] && [ -s "$out" ]; then
+    # </dev/null: a CLI that reads stdin (gemini -p does) must NOT inherit the
+    #   harness's TTY — a backgrounded process reading a TTY gets SIGTTIN and
+    #   hangs in stopped state. -k 30: SIGKILL 30s after the SIGTERM so a wedged
+    #   or stopped process is always reaped (rc 124 = SIGTERM'd, 137 = SIGKILL'd).
+    timeout -k 30 "$tmo" "$@" </dev/null >"$out" 2>&1; rc=$?
+    if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ]; then
       return 0
     fi
     if [ "$attempt" -gt "$CLI_RETRIES" ]; then

@@ -30,7 +30,8 @@ io.on('connection', (socket) => {
     z: 0,
     rotation: 0,
     deck: [],
-    hp: 100
+    hp: 100,
+    lastActivity: Date.now()
   };
 
   socket.emit('init', { id: socket.id, state: gameState });
@@ -41,6 +42,7 @@ io.on('connection', (socket) => {
       gameState.players[socket.id].y = data.y;
       gameState.players[socket.id].z = data.z;
       gameState.players[socket.id].rotation = data.rotation;
+      gameState.players[socket.id].lastActivity = Date.now();
     }
   });
 

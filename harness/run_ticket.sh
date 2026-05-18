@@ -88,7 +88,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   mkdir -p "$RDIR"
   start_game "$RDIR"
   if wait_for_game 45; then
-    node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$RDIR" > "$RDIR/screenshot.log" 2>&1
+    node "$HARNESS_DIR/screenshot.mjs" "$GAME_URL" "$RDIR" </dev/null > "$RDIR/screenshot.log" 2>&1
   else
     echo '{"ok":false,"error":"servers did not start"}' > "$RDIR/metrics.json"
   fi
