@@ -51,13 +51,18 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   # job, not something we rely on qwen's in-session compaction to preserve.
   if [ "$(stat -c %Y "$HANDOFF" 2>/dev/null || echo 0)" = "$handoff_before" ]; then
     log "[handoff] no handoff left by qwen — harness synthesizing one"
+    coder_reason="$(cli_failure_reason "$coder_rc" "$ARTI/qwen.txt")"
     {
       printf '## Harness fallback handoff — attempt %d did not finish cleanly\n\n' "$iter"
-      printf 'The previous attempt left no handoff note — it likely ran out of\n'
-      printf 'context, timed out, or errored. Inspect the working tree under `game/`\n'
-      printf 'for partial changes and continue this sub-ticket from there.\n\n'
+      printf 'The previous attempt left no handoff note. Harness classification: `%s`.\n' "$coder_reason"
+      printf 'Inspect the working tree under `game/` for partial changes and continue\n'
+      printf 'this sub-ticket from there.\n\n'
       printf 'Tail of the previous attempt log:\n\n```\n'
-      tail -n 40 "$ARTI/qwen.txt" 2>/dev/null
+      if cli_output_is_only_error "$ARTI/qwen.txt"; then
+        printf '[model/tool error only — no useful implementation handoff was produced]\n'
+      else
+        tail -n 40 "$ARTI/qwen.txt" 2>/dev/null
+      fi
       printf '\n```\n'
     } > "$HANDOFF"
   fi
