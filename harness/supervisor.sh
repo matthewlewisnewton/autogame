@@ -30,6 +30,19 @@ while :; do
   tags_after="$(git tag -l 'v0.*' | wc -l | tr -d ' ')"
   slog ">>> backlog run exited rc=$rc (completed tickets: $tags_before -> $tags_after)"
 
+  # Escalation strikes DECAY with progress: every ticket that completed this
+  # run pays back one strike (floored at 0). So escalations is "failures not
+  # yet offset by successes", not "failures ever" — a loop that keeps shipping
+  # tickets is never halted by old, already-recovered hiccups, but a genuine
+  # run of failures with no progress between them still trips MAX_ESCALATIONS.
+  completed=$(( tags_after - tags_before ))
+  if [ "$completed" -gt 0 ] && [ "$escalations" -gt 0 ]; then
+    prev_esc="$escalations"
+    escalations=$(( escalations - completed ))
+    [ "$escalations" -lt 0 ] && escalations=0
+    slog ">>> $completed ticket(s) completed — escalation strikes $prev_esc -> $escalations"
+  fi
+
   if [ "$rc" -eq 0 ]; then
     slog "######## supervisor: backlog complete — all tickets done ########"
     exit 0

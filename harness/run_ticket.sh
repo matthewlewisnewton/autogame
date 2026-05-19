@@ -281,11 +281,22 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   emit_progress_event "decompose_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
   DECOMP_PROMPT="$(render_prompt "$PROMPTS_DIR/decompose.md" \
     TICKET_FILE "$TICKET_FILE" SUBTICKETS_DIR "$SUBROOT" REMEDIATION "$REMEDIATION")"
-  run_qwen "$DECOMP_PROMPT" "$TDIR/decompose-round-$round.txt"
+  run_qwen "$DECOMP_PROMPT" "$TDIR/decompose-round-$round.txt"; decomp_rc=$?
   verify_reviews
 
-  # Fallback: if no sub-tickets exist, treat the ticket itself as one.
+  # No sub-tickets produced — decide WHY before falling back.
+  #  - decomp_rc == 0: qwen ran fine and simply chose not to split. A legitimate
+  #    "this ticket is small enough to do directly" — fall back to the whole
+  #    ticket as a single sub-task.
+  #  - decomp_rc != 0: the decompose call itself FAILED (timeout/crash/empty
+  #    output). That is a tool failure, NOT that decision. Running the monolith
+  #    then just burns all MAX_ITER sub-task iterations on a too-big task — so
+  #    re-attempt the decomposition on the next round instead.
   if ! ls -d "$SUBROOT"/*/ >/dev/null 2>&1; then
+    if [ "$decomp_rc" -ne 0 ]; then
+      log "[decompose] decomposition call FAILED (rc=$decomp_rc) — not a 'ticket is atomic' decision; re-decomposing next round"
+      continue
+    fi
     log "[decompose] no sub-tickets produced — using the ticket as a single sub-task"
     mkdir -p "$SUBROOT/01-main"
     cp "$TICKET_FILE" "$SUBROOT/01-main/ticket.md"
