@@ -1274,3 +1274,85 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		expect(gameState.players[socket2.id].selectedDeck).not.toContain('flame_blade'); // B removed it
 	});
 });
+
+describe('Server Ready Validation and Deck-to-Hand', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('client receives init event containing selectedDeck and ownedCards', async () => {
+		const result = await connectClient(baseUrl);
+		const init = result.init;
+		const testSocket = result.socket;
+
+		expect(init).toHaveProperty('selectedDeck');
+		expect(Array.isArray(init.selectedDeck)).toBe(true);
+		expect(init.selectedDeck.length).toBeGreaterThan(0);
+		expect(init).toHaveProperty('ownedCards');
+		expect(typeof init.ownedCards).toBe('object');
+
+		testSocket.disconnect();
+		await sleep(50);
+	});
+
+	it('ready is rejected with deckError when deck is too small', async () => {
+		// Shrink socket1's deck below DECK_MIN_SIZE
+		gameState.players[socket1.id].selectedDeck = ['iron_sword', 'flame_blade'];
+
+		const deckErrorPromise = waitForEvent(socket1, 'deckError');
+
+		socket1.emit('playerReady', true);
+
+		const err = await deckErrorPromise;
+		expect(err).toHaveProperty('reason');
+		expect(err.reason).toContain('at least');
+
+		// player.ready should remain false
+		expect(gameState.players[socket1.id].ready).toBe(false);
+	});
+
+	it('a valid selected deck populates player.deck when the run starts', async () => {
+		// Ensure both players have valid default decks (4 cards each)
+		const deck1 = [...gameState.players[socket1.id].selectedDeck];
+		const deck2 = [...gameState.players[socket2.id].selectedDeck];
+
+		// Wait for startGame on both sockets
+		const startGamePromise1 = waitForEvent(socket1, 'startGame');
+		const startGamePromise2 = waitForEvent(socket2, 'startGame');
+
+		// Both players ready up
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+
+		// Wait for startGame
+		await Promise.all([startGamePromise1, startGamePromise2]);
+
+		// Wait for stateUpdate broadcast after game start
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+		const stateUpdate = await stateUpdatePromise;
+
+		// Verify each player has a populated deck
+		expect(stateUpdate.players[socket1.id]).toBeDefined();
+		expect(Array.isArray(stateUpdate.players[socket1.id].deck)).toBe(true);
+		expect(stateUpdate.players[socket1.id].deck.length).toBe(deck1.length);
+
+		// The deck should contain the same card ids as selectedDeck (shuffled)
+		const deck1Sorted = [...stateUpdate.players[socket1.id].deck].sort();
+		const selected1Sorted = [...deck1].sort();
+		expect(deck1Sorted).toEqual(selected1Sorted);
+
+		expect(stateUpdate.players[socket2.id]).toBeDefined();
+		expect(Array.isArray(stateUpdate.players[socket2.id].deck)).toBe(true);
+		expect(stateUpdate.players[socket2.id].deck.length).toBe(deck2.length);
+	});
+});
