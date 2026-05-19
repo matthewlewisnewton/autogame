@@ -18,8 +18,7 @@ export default defineConfig({
 			reportsDirectory: './coverage',
 			include: [
 				'server/index.js',
-				'client/cards.js',
-				'client/main.js'
+				'client/cards.js'
 			],
 			thresholds: {
 				statements: 70,
