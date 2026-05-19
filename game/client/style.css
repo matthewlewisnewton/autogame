@@ -354,6 +354,7 @@ canvas {
   text-align: center;
   white-space: pre-line;
   line-height: 1.4;
+  display: none;
 }
 
 /* ── Run Summary Overlay ── */
