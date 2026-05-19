@@ -13,12 +13,20 @@
   --purple: #c7a5ff;
 }
 
+html,
+body {
+  height: 100%;
+}
+
 * {
   box-sizing: border-box;
 }
 
 body {
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   background: radial-gradient(circle at top left, #14233b, var(--bg) 42%);
   color: var(--text);
   font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -60,20 +68,93 @@ h1 {
 }
 
 .gpu {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(260px, 1fr));
+  gap: 8px;
   color: var(--muted);
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 6px 12px;
   font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  max-width: 460px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  max-width: min(760px, 62vw);
 }
 
 .gpu.active {
   color: var(--gold);
-  border-color: rgba(255, 209, 102, 0.45);
+}
+
+.gpu-card {
+  min-width: 0;
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 12px;
+  padding: 8px;
+  background: rgba(5, 7, 13, 0.62);
+  box-shadow: inset 0 0 0 1px rgba(255, 209, 102, 0.04);
+}
+
+.gpu-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  color: var(--text);
+}
+
+.gpu-card-head strong {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+.gpu-card-head span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpu-readouts {
+  display: grid;
+  grid-template-columns: 44px 1fr 42px 72px;
+  gap: 6px;
+  margin: 6px 0;
+  color: #b9c5d8;
+}
+
+.gpu-util {
+  color: var(--green);
+  font-weight: 800;
+}
+
+.gpu-sparks {
+  display: grid;
+  gap: 3px;
+}
+
+.gpu-sparks > div {
+  display: grid;
+  grid-template-columns: 28px 1fr;
+  align-items: center;
+  gap: 6px;
+}
+
+.gpu-sparks span {
+  color: var(--muted);
+  font-size: 10px;
+}
+
+.gpu-spark {
+  width: 100%;
+  height: 18px;
+  border: 1px solid rgba(38, 50, 68, 0.85);
+  border-radius: 5px;
+  background: #05070d;
+  overflow: hidden;
+}
+
+.gpu-spark-gpuUtil rect {
+  fill: rgba(61, 220, 151, 0.82);
+}
+
+.gpu-spark-memUtil rect {
+  fill: rgba(124, 183, 255, 0.72);
 }
 
 .status.live {
@@ -82,15 +163,18 @@ h1 {
 }
 
 .layout {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(420px, 47vw) minmax(420px, 1fr);
-  height: calc(100vh - 82px);
   gap: 14px;
   padding: 14px;
 }
 
 .stage,
 .feed {
+  display: flex;
+  flex-direction: column;
   min-height: 0;
   overflow: hidden;
   border: 1px solid var(--line);
@@ -125,18 +209,26 @@ h1 {
 }
 
 .stage-body {
-  height: calc(100% - 130px);
+  flex: 1;
+  min-height: 0;
   display: grid;
   place-items: center;
   background: #05070d;
+  overflow: hidden;
 }
 
 .stage-body img,
 .stage-body iframe {
-  width: 100%;
-  height: 100%;
+  display: block;
+  max-width: 100%;
+  max-height: 100%;
   border: 0;
   object-fit: contain;
+}
+
+.stage-body iframe {
+  width: 100%;
+  height: 100%;
 }
 
 .empty {
@@ -145,8 +237,67 @@ h1 {
   text-align: center;
 }
 
+.missing-artifact {
+  display: grid;
+  gap: 8px;
+  max-width: min(560px, 90%);
+  padding: 18px;
+  border: 1px solid rgba(255, 107, 107, 0.35);
+  border-radius: 14px;
+  background: rgba(255, 107, 107, 0.08);
+  color: var(--muted);
+  text-align: center;
+}
+
+.missing-artifact strong {
+  color: var(--red);
+}
+
+.missing-artifact code {
+  overflow-wrap: anywhere;
+  color: #cfdaea;
+  font: 11px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.stage-fallback {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 12px;
+  padding: 14px;
+}
+
+.stage-fallback .missing-artifact {
+  justify-self: center;
+}
+
+.fallback-diff {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.fallback-diff-title {
+  flex: 0 0 auto;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font: 12px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.fallback-diff .diff {
+  flex: 1;
+  min-height: 0;
+  margin-top: 0;
+  max-height: none;
+}
+
 .stage-meta {
+  flex: 0 0 auto;
   min-height: 80px;
+  max-height: 130px;
   padding: 12px 14px;
   border-top: 1px solid var(--line);
   color: var(--muted);
@@ -158,6 +309,7 @@ h1 {
 }
 
 .current {
+  flex: 0 0 auto;
   margin: 12px;
   padding: 12px;
   border-radius: 12px;
@@ -167,7 +319,8 @@ h1 {
 }
 
 .events {
-  height: calc(100% - 104px);
+  flex: 1;
+  min-height: 0;
   overflow: auto;
   padding: 0 12px 12px;
 }
@@ -257,9 +410,21 @@ h1 {
 }
 
 @media (max-width: 980px) {
+  .topbar,
+  .top-status {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .gpu {
+    grid-template-columns: 1fr;
+    max-width: none;
+  }
+
   .layout {
     grid-template-columns: 1fr;
     height: auto;
+    overflow: auto;
   }
 
   .stage,
