@@ -1000,6 +1000,21 @@ function disposeMeshMap(map, targetScene, skipDispose) {
 	}
 }
 
+/**
+ * Find and dispose meshes in a map whose ids are no longer present in currentIds.
+ * Iterates, disposes, and deletes in a single pass — no temporary objects allocated.
+ * @param {Object} map - object mapping ids to THREE.Mesh instances
+ * @param {Set<string>} currentIds - set of ids that are still valid
+ * @param {THREE.Scene} targetScene - scene to remove meshes from
+ */
+function disposeStaleMeshes(map, currentIds, targetScene) {
+	for (const id of Object.keys(map)) {
+		if (!currentIds.has(id)) {
+			disposeOne(map, id, targetScene);
+		}
+	}
+}
+
 // ── Loot mesh sync & animation ──
 
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
@@ -1585,37 +1600,15 @@ function animate(timestamp) {
     }
 
     // Clean up removed enemies (also clean up health bars and previous HP tracking)
-    {
-      const staleIds = [];
-      for (const id of Object.keys(enemiesMeshes)) {
-        if (!currentEnemyIds.has(id)) staleIds.push(id);
-      }
-      const staleEnemies = {};
-      for (const id of staleIds) staleEnemies[id] = enemiesMeshes[id];
-      disposeMeshMap(staleEnemies, scene);
-      for (const id of staleIds) delete enemiesMeshes[id];
-    }
-    {
-      const staleIds = [];
-      for (const id of Object.keys(enemyHealthBars)) {
-        if (!currentEnemyIds.has(id)) staleIds.push(id);
-      }
-      const staleBars = {};
-      for (const id of staleIds) staleBars[id] = enemyHealthBars[id];
-      disposeMeshMap(staleBars, scene);
-      for (const id of staleIds) delete enemyHealthBars[id];
-    }
+    disposeStaleMeshes(enemiesMeshes, currentEnemyIds, scene);
+    disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
     for (const id of Object.keys(previousEnemyHp)) {
       if (!currentEnemyIds.has(id)) {
         delete previousEnemyHp[id];
       }
     }
     // Clean up telegraph meshes for removed enemies
-    for (const id of Object.keys(telegraphMeshes)) {
-      if (!currentEnemyIds.has(id)) {
-        disposeOne(telegraphMeshes, id, scene);
-      }
-    }
+    disposeStaleMeshes(telegraphMeshes, currentEnemyIds, scene);
     // Clean up windupFlashing entries for removed enemies
     for (const id of [...windupFlashing]) {
       if (!currentEnemyIds.has(id)) {
@@ -1638,16 +1631,7 @@ function animate(timestamp) {
     }
 
     // Clean up removed minions
-    {
-      const staleIds = [];
-      for (const id of Object.keys(minionsMeshes)) {
-        if (!currentMinionIds.has(id)) staleIds.push(id);
-      }
-      const staleMinions = {};
-      for (const id of staleIds) staleMinions[id] = minionsMeshes[id];
-      disposeMeshMap(staleMinions, scene);
-      for (const id of staleIds) delete minionsMeshes[id];
-    }
+    disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
 
     // ── Loot mesh sync ──
     syncLootMeshes();
