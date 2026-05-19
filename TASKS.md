@@ -30,7 +30,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [016-loot-and-currency](tickets/016-loot-and-currency/)
 
 ## Backlog — Testing
-- [ ] [017-test-coverage](tickets/017-test-coverage/)
+- [x] [017-test-coverage](tickets/017-test-coverage/)
 
 ## Backlog — Playability
 - [ ] [025-dungeon-run-objectives](tickets/025-dungeon-run-objectives/)
@@ -41,6 +41,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
 - [ ] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
 - [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
