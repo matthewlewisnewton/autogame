@@ -79,11 +79,6 @@ const THREE = {
 	DoubleSide: 2,
 };
 
-// Named exports
-for (const key of Object.keys(THREE)) {
-	THREE[key] = THREE[key];
-}
-
 // ── Mock socket.io-client ──
 const emitLog = [];
 const handlerLog = {}; // event -> array of callbacks
