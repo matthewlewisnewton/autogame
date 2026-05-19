@@ -3,8 +3,16 @@ import { vi } from 'vitest';
 // ── Mock Three.js ──
 function stubClass(name) {
 	class C {
-		constructor() {
+		constructor(...args) {
 			Object.defineProperty(this, '_name', { value: name });
+			// Mesh constructor: (geometry, material) — store the passed material
+			if (name === 'Mesh' && args.length >= 2 && args[1]) {
+				this.material = args[1];
+			}
+			// MeshStandardMaterial constructor: (options) — store properties
+			if (name === 'MeshStandardMaterial' && args[0] && typeof args[0] === 'object') {
+				Object.assign(this, args[0]);
+			}
 		}
 	}
 	C.prototype.position = {
@@ -65,6 +73,7 @@ const THREE = {
 	CylinderGeometry: stubClass('CylinderGeometry'),
 	ConeGeometry: stubClass('ConeGeometry'),
 	PlaneGeometry: stubClass('PlaneGeometry'),
+	IcosahedronGeometry: stubClass('IcosahedronGeometry'),
 	MeshStandardMaterial: stubClass('MeshStandardMaterial'),
 	Mesh: stubClass('Mesh'),
 	DoubleSide: 2,
