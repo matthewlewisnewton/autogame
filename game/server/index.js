@@ -469,11 +469,58 @@ function checkRunTerminalState() {
   }
 }
 
+/**
+ * Clear all transient run entities (enemies, minions, loot).
+ * Does NOT regenerate the dungeon layout — layout is session-level.
+ */
+function resetTransientRunState() {
+  gameState.enemies = [];
+  gameState.minions = [];
+  gameState.loot = [];
+}
+
+/**
+ * Full lobby reset: clear transient state, restore players to lobby,
+ * and broadcast the updated state to all connected clients.
+ */
+function returnPlayersToLobby() {
+  // 1. Clear transient run entities
+  resetTransientRunState();
+
+  // 2. Reset game phase and delete run object
+  gameState.gamePhase = 'lobby';
+  delete gameState.run;
+
+  // 3. Reset every player: position, HP, readiness — preserve currency + inventory
+  const spawn = firstRoomPosition();
+  for (const playerId of Object.keys(gameState.players)) {
+    const player = gameState.players[playerId];
+    const preservedCurrency = player.currency;
+    const preservedInventory = player.inventory;
+
+    player.ready = false;
+    player.dead = false;
+    player.hp = 100;
+    player.x = spawn.x;
+    player.y = 0.5;
+    player.z = spawn.z;
+    player.currency = preservedCurrency;
+    player.inventory = preservedInventory;
+  }
+
+  // 4. Broadcast state to all clients
+  io.emit('stateUpdate', stateSnapshot());
+
+  // 5. Update lobby UI
+  broadcastLobbyUpdate();
+}
+
 // Helper: check if all players are ready and transition if so
 function checkAllReady() {
   const all = Object.values(gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
     gameState.gamePhase = 'playing';
+    spawnEnemies();
     startDungeonRun();
     io.emit('startGame');
   }
@@ -564,6 +611,7 @@ function ensureNearbyEnemy(x, z) {
 function enterPlayingPhase() {
   if (gameState.gamePhase !== 'playing') {
     gameState.gamePhase = 'playing';
+    spawnEnemies();
     startDungeonRun();
     io.emit('startGame');
   }
@@ -982,6 +1030,10 @@ function startServer(port) {
     }
   });
 
+  socket.on('returnToLobby', () => {
+    returnPlayersToLobby();
+  });
+
   socket.on('debugScenario', (data) => {
     const name = data && typeof data.name === 'string' ? data.name : '';
     if (!isDebugScenarioAllowed(socket)) {
@@ -1063,7 +1115,6 @@ _intervals.push(staleCleanupId);
 const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
 server.listen(listenPort, () => {
   console.log(`Server listening on port ${listenPort}`);
-  spawnEnemies();
 });
 }
 
@@ -1093,6 +1144,8 @@ if (typeof module !== 'undefined' && module.exports) {
     clampObjectiveProgress,
     buildRunSummary,
     checkRunTerminalState,
+    resetTransientRunState,
+    returnPlayersToLobby,
     // Server objects for integration tests
     server,
     io,

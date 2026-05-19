@@ -327,9 +327,19 @@ socket.on('stateUpdate', (state) => {
   gameState = state;
   if (gameState && currentLayout) gameState.layout = currentLayout;
 
-  // Hide run summary overlay when returning to lobby
-  if (state.gamePhase === 'lobby' && runSummaryOverlay) {
-    runSummaryOverlay.style.display = 'none';
+  // Return to lobby: switch UI back to lobby view
+  if (state.gamePhase === 'lobby') {
+    if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
+    if (uiEl) uiEl.style.display = 'none';
+    if (cardHandEl) cardHandEl.style.display = 'none';
+    if (lobbyEl) lobbyEl.classList.remove('hidden');
+  }
+
+  // Entering gameplay: ensure HUD is visible (symmetric with lobby branch above)
+  if (state.gamePhase === 'playing') {
+    if (uiEl) uiEl.style.display = 'block';
+    if (cardHandEl) cardHandEl.style.display = 'flex';
+    if (lobbyEl) lobbyEl.classList.add('hidden');
   }
 
   // Update currency HUD
@@ -624,13 +634,44 @@ readyBtn.addEventListener('click', () => {
 });
 
 socket.on('startGame', () => {
-  if (sceneInitialized) return; // Guard: only init once
+  // Always transition UI to gameplay view (needed for subsequent runs after lobby return)
   lobbyEl.classList.add('hidden');
   uiEl.style.display = 'block';
   cardHandEl.style.display = 'flex';
-  initHand();
-  initScene();
   updateObjectiveHud();
+
+  if (!sceneInitialized) {
+    initHand();
+    initScene();
+    return;
+  }
+
+  // Subsequent run: re-init hand with a fresh draw, reset local position to spawn
+  // Also clean up meshes from the previous run
+  initHand();
+  myX = spawnPosition.x;
+  myZ = spawnPosition.z;
+  velocityX = 0;
+  velocityZ = 0;
+  playerRotation = 0;
+  wasDead = false;
+
+  // Dispose previous run's enemy meshes
+  for (const id of Object.keys(enemiesMeshes)) {
+    if (scene) scene.remove(enemiesMeshes[id]);
+    enemiesMeshes[id].geometry.dispose();
+    enemiesMeshes[id].material.dispose();
+    delete enemiesMeshes[id];
+  }
+  // Dispose previous run's minion meshes
+  for (const id of Object.keys(minionsMeshes)) {
+    if (scene) scene.remove(minionsMeshes[id]);
+    minionsMeshes[id].geometry.dispose();
+    minionsMeshes[id].material.dispose();
+    delete minionsMeshes[id];
+  }
+  // Dispose previous run's loot meshes
+  disposeAllLootMeshes();
 });
 
 // ── Run Summary Overlay ──
