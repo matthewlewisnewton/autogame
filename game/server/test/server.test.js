@@ -1443,6 +1443,22 @@ describe('run state', () => {
 			const lobbyUpdateCalls = emitCalls.filter(c => c.event === 'lobbyUpdate');
 			expect(lobbyUpdateCalls.length).toBeGreaterThan(0);
 		});
+
+		it('clears pendingSummons for all players', () => {
+			addPlayer('p1');
+			gameState.players['p1'].pendingSummons.add('0:iron_sword');
+			gameState.players['p1'].pendingSummons.add('1:fireball');
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			expect(gameState.players['p1'].pendingSummons.size).toBe(0);
+		});
 	});
 
 	describe('createPlayerProgress()', () => {

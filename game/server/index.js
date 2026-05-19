@@ -511,6 +511,7 @@ function returnPlayersToLobby() {
     player.ownedCards = preservedOwnedCards;
     player.runRewards = preservedRunRewards;
     player.currencyEarnedThisRun = 0;
+    player.pendingSummons.clear();
   }
 
   // 4. Broadcast state to all clients
