@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Walk every unchecked top-level ticket in TASKS.md, running each to completion.
+# Drive the TASKS.md backlog to completion.
 #
-# The backlog NEVER advances past a ticket until that ticket is actually
-# complete: later tickets can depend on its behaviour, so building on top of an
-# unsolved one is unsafe. An incomplete ticket is retried — a fresh
-# run_ticket.sh invocation, each of which is itself 10 remediation rounds + a
-# claude rescue — until it passes. Only a harness/tool failure stops the run.
+# Each pass RE-READS TASKS.md and runs the first still-unchecked ticket. The
+# backlog never advances past a ticket until it is solved:
+#   - an INCOMPLETE ticket is retried (it stays unchecked, so it is re-picked);
+#   - a ticket that cannot be solved as one unit is SPLIT by run_ticket.sh into
+#     smaller tickets that take its place in TASKS.md — re-reading the file
+#     every pass is what flows those (and any other mid-run additions, e.g.
+#     nit-cleanup tickets) back into the queue.
+# Only a harness/tool failure stops the run.
 #
 #   harness/run_backlog.sh
 #
@@ -14,36 +17,34 @@
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
 
-mapfile -t TICKETS < <(grep -oE '^- \[ \] \[[^]]+\]' TASKS.md | sed -E 's/^- \[ \] \[//; s/\]$//')
+next_ticket() {  # prints the first unchecked ticket name in TASKS.md, or nothing
+  grep -oE '^- \[ \] \[[^]]+\]' TASKS.md | sed -E 's/^- \[ \] \[//; s/\]$//' | head -1
+}
 
-log "=== backlog run: ${#TICKETS[@]} ticket(s) queued ==="
-[ "${#TICKETS[@]}" -eq 0 ] && { log "no unchecked tickets in TASKS.md — nothing to do"; exit 0; }
-
-PASSED=()
-for name in "${TICKETS[@]}"; do
-  # Retry until solved — a failed ticket is never skipped.
-  attempt=1
-  while :; do
-    log ">>> ticket: $name (attempt $attempt)"
-    bash "$HARNESS_DIR/run_ticket.sh" "$name"; rc=$?
-    case "$rc" in
-      0)
-        PASSED+=("$name")
-        log ">>> COMPLETE: $name (attempt $attempt)"
-        break
-        ;;
-      2)
-        log ">>> HARNESS/TOOL FAILURE on: $name — stopping backlog for escalation"
-        log "=== summary: completed ${#PASSED[@]} (${PASSED[*]:-none}); aborted on tool failure ==="
-        exit 2
-        ;;
-      *)
-        log ">>> INCOMPLETE: $name — attempt $attempt did not solve it; retrying. The backlog will not advance past an unsolved ticket."
-        attempt=$((attempt + 1))
-        sleep 30
-        ;;
-    esac
-  done
+COMPLETED=0
+while :; do
+  name="$(next_ticket)"
+  [ -n "$name" ] || break
+  log ">>> ticket: $name"
+  bash "$HARNESS_DIR/run_ticket.sh" "$name"; rc=$?
+  case "$rc" in
+    0)
+      COMPLETED=$((COMPLETED + 1))
+      log ">>> COMPLETE: $name"
+      ;;
+    2)
+      log ">>> HARNESS/TOOL FAILURE on: $name — stopping backlog for escalation"
+      log "=== summary: $COMPLETED ticket(s) completed before the tool failure ==="
+      exit 2
+      ;;
+    3)
+      log ">>> SPLIT: $name restructured into smaller tickets — re-scanning backlog"
+      ;;
+    *)
+      log ">>> INCOMPLETE: $name — retrying; the backlog will not advance past an unsolved ticket"
+      sleep 30
+      ;;
+  esac
 done
 
-log "=== backlog finished — all ${#PASSED[@]} ticket(s) complete: ${PASSED[*]:-none} ==="
+log "=== backlog finished — $COMPLETED ticket(s) completed; no unchecked tickets remain ==="

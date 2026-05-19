@@ -16,14 +16,15 @@
 # a new low-priority backlog ticket so they get cleaned up without blocking.
 #
 # If the rounds are exhausted, claude makes a last-resort RESCUE pass and
-# implements the remaining fixes itself. If the ticket still cannot be
-# completed, the BASELINE is protected: a game left in a broken (non-running)
-# state is reverted to the ticket's starting commit, so later tickets are never
-# built on top of a broken game.
+# implements the remaining fixes itself. If the ticket STILL cannot be
+# completed, claude SPLITS it: the working tree is reset to the ticket's
+# starting commit and the ticket is carved into smaller, independently-solvable
+# top-level tickets that take its place in the backlog (so a ticket too big to
+# land in one piece is broken down until the pieces are individually solvable).
 #
 #   harness/run_ticket.sh <ticket-name>
 #
-# Exit: 0 = complete (committed + tagged)   1 = not completed   2 = tool failure
+# Exit: 0 = complete   1 = not completed   2 = tool failure   3 = ticket split
 
 set -uo pipefail
 source "$(dirname "$0")/lib.sh"
@@ -31,7 +32,7 @@ source "$(dirname "$0")/lib.sh"
 NAME="${1:?usage: run_ticket.sh <ticket-name>}"
 TDIR="tickets/$NAME"
 TICKET_FILE="$TDIR/ticket.md"
-[ -f "$TICKET_FILE" ] || { log "ERROR: $TICKET_FILE not found"; exit 1; }
+[ -f "$TICKET_FILE" ] || { log "ERROR: $TICKET_FILE not found"; exit 2; }
 
 SUBROOT="$TDIR/subtickets"
 REVIEW_FB="$TDIR/review-feedback.md"   # CURRENT compact open-gaps list for qwen
@@ -192,6 +193,73 @@ finalize() {  # finalize <artifacts_dir> <review_file>
   return 0
 }
 
+# The ticket could not be solved as one unit (all remediation rounds + a claude
+# rescue failed). Have claude carve it into smaller, independently-solvable
+# top-level tickets that replace it in the backlog. The working tree is reset
+# to BASE_REF first, so each child is implemented fresh from the ticket's clean
+# starting point. Returns 0 if a split (>=2 tickets) was filed, else 1.
+split_ticket() {
+  local sout="$TDIR/split.md" prompt tmpd chunk title slug num nm
+  local names=() childblock=""
+  prompt="$(render_prompt "$PROMPTS_DIR/split.md" \
+    TICKET_FILE "$TICKET_FILE" REVIEW_FB "$REVIEW_FB" \
+    BASE_REF "$BASE_REF" ROUNDS "$TICKET_MAX_ROUNDS" SPLIT_OUT "$sout")"
+  : > "$sout"
+  log "[split] claude restructuring $NAME into smaller tickets..."
+  if ! run_claude "$prompt" "$TDIR/split-claude.txt"; then
+    log "[tool-failure] claude split pass unavailable — escalating"
+    exit 2
+  fi
+  if [ ! -s "$sout" ]; then
+    log "[split] claude produced no split plan"
+    return 1
+  fi
+  # Discard the failed attempt — children are built fresh from the baseline.
+  git reset --hard "$BASE_REF" >/dev/null 2>&1
+  chmod -R u+w "$REVIEWS_DIR" "$TDIR"/review-round-* "$TDIR"/rescue "$TDIR"/rescue-review 2>/dev/null || true
+  rm -rf "$SUBROOT" "$REVIEW_FB" "$REVIEWS_DIR" "$TDIR"/review-round-* "$TDIR"/rescue "$TDIR"/rescue-review 2>/dev/null || true
+  # Carve the split file (tickets separated by ===NEXT TICKET===) into chunks.
+  tmpd="$(mktemp -d)"
+  awk -v d="$tmpd" 'BEGIN{n=1} /^===NEXT TICKET===[[:space:]]*$/{n++; next} {print > (d "/" sprintf("%03d", n))}' "$sout"
+  for chunk in "$tmpd"/*; do
+    [ -s "$chunk" ] || continue
+    title="$(grep -m1 '^#\+ ' "$chunk" | sed 's/^#\+[[:space:]]*//')"
+    [ -n "$title" ] || continue
+    slug="$(printf '%s' "$title" | tr 'A-Z' 'a-z' | tr -cs 'a-z0-9' '-' | sed 's/^-*//; s/-*$//' | cut -c1-40 | sed 's/-*$//')"
+    [ -n "$slug" ] || continue
+    num="$(ls -d tickets/*/ 2>/dev/null | sed -nE 's#^tickets/([0-9]{3})-.*#\1#p' | sort -n | tail -1)"
+    [ -n "$num" ] || num=000
+    num="$(printf '%03d' "$(( 10#$num + 1 ))")"
+    mkdir -p "tickets/$num-$slug"
+    cp "$chunk" "tickets/$num-$slug/ticket.md"
+    names+=("$num-$slug")
+    childblock+="- [ ] [$num-$slug](tickets/$num-$slug/)"$'\n'
+  done
+  rm -rf "$tmpd"
+  if [ "${#names[@]}" -lt 2 ]; then
+    log "[split] claude did not produce 2+ usable tickets — no split filed"
+    for nm in ${names[@]+"${names[@]}"}; do rm -rf "tickets/$nm"; done
+    return 1
+  fi
+  # Replace the parent's backlog line in TASKS.md with the child tickets.
+  awk -v parent="$NAME" -v children="$childblock" '
+    index($0, "- [ ] [" parent "]") == 1 { printf "%s", children; next }
+    { print }
+  ' TASKS.md > "$TDIR/.tasks.tmp" && mv "$TDIR/.tasks.tmp" TASKS.md
+  git add TASKS.md
+  for nm in "${names[@]}"; do git add "tickets/$nm"; done
+  git commit -q -m "harness: split $NAME into ${#names[@]} smaller tickets
+
+$NAME could not be completed in $TICKET_MAX_ROUNDS remediation rounds
+plus a claude rescue. Restructured into independently-solvable tickets,
+which replace it in the backlog:
+$(printf -- '  - %s\n' "${names[@]}")
+autogame" || log "[split] warning: commit of the split failed"
+  log "[split] $NAME -> ${names[*]}"
+  emit_progress_event "ticket_split" "{\"ticket\":$(json_string "$NAME"),\"into\":$(json_string "${names[*]}")}"
+  return 0
+}
+
 # --- remediation rounds ---------------------------------------------------
 
 for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
@@ -327,18 +395,13 @@ if is_pass "$REVIEW_OUT" && finalize "$RDIR" "$REVIEW_OUT"; then
   exit 0
 fi
 
-# --- 5. BASELINE PROTECTION — never advance the backlog on a broken game ---
-log "[gate] $NAME could not be completed — checking game health before moving on"
-if game_smoke_ok "$RDIR"; then
-  log "########## $NAME INCOMPLETE — game still runs; committed work kept, ticket left open ##########"
-  exit 1
+# --- 5. SPLIT — the ticket could not be solved as one unit; claude carves it
+#        into smaller, independently-solvable tickets that replace it. ---
+log "[split] $NAME unsolved after $TICKET_MAX_ROUNDS rounds + claude rescue — restructuring"
+emit_progress_event "split_start" "{\"ticket\":$(json_string "$NAME")}"
+if split_ticket; then
+  log "########## $NAME SPLIT — smaller tickets queued; backlog will pick them up ##########"
+  exit 3
 fi
-if ! confirm_game_broken "$RDIR" "$TDIR/baseline-protection-confirm-smoke"; then
-  log "########## $NAME INCOMPLETE — confirmation smoke passed; committed work kept, ticket left open ##########"
-  exit 1
-fi
-log "[gate] game is BROKEN after $NAME — reverting to baseline $BASE_REF to protect later tickets"
-git reset --hard "$BASE_REF"
-rm -rf "$SUBROOT" "$REVIEW_FB"
-log "########## $NAME REVERTED — baseline $BASE_REF restored, ticket left open ##########"
+log "########## $NAME could not be split — left open for a fresh attempt ##########"
 exit 1
