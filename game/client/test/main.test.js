@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { wallAABB, resolveWallCollision } from '../collision.js';
 import { drawCard, initHand, initHandFromDeck, resetHandState, hand, deck, slotCooldowns } from '../hand.js';
 
@@ -973,5 +973,162 @@ describe('renderHand()', () => {
 
 		const slots = document.querySelectorAll('.card-slot');
 		expect(slots[0].classList.contains('no-ms')).toBe(false);
+	});
+});
+
+// ── playSound / mute toggle ──
+
+describe('playSound() and mute toggle', () => {
+	beforeEach(() => {
+		// Create required DOM elements for main.js import
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'mute-btn',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				if (id === 'mute-btn') el.textContent = '🔊';
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	afterEach(() => {
+		// Reset sound state after each test (main.js is cached, so soundEnabled persists)
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+	});
+
+	it('is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.playSound).toBe('function');
+	});
+
+	it('soundEnabled defaults to true', async () => {
+		await import('../main.js');
+		expect(window.__soundEnabled()).toBe(true);
+	});
+
+	it('playSound() does not throw when AudioContext is unavailable', async () => {
+		await import('../main.js');
+		// In jsdom, AudioContext is not available by default — playSound should catch silently
+		expect(() => window.playSound('card')).not.toThrow();
+		expect(() => window.playSound('enemyHit')).not.toThrow();
+		expect(() => window.playSound('victory')).not.toThrow();
+		expect(() => window.playSound('unknownType')).not.toThrow();
+	});
+
+	it('playSound() does not throw with unknown type', async () => {
+		await import('../main.js');
+		expect(() => window.playSound('nonexistent')).not.toThrow();
+	});
+
+	it('playSound() is a no-op when soundEnabled is false', async () => {
+		await import('../main.js');
+
+		// Toggle mute to disable sound
+		const muteBtn = document.getElementById('mute-btn');
+		muteBtn.click();
+
+		expect(window.__soundEnabled()).toBe(false);
+
+		// Should not throw even though AudioContext is unavailable
+		expect(() => window.playSound('card')).not.toThrow();
+	});
+
+	it('clicking mute button toggles soundEnabled and button text', async () => {
+		await import('../main.js');
+
+		const muteBtn = document.getElementById('mute-btn');
+
+		// Initial state
+		expect(window.__soundEnabled()).toBe(true);
+		expect(muteBtn.textContent).toBe('🔊');
+
+		// First click — mute
+		muteBtn.click();
+		expect(window.__soundEnabled()).toBe(false);
+		expect(muteBtn.textContent).toBe('🔇');
+
+		// Second click — unmute
+		muteBtn.click();
+		expect(window.__soundEnabled()).toBe(true);
+		expect(muteBtn.textContent).toBe('🔊');
+	});
+
+	it('playSound() works with a real AudioContext mock', async () => {
+		// Mock AudioContext so playSound can actually create oscillators
+		const mockOscillators = [];
+		const mockCtx = {
+			currentTime: 0,
+			destination: {},
+			createOscillator: function() {
+				const osc = {
+					type: '',
+					frequency: { value: 0 },
+					connected: false,
+					connect: function(dest) { this.connected = true; },
+					start: function() {},
+					stop: function() {},
+				};
+				mockOscillators.push(osc);
+				return osc;
+			},
+		};
+
+		// Set up the mock before importing main.js
+		Object.defineProperty(window, 'AudioContext', {
+			value: function() { return mockCtx; },
+			writable: true,
+			configurable: true,
+		});
+
+		await import('../main.js');
+
+		// Reset oscillators after the lazy init that may have happened on import
+		mockOscillators.length = 0;
+
+		// Play a single-note sound
+		window.playSound('card');
+		expect(mockOscillators.length).toBe(1);
+		expect(mockOscillators[0].frequency.value).toBe(600);
+		expect(mockOscillators[0].connected).toBe(true);
+
+		mockOscillators.length = 0;
+
+		// Play a multi-note sound (victory = 2 notes)
+		window.playSound('victory');
+		expect(mockOscillators.length).toBe(2);
+		expect(mockOscillators[0].frequency.value).toBe(500);
+		expect(mockOscillators[1].frequency.value).toBe(700);
+
+		mockOscillators.length = 0;
+
+		// Play failure (2 notes, different frequencies)
+		window.playSound('failure');
+		expect(mockOscillators.length).toBe(2);
+		expect(mockOscillators[0].frequency.value).toBe(400);
+		expect(mockOscillators[1].frequency.value).toBe(250);
 	});
 });
