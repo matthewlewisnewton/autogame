@@ -1466,3 +1466,136 @@ describe('Enemy telegraph integration', () => {
 		expect(gameState.enemies[0].attackState).not.toBe('windup');
 	});
 });
+
+describe('Dungeon layout consistency', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('two clients connect to the same server and both receive the same layoutSeed in their init payload', async () => {
+		const client1 = await connectClient(baseUrl);
+		const client2 = await connectClient(baseUrl);
+
+		expect(client1.init.layoutSeed).toBeDefined();
+		expect(client2.init.layoutSeed).toBeDefined();
+		expect(typeof client1.init.layoutSeed).toBe('number');
+		expect(typeof client2.init.layoutSeed).toBe('number');
+		expect(client1.init.layoutSeed).toBe(client2.init.layoutSeed);
+
+		client1.socket.disconnect();
+		client2.socket.disconnect();
+		await sleep(50);
+	});
+
+	it('two clients receive identical layout.rooms arrays (same count, same positions/sizes)', async () => {
+		const client1 = await connectClient(baseUrl);
+		const client2 = await connectClient(baseUrl);
+
+		const rooms1 = client1.init.layout.rooms;
+		const rooms2 = client2.init.layout.rooms;
+
+		expect(Array.isArray(rooms1)).toBe(true);
+		expect(Array.isArray(rooms2)).toBe(true);
+		expect(rooms1.length).toBe(rooms2.length);
+		expect(rooms1.length).toBeGreaterThan(0);
+
+		// Deep compare: same positions, widths, depths
+		for (let i = 0; i < rooms1.length; i++) {
+			expect(rooms1[i].x).toBe(rooms2[i].x);
+			expect(rooms1[i].z).toBe(rooms2[i].z);
+			expect(rooms1[i].width).toBe(rooms2[i].width);
+			expect(rooms1[i].depth).toBe(rooms2[i].depth);
+		}
+
+		client1.socket.disconnect();
+		client2.socket.disconnect();
+		await sleep(50);
+	});
+
+	it('stateUpdate payloads include layoutSeed matching the original init seed', async () => {
+		const client = await connectClient(baseUrl);
+		const initSeed = client.init.layoutSeed;
+
+		// Set up listener BEFORE triggering any activity so we catch the
+		// first stateUpdate that arrives over the wire (from the game tick).
+		const stateUpdatePromise = waitForEvent(client.socket, 'stateUpdate');
+
+		// Trigger a move to ensure the server broadcasts a stateUpdate
+		client.socket.emit('move', { x: 5, y: 0.5, z: 5, rotation: 0 });
+
+		// Wait for the actual socket stateUpdate payload
+		const stateUpdate = await stateUpdatePromise;
+
+		// Assert on the wire payload — layoutSeed must be present and match init
+		expect(stateUpdate).toBeDefined();
+		expect(stateUpdate.layoutSeed).toBeDefined();
+		expect(typeof stateUpdate.layoutSeed).toBe('number');
+		expect(stateUpdate.layoutSeed).toBe(initSeed);
+
+		client.socket.disconnect();
+		await sleep(50);
+	});
+
+	it('after resetGameState() a new layout with a different seed is generated', async () => {
+		const client1 = await connectClient(baseUrl);
+		const firstSeed = client1.init.layoutSeed;
+
+		client1.socket.disconnect();
+		await sleep(50);
+
+		// Reset game state — generates a new layout with a new random seed
+		resetGameState();
+
+		const client2 = await connectClient(baseUrl);
+		const secondSeed = client2.init.layoutSeed;
+
+		// The seed should be different (probability of collision is ~1/2^31)
+		expect(secondSeed).not.toBe(firstSeed);
+
+		// The new layout should still be valid
+		expect(Array.isArray(client2.init.layout.rooms)).toBe(true);
+		expect(client2.init.layout.rooms.length).toBeGreaterThan(0);
+
+		client2.socket.disconnect();
+		await sleep(50);
+	});
+
+	it('clampToDungeon() prevents player movement beyond dungeon bounds', async () => {
+		const client = await connectClient(baseUrl);
+		const bounds = gameState.dungeonBounds;
+
+		// Attempt to move far beyond the positive bounds
+		client.socket.emit('move', {
+			x: bounds.maxX + 100,
+			y: 0.5,
+			z: bounds.maxZ + 100,
+			rotation: 0
+		});
+		await sleep(50);
+
+		const player = gameState.players[client.socket.id];
+		expect(player.x).toBeLessThanOrEqual(bounds.maxX);
+		expect(player.z).toBeLessThanOrEqual(bounds.maxZ);
+
+		// Attempt to move far beyond the negative bounds
+		client.socket.emit('move', {
+			x: bounds.minX - 100,
+			y: 0.5,
+			z: bounds.minZ - 100,
+			rotation: 0
+		});
+		await sleep(50);
+
+		expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
+		expect(player.z).toBeGreaterThanOrEqual(bounds.minZ);
+
+		client.socket.disconnect();
+		await sleep(50);
+	});
+});
