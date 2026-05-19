@@ -26,6 +26,46 @@ LABEL="$(basename "$(dirname "$(dirname "$SUBDIR")")")/$(basename "$SUBDIR")"
 exec > >(tee -a "$SUBDIR/log.txt") 2>&1
 trap 'stop_game' EXIT
 
+start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>
+  local artifacts_dir="$1"
+  local out="$artifacts_dir/local-checks.log"
+  if [ "$PIPELINE_LOCAL_CHECKS" != "1" ]; then
+    return 1
+  fi
+
+  log "[pipeline] starting local verification in background..." >&2
+  emit_progress_event "pipeline_check_start" "{\"label\":$(json_string "$LABEL"),\"artifacts\":$(json_string "$artifacts_dir"),\"command\":$(json_string "$PIPELINE_CHECK_COMMAND"),\"cwd\":$(json_string "$PIPELINE_CHECK_CWD"),\"timeoutSeconds\":$PIPELINE_CHECK_TIMEOUT}"
+  (
+    cd "$PIPELINE_CHECK_CWD" || exit 127
+    printf '[pipeline] cwd=%s\n' "$(pwd)"
+    printf '[pipeline] command=%s\n\n' "$PIPELINE_CHECK_COMMAND"
+    timeout -k 30 "$PIPELINE_CHECK_TIMEOUT" bash -lc "$PIPELINE_CHECK_COMMAND"
+  ) </dev/null > "$out" 2>&1 &
+  echo "$!"
+  return 0
+}
+
+finish_pipeline_checks() { # finish_pipeline_checks <pid> <artifacts-dir>
+  local pid="${1:-}" artifacts_dir="$2" rc reason
+  if [ -z "$pid" ] || [ "$pid" = "0" ]; then
+    return 0
+  fi
+
+  log "[pipeline] waiting for local verification..."
+  if wait "$pid"; then
+    rc=0
+    reason="ok"
+    log "[pipeline] local verification passed"
+  else
+    rc=$?
+    reason="$(cli_failure_reason "$rc" "$artifacts_dir/local-checks.log")"
+    log "[pipeline] local verification finished non-zero (rc=$rc, reason=$reason)"
+  fi
+  printf '{"rc":%s,"reason":%s}\n' "$rc" "$(json_string "$reason")" > "$artifacts_dir/local-checks.status.json"
+  emit_progress_event "pipeline_check_finish" "{\"label\":$(json_string "$LABEL"),\"artifacts\":$(json_string "$artifacts_dir"),\"outfile\":$(json_string "$artifacts_dir/local-checks.log"),\"rc\":$rc,\"reason\":$(json_string "$reason")}"
+  return 0
+}
+
 log "=== sub-ticket: $LABEL — QA mode: $QA_MODE ==="
 emit_progress_event "subtask_start" "{\"label\":$(json_string "$LABEL"),\"ticketFile\":$(json_string "$TICKET_FILE"),\"qaMode\":$(json_string "$QA_MODE")}"
 coder_toolfail=0
@@ -35,6 +75,7 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   ARTI="$SUBDIR/artifacts/iter-$iter"
   game_running=0
   game_live=0
+  pipeline_pid=0
   mkdir -p "$ARTI"
   emit_progress_event "iteration_start" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"maxIterations\":$MAX_ITER,\"artifacts\":$(json_string "$ARTI")}"
 
@@ -78,6 +119,8 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
   coder_toolfail=0
 
+  pipeline_pid="$(start_pipeline_checks "$ARTI" || echo 0)"
+
   # 2. Start game + capture screenshots
   log "[game] starting servers..."
   start_game "$ARTI"
@@ -101,6 +144,7 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   # 3. QA — routed by the sub-ticket's verification mode.
   #    gemini-flash primary, cursor-agent/composer and claude fallback.
   git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
+  finish_pipeline_checks "$pipeline_pid" "$ARTI"
   if [ "$QA_MODE" = "code" ]; then
     log "[qa] code-review QA (non-visual sub-ticket)..."
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa-code.md" \
@@ -110,7 +154,7 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
       TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
   fi
-  # QA agent chain: gemini-3-flash (primary) -> cursor-agent/composer-2
+  # QA agent chain: gemini-3-flash (primary) -> cursor-agent/composer-2.5
   # (fallback) -> claude (last resort). Each tier is accepted only if it
   # produced a real verdict line.
   if run_gemini "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
