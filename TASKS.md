@@ -51,7 +51,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [044-cleanup-encounter-telegraphs-audio](tickets/044-cleanup-encounter-telegraphs-audio/)
 - [x] [039-cleanup-public-state-and-shared-data-nits](tickets/039-cleanup-public-state-and-shared-data-nits/)
 - [x] [036-cleanup-combat-feedback-readability](tickets/036-cleanup-combat-feedback-readability/)
-- [ ] [035-cleanup-lobby-deck-editor](tickets/035-cleanup-lobby-deck-editor/)
+- [x] [035-cleanup-lobby-deck-editor](tickets/035-cleanup-lobby-deck-editor/)
 - [ ] [034-cleanup-card-rewards-deckbuilding](tickets/034-cleanup-card-rewards-deckbuilding/)
 - [ ] [033-cleanup-run-summary-return-to-lobby](tickets/033-cleanup-run-summary-return-to-lobby/)
 - [ ] [032-cleanup-dungeon-run-objectives](tickets/032-cleanup-dungeon-run-objectives/)
