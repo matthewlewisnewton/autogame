@@ -765,3 +765,26 @@ adapted to the now-full default deck) — all tests pass.
 ## Remaining gaps
 None blocking.
 
+
+## v0.34 — Cleanup nits from 026-card-rewards-deckbuilding  (2026-05-19 15:51:02)
+
+The remaining `if (!gameState.players[socket.id])` guard is now defensive
+(always true given the disconnect logic), but the ticket explicitly accepted
+"remove the unreachable `else` branch and correct the comment" as a valid
+fix — and the fix does exactly that. Not a blocking gap.
+
+✓ Satisfied.
+
+## Design / regression check
+
+- `game/docs/design.md`: this is a pure cleanup ticket touching one CSS
+  declaration and a connection-handler comment + branch removal. No
+  gameplay or rule changes — design alignment unaffected.
+- `game/docs/requirements.md`: no foundation behavior touched; multiplayer
+  connect/disconnect still works (probes confirm two-player session).
+- No new dead code, no console errors, no broken references.
+
+## Remaining gaps
+
+None.
+
