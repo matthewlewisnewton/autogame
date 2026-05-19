@@ -214,15 +214,19 @@ cli_output_has_quota_error() {  # cli_output_has_quota_error <outfile>
   node - "$out" <<'NODE' 2>/dev/null
 const { readFileSync } = require('node:fs');
 const text = readFileSync(process.argv[2], 'utf8').toLowerCase();
-const quota = [
-  'exhausted your capacity',
-  'quota',
-  'rate limit',
-  'resource has been exhausted',
-  'too many requests',
-  '429',
-].some(needle => text.includes(needle));
-process.exit(quota ? 0 : 1);
+// Match ONLY a TERMINAL quota-exhaustion message. The gemini CLI's own
+// transient "Attempt N failed: ... rate limit ... Retrying" lines recover on
+// their own, and bare words like "quota" / "429" / "rate limit" also appear
+// legitimately in an agent's review of the code — matching those falsely
+// kills a perfectly healthy gemini run. A terminal signal means gemini has
+// actually given up on the model.
+const terminal = text.split(/\r?\n/).some(line => {
+  const l = line.trim();
+  if (/attempt\s+\d+\s+failed/.test(l) && /retry/.test(l)) return false;
+  return l.includes('exhausted your capacity on this model')
+      || l.includes('quota will reset after');
+});
+process.exit(terminal ? 0 : 1);
 NODE
 }
 
