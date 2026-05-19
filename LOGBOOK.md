@@ -420,3 +420,26 @@ tickets, and no card-reward/deck-editing scope was added, per the ticket notes.
 
 None blocking. Minor polish items recorded in `nits.md`.
 
+
+## v0.19 — Session Inventory and Card Rewards  (2026-05-19 03:06:07)
+
+`currencyEarnedThisRun`. `startDungeonRun` resets per-run tracking only. Integration
+test confirms a second run reuses prior currency/ownedCards.
+
+**No server-restart persistence required** — Met; nothing added beyond in-memory state.
+
+## Consistency
+Consistent with `design.md` ("Enemies drop currency and new cards", card-deck
+economy). No regression to the run-summary / return-to-lobby foundation — the
+terminal-state flow was refactored cleanly (single status determination, rewards
+granted before summary build) and still emits exactly one terminal event per run.
+
+## Remaining gaps
+None blocking. Two minor nits recorded in `nits.md`:
+- Multi-card reward names are joined with `\n` but the CSS lacks `white-space`
+  handling, so >1 card would collapse onto one line (not currently reachable —
+  only one card is ever granted).
+- The "reconnecting player" `else` branch in the connection handler is effectively
+  dead code: `disconnect` deletes the player entry and socket ids are unique, so
+  the branch never executes; its comment is misleading.
+
