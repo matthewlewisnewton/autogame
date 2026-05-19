@@ -351,3 +351,26 @@ on inspection and all four criteria are met by the live code.
 None blocking. All four acceptance criteria are fully and robustly met. Two
 minor non-blocking nits are recorded in `nits.md`.
 
+
+## v0.16 — Test Coverage  (2026-05-18 23:38:52)
+
+**Met.** `vitest.config.js` enforces 70% on statements/branches/functions/lines
+via `coverage.thresholds`; the actual run reports 88.88 / 89.88 / 81.48 / 88.88.
+The coverage `include` is scoped to `server/index.js` and `client/cards.js`;
+`collision.js` and `hand.js` are tested but excluded from the measured set —
+noted as a nit (the threshold still passes comfortably on the included files).
+
+## Consistency with design / requirements
+No regression to the foundation: the captured run shows lobby → playing
+transition, movement, card hand, combat HUD all functional. The server
+refactor preserves runtime behavior. `generateLayout` wall-segment math was
+tightened (room doorway segments now span corner-to-centered-gap, passage
+walls use `CELL_SPACING`) — a correctness improvement that passed the
+sub-ticket's visual QA and the round-1 capture; no gameplay regression
+observed. The deleted `game/coverage/` artifacts are now `.gitignore`d.
+
+## Remaining gaps
+None blocking. The acceptance criteria are fully and robustly met, the test
+suite is comprehensive and green, and the game runs cleanly. Minor polish
+items are recorded in `nits.md`.
+
