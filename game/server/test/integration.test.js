@@ -750,6 +750,39 @@ describe('Run terminal state — integration', () => {
 		expect(secondState.run.status).toBe('playing');
 	});
 
+	it('ignores returnToLobby while the run is still playing', async () => {
+		// Connect two sockets and start a run (both players ready up)
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+
+		// Confirm playing state
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run.status).toBe('playing');
+
+		const runId = gameState.run.id;
+		const enemyCount = gameState.enemies.length;
+
+		// Emit returnToLobby from one socket while run is still active
+		socket1.emit('returnToLobby');
+
+		// Give the server a moment to process (and reject) the request
+		await sleep(100);
+
+		// Verify gameState.gamePhase remains 'playing'
+		expect(gameState.gamePhase).toBe('playing');
+
+		// Verify gameState.run still exists with the same id and status
+		expect(gameState.run).toBeDefined();
+		expect(gameState.run.id).toBe(runId);
+		expect(gameState.run.status).toBe('playing');
+
+		// Verify enemies count is unchanged
+		expect(gameState.enemies.length).toBe(enemyCount);
+	});
+
 	it('returnToLobby rejects request while run is still playing and emits runError to requesting socket', async () => {
 		// Start a game
 		const startGame1 = waitForEvent(socket1, 'startGame');
