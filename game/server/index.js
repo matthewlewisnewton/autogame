@@ -402,6 +402,23 @@ function startDungeonRun() {
   gameState.run = createRunState();
 }
 
+/**
+ * Cap defeatedEnemies at totalEnemies so the counter never overshoots.
+ */
+function clampObjectiveProgress(run) {
+  run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
+}
+
+/**
+ * Record `count` enemy kills against the current run objective.
+ * Safe no-op when gameState.run is undefined (e.g. lobby phase).
+ */
+function recordEnemyDefeated(count = 1) {
+  if (!gameState.run) return;
+  gameState.run.objective.defeatedEnemies += count;
+  clampObjectiveProgress(gameState.run);
+}
+
 // Helper: check if all players are ready and transition if so
 function checkAllReady() {
   const all = Object.values(gameState.players);
@@ -631,7 +648,10 @@ function updateMinions() {
   for (const e of gameState.enemies) {
     if (e.hp <= 0) spawnLoot(e.x, e.z);
   }
+  const defeatedMinion = gameState.enemies.length;
   gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
+  const defeatedMinionCount = defeatedMinion - gameState.enemies.length;
+  if (defeatedMinionCount > 0) recordEnemyDefeated(defeatedMinionCount);
 
   // Decrement TTL and remove expired/dead minions
   for (const minion of gameState.minions) {
@@ -789,7 +809,10 @@ function startServer(port) {
       for (const e of gameState.enemies) {
         if (e.hp <= 0) spawnLoot(e.x, e.z);
       }
+      const defeatedWeapon = gameState.enemies.length;
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
+      const defeatedWeaponCount = defeatedWeapon - gameState.enemies.length;
+      if (defeatedWeaponCount > 0) recordEnemyDefeated(defeatedWeaponCount);
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -839,7 +862,10 @@ function startServer(port) {
       for (const e of gameState.enemies) {
         if (e.hp <= 0) spawnLoot(e.x, e.z);
       }
+      const defeatedSummon = gameState.enemies.length;
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
+      const defeatedSummonCount = defeatedSummon - gameState.enemies.length;
+      if (defeatedSummonCount > 0) recordEnemyDefeated(defeatedSummonCount);
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -994,6 +1020,8 @@ if (typeof module !== 'undefined' && module.exports) {
     regenMagicStones,
     createRunState,
     startDungeonRun,
+    recordEnemyDefeated,
+    clampObjectiveProgress,
     // Server objects for integration tests
     server,
     io,
