@@ -37,10 +37,11 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [027-run-summary-return-to-lobby](tickets/027-run-summary-return-to-lobby/)
 - [x] [026-card-rewards-deckbuilding](tickets/026-card-rewards-deckbuilding/)
 - [x] [028-lobby-deck-editor](tickets/028-lobby-deck-editor/)
-- [ ] [029-combat-feedback-readability](tickets/029-combat-feedback-readability/)
+- [x] [029-combat-feedback-readability](tickets/029-combat-feedback-readability/)
 - [ ] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [036-cleanup-combat-feedback-readability](tickets/036-cleanup-combat-feedback-readability/)
 - [ ] [035-cleanup-lobby-deck-editor](tickets/035-cleanup-lobby-deck-editor/)
 - [ ] [034-cleanup-card-rewards-deckbuilding](tickets/034-cleanup-card-rewards-deckbuilding/)
 - [ ] [033-cleanup-run-summary-return-to-lobby](tickets/033-cleanup-run-summary-return-to-lobby/)

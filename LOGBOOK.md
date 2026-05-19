@@ -466,3 +466,26 @@ Non-blocking items (see `nits.md`):
    full 8-card starting deck, leaving zero draw-deck reserve for slot refills
    in-run. Worth deciding whether the default should be the full starting deck.
 
+
+## v0.21 — Combat Feedback and Readability  (2026-05-19 07:54:11)
+
+**Loot pickup immediate client feedback** — PASS. When loot leaves `gameState`,
+`markLootCollected` plays a scale-up/fade animation and spawns a gold `+N` number; the
+currency HUD flashes gold on increase. `GOLD 13` in screenshots 03/04 is gold-colored.
+
+**Card slots show cooldown / insufficient MS / empty** — PASS. `.cooldown` (pre-existing,
+dashed + dimmed — visible on Flame Blade in screenshot 02), new `.no-ms` (red border/bg
+for unaffordable summon cards), new `.empty` (dashed, dimmed). `renderHand` re-runs on
+each `stateUpdate` to keep `.no-ms` synced as Magic Stones regenerate.
+
+**cardError still appears + resource constraints visible in hand** — PASS.
+`showCardErrorToast` still fires; `cardError` with reason `Not enough Magic Stones` also
+adds `.no-ms` to the used slot (`lastUsedSlot` tracking).
+
+**Existing combat mechanics/damage numbers unchanged** — PASS. `git diff` shows no
+changes to `server/index.js`; combat logic and damage values are untouched.
+
+## Remaining gaps
+None blocking. All acceptance criteria are met and the captured run is healthy.
+Minor non-blocking polish items are recorded in `nits.md`.
+
