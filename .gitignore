@@ -3,7 +3,6 @@ dist/
 .env
 .DS_Store
 .claude/
-.git/
 
 # harness run artifacts — transient. Progress is recorded via git tags + LOGBOOK.md.
 LOOPLOG.txt
