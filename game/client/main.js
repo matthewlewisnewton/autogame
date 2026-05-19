@@ -883,6 +883,7 @@ function spawnHitSpark(position) {
 
   activeEffects.push({
     mesh,
+    _scene: targetScene, // capture the scene so cleanup targets the same one
     origin: { x: position.x, y: position.y || 1.0, z: position.z },
     direction: null, // no direction — distinguishes hit sparks from projectiles
     isHitSpark: true,
@@ -933,9 +934,9 @@ function updateAttackEffects() {
       // Fade opacity
       fx.mesh.material.opacity = Math.max(0.01, 1.0 - sparkT);
 
-      // Remove when expired
+      // Remove when expired — target the same scene the spark was added to
       if (elapsed >= fx.duration) {
-        scene.remove(fx.mesh);
+        (fx._scene || scene).remove(fx.mesh);
         fx.mesh.geometry.dispose();
         fx.mesh.material.dispose();
         activeEffects.splice(i, 1);
@@ -1103,6 +1104,7 @@ function syncLootMeshes() {
   for (const id of Object.keys(lootMeshes)) {
     if (!currentLootIds.has(id)) {
       const lootValue = previousLootValues[id] || 1;
+      delete previousLootValues[id]; // no longer needed — value captured for animation
       markLootCollected(id, lootValue);
     }
   }
@@ -1605,6 +1607,11 @@ function animate(timestamp) {
     for (const id of Object.keys(previousEnemyHp)) {
       if (!currentEnemyIds.has(id)) {
         delete previousEnemyHp[id];
+      }
+    }
+    for (const id of Object.keys(lastCardHitTime)) {
+      if (!currentEnemyIds.has(id)) {
+        delete lastCardHitTime[id];
       }
     }
     // Clean up telegraph meshes for removed enemies
