@@ -1,8 +1,22 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
-import { wallAABB, resolveWallCollision as resolveWallCollisionPure } from './collision.js';
 import { drawCard, initHand as initHandFromModule, initHandFromDeck, hand, slotCooldowns } from './hand.js';
+import {
+	buildDungeon,
+	clearDungeon,
+	buildWallColliders,
+	resolveWallCollision as resolveWallCollisionFromDungeon,
+	WALL_HEIGHT,
+	WALL_THICKNESS,
+	FLOOR_Y,
+	PASSAGE_WALL_HEIGHT,
+	PASSAGE_WALL_THICKNESS,
+	floorMaterial,
+	wallMaterial,
+	passageFloorMaterial,
+	groundMaterial,
+} from './dungeon.js';
 
 // v8 ignore start
 // All code below is UI/Three.js/Socket-dependent and cannot be unit tested.
@@ -134,6 +148,7 @@ let wasDead = false; // tracks previous-frame dead state for respawn detection
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
 let wallColliders = []; // flat array of wall AABBs: { minX, maxX, minZ, maxZ }
+let dungeonMeshes = []; // meshes created by buildDungeon(), managed by clearDungeon()
 
 function requestDebugScenario() {
   if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
@@ -1331,22 +1346,8 @@ returnToLobbyBtn.addEventListener('click', () => {
   socket.emit('returnToLobby');
 });
 
-// ── Dungeon geometry builder ──
-
-const WALL_HEIGHT = 2.5;
-const WALL_THICKNESS = 0.4;
-const FLOOR_Y = 0.05; // slightly above background to avoid z-fighting
-const PASSAGE_WIDTH = 4; // matches server constant
-const PASSAGE_WALL_HEIGHT = 1.5;
-const PASSAGE_WALL_THICKNESS = 0.3;
-
-const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
-const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7 });
-const passageFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d3a4a, roughness: 0.8 });
-const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, roughness: 0.7 });
-
-// Background ground plane (replaces the old 50x50 floor)
-const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
+// ── Dungeon geometry is in dungeon.js ──
+// buildDungeon, clearDungeon, buildWallColliders, resolveWallCollision are imported from './dungeon.js'
 
 // Shared gold material for loot coins
 const lootMaterial = new THREE.MeshStandardMaterial({
@@ -1356,139 +1357,6 @@ const lootMaterial = new THREE.MeshStandardMaterial({
   roughness: 0.3,
   metalness: 0.8
 });
-
-// Track all meshes created by buildDungeon() so they can be cleared on rebuild
-const dungeonMeshes = [];
-
-/**
- * Remove all dungeon geometry from the scene and dispose geometries.
- * Shared materials are NOT disposed (they are reused across builds).
- */
-function clearDungeon() {
-  for (const mesh of dungeonMeshes) {
-    if (scene) scene.remove(mesh);
-    if (mesh.geometry) mesh.geometry.dispose();
-    // Do NOT dispose materials — they are shared module-level constants
-  }
-  dungeonMeshes.length = 0;
-}
-
-function buildDungeon(layout) {
-  if (!layout || !layout.rooms || !layout.passages) return;
-
-  // Clear any previous dungeon geometry before rebuilding
-  clearDungeon();
-  wallColliders.length = 0;
-
-  // Background ground (large flat plane behind everything)
-  const groundGeo = new THREE.PlaneGeometry(200, 200);
-  const ground = new THREE.Mesh(groundGeo, groundMaterial);
-  ground.rotation.x = -Math.PI / 2;
-  ground.position.y = 0;
-  scene.add(ground);
-  dungeonMeshes.push(ground);
-
-  // Set spawn position to center of first room
-  if (layout.rooms.length > 0) {
-    spawnPosition.x = layout.rooms[0].x;
-    spawnPosition.z = layout.rooms[0].z;
-  }
-
-  // ── Build rooms ──
-  for (const room of layout.rooms) {
-    // Room floor tile (raised slightly)
-    const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
-    const floorMesh = new THREE.Mesh(floorGeo, floorMaterial);
-    floorMesh.position.set(room.x, FLOOR_Y, room.z);
-    scene.add(floorMesh);
-    dungeonMeshes.push(floorMesh);
-
-    // Room walls
-    for (const wall of room.walls) {
-      let wallGeo;
-      let wallX, wallZ;
-
-      if (wall.axis === 'x') {
-        // Wall runs along x-axis
-        wallGeo = new THREE.BoxGeometry(wall.length, WALL_HEIGHT, WALL_THICKNESS);
-        wallX = wall.x;
-        wallZ = wall.z;
-      } else {
-        // Wall runs along z-axis
-        wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, wall.length);
-        wallX = wall.x;
-        wallZ = wall.z;
-      }
-
-      const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
-      wallMesh.position.set(wallX, WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
-      scene.add(wallMesh);
-      dungeonMeshes.push(wallMesh);
-    }
-  }
-
-  // ── Build passages ──
-  for (const passage of layout.passages) {
-    const dx = passage.x2 - passage.x1;
-    const dz = passage.z2 - passage.z1;
-    const dist = Math.hypot(dx, dz);
-
-    // Passage floor strip
-    const passageFloorGeo = new THREE.BoxGeometry(dist, 0.1, PASSAGE_WIDTH);
-    const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
-    const midX = (passage.x1 + passage.x2) / 2;
-    const midZ = (passage.z1 + passage.z2) / 2;
-    passageFloor.position.set(midX, FLOOR_Y, midZ);
-    passageFloor.rotation.y = Math.atan2(dz, dx);
-    scene.add(passageFloor);
-    dungeonMeshes.push(passageFloor);
-
-    // Passage side walls
-    for (const wall of passage.walls) {
-      let wallGeo;
-      let wallX, wallZ;
-
-      if (wall.axis === 'x') {
-        wallGeo = new THREE.BoxGeometry(wall.length, PASSAGE_WALL_HEIGHT, PASSAGE_WALL_THICKNESS);
-        wallX = wall.x;
-        wallZ = wall.z;
-      } else {
-        wallGeo = new THREE.BoxGeometry(PASSAGE_WALL_THICKNESS, PASSAGE_WALL_HEIGHT, wall.length);
-        wallX = wall.x;
-        wallZ = wall.z;
-      }
-
-      const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
-      wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
-      scene.add(wallMesh);
-      dungeonMeshes.push(wallMesh);
-    }
-  }
-}
-
-// ── Wall collision helpers ──
-// wallAABB and resolveWallCollision are imported from collision.js
-
-function buildWallColliders(layout) {
-  wallColliders = [];
-  if (!layout || !layout.rooms || !layout.passages) return;
-
-  for (const room of layout.rooms) {
-    for (const wall of room.walls) {
-      wallColliders.push(wallAABB(wall, WALL_THICKNESS / 2));
-    }
-  }
-  for (const passage of layout.passages) {
-    for (const wall of passage.walls) {
-      wallColliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
-    }
-  }
-}
-
-function resolveWallCollision(newX, newZ) {
-  // Delegate to the pure helper, passing the current wall colliders
-  return resolveWallCollisionPure(newX, newZ, wallColliders);
-}
 
 // ── Scene initialization (deferred) ──
 
@@ -1514,7 +1382,7 @@ function updateMyPlayer(delta) {
   myZ += velocityZ * delta;
 
   // Resolve wall collision before applying position
-  const resolved = resolveWallCollision(myX, myZ);
+  const resolved = resolveWallCollisionFromDungeon(myX, myZ, wallColliders);
   myX = resolved.x;
   myZ = resolved.z;
 
@@ -1824,8 +1692,13 @@ function initScene() {
 
   // Build dungeon geometry from server layout (replaces old 50x50 floor)
   if (currentLayout) {
-    buildDungeon(currentLayout);
-    buildWallColliders(currentLayout);
+    clearDungeon(scene, dungeonMeshes);
+    const { meshes, spawnPosition: spawn } = buildDungeon(scene, currentLayout);
+    dungeonMeshes.length = 0;
+    dungeonMeshes.push(...meshes);
+    spawnPosition.x = spawn.x;
+    spawnPosition.z = spawn.z;
+    wallColliders = buildWallColliders(currentLayout);
   }
 
   // Place player at spawn position (center of first room)
