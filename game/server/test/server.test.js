@@ -26,6 +26,7 @@ import {
 	validateDeck,
 	canAddCardToDeck,
 	createDrawDeckFromSelectedDeck,
+	stateSnapshot,
 	CARD_DEFS,
 	STARTING_DECK_IDS,
 	io as serverIo,
@@ -1619,5 +1620,130 @@ describe('createDrawDeckFromSelectedDeck(player)', () => {
 		const player = { selectedDeck, deck: [] };
 		createDrawDeckFromSelectedDeck(player);
 		expect(player.selectedDeck).toEqual(selectedDeck);
+	});
+});
+
+describe('stateSnapshot() — explicit public snapshot', () => {
+	beforeEach(() => {
+		resetState();
+		// Ensure gameState has layout and dungeonBounds (set by module init, but resetState clears them)
+		gameState.layoutSeed = 42;
+		if (!gameState.layout) gameState.layout = { rooms: [{ x: 0, z: 0, width: 10, depth: 10 }] };
+		if (!gameState.dungeonBounds) gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+	});
+
+	it('includes players with public sub-fields', () => {
+		addPlayer('p1', { hp: 80, magicStones: 50, currency: 10, deck: ['iron_sword'] });
+		const snapshot = stateSnapshot();
+
+		expect(snapshot.players['p1']).toEqual({
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
+			deck: ['iron_sword'],
+			hand: undefined,
+			hp: 80,
+			dead: false,
+			ready: false,
+			magicStones: 50,
+			currency: 10,
+			ownedCards: undefined,
+			runRewards: undefined,
+			currencyEarnedThisRun: undefined,
+			selectedDeck: undefined,
+			inventory: undefined,
+			debugScenario: null
+		});
+	});
+
+	it('includes enemies, minions, loot, gamePhase, run, layoutSeed, lobby, bounds', () => {
+		addPlayer('p1');
+		gameState.enemies = [{ id: 'e1', x: 5, z: 5, hp: 50 }];
+		gameState.minions = [{ id: 'm1', x: 0, z: 0, hp: 50, ttl: 30, ownerId: 'p1' }];
+		gameState.loot = [{ id: 'l1', x: 3, z: 3, value: 10 }];
+		gameState.gamePhase = 'playing';
+		gameState.run = { id: 'run-1', status: 'playing' };
+		gameState.lobby = [];
+
+		const snapshot = stateSnapshot();
+
+		expect(snapshot.enemies).toEqual(gameState.enemies);
+		expect(snapshot.minions).toEqual(gameState.minions);
+		expect(snapshot.loot).toEqual(gameState.loot);
+		expect(snapshot.gamePhase).toBe('playing');
+		expect(snapshot.run).toEqual(gameState.run);
+		expect(snapshot.layoutSeed).toBe(42);
+		expect(snapshot.lobby).toEqual([]);
+		expect(snapshot.bounds).toEqual(gameState.dungeonBounds);
+	});
+
+	it('does not include layout', () => {
+		addPlayer('p1');
+		const snapshot = stateSnapshot();
+		expect(snapshot.layout).toBeUndefined();
+	});
+
+	it('does not include _victoryCounters', () => {
+		addPlayer('p1');
+		gameState._victoryCounters = { p1: 3 };
+		const snapshot = stateSnapshot();
+		expect(snapshot._victoryCounters).toBeUndefined();
+	});
+
+	it('does not include dungeonBounds on top level', () => {
+		addPlayer('p1');
+		const snapshot = stateSnapshot();
+		expect(snapshot.dungeonBounds).toBeUndefined();
+	});
+
+	it('strips pendingSummons (Set) from player objects', () => {
+		addPlayer('p1');
+		gameState.players['p1'].pendingSummons.add('0:iron_sword');
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p1'].pendingSummons).toBeUndefined();
+	});
+
+	it('strips lastActivity from player objects', () => {
+		addPlayer('p1');
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p1'].lastActivity).toBeUndefined();
+	});
+
+	it('preserves all client-facing player fields', () => {
+		addPlayer('p1', {
+			hp: 75,
+			magicStones: 30,
+			currency: 25,
+			deck: ['iron_sword', 'flame_blade'],
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar'],
+			ownedCards: { iron_sword: 2, flame_blade: 1 },
+			runRewards: { currency: 10, cards: [] },
+			currencyEarnedThisRun: 5
+		});
+		const snapshot = stateSnapshot();
+		const p = snapshot.players['p1'];
+
+		expect(p.hp).toBe(75);
+		expect(p.magicStones).toBe(30);
+		expect(p.currency).toBe(25);
+		expect(p.deck).toEqual(['iron_sword', 'flame_blade']);
+		expect(p.selectedDeck).toEqual(['iron_sword', 'flame_blade', 'battle_familiar']);
+		expect(p.ownedCards).toEqual({ iron_sword: 2, flame_blade: 1 });
+		expect(p.runRewards).toEqual({ currency: 10, cards: [] });
+		expect(p.currencyEarnedThisRun).toBe(5);
+		expect(p.x).toBe(0);
+		expect(p.y).toBe(0.5);
+		expect(p.z).toBe(0);
+		expect(p.dead).toBe(false);
+		expect(p.ready).toBe(false);
+	});
+
+	it('returns independent objects per call (no shared mutation)', () => {
+		addPlayer('p1');
+		const a = stateSnapshot();
+		const b = stateSnapshot();
+		a.players['p1'].hp = 0;
+		expect(b.players['p1'].hp).toBe(100);
 	});
 });
