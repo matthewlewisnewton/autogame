@@ -443,3 +443,26 @@ None blocking. Two minor nits recorded in `nits.md`:
   dead code: `disconnect` deletes the player entry and socket ids are unique, so
   the branch never executes; its comment is misleading.
 
+
+## v0.20 — Lobby Deck Editor  (2026-05-19 04:26:57)
+
+and later tuning.
+
+**Design / requirements consistency** — Consistent. Deck management in the
+lobby matches `design.md`'s "manage their decks" core-loop step; no foundation
+regression observed.
+
+## Remaining gaps
+
+No blocking gaps. The acceptance criteria are fully and robustly met and the
+captured run is clean.
+
+Non-blocking items (see `nits.md`):
+1. `integration.test.js` test `deckAddCard during playing phase is silently
+   ignored` fails because it `reject()`s its timeout sentinel instead of
+   `resolve()`-ing it — the suite reports a red test even though the server
+   guard is correct. The sibling `deckRemoveCard` test (using `sleep`) passes.
+2. The default `selectedDeck` is the 4 unique starting cards rather than the
+   full 8-card starting deck, leaving zero draw-deck reserve for slot refills
+   in-run. Worth deciding whether the default should be the full starting deck.
+
