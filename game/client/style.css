@@ -414,6 +414,7 @@ canvas {
   color: #e2e8f0;
   text-align: center;
   line-height: 1.6;
+  white-space: pre-line;
 }
 
 #return-to-lobby-btn {
