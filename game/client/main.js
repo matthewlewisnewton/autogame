@@ -476,6 +476,7 @@ socket.on('playerDisconnected', (id) => {
     }
     delete playersMeshes[id];
   }
+  delete previousPlayerHp[id];
 });
 
 // ── Hit flash helper ──
@@ -519,6 +520,92 @@ const hitFlashedThisFrame = new Set();
 
 // Track per-enemy HP from the previous frame, for detecting minion tick damage
 const previousEnemyHp = {};
+
+// Track per-player HP from the previous frame, for detecting damage taken between state updates
+const previousPlayerHp = {};
+
+// ── Floating damage numbers ──
+
+const damageNumbers = []; // { element, createdAt, position3d }
+
+/**
+ * Spawn a floating damage number above a 3D position.
+ * Creates an HTML div, projects the 3D coordinate to screen space each frame,
+ * and auto-removes after ~1 second.
+ * @param {number} x - 3D X coordinate
+ * @param {number} y - 3D Y coordinate (height above ground)
+ * @param {number} z - 3D Z coordinate
+ * @param {number} amount - damage amount to display (shown as negative, e.g. "-10")
+ * @param {string} color - CSS color string (e.g. '#ff0000')
+ */
+function spawnDamageNumber(x, y, z, amount, color) {
+	if (!document.body) return;
+
+	const el = document.createElement('div');
+	el.textContent = `-${Math.abs(Math.round(amount))}`;
+	el.style.cssText = `
+		position: fixed;
+		left: 0;
+		top: 0;
+		font-size: 22px;
+		font-weight: 800;
+		color: ${color || '#ff0000'};
+		text-shadow: 0 0 6px rgba(0,0,0,0.8), 0 2px 4px rgba(0,0,0,0.6);
+		pointer-events: none;
+		z-index: 1000;
+		transform: translate(-50%, -50%);
+		opacity: 1;
+		transition: none;
+	`;
+	document.body.appendChild(el);
+
+	damageNumbers.push({
+		element: el,
+		createdAt: performance.now(),
+		position3d: { x, y, z },
+		duration: 1000 // ms
+	});
+}
+
+/**
+ * Update floating damage number positions and remove expired ones.
+ * Called each frame from the animate loop.
+ */
+function updateDamageNumbers() {
+	if (!camera || !renderer) return;
+
+	const now = performance.now();
+	const vec = new THREE.Vector3();
+
+	for (let i = damageNumbers.length - 1; i >= 0; i--) {
+		const dn = damageNumbers[i];
+		const elapsed = now - dn.createdAt;
+
+		if (elapsed >= dn.duration) {
+			dn.element.remove();
+			damageNumbers.splice(i, 1);
+			continue;
+		}
+
+		// Float upward over time
+		const floatOffset = (elapsed / dn.duration) * 1.5;
+		vec.set(dn.position3d.x, dn.position3d.y + floatOffset, dn.position3d.z);
+		vec.project(camera);
+
+		// Convert to screen coordinates
+		const sx = (vec.x * 0.5 + 0.5) * window.innerWidth;
+		const sy = (-vec.y * 0.5 + 0.5) * window.innerHeight;
+
+		// Fade out in the last half of the lifetime
+		const opacity = elapsed > dn.duration * 0.5
+			? 1.0 - (elapsed - dn.duration * 0.5) / (dn.duration * 0.5)
+			: 1.0;
+
+		dn.element.style.left = `${sx}px`;
+		dn.element.style.top = `${sy}px`;
+		dn.element.style.opacity = String(Math.max(0, opacity));
+	}
+}
 
 // ── Enemy health bar helpers ──
 
@@ -1185,6 +1272,12 @@ function animate(timestamp) {
       } else {
         playersMeshes[id].material.color.setHex(0xf43f5e);
       }
+
+      // Detect remote player HP drop — flash red
+      if (previousPlayerHp[id] !== undefined && pData.hp < previousPlayerHp[id]) {
+        flashMesh(playersMeshes[id], 0xff0000, 200);
+      }
+      previousPlayerHp[id] = pData.hp;
     }
 
     if (myId != null && playersMeshes[myId]) {
@@ -1208,6 +1301,16 @@ function animate(timestamp) {
         playersMeshes[myId].material.color.setHex(0x808080);
       } else {
         playersMeshes[myId].material.color.setHex(0x3b82f6);
+      }
+
+      // Detect local player HP drop — flash red + spawn damage number
+      if (me && previousPlayerHp[myId] !== undefined && me.hp < previousPlayerHp[myId]) {
+        const damageAmount = previousPlayerHp[myId] - me.hp;
+        flashMesh(playersMeshes[myId], 0xff0000, 200);
+        spawnDamageNumber(myX, 1.5, myZ, damageAmount, '#ff0000');
+      }
+      if (me) {
+        previousPlayerHp[myId] = me.hp;
       }
     }
 
@@ -1301,6 +1404,9 @@ function animate(timestamp) {
   // Animate attack visual effects
   updateAttackEffects();
 
+  // Update floating damage numbers
+  updateDamageNumbers();
+
   renderer.render(scene, camera);
 }
 
@@ -1365,6 +1471,7 @@ window.initScene = initScene;
 window.refillSlot = refillSlot;
 window.renderDeckEditor = renderDeckEditor;
 window.flashMesh = flashMesh;
+window.spawnDamageNumber = spawnDamageNumber;
 window.enemyHealthBars = enemyHealthBars;
 window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;

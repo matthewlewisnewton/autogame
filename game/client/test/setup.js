@@ -37,6 +37,10 @@ function stubClass(name) {
 		this.z = this.z + (target.z - this.z) * t;
 		return this;
 	};
+	C.prototype.project = function(camera) {
+		// Stub: leave coordinates as-is (NDC space)
+		return this;
+	};
 	C.prototype.setSize = function() {};
 	C.prototype.render = function() {};
 	C.prototype.updateProjectionMatrix = function() {};
