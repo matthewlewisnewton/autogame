@@ -581,3 +581,26 @@ prove per-click rejection during cooldown definitively.
 None. All acceptance criteria are fully and robustly met, the game runs
 cleanly, and no regressions were found.
 
+
+## v0.26 — Cleanup nits from 015-dungeon-room-generation  (2026-05-19 12:14:13)
+
+dead code. The remaining flow — `clearDungeon(...)` → `buildDungeon(...)` →
+`dungeonMeshes.push(...meshes)` — still empties and repopulates the array
+exactly as before. **Met.**
+
+### AC2 — Client tests still pass
+
+`npm test` in `game/client` runs 105 tests across 2 files, all passing. **Met.**
+
+## Consistency with design
+
+No behavioral change; pure dead-code removal. Consistent with
+`game/docs/design.md` and no regression to `game/docs/requirements.md`. The
+captured run shows the dungeon-generation loop (the area touched) still
+functions end to end.
+
+## Remaining gaps
+
+None. Both acceptance criteria are fully met, the change is minimal and
+correct, and the captured run is healthy. No nits noted.
+
