@@ -676,6 +676,9 @@ describe('Run terminal state — integration', () => {
 		gameState.minions.push({ id: 'm1', ownerId: socket1.id, x: 0, z: 0, hp: 50, ttl: 30 });
 		gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 
+		// Set run to terminal state so returnToLobby is allowed
+		gameState.run.status = 'victory';
+
 		// Listen for stateUpdate after returnToLobby
 		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
 
@@ -712,6 +715,9 @@ describe('Run terminal state — integration', () => {
 		const firstRunId = gameState.run.id;
 		expect(gameState.run).toBeDefined();
 
+		// Set run to terminal state so returnToLobby is allowed
+		gameState.run.status = 'victory';
+
 		// --- Return to lobby ---
 		const stateUpdateAfterReturn = waitForEvent(socket1, 'stateUpdate');
 		socket1.emit('returnToLobby');
@@ -742,6 +748,31 @@ describe('Run terminal state — integration', () => {
 		expect(secondState).toHaveProperty('run');
 		expect(secondState.run.id).toBe(gameState.run.id);
 		expect(secondState.run.status).toBe('playing');
+	});
+
+	it('returnToLobby rejects request while run is still playing and emits runError to requesting socket', async () => {
+		// Start a game
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+		await waitForEvent(socket1, 'stateUpdate');
+
+		expect(gameState.run.status).toBe('playing');
+
+		// Attempt returnToLobby while run is active
+		const runErrorPromise = waitForEvent(socket1, 'runError');
+		socket1.emit('returnToLobby');
+		const runError = await runErrorPromise;
+
+		// Verify rejection
+		expect(runError.reason).toBe('Run still in progress');
+
+		// Verify gameState was not mutated
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run).toBeDefined();
+		expect(gameState.run.status).toBe('playing');
 	});
 });
 

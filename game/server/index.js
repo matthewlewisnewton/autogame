@@ -1121,6 +1121,15 @@ function startServer(port) {
   });
 
   socket.on('returnToLobby', () => {
+    // Guard: reject if the current run is still active
+    if (gameState.run && gameState.run.status === 'playing') {
+      socket.emit('runError', { reason: 'Run still in progress' });
+      return;
+    }
+
+    // No-op when there's no run (lobby phase); proceed normally when terminal
+    if (!gameState.run) return;
+
     returnPlayersToLobby();
   });
 
