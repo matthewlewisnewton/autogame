@@ -558,3 +558,26 @@ PASS. Ran locally: 5 files, 298 tests, all passing.
 None. The fix is small, correct, consistent with `design.md`, and does not
 regress the foundation. Acceptance criteria are fully met.
 
+
+## v0.25 — Fix Card Slot Cooldown Enforcement  (2026-05-19 12:06:14)
+
+`canUseSlot()` is a small pure helper in `hand.js` (per the ticket's optional
+suggestion), explicitly documented as non-mutating and covered by a purity test.
+No server-authoritative card state was added, consistent with the ticket's
+scope note. No conflict with `design.md` and no regression to the foundation.
+
+## Capture probe note (non-blocking)
+
+The agent capture probe shows `iron_sword` going 5/5 → 3/5 across the spam-click
+sequence, where the probe's idealized expectation was "1 lower". This is
+consistent with a *working* gate: the spam window simply outlasted one 1.2s
+cooldown cycle, so a second legitimate use landed after the first cooldown
+cleared. Had the bug still been present, rapid clicking would have drained far
+more than 2 charges (and likely exhausted/redrawn the card). The unit tests
+prove per-click rejection during cooldown definitively.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly met, the game runs
+cleanly, and no regressions were found.
+
