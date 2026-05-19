@@ -816,11 +816,11 @@ function updateMinions() {
   for (const e of gameState.enemies) {
     if (e.hp <= 0) spawnLoot(e.x, e.z);
   }
-  const defeatedMinion = gameState.enemies.length;
+  const enemiesBeforeCleanup = gameState.enemies.length;
   gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-  const defeatedMinionCount = defeatedMinion - gameState.enemies.length;
-  if (defeatedMinionCount > 0) {
-    recordEnemyDefeated(defeatedMinionCount);
+  const defeatedCount = enemiesBeforeCleanup - gameState.enemies.length;
+  if (defeatedCount > 0) {
+    recordEnemyDefeated(defeatedCount);
     checkRunTerminalState();
   }
 
@@ -1037,11 +1037,11 @@ function startServer(port) {
       for (const e of gameState.enemies) {
         if (e.hp <= 0) spawnLoot(e.x, e.z);
       }
-      const defeatedWeapon = gameState.enemies.length;
+      const enemiesBeforeCleanup = gameState.enemies.length;
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-      const defeatedWeaponCount = defeatedWeapon - gameState.enemies.length;
-      if (defeatedWeaponCount > 0) {
-        recordEnemyDefeated(defeatedWeaponCount);
+      const defeatedCount = enemiesBeforeCleanup - gameState.enemies.length;
+      if (defeatedCount > 0) {
+        recordEnemyDefeated(defeatedCount);
         checkRunTerminalState();
       }
 
@@ -1093,11 +1093,11 @@ function startServer(port) {
       for (const e of gameState.enemies) {
         if (e.hp <= 0) spawnLoot(e.x, e.z);
       }
-      const defeatedSummon = gameState.enemies.length;
+      const enemiesBeforeCleanup = gameState.enemies.length;
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-      const defeatedSummonCount = defeatedSummon - gameState.enemies.length;
-      if (defeatedSummonCount > 0) {
-        recordEnemyDefeated(defeatedSummonCount);
+      const defeatedCount = enemiesBeforeCleanup - gameState.enemies.length;
+      if (defeatedCount > 0) {
+        recordEnemyDefeated(defeatedCount);
         checkRunTerminalState();
       }
 
