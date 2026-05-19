@@ -1101,3 +1101,176 @@ describe('Reward state persistence across runs', () => {
 		expect(player.currencyEarnedThisRun).toBe(0);
 	});
 });
+
+describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('player A adds a card and receives deckUpdate; player B deck is unchanged', async () => {
+		const playerA = gameState.players[socket1.id];
+		const deckBeforeA = [...playerA.selectedDeck];
+		const deckB = [...gameState.players[socket2.id].selectedDeck];
+
+		// Player A adds an extra iron_sword (they own 3, default deck has 1)
+		const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
+		const update = await deckUpdatePromise;
+
+		expect(update.selectedDeck).toBeDefined();
+		expect(update.ownedCards).toBeDefined();
+		expect(update.selectedDeck.length).toBe(deckBeforeA.length + 1);
+		expect(update.selectedDeck).toContain('iron_sword');
+
+		// Verify server state
+		expect(playerA.selectedDeck.length).toBe(deckBeforeA.length + 1);
+
+		// Player B's deck must be unchanged
+		expect(gameState.players[socket2.id].selectedDeck).toEqual(deckB);
+	});
+
+	it('player removes a card from deck and receives deckUpdate', async () => {
+		const playerA = gameState.players[socket1.id];
+		const deckBefore = [...playerA.selectedDeck];
+
+		const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('deckRemoveCard', { cardId: 'iron_sword' });
+		const update = await deckUpdatePromise;
+
+		expect(update.selectedDeck.length).toBe(deckBefore.length - 1);
+		expect(update.selectedDeck).not.toContain('iron_sword');
+
+		expect(playerA.selectedDeck.length).toBe(deckBefore.length - 1);
+		expect(playerA.selectedDeck).not.toContain('iron_sword');
+	});
+
+	it('deckAddCard during playing phase is silently ignored', async () => {
+		const playerA = gameState.players[socket1.id];
+		const deckBefore = [...playerA.selectedDeck];
+
+		// Enter playing phase
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		expect(gameState.gamePhase).toBe('playing');
+
+		// Attempt to add a card — should be silently ignored (no deckUpdate, no deckError)
+		const deckUpdatePromise = new Promise((resolve) => {
+			socket1.once('deckUpdate', resolve);
+		});
+		const deckErrorPromise = new Promise((resolve) => {
+			socket1.once('deckError', resolve);
+		});
+
+		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
+
+		// Race: neither event should fire within 500ms
+		const result = await Promise.race([
+			Promise.all([deckUpdatePromise, deckErrorPromise]).then(r => r),
+			new Promise((_, r) => setTimeout(() => r('timeout'), 500))
+		]);
+
+		expect(result).toBe('timeout');
+		expect(playerA.selectedDeck).toEqual(deckBefore);
+	});
+
+	it('deckRemoveCard during playing phase is silently ignored', async () => {
+		const playerA = gameState.players[socket1.id];
+		const deckBefore = [...playerA.selectedDeck];
+
+		// Enter playing phase
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Attempt to remove a card — should be silently ignored
+		socket1.emit('deckRemoveCard', { cardId: 'iron_sword' });
+
+		await sleep(200);
+
+		expect(playerA.selectedDeck).toEqual(deckBefore);
+	});
+
+	it('adding unknown card emits deckError', async () => {
+		const deckErrorPromise = waitForEvent(socket1, 'deckError');
+		socket1.emit('deckAddCard', { cardId: 'nonexistent_card' });
+		const err = await deckErrorPromise;
+
+		expect(err.reason).toContain('Unknown card');
+
+		// Deck must be unchanged
+		const playerA = gameState.players[socket1.id];
+		expect(playerA.selectedDeck.length).toBe(4); // default deck size
+	});
+
+	it('removing card not in deck emits deckError', async () => {
+		// dungeon_drake is in the default deck, so remove it first
+		const playerA = gameState.players[socket1.id];
+		const deckBefore = [...playerA.selectedDeck];
+
+		// Remove dungeon_drake from deck
+		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
+		await sleep(100);
+
+		// Now try to remove it again — should fail
+		const deckErrorPromise = waitForEvent(socket1, 'deckError');
+		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
+		const err = await deckErrorPromise;
+
+		expect(err.reason).toContain('not in deck');
+		expect(playerA.selectedDeck).not.toContain('dungeon_drake');
+	});
+
+	it('adding too many copies of a card emits deckError', async () => {
+		const playerA = gameState.players[socket1.id];
+		// Player owns 3 iron_swords, default deck has 1. Add 2 more (deck now has 3).
+		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
+		await sleep(100);
+		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
+		await sleep(100);
+
+		// Now try to add a 4th — should fail (only own 3)
+		const deckErrorPromise = waitForEvent(socket1, 'deckError');
+		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
+		const err = await deckErrorPromise;
+
+		expect(err.reason).toContain('No extra copies');
+
+		// Count iron_swords in deck — should be exactly 3
+		const ironCount = playerA.selectedDeck.filter(id => id === 'iron_sword').length;
+		expect(ironCount).toBe(3);
+	});
+
+	it('two players can edit decks independently without affecting each other', async () => {
+		const deckA = [...gameState.players[socket1.id].selectedDeck];
+		const deckB = [...gameState.players[socket2.id].selectedDeck];
+
+		// Player A adds iron_sword
+		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
+		await sleep(100);
+
+		// Player B removes flame_blade
+		const deckUpdateB = waitForEvent(socket2, 'deckUpdate');
+		socket2.emit('deckRemoveCard', { cardId: 'flame_blade' });
+		await deckUpdateB;
+
+		// Verify independence
+		expect(gameState.players[socket1.id].selectedDeck.length).toBe(deckA.length + 1);
+		expect(gameState.players[socket2.id].selectedDeck.length).toBe(deckB.length - 1);
+		expect(gameState.players[socket1.id].selectedDeck).toContain('flame_blade'); // A still has it
+		expect(gameState.players[socket2.id].selectedDeck).not.toContain('flame_blade'); // B removed it
+	});
+});

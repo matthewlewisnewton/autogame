@@ -1246,6 +1246,77 @@ function startServer(port) {
     returnPlayersToLobby();
   });
 
+  socket.on('deckAddCard', (data) => {
+    // Guard: only allowed in lobby phase
+    if (gameState.gamePhase !== 'lobby') return;
+
+    const player = gameState.players[socket.id];
+    if (!player) return;
+
+    const cardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!cardId) {
+      socket.emit('deckError', { reason: 'Missing cardId' });
+      return;
+    }
+
+    // Validate card exists
+    if (!CARD_DEFS[cardId]) {
+      socket.emit('deckError', { reason: `Unknown card: ${cardId}` });
+      return;
+    }
+
+    // Validate deck rules via canAddCardToDeck
+    if (!canAddCardToDeck(cardId, player.selectedDeck, player.ownedCards)) {
+      if (player.selectedDeck.length >= DECK_MAX_SIZE) {
+        socket.emit('deckError', { reason: `Deck is full (${DECK_MAX_SIZE} cards max)` });
+      } else if (player.selectedDeck.filter(id => id === cardId).length >= (player.ownedCards[cardId] || 0)) {
+        socket.emit('deckError', { reason: `No extra copies of ${cardId} to add` });
+      } else {
+        socket.emit('deckError', { reason: `Cannot add ${cardId} to deck` });
+      }
+      return;
+    }
+
+    // Add card to deck
+    player.selectedDeck.push(cardId);
+
+    // Emit deckUpdate to the requesting player only
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      ownedCards: player.ownedCards
+    });
+  });
+
+  socket.on('deckRemoveCard', (data) => {
+    // Guard: only allowed in lobby phase
+    if (gameState.gamePhase !== 'lobby') return;
+
+    const player = gameState.players[socket.id];
+    if (!player) return;
+
+    const cardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!cardId) {
+      socket.emit('deckError', { reason: 'Missing cardId' });
+      return;
+    }
+
+    // Find card in deck
+    const idx = player.selectedDeck.indexOf(cardId);
+    if (idx === -1) {
+      socket.emit('deckError', { reason: `Card ${cardId} not in deck` });
+      return;
+    }
+
+    // Remove one occurrence
+    player.selectedDeck.splice(idx, 1);
+
+    // Emit deckUpdate to the requesting player only
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      ownedCards: player.ownedCards
+    });
+  });
+
   socket.on('debugScenario', (data) => {
     const name = data && typeof data.name === 'string' ? data.name : '';
     if (!isDebugScenarioAllowed(socket)) {
