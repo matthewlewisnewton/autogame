@@ -19,7 +19,7 @@ GAME_URL="${GAME_URL:-http://localhost:5173}"
 QWEN_MODEL="${QWEN_MODEL:-}"               # empty = qwen default
 GEMINI_MODEL="${GEMINI_MODEL:-gemini-3-flash-preview}"
 CLAUDE_MODEL="${CLAUDE_MODEL:-}"           # empty = claude default
-QWEN_TIMEOUT="${QWEN_TIMEOUT:-1200}"
+QWEN_TIMEOUT="${QWEN_TIMEOUT:-1800}"
 GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
 AGENT_MODEL="${AGENT_MODEL:-composer-2}"   # cursor-agent QA fallback model
