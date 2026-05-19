@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, createStartingDeck, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { wallAABB, resolveWallCollision as resolveWallCollisionPure } from './collision.js';
+import { drawCard, initHand as initHandFromModule, hand, slotCooldowns } from './hand.js';
 
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -31,11 +33,6 @@ let latency = null;
 let sceneInitialized = false;
 let currentLayoutSeed = null; // tracks the layout seed we last built from
 
-// ── Hand state ──
-let hand = [];       // array of 4 card objects: { id, name, type, charges, remainingCharges }
-let deck = [];       // remaining card id strings to draw from
-let slotCooldowns = [false, false, false, false];   // per-slot cooldown guard
-
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
 const playersMeshes = {};
@@ -51,7 +48,6 @@ let playerRotation = 0; // facing angle in radians, derived from movement veloci
 let wasDead = false; // tracks previous-frame dead state for respawn detection
 let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
 let wallColliders = []; // flat array of wall AABBs: { minX, maxX, minZ, maxZ }
-const PLAYER_RADIUS = 0.5; // collision radius for the player
 
 function requestDebugScenario() {
   if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
@@ -105,20 +101,6 @@ function updateMsBar(ms) {
   msLabel.textContent = myId ? `${myId.slice(0, 5)} MS` : 'MS';
 }
 
-function drawCard() {
-  if (deck.length === 0) return null;
-  const cardId = deck.pop();
-  const def = CARD_DEFS[cardId];
-  if (!def) return null;
-  return {
-    id: def.id,
-    name: def.name,
-    type: def.type,
-    charges: def.charges,
-    remainingCharges: def.charges,
-  };
-}
-
 function renderHand() {
   for (let i = 0; i < 4; i++) {
     const slot = cardSlots[i];
@@ -140,23 +122,7 @@ function renderHand() {
 }
 
 function initHand() {
-  const deckIds = createStartingDeck();
-  hand = [];
-  deck = [];
-  slotCooldowns = [false, false, false, false];
-
-  // Put all card IDs into deck, then pop 4 for the initial hand
-  for (let i = deckIds.length - 1; i >= 0; i--) {
-    deck.push(deckIds[i]);
-  }
-
-  // Deal first 4 cards from deck into hand
-  for (let i = 0; i < 4; i++) {
-    const card = drawCard();
-    if (card) hand.push(card);
-  }
-
-  renderHand();
+	initHandFromModule(renderHand);
 }
 
 function refillSlot(index) {
@@ -776,24 +742,7 @@ function buildDungeon(layout) {
 }
 
 // ── Wall collision helpers ──
-
-function wallAABB(wall, halfThickness) {
-  if (wall.axis === 'x') {
-    return {
-      minX: wall.x - wall.length / 2 - halfThickness,
-      maxX: wall.x + wall.length / 2 + halfThickness,
-      minZ: wall.z - halfThickness,
-      maxZ: wall.z + halfThickness
-    };
-  } else {
-    return {
-      minX: wall.x - halfThickness,
-      maxX: wall.x + halfThickness,
-      minZ: wall.z - wall.length / 2 - halfThickness,
-      maxZ: wall.z + wall.length / 2 + halfThickness
-    };
-  }
-}
+// wallAABB and resolveWallCollision are imported from collision.js
 
 function buildWallColliders(layout) {
   wallColliders = [];
@@ -812,59 +761,8 @@ function buildWallColliders(layout) {
 }
 
 function resolveWallCollision(newX, newZ) {
-  // Player bounding box
-  const pMinX = newX - PLAYER_RADIUS;
-  const pMaxX = newX + PLAYER_RADIUS;
-  const pMinZ = newZ - PLAYER_RADIUS;
-  const pMaxZ = newZ + PLAYER_RADIUS;
-
-  let resolvedX = newX;
-  let resolvedZ = newZ;
-
-  for (const w of wallColliders) {
-    // Quick overlap test
-    if (pMaxX <= w.minX || pMinX >= w.maxX || pMaxZ <= w.minZ || pMinZ >= w.maxZ) continue;
-
-    // Compute overlap on each axis
-    const overlapX = Math.min(pMaxX - w.minX, w.maxX - pMinX);
-    const overlapZ = Math.min(pMaxZ - w.minZ, w.maxZ - pMinZ);
-
-    // Push out along the axis of least penetration
-    if (overlapX < overlapZ) {
-      const centerX = (pMinX + pMaxX) / 2;
-      const wallCX = (w.minX + w.maxX) / 2;
-      resolvedX = centerX + (centerX < wallCX ? -overlapX : overlapX);
-    } else {
-      const centerZ = (pMinZ + pMaxZ) / 2;
-      const wallCZ = (w.minZ + w.maxZ) / 2;
-      resolvedZ = centerZ + (centerZ < wallCZ ? -overlapZ : overlapZ);
-    }
-
-    // Update player box after push-out (colliders are static, so no infinite loop)
-    const rMinX = resolvedX - PLAYER_RADIUS;
-    const rMaxX = resolvedX + PLAYER_RADIUS;
-    const rMinZ = resolvedZ - PLAYER_RADIUS;
-    const rMaxZ = resolvedZ + PLAYER_RADIUS;
-
-    // Re-check: if still overlapping on one axis, clamp further
-    // (handles corner cases where pushing on one axis still overlaps another wall)
-    for (const w2 of wallColliders) {
-      if (rMaxX <= w2.minX || rMinX >= w2.maxX || rMaxZ <= w2.minZ || rMinZ >= w2.maxZ) continue;
-      const oX = Math.min(rMaxX - w2.minX, w2.maxX - rMinX);
-      const oZ = Math.min(rMaxZ - w2.minZ, w2.maxZ - rMinZ);
-      if (oX < oZ) {
-        const cX = (rMinX + rMaxX) / 2;
-        const wcX = (w2.minX + w2.maxX) / 2;
-        resolvedX = cX + (cX < wcX ? -oX : oX);
-      } else {
-        const cZ = (rMinZ + rMaxZ) / 2;
-        const wcZ = (w2.minZ + w2.maxZ) / 2;
-        resolvedZ = cZ + (cZ < wcZ ? -oZ : oZ);
-      }
-    }
-  }
-
-  return { x: resolvedX, z: resolvedZ };
+  // Delegate to the pure helper, passing the current wall colliders
+  return resolveWallCollisionPure(newX, newZ, wallColliders);
 }
 
 // ── Scene initialization (deferred) ──
