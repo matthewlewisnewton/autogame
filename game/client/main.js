@@ -121,6 +121,7 @@ const playersMeshes = {};
 const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
+const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 const lootMeshes = {};
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
@@ -731,6 +732,34 @@ function healthBarColor(hp) {
 }
 
 /**
+ * Apply or remove the windup emissive flash on an enemy mesh.
+ * When `isWindup` is true and the enemy is not already flashing, sets emissive
+ * to 0xff3333 and adds the id to `windupFlashing`.
+ * When `isWindup` is false and the enemy is in `windupFlashing`, restores
+ * emissive to 0x000000 and removes the id.
+ * @param {string} enemyId
+ * @param {boolean} isWindup
+ */
+function applyWindupFlash(enemyId, isWindup) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+
+	if (isWindup) {
+		if (!windupFlashing.has(enemyId)) {
+			mesh.material.emissive.set(0xff3333);
+			mesh.material.emissiveIntensity = 1.5;
+			windupFlashing.add(enemyId);
+		}
+	} else {
+		if (windupFlashing.has(enemyId)) {
+			mesh.material.emissive.set(0x000000);
+			mesh.material.emissiveIntensity = 0;
+			windupFlashing.delete(enemyId);
+		}
+	}
+}
+
+/**
  * Create a health-bar mesh positioned above an enemy.
  */
 function createHealthBarMesh(enemyId, x, z) {
@@ -1229,6 +1258,8 @@ socket.on('startGame', () => {
     telegraphMeshes[id].material.dispose();
     delete telegraphMeshes[id];
   }
+  // Clear windup flashing tracking for new run
+  windupFlashing.clear();
   // Dispose previous run's minion meshes
   for (const id of Object.keys(minionsMeshes)) {
     if (scene) scene.remove(minionsMeshes[id]);
@@ -1637,8 +1668,8 @@ function animate(timestamp) {
 
       // ── Telegraph visuals (windup state) ──
       if (enemy.attackState === 'windup') {
-        // Flash enemy mesh bright red during windup
-        flashMesh(enemiesMeshes[enemy.id], 0xff3333, 300);
+        // Set windup emissive exactly once on entering windup
+        applyWindupFlash(enemy.id, true);
 
         // Create or update warning circle at the target player's position
         if (!telegraphMeshes[enemy.id]) {
@@ -1676,6 +1707,9 @@ function animate(timestamp) {
           telegraphMeshes[enemy.id].material.dispose();
           delete telegraphMeshes[enemy.id];
         }
+
+        // Restore original emissive when leaving windup
+        applyWindupFlash(enemy.id, false);
       }
     }
 
@@ -1706,6 +1740,12 @@ function animate(timestamp) {
         telegraphMeshes[id].geometry.dispose();
         telegraphMeshes[id].material.dispose();
         delete telegraphMeshes[id];
+      }
+    }
+    // Clean up windupFlashing entries for removed enemies
+    for (const id of [...windupFlashing]) {
+      if (!currentEnemyIds.has(id)) {
+        windupFlashing.delete(id);
       }
     }
 
@@ -1835,6 +1875,9 @@ window.enemyHealthBars = enemyHealthBars;
 window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
 window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
+window.__windupFlashing = () => windupFlashing; // test-only: access windupFlashing Set
+window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMeshes map
+window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
 window.__AUTOGAME_HARNESS_STATE__ = () => {
   const me = gameState && myId ? gameState.players[myId] : null;
   const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');

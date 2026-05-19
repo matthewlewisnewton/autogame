@@ -1132,3 +1132,199 @@ describe('playSound() and mute toggle', () => {
 		expect(mockOscillators[1].frequency.value).toBe(250);
 	});
 });
+
+// ── applyWindupFlash (telegraph emissive toggle) ──
+
+describe('applyWindupFlash()', () => {
+	beforeEach(() => {
+		// Create required DOM elements for main.js import
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	afterEach(() => {
+		// Clean up module-scoped state that persists across tests (main.js is cached)
+		if (typeof window.__enemiesMeshes === 'function') {
+			const meshes = window.__enemiesMeshes();
+			for (const id of ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5', 'enemy6']) {
+				delete meshes[id];
+			}
+		}
+		if (typeof window.__windupFlashing === 'function') {
+			const flashing = window.__windupFlashing();
+			for (const id of ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5', 'enemy6']) {
+				flashing.delete(id);
+			}
+		}
+	});
+
+	function createMockMesh() {
+		return {
+			material: {
+				emissive: {
+					_value: 0x000000,
+					set: function(c) { this._value = c; },
+					get: function() { return this._value; },
+				},
+				emissiveIntensity: 0,
+			},
+		};
+	}
+
+	it('is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.applyWindupFlash).toBe('function');
+	});
+
+	it('sets emissive to warning color once on entering windup', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy1'] = mockMesh;
+
+		const flashing = window.__windupFlashing();
+		expect(flashing.has('enemy1')).toBe(false);
+
+		window.applyWindupFlash('enemy1', true);
+
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
+		expect(flashing.has('enemy1')).toBe(true);
+
+		delete meshes['enemy1'];
+	});
+
+	it('does NOT overwrite emissive on repeated windup calls (idempotent)', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy2'] = mockMesh;
+
+		// First call — sets emissive
+		window.applyWindupFlash('enemy2', true);
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+
+		// Simulate something else corrupting the emissive (shouldn't happen, but verifies idempotency)
+		mockMesh.material.emissive.set(0x999999);
+
+		// Second call — should be a no-op since enemy is already in windupFlashing
+		window.applyWindupFlash('enemy2', true);
+		expect(mockMesh.material.emissive._value).toBe(0x999999); // unchanged
+
+		delete meshes['enemy2'];
+	});
+
+	it('restores emissive to original color on leaving windup', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy3'] = mockMesh;
+
+		// Enter windup
+		window.applyWindupFlash('enemy3', true);
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
+
+		// Leave windup
+		window.applyWindupFlash('enemy3', false);
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+		expect(mockMesh.material.emissiveIntensity).toBe(0);
+		expect(window.__windupFlashing().has('enemy3')).toBe(false);
+
+		delete meshes['enemy3'];
+	});
+
+	it('multiple windup cycles correctly toggle emissive', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy4'] = mockMesh;
+
+		// Cycle 1
+		window.applyWindupFlash('enemy4', true);
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+		window.applyWindupFlash('enemy4', false);
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+
+		// Cycle 2
+		window.applyWindupFlash('enemy4', true);
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+		window.applyWindupFlash('enemy4', false);
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+
+		// Cycle 3
+		window.applyWindupFlash('enemy4', true);
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+		window.applyWindupFlash('enemy4', false);
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+
+		delete meshes['enemy4'];
+	});
+
+	it('does nothing when enemy has never entered windup and isWindup is false', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy5'] = mockMesh;
+
+		// Call with false without ever calling true
+		window.applyWindupFlash('enemy5', false);
+
+		// Emissive should remain at default
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+		expect(mockMesh.material.emissiveIntensity).toBe(0);
+		expect(window.__windupFlashing().has('enemy5')).toBe(false);
+
+		delete meshes['enemy5'];
+	});
+
+	it('does nothing when mesh does not exist for enemy id', async () => {
+		await import('../main.js');
+		expect(() => window.applyWindupFlash('nonexistent', true)).not.toThrow();
+		expect(() => window.applyWindupFlash('nonexistent', false)).not.toThrow();
+	});
+
+	it('does nothing when mesh has no emissive property', async () => {
+		await import('../main.js');
+
+		const mockMesh = { material: { emissive: null, emissiveIntensity: 0 } };
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy6'] = mockMesh;
+
+		expect(() => window.applyWindupFlash('enemy6', true)).not.toThrow();
+		expect(() => window.applyWindupFlash('enemy6', false)).not.toThrow();
+
+		delete meshes['enemy6'];
+	});
+});
