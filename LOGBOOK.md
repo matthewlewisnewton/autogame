@@ -811,3 +811,26 @@ None.
 None blocking. The implementation cleanly addresses both acceptance criteria,
 unit-test coverage is thorough, and the captured run is clean.
 
+
+## v0.36 — Cleanup nits from 025-dungeon-run-objectives  (2026-05-19 16:34:39)
+
+behavior, or scoring rule. There is nothing in `game/docs/design.md`
+or `game/docs/requirements.md` it could conflict with — it is a
+pure-cleanup ticket and behaves like one.
+
+## Code-quality spot checks
+- The helper has a small JSDoc block describing its contract and
+  return value — consistent with the surrounding helpers in this
+  module.
+- No dead code introduced; the variables it replaced are fully gone.
+- The CSS `display: none` is placed at the end of the existing
+  `#objective-hud` rule block (not as a separate rule), which keeps
+  the cascade clean.
+- No console errors at runtime; no test files needed to change
+  because `removeDeadEnemies` is purely internal plumbing exposed
+  through the same test-module surface pattern.
+
+## Remaining gaps
+
+None blocking.
+
