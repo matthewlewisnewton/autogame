@@ -89,6 +89,20 @@ canvas {
   border-color: rgba(148, 163, 184, 0.5);
 }
 
+/* ── Insufficient Magic Stones ── */
+.card-slot.no-ms {
+  border-color: #ef4444;
+  background: rgba(239, 68, 68, 0.2);
+}
+
+/* ── Empty slot ── */
+.card-slot.empty {
+  background: rgba(15, 23, 42, 0.45);
+  border-style: dashed;
+  border-color: rgba(100, 116, 139, 0.3);
+  opacity: 0.55;
+}
+
 .card-slot .card-icon {
   font-size: 28px;
   line-height: 1;

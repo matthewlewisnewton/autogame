@@ -13,20 +13,28 @@ export let slotCooldowns = [false, false, false, false];
  * Draw one card from the deck.
  * Returns null if the deck is empty or the card id is unknown.
  *
- * @returns {{ id, name, type, charges, remainingCharges } | null}
+ * Copies `magicStoneCost` from the card definition when present (summon cards),
+ * so the client can evaluate affordability in renderHand() and sync the
+ * `.no-ms` CSS class when Magic Stones regenerate.
+ *
+ * @returns {{ id, name, type, charges, remainingCharges, magicStoneCost?: number } | null}
  */
 export function drawCard() {
 	if (deck.length === 0) return null;
 	const cardId = deck.pop();
 	const def = CARD_DEFS[cardId];
 	if (!def) return null;
-	return {
+	const card = {
 		id: def.id,
 		name: def.name,
 		type: def.type,
 		charges: def.charges,
 		remainingCharges: def.charges,
 	};
+	if (def.magicStoneCost != null) {
+		card.magicStoneCost = def.magicStoneCost;
+	}
+	return card;
 }
 
 /**

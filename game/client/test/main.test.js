@@ -170,6 +170,20 @@ describe('drawCard()', () => {
 		expect(card.remainingCharges).toBe(card.charges);
 		expect(card.charges).toBe(1);
 	});
+
+	it('includes magicStoneCost on summon cards when defined in CARD_DEFS', () => {
+		deck.push('battle_familiar');
+		const card = drawCard();
+
+		expect(card.magicStoneCost).toBe(50);
+	});
+
+	it('does not include magicStoneCost on non-summon cards', () => {
+		deck.push('iron_sword');
+		const card = drawCard();
+
+		expect(card.magicStoneCost).toBeUndefined();
+	});
 });
 
 // ── initHand ──
@@ -829,5 +843,135 @@ describe('markLootCollected()', () => {
 		);
 		expect(negativeDivs.length).toBeGreaterThan(0);
 		expect(negativeDivs[0].textContent).toBe('-8');
+	});
+});
+
+// ── renderHand ──
+
+describe('renderHand()', () => {
+	beforeEach(() => {
+		// Create all DOM elements that main.js queries at module load time
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		// Create card slots inside #card-hand
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.renderHand).toBe('function');
+	});
+
+	it('applies .empty class to empty slots and removes it from filled slots', async () => {
+		await import('../main.js');
+
+		// Set hand to [card, null, card, null] — slots 1 and 3 are empty
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[1] = null;
+		hand[2] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[3] = null;
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].classList.contains('empty')).toBe(false);
+		expect(slots[1].classList.contains('empty')).toBe(true);
+		expect(slots[2].classList.contains('empty')).toBe(false);
+		expect(slots[3].classList.contains('empty')).toBe(true);
+	});
+
+	it('applies .no-ms class to summon cards when player lacks Magic Stones', async () => {
+		await import('../main.js');
+
+		// Set up a hand with a summon card and mock gameState with low magicStones
+		resetHandState();
+		hand[0] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+		hand[1] = null;
+		hand[2] = null;
+		hand[3] = null;
+
+		// Mock gameState with insufficient magic stones
+		window.__setGameState({
+			players: {
+				'player1': { magicStones: 10 }
+			},
+			gamePhase: 'playing'
+		}, 'player1');
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].classList.contains('no-ms')).toBe(true);
+	});
+
+	it('removes .no-ms class when player has enough Magic Stones', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+		hand[1] = null;
+		hand[2] = null;
+		hand[3] = null;
+
+		// Mock gameState with sufficient magic stones
+		window.__setGameState({
+			players: {
+				'player1': { magicStones: 75 }
+			},
+			gamePhase: 'playing'
+		}, 'player1');
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].classList.contains('no-ms')).toBe(false);
+	});
+
+	it('does not apply .no-ms to non-summon cards even with low Magic Stones', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[1] = null;
+		hand[2] = null;
+		hand[3] = null;
+
+		window.__setGameState({
+			players: {
+				'player1': { magicStones: 0 }
+			},
+			gamePhase: 'playing'
+		}, 'player1');
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].classList.contains('no-ms')).toBe(false);
 	});
 });
