@@ -102,6 +102,21 @@ export function initHandFromDeck(serverDeckIds, onRender) {
 }
 
 /**
+ * Check whether a hand slot can be used right now.
+ *
+ * Pure read — does not mutate `hand` or `slotCooldowns`.
+ *
+ * @param {number} slotIndex — slot to check (0–3)
+ * @returns {boolean}
+ */
+export function canUseSlot(slotIndex) {
+	if (slotIndex < 0 || slotIndex > 3) return false;
+	if (!hand[slotIndex]) return false;
+	if (slotCooldowns[slotIndex]) return false;
+	return true;
+}
+
+/**
  * Reset hand / deck / cooldowns to empty defaults.
  * Useful for tests that need a clean slate between cases.
  */
