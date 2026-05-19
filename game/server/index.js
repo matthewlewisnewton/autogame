@@ -336,6 +336,12 @@ const WANDER_SPEED = 1; // units per second
 const DETECTION_RADIUS = 8; // units
 const CHASE_SPEED = 2.5; // units per second
 
+// Enemy attack state machine parameters
+const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
+const ENEMY_ATTACK_DAMAGE = 10; // HP per hit
+const ENEMY_ATTACK_WINDUP_MS = 800; // visible wind-up before strike
+const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
+
 const MAX_MAGIC_STONES = 100;
 const MAGIC_STONES_REGEN_PER_TICK = 0.5;
 const DEBUG_SCENARIOS = new Set([
@@ -788,6 +794,7 @@ function spawnEnemies() {
       z: position.z,
       hp: 50,
       state: 'idle',
+      attackState: 'idle',
       wanderTarget: randomWanderTarget()
     });
   }
@@ -827,6 +834,7 @@ function ensureNearbyEnemy(x, z) {
     z,
     hp: 50,
     state: 'idle',
+    attackState: 'idle',
     wanderTarget: { x: x + 3, z }
   });
 }
@@ -877,55 +885,106 @@ function applyDebugScenario(socket, name) {
 
 // Helper: update enemy wander AI each tick
 function updateEnemies() {
-  const dt = 1 / TICK_RATE;
-  const players = Object.values(gameState.players).filter(p => !p.dead);
+	const dt = 1 / TICK_RATE;
+	const players = Object.values(gameState.players).filter(p => !p.dead);
 
-  for (const enemy of gameState.enemies) {
-    // Find nearest living player (Euclidean distance on x-z plane)
-    let nearestDist = Infinity;
-    let nearestPlayer = null;
-    for (const player of players) {
-      const dx = player.x - enemy.x;
-      const dz = player.z - enemy.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestPlayer = player;
-      }
-    }
+	for (const enemy of gameState.enemies) {
+		// Ensure attackState exists (backward compat for enemies spawned before this change)
+		if (!enemy.attackState) enemy.attackState = 'idle';
 
-    // Chase logic
-    if (nearestPlayer && nearestDist < DETECTION_RADIUS) {
-      enemy.state = 'chasing';
-      const dx = nearestPlayer.x - enemy.x;
-      const dz = nearestPlayer.z - enemy.z;
-      const dist = Math.hypot(dx, dz);
+		// ── Recovery: wait out cooldown, then return to chasing or idle ──
+		if (enemy.attackState === 'recovering') {
+			if (Date.now() >= enemy.recoverUntil) {
+				enemy.attackState = 'chasing';
+			} else {
+				continue; // do not move while recovering
+			}
+			// fall through to chasing/idle logic below
+		}
 
-      if (dist > 0.1) {
-        const move = CHASE_SPEED * dt;
-        enemy.x += (dx / dist) * move;
-        enemy.z += (dz / dist) * move;
-      }
-      continue;
-    }
+		// ── Wind-up: wait, then revalidate range before striking ──
+		if (enemy.attackState === 'windup') {
+			const elapsed = Date.now() - enemy.windupStartTime;
+			if (elapsed >= ENEMY_ATTACK_WINDUP_MS) {
+				// Revalidate: find the target player and check range + alive
+				const target = gameState.players[enemy.windupTargetId];
+				if (target && !target.dead) {
+					const dist = Math.hypot(target.x - enemy.x, target.z - enemy.z);
+					if (dist <= ENEMY_ATTACK_RANGE) {
+						// Strike!
+						damagePlayer(enemy.windupTargetId, ENEMY_ATTACK_DAMAGE);
+						enemy.attackState = 'recovering';
+						enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+						continue;
+					}
+				}
+				// Target out of range or dead — cancel attack, enter recovery
+				enemy.attackState = 'recovering';
+				enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+				continue;
+			} else {
+				continue; // still winding up, do not move
+			}
+		}
 
-    // No player in range — revert to idle and wander
-    enemy.state = 'idle';
-    const wdx = enemy.wanderTarget.x - enemy.x;
-    const wdz = enemy.wanderTarget.z - enemy.z;
-    const wdist = Math.hypot(wdx, wdz);
+		// ── Find nearest living player ──
+		let nearestDist = Infinity;
+		let nearestPlayer = null;
+		for (const player of players) {
+			const dx = player.x - enemy.x;
+			const dz = player.z - enemy.z;
+			const dist = Math.hypot(dx, dz);
+			if (dist < nearestDist) {
+				nearestDist = dist;
+				nearestPlayer = player;
+			}
+		}
 
-    // Reached wander target — pick a new one
-    if (wdist < 0.5) {
-      enemy.wanderTarget = randomWanderTarget();
-      continue;
-    }
+		// ── Chasing: move toward player, transition to windup in range ──
+		if (nearestPlayer && nearestDist < DETECTION_RADIUS) {
+			enemy.state = 'chasing';
 
-    // Normalize and move toward wander target
-    const move = WANDER_SPEED * dt;
-    enemy.x += (wdx / wdist) * move;
-    enemy.z += (wdz / wdist) * move;
-  }
+			// If in chasing (not mid-windup/recover) and within attack range, start wind-up
+			if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
+				if (nearestDist <= ENEMY_ATTACK_RANGE) {
+					enemy.attackState = 'windup';
+					enemy.windupTargetId = nearestPlayer.id;
+					enemy.windupStartTime = Date.now();
+					continue; // do not move during wind-up
+				}
+				enemy.attackState = 'chasing';
+			}
+
+			const dx = nearestPlayer.x - enemy.x;
+			const dz = nearestPlayer.z - enemy.z;
+			const dist = Math.hypot(dx, dz);
+
+			if (dist > 0.1) {
+				const move = CHASE_SPEED * dt;
+				enemy.x += (dx / dist) * move;
+				enemy.z += (dz / dist) * move;
+			}
+			continue;
+		}
+
+		// ── No player in detection range — revert to idle and wander ──
+		enemy.state = 'idle';
+		enemy.attackState = 'idle';
+		const wdx = enemy.wanderTarget.x - enemy.x;
+		const wdz = enemy.wanderTarget.z - enemy.z;
+		const wdist = Math.hypot(wdx, wdz);
+
+		// Reached wander target — pick a new one
+		if (wdist < 0.5) {
+			enemy.wanderTarget = randomWanderTarget();
+			continue;
+		}
+
+		// Normalize and move toward wander target
+		const move = WANDER_SPEED * dt;
+		enemy.x += (wdx / wdist) * move;
+		enemy.z += (wdz / wdist) * move;
+	}
 }
 
 // Helper: decrement minion TTL and remove expired/dead minions
@@ -1490,6 +1549,10 @@ if (typeof module !== 'undefined' && module.exports) {
     DETECTION_RADIUS,
     ATTACK_RANGE,
     TICK_RATE,
+    ENEMY_ATTACK_RANGE,
+    ENEMY_ATTACK_DAMAGE,
+    ENEMY_ATTACK_WINDUP_MS,
+    ENEMY_ATTACK_RECOVERY_MS,
     GRID_COLS,
     GRID_ROWS,
     CELL_SPACING,
