@@ -1110,8 +1110,8 @@ socket.on('cardUsed', (data) => {
   }
 
   // Flash hit enemies (weapon, summon, or any card that reports hits)
-  // Audio cue: play at most one enemyHit per card event (throttle to prevent oscillator stacking)
-  if (data.hits && Array.isArray(data.hits)) {
+  // Audio cue: play at most one enemyHit per card event, only when there are actual hits
+  if (data.hits && data.hits.length > 0) {
     playSound('enemyHit');
 
     const now = performance.now();
