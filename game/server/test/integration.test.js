@@ -830,9 +830,11 @@ describe('Rewards in run complete payload', () => {
 		expect(playerEntry.rewards).toHaveProperty('cards');
 
 		// On failure, the player should NOT have received a victory card reward.
-		// runRewards should be null (never set) or the currency should not include the +10 bonus.
+		// runRewards should exist but contain no bonus currency and no cards.
 		const actualPlayer = gameState.players[socket1.id];
-		expect(actualPlayer.runRewards).toBeNull();
+		expect(actualPlayer.runRewards).not.toBeNull();
+		expect(actualPlayer.runRewards.cards.length).toBe(0);
+		expect(actualPlayer.runRewards.currency).toBe(0);
 	});
 
 	it('currency picked up via lootPickup appears in player currency in the run summary', async () => {
@@ -888,5 +890,214 @@ describe('Rewards in run complete payload', () => {
 		expect(playerEntry).toBeDefined();
 		// Player currency in summary should include the picked-up loot (+10 victory bonus)
 		expect(playerEntry.currency).toBe(currencyBefore + lootValue + 10);
+	});
+});
+
+describe('Reward state persistence across runs', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('after completing a run and returning to lobby, currency and ownedCards are preserved', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = gameState.players[socket1.id];
+
+		// Record initial ownedCards
+		const initialOwnedCards = { ...player.ownedCards };
+		const initialCurrency = player.currency;
+
+		// Replace all enemies with a single low-HP enemy in weapon range
+		gameState.enemies = [{
+			id: 'e_final',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		// Clear victory counter for deterministic card reward
+		if (!gameState._victoryCounters) gameState._victoryCounters = {};
+		gameState._victoryCounters[socket1.id] = 0;
+
+		// Complete the run
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+		await runCompletePromise;
+
+		// Verify rewards were granted
+		const currencyAfterVictory = player.currency;
+		expect(currencyAfterVictory).toBeGreaterThan(initialCurrency);
+		expect(player.runRewards).toBeDefined();
+		expect(player.runRewards.cards.length).toBeGreaterThan(0);
+
+		// Return to lobby
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('returnToLobby');
+		await stateUpdatePromise;
+
+		// Verify currency and ownedCards survived the return-to-lobby
+		expect(player.currency).toBe(currencyAfterVictory);
+		expect(player.ownedCards).toBeDefined();
+
+		// The rewarded card should have incremented the count in ownedCards
+		const rewardedCardId = player.runRewards.cards[0].id;
+		expect(player.ownedCards[rewardedCardId]).toBeGreaterThan(initialOwnedCards[rewardedCardId] || 0);
+	});
+
+	it('starting a second run after returning to lobby uses the same currency and ownedCards from previous run', async () => {
+		// --- First run: complete a victory ---
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = gameState.players[socket1.id];
+
+		// Set up a killable enemy
+		gameState.enemies = [{
+			id: 'e1',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		if (!gameState._victoryCounters) gameState._victoryCounters = {};
+		gameState._victoryCounters[socket1.id] = 0;
+
+		const runComplete1 = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+		await runComplete1;
+
+		const currencyAfterRun1 = player.currency;
+		const ownedCardsAfterRun1 = { ...player.ownedCards };
+
+		// Return to lobby
+		const stateUpdate1 = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('returnToLobby');
+		await stateUpdate1;
+
+		// --- Second run: ready up again ---
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Verify state carried over from first run
+		expect(player.currency).toBe(currencyAfterRun1);
+		expect(player.ownedCards).toEqual(ownedCardsAfterRun1);
+
+		// Complete the second run
+		gameState.enemies = [{
+			id: 'e2',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		const runComplete2 = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+		await runComplete2;
+
+		// Verify currency accumulated (second victory bonus on top of first)
+		expect(player.currency).toBeGreaterThan(currencyAfterRun1);
+
+		// Verify ownedCards grew (second card reward)
+		const ownedCardsAfterRun2 = player.ownedCards;
+		let anyGrew = false;
+		for (const cardId of Object.keys(ownedCardsAfterRun2)) {
+			if (ownedCardsAfterRun2[cardId] > (ownedCardsAfterRun1[cardId] || 0)) {
+				anyGrew = true;
+				break;
+			}
+		}
+		expect(anyGrew).toBe(true);
+	});
+
+	it('returnPlayersToLobby preserves ownedCards and runRewards', async () => {
+		// Enter playing phase and complete a victory
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = gameState.players[socket1.id];
+
+		// Set up and complete a victory
+		gameState.enemies = [{
+			id: 'e_final',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		if (!gameState._victoryCounters) gameState._victoryCounters = {};
+		gameState._victoryCounters[socket1.id] = 0;
+
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+		await runCompletePromise;
+
+		// Capture state before returnToLobby
+		const currencyBeforeReturn = player.currency;
+		const ownedCardsBeforeReturn = { ...player.ownedCards };
+		const runRewardsBeforeReturn = player.runRewards ? { ...player.runRewards } : null;
+
+		expect(runRewardsBeforeReturn).not.toBeNull();
+		expect(runRewardsBeforeReturn.cards.length).toBeGreaterThan(0);
+
+		// Return to lobby
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('returnToLobby');
+		await stateUpdatePromise;
+
+		// Verify currency is preserved
+		expect(player.currency).toBe(currencyBeforeReturn);
+
+		// Verify ownedCards is preserved (same keys and counts)
+		expect(player.ownedCards).toEqual(ownedCardsBeforeReturn);
+
+		// Verify runRewards is preserved (not reset to null)
+		expect(player.runRewards).not.toBeNull();
+		expect(player.runRewards.currency).toBe(runRewardsBeforeReturn.currency);
+		expect(player.runRewards.cards.length).toBe(runRewardsBeforeReturn.cards.length);
+
+		// Verify currencyEarnedThisRun was reset (transient per-run tracking)
+		expect(player.currencyEarnedThisRun).toBe(0);
 	});
 });
