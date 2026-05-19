@@ -59,6 +59,5 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [022-user-accounts](tickets/022-user-accounts/)
 - [ ] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
-- [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
 
 ## Done
