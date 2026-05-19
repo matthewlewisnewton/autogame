@@ -627,3 +627,26 @@ and the full test suite passes. One non-blocking nit noted in `nits.md`
 (`_playSoundCallLog` is appended to on every `playSound` call in production,
 not just under test — unbounded growth over a long session).
 
+
+## v0.28 — Cleanup nits from 044-cleanup-encounter-telegraphs-audio  (2026-05-19 13:08:38)
+
+
+Met. `game/client/test/setup.js:116` sets `window.__soundLogEnabled = true`
+before `main.js` is imported (tests import `main.js` lazily inside each test),
+so the flag is enabled in the jsdom environment. The `window.__playSoundCallLog`
+/ `window.__clearPlaySoundLog` hooks (`main.js:1746-1747`) are unchanged.
+Running `vitest run --config vitest.config.js client/test` gives 108/108
+tests passing, including all three `cardUsed handler — enemyHit sound throttle`
+cases.
+
+## Design / regression check
+
+Consistent with `design.md` — purely an internal cleanup of a test-only
+diagnostic array, no gameplay, audio behavior, or networking change. No
+regression to the foundation: `playSound()`'s real audio path is untouched.
+
+## Remaining gaps
+
+None blocking. One nit: `_soundLogEnabled` is declared with `let` but never
+reassigned and could be `const` (filed in `nits.md`).
+
