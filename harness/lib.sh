@@ -19,7 +19,7 @@ GAME_URL="${GAME_URL:-http://localhost:5173}"
 QWEN_MODEL="${QWEN_MODEL:-}"               # empty = qwen default
 GEMINI_MODEL="${GEMINI_MODEL:-gemini-3-flash-preview}"
 CLAUDE_MODEL="${CLAUDE_MODEL:-}"           # empty = claude default
-QWEN_TIMEOUT="${QWEN_TIMEOUT:-1800}"
+QWEN_TIMEOUT="${QWEN_TIMEOUT:-7200}"
 GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
 AGENT_MODEL="${AGENT_MODEL:-composer-2}"   # cursor-agent QA fallback model
@@ -78,8 +78,10 @@ stop_game() {
     [ -n "$p" ] && kill "$p" 2>/dev/null
   done
   GAME_PIDS=()
-  pkill -f 'node game/server/index.js' 2>/dev/null
-  pkill -f 'vite --port 5173' 2>/dev/null
+  # Keep cleanup patterns anchored to real process command lines. Agent prompts
+  # mention these commands verbatim, so broad pkill -f patterns can kill Qwen.
+  pkill -f '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])' 2>/dev/null
+  pkill -f '(^|[[:space:]])vite[[:space:]]+--port[[:space:]]+5173($|[[:space:]])' 2>/dev/null
   sleep 1
 }
 
@@ -167,11 +169,26 @@ render_prompt() {
 
 # --- CLI runner: retries on timeout / empty output. ---
 # _run_cli <label> <outfile> <timeout> <cmd...>  ->  0 = ok, 2 = tool-failure
+cli_failure_reason() {  # cli_failure_reason <rc> <outfile>
+  local rc="$1" out="$2"
+  if [ "$rc" -eq 124 ]; then
+    echo "timeout"
+  elif [ "$rc" -eq 137 ]; then
+    echo "killed_after_timeout"
+  elif [ "$rc" -eq 143 ]; then
+    echo "terminated_by_signal"
+  elif [ ! -s "$out" ]; then
+    echo "empty_output"
+  else
+    echo "exit_$rc"
+  fi
+}
+
 _run_cli() {
   local label="$1" out="$2" tmo="$3"; shift 3
-  local attempt=1 rc
+  local attempt=1 rc reason
   while :; do
-    emit_progress_event "agent_start" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt}"
+    emit_progress_event "agent_start" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"timeoutSeconds\":$tmo}"
     # </dev/null: a CLI that reads stdin (gemini -p does) must NOT inherit the
     #   harness's TTY — a backgrounded process reading a TTY gets SIGTTIN and
     #   hangs in stopped state. -k 30: SIGKILL 30s after the SIGTERM so a wedged
@@ -181,13 +198,14 @@ _run_cli() {
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"ok\"}"
       return 0
     fi
+    reason="$(cli_failure_reason "$rc" "$out")"
     if [ "$attempt" -gt "$CLI_RETRIES" ]; then
-      log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, $([ "$rc" -eq 124 ] && echo timeout || echo 'empty output'))"
-      emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\"}"
+      log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, reason=$reason)"
+      emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"
       return 2
     fi
-    log "[tool-retry] $label attempt $attempt failed (rc=$rc) — backoff ${CLI_RETRY_BACKOFF}s"
-    emit_progress_event "agent_retry" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc}"
+    log "[tool-retry] $label attempt $attempt failed (rc=$rc, reason=$reason) — backoff ${CLI_RETRY_BACKOFF}s"
+    emit_progress_event "agent_retry" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"reason\":$(json_string "$reason")}"
     sleep "$CLI_RETRY_BACKOFF"
     attempt=$((attempt + 1))
   done
