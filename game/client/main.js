@@ -88,7 +88,9 @@ const SOUND_CONFIG = {
  * Never throws — catches errors silently if AudioContext is unavailable or blocked.
  * @param {string} type - one of 'card', 'enemyHit', 'playerDamage', 'loot', 'victory', 'failure'
  */
+const _playSoundCallLog = []; // test-only: tracks playSound(type) calls
 function playSound(type) {
+  _playSoundCallLog.push(type);
   try {
     if (!soundEnabled) return;
 
@@ -1108,12 +1110,12 @@ socket.on('cardUsed', (data) => {
   }
 
   // Flash hit enemies (weapon, summon, or any card that reports hits)
+  // Audio cue: play at most one enemyHit per card event (throttle to prevent oscillator stacking)
   if (data.hits && Array.isArray(data.hits)) {
+    playSound('enemyHit');
+
     const now = performance.now();
     for (const hit of data.hits) {
-      // Audio cue: enemy takes damage
-      playSound('enemyHit');
-
       const mesh = enemiesMeshes[hit.enemyId];
       if (mesh) {
         flashMesh(mesh, 0xffffff, 200);
@@ -1738,8 +1740,10 @@ window.__soundEnabled = () => soundEnabled;
 window.__updateMuteButton = updateMuteButton;
 window.__setSoundEnabled = (v) => { soundEnabled = v; updateMuteButton(); };
 window.activeEffects = () => activeEffects;
-window.__setScene = (s) => { window.___test_scene = s; }; // test-only: override scene for spawnHitSpark
+window.__setScene = (s) => { window.___test_scene = s; scene = s; }; // test-only: override scene
 window.___test_scene = undefined;
+window.__playSoundCallLog = () => _playSoundCallLog; // test-only: get playSound call log
+window.__clearPlaySoundLog = () => { _playSoundCallLog.length = 0; }; // test-only: clear log
 window.__setGameState = (gs, id) => { gameState = gs; myId = id; }; // test-only: set gameState + myId
 window.enemyHealthBars = enemyHealthBars;
 window.healthBarColor = healthBarColor;
