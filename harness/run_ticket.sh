@@ -214,8 +214,13 @@ split_ticket() {
     log "[split] claude produced no split plan"
     return 1
   fi
-  # Discard the failed attempt — children are built fresh from the baseline.
-  git reset --hard "$BASE_REF" >/dev/null 2>&1
+  # Discard the failed attempt's game/ changes — forward-only and game/-scoped:
+  # HEAD never moves backward, so harness/, TASKS.md and history stay intact.
+  # (git rm + checkout makes game/ exactly match BASE_REF: removes files the
+  # attempt added, restores ones it changed or deleted.)
+  git rm -r --quiet --ignore-unmatch game/ >/dev/null 2>&1 || true
+  git checkout "$BASE_REF" -- game/ 2>/dev/null || true
+  git clean -fdq game/ 2>/dev/null || true
   chmod -R u+w "$REVIEWS_DIR" "$TDIR"/review-round-* "$TDIR"/rescue "$TDIR"/rescue-review 2>/dev/null || true
   rm -rf "$SUBROOT" "$REVIEW_FB" "$REVIEWS_DIR" "$TDIR"/review-round-* "$TDIR"/rescue "$TDIR"/rescue-review 2>/dev/null || true
   # Carve the split file (tickets separated by ===NEXT TICKET===) into chunks.

@@ -313,11 +313,13 @@ is_pass() {  # is_pass <file>
 
 # --- Git helpers ---
 # commit_verified <message> — HARD GATE for verified progress.
-# Stages everything, commits, and asserts HEAD advanced.
+# Stages the loop's OWN files only — game/ plus backlog bookkeeping — and never
+# harness/, so an in-flight harness edit can't be swept into a ticket commit.
+# Commits, and asserts HEAD advanced.
 #   0 = committed (or nothing to commit — state already in HEAD)
 #   2 = commit could not be made → caller MUST escalate, never proceed
 commit_verified() {
-  git add -A
+  git add -- game/ TASKS.md LOGBOOK.md tickets/
   if git diff --cached --quiet; then
     log "[git] no changes to commit — verified state already in HEAD"
     emit_progress_event "commit_skipped" "{\"message\":$(json_string "$1"),\"reason\":\"no_changes\"}"
