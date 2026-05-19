@@ -21,6 +21,12 @@ const msBarFill = document.getElementById('ms-bar-fill');
 const msText = document.getElementById('ms-text');
 const msLabel = document.getElementById('ms-label');
 const objectiveHudEl = document.getElementById('objective-hud');
+const runSummaryOverlay = document.getElementById('run-summary-overlay');
+const summaryStatusEl = document.getElementById('summary-status');
+const summaryDurationEl = document.getElementById('summary-duration');
+const summaryEnemiesEl = document.getElementById('summary-enemies');
+const summaryCurrencyEl = document.getElementById('summary-currency');
+const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 const cardSlots = document.querySelectorAll('.card-slot');
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -321,6 +327,11 @@ socket.on('stateUpdate', (state) => {
   gameState = state;
   if (gameState && currentLayout) gameState.layout = currentLayout;
 
+  // Hide run summary overlay when returning to lobby
+  if (state.gamePhase === 'lobby' && runSummaryOverlay) {
+    runSummaryOverlay.style.display = 'none';
+  }
+
   // Update currency HUD
   if (myId && gameState.players[myId]) {
     const currencyEl = document.getElementById('currency-display');
@@ -620,6 +631,36 @@ socket.on('startGame', () => {
   initHand();
   initScene();
   updateObjectiveHud();
+});
+
+// ── Run Summary Overlay ──
+
+function formatDuration(ms) {
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+  return `${seconds}s`;
+}
+
+function showRunSummary(data) {
+  if (!data) return;
+
+  const statusText = data.status === 'victory' ? 'Victory!' : 'Run Failed';
+  summaryStatusEl.textContent = statusText;
+  summaryDurationEl.textContent = `Duration: ${formatDuration(data.durationMs || 0)}`;
+  summaryEnemiesEl.textContent = `Enemies defeated: ${data.defeatedEnemies || 0}`;
+  summaryCurrencyEl.textContent = `Currency collected: ${data.currencyCollected || 0}`;
+  runSummaryOverlay.style.display = 'flex';
+}
+
+socket.on('runComplete', showRunSummary);
+socket.on('runFailed', showRunSummary);
+
+returnToLobbyBtn.addEventListener('click', () => {
+  socket.emit('returnToLobby');
 });
 
 // ── Dungeon geometry builder ──
