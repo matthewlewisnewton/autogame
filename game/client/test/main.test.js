@@ -403,3 +403,102 @@ describe('renderDeckEditor()', () => {
 		expect(deckErrorEl.textContent).toBe('');
 	});
 });
+
+// ── flashMesh ──
+
+describe('flashMesh()', () => {
+	beforeEach(() => {
+		// Create required DOM elements for main.js import
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.flashMesh).toBe('function');
+	});
+
+	it('sets emissive color and intensity on a mock mesh', async () => {
+		await import('../main.js');
+
+		const mockMesh = {
+			material: {
+				emissive: {
+					_value: 0x000000,
+					set: function(c) { this._value = c; },
+					get: function() { return this._value; },
+				},
+				emissiveIntensity: 0,
+			},
+		};
+
+		window.flashMesh(mockMesh, 0xffffff, 200);
+
+		expect(mockMesh.material.emissive._value).toBe(0xffffff);
+		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
+	});
+
+	it('restores original emissive and intensity after duration', async () => {
+		await import('../main.js');
+
+		const origColor = 0xdc2626;
+		const origIntensity = 0.5;
+		const mockMesh = {
+			material: {
+				emissive: {
+					_value: origColor,
+					set: function(c) { this._value = c; },
+					get: function() { return this._value; },
+				},
+				emissiveIntensity: origIntensity,
+			},
+		};
+
+		window.flashMesh(mockMesh, 0xffffff, 50);
+
+		// Immediately: flash color
+		expect(mockMesh.material.emissive._value).toBe(0xffffff);
+		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
+
+		// After timeout: restored
+		await new Promise(r => setTimeout(r, 100));
+		expect(mockMesh.material.emissive._value).toBe(origColor);
+		expect(mockMesh.material.emissiveIntensity).toBe(origIntensity);
+	});
+
+	it('does nothing when mesh is null', async () => {
+		await import('../main.js');
+		expect(() => window.flashMesh(null, 0xffffff, 100)).not.toThrow();
+	});
+
+	it('does nothing when mesh has no material', async () => {
+		await import('../main.js');
+		expect(() => window.flashMesh({}, 0xffffff, 100)).not.toThrow();
+	});
+});
