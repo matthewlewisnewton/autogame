@@ -369,12 +369,12 @@ const STARTING_DECK_IDS = [
 /**
  * Build a fresh player progress object.
  * Returns { currency, ownedCards, runRewards, currencyEarnedThisRun }.
- * `ownedCards` is a map of unique card id → count, seeded from the starting deck.
+ * `ownedCards` is a frequency map from the starting deck (e.g. iron_sword: 3).
  */
 function createPlayerProgress() {
   const ownedCards = {};
-  for (const cardId of [...new Set(STARTING_DECK_IDS)]) {
-    ownedCards[cardId] = 1;
+  for (const cardId of STARTING_DECK_IDS) {
+    ownedCards[cardId] = (ownedCards[cardId] || 0) + 1;
   }
   return {
     currency: 0,

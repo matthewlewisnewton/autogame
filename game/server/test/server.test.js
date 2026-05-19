@@ -1142,12 +1142,12 @@ describe('run state', () => {
 			expect(progress.runRewards).toBeNull();
 		});
 
-		it('populates ownedCards with the 4 unique starting deck card ids at count 1', () => {
+		it('populates ownedCards with starting deck card ids at correct frequency counts', () => {
 			const progress = createPlayerProgress();
 			expect(progress.ownedCards).toEqual({
-				iron_sword: 1,
-				flame_blade: 1,
-				battle_familiar: 1,
+				iron_sword: 3,
+				flame_blade: 2,
+				battle_familiar: 2,
 				dungeon_drake: 1
 			});
 		});
@@ -1157,10 +1157,11 @@ describe('run state', () => {
 			expect(Object.keys(progress.ownedCards).length).toBe(4);
 		});
 
-		it('each owned card has a count of 1', () => {
+		it('each owned card count matches expected frequency', () => {
 			const progress = createPlayerProgress();
+			const expected = { iron_sword: 3, flame_blade: 2, battle_familiar: 2, dungeon_drake: 1 };
 			for (const [cardId, count] of Object.entries(progress.ownedCards)) {
-				expect(count).toBe(1);
+				expect(count).toBe(expected[cardId]);
 			}
 		});
 
@@ -1168,7 +1169,7 @@ describe('run state', () => {
 			const a = createPlayerProgress();
 			const b = createPlayerProgress();
 			a.ownedCards.iron_sword = 99;
-			expect(b.ownedCards.iron_sword).toBe(1);
+			expect(b.ownedCards.iron_sword).toBe(3);
 		});
 	});
 
