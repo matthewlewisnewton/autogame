@@ -10,6 +10,10 @@ import {
 	gameState,
 	cleanupStalePlayers,
 	regenMagicStones,
+	createRunState,
+	startDungeonRun,
+	recordEnemyDefeated,
+	clampObjectiveProgress,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
 	MAGIC_STONES_REGEN_PER_TICK,
@@ -647,5 +651,123 @@ describe('createGameState()', () => {
 		const b = createGameState();
 		a.players['test'] = {};
 		expect(b.players['test']).toBeUndefined();
+	});
+});
+
+// ── Run State ──
+
+describe('run state', () => {
+	beforeEach(() => {
+		resetState();
+		// Ensure run is cleared before each test
+		delete gameState.run;
+	});
+
+	describe('createRunState()', () => {
+		it('produces an object with all required fields', () => {
+			// Set a known number of enemies
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+				{ id: 'e2', x: 5, z: 5, hp: 50, state: 'idle', wanderTarget: { x: 5, z: 5 } },
+				{ id: 'e3', x: 10, z: 10, hp: 50, state: 'idle', wanderTarget: { x: 10, z: 10 } },
+			];
+
+			const run = createRunState();
+
+			expect(run).toHaveProperty('id');
+			expect(typeof run.id).toBe('string');
+			expect(run).toHaveProperty('status', 'playing');
+			expect(run).toHaveProperty('objective');
+			expect(run.objective).toHaveProperty('type', 'defeat_enemies');
+			expect(run.objective).toHaveProperty('label', 'Defeat all enemies');
+			expect(run.objective).toHaveProperty('totalEnemies', 3);
+			expect(run.objective).toHaveProperty('defeatedEnemies', 0);
+			expect(run).toHaveProperty('startedAt');
+			expect(typeof run.startedAt).toBe('number');
+		});
+	});
+
+	describe('recordEnemyDefeated(n)', () => {
+		it('increments defeatedEnemies by n', () => {
+			gameState.run = {
+				id: 'run1',
+				status: 'playing',
+				objective: {
+					type: 'defeat_enemies',
+					label: 'Defeat all enemies',
+					totalEnemies: 10,
+					defeatedEnemies: 0
+				},
+				startedAt: Date.now()
+			};
+
+			recordEnemyDefeated(3);
+
+			expect(gameState.run.objective.defeatedEnemies).toBe(3);
+		});
+
+		it('clamps defeatedEnemies at totalEnemies', () => {
+			gameState.run = {
+				id: 'run1',
+				status: 'playing',
+				objective: {
+					type: 'defeat_enemies',
+					label: 'Defeat all enemies',
+					totalEnemies: 5,
+					defeatedEnemies: 0
+				},
+				startedAt: Date.now()
+			};
+
+			recordEnemyDefeated(10);
+
+			expect(gameState.run.objective.defeatedEnemies).toBe(5);
+		});
+
+		it('is a no-op when gameState.run is undefined', () => {
+			expect(() => recordEnemyDefeated(1)).not.toThrow();
+			expect(gameState.run).toBeUndefined();
+		});
+	});
+
+	describe('clampObjectiveProgress(run)', () => {
+		it('caps defeatedEnemies at totalEnemies', () => {
+			const run = {
+				objective: {
+					totalEnemies: 5,
+					defeatedEnemies: 12
+				}
+			};
+
+			clampObjectiveProgress(run);
+
+			expect(run.objective.defeatedEnemies).toBe(5);
+		});
+
+		it('leaves defeatedEnemies unchanged when below total', () => {
+			const run = {
+				objective: {
+					totalEnemies: 10,
+					defeatedEnemies: 3
+				}
+			};
+
+			clampObjectiveProgress(run);
+
+			expect(run.objective.defeatedEnemies).toBe(3);
+		});
+
+		it('leaves defeatedEnemies unchanged when equal to total', () => {
+			const run = {
+				objective: {
+					totalEnemies: 5,
+					defeatedEnemies: 5
+				}
+			};
+
+			clampObjectiveProgress(run);
+
+			expect(run.objective.defeatedEnemies).toBe(5);
+		});
 	});
 });
