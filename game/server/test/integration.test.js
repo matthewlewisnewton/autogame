@@ -544,3 +544,198 @@ describe('dungeon run objective', () => {
 		expect(gameState.run.objective.defeatedEnemies).toBe(defeatedBefore + 1);
 	});
 });
+
+describe('Run terminal state — integration', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('runComplete is emitted after the last enemy is defeated via a weapon card', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Replace all enemies with a single low-HP enemy in weapon range
+		const player = gameState.players[socket1.id];
+		gameState.enemies = [{
+			id: 'e_final',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		// Update run objective to reflect 1 enemy
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+
+		// Clear minions so updateMinions doesn't kill the enemy before our useCard
+		gameState.minions = [];
+
+		// Listen for runComplete before firing the card
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+
+		const summary = await runCompletePromise;
+
+		expect(summary).toBeDefined();
+		expect(summary.status).toBe('victory');
+		expect(summary).toHaveProperty('runId');
+		expect(summary).toHaveProperty('defeatedEnemies', 1);
+		expect(summary).toHaveProperty('objective');
+		expect(summary).toHaveProperty('players');
+		expect(summary).toHaveProperty('durationMs');
+		expect(summary).toHaveProperty('currencyCollected');
+	});
+
+	it('runFailed is emitted when all connected players are dead during a run', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Ensure run is active
+		expect(gameState.run).toBeDefined();
+		expect(gameState.run.status).toBe('playing');
+
+		// Set both players to dead with 0 HP
+		gameState.players[socket1.id].hp = 0;
+		gameState.players[socket1.id].dead = true;
+		gameState.players[socket2.id].hp = 0;
+		gameState.players[socket2.id].dead = true;
+
+		// Clear minions to avoid interference
+		gameState.minions = [];
+
+		// Listen for runFailed
+		const runFailedPromise = waitForEvent(socket1, 'runFailed');
+
+		// Trigger terminal state check by emitting a damage event (which calls checkRunTerminalState internally via damagePlayer)
+		// Actually, damagePlayer only calls checkRunTerminalState when HP goes to 0.
+		// Since players are already dead, we need another trigger.
+		// The disconnect handler calls checkRunTerminalState, but that would remove the player.
+		// Instead, let's use the damage event on socket2 — it won't change state but we can
+		// call checkRunTerminalState indirectly.
+		// Simplest: emit 'damage' which goes through damagePlayer → checkRunTerminalState
+		// But damagePlayer only calls checkRunTerminalState on death transition.
+		// We'll use a different approach: damage the already-dead player (no-op) and
+		// rely on the game tick. Actually, the game tick does NOT call checkRunTerminalState.
+		//
+		// Best approach: use damage event to kill one player (who isn't yet dead in the
+		// server's damagePlayer flow). Let's reset one player to alive, then kill them.
+		gameState.players[socket2.id].hp = 100;
+		gameState.players[socket2.id].dead = false;
+
+		// Now kill socket2's player — socket1's player is already dead
+		socket2.emit('damage', { targetId: socket2.id, amount: 100 });
+
+		const summary = await runFailedPromise;
+
+		expect(summary).toBeDefined();
+		expect(summary.status).toBe('failed');
+		expect(summary).toHaveProperty('runId');
+		expect(summary).toHaveProperty('players');
+	});
+
+	it('returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false', async () => {
+		// Both players ready up to start a game
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+
+		// Wait for stateUpdate with run object
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Verify game is in playing state with a run
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run).toBeDefined();
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+
+		// Add some minions and loot to verify they're cleared
+		gameState.minions.push({ id: 'm1', ownerId: socket1.id, x: 0, z: 0, hp: 50, ttl: 30 });
+		gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
+
+		// Listen for stateUpdate after returnToLobby
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+
+		socket1.emit('returnToLobby');
+
+		const stateUpdate = await stateUpdatePromise;
+
+		// Verify gamePhase reset
+		expect(gameState.gamePhase).toBe('lobby');
+		expect(stateUpdate.gamePhase).toBe('lobby');
+
+		// Verify run is cleared
+		expect(gameState.run).toBeUndefined();
+
+		// Verify entities are cleared
+		expect(gameState.enemies.length).toBe(0);
+		expect(gameState.minions.length).toBe(0);
+		expect(gameState.loot.length).toBe(0);
+
+		// Verify players are set to ready: false
+		expect(gameState.players[socket1.id].ready).toBe(false);
+		expect(gameState.players[socket2.id].ready).toBe(false);
+	});
+
+	it('after returnToLobby, players can ready up and start a second run with a fresh objective', async () => {
+		// --- First run ---
+		const startGame1a = waitForEvent(socket1, 'startGame');
+		const startGame2a = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1a, startGame2a]);
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const firstRunId = gameState.run.id;
+		expect(gameState.run).toBeDefined();
+
+		// --- Return to lobby ---
+		const stateUpdateAfterReturn = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('returnToLobby');
+		await stateUpdateAfterReturn;
+
+		expect(gameState.gamePhase).toBe('lobby');
+		expect(gameState.run).toBeUndefined();
+
+		// --- Second run: ready up again ---
+		const startGame1b = waitForEvent(socket1, 'startGame');
+		const startGame2b = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1b, startGame2b]);
+
+		// Wait for stateUpdate with the new run object
+		const secondStateUpdate = waitForEvent(socket1, 'stateUpdate');
+		const secondState = await secondStateUpdate;
+
+		// Verify a new run exists with a different ID
+		expect(gameState.run).toBeDefined();
+		expect(gameState.run.id).not.toBe(firstRunId);
+		expect(gameState.run.status).toBe('playing');
+		expect(gameState.run.objective.defeatedEnemies).toBe(0);
+		expect(gameState.run.objective.totalEnemies).toBeGreaterThan(0);
+
+		// Verify the stateUpdate contains the new run
+		expect(secondState).toHaveProperty('run');
+		expect(secondState.run.id).toBe(gameState.run.id);
+		expect(secondState.run.status).toBe('playing');
+	});
+});
