@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Pre-commit gate: shellcheck the harness whenever a harness shell script is
+# being committed. Other commits (game code, the autonomous loop's own
+# commits) stage no harness/*.sh and pass through instantly.
+#
+# Enable once with:  git config core.hooksPath harness/githooks
+if git diff --cached --name-only --diff-filter=ACM | grep -qE '^harness/.*\.sh$'; then
+  echo "[pre-commit] harness shell script changed — running shellcheck lint"
+  exec bash harness/lint.sh
+fi
+exit 0
