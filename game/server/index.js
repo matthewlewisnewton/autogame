@@ -267,6 +267,19 @@ gameState.layoutSeed = layoutSeed;
 gameState.layout = generateLayout(layoutSeed);
 console.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);
 
+/**
+ * Reset gameState to a fresh state. Used by integration tests to isolate tests.
+ * Regenerates dungeon layout with a new random seed.
+ */
+function resetGameState() {
+  const fresh = createGameState();
+  Object.keys(gameState).forEach(k => delete gameState[k]);
+  Object.assign(gameState, fresh);
+  const seed = Math.floor(Math.random() * 2147483647);
+  gameState.layoutSeed = seed;
+  gameState.layout = generateLayout(seed);
+}
+
 const TICK_RATE = 20; // 20 times per second
 const WANDER_SPEED = 1; // units per second
 const DETECTION_RADIUS = 8; // units
@@ -579,12 +592,21 @@ function regenMagicStones() {
 
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
-function startServer() {
-  io.on('connection', (socket) => {
-  console.log(`Player connected: ${socket.id}`);
+// Store interval IDs so tests can clean them up
+const _intervals = [];
 
-  // Initialize player
-  gameState.players[socket.id] = {
+function startServer(port) {
+  // Remove previous connection handlers so repeated calls (in tests) don't stack
+  io.removeAllListeners('connection');
+  // Clear any previously created intervals (from prior test runs)
+  for (const id of _intervals) clearInterval(id);
+  _intervals.length = 0;
+
+  io.on('connection', (socket) => {
+    console.log(`Player connected: ${socket.id}`);
+
+    // Initialize player
+    gameState.players[socket.id] = {
     x: 0,
     y: 0,
     z: 0,
@@ -840,7 +862,7 @@ function startServer() {
 });
 
 // Server Game Loop
-setInterval(() => {
+const gameLoopId = setInterval(() => {
   updateEnemies();
   updateMinions();
 
@@ -853,13 +875,15 @@ setInterval(() => {
 
   io.emit('stateUpdate', gameState);
 }, 1000 / TICK_RATE);
+_intervals.push(gameLoopId);
 
 // Periodic stale player cleanup (every 5 seconds)
-setInterval(cleanupStalePlayers, 5000);
+const staleCleanupId = setInterval(cleanupStalePlayers, 5000);
+_intervals.push(staleCleanupId);
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
+const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
+server.listen(listenPort, () => {
+  console.log(`Server listening on port ${listenPort}`);
   spawnEnemies();
 });
 }
@@ -879,10 +903,15 @@ if (typeof module !== 'undefined' && module.exports) {
     updateMinions,
     spawnLoot,
     createGameState,
+    resetGameState,
     gameState,
     startServer,
     cleanupStalePlayers,
     regenMagicStones,
+    // Server objects for integration tests
+    server,
+    io,
+    _intervals,
     // Constants needed by tests
     STALE_THRESHOLD,
     MAX_MAGIC_STONES,
