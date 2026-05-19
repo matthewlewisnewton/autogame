@@ -515,8 +515,10 @@ function flashMesh(mesh, color, durationMs) {
 	}, durationMs);
 }
 
-// Track which enemy IDs were just hit by a cardUsed event (so we don't double-flash on the next stateUpdate)
-const hitFlashedThisFrame = new Set();
+// Track the timestamp (performance.now) of the last cardUsed hit per enemy ID,
+// so we can skip minion-damage sparks when HP drops are caused by a card attack.
+const lastCardHitTime = {};
+const CARD_HIT_GRACE_MS = 500; // window after cardUsed during which we skip minion-damage effects
 
 // Track per-enemy HP from the previous frame, for detecting minion tick damage
 const previousEnemyHp = {};
@@ -654,6 +656,8 @@ const ATTACK_EFFECT_SPEED = 8;     // units per second
 const SUMMON_EFFECT_DURATION = 1000;  // total lifetime: expand + fade
 const SUMMON_EXPAND_MS = 700;         // time to reach full radius
 
+const HIT_SPARK_DURATION = 400; // ms before auto-removal
+
 function spawnAttackEffect(origin, direction) {
   // Bright yellow sphere projectile
   const geometry = new THREE.SphereGeometry(0.3, 8, 8);
@@ -706,6 +710,36 @@ function spawnSummonEffect(origin, radius) {
   });
 }
 
+// ── Hit spark effect (minion attack feedback) ──
+
+function spawnHitSpark(position) {
+  // Use test-scene override if available (set via window.__setScene in tests)
+  const targetScene = window.___test_scene || scene;
+  if (!targetScene) return;
+
+  // Small icosahedron spark at the enemy's position, scales up and fades out
+  const geometry = new THREE.IcosahedronGeometry ? new THREE.IcosahedronGeometry(0.15, 0) : new THREE.SphereGeometry(0.15, 6, 6);
+  const material = new THREE.MeshStandardMaterial({
+    color: 0xffee44,
+    emissive: 0xffaa00,
+    emissiveIntensity: 1.2,
+    transparent: true,
+    opacity: 1.0
+  });
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.position.set(position.x, position.y || 1.0, position.z);
+  targetScene.add(mesh);
+
+  activeEffects.push({
+    mesh,
+    origin: { x: position.x, y: position.y || 1.0, z: position.z },
+    direction: null, // no direction — distinguishes hit sparks from projectiles
+    isHitSpark: true,
+    createdAt: performance.now(),
+    duration: HIT_SPARK_DURATION
+  });
+}
+
 function updateAttackEffects() {
   const now = performance.now();
   for (let i = activeEffects.length - 1; i >= 0; i--) {
@@ -723,6 +757,30 @@ function updateAttackEffects() {
         const fadeRatio = 1.0 - (elapsed - SUMMON_EXPAND_MS) / (fx.duration - SUMMON_EXPAND_MS);
         fx.mesh.material.opacity = Math.max(0.01, fadeRatio);
       }
+
+      // Remove when expired
+      if (elapsed >= fx.duration) {
+        scene.remove(fx.mesh);
+        fx.mesh.geometry.dispose();
+        fx.mesh.material.dispose();
+        activeEffects.splice(i, 1);
+      }
+      continue;
+    }
+
+    // ── Hit spark effect (minion attack feedback) ──
+    if (fx.isHitSpark) {
+      const sparkT = Math.min(elapsed / HIT_SPARK_DURATION, 1.0);
+
+      // Scale up quickly then shrink, float upward slightly
+      const scalePhase = sparkT < 0.2 ? sparkT / 0.2 : 1.0 - (sparkT - 0.2) / 0.8;
+      fx.mesh.scale.setScalar(Math.max(0.01, 1.0 + scalePhase * 2.0));
+
+      // Float upward
+      fx.mesh.position.y = fx.origin.y + sparkT * 0.5;
+
+      // Fade opacity
+      fx.mesh.material.opacity = Math.max(0.01, 1.0 - sparkT);
 
       // Remove when expired
       if (elapsed >= fx.duration) {
@@ -836,11 +894,12 @@ socket.on('cardUsed', (data) => {
 
   // Flash hit enemies (weapon, summon, or any card that reports hits)
   if (data.hits && Array.isArray(data.hits)) {
+    const now = performance.now();
     for (const hit of data.hits) {
       const mesh = enemiesMeshes[hit.enemyId];
       if (mesh) {
         flashMesh(mesh, 0xffffff, 200);
-        hitFlashedThisFrame.add(hit.enemyId);
+        lastCardHitTime[hit.enemyId] = now;
       }
     }
   }
@@ -1229,9 +1288,6 @@ function updateMyPlayer(delta) {
 function animate(timestamp) {
   requestAnimationFrame(animate);
 
-  // Clear per-frame flash dedup set at the start of each frame
-  hitFlashedThisFrame.clear();
-
   clock.update(timestamp);
   const delta = clock.getDelta();
   updateMyPlayer(delta);
@@ -1334,10 +1390,29 @@ function animate(timestamp) {
       enemyHealthBars[enemy.id].position.set(enemy.x, 1.5, enemy.z);
       updateHealthBarMesh(enemy.id, enemy);
 
-      // Detect HP drop (minion tick damage) — skip if already flashed by cardUsed
+      // Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
       if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
-        if (!hitFlashedThisFrame.has(enemy.id)) {
+        const cardHit = lastCardHitTime[enemy.id];
+        const withinGrace = cardHit !== undefined && (performance.now() - cardHit) < CARD_HIT_GRACE_MS;
+        if (!withinGrace) {
           flashMesh(enemiesMeshes[enemy.id], 0xff4444, 150);
+
+          // Spawn hit spark at enemy position
+          spawnHitSpark({ x: enemy.x, y: 1.0, z: enemy.z });
+
+          // Flash the nearest living minion (to show which minion attacked)
+          let nearestMinion = null;
+          let nearestMinionDist = Infinity;
+          for (const m of (gameState.minions || [])) {
+            const mdist = Math.hypot(m.x - enemy.x, m.z - enemy.z);
+            if (mdist < nearestMinionDist && minionsMeshes[m.id]) {
+              nearestMinionDist = mdist;
+              nearestMinion = m;
+            }
+          }
+          if (nearestMinion && minionsMeshes[nearestMinion.id]) {
+            flashMesh(minionsMeshes[nearestMinion.id], 0x88ff88, 200);
+          }
         }
       }
       previousEnemyHp[enemy.id] = enemy.hp;
@@ -1472,6 +1547,10 @@ window.refillSlot = refillSlot;
 window.renderDeckEditor = renderDeckEditor;
 window.flashMesh = flashMesh;
 window.spawnDamageNumber = spawnDamageNumber;
+window.spawnHitSpark = spawnHitSpark;
+window.activeEffects = () => activeEffects;
+window.__setScene = (s) => { window.___test_scene = s; }; // test-only: override scene for spawnHitSpark
+window.___test_scene = undefined;
 window.enemyHealthBars = enemyHealthBars;
 window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
