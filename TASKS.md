@@ -61,6 +61,9 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [022-user-accounts](tickets/022-user-accounts/)
 - [ ] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
+- [ ] [046-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/046-cleanup-audio-autoplay-resume-and-mute-persistence/)
+- [ ] [047-cleanup-monolithic-gameplay-and-server-split](tickets/047-cleanup-monolithic-gameplay-and-server-split/)
+- [ ] [048-cleanup-server-side-movement-and-collision-validation](tickets/048-cleanup-server-side-movement-and-collision-validation/)
 
 ## Backlog — Reference Game Loops
 - [ ] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
