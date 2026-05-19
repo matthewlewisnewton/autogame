@@ -20,6 +20,7 @@ const hpLabel = document.getElementById('hp-label');
 const msBarFill = document.getElementById('ms-bar-fill');
 const msText = document.getElementById('ms-text');
 const msLabel = document.getElementById('ms-label');
+const objectiveHudEl = document.getElementById('objective-hud');
 const cardSlots = document.querySelectorAll('.card-slot');
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -104,6 +105,20 @@ function updateMsBar(ms) {
   msBarFill.style.width = `${pct}%`;
   msText.textContent = `${Math.floor(clamped)}/${MAX_MS}`;
   msLabel.textContent = myId ? `${myId.slice(0, 5)} MS` : 'MS';
+}
+
+function updateObjectiveHud() {
+  if (!objectiveHudEl) return;
+
+  const run = (gameState && gameState.run) || null;
+
+  if (gameState && gameState.gamePhase === 'playing' && run && run.objective) {
+    const obj = run.objective;
+    objectiveHudEl.textContent = `${obj.label}\nDefeated ${obj.defeatedEnemies} / ${obj.totalEnemies}`;
+    objectiveHudEl.style.display = 'block';
+  } else {
+    objectiveHudEl.style.display = 'none';
+  }
 }
 
 function renderHand() {
@@ -290,8 +305,11 @@ socket.on('init', (data) => {
     cardHandEl.style.display = 'flex';
     initHand();
     initScene();
+    updateObjectiveHud();
     return;
   }
+
+  updateObjectiveHud();
 });
 
 socket.on('stateUpdate', (state) => {
@@ -310,6 +328,9 @@ socket.on('stateUpdate', (state) => {
       currencyEl.textContent = `GOLD ${gameState.players[myId].currency}`;
     }
   }
+
+  // Update objective HUD
+  updateObjectiveHud();
 });
 
 socket.on('heartbeat_ack', (data) => {
@@ -598,6 +619,7 @@ socket.on('startGame', () => {
   cardHandEl.style.display = 'flex';
   initHand();
   initScene();
+  updateObjectiveHud();
 });
 
 // ── Dungeon geometry builder ──

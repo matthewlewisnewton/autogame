@@ -295,6 +295,27 @@ canvas {
   z-index: 11;
 }
 
+/* ── Objective HUD ── */
+
+#objective-hud {
+  position: absolute;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+  background: rgba(15, 23, 42, 0.75);
+  padding: 6px 14px;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 11;
+  text-align: center;
+  white-space: pre-line;
+  line-height: 1.4;
+}
+
 /* ── Utility ── */
 
 .hidden {
