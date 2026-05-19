@@ -1749,6 +1749,7 @@ window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDe
 window.__windupFlashing = () => windupFlashing; // test-only: access windupFlashing Set
 window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMeshes map
 window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
+window.__useCardForTest = useCard;                // test-only: expose useCard for cooldown tests
 window.__AUTOGAME_HARNESS_STATE__ = () => {
   const me = gameState && myId ? gameState.players[myId] : null;
   const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');

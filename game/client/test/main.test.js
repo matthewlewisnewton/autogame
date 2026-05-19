@@ -1390,3 +1390,149 @@ describe('applyWindupFlash()', () => {
 		delete meshes['enemy6'];
 	});
 });
+
+// ── Cooldown Enforcement ──
+
+describe('Cooldown Enforcement (useCard)', () => {
+	beforeEach(() => {
+		// Create required DOM elements for main.js import
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		resetHandState();
+		if (typeof window.__clearSocketEmitLog === 'function') {
+			window.__clearSocketEmitLog();
+		}
+	});
+
+	afterEach(() => {
+		resetHandState();
+		if (typeof window.__clearSocketEmitLog === 'function') {
+			window.__clearSocketEmitLog();
+		}
+		// Clear any pending setTimeout callbacks from playActivationEffect
+		// (they set slotCooldowns back to false; we don't want them firing in other tests)
+	});
+
+	it('is exposed on window as __useCardForTest', async () => {
+		await import('../main.js');
+		expect(typeof window.__useCardForTest).toBe('function');
+	});
+
+	it('canUseSlot() returns false when slotCooldowns[slotIndex] is true', async () => {
+		await import('../main.js');
+
+		// Place a weapon card in slot 0
+		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		slotCooldowns[0] = true;
+
+		expect(canUseSlot(0)).toBe(false);
+	});
+
+	it('calling useCard() on a cooling-down slot does NOT emit a useCard socket event', async () => {
+		await import('../main.js');
+
+		// Place a weapon card in slot 0 and set cooldown
+		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		slotCooldowns[0] = true;
+
+		// Clear any emits from module import
+		window.__clearSocketEmitLog();
+
+		// Attempt to use the card
+		window.__useCardForTest(0);
+
+		// Verify no socket emit occurred
+		const log = window.__socketEmitLog();
+		const useCardEmits = log.filter(e => e.event === 'useCard');
+		expect(useCardEmits).toHaveLength(0);
+	});
+
+	it('a cooling-down weapon slot does NOT lose additional remainingCharges', async () => {
+		await import('../main.js');
+
+		// Place a weapon card with 3 remaining charges in slot 1
+		hand[1] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 3 };
+		slotCooldowns[1] = true;
+
+		const chargesBefore = hand[1].remainingCharges;
+
+		// Attempt to use the card during cooldown
+		window.__useCardForTest(1);
+
+		// Charges must be unchanged
+		expect(hand[1].remainingCharges).toBe(chargesBefore);
+	});
+
+	it('a cooling-down monster slot is NOT consumed or redrawn', async () => {
+		await import('../main.js');
+
+		// Place a monster card in slot 2 and set cooldown
+		hand[2] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
+		slotCooldowns[2] = true;
+
+		const originalCard = hand[2];
+
+		// Attempt to use the card during cooldown
+		window.__useCardForTest(2);
+
+		// The slot must still reference the same card object (not null, not replaced)
+		expect(hand[2]).toBe(originalCard);
+	});
+
+	it('useCard() on a non-cooling slot DOES emit (control case)', async () => {
+		await import('../main.js');
+
+		// Place a weapon card with cooldown cleared
+		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		slotCooldowns[0] = false;
+
+		window.__clearSocketEmitLog();
+
+		// Use the card — should emit
+		window.__useCardForTest(0);
+
+		const log = window.__socketEmitLog();
+		const useCardEmits = log.filter(e => e.event === 'useCard');
+		expect(useCardEmits).toHaveLength(1);
+		expect(useCardEmits[0].data).toEqual({ slotIndex: 0, cardId: 'iron_sword' });
+	});
+
+	it('useCard() on a non-cooling weapon slot DOES drain a charge (control case)', async () => {
+		await import('../main.js');
+
+		hand[1] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 3 };
+		slotCooldowns[1] = false;
+
+		window.__clearSocketEmitLog();
+
+		window.__useCardForTest(1);
+
+		expect(hand[1].remainingCharges).toBe(2);
+	});
+});

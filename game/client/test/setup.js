@@ -85,14 +85,24 @@ for (const key of Object.keys(THREE)) {
 }
 
 // ── Mock socket.io-client ──
+const emitLog = [];
 const fakeSocket = {
 	id: 'mock-socket-id',
 	on: function() { return this; },
-	emit: function() { return this; },
+	emit: function(event, data) {
+		emitLog.push({ event, data });
+		return this;
+	},
 	io: { on: function() { return this; } }
 };
 
 const ioMock = function() { return fakeSocket; };
+
+// Expose emit log + reset helper for tests (only in jsdom environment)
+if (typeof window !== 'undefined') {
+	window.__socketEmitLog = () => emitLog;
+	window.__clearSocketEmitLog = () => { emitLog.length = 0; };
+}
 
 // Register mocks
 vi.mock('three', () => {
