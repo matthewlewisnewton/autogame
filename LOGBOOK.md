@@ -397,3 +397,26 @@ items are recorded in `nits.md`.
 None blocking. `resetGameState()` correctly clears `run`, so a fresh lobby
 cycle starts a clean run. Minor non-blocking polish noted in `nits.md`.
 
+
+## v0.18 — Run Completion Summary and Return to Lobby  (2026-05-19 01:23:15)
+
+    is cleared by the next game-loop tick. Broadcasts `stateUpdate` + lobby update.
+
+11. **Client hides HUD/card hand, shows lobby on confirmed return** — Met. The
+    `stateUpdate` handler hides `#run-summary-overlay`, `#ui`, `#card-hand` and
+    un-hides the lobby when `state.gamePhase === 'lobby'`.
+
+12. **Second run without page refresh** — Met. The `startGame` handler no longer
+    bails on `sceneInitialized`; on a subsequent run it re-inits the hand, resets
+    local player position/velocity, and disposes prior enemy/minion/loot meshes
+    (all plain `THREE.Mesh`, so the geometry/material dispose is safe). The
+    integration test "players can ready up and start a second run" confirms this.
+
+Consistent with `design.md` (lobby → dungeon → loot loop) and does not regress
+the foundation — currency/inventory are explicitly preserved for later reward
+tickets, and no card-reward/deck-editing scope was added, per the ticket notes.
+
+## Remaining gaps
+
+None blocking. Minor polish items recorded in `nits.md`.
+

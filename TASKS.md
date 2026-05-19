@@ -34,13 +34,14 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 
 ## Backlog — Playability
 - [x] [025-dungeon-run-objectives](tickets/025-dungeon-run-objectives/)
-- [ ] [027-run-summary-return-to-lobby](tickets/027-run-summary-return-to-lobby/)
+- [x] [027-run-summary-return-to-lobby](tickets/027-run-summary-return-to-lobby/)
 - [ ] [026-card-rewards-deckbuilding](tickets/026-card-rewards-deckbuilding/)
 - [ ] [028-lobby-deck-editor](tickets/028-lobby-deck-editor/)
 - [ ] [029-combat-feedback-readability](tickets/029-combat-feedback-readability/)
 - [ ] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [033-cleanup-run-summary-return-to-lobby](tickets/033-cleanup-run-summary-return-to-lobby/)
 - [ ] [032-cleanup-dungeon-run-objectives](tickets/032-cleanup-dungeon-run-objectives/)
 - [ ] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
 - [ ] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
