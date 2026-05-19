@@ -461,7 +461,8 @@ function buildRunSummary(status) {
     id,
     hp: p.hp,
     dead: p.dead,
-    currency: p.currency
+    currency: p.currency,
+    rewards: buildPlayerRewardSummary(id)
   }));
 
   return {
@@ -500,6 +501,7 @@ const VICTORY_REWARD_ROTATION = [
  */
 function grantCard(player, cardId) {
   if (!CARD_DEFS[cardId]) return false;
+  if (!player.ownedCards) player.ownedCards = {};
   if (player.ownedCards[cardId] === undefined) {
     player.ownedCards[cardId] = 0;
   }
@@ -547,13 +549,15 @@ function buildPlayerRewardSummary(playerId) {
   if (!player) return { currency: 0, cards: [] };
 
   const cards = [];
-  for (const [cardId, count] of Object.entries(player.ownedCards)) {
-    const def = CARD_DEFS[cardId];
-    cards.push({
-      id: cardId,
-      name: def ? def.name : cardId,
-      count
-    });
+  if (player.ownedCards) {
+    for (const [cardId, count] of Object.entries(player.ownedCards)) {
+      const def = CARD_DEFS[cardId];
+      cards.push({
+        id: cardId,
+        name: def ? def.name : cardId,
+        count
+      });
+    }
   }
 
   return { currency: player.currency, cards };
@@ -562,26 +566,38 @@ function buildPlayerRewardSummary(playerId) {
 /**
  * Check whether the current run has reached a terminal state.
  * Emits exactly one terminal event per run (guarded by run.status === 'playing').
+ *
+ * Flow: determine status → set run.status → grantRunRewards() per player → build summary → emit.
  */
 function checkRunTerminalState() {
   if (!gameState.run || gameState.run.status !== 'playing') return;
 
+  let status = null;
+
   // Victory condition: all enemies defeated
   if (gameState.run.objective.defeatedEnemies >= gameState.run.objective.totalEnemies) {
-    gameState.run.status = 'victory';
-    const summary = buildRunSummary('victory');
-    io.emit('runComplete', summary);
-    return;
+    status = 'victory';
   }
 
   // Failure condition: every connected active player is dead
-  const activePlayers = Object.values(gameState.players);
-  if (activePlayers.length > 0 && activePlayers.every(p => p.hp <= 0)) {
-    gameState.run.status = 'failed';
-    const summary = buildRunSummary('failed');
-    io.emit('runFailed', summary);
-    return;
+  if (!status) {
+    const activePlayers = Object.values(gameState.players);
+    if (activePlayers.length > 0 && activePlayers.every(p => p.hp <= 0)) {
+      status = 'failed';
+    }
   }
+
+  if (!status) return;
+
+  // Set status, grant rewards per player, build summary, emit
+  gameState.run.status = status;
+
+  for (const playerId of Object.keys(gameState.players)) {
+    grantRunRewards(playerId, { status });
+  }
+
+  const summary = buildRunSummary(status);
+  io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);
 }
 
 /**
