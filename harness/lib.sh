@@ -21,6 +21,8 @@ GEMINI_MODEL="${GEMINI_MODEL:-gemini-3-flash-preview}"
 CLAUDE_MODEL="${CLAUDE_MODEL:-}"           # empty = claude default
 QWEN_TIMEOUT="${QWEN_TIMEOUT:-7200}"
 GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
+GEMINI_QUOTA_FAST_FAIL="${GEMINI_QUOTA_FAST_FAIL:-1}"
+GEMINI_QUOTA_FAST_FAIL_SECONDS="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
 AGENT_MODEL="${AGENT_MODEL:-composer-2}"   # cursor-agent QA fallback model
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-600}"
@@ -179,6 +181,8 @@ cli_failure_reason() {  # cli_failure_reason <rc> <outfile>
     echo "terminated_by_signal"
   elif [ ! -s "$out" ]; then
     echo "empty_output"
+  elif cli_output_has_quota_error "$out" && ! has_verdict "$out"; then
+    echo "quota_or_rate_limit"
   elif cli_output_is_only_error "$out"; then
     echo "api_error_only_output"
   else
@@ -204,21 +208,98 @@ process.exit(errorOnly ? 0 : 1);
 NODE
 }
 
+cli_output_has_quota_error() {  # cli_output_has_quota_error <outfile>
+  local out="$1"
+  [ -s "$out" ] || return 1
+  node - "$out" <<'NODE' 2>/dev/null
+const { readFileSync } = require('node:fs');
+const text = readFileSync(process.argv[2], 'utf8').toLowerCase();
+const quota = [
+  'exhausted your capacity',
+  'quota',
+  'rate limit',
+  'resource has been exhausted',
+  'too many requests',
+  '429',
+].some(needle => text.includes(needle));
+process.exit(quota ? 0 : 1);
+NODE
+}
+
+filter_agent_feedback_noise() {  # filter_agent_feedback_noise <outfile>
+  local out="$1"
+  if [ ! -s "$out" ]; then
+    return 0
+  fi
+  node - "$out" <<'NODE' 2>/dev/null || cat "$out"
+const { readFileSync } = require('node:fs');
+const text = readFileSync(process.argv[2], 'utf8');
+const noisy = [
+  /^YOLO mode is enabled\./,
+  /^Ripgrep is not available\./,
+  /^Attempt \d+ failed: .*?(exhausted your capacity|quota|rate limit|resource has been exhausted|too many requests|429).*?Retrying after/i,
+  /^You have exhausted your capacity on this model\./i,
+  /^.*quota will reset after .*$/i,
+];
+const lines = text.split(/\r?\n/);
+const filtered = lines.filter(line => !noisy.some(pattern => pattern.test(line.trim())));
+const output = filtered.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+if (output) {
+  process.stdout.write(`${output}\n`);
+} else {
+  process.stdout.write('[agent output contained only transient tool/quota noise; see raw artifact]\n');
+}
+NODE
+}
+
 _run_cli() {
   local label="$1" out="$2" tmo="$3"; shift 3
-  local attempt=1 rc reason
+  local attempt=1 rc reason cli_pid quota_seen_at quota_fast_failed now
+  local quota_fast_fail_seconds="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
   while :; do
     emit_progress_event "agent_start" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"timeoutSeconds\":$tmo}"
     # </dev/null: a CLI that reads stdin (gemini -p does) must NOT inherit the
     #   harness's TTY — a backgrounded process reading a TTY gets SIGTTIN and
     #   hangs in stopped state. -k 30: SIGKILL 30s after the SIGTERM so a wedged
     #   or stopped process is always reaped (rc 124 = SIGTERM'd, 137 = SIGKILL'd).
-    timeout -k 30 "$tmo" "$@" </dev/null >"$out" 2>&1; rc=$?
-    if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ] && ! cli_output_is_only_error "$out"; then
+    : >"$out"
+    timeout -k 30 "$tmo" "$@" </dev/null >"$out" 2>&1 &
+    cli_pid=$!
+    quota_seen_at=0
+    quota_fast_failed=0
+    while kill -0 "$cli_pid" 2>/dev/null; do
+      if [ "$label" = "gemini" ] && [ "$GEMINI_QUOTA_FAST_FAIL" = "1" ] &&
+          cli_output_has_quota_error "$out" && ! has_verdict "$out"; then
+        now="$(date +%s)"
+        [ "$quota_seen_at" -eq 0 ] && quota_seen_at="$now"
+        if [ $((now - quota_seen_at)) -ge "$quota_fast_fail_seconds" ]; then
+          log "[tool-fallback] gemini quota/rate limit detected — falling back to cursor-agent/$AGENT_MODEL"
+          kill "$cli_pid" 2>/dev/null || true
+          wait "$cli_pid" 2>/dev/null || true
+          rc=75
+          quota_fast_failed=1
+          break
+        fi
+      fi
+      sleep 1
+    done
+    if [ "$quota_fast_failed" -ne 1 ]; then
+      wait "$cli_pid"; rc=$?
+    fi
+    if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ] &&
+        ! cli_output_is_only_error "$out" &&
+        { [ "$label" != "gemini" ] || ! cli_output_has_quota_error "$out" || has_verdict "$out"; }; then
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"ok\"}"
       return 0
     fi
     reason="$(cli_failure_reason "$rc" "$out")"
+    if [ "$label" = "gemini" ] && [ "$reason" = "quota_or_rate_limit" ]; then
+      if [ "$quota_fast_failed" -ne 1 ]; then
+        log "[tool-fallback] gemini unavailable (reason=$reason) — using cursor-agent/$AGENT_MODEL"
+      fi
+      emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"
+      return 2
+    fi
     if [ "$attempt" -gt "$CLI_RETRIES" ]; then
       log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, reason=$reason)"
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"

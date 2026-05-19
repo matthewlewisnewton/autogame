@@ -147,13 +147,20 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     run_qwen "$COMMIT_PROMPT" "$ARTI/commit.txt"
     # The harness still GUARANTEES verified progress is committed: if qwen left
     # anything uncommitted, commit the remainder deterministically.
-    if [ -n "$(git status --porcelain)" ]; then
+    #
+    # Scope the dirtiness check to the loop's OWN committable paths. The whole
+    # repo can legitimately carry uncommitted harness/ edits (e.g. a fix left
+    # in place by a repair agent) — commit_verified deliberately never stages
+    # harness/, so a bare `git status --porcelain` would still report dirty
+    # after a successful commit and trigger a false "could not commit verified
+    # progress" escalation. commit_verified's own return code is the hard gate:
+    # it stages the loop's files, commits, and asserts HEAD advanced.
+    if [ -n "$(git status --porcelain -- game/ TASKS.md LOGBOOK.md tickets/)" ]; then
       log "[commit] qwen left changes uncommitted — harness committing remainder"
-      commit_verified "$LABEL: sub-ticket verified (iter $iter)" || true
-    fi
-    if [ -n "$(git status --porcelain)" ]; then
-      log "=== ABORT $LABEL: could not commit verified progress — escalating ==="
-      exit 2
+      if ! commit_verified "$LABEL: sub-ticket verified (iter $iter)"; then
+        log "=== ABORT $LABEL: could not commit verified progress — escalating ==="
+        exit 2
+      fi
     fi
     if [ "$(git rev-parse HEAD)" != "$head_before" ]; then
       log "[commit] $(git log -1 --format='%h %s')"
@@ -185,11 +192,11 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
   {
     printf '\n## QA feedback — iteration %d (%s)\n\n' "$iter" "$(date '+%F %T')"
-    cat "$ARTI/qa.txt"
+    filter_agent_feedback_noise "$ARTI/qa.txt"
     printf '\n'
     if [ -s "$ARTI/qwen-vision.txt" ]; then
       printf '\n## Qwen visual feedback — iteration %d\n\n' "$iter"
-      cat "$ARTI/qwen-vision.txt"
+      filter_agent_feedback_noise "$ARTI/qwen-vision.txt"
       printf '\n'
     fi
   } >> "$FEEDBACK"
