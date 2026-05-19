@@ -1692,7 +1692,6 @@ function initScene() {
   if (currentLayout) {
     clearDungeon(scene, dungeonMeshes);
     const { meshes, spawnPosition: spawn } = buildDungeon(scene, currentLayout);
-    dungeonMeshes.length = 0;
     dungeonMeshes.push(...meshes);
     spawnPosition.x = spawn.x;
     spawnPosition.z = spawn.z;
