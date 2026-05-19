@@ -1346,13 +1346,13 @@ describe('applyWindupFlash()', () => {
 		// Clean up module-scoped state that persists across tests (main.js is cached)
 		if (typeof window.__enemiesMeshes === 'function') {
 			const meshes = window.__enemiesMeshes();
-			for (const id of ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5', 'enemy6']) {
+			for (const id of ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5', 'enemy6', 'enemy7', 'enemy8']) {
 				delete meshes[id];
 			}
 		}
 		if (typeof window.__windupFlashing === 'function') {
 			const flashing = window.__windupFlashing();
-			for (const id of ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5', 'enemy6']) {
+			for (const id of ['enemy1', 'enemy2', 'enemy3', 'enemy4', 'enemy5', 'enemy6', 'enemy7', 'enemy8']) {
 				flashing.delete(id);
 			}
 		}
@@ -1500,6 +1500,63 @@ describe('applyWindupFlash()', () => {
 		expect(() => window.applyWindupFlash('enemy6', false)).not.toThrow();
 
 		delete meshes['enemy6'];
+	});
+
+	it('calls emissive.set() exactly once even when invoked multiple times (windupFlashing guard)', async () => {
+		await import('../main.js');
+
+		let setCallCount = 0;
+		const mockMesh = {
+			material: {
+				emissive: {
+					_value: 0x000000,
+					set: function(c) { setCallCount++; this._value = c; },
+					get: function() { return this._value; },
+				},
+				emissiveIntensity: 0,
+			},
+		};
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy7'] = mockMesh;
+
+		// Simulate the animate loop calling applyWindupFlash every frame
+		window.applyWindupFlash('enemy7', true);
+		window.applyWindupFlash('enemy7', true);
+		window.applyWindupFlash('enemy7', true);
+
+		expect(setCallCount).toBe(1);
+
+		delete meshes['enemy7'];
+	});
+
+	it('flashMesh (hit flash) still works independently on an enemy already in windup', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['enemy8'] = mockMesh;
+
+		// Enter windup — sets emissive to 0xff3333
+		window.applyWindupFlash('enemy8', true);
+		expect(mockMesh.material.emissive._value).toBe(0xff3333);
+
+		// Simulate a hit flash (flashMesh) on the same mesh
+		window.flashMesh(mockMesh, 0xffffff, 100);
+		expect(mockMesh.material.emissive._value).toBe(0xffffff);
+		expect(mockMesh.material.emissiveIntensity).toBe(1.5);
+
+		// After flashMesh timeout, emissive restores to original (0x000000), not windup color
+		await new Promise(r => setTimeout(r, 150));
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+
+		// windupFlashing entry should still exist — flashMesh doesn't touch it
+		expect(window.__windupFlashing().has('enemy8')).toBe(true);
+
+		// Clean up windup
+		window.applyWindupFlash('enemy8', false);
+		expect(window.__windupFlashing().has('enemy8')).toBe(false);
+
+		delete meshes['enemy8'];
 	});
 });
 
