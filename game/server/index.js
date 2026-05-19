@@ -365,7 +365,7 @@ function spawnLoot(x, z) {
 
   const value = Math.floor(Math.random() * 16) + 5;
   const id = crypto.randomUUID();
-  gameState.loot.push({ id, x, z, value });
+  gameState.loot.push({ id, x, z, value, createdAt: Date.now() });
   console.log(`[loot] spawned id=${id} value=${value}`);
 }
 
@@ -595,19 +595,6 @@ io.on('connection', (socket) => {
     damagePlayer(data.targetId, data.amount);
   });
 
-  socket.on('damageEnemy', (data) => {
-    if (!data || !data.enemyId || typeof data.amount !== 'number') return;
-    const enemy = gameState.enemies.find(e => e.id === data.enemyId);
-    if (!enemy) return;
-    enemy.hp -= data.amount;
-    if (enemy.hp <= 0) {
-      const enemyX = enemy.x;
-      const enemyZ = enemy.z;
-      gameState.enemies = gameState.enemies.filter(e => e.id !== data.enemyId);
-      spawnLoot(enemyX, enemyZ);
-    }
-  });
-
   socket.on('useCard', (data) => {
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
@@ -829,6 +816,10 @@ setInterval(() => {
     }
     p.pendingSummons.clear(); // safety net: clear stale pending entries each tick
   }
+
+  // Remove expired loot (older than 120 seconds)
+  const now = Date.now();
+  gameState.loot = gameState.loot.filter(l => (now - l.createdAt) < 120000);
 
   io.emit('stateUpdate', gameState);
 }, 1000 / TICK_RATE);
