@@ -604,3 +604,26 @@ functions end to end.
 None. Both acceptance criteria are fully met, the change is minimal and
 correct, and the captured run is healthy. No nits noted.
 
+
+## v0.27 — Cleanup nits from 030-encounter-telegraphs-audio  (2026-05-19 12:57:46)
+
+mid-wind-up now restores to its red telegraph hex rather than black.
+Covered by updated `flashMesh()` tests in `main.test.js`. Criteria met.
+
+### Nit 3 — `enemyHit` sound stacking
+
+`game/client/main.js:1112-1125`: `playSound('enemyHit')` is now called once,
+before the per-hit loop, instead of once per hit. The guard changed from
+`Array.isArray(data.hits)` to `data.hits && data.hits.length > 0`, so a card
+event with an empty `hits` array plays no `enemyHit` cue at all (sub-ticket
+03). A multi-hit summon now produces exactly one `enemyHit` cue. Three new
+tests in `main.test.js` cover multi-hit (1 cue), single-hit (1 cue), and
+empty-hits (0 cues). Criterion met.
+
+## Remaining gaps
+
+None. All three nits are resolved or already-resolved, the game runs clean,
+and the full test suite passes. One non-blocking nit noted in `nits.md`
+(`_playSoundCallLog` is appended to on every `playSound` call in production,
+not just under test — unbounded growth over a long session).
+
