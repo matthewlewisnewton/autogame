@@ -719,3 +719,26 @@ consolidation pattern is consistent (`disposeOne` is the single source of
 truth for "remove+dispose+delete"), and the captured run shows the game
 loading and rendering correctly with no errors.
 
+
+## v0.32 — Cleanup nits from 029-combat-feedback-readability  (2026-05-19 15:16:08)
+
+- `updateAttackEffects` removes via `(fx._scene || scene).remove(fx.mesh)` at `game/client/main.js:939`.
+- The fallback to `scene` preserves behaviour for any pre-existing spark that lacked `_scene`. Under `window.___test_scene`, the spark is now correctly removed from the same scene it was added to.
+
+### 3. Unbounded tracking maps for loot/card-hit timing
+**Status: met.**
+
+- `previousLootValues[id]` is deleted in `syncLootMeshes` right after the value is captured for the collection animation (`game/client/main.js:1107`), so the map drains as loot is collected.
+- `lastCardHitTime[id]` is pruned in `animate()` against `currentEnemyIds` (`game/client/main.js:1612-1616`), alongside the existing `previousEnemyHp` and `windupFlashing` prunes, so dead/despawned enemies no longer linger.
+- Both prunes run on the existing per-frame sync paths, so no extra scan was added.
+
+## Quality checks
+
+- Diff is minimal (3 small hunks in `game/client/main.js`) and surgically scoped.
+- No new console output, no new globals, no dead code.
+- Comments on the new lines are short and explain the *why* (scene-capture intent, "no longer needed — value captured for animation") rather than restating the code.
+
+## Remaining gaps
+
+None blocking. The ticket's three nits are either already resolved upstream (nit 1) or directly addressed by this implementation (nits 2 and 3), and the captured run is healthy.
+
