@@ -774,6 +774,26 @@ io.on('connection', (socket) => {
     socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
   });
 
+  socket.on('lootPickup', (data) => {
+    if (!data || !data.lootId) return;
+
+    const player = gameState.players[socket.id];
+    if (!player) return;
+
+    const lootIdx = gameState.loot.findIndex(l => l.id === data.lootId);
+    if (lootIdx === -1) return; // already removed — ignore duplicate
+
+    const loot = gameState.loot[lootIdx];
+    const dist = Math.hypot(player.x - loot.x, player.z - loot.z);
+
+    if (dist > 3) return; // anti-cheat: too far
+
+    player.currency += loot.value;
+    gameState.loot.splice(lootIdx, 1);
+
+    console.log(`[loot] picked up id=${loot.id} value=${loot.value} by ${socket.id} (currency=${player.currency})`);
+  });
+
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     delete gameState.players[socket.id];
