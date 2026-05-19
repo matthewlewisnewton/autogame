@@ -327,6 +327,8 @@ function resetGameState() {
   gameState.layoutSeed = seed;
   gameState.layout = generateLayout(seed);
   gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
+  // Ensure run is cleared — it should not exist after a reset
+  delete gameState.run;
 }
 
 const TICK_RATE = 20; // 20 times per second
@@ -374,11 +376,38 @@ function broadcastLobbyUpdate() {
   });
 }
 
+// ── Run State Helpers ──
+
+/**
+ * Build a fresh run object from the current game state.
+ */
+function createRunState() {
+  return {
+    id: crypto.randomUUID(),
+    status: 'playing',
+    objective: {
+      type: 'defeat_enemies',
+      label: 'Defeat all enemies',
+      totalEnemies: gameState.enemies.length,
+      defeatedEnemies: 0
+    },
+    startedAt: Date.now()
+  };
+}
+
+/**
+ * Assign a new run object to gameState.run.
+ */
+function startDungeonRun() {
+  gameState.run = createRunState();
+}
+
 // Helper: check if all players are ready and transition if so
 function checkAllReady() {
   const all = Object.values(gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
     gameState.gamePhase = 'playing';
+    startDungeonRun();
     io.emit('startGame');
   }
 }
@@ -466,6 +495,7 @@ function ensureNearbyEnemy(x, z) {
 function enterPlayingPhase() {
   if (gameState.gamePhase !== 'playing') {
     gameState.gamePhase = 'playing';
+    startDungeonRun();
     io.emit('startGame');
   }
 }
@@ -962,6 +992,8 @@ if (typeof module !== 'undefined' && module.exports) {
     startServer,
     cleanupStalePlayers,
     regenMagicStones,
+    createRunState,
+    startDungeonRun,
     // Server objects for integration tests
     server,
     io,
