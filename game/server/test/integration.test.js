@@ -75,6 +75,11 @@ function sleep(ms) {
 	return new Promise(r => setTimeout(r, ms));
 }
 
+function firstRoomSpawn() {
+	const first = gameState.layout.rooms[0];
+	return { x: first.x, z: first.z };
+}
+
 // ── Integration Tests ──
 
 describe('Socket Integration — Connection Flow', () => {
@@ -108,8 +113,9 @@ describe('Socket Integration — Connection Flow', () => {
 	it('server registers the player in gameState.players', async () => {
 		expect(gameState.players[socket.id]).toBeDefined();
 		expect(gameState.players[socket.id].hp).toBe(100);
-		expect(gameState.players[socket.id].x).toBe(0);
-		expect(gameState.players[socket.id].z).toBe(0);
+		const spawn = firstRoomSpawn();
+		expect(gameState.players[socket.id].x).toBe(spawn.x);
+		expect(gameState.players[socket.id].z).toBe(spawn.z);
 	});
 });
 
@@ -139,14 +145,14 @@ describe('Socket Integration — Move Event', () => {
 		expect(gameState.players[socket.id].z).toBe(10);
 	});
 
-	it('clamps position to [-25, 25]', async () => {
-		socket.emit('move', { x: 30, y: 0.5, z: -30, rotation: 0 });
+	it('clamps position to dungeon bounds', async () => {
+		socket.emit('move', { x: 999, y: 0.5, z: -999, rotation: 0 });
 
 		// socket.emit is async — wait for the server to process the event
 		await sleep(50);
 
-		expect(gameState.players[socket.id].x).toBe(25);
-		expect(gameState.players[socket.id].z).toBe(-25);
+		expect(gameState.players[socket.id].x).toBe(gameState.dungeonBounds.maxX);
+		expect(gameState.players[socket.id].z).toBe(gameState.dungeonBounds.minZ);
 	});
 
 	it('dead player cannot move', async () => {
@@ -156,8 +162,9 @@ describe('Socket Integration — Move Event', () => {
 
 		socket.emit('move', { x: 50, y: 0.5, z: 50, rotation: 0 });
 
-		expect(player.x).toBe(0);
-		expect(player.z).toBe(0);
+		const spawn = firstRoomSpawn();
+		expect(player.x).toBe(spawn.x);
+		expect(player.z).toBe(spawn.z);
 	});
 });
 
@@ -175,28 +182,33 @@ describe('Socket Integration — Invalid Move Rejection', () => {
 	});
 
 	it('rejects move with missing fields', () => {
+		const spawn = firstRoomSpawn();
 		socket.emit('move', { x: 10 }); // missing y, z, rotation
-		expect(gameState.players[socket.id].x).toBe(0);
+		expect(gameState.players[socket.id].x).toBe(spawn.x);
 	});
 
 	it('rejects move with non-numeric fields', () => {
+		const spawn = firstRoomSpawn();
 		socket.emit('move', { x: 'abc', y: 0.5, z: 10, rotation: 0 });
-		expect(gameState.players[socket.id].x).toBe(0);
+		expect(gameState.players[socket.id].x).toBe(spawn.x);
 	});
 
 	it('rejects move with null payload', () => {
+		const spawn = firstRoomSpawn();
 		socket.emit('move', null);
-		expect(gameState.players[socket.id].x).toBe(0);
+		expect(gameState.players[socket.id].x).toBe(spawn.x);
 	});
 
 	it('rejects move with array payload', () => {
+		const spawn = firstRoomSpawn();
 		socket.emit('move', [1, 2, 3]);
-		expect(gameState.players[socket.id].x).toBe(0);
+		expect(gameState.players[socket.id].x).toBe(spawn.x);
 	});
 
 	it('rejects move with NaN fields', () => {
+		const spawn = firstRoomSpawn();
 		socket.emit('move', { x: NaN, y: 0.5, z: 10, rotation: 0 });
-		expect(gameState.players[socket.id].x).toBe(0);
+		expect(gameState.players[socket.id].x).toBe(spawn.x);
 	});
 });
 
@@ -215,14 +227,15 @@ describe('Socket Integration — useCard Event', () => {
 
 	describe('Weapon card', () => {
 		it('emits useCard, server processes cone attack and broadcasts cardUsed', async () => {
+			const player = gameState.players[socket.id];
 			// Place an enemy within ATTACK_RANGE in front of the player
 			gameState.enemies.push({
 				id: 'e1',
-				x: 3, // within range, in +X direction (player default rotation = 0)
-				z: 0,
+				x: player.x + 3, // within range, in +X direction (player default rotation = 0)
+				z: player.z,
 				hp: 50,
 				state: 'idle',
-				wanderTarget: { x: 3, z: 0 }
+				wanderTarget: { x: player.x + 3, z: player.z }
 			});
 
 			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
@@ -241,14 +254,15 @@ describe('Socket Integration — useCard Event', () => {
 
 	describe('Summon card', () => {
 		it('emits useCard, server processes radial AoE and deducts magic stones', async () => {
+			const player = gameState.players[socket.id];
 			// Place enemies within SUMMON_RADIUS
 			gameState.enemies.push({
 				id: 'e1',
-				x: 5,
-				z: 0,
+				x: player.x + 5,
+				z: player.z,
 				hp: 60,
 				state: 'idle',
-				wanderTarget: { x: 5, z: 0 }
+				wanderTarget: { x: player.x + 5, z: player.z }
 			});
 
 			const beforeStones = gameState.players[socket.id].magicStones;

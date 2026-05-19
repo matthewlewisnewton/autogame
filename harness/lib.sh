@@ -46,8 +46,11 @@ emit_progress_event() {  # emit_progress_event <type> [payload-json]
   local type="$1" payload="${2:-{}}" ts line dir="$HARNESS_DIR/progress"
   ts="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
   mkdir -p "$dir" 2>/dev/null || return 0
-  line="$(printf '{"ts":%s,"type":%s,"payload":%s}\n' "$(json_string "$ts")" "$(json_string "$type")" "$payload")"
-  printf '%s' "$line" >> "$dir/events.ndjson" 2>/dev/null || true
+  line="$(printf '{"ts":%s,"type":%s,"payload":%s}' "$(json_string "$ts")" "$(json_string "$type")" "$payload")"
+  if [ -s "$dir/events.ndjson" ] && [ -n "$(tail -c 1 "$dir/events.ndjson" 2>/dev/null)" ]; then
+    printf '\n' >> "$dir/events.ndjson" 2>/dev/null || true
+  fi
+  printf '%s\n' "$line" >> "$dir/events.ndjson" 2>/dev/null || true
   if [ -n "${PROGRESS_SERVER_URL:-}" ]; then
     curl -sS -X POST -H 'content-type: application/json' --data-binary "$line" "$PROGRESS_SERVER_URL/events" >/dev/null 2>&1 || true
   fi
@@ -91,20 +94,64 @@ wait_for_game() {  # wait_for_game [timeout-seconds] ; 0 if both ports respond
   return 1
 }
 
-# game_smoke_ok <artifacts_dir> — 0 if a captured run shows a RUNNABLE game,
-# 1 if it is broken. Used as the baseline-protection gate: the harness must
-# never advance the backlog on top of a game that does not run. Deliberately
-# checks only explicit failure signals (ok:false / servers-did-not-start /
-# uncaught client exception) so an unknown metrics schema biases toward
-# "runnable" — reverting work is destructive, so do it only on hard evidence.
-game_smoke_ok() {  # game_smoke_ok <artifacts_dir>
+# game_smoke_status <artifacts_dir> — prints "ok" or a machine-readable reason.
+# Used by the baseline-protection gate: the harness must never advance the
+# backlog on top of a game that does not run, but it must also not revert on
+# teardown noise. Only explicit failure signals count.
+game_smoke_status() {  # game_smoke_status <artifacts_dir>
   local d="$1"
-  [ -f "$d/metrics.json" ] || return 1
-  grep -q 'servers did not start' "$d/metrics.json" && return 1
-  grep -qE '"ok"[[:space:]]*:[[:space:]]*false' "$d/metrics.json" && return 1
+  [ -f "$d/metrics.json" ] || { echo "missing_metrics"; return 1; }
+  local metrics_reason
+  metrics_reason="$(node - "$d/metrics.json" <<'NODE' 2>/dev/null
+const { readFileSync } = require('node:fs');
+try {
+  const metrics = JSON.parse(readFileSync(process.argv[2], 'utf8'));
+  if (metrics.ok === false) {
+    console.log(metrics.error === 'servers did not start' ? 'servers_did_not_start' : 'metrics_not_ok');
+    process.exit(1);
+  }
+  if (String(metrics.error || '').includes('servers did not start')) {
+    console.log('servers_did_not_start');
+    process.exit(1);
+  }
+  console.log('ok');
+} catch {
+  console.log('metrics_unreadable');
+  process.exit(1);
+}
+NODE
+  )" || { echo "${metrics_reason:-metrics_unreadable}"; return 1; }
+  [ "$metrics_reason" = "ok" ] || { echo "$metrics_reason"; return 1; }
   if [ -f "$d/console.log" ] && grep -qE '\[[A-Z]:pageerror\]|\[fatal\]' "$d/console.log"; then
+    echo "console_pageerror_or_fatal"
     return 1
   fi
+  echo "ok"
+  return 0
+}
+
+# game_smoke_ok <artifacts_dir> — 0 if a captured run shows a RUNNABLE game,
+# 1 if it is broken.
+game_smoke_ok() {  # game_smoke_ok <artifacts_dir>
+  [ "$(game_smoke_status "$1" 2>/dev/null)" = "ok" ]
+}
+
+game_smoke_reason() {  # game_smoke_reason <artifacts_dir>
+  game_smoke_status "$1" 2>/dev/null || true
+}
+
+confirm_game_broken() {  # confirm_game_broken <suspect-artifacts-dir> <confirmation-dir>
+  local suspect="$1" confirm_dir="$2" reason confirm_reason
+  reason="$(game_smoke_reason "$suspect")"
+  log "[gate] suspect smoke failed: ${reason:-unknown} ($suspect)"
+  log "[gate] recapturing once before treating the game as broken..."
+  capture_run "$confirm_dir"
+  if game_smoke_ok "$confirm_dir"; then
+    log "[gate] confirmation smoke passed — treating prior failure as transient harness noise"
+    return 1
+  fi
+  confirm_reason="$(game_smoke_reason "$confirm_dir")"
+  log "[gate] confirmation smoke also failed: ${confirm_reason:-unknown} ($confirm_dir)"
   return 0
 }
 
@@ -259,12 +306,15 @@ commit_verified() {
     return 0
   fi
   local before; before="$(git rev-parse HEAD 2>/dev/null)"
+  emit_progress_event "commit_start" "{\"message\":$(json_string "$1"),\"base\":$(json_string "$(git rev-parse --short HEAD 2>/dev/null)")}"
   if ! git commit -q -m "$1" -m "autogame"; then
     log "[git] ERROR: commit failed for: $1"
+    emit_progress_event "commit_failed" "{\"message\":$(json_string "$1"),\"reason\":\"git_commit_failed\",\"base\":$(json_string "$(git rev-parse --short HEAD 2>/dev/null)")}"
     return 2
   fi
   if [ "$(git rev-parse HEAD 2>/dev/null)" = "$before" ]; then
     log "[git] ERROR: HEAD did not advance after commit"
+    emit_progress_event "commit_failed" "{\"message\":$(json_string "$1"),\"reason\":\"head_did_not_advance\",\"base\":$(json_string "$(git rev-parse --short HEAD 2>/dev/null)")}"
     return 2
   fi
   log "[git] committed $(git rev-parse --short HEAD): $1"

@@ -31,7 +31,7 @@ const GRID_COLS = 4;
 const GRID_ROWS = 4;
 const CELL_SPACING = 20; // center-to-center distance between adjacent cells
 const MIN_ROOM_SIZE = 12;
-const MAX_ROOM_SIZE = 16;
+const MAX_ROOM_SIZE_INCLUSIVE = 15;
 const PASSAGE_WIDTH = 4;
 
 /**
@@ -168,8 +168,8 @@ function generateLayout(seed) {
 
   // Step 5 — build room objects with walls (gaps for passages)
   const rooms = cellPositions.map((cell, idx) => {
-    const width = MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE - MIN_ROOM_SIZE));
-    const depth = MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE - MIN_ROOM_SIZE));
+    const width = MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE_INCLUSIVE - MIN_ROOM_SIZE + 1));
+    const depth = MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE_INCLUSIVE - MIN_ROOM_SIZE + 1));
     const halfW = width / 2;
     const halfD = depth / 2;
     const sides = passageSides[idx];
@@ -180,33 +180,36 @@ function generateLayout(seed) {
     if (!sides.has('up')) {
       walls.push({ x: cell.x, z: cell.z - halfD, length: width, axis: 'x' });
     } else {
-      // Split into two segments with a gap in the middle
-      walls.push({ x: cell.x - halfW + gap / 2, z: cell.z - halfD, length: (width - gap) / 2, axis: 'x' });
-      walls.push({ x: cell.x + gap / 2, z: cell.z - halfD, length: (width - gap) / 2, axis: 'x' });
+      const segLen = (width - gap) / 2;
+      walls.push({ x: cell.x - gap / 2 - segLen / 2, z: cell.z - halfD, length: segLen, axis: 'x' });
+      walls.push({ x: cell.x + gap / 2 + segLen / 2, z: cell.z - halfD, length: segLen, axis: 'x' });
     }
 
     // South wall (z = cell.z + halfD)
     if (!sides.has('down')) {
       walls.push({ x: cell.x, z: cell.z + halfD, length: width, axis: 'x' });
     } else {
-      walls.push({ x: cell.x - halfW + gap / 2, z: cell.z + halfD, length: (width - gap) / 2, axis: 'x' });
-      walls.push({ x: cell.x + gap / 2, z: cell.z + halfD, length: (width - gap) / 2, axis: 'x' });
+      const segLen = (width - gap) / 2;
+      walls.push({ x: cell.x - gap / 2 - segLen / 2, z: cell.z + halfD, length: segLen, axis: 'x' });
+      walls.push({ x: cell.x + gap / 2 + segLen / 2, z: cell.z + halfD, length: segLen, axis: 'x' });
     }
 
     // West wall (x = cell.x - halfW), along z-axis
     if (!sides.has('left')) {
       walls.push({ x: cell.x - halfW, z: cell.z, length: depth, axis: 'z' });
     } else {
-      walls.push({ x: cell.x - halfW, z: cell.z - halfD + gap / 2, length: (depth - gap) / 2, axis: 'z' });
-      walls.push({ x: cell.x - halfW, z: cell.z + gap / 2, length: (depth - gap) / 2, axis: 'z' });
+      const segLen = (depth - gap) / 2;
+      walls.push({ x: cell.x - halfW, z: cell.z - gap / 2 - segLen / 2, length: segLen, axis: 'z' });
+      walls.push({ x: cell.x - halfW, z: cell.z + gap / 2 + segLen / 2, length: segLen, axis: 'z' });
     }
 
     // East wall (x = cell.x + halfW)
     if (!sides.has('right')) {
       walls.push({ x: cell.x + halfW, z: cell.z, length: depth, axis: 'z' });
     } else {
-      walls.push({ x: cell.x + halfW, z: cell.z - halfD + gap / 2, length: (depth - gap) / 2, axis: 'z' });
-      walls.push({ x: cell.x + halfW, z: cell.z + gap / 2, length: (depth - gap) / 2, axis: 'z' });
+      const segLen = (depth - gap) / 2;
+      walls.push({ x: cell.x + halfW, z: cell.z - gap / 2 - segLen / 2, length: segLen, axis: 'z' });
+      walls.push({ x: cell.x + halfW, z: cell.z + gap / 2 + segLen / 2, length: segLen, axis: 'z' });
     }
 
     return { x: cell.x, z: cell.z, width, depth, walls };
@@ -221,23 +224,16 @@ function generateLayout(seed) {
 
     // Horizontal passage (same row, different column)
     if (from.r === to.r) {
-      const zMin = Math.min(from.z, to.z);
-      const zMax = Math.max(from.z, to.z);
-      // Actually the passage is between adjacent cells, so it's a short corridor
-      // Top boundary wall
-      walls.push({ x: (from.x + to.x) / 2, z: zMin - halfGap, length: PASSAGE_WIDTH, axis: 'x' });
-      // Bottom boundary wall
-      walls.push({ x: (from.x + to.x) / 2, z: zMin + halfGap, length: PASSAGE_WIDTH, axis: 'x' });
+      const wallCentreX = (from.x + to.x) / 2;
+      walls.push({ x: wallCentreX, z: from.z - halfGap, length: CELL_SPACING, axis: 'x' });
+      walls.push({ x: wallCentreX, z: from.z + halfGap, length: CELL_SPACING, axis: 'x' });
     }
 
     // Vertical passage (same column, different row)
     if (from.c === to.c) {
-      const xMin = Math.min(from.x, to.x);
-      const xMax = Math.max(from.x, to.x);
-      // Left boundary wall
-      walls.push({ x: xMin - halfGap, z: (from.z + to.z) / 2, length: PASSAGE_WIDTH, axis: 'z' });
-      // Right boundary wall
-      walls.push({ x: xMin + halfGap, z: (from.z + to.z) / 2, length: PASSAGE_WIDTH, axis: 'z' });
+      const wallCentreZ = (from.z + to.z) / 2;
+      walls.push({ x: from.x - halfGap, z: wallCentreZ, length: CELL_SPACING, axis: 'z' });
+      walls.push({ x: from.x + halfGap, z: wallCentreZ, length: CELL_SPACING, axis: 'z' });
     }
 
     return { x1: from.x, z1: from.z, x2: to.x, z2: to.z, walls };
@@ -267,6 +263,58 @@ gameState.layoutSeed = layoutSeed;
 gameState.layout = generateLayout(layoutSeed);
 console.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);
 
+const BOUNDS_MARGIN = 2;
+const SPAWN_PADDING = 2;
+
+function computeDungeonBounds(layout) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+
+  for (const room of layout.rooms) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    minX = Math.min(minX, room.x - halfW);
+    maxX = Math.max(maxX, room.x + halfW);
+    minZ = Math.min(minZ, room.z - halfD);
+    maxZ = Math.max(maxZ, room.z + halfD);
+  }
+
+  return {
+    minX: minX - BOUNDS_MARGIN,
+    maxX: maxX + BOUNDS_MARGIN,
+    minZ: minZ - BOUNDS_MARGIN,
+    maxZ: maxZ + BOUNDS_MARGIN,
+  };
+}
+
+function firstRoomPosition() {
+  const first = gameState.layout.rooms[0];
+  return { x: first.x, z: first.z };
+}
+
+function randomRoomPosition() {
+  const room = gameState.layout.rooms[Math.floor(Math.random() * gameState.layout.rooms.length)];
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  return {
+    x: room.x + (Math.random() * 2 - 1) * halfW,
+    z: room.z + (Math.random() * 2 - 1) * halfD,
+  };
+}
+
+function clampToDungeon(x, z) {
+  const bounds = gameState.dungeonBounds;
+  return {
+    x: Math.max(bounds.minX, Math.min(bounds.maxX, x)),
+    z: Math.max(bounds.minZ, Math.min(bounds.maxZ, z)),
+  };
+}
+
+gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
+console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
+
 /**
  * Reset gameState to a fresh state. Used by integration tests to isolate tests.
  * Regenerates dungeon layout with a new random seed.
@@ -278,6 +326,7 @@ function resetGameState() {
   const seed = Math.floor(Math.random() * 2147483647);
   gameState.layoutSeed = seed;
   gameState.layout = generateLayout(seed);
+  gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
 }
 
 const TICK_RATE = 20; // 20 times per second
@@ -347,30 +396,28 @@ function damagePlayer(playerId, amount) {
     setTimeout(() => {
       const p = gameState.players[playerId];
       if (!p) return; // player may have disconnected
+      const spawn = firstRoomPosition();
       p.hp = 100;
       p.dead = false;
-      p.x = 0;
+      p.x = spawn.x;
       p.y = 0.5;
-      p.z = 0;
+      p.z = spawn.z;
     }, 3000);
   }
 }
 
-// Helper: pick a random position within [-20, 20] on x and z
 function randomWanderTarget() {
-  return {
-    x: (Math.random() * 40) - 20,
-    z: (Math.random() * 40) - 20
-  };
+  return randomRoomPosition();
 }
 
-// Helper: spawn 5 enemies with random positions
+// Helper: spawn 5 enemies inside generated rooms
 function spawnEnemies() {
   for (let i = 0; i < 5; i++) {
+    const position = randomRoomPosition();
     gameState.enemies.push({
       id: crypto.randomUUID(),
-      x: (Math.random() * 40) - 20,
-      z: (Math.random() * 40) - 20,
+      x: position.x,
+      z: position.z,
       hp: 50,
       state: 'idle',
       wanderTarget: randomWanderTarget()
@@ -430,12 +477,13 @@ function applyDebugScenario(socket, name) {
 
   const player = gameState.players[socket.id];
   if (!player) return { ok: false, reason: 'No player for debug scenario' };
+  const spawn = firstRoomPosition();
 
   player.ready = true;
   player.dead = false;
-  player.x = 0;
+  player.x = spawn.x;
   player.y = 0.5;
-  player.z = 0;
+  player.z = spawn.z;
   player.debugScenario = name;
   player.pendingSummons.clear();
   enterPlayingPhase();
@@ -453,7 +501,7 @@ function applyDebugScenario(socket, name) {
   }
 
   broadcastLobbyUpdate();
-  io.emit('stateUpdate', gameState);
+  io.emit('stateUpdate', stateSnapshot());
   return { ok: true, scenario: name };
 }
 
@@ -590,6 +638,12 @@ function regenMagicStones() {
   }
 }
 
+function stateSnapshot() {
+  const snapshot = { ...gameState };
+  delete snapshot.layout;
+  return snapshot;
+}
+
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
 // Store interval IDs so tests can clean them up
@@ -604,23 +658,24 @@ function startServer(port) {
 
   io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
+    const spawn = firstRoomPosition();
 
     // Initialize player
     gameState.players[socket.id] = {
-    x: 0,
-    y: 0,
-    z: 0,
-    rotation: 0,
-    deck: [],
-    hp: 100,
-    dead: false,
-    lastActivity: Date.now(),
-    ready: false,
-    magicStones: MAX_MAGIC_STONES,
-    currency: 0,
-    debugScenario: null,
-    pendingSummons: new Set()
-  };
+      x: spawn.x,
+      y: 0.5,
+      z: spawn.z,
+      rotation: 0,
+      deck: [],
+      hp: 100,
+      dead: false,
+      lastActivity: Date.now(),
+      ready: false,
+      magicStones: MAX_MAGIC_STONES,
+      currency: 0,
+      debugScenario: null,
+      pendingSummons: new Set()
+    };
 
   socket.emit('init', { id: socket.id, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout });
 
@@ -639,11 +694,10 @@ function startServer(port) {
     }
 
     if (player) {
-      const clampedX = Math.max(-25, Math.min(25, data.x));
-      const clampedZ = Math.max(-25, Math.min(25, data.z));
-      player.x = clampedX;
+      const clamped = clampToDungeon(data.x, data.z);
+      player.x = clamped.x;
       player.y = data.y;
-      player.z = clampedZ;
+      player.z = clamped.z;
       player.rotation = data.rotation;
       player.lastActivity = Date.now();
     }
@@ -873,7 +927,7 @@ const gameLoopId = setInterval(() => {
   const now = Date.now();
   gameState.loot = gameState.loot.filter(l => (now - l.createdAt) < 120000);
 
-  io.emit('stateUpdate', gameState);
+  io.emit('stateUpdate', stateSnapshot());
 }, 1000 / TICK_RATE);
 _intervals.push(gameLoopId);
 

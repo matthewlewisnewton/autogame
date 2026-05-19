@@ -9,6 +9,24 @@ export default defineConfig({
 		environments: {
 			'client/test/**': 'jsdom',
 			'server/test/**': 'node'
+		},
+		setupFiles: [
+			'client/test/setup.js'
+		],
+		coverage: {
+			provider: 'v8',
+			reportsDirectory: './coverage',
+			include: [
+				'server/index.js',
+				'client/cards.js',
+				'client/main.js'
+			],
+			thresholds: {
+				statements: 70,
+				branches: 70,
+				functions: 70,
+				lines: 70
+			}
 		}
 	}
 });
