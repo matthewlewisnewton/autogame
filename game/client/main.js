@@ -32,6 +32,7 @@ let heartbeatTimer = null;
 let latency = null;
 let sceneInitialized = false;
 let currentLayoutSeed = null; // tracks the layout seed we last built from
+let currentLayout = null; // persisted layout from init; stateUpdate omits it
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -251,27 +252,19 @@ socket.io.on('reconnect', () => {
 socket.on('init', (data) => {
   myId = data.id;
   gameState = data.state;
+  currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
+  if (gameState && currentLayout) gameState.layout = currentLayout;
 
   // ── Layout consistency check ──
   const receivedSeed = data.layoutSeed;
 
   if (sceneInitialized && receivedSeed !== undefined) {
-    // Reconnect path: server sent us the layout — verify and rebuild if needed
+    // Reconnect path: the server should keep one layout seed for the session.
     if (receivedSeed !== currentLayoutSeed) {
-      // Seed changed (should not happen mid-session, but handle gracefully)
-      console.log(`[layout] Seed changed from ${currentLayoutSeed} to ${receivedSeed}, rebuilding dungeon`);
+      console.warn(`[layout] Seed changed from ${currentLayoutSeed} to ${receivedSeed}; keeping existing geometry`);
       currentLayoutSeed = receivedSeed;
-      if (gameState && gameState.layout) {
-        buildDungeon(gameState.layout);
-        buildWallColliders(gameState.layout);
-      }
-    } else {
-      // Same seed — rebuild dungeon geometry in case scene was lost
-      if (gameState && gameState.layout) {
-        buildDungeon(gameState.layout);
-        buildWallColliders(gameState.layout);
-      }
     }
+    // Same seed — dungeon geometry already exists, skip redundant rebuild.
     // Reset local player position to spawn
     myX = spawnPosition.x;
     myZ = spawnPosition.z;
@@ -302,12 +295,9 @@ socket.on('stateUpdate', (state) => {
   if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
     console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
     currentLayoutSeed = state.layoutSeed;
-    if (state.layout && scene) {
-      buildDungeon(state.layout);
-      buildWallColliders(state.layout);
-    }
   }
   gameState = state;
+  if (gameState && currentLayout) gameState.layout = currentLayout;
 
   // Update currency HUD
   if (myId && gameState.players[myId]) {
@@ -344,6 +334,7 @@ socket.on('playerDisconnected', (id) => {
 });
 
 // ── Attack visual effects ──
+// v8 ignore:start
 
 const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
 const ATTACK_EFFECT_SPEED = 8;     // units per second
@@ -502,6 +493,8 @@ function disposeAllLootMeshes() {
   }
 }
 
+// v8 ignore:end
+
 socket.on('cardUsed', (data) => {
   if (!data || !scene) return;
 
@@ -607,6 +600,7 @@ socket.on('startGame', () => {
 });
 
 // ── Dungeon geometry builder ──
+// v8 ignore:start
 
 const WALL_HEIGHT = 2.5;
 const WALL_THICKNESS = 0.4;
@@ -741,6 +735,8 @@ function buildDungeon(layout) {
   }
 }
 
+// v8 ignore:end
+
 // ── Wall collision helpers ──
 // wallAABB and resolveWallCollision are imported from collision.js
 
@@ -808,9 +804,10 @@ function updateMyPlayer(delta) {
   }
 }
 
-function animate() {
+function animate(timestamp) {
   requestAnimationFrame(animate);
 
+  clock.update(timestamp);
   const delta = clock.getDelta();
   updateMyPlayer(delta);
 
@@ -966,9 +963,9 @@ function initScene() {
   scene.add(directionalLight);
 
   // Build dungeon geometry from server layout (replaces old 50x50 floor)
-  if (gameState && gameState.layout) {
-    buildDungeon(gameState.layout);
-    buildWallColliders(gameState.layout);
+  if (currentLayout) {
+    buildDungeon(currentLayout);
+    buildWallColliders(currentLayout);
   }
 
   // Place player at spawn position (center of first room)
@@ -983,9 +980,9 @@ function initScene() {
     if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
   });
 
-  // Clock & render loop
-  clock = new THREE.Clock();
-  animate();
+  // Frame timer & render loop
+  clock = new THREE.Timer();
+  requestAnimationFrame(animate);
 
   // Resize handler
   window.addEventListener('resize', () => {

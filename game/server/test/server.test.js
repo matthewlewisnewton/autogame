@@ -46,6 +46,11 @@ function addPlayer(id, overrides = {}) {
 	};
 }
 
+function firstRoomSpawn() {
+	const first = gameState.layout.rooms[0];
+	return { x: first.x, z: first.z };
+}
+
 // ── mulberry32 PRNG ──
 
 describe('mulberry32(seed)', () => {
@@ -194,12 +199,13 @@ describe('damagePlayer(playerId, amount)', () => {
 		expect(gameState.players['p1'].hp).toBe(100);
 	});
 
-	it('respawn resets position to (0, 0)', () => {
+	it('respawn resets position to the first room spawn', () => {
 		addPlayer('p1', { hp: 30, x: 10, z: 20 });
 		damagePlayer('p1', 30);
 		vi.advanceTimersByTime(3000);
-		expect(gameState.players['p1'].x).toBe(0);
-		expect(gameState.players['p1'].z).toBe(0);
+		const spawn = firstRoomSpawn();
+		expect(gameState.players['p1'].x).toBe(spawn.x);
+		expect(gameState.players['p1'].z).toBe(spawn.z);
 	});
 
 	it('partial damage does not mark dead', () => {

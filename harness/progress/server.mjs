@@ -200,19 +200,65 @@ function scanFile(file) {
   }
 }
 
+function splitJsonRecords(text) {
+  const records = [];
+  let start = -1;
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (start < 0) {
+      if (/\s/.test(ch)) continue;
+      if (ch !== '{') {
+        const nextLine = text.indexOf('\n', i);
+        const end = nextLine < 0 ? text.length : nextLine;
+        records.push(text.slice(i, end));
+        i = end;
+        continue;
+      }
+      start = i;
+      depth = 1;
+      inString = false;
+      escaped = false;
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) {
+        escaped = false;
+      } else if (ch === '\\') {
+        escaped = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === '{') {
+      depth += 1;
+    } else if (ch === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        records.push(text.slice(start, i + 1));
+        start = -1;
+      }
+    }
+  }
+
+  if (start >= 0) records.push(text.slice(start));
+  return records;
+}
+
 function scanExplicitEvents(rel, text) {
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of splitJsonRecords(text)) {
     if (!raw.trim()) continue;
     try {
       const event = JSON.parse(raw);
-      emit({
-        kind: event.type || event.kind || 'explicit',
-        actor: event.actor || 'harness',
-        title: event.title || event.type || 'Harness event',
-        text: event.message || '',
-        payload: event.payload || event,
-        source: rel,
-      });
+      emit(normalizeExplicitEvent(event, rel, raw));
     } catch {
       emit({
         kind: 'explicit',
@@ -223,6 +269,43 @@ function scanExplicitEvents(rel, text) {
       });
     }
   }
+}
+
+function normalizeExplicitEvent(event, source, raw = '') {
+  const kind = event.type || event.kind || 'explicit';
+  const payload = event.payload || event;
+  const normalized = {
+    kind,
+    actor: event.actor || 'harness',
+    title: event.title || kind || 'Harness event',
+    text: event.message || '',
+    payload,
+    source,
+    // Keep repeated scans idempotent while allowing payload-only changes, like
+    // consecutive commit events with distinct SHAs, to appear separately.
+    hash: event.hash || raw || JSON.stringify(event),
+  };
+
+  if (kind === 'commit_start') {
+    normalized.actor = 'git';
+    normalized.title = 'Creating commit';
+    normalized.text = [payload.base, payload.message].filter(Boolean).join(' ');
+  } else if (kind === 'commit') {
+    normalized.actor = 'git';
+    normalized.title = 'Commit created';
+    normalized.text = [payload.sha, payload.message].filter(Boolean).join(' ');
+  } else if (kind === 'commit_skipped') {
+    normalized.actor = 'git';
+    normalized.title = 'Commit skipped';
+    normalized.text = `${payload.message || 'No commit'} (${payload.reason || 'no changes'})`;
+  } else if (kind === 'commit_failed') {
+    normalized.actor = 'git';
+    normalized.title = 'Commit failed';
+    normalized.text = `${payload.message || 'Commit failed'} (${payload.reason || 'unknown'})`;
+  }
+
+  normalized.text = normalized.text.slice(0, MAX_LINE);
+  return normalized;
 }
 
 function scanMetrics(rel, text) {
@@ -416,14 +499,7 @@ const server = createServer((req, res) => {
     req.on('end', () => {
       try {
         const event = JSON.parse(body);
-        emit({
-          kind: event.type || event.kind || 'explicit',
-          actor: event.actor || 'harness',
-          title: event.title || event.type || 'Harness event',
-          text: event.message || '',
-          payload: event.payload || event,
-          source: 'POST /events',
-        });
+        emit(normalizeExplicitEvent(event, 'POST /events', body));
         res.writeHead(204);
         res.end();
       } catch {
