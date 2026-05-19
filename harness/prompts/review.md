@@ -20,6 +20,22 @@ so to see exactly what it changed, run `git diff __BASE_REF__ HEAD` and
 (If `__BASE_REF__` is not a real commit hash, find this ticket's commits in
 `git log` by their `<ticket-name>/...` message prefix.)
 
+FIRST — CONFIRM THE GAME ACTUALLY RUNS. Before judging anything else, open
+`__ARTIFACTS_DIR__/metrics.json` and `__ARTIFACTS_DIR__/console.log` from the
+capture of the game running with this ticket applied. The game is BROKEN — and
+the ticket is an automatic `VERDICT: FAIL` — if ANY of these hold:
+- `metrics.json` is missing, or contains `"ok": false`, or reports that the
+  servers did not start;
+- `console.log` contains an uncaught page error or a fatal error (lines tagged
+  `pageerror` or `[fatal]`) coming from the game's own code.
+A game that does not start or load cleanly FAILS regardless of how complete or
+correct the code looks — code that reads well but does not run is still broken.
+A non-running game is the #1 blocking gap: list it first in `__GAPS_OUT__`.
+Never pass a ticket on the strength of the code alone — the captured run is the
+proof. Ignore only benign environment noise: THREE.js deprecation warnings,
+headless-WebGL "context lost/restored" messages, and Vite `ws proxy` / `EPIPE`
+lines on socket close — none of those count as a broken game.
+
 YOUR JOB:
 1. Independently judge whether the implementation FULLY and ROBUSTLY satisfies
    the top-level ticket's `## Acceptance Criteria`. Do not assume the
@@ -46,9 +62,11 @@ Then, as the VERY LAST LINE of `__REVIEW_OUT__`, write exactly one of:
   VERDICT: PASS
   VERDICT: FAIL
 
-Output `VERDICT: PASS` if the acceptance criteria are fully and robustly met,
-EVEN IF you noted nits — nits do not block. Output `VERDICT: FAIL` only for
-genuine blocking gaps.
+Output `VERDICT: PASS` only if BOTH (a) the captured run shows the game starts
+and loads cleanly — per the runtime-health check above — AND (b) the acceptance
+criteria are fully and robustly met. Nits do not block: PASS even if you noted
+some. Output `VERDICT: FAIL` if the game does not run, or for any genuine
+blocking gap.
 
 COMPACT REMEDIATION FILE — if, and only if, the verdict is FAIL, ALSO write a
 short, self-contained remediation file to:
