@@ -1286,6 +1286,25 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 		expect(log).toContain('card');
 		expect(log).toContain('enemyHit');
 	});
+
+	it('cardUsed with empty hits array does NOT play enemyHit sound', async () => {
+		await import('../main.js');
+
+		window.__setScene({ add: function() {}, remove: function() {} });
+		window.__clearPlaySoundLog();
+
+		window.__triggerSocketEvent('cardUsed', {
+			playerId: 'player1',
+			cardId: 'iron_sword',
+			slotIndex: 0,
+			hits: [],
+		});
+
+		const log = window.__playSoundCallLog();
+		expect(log).toHaveLength(1);
+		expect(log).toContain('card');
+		expect(log).not.toContain('enemyHit');
+	});
 });
 
 // ── applyWindupFlash (telegraph emissive toggle) ──
