@@ -1286,14 +1286,14 @@ describe('run state', () => {
 		beforeEach(() => resetState());
 
 		it('returns correct structure', () => {
-			addPlayer('p1', { currency: 25, ownedCards: { iron_sword: 2, flame_blade: 1 } });
+			addPlayer('p1', { runRewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Flame Blade', count: 1 }] } });
 			const summary = buildPlayerRewardSummary('p1');
-			expect(summary.currency).toBe(25);
+			expect(summary.currency).toBe(10);
 			expect(Array.isArray(summary.cards)).toBe(true);
 		});
 
 		it('maps card ids to names via CARD_DEFS', () => {
-			addPlayer('p1', { currency: 0, ownedCards: { iron_sword: 1 } });
+			addPlayer('p1', { runRewards: { currency: 0, cards: [{ id: 'iron_sword', name: 'Iron Sword', count: 1 }] } });
 			const summary = buildPlayerRewardSummary('p1');
 			const cardEntry = summary.cards.find(c => c.id === 'iron_sword');
 			expect(cardEntry).toBeDefined();
@@ -1303,8 +1303,14 @@ describe('run state', () => {
 
 		it('includes all owned cards', () => {
 			addPlayer('p1', {
-				currency: 0,
-				ownedCards: { iron_sword: 2, flame_blade: 3, battle_familiar: 1 }
+				runRewards: {
+					currency: 0,
+					cards: [
+						{ id: 'iron_sword', name: 'Iron Sword', count: 2 },
+						{ id: 'flame_blade', name: 'Flame Blade', count: 1 },
+						{ id: 'battle_familiar', name: 'Battle Familiar', count: 1 }
+					]
+				}
 			});
 			const summary = buildPlayerRewardSummary('p1');
 			expect(summary.cards.length).toBe(3);
