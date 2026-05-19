@@ -57,6 +57,7 @@ const DECK_MAX_SIZE = 12;
 let scene, camera, renderer, clock;
 const playersMeshes = {};
 const enemiesMeshes = {};
+const enemyHealthBars = {}; // enemy id → health bar mesh
 const minionsMeshes = {};
 const lootMeshes = {};
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
@@ -519,6 +520,45 @@ const hitFlashedThisFrame = new Set();
 // Track per-enemy HP from the previous frame, for detecting minion tick damage
 const previousEnemyHp = {};
 
+// ── Enemy health bar helpers ──
+
+const ENEMY_MAX_HP = 50;
+
+/**
+ * Return a hex color for an enemy health bar based on HP percentage.
+ * Green (full) → yellow (50 %) → red (empty).
+ */
+function healthBarColor(hp) {
+	const pct = hp / ENEMY_MAX_HP;
+	if (pct > 0.5) return 0x22c55e;       // green
+	if (pct > 0.25) return 0xeab308;      // yellow
+	return 0xef4444;                       // red
+}
+
+/**
+ * Create a health-bar mesh positioned above an enemy.
+ */
+function createHealthBarMesh(enemyId, x, z) {
+	const geo = new THREE.BoxGeometry(1.2, 0.1, 0.1);
+	const mat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.position.set(x, 1.5, z);
+	scene.add(mesh);
+	return mesh;
+}
+
+/**
+ * Update a health bar's scale and color to reflect current HP.
+ */
+function updateHealthBarMesh(enemyId, enemy) {
+	const mesh = enemyHealthBars[enemyId];
+	if (!mesh) return;
+
+	const ratio = Math.max(0, enemy.hp / ENEMY_MAX_HP);
+	mesh.scale.x = ratio;
+	mesh.material.color.setHex(healthBarColor(enemy.hp));
+}
+
 // ── Attack visual effects ──
 
 const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
@@ -825,6 +865,13 @@ socket.on('startGame', () => {
     enemiesMeshes[id].geometry.dispose();
     enemiesMeshes[id].material.dispose();
     delete enemiesMeshes[id];
+  }
+  // Dispose previous run's enemy health bars
+  for (const id of Object.keys(enemyHealthBars)) {
+    if (scene) scene.remove(enemyHealthBars[id]);
+    enemyHealthBars[id].geometry.dispose();
+    enemyHealthBars[id].material.dispose();
+    delete enemyHealthBars[id];
   }
   // Dispose previous run's minion meshes
   for (const id of Object.keys(minionsMeshes)) {
@@ -1174,8 +1221,15 @@ function animate(timestamp) {
         const mesh = new THREE.Mesh(geo, mat);
         scene.add(mesh);
         enemiesMeshes[enemy.id] = mesh;
+
+        // Create health bar for new enemy
+        enemyHealthBars[enemy.id] = createHealthBarMesh(enemy.id, enemy.x, enemy.z);
       }
       enemiesMeshes[enemy.id].position.set(enemy.x, 0.5, enemy.z);
+
+      // Update health bar position, scale, and color
+      enemyHealthBars[enemy.id].position.set(enemy.x, 1.5, enemy.z);
+      updateHealthBarMesh(enemy.id, enemy);
 
       // Detect HP drop (minion tick damage) — skip if already flashed by cardUsed
       if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
@@ -1186,11 +1240,19 @@ function animate(timestamp) {
       previousEnemyHp[enemy.id] = enemy.hp;
     }
 
-    // Clean up removed enemies (also clean up previous HP tracking)
+    // Clean up removed enemies (also clean up health bars and previous HP tracking)
     for (const id of Object.keys(enemiesMeshes)) {
       if (!currentEnemyIds.has(id)) {
         scene.remove(enemiesMeshes[id]);
         delete enemiesMeshes[id];
+      }
+    }
+    for (const id of Object.keys(enemyHealthBars)) {
+      if (!currentEnemyIds.has(id)) {
+        scene.remove(enemyHealthBars[id]);
+        enemyHealthBars[id].geometry.dispose();
+        enemyHealthBars[id].material.dispose();
+        delete enemyHealthBars[id];
       }
     }
     for (const id of Object.keys(previousEnemyHp)) {
@@ -1303,6 +1365,8 @@ window.initScene = initScene;
 window.refillSlot = refillSlot;
 window.renderDeckEditor = renderDeckEditor;
 window.flashMesh = flashMesh;
+window.enemyHealthBars = enemyHealthBars;
+window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
 window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
 window.__AUTOGAME_HARNESS_STATE__ = () => {
