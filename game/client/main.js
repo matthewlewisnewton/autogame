@@ -967,6 +967,27 @@ function updateAttackEffects() {
   }
 }
 
+// ── Mesh disposal helper ──
+
+/**
+ * Iterate a mesh map, remove each mesh from the scene, optionally dispose
+ * geometry and material, and clear the map.
+ * @param {Object} map - object mapping ids to THREE.Mesh instances
+ * @param {THREE.Scene} targetScene - scene to remove meshes from
+ * @param {boolean} [skipDispose] - if true, skip geometry/material disposal (for shared resources)
+ */
+function disposeMeshMap(map, targetScene, skipDispose) {
+	for (const id of Object.keys(map)) {
+		const mesh = map[id];
+		if (targetScene) targetScene.remove(mesh);
+		if (!skipDispose && mesh) {
+			if (mesh.geometry) mesh.geometry.dispose();
+			if (mesh.material) mesh.material.dispose();
+		}
+		delete map[id];
+	}
+}
+
 // ── Loot mesh sync & animation ──
 
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
@@ -1071,11 +1092,8 @@ function animateLootMeshes() {
 }
 
 function disposeAllLootMeshes() {
-  for (const id of Object.keys(lootMeshes)) {
-    if (scene) scene.remove(lootMeshes[id]);
-    // Do NOT dispose geometry or material — both are shared
-    delete lootMeshes[id];
-  }
+  // Loot meshes share geometry/material — skip disposal
+  disposeMeshMap(lootMeshes, scene, true);
 }
 
 socket.on('cardUsed', (data) => {
@@ -1253,38 +1271,15 @@ socket.on('startGame', () => {
   playerRotation = 0;
   wasDead = false;
 
-  // Dispose previous run's enemy meshes
-  for (const id of Object.keys(enemiesMeshes)) {
-    if (scene) scene.remove(enemiesMeshes[id]);
-    enemiesMeshes[id].geometry.dispose();
-    enemiesMeshes[id].material.dispose();
-    delete enemiesMeshes[id];
-  }
-  // Dispose previous run's enemy health bars
-  for (const id of Object.keys(enemyHealthBars)) {
-    if (scene) scene.remove(enemyHealthBars[id]);
-    enemyHealthBars[id].geometry.dispose();
-    enemyHealthBars[id].material.dispose();
-    delete enemyHealthBars[id];
-  }
-  // Dispose previous run's telegraph meshes
-  for (const id of Object.keys(telegraphMeshes)) {
-    if (scene) scene.remove(telegraphMeshes[id]);
-    telegraphMeshes[id].geometry.dispose();
-    telegraphMeshes[id].material.dispose();
-    delete telegraphMeshes[id];
-  }
+  // Dispose previous run's meshes using centralized helper
+  disposeMeshMap(enemiesMeshes, scene);
+  disposeMeshMap(enemyHealthBars, scene);
+  disposeMeshMap(telegraphMeshes, scene);
+  disposeMeshMap(minionsMeshes, scene);
+  // Loot meshes share geometry/material — skip disposal
+  disposeMeshMap(lootMeshes, scene, true);
   // Clear windup flashing tracking for new run
   windupFlashing.clear();
-  // Dispose previous run's minion meshes
-  for (const id of Object.keys(minionsMeshes)) {
-    if (scene) scene.remove(minionsMeshes[id]);
-    minionsMeshes[id].geometry.dispose();
-    minionsMeshes[id].material.dispose();
-    delete minionsMeshes[id];
-  }
-  // Dispose previous run's loot meshes
-  disposeAllLootMeshes();
 });
 
 // ── Run Summary Overlay ──
@@ -1583,19 +1578,25 @@ function animate(timestamp) {
     }
 
     // Clean up removed enemies (also clean up health bars and previous HP tracking)
-    for (const id of Object.keys(enemiesMeshes)) {
-      if (!currentEnemyIds.has(id)) {
-        scene.remove(enemiesMeshes[id]);
-        delete enemiesMeshes[id];
+    {
+      const staleIds = [];
+      for (const id of Object.keys(enemiesMeshes)) {
+        if (!currentEnemyIds.has(id)) staleIds.push(id);
       }
+      const staleEnemies = {};
+      for (const id of staleIds) staleEnemies[id] = enemiesMeshes[id];
+      disposeMeshMap(staleEnemies, scene);
+      for (const id of staleIds) delete enemiesMeshes[id];
     }
-    for (const id of Object.keys(enemyHealthBars)) {
-      if (!currentEnemyIds.has(id)) {
-        scene.remove(enemyHealthBars[id]);
-        enemyHealthBars[id].geometry.dispose();
-        enemyHealthBars[id].material.dispose();
-        delete enemyHealthBars[id];
+    {
+      const staleIds = [];
+      for (const id of Object.keys(enemyHealthBars)) {
+        if (!currentEnemyIds.has(id)) staleIds.push(id);
       }
+      const staleBars = {};
+      for (const id of staleIds) staleBars[id] = enemyHealthBars[id];
+      disposeMeshMap(staleBars, scene);
+      for (const id of staleIds) delete enemyHealthBars[id];
     }
     for (const id of Object.keys(previousEnemyHp)) {
       if (!currentEnemyIds.has(id)) {
@@ -1603,13 +1604,15 @@ function animate(timestamp) {
       }
     }
     // Clean up telegraph meshes for removed enemies
-    for (const id of Object.keys(telegraphMeshes)) {
-      if (!currentEnemyIds.has(id)) {
-        scene.remove(telegraphMeshes[id]);
-        telegraphMeshes[id].geometry.dispose();
-        telegraphMeshes[id].material.dispose();
-        delete telegraphMeshes[id];
+    {
+      const staleIds = [];
+      for (const id of Object.keys(telegraphMeshes)) {
+        if (!currentEnemyIds.has(id)) staleIds.push(id);
       }
+      const staleTelegraphs = {};
+      for (const id of staleIds) staleTelegraphs[id] = telegraphMeshes[id];
+      disposeMeshMap(staleTelegraphs, scene);
+      for (const id of staleIds) delete telegraphMeshes[id];
     }
     // Clean up windupFlashing entries for removed enemies
     for (const id of [...windupFlashing]) {
@@ -1633,13 +1636,15 @@ function animate(timestamp) {
     }
 
     // Clean up removed minions
-    for (const id of Object.keys(minionsMeshes)) {
-      if (!currentMinionIds.has(id)) {
-        scene.remove(minionsMeshes[id]);
-        minionsMeshes[id].geometry.dispose();
-        minionsMeshes[id].material.dispose();
-        delete minionsMeshes[id];
+    {
+      const staleIds = [];
+      for (const id of Object.keys(minionsMeshes)) {
+        if (!currentMinionIds.has(id)) staleIds.push(id);
       }
+      const staleMinions = {};
+      for (const id of staleIds) staleMinions[id] = minionsMeshes[id];
+      disposeMeshMap(staleMinions, scene);
+      for (const id of staleIds) delete minionsMeshes[id];
     }
 
     // ── Loot mesh sync ──
