@@ -475,6 +475,90 @@ function buildRunSummary(status) {
   };
 }
 
+// ── Reward Helpers ──
+
+/**
+ * Victory reward rotation — deterministic sequence of card ids handed out
+ * on successive victories.  Each element is a card id present in CARD_DEFS.
+ */
+const VICTORY_REWARD_ROTATION = [
+  'flame_blade',
+  'battle_familiar',
+  'dungeon_drake',
+];
+
+/**
+ * Monotonic counter keyed by player id so that successive victories rotate
+ * through different card rewards.  Lives on gameState so it survives across
+ * runs but is reset when the server restarts.
+ */
+// (initialized lazily inside grantRunRewards)
+
+/**
+ * Increment `player.ownedCards[cardId]` by 1.
+ * Returns `true` on success, `false` when `cardId` is unknown.
+ */
+function grantCard(player, cardId) {
+  if (!CARD_DEFS[cardId]) return false;
+  if (player.ownedCards[cardId] === undefined) {
+    player.ownedCards[cardId] = 0;
+  }
+  player.ownedCards[cardId] += 1;
+  return true;
+}
+
+/**
+ * Grant run-end rewards to a player based on the run summary status.
+ *
+ * Victory  →  +10 currency, one card reward (rotation), summary saved.
+ * Failure  →  no bonus currency, no card reward; existing currency kept.
+ */
+function grantRunRewards(playerId, summary) {
+  const player = gameState.players[playerId];
+  if (!player) return;
+
+  if (summary.status === 'victory') {
+    // Currency bonus
+    player.currency += 10;
+
+    // Pick a card from the rotation
+    if (!gameState._victoryCounters) gameState._victoryCounters = {};
+    const idx = gameState._victoryCounters[playerId] || 0;
+    const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
+    gameState._victoryCounters[playerId] = idx + 1;
+
+    if (grantCard(player, cardId)) {
+      const cardDef = CARD_DEFS[cardId];
+      player.runRewards = {
+        currency: 10,
+        cards: [{ id: cardId, name: cardDef.name, count: 1 }]
+      };
+    }
+  }
+  // On failure: do nothing — player keeps whatever currency they already have.
+}
+
+/**
+ * Build a structured reward summary for a player.
+ * Returns { currency: N, cards: [{ id, name, count }] }.
+ */
+function buildPlayerRewardSummary(playerId) {
+  const player = gameState.players[playerId];
+  if (!player) return { currency: 0, cards: [] };
+
+  const cards = [];
+  for (const [cardId, count] of Object.entries(player.ownedCards)) {
+    const def = CARD_DEFS[cardId];
+    cards.push({
+      id: cardId,
+      name: def ? def.name : cardId,
+      count
+    });
+  }
+
+  return { currency: player.currency, cards };
+}
+
 /**
  * Check whether the current run has reached a terminal state.
  * Emits exactly one terminal event per run (guarded by run.status === 'playing').
@@ -1181,6 +1265,10 @@ if (typeof module !== 'undefined' && module.exports) {
     resetTransientRunState,
     returnPlayersToLobby,
     createPlayerProgress,
+    grantCard,
+    grantRunRewards,
+    buildPlayerRewardSummary,
+    CARD_DEFS,
     // Server objects for integration tests
     server,
     io,
