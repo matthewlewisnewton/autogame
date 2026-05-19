@@ -742,3 +742,26 @@ loading and rendering correctly with no errors.
 
 None blocking. The ticket's three nits are either already resolved upstream (nit 1) or directly addressed by this implementation (nits 2 and 3), and the captured run is healthy.
 
+
+## v0.33 — Cleanup nits from 028-lobby-deck-editor  (2026-05-19 15:36:28)
+
+  (`iron_sword`, `flame_blade`, `battle_familiar`, `dungeon_drake`) — the other
+  4 duplicates stayed in the draw-deck reserve (`02-gameplay-hand.png`,
+  `cardHandVisible: true`).
+- A documenting comment is present and accurately explains the intent.
+
+The integration test suite was updated to track the new default size
+(`expect(playerA.selectedDeck.length).toBe(8)`, removal/add-too-many tests
+adapted to the now-full default deck) — all tests pass.
+
+## Consistency checks
+- `game/docs/design.md` does not pin the default-deck size to 4; nothing in
+  `requirements.md` is regressed.
+- The lobby/deck-editor UI handles duplicates correctly (probe shows ✕ buttons
+  per row, including duplicate iron_sword rows).
+- Two-player ready flow still transitions to `playing` cleanly with both
+  players' default decks (`players: 2`, `enemies: 5`).
+
+## Remaining gaps
+None blocking.
+
