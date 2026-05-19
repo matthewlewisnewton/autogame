@@ -919,8 +919,9 @@ function startServer(port) {
     if (!gameState.players[socket.id]) {
       const progress = createPlayerProgress();
 
-      // Default selected deck: one copy of each unique card id from STARTING_DECK_IDS
-      const defaultDeck = [...new Set(STARTING_DECK_IDS)];
+      // Default selected deck: the full 8-card starting deck (STARTING_DECK_IDS),
+      // so players have a draw-deck reserve beyond the 4-card opening hand.
+      const defaultDeck = [...STARTING_DECK_IDS];
 
       gameState.players[socket.id] = {
         x: spawn.x,
