@@ -914,8 +914,7 @@ function startServer(port) {
     console.log(`Player connected: ${socket.id}`);
     const spawn = firstRoomPosition();
 
-    // Only initialize progress state for NEW players — reconnecting players
-    // keep their accumulated currency, ownedCards, and runRewards.
+    // Initialize player state on connection.
     if (!gameState.players[socket.id]) {
       const progress = createPlayerProgress();
 
@@ -942,10 +941,6 @@ function startServer(port) {
         debugScenario: null,
         pendingSummons: new Set()
       };
-    } else {
-      // Reconnecting player — reset transient fields only
-      gameState.players[socket.id].lastActivity = Date.now();
-      gameState.players[socket.id].pendingSummons = new Set();
     }
 
   const player = gameState.players[socket.id];
