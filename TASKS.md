@@ -32,6 +32,14 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 ## Backlog — Testing
 - [ ] [017-test-coverage](tickets/017-test-coverage/)
 
+## Backlog — Playability
+- [ ] [025-dungeon-run-objectives](tickets/025-dungeon-run-objectives/)
+- [ ] [027-run-summary-return-to-lobby](tickets/027-run-summary-return-to-lobby/)
+- [ ] [026-card-rewards-deckbuilding](tickets/026-card-rewards-deckbuilding/)
+- [ ] [028-lobby-deck-editor](tickets/028-lobby-deck-editor/)
+- [ ] [029-combat-feedback-readability](tickets/029-combat-feedback-readability/)
+- [ ] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
+
 ## Backlog — Housekeeping & Planning
 - [ ] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
 - [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
