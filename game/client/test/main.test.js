@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { wallAABB, resolveWallCollision } from '../collision.js';
-import { drawCard, initHand, initHandFromDeck, resetHandState, hand, deck, slotCooldowns } from '../hand.js';
+import { drawCard, initHand, initHandFromDeck, resetHandState, canUseSlot, hand, deck, slotCooldowns } from '../hand.js';
 
 // ── wallAABB ──
 
@@ -307,6 +307,68 @@ describe('initHandFromDeck()', () => {
 
 		expect(hand).toHaveLength(2);
 		expect(deck).toHaveLength(0);
+	});
+});
+
+// ── canUseSlot ──
+
+describe('canUseSlot()', () => {
+	beforeEach(() => {
+		resetHandState();
+	});
+
+	it('returns false for slot indices outside 0–3', () => {
+		expect(canUseSlot(-1)).toBe(false);
+		expect(canUseSlot(4)).toBe(false);
+		expect(canUseSlot(100)).toBe(false);
+	});
+
+	it('returns false when hand slot is null', () => {
+		hand[0] = null;
+		expect(canUseSlot(0)).toBe(false);
+	});
+
+	it('returns false when hand slot is undefined', () => {
+		// hand is empty after resetHandState
+		expect(canUseSlot(0)).toBe(false);
+	});
+
+	it('returns false when slot is in cooldown', () => {
+		deck.push('iron_sword');
+		const card = drawCard();
+		if (card) hand.push(card);
+		slotCooldowns[0] = true;
+
+		expect(canUseSlot(0)).toBe(false);
+	});
+
+	it('returns true when slot is in-range, has a card, and not cooling down', () => {
+		deck.push('iron_sword');
+		const card = drawCard();
+		if (card) hand.push(card);
+
+		expect(canUseSlot(0)).toBe(true);
+	});
+
+	it('returns true for all four valid slots after initHand', () => {
+		initHand();
+
+		expect(canUseSlot(0)).toBe(true);
+		expect(canUseSlot(1)).toBe(true);
+		expect(canUseSlot(2)).toBe(true);
+		expect(canUseSlot(3)).toBe(true);
+	});
+
+	it('is pure — calling it does not mutate hand or slotCooldowns', () => {
+		initHand();
+		const handBefore = JSON.parse(JSON.stringify(hand));
+		const cooldownsBefore = [...slotCooldowns];
+
+		canUseSlot(0);
+		canUseSlot(2);
+
+		expect(hand).toEqual(handBefore);
+		expect(slotCooldowns).toEqual(cooldownsBefore);
 	});
 });
 
