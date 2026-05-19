@@ -631,12 +631,14 @@ function returnPlayersToLobby() {
   gameState.gamePhase = 'lobby';
   delete gameState.run;
 
-  // 3. Reset every player: position, HP, readiness — preserve currency + inventory
+  // 3. Reset every player: position, HP, readiness — preserve currency, inventory, ownedCards, runRewards
   const spawn = firstRoomPosition();
   for (const playerId of Object.keys(gameState.players)) {
     const player = gameState.players[playerId];
     const preservedCurrency = player.currency;
     const preservedInventory = player.inventory;
+    const preservedOwnedCards = player.ownedCards;
+    const preservedRunRewards = player.runRewards;
 
     player.ready = false;
     player.dead = false;
@@ -646,8 +648,9 @@ function returnPlayersToLobby() {
     player.z = spawn.z;
     player.currency = preservedCurrency;
     player.inventory = preservedInventory;
+    player.ownedCards = preservedOwnedCards;
+    player.runRewards = preservedRunRewards;
     player.currencyEarnedThisRun = 0;
-    player.runRewards = null;
   }
 
   // 4. Broadcast state to all clients
@@ -954,27 +957,35 @@ function startServer(port) {
   io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
     const spawn = firstRoomPosition();
-    const progress = createPlayerProgress();
 
-    // Initialize player
-    gameState.players[socket.id] = {
-      x: spawn.x,
-      y: 0.5,
-      z: spawn.z,
-      rotation: 0,
-      deck: [],
-      hp: 100,
-      dead: false,
-      lastActivity: Date.now(),
-      ready: false,
-      magicStones: MAX_MAGIC_STONES,
-      currency: progress.currency,
-      ownedCards: progress.ownedCards,
-      runRewards: progress.runRewards,
-      currencyEarnedThisRun: progress.currencyEarnedThisRun,
-      debugScenario: null,
-      pendingSummons: new Set()
-    };
+    // Only initialize progress state for NEW players — reconnecting players
+    // keep their accumulated currency, ownedCards, and runRewards.
+    if (!gameState.players[socket.id]) {
+      const progress = createPlayerProgress();
+
+      gameState.players[socket.id] = {
+        x: spawn.x,
+        y: 0.5,
+        z: spawn.z,
+        rotation: 0,
+        deck: [],
+        hp: 100,
+        dead: false,
+        lastActivity: Date.now(),
+        ready: false,
+        magicStones: MAX_MAGIC_STONES,
+        currency: progress.currency,
+        ownedCards: progress.ownedCards,
+        runRewards: progress.runRewards,
+        currencyEarnedThisRun: progress.currencyEarnedThisRun,
+        debugScenario: null,
+        pendingSummons: new Set()
+      };
+    } else {
+      // Reconnecting player — reset transient fields only
+      gameState.players[socket.id].lastActivity = Date.now();
+      gameState.players[socket.id].pendingSummons = new Set();
+    }
 
   socket.emit('init', { id: socket.id, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout });
 
