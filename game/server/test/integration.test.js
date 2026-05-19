@@ -739,3 +739,154 @@ describe('Run terminal state — integration', () => {
 		expect(secondState.run.status).toBe('playing');
 	});
 });
+
+describe('Rewards in run complete payload', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('runComplete payload contains per-player rewards with at least one card after a victory', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Replace all enemies with a single low-HP enemy in weapon range
+		const player = gameState.players[socket1.id];
+		gameState.enemies = [{
+			id: 'e_final',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		// Clear victory counter so we get a deterministic card
+		if (!gameState._victoryCounters) gameState._victoryCounters = {};
+		gameState._victoryCounters[socket1.id] = 0;
+
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+		const summary = await runCompletePromise;
+
+		expect(summary.status).toBe('victory');
+		expect(summary.players.length).toBeGreaterThan(0);
+
+		const playerEntry = summary.players.find(p => p.id === socket1.id);
+		expect(playerEntry).toBeDefined();
+		expect(playerEntry).toHaveProperty('rewards');
+		expect(playerEntry.rewards).toHaveProperty('currency');
+		expect(playerEntry.rewards).toHaveProperty('cards');
+		expect(Array.isArray(playerEntry.rewards.cards)).toBe(true);
+		expect(playerEntry.rewards.cards.length).toBeGreaterThan(0);
+		expect(playerEntry.rewards.cards[0]).toHaveProperty('id');
+		expect(playerEntry.rewards.cards[0]).toHaveProperty('name');
+		expect(playerEntry.rewards.cards[0]).toHaveProperty('count');
+	});
+
+	it('runFailed payload contains per-player rewards but no victory card', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Ensure run is active
+		expect(gameState.run).toBeDefined();
+
+		// Kill both players
+		gameState.players[socket1.id].hp = 0;
+		gameState.players[socket1.id].dead = true;
+		gameState.players[socket2.id].hp = 100;
+		gameState.players[socket2.id].dead = false;
+		gameState.minions = [];
+
+		const runFailedPromise = waitForEvent(socket1, 'runFailed');
+		socket2.emit('damage', { targetId: socket2.id, amount: 100 });
+		const summary = await runFailedPromise;
+
+		expect(summary.status).toBe('failed');
+		expect(summary.players.length).toBeGreaterThan(0);
+
+		const playerEntry = summary.players.find(p => p.id === socket1.id);
+		expect(playerEntry).toBeDefined();
+		expect(playerEntry).toHaveProperty('rewards');
+		expect(playerEntry.rewards).toHaveProperty('currency');
+		expect(playerEntry.rewards).toHaveProperty('cards');
+
+		// On failure, the player should NOT have received a victory card reward.
+		// runRewards should be null (never set) or the currency should not include the +10 bonus.
+		const actualPlayer = gameState.players[socket1.id];
+		expect(actualPlayer.runRewards).toBeNull();
+	});
+
+	it('currency picked up via lootPickup appears in player currency in the run summary', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = gameState.players[socket1.id];
+
+		// Place a loot item near the player
+		const lootValue = 15;
+		gameState.loot.push({
+			id: 'loot_test',
+			x: player.x + 1,
+			z: player.z + 1,
+			value: lootValue,
+			createdAt: Date.now()
+		});
+
+		// Record initial currency
+		const currencyBefore = player.currency;
+
+		// Pick up the loot
+		socket1.emit('lootPickup', { lootId: 'loot_test' });
+		await sleep(50);
+
+		// Verify loot was consumed and currency increased
+		expect(gameState.loot.find(l => l.id === 'loot_test')).toBeUndefined();
+		expect(player.currency).toBe(currencyBefore + lootValue);
+
+		// Now trigger a victory to check the summary includes the currency
+		gameState.enemies = [{
+			id: 'e_final',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+		const summary = await runCompletePromise;
+
+		expect(summary.status).toBe('victory');
+
+		const playerEntry = summary.players.find(p => p.id === socket1.id);
+		expect(playerEntry).toBeDefined();
+		// Player currency in summary should include the picked-up loot (+10 victory bonus)
+		expect(playerEntry.currency).toBe(currencyBefore + lootValue + 10);
+	});
+});
