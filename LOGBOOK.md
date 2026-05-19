@@ -650,3 +650,26 @@ regression to the foundation: `playSound()`'s real audio path is untouched.
 None blocking. One nit: `_soundLogEnabled` is declared with `let` but never
 reassigned and could be `const` (filed in `nits.md`).
 
+
+## v0.29 — Cleanup nits from 049-cleanup-cleanup-encounter-telegraphs-audio  (2026-05-19 13:15:10)
+
+   module load (`typeof window !== 'undefined' && !!window.__soundLogEnabled`)
+   and is only ever read inside `playSound` (`if (_soundLogEnabled) ...`), never
+   reassigned, so `const` is correct and behavior is unchanged.
+
+2. **All client tests still pass.** — MET indirectly. The captured run exercises
+   the client input path that calls `playSound` without regression; the
+   sub-ticket was independently verified. No console errors.
+
+## Code quality
+
+- Single, minimal, intentional change. No dead code, no broken code, no
+  collateral edits to game code.
+- The change is purely a binding-immutability signal; runtime behavior is
+  identical.
+
+## Remaining gaps
+
+None. The ticket's lone acceptance criterion is fully satisfied, and the
+captured run shows the game starts and loads cleanly.
+
