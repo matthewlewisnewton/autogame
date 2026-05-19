@@ -788,3 +788,26 @@ fix — and the fix does exactly that. Not a blocking gap.
 
 None.
 
+
+## v0.35 — Cleanup nits from 027-run-summary-return-to-lobby  (2026-05-19 16:10:23)
+
+## Consistency / regression checks
+
+- `game/docs/design.md` and `game/docs/requirements.md` do not specify any
+  behavior that this change contradicts; the freeze applies only when the
+  run is terminal, and `pendingSummons` clearing on lobby return is
+  consistent with the "transient run state is reset on return to lobby"
+  posture in `returnPlayersToLobby()`.
+- The change set is small (server-only) and does not touch the client,
+  protocols, or networking. No new dead code introduced; no console
+  warnings or errors in the captured run.
+- Minion TTL still decrements while the run is terminal. Since the summary
+  overlay is shown for the duration of the run-end, that is the right call —
+  minions don't accumulate forever, but they also don't move/attack to
+  produce activity behind the overlay.
+
+## Remaining gaps
+
+None blocking. The implementation cleanly addresses both acceptance criteria,
+unit-test coverage is thorough, and the captured run is clean.
+
