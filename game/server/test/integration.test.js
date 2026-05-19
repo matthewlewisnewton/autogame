@@ -6,7 +6,12 @@ import {
 	gameState,
 	io as serverIo,
 	server as httpServer,
-	_intervals
+	_intervals,
+	ENEMY_ATTACK_RANGE,
+	ENEMY_ATTACK_DAMAGE,
+	ENEMY_ATTACK_WINDUP_MS,
+	DETECTION_RADIUS,
+	TICK_RATE
 } from '../index.js';
 
 // ── Helpers ──
@@ -1354,5 +1359,122 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		expect(stateUpdate.players[socket2.id]).toBeDefined();
 		expect(Array.isArray(stateUpdate.players[socket2.id].deck)).toBe(true);
 		expect(stateUpdate.players[socket2.id].deck.length).toBe(deck2.length);
+	});
+});
+
+describe('Enemy telegraph integration', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('enemy enters windup before damaging player', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket.id];
+		const initialHp = player.hp;
+
+		// Place an enemy in chasing state, within attack range of the player
+		// We position it just within ENEMY_ATTACK_RANGE so updateEnemies triggers windup
+		gameState.enemies = [{
+			id: 'e_telegraph',
+			x: player.x + ENEMY_ATTACK_RANGE - 1,
+			z: player.z,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'chasing',
+			wanderTarget: { x: player.x, z: player.z }
+		}];
+
+		// Collect stateUpdates — we expect to see windup BEFORE hp changes
+		const stateUpdates = [];
+		const stateHandler = (data) => {
+			stateUpdates.push(data);
+			// Stop collecting after we see the damage
+			if (data.players && data.players[socket.id] && data.players[socket.id].hp < initialHp) {
+				socket.off('stateUpdate', stateHandler);
+			}
+		};
+		socket.on('stateUpdate', stateHandler);
+
+		// Advance time enough for the game tick to process windup → damage
+		// The tick runs at TICK_RATE (20 Hz = 50ms), windup is 800ms
+		// So we need ~850ms for windup to expire and damage to apply
+		await sleep(ENEMY_ATTACK_WINDUP_MS + 200);
+
+		// Find the first stateUpdate where enemy attackState === 'windup'
+		const windupUpdate = stateUpdates.find(su => {
+			const enemies = su.enemies;
+			return enemies && enemies.some(e => e.id === 'e_telegraph' && e.attackState === 'windup');
+		});
+
+		// Find the first stateUpdate where player HP decreased
+		const damageUpdate = stateUpdates.find(su => {
+			return su.players && su.players[socket.id] && su.players[socket.id].hp < initialHp;
+		});
+
+		expect(windupUpdate).toBeDefined();
+
+		// If damage occurred, windup should have been seen first
+		if (damageUpdate) {
+			const windupIndex = stateUpdates.indexOf(windupUpdate);
+			const damageIndex = stateUpdates.indexOf(damageUpdate);
+			expect(windupIndex).toBeLessThan(damageIndex);
+		}
+
+		// Clean up listener
+		socket.off('stateUpdate', stateHandler);
+	});
+
+	it('moving out of range avoids damage', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket.id];
+
+		// Place enemy in chasing state, within attack range so it transitions to windup
+		gameState.enemies = [{
+			id: 'e_avoid',
+			x: player.x + ENEMY_ATTACK_RANGE - 1,
+			z: player.z,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'chasing',
+			wanderTarget: { x: player.x, z: player.z }
+		}];
+
+		// Wait for the game tick to transition enemy to windup
+		await sleep(100);
+
+		expect(gameState.enemies[0].attackState).toBe('windup');
+
+		// Move player far away from the enemy — out of ENEMY_ATTACK_RANGE
+		const farX = player.x + DETECTION_RADIUS + 50;
+		const farZ = player.z + DETECTION_RADIUS + 50;
+		socket.emit('move', { x: farX, y: 0.5, z: farZ, rotation: 0 });
+		await sleep(50);
+
+		// Wait for windup to expire (800ms from windup start)
+		await sleep(ENEMY_ATTACK_WINDUP_MS + 200);
+
+		// Player HP should remain at initial value (100)
+		expect(player.hp).toBe(100);
+
+		// Enemy should have cancelled the attack — attackState is no longer 'windup'
+		expect(gameState.enemies[0].attackState).not.toBe('windup');
 	});
 });
