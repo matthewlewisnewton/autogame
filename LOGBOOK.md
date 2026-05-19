@@ -512,3 +512,26 @@ Not a regression of ticket 030; recorded as a nit.
 None blocking. Acceptance criteria are fully and robustly met, and the captured
 run is clean. Minor non-blocking items are filed in `nits.md`.
 
+
+## v0.23 — Dungeon Room Generation  (2026-05-19 11:06:12)
+
+in the `init` payload to every client. `stateSnapshot()` strips the bulky
+`layout` but retains `layoutSeed`, and the client cross-checks it on every
+`stateUpdate` (`[layout] Seed mismatch` warning path) and on reconnect. Both
+capture probes show two players in one `playing` session; screenshots `02` (A)
+and `04` (B) show the same room/wall geometry from different viewpoints.
+
+## Consistency & regression
+- Consistent with `game/docs/design.md` ("modularly generated level where they
+  navigate rooms").
+- No foundation regression: all `requirements.md` items (3D render, WS connect,
+  multiplayer visualization, movement sync) still pass — confirmed by the
+  captured run and the full 296-test suite.
+- The diff for this round is a clean extraction refactor (server generator →
+  `server/dungeon.js`, client geometry/collision → `client/dungeon.js`) plus
+  unit and cross-client integration tests; behaviour is preserved.
+
+## Remaining gaps
+None blocking. Minor nit (redundant `dungeonMeshes.length = 0` in `initScene`
+after `clearDungeon` already cleared it) recorded in `nits.md`.
+
