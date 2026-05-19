@@ -44,11 +44,12 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [051-cleanup-cleanup-public-state-and-shared-data-nits](tickets/051-cleanup-cleanup-public-state-and-shared-data-nits/)
 - [x] [050-cleanup-cleanup-cleanup-encounter-telegraphs-audio](tickets/050-cleanup-cleanup-cleanup-encounter-telegraphs-audio/)
 - [x] [049-cleanup-cleanup-encounter-telegraphs-audio](tickets/049-cleanup-cleanup-encounter-telegraphs-audio/)
 - [x] [045-cleanup-dungeon-room-generation](tickets/045-cleanup-dungeon-room-generation/)
 - [x] [044-cleanup-encounter-telegraphs-audio](tickets/044-cleanup-encounter-telegraphs-audio/)
-- [ ] [039-cleanup-public-state-and-shared-data-nits](tickets/039-cleanup-public-state-and-shared-data-nits/)
+- [x] [039-cleanup-public-state-and-shared-data-nits](tickets/039-cleanup-public-state-and-shared-data-nits/)
 - [ ] [036-cleanup-combat-feedback-readability](tickets/036-cleanup-combat-feedback-readability/)
 - [ ] [035-cleanup-lobby-deck-editor](tickets/035-cleanup-lobby-deck-editor/)
 - [ ] [034-cleanup-card-rewards-deckbuilding](tickets/034-cleanup-card-rewards-deckbuilding/)
