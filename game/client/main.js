@@ -537,6 +537,7 @@ socket.on('stateUpdate', (state) => {
           currencyEl.style.color = '';
           currencyEl.style.transform = 'scale(1)';
         });
+        playSound('loot');
       }
     }
 
@@ -1035,6 +1036,9 @@ function disposeAllLootMeshes() {
 socket.on('cardUsed', (data) => {
   if (!data || !scene) return;
 
+  // Audio cue: playing any card
+  playSound('card');
+
   // Handle confirmed summon play for the local player: consume the card
   if (data.playerId === myId && summonCardIds.has(data.cardId)) {
     const idx = data.slotIndex;
@@ -1065,6 +1069,9 @@ socket.on('cardUsed', (data) => {
   if (data.hits && Array.isArray(data.hits)) {
     const now = performance.now();
     for (const hit of data.hits) {
+      // Audio cue: enemy takes damage
+      playSound('enemyHit');
+
       const mesh = enemiesMeshes[hit.enemyId];
       if (mesh) {
         flashMesh(mesh, 0xffffff, 200);
@@ -1247,6 +1254,13 @@ function formatDuration(ms) {
 
 function showRunSummary(data) {
   if (!data) return;
+
+  // Audio cue for run completion
+  if (data.status === 'victory') {
+    playSound('victory');
+  } else {
+    playSound('failure');
+  }
 
   const statusText = data.status === 'victory' ? 'Victory!' : 'Run Failed';
   summaryStatusEl.textContent = statusText;
@@ -1567,6 +1581,7 @@ function animate(timestamp) {
         const damageAmount = previousPlayerHp[myId] - me.hp;
         flashMesh(playersMeshes[myId], 0xff0000, 200);
         spawnDamageNumber(myX, 1.5, myZ, damageAmount, '#ff0000');
+        playSound('playerDamage');
       }
       if (me) {
         previousPlayerHp[myId] = me.hp;
