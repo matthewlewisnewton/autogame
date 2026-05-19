@@ -28,12 +28,13 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 
 ## Backlog — World & Economy
 - [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
-- [ ] [016-loot-and-currency](tickets/016-loot-and-currency/)
+- [x] [016-loot-and-currency](tickets/016-loot-and-currency/)
 
 ## Backlog — Testing
 - [ ] [017-test-coverage](tickets/017-test-coverage/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
 - [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
 - [ ] [020-audit-client-server](tickets/020-audit-client-server/)

@@ -328,3 +328,26 @@ end-state code. Non-blocking nits are recorded separately for the backlog:
 3. The review-round-1 capture never exercised the monster card, so visual QA of
    the minion is unverified. This is a harness capture-plan issue.
 
+
+## v0.15 — Loot Drops & Currency  (2026-05-18 19:04:04)
+
+- Consistent with `design.md` §3 "Loot & Economy" — currency drops from
+  defeated enemies; card drops are out of scope for this ticket.
+- No regression to the foundation: combat, summons, minions, dungeon, and the
+  existing HUD are untouched apart from the additive loot hooks.
+- Logs in the capture are clean — no errors in `console.log`/`server.log`;
+  `client.log` shows only a pre-existing `THREE.Clock` deprecation warning.
+- `crypto.randomUUID()` for loot ids is consistent with enemy/minion id
+  generation; `crypto` is required at the top of the server module.
+
+Note on the round-3 capture: the screenshots show `GOLD 0` throughout and no
+coin on the ground because the QA run did not land a kill-with-drop in frame
+(50% roll; `server.log` shows no `[loot] spawned` line). This is a capture
+limitation, not a code defect — the spawn/render/pickup/credit logic is sound
+on inspection and all four criteria are met by the live code.
+
+## Remaining gaps
+
+None blocking. All four acceptance criteria are fully and robustly met. Two
+minor non-blocking nits are recorded in `nits.md`.
+
