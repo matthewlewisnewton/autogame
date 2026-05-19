@@ -970,6 +970,24 @@ function updateAttackEffects() {
 // ── Mesh disposal helper ──
 
 /**
+ * Remove and optionally dispose a single mesh from a mesh map.
+ * @param {Object} map - object mapping ids to THREE.Mesh instances
+ * @param {string} id - key of the mesh to remove
+ * @param {THREE.Scene} targetScene - scene to remove mesh from
+ * @param {boolean} [skipDispose] - if true, skip geometry/material disposal (for shared resources)
+ */
+function disposeOne(map, id, targetScene, skipDispose) {
+	const mesh = map[id];
+	if (!mesh) return;
+	if (targetScene) targetScene.remove(mesh);
+	if (!skipDispose) {
+		if (mesh.geometry) mesh.geometry.dispose();
+		if (mesh.material) mesh.material.dispose();
+	}
+	delete map[id];
+}
+
+/**
  * Iterate a mesh map, remove each mesh from the scene, optionally dispose
  * geometry and material, and clear the map.
  * @param {Object} map - object mapping ids to THREE.Mesh instances
@@ -978,13 +996,7 @@ function updateAttackEffects() {
  */
 function disposeMeshMap(map, targetScene, skipDispose) {
 	for (const id of Object.keys(map)) {
-		const mesh = map[id];
-		if (targetScene) targetScene.remove(mesh);
-		if (!skipDispose && mesh) {
-			if (mesh.geometry) mesh.geometry.dispose();
-			if (mesh.material) mesh.material.dispose();
-		}
-		delete map[id];
+		disposeOne(map, id, targetScene, skipDispose);
 	}
 }
 
@@ -1565,12 +1577,7 @@ function animate(timestamp) {
         }
       } else {
         // Remove telegraph if it exists and enemy is no longer in windup
-        if (telegraphMeshes[enemy.id]) {
-          scene.remove(telegraphMeshes[enemy.id]);
-          telegraphMeshes[enemy.id].geometry.dispose();
-          telegraphMeshes[enemy.id].material.dispose();
-          delete telegraphMeshes[enemy.id];
-        }
+        disposeOne(telegraphMeshes, enemy.id, scene);
 
         // Restore original emissive when leaving windup
         applyWindupFlash(enemy.id, false);
@@ -1604,15 +1611,10 @@ function animate(timestamp) {
       }
     }
     // Clean up telegraph meshes for removed enemies
-    {
-      const staleIds = [];
-      for (const id of Object.keys(telegraphMeshes)) {
-        if (!currentEnemyIds.has(id)) staleIds.push(id);
+    for (const id of Object.keys(telegraphMeshes)) {
+      if (!currentEnemyIds.has(id)) {
+        disposeOne(telegraphMeshes, id, scene);
       }
-      const staleTelegraphs = {};
-      for (const id of staleIds) staleTelegraphs[id] = telegraphMeshes[id];
-      disposeMeshMap(staleTelegraphs, scene);
-      for (const id of staleIds) delete telegraphMeshes[id];
     }
     // Clean up windupFlashing entries for removed enemies
     for (const id of [...windupFlashing]) {
