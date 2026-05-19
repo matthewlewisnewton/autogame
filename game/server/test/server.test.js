@@ -20,6 +20,10 @@ import {
 	resetTransientRunState,
 	returnPlayersToLobby,
 	createPlayerProgress,
+	grantCard,
+	grantRunRewards,
+	buildPlayerRewardSummary,
+	CARD_DEFS,
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
@@ -1165,6 +1169,151 @@ describe('run state', () => {
 			const b = createPlayerProgress();
 			a.ownedCards.iron_sword = 99;
 			expect(b.ownedCards.iron_sword).toBe(1);
+		});
+	});
+
+	// ── grantCard ──
+
+	describe('grantCard(player, cardId)', () => {
+		beforeEach(() => resetState());
+
+		it('increments owned card count starting from 0', () => {
+			const player = { ownedCards: {} };
+			expect(grantCard(player, 'flame_blade')).toBe(true);
+			expect(player.ownedCards['flame_blade']).toBe(1);
+		});
+
+		it('increments existing count', () => {
+			const player = { ownedCards: { flame_blade: 3 } };
+			expect(grantCard(player, 'flame_blade')).toBe(true);
+			expect(player.ownedCards['flame_blade']).toBe(4);
+		});
+
+		it('rejects unknown card id', () => {
+			const player = { ownedCards: {} };
+			expect(grantCard(player, 'nonexistent_card')).toBe(false);
+			expect(player.ownedCards['nonexistent_card']).toBeUndefined();
+		});
+
+		it('accepts all CARD_DEFS ids', () => {
+			const player = { ownedCards: {} };
+			for (const cardId of Object.keys(CARD_DEFS)) {
+				expect(grantCard(player, cardId)).toBe(true);
+				expect(player.ownedCards[cardId]).toBe(1);
+			}
+		});
+	});
+
+	// ── grantRunRewards ──
+
+	describe('grantRunRewards(playerId, summary)', () => {
+		beforeEach(() => {
+			resetState();
+			delete gameState._victoryCounters;
+		});
+
+		it('on victory: adds currency bonus', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			grantRunRewards('p1', { status: 'victory' });
+			expect(gameState.players['p1'].currency).toBe(10);
+		});
+
+		it('on victory: grants at least one card reward', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			grantRunRewards('p1', { status: 'victory' });
+			const cards = gameState.players['p1'].ownedCards;
+			const granted = Object.values(cards).reduce((s, c) => s + c, 0);
+			expect(granted).toBeGreaterThan(0);
+		});
+
+		it('on victory: sets player.runRewards summary', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			grantRunRewards('p1', { status: 'victory' });
+			const rewards = gameState.players['p1'].runRewards;
+			expect(rewards).toBeDefined();
+			expect(rewards.currency).toBe(10);
+			expect(Array.isArray(rewards.cards)).toBe(true);
+			expect(rewards.cards.length).toBeGreaterThan(0);
+			expect(rewards.cards[0]).toHaveProperty('id');
+			expect(rewards.cards[0]).toHaveProperty('name');
+			expect(rewards.cards[0]).toHaveProperty('count', 1);
+		});
+
+		it('on victory: first reward is flame_blade', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			grantRunRewards('p1', { status: 'victory' });
+			expect(gameState.players['p1'].ownedCards['flame_blade']).toBe(1);
+		});
+
+		it('on victory: subsequent victories rotate through card ids', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			grantRunRewards('p1', { status: 'victory' }); // flame_blade
+			grantRunRewards('p1', { status: 'victory' }); // battle_familiar
+			grantRunRewards('p1', { status: 'victory' }); // dungeon_drake
+			expect(gameState.players['p1'].ownedCards['flame_blade']).toBe(1);
+			expect(gameState.players['p1'].ownedCards['battle_familiar']).toBe(1);
+			expect(gameState.players['p1'].ownedCards['dungeon_drake']).toBe(1);
+		});
+
+		it('on failure: does not add currency bonus', () => {
+			addPlayer('p1', { currency: 5, ownedCards: {} });
+			grantRunRewards('p1', { status: 'failed' });
+			expect(gameState.players['p1'].currency).toBe(5);
+		});
+
+		it('on failure: does not grant a victory card', () => {
+			addPlayer('p1', { currency: 5, ownedCards: {} });
+			grantRunRewards('p1', { status: 'failed' });
+			expect(Object.keys(gameState.players['p1'].ownedCards).length).toBe(0);
+		});
+
+		it('on failure: preserves existing currency', () => {
+			addPlayer('p1', { currency: 42, ownedCards: { iron_sword: 1 } });
+			grantRunRewards('p1', { status: 'failed' });
+			expect(gameState.players['p1'].currency).toBe(42);
+			expect(gameState.players['p1'].ownedCards['iron_sword']).toBe(1);
+		});
+
+		it('does nothing for unknown player', () => {
+			grantRunRewards('nonexistent', { status: 'victory' });
+			expect(gameState.players['nonexistent']).toBeUndefined();
+		});
+	});
+
+	// ── buildPlayerRewardSummary ──
+
+	describe('buildPlayerRewardSummary(playerId)', () => {
+		beforeEach(() => resetState());
+
+		it('returns correct structure', () => {
+			addPlayer('p1', { currency: 25, ownedCards: { iron_sword: 2, flame_blade: 1 } });
+			const summary = buildPlayerRewardSummary('p1');
+			expect(summary.currency).toBe(25);
+			expect(Array.isArray(summary.cards)).toBe(true);
+		});
+
+		it('maps card ids to names via CARD_DEFS', () => {
+			addPlayer('p1', { currency: 0, ownedCards: { iron_sword: 1 } });
+			const summary = buildPlayerRewardSummary('p1');
+			const cardEntry = summary.cards.find(c => c.id === 'iron_sword');
+			expect(cardEntry).toBeDefined();
+			expect(cardEntry.name).toBe('Iron Sword');
+			expect(cardEntry.count).toBe(1);
+		});
+
+		it('includes all owned cards', () => {
+			addPlayer('p1', {
+				currency: 0,
+				ownedCards: { iron_sword: 2, flame_blade: 3, battle_familiar: 1 }
+			});
+			const summary = buildPlayerRewardSummary('p1');
+			expect(summary.cards.length).toBe(3);
+		});
+
+		it('returns empty cards array for unknown player', () => {
+			const summary = buildPlayerRewardSummary('nonexistent');
+			expect(summary.currency).toBe(0);
+			expect(summary.cards.length).toBe(0);
 		});
 	});
 });
