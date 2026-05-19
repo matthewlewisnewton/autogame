@@ -270,6 +270,7 @@ socket.on('connect', () => {
 socket.on('disconnect', () => {
   stopHeartbeat();
   updateStatus('Disconnected', 'disconnected');
+  disposeAllLootMeshes();
 });
 
 socket.io.on('reconnect_attempt', () => {
@@ -374,8 +375,6 @@ socket.on('playerDisconnected', (id) => {
     }
     delete playersMeshes[id];
   }
-  // Clean up all loot meshes on any disconnect (scene teardown)
-  disposeAllLootMeshes();
 });
 
 // ── Attack visual effects ──
