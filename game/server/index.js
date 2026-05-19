@@ -852,9 +852,49 @@ function regenMagicStones() {
   }
 }
 
+/**
+ * Build a clean public snapshot of gameState for stateUpdate broadcasts.
+ * Includes only client-relevant fields; excludes internal-only data
+ * (layout, _victoryCounters, dungeonBounds) and non-serializable per-player
+ * fields (pendingSummons, lastActivity).
+ */
 function stateSnapshot() {
-  const snapshot = { ...gameState };
-  delete snapshot.layout;
+  const players = {};
+  for (const [id, p] of Object.entries(gameState.players)) {
+    players[id] = {
+      x: p.x,
+      y: p.y,
+      z: p.z,
+      rotation: p.rotation,
+      deck: p.deck,
+      hand: p.hand,
+      hp: p.hp,
+      dead: p.dead,
+      ready: p.ready,
+      magicStones: p.magicStones,
+      currency: p.currency,
+      ownedCards: p.ownedCards,
+      runRewards: p.runRewards,
+      currencyEarnedThisRun: p.currencyEarnedThisRun,
+      selectedDeck: p.selectedDeck,
+      inventory: p.inventory,
+      debugScenario: p.debugScenario
+    };
+  }
+
+  const snapshot = {
+    players,
+    enemies: gameState.enemies,
+    minions: gameState.minions,
+    loot: gameState.loot,
+    lobby: gameState.lobby,
+    gamePhase: gameState.gamePhase,
+    run: gameState.run,
+    bounds: gameState.dungeonBounds,
+    layoutSeed: gameState.layoutSeed,
+    currency: gameState.currency
+  };
+
   return snapshot;
 }
 
@@ -1309,6 +1349,7 @@ if (typeof module !== 'undefined' && module.exports) {
     startServer,
     cleanupStalePlayers,
     regenMagicStones,
+    stateSnapshot,
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
