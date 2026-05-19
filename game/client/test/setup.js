@@ -113,6 +113,7 @@ if (typeof window !== 'undefined') {
 			for (const cb of handlers) cb(data);
 		}
 	};
+	window.__soundLogEnabled = true; // enable _playSoundCallLog in test environment
 }
 
 // Register mocks
