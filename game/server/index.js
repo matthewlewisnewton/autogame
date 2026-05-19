@@ -246,15 +246,20 @@ function generateLayout(seed) {
   return { rooms, passages: passageObjects };
 }
 
-// Game state
-const gameState = {
-  players: {},
-  enemies: [],
-  minions: [],
-  loot: [],
-  lobby: [],
-  gamePhase: 'lobby'
-};
+// Game state factory — used by tests to get a fresh state
+function createGameState() {
+  return {
+    players: {},
+    enemies: [],
+    minions: [],
+    loot: [],
+    lobby: [],
+    gamePhase: 'lobby'
+  };
+}
+
+// Game state (module-level singleton used by production)
+const gameState = createGameState();
 
 // Generate dungeon layout at startup
 const layoutSeed = Math.floor(Math.random() * 2147483647);
@@ -289,6 +294,7 @@ const SUMMON_RADIUS = 10; // units — radial AoE
 // Weapon attack parameters
 const ATTACK_RANGE = 5; // units — max distance to hit
 const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
+const STALE_THRESHOLD = 10000; // 10 seconds
 
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList() {
@@ -543,7 +549,38 @@ function updateMinions() {
   gameState.minions = gameState.minions.filter(m => m.ttl > 0 && m.hp > 0);
 }
 
-io.on('connection', (socket) => {
+// Helper: remove stale players (no activity for STALE_THRESHOLD ms)
+// Extracted so tests can invoke directly without setInterval
+function cleanupStalePlayers() {
+  for (const playerId in gameState.players) {
+    const player = gameState.players[playerId];
+    if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
+      const socket = io.sockets.sockets.get(playerId);
+      if (socket && socket.connected) {
+        socket.disconnect();
+      }
+      delete gameState.players[playerId];
+      console.log(`Player disconnected due to inactivity: ${playerId}`);
+    }
+  }
+}
+
+// Helper: regenerate Magic Stones for all players (one tick)
+function regenMagicStones() {
+  for (const p of Object.values(gameState.players)) {
+    if (p.debugScenario === 'summon-low-mana') {
+      p.magicStones = 0;
+    } else {
+      p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
+    }
+    p.pendingSummons.clear();
+  }
+}
+
+// ── Server startup (deferred so tests can import without starting HTTP) ──
+
+function startServer() {
+  io.on('connection', (socket) => {
   console.log(`Player connected: ${socket.id}`);
 
   // Initialize player
@@ -808,14 +845,7 @@ setInterval(() => {
   updateMinions();
 
   // Regenerate Magic Stones and clear pending summons for each player
-  for (const p of Object.values(gameState.players)) {
-    if (p.debugScenario === 'summon-low-mana') {
-      p.magicStones = 0;
-    } else {
-      p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
-    }
-    p.pendingSummons.clear(); // safety net: clear stale pending entries each tick
-  }
+  regenMagicStones();
 
   // Remove expired loot (older than 120 seconds)
   const now = Date.now();
@@ -825,23 +855,43 @@ setInterval(() => {
 }, 1000 / TICK_RATE);
 
 // Periodic stale player cleanup (every 5 seconds)
-const STALE_THRESHOLD = 10000; // 10 seconds
-setInterval(() => {
-  for (const playerId in gameState.players) {
-    const player = gameState.players[playerId];
-    if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
-      const socket = io.sockets.sockets.get(playerId);
-      if (socket && socket.connected) {
-        socket.disconnect();
-      }
-      delete gameState.players[playerId];
-      console.log(`Player disconnected due to inactivity: ${playerId}`);
-    }
-  }
-}, 5000);
+setInterval(cleanupStalePlayers, 5000);
 
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
   spawnEnemies();
 });
+}
+
+// Only start the HTTP server when run directly (not when required by tests)
+if (require.main === module) {
+  startServer();
+}
+
+// ── Conditional exports for unit tests ──
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = {
+    mulberry32,
+    generateLayout,
+    damagePlayer,
+    updateEnemies,
+    updateMinions,
+    spawnLoot,
+    createGameState,
+    gameState,
+    startServer,
+    cleanupStalePlayers,
+    regenMagicStones,
+    // Constants needed by tests
+    STALE_THRESHOLD,
+    MAX_MAGIC_STONES,
+    MAGIC_STONES_REGEN_PER_TICK,
+    DETECTION_RADIUS,
+    ATTACK_RANGE,
+    TICK_RATE,
+    GRID_COLS,
+    GRID_ROWS,
+    CELL_SPACING
+  };
+}
