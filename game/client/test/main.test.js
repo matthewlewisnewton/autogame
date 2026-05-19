@@ -225,3 +225,111 @@ describe('initHand()', () => {
 		expect(() => initHand(undefined)).not.toThrow();
 	});
 });
+
+// ── renderDeckEditor ──
+
+describe('renderDeckEditor()', () => {
+	beforeEach(() => {
+		// Create all DOM elements that main.js queries at module load time
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		// Create card slots inside #card-hand
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('populates owned card counts and deck size from mock data', async () => {
+		// Import main.js to get renderDeckEditor on window (mocks from setup.js apply)
+		await import('../main.js');
+
+		const mockOwned = {
+			iron_sword: 3,
+			flame_blade: 2,
+			battle_familiar: 2,
+			dungeon_drake: 1,
+		};
+		const mockDeck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+
+		window.__setDeckState(mockDeck, mockOwned);
+		window.renderDeckEditor();
+
+		// Check owned cards list
+		const ownedEntries = document.querySelectorAll('.owned-card-entry');
+		expect(ownedEntries.length).toBe(4);
+
+		// Verify each owned card entry has correct count
+		const counts = Array.from(ownedEntries).map(e => e.querySelector('.card-count').textContent);
+		expect(counts).toContain('3'); // iron_sword
+		expect(counts).toContain('2'); // flame_blade or battle_familiar
+		expect(counts).toContain('1'); // dungeon_drake
+
+		// Check selected deck list
+		const deckEntries = document.querySelectorAll('.deck-entry');
+		expect(deckEntries.length).toBe(4);
+
+		// Check deck size display
+		const deckSize = document.getElementById('deck-size-display').textContent;
+		expect(deckSize).toBe('4/12');
+
+		// Check ready button is NOT disabled (deck >= DECK_MIN_SIZE of 4)
+		const readyBtn = document.getElementById('ready-btn');
+		expect(readyBtn.disabled).toBe(false);
+		expect(readyBtn.classList.contains('deck-invalid')).toBe(false);
+	});
+
+	it('disables ready button when deck is too small', async () => {
+		await import('../main.js');
+
+		const mockOwned = { iron_sword: 3, flame_blade: 2 };
+		const mockDeck = ['iron_sword', 'flame_blade']; // only 2 cards, < DECK_MIN_SIZE of 4
+
+		window.__setDeckState(mockDeck, mockOwned);
+		window.renderDeckEditor();
+
+		const readyBtn = document.getElementById('ready-btn');
+		expect(readyBtn.disabled).toBe(true);
+		expect(readyBtn.classList.contains('deck-invalid')).toBe(true);
+	});
+
+	it('hides deck error on render', async () => {
+		await import('../main.js');
+
+		// Show error first
+		const deckErrorEl = document.getElementById('deck-error');
+		deckErrorEl.style.display = 'block';
+		deckErrorEl.textContent = 'Previous error';
+
+		const mockOwned = { iron_sword: 3 };
+		const mockDeck = ['iron_sword', 'iron_sword', 'iron_sword', 'iron_sword'];
+
+		window.__setDeckState(mockDeck, mockOwned);
+		window.renderDeckEditor();
+
+		expect(deckErrorEl.style.display).toBe('none');
+		expect(deckErrorEl.textContent).toBe('');
+	});
+});
