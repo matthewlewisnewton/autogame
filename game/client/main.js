@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
-import { CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import { wallAABB, resolveWallCollision as resolveWallCollisionPure } from './collision.js';
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns } from './hand.js';
 
@@ -46,6 +46,12 @@ let latency = null;
 let sceneInitialized = false;
 let currentLayoutSeed = null; // tracks the layout seed we last built from
 let currentLayout = null; // persisted layout from init; stateUpdate omits it
+
+// Deck editor state
+let mySelectedDeck = [];
+let myOwnedCards = {};
+const DECK_MIN_SIZE = 4;
+const DECK_MAX_SIZE = 12;
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -165,6 +171,82 @@ function refillSlot(index) {
   return card;
 }
 
+// ── Deck Editor ──
+
+const ownedCardsListEl = document.getElementById('owned-cards-list');
+const selectedDeckListEl = document.getElementById('selected-deck-list');
+const deckSizeDisplayEl = document.getElementById('deck-size-display');
+const deckErrorEl = document.getElementById('deck-error');
+
+function renderDeckEditor() {
+  // ── Owned Cards list ──
+  ownedCardsListEl.innerHTML = '';
+  for (const [cardId, count] of Object.entries(myOwnedCards)) {
+    const def = CARD_DEFS[cardId];
+    if (!def) continue;
+    const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+    const inDeckCount = mySelectedDeck.filter(id => id === cardId).length;
+    const canAdd = inDeckCount < count && mySelectedDeck.length < DECK_MAX_SIZE;
+
+    const entry = document.createElement('div');
+    entry.className = 'owned-card-entry';
+    entry.innerHTML = `
+      <span class="card-icon">${style.icon}</span>
+      <span class="card-label">${def.name}</span>
+      <span class="card-count">${count}</span>
+      <button class="deck-add-btn" ${canAdd ? '' : 'disabled'}>+${inDeckCount > 0 ? ` (${inDeckCount})` : ''}</button>
+    `;
+    const addBtn = entry.querySelector('.deck-add-btn');
+    addBtn.addEventListener('click', () => {
+      socket.emit('deckAddCard', { cardId });
+    });
+    ownedCardsListEl.appendChild(entry);
+  }
+
+  // ── Selected Deck list ──
+  selectedDeckListEl.innerHTML = '';
+  for (let i = 0; i < mySelectedDeck.length; i++) {
+    const cardId = mySelectedDeck[i];
+    const def = CARD_DEFS[cardId];
+    if (!def) continue;
+    const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+
+    const entry = document.createElement('div');
+    entry.className = 'deck-entry';
+    entry.innerHTML = `
+      <span class="card-icon">${style.icon}</span>
+      <span class="card-label">${def.name}</span>
+      <button class="deck-remove-btn">✕</button>
+    `;
+    const removeBtn = entry.querySelector('.deck-remove-btn');
+    removeBtn.addEventListener('click', () => {
+      socket.emit('deckRemoveCard', { cardId });
+    });
+    selectedDeckListEl.appendChild(entry);
+  }
+
+  // ── Deck size counter ──
+  deckSizeDisplayEl.textContent = `${mySelectedDeck.length}/${DECK_MAX_SIZE}`;
+
+  // ── Ready button validity ──
+  if (mySelectedDeck.length < DECK_MIN_SIZE) {
+    readyBtn.classList.add('deck-invalid');
+    readyBtn.disabled = true;
+  } else {
+    readyBtn.classList.remove('deck-invalid');
+    readyBtn.disabled = false;
+  }
+
+  // ── Hide error ──
+  deckErrorEl.style.display = 'none';
+  deckErrorEl.textContent = '';
+}
+
+function showDeckError(message) {
+  deckErrorEl.textContent = message;
+  deckErrorEl.style.display = 'block';
+}
+
 // ── Card input handling ──
 
 function playActivationEffect(slotIndex) {
@@ -282,6 +364,11 @@ socket.on('init', (data) => {
   currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
   if (gameState && currentLayout) gameState.layout = currentLayout;
 
+  // Initialize deck editor state from server
+  mySelectedDeck = data.selectedDeck || [];
+  myOwnedCards = data.ownedCards || {};
+  renderDeckEditor();
+
   // ── Layout consistency check ──
   const receivedSeed = data.layoutSeed;
 
@@ -335,6 +422,7 @@ socket.on('stateUpdate', (state) => {
     if (uiEl) uiEl.style.display = 'none';
     if (cardHandEl) cardHandEl.style.display = 'none';
     if (lobbyEl) lobbyEl.classList.remove('hidden');
+    renderDeckEditor();
   }
 
   // Entering gameplay: ensure HUD is visible (symmetric with lobby branch above)
@@ -349,6 +437,11 @@ socket.on('stateUpdate', (state) => {
     const currencyEl = document.getElementById('currency-display');
     if (currencyEl) {
       currencyEl.textContent = `GOLD ${gameState.players[myId].currency}`;
+    }
+
+    // Sync ownedCards from server state if present
+    if (gameState.players[myId].ownedCards) {
+      myOwnedCards = gameState.players[myId].ownedCards;
     }
   }
 
@@ -573,6 +666,18 @@ socket.on('cardUsed', (data) => {
 socket.on('cardError', (data) => {
   if (!data || !data.reason) return;
   showCardErrorToast(data.reason);
+});
+
+socket.on('deckUpdate', (data) => {
+  if (!data) return;
+  if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+  if (data.ownedCards) myOwnedCards = data.ownedCards;
+  renderDeckEditor();
+});
+
+socket.on('deckError', (data) => {
+  if (!data || !data.reason) return;
+  showDeckError(data.reason);
 });
 
 function showCardErrorToast(message) {
@@ -1124,6 +1229,9 @@ function initScene() {
 // Expose for later invocation (sub-ticket 03)
 window.initScene = initScene;
 window.refillSlot = refillSlot;
+window.renderDeckEditor = renderDeckEditor;
+window.__mySelectedDeck = () => mySelectedDeck;
+window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
 window.__AUTOGAME_HARNESS_STATE__ = () => {
   const me = gameState && myId ? gameState.players[myId] : null;
   const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');

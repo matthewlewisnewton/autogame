@@ -398,3 +398,150 @@ canvas {
 .hidden {
   display: none !important;
 }
+
+/* ── Deck Editor ── */
+
+#deck-editor {
+  width: 640px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#deck-editor-top {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  width: 100%;
+}
+
+#owned-cards-section,
+#selected-deck-section {
+  flex: 1;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 240px;
+}
+
+#owned-cards-section h3,
+#selected-deck-section h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+}
+
+#deck-size-display {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fbbf24;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+#owned-cards-list,
+#selected-deck-list {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 30px;
+}
+
+.owned-card-entry,
+.deck-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: #e2e8f0;
+  gap: 8px;
+}
+
+.owned-card-entry .card-icon,
+.deck-entry .card-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.owned-card-entry .card-label,
+.deck-entry .card-label {
+  flex: 1;
+  font-weight: 600;
+  text-align: left;
+}
+
+.owned-card-entry .card-count {
+  font-size: 12px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.deck-add-btn,
+.deck-remove-btn {
+  padding: 2px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.deck-add-btn {
+  background-color: #22c55e;
+  color: #fff;
+}
+
+.deck-add-btn:hover {
+  background-color: #16a34a;
+}
+
+.deck-add-btn:disabled {
+  background-color: #4a5568;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.deck-remove-btn {
+  background-color: #ef4444;
+  color: #fff;
+}
+
+.deck-remove-btn:hover {
+  background-color: #dc2626;
+}
+
+#deck-error {
+  width: 100%;
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+  text-align: center;
+}
+
+#ready-btn:disabled,
+#ready-btn.deck-invalid {
+  background-color: #4a5568;
+  color: #a0aec0;
+  cursor: not-allowed;
+}

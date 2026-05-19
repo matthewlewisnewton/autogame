@@ -6,10 +6,10 @@ export default defineConfig({
 			'server/test/**/*.{test,spec}.{js,mjs}',
 			'client/test/**/*.{test,spec}.{js,mjs}'
 		],
-		environments: {
-			'client/test/**': 'jsdom',
-			'server/test/**': 'node'
-		},
+		environmentMatchGlobs: [
+			['client/test/**', 'jsdom'],
+			['server/test/**', 'node']
+		],
 		setupFiles: [
 			'client/test/setup.js'
 		],
