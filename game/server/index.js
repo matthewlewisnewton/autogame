@@ -918,9 +918,8 @@ function updateEnemies() {
 						continue;
 					}
 				}
-				// Target out of range or dead — cancel attack, enter recovery
-				enemy.attackState = 'recovering';
-				enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+				// Target out of range or dead — cancel attack, return to chasing
+				enemy.attackState = 'chasing';
 				continue;
 			} else {
 				continue; // still winding up, do not move

@@ -39,7 +39,11 @@ import {
 	GRID_ROWS,
 	CELL_SPACING,
 	DECK_MIN_SIZE,
-	DECK_MAX_SIZE
+	DECK_MAX_SIZE,
+	ENEMY_ATTACK_RANGE,
+	ENEMY_ATTACK_DAMAGE,
+	ENEMY_ATTACK_WINDUP_MS,
+	ENEMY_ATTACK_RECOVERY_MS
 } from '../index.js';
 
 // ── Helpers ──
@@ -311,6 +315,145 @@ describe('updateEnemies()', () => {
 
 		// Should have picked a new target since distance < 0.5
 		expect(gameState.enemies[0].wanderTarget).not.toEqual(oldTarget);
+	});
+});
+
+// ── Enemy attack state machine ──
+
+describe('Enemy attack state machine', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2000, 0, 1));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('transitions to windup when in range', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 0, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			x: ENEMY_ATTACK_RANGE - 1, // within ENEMY_ATTACK_RANGE of player
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'chasing',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].attackState).toBe('windup');
+		expect(gameState.enemies[0].windupTargetId).toBe('p1');
+		expect(gameState.enemies[0].windupStartTime).toBeDefined();
+	});
+
+	it('applies damage after windup expires', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			x: 0, // at player position — within range
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - ENEMY_ATTACK_WINDUP_MS - 100, // windup already expired
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		updateEnemies();
+
+		expect(gameState.players['p1'].hp).toBe(100 - ENEMY_ATTACK_DAMAGE);
+		expect(gameState.enemies[0].attackState).toBe('recovering');
+		expect(gameState.enemies[0].recoverUntil).toBeDefined();
+	});
+
+	it('cancels attack when target leaves range', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			x: 0, // enemy stays here
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - ENEMY_ATTACK_WINDUP_MS - 100, // windup expired
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		// Move player out of range before updateEnemies
+		gameState.players['p1'].x = ENEMY_ATTACK_RANGE + 10;
+		gameState.players['p1'].z = ENEMY_ATTACK_RANGE + 10;
+
+		updateEnemies();
+
+		expect(gameState.players['p1'].hp).toBe(100); // no damage
+		// After cancel the code sets attackState → 'chasing' and continues (does not fall through to idle)
+		expect(gameState.enemies[0].attackState).toBe('chasing');
+	});
+
+	it('recovers and returns to chasing', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		// Place enemy within DETECTION_RADIUS so after recovery it finds the player and enters chasing
+		gameState.enemies.push({
+			id: 'e1',
+			x: DETECTION_RADIUS - 2,
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'recovering',
+			recoverUntil: now - 100, // recovery already expired
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].attackState).toBe('chasing');
+	});
+
+	it('does not move or attack while recovering (recovery not expired)', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			x: ENEMY_ATTACK_RANGE + 5,
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'recovering',
+			recoverUntil: now + ENEMY_ATTACK_RECOVERY_MS + 1000, // still recovering
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		const posBefore = { x: gameState.enemies[0].x, z: gameState.enemies[0].z };
+
+		updateEnemies();
+
+		// Enemy should not have moved
+		expect(gameState.enemies[0].x).toBe(posBefore.x);
+		expect(gameState.enemies[0].z).toBe(posBefore.z);
+		// Should still be recovering
+		expect(gameState.enemies[0].attackState).toBe('recovering');
+		// Player should not have taken damage
+		expect(gameState.players['p1'].hp).toBe(100);
+	});
+
+	it('constants exported with expected values', () => {
+		expect(ENEMY_ATTACK_WINDUP_MS).toBeGreaterThanOrEqual(800);
+		expect(ENEMY_ATTACK_RECOVERY_MS).toBeGreaterThanOrEqual(1000);
+		expect(ENEMY_ATTACK_WINDUP_MS).toBe(800);
+		expect(ENEMY_ATTACK_RECOVERY_MS).toBe(1200);
 	});
 });
 
