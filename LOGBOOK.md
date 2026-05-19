@@ -489,3 +489,26 @@ changes to `server/index.js`; combat logic and damage values are untouched.
 None blocking. All acceptance criteria are met and the captured run is healthy.
 Minor non-blocking polish items are recorded in `nits.md`.
 
+
+## v0.22 — Encounter Telegraphs and Audio Cues  (2026-05-19 09:41:53)
+
+defined and exported.
+
+## Tests
+
+`npm test` — 267/268 pass. The new ticket-030 tests all pass: enemy attack
+state-machine unit tests, range-revalidation tests, the two
+`Enemy telegraph integration` tests (wind-up observed before HP drop; out-of-range
+cancels damage), and the client audio-safety test.
+
+The single failure — `deckAddCard during playing phase is silently ignored` —
+is a **pre-existing broken test from ticket 028**, untouched by this ticket
+(the integration-test diff only *adds* the `Enemy telegraph integration`
+block). Its timeout race rejects instead of resolving, so it can never pass.
+Not a regression of ticket 030; recorded as a nit.
+
+## Remaining gaps
+
+None blocking. Acceptance criteria are fully and robustly met, and the captured
+run is clean. Minor non-blocking items are filed in `nits.md`.
+

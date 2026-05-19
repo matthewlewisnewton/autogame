@@ -41,9 +41,10 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
 - [ ] [037-fix-return-to-lobby-active-run-guard](tickets/037-fix-return-to-lobby-active-run-guard/)
 - [ ] [038-fix-card-cooldown-enforcement](tickets/038-fix-card-cooldown-enforcement/)
-- [ ] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
+- [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [044-cleanup-encounter-telegraphs-audio](tickets/044-cleanup-encounter-telegraphs-audio/)
 - [ ] [039-cleanup-public-state-and-shared-data-nits](tickets/039-cleanup-public-state-and-shared-data-nits/)
 - [ ] [036-cleanup-combat-feedback-readability](tickets/036-cleanup-combat-feedback-readability/)
 - [ ] [035-cleanup-lobby-deck-editor](tickets/035-cleanup-lobby-deck-editor/)
