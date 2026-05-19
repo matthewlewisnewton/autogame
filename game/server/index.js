@@ -246,6 +246,22 @@ function recordEnemyDefeated(count = 1) {
 }
 
 /**
+ * Filter dead enemies (`hp <= 0`) from `gameState.enemies` and record
+ * the count of removed enemies against the current run objective.
+ *
+ * Returns the number of enemies that were removed.
+ */
+function removeDeadEnemies() {
+  const before = gameState.enemies.length;
+  gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
+  const removed = before - gameState.enemies.length;
+  if (removed > 0) {
+    recordEnemyDefeated(removed);
+  }
+  return removed;
+}
+
+/**
  * Build a run summary object from the current game state.
  */
 function buildRunSummary(status) {
@@ -816,11 +832,7 @@ function updateMinions() {
   for (const e of gameState.enemies) {
     if (e.hp <= 0) spawnLoot(e.x, e.z);
   }
-  const enemiesBeforeCleanup = gameState.enemies.length;
-  gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-  const defeatedCount = enemiesBeforeCleanup - gameState.enemies.length;
-  if (defeatedCount > 0) {
-    recordEnemyDefeated(defeatedCount);
+  if (removeDeadEnemies() > 0) {
     checkRunTerminalState();
   }
 
@@ -1037,11 +1049,7 @@ function startServer(port) {
       for (const e of gameState.enemies) {
         if (e.hp <= 0) spawnLoot(e.x, e.z);
       }
-      const enemiesBeforeCleanup = gameState.enemies.length;
-      gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-      const defeatedCount = enemiesBeforeCleanup - gameState.enemies.length;
-      if (defeatedCount > 0) {
-        recordEnemyDefeated(defeatedCount);
+      if (removeDeadEnemies() > 0) {
         checkRunTerminalState();
       }
 
@@ -1093,11 +1101,7 @@ function startServer(port) {
       for (const e of gameState.enemies) {
         if (e.hp <= 0) spawnLoot(e.x, e.z);
       }
-      const enemiesBeforeCleanup = gameState.enemies.length;
-      gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
-      const defeatedCount = enemiesBeforeCleanup - gameState.enemies.length;
-      if (defeatedCount > 0) {
-        recordEnemyDefeated(defeatedCount);
+      if (removeDeadEnemies() > 0) {
         checkRunTerminalState();
       }
 
@@ -1356,6 +1360,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
+    removeDeadEnemies,
     clampObjectiveProgress,
     buildRunSummary,
     checkRunTerminalState,
