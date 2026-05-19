@@ -1195,6 +1195,99 @@ describe('playSound() and mute toggle', () => {
 	});
 });
 
+// ── cardUsed handler: enemyHit sound throttle ──
+
+describe('cardUsed handler — enemyHit sound throttle', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'mute-btn',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				if (id === 'mute-btn') el.textContent = '🔊';
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	afterEach(() => {
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+	});
+
+	it('multi-hit cardUsed plays enemyHit sound only once', async () => {
+		await import('../main.js');
+
+		// Set a mock scene so cardUsed handler doesn't early-return
+		window.__setScene({ add: function() {}, remove: function() {} });
+		window.__clearPlaySoundLog();
+
+		// Trigger cardUsed with 5 hits
+		window.__triggerSocketEvent('cardUsed', {
+			playerId: 'player1',
+			cardId: 'iron_sword',
+			slotIndex: 0,
+			hits: [
+				{ enemyId: 'e1', damage: 10 },
+				{ enemyId: 'e2', damage: 10 },
+				{ enemyId: 'e3', damage: 10 },
+				{ enemyId: 'e4', damage: 10 },
+				{ enemyId: 'e5', damage: 10 },
+			],
+		});
+
+		// playSound('card') is called once, playSound('enemyHit') is called once (throttled)
+		// Without throttling, playSound would be called 6 times (1 card + 5 enemyHit)
+		const log = window.__playSoundCallLog();
+		expect(log).toHaveLength(2);
+		expect(log).toContain('card');
+		expect(log).toContain('enemyHit');
+		// Verify enemyHit appears exactly once
+		expect(log.filter(t => t === 'enemyHit').length).toBe(1);
+	});
+
+	it('single-hit cardUsed plays enemyHit sound once (unchanged behavior)', async () => {
+		await import('../main.js');
+
+		window.__setScene({ add: function() {}, remove: function() {} });
+		window.__clearPlaySoundLog();
+
+		window.__triggerSocketEvent('cardUsed', {
+			playerId: 'player1',
+			cardId: 'iron_sword',
+			slotIndex: 0,
+			hits: [{ enemyId: 'e1', damage: 10 }],
+		});
+
+		const log = window.__playSoundCallLog();
+		expect(log).toHaveLength(2);
+		expect(log).toContain('card');
+		expect(log).toContain('enemyHit');
+	});
+});
+
 // ── applyWindupFlash (telegraph emissive toggle) ──
 
 describe('applyWindupFlash()', () => {

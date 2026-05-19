@@ -86,9 +86,14 @@ for (const key of Object.keys(THREE)) {
 
 // ── Mock socket.io-client ──
 const emitLog = [];
+const handlerLog = {}; // event -> array of callbacks
 const fakeSocket = {
 	id: 'mock-socket-id',
-	on: function() { return this; },
+	on: function(event, callback) {
+		if (!handlerLog[event]) handlerLog[event] = [];
+		handlerLog[event].push(callback);
+		return this;
+	},
 	emit: function(event, data) {
 		emitLog.push({ event, data });
 		return this;
@@ -102,6 +107,12 @@ const ioMock = function() { return fakeSocket; };
 if (typeof window !== 'undefined') {
 	window.__socketEmitLog = () => emitLog;
 	window.__clearSocketEmitLog = () => { emitLog.length = 0; };
+	window.__triggerSocketEvent = function(event, data) {
+		const handlers = handlerLog[event];
+		if (handlers) {
+			for (const cb of handlers) cb(data);
+		}
+	};
 }
 
 // Register mocks
