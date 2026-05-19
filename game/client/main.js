@@ -41,6 +41,7 @@ let scene, camera, renderer, clock;
 const playersMeshes = {};
 const enemiesMeshes = {};
 const minionsMeshes = {};
+const lootMeshes = {};
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 let myX = 0;
 let myZ = 0;
@@ -365,6 +366,8 @@ socket.on('playerDisconnected', (id) => {
     }
     delete playersMeshes[id];
   }
+  // Clean up all loot meshes on any disconnect (scene teardown)
+  disposeAllLootMeshes();
 });
 
 // ── Attack visual effects ──
@@ -476,6 +479,53 @@ function updateAttackEffects() {
       fx.mesh.material.dispose();
       activeEffects.splice(i, 1);
     }
+  }
+}
+
+// ── Loot mesh sync & animation ──
+
+const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
+
+function syncLootMeshes() {
+  if (!gameState || !gameState.loot) return;
+
+  const currentLootIds = new Set(gameState.loot.map(l => l.id));
+
+  // Add / update new loot
+  for (const item of gameState.loot) {
+    if (!lootMeshes[item.id]) {
+      const mesh = new THREE.Mesh(lootGeometry, lootMaterial);
+      mesh.position.set(item.x, 0.5, item.z);
+      scene.add(mesh);
+      lootMeshes[item.id] = mesh;
+    }
+  }
+
+  // Remove stale loot
+  for (const id of Object.keys(lootMeshes)) {
+    if (!currentLootIds.has(id)) {
+      scene.remove(lootMeshes[id]);
+      // Do NOT dispose geometry or material — both are shared
+      delete lootMeshes[id];
+    }
+  }
+}
+
+function animateLootMeshes() {
+  const t = performance.now();
+  for (const mesh of Object.values(lootMeshes)) {
+    // Bob up and down
+    mesh.position.y = 0.5 + Math.sin(t / 300) * 0.15;
+    // Slow Y-axis rotation
+    mesh.rotation.y += 0.02;
+  }
+}
+
+function disposeAllLootMeshes() {
+  for (const id of Object.keys(lootMeshes)) {
+    if (scene) scene.remove(lootMeshes[id]);
+    // Do NOT dispose geometry or material — both are shared
+    delete lootMeshes[id];
   }
 }
 
@@ -599,6 +649,15 @@ const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, ro
 
 // Background ground plane (replaces the old 50x50 floor)
 const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
+
+// Shared gold material for loot coins
+const lootMaterial = new THREE.MeshStandardMaterial({
+  color: 0xffd700,
+  emissive: 0xffa500,
+  emissiveIntensity: 0.4,
+  roughness: 0.3,
+  metalness: 0.8
+});
 
 // Track all meshes created by buildDungeon() so they can be cleared on rebuild
 const dungeonMeshes = [];
@@ -947,7 +1006,13 @@ function animate() {
         delete minionsMeshes[id];
       }
     }
+
+    // ── Loot mesh sync ──
+    syncLootMeshes();
   }
+
+  // Animate loot coins (outside gameState guard so coins animate even when gameState is null)
+  animateLootMeshes();
 
   if (myId != null && playersMeshes[myId]) {
     const target = playersMeshes[myId].position.clone().add(CAMERA_OFFSET);
