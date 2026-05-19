@@ -41,6 +41,32 @@ h1 {
 #status.disconnected { color: #f87171; }
 #status.reconnecting { color: #facc15; }
 
+/* ── Mute Toggle ── */
+
+#mute-btn {
+  position: absolute;
+  top: 12px;
+  right: 20px;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+#mute-btn:hover {
+  background: rgba(30, 41, 59, 0.9);
+}
+
 canvas {
   display: block;
 }

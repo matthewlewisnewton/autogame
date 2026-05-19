@@ -55,6 +55,66 @@ const DECK_MIN_SIZE = 4;
 const DECK_MAX_SIZE = 12;
 const ENEMY_ATTACK_RANGE = 4; // units — matches server constant for attack range / warning circle radius
 
+// ── Audio system ──
+
+let soundEnabled = true;
+let audioCtx = null;
+
+const SOUND_CONFIG = {
+  card:           { freq: 600, duration: 0.1 },
+  enemyHit:       { freq: 300, duration: 0.15 },
+  playerDamage:   { freq: 200, duration: 0.2 },
+  loot:           { freq: 800, duration: 0.08 },
+  victory:        { notes: [{ freq: 500, duration: 0.15 }, { freq: 700, duration: 0.15 }] },
+  failure:        { notes: [{ freq: 400, duration: 0.2 }, { freq: 250, duration: 0.2 }] }
+};
+
+/**
+ * Play a short oscillator-based sound effect via the Web Audio API.
+ * Never throws — catches errors silently if AudioContext is unavailable or blocked.
+ * @param {string} type - one of 'card', 'enemyHit', 'playerDamage', 'loot', 'victory', 'failure'
+ */
+function playSound(type) {
+  try {
+    if (!soundEnabled) return;
+
+    if (!audioCtx) {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      audioCtx = Ctx ? new Ctx() : null;
+    }
+    if (!audioCtx) return;
+
+    const config = SOUND_CONFIG[type];
+    if (!config) return;
+
+    const now = audioCtx.currentTime;
+
+    if (config.notes) {
+      // Multi-note sound (victory / failure)
+      let offset = 0;
+      for (const note of config.notes) {
+        const osc = audioCtx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.value = note.freq;
+        osc.connect(audioCtx.destination);
+        osc.start(now + offset);
+        osc.stop(now + offset + note.duration);
+        offset += note.duration;
+      }
+    } else {
+      // Single-note sound
+      const osc = audioCtx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.value = config.freq;
+      osc.connect(audioCtx.destination);
+      osc.start(now);
+      osc.stop(now + config.duration);
+    }
+  } catch (e) {
+    // Silent — AudioContext may be unavailable or blocked by the browser
+  }
+}
+
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
 const playersMeshes = {};
@@ -1100,6 +1160,24 @@ readyBtn.addEventListener('click', () => {
   readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
 });
 
+// ── Mute toggle ──
+
+function updateMuteButton() {
+  const btn = document.getElementById('mute-btn');
+  if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
+}
+
+// Use event delegation so the handler works even if #mute-btn is added after import
+document.addEventListener('click', (e) => {
+  if (e.target && e.target.id === 'mute-btn') {
+    soundEnabled = !soundEnabled;
+    updateMuteButton();
+  }
+});
+
+// Initialize button text if it already exists at import time
+updateMuteButton();
+
 socket.on('startGame', () => {
   // Always transition UI to gameplay view (needed for subsequent runs after lobby return)
   lobbyEl.classList.add('hidden');
@@ -1730,6 +1808,10 @@ window.flashMesh = flashMesh;
 window.spawnDamageNumber = spawnDamageNumber;
 window.spawnHitSpark = spawnHitSpark;
 window.markLootCollected = markLootCollected;
+window.playSound = playSound;
+window.__soundEnabled = () => soundEnabled;
+window.__updateMuteButton = updateMuteButton;
+window.__setSoundEnabled = (v) => { soundEnabled = v; updateMuteButton(); };
 window.activeEffects = () => activeEffects;
 window.__setScene = (s) => { window.___test_scene = s; }; // test-only: override scene for spawnHitSpark
 window.___test_scene = undefined;
