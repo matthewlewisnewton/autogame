@@ -16,6 +16,12 @@ function stubClass(name) {
 	C.prototype.scale = { setScalar: function() {} };
 	C.prototype.material = {
 		color: { setHex: function() {} },
+		emissive: {
+			_value: 0x000000,
+			set: function(c) { this._value = c; },
+			get: function() { return this._value; }
+		},
+		emissiveIntensity: 0,
 		opacity: 1,
 		dispose: function() {}
 	};

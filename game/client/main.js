@@ -477,6 +477,48 @@ socket.on('playerDisconnected', (id) => {
   }
 });
 
+// ── Hit flash helper ──
+
+/**
+ * Flash a mesh by setting its material emissive to a bright color,
+ * then restoring the original emissive/intensity after `durationMs`.
+ * @param {THREE.Mesh} mesh
+ * @param {number} color - hex color (e.g. 0xffffff)
+ * @param {number} durationMs - how long the flash lasts
+ */
+function flashMesh(mesh, color, durationMs) {
+	if (!mesh || !mesh.material) return;
+
+	// Save original emissive state
+	const mat = mesh.material;
+	const origEmissive = mat.emissive ? mat.emissive.get ? mat.emissive.get() : 0x000000 : 0x000000;
+	const origIntensity = mat.emissiveIntensity || 0;
+
+	// Apply flash
+	if (mat.emissive && mat.emissive.set) {
+		mat.emissive.set(color);
+	} else {
+		mat.emissive = color;
+	}
+	mat.emissiveIntensity = 1.5;
+
+	// Restore after duration
+	setTimeout(() => {
+		if (mat.emissive && mat.emissive.set) {
+			mat.emissive.set(origEmissive);
+		} else {
+			mat.emissive = origEmissive;
+		}
+		mat.emissiveIntensity = origIntensity;
+	}, durationMs);
+}
+
+// Track which enemy IDs were just hit by a cardUsed event (so we don't double-flash on the next stateUpdate)
+const hitFlashedThisFrame = new Set();
+
+// Track per-enemy HP from the previous frame, for detecting minion tick damage
+const previousEnemyHp = {};
+
 // ── Attack visual effects ──
 
 const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
@@ -663,6 +705,17 @@ socket.on('cardUsed', (data) => {
   if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
     const origin = data.origin || { x: 0, z: 0 };
     spawnSummonEffect(origin, data.radius);
+  }
+
+  // Flash hit enemies (weapon, summon, or any card that reports hits)
+  if (data.hits && Array.isArray(data.hits)) {
+    for (const hit of data.hits) {
+      const mesh = enemiesMeshes[hit.enemyId];
+      if (mesh) {
+        flashMesh(mesh, 0xffffff, 200);
+        hitFlashedThisFrame.add(hit.enemyId);
+      }
+    }
   }
 });
 
@@ -1042,6 +1095,9 @@ function updateMyPlayer(delta) {
 function animate(timestamp) {
   requestAnimationFrame(animate);
 
+  // Clear per-frame flash dedup set at the start of each frame
+  hitFlashedThisFrame.clear();
+
   clock.update(timestamp);
   const delta = clock.getDelta();
   updateMyPlayer(delta);
@@ -1120,13 +1176,26 @@ function animate(timestamp) {
         enemiesMeshes[enemy.id] = mesh;
       }
       enemiesMeshes[enemy.id].position.set(enemy.x, 0.5, enemy.z);
+
+      // Detect HP drop (minion tick damage) — skip if already flashed by cardUsed
+      if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
+        if (!hitFlashedThisFrame.has(enemy.id)) {
+          flashMesh(enemiesMeshes[enemy.id], 0xff4444, 150);
+        }
+      }
+      previousEnemyHp[enemy.id] = enemy.hp;
     }
 
-    // Clean up removed enemies
+    // Clean up removed enemies (also clean up previous HP tracking)
     for (const id of Object.keys(enemiesMeshes)) {
       if (!currentEnemyIds.has(id)) {
         scene.remove(enemiesMeshes[id]);
         delete enemiesMeshes[id];
+      }
+    }
+    for (const id of Object.keys(previousEnemyHp)) {
+      if (!currentEnemyIds.has(id)) {
+        delete previousEnemyHp[id];
       }
     }
 
@@ -1233,6 +1302,7 @@ function initScene() {
 window.initScene = initScene;
 window.refillSlot = refillSlot;
 window.renderDeckEditor = renderDeckEditor;
+window.flashMesh = flashMesh;
 window.__mySelectedDeck = () => mySelectedDeck;
 window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
 window.__AUTOGAME_HARNESS_STATE__ = () => {
