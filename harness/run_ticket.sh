@@ -166,10 +166,14 @@ ingest_nits() {  # ingest_nits <nits_file>
 # Tag + record a completed ticket. 0 = done, 1 = review passed but game does
 # not actually run (caller must not treat the ticket as complete).
 finalize() {  # finalize <artifacts_dir> <review_file>
-  local adir="$1" rfile="$2" tag
+  local adir="$1" rfile="$2" tag retry_dir
   if ! game_smoke_ok "$adir"; then
-    log "[finalize] review reported PASS but the game does not run cleanly — NOT completing"
-    return 1
+    retry_dir="$TDIR/finalize-confirm-smoke-$(date +%s)"
+    if confirm_game_broken "$adir" "$retry_dir"; then
+      log "[finalize] review reported PASS but confirmed game health failed — NOT completing"
+      return 1
+    fi
+    log "[finalize] review PASS accepted after confirmation smoke cleared a transient health failure"
   fi
   tag="$(next_version_tag)"
   log "[review] PASS — finalizing as $tag"
@@ -270,9 +274,12 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
       exit 0
     fi
     # review said PASS but the game is not runnable — force another round.
+    smoke_reason="$(game_smoke_reason "$RDIR")"
     {
       printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
-      printf 'The review reported PASS, but the captured run shows the game does not start or load cleanly. Find and fix whatever stops the game from running — inspect server.log and console.log in %s.\n' "$RDIR"
+      printf 'The review reported PASS, but two smoke captures show the game does not start or load cleanly.\n'
+      printf 'Initial smoke reason: %s\n' "${smoke_reason:-unknown}"
+      printf 'Inspect server.log, console.log, metrics.json, and the confirmation smoke under %s/finalize-confirm-smoke-*.\n' "$TDIR"
     } | put_review_fb
     append_review_pointer "$REVIEW_OUT"
     log "[round $round] review PASS but game not runnable — re-decomposing next round"
@@ -324,6 +331,10 @@ fi
 log "[gate] $NAME could not be completed — checking game health before moving on"
 if game_smoke_ok "$RDIR"; then
   log "########## $NAME INCOMPLETE — game still runs; committed work kept, ticket left open ##########"
+  exit 1
+fi
+if ! confirm_game_broken "$RDIR" "$TDIR/baseline-protection-confirm-smoke"; then
+  log "########## $NAME INCOMPLETE — confirmation smoke passed; committed work kept, ticket left open ##########"
   exit 1
 fi
 log "[gate] game is BROKEN after $NAME — reverting to baseline $BASE_REF to protect later tickets"
