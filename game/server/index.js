@@ -251,6 +251,7 @@ const gameState = {
   players: {},
   enemies: [],
   minions: [],
+  loot: [],
   lobby: [],
   gamePhase: 'lobby'
 };
@@ -356,6 +357,16 @@ function spawnEnemies() {
       wanderTarget: randomWanderTarget()
     });
   }
+}
+
+// Helper: spawn a loot item at the given position (50 % chance)
+function spawnLoot(x, z) {
+  if (Math.random() >= 0.5) return;
+
+  const value = Math.floor(Math.random() * 16) + 5;
+  const id = crypto.randomUUID();
+  gameState.loot.push({ id, x, z, value });
+  console.log(`[loot] spawned id=${id} value=${value}`);
 }
 
 function isDebugScenarioAllowed(socket) {
@@ -544,6 +555,7 @@ io.on('connection', (socket) => {
     lastActivity: Date.now(),
     ready: false,
     magicStones: MAX_MAGIC_STONES,
+    currency: 0,
     debugScenario: null,
     pendingSummons: new Set()
   };
@@ -586,7 +598,10 @@ io.on('connection', (socket) => {
     if (!enemy) return;
     enemy.hp -= data.amount;
     if (enemy.hp <= 0) {
+      const enemyX = enemy.x;
+      const enemyZ = enemy.z;
       gameState.enemies = gameState.enemies.filter(e => e.id !== data.enemyId);
+      spawnLoot(enemyX, enemyZ);
     }
   });
 
