@@ -179,9 +179,29 @@ cli_failure_reason() {  # cli_failure_reason <rc> <outfile>
     echo "terminated_by_signal"
   elif [ ! -s "$out" ]; then
     echo "empty_output"
+  elif cli_output_is_only_error "$out"; then
+    echo "api_error_only_output"
   else
     echo "exit_$rc"
   fi
+}
+
+cli_output_is_only_error() {  # cli_output_is_only_error <outfile>
+  local out="$1"
+  [ -s "$out" ] || return 1
+  node - "$out" <<'NODE' 2>/dev/null
+const { readFileSync } = require('node:fs');
+const text = readFileSync(process.argv[2], 'utf8').trim();
+if (!text) process.exit(1);
+const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+const errorOnly = lines.length > 0 && lines.every(line =>
+  /^\[API Error:/.test(line) ||
+  /^API Error:/.test(line) ||
+  /^Operation cancelled\.$/.test(line) ||
+  /^Terminated$/.test(line)
+);
+process.exit(errorOnly ? 0 : 1);
+NODE
 }
 
 _run_cli() {
@@ -194,7 +214,7 @@ _run_cli() {
     #   hangs in stopped state. -k 30: SIGKILL 30s after the SIGTERM so a wedged
     #   or stopped process is always reaped (rc 124 = SIGTERM'd, 137 = SIGKILL'd).
     timeout -k 30 "$tmo" "$@" </dev/null >"$out" 2>&1; rc=$?
-    if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ]; then
+    if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ] && ! cli_output_is_only_error "$out"; then
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"ok\"}"
       return 0
     fi
