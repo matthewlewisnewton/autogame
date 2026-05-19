@@ -1,0 +1,645 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import {
+	mulberry32,
+	generateLayout,
+	damagePlayer,
+	updateEnemies,
+	updateMinions,
+	spawnLoot,
+	createGameState,
+	gameState,
+	cleanupStalePlayers,
+	regenMagicStones,
+	STALE_THRESHOLD,
+	MAX_MAGIC_STONES,
+	MAGIC_STONES_REGEN_PER_TICK,
+	DETECTION_RADIUS,
+	ATTACK_RANGE,
+	TICK_RATE,
+	GRID_COLS,
+	GRID_ROWS,
+	CELL_SPACING
+} from '../index.js';
+
+// ── Helpers ──
+
+function resetState() {
+	Object.assign(gameState, createGameState());
+}
+
+function addPlayer(id, overrides = {}) {
+	gameState.players[id] = {
+		x: 0,
+		y: 0.5,
+		z: 0,
+		rotation: 0,
+		hp: 100,
+		dead: false,
+		lastActivity: Date.now(),
+		ready: false,
+		magicStones: MAX_MAGIC_STONES,
+		currency: 0,
+		debugScenario: null,
+		pendingSummons: new Set(),
+		deck: [],
+		...overrides
+	};
+}
+
+// ── mulberry32 PRNG ──
+
+describe('mulberry32(seed)', () => {
+	it('returns a function', () => {
+		expect(typeof mulberry32(42)).toBe('function');
+	});
+
+	it('produces values in [0, 1)', () => {
+		const rng = mulberry32(123);
+		for (let i = 0; i < 100; i++) {
+			const v = rng();
+			expect(v).toBeGreaterThanOrEqual(0);
+			expect(v).toBeLessThan(1);
+		}
+	});
+
+	it('is deterministic for a fixed seed', () => {
+		const a = mulberry32(99);
+		const b = mulberry32(99);
+		for (let i = 0; i < 50; i++) {
+			expect(a()).toBe(b());
+		}
+	});
+
+	it('produces different sequences for different seeds', () => {
+		const a = mulberry32(1);
+		const b = mulberry32(2);
+		let differs = false;
+		for (let i = 0; i < 100; i++) {
+			if (a() !== b()) {
+				differs = true;
+				break;
+			}
+		}
+		expect(differs).toBe(true);
+	});
+});
+
+// ── generateLayout ──
+
+describe('generateLayout(seed)', () => {
+	it('returns an object with rooms and passages arrays', () => {
+		const layout = generateLayout(42);
+		expect(Array.isArray(layout.rooms)).toBe(true);
+		expect(Array.isArray(layout.passages)).toBe(true);
+	});
+
+	it('is deterministic for a fixed seed', () => {
+		const a = generateLayout(777);
+		const b = generateLayout(777);
+		expect(a.rooms.length).toBe(b.rooms.length);
+		expect(a.passages.length).toBe(b.passages.length);
+		expect(a.rooms[0].x).toBe(b.rooms[0].x);
+		expect(a.rooms[0].z).toBe(b.rooms[0].z);
+	});
+
+	it('produces at least 4 rooms', () => {
+		const layout = generateLayout(1);
+		expect(layout.rooms.length).toBeGreaterThanOrEqual(4);
+	});
+
+	it('rooms respect grid bounds', () => {
+		const layout = generateLayout(12345);
+		// Max cell index is (N-1), center offset is (N-1)/2, so max coord = ((N-1) - (N-1)/2) * CELL_SPACING
+		// For N=4: max coord = (3 - 1.5) * 20 = 30
+		const maxCoord = ((Math.max(GRID_COLS, GRID_ROWS) - 1) - (Math.max(GRID_COLS, GRID_ROWS) - 1) / 2) * CELL_SPACING;
+		for (const room of layout.rooms) {
+			expect(Math.abs(room.x)).toBeLessThanOrEqual(maxCoord);
+			expect(Math.abs(room.z)).toBeLessThanOrEqual(maxCoord);
+		}
+	});
+
+	it('each room has width, depth, and walls', () => {
+		const layout = generateLayout(99);
+		for (const room of layout.rooms) {
+			expect(room.width).toBeGreaterThan(0);
+			expect(room.depth).toBeGreaterThan(0);
+			expect(Array.isArray(room.walls)).toBe(true);
+		}
+	});
+
+	it('different seeds produce different layouts', () => {
+		const a = generateLayout(1);
+		const b = generateLayout(2);
+		// At least one room position should differ
+		let differs = false;
+		for (let i = 0; i < Math.min(a.rooms.length, b.rooms.length); i++) {
+			if (a.rooms[i].x !== b.rooms[i].x || a.rooms[i].z !== b.rooms[i].z) {
+				differs = true;
+				break;
+			}
+		}
+		expect(differs).toBe(true);
+	});
+});
+
+// ── damagePlayer ──
+
+describe('damagePlayer(playerId, amount)', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('reduces HP by the given amount', () => {
+		addPlayer('p1');
+		damagePlayer('p1', 30);
+		expect(gameState.players['p1'].hp).toBe(70);
+	});
+
+	it('clamps HP at 0', () => {
+		addPlayer('p1');
+		damagePlayer('p1', 200);
+		expect(gameState.players['p1'].hp).toBe(0);
+	});
+
+	it('does nothing for unknown player', () => {
+		const beforeCount = Object.keys(gameState.players).length;
+		damagePlayer('nonexistent', 10);
+		const afterCount = Object.keys(gameState.players).length;
+		expect(afterCount).toBe(beforeCount);
+	});
+
+	it('marks player as dead when HP reaches 0', () => {
+		addPlayer('p1', { hp: 30 });
+		damagePlayer('p1', 30);
+		expect(gameState.players['p1'].dead).toBe(true);
+	});
+
+	it('schedules respawn after 3 seconds', () => {
+		addPlayer('p1', { hp: 30 });
+		damagePlayer('p1', 30);
+
+		// Before timeout fires
+		expect(gameState.players['p1'].dead).toBe(true);
+
+		// Advance 3 seconds
+		vi.advanceTimersByTime(3000);
+
+		// After respawn
+		expect(gameState.players['p1'].dead).toBe(false);
+		expect(gameState.players['p1'].hp).toBe(100);
+	});
+
+	it('respawn resets position to (0, 0)', () => {
+		addPlayer('p1', { hp: 30, x: 10, z: 20 });
+		damagePlayer('p1', 30);
+		vi.advanceTimersByTime(3000);
+		expect(gameState.players['p1'].x).toBe(0);
+		expect(gameState.players['p1'].z).toBe(0);
+	});
+
+	it('partial damage does not mark dead', () => {
+		addPlayer('p1', { hp: 100 });
+		damagePlayer('p1', 50);
+		expect(gameState.players['p1'].dead).toBe(false);
+		expect(gameState.players['p1'].hp).toBe(50);
+	});
+});
+
+// ── updateEnemies ──
+
+describe('updateEnemies()', () => {
+	beforeEach(() => resetState());
+
+	it('does nothing when no enemies exist', () => {
+		expect(() => updateEnemies()).not.toThrow();
+	});
+
+	it('enemies chase players within DETECTION_RADIUS', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			x: DETECTION_RADIUS - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 10, z: 10 }
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].state).toBe('chasing');
+		// Enemy should have moved toward player (x decreased)
+		expect(gameState.enemies[0].x).toBeLessThan(DETECTION_RADIUS - 1);
+	});
+
+	it('enemies wander when no player is within DETECTION_RADIUS', () => {
+		addPlayer('p1', { x: 100, z: 100, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 10, z: 0 }
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].state).toBe('idle');
+	});
+
+	it('dead players are ignored for detection', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: true });
+		gameState.enemies.push({
+			id: 'e1',
+			x: 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 10, z: 0 }
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].state).toBe('idle');
+	});
+
+	it('enemy picks new wander target when reaching current one', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 5,
+			z: 5,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 5, z: 5 }
+		});
+
+		const oldTarget = { ...gameState.enemies[0].wanderTarget };
+		updateEnemies();
+
+		// Should have picked a new target since distance < 0.5
+		expect(gameState.enemies[0].wanderTarget).not.toEqual(oldTarget);
+	});
+});
+
+// ── updateMinions ──
+
+describe('updateMinions()', () => {
+	beforeEach(() => resetState());
+
+	it('does nothing when no minions exist', () => {
+		expect(() => updateMinions()).not.toThrow();
+	});
+
+	it('minions attack enemies within ATTACK_RANGE', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: ATTACK_RANGE - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(45);
+	});
+
+	it('minions chase enemies within DETECTION_RADIUS but outside ATTACK_RANGE', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: ATTACK_RANGE + 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		const startX = gameState.minions[0].x;
+		updateMinions();
+
+		// Minion should have moved toward enemy
+		expect(gameState.minions[0].x).toBeGreaterThan(startX);
+	});
+
+	it('removes minions with expired TTL', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 0.01 // less than one tick (dt = 1/20 = 0.05)
+		});
+
+		updateMinions();
+
+		expect(gameState.minions.length).toBe(0);
+	});
+
+	it('removes minions with hp <= 0', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 0,
+			ttl: 30
+		});
+
+		updateMinions();
+
+		expect(gameState.minions.length).toBe(0);
+	});
+
+	it('decrements minion TTL each tick', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 10
+		});
+
+		updateMinions();
+
+		expect(gameState.minions[0].ttl).toBeCloseTo(10 - 1 / TICK_RATE, 4);
+	});
+
+	it('spawns loot for dead enemies and removes them', () => {
+		// Mock Math.random to make spawnLoot always spawn
+		vi.spyOn(Math, 'random').mockReturnValue(0.1);
+
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: 0,
+			z: 0,
+			hp: 3, // minion deals 5 damage, so enemy dies
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies.length).toBe(0);
+		expect(gameState.loot.length).toBe(1);
+		expect(gameState.loot[0]).toHaveProperty('id');
+		expect(gameState.loot[0]).toHaveProperty('value');
+		expect(gameState.loot[0]).toHaveProperty('x');
+		expect(gameState.loot[0]).toHaveProperty('z');
+		expect(gameState.loot[0]).toHaveProperty('createdAt');
+
+		vi.restoreAllMocks();
+	});
+});
+
+// ── spawnLoot ──
+
+describe('spawnLoot(x, z)', () => {
+	beforeEach(() => resetState());
+
+	it('creates loot with correct structure when it spawns', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.1); // < 0.5 so it spawns
+
+		spawnLoot(10, 20);
+
+		expect(gameState.loot.length).toBe(1);
+		const loot = gameState.loot[0];
+		expect(loot).toHaveProperty('id');
+		expect(loot).toHaveProperty('x', 10);
+		expect(loot).toHaveProperty('z', 20);
+		expect(loot).toHaveProperty('value');
+		expect(loot).toHaveProperty('createdAt');
+		expect(typeof loot.id).toBe('string');
+		expect(typeof loot.value).toBe('number');
+		expect(typeof loot.createdAt).toBe('number');
+
+		vi.restoreAllMocks();
+	});
+
+	it('loot value is in range [5, 20)', () => {
+		vi.spyOn(Math, 'random').mockReturnValueOnce(0.1).mockReturnValueOnce(0.5);
+
+		spawnLoot(0, 0);
+		expect(gameState.loot[0].value).toBeGreaterThanOrEqual(5);
+		expect(gameState.loot[0].value).toBeLessThan(20);
+
+		vi.restoreAllMocks();
+	});
+
+	it('does not spawn loot 50% of the time', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.9); // >= 0.5
+
+		spawnLoot(0, 0);
+
+		expect(gameState.loot.length).toBe(0);
+
+		vi.restoreAllMocks();
+	});
+
+	it('loot createdAt is a timestamp', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.1);
+
+		const before = Date.now();
+		spawnLoot(0, 0);
+		const after = Date.now();
+
+		expect(gameState.loot[0].createdAt).toBeGreaterThanOrEqual(before);
+		expect(gameState.loot[0].createdAt).toBeLessThanOrEqual(after);
+
+		vi.restoreAllMocks();
+	});
+});
+
+// ── Magic Stone regeneration ──
+
+describe('regenMagicStones (game tick)', () => {
+	beforeEach(() => resetState());
+
+	it('regenerates MAGIC_STONES_REGEN_PER_TICK per call', () => {
+		addPlayer('p1', { magicStones: 50 });
+		const before = gameState.players['p1'].magicStones;
+
+		regenMagicStones();
+
+		expect(gameState.players['p1'].magicStones).toBeCloseTo(
+			before + MAGIC_STONES_REGEN_PER_TICK,
+			5
+		);
+	});
+
+	it('caps at MAX_MAGIC_STONES', () => {
+		addPlayer('p1', { magicStones: MAX_MAGIC_STONES });
+
+		regenMagicStones();
+
+		expect(gameState.players['p1'].magicStones).toBe(MAX_MAGIC_STONES);
+	});
+
+	it('does not exceed cap when close to it', () => {
+		addPlayer('p1', { magicStones: MAX_MAGIC_STONES - 0.1 });
+
+		regenMagicStones();
+
+		expect(gameState.players['p1'].magicStones).toBe(MAX_MAGIC_STONES);
+	});
+
+	it('keeps magicStones at 0 for summon-low-mana debug scenario', () => {
+		addPlayer('p1', { magicStones: 50, debugScenario: 'summon-low-mana' });
+
+		regenMagicStones();
+
+		expect(gameState.players['p1'].magicStones).toBe(0);
+	});
+
+	it('clears pendingSummons for each player', () => {
+		addPlayer('p1');
+		gameState.players['p1'].pendingSummons.add('0:iron_sword');
+
+		regenMagicStones();
+
+		expect(gameState.players['p1'].pendingSummons.size).toBe(0);
+	});
+
+	it('regen rate constant is correct', () => {
+		expect(MAGIC_STONES_REGEN_PER_TICK).toBe(0.5);
+	});
+
+	it('max magic stones constant is correct', () => {
+		expect(MAX_MAGIC_STONES).toBe(100);
+	});
+});
+
+// ── Stale player cleanup ──
+
+describe('cleanupStalePlayers', () => {
+	beforeEach(() => resetState());
+
+	it('removes players inactive for STALE_THRESHOLD ms', () => {
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 1000 });
+
+		cleanupStalePlayers();
+
+		expect(gameState.players['p1']).toBeUndefined();
+	});
+
+	it('keeps active players', () => {
+		addPlayer('p1', { lastActivity: Date.now() });
+
+		cleanupStalePlayers();
+
+		expect(gameState.players['p1']).toBeDefined();
+	});
+
+	it('keeps players at exactly STALE_THRESHOLD (not exceeding)', () => {
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD + 1 });
+
+		cleanupStalePlayers();
+
+		expect(gameState.players['p1']).toBeDefined();
+	});
+
+	it('stale threshold constant is 10 seconds', () => {
+		expect(STALE_THRESHOLD).toBe(10000);
+	});
+
+	it('removes multiple stale players', () => {
+		addPlayer('p1', { lastActivity: Date.now() - 20000 });
+		addPlayer('p2', { lastActivity: Date.now() - 15000 });
+		addPlayer('p3', { lastActivity: Date.now() });
+
+		cleanupStalePlayers();
+
+		expect(gameState.players['p1']).toBeUndefined();
+		expect(gameState.players['p2']).toBeUndefined();
+		expect(gameState.players['p3']).toBeDefined();
+	});
+});
+
+// ── Constants ──
+
+describe('constants', () => {
+	it('DETECTION_RADIUS is 8', () => {
+		expect(DETECTION_RADIUS).toBe(8);
+	});
+
+	it('ATTACK_RANGE is 5', () => {
+		expect(ATTACK_RANGE).toBe(5);
+	});
+
+	it('TICK_RATE is 20', () => {
+		expect(TICK_RATE).toBe(20);
+	});
+
+	it('GRID_COLS is 4', () => {
+		expect(GRID_COLS).toBe(4);
+	});
+
+	it('GRID_ROWS is 4', () => {
+		expect(GRID_ROWS).toBe(4);
+	});
+
+	it('CELL_SPACING is 20', () => {
+		expect(CELL_SPACING).toBe(20);
+	});
+});
+
+// ── createGameState ──
+
+describe('createGameState()', () => {
+	it('returns a fresh state object with expected keys', () => {
+		const state = createGameState();
+		expect(state).toHaveProperty('players');
+		expect(state).toHaveProperty('enemies');
+		expect(state).toHaveProperty('minions');
+		expect(state).toHaveProperty('loot');
+		expect(state).toHaveProperty('lobby');
+		expect(state).toHaveProperty('gamePhase', 'lobby');
+	});
+
+	it('returns empty collections', () => {
+		const state = createGameState();
+		expect(Object.keys(state.players).length).toBe(0);
+		expect(state.enemies.length).toBe(0);
+		expect(state.minions.length).toBe(0);
+		expect(state.loot.length).toBe(0);
+	});
+
+	it('returns independent objects (no shared state)', () => {
+		const a = createGameState();
+		const b = createGameState();
+		a.players['test'] = {};
+		expect(b.players['test']).toBeUndefined();
+	});
+});
