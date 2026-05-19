@@ -60,4 +60,10 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
 
+## Backlog — Reference Game Loops
+- [ ] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
+- [ ] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
+- [ ] [042-enemy-card-drops](tickets/042-enemy-card-drops/)
+- [ ] [043-lobby-card-sell-and-trade](tickets/043-lobby-card-sell-and-trade/)
+
 ## Done
