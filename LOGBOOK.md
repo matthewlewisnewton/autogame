@@ -673,3 +673,26 @@ reassigned and could be `const` (filed in `nits.md`).
 None. The ticket's lone acceptance criterion is fully satisfied, and the
 captured run shows the game starts and loads cleanly.
 
+
+## v0.30 — Cleanup Nits from Current Codebase Review  (2026-05-19 14:14:34)
+
+- `game/client/main.js:967` introduces `disposeMeshMap(map, targetScene,
+  skipDispose)`. The `skipDispose` flag preserves the shared-resource case for
+  loot meshes (geometry/material shared at module scope).
+- `disposeAllLootMeshes()` and the `startGame` cleanup now use the helper for
+  `enemiesMeshes`, `enemyHealthBars`, `telegraphMeshes`, `minionsMeshes` (with
+  disposal) and `lootMeshes` (without).
+- The per-frame stale-id cleanup (enemies, health bars, telegraphs, minions)
+  builds a small temporary map of stale entries and delegates to the helper.
+  Slightly verbose, but it preserves the special case where current-frame
+  entries must stay in the original map (see nit #1).
+- Test coverage at `applyWindupFlash` indirectly exercises mesh-map deletion;
+  the existing run-cleanup integration tests still pass.
+
+Criterion met.
+
+## Remaining gaps
+
+None. All four acceptance criteria are met; the captured run is clean; the full
+test suite (server 219 + client 110) passes.
+
