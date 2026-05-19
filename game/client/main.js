@@ -917,6 +917,16 @@ function animate() {
   const delta = clock.getDelta();
   updateMyPlayer(delta);
 
+  // ── Loot proximity check ──
+  if (gameState && gameState.loot && gameState.loot.length > 0) {
+    for (const loot of gameState.loot) {
+      if (Math.hypot(myX - loot.x, myZ - loot.z) <= 2) {
+        socket.emit('lootPickup', { lootId: loot.id });
+        break; // one pickup per frame
+      }
+    }
+  }
+
   // Update local player HP bar each frame
   if (gameState && myId && gameState.players[myId] != null) {
     updateHpBar(gameState.players[myId].hp);
