@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
-import { drawCard, initHand as initHandFromModule, initHandFromDeck, hand, slotCooldowns } from './hand.js';
+import { drawCard, initHand as initHandFromModule, initHandFromDeck, hand, slotCooldowns, canUseSlot } from './hand.js';
 import {
 	buildDungeon,
 	clearDungeon,
@@ -370,10 +370,14 @@ function useCard(slotIndex) {
   const card = hand[slotIndex];
   if (!card) return; // empty slot — no-op
 
+  // Cooldown gate: block everything (emit, charge drain, monster consume)
+  // when the slot is still cooling down.
+  if (!canUseSlot(slotIndex)) return;
+
   // Track which slot was used so cardError can target the right slot
   lastUsedSlot = slotIndex;
 
-  // (1) Emit useCard — fires on every call, including during cooldown
+  // (1) Emit useCard — only fires when cooldown has cleared
   socket.emit('useCard', { slotIndex, cardId: card.id });
 
   // (1b) For monster cards: single-use, consumed optimistically (like weapons)
@@ -382,7 +386,6 @@ function useCard(slotIndex) {
     const newCard = drawCard();
     if (newCard) hand[slotIndex] = newCard;
     renderHand();
-    if (slotCooldowns[slotIndex]) return;
     slotCooldowns[slotIndex] = true;
     playActivationEffect(slotIndex);
     return;
@@ -392,15 +395,12 @@ function useCard(slotIndex) {
   //     confirmation (cardUsed) before removing the card. This way, if the
   //     server rejects (e.g. not enough Magic Stones), the card stays in hand.
   if (summonCardIds.has(card.id)) {
-    // Still fire the activation/cooldown visual
-    if (!slotCooldowns[slotIndex]) {
-      slotCooldowns[slotIndex] = true;
-      playActivationEffect(slotIndex);
-    }
+    slotCooldowns[slotIndex] = true;
+    playActivationEffect(slotIndex);
     return;
   }
 
-  // (2) Decrement charges + exhaust/redraw — non-summon cards only
+  // (3) Decrement charges + exhaust/redraw — non-summon cards only
   card.remainingCharges -= 1;
 
   if (card.remainingCharges <= 0) {
@@ -416,9 +416,7 @@ function useCard(slotIndex) {
   // Refresh the slot display with updated charge count or new card
   renderHand();
 
-  // (3) Visual flash + cooldown flag — only when NOT already in cooldown
-  if (slotCooldowns[slotIndex]) return;
-
+  // (4) Visual flash + cooldown flag
   slotCooldowns[slotIndex] = true;
   playActivationEffect(slotIndex);
 }
