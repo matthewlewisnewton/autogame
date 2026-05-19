@@ -67,6 +67,7 @@ let velocityX = 0;
 let velocityZ = 0;
 let playerRotation = 0; // facing angle in radians, derived from movement velocity
 let wasDead = false; // tracks previous-frame dead state for respawn detection
+let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
 let wallColliders = []; // flat array of wall AABBs: { minX, maxX, minZ, maxZ }
 
@@ -440,7 +441,23 @@ socket.on('stateUpdate', (state) => {
   if (myId && gameState.players[myId]) {
     const currencyEl = document.getElementById('currency-display');
     if (currencyEl) {
-      currencyEl.textContent = `GOLD ${gameState.players[myId].currency}`;
+      const newCurrency = gameState.players[myId].currency;
+      const oldCurrency = _lastCurrency;
+      _lastCurrency = newCurrency;
+
+      currencyEl.textContent = `GOLD ${newCurrency}`;
+
+      // Flash the currency display when it increases
+      if (oldCurrency !== undefined && newCurrency > oldCurrency) {
+        currencyEl.style.transition = 'none';
+        currencyEl.style.color = '#ffd700';
+        currencyEl.style.transform = 'scale(1.2)';
+        requestAnimationFrame(() => {
+          currencyEl.style.transition = 'color 0.4s, transform 0.4s';
+          currencyEl.style.color = '';
+          currencyEl.style.transform = 'scale(1)';
+        });
+      }
     }
 
     // Sync ownedCards from server state if present
@@ -531,20 +548,23 @@ const previousPlayerHp = {};
 const damageNumbers = []; // { element, createdAt, position3d }
 
 /**
- * Spawn a floating damage number above a 3D position.
+ * Spawn a floating number above a 3D position.
  * Creates an HTML div, projects the 3D coordinate to screen space each frame,
  * and auto-removes after ~1 second.
  * @param {number} x - 3D X coordinate
  * @param {number} y - 3D Y coordinate (height above ground)
  * @param {number} z - 3D Z coordinate
- * @param {number} amount - damage amount to display (shown as negative, e.g. "-10")
+ * @param {number} amount - amount to display (shown as negative by default, e.g. "-10")
  * @param {string} color - CSS color string (e.g. '#ff0000')
+ * @param {boolean} positive - if true, show as "+N" instead of "-N"
  */
-function spawnDamageNumber(x, y, z, amount, color) {
+function spawnDamageNumber(x, y, z, amount, color, positive) {
 	if (!document.body) return;
 
+	const rounded = Math.abs(Math.round(amount));
+	const prefix = positive ? '+' : '-';
 	const el = document.createElement('div');
-	el.textContent = `-${Math.abs(Math.round(amount))}`;
+	el.textContent = `${prefix}${rounded}`;
 	el.style.cssText = `
 		position: fixed;
 		left: 0;
@@ -819,11 +839,76 @@ function updateAttackEffects() {
 // ── Loot mesh sync & animation ──
 
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
+const collectingLoot = {}; // lootId → { mesh, value, createdAt } — meshes mid-collection animation
+const previousLootValues = {}; // lootId → value — persists value after loot is removed from gameState
+
+const LOOT_COLLECT_DURATION = 600; // ms for scale-up + fade animation
+
+/**
+ * Play a "collected" animation on a loot mesh: scale-up + fade, then remove.
+ * Also spawns a floating "+N" number at the loot's position.
+ * @param {string} lootId - the ID of the collected loot
+ * @param {number} value - gold amount (for the floating "+N" text)
+ */
+function markLootCollected(lootId, value) {
+	const mesh = lootMeshes[lootId];
+	if (!mesh || !scene) return;
+
+	// Record position before removing from lootMeshes (so animateLootMeshes skips it)
+	const px = mesh.position.x;
+	const pz = mesh.position.z;
+
+	// Remove from active loot meshes so it's no longer bobbed/rotated
+	delete lootMeshes[lootId];
+
+	// Store in collectingLoot for the animation loop
+	collectingLoot[lootId] = { mesh, value, createdAt: performance.now() };
+
+	// Spawn floating "+N" number
+	spawnDamageNumber(px, 1.0, pz, value, '#ffd700', true);
+}
+
+/**
+ * Update collecting-loot animations: scale up, fade out, then dispose.
+ * Called each frame from the animate loop.
+ */
+function updateCollectingLoot() {
+	const now = performance.now();
+	for (const id of Object.keys(collectingLoot)) {
+		const entry = collectingLoot[id];
+		const elapsed = now - entry.createdAt;
+		const t = Math.min(elapsed / LOOT_COLLECT_DURATION, 1.0);
+
+		// Scale up from 1.0 to 2.0, then shrink
+		const scale = t < 0.3 ? 1.0 + (t / 0.3) * 1.0 : 2.0 - (t - 0.3) / 0.7 * 1.9;
+		entry.mesh.scale.setScalar(Math.max(0.01, scale));
+
+		// Fade opacity in the second half
+		if (t > 0.5) {
+			entry.mesh.material.opacity = Math.max(0.01, 1.0 - (t - 0.5) / 0.5);
+		}
+
+		// Float upward
+		entry.mesh.position.y = 0.5 + t * 1.5;
+
+		// Remove when expired
+		if (elapsed >= LOOT_COLLECT_DURATION) {
+			scene.remove(entry.mesh);
+			// Do NOT dispose geometry or material — shared
+			delete collectingLoot[id];
+		}
+	}
+}
 
 function syncLootMeshes() {
   if (!gameState || !gameState.loot) return;
 
   const currentLootIds = new Set(gameState.loot.map(l => l.id));
+
+  // Track current loot values so we can display them on collection
+  for (const item of gameState.loot) {
+    previousLootValues[item.id] = item.value || 1;
+  }
 
   // Add / update new loot
   for (const item of gameState.loot) {
@@ -835,12 +920,11 @@ function syncLootMeshes() {
     }
   }
 
-  // Remove stale loot
+  // Remove stale loot — play collection animation instead of immediate removal
   for (const id of Object.keys(lootMeshes)) {
     if (!currentLootIds.has(id)) {
-      scene.remove(lootMeshes[id]);
-      // Do NOT dispose geometry or material — both are shared
-      delete lootMeshes[id];
+      const lootValue = previousLootValues[id] || 1;
+      markLootCollected(id, lootValue);
     }
   }
 }
@@ -1482,6 +1566,9 @@ function animate(timestamp) {
   // Update floating damage numbers
   updateDamageNumbers();
 
+  // Update collecting-loot animations
+  updateCollectingLoot();
+
   renderer.render(scene, camera);
 }
 
@@ -1548,6 +1635,7 @@ window.renderDeckEditor = renderDeckEditor;
 window.flashMesh = flashMesh;
 window.spawnDamageNumber = spawnDamageNumber;
 window.spawnHitSpark = spawnHitSpark;
+window.markLootCollected = markLootCollected;
 window.activeEffects = () => activeEffects;
 window.__setScene = (s) => { window.___test_scene = s; }; // test-only: override scene for spawnHitSpark
 window.___test_scene = undefined;
