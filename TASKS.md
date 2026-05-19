@@ -27,7 +27,6 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
 
 ## Backlog — World & Economy
-- [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
 - [x] [016-loot-and-currency](tickets/016-loot-and-currency/)
 
 ## Backlog — Testing
@@ -42,5 +41,6 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [022-user-accounts](tickets/022-user-accounts/)
 - [ ] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
+- [ ] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
 
 ## Done

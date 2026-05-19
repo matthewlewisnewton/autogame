@@ -119,7 +119,17 @@ verify_reviews() {
 # Append a pointer to the full review so the coder can drill in past the
 # compact summary if it needs the per-criterion findings and rationale.
 append_review_pointer() {  # append_review_pointer <review_file>
+  chmod u+w "$REVIEW_FB" 2>/dev/null || true
   printf '\n---\nThis is a compact summary distilled from the full review of the\nprevious round. For per-criterion findings and the reasoning behind each\ngap, read the full review at: %s\n(That file is read-only — do not edit it.)\n' "$1" >> "$REVIEW_FB"
+}
+
+# Overwrite the compact open-gaps file (it is rewritten every round). It MUST
+# stay writable across rounds: seeding it with `cp` from a protect_review'd,
+# read-only review file would otherwise create it read-only (mode 444) and make
+# every later round's write fail — so always clear the mode before writing.
+put_review_fb() {  # put_review_fb   (new content on stdin)
+  chmod u+w "$REVIEW_FB" 2>/dev/null || true
+  cat > "$REVIEW_FB"
 }
 
 # File the reviewer's non-blocking nits as a new low-priority backlog ticket so
@@ -240,7 +250,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
       printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
       printf 'These sub-tickets did not pass QA after %d iterations. They are likely mis-scoped or too large — re-scope each into smaller, correctly-classified sub-tickets:\n\n' "$MAX_ITER"
       printf -- '- %s\n' "${FAILED_SUBS[@]}"
-    } > "$REVIEW_FB"
+    } | put_review_fb
     log "[round $round] some sub-tickets failed — re-decomposing next round"
     continue
   fi
@@ -263,7 +273,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     {
       printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
       printf 'The review reported PASS, but the captured run shows the game does not start or load cleanly. Find and fix whatever stops the game from running — inspect server.log and console.log in %s.\n' "$RDIR"
-    } > "$REVIEW_FB"
+    } | put_review_fb
     append_review_pointer "$REVIEW_OUT"
     log "[round $round] review PASS but game not runnable — re-decomposing next round"
     continue
@@ -273,13 +283,13 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   log "[review] FAIL — recording compacted feedback for remediation"
   emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"FAIL\",\"review\":$(json_string "$REVIEW_OUT")}"
   if [ -s "$RDIR/gaps.md" ]; then
-    cp "$RDIR/gaps.md" "$REVIEW_FB"
+    put_review_fb < "$RDIR/gaps.md"
   else
     # Fallback: claude did not produce the compact file — trim the full review.
     {
       printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
       grep -v '^VERDICT:' "$REVIEW_OUT" 2>/dev/null | tail -40
-    } > "$REVIEW_FB"
+    } | put_review_fb
   fi
   append_review_pointer "$REVIEW_OUT"
 done
