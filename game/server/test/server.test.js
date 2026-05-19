@@ -14,6 +14,9 @@ import {
 	startDungeonRun,
 	recordEnemyDefeated,
 	clampObjectiveProgress,
+	buildRunSummary,
+	checkRunTerminalState,
+	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
 	MAGIC_STONES_REGEN_PER_TICK,
@@ -768,6 +771,209 @@ describe('run state', () => {
 			clampObjectiveProgress(run);
 
 			expect(run.objective.defeatedEnemies).toBe(5);
+		});
+	});
+
+	describe('buildRunSummary(status)', () => {
+		beforeEach(() => {
+			resetState();
+			delete gameState.run;
+		});
+
+		it('returns null when gameState.run is undefined', () => {
+			expect(buildRunSummary('victory')).toBeNull();
+		});
+
+		it('returns an object with all required fields', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 80, currency: 15 });
+			recordEnemyDefeated(1);
+
+			const summary = buildRunSummary('victory');
+
+			expect(summary).toHaveProperty('runId');
+			expect(summary).toHaveProperty('status', 'victory');
+			expect(summary).toHaveProperty('durationMs');
+			expect(typeof summary.durationMs).toBe('number');
+			expect(summary).toHaveProperty('objective');
+			expect(summary.objective.type).toBe('defeat_enemies');
+			expect(summary).toHaveProperty('players');
+			expect(summary.players.length).toBe(1);
+			expect(summary.players[0]).toHaveProperty('id', 'p1');
+			expect(summary.players[0]).toHaveProperty('hp', 80);
+			expect(summary.players[0]).toHaveProperty('dead', false);
+			expect(summary.players[0]).toHaveProperty('currency', 15);
+			expect(summary).toHaveProperty('defeatedEnemies', 1);
+			expect(summary).toHaveProperty('currencyCollected', 15);
+		});
+
+		it('sums currencyCollected from multiple players', () => {
+			startDungeonRun();
+			addPlayer('p1', { currency: 10 });
+			addPlayer('p2', { currency: 25 });
+
+			const summary = buildRunSummary('failed');
+
+			expect(summary.currencyCollected).toBe(35);
+		});
+
+		it('handles zero currency', () => {
+			startDungeonRun();
+			addPlayer('p1', { currency: 0 });
+
+			const summary = buildRunSummary('victory');
+
+			expect(summary.currencyCollected).toBe(0);
+		});
+	});
+
+	describe('checkRunTerminalState()', () => {
+		beforeEach(() => {
+			resetState();
+			delete gameState.run;
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('is a no-op when gameState.run is undefined', () => {
+			expect(() => checkRunTerminalState()).not.toThrow();
+		});
+
+		it('is a no-op when run.status is not playing', () => {
+			startDungeonRun();
+			gameState.run.status = 'victory';
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('victory');
+		});
+
+		it('sets status to victory when all enemies are defeated', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1');
+
+			recordEnemyDefeated(1);
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('victory');
+		});
+
+		it('sets status to failed when all players are dead', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 0, dead: true });
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('failed');
+		});
+
+		it('does not set failed when at least one player is alive', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 0, dead: true });
+			addPlayer('p2', { hp: 50, dead: false });
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('playing');
+		});
+
+		it('does not set failed when there are no players', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('playing');
+		});
+
+		it('is idempotent — calling twice does not double-emit', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1');
+			recordEnemyDefeated(1);
+
+			// Track io.emit calls
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			checkRunTerminalState();
+			checkRunTerminalState(); // second call — should be a no-op
+
+			serverIo.emit = originalEmit;
+
+			expect(gameState.run.status).toBe('victory');
+			// Only one emit should have happened
+			const victoryEmits = emitCalls.filter(c => c.event === 'runComplete');
+			expect(victoryEmits.length).toBe(1);
+		});
+
+		it('emits runComplete with correct payload structure on victory', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 80, currency: 10 });
+			recordEnemyDefeated(1);
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			checkRunTerminalState();
+
+			serverIo.emit = originalEmit;
+
+			const emit = emitCalls.find(c => c.event === 'runComplete');
+			expect(emit).toBeDefined();
+			expect(emit.data).toHaveProperty('runId');
+			expect(emit.data.status).toBe('victory');
+			expect(emit.data).toHaveProperty('durationMs');
+			expect(emit.data).toHaveProperty('objective');
+			expect(emit.data).toHaveProperty('players');
+			expect(emit.data).toHaveProperty('defeatedEnemies');
+			expect(emit.data).toHaveProperty('currencyCollected');
+		});
+
+		it('emits runFailed with correct payload structure on failure', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 0, dead: true, currency: 5 });
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			checkRunTerminalState();
+
+			serverIo.emit = originalEmit;
+
+			const emit = emitCalls.find(c => c.event === 'runFailed');
+			expect(emit).toBeDefined();
+			expect(emit.data.status).toBe('failed');
+			expect(emit.data.currencyCollected).toBe(5);
 		});
 	});
 });

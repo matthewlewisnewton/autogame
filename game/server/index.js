@@ -419,6 +419,56 @@ function recordEnemyDefeated(count = 1) {
   clampObjectiveProgress(gameState.run);
 }
 
+/**
+ * Build a run summary object from the current game state.
+ */
+function buildRunSummary(status) {
+  const run = gameState.run;
+  if (!run) return null;
+
+  const players = Object.entries(gameState.players).map(([id, p]) => ({
+    id,
+    hp: p.hp,
+    dead: p.dead,
+    currency: p.currency
+  }));
+
+  return {
+    runId: run.id,
+    status,
+    durationMs: Date.now() - run.startedAt,
+    objective: { ...run.objective },
+    players,
+    defeatedEnemies: run.objective.defeatedEnemies,
+    currencyCollected: players.reduce((sum, p) => sum + p.currency, 0)
+  };
+}
+
+/**
+ * Check whether the current run has reached a terminal state.
+ * Emits exactly one terminal event per run (guarded by run.status === 'playing').
+ */
+function checkRunTerminalState() {
+  if (!gameState.run || gameState.run.status !== 'playing') return;
+
+  // Victory condition: all enemies defeated
+  if (gameState.run.objective.defeatedEnemies >= gameState.run.objective.totalEnemies) {
+    gameState.run.status = 'victory';
+    const summary = buildRunSummary('victory');
+    io.emit('runComplete', summary);
+    return;
+  }
+
+  // Failure condition: every connected active player is dead
+  const activePlayers = Object.values(gameState.players);
+  if (activePlayers.length > 0 && activePlayers.every(p => p.hp <= 0)) {
+    gameState.run.status = 'failed';
+    const summary = buildRunSummary('failed');
+    io.emit('runFailed', summary);
+    return;
+  }
+}
+
 // Helper: check if all players are ready and transition if so
 function checkAllReady() {
   const all = Object.values(gameState.players);
@@ -438,6 +488,8 @@ function damagePlayer(playerId, amount) {
 
   if (player.hp <= 0 && !player.dead) {
     player.dead = true;
+
+    checkRunTerminalState();
 
     setTimeout(() => {
       const p = gameState.players[playerId];
@@ -651,7 +703,10 @@ function updateMinions() {
   const defeatedMinion = gameState.enemies.length;
   gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
   const defeatedMinionCount = defeatedMinion - gameState.enemies.length;
-  if (defeatedMinionCount > 0) recordEnemyDefeated(defeatedMinionCount);
+  if (defeatedMinionCount > 0) {
+    recordEnemyDefeated(defeatedMinionCount);
+    checkRunTerminalState();
+  }
 
   // Decrement TTL and remove expired/dead minions
   for (const minion of gameState.minions) {
@@ -733,6 +788,8 @@ function startServer(port) {
   broadcastLobbyUpdate();
 
   socket.on('move', (data) => {
+    if (gameState.run && gameState.run.status !== 'playing') return;
+
     const player = gameState.players[socket.id];
 
     if (player && player.dead) return;
@@ -759,6 +816,8 @@ function startServer(port) {
   });
 
   socket.on('useCard', (data) => {
+    if (gameState.run && gameState.run.status !== 'playing') return;
+
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
     // (1) Validate slot index
@@ -812,7 +871,10 @@ function startServer(port) {
       const defeatedWeapon = gameState.enemies.length;
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
       const defeatedWeaponCount = defeatedWeapon - gameState.enemies.length;
-      if (defeatedWeaponCount > 0) recordEnemyDefeated(defeatedWeaponCount);
+      if (defeatedWeaponCount > 0) {
+        recordEnemyDefeated(defeatedWeaponCount);
+        checkRunTerminalState();
+      }
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -865,7 +927,10 @@ function startServer(port) {
       const defeatedSummon = gameState.enemies.length;
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
       const defeatedSummonCount = defeatedSummon - gameState.enemies.length;
-      if (defeatedSummonCount > 0) recordEnemyDefeated(defeatedSummonCount);
+      if (defeatedSummonCount > 0) {
+        recordEnemyDefeated(defeatedSummonCount);
+        checkRunTerminalState();
+      }
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -965,6 +1030,10 @@ function startServer(port) {
     gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.id);
     io.emit('playerDisconnected', socket.id);
 
+    if (gameState.gamePhase === 'playing') {
+      checkRunTerminalState();
+    }
+
     if (gameState.gamePhase === 'lobby') {
       broadcastLobbyUpdate();
     }
@@ -1022,6 +1091,8 @@ if (typeof module !== 'undefined' && module.exports) {
     startDungeonRun,
     recordEnemyDefeated,
     clampObjectiveProgress,
+    buildRunSummary,
+    checkRunTerminalState,
     // Server objects for integration tests
     server,
     io,
