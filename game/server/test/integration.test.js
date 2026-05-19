@@ -446,3 +446,101 @@ describe('Socket Integration — Lobby / playerReady Flow', () => {
 		expect(Array.isArray(update.players)).toBe(true);
 	});
 });
+
+describe('dungeon run objective', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('both players receive state containing run object with correct initial values after game starts', async () => {
+		// Wait for startGame on both sockets
+		const startGamePromise1 = waitForEvent(socket1, 'startGame');
+		const startGamePromise2 = waitForEvent(socket2, 'startGame');
+
+		// Both players ready up
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+
+		// Wait for startGame on both sockets
+		await Promise.all([startGamePromise1, startGamePromise2]);
+
+		// Now wait for the next stateUpdate on both sockets — should contain the run object
+		const stateUpdatePromise1 = waitForEvent(socket1, 'stateUpdate');
+		const stateUpdatePromise2 = waitForEvent(socket2, 'stateUpdate');
+
+		const [stateUpdate1, stateUpdate2] = await Promise.all([stateUpdatePromise1, stateUpdatePromise2]);
+
+		// Assert socket1's payload
+		expect(stateUpdate1).toHaveProperty('run');
+		expect(stateUpdate1.run).toHaveProperty('status', 'playing');
+		expect(stateUpdate1.run).toHaveProperty('objective');
+		expect(stateUpdate1.run.objective).toHaveProperty('type', 'defeat_enemies');
+		expect(stateUpdate1.run.objective).toHaveProperty('defeatedEnemies', 0);
+
+		// Assert socket2's payload
+		expect(stateUpdate2).toHaveProperty('run');
+		expect(stateUpdate2.run).toHaveProperty('status', 'playing');
+		expect(stateUpdate2.run).toHaveProperty('objective');
+		expect(stateUpdate2.run.objective).toHaveProperty('type', 'defeat_enemies');
+		expect(stateUpdate2.run.objective).toHaveProperty('defeatedEnemies', 0);
+	});
+
+	it('killing an enemy through useCard advances run.objective.defeatedEnemies by 1', async () => {
+		// Use debug scenario to get into playing phase with enemies
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+
+		// Wait for stateUpdate to arrive after debug scenario
+		await waitForEvent(socket1, 'stateUpdate');
+
+		// Verify run exists and has enemies
+		expect(gameState.run).toBeDefined();
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+
+		const defeatedBefore = gameState.run.objective.defeatedEnemies;
+
+		// Place a weapon-range enemy in front of the player so useCard kills it
+		const player = gameState.players[socket1.id];
+		gameState.enemies.push({
+			id: 'e_kill',
+			x: player.x + 3, // within ATTACK_RANGE, in +X direction (rotation = 0)
+			z: player.z,
+			hp: 10, // iron_sword deals 15 damage, so this dies
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		});
+
+		// Wait for stateUpdate after the enemy kill
+		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
+
+		socket1.emit('useCard', { cardId: 'iron_sword', slotIndex: 0 });
+
+		// Wait for the stateUpdate broadcast confirming the kill
+		const stateUpdate = await Promise.race([
+			stateUpdatePromise,
+			new Promise((_, r) => setTimeout(() => r(null), 3000))
+		]);
+
+		// Verify the broadcasted state contains the updated objective
+		if (stateUpdate && stateUpdate.run) {
+			expect(stateUpdate.run.objective.defeatedEnemies).toBe(defeatedBefore + 1);
+		}
+
+		// Also verify server gameState directly
+		expect(gameState.run.objective.defeatedEnemies).toBe(defeatedBefore + 1);
+	});
+});
