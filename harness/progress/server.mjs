@@ -30,6 +30,12 @@ let nextId = 1;
 let lastGitHead = '';
 let lastGpuDigest = '';
 
+const LOCAL_POST_ADDRESSES = new Set([
+  '127.0.0.1',
+  '::1',
+  '::ffff:127.0.0.1',
+]);
+
 const WATCH_ROOTS = [
   'LOOPLOG.txt',
   'LOGBOOK.md',
@@ -49,6 +55,11 @@ function argValue(name) {
 
 function nowIso() {
   return new Date().toISOString();
+}
+
+function isLocalRequest(req) {
+  const address = req.socket.remoteAddress || '';
+  return LOCAL_POST_ADDRESSES.has(address);
 }
 
 function actorForPath(path) {
@@ -274,6 +285,7 @@ function scanExplicitEvents(rel, text) {
 function normalizeExplicitEvent(event, source, raw = '') {
   const kind = event.type || event.kind || 'explicit';
   const payload = event.payload || event;
+  const label = payload.label || payload.ticket || '';
   const normalized = {
     kind,
     actor: event.actor || 'harness',
@@ -302,6 +314,43 @@ function normalizeExplicitEvent(event, source, raw = '') {
     normalized.actor = 'git';
     normalized.title = 'Commit failed';
     normalized.text = `${payload.message || 'Commit failed'} (${payload.reason || 'unknown'})`;
+  } else if (kind === 'capture_metrics') {
+    normalized.kind = 'qa_scene';
+    normalized.actor = 'qa';
+    normalized.title = payload.ok === false ? 'QA scene failed' : 'QA scene captured';
+    normalized.text = payload.source
+      ? `${label || 'capture'} (${payload.source})`
+      : (label || `${Array.isArray(payload.screenshots) ? payload.screenshots.length : 0} screenshot(s) captured`);
+    normalized.source = payload.artifacts ? `${payload.artifacts}/metrics.json` : source;
+  } else if (kind === 'capture_start') {
+    normalized.actor = 'qa';
+    normalized.title = 'Capturing screenshots';
+    normalized.text = label || payload.artifacts || 'capture started';
+  } else if (kind === 'capture_complete') {
+    normalized.actor = 'qa';
+    normalized.title = 'Screenshot capture complete';
+    normalized.text = [label, payload.status].filter(Boolean).join(' ');
+  } else if (kind === 'agent_start') {
+    normalized.actor = payload.agent || 'agent';
+    normalized.title = `${payload.agent || 'agent'} started`;
+    normalized.text = payload.outfile || '';
+  } else if (kind === 'agent_finish') {
+    normalized.actor = payload.agent || 'agent';
+    normalized.title = `${payload.agent || 'agent'} finished`;
+    normalized.text = [payload.status, payload.reason].filter(Boolean).join(' ');
+  } else if (kind === 'qa_verified' || kind === 'qa_verdict') {
+    normalized.actor = 'qa';
+    normalized.title = kind === 'qa_verdict' ? `QA ${payload.verdict || 'verdict'}` : 'QA verified';
+    normalized.text = [label, payload.agent, payload.mode].filter(Boolean).join(' ');
+  } else if (kind === 'subtask_start' || kind === 'iteration_start') {
+    normalized.title = kind === 'subtask_start' ? 'Subtask started' : 'Iteration started';
+    normalized.text = [label, payload.qaMode ? `QA: ${payload.qaMode}` : '', payload.artifacts].filter(Boolean).join(' ');
+  } else if (kind === 'subtask_passed' || kind === 'subtask_marked_passed') {
+    normalized.title = 'Subtask passed';
+    normalized.text = label || [payload.ticket, payload.subtask].filter(Boolean).join('/');
+  } else if (kind === 'game_start' || kind === 'game_stop') {
+    normalized.title = kind === 'game_start' ? 'Game started' : 'Game stopped';
+    normalized.text = payload.url || '';
   }
 
   normalized.text = normalized.text.slice(0, MAX_LINE);
@@ -480,10 +529,13 @@ function contentType(path) {
 
 function serveFile(res, path) {
   try {
+    const body = readFileSync(path);
     res.writeHead(200, { 'content-type': contentType(path) });
-    res.end(readFileSync(path));
+    res.end(body);
   } catch {
-    res.writeHead(404);
+    if (!res.headersSent) {
+      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
+    }
     res.end('not found');
   }
 }
@@ -491,6 +543,12 @@ function serveFile(res, path) {
 const server = createServer((req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   if (url.pathname === '/events' && req.method === 'POST') {
+    if (!isLocalRequest(req)) {
+      res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
+      res.end('POST /events is only accepted from localhost');
+      return;
+    }
+
     let body = '';
     req.on('data', (chunk) => {
       body += chunk;
