@@ -696,3 +696,26 @@ Criterion met.
 None. All four acceptance criteria are met; the captured run is clean; the full
 test suite (server 219 + client 110) passes.
 
+
+## v0.31 — Cleanup nits from 039-cleanup-public-state-and-shared-data-nits  (2026-05-19 14:55:01)
+
+field — see criterion 3 — and the client mesh logic has no Jest coverage that
+would regress.)
+
+### 3. Snapshot key matches the server-internal name
+
+`game/server/index.js:893` now emits `dungeonBounds: gameState.dungeonBounds`,
+ending the public/internal name divergence. The corresponding test
+(`game/server/test/server.test.js:1660, 1678-1679`) is updated to expect
+`snapshot.dungeonBounds` and to assert `snapshot.bounds` is undefined; the
+now-redundant "does not include dungeonBounds on top level" assertion was
+removed. The client never read either field (grep over `game/client` returns
+no snapshot bounds reads), so this is safe to change. **Criterion met.**
+
+## Remaining gaps
+
+None. All three sub-tickets implement their acceptance criteria, the
+consolidation pattern is consistent (`disposeOne` is the single source of
+truth for "remove+dispose+delete"), and the captured run shows the game
+loading and rendering correctly with no errors.
+
