@@ -374,3 +374,26 @@ None blocking. The acceptance criteria are fully and robustly met, the test
 suite is comprehensive and green, and the game runs cleanly. Minor polish
 items are recorded in `nits.md`.
 
+
+## v0.17 — Dungeon Run Objective Progress  (2026-05-19 00:25:09)
+
+  `run` is included in every `stateUpdate`.
+- **Client renders HUD while `gamePhase === 'playing'`** — Met.
+  `updateObjectiveHud()` (main.js:110) shows `#objective-hud` only when phase is
+  `playing` and `run.objective` exists, otherwise hides it.
+- **HUD shows label + `Defeated X / Y`** — Met. Confirmed in screenshots
+  (`Defeat all enemies` / `Defeated 0 / 5`) and probe `bodyText`.
+- **HUD updates from server state, not local mesh counts** — Met. HUD reads
+  `gameState.run.objective`; refreshed from `init`, `stateUpdate`, and
+  `startGame` handlers.
+- **Lobby ready flow still starts the game** — Met. `checkAllReady()` unchanged
+  except for the added `startDungeonRun()` call; integration tests for ready
+  flow still pass.
+- **Existing combat/card/loot still works** — Met. Enemy-removal logic
+  unchanged; defeat accounting is purely additive. Loot spawn loop untouched.
+  Full suite (combat, cards, loot) green.
+
+## Remaining gaps
+None blocking. `resetGameState()` correctly clears `run`, so a fresh lobby
+cycle starts a clean run. Minor non-blocking polish noted in `nits.md`.
+
