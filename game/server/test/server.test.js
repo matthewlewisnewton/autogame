@@ -19,6 +19,7 @@ import {
 	checkRunTerminalState,
 	resetTransientRunState,
 	returnPlayersToLobby,
+	createPlayerProgress,
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
@@ -1123,6 +1124,47 @@ describe('run state', () => {
 
 			const lobbyUpdateCalls = emitCalls.filter(c => c.event === 'lobbyUpdate');
 			expect(lobbyUpdateCalls.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe('createPlayerProgress()', () => {
+		it('returns currency of 0', () => {
+			const progress = createPlayerProgress();
+			expect(progress.currency).toBe(0);
+		});
+
+		it('returns runRewards of null', () => {
+			const progress = createPlayerProgress();
+			expect(progress.runRewards).toBeNull();
+		});
+
+		it('populates ownedCards with the 4 unique starting deck card ids at count 1', () => {
+			const progress = createPlayerProgress();
+			expect(progress.ownedCards).toEqual({
+				iron_sword: 1,
+				flame_blade: 1,
+				battle_familiar: 1,
+				dungeon_drake: 1
+			});
+		});
+
+		it('has exactly 4 owned card entries', () => {
+			const progress = createPlayerProgress();
+			expect(Object.keys(progress.ownedCards).length).toBe(4);
+		});
+
+		it('each owned card has a count of 1', () => {
+			const progress = createPlayerProgress();
+			for (const [cardId, count] of Object.entries(progress.ownedCards)) {
+				expect(count).toBe(1);
+			}
+		});
+
+		it('returns independent objects on each call', () => {
+			const a = createPlayerProgress();
+			const b = createPlayerProgress();
+			a.ownedCards.iron_sword = 99;
+			expect(b.ownedCards.iron_sword).toBe(1);
 		});
 	});
 });

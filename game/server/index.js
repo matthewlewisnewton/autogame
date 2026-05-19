@@ -352,6 +352,37 @@ const CARD_DEFS = {
   dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1 },
 };
 
+// Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
+// Duplicates are intentional (the deck has more than 4 cards); unique ids are
+// derived at runtime for the player's ownedCards inventory.
+const STARTING_DECK_IDS = [
+  'iron_sword',
+  'flame_blade',
+  'battle_familiar',
+  'dungeon_drake',
+  'iron_sword',
+  'iron_sword',
+  'battle_familiar',
+  'flame_blade'
+];
+
+/**
+ * Build a fresh player progress object.
+ * Returns { currency, ownedCards, runRewards }.
+ * `ownedCards` is a map of unique card id → count, seeded from the starting deck.
+ */
+function createPlayerProgress() {
+  const ownedCards = {};
+  for (const cardId of [...new Set(STARTING_DECK_IDS)]) {
+    ownedCards[cardId] = 1;
+  }
+  return {
+    currency: 0,
+    ownedCards,
+    runRewards: null
+  };
+}
+
 // Summon parameters
 const SUMMON_RADIUS = 10; // units — radial AoE
 
@@ -812,6 +843,7 @@ function startServer(port) {
   io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
     const spawn = firstRoomPosition();
+    const progress = createPlayerProgress();
 
     // Initialize player
     gameState.players[socket.id] = {
@@ -825,7 +857,9 @@ function startServer(port) {
       lastActivity: Date.now(),
       ready: false,
       magicStones: MAX_MAGIC_STONES,
-      currency: 0,
+      currency: progress.currency,
+      ownedCards: progress.ownedCards,
+      runRewards: progress.runRewards,
       debugScenario: null,
       pendingSummons: new Set()
     };
@@ -1146,6 +1180,7 @@ if (typeof module !== 'undefined' && module.exports) {
     checkRunTerminalState,
     resetTransientRunState,
     returnPlayersToLobby,
+    createPlayerProgress,
     // Server objects for integration tests
     server,
     io,
