@@ -34,6 +34,7 @@ const debugScenario = new URLSearchParams(window.location.search).get('debugScen
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let debugScenarioRequested = false;
 let debugScenarioResult = null;
+let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
 // Socket setup
 const socket = io();
@@ -138,23 +139,37 @@ function updateObjectiveHud() {
 }
 
 function renderHand() {
-  for (let i = 0; i < 4; i++) {
-    const slot = cardSlots[i];
-    const card = hand[i];
+	const playerMs = (gameState && myId && gameState.players[myId])
+		? gameState.players[myId].magicStones
+		: 0;
 
-    if (card) {
-      const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
-      slot.style.setProperty('--slot-color', style.color);
-      slot.innerHTML = `
-        <span class="card-icon">${style.icon}</span>
-        <span class="card-name">${card.name}</span>
-        <span class="card-charges">${card.remainingCharges}/${card.charges}</span>
-      `;
-    } else {
-      slot.style.removeProperty('--slot-color');
-      slot.innerHTML = '<span class="card-name">&mdash;</span>';
-    }
-  }
+	for (let i = 0; i < 4; i++) {
+		const slot = cardSlots[i];
+		const card = hand[i];
+
+		if (card) {
+			const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
+			slot.style.setProperty('--slot-color', style.color);
+			slot.innerHTML = `
+				<span class="card-icon">${style.icon}</span>
+				<span class="card-name">${card.name}</span>
+				<span class="card-charges">${card.remainingCharges}/${card.charges}</span>
+			`;
+			slot.classList.remove('empty');
+
+			// Sync .no-ms: keep if summon card and player can't afford it; otherwise remove
+			if (summonCardIds.has(card.id) && card.magicStoneCost != null && playerMs < card.magicStoneCost) {
+				slot.classList.add('no-ms');
+			} else {
+				slot.classList.remove('no-ms');
+			}
+		} else {
+			slot.style.removeProperty('--slot-color');
+			slot.innerHTML = '<span class="card-name">&mdash;</span>';
+			slot.classList.add('empty');
+			slot.classList.remove('no-ms');
+		}
+	}
 }
 
 function initHand() {
@@ -276,6 +291,9 @@ function useCard(slotIndex) {
   if (slotIndex < 0 || slotIndex > 3) return;
   const card = hand[slotIndex];
   if (!card) return; // empty slot — no-op
+
+  // Track which slot was used so cardError can target the right slot
+  lastUsedSlot = slotIndex;
 
   // (1) Emit useCard — fires on every call, including during cooldown
   socket.emit('useCard', { slotIndex, cardId: card.id });
@@ -468,6 +486,11 @@ socket.on('stateUpdate', (state) => {
 
   // Update objective HUD
   updateObjectiveHud();
+
+  // Re-render hand to sync .no-ms / .empty classes with current Magic Stones
+  if (state.gamePhase === 'playing') {
+    renderHand();
+  }
 });
 
 socket.on('heartbeat_ack', (data) => {
@@ -992,6 +1015,15 @@ socket.on('cardUsed', (data) => {
 socket.on('cardError', (data) => {
   if (!data || !data.reason) return;
   showCardErrorToast(data.reason);
+
+  // Apply .no-ms visual to the slot that was just used
+  if (data.reason === 'Not enough Magic Stones' && lastUsedSlot >= 0) {
+    const slot = cardSlots[lastUsedSlot];
+    if (slot) {
+      slot.classList.add('no-ms');
+    }
+  }
+  lastUsedSlot = -1;
 });
 
 socket.on('deckUpdate', (data) => {
@@ -1631,6 +1663,7 @@ function initScene() {
 // Expose for later invocation (sub-ticket 03)
 window.initScene = initScene;
 window.refillSlot = refillSlot;
+window.renderHand = renderHand;
 window.renderDeckEditor = renderDeckEditor;
 window.flashMesh = flashMesh;
 window.spawnDamageNumber = spawnDamageNumber;
@@ -1639,6 +1672,7 @@ window.markLootCollected = markLootCollected;
 window.activeEffects = () => activeEffects;
 window.__setScene = (s) => { window.___test_scene = s; }; // test-only: override scene for spawnHitSpark
 window.___test_scene = undefined;
+window.__setGameState = (gs, id) => { gameState = gs; myId = id; }; // test-only: set gameState + myId
 window.enemyHealthBars = enemyHealthBars;
 window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
