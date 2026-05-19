@@ -89,7 +89,7 @@ const SOUND_CONFIG = {
  * @param {string} type - one of 'card', 'enemyHit', 'playerDamage', 'loot', 'victory', 'failure'
  */
 const _playSoundCallLog = []; // test-only: tracks playSound(type) calls
-let _soundLogEnabled = typeof window !== 'undefined' && !!window.__soundLogEnabled; // test-only flag — disabled in production
+const _soundLogEnabled = typeof window !== 'undefined' && !!window.__soundLogEnabled; // test-only flag — disabled in production
 function playSound(type) {
   if (_soundLogEnabled) _playSoundCallLog.push(type);
   try {
