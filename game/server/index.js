@@ -368,7 +368,7 @@ const STARTING_DECK_IDS = [
 
 /**
  * Build a fresh player progress object.
- * Returns { currency, ownedCards, runRewards }.
+ * Returns { currency, ownedCards, runRewards, currencyEarnedThisRun }.
  * `ownedCards` is a map of unique card id → count, seeded from the starting deck.
  */
 function createPlayerProgress() {
@@ -379,7 +379,8 @@ function createPlayerProgress() {
   return {
     currency: 0,
     ownedCards,
-    runRewards: null
+    runRewards: null,
+    currencyEarnedThisRun: 0
   };
 }
 
@@ -431,6 +432,11 @@ function createRunState() {
  */
 function startDungeonRun() {
   gameState.run = createRunState();
+  // Reset per-run tracking for all players
+  for (const p of Object.values(gameState.players)) {
+    p.currencyEarnedThisRun = 0;
+    p.runRewards = null;
+  }
 }
 
 /**
@@ -512,16 +518,19 @@ function grantCard(player, cardId) {
 /**
  * Grant run-end rewards to a player based on the run summary status.
  *
- * Victory  →  +10 currency, one card reward (rotation), summary saved.
- * Failure  →  no bonus currency, no card reward; existing currency kept.
+ * Victory  →  +10 currency bonus, one card reward (rotation), summary saved.
+ *            `player.runRewards` includes bonus + loot-pickup currency + card.
+ * Failure  →  no bonus currency, no card reward; summary shows only loot currency.
  */
 function grantRunRewards(playerId, summary) {
   const player = gameState.players[playerId];
   if (!player) return;
 
+  const lootCurrency = player.currencyEarnedThisRun || 0;
+
   if (summary.status === 'victory') {
-    // Currency bonus
-    player.currency += 10;
+    const currencyBonus = 10;
+    player.currency += currencyBonus;
 
     // Pick a card from the rotation
     if (!gameState._victoryCounters) gameState._victoryCounters = {};
@@ -529,38 +538,38 @@ function grantRunRewards(playerId, summary) {
     const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
     gameState._victoryCounters[playerId] = idx + 1;
 
+    const cards = [];
     if (grantCard(player, cardId)) {
       const cardDef = CARD_DEFS[cardId];
-      player.runRewards = {
-        currency: 10,
-        cards: [{ id: cardId, name: cardDef.name, count: 1 }]
-      };
+      cards.push({ id: cardId, name: cardDef.name, count: 1 });
     }
+
+    player.runRewards = {
+      currency: currencyBonus + lootCurrency,
+      cards
+    };
+  } else {
+    // Failure: no bonus, no card — but still show any loot currency earned
+    player.runRewards = {
+      currency: lootCurrency,
+      cards: []
+    };
   }
-  // On failure: do nothing — player keeps whatever currency they already have.
 }
 
 /**
  * Build a structured reward summary for a player.
- * Returns { currency: N, cards: [{ id, name, count }] }.
+ * Returns the run-only rewards object saved by grantRunRewards(),
+ * or an empty default `{ currency: 0, cards: [] }` if none exist.
+ *
+ * This is intentionally NOT the player's total balance or full inventory —
+ * it reports only what was earned during the current run (bonus + loot + card).
  */
 function buildPlayerRewardSummary(playerId) {
   const player = gameState.players[playerId];
-  if (!player) return { currency: 0, cards: [] };
+  if (!player || !player.runRewards) return { currency: 0, cards: [] };
 
-  const cards = [];
-  if (player.ownedCards) {
-    for (const [cardId, count] of Object.entries(player.ownedCards)) {
-      const def = CARD_DEFS[cardId];
-      cards.push({
-        id: cardId,
-        name: def ? def.name : cardId,
-        count
-      });
-    }
-  }
-
-  return { currency: player.currency, cards };
+  return player.runRewards;
 }
 
 /**
@@ -637,6 +646,8 @@ function returnPlayersToLobby() {
     player.z = spawn.z;
     player.currency = preservedCurrency;
     player.inventory = preservedInventory;
+    player.currencyEarnedThisRun = 0;
+    player.runRewards = null;
   }
 
   // 4. Broadcast state to all clients
@@ -960,6 +971,7 @@ function startServer(port) {
       currency: progress.currency,
       ownedCards: progress.ownedCards,
       runRewards: progress.runRewards,
+      currencyEarnedThisRun: progress.currencyEarnedThisRun,
       debugScenario: null,
       pendingSummons: new Set()
     };
@@ -1205,6 +1217,7 @@ function startServer(port) {
     if (dist > 3) return; // anti-cheat: too far
 
     player.currency += loot.value;
+    player.currencyEarnedThisRun += loot.value;
     gameState.loot.splice(lootIdx, 1);
 
     console.log(`[loot] picked up id=${loot.id} value=${loot.value} by ${socket.id} (currency=${player.currency})`);

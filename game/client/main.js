@@ -26,6 +26,8 @@ const summaryStatusEl = document.getElementById('summary-status');
 const summaryDurationEl = document.getElementById('summary-duration');
 const summaryEnemiesEl = document.getElementById('summary-enemies');
 const summaryCurrencyEl = document.getElementById('summary-currency');
+const summaryRewardsCurrencyEl = document.getElementById('summary-rewards-currency');
+const summaryRewardsCardsEl = document.getElementById('summary-rewards-cards');
 const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 const cardSlots = document.querySelectorAll('.card-slot');
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
@@ -694,6 +696,29 @@ function showRunSummary(data) {
   summaryDurationEl.textContent = `Duration: ${formatDuration(data.durationMs || 0)}`;
   summaryEnemiesEl.textContent = `Enemies defeated: ${data.defeatedEnemies || 0}`;
   summaryCurrencyEl.textContent = `Currency collected: ${data.currencyCollected || 0}`;
+
+  // Extract per-player rewards from the payload
+  const me = data.players && data.players.find(p => p.id === myId);
+  const rewards = me && me.rewards;
+
+  if (rewards) {
+    const currencyBonus = rewards.currency || 0;
+    summaryRewardsCurrencyEl.textContent = `+${currencyBonus} gold earned`;
+
+    if (rewards.cards && rewards.cards.length > 0) {
+      const cardLines = rewards.cards.map(c => {
+        const count = c.count > 1 ? ` ×${c.count}` : '';
+        return `${c.name}${count}`;
+      });
+      summaryRewardsCardsEl.textContent = cardLines.join('\n');
+    } else {
+      summaryRewardsCardsEl.textContent = 'No card rewards';
+    }
+  } else {
+    summaryRewardsCurrencyEl.textContent = '';
+    summaryRewardsCardsEl.textContent = '';
+  }
+
   runSummaryOverlay.style.display = 'flex';
 }
 
