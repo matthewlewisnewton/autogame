@@ -530,7 +530,10 @@ function updateMinions() {
     // No enemy in range — minion remains stationary (does not wander)
   }
 
-  // Remove dead enemies killed by minion attacks
+  // Spawn loot for dead enemies killed by minion attacks
+  for (const e of gameState.enemies) {
+    if (e.hp <= 0) spawnLoot(e.x, e.z);
+  }
   gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
 
   // Decrement TTL and remove expired/dead minions
@@ -652,7 +655,10 @@ io.on('connection', (socket) => {
         hits.push({ enemyId: enemy.id, hp: enemy.hp });
       }
 
-      // Remove dead enemies
+      // Spawn loot for dead enemies
+      for (const e of gameState.enemies) {
+        if (e.hp <= 0) spawnLoot(e.x, e.z);
+      }
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
 
       // Broadcast result to all clients
@@ -699,7 +705,10 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Remove dead enemies
+      // Spawn loot for dead enemies
+      for (const e of gameState.enemies) {
+        if (e.hp <= 0) spawnLoot(e.x, e.z);
+      }
       gameState.enemies = gameState.enemies.filter(e => e.hp > 0);
 
       // Broadcast result to all clients
