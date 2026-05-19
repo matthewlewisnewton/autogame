@@ -57,27 +57,11 @@ describe('generateLayout(seed)', () => {
     expect(Array.isArray(layout.passages)).toBe(true);
   });
 
-  it('is deterministic: same seed always produces identical output', () => {
+  it('is deterministic: same seed always produces identical output (deep equality)', () => {
     const a = generateLayout(777);
     const b = generateLayout(777);
 
-    expect(a.rooms.length).toBe(b.rooms.length);
-    expect(a.passages.length).toBe(b.passages.length);
-
-    for (let i = 0; i < a.rooms.length; i++) {
-      expect(a.rooms[i].x).toBe(b.rooms[i].x);
-      expect(a.rooms[i].z).toBe(b.rooms[i].z);
-      expect(a.rooms[i].width).toBe(b.rooms[i].width);
-      expect(a.rooms[i].depth).toBe(b.rooms[i].depth);
-      expect(a.rooms[i].walls.length).toBe(b.rooms[i].walls.length);
-    }
-
-    for (let i = 0; i < a.passages.length; i++) {
-      expect(a.passages[i].x1).toBe(b.passages[i].x1);
-      expect(a.passages[i].z1).toBe(b.passages[i].z1);
-      expect(a.passages[i].x2).toBe(b.passages[i].x2);
-      expect(a.passages[i].z2).toBe(b.passages[i].z2);
-    }
+    expect(a).toEqual(b);
   });
 
   it('produces at least 4 rooms', () => {
