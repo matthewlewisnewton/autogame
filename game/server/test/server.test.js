@@ -317,6 +317,69 @@ describe('updateEnemies()', () => {
 		// Should have picked a new target since distance < 0.5
 		expect(gameState.enemies[0].wanderTarget).not.toEqual(oldTarget);
 	});
+
+	it('skips all AI when run status is victory', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			x: DETECTION_RADIUS - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 10, z: 10 }
+		});
+		gameState.run = { status: 'victory' };
+
+		updateEnemies();
+
+		// Enemy should not have moved or changed state
+		expect(gameState.enemies[0].state).toBe('idle');
+		expect(gameState.enemies[0].x).toBe(DETECTION_RADIUS - 1);
+	});
+
+	it('skips all AI when run status is failed', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			x: DETECTION_RADIUS - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 10, z: 10 }
+		});
+		gameState.run = { status: 'failed' };
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].state).toBe('idle');
+		expect(gameState.enemies[0].x).toBe(DETECTION_RADIUS - 1);
+	});
+
+	it('resumes AI after run is cleared (returnToLobby + new run)', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			x: DETECTION_RADIUS - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 10, z: 10 }
+		});
+
+		// Set run to victory — AI should be skipped
+		gameState.run = { status: 'victory' };
+		updateEnemies();
+		expect(gameState.enemies[0].state).toBe('idle');
+
+		// Clear run (simulating returnToLobby) and start a new one
+		delete gameState.run;
+		startDungeonRun();
+		expect(gameState.run.status).toBe('playing');
+
+		// AI should resume — enemy should chase player
+		updateEnemies();
+		expect(gameState.enemies[0].state).toBe('chasing');
+	});
 });
 
 // ── Enemy attack state machine ──
@@ -592,6 +655,107 @@ describe('updateMinions()', () => {
 		expect(gameState.loot[0]).toHaveProperty('createdAt');
 
 		vi.restoreAllMocks();
+	});
+
+	it('skips minion AI when run status is victory', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: ATTACK_RANGE - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+		gameState.run = { status: 'victory' };
+
+		updateMinions();
+
+		// Enemy should NOT have taken damage
+		expect(gameState.enemies[0].hp).toBe(50);
+		// Minion should NOT have moved
+		expect(gameState.minions[0].x).toBe(0);
+	});
+
+	it('skips minion AI when run status is failed', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: ATTACK_RANGE - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+		gameState.run = { status: 'failed' };
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(50);
+		expect(gameState.minions[0].x).toBe(0);
+	});
+
+	it('still decrements minion TTL when run is terminal', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 10
+		});
+		gameState.run = { status: 'victory' };
+
+		updateMinions();
+
+		// TTL should still be decremented even though AI is skipped
+		expect(gameState.minions[0].ttl).toBeCloseTo(10 - 1 / TICK_RATE, 4);
+	});
+
+	it('resumes minion AI after run is cleared and a new run starts', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: ATTACK_RANGE - 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		// Set run to victory — AI should be skipped
+		gameState.run = { status: 'victory' };
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(50);
+
+		// Clear run and start a new one
+		delete gameState.run;
+		startDungeonRun();
+
+		// AI should resume — minion should attack enemy
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBe(45);
 	});
 });
 
