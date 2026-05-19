@@ -535,3 +535,26 @@ and `04` (B) show the same room/wall geometry from different viewpoints.
 None blocking. Minor nit (redundant `dungeonMeshes.length = 0` in `initScene`
 after `clearDungeon` already cleared it) recorded in `nits.md`.
 
+
+## v0.24 — Fix Active-Run Return-to-Lobby Reset  (2026-05-19 11:33:43)
+
+PASS. The two pre-existing happy-path tests were updated to set
+`gameState.run.status = 'victory'` before emitting `returnToLobby`, matching the
+new contract. `returnPlayersToLobby()` itself is unchanged and still preserves
+currency, inventory, ownedCards and runRewards.
+
+### Integration test reproducing the bug
+PASS. `game/server/test/integration.test.js` adds two tests: one asserting the
+run id, phase, status and enemy count are unchanged after an active-run
+`returnToLobby`, and one asserting a `runError` (`reason: 'Run still in
+progress'`) is emitted only to the requesting socket. Both exercise the exact
+bug described in the ticket.
+
+### `npm test -- --coverage.enabled=false` passes
+PASS. Ran locally: 5 files, 298 tests, all passing.
+
+## Remaining gaps
+
+None. The fix is small, correct, consistent with `design.md`, and does not
+regress the foundation. Acceptance criteria are fully met.
+

@@ -39,7 +39,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [028-lobby-deck-editor](tickets/028-lobby-deck-editor/)
 - [x] [029-combat-feedback-readability](tickets/029-combat-feedback-readability/)
 - [x] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
-- [ ] [037-fix-return-to-lobby-active-run-guard](tickets/037-fix-return-to-lobby-active-run-guard/)
+- [x] [037-fix-return-to-lobby-active-run-guard](tickets/037-fix-return-to-lobby-active-run-guard/)
 - [ ] [038-fix-card-cooldown-enforcement](tickets/038-fix-card-cooldown-enforcement/)
 - [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
