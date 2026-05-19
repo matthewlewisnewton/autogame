@@ -56,6 +56,44 @@ export function initHand(onRender) {
 }
 
 /**
+ * Initialise the hand from a server-provided deck.
+ *
+ * When `serverDeckIds` is a non-empty array, uses it as the source of truth.
+ * Otherwise falls back to `createStartingDeck()` (defensive guard).
+ *
+ * @param {string[] | null | undefined} serverDeckIds — array of card id strings
+ *   from the server, or null/undefined to trigger fallback.
+ * @param {Function} [onRender] — optional callback invoked after the hand
+ *   is built so the caller can update the DOM.
+ */
+export function initHandFromDeck(serverDeckIds, onRender) {
+	let deckIds;
+
+	if (Array.isArray(serverDeckIds) && serverDeckIds.length > 0) {
+		deckIds = serverDeckIds;
+	} else {
+		deckIds = createStartingDeck();
+	}
+
+	hand = [];
+	deck = [];
+	slotCooldowns = [false, false, false, false];
+
+	// Push all card IDs into deck (reversed so pop gives original order)
+	for (let i = deckIds.length - 1; i >= 0; i--) {
+		deck.push(deckIds[i]);
+	}
+
+	// Deal first 4 cards
+	for (let i = 0; i < 4; i++) {
+		const card = drawCard();
+		if (card) hand.push(card);
+	}
+
+	if (typeof onRender === 'function') onRender();
+}
+
+/**
  * Reset hand / deck / cooldowns to empty defaults.
  * Useful for tests that need a clean slate between cases.
  */

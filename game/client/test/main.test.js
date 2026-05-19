@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { wallAABB, resolveWallCollision } from '../collision.js';
-import { drawCard, initHand, resetHandState, hand, deck, slotCooldowns } from '../hand.js';
+import { drawCard, initHand, initHandFromDeck, resetHandState, hand, deck, slotCooldowns } from '../hand.js';
 
 // ── wallAABB ──
 
@@ -223,6 +223,76 @@ describe('initHand()', () => {
 		resetHandState();
 		// initHand with undefined should not throw
 		expect(() => initHand(undefined)).not.toThrow();
+	});
+});
+
+// ── initHandFromDeck ──
+
+describe('initHandFromDeck()', () => {
+	beforeEach(() => {
+		resetHandState();
+	});
+
+	it('produces a hand of 4 cards and a remaining deck from a known server deck', () => {
+		const serverDeck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake', 'iron_sword'];
+		initHandFromDeck(serverDeck, null);
+
+		expect(hand).toHaveLength(4);
+		expect(deck).toHaveLength(1);
+		expect(deck[0]).toBe('iron_sword');
+	});
+
+	it('deals cards in server deck order (first 4 become the hand)', () => {
+		const serverDeck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake', 'iron_sword'];
+		initHandFromDeck(serverDeck, null);
+
+		expect(hand[0].id).toBe('iron_sword');
+		expect(hand[1].id).toBe('flame_blade');
+		expect(hand[2].id).toBe('battle_familiar');
+		expect(hand[3].id).toBe('dungeon_drake');
+	});
+
+	it('falls back to createStartingDeck() when serverDeck is null', () => {
+		initHandFromDeck(null, null);
+
+		expect(hand).toHaveLength(4);
+		expect(hand.length + deck.length).toBe(8);
+	});
+
+	it('falls back to createStartingDeck() when serverDeck is undefined', () => {
+		initHandFromDeck(undefined, null);
+
+		expect(hand).toHaveLength(4);
+		expect(hand.length + deck.length).toBe(8);
+	});
+
+	it('falls back to createStartingDeck() when serverDeck is an empty array', () => {
+		initHandFromDeck([], null);
+
+		expect(hand).toHaveLength(4);
+		expect(hand.length + deck.length).toBe(8);
+	});
+
+	it('resets slotCooldowns to all false', () => {
+		slotCooldowns[0] = true;
+		slotCooldowns[2] = true;
+		initHandFromDeck(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'], null);
+
+		expect(slotCooldowns).toEqual([false, false, false, false]);
+	});
+
+	it('invokes the onRender callback if provided', () => {
+		resetHandState();
+		let callbackCalled = false;
+		initHandFromDeck(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'], () => { callbackCalled = true; });
+		expect(callbackCalled).toBe(true);
+	});
+
+	it('handles a deck with fewer than 4 cards gracefully', () => {
+		initHandFromDeck(['iron_sword', 'flame_blade'], null);
+
+		expect(hand).toHaveLength(2);
+		expect(deck).toHaveLength(0);
 	});
 });
 
