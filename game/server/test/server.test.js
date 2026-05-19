@@ -23,7 +23,10 @@ import {
 	grantCard,
 	grantRunRewards,
 	buildPlayerRewardSummary,
+	validateDeck,
+	canAddCardToDeck,
 	CARD_DEFS,
+	STARTING_DECK_IDS,
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
@@ -33,7 +36,9 @@ import {
 	TICK_RATE,
 	GRID_COLS,
 	GRID_ROWS,
-	CELL_SPACING
+	CELL_SPACING,
+	DECK_MIN_SIZE,
+	DECK_MAX_SIZE
 } from '../index.js';
 
 // ── Helpers ──
@@ -1322,5 +1327,117 @@ describe('run state', () => {
 			expect(summary.currency).toBe(0);
 			expect(summary.cards.length).toBe(0);
 		});
+	});
+});
+
+// ── Deck Validation ──
+
+describe('validateDeck(deck, ownedCards)', () => {
+	it('returns valid for a correct deck', () => {
+		const owned = { iron_sword: 3, flame_blade: 2, battle_familiar: 2, dungeon_drake: 1 };
+		const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+		const result = validateDeck(deck, owned);
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('returns valid when deck uses duplicate copies within ownership', () => {
+		const owned = { iron_sword: 3, flame_blade: 1 };
+		const deck = ['iron_sword', 'iron_sword', 'flame_blade', 'iron_sword'];
+		const result = validateDeck(deck, owned);
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('returns invalid for unknown card id', () => {
+		const owned = { iron_sword: 3 };
+		const deck = ['iron_sword', 'iron_sword', 'iron_sword', 'nonexistent_card'];
+		const result = validateDeck(deck, owned);
+		expect(result.valid).toBe(false);
+		expect(result.reason).toContain('nonexistent_card');
+	});
+
+	it('returns invalid when deck is too small', () => {
+		const owned = { iron_sword: 3 };
+		const deck = ['iron_sword', 'iron_sword'];
+		const result = validateDeck(deck, owned);
+		expect(result.valid).toBe(false);
+		expect(result.reason).toContain('at least');
+	});
+
+	it('returns invalid when deck is too large', () => {
+		const owned = { iron_sword: 20, flame_blade: 20 };
+		const deck = Array(13).fill('iron_sword');
+		const result = validateDeck(deck, owned);
+		expect(result.valid).toBe(false);
+		expect(result.reason).toContain('at most');
+	});
+
+	it('returns invalid when too many copies of a card', () => {
+		const owned = { iron_sword: 1, flame_blade: 2, battle_familiar: 2 };
+		const deck = ['iron_sword', 'iron_sword', 'flame_blade', 'battle_familiar'];
+		const result = validateDeck(deck, owned);
+		expect(result.valid).toBe(false);
+		expect(result.reason).toContain('iron_sword');
+	});
+
+	it('accepts deck at exactly DECK_MIN_SIZE', () => {
+		const owned = { iron_sword: 4, flame_blade: 1, battle_familiar: 1, dungeon_drake: 1 };
+		const deck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+		const result = validateDeck(deck, owned);
+		expect(result).toEqual({ valid: true });
+	});
+
+	it('accepts deck at exactly DECK_MAX_SIZE', () => {
+		const owned = { iron_sword: 12 };
+		const deck = Array(12).fill('iron_sword');
+		const result = validateDeck(deck, owned);
+		expect(result).toEqual({ valid: true });
+	});
+});
+
+describe('canAddCardToDeck(cardId, deck, ownedCards)', () => {
+	it('returns true when adding a card keeps deck valid', () => {
+		const owned = { iron_sword: 3, flame_blade: 2 };
+		const deck = ['iron_sword', 'flame_blade', 'battle_familiar'];
+		expect(canAddCardToDeck('iron_sword', deck, owned)).toBe(true);
+	});
+
+	it('returns false for unknown card id', () => {
+		const owned = { iron_sword: 3 };
+		const deck = ['iron_sword'];
+		expect(canAddCardToDeck('nonexistent_card', deck, owned)).toBe(false);
+	});
+
+	it('returns false when already at max copies of a card', () => {
+		const owned = { iron_sword: 2 };
+		const deck = ['iron_sword', 'iron_sword', 'flame_blade', 'battle_familiar'];
+		expect(canAddCardToDeck('iron_sword', deck, owned)).toBe(false);
+	});
+
+	it('returns false when deck is already at DECK_MAX_SIZE', () => {
+		const owned = { iron_sword: 12, flame_blade: 5 };
+		const deck = Array(12).fill('iron_sword');
+		expect(canAddCardToDeck('flame_blade', deck, owned)).toBe(false);
+	});
+
+	it('returns true when deck is at DECK_MAX_SIZE - 1 and card is available', () => {
+		const owned = { iron_sword: 10, flame_blade: 3 };
+		const deck = Array(11).fill('iron_sword');
+		expect(canAddCardToDeck('flame_blade', deck, owned)).toBe(true);
+	});
+
+	it('returns false when player owns zero copies of card', () => {
+		const owned = { iron_sword: 3 };
+		const deck = ['iron_sword', 'iron_sword', 'iron_sword'];
+		expect(canAddCardToDeck('flame_blade', deck, owned)).toBe(false);
+	});
+});
+
+describe('deck constants', () => {
+	it('DECK_MIN_SIZE is 4', () => {
+		expect(DECK_MIN_SIZE).toBe(4);
+	});
+
+	it('DECK_MAX_SIZE is 12', () => {
+		expect(DECK_MAX_SIZE).toBe(12);
 	});
 });

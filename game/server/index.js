@@ -366,6 +366,9 @@ const STARTING_DECK_IDS = [
   'flame_blade'
 ];
 
+const DECK_MIN_SIZE = 4;
+const DECK_MAX_SIZE = 12;
+
 /**
  * Build a fresh player progress object.
  * Returns { currency, ownedCards, runRewards, currencyEarnedThisRun }.
@@ -570,6 +573,54 @@ function buildPlayerRewardSummary(playerId) {
   if (!player || !player.runRewards) return { currency: 0, cards: [] };
 
   return player.runRewards;
+}
+
+/**
+ * Validate a deck against card definitions, size bounds, and owned inventory.
+ *
+ * Returns `{ valid: true }` when the deck is valid,
+ * or `{ valid: false, reason: '<explanation>' }` when invalid.
+ */
+function validateDeck(deck, ownedCards) {
+  // Check deck length bounds
+  if (deck.length < DECK_MIN_SIZE) {
+    return { valid: false, reason: `Deck must have at least ${DECK_MIN_SIZE} cards` };
+  }
+  if (deck.length > DECK_MAX_SIZE) {
+    return { valid: false, reason: `Deck can have at most ${DECK_MAX_SIZE} cards` };
+  }
+
+  // Check each card id and count ownership
+  const counts = {};
+  for (const cardId of deck) {
+    if (!CARD_DEFS[cardId]) {
+      return { valid: false, reason: `Unknown card id: ${cardId}` };
+    }
+    counts[cardId] = (counts[cardId] || 0) + 1;
+  }
+
+  for (const [cardId, count] of Object.entries(counts)) {
+    const owned = ownedCards[cardId] || 0;
+    if (count > owned) {
+      return { valid: false, reason: `Not enough copies of ${cardId} (have ${owned}, need ${count})` };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Check whether adding one copy of `cardId` to `deck` would keep the deck valid.
+ */
+function canAddCardToDeck(cardId, deck, ownedCards) {
+  if (!CARD_DEFS[cardId]) return false;
+  if (deck.length >= DECK_MAX_SIZE) return false;
+
+  const currentCount = deck.filter(id => id === cardId).length;
+  const owned = ownedCards[cardId] || 0;
+  if (currentCount >= owned) return false;
+
+  return true;
 }
 
 /**
@@ -963,6 +1014,9 @@ function startServer(port) {
     if (!gameState.players[socket.id]) {
       const progress = createPlayerProgress();
 
+      // Default selected deck: one copy of each unique card id from STARTING_DECK_IDS
+      const defaultDeck = [...new Set(STARTING_DECK_IDS)];
+
       gameState.players[socket.id] = {
         x: spawn.x,
         y: 0.5,
@@ -978,6 +1032,7 @@ function startServer(port) {
         ownedCards: progress.ownedCards,
         runRewards: progress.runRewards,
         currencyEarnedThisRun: progress.currencyEarnedThisRun,
+        selectedDeck: defaultDeck,
         debugScenario: null,
         pendingSummons: new Set()
       };
@@ -1308,7 +1363,10 @@ if (typeof module !== 'undefined' && module.exports) {
     grantCard,
     grantRunRewards,
     buildPlayerRewardSummary,
+    validateDeck,
+    canAddCardToDeck,
     CARD_DEFS,
+    STARTING_DECK_IDS,
     // Server objects for integration tests
     server,
     io,
@@ -1322,6 +1380,8 @@ if (typeof module !== 'undefined' && module.exports) {
     TICK_RATE,
     GRID_COLS,
     GRID_ROWS,
-    CELL_SPACING
+    CELL_SPACING,
+    DECK_MIN_SIZE,
+    DECK_MAX_SIZE
   };
 }
