@@ -1,0 +1,66 @@
+// ── Hand State Module ──
+// Manages the player's card hand, deck, and slot cooldowns.
+// Pure logic — rendering is delegated via an optional callback.
+
+import { CARD_DEFS, createStartingDeck } from './cards.js';
+
+// ── Mutable state (exported so main.js can read/write in-place) ──
+export let hand = [];            // array of up to 4 card objects
+export let deck = [];            // remaining card id strings
+export let slotCooldowns = [false, false, false, false];
+
+/**
+ * Draw one card from the deck.
+ * Returns null if the deck is empty or the card id is unknown.
+ *
+ * @returns {{ id, name, type, charges, remainingCharges } | null}
+ */
+export function drawCard() {
+	if (deck.length === 0) return null;
+	const cardId = deck.pop();
+	const def = CARD_DEFS[cardId];
+	if (!def) return null;
+	return {
+		id: def.id,
+		name: def.name,
+		type: def.type,
+		charges: def.charges,
+		remainingCharges: def.charges,
+	};
+}
+
+/**
+ * Initialise the hand from a fresh starting deck.
+ *
+ * @param {Function} [onRender] — optional callback invoked after the hand
+ *   is built so the caller can update the DOM.
+ */
+export function initHand(onRender) {
+	const deckIds = createStartingDeck();
+	hand = [];
+	deck = [];
+	slotCooldowns = [false, false, false, false];
+
+	// Push all card IDs into deck (reversed so pop gives original order)
+	for (let i = deckIds.length - 1; i >= 0; i--) {
+		deck.push(deckIds[i]);
+	}
+
+	// Deal first 4 cards
+	for (let i = 0; i < 4; i++) {
+		const card = drawCard();
+		if (card) hand.push(card);
+	}
+
+	if (typeof onRender === 'function') onRender();
+}
+
+/**
+ * Reset hand / deck / cooldowns to empty defaults.
+ * Useful for tests that need a clean slate between cases.
+ */
+export function resetHandState() {
+	hand = [];
+	deck = [];
+	slotCooldowns = [false, false, false, false];
+}
