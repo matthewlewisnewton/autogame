@@ -25,6 +25,7 @@ import {
 	buildPlayerRewardSummary,
 	validateDeck,
 	canAddCardToDeck,
+	createDrawDeckFromSelectedDeck,
 	CARD_DEFS,
 	STARTING_DECK_IDS,
 	io as serverIo,
@@ -1439,5 +1440,41 @@ describe('deck constants', () => {
 
 	it('DECK_MAX_SIZE is 12', () => {
 		expect(DECK_MAX_SIZE).toBe(12);
+	});
+});
+
+describe('createDrawDeckFromSelectedDeck(player)', () => {
+	it('produces a deck of the same length as selectedDeck', () => {
+		const player = {
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			deck: []
+		};
+		const deck = createDrawDeckFromSelectedDeck(player);
+		expect(deck.length).toBe(player.selectedDeck.length);
+	});
+
+	it('assigns the shuffled deck to player.deck', () => {
+		const player = {
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			deck: []
+		};
+		const deck = createDrawDeckFromSelectedDeck(player);
+		expect(player.deck).toBe(deck);
+	});
+
+	it('contains the same card ids as selectedDeck (possibly reordered)', () => {
+		const player = {
+			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade', 'battle_familiar'],
+			deck: []
+		};
+		const deck = createDrawDeckFromSelectedDeck(player);
+		expect(deck.sort()).toEqual(player.selectedDeck.slice().sort());
+	});
+
+	it('does not mutate the original selectedDeck', () => {
+		const selectedDeck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'];
+		const player = { selectedDeck, deck: [] };
+		createDrawDeckFromSelectedDeck(player);
+		expect(player.selectedDeck).toEqual(selectedDeck);
 	});
 });

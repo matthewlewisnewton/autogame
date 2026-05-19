@@ -624,6 +624,29 @@ function canAddCardToDeck(cardId, deck, ownedCards) {
 }
 
 /**
+ * Shuffle an array in place using Fisher-Yates and return it.
+ */
+function shuffleArray(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+/**
+ * Create a shuffled draw deck from the player's selected deck.
+ * Copies `player.selectedDeck` into a new array, shuffles it, and assigns
+ * the result to `player.deck`.  Returns the deck array.
+ */
+function createDrawDeckFromSelectedDeck(player) {
+  const deck = player.selectedDeck.slice();
+  shuffleArray(deck);
+  player.deck = deck;
+  return deck;
+}
+
+/**
  * Check whether the current run has reached a terminal state.
  * Emits exactly one terminal event per run (guarded by run.status === 'playing').
  *
@@ -716,6 +739,10 @@ function checkAllReady() {
   const all = Object.values(gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
     gameState.gamePhase = 'playing';
+    // Create shuffled draw decks from each player's selected deck
+    for (const player of all) {
+      createDrawDeckFromSelectedDeck(player);
+    }
     spawnEnemies();
     startDungeonRun();
     io.emit('startGame');
@@ -1042,7 +1069,8 @@ function startServer(port) {
       gameState.players[socket.id].pendingSummons = new Set();
     }
 
-  socket.emit('init', { id: socket.id, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout });
+  const player = gameState.players[socket.id];
+  socket.emit('init', { id: socket.id, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
 
   // Broadcast updated lobby on connect
   broadcastLobbyUpdate();
@@ -1233,12 +1261,24 @@ function startServer(port) {
   });
 
   socket.on('playerReady', (ready) => {
-    if (gameState.players[socket.id]) {
-      gameState.players[socket.id].ready = !!ready;
-      broadcastLobbyUpdate();
-      if (gameState.gamePhase === 'lobby') {
-        checkAllReady();
+    const player = gameState.players[socket.id];
+    if (!player) return;
+
+    if (ready) {
+      // Validate deck before accepting ready
+      const result = validateDeck(player.selectedDeck, player.ownedCards);
+      if (!result.valid) {
+        player.ready = false;
+        socket.emit('deckError', { reason: result.reason });
+        broadcastLobbyUpdate();
+        return;
       }
+    }
+
+    player.ready = !!ready;
+    broadcastLobbyUpdate();
+    if (gameState.gamePhase === 'lobby') {
+      checkAllReady();
     }
   });
 
@@ -1436,6 +1476,7 @@ if (typeof module !== 'undefined' && module.exports) {
     buildPlayerRewardSummary,
     validateDeck,
     canAddCardToDeck,
+    createDrawDeckFromSelectedDeck,
     CARD_DEFS,
     STARTING_DECK_IDS,
     // Server objects for integration tests
