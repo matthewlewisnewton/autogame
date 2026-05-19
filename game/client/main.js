@@ -341,6 +341,14 @@ socket.on('stateUpdate', (state) => {
     }
   }
   gameState = state;
+
+  // Update currency HUD
+  if (myId && gameState.players[myId]) {
+    const currencyEl = document.getElementById('currency-display');
+    if (currencyEl) {
+      currencyEl.textContent = `GOLD ${gameState.players[myId].currency}`;
+    }
+  }
 });
 
 socket.on('heartbeat_ack', (data) => {
@@ -1104,6 +1112,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
     status: statusEl ? statusEl.innerText : '',
     hpText: hpText ? hpText.textContent : '',
     msText: msText ? msText.textContent : '',
+    currencyText: document.getElementById('currency-display') ? document.getElementById('currency-display').textContent : '',
     player: me ? {
       hp: me.hp,
       magicStones: me.magicStones,
