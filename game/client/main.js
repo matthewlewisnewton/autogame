@@ -4,6 +4,10 @@ import { CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from '.
 import { wallAABB, resolveWallCollision as resolveWallCollisionPure } from './collision.js';
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns } from './hand.js';
 
+// v8 ignore start
+// All code below is UI/Three.js/Socket-dependent and cannot be unit tested.
+// Testable logic is extracted to cards.js, collision.js, and hand.js.
+
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const readyBtn = document.getElementById('ready-btn');
@@ -334,7 +338,6 @@ socket.on('playerDisconnected', (id) => {
 });
 
 // ── Attack visual effects ──
-// v8 ignore:start
 
 const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
 const ATTACK_EFFECT_SPEED = 8;     // units per second
@@ -493,8 +496,6 @@ function disposeAllLootMeshes() {
   }
 }
 
-// v8 ignore:end
-
 socket.on('cardUsed', (data) => {
   if (!data || !scene) return;
 
@@ -600,7 +601,6 @@ socket.on('startGame', () => {
 });
 
 // ── Dungeon geometry builder ──
-// v8 ignore:start
 
 const WALL_HEIGHT = 2.5;
 const WALL_THICKNESS = 0.4;
@@ -734,8 +734,6 @@ function buildDungeon(layout) {
     }
   }
 }
-
-// v8 ignore:end
 
 // ── Wall collision helpers ──
 // wallAABB and resolveWallCollision are imported from collision.js
@@ -1036,3 +1034,5 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
     } : null),
   };
 };
+
+// v8 ignore end
