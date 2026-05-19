@@ -610,7 +610,7 @@ function flashMesh(mesh, color, durationMs) {
 
 	// Save original emissive state
 	const mat = mesh.material;
-	const origEmissive = mat.emissive ? mat.emissive.get ? mat.emissive.get() : 0x000000 : 0x000000;
+	const origEmissive = mat.emissive ? (mat.emissive.getHex ? mat.emissive.getHex() : 0x000000) : 0x000000;
 	const origIntensity = mat.emissiveIntensity || 0;
 
 	// Apply flash

@@ -528,7 +528,7 @@ describe('flashMesh()', () => {
 				emissive: {
 					_value: 0x000000,
 					set: function(c) { this._value = c; },
-					get: function() { return this._value; },
+					getHex: function() { return this._value; },
 				},
 				emissiveIntensity: 0,
 			},
@@ -550,7 +550,7 @@ describe('flashMesh()', () => {
 				emissive: {
 					_value: origColor,
 					set: function(c) { this._value = c; },
-					get: function() { return this._value; },
+					getHex: function() { return this._value; },
 				},
 				emissiveIntensity: origIntensity,
 			},
