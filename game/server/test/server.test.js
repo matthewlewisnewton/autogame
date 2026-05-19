@@ -1657,7 +1657,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		});
 	});
 
-	it('includes enemies, minions, loot, gamePhase, run, layoutSeed, lobby, bounds', () => {
+	it('includes enemies, minions, loot, gamePhase, run, layoutSeed, lobby, dungeonBounds', () => {
 		addPlayer('p1');
 		gameState.enemies = [{ id: 'e1', x: 5, z: 5, hp: 50 }];
 		gameState.minions = [{ id: 'm1', x: 0, z: 0, hp: 50, ttl: 30, ownerId: 'p1' }];
@@ -1675,7 +1675,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(snapshot.run).toEqual(gameState.run);
 		expect(snapshot.layoutSeed).toBe(42);
 		expect(snapshot.lobby).toEqual([]);
-		expect(snapshot.bounds).toEqual(gameState.dungeonBounds);
+		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
+		expect(snapshot.bounds).toBeUndefined();
 	});
 
 	it('does not include layout', () => {
@@ -1689,12 +1690,6 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		gameState._victoryCounters = { p1: 3 };
 		const snapshot = stateSnapshot();
 		expect(snapshot._victoryCounters).toBeUndefined();
-	});
-
-	it('does not include dungeonBounds on top level', () => {
-		addPlayer('p1');
-		const snapshot = stateSnapshot();
-		expect(snapshot.dungeonBounds).toBeUndefined();
 	});
 
 	it('strips pendingSummons (Set) from player objects', () => {

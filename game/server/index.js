@@ -890,7 +890,7 @@ function stateSnapshot() {
     lobby: gameState.lobby,
     gamePhase: gameState.gamePhase,
     run: gameState.run,
-    bounds: gameState.dungeonBounds,
+    dungeonBounds: gameState.dungeonBounds,
     layoutSeed: gameState.layoutSeed,
     currency: gameState.currency
   };
