@@ -7,6 +7,7 @@ import {
 	updateMinions,
 	spawnLoot,
 	createGameState,
+	resetGameState,
 	gameState,
 	cleanupStalePlayers,
 	regenMagicStones,
@@ -16,6 +17,8 @@ import {
 	clampObjectiveProgress,
 	buildRunSummary,
 	checkRunTerminalState,
+	resetTransientRunState,
+	returnPlayersToLobby,
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
@@ -974,6 +977,152 @@ describe('run state', () => {
 			expect(emit).toBeDefined();
 			expect(emit.data.status).toBe('failed');
 			expect(emit.data.currencyCollected).toBe(5);
+		});
+	});
+
+	describe('resetTransientRunState()', () => {
+		beforeEach(() => {
+			resetState();
+		});
+
+		it('clears enemies, minions, and loot arrays', () => {
+			gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
+			gameState.minions.push({ id: 'm1', ownerId: 'p1', x: 0, z: 0, hp: 50, ttl: 30 });
+			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
+
+			resetTransientRunState();
+
+			expect(gameState.enemies.length).toBe(0);
+			expect(gameState.minions.length).toBe(0);
+			expect(gameState.loot.length).toBe(0);
+		});
+
+		it('preserves players and gamePhase', () => {
+			addPlayer('p1', { currency: 42 });
+			gameState.gamePhase = 'playing';
+
+			resetTransientRunState();
+
+			expect(gameState.players['p1']).toBeDefined();
+			expect(gameState.players['p1'].currency).toBe(42);
+			expect(gameState.gamePhase).toBe('playing');
+		});
+
+		it('preserves the run object', () => {
+			startDungeonRun();
+			const runId = gameState.run.id;
+
+			resetTransientRunState();
+
+			expect(gameState.run).toBeDefined();
+			expect(gameState.run.id).toBe(runId);
+		});
+	});
+
+	describe('returnPlayersToLobby()', () => {
+		beforeEach(() => {
+			resetState();
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('resets gamePhase to lobby', () => {
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			expect(gameState.gamePhase).toBe('lobby');
+		});
+
+		it('clears gameState.run', () => {
+			startDungeonRun();
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			expect(gameState.run).toBeUndefined();
+		});
+
+		it('clears enemies, minions, and loot', () => {
+			gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
+			gameState.minions.push({ id: 'm1', ownerId: 'p1', x: 0, z: 0, hp: 50, ttl: 30 });
+			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			expect(gameState.enemies.length).toBe(0);
+			expect(gameState.minions.length).toBe(0);
+			expect(gameState.loot.length).toBe(0);
+		});
+
+		it('sets all players to ready: false and resets HP/position', () => {
+			addPlayer('p1', { x: 50, z: 50, hp: 30, ready: true, currency: 20 });
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			expect(gameState.players['p1'].ready).toBe(false);
+			expect(gameState.players['p1'].hp).toBe(100);
+			expect(gameState.players['p1'].dead).toBe(false);
+			// Currency should be preserved
+			expect(gameState.players['p1'].currency).toBe(20);
+		});
+
+		it('emits stateUpdate to all clients', () => {
+			addPlayer('p1');
+			startDungeonRun();
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			const stateUpdateCalls = emitCalls.filter(c => c.event === 'stateUpdate');
+			expect(stateUpdateCalls.length).toBeGreaterThan(0);
+		});
+
+		it('emits lobbyUpdate after stateUpdate', () => {
+			addPlayer('p1');
+
+			const emitCalls = [];
+			const originalEmit = serverIo.emit;
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			returnPlayersToLobby();
+
+			serverIo.emit = originalEmit;
+
+			const lobbyUpdateCalls = emitCalls.filter(c => c.event === 'lobbyUpdate');
+			expect(lobbyUpdateCalls.length).toBeGreaterThan(0);
 		});
 	});
 });
