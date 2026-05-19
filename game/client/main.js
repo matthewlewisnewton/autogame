@@ -53,12 +53,14 @@ let mySelectedDeck = [];
 let myOwnedCards = {};
 const DECK_MIN_SIZE = 4;
 const DECK_MAX_SIZE = 12;
+const ENEMY_ATTACK_RANGE = 4; // units — matches server constant for attack range / warning circle radius
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
 const playersMeshes = {};
 const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
+const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
 const minionsMeshes = {};
 const lootMeshes = {};
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
@@ -1135,6 +1137,13 @@ socket.on('startGame', () => {
     enemyHealthBars[id].material.dispose();
     delete enemyHealthBars[id];
   }
+  // Dispose previous run's telegraph meshes
+  for (const id of Object.keys(telegraphMeshes)) {
+    if (scene) scene.remove(telegraphMeshes[id]);
+    telegraphMeshes[id].geometry.dispose();
+    telegraphMeshes[id].material.dispose();
+    delete telegraphMeshes[id];
+  }
   // Dispose previous run's minion meshes
   for (const id of Object.keys(minionsMeshes)) {
     if (scene) scene.remove(minionsMeshes[id]);
@@ -1532,6 +1541,49 @@ function animate(timestamp) {
         }
       }
       previousEnemyHp[enemy.id] = enemy.hp;
+
+      // ── Telegraph visuals (windup state) ──
+      if (enemy.attackState === 'windup') {
+        // Flash enemy mesh bright red during windup
+        flashMesh(enemiesMeshes[enemy.id], 0xff3333, 300);
+
+        // Create or update warning circle at the target player's position
+        if (!telegraphMeshes[enemy.id]) {
+          const targetPlayer = enemy.windupTargetId ? gameState.players[enemy.windupTargetId] : null;
+          const tx = targetPlayer ? targetPlayer.x : enemy.x;
+          const tz = targetPlayer ? targetPlayer.z : enemy.z;
+
+          const geo = new THREE.RingGeometry(ENEMY_ATTACK_RANGE * 0.9, ENEMY_ATTACK_RANGE, 32);
+          const mat = new THREE.MeshStandardMaterial({
+            color: 0xff3333,
+            emissive: 0xff3333,
+            emissiveIntensity: 1.0,
+            transparent: true,
+            opacity: 0.5,
+            side: THREE.DoubleSide,
+            depthWrite: false
+          });
+          const mesh = new THREE.Mesh(geo, mat);
+          mesh.position.set(tx, 0.05, tz);
+          mesh.rotation.x = -Math.PI / 2; // lie flat on ground
+          scene.add(mesh);
+          telegraphMeshes[enemy.id] = mesh;
+        } else {
+          // Update position in case target player moved
+          const targetPlayer = enemy.windupTargetId ? gameState.players[enemy.windupTargetId] : null;
+          if (targetPlayer) {
+            telegraphMeshes[enemy.id].position.set(targetPlayer.x, 0.05, targetPlayer.z);
+          }
+        }
+      } else {
+        // Remove telegraph if it exists and enemy is no longer in windup
+        if (telegraphMeshes[enemy.id]) {
+          scene.remove(telegraphMeshes[enemy.id]);
+          telegraphMeshes[enemy.id].geometry.dispose();
+          telegraphMeshes[enemy.id].material.dispose();
+          delete telegraphMeshes[enemy.id];
+        }
+      }
     }
 
     // Clean up removed enemies (also clean up health bars and previous HP tracking)
@@ -1552,6 +1604,15 @@ function animate(timestamp) {
     for (const id of Object.keys(previousEnemyHp)) {
       if (!currentEnemyIds.has(id)) {
         delete previousEnemyHp[id];
+      }
+    }
+    // Clean up telegraph meshes for removed enemies
+    for (const id of Object.keys(telegraphMeshes)) {
+      if (!currentEnemyIds.has(id)) {
+        scene.remove(telegraphMeshes[id]);
+        telegraphMeshes[id].geometry.dispose();
+        telegraphMeshes[id].material.dispose();
+        delete telegraphMeshes[id];
       }
     }
 
