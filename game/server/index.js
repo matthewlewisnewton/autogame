@@ -665,6 +665,8 @@ function applyDebugScenario(socket, name) {
 
 // Helper: update enemy wander AI each tick
 function updateEnemies() {
+	if (gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed')) return;
+
 	const dt = 1 / TICK_RATE;
 	const players = Object.values(gameState.players).filter(p => !p.dead);
 
@@ -769,40 +771,44 @@ function updateEnemies() {
 // Helper: decrement minion TTL and remove expired/dead minions
 function updateMinions() {
   const dt = 1 / TICK_RATE;
+  const runTerminal = gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed');
 
   // AI: each living minion seeks nearest enemy, chases, and attacks
-  for (const minion of gameState.minions) {
-    let nearestDist = Infinity;
-    let nearestEnemy = null;
+  // Skipped entirely when the run is terminal (victory or failed)
+  if (!runTerminal) {
+    for (const minion of gameState.minions) {
+      let nearestDist = Infinity;
+      let nearestEnemy = null;
 
-    for (const enemy of gameState.enemies) {
-      const dx = enemy.x - minion.x;
-      const dz = enemy.z - minion.z;
-      const dist = Math.hypot(dx, dz);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestEnemy = enemy;
-      }
-    }
-
-    // Chase if an enemy is within detection range
-    if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
-      // Attack if within attack range
-      if (nearestDist <= ATTACK_RANGE) {
-        nearestEnemy.hp -= 5;
-      } else {
-        // Move toward enemy
-        const dx = nearestEnemy.x - minion.x;
-        const dz = nearestEnemy.z - minion.z;
+      for (const enemy of gameState.enemies) {
+        const dx = enemy.x - minion.x;
+        const dz = enemy.z - minion.z;
         const dist = Math.hypot(dx, dz);
-        if (dist > 0.1) {
-          const move = CHASE_SPEED * dt;
-          minion.x += (dx / dist) * move;
-          minion.z += (dz / dist) * move;
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestEnemy = enemy;
         }
       }
+
+      // Chase if an enemy is within detection range
+      if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+        // Attack if within attack range
+        if (nearestDist <= ATTACK_RANGE) {
+          nearestEnemy.hp -= 5;
+        } else {
+          // Move toward enemy
+          const dx = nearestEnemy.x - minion.x;
+          const dz = nearestEnemy.z - minion.z;
+          const dist = Math.hypot(dx, dz);
+          if (dist > 0.1) {
+            const move = CHASE_SPEED * dt;
+            minion.x += (dx / dist) * move;
+            minion.z += (dz / dist) * move;
+          }
+        }
+      }
+      // No enemy in range — minion remains stationary (does not wander)
     }
-    // No enemy in range — minion remains stationary (does not wander)
   }
 
   // Spawn loot for dead enemies killed by minion attacks
