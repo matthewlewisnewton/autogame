@@ -25,6 +25,8 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
 - [x] [013-summon-cards](tickets/013-summon-cards/)
 - [x] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
+- [ ] [059-enemy-types-skirmisher-miniboss](tickets/059-enemy-types-skirmisher-miniboss/)
+- [ ] [060-enemy-type-spawner](tickets/060-enemy-type-spawner/)
 
 ## Backlog — World & Economy
 - [x] [016-loot-and-currency](tickets/016-loot-and-currency/)
@@ -84,5 +86,12 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [055-server-side-wall-collision-validation](tickets/055-server-side-wall-collision-validation/)
 - [ ] [056-server-side-card-hand-tracking](tickets/056-server-side-card-hand-tracking/)
 - [ ] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
+
+## Backlog — Progression & Content
+- [ ] [058-inventory-system-refactor](tickets/058-inventory-system-refactor/)
+- [ ] [059-lobby-photon-forge-ui](tickets/059-lobby-photon-forge-ui/)
+- [ ] [060-card-grinding-system](tickets/060-card-grinding-system/)
+- [ ] [061-new-card-pack](tickets/061-new-card-pack/)
+- [ ] [062-card-evolution-system](tickets/062-card-evolution-system/)
 
 ## Done
