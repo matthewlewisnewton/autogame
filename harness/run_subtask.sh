@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # Inner loop for ONE sub-ticket: qwen implements -> screenshot -> visual QA.
-# Visual QA chain: cursor-agent/composer (primary) -> qwen self-review
-# (fallback when the agent CLI is unavailable) -> claude (last resort).
-# The gemini CLI was retired (deprecated upstream); a future revision may
-# add agy/gemini-3.5-flash as a third independent tier. Qwen vision can be
-# enabled as optional failed-QA feedback.
+# QA chain: cursor-agent/composer (primary independent reviewer) ->
+# agy/Gemini-3.5-Flash (second independent reviewer; gemini-CLI replacement)
+# -> qwen self-review (local "loop keeps moving" fallback) -> claude (last
+# resort). Qwen vision can be enabled as optional failed-QA feedback.
 #
 #   harness/run_subtask.sh <sub-ticket-dir>
 #
@@ -15,6 +14,14 @@ source "$(dirname "$0")/lib.sh"
 
 SUBDIR="${1:?usage: run_subtask.sh <sub-ticket-dir>}"
 SUBDIR="${SUBDIR%/}"
+# Absolute-ify the sub-ticket dir so every downstream path (TICKET_FILE,
+# FEEDBACK, HANDOFF, ARTI/...) becomes absolute too. Critical for agy: its
+# print-mode workspaceDirs is always empty regardless of cwd, and relative
+# @file references in prompts sometimes get a "no active workspace"
+# non-answer instead of a verdict. Composer and claude resolve relative
+# paths fine, but absolute is a harmless upgrade for them too.
+SUBDIR_ABS="$(realpath "$SUBDIR" 2>/dev/null || true)"
+[ -n "$SUBDIR_ABS" ] && [ -d "$SUBDIR_ABS" ] && SUBDIR="$SUBDIR_ABS"
 TICKET_FILE="$SUBDIR/ticket.md"
 [ -f "$TICKET_FILE" ] || { log "ERROR: $TICKET_FILE not found"; exit 1; }
 
@@ -153,10 +160,11 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
 
   # 3. QA — routed by the sub-ticket's verification mode.
-  #    cursor-agent/composer (primary) -> claude (last resort).
-  #    The gemini CLI is deprecated and no longer in the chain. A future
-  #    revision will try agy/gemini-3.5-flash; until then composer-2.5-fast
-  #    is the primary independent reviewer.
+  #    cursor-agent/composer -> agy/Gemini-3.5-Flash -> qwen self-review -> claude.
+  #    agy replaces the retired gemini CLI as the second independent reviewer
+  #    (cloud + zero-cost). qwen self-review keeps the loop moving when both
+  #    cloud tiers are out — same model as the writer, so accepted only as a
+  #    third-tier fallback.
   git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
   finish_pipeline_checks "$pipeline_pid" "$ARTI"
   if [ "$QA_MODE" = "code" ]; then
@@ -170,23 +178,26 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
   # QA agent chain:
   #   1. cursor-agent/composer-2.5-fast (primary, independent reviewer)
-  #   2. qwen self-review (fallback when agent is unavailable — local + free,
-  #      so it keeps the loop moving even when both gemini AND cursor are out;
-  #      note this is the SAME model that wrote the code, so its verdict
-  #      inherits the writer's blind spots — accept that risk only because
-  #      it's the second-tier fallback, not the primary gate)
-  #   3. claude (last resort, most expensive)
+  #   2. agy / Gemini 3.5 Flash (High) (second independent reviewer; cloud +
+  #      zero-cost — replaces the retired gemini CLI)
+  #   3. qwen self-review (loop-keeps-moving fallback — same model that wrote
+  #      the code, so its verdict inherits the writer's blind spots; accept
+  #      only because it's the third-tier fallback, not a primary gate)
+  #   4. claude (last resort, most expensive)
   # Each tier is accepted only if it produced a real verdict line.
   if run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "cursor-agent/$AGENT_MODEL"),\"mode\":$(json_string "$QA_MODE")}"
+  elif run_agy "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+    log "[qa] verified by agy/$AGY_MODEL_LABEL ($QA_MODE) — cursor-agent unavailable"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "agy/$AGY_MODEL_LABEL"),\"mode\":$(json_string "$QA_MODE")}"
   elif run_qwen "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
-    log "[qa] verified by qwen self-review ($QA_MODE) — agent CLI unavailable"
+    log "[qa] verified by qwen self-review ($QA_MODE) — agent + agy unavailable"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"qwen-self\",\"mode\":$(json_string "$QA_MODE")}"
   else
-    log "[qa] agent + qwen produced no verdict — last-resort claude"
+    log "[qa] agent + agy + qwen produced no verdict — last-resort claude"
     if ! run_claude "$QA_PROMPT" "$ARTI/qa.txt"; then
-      log "[tool-failure] claude QA unavailable (timeout/empty) after agent+qwen — escalating"
+      log "[tool-failure] claude QA unavailable (timeout/empty) after agent+agy+qwen — escalating"
       exit 2
     fi
     if ! has_verdict "$ARTI/qa.txt"; then

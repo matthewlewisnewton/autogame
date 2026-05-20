@@ -28,6 +28,12 @@ GEMINI_QUOTA_FAST_FAIL_SECONDS="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
 AGENT_MODEL="${AGENT_MODEL:-composer-2.5-fast}" # cursor-agent QA fallback model
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-720}"  # 12 min — composer is now the primary QA reviewer (gemini dropped)
+# Antigravity CLI (Gemini 3.5 Flash, High). Model is pinned globally via the
+# interactive `/model` slash command and persisted server-side; there is NO
+# --model flag, so the harness has nothing to set per call. AGY_MODEL_LABEL is
+# recorded for usage telemetry only.
+AGY_MODEL_LABEL="${AGY_MODEL_LABEL:-Gemini 3.5 Flash (High)}"
+AGY_TIMEOUT="${AGY_TIMEOUT:-720}"        # match AGENT_TIMEOUT — agy's internal --print-timeout is set from this
 CLI_RETRIES="${CLI_RETRIES:-2}"            # retries on timeout/empty output
 CLI_RETRY_BACKOFF="${CLI_RETRY_BACKOFF:-20}"
 QWEN_VISION_FEEDBACK="${QWEN_VISION_FEEDBACK:-1}" # screenshot feedback for failed visual QA
@@ -276,6 +282,7 @@ agent_model_for_label() {  # agent_model_for_label <label>
     gemini) echo "${GEMINI_MODEL:-default}" ;;
     claude) echo "${CLAUDE_MODEL:-default}" ;;
     agent) echo "${AGENT_MODEL:-default}" ;;
+    agy) echo "${AGY_MODEL_LABEL:-default}" ;;
     *) echo "default" ;;
   esac
 }
@@ -485,15 +492,15 @@ _run_cli() {
   local label="$1" out="$2" tmo="$3" prompt="$4"; shift 4
   local attempt=1 rc reason cli_pid quota_seen_at quota_fast_failed now started_ms ended_ms
   local quota_fast_fail_seconds="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
-  # Per-label retry budget. gemini has none on purpose: when the primary QA
-  # call fails (timeout, empty output, generic error), run_subtask's tier
-  # chain — cursor-agent/composer-2.5 then claude — *is* the retry. Burning
-  # ~31 min (3 × 600s + 2 × 20s backoff) on the same broken gemini call
-  # before falling through to composer is dead wall-clock.
+  # Per-label retry budget. gemini and agy have none on purpose: when the
+  # primary QA call fails (timeout, empty output, generic error), run_subtask's
+  # tier chain (cursor-agent -> agy -> qwen-self -> claude) *is* the retry.
+  # Burning ~31 min (3 × 600s + 2 × 20s backoff) on the same broken cloud-QA
+  # call before falling through to the next tier is dead wall-clock.
   local max_retries
   case "$label" in
-    gemini) max_retries=0 ;;
-    *)      max_retries="$CLI_RETRIES" ;;
+    gemini|agy) max_retries=0 ;;
+    *)          max_retries="$CLI_RETRIES" ;;
   esac
   while :; do
     started_ms="$(date +%s%3N 2>/dev/null || date +%s000)"
@@ -638,6 +645,15 @@ run_agent() {  # run_agent <prompt> <outfile> — cursor-agent, QA fallback
   [ -n "$AGENT_MODEL" ] && a+=(--model "$AGENT_MODEL")
   a+=("$1")
   _run_cli agent "$2" "$AGENT_TIMEOUT" "$1" "${a[@]}"
+}
+run_agy() {  # run_agy <prompt> <outfile> — Antigravity / Gemini 3.5 Flash (High), QA tier
+  # No --model flag exists (model is globally pinned server-side via /model).
+  # Override agy's internal --print-timeout from AGY_TIMEOUT so it doesn't cap
+  # at its own default 5min before the harness's outer timeout fires. Go duration
+  # syntax accepts `<seconds>s`.
+  local a=(agy -p --dangerously-skip-permissions "--print-timeout=${AGY_TIMEOUT}s")
+  a+=("$1")
+  _run_cli agy "$2" "$AGY_TIMEOUT" "$1" "${a[@]}"
 }
 run_claude() {  # run_claude <prompt> <outfile>
   local a=(claude -p --dangerously-skip-permissions); [ -n "$CLAUDE_MODEL" ] && a+=(--model "$CLAUDE_MODEL"); a+=("$1")
