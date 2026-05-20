@@ -61,6 +61,28 @@ h1 {
   padding: 6px 12px;
 }
 
+.tokens {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font: 12px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+
+.tokens.active {
+  color: #cfdaea;
+  border-color: rgba(124, 183, 255, 0.45);
+}
+
+.tokens strong,
+.token-label {
+  color: var(--blue);
+}
+
 .top-status {
   display: flex;
   align-items: center;
@@ -382,7 +404,6 @@ h1 {
 .event-body {
   padding: 10px;
   color: #cfdaea;
-  white-space: pre-wrap;
 }
 
 .source {
@@ -391,7 +412,13 @@ h1 {
   font-size: 12px;
 }
 
-.diff {
+.code-block {
+  white-space: pre;
+  tab-size: 2;
+}
+
+.diff,
+.log-block {
   margin-top: 8px;
   border-radius: 10px;
   background: #05070d;
@@ -399,6 +426,24 @@ h1 {
   max-height: 320px;
   overflow: auto;
   font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.log-block {
+  margin-top: 0;
+}
+
+.diff-line,
+.log-line {
+  display: block;
+  min-height: 1.45em;
+}
+
+.meta {
+  color: var(--purple);
+}
+
+.hunk {
+  color: var(--blue);
 }
 
 .add {

@@ -186,7 +186,7 @@ function updateHpBar(hp) {
   const pct = (clamped / MAX_HP) * 100;
   hpBarFill.style.width = `${pct}%`;
   hpText.textContent = `${clamped}/${MAX_HP}`;
-  hpLabel.textContent = myId ? `${myId.slice(0, 5)} HP` : 'HP';
+  hpLabel.textContent = myId ? `${myId.slice(0, 8)} HP` : 'HP';
 
   // Color shift: green → yellow → red as HP drops
   if (pct > 50) {
@@ -741,9 +741,15 @@ function updateDamageNumbers() {
 			? 1.0 - (elapsed - dn.duration * 0.5) / (dn.duration * 0.5)
 			: 1.0;
 
-		dn.element.style.left = `${sx}px`;
-		dn.element.style.top = `${sy}px`;
-		dn.element.style.opacity = String(Math.max(0, opacity));
+		// Hide if behind camera (vec.z > 1)
+		if (vec.z > 1) {
+			dn.element.style.display = 'none';
+		} else {
+			dn.element.style.display = 'block';
+			dn.element.style.left = `${sx}px`;
+			dn.element.style.top = `${sy}px`;
+			dn.element.style.opacity = String(Math.max(0, opacity));
+		}
 	}
 }
 

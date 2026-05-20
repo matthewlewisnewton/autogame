@@ -13,6 +13,8 @@ Runtime evidence from the game running with the change applied:
 @__ARTIFACTS_DIR__/server.log
 @__ARTIFACTS_DIR__/console.log
 @__ARTIFACTS_DIR__/metrics.json
+@__ARTIFACTS_DIR__/local-checks.status.json, if present
+@__ARTIFACTS_DIR__/local-checks.log, if present
 
 The sub-ticket being verified:
 @__TICKET_FILE__

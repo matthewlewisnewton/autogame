@@ -6,11 +6,14 @@ const stageMeta = document.querySelector('#stage-meta');
 const artifactLink = document.querySelector('#artifact-link');
 const clearBtn = document.querySelector('#clear');
 const gpuEl = document.querySelector('#gpu');
+const tokensEl = document.querySelector('#tokens');
 
 let latestStage = null;
 let latestDiffEvent = null;
 const GPU_HISTORY_LIMIT = 72;
 const gpuHistories = new Map();
+let latestTokenTotals = { local: 0, remote: 0 };
+let lastLineBlock = null;
 
 clearBtn.addEventListener('click', () => {
   eventsEl.innerHTML = '';
@@ -37,16 +40,36 @@ function formatTime(ts) {
   }
 }
 
+function formatCount(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '0';
+  return n.toLocaleString();
+}
+
 function renderDiff(diff) {
   if (!diff) return '';
   const lines = diff.split('\n').slice(0, 260).map((line) => {
-    const klass = line.startsWith('+') ? 'add' : line.startsWith('-') ? 'del' : '';
-    return `<div class="${klass}">${escapeHtml(line)}</div>`;
+    let klass = 'diff-line';
+    if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('diff --git') || line.startsWith('index ')) {
+      klass += ' meta';
+    } else if (line.startsWith('@@')) {
+      klass += ' hunk';
+    } else if (line.startsWith('+')) {
+      klass += ' add';
+    } else if (line.startsWith('-')) {
+      klass += ' del';
+    }
+    return `<span class="${klass}">${escapeHtml(line || ' ')}</span>`;
   }).join('');
-  return `<div class="diff">${lines}</div>`;
+  return `<pre class="diff code-block">${lines}</pre>`;
 }
 
 function renderEvent(event) {
+  if (event.kind === 'line' && event.source && lastLineBlock && lastLineBlock.source === event.source) {
+    appendLineEvent(lastLineBlock, event);
+    return;
+  }
+
   const el = document.createElement('article');
   el.className = `event kind-${event.kind || 'line'}`;
 
@@ -56,16 +79,63 @@ function renderEvent(event) {
   const source = event.source ? `<div class="source">${escapeHtml(event.source)}</div>` : '';
   const diff = event.payload && event.payload.diff ? renderDiff(event.payload.diff) : '';
 
-  el.innerHTML = `
-    <div class="event-head">
-      <span class="actor ${actor}">${actor}</span>
-      <span class="event-title">${title}</span>
-      <span class="time">${formatTime(event.ts)}</span>
-    </div>
-    <div class="event-body">${text}${diff}${source}</div>
-  `;
+  if (event.kind === 'line' && event.source) {
+    el.innerHTML = `
+      <div class="event-head">
+        <span class="actor ${actor}">${actor}</span>
+        <span class="event-title">${title}</span>
+        <span class="time">${formatTime(event.ts)}</span>
+      </div>
+      <div class="event-body">
+        <pre class="log-block code-block"></pre>
+        ${source}
+      </div>
+    `;
+    eventsEl.appendChild(el);
+    lastLineBlock = {
+      source: event.source,
+      el,
+      pre: el.querySelector('.log-block'),
+      count: 0,
+    };
+    appendLineEvent(lastLineBlock, event);
+    return;
+  } else {
+    lastLineBlock = null;
+    el.innerHTML = `
+      <div class="event-head">
+        <span class="actor ${actor}">${actor}</span>
+        <span class="event-title">${title}</span>
+        <span class="time">${formatTime(event.ts)}</span>
+      </div>
+      <div class="event-body">${text}${diff}${source}</div>
+    `;
+  }
 
   eventsEl.appendChild(el);
+  eventsEl.scrollTop = eventsEl.scrollHeight;
+}
+
+function classifyLogLine(line) {
+  if (line.startsWith('+') && !line.startsWith('+++')) return 'add';
+  if (line.startsWith('-') && !line.startsWith('---')) return 'del';
+  if (line.startsWith('@@')) return 'hunk';
+  if (/^(```|diff --git|index |--- |\+\+\+ )/.test(line)) return 'meta';
+  return '';
+}
+
+function appendLineEvent(block, event) {
+  if (!block || !block.pre) return;
+  const line = String(event.text || '');
+  const span = document.createElement('span');
+  span.className = `log-line ${classifyLogLine(line)}`.trim();
+  span.textContent = line || ' ';
+  block.pre.appendChild(span);
+  block.count += 1;
+  if (block.count > 260 && block.pre.firstChild) {
+    block.pre.removeChild(block.pre.firstChild);
+    block.count -= 1;
+  }
   eventsEl.scrollTop = eventsEl.scrollHeight;
 }
 
@@ -73,6 +143,25 @@ function rememberDiffEvent(event) {
   if (event.kind === 'patch' && event.payload && event.payload.diff) {
     latestDiffEvent = event;
   }
+}
+
+function updateTokens(payload) {
+  if (!tokensEl || !payload) return;
+  const totals = payload.totals || payload;
+  const hasEstimates = Boolean(payload.estimated || totals.estimatedCalls);
+  latestTokenTotals = {
+    local: Number(totals.local) || 0,
+    remote: Number(totals.remote) || 0,
+  };
+  tokensEl.innerHTML = `
+    <span class="token-label">tokens${hasEstimates ? ' est.' : ''}</span>
+    <span><strong>local</strong> ${formatCount(latestTokenTotals.local)}</span>
+    <span><strong>remote</strong> ${formatCount(latestTokenTotals.remote)}</span>
+  `;
+  tokensEl.title = hasEstimates
+    ? `Per-agent usage; ${totals.estimatedCalls || 0} call(s) include fallback estimates.`
+    : 'Per-agent usage from CLI/provider metadata.';
+  tokensEl.classList.add('active');
 }
 
 function clampPercent(value) {
@@ -257,6 +346,10 @@ function connect() {
       updateGpu(event);
       return;
     }
+    if (event.kind === 'token_usage' || event.kind === 'agent_usage') {
+      updateTokens(event.payload);
+      return;
+    }
     rememberDiffEvent(event);
     renderEvent(event);
     maybeUpdateStage(event);
@@ -265,6 +358,13 @@ function connect() {
 }
 
 connect();
+
+fetch('/tokens')
+  .then(response => response.ok ? response.json() : null)
+  .then(data => {
+    if (data) updateTokens(data);
+  })
+  .catch(() => {});
 
 fetch('http://localhost:5173/', { mode: 'no-cors' })
   .then(() => {

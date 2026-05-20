@@ -1,0 +1,67 @@
+{
+  "summary": "Verifies two-player connection, lobby readiness, and transition to gameplay with basic movement.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "connectPlayer",
+      "player": "B"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-lobby",
+      "description": "Lobby screen with two players connected"
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify lobby state and player list"
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-gameplay",
+      "description": "Gameplay screen after transition from lobby"
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "d",
+      "durationMs": 500
+    },
+    {
+      "action": "wait",
+      "player": "A",
+      "ms": 200
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "03-after-move",
+      "description": "Player A moved right"
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify player A position change and entity sync"
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+Warning: Basic terminal detected (TERM=dumb). Visual rendering will be limited. For the best experience, use a terminal emulator with truecolor support.
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

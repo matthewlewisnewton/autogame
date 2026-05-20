@@ -1,0 +1,214 @@
+{
+  "url": "http://localhost:6173",
+  "ok": true,
+  "ticketFile": null,
+  "capturePlanSource": "gemini",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [
+    {
+      "source": "gemini",
+      "ok": true,
+      "status": 0,
+      "error": "Warning: Basic terminal detected (TERM=dumb). Visual rendering will be limited. For the best experience, use a terminal emulator with truecolor support.\nYOLO mode is enabled. All tool calls will be automatically approved.\nYOLO mode is enabled. All tool calls will be automatically approved.\nRipgrep is not available. Falling back to GrepTool.\n"
+    }
+  ],
+  "capturePlanSummary": "Verifies two-player connection, lobby readiness, and transition to gameplay with basic movement.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-lobby.png",
+      "player": "A",
+      "description": "Lobby screen with two players connected"
+    },
+    {
+      "file": "02-gameplay.png",
+      "player": "A",
+      "description": "Gameplay screen after transition from lobby"
+    },
+    {
+      "file": "03-after-move.png",
+      "player": "A",
+      "description": "Player A moved right"
+    }
+  ],
+  "probes": [
+    {
+      "player": "A",
+      "description": "Verify lobby state and player list",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "myId": "tyci_eErA7Fuw7B1AAAB",
+          "phase": "lobby",
+          "connectionState": "connected",
+          "sceneInitialized": false,
+          "hasCanvas": false,
+          "lobbyVisible": true,
+          "cardHandVisible": false,
+          "status": "Connected",
+          "hpText": "100/100",
+          "msText": "100/100",
+          "currencyText": "GOLD 0",
+          "player": {
+            "hp": 100,
+            "magicStones": 100,
+            "debugScenario": null,
+            "dead": false,
+            "x": 10,
+            "z": 10
+          },
+          "players": 2,
+          "enemies": 0,
+          "hand": []
+        },
+        "status": "Connected",
+        "hasCanvas": false,
+        "canvasCount": 0,
+        "lobbyVisible": true,
+        "cardHandVisible": false,
+        "title": "3D Multiplayer Action Game",
+        "bodyText": "Lobby\nPLAYERS\ntyci_eErA7Fuw7B1AAAB — Not Ready\nfOqGgy-pAfV8mdyoAAAD — Not Ready\nOWNED CARDS\n⚔\nIron Sword\n3\n+ (3)\n⚔\nFlame Blade\n2\n+ (2)\n✦\nBattle Familiar\n2\n+ (2)\n🐉\nDungeon Drake\n1\n+ (1)\nSELECTED DECK 8/12\n⚔\nIron Sword\n✕\n⚔\nFlame Blade\n✕\n✦\nBattle Familiar\n✕\n🐉\nDungeon Drake\n✕\n⚔\nIron Sword\n✕\n⚔\nIron Sword\n✕\n✦\nBattle Familiar\n✕\n⚔\nFlame Blade\n✕\nReady"
+      }
+    },
+    {
+      "player": "A",
+      "description": "Verify player A position change and entity sync",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "myId": "tyci_eErA7Fuw7B1AAAB",
+          "phase": "playing",
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "100/100",
+          "msText": "100/100",
+          "currencyText": "GOLD 0",
+          "player": {
+            "hp": 100,
+            "magicStones": 100,
+            "debugScenario": null,
+            "dead": false,
+            "x": 11.35,
+            "z": 10
+          },
+          "players": 2,
+          "enemies": 5,
+          "hand": [
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            },
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Battle Familiar",
+              "type": "summon",
+              "remainingCharges": 1,
+              "charges": 1
+            },
+            {
+              "id": "dungeon_drake",
+              "name": "Dungeon Drake",
+              "type": "monster",
+              "remainingCharges": 1,
+              "charges": 1
+            }
+          ]
+        },
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "3D Multiplayer Action Game",
+        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\ntyci_ HP\n100/100\ntyci_ MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 5\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n✦\nBattle Familiar\n1/1\n🐉\nDungeon Drake\n1/1"
+      }
+    },
+    {
+      "player": "A",
+      "description": "Final capture probe.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "myId": "tyci_eErA7Fuw7B1AAAB",
+          "phase": "playing",
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "100/100",
+          "msText": "100/100",
+          "currencyText": "GOLD 0",
+          "player": {
+            "hp": 100,
+            "magicStones": 100,
+            "debugScenario": null,
+            "dead": false,
+            "x": 11.35,
+            "z": 10
+          },
+          "players": 2,
+          "enemies": 5,
+          "hand": [
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            },
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Battle Familiar",
+              "type": "summon",
+              "remainingCharges": 1,
+              "charges": 1
+            },
+            {
+              "id": "dungeon_drake",
+              "name": "Dungeon Drake",
+              "type": "monster",
+              "remainingCharges": 1,
+              "charges": 1
+            }
+          ]
+        },
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "3D Multiplayer Action Game",
+        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\ntyci_ HP\n100/100\ntyci_ MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 5\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n✦\nBattle Familiar\n1/1\n🐉\nDungeon Drake\n1/1"
+      }
+    }
+  ]
+}

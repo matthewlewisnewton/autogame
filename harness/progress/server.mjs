@@ -26,6 +26,9 @@ const events = [];
 const seen = new Set();
 const fileOffsets = new Map();
 const fileDigests = new Map();
+const agentUsageByKey = new Map();
+const agentUsageDigests = new Map();
+const tokenTotals = emptyTokenTotals();
 let nextId = 1;
 let lastGitHead = '';
 let lastGpuDigest = '';
@@ -60,6 +63,92 @@ function nowIso() {
 function isLocalRequest(req) {
   const address = req.socket.remoteAddress || '';
   return LOCAL_POST_ADDRESSES.has(address);
+}
+
+function emptyTokenTotals() {
+  return {
+    local: 0,
+    remote: 0,
+    exact: { local: 0, remote: 0 },
+    estimated: { local: 0, remote: 0 },
+    calls: 0,
+    estimatedCalls: 0,
+  };
+}
+
+function numberOrZero(value) {
+  const n = Number(value);
+  return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+}
+
+function normalizeUsagePayload(payload) {
+  const bucket = payload.bucket === 'local' ? 'local' : payload.bucket === 'remote' ? 'remote' : null;
+  const outfile = String(payload.outfile || '');
+  const attempt = Number(payload.attempt) || 0;
+  const totalTokens = numberOrZero(payload.totalTokens);
+  if (!bucket || !outfile || !attempt || !totalTokens) return null;
+
+  return {
+    key: String(payload.key || `${outfile}#${attempt}`),
+    agent: String(payload.agent || 'agent'),
+    model: payload.model || null,
+    bucket,
+    outfile,
+    attempt,
+    rc: Number(payload.rc) || 0,
+    status: payload.status || '',
+    reason: payload.reason || null,
+    durationMs: payload.durationMs === null || payload.durationMs === undefined ? null : numberOrZero(payload.durationMs),
+    inputTokens: payload.inputTokens === null || payload.inputTokens === undefined ? null : numberOrZero(payload.inputTokens),
+    outputTokens: payload.outputTokens === null || payload.outputTokens === undefined ? null : numberOrZero(payload.outputTokens),
+    totalTokens,
+    estimated: Boolean(payload.estimated),
+    source: payload.source || (payload.estimated ? 'per_call_estimate' : 'cli_usage'),
+  };
+}
+
+function recomputeTokenTotals() {
+  const next = emptyTokenTotals();
+  for (const usage of agentUsageByKey.values()) {
+    next[usage.bucket] += usage.totalTokens;
+    if (usage.estimated) {
+      next.estimated[usage.bucket] += usage.totalTokens;
+      next.estimatedCalls += 1;
+    } else {
+      next.exact[usage.bucket] += usage.totalTokens;
+    }
+    next.calls += 1;
+  }
+  Object.assign(tokenTotals, next);
+}
+
+function recordAgentUsage(payload, source) {
+  const usage = normalizeUsagePayload(payload || {});
+  if (!usage) return null;
+
+  const digest = JSON.stringify(usage);
+  if (agentUsageDigests.get(usage.key) === digest) {
+    return { usage, changed: false };
+  }
+
+  agentUsageDigests.set(usage.key, digest);
+  agentUsageByKey.set(usage.key, usage);
+  recomputeTokenTotals();
+
+  emitTransient({
+    kind: 'token_usage',
+    actor: 'harness',
+    title: 'Token usage updated',
+    text: `local ${tokenTotals.local.toLocaleString()} / remote ${tokenTotals.remote.toLocaleString()}`,
+    source,
+    payload: {
+      estimated: tokenTotals.estimatedCalls > 0,
+      usage,
+      totals: { ...tokenTotals },
+    },
+  });
+
+  return { usage, changed: true };
 }
 
 function actorForPath(path) {
@@ -118,6 +207,19 @@ function emit(event) {
   seen.add(key);
   events.push(enriched);
   if (events.length > MAX_EVENTS) events.shift();
+  for (const res of clients) {
+    res.write(`id: ${enriched.id}\n`);
+    res.write(`event: progress\n`);
+    res.write(`data: ${JSON.stringify(enriched)}\n\n`);
+  }
+}
+
+function emitTransient(event) {
+  const enriched = {
+    id: nextId++,
+    ts: nowIso(),
+    ...event,
+  };
   for (const res of clients) {
     res.write(`id: ${enriched.id}\n`);
     res.write(`event: progress\n`);
@@ -286,6 +388,7 @@ function normalizeExplicitEvent(event, source, raw = '') {
   const kind = event.type || event.kind || 'explicit';
   const payload = event.payload || event;
   const label = payload.label || payload.ticket || '';
+  const usageResult = kind === 'agent_usage' ? recordAgentUsage(payload, source) : null;
   const normalized = {
     kind,
     actor: event.actor || 'harness',
@@ -338,6 +441,17 @@ function normalizeExplicitEvent(event, source, raw = '') {
     normalized.actor = payload.agent || 'agent';
     normalized.title = `${payload.agent || 'agent'} finished`;
     normalized.text = [payload.status, payload.reason].filter(Boolean).join(' ');
+  } else if (kind === 'agent_usage') {
+    const usage = usageResult?.usage || normalizeUsagePayload(payload) || payload;
+    normalized.actor = usage.agent || 'agent';
+    normalized.title = `${usage.agent || 'agent'} token usage`;
+    normalized.text = `${usage.totalTokens || 0} token(s)${usage.estimated ? ' estimated' : ''}`;
+    normalized.payload = {
+      ...payload,
+      usage,
+      estimated: tokenTotals.estimatedCalls > 0,
+      totals: { ...tokenTotals },
+    };
   } else if (kind === 'qa_verified' || kind === 'qa_verdict') {
     normalized.actor = 'qa';
     normalized.title = kind === 'qa_verdict' ? `QA ${payload.verdict || 'verdict'}` : 'QA verified';
@@ -351,6 +465,14 @@ function normalizeExplicitEvent(event, source, raw = '') {
   } else if (kind === 'game_start' || kind === 'game_stop') {
     normalized.title = kind === 'game_start' ? 'Game started' : 'Game stopped';
     normalized.text = payload.url || '';
+  } else if (kind === 'pipeline_check_start') {
+    normalized.actor = 'harness';
+    normalized.title = 'Local checks started';
+    normalized.text = [payload.cwd, payload.command].filter(Boolean).join(' $ ');
+  } else if (kind === 'pipeline_check_finish') {
+    normalized.actor = 'harness';
+    normalized.title = payload.rc === 0 ? 'Local checks passed' : 'Local checks failed';
+    normalized.text = [payload.reason, payload.outfile].filter(Boolean).join(' ');
   }
 
   normalized.text = normalized.text.slice(0, MAX_LINE);
@@ -582,7 +704,13 @@ const server = createServer((req, res) => {
 
   if (url.pathname === '/state') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ events, repoRoot }, null, 2));
+    res.end(JSON.stringify({ events, repoRoot, tokenTotals }, null, 2));
+    return;
+  }
+
+  if (url.pathname === '/tokens') {
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ estimated: tokenTotals.estimatedCalls > 0, totals: tokenTotals }, null, 2));
     return;
   }
 

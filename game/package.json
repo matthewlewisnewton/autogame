@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev --prefix server\" \"npm run dev --prefix client\"",
-    "install:all": "npm install && npm install --prefix server && npm install --prefix client",
+    "dev": "concurrently \"pnpm -C server run dev\" \"pnpm -C client run dev\"",
+    "install:all": "pnpm install",
     "test": "vitest run --coverage --config vitest.config.js"
   },
   "keywords": [],
@@ -15,6 +15,7 @@
     "@vitest/coverage-v8": "^3.2.4",
     "concurrently": "^9.2.1",
     "jsdom": "^26.1.0",
+    "socket.io-client": "^4.8.3",
     "vitest": "^3.2.4"
   }
 }

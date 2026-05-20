@@ -75,4 +75,13 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [042-enemy-card-drops](tickets/042-enemy-card-drops/)
 - [ ] [043-lobby-card-sell-and-trade](tickets/043-lobby-card-sell-and-trade/)
 
+## Backlog — Visual Fidelity & Polish
+- [ ] [053-pso-vanguard-hud](tickets/053-pso-vanguard-hud/)
+- [ ] [054-grimoire-deck-viewer](tickets/054-grimoire-deck-viewer/)
+
+## Backlog — Validation & Logic
+- [ ] [055-server-side-wall-collision-validation](tickets/055-server-side-wall-collision-validation/)
+- [ ] [056-server-side-card-hand-tracking](tickets/056-server-side-card-hand-tracking/)
+- [ ] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
+
 ## Done

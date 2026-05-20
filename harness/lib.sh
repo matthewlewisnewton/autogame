@@ -5,8 +5,10 @@
 
 HARNESS_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$HARNESS_DIR/.." && pwd)"
+# PROMPTS_DIR is consumed by the run_*.sh scripts that source this file.
+# shellcheck disable=SC2034
 PROMPTS_DIR="$HARNESS_DIR/prompts"
-cd "$REPO_ROOT"
+cd "$REPO_ROOT" || exit 1
 
 # The harness may be launched with a minimal PATH (e.g. from tmux) that lacks
 # ~/.local/bin — where the cursor `agent` CLI lives. Ensure it is reachable.
@@ -24,7 +26,7 @@ GEMINI_TIMEOUT="${GEMINI_TIMEOUT:-600}"
 GEMINI_QUOTA_FAST_FAIL="${GEMINI_QUOTA_FAST_FAIL:-1}"
 GEMINI_QUOTA_FAST_FAIL_SECONDS="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
-AGENT_MODEL="${AGENT_MODEL:-composer-2}"   # cursor-agent QA fallback model
+AGENT_MODEL="${AGENT_MODEL:-composer-2.5}" # cursor-agent QA fallback model
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-600}"
 CLI_RETRIES="${CLI_RETRIES:-2}"            # retries on timeout/empty output
 CLI_RETRY_BACKOFF="${CLI_RETRY_BACKOFF:-20}"
@@ -34,6 +36,10 @@ QWEN_VISION_BASE_URL="${QWEN_VISION_BASE_URL:-http://localhost:11434/v1}"
 QWEN_VISION_API_KEY="${QWEN_VISION_API_KEY:-ollama}"
 QWEN_VISION_TIMEOUT="${QWEN_VISION_TIMEOUT:-900}"
 QWEN_VISION_OPENAI_LOGGING="${QWEN_VISION_OPENAI_LOGGING:-0}"
+PIPELINE_LOCAL_CHECKS="${PIPELINE_LOCAL_CHECKS:-1}" # run deterministic checks while screenshots/server startup happen
+PIPELINE_CHECK_CWD="${PIPELINE_CHECK_CWD:-game}"
+PIPELINE_CHECK_COMMAND="${PIPELINE_CHECK_COMMAND:-npm test -- --coverage.enabled=false}"
+PIPELINE_CHECK_TIMEOUT="${PIPELINE_CHECK_TIMEOUT:-300}"
 
 # Exit-code convention used across run_*.sh:
 #   0 = passed   1 = genuine task failure   2 = harness/tool failure (escalate)
@@ -256,11 +262,231 @@ if (output) {
 NODE
 }
 
+agent_bucket_for_label() {  # agent_bucket_for_label <label>
+  case "$1" in
+    qwen|qwen-vision) echo "local" ;;
+    *) echo "remote" ;;
+  esac
+}
+
+agent_model_for_label() {  # agent_model_for_label <label>
+  case "$1" in
+    qwen) echo "${QWEN_MODEL:-default}" ;;
+    qwen-vision) echo "${QWEN_VISION_MODEL:-default}" ;;
+    gemini) echo "${GEMINI_MODEL:-default}" ;;
+    claude) echo "${CLAUDE_MODEL:-default}" ;;
+    agent) echo "${AGENT_MODEL:-default}" ;;
+    *) echo "default" ;;
+  esac
+}
+
+record_agent_usage() {  # record_agent_usage <label> <outfile> <attempt> <rc> <status> <reason> <started-ms> <ended-ms> <prompt>
+  local label="$1" out="$2" attempt="$3" rc="$4" status="$5" reason="$6" started_ms="$7" ended_ms="$8" prompt="$9"
+  local model bucket out_dir usage_file payload
+  model="$(agent_model_for_label "$label")"
+  bucket="$(agent_bucket_for_label "$label")"
+  out_dir="$(dirname "$out")"
+  usage_file="$out_dir/agent-usage.ndjson"
+  mkdir -p "$out_dir" 2>/dev/null || true
+
+  payload="$(
+    node - "$label" "$model" "$bucket" "$attempt" "$rc" "$status" "$reason" "$started_ms" "$ended_ms" "${#prompt}" "$out" <<'NODE'
+const { existsSync, readFileSync, readdirSync, statSync } = require('node:fs');
+const { dirname, join } = require('node:path');
+
+const [
+  agent,
+  model,
+  bucket,
+  attemptRaw,
+  rcRaw,
+  status,
+  reason,
+  startedRaw,
+  endedRaw,
+  promptCharsRaw,
+  outfile,
+] = process.argv.slice(2);
+
+function toNumber(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function tokenEstimateFromChars(chars) {
+  const n = Number(chars);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return Math.max(1, Math.ceil(n / 4));
+}
+
+function firstNumber(text, patterns) {
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) return Number(match[1]);
+  }
+  return null;
+}
+
+function usageFromText(text) {
+  if (!text) return {};
+  return {
+    inputTokens: firstNumber(text, [
+      /"prompt_tokens"\s*:\s*(\d+)/i,
+      /"input_tokens"\s*:\s*(\d+)/i,
+      /"promptTokenCount"\s*:\s*(\d+)/i,
+      /"inputTokenCount"\s*:\s*(\d+)/i,
+      /\b(?:prompt|input)[ _-]?tokens?\b\s*[:=]\s*(\d+)/i,
+    ]),
+    outputTokens: firstNumber(text, [
+      /"completion_tokens"\s*:\s*(\d+)/i,
+      /"output_tokens"\s*:\s*(\d+)/i,
+      /"candidatesTokenCount"\s*:\s*(\d+)/i,
+      /"outputTokenCount"\s*:\s*(\d+)/i,
+      /\b(?:completion|output|candidate)[ _-]?tokens?\b\s*[:=]\s*(\d+)/i,
+    ]),
+    totalTokens: firstNumber(text, [
+      /"total_tokens"\s*:\s*(\d+)/i,
+      /"totalTokenCount"\s*:\s*(\d+)/i,
+      /\btotal[ _-]?tokens?\b\s*[:=]\s*(\d+)/i,
+    ]),
+  };
+}
+
+function mergeUsage(target, next) {
+  for (const key of ['inputTokens', 'outputTokens', 'totalTokens']) {
+    if (Number.isFinite(next[key])) target[key] = next[key];
+  }
+}
+
+function collectJsonUsage(value, target) {
+  if (!value || typeof value !== 'object') return;
+  if (Array.isArray(value)) {
+    for (const item of value) collectJsonUsage(item, target);
+    return;
+  }
+  for (const [rawKey, rawValue] of Object.entries(value)) {
+    const key = rawKey.toLowerCase();
+    if (Number.isFinite(rawValue)) {
+      if ((key.includes('prompt') || key.includes('input')) && key.includes('token')) {
+        target.inputTokens = rawValue;
+      } else if ((key.includes('completion') || key.includes('output') || key.includes('candidate')) && key.includes('token')) {
+        target.outputTokens = rawValue;
+      } else if (key.includes('total') && key.includes('token')) {
+        target.totalTokens = rawValue;
+      }
+    }
+    collectJsonUsage(rawValue, target);
+  }
+}
+
+function scanUsageFile(file, target) {
+  let text = '';
+  try {
+    const st = statSync(file);
+    if (!st.isFile() || st.size > 1024 * 1024) return;
+    text = readFileSync(file, 'utf8');
+  } catch {
+    return;
+  }
+  mergeUsage(target, usageFromText(text));
+  try {
+    collectJsonUsage(JSON.parse(text), target);
+  } catch {
+    for (const line of text.split(/\r?\n/)) {
+      if (!line.trim().startsWith('{')) continue;
+      try {
+        collectJsonUsage(JSON.parse(line), target);
+      } catch {
+        // Ignore non-JSON log lines.
+      }
+    }
+  }
+}
+
+function scanUsageDir(dir, target, remaining = { count: 120 }) {
+  if (!existsSync(dir) || remaining.count <= 0) return;
+  let entries = [];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (remaining.count <= 0) return;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      scanUsageDir(path, target, remaining);
+    } else {
+      remaining.count -= 1;
+      scanUsageFile(path, target);
+    }
+  }
+}
+
+let outputText = '';
+try {
+  outputText = readFileSync(outfile, 'utf8');
+} catch {
+  outputText = '';
+}
+
+const usage = usageFromText(outputText);
+const outputDir = dirname(outfile);
+scanUsageDir(join(outputDir, 'qwen-openai-logs'), usage);
+scanUsageDir(join(outputDir, 'openai-logs'), usage);
+
+let inputTokens = Number.isFinite(usage.inputTokens) ? usage.inputTokens : null;
+let outputTokens = Number.isFinite(usage.outputTokens) ? usage.outputTokens : null;
+let totalTokens = Number.isFinite(usage.totalTokens) ? usage.totalTokens : null;
+const hasExactUsage = inputTokens !== null || outputTokens !== null || totalTokens !== null;
+
+if (!hasExactUsage) {
+  inputTokens = tokenEstimateFromChars(promptCharsRaw);
+  outputTokens = tokenEstimateFromChars(outputText.trim().length);
+  totalTokens = inputTokens + outputTokens;
+}
+
+if (totalTokens === null && inputTokens !== null && outputTokens !== null) {
+  totalTokens = inputTokens + outputTokens;
+}
+
+const startedAtMs = toNumber(startedRaw);
+const endedAtMs = toNumber(endedRaw);
+const usagePayload = {
+  key: `${outfile}#${attemptRaw}`,
+  agent,
+  model: model || null,
+  bucket,
+  outfile,
+  attempt: Number(attemptRaw) || 0,
+  rc: Number(rcRaw) || 0,
+  status,
+  reason: reason || null,
+  startedAtMs,
+  endedAtMs,
+  durationMs: startedAtMs !== null && endedAtMs !== null ? Math.max(0, endedAtMs - startedAtMs) : null,
+  inputTokens,
+  outputTokens,
+  totalTokens: totalTokens || 0,
+  estimated: !hasExactUsage,
+  source: hasExactUsage ? 'cli_usage' : 'per_call_estimate',
+};
+
+process.stdout.write(JSON.stringify(usagePayload));
+NODE
+  )" || return 0
+
+  [ -n "$payload" ] || return 0
+  printf '%s\n' "$payload" >> "$usage_file" 2>/dev/null || true
+  emit_progress_event "agent_usage" "$payload"
+}
+
 _run_cli() {
-  local label="$1" out="$2" tmo="$3"; shift 3
-  local attempt=1 rc reason cli_pid quota_seen_at quota_fast_failed now
+  local label="$1" out="$2" tmo="$3" prompt="$4"; shift 4
+  local attempt=1 rc reason cli_pid quota_seen_at quota_fast_failed now started_ms ended_ms
   local quota_fast_fail_seconds="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
   while :; do
+    started_ms="$(date +%s%3N 2>/dev/null || date +%s000)"
     emit_progress_event "agent_start" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"timeoutSeconds\":$tmo}"
     # </dev/null: a CLI that reads stdin (gemini -p does) must NOT inherit the
     #   harness's TTY — a backgrounded process reading a TTY gets SIGTTIN and
@@ -290,9 +516,11 @@ _run_cli() {
     if [ "$quota_fast_failed" -ne 1 ]; then
       wait "$cli_pid"; rc=$?
     fi
+    ended_ms="$(date +%s%3N 2>/dev/null || date +%s000)"
     if [ "$rc" -ne 124 ] && [ "$rc" -ne 137 ] && [ -s "$out" ] &&
         ! cli_output_is_only_error "$out" &&
         { [ "$label" != "gemini" ] || ! cli_output_has_quota_error "$out" || has_verdict "$out"; }; then
+      record_agent_usage "$label" "$out" "$attempt" "$rc" "ok" "" "$started_ms" "$ended_ms" "$prompt"
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"ok\"}"
       return 0
     fi
@@ -301,15 +529,18 @@ _run_cli() {
       if [ "$quota_fast_failed" -ne 1 ]; then
         log "[tool-fallback] gemini unavailable (reason=$reason) — using cursor-agent/$AGENT_MODEL"
       fi
+      record_agent_usage "$label" "$out" "$attempt" "$rc" "tool_failure" "$reason" "$started_ms" "$ended_ms" "$prompt"
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"
       return 2
     fi
     if [ "$attempt" -gt "$CLI_RETRIES" ]; then
       log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, reason=$reason)"
+      record_agent_usage "$label" "$out" "$attempt" "$rc" "tool_failure" "$reason" "$started_ms" "$ended_ms" "$prompt"
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"
       return 2
     fi
     log "[tool-retry] $label attempt $attempt failed (rc=$rc, reason=$reason) — backoff ${CLI_RETRY_BACKOFF}s"
+    record_agent_usage "$label" "$out" "$attempt" "$rc" "retry" "$reason" "$started_ms" "$ended_ms" "$prompt"
     emit_progress_event "agent_retry" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"reason\":$(json_string "$reason")}"
     sleep "$CLI_RETRY_BACKOFF"
     attempt=$((attempt + 1))
@@ -319,7 +550,7 @@ _run_cli() {
 # CLI wrappers — all non-interactive / unattended. Return 0 = ok, 2 = tool-failure.
 run_qwen() {  # run_qwen <prompt> <outfile>
   local a=(qwen -y); [ -n "$QWEN_MODEL" ] && a+=(-m "$QWEN_MODEL"); a+=("$1")
-  _run_cli qwen "$2" "$QWEN_TIMEOUT" "${a[@]}"
+  _run_cli qwen "$2" "$QWEN_TIMEOUT" "$1" "${a[@]}"
 }
 write_qwen_vision_settings() {  # write_qwen_vision_settings <settings-file> <mcp-output-dir>
   local settings_file="$1" mcp_output_dir="$2"
@@ -386,21 +617,21 @@ run_qwen_vision() {  # run_qwen_vision <prompt> <outfile> <artifacts-dir>
   if [ "$QWEN_VISION_OPENAI_LOGGING" = "1" ]; then
     a+=(--openai-logging --openai-logging-dir "$artifacts_dir/qwen-openai-logs")
   fi
-  _run_cli qwen-vision "$out" "$QWEN_VISION_TIMEOUT" "${a[@]}"
+  _run_cli qwen-vision "$out" "$QWEN_VISION_TIMEOUT" "$prompt" "${a[@]}"
 }
 run_gemini() {  # run_gemini <prompt> <outfile>
   local a=(gemini -y --skip-trust); [ -n "$GEMINI_MODEL" ] && a+=(-m "$GEMINI_MODEL"); a+=(-p "$1")
-  _run_cli gemini "$2" "$GEMINI_TIMEOUT" "${a[@]}"
+  _run_cli gemini "$2" "$GEMINI_TIMEOUT" "$1" "${a[@]}"
 }
 run_agent() {  # run_agent <prompt> <outfile> — cursor-agent, QA fallback
   local a=(agent -p --force --trust --mode ask)
   [ -n "$AGENT_MODEL" ] && a+=(--model "$AGENT_MODEL")
   a+=("$1")
-  _run_cli agent "$2" "$AGENT_TIMEOUT" "${a[@]}"
+  _run_cli agent "$2" "$AGENT_TIMEOUT" "$1" "${a[@]}"
 }
 run_claude() {  # run_claude <prompt> <outfile>
   local a=(claude -p --dangerously-skip-permissions); [ -n "$CLAUDE_MODEL" ] && a+=(--model "$CLAUDE_MODEL"); a+=("$1")
-  _run_cli claude "$2" "$CLAUDE_TIMEOUT" "${a[@]}"
+  _run_cli claude "$2" "$CLAUDE_TIMEOUT" "$1" "${a[@]}"
 }
 
 # A QA/review output is usable iff it ended with a real verdict line. This is

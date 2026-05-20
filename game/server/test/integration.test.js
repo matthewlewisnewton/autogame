@@ -7,6 +7,8 @@ import {
 	io as serverIo,
 	server as httpServer,
 	_intervals,
+	_timeouts,
+	clearAllTimers,
 	ENEMY_ATTACK_RANGE,
 	ENEMY_ATTACK_DAMAGE,
 	ENEMY_ATTACK_WINDUP_MS,
@@ -21,20 +23,29 @@ import {
  * Each test gets its own server so there is no shared-state interference.
  */
 async function startTestServer() {
-	return new Promise((resolve, reject) => {
-		resetGameState();
-		// Clear old listeners/intervals from previous runs
-		serverIo.removeAllListeners('connection');
-		for (const id of _intervals) clearInterval(id);
-		_intervals.length = 0;
+	// Close any existing server before starting a new one
+	if (httpServer.listening) {
+		await new Promise((resolve) => httpServer.close(resolve));
+	}
 
-		// Listen on port 0 — OS assigns a free port
+	return new Promise((resolve, reject) => {
+		const timeout = setTimeout(() => reject(new Error('startTestServer: timed out waiting for listening')), 15000);
+
+		resetGameState();
+		serverIo.removeAllListeners('connection');
+		clearAllTimers();
+
 		startServer(0);
 
 		httpServer.once('listening', () => {
+			clearTimeout(timeout);
 			const addr = httpServer.address();
-			const port = addr.port;
-			resolve(`http://localhost:${port}`);
+			resolve(`http://localhost:${addr.port}`);
+		});
+
+		httpServer.once('error', (e) => {
+			clearTimeout(timeout);
+			reject(e);
 		});
 	});
 }
