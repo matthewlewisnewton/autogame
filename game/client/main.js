@@ -762,6 +762,7 @@ const ENEMY_MESH_HEIGHT = {
 	grunt:      0.5,   // ConeGeometry(0.5, 1, 8)  → half-height = 0.5
 	skirmisher: 0.3,   // ConeGeometry(0.3, 0.6, 8) → half-height = 0.3
 	miniboss:   0.9,   // ConeGeometry(0.8, 1.8, 12) → half-height = 0.9
+	spawner:    0.5,   // OctahedronGeometry(0.6)   → half-height ≈ 0.5
 };
 
 /**
@@ -773,7 +774,7 @@ function enemyMeshHalfHeight(type) {
 
 /**
  * Create a Three.js mesh for an enemy based on its type.
- * @param {string} type - 'grunt', 'skirmisher', or 'miniboss'
+ * @param {string} type - 'grunt', 'skirmisher', 'miniboss', or 'spawner'
  * @returns {THREE.Mesh}
  */
 function createEnemyMesh(type) {
@@ -786,6 +787,15 @@ function createEnemyMesh(type) {
 		case 'miniboss': {
 			const geo = new THREE.ConeGeometry(0.8, 1.8, 12);
 			const mat = new THREE.MeshStandardMaterial({ color: 0x8800cc });
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'spawner': {
+			const geo = new THREE.OctahedronGeometry(0.6);
+			const mat = new THREE.MeshStandardMaterial({
+				color: 0x00ccaa,
+				emissive: 0x00ccaa,
+				emissiveIntensity: 0.4
+			});
 			return new THREE.Mesh(geo, mat);
 		}
 		default: { // grunt
