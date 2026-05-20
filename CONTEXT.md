@@ -39,7 +39,7 @@ pnpm run dev
 ```
 
 ## Supply-chain checks
-Run `pnpm run check:deps` (from `game/`) to flag dependencies older than the configured age cutoff.
+Run `pnpm run check:deps` (from `game/`) to flag dependencies newer than the configured minimum age.
 A CI workflow (`.github/workflows/check-deps.yml`) runs the same check on PRs that touch `pnpm-lock.yaml`.
 
 ## Game Summary
