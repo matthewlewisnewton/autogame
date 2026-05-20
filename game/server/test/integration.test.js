@@ -16,7 +16,8 @@ import {
 	TICK_RATE,
 	ENEMY_DEFS,
 	spawnEnemy,
-	updateEnemies
+	updateEnemies,
+	checkRunTerminalState
 } from '../index.js';
 
 // ── Helpers ──
@@ -459,6 +460,107 @@ describe('Socket Integration — Disconnect Event', () => {
 		await sleep(100);
 
 		expect(gameState.minions.filter(m => m.ownerId === socket.id).length).toBe(0);
+	});
+});
+
+describe('Socket Integration — Last Player Disconnect Resets Run', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		// Don't disconnect socket here — the test does it
+		await closeServer();
+	});
+
+	it('resets gamePhase to lobby when last player disconnects during active run', async () => {
+		// Transition to playing phase
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		expect(gameState.gamePhase).toBe('playing');
+
+		// Disconnect the only player
+		socket.disconnect();
+		await sleep(100);
+
+		expect(gameState.gamePhase).toBe('lobby');
+	});
+
+	it('clears gameState.run when last player disconnects', async () => {
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		expect(gameState.run).toBeDefined();
+
+		socket.disconnect();
+		await sleep(100);
+
+		expect(gameState.run).toBeUndefined();
+	});
+
+	it('clears enemies, minions, and loot when last player disconnects', async () => {
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+
+		// Add some minions and loot
+		gameState.minions.push({ id: 'm1', ownerId: socket.id, x: 0, z: 0, hp: 50, ttl: 30 });
+		gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
+
+		socket.disconnect();
+		await sleep(100);
+
+		expect(gameState.enemies).toEqual([]);
+		expect(gameState.minions).toEqual([]);
+		expect(gameState.loot).toEqual([]);
+	});
+
+	it('does not reset run when a second player remains connected', async () => {
+		const socket2 = (await connectClient(baseUrl)).socket;
+
+		// Both players ready to start the game
+		const startGame1 = waitForEvent(socket, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket.emit('playerReady', true);
+		await sleep(50);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run).toBeDefined();
+
+		// Disconnect first player — second remains
+		socket.disconnect();
+		await sleep(100);
+
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run).toBeDefined();
+
+		// Clean up second socket
+		if (socket2.connected) socket2.disconnect();
+	});
+
+	it('resets to lobby when last player disconnects in terminal run state', async () => {
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+
+		// Force the run to a terminal state (victory) by defeating all enemies
+		gameState.run.objective.defeatedEnemies = gameState.run.objective.totalEnemies;
+		checkRunTerminalState();
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run.status).toBe('victory');
+
+		// Disconnect the last player
+		socket.disconnect();
+		await sleep(100);
+
+		expect(gameState.gamePhase).toBe('lobby');
+		expect(gameState.run).toBeUndefined();
 	});
 });
 
