@@ -1018,3 +1018,26 @@ refactor uses the shared helper, and the spawner is now visible in
 `mixed-enemies` (probe `enemies: 4`) and produces an add in
 `spawner-active` (probe `enemies: 2`).
 
+
+## v0.45 — Cleanup nits from 081-cleanup-enemy-type-spawner  (2026-05-20 06:13:43)
+
+same `spawnEnemy()` path and the same `broadcastLobbyUpdate()` /
+`io.emit('stateUpdate', ...)` flow as any other state change.
+
+## Design / requirements consistency
+No design surface changes. Behavior is byte-identical except that
+`spawnEnemy()` now returns the created object. `game/docs/design.md` and
+`game/docs/requirements.md` are not affected.
+
+## Code quality
+- The change is minimal and well-scoped.
+- No console errors, no dead code introduced, no new branches.
+- One adjacent inconsistency worth a follow-up (see Nits): `spawnEnemies()` at
+  line 651-652 still uses the `gameState.enemies[gameState.enemies.length - 1]`
+  peek pattern. The ticket explicitly scoped this cleanup to the
+  `spawner-active` branch, so it is not a gap, but it is a natural follow-up
+  now that `spawnEnemy()` returns the enemy.
+
+## Remaining gaps
+None blocking.
+
