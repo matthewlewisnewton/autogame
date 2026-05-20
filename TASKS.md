@@ -47,11 +47,12 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [085-cleanup-cleanup-enemy-types-skirmisher-miniboss](tickets/085-cleanup-cleanup-enemy-types-skirmisher-miniboss/)
 - [x] [084-cleanup-cleanup-cleanup-enemy-type-spawner](tickets/084-cleanup-cleanup-cleanup-enemy-type-spawner/)
 - [x] [083-cleanup-cleanup-enemy-type-spawner](tickets/083-cleanup-cleanup-enemy-type-spawner/)
 - [x] [082-cleanup-reset-state-on-last-disconnect](tickets/082-cleanup-reset-state-on-last-disconnect/)
 - [x] [081-cleanup-enemy-type-spawner](tickets/081-cleanup-enemy-type-spawner/)
-- [ ] [080-cleanup-enemy-types-skirmisher-miniboss](tickets/080-cleanup-enemy-types-skirmisher-miniboss/)
+- [x] [080-cleanup-enemy-types-skirmisher-miniboss](tickets/080-cleanup-enemy-types-skirmisher-miniboss/)
 - [x] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
 - [x] [051-cleanup-cleanup-public-state-and-shared-data-nits](tickets/051-cleanup-cleanup-public-state-and-shared-data-nits/)
 - [x] [050-cleanup-cleanup-cleanup-encounter-telegraphs-audio](tickets/050-cleanup-cleanup-cleanup-encounter-telegraphs-audio/)

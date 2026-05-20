@@ -1064,3 +1064,26 @@ pushed to `gameState.enemies`) is unchanged from 083.
 
 None blocking.
 
+
+## v0.47 — Cleanup nits from 077-enemy-types-skirmisher-miniboss  (2026-05-20 06:48:53)
+
+`createEnemyMesh` has collapsed into a single data-driven branch on
+`def.type`. All 128 client tests pass. The mesh-height check screenshot
+confirms no visual drift (health bars remain correctly positioned). ✅
+
+## Cross-cutting checks
+- `git diff 80eaf3f..HEAD --stat` shows changes are confined to
+  `game/client/main.js`, `game/server/index.js`, and the two server test
+  files. No collateral damage in unrelated code.
+- `design.md` and `requirements.md` are unaffected — this ticket is pure
+  cleanup with no behavioral changes.
+- No debug scenarios were added or modified by this ticket (the
+  `mixed-enemies` scenario predates it).
+- `MINION_CHASE_SPEED` is a new local constant rather than referencing
+  `ENEMY_DEFS.grunt.chaseSpeed`. The inline comment notes they should match.
+  Acceptable per the sub-ticket spec ("`updateMinions()` either uses its own
+  speed constant or reads from `ENEMY_DEFS`").
+
+## Remaining gaps
+None blocking. See nits.md for non-blocking polish items.
+
