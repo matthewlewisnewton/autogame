@@ -857,3 +857,26 @@ A pure helper was extracted to `game/client/delta.js` (`clampDelta(rawDelta)`) a
 ## Remaining gaps
 None. Every sub-ticket's acceptance criterion is satisfied, the live game runs cleanly under the regression smoke capture, and the full test suite passes with coverage well above threshold.
 
+
+## v0.38 — Cleanup nits from 016-loot-and-currency  (2026-05-19 17:40:41)
+
+
+- Changes are small, focused, and additive — no dead code, no shadowed
+  identifiers, no broken paths.
+- The `// one pickup per frame` comment is now slightly imprecise (it really
+  means "one loot tile interaction per frame"), but the intent is still
+  clear.
+- A new test-only handle `window.__pickedUpLootIds` was exposed alongside
+  other `__*` helpers — consistent with project convention.
+- No new console errors from the game itself in the captured run.
+
+## Remaining gaps
+
+None blocking.
+
+Minor (non-blocking) observation: the comment at `game/client/main.js:661`
+reads "cleared on each stateUpdate", which slightly overstates what the
+pruning at `:576-585` does — it only removes ids no longer in `state.loot`
+rather than clearing the entire set. Behaviourally correct; comment could be
+tightened. Captured as a nit, not a blocker.
+
