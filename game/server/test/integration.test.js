@@ -10,8 +10,6 @@ import {
 	_timeouts,
 	clearAllTimers,
 	ENEMY_ATTACK_RANGE,
-	ENEMY_ATTACK_DAMAGE,
-	ENEMY_ATTACK_WINDUP_MS,
 	DETECTION_RADIUS,
 	TICK_RATE,
 	ENEMY_DEFS,
@@ -1683,7 +1681,7 @@ describe('Enemy telegraph integration', () => {
 		// Advance time enough for the game tick to process windup → damage
 		// The tick runs at TICK_RATE (20 Hz = 50ms), windup is 800ms
 		// So we need ~850ms for windup to expire and damage to apply
-		await sleep(ENEMY_ATTACK_WINDUP_MS + 200);
+		await sleep(ENEMY_DEFS.grunt.attackWindupMs + 200);
 
 		// Find the first stateUpdate where enemy attackState === 'windup'
 		const windupUpdate = stateUpdates.find(su => {
@@ -1741,7 +1739,7 @@ describe('Enemy telegraph integration', () => {
 		await sleep(50);
 
 		// Wait for windup to expire (800ms from windup start)
-		await sleep(ENEMY_ATTACK_WINDUP_MS + 200);
+		await sleep(ENEMY_DEFS.grunt.attackWindupMs + 200);
 
 		// Player HP should remain at initial value (100)
 		expect(player.hp).toBe(100);

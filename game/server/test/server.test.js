@@ -44,8 +44,6 @@ import {
 	DECK_MIN_SIZE,
 	DECK_MAX_SIZE,
 	ENEMY_ATTACK_RANGE,
-	ENEMY_ATTACK_DAMAGE,
-	ENEMY_ATTACK_WINDUP_MS,
 	ENEMY_ATTACK_RECOVERY_MS,
 	ENEMY_DEFS
 } from '../index.js';
@@ -429,13 +427,13 @@ describe('Enemy attack state machine', () => {
 			state: 'chasing',
 			attackState: 'windup',
 			windupTargetId: 'p1',
-			windupStartTime: now - ENEMY_ATTACK_WINDUP_MS - 100, // windup already expired
+			windupStartTime: now - ENEMY_DEFS.grunt.attackWindupMs - 100, // windup already expired
 			wanderTarget: { x: 0, z: 0 }
 		});
 
 		updateEnemies();
 
-		expect(gameState.players['p1'].hp).toBe(100 - ENEMY_ATTACK_DAMAGE);
+		expect(gameState.players['p1'].hp).toBe(100 - ENEMY_DEFS.grunt.attackDamage);
 		expect(gameState.enemies[0].attackState).toBe('recovering');
 		expect(gameState.enemies[0].recoverUntil).toBeDefined();
 	});
@@ -452,7 +450,7 @@ describe('Enemy attack state machine', () => {
 			state: 'chasing',
 			attackState: 'windup',
 			windupTargetId: 'p1',
-			windupStartTime: now - ENEMY_ATTACK_WINDUP_MS - 100, // windup expired
+			windupStartTime: now - ENEMY_DEFS.grunt.attackWindupMs - 100, // windup expired
 			wanderTarget: { x: 0, z: 0 }
 		});
 
@@ -517,9 +515,9 @@ describe('Enemy attack state machine', () => {
 	});
 
 	it('constants exported with expected values', () => {
-		expect(ENEMY_ATTACK_WINDUP_MS).toBeGreaterThanOrEqual(800);
+		expect(ENEMY_DEFS.grunt.attackWindupMs).toBeGreaterThanOrEqual(800);
 		expect(ENEMY_ATTACK_RECOVERY_MS).toBeGreaterThanOrEqual(1000);
-		expect(ENEMY_ATTACK_WINDUP_MS).toBe(800);
+		expect(ENEMY_DEFS.grunt.attackWindupMs).toBe(800);
 		expect(ENEMY_ATTACK_RECOVERY_MS).toBe(1200);
 	});
 });
