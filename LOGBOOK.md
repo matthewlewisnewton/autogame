@@ -1087,3 +1087,26 @@ confirms no visual drift (health bars remain correctly positioned). ✅
 ## Remaining gaps
 None blocking. See nits.md for non-blocking polish items.
 
+
+## v0.48 — Cleanup nits from 080-cleanup-enemy-types-skirmisher-miniboss  (2026-05-20 06:59:54)
+
+  the source of truth.
+- ✅ Single source of truth restored — rebalancing grunts will now move
+  minions automatically.
+
+### Integration / design consistency
+
+- No references to `halfHeight`, `chaseSpeed`, or `MINION_CHASE` exist in
+  `game/docs/design.md`, so nothing in the documented contract is violated.
+- Diff scope is exactly the four lines / one constant the ticket called
+  for, plus a one-line test update. No collateral edits, no dead code, no
+  console noise.
+- Debug-scenario surface: this ticket did not add or change any debug
+  scenarios; the existing `?scenario=summon-ready` shortcut is what the
+  capture used and continues to behave normally.
+
+## Remaining gaps
+
+None blocking. The captured run is healthy, both acceptance criteria are
+satisfied robustly, and the tests pin the new behavior.
+

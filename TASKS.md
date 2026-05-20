@@ -47,7 +47,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
-- [ ] [085-cleanup-cleanup-enemy-types-skirmisher-miniboss](tickets/085-cleanup-cleanup-enemy-types-skirmisher-miniboss/)
+- [x] [085-cleanup-cleanup-enemy-types-skirmisher-miniboss](tickets/085-cleanup-cleanup-enemy-types-skirmisher-miniboss/)
 - [x] [084-cleanup-cleanup-cleanup-enemy-type-spawner](tickets/084-cleanup-cleanup-cleanup-enemy-type-spawner/)
 - [x] [083-cleanup-cleanup-enemy-type-spawner](tickets/083-cleanup-cleanup-enemy-type-spawner/)
 - [x] [082-cleanup-reset-state-on-last-disconnect](tickets/082-cleanup-reset-state-on-last-disconnect/)
