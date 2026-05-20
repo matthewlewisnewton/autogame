@@ -44,7 +44,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
-- [ ] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
+- [x] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
 - [x] [051-cleanup-cleanup-public-state-and-shared-data-nits](tickets/051-cleanup-cleanup-public-state-and-shared-data-nits/)
 - [x] [050-cleanup-cleanup-cleanup-encounter-telegraphs-audio](tickets/050-cleanup-cleanup-cleanup-encounter-telegraphs-audio/)
 - [x] [049-cleanup-cleanup-encounter-telegraphs-audio](tickets/049-cleanup-cleanup-encounter-telegraphs-audio/)
