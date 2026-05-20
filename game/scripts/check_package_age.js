@@ -152,7 +152,7 @@ function sleep(ms) {
 // ---------------------------------------------------------------------------
 
 async function main() {
-  const DEFAULT_MIN_AGE_DAYS = 7;
+  const DEFAULT_MIN_AGE_DAYS = 400;
   const minAgeDays = parseMinAgeDays(DEFAULT_MIN_AGE_DAYS);
   const cutoff = Date.now() - minAgeDays * 86400000;
 
