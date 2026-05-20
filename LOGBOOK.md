@@ -1133,3 +1133,26 @@ satisfied robustly, and the tests pin the new behavior.
 ## Remaining gaps
 None blocking.
 
+
+## v0.50 — Cleanup nits from 018-pnpm-and-security  (2026-05-20 09:43:24)
+
+- **`CONTEXT.md`:** Run instructions unchanged; new supply-chain section is additive and accurate about *where* to run checks and *which* workflow gates lockfiles (wording nit on age direction — see `nits.md`).
+
+## Code quality
+
+- **`check_package_age.js`:** Clear structure; dead binding removed; whitelist helpers are scoped and used in the main loop. Default age is `7`. No obvious logic bugs in tree walk or registry fetch path.
+- **CI workflow:** Standard checkout → Node 20 → pnpm → cache → `pnpm install` / `pnpm run check:deps` in `game/`. Reasonable for lockfile PRs.
+- **Scope discipline:** No `game/client/` or `game/server/` source changes in the 086 implementation commits; risk to runtime is indirect (deps/scripts only), and capture confirms no breakage.
+
+## Debug scenarios
+
+This ticket did not add or change `?scenario=` shortcuts (`scenarios: []` in capture; no scenario-related code in the 086 diff). Nothing to audit under the debug-scenario rules.
+
+## Coverage (`coverage.log`)
+
+Vitest ran with no tests matching changed files (0% report). Expected for a scripts/CI-only ticket; not a blocking gap with thresholds disabled.
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied and the captured game run is healthy.
+
