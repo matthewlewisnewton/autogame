@@ -16,7 +16,7 @@ const {
   TICK_RATE,
   MOVE_SPEED,
   MOVE_SPEED_TOLERANCE,
-  MAX_MOVE_DISTANCE_PER_TICK,
+  MAX_ELAPSED_MS,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
   ENEMY_ATTACK_RECOVERY_MS,
@@ -178,6 +178,72 @@ function checkWallCollision(px, pz) {
   }
 
   return false;
+}
+
+/**
+ * Check if the line segment from (fromX, fromZ) to (toX, toZ) intersects
+ * any wall collider expanded by PLAYER_RADIUS. Returns true on intersection.
+ * Uses a slab-based segment-AABB intersection test.
+ */
+function checkSweptCollision(fromX, fromZ, toX, toZ) {
+  const colliders = buildWallColliders();
+  const pr = PLAYER_RADIUS;
+
+  for (const w of colliders) {
+    // Expand AABB by player radius
+    const aabb = {
+      minX: w.minX - pr,
+      maxX: w.maxX + pr,
+      minZ: w.minZ - pr,
+      maxZ: w.maxZ + pr,
+    };
+
+    if (segmentIntersectsAABB(fromX, fromZ, toX, toZ, aabb)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Segment-AABB intersection using the slab method (Li-Whitted).
+ * Returns true if the segment from (x1, z1) to (x2, z2) intersects the AABB.
+ */
+function segmentIntersectsAABB(x1, z1, x2, z2, aabb) {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+
+  let tmin = 0;
+  let tmax = 1;
+
+  // X slab
+  if (Math.abs(dx) > 1e-8) {
+    let t0 = (aabb.minX - x1) / dx;
+    let t1 = (aabb.maxX - x1) / dx;
+    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }
+    tmin = Math.max(tmin, t0);
+    tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return false;
+  } else {
+    // Segment is axis-aligned in X — check if x1 is inside slab
+    if (x1 < aabb.minX || x1 > aabb.maxX) return false;
+  }
+
+  // Z slab
+  if (Math.abs(dz) > 1e-8) {
+    let t0 = (aabb.minZ - z1) / dz;
+    let t1 = (aabb.maxZ - z1) / dz;
+    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }
+    tmin = Math.max(tmin, t0);
+    tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return false;
+  } else {
+    // Segment is axis-aligned in Z — check if z1 is inside slab
+    if (z1 < aabb.minZ || z1 > aabb.maxZ) return false;
+  }
+
+  return true;
 }
 
 gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
@@ -1239,14 +1305,18 @@ function startServer(port) {
 
     if (player) {
       const now = Date.now();
-      const elapsed = (now - (player.lastMoveTime || now)) / 1000;
+      let elapsed = (now - (player.lastMoveTime || now)) / 1000;
+
+      // Cap elapsed to prevent teleport via large time delta
+      const maxElapsed = MAX_ELAPSED_MS / 1000;
+      const cappedElapsed = Math.min(elapsed, maxElapsed);
 
       // Integrate position from input intent
-      let moveX = data.dx * MOVE_SPEED * elapsed;
-      let moveZ = data.dz * MOVE_SPEED * elapsed;
+      let moveX = data.dx * MOVE_SPEED * cappedElapsed;
+      let moveZ = data.dz * MOVE_SPEED * cappedElapsed;
 
-      // Cap total distance to MOVE_SPEED * elapsed * tolerance
-      const maxDist = MOVE_SPEED * elapsed * MOVE_SPEED_TOLERANCE;
+      // Cap total distance to MOVE_SPEED * cappedElapsed * tolerance
+      const maxDist = MOVE_SPEED * cappedElapsed * MOVE_SPEED_TOLERANCE;
       const dist = Math.hypot(moveX, moveZ);
       if (dist > maxDist) {
         const scale = maxDist / dist;
@@ -1262,9 +1332,9 @@ function startServer(port) {
       newX = clamped.x;
       newZ = clamped.z;
 
-      // Wall collision check: reject moves that place the player inside a wall
-      if (checkWallCollision(newX, newZ)) {
-        console.warn(`Rejected move from ${socket.id}: wall collision at (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
+      // Swept collision check: reject moves whose path intersects any wall
+      if (checkSweptCollision(player.x, player.z, newX, newZ)) {
+        console.warn(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
         return;
       }
 
