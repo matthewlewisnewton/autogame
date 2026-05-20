@@ -44,7 +44,7 @@ QWEN_VISION_TIMEOUT="${QWEN_VISION_TIMEOUT:-900}"
 QWEN_VISION_OPENAI_LOGGING="${QWEN_VISION_OPENAI_LOGGING:-0}"
 PIPELINE_LOCAL_CHECKS="${PIPELINE_LOCAL_CHECKS:-1}" # run deterministic checks while screenshots/server startup happen
 PIPELINE_CHECK_CWD="${PIPELINE_CHECK_CWD:-game}"
-PIPELINE_CHECK_COMMAND="${PIPELINE_CHECK_COMMAND:-npm test -- --coverage.enabled=false}"
+PIPELINE_CHECK_COMMAND="${PIPELINE_CHECK_COMMAND:-pnpm test -- --coverage.enabled=false}"
 PIPELINE_CHECK_TIMEOUT="${PIPELINE_CHECK_TIMEOUT:-300}"
 
 # Exit-code convention used across run_*.sh:

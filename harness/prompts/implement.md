@@ -23,7 +23,7 @@ YOUR JOB:
    - server: `node game/server/index.js` serves on port 3000
    - client: Vite dev server on port 5173
    Do not change these ports or the start commands.
-4. If you add npm dependencies, install them in the correct package
+4. If you add pnpm dependencies, install them in the correct package
    (`game/client/` or `game/server/`) so the game still starts.
 5. DEBUG SCENARIOS — speedup for hard-to-reach states:
    The game already supports development debug scenarios via URL parameter
