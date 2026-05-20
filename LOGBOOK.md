@@ -1179,3 +1179,26 @@ None. All acceptance criteria are satisfied and the captured game run is healthy
 
 None. Both acceptance criteria are satisfied, runtime capture is healthy, and supply-chain tooling behavior is unchanged aside from clearer documentation.
 
+
+## v0.52 — Codebase Cleanup and Refactor  (2026-05-20 10:45:39)
+
+
+### Extracted constants and config values into shared files
+PASS. Server gameplay values such as tick rate, combat ranges, deck bounds, HP/magic-stone caps, spawn padding, stale threshold, and victory reward rotation now come from `game/server/config.js`. Client deck, combat, effect, movement, camera, audio, and passage-width values now come from `game/client/config.js`; `game/client/dungeon.js` imports the shared passage width instead of keeping a second copy.
+
+### Duplicate or unnecessary code is removed
+PASS. The previous repeated pattern of spawning loot for dead enemies, removing them, and checking terminal run state is now represented by `cleanupAfterDamage()` and called from the minion, weapon-card, and summon-card damage paths. The helper preserves the same order of operations, so loot drops, objective progress, and victory/failure checks remain intact.
+
+### Automated tests continue to pass
+PASS. `coverage.log` shows the ticket validation run completed successfully: 4 test files passed, 314 tests passed, with coverage collection enabled. The ticket did not modify test expectations.
+
+### Client and server function as expected
+PASS. The captured run validates the baseline lobby, ready-up, gameplay transition, movement, card hand display, socket connection, multiplayer visualization, and dungeon rendering. This remains consistent with `game/docs/design.md` and does not regress the foundational requirements in `game/docs/requirements.md`.
+
+### Debug scenarios
+PASS. This ticket did not add a new debug scenario or use a scenario capture. The only debug-scenario code touched by the refactor replaces hardcoded HP with `MAX_HP`; the existing client entry path remains gated by a debug URL parameter/local host check, and the normal lobby-ready flow still reaches active gameplay as shown by the capture.
+
+## Remaining gaps
+
+None blocking. Non-blocking cleanup opportunities are recorded separately in `nits.md`.
+
