@@ -1271,7 +1271,8 @@ function startServer(port) {
   });
 
   socket.on('useCard', (data) => {
-    if (gameState.run && gameState.run.status !== 'playing') return;
+    if (gameState.gamePhase !== 'playing') return;
+    if (!gameState.run || gameState.run.status !== 'playing') return;
 
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
