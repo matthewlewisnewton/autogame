@@ -42,6 +42,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [037-fix-return-to-lobby-active-run-guard](tickets/037-fix-return-to-lobby-active-run-guard/)
 - [x] [038-fix-card-cooldown-enforcement](tickets/038-fix-card-cooldown-enforcement/)
 - [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
+- [ ] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
 - [x] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
