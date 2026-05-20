@@ -626,8 +626,8 @@ describe('updateMinions()', () => {
 	});
 
 	it('spawns loot for dead enemies and removes them', () => {
-		// Mock Math.random to make spawnLoot always spawn
-		vi.spyOn(Math, 'random').mockReturnValue(0.1);
+		// Mock Math.random below config.LOOT_SPAWN_CHANCE to force loot spawn
+		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 
 		gameState.minions.push({
 			id: 'm1',
