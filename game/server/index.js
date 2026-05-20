@@ -154,6 +154,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-ready',
   'combat-damaged-player',
   'mixed-enemies',
+  'spawner-active',
 ]);
 
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
@@ -612,13 +613,16 @@ function randomWanderTarget() {
  * Create a single enemy at (x, z) with the given type and push it to
  * gameState.enemies[].  `type` must be a key in ENEMY_DEFS; defaults to
  * 'grunt' when omitted.  Throws on unknown types.
+ *
+ * `spawnedBy` — optional parent spawner id; used for spawn-cap bookkeeping.
+ * Spawners get a `lastSpawnTime` field initialised to `Date.now()`.
  */
-function spawnEnemy(x, z, type = 'grunt') {
+function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
   if (!ENEMY_DEFS[type]) {
     throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
   }
   const def = ENEMY_DEFS[type];
-  gameState.enemies.push({
+  const enemy = {
     id: crypto.randomUUID(),
     x,
     z,
@@ -628,7 +632,14 @@ function spawnEnemy(x, z, type = 'grunt') {
     state: 'idle',
     attackState: 'idle',
     wanderTarget: { x, z }
-  });
+  };
+  if (type === 'spawner') {
+    enemy.lastSpawnTime = Date.now();
+  }
+  if (spawnedBy !== undefined) {
+    enemy.spawnedBy = spawnedBy;
+  }
+  gameState.enemies.push(enemy);
 }
 
 // Helper: spawn 5 enemies inside generated rooms (mixed types)
@@ -723,11 +734,56 @@ function applyDebugScenario(socket, name) {
     for (const e of gameState.enemies) {
       e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
     }
+  } else if (name === 'spawner-active') {
+    // Spawn a spawner near the player with lastSpawnTime in the past so
+    // the first add appears on the very next updateEnemies() tick.
+    player.hp = 100;
+    player.magicStones = MAX_MAGIC_STONES;
+    gameState.enemies = [];
+    const spawner = {
+      id: crypto.randomUUID(),
+      x: player.x + 4,
+      z: player.z,
+      type: 'spawner',
+      hp: ENEMY_DEFS.spawner.hp,
+      maxHp: ENEMY_DEFS.spawner.hp,
+      state: 'idle',
+      attackState: 'idle',
+      wanderTarget: { x: player.x + 4, z: player.z },
+      lastSpawnTime: Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500,
+    };
+    gameState.enemies.push(spawner);
   }
 
   broadcastLobbyUpdate();
   io.emit('stateUpdate', stateSnapshot());
   return { ok: true, scenario: name };
+}
+
+/**
+ * Try to find a position within `radius` units of (x, z) that is inside
+ * dungeon bounds.  Falls back to `randomRoomPosition()` when clamping
+ * pushes the candidate outside the radius (near dungeon edges).
+ *
+ * Uses polar coordinates (random angle + random radius) so the raw
+ * candidate is always within the circle — no spurious fallbacks.
+ */
+function nearbySpawnPosition(x, z, radius) {
+  const bounds = gameState.dungeonBounds;
+  // Polar sampling: uniform angle, uniform distance within circle
+  const angle = Math.random() * Math.PI * 2;
+  const dist = Math.sqrt(Math.random()) * radius;
+  const candidate = {
+    x: x + Math.cos(angle) * dist,
+    z: z + Math.sin(angle) * dist,
+  };
+  // Clamp to dungeon bounds
+  candidate.x = Math.max(bounds.minX, Math.min(bounds.maxX, candidate.x));
+  candidate.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, candidate.z));
+  // After clamping, verify it's still within radius (edge case: near dungeon boundary)
+  if (Math.hypot(candidate.x - x, candidate.z - z) <= radius) return candidate;
+  // Fall back to a random room position
+  return randomRoomPosition();
 }
 
 // Helper: update enemy wander AI each tick
@@ -774,6 +830,29 @@ function updateEnemies() {
 				continue;
 			} else {
 				continue; // still winding up, do not move
+			}
+		}
+
+		// ── Spawner: periodically spawn adds ──
+		if (enemy.type === 'spawner' && enemy.hp > 0) {
+			const spawnInterval = def.spawnIntervalMs || 4000;
+			const spawnMaxAlive = def.spawnMaxAlive || 3;
+			const spawnType = def.spawnType || 'skirmisher';
+			const now = Date.now();
+
+			if (now - enemy.lastSpawnTime >= spawnInterval) {
+				// Count living adds belonging to this spawner
+				const aliveAdds = gameState.enemies.filter(
+					e => e.spawnedBy === enemy.id && e.hp > 0
+				).length;
+
+				if (aliveAdds < spawnMaxAlive) {
+					// Place add within ~3 units of spawner
+					const addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);
+					spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
+					gameState.enemies[gameState.enemies.length - 1].wanderTarget = randomWanderTarget();
+					enemy.lastSpawnTime = now;
+				}
 			}
 		}
 

@@ -2134,3 +2134,246 @@ describe('per-type stats verification', () => {
 		expect(skirmDamage).toBeLessThan(gruntDamage);
 	});
 });
+
+// ── Spawner periodic spawn ──
+
+describe('Spawner periodic spawn', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2000, 0, 1));
+		// Ensure layout / dungeonBounds exist after resetState
+		gameState.layoutSeed = 42;
+		if (!gameState.layout) gameState.layout = { rooms: [{ x: 0, z: 0, width: 10, depth: 10 }] };
+		if (!gameState.dungeonBounds) gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('spawns a skirmisher add when interval has elapsed', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'spawner1',
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: now - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		});
+
+		expect(gameState.enemies.length).toBe(1);
+		updateEnemies();
+
+		expect(gameState.enemies.length).toBe(2);
+		const add = gameState.enemies[1];
+		expect(add.type).toBe('skirmisher');
+	});
+
+	it('sets spawnedBy on the add to the spawner id', () => {
+		const now = Date.now();
+		gameState.enemies.push({
+			id: 'spawner1',
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: now - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		});
+
+		updateEnemies();
+
+		const add = gameState.enemies.find(e => e.spawnedBy);
+		expect(add).toBeDefined();
+		expect(add.spawnedBy).toBe('spawner1');
+	});
+
+	it('does not spawn when interval has not elapsed', () => {
+		const now = Date.now();
+		gameState.enemies.push({
+			id: 'spawner1',
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: now, // just spawned, interval not elapsed
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies.length).toBe(1);
+	});
+
+	it('respects spawnMaxAlive cap', () => {
+		const now = Date.now();
+		const spawnerId = 'spawner1';
+
+		// Create a spawner with 3 living adds (at max)
+		gameState.enemies.push({
+			id: spawnerId,
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: now - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		});
+		// Pre-populate 3 adds
+		for (let i = 0; i < 3; i++) {
+			gameState.enemies.push({
+				id: `add${i}`,
+				x: 0.5 * i,
+				z: 0.5 * i,
+				type: 'skirmisher',
+				hp: 20,
+				maxHp: 20,
+				state: 'idle',
+				attackState: 'idle',
+				spawnedBy: spawnerId,
+				wanderTarget: { x: 0.5 * i, z: 0.5 * i },
+			});
+		}
+
+		expect(gameState.enemies.length).toBe(4);
+		updateEnemies();
+
+		// Should still be 4 — no new add spawned
+		expect(gameState.enemies.length).toBe(4);
+	});
+
+	it('spawns a new add when one of the existing adds dies', () => {
+		const now = Date.now();
+		const spawnerId = 'spawner1';
+
+		gameState.enemies.push({
+			id: spawnerId,
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: now - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		});
+		// 2 living adds + 1 dead add
+		gameState.enemies.push({ id: 'add0', x: 0.5, z: 0, type: 'skirmisher', hp: 20, maxHp: 20, state: 'idle', attackState: 'idle', spawnedBy: spawnerId, wanderTarget: { x: 0.5, z: 0 } });
+		gameState.enemies.push({ id: 'add1', x: 1, z: 0, type: 'skirmisher', hp: 20, maxHp: 20, state: 'idle', attackState: 'idle', spawnedBy: spawnerId, wanderTarget: { x: 1, z: 0 } });
+		gameState.enemies.push({ id: 'add2', x: 1.5, z: 0, type: 'skirmisher', hp: 0, maxHp: 20, state: 'idle', attackState: 'idle', spawnedBy: spawnerId, wanderTarget: { x: 1.5, z: 0 } });
+
+		expect(gameState.enemies.length).toBe(4);
+		updateEnemies();
+
+		// Should have spawned a new add (only 2 alive, cap is 3)
+		expect(gameState.enemies.length).toBe(5);
+		const newAdd = gameState.enemies.find(e => e.id !== spawnerId && e.id !== 'add0' && e.id !== 'add1' && e.id !== 'add2');
+		expect(newAdd).toBeDefined();
+		expect(newAdd.spawnedBy).toBe(spawnerId);
+	});
+
+	it('adds survive spawner death', () => {
+		const spawnerId = 'spawner1';
+
+		gameState.enemies.push({
+			id: spawnerId,
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		});
+		// Pre-existing add
+		gameState.enemies.push({
+			id: 'add0',
+			x: 0.5,
+			z: 0,
+			type: 'skirmisher',
+			hp: 20,
+			maxHp: 20,
+			state: 'idle',
+			attackState: 'idle',
+			spawnedBy: spawnerId,
+			wanderTarget: { x: 0.5, z: 0 },
+		});
+
+		// Kill the spawner
+		gameState.enemies[0].hp = 0;
+
+		updateEnemies();
+
+		// The add should still be alive (no mass despawn)
+		const add = gameState.enemies.find(e => e.id === 'add0');
+		expect(add).toBeDefined();
+		expect(add.hp).toBe(20);
+	});
+
+	it('add is placed within ~3 units of spawner', () => {
+		const now = Date.now();
+		gameState.enemies.push({
+			id: 'spawner1',
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: 60,
+			maxHp: 60,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: now - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		});
+
+		updateEnemies();
+
+		const add = gameState.enemies[1];
+		const dist = Math.hypot(add.x - 0, add.z - 0);
+		expect(dist).toBeLessThanOrEqual(3);
+	});
+
+	it('spawnEnemy sets lastSpawnTime on spawner type', () => {
+		gameState.enemies = [];
+		spawnEnemy(0, 0, 'spawner');
+		expect(gameState.enemies[0].lastSpawnTime).toBeDefined();
+		expect(typeof gameState.enemies[0].lastSpawnTime).toBe('number');
+	});
+
+	it('spawnEnemy does not set lastSpawnTime on non-spawner types', () => {
+		gameState.enemies = [];
+		spawnEnemy(0, 0, 'grunt');
+		expect(gameState.enemies[0].lastSpawnTime).toBeUndefined();
+	});
+
+	it('spawnEnemy sets spawnedBy when provided', () => {
+		gameState.enemies = [];
+		spawnEnemy(0, 0, 'skirmisher', 'parent123');
+		expect(gameState.enemies[0].spawnedBy).toBe('parent123');
+	});
+
+	it('spawnEnemy does not set spawnedBy when omitted', () => {
+		gameState.enemies = [];
+		spawnEnemy(0, 0, 'skirmisher');
+		expect(gameState.enemies[0].spawnedBy).toBeUndefined();
+	});
+});
