@@ -55,7 +55,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [034-cleanup-card-rewards-deckbuilding](tickets/034-cleanup-card-rewards-deckbuilding/)
 - [x] [033-cleanup-run-summary-return-to-lobby](tickets/033-cleanup-run-summary-return-to-lobby/)
 - [x] [032-cleanup-dungeon-run-objectives](tickets/032-cleanup-dungeon-run-objectives/)
-- [ ] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
+- [x] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
 - [ ] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
 - [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
