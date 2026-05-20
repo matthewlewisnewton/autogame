@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { wallAABB, resolveWallCollision as resolveWallCollisionPure } from './collision.js';
+import { PASSAGE_WIDTH } from './config.js';
 
 // ── Visual constants ──
 
 export const WALL_HEIGHT = 2.5;
 export const WALL_THICKNESS = 0.4;
 export const FLOOR_Y = 0.05; // slightly above background to avoid z-fighting
-const PASSAGE_WIDTH = 4; // matches server constant
 export const PASSAGE_WALL_HEIGHT = 1.5;
 export const PASSAGE_WALL_THICKNESS = 0.3;
 

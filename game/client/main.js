@@ -18,6 +18,24 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
+import {
+	DECK_MIN_SIZE,
+	DECK_MAX_SIZE,
+	ENEMY_ATTACK_RANGE,
+	MAX_HP,
+	MAX_MS,
+	CARD_HIT_GRACE_MS,
+	ATTACK_EFFECT_DURATION,
+	ATTACK_EFFECT_SPEED,
+	SUMMON_EFFECT_DURATION,
+	SUMMON_EXPAND_MS,
+	HIT_SPARK_DURATION,
+	LOOT_COLLECT_DURATION,
+	acceleration,
+	friction,
+	CAMERA_OFFSET as CAMERA_OFFSET_CONFIG,
+	SOUND_CONFIG,
+} from './config.js';
 
 // v8 ignore start
 // All code below is UI/Three.js/Socket-dependent and cannot be unit tested.
@@ -66,23 +84,11 @@ let currentLayout = null; // persisted layout from init; stateUpdate omits it
 // Deck editor state
 let mySelectedDeck = [];
 let myOwnedCards = {};
-const DECK_MIN_SIZE = 4;
-const DECK_MAX_SIZE = 12;
-const ENEMY_ATTACK_RANGE = 4; // units — matches server constant for attack range / warning circle radius
 
 // ── Audio system ──
 
 let soundEnabled = true;
 let audioCtx = null;
-
-const SOUND_CONFIG = {
-  card:           { freq: 600, duration: 0.1 },
-  enemyHit:       { freq: 300, duration: 0.15 },
-  playerDamage:   { freq: 200, duration: 0.2 },
-  loot:           { freq: 800, duration: 0.08 },
-  victory:        { notes: [{ freq: 500, duration: 0.15 }, { freq: 700, duration: 0.15 }] },
-  failure:        { notes: [{ freq: 400, duration: 0.2 }, { freq: 250, duration: 0.2 }] }
-};
 
 /**
  * Play a short oscillator-based sound effect via the Web Audio API.
@@ -177,9 +183,6 @@ function updateStatus(text, state) {
   statusEl.innerText = text;
   statusEl.className = state;
 }
-
-const MAX_HP = 100;
-const MAX_MS = 100;
 
 function updateHpBar(hp) {
   const clamped = Math.max(0, Math.min(MAX_HP, hp));
@@ -650,7 +653,6 @@ function flashMesh(mesh, color, durationMs) {
 // Track the timestamp (performance.now) of the last cardUsed hit per enemy ID,
 // so we can skip minion-damage sparks when HP drops are caused by a card attack.
 const lastCardHitTime = {};
-const CARD_HIT_GRACE_MS = 500; // window after cardUsed during which we skip minion-damage effects
 
 // Track per-enemy HP from the previous frame, for detecting minion tick damage
 const previousEnemyHp = {};
@@ -873,14 +875,6 @@ function updateHealthBarMesh(enemyId, enemy) {
 
 // ── Attack visual effects ──
 
-const ATTACK_EFFECT_DURATION = 600; // ms before auto-removal
-const ATTACK_EFFECT_SPEED = 8;     // units per second
-
-const SUMMON_EFFECT_DURATION = 1000;  // total lifetime: expand + fade
-const SUMMON_EXPAND_MS = 700;         // time to reach full radius
-
-const HIT_SPARK_DURATION = 400; // ms before auto-removal
-
 function spawnAttackEffect(origin, direction) {
   // Bright yellow sphere projectile
   const geometry = new THREE.SphereGeometry(0.3, 8, 8);
@@ -1093,8 +1087,6 @@ function disposeStaleMeshes(map, currentIds, targetScene) {
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
 const collectingLoot = {}; // lootId → { mesh, value, createdAt } — meshes mid-collection animation
 const previousLootValues = {}; // lootId → value — persists value after loot is removed from gameState
-
-const LOOT_COLLECT_DURATION = 600; // ms for scale-up + fade animation
 
 /**
  * Play a "collected" animation on a loot mesh: scale-up + fade, then remove.
@@ -1457,9 +1449,7 @@ const lootMaterial = new THREE.MeshStandardMaterial({
 
 // ── Scene initialization (deferred) ──
 
-const CAMERA_OFFSET = new THREE.Vector3(0, 5, 10);
-const acceleration = 15.0;
-const friction = 0.88;
+const CAMERA_OFFSET = new THREE.Vector3(CAMERA_OFFSET_CONFIG.x, CAMERA_OFFSET_CONFIG.y, CAMERA_OFFSET_CONFIG.z);
 
 const keys = { w: false, a: false, s: false, d: false };
 
