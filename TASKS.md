@@ -44,6 +44,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
 - [x] [051-cleanup-cleanup-public-state-and-shared-data-nits](tickets/051-cleanup-cleanup-public-state-and-shared-data-nits/)
 - [x] [050-cleanup-cleanup-cleanup-encounter-telegraphs-audio](tickets/050-cleanup-cleanup-cleanup-encounter-telegraphs-audio/)
 - [x] [049-cleanup-cleanup-encounter-telegraphs-audio](tickets/049-cleanup-cleanup-encounter-telegraphs-audio/)
@@ -56,7 +57,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [033-cleanup-run-summary-return-to-lobby](tickets/033-cleanup-run-summary-return-to-lobby/)
 - [x] [032-cleanup-dungeon-run-objectives](tickets/032-cleanup-dungeon-run-objectives/)
 - [x] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
-- [ ] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
+- [x] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
 - [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
 - [ ] [020-audit-client-server](tickets/020-audit-client-server/)
