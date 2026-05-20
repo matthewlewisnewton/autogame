@@ -44,6 +44,20 @@ export const HIT_SPARK_DURATION = 400;
 /** Loot collection animation: ms for scale-up + fade */
 export const LOOT_COLLECT_DURATION = 600;
 
+/** Floating damage number: ms before auto-removal */
+export const DAMAGE_NUMBER_DURATION = 1000;
+
+// ── Camera ──
+
+/** Camera field of view (degrees) */
+export const CAMERA_FOV = 75;
+
+/** Camera near clipping plane */
+export const CAMERA_NEAR = 0.1;
+
+/** Camera far clipping plane */
+export const CAMERA_FAR = 1000;
+
 // ── Movement ──
 
 /** Player acceleration (units/s²) */
