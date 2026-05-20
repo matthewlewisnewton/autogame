@@ -38,5 +38,9 @@ pnpm run dev
 # Client: http://localhost:5173
 ```
 
+## Supply-chain checks
+Run `pnpm run check:deps` (from `game/`) to flag dependencies older than the configured age cutoff.
+A CI workflow (`.github/workflows/check-deps.yml`) runs the same check on PRs that touch `pnpm-lock.yaml`.
+
 ## Game Summary
 A 3D multiplayer action-RPG combining Phantasy Star Online's lobby/dungeon/loot loop with Lost Kingdoms' card-based combat. Players hold a hand of up to 4 cards (Summons, Weapon/Support, Independent Monsters) and use them to fight enemies in procedurally generated dungeons.
