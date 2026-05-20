@@ -1,19 +1,20 @@
 # Remove MaxListenersExceededWarning in integration tests
 
-The coverage log includes a `MaxListenersExceededWarning` during socket integration tests. Fix listener lifecycle or raise the limit on the shared `io` singleton so test output is clean.
+The coverage log includes a `MaxListenersExceededWarning` during socket integration tests. The warning originates from `httpServer` (the Node.js HTTP server), not the Socket.IO `io` singleton — each call to `startTestServer()` stacks a `once('error')` listener that accumulates across test iterations.
+
+Raise the listener limit on `httpServer` to eliminate the warning with a one-line change.
 
 ## Acceptance Criteria
 - Running `pnpm test` from `game/` no longer emits `MaxListenersExceededWarning` to stderr.
 - All existing integration tests still pass and cover the same socket connection and gameplay flows.
-- No other changes — do not touch production server logic beyond the `io` singleton's listener limit, and do not modify client code.
+- No other changes — do not touch client code, do not modify test file logic beyond what is necessary, and do not alter production server behavior.
 
 ## Technical Specs
-- **Files to change:** `game/server/index.js` (set `io.setMaxListeners(0)` or a high value at module level) and/or `game/server/test/integration.test.js` (ensure `closeServer()` calls `serverIo.removeAllListeners()` after closing)
-- The `io` and `httpServer` objects are module-level singletons reused across all integration tests. Even though `removeAllListeners('connection')` is called before each `startServer()`, other events on the `io` singleton (e.g., `connect`, `disconnect`) may accumulate across test iterations and exceed Node's default limit of 17.
-- Two approaches are acceptable:
-  1. Call `serverIo.setMaxListeners(0)` (unlimited) right after creating the `io` instance in `index.js` — simplest and matches the fact that listeners are cleaned up between tests.
-  2. In `closeServer()`, call `serverIo.removeAllListeners()` (no argument) to strip all event listeners, not just `'connection'`.
-- Either approach is fine; pick the one that eliminates the warning with minimal diff.
+- **Files to change:** `game/server/index.js` — add `server.setMaxListeners(0)` at module level, right after the `io` instance is created (around line 28).
+- The `server` variable is the `http.createServer()` result. Setting `setMaxListeners(0)` on it (unlimited) is safe because:
+  - `startTestServer()` in `integration.test.js` adds `httpServer.once('error', …)` and `httpServer.once('listening', …)` listeners each test — these are `once` listeners that auto-remove after firing, but the accumulation during a long test run still triggers Node's default cap of 10.
+  - The `server` is a module-level singleton reused across all tests; listeners are cleaned up between tests via `closeServer()`.
+- Alternative (also acceptable): add `httpServer.removeAllListeners('error')` in `closeServer()` in `integration.test.js`, but the `setMaxListeners(0)` approach is a single-line change in one file.
 - No other changes.
 
 ## Verification: code

@@ -43,6 +43,7 @@ const io = new Server(server, {
     methods: ["GET", "POST"]
   }
 });
+server.setMaxListeners(0);
 
 // Game state factory — used by tests to get a fresh state
 function createGameState() {
