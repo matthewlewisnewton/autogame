@@ -13,7 +13,9 @@ import {
 	ENEMY_ATTACK_DAMAGE,
 	ENEMY_ATTACK_WINDUP_MS,
 	DETECTION_RADIUS,
-	TICK_RATE
+	TICK_RATE,
+	ENEMY_DEFS,
+	spawnEnemy
 } from '../index.js';
 
 // ── Helpers ──
@@ -1774,5 +1776,113 @@ describe('Loot pickup — dead player exclusion', () => {
 
 		expect(gameState.loot.find(l => l.id === 'loot_dead_test')).toBeUndefined();
 		expect(player.currency).toBe(currencyBefore + lootValue);
+	});
+});
+
+// ── Killing new enemy types via weapon card ──
+
+describe('killing skirmisher via weapon card (integration)', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Verify run exists
+		expect(gameState.run).toBeDefined();
+		const defeatedBefore = gameState.run.objective.defeatedEnemies;
+
+		// Place a skirmisher in weapon range
+		const player = gameState.players[socket.id];
+		spawnEnemy(player.x + 3, player.z, 'skirmisher');
+		const skirmisher = gameState.enemies[gameState.enemies.length - 1];
+		expect(skirmisher.type).toBe('skirmisher');
+		expect(skirmisher.hp).toBe(ENEMY_DEFS.skirmisher.hp); // 20 HP
+
+		// Clear minions so they don't interfere
+		gameState.minions = [];
+
+		// Use flame_blade (25 damage) — skirmisher has 20 HP, so one hit kills it
+		// Reposition right before the hit to minimize game-loop movement
+		skirmisher.x = player.x + 3;
+		skirmisher.z = player.z;
+
+		// Wait for stateUpdate after the kill
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+
+		socket.emit('useCard', { cardId: 'flame_blade', slotIndex: 0 });
+		await stateUpdatePromise;
+
+		// Enemy should be removed
+		expect(gameState.enemies.find(e => e.id === skirmisher.id)).toBeUndefined();
+
+		// defeatedEnemies should have incremented
+		expect(gameState.run.objective.defeatedEnemies).toBeGreaterThan(defeatedBefore);
+	});
+});
+
+describe('killing miniboss via weapon card (integration)', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Verify run exists
+		expect(gameState.run).toBeDefined();
+		const defeatedBefore = gameState.run.objective.defeatedEnemies;
+
+		// Place a miniboss in weapon range
+		const player = gameState.players[socket.id];
+		spawnEnemy(player.x + 3, player.z, 'miniboss');
+		const miniboss = gameState.enemies[gameState.enemies.length - 1];
+		expect(miniboss.type).toBe('miniboss');
+		expect(miniboss.hp).toBe(ENEMY_DEFS.miniboss.hp); // 150 HP
+
+		// Clear minions so they don't interfere
+		gameState.minions = [];
+
+		// iron_sword deals 15 damage; miniboss has 150 HP → needs 10 hits
+		// Use flame_blade (25 damage) → needs 6 hits
+		const hitsNeeded = Math.ceil(ENEMY_DEFS.miniboss.hp / 25);
+		for (let i = 0; i < hitsNeeded; i++) {
+			socket.emit('useCard', { cardId: 'flame_blade', slotIndex: 0 });
+			await sleep(50);
+		}
+
+		// Wait for final stateUpdate
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Miniboss should be removed
+		expect(gameState.enemies.find(e => e.id === miniboss.id)).toBeUndefined();
+
+		// defeatedEnemies should have incremented
+		expect(gameState.run.objective.defeatedEnemies).toBeGreaterThan(defeatedBefore);
 	});
 });

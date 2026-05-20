@@ -6,6 +6,8 @@ import {
 	updateEnemies,
 	updateMinions,
 	spawnLoot,
+	spawnEnemy,
+	spawnEnemies,
 	createGameState,
 	resetGameState,
 	gameState,
@@ -44,7 +46,8 @@ import {
 	ENEMY_ATTACK_RANGE,
 	ENEMY_ATTACK_DAMAGE,
 	ENEMY_ATTACK_WINDUP_MS,
-	ENEMY_ATTACK_RECOVERY_MS
+	ENEMY_ATTACK_RECOVERY_MS,
+	ENEMY_DEFS
 } from '../index.js';
 
 // ── Helpers ──
@@ -1920,5 +1923,201 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		const b = stateSnapshot();
 		a.players['p1'].hp = 0;
 		expect(b.players['p1'].hp).toBe(100);
+	});
+});
+
+// ── ENEMY_DEFS ──
+
+describe('ENEMY_DEFS', () => {
+	it('is exported and contains grunt, skirmisher, miniboss keys', () => {
+		expect(ENEMY_DEFS).toBeDefined();
+		expect(ENEMY_DEFS).toHaveProperty('grunt');
+		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
+		expect(ENEMY_DEFS).toHaveProperty('miniboss');
+	});
+
+	it('grunt has correct stat values', () => {
+		expect(ENEMY_DEFS.grunt.hp).toBe(50);
+		expect(ENEMY_DEFS.grunt.chaseSpeed).toBe(2.5);
+		expect(ENEMY_DEFS.grunt.wanderSpeed).toBe(1.0);
+		expect(ENEMY_DEFS.grunt.attackDamage).toBe(10);
+		expect(ENEMY_DEFS.grunt.attackWindupMs).toBe(800);
+	});
+
+	it('skirmisher has correct stat values', () => {
+		expect(ENEMY_DEFS.skirmisher.hp).toBe(20);
+		expect(ENEMY_DEFS.skirmisher.chaseSpeed).toBe(4.5);
+		expect(ENEMY_DEFS.skirmisher.wanderSpeed).toBe(1.5);
+		expect(ENEMY_DEFS.skirmisher.attackDamage).toBe(6);
+		expect(ENEMY_DEFS.skirmisher.attackWindupMs).toBe(500);
+	});
+
+	it('miniboss has correct stat values', () => {
+		expect(ENEMY_DEFS.miniboss.hp).toBe(150);
+		expect(ENEMY_DEFS.miniboss.chaseSpeed).toBe(1.2);
+		expect(ENEMY_DEFS.miniboss.wanderSpeed).toBe(0.6);
+		expect(ENEMY_DEFS.miniboss.attackDamage).toBe(18);
+		expect(ENEMY_DEFS.miniboss.attackWindupMs).toBe(1200);
+	});
+});
+
+// ── spawnEnemy type validation ──
+
+describe('spawnEnemy() type validation', () => {
+	beforeEach(() => resetState());
+
+	it('throws on unknown enemy type', () => {
+		expect(() => spawnEnemy(0, 0, 'dragon')).toThrow(/Unknown enemy type/);
+	});
+
+	it('does not push to gameState.enemies when type is unknown', () => {
+		gameState.enemies = [];
+		expect(() => spawnEnemy(0, 0, 'dragon')).toThrow();
+		expect(gameState.enemies.length).toBe(0);
+	});
+
+	it('accepts valid types without throwing', () => {
+		gameState.enemies = [];
+		expect(() => spawnEnemy(0, 0, 'grunt')).not.toThrow();
+		expect(() => spawnEnemy(0, 0, 'skirmisher')).not.toThrow();
+		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
+		expect(gameState.enemies.length).toBe(3);
+	});
+});
+
+// ── spawnEnemies mixed pack ──
+
+describe('spawnEnemies() mixed pack', () => {
+	beforeEach(() => {
+		resetGameState();
+	});
+
+	it('produces 5 enemies: 3 skirmishers, 1 grunt, 1 miniboss', () => {
+		gameState.enemies = [];
+		spawnEnemies();
+		expect(gameState.enemies.length).toBe(5);
+
+		const counts = { skirmisher: 0, grunt: 0, miniboss: 0 };
+		for (const e of gameState.enemies) {
+			counts[e.type] = (counts[e.type] || 0) + 1;
+		}
+		expect(counts.skirmisher).toBe(3);
+		expect(counts.grunt).toBe(1);
+		expect(counts.miniboss).toBe(1);
+	});
+});
+
+// ── Per-type chase speed ──
+
+describe('per-type chase speed in updateEnemies()', () => {
+	beforeEach(() => {
+		resetState();
+	});
+
+	it('skirmishers move faster than grunts (chase distance per tick is larger)', () => {
+		addPlayer('p1', { x: 0, z: 0, dead: false });
+
+		// Place a skirmisher and a grunt at the same distance from player
+		// Use x = DETECTION_RADIUS - 1, z = 0 so dist = DETECTION_RADIUS - 1 < DETECTION_RADIUS
+		const startDist = DETECTION_RADIUS - 1;
+		gameState.enemies.push({
+			id: 'skirm',
+			x: startDist,
+			z: 0,
+			type: 'skirmisher',
+			hp: 20,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: startDist, z: 0 }
+		});
+		// Place grunt on the other side, same distance
+		gameState.enemies.push({
+			id: 'grunt',
+			x: -startDist,
+			z: 0,
+			type: 'grunt',
+			hp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: -startDist, z: 0 }
+		});
+
+		const skirmXBefore = gameState.enemies[0].x;
+		const gruntXBefore = gameState.enemies[1].x;
+
+		updateEnemies();
+
+		// Skirmisher moved from +startDist toward 0 (x decreased)
+		const skirmMoved = Math.abs(skirmXBefore - gameState.enemies[0].x);
+		// Grunt moved from -startDist toward 0 (x increased)
+		const gruntMoved = Math.abs(gruntXBefore - gameState.enemies[1].x);
+
+		expect(skirmMoved).toBeGreaterThan(gruntMoved);
+	});
+});
+
+// ── Per-type damage (miniboss HP > grunt, skirmisher damage < grunt) ──
+
+describe('per-type stats verification', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2000, 0, 1));
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('miniboss has higher HP than grunt (takes more hits to kill)', () => {
+		expect(ENEMY_DEFS.miniboss.hp).toBeGreaterThan(ENEMY_DEFS.grunt.hp);
+	});
+
+	it('skirmisher deals less damage than grunt on successful windup', () => {
+		expect(ENEMY_DEFS.skirmisher.attackDamage).toBeLessThan(ENEMY_DEFS.grunt.attackDamage);
+	});
+
+	it('skirmisher deals less damage than grunt — verified via windup strike', () => {
+		const now = Date.now();
+
+		// Skirmisher windup strike
+		addPlayer('ps', { id: 'ps', x: 0, z: 0, dead: false, hp: 100 });
+		gameState.enemies.push({
+			id: 'skirm',
+			x: 0,
+			z: 0,
+			type: 'skirmisher',
+			hp: 20,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'ps',
+			windupStartTime: now - ENEMY_DEFS.skirmisher.attackWindupMs - 100,
+			wanderTarget: { x: 0, z: 0 }
+		});
+		updateEnemies();
+		const skirmDamage = 100 - gameState.players['ps'].hp;
+
+		// Reset for grunt test
+		resetState();
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date(2000, 0, 1));
+
+		addPlayer('pg', { id: 'pg', x: 0, z: 0, dead: false, hp: 100 });
+		gameState.enemies.push({
+			id: 'grunt',
+			x: 0,
+			z: 0,
+			type: 'grunt',
+			hp: 50,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'pg',
+			windupStartTime: now - ENEMY_DEFS.grunt.attackWindupMs - 100,
+			wanderTarget: { x: 0, z: 0 }
+		});
+		updateEnemies();
+		const gruntDamage = 100 - gameState.players['pg'].hp;
+
+		expect(skirmDamage).toBeLessThan(gruntDamage);
 	});
 });

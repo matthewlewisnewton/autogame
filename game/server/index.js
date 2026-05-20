@@ -1398,6 +1398,7 @@ if (typeof module !== 'undefined' && module.exports) {
     updateMinions,
     spawnLoot,
     spawnEnemy,
+    spawnEnemies,
     createGameState,
     resetGameState,
     gameState,
