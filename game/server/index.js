@@ -14,6 +14,8 @@ const {
 } = require('./dungeon');
 const {
   TICK_RATE,
+  MOVE_SPEED,
+  MOVE_SPEED_TOLERANCE,
   MAX_MOVE_DISTANCE_PER_TICK,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
@@ -672,7 +674,7 @@ function returnPlayersToLobby() {
     player.ownedCards = preservedOwnedCards;
     player.runRewards = preservedRunRewards;
     player.currencyEarnedThisRun = 0;
-    player.firstMoveAfterSpawn = true;
+    player.lastMoveTime = Date.now();
     player.pendingSummons.clear();
   }
 
@@ -694,7 +696,7 @@ function checkAllReady() {
       player.x = spawn.x;
       player.y = 0.5;
       player.z = spawn.z;
-      player.firstMoveAfterSpawn = false;
+      player.lastMoveTime = Date.now();
       // Create shuffled draw decks and initialize hands from each player's selected deck
       createDrawDeckFromSelectedDeck(player);
       initPlayerHand(player);
@@ -723,7 +725,7 @@ function damagePlayer(playerId, amount) {
       const spawn = firstRoomPosition();
       p.hp = MAX_HP;
       p.dead = false;
-      p.firstMoveAfterSpawn = true;
+      p.lastMoveTime = Date.now();
       p.x = spawn.x;
       p.y = 0.5;
       p.z = spawn.z;
@@ -837,7 +839,7 @@ function applyDebugScenario(socket, name) {
 
   player.ready = true;
   player.dead = false;
-  player.firstMoveAfterSpawn = true;
+  player.lastMoveTime = Date.now();
   player.x = spawn.x;
   player.y = 0.5;
   player.z = spawn.z;
@@ -1196,7 +1198,7 @@ function startServer(port) {
         hp: MAX_HP,
         dead: false,
         lastActivity: Date.now(),
-        firstMoveAfterSpawn: true,
+        lastMoveTime: Date.now(),
         ready: false,
         magicStones: MAX_MAGIC_STONES,
         currency: progress.currency,
@@ -1223,31 +1225,48 @@ function startServer(port) {
     if (player && player.dead) return;
 
     if (!data || typeof data !== 'object' || Array.isArray(data) ||
-        ![data.x, data.y, data.z, data.rotation].every(Number.isFinite)) {
+        !Number.isFinite(data.dx) || !Number.isFinite(data.dz) || !Number.isFinite(data.rotation)) {
       console.warn(`Rejected move from ${socket.id}: invalid payload`);
       return;
     }
 
     if (player) {
-      // Speed check: reject moves that exceed MAX_MOVE_DISTANCE_PER_TICK
-      const dist = Math.hypot(data.x - player.x, data.z - player.z);
-      if (dist > MAX_MOVE_DISTANCE_PER_TICK) {
-        console.warn(`Rejected move from ${socket.id}: exceeded max distance (${dist.toFixed(2)} > ${MAX_MOVE_DISTANCE_PER_TICK.toFixed(2)})`);
-        return;
+      const now = Date.now();
+      const elapsed = (now - (player.lastMoveTime || now)) / 1000;
+
+      // Integrate position from input intent
+      let moveX = data.dx * MOVE_SPEED * elapsed;
+      let moveZ = data.dz * MOVE_SPEED * elapsed;
+
+      // Cap total distance to MOVE_SPEED * elapsed * tolerance
+      const maxDist = MOVE_SPEED * elapsed * MOVE_SPEED_TOLERANCE;
+      const dist = Math.hypot(moveX, moveZ);
+      if (dist > maxDist) {
+        const scale = maxDist / dist;
+        moveX *= scale;
+        moveZ *= scale;
       }
+
+      let newX = player.x + moveX;
+      let newZ = player.z + moveZ;
+
+      // Bounds clamping
+      const clamped = clampToDungeon(newX, newZ);
+      newX = clamped.x;
+      newZ = clamped.z;
 
       // Wall collision check: reject moves that place the player inside a wall
-      const clamped = clampToDungeon(data.x, data.z);
-      if (checkWallCollision(clamped.x, clamped.z)) {
-        console.warn(`Rejected move from ${socket.id}: wall collision at (${clamped.x.toFixed(2)}, ${clamped.z.toFixed(2)})`);
+      if (checkWallCollision(newX, newZ)) {
+        console.warn(`Rejected move from ${socket.id}: wall collision at (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
         return;
       }
 
-      player.x = clamped.x;
+      player.x = newX;
       player.y = 0.5;
-      player.z = clamped.z;
+      player.z = newZ;
       player.rotation = data.rotation;
-      player.lastActivity = Date.now();
+      player.lastMoveTime = now;
+      player.lastActivity = now;
     }
   });
 
