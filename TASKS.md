@@ -94,4 +94,20 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [061-new-card-pack](tickets/061-new-card-pack/)
 - [ ] [062-card-evolution-system](tickets/062-card-evolution-system/)
 
+## Backlog — Card Evolutions
+- [ ] [063-evo-steel-claymore](tickets/063-card-evolutions/063-evo-steel-claymore/)
+- [ ] [064-evo-magma-greatsword](tickets/063-card-evolutions/064-evo-magma-greatsword/)
+- [ ] [065-evo-astral-guardian](tickets/063-card-evolutions/065-evo-astral-guardian/)
+- [ ] [066-evo-ancient-wyrm](tickets/063-card-evolutions/066-evo-ancient-wyrm/)
+- [ ] [067-evo-excalibur-photon](tickets/063-card-evolutions/067-evo-excalibur-photon/)
+- [ ] [068-evo-infinite-disk](tickets/063-card-evolutions/068-evo-infinite-disk/)
+- [ ] [069-evo-glacier-collapse](tickets/063-card-evolutions/069-evo-glacier-collapse/)
+- [ ] [070-evo-divine-grace](tickets/063-card-evolutions/070-evo-divine-grace/)
+- [ ] [071-evo-undead-commander](tickets/063-card-evolutions/071-evo-undead-commander/)
+- [ ] [072-evo-thunderbird](tickets/063-card-evolutions/072-evo-thunderbird/)
+- [ ] [073-evo-event-horizon](tickets/063-card-evolutions/073-evo-event-horizon/)
+- [ ] [074-evo-resonance-edge](tickets/063-card-evolutions/074-evo-resonance-edge/)
+- [ ] [075-evo-soul-drain](tickets/063-card-evolutions/075-evo-soul-drain/)
+- [ ] [076-evo-inferno-pillar](tickets/063-card-evolutions/076-evo-inferno-pillar/)
+
 ## Done
