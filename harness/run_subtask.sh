@@ -51,11 +51,30 @@ start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>; sets global P
   # subshell — and the parent's later `wait $pid` would fail with "not a child
   # of this shell" (bash can only wait on direct children). We assign PIPELINE_PID
   # in the caller's shell scope here so the background process IS its direct child.
+  #
+  # Split into server + client projects with independent timeouts so the
+  # slow integration tests don't steal budget from fast client unit tests.
   (
     cd "$PIPELINE_CHECK_CWD" || exit 127
     printf '[pipeline] cwd=%s\n' "$(pwd)"
-    printf '[pipeline] command=%s\n\n' "$PIPELINE_CHECK_COMMAND"
-    timeout -k 30 "$PIPELINE_CHECK_TIMEOUT" bash -lc "$PIPELINE_CHECK_COMMAND"
+
+    printf '[pipeline] running server tests (timeout=%ds)...\n' "$PIPELINE_SERVER_TIMEOUT"
+    timeout -k 30 "$PIPELINE_SERVER_TIMEOUT" npx vitest run --project server
+    server_rc=$?
+    if [ $server_rc -ne 0 ]; then
+      printf '[pipeline] server tests failed (rc=%d)\n' "$server_rc"
+      exit $server_rc
+    fi
+
+    printf '[pipeline] running client tests (timeout=%ds)...\n' "$PIPELINE_CLIENT_TIMEOUT"
+    timeout -k 30 "$PIPELINE_CLIENT_TIMEOUT" npx vitest run --project client
+    client_rc=$?
+    if [ $client_rc -ne 0 ]; then
+      printf '[pipeline] client tests failed (rc=%d)\n' "$client_rc"
+      exit $client_rc
+    fi
+
+    printf '[pipeline] all tests passed\n'
   ) </dev/null > "$out" 2>&1 &
   PIPELINE_PID=$!
   return 0
