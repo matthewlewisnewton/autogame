@@ -1662,3 +1662,57 @@ describe('Dungeon layout consistency', () => {
 		await sleep(50);
 	});
 });
+
+describe('Loot pickup throttle — idempotency', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('emitting lootPickup twice for the same loot ID only credits currency once', async () => {
+		const player = gameState.players[socket.id];
+		const lootValue = 10;
+
+		// Place a loot item
+		gameState.loot.push({
+			id: 'loot_idempotent',
+			x: player.x + 1,
+			z: player.z + 1,
+			value: lootValue,
+			createdAt: Date.now()
+		});
+
+		const currencyBefore = player.currency;
+
+		// First emit — should consume the loot and credit currency
+		socket.emit('lootPickup', { lootId: 'loot_idempotent' });
+		await sleep(50);
+
+		expect(player.currency).toBe(currencyBefore + lootValue);
+		expect(gameState.loot.find(l => l.id === 'loot_idempotent')).toBeUndefined();
+
+		// Second emit — loot is already gone, server should ignore (idempotent)
+		socket.emit('lootPickup', { lootId: 'loot_idempotent' });
+		await sleep(50);
+
+		// Currency should NOT have increased again
+		expect(player.currency).toBe(currencyBefore + lootValue);
+	});
+
+	it('emitting lootPickup for a non-existent loot ID is a no-op', async () => {
+		const player = gameState.players[socket.id];
+		const currencyBefore = player.currency;
+
+		socket.emit('lootPickup', { lootId: 'does_not_exist' });
+		await sleep(50);
+
+		expect(player.currency).toBe(currencyBefore);
+	});
+});
