@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import { drawCard, initHand as initHandFromModule, initHandFromDeck, hand, slotCooldowns, canUseSlot } from './hand.js';
+import { clampDelta } from './delta.js';
 import {
 	buildDungeon,
 	clearDungeon,
@@ -1430,7 +1431,7 @@ function animate(timestamp) {
   requestAnimationFrame(animate);
 
   clock.update(timestamp);
-  const delta = clock.getDelta();
+  const delta = clampDelta(clock.getDelta());
   updateMyPlayer(delta);
 
   // ── Loot proximity check ──
