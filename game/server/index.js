@@ -28,6 +28,10 @@ const {
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
   MAX_HP,
+  RESPAWN_DELAY_MS,
+  LOOT_LIFETIME_MS,
+  LOOT_SPAWN_CHANCE,
+  STALE_CLEANUP_INTERVAL_MS,
   VICTORY_REWARD_ROTATION
 } = require('./config');
 
@@ -595,7 +599,7 @@ function damagePlayer(playerId, amount) {
       p.x = spawn.x;
       p.y = 0.5;
       p.z = spawn.z;
-    }, 3000);
+    }, RESPAWN_DELAY_MS);
     _timeouts.push(respawnId);
   }
 }
@@ -650,7 +654,7 @@ function spawnEnemies() {
 
 // Helper: spawn a loot item at the given position (50 % chance)
 function spawnLoot(x, z) {
-  if (Math.random() >= 0.5) return;
+  if (Math.random() >= LOOT_SPAWN_CHANCE) return;
 
   const value = Math.floor(Math.random() * 16) + 5;
   const id = crypto.randomUUID();
@@ -1421,14 +1425,14 @@ const gameLoopId = setInterval(() => {
 
   // Remove expired loot (older than 120 seconds)
   const now = Date.now();
-  gameState.loot = gameState.loot.filter(l => (now - l.createdAt) < 120000);
+  gameState.loot = gameState.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
 
   io.emit('stateUpdate', stateSnapshot());
 }, 1000 / TICK_RATE);
 _intervals.push(gameLoopId);
 
 // Periodic stale player cleanup (every 5 seconds)
-const staleCleanupId = setInterval(cleanupStalePlayers, 5000);
+const staleCleanupId = setInterval(cleanupStalePlayers, STALE_CLEANUP_INTERVAL_MS);
 _intervals.push(staleCleanupId);
 
 const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
