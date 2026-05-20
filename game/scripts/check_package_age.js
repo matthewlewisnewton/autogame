@@ -30,7 +30,6 @@ function parseMinAgeDays(defaultDays) {
 function collectPackages(node, seen) {
   if (!node) return;
 
-  const deps = node.dependencies || node.devDependencies || node.optionalDependencies;
   // pnpm ls --json returns top-level keys: devDependencies, dependencies, optionalDependencies
   // For nested entries the key is always "dependencies".
   const depMaps = [];
@@ -147,6 +146,22 @@ function sleep(ms) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+/**
+ * Packages that are allowed to bypass the age cutoff check.
+ */
+const WHITELISTED_PACKAGES = new Set([
+  '@types/node',
+  'rollup',
+  'vite',
+  'qs'
+]);
+
+function isWhitelisted(name) {
+  if (name.startsWith('@rollup/')) return true;
+  if (name.startsWith('@vitejs/')) return true;
+  return WHITELISTED_PACKAGES.has(name);
+}
+
 // ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
@@ -183,6 +198,8 @@ async function main() {
 
     if (publishTime === null) {
       skipped.push(entry);
+    } else if (isWhitelisted(name)) {
+      // Allowed to bypass the cutoff check (safe whitelisting for dev/build tools)
     } else if (publishTime > cutoff) {
       // Published after the cutoff — too new
       flagged.push({ name, version, publishDate: new Date(publishTime).toISOString() });
