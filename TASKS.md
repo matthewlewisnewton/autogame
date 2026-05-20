@@ -26,7 +26,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [013-summon-cards](tickets/013-summon-cards/)
 - [x] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
 - [x] [077-enemy-types-skirmisher-miniboss](tickets/077-enemy-types-skirmisher-miniboss/)
-- [ ] [078-enemy-type-spawner](tickets/078-enemy-type-spawner/)
+- [x] [078-enemy-type-spawner](tickets/078-enemy-type-spawner/)
 
 ## Backlog — World & Economy
 - [x] [016-loot-and-currency](tickets/016-loot-and-currency/)
@@ -47,6 +47,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [081-cleanup-enemy-type-spawner](tickets/081-cleanup-enemy-type-spawner/)
 - [ ] [080-cleanup-enemy-types-skirmisher-miniboss](tickets/080-cleanup-enemy-types-skirmisher-miniboss/)
 - [x] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
 - [x] [051-cleanup-cleanup-public-state-and-shared-data-nits](tickets/051-cleanup-cleanup-public-state-and-shared-data-nits/)
