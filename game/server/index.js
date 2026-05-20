@@ -113,6 +113,71 @@ function clampToDungeon(x, z) {
   };
 }
 
+const PLAYER_RADIUS = 0.5;
+const WALL_THICKNESS = 0.4;
+const PASSAGE_WALL_THICKNESS = 0.3;
+
+/**
+ * Build AABB colliders from the current dungeon layout walls.
+ * Returns an array of { minX, maxX, minZ, maxZ } objects.
+ */
+function buildWallColliders() {
+  const colliders = [];
+  const layout = gameState.layout;
+  if (!layout || !layout.rooms || !layout.passages) return colliders;
+
+  for (const room of layout.rooms) {
+    for (const wall of room.walls) {
+      colliders.push(wallAABB(wall, WALL_THICKNESS / 2));
+    }
+  }
+  for (const passage of layout.passages) {
+    for (const wall of passage.walls) {
+      colliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
+    }
+  }
+
+  return colliders;
+}
+
+/**
+ * Compute the AABB for a wall segment given its half-thickness.
+ */
+function wallAABB(wall, halfThickness) {
+  if (wall.axis === 'x') {
+    return {
+      minX: wall.x - wall.length / 2 - halfThickness,
+      maxX: wall.x + wall.length / 2 + halfThickness,
+      minZ: wall.z - halfThickness,
+      maxZ: wall.z + halfThickness,
+    };
+  } else {
+    return {
+      minX: wall.x - halfThickness,
+      maxX: wall.x + halfThickness,
+      minZ: wall.z - wall.length / 2 - halfThickness,
+      maxZ: wall.z + wall.length / 2 + halfThickness,
+    };
+  }
+}
+
+/**
+ * Check if a proposed player position overlaps any wall collider.
+ * Returns true if the position is inside a wall (collision), false otherwise.
+ */
+function checkWallCollision(px, pz) {
+  const colliders = buildWallColliders();
+  const pr = PLAYER_RADIUS;
+
+  for (const w of colliders) {
+    if (px + pr <= w.minX || px - pr >= w.maxX) continue;
+    if (pz + pr <= w.minZ || pz - pr >= w.maxZ) continue;
+    return true; // overlap
+  }
+
+  return false;
+}
+
 gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
@@ -1110,7 +1175,13 @@ function startServer(port) {
       }
       player.firstMoveAfterSpawn = false;
 
+      // Wall collision check: reject moves that place the player inside a wall
       const clamped = clampToDungeon(data.x, data.z);
+      if (checkWallCollision(clamped.x, clamped.z)) {
+        console.warn(`Rejected move from ${socket.id}: wall collision at (${clamped.x.toFixed(2)}, ${clamped.z.toFixed(2)})`);
+        return;
+      }
+
       player.x = clamped.x;
       player.y = data.y;
       player.z = clamped.z;
@@ -1499,6 +1570,9 @@ if (typeof module !== 'undefined' && module.exports) {
     createDrawDeckFromSelectedDeck,
     CARD_DEFS,
     STARTING_DECK_IDS,
+    checkWallCollision,
+    buildWallColliders,
+    wallAABB,
     // Server objects for integration tests
     server,
     io,
