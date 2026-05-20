@@ -27,6 +27,9 @@ GEMINI_QUOTA_FAST_FAIL="${GEMINI_QUOTA_FAST_FAIL:-1}"
 GEMINI_QUOTA_FAST_FAIL_SECONDS="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
 AGENT_MODEL="${AGENT_MODEL:-composer-2.5-fast}" # cursor-agent QA fallback model
+REVIEW_EASY_MODEL="${REVIEW_EASY_MODEL:-composer-2.5}" # top-level review for easy tickets
+REVIEW_MEDIUM_MODEL="${REVIEW_MEDIUM_MODEL:-gpt-5.5-medium-fast}" # top-level review for medium tickets
+REVIEW_HARD_MODEL="${REVIEW_HARD_MODEL:-gpt-5.5-extra-high}" # top-level review for hard tickets
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-720}"  # 12 min — composer is now the primary QA reviewer (gemini dropped)
 # Antigravity CLI (Gemini 3.5 Flash, High). Model is pinned globally via the
 # interactive `/model` slash command and persisted server-side; there is NO
@@ -48,7 +51,7 @@ PIPELINE_CHECK_COMMAND="${PIPELINE_CHECK_COMMAND:-pnpm test -- --coverage.enable
 PIPELINE_SERVER_TIMEOUT="${PIPELINE_SERVER_TIMEOUT:-300}"
 PIPELINE_CLIENT_TIMEOUT="${PIPELINE_CLIENT_TIMEOUT:-120}"
 PIPELINE_CHECK_TIMEOUT="${PIPELINE_CHECK_TIMEOUT:-$((PIPELINE_SERVER_TIMEOUT + PIPELINE_CLIENT_TIMEOUT))}"
-PIPELINE_COVERAGE_ENABLED="${PIPELINE_COVERAGE_ENABLED:-1}" # run coverage on changed files before Claude review
+PIPELINE_COVERAGE_ENABLED="${PIPELINE_COVERAGE_ENABLED:-1}" # run coverage on changed files before top-level review
 PIPELINE_COVERAGE_TIMEOUT="${PIPELINE_COVERAGE_TIMEOUT:-120}"
 
 # Exit-code convention used across run_*.sh:
@@ -343,9 +346,18 @@ agent_model_for_label() {  # agent_model_for_label <label>
     gemini) echo "${GEMINI_MODEL:-default}" ;;
     claude) echo "${CLAUDE_MODEL:-default}" ;;
     agent) echo "${AGENT_MODEL:-default}" ;;
+    agent/*) echo "${1#agent/}" ;;
+    composer/*) echo "${1#composer/}" ;;
     agy) echo "${AGY_MODEL_LABEL:-default}" ;;
     *) echo "default" ;;
   esac
+}
+
+# ticket_difficulty <ticket.md> — prints easy|medium|hard, or empty if unset.
+ticket_difficulty() {
+  local ticket_file="$1"
+  grep -ioE '^## Difficulty: *(easy|medium|hard)' "$ticket_file" 2>/dev/null \
+    | grep -ioE 'easy|medium|hard' | head -1 | tr 'A-Z' 'a-z'
 }
 
 record_agent_usage() {  # record_agent_usage <label> <outfile> <attempt> <rc> <status> <reason> <started-ms> <ended-ms> <prompt>
@@ -702,10 +714,13 @@ run_gemini() {  # run_gemini <prompt> <outfile>
   _run_cli gemini "$2" "$GEMINI_TIMEOUT" "$1" "${a[@]}"
 }
 run_agent() {  # run_agent <prompt> <outfile> — cursor-agent, QA fallback
-  local a=(agent -p --force --trust --mode ask)
-  [ -n "$AGENT_MODEL" ] && a+=(--model "$AGENT_MODEL")
-  a+=("$1")
-  _run_cli agent "$2" "$AGENT_TIMEOUT" "$1" "${a[@]}"
+  run_agent_model "${AGENT_MODEL:-composer-2.5-fast}" "$1" "$2"
+}
+run_agent_model() {  # run_agent_model <model> <prompt> <outfile> — cursor-agent with explicit model
+  local model="$1" prompt="$2" out="$3"
+  local a=(agent -p --force --trust --mode ask --model "$model")
+  a+=("$prompt")
+  _run_cli "agent/$model" "$out" "$AGENT_TIMEOUT" "$prompt" "${a[@]}"
 }
 run_agy() {  # run_agy <prompt> <outfile> — Antigravity / Gemini 3.5 Flash (High), QA tier
   # No --model flag exists (model is globally pinned server-side via /model).

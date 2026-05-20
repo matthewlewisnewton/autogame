@@ -7,6 +7,8 @@ Narrow this ticket to two concrete server-side AI improvements:
 
 Do not implement full A*, flow fields, room-role AI, boss behavior, attack telegraphs, or combat readability here. Those are separate tickets.
 
+## Difficulty: medium
+
 ## Current State
 
 `game/server/index.js` already has a good low-level baseline:

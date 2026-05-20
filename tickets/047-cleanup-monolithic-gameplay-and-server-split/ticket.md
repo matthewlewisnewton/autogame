@@ -7,6 +7,8 @@
 
 Refactor the massive single-file client and server entrypoints to make the codebase more maintainable, readable, and easier to unit-test.
 
+## Difficulty: hard
+
 ## Modularize client-side `main.js` (58KB)
 
 `game/client/main.js` contains a massive mix of:

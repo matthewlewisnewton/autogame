@@ -2,6 +2,8 @@
 
 Add a persistence layer to the backend to save game state, which will pave the way for persistent user accounts.
 
+## Difficulty: hard
+
 ## Acceptance Criteria
 - Define an abstract storage interface (e.g., a `StorageProvider` class) so the actual database implementation can be swapped out later if needed.
 - Implement a persistence layer capable of storing player data, inventory, loadouts, and location.

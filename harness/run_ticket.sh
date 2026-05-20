@@ -2,7 +2,7 @@
 # One top-level ticket end to end:
 #   qwen decomposes it into sub-tickets
 #   -> each sub-ticket runs the qwen+gemini loop (run_subtask.sh)
-#   -> claude reviews the whole ticket against its acceptance criteria
+#   -> difficulty-routed final review (easy: composer-2.5, medium: gpt-5.5-medium-fast, hard: gpt-5.5-xhigh)
 # On a failed review, qwen adds remediation sub-tickets and the cycle repeats,
 # up to TICKET_MAX_ROUNDS times. The review feedback handed back to qwen is a
 # compact, current "open gaps" list (rewritten each round, never piled up) that
@@ -66,22 +66,56 @@ capture_run() {  # capture_run <dir>
   stop_game
 }
 
-# Run claude's holistic review of the whole ticket. Sets global REVIEW_OUT,
+# Run the holistic review of the whole ticket. Sets global REVIEW_OUT,
 # writes a compact open-gaps file to <dir>/gaps.md and a nits file to
-# <dir>/nits.md. Escalates on tool failure.
-review_ticket() {  # review_ticket <dir>
-  local dir="$1" prompt
+# <dir>/nits.md. Escalates on tool failure. Reviewer is chosen from the
+# ticket's `## Difficulty:` line: easy -> composer-2.5 (agent CLI),
+# medium -> gpt-5.5-medium-fast (agent CLI), hard -> gpt-5.5-extra-high (agent CLI).
+review_ticket() {  # review_ticket <dir> [coverage_dir]
+  local dir="$1" coverage_dir="${2:-}" prompt difficulty reviewer_out model label
   git diff "$BASE_REF"..HEAD > "$dir/ticket.diff"
+  if [ -n "$coverage_dir" ] && [ -f "$coverage_dir/coverage.log" ]; then
+    cp "$coverage_dir/coverage.log" "$dir/coverage.log"
+  fi
   REVIEW_OUT="$dir/review.md"
+  difficulty="$(ticket_difficulty "$TICKET_FILE")"
+  [ -n "$difficulty" ] || difficulty="medium"
   prompt="$(render_prompt "$PROMPTS_DIR/review.md" \
     TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$dir" \
     BASE_REF "$BASE_REF" REVIEW_OUT "$REVIEW_OUT" \
     GAPS_OUT "$dir/gaps.md" NITS_OUT "$dir/nits.md")"
-  log "[claude] reviewing..."
-  if ! run_claude "$prompt" "$dir/claude.txt"; then
-    log "[tool-failure] claude reviewer unavailable — escalating"
-    exit 2
-  fi
+  case "$difficulty" in
+    easy)
+      model="$REVIEW_EASY_MODEL"
+      reviewer_out="$dir/composer.txt"
+      label="composer/$model"
+      log "[$label] reviewing (difficulty: easy)..."
+      if ! run_agent_model "$model" "$prompt" "$reviewer_out"; then
+        log "[tool-failure] composer reviewer unavailable — escalating"
+        exit 2
+      fi
+      ;;
+    hard)
+      model="$REVIEW_HARD_MODEL"
+      reviewer_out="$dir/agent.txt"
+      label="agent/$model"
+      log "[$label] reviewing (difficulty: hard)..."
+      if ! run_agent_model "$model" "$prompt" "$reviewer_out"; then
+        log "[tool-failure] hard-tier agent reviewer unavailable — escalating"
+        exit 2
+      fi
+      ;;
+    *)
+      model="$REVIEW_MEDIUM_MODEL"
+      reviewer_out="$dir/agent.txt"
+      label="agent/$model"
+      log "[$label] reviewing (difficulty: medium)..."
+      if ! run_agent_model "$model" "$prompt" "$reviewer_out"; then
+        log "[tool-failure] medium-tier agent reviewer unavailable — escalating"
+        exit 2
+      fi
+      ;;
+  esac
 }
 
 # Archive a finished review and lock it (and its working dir) read-only so no
@@ -154,6 +188,7 @@ ingest_nits() {  # ingest_nits <nits_file>
     printf '> against the CURRENT code, and skip any nit that is already resolved.\n\n'
     printf 'Minor, non-blocking nits the reviewer noted while passing `%s`.\n' "$NAME"
     printf 'None blocked acceptance — clean them up when convenient.\n\n'
+    printf '## Difficulty: easy\n\n'
     cat "$nf"
   } > "tickets/$slug/ticket.md"
   if grep -q '^## Backlog — Housekeeping' TASKS.md; then
@@ -343,10 +378,11 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     continue
   fi
 
-  # --- 2b. Coverage on changed files (before Claude review) ---
+  # --- 2b. Coverage on changed files (before top-level review) ---
   # Runs tests affected by changed files with coverage reporting. Thresholds
-  # are disabled (--coverage.thresholds.min=0) so this is a visibility gate,
-  # not a hard blocker — the report is emitted to the review artifacts dir.
+  # are disabled (0) so this is a visibility gate, not a hard blocker — the
+  # report is copied into the review artifacts dir for the reviewer.
+  COVERAGE_DIR=""
   if [ "$PIPELINE_COVERAGE_ENABLED" = "1" ]; then
     COVERAGE_DIR="$TDIR/coverage-round-$round"
     mkdir -p "$COVERAGE_DIR"
@@ -376,12 +412,14 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     emit_progress_event "coverage_finish" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"rc\":$coverage_rc}"
   fi
 
-  # --- 3. CLAUDE REVIEW of the whole top-level ticket ---
-  log "[review] all sub-tickets passed — running claude review"
-  emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
+  # --- 3. TOP-LEVEL REVIEW (reviewer chosen by ticket difficulty) ---
+  difficulty="$(ticket_difficulty "$TICKET_FILE")"
+  [ -n "$difficulty" ] || difficulty="medium"
+  log "[review] all sub-tickets passed — running $difficulty-tier review"
+  emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"difficulty\":$(json_string "$difficulty")}"
   RDIR="$TDIR/review-round-$round"
   capture_run "$RDIR"
-  review_ticket "$RDIR"
+  review_ticket "$RDIR" "$COVERAGE_DIR"
   protect_review "review-round-$round" "$RDIR"   # archive + lock read-only
 
   if is_pass "$REVIEW_OUT"; then
@@ -403,13 +441,13 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     continue
   fi
 
-  # FAIL — hand qwen the compact open-gaps list claude wrote (overwrite).
+  # FAIL — hand qwen the compact open-gaps list the reviewer wrote (overwrite).
   log "[review] FAIL — recording compacted feedback for remediation"
   emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"FAIL\",\"review\":$(json_string "$REVIEW_OUT")}"
   if [ -s "$RDIR/gaps.md" ]; then
     put_review_fb < "$RDIR/gaps.md"
   else
-    # Fallback: claude did not produce the compact file — trim the full review.
+    # Fallback: reviewer did not produce the compact file — trim the full review.
     {
       printf '# Open gaps — after round %d (%s)\n\n' "$round" "$(date '+%F %T')"
       grep -v '^VERDICT:' "$REVIEW_OUT" 2>/dev/null | tail -40
@@ -438,7 +476,7 @@ verify_reviews
 # Re-review the rescued ticket.
 RDIR="$TDIR/rescue-review"
 capture_run "$RDIR"
-review_ticket "$RDIR"
+review_ticket "$RDIR" "${COVERAGE_DIR:-}"
 protect_review "rescue-review" "$RDIR"
 if is_pass "$REVIEW_OUT" && finalize "$RDIR" "$REVIEW_OUT"; then
   exit 0

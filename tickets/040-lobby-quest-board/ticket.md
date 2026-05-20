@@ -4,6 +4,8 @@ Add the first half of a *Phantasy Star Online Episodes I&II*-inspired quest loop
 players should choose a specific mission from the lobby before readying up,
 instead of every run launching the same implicit dungeon.
 
+## Difficulty: medium
+
 ## Source Material Note
 
 `game/docs/design.md` names *Phantasy Star Online Episodes I&II* as reference

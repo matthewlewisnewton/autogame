@@ -2,7 +2,9 @@
 
 Top-level tickets, processed top-to-bottom by `harness/run_backlog.sh`. Each is
 decomposed by qwen into sub-tickets, built and QA'd by the qwen+gemini loop,
-then reviewed as a whole by claude. Order roughly respects dependencies.
+then reviewed as a whole by a difficulty-routed reviewer (easy: composer-2.5,
+medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
+`## Difficulty: easy|medium|hard`. Order roughly respects dependencies.
 
 ## Backlog — Server Foundation
 - [x] [001-server-heartbeat](tickets/001-server-heartbeat/)

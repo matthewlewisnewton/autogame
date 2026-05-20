@@ -1,5 +1,7 @@
 # Ticket: PSO "Vanguard" HUD Overhaul
 
+## Difficulty: medium
+
 ## Goal
 Replace the current generic top-center health and magic stone (MS) bars with a corner-anchored, stylized HUD inspired by *Phantasy Star Online Episodes I & II*. This improvement focuses on visual fidelity to the source material and improving peripheral awareness of player stats.
 

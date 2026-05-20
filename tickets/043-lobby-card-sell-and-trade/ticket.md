@@ -4,6 +4,8 @@ Add the second half of a *Lost Kingdoms 1 & 2*-inspired card acquisition loop:
 after runs, players should be able to turn extra cards into currency and trade
 cards with another connected player from the lobby.
 
+## Difficulty: medium
+
 ## Source Material Note
 
 The design doc says players gather loot/cards in dungeons and then return to
