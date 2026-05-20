@@ -5,13 +5,38 @@ function stubClass(name) {
 	class C {
 		constructor(...args) {
 			Object.defineProperty(this, '_name', { value: name });
-			// Mesh constructor: (geometry, material) — store the passed material
-			if (name === 'Mesh' && args.length >= 2 && args[1]) {
+			// Mesh constructor: (geometry, material) — store both
+			if (name === 'Mesh' && args.length >= 2) {
+				this.geometry = args[0];
 				this.material = args[1];
 			}
 			// MeshStandardMaterial constructor: (options) — store properties
 			if (name === 'MeshStandardMaterial' && args[0] && typeof args[0] === 'object') {
 				Object.assign(this, args[0]);
+				// Wrap numeric color into an object with getHex() for test compatibility
+				if (typeof this.color === 'number') {
+					this.color = { _value: this.color, getHex: function() { return this._value; }, setHex: function(v) { this._value = v; } };
+				}
+			}
+			// Geometry constructors — store parameters so tests can inspect them
+			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry'];
+			if (geoNames.includes(name)) {
+				this.parameters = {};
+				if (name === 'ConeGeometry') {
+					this.parameters = { radius: args[0], height: args[1], radialSegments: args[2] };
+				} else if (name === 'BoxGeometry') {
+					this.parameters = { width: args[0], height: args[1], depth: args[2] };
+				} else if (name === 'SphereGeometry') {
+					this.parameters = { radius: args[0], widthSegments: args[1], heightSegments: args[2] };
+				} else if (name === 'RingGeometry') {
+					this.parameters = { innerRadius: args[0], outerRadius: args[1], thetaSegments: args[2] };
+				} else if (name === 'CylinderGeometry') {
+					this.parameters = { radiusTop: args[0], radiusBottom: args[1], height: args[2], radialSegments: args[3] };
+				} else if (name === 'PlaneGeometry') {
+					this.parameters = { width: args[0], height: args[1] };
+				} else if (name === 'IcosahedronGeometry') {
+					this.parameters = { radius: args[0], detail: args[1] };
+				}
 			}
 		}
 	}
