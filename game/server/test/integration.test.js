@@ -562,6 +562,34 @@ describe('Socket Integration — Last Player Disconnect Resets Run', () => {
 		expect(gameState.gamePhase).toBe('lobby');
 		expect(gameState.run).toBeUndefined();
 	});
+
+	it('new connection receives clean lobby init after last player disconnects', async () => {
+		// 1. Connect, ready up, and transition to playing
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run).toBeDefined();
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+
+		// 2. Disconnect the only player
+		socket.disconnect();
+		await sleep(100);
+
+		expect(Object.keys(gameState.players)).toHaveLength(0);
+		expect(gameState.gamePhase).toBe('lobby');
+		expect(gameState.run).toBeUndefined();
+		expect(gameState.enemies).toHaveLength(0);
+
+		// 3. Connect a second socket — should receive a clean lobby init
+		const { socket: socket2, init } = await connectClient(baseUrl);
+		expect(init.state.gamePhase).toBe('lobby');
+
+		// Clean up
+		if (socket2.connected) socket2.disconnect();
+	});
 });
 
 describe('Socket Integration — Lobby / playerReady Flow', () => {
