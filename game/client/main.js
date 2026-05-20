@@ -590,6 +590,23 @@ socket.on('stateUpdate', (state) => {
       }
     }
   }
+
+  // ── Client prediction reconciliation ──
+  // After each stateUpdate, compare the client's predicted position against
+  // the server's authoritative position. If the drift exceeds a threshold,
+  // snap back to the server truth to correct for network lag or desync.
+  if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
+    const serverPlayer = gameState.players[myId];
+    if (!serverPlayer.dead) {
+      const dx = serverPlayer.x - myX;
+      const dz = serverPlayer.z - myZ;
+      const drift = Math.hypot(dx, dz);
+      if (drift > 0.5) {
+        myX = serverPlayer.x;
+        myZ = serverPlayer.z;
+      }
+    }
+  }
 });
 
 socket.on('heartbeat_ack', (data) => {
