@@ -1190,11 +1190,6 @@ function startServer(port) {
     }
   });
 
-  socket.on('damage', (data) => {
-    if (!data || !data.targetId || typeof data.amount !== 'number') return;
-    damagePlayer(data.targetId, data.amount);
-  });
-
   socket.on('useCard', (data) => {
     if (gameState.run && gameState.run.status !== 'playing') return;
 
