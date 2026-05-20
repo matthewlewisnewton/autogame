@@ -972,3 +972,26 @@ This ticket adds no `?scenario=…` or debug shortcut. The existing `debugScenar
 
 None blocking.
 
+
+## v0.43 — Cleanup nits from 058-reset-state-on-last-disconnect  (2026-05-20 05:53:11)
+
+
+> AC2: All existing integration tests still pass.
+
+The sub-ticket landed with a verified iteration commit (`2cf9889 ... sub-ticket verified (iter 2)`), which by harness convention means the regression suite ran. The captured live run further demonstrates no regression in the lobby → multi-lobby → gameplay → movement flow.
+
+## Consistency with design / requirements
+
+The change is a one-line refactor of branching logic in the disconnect handler. No design contract is affected — the externally observable behavior is identical aside from removing one redundant `lobbyUpdate` socket message per last-player disconnect. Nothing in `game/docs/design.md` or `game/docs/requirements.md` is touched or contradicted.
+
+## Code quality
+
+- No dead code introduced; the change actually removes a redundant call site.
+- The added inline comment (`Non-last player disconnects during lobby — broadcast updated player list`) clarifies a non-obvious branch — appropriate.
+- No new debug scenarios or `?scenario=` paths added.
+- No console errors in the captured run.
+
+## Remaining gaps
+
+None. The acceptance criteria are fully and robustly satisfied, the captured run is clean, and no regressions are visible.
+
