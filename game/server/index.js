@@ -95,6 +95,20 @@ function clampToDungeon(x, z) {
 gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
+// Store interval/timeout IDs so tests can clean them up
+const _intervals = [];
+const _timeouts = [];
+
+/**
+ * Clear all tracked intervals and timeouts. Call before resetting state in tests.
+ */
+function clearAllTimers() {
+  for (const id of _intervals) clearInterval(id);
+  _intervals.length = 0;
+  for (const id of _timeouts) clearTimeout(id);
+  _timeouts.length = 0;
+}
+
 /**
  * Reset gameState to a fresh state. Used by integration tests to isolate tests.
  * Regenerates dungeon layout with a new random seed.
@@ -109,6 +123,8 @@ function resetGameState() {
   gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
   // Ensure run is cleared — it should not exist after a reset
   delete gameState.run;
+  // Clear victory counters so reward card selection resets between tests
+  delete gameState._victoryCounters;
 }
 
 const TICK_RATE = 20; // 20 times per second
@@ -564,7 +580,7 @@ function damagePlayer(playerId, amount) {
 
     checkRunTerminalState();
 
-    setTimeout(() => {
+    const respawnId = setTimeout(() => {
       const p = gameState.players[playerId];
       if (!p) return; // player may have disconnected
       const spawn = firstRoomPosition();
@@ -574,6 +590,7 @@ function damagePlayer(playerId, amount) {
       p.y = 0.5;
       p.z = spawn.z;
     }, 3000);
+    _timeouts.push(respawnId);
   }
 }
 
@@ -919,15 +936,11 @@ function stateSnapshot() {
 
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
-// Store interval IDs so tests can clean them up
-const _intervals = [];
-
 function startServer(port) {
   // Remove previous connection handlers so repeated calls (in tests) don't stack
   io.removeAllListeners('connection');
-  // Clear any previously created intervals (from prior test runs)
-  for (const id of _intervals) clearInterval(id);
-  _intervals.length = 0;
+  // Clear any previously created intervals/timeouts (from prior test runs)
+  clearAllTimers();
 
   io.on('connection', (socket) => {
     console.log(`Player connected: ${socket.id}`);
@@ -1380,6 +1393,8 @@ if (typeof module !== 'undefined' && module.exports) {
     server,
     io,
     _intervals,
+    _timeouts,
+    clearAllTimers,
     // Constants needed by tests
     STALE_THRESHOLD,
     MAX_MAGIC_STONES,

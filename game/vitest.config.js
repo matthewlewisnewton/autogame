@@ -13,6 +13,7 @@ export default defineConfig({
 		setupFiles: [
 			'client/test/setup.js'
 		],
+		hookTimeout: 30000,
 		coverage: {
 			provider: 'v8',
 			reportsDirectory: './coverage',

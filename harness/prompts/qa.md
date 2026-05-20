@@ -19,6 +19,8 @@ LOGS & PROBES — read every one:
 @__ARTIFACTS_DIR__/console.log
 @__ARTIFACTS_DIR__/server.log
 @__ARTIFACTS_DIR__/client.log
+@__ARTIFACTS_DIR__/local-checks.status.json, if present
+@__ARTIFACTS_DIR__/local-checks.log, if present
 
 If `metrics.json` has `capturePlanSource`, `capturePlanSummary`, `scenarios`,
 or `probes`, use those fields to understand whether the browser exercised the
