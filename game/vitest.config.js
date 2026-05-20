@@ -2,18 +2,31 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	test: {
-		include: [
-			'server/test/**/*.{test,spec}.{js,mjs}',
-			'client/test/**/*.{test,spec}.{js,mjs}'
-		],
-		environmentMatchGlobs: [
-			['client/test/**', 'jsdom'],
-			['server/test/**', 'node']
-		],
-		setupFiles: [
-			'client/test/setup.js'
+		projects: [
+			{
+				test: {
+					name: 'server',
+					include: [
+						'server/test/**/*.{test,spec}.{js,mjs}'
+					],
+					environment: 'node'
+				}
+			},
+			{
+				test: {
+					name: 'client',
+					include: [
+						'client/test/**/*.{test,spec}.{js,mjs}'
+					],
+					environment: 'jsdom',
+					setupFiles: [
+						'client/test/setup.js'
+					]
+				}
+			}
 		],
 		hookTimeout: 30000,
+		testTimeout: 30000,
 		coverage: {
 			provider: 'v8',
 			reportsDirectory: './coverage',

@@ -76,13 +76,70 @@ log() { echo "[$(date '+%F %T')] $*"; }
 
 # --- Game process control ---
 GAME_PIDS=()
+# port_in_use <port> — returns 0 if any TCP socket (LISTEN, TIME-WAIT, etc.)
+# occupies the port.  Uses `ss` which sees kernel-held sockets that `fuser`
+# misses after a process is killed.
+port_in_use() {  # port_in_use <port>
+  ss -tlnp "sport = :$1" 2>/dev/null | grep -qv '^State'
+}
+
+# wait_port_free <port> [timeout-seconds] — blocks until the TCP port is no
+# longer bound (including TIME-WAIT).  Returns 0 on success, 1 on timeout.
+wait_port_free() {  # wait_port_free <port> [timeout-seconds]
+  local port="$1" deadline=$(( $(date +%s) + ${2:-15} ))
+  while [ "$(date +%s)" -lt "$deadline" ]; do
+    port_in_use "$port" || return 0
+    # Port still bound — try harder each iteration.
+    fuser -k -9 "$port"/tcp 2>/dev/null || true
+    sleep 0.2
+  done
+  return 1
+}
+
 start_game() {  # start_game <logdir>
   local logdir="$1"
   emit_progress_event "game_start" "{\"logdir\":$(json_string "$logdir")}"
+
+  # --- Port cleanup: kill everything on 5173 and 3000, then wait for release ---
+  # Phase 1: immediate SIGKILL on whatever holds the ports.
+  fuser -k -9 5173/tcp 2>/dev/null || true
+  fuser -k -9 3000/tcp 2>/dev/null || true
+
+  # Phase 2: also pkill any vite/node processes by command-line pattern.
+  # Anchored patterns avoid killing unrelated node processes (e.g. Qwen itself).
+  pkill -9 -f 'vite.*--port.*5173' 2>/dev/null || true
+  pkill -9 -f 'node.*game/server/index' 2>/dev/null || true
+
+  # Phase 3: block until ports are actually free (kernel releases the socket).
+  # Uses `ss` to detect TIME-WAIT sockets that `fuser` cannot see — this is
+  # the critical fix for EADDRINUSE after process kill.
+  wait_port_free 5173 15 || log "[warn] port 5173 still bound after 15s"
+  wait_port_free 3000 15 || log "[warn] port 3000 still bound after 15s"
+
+  # --- Launch dev servers (with retry on EADDRINUSE) ---
   ( node game/server/index.js ) </dev/null >"$logdir/server.log" 2>&1 &
   GAME_PIDS+=("$!")
-  ( cd game/client && npx vite --port 5173 --strictPort ) </dev/null >"$logdir/client.log" 2>&1 &
-  GAME_PIDS+=("$!")
+
+  # Retry Vite up to 3 times if the port is still occupied at bind time.
+  local vite_started=0
+  local attempt=0
+  while [ $vite_started -eq 0 ] && [ $attempt -lt 3 ]; do
+    attempt=$((attempt + 1))
+    ( cd game/client && npx vite --port 5173 --strictPort ) </dev/null >"$logdir/client.log" 2>&1 &
+    GAME_PIDS+=("$!")
+    # Wait for Vite to either bind successfully or fail.
+    sleep 3
+    if grep -q 'EADDRINUSE\|already in use' "$logdir/client.log" 2>/dev/null; then
+      log "[warn] Vite EADDRINUSE on attempt $attempt — retrying after cleanup"
+      kill "${GAME_PIDS[-1]}" 2>/dev/null || true
+      GAME_PIDS=("${GAME_PIDS[@]:0:${#GAME_PIDS[@]}-1}")
+      fuser -k -9 5173/tcp 2>/dev/null || true
+      wait_port_free 5173 10 || true
+    else
+      vite_started=1
+    fi
+  done
+  [ $vite_started -eq 1 ] || log "[error] Vite failed to start after 3 attempts"
 }
 
 stop_game() {

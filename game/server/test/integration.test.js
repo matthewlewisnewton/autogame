@@ -25,9 +25,20 @@ import {
  * Each test gets its own server so there is no shared-state interference.
  */
 async function startTestServer() {
+	// Disconnect all existing clients before closing the server
+	for (const [id, conn] of Object.entries(serverIo.engine?.sockets || {})) {
+		try { conn.close(true); } catch (_) {}
+	}
 	// Close any existing server before starting a new one
 	if (httpServer.listening) {
-		await new Promise((resolve) => httpServer.close(resolve));
+		await new Promise((resolve, reject) => {
+			const t = setTimeout(() => {
+				// Force-close on timeout: close underlying handles
+				try { serverIo.close(); } catch (_) {}
+				httpServer.close(resolve);
+			}, 5000);
+			httpServer.close(() => { clearTimeout(t); resolve(); });
+		});
 	}
 
 	return new Promise((resolve, reject) => {
@@ -58,6 +69,9 @@ async function startTestServer() {
  * server emits `init` in its connection handler, which arrives on the client
  * after the `connect` acknowledgment. Resolving on `connect` would leave
  * `initPayload` as null.
+ *
+ * A 10-second timeout rejects the Promise so vitest hookTimeout fires with
+ * a clear error instead of hanging indefinitely.
  */
 function connectClient(baseUrl) {
 	return new Promise((resolve, reject) => {
@@ -68,8 +82,19 @@ function connectClient(baseUrl) {
 			timeout: 5000
 		});
 
-		socket.on('init', (data) => resolve({ socket, init: data }));
-		socket.on('connect_error', reject);
+		const timer = setTimeout(() => {
+			try { socket.disconnect(); } catch (_) {}
+			reject(new Error(`connectClient: timed out waiting for init from ${baseUrl}`));
+		}, 10000);
+
+		socket.on('init', (data) => {
+			clearTimeout(timer);
+			resolve({ socket, init: data });
+		});
+		socket.on('connect_error', (e) => {
+			clearTimeout(timer);
+			reject(e);
+		});
 	});
 }
 
@@ -93,6 +118,25 @@ function sleep(ms) {
 	return new Promise(r => setTimeout(r, ms));
 }
 
+/**
+ * Close the HTTP server, disconnecting any remaining clients first.
+ * Falls back to a force-close after 5 seconds so that a stuck socket
+ * doesn't block the entire test run.
+ */
+async function closeServer() {
+	// Disconnect all Socket.IO clients so the server can shut down
+	for (const [id, conn] of Object.entries(serverIo.engine?.sockets || {})) {
+		try { conn.close(true); } catch (_) {}
+	}
+	await new Promise((resolve) => {
+		const t = setTimeout(() => {
+			try { serverIo.close(); } catch (_) {}
+			resolve();
+		}, 5000);
+		httpServer.close(() => { clearTimeout(t); resolve(); });
+	});
+}
+
 function firstRoomSpawn() {
 	const first = gameState.layout.rooms[0];
 	return { x: first.x, z: first.z };
@@ -112,8 +156,7 @@ describe('Socket Integration — Connection Flow', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		// Close the HTTP server so the next test can bind a fresh port
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('client receives init event with id, state, layoutSeed, layout', async () => {
@@ -147,7 +190,7 @@ describe('Socket Integration — Move Event', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('emits move and server broadcasts stateUpdate with new position', async () => {
@@ -196,7 +239,7 @@ describe('Socket Integration — Invalid Move Rejection', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('rejects move with missing fields', () => {
@@ -240,7 +283,7 @@ describe('Socket Integration — useCard Event', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	describe('Weapon card', () => {
@@ -348,7 +391,7 @@ describe('Socket Integration — Heartbeat Event', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('client emits heartbeat, server responds with heartbeat_ack containing latency', async () => {
@@ -386,7 +429,7 @@ describe('Socket Integration — Disconnect Event', () => {
 
 	afterEach(async () => {
 		// Don't disconnect socket here — the test does it
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('removes player from gameState.players on disconnect', async () => {
@@ -430,7 +473,7 @@ describe('Socket Integration — Lobby / playerReady Flow', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('two players connect, both emit playerReady(true), both receive startGame', async () => {
@@ -477,7 +520,7 @@ describe('dungeon run objective', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('both players receive state containing run object with correct initial values after game starts', async () => {
@@ -575,7 +618,7 @@ describe('Run terminal state — integration', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('runComplete is emitted after the last enemy is defeated via a weapon card', async () => {
@@ -834,7 +877,7 @@ describe('Rewards in run complete payload', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('runComplete payload contains per-player rewards with at least one card after a victory', async () => {
@@ -987,7 +1030,7 @@ describe('Reward state persistence across runs', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('after completing a run and returning to lobby, currency and ownedCards are preserved', async () => {
@@ -1196,7 +1239,7 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('player A adds a card and receives deckUpdate; player B deck is unchanged', async () => {
@@ -1356,7 +1399,7 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 	afterEach(async () => {
 		if (socket1 && socket1.connected) socket1.disconnect();
 		if (socket2 && socket2.connected) socket2.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('client receives init event containing selectedDeck and ownedCards', async () => {
@@ -1436,7 +1479,7 @@ describe('Enemy telegraph integration', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('enemy enters windup before damaging player', async () => {
@@ -1551,7 +1594,7 @@ describe('Dungeon layout consistency', () => {
 	});
 
 	afterEach(async () => {
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('two clients connect to the same server and both receive the same layoutSeed in their init payload', async () => {
@@ -1686,7 +1729,7 @@ describe('Loot pickup throttle — idempotency', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('emitting lootPickup twice for the same loot ID only credits currency once', async () => {
@@ -1740,7 +1783,7 @@ describe('Loot pickup — dead player exclusion', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged', async () => {
@@ -1791,7 +1834,7 @@ describe('killing skirmisher via weapon card (integration)', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented', async () => {
@@ -1844,7 +1887,7 @@ describe('killing miniboss via weapon card (integration)', () => {
 
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
-		await new Promise((resolve) => httpServer.close(resolve));
+		await closeServer();
 	});
 
 	it('player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented', async () => {
