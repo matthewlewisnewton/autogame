@@ -903,3 +903,26 @@ The change is purely textual. No behaviour, network protocol, HUD, or render pat
 ## Remaining gaps
 None. The single acceptance criterion is fully satisfied, the game runs cleanly, and no regressions are visible in metrics, probes, or console output.
 
+
+## v0.40 — Enemy Types: Skirmisher and Miniboss  (2026-05-20 03:51:18)
+
+  miniboss simultaneously — is reachable through normal gameplay because
+  `spawnEnemies()` always produces a mixed pack of all three types when a
+  run starts.
+- ✅ The scenario uses the same `spawnEnemy()` path, so type validation
+  still runs; `maxHp` still derives from `ENEMY_DEFS`. No invariants
+  bypassed.
+
+## Code quality
+- No console errors, no dead branches, the `ENEMY_DEFS.grunt` fallback in
+  `updateEnemies()` is defensive (covers legacy enemies in state from
+  before the migration; harmless going forward).
+- The old `CHASE_SPEED` / `WANDER_SPEED` / `ENEMY_ATTACK_DAMAGE` /
+  `ENEMY_ATTACK_WINDUP_MS` constants are no longer the runtime source of
+  truth but remain as `ENEMY_DEFS.grunt` mirrors and as test exports —
+  acceptable, but a small cleanup candidate.
+
+## Remaining gaps
+
+None blocking.
+
