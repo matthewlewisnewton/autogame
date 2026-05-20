@@ -15,6 +15,7 @@ import {
 	ENEMY_DEFS,
 	spawnEnemy,
 	updateEnemies,
+	damagePlayer,
 	checkRunTerminalState
 } from '../index.js';
 
@@ -865,7 +866,7 @@ describe('Run terminal state — integration', () => {
 		gameState.players[socket2.id].dead = false;
 
 		// Now kill socket2's player — socket1's player is already dead
-		socket2.emit('damage', { targetId: socket2.id, amount: 100 });
+		damagePlayer(socket2.id, 100);
 
 		const summary = await runFailedPromise;
 
@@ -1105,7 +1106,7 @@ describe('Rewards in run complete payload', () => {
 		gameState.minions = [];
 
 		const runFailedPromise = waitForEvent(socket1, 'runFailed');
-		socket2.emit('damage', { targetId: socket2.id, amount: 100 });
+		damagePlayer(socket2.id, 100);
 		const summary = await runFailedPromise;
 
 		expect(summary.status).toBe('failed');
