@@ -147,18 +147,39 @@ function sleep(ms) {
 }
 
 /**
- * Packages that are allowed to bypass the age cutoff check.
+ * Dependency whitelist — packages exempt from the minimum-age gate.
+ *
+ * Why: these are dev/build tooling packages (bundlers, type definitions,
+ * transitive framework deps) that receive frequent minor or patch releases.
+ * Whitelisting them prevents the supply-chain age check from failing on
+ * legitimate, high-frequency toolchain updates that are not application
+ * code and do not increase runtime supply-chain risk.
+ *
+ * Extension policy — add a package to this list only when ALL of the
+ * following are true:
+ *   1. It is dev or build tooling (bundler, loader, type stubs, plugin).
+ *   2. It is NOT a runtime or application dependency.
+ *   3. Its release cadence routinely produces versions younger than the
+ *      minimum age cutoff.
+ *
+ * Never whitelist runtime/application dependencies. If an application
+ * dependency is too new, the correct fix is to pin or downgrade the
+ * version — not to bypass the gate.
  */
 const WHITELISTED_PACKAGES = new Set([
-  '@types/node',
-  'rollup',
-  'vite',
-  'qs'
+  '@types/node',  // TypeScript type stubs for Node — updated per Node minor release
+  'rollup',       // module bundler — frequent minor releases
+  'vite',         // dev server / build tool — frequent minor releases
+  'qs'            // query-string parser (transitive Express dep — updated with Express ecosystem)
 ]);
 
+/**
+ * Check whether a package name is whitelisted by exact match or glob prefix.
+ * The glob patterns below cover scoped packages owned by the same toolchains.
+ */
 function isWhitelisted(name) {
-  if (name.startsWith('@rollup/')) return true;
-  if (name.startsWith('@vitejs/')) return true;
+  if (name.startsWith('@rollup/')) return true;  // Rollup plugins (e.g. @rollup/wasm-node) — follow rollup cadence
+  if (name.startsWith('@vitejs/')) return true;   // Vite plugins (e.g. @vitejs/plugin-basic-ssl) — follow Vite cadence
   return WHITELISTED_PACKAGES.has(name);
 }
 
