@@ -49,6 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [088-cleanup-codebase-cleanup](tickets/088-cleanup-codebase-cleanup/)
 - [x] [087-cleanup-cleanup-pnpm-and-security](tickets/087-cleanup-cleanup-pnpm-and-security/)
 - [x] [086-cleanup-pnpm-and-security](tickets/086-cleanup-pnpm-and-security/)
 - [x] [085-cleanup-cleanup-enemy-types-skirmisher-miniboss](tickets/085-cleanup-cleanup-enemy-types-skirmisher-miniboss/)
@@ -72,7 +73,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
 - [x] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
 - [x] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
-- [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
+- [x] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
 - [ ] [020-audit-client-server](tickets/020-audit-client-server/)
 - [ ] [021-persistence](tickets/021-persistence/)
 - [ ] [022-user-accounts](tickets/022-user-accounts/)
