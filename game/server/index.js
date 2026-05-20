@@ -143,6 +143,8 @@ const ENEMY_DEFS = {
 	grunt:      { hp: 50,  chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800 },
 	skirmisher: { hp: 20,  chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6,  attackWindupMs: 500 },
 	miniboss:   { hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200 },
+	spawner:    { hp: 60,  chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8,  attackWindupMs: 900,
+		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher' },
 };
 
 const MAX_MAGIC_STONES = 100;
