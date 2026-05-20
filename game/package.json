@@ -4,6 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "check:deps": "node scripts/check_package_age.js",
     "dev": "concurrently \"pnpm -C server run dev\" \"pnpm -C client run dev\"",
     "install:all": "pnpm install",
     "test": "vitest run --coverage --config vitest.config.js"
