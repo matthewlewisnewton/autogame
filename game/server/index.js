@@ -640,6 +640,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
     enemy.spawnedBy = spawnedBy;
   }
   gameState.enemies.push(enemy);
+  return enemy;
 }
 
 // Helper: spawn 5 enemies inside generated rooms (mixed types)
@@ -741,8 +742,7 @@ function applyDebugScenario(socket, name) {
     player.hp = 100;
     player.magicStones = MAX_MAGIC_STONES;
     gameState.enemies = [];
-    spawnEnemy(player.x + 4, player.z, 'spawner');
-    const spawner = gameState.enemies[gameState.enemies.length - 1];
+    const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
     spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
   }
 
