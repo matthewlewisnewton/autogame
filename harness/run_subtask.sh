@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Inner loop for ONE sub-ticket: qwen implements -> screenshot -> visual QA.
-# Visual QA is done by gemini-flash, with cursor-agent/composer and claude
-# fallbacks. Qwen vision can be enabled as optional failed-QA feedback.
+# Visual QA is done by cursor-agent/composer (primary) with claude as the
+# last-resort fallback. The gemini CLI was retired (deprecated upstream); a
+# future revision may add agy/gemini-3.5-flash. Qwen vision can be enabled
+# as optional failed-QA feedback.
 #
 #   harness/run_subtask.sh <sub-ticket-dir>
 #
@@ -142,7 +144,10 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
 
   # 3. QA — routed by the sub-ticket's verification mode.
-  #    gemini-flash primary, cursor-agent/composer and claude fallback.
+  #    cursor-agent/composer (primary) -> claude (last resort).
+  #    The gemini CLI is deprecated and no longer in the chain. A future
+  #    revision will try agy/gemini-3.5-flash; until then composer-2.5-fast
+  #    is the primary independent reviewer.
   git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
   finish_pipeline_checks "$pipeline_pid" "$ARTI"
   if [ "$QA_MODE" = "code" ]; then
@@ -154,19 +159,15 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
       TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
   fi
-  # QA agent chain: gemini-3-flash (primary) -> cursor-agent/composer-2.5
-  # (fallback) -> claude (last resort). Each tier is accepted only if it
-  # produced a real verdict line.
-  if run_gemini "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
-    log "[qa] verified by gemini ($QA_MODE)"
-    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"gemini\",\"mode\":$(json_string "$QA_MODE")}"
-  elif run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+  # QA agent chain: cursor-agent/composer-2.5-fast (primary) -> claude (last
+  # resort). Each tier is accepted only if it produced a real verdict line.
+  if run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "cursor-agent/$AGENT_MODEL"),\"mode\":$(json_string "$QA_MODE")}"
   else
-    log "[qa] gemini + agent produced no verdict — last-resort claude"
+    log "[qa] agent produced no verdict — last-resort claude"
     if ! run_claude "$QA_PROMPT" "$ARTI/qa.txt"; then
-      log "[tool-failure] claude QA unavailable (timeout/empty) after gemini+agent — escalating"
+      log "[tool-failure] claude QA unavailable (timeout/empty) after agent — escalating"
       exit 2
     fi
     if ! has_verdict "$ARTI/qa.txt"; then
