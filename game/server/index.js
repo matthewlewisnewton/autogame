@@ -138,6 +138,13 @@ const ENEMY_ATTACK_DAMAGE = 10; // HP per hit
 const ENEMY_ATTACK_WINDUP_MS = 800; // visible wind-up before strike
 const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
 
+// Enemy type definitions — data layer only (no behavior changes yet)
+const ENEMY_DEFS = {
+	grunt:      { hp: 50,  chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800 },
+	skirmisher: { hp: 20,  chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6,  attackWindupMs: 500 },
+	miniboss:   { hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200 },
+};
+
 const MAX_MAGIC_STONES = 100;
 const MAGIC_STONES_REGEN_PER_TICK = 0.5;
 const DEBUG_SCENARIOS = new Set([
@@ -598,19 +605,35 @@ function randomWanderTarget() {
   return randomRoomPosition();
 }
 
+/**
+ * Create a single enemy at (x, z) with the given type and push it to
+ * gameState.enemies[].  `type` must be a key in ENEMY_DEFS; defaults to
+ * 'grunt' when omitted.  Throws on unknown types.
+ */
+function spawnEnemy(x, z, type = 'grunt') {
+  if (!ENEMY_DEFS[type]) {
+    throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
+  }
+  const def = ENEMY_DEFS[type];
+  gameState.enemies.push({
+    id: crypto.randomUUID(),
+    x,
+    z,
+    type,
+    hp: def.hp,
+    maxHp: def.hp,
+    state: 'idle',
+    attackState: 'idle',
+    wanderTarget: { x, z }
+  });
+}
+
 // Helper: spawn 5 enemies inside generated rooms
 function spawnEnemies() {
   for (let i = 0; i < 5; i++) {
     const position = randomRoomPosition();
-    gameState.enemies.push({
-      id: crypto.randomUUID(),
-      x: position.x,
-      z: position.z,
-      hp: 50,
-      state: 'idle',
-      attackState: 'idle',
-      wanderTarget: randomWanderTarget()
-    });
+    spawnEnemy(position.x, position.z, 'grunt');
+    gameState.enemies[gameState.enemies.length - 1].wanderTarget = randomWanderTarget();
   }
 }
 
@@ -642,15 +665,8 @@ function ensureNearbyEnemy(x, z) {
   const nearby = gameState.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);
   if (nearby) return;
 
-  gameState.enemies.push({
-    id: crypto.randomUUID(),
-    x: x + 3,
-    z,
-    hp: 50,
-    state: 'idle',
-    attackState: 'idle',
-    wanderTarget: { x: x + 3, z }
-  });
+  spawnEnemy(x + 3, z, 'grunt');
+  gameState.enemies[gameState.enemies.length - 1].wanderTarget = { x: x + 3, z };
 }
 
 function enterPlayingPhase() {
@@ -1364,6 +1380,7 @@ if (typeof module !== 'undefined' && module.exports) {
     updateEnemies,
     updateMinions,
     spawnLoot,
+    spawnEnemy,
     createGameState,
     resetGameState,
     gameState,
@@ -1410,6 +1427,7 @@ if (typeof module !== 'undefined' && module.exports) {
     GRID_ROWS,
     CELL_SPACING,
     DECK_MIN_SIZE,
-    DECK_MAX_SIZE
+    DECK_MAX_SIZE,
+    ENEMY_DEFS
   };
 }
