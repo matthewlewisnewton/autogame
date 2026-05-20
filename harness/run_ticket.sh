@@ -2,7 +2,7 @@
 # One top-level ticket end to end:
 #   qwen decomposes it into sub-tickets
 #   -> each sub-ticket runs the qwen+gemini loop (run_subtask.sh)
-#   -> difficulty-routed final review (easy: agy, medium: gpt-5.5-medium-fast, hard: gpt-5.5-xhigh)
+#   -> difficulty-routed final review (easy: composer-2.5, medium: gpt-5.5-medium-fast, hard: gpt-5.5-xhigh)
 # On a failed review, qwen adds remediation sub-tickets and the cycle repeats,
 # up to TICKET_MAX_ROUNDS times. The review feedback handed back to qwen is a
 # compact, current "open gaps" list (rewritten each round, never piled up) that
@@ -69,7 +69,7 @@ capture_run() {  # capture_run <dir>
 # Run the holistic review of the whole ticket. Sets global REVIEW_OUT,
 # writes a compact open-gaps file to <dir>/gaps.md and a nits file to
 # <dir>/nits.md. Escalates on tool failure. Reviewer is chosen from the
-# ticket's `## Difficulty:` line: easy -> agy/Gemini-3.5-Flash,
+# ticket's `## Difficulty:` line: easy -> composer-2.5 (agent CLI),
 # medium -> gpt-5.5-medium-fast (agent CLI), hard -> gpt-5.5-extra-high (agent CLI).
 review_ticket() {  # review_ticket <dir> [coverage_dir]
   local dir="$1" coverage_dir="${2:-}" prompt difficulty reviewer_out model label
@@ -86,11 +86,12 @@ review_ticket() {  # review_ticket <dir> [coverage_dir]
     GAPS_OUT "$dir/gaps.md" NITS_OUT "$dir/nits.md")"
   case "$difficulty" in
     easy)
-      reviewer_out="$dir/agy.txt"
-      label="agy/$AGY_MODEL_LABEL"
+      model="$REVIEW_EASY_MODEL"
+      reviewer_out="$dir/composer.txt"
+      label="composer/$model"
       log "[$label] reviewing (difficulty: easy)..."
-      if ! run_agy "$prompt" "$reviewer_out"; then
-        log "[tool-failure] agy reviewer unavailable — escalating"
+      if ! run_agent_model "$model" "$prompt" "$reviewer_out"; then
+        log "[tool-failure] composer reviewer unavailable — escalating"
         exit 2
       fi
       ;;
