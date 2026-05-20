@@ -572,6 +572,17 @@ socket.on('stateUpdate', (state) => {
   if (state.gamePhase === 'playing') {
     renderHand();
   }
+
+  // Prune pickedUpLootIds: remove any IDs no longer present in gameState.loot
+  // so that a respawned item reusing the same ID can be picked up again.
+  if (state.loot && Array.isArray(state.loot)) {
+    const currentLootIds = new Set(state.loot.map(l => l.id));
+    for (const id of pickedUpLootIds) {
+      if (!currentLootIds.has(id)) {
+        pickedUpLootIds.delete(id);
+      }
+    }
+  }
 });
 
 socket.on('heartbeat_ack', (data) => {
@@ -646,6 +657,9 @@ const previousEnemyHp = {};
 
 // Track per-player HP from the previous frame, for detecting damage taken between state updates
 const previousPlayerHp = {};
+
+// Throttle: track loot IDs already emitted for pickup, cleared on each stateUpdate
+const pickedUpLootIds = new Set();
 
 // ── Floating damage numbers ──
 
@@ -1438,7 +1452,10 @@ function animate(timestamp) {
   if (gameState && gameState.loot && gameState.loot.length > 0) {
     for (const loot of gameState.loot) {
       if (Math.hypot(myX - loot.x, myZ - loot.z) <= 2) {
-        socket.emit('lootPickup', { lootId: loot.id });
+        if (!pickedUpLootIds.has(loot.id)) {
+          pickedUpLootIds.add(loot.id);
+          socket.emit('lootPickup', { lootId: loot.id });
+        }
         break; // one pickup per frame
       }
     }
@@ -1750,6 +1767,7 @@ window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
 window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
 window.__windupFlashing = () => windupFlashing; // test-only: access windupFlashing Set
+window.__pickedUpLootIds = () => pickedUpLootIds; // test-only: access pickedUpLootIds Set
 window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMeshes map
 window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
 window.__useCardForTest = useCard;                // test-only: expose useCard for cooldown tests
