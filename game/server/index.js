@@ -128,14 +128,10 @@ function resetGameState() {
 }
 
 const TICK_RATE = 20; // 20 times per second
-const WANDER_SPEED = 1; // units per second
 const DETECTION_RADIUS = 8; // units
-const CHASE_SPEED = 2.5; // units per second
 
 // Enemy attack state machine parameters
 const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
-const ENEMY_ATTACK_DAMAGE = 10; // HP per hit
-const ENEMY_ATTACK_WINDUP_MS = 800; // visible wind-up before strike
 const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
 
 // Enemy type definitions — data layer only (no behavior changes yet)
@@ -908,6 +904,7 @@ function updateEnemies() {
 }
 
 // Helper: decrement minion TTL and remove expired/dead minions
+const MINION_CHASE_SPEED = 2.5; // units per second — minion chase speed (matches grunt chaseSpeed)
 function updateMinions() {
   const dt = 1 / TICK_RATE;
   const runTerminal = gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed');
@@ -940,7 +937,7 @@ function updateMinions() {
           const dz = nearestEnemy.z - minion.z;
           const dist = Math.hypot(dx, dz);
           if (dist > 0.1) {
-            const move = CHASE_SPEED * dt;
+            const move = MINION_CHASE_SPEED * dt;
             minion.x += (dx / dist) * move;
             minion.z += (dz / dist) * move;
           }
@@ -1512,8 +1509,6 @@ if (typeof module !== 'undefined' && module.exports) {
     ATTACK_RANGE,
     TICK_RATE,
     ENEMY_ATTACK_RANGE,
-    ENEMY_ATTACK_DAMAGE,
-    ENEMY_ATTACK_WINDUP_MS,
     ENEMY_ATTACK_RECOVERY_MS,
     GRID_COLS,
     GRID_ROWS,
