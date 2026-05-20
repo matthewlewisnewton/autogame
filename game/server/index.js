@@ -904,7 +904,6 @@ function updateEnemies() {
 }
 
 // Helper: decrement minion TTL and remove expired/dead minions
-const MINION_CHASE_SPEED = 2.5; // units per second — minion chase speed (matches grunt chaseSpeed)
 function updateMinions() {
   const dt = 1 / TICK_RATE;
   const runTerminal = gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed');
@@ -937,7 +936,7 @@ function updateMinions() {
           const dz = nearestEnemy.z - minion.z;
           const dist = Math.hypot(dx, dz);
           if (dist > 0.1) {
-            const move = MINION_CHASE_SPEED * dt;
+            const move = ENEMY_DEFS.grunt.chaseSpeed * dt;
             minion.x += (dx / dist) * move;
             minion.z += (dz / dist) * move;
           }
