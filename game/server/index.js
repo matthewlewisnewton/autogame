@@ -817,10 +817,12 @@ function ensureNearbyEnemy(x, z) {
 function enterPlayingPhase() {
   if (gameState.gamePhase !== 'playing') {
     gameState.gamePhase = 'playing';
-    // Initialize draw decks and hands for all players (debug scenarios bypass checkAllReady)
+    // Initialize draw decks and hands for all players (idempotent — safe to call from both checkAllReady and applyDebugScenario)
     for (const player of Object.values(gameState.players)) {
-      createDrawDeckFromSelectedDeck(player);
-      initPlayerHand(player);
+      if (!player.hand || player.hand.length === 0) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+      }
     }
     spawnEnemies();
     startDungeonRun();
@@ -837,8 +839,13 @@ function applyDebugScenario(socket, name) {
   if (!player) return { ok: false, reason: 'No player for debug scenario' };
   const spawn = firstRoomPosition();
 
+  // Validate deck — same check the normal playerReady path uses
+  const result = validateDeck(player.selectedDeck, player.ownedCards);
+  if (!result.valid) return { ok: false, reason: result.reason };
+
   player.ready = true;
   player.dead = false;
+  player.firstMoveAfterSpawn = false;
   player.lastMoveTime = Date.now();
   player.x = spawn.x;
   player.y = 0.5;
