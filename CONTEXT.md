@@ -32,8 +32,8 @@ autogame/
 ## How to Run
 ```bash
 cd game
-npm run install:all
-npm run dev
+pnpm run install:all
+pnpm run dev
 # Server: http://localhost:3000
 # Client: http://localhost:5173
 ```
