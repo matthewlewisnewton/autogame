@@ -1,0 +1,1216 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+stdout | server/test/card_sync.test.js
+[server] Dungeon seed: 1019378340, rooms: 9
+[server] Dungeon bounds: x [-38.5, 38.0], z [-19.0, 39.0]
+
+stdout | server/test/server.test.js
+[server] Dungeon seed: 1492752222, rooms: 9
+[server] Dungeon bounds: x [-39.0, 19.5], z [-38.0, 38.5]
+
+ ✓ |server| server/test/card_sync.test.js (3 tests) 2ms
+stdout | server/test/server.test.js > updateMinions() > spawns loot for dead enemies and removes them
+[loot] spawned id=39a62b83-cfb2-49f4-893b-13834a67e6ed value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > creates loot with correct structure when it spawns
+[loot] spawned id=0d4c99bd-1d16-4674-8841-a11f78b79010 value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot value is in range [5, 20)
+[loot] spawned id=5dfa6705-b6c2-43d5-b736-7defac9176bb value=13
+
+stdout | server/test/integration.test.js
+[server] Dungeon seed: 1171126263, rooms: 9
+[server] Dungeon bounds: x [-18.0, 39.5], z [-38.5, 39.5]
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot createdAt is a timestamp
+[loot] spawned id=fa2345be-c69c-4430-905c-beb814b8daec value=11
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+Player connected: nBTN0DNLHd2bNl2pAAAB
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+Player disconnected: nBTN0DNLHd2bNl2pAAAB
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+Player connected: 3z6CyI3oZ4Z2DSc9AAAD
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+Player disconnected: 3z6CyI3oZ4Z2DSc9AAAD
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+Player connected: Nioof0EHqhrCzAb9AAAF
+
+ ✓ |server| server/test/server.test.js (172 tests) 33ms
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+Player disconnected: Nioof0EHqhrCzAb9AAAF
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+Player connected: Y1sY23HaW0z9yXASAAAH
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+Player disconnected: Y1sY23HaW0z9yXASAAAH
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+Player connected: 5aTP6RzT1H5VMIuSAAAJ
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+Player disconnected: 5aTP6RzT1H5VMIuSAAAJ
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+Player connected: N8A3hl-83ELLqr05AAAL
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+Player disconnected: N8A3hl-83ELLqr05AAAL
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+Player connected: 4BtZlgTz8a4Nc632AAAN
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+Player disconnected: 4BtZlgTz8a4Nc632AAAN
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+Player connected: UESeST2NtJVPvXSYAAAP
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+Player disconnected: UESeST2NtJVPvXSYAAAP
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+Player connected: YFnF80gYN8h8LcCYAAAR
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+Player disconnected: YFnF80gYN8h8LcCYAAAR
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+Player connected: m2-gGRqQxr30QeErAAAT
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+Player disconnected: m2-gGRqQxr30QeErAAAT
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+Player connected: slzqjBHdLWoGOFGHAAAV
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+Player disconnected: slzqjBHdLWoGOFGHAAAV
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+Player connected: Npyfyz7KJyZVabDWAAAX
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+Player disconnected: Npyfyz7KJyZVabDWAAAX
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Player connected: 58X5zSvM9n17dlaZAAAZ
+
+ ✓ |client| client/test/main.test.js (71 tests) 344ms
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Player disconnected: 58X5zSvM9n17dlaZAAAZ
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > emits useCard, server spawns a minion in gameState.minions
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > emits useCard, server spawns a minion in gameState.minions
+Player connected: YiURBKAsgSypqkytAAAb
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > emits useCard, server spawns a minion in gameState.minions
+Player disconnected: YiURBKAsgSypqkytAAAb
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+Player connected: bDZ4nlc_cCPeGqjhAAAd
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+Player disconnected: bDZ4nlc_cCPeGqjhAAAd
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Player connected: WCU2TtFhFUnSZp6AAAAf
+
+stderr | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Rejected heartbeat from WCU2TtFhFUnSZp6AAAAf: invalid payload
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Player disconnected: WCU2TtFhFUnSZp6AAAAf
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+Player connected: jPy9m2UVzASdz0IFAAAh
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+Player disconnected: jPy9m2UVzASdz0IFAAAh
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+Player connected: gntdA4vPbtr4NFU6AAAj
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+Player disconnected: gntdA4vPbtr4NFU6AAAj
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+Player connected: KErejz44yIDfkj4BAAAl
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+Player disconnected: KErejz44yIDfkj4BAAAl
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+Player connected: bt5j_1kaJIJ5fKYsAAAn
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+Player disconnected: bt5j_1kaJIJ5fKYsAAAn
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+Player connected: _EjHCrnpOeEfJCRGAAAp
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+Player disconnected: _EjHCrnpOeEfJCRGAAAp
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player connected: 7SAtwEXyzGio_oqCAAAr
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player connected: guc04ptdOiU2liMfAAAt
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player disconnected: 7SAtwEXyzGio_oqCAAAr
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player disconnected: guc04ptdOiU2liMfAAAt
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player connected: Ta-aU9s4A4bvnJN9AAAv
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player connected: aZqc00fWWbYf1mi2AAAx
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player disconnected: Ta-aU9s4A4bvnJN9AAAv
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player disconnected: aZqc00fWWbYf1mi2AAAx
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+Player connected: 6oqrz21j4msS3R4XAAAz
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+Player disconnected: 6oqrz21j4msS3R4XAAAz
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player connected: 0BkXx9EGZ8a0b6rLAAA1
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player disconnected: 0BkXx9EGZ8a0b6rLAAA1
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player connected: xs-9qay5jE5bCo-4AAA3
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player disconnected: xs-9qay5jE5bCo-4AAA3
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player connected: CsIX6J56YrpeuZVGAAA5
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player connected: kYNCAa5is_YbzSTdAAA7
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player disconnected: CsIX6J56YrpeuZVGAAA5
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player disconnected: kYNCAa5is_YbzSTdAAA7
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player connected: T_VEFbFMM20NNpg3AAA9
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player connected: odogrj_JpEA0zG2oAAA_
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player disconnected: odogrj_JpEA0zG2oAAA_
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player disconnected: T_VEFbFMM20NNpg3AAA9
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Server listening on port 0
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player connected: NcKUKtCuglVj1GMhAABB
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player connected: G-dn7VjMoVFJmogqAABD
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player disconnected: NcKUKtCuglVj1GMhAABB
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player disconnected: G-dn7VjMoVFJmogqAABD
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Server listening on port 0
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player connected: BU7CBUBW-Z83fJihAABF
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player connected: vEUChHZKouodLUioAABH
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player disconnected: BU7CBUBW-Z83fJihAABF
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player disconnected: vEUChHZKouodLUioAABH
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player connected: 9YFnnMSnyjvEy5DRAABJ
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player connected: wu7CQ0GRY7t1jMEuAABL
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player disconnected: 9YFnnMSnyjvEy5DRAABJ
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player disconnected: wu7CQ0GRY7t1jMEuAABL
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player connected: oFCt6nu8QzLE5QbiAABN
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player connected: NPOM0qcpNE0xFD5OAABP
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player disconnected: oFCt6nu8QzLE5QbiAABN
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player disconnected: NPOM0qcpNE0xFD5OAABP
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player connected: pYJ-hMzLKJpnQ5N7AABR
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player connected: 6o_l7Btp4nbjtGvKAABT
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player disconnected: pYJ-hMzLKJpnQ5N7AABR
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player disconnected: 6o_l7Btp4nbjtGvKAABT
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player connected: GXmg_DWHsNeDvYLDAABV
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player connected: 2-rbxJoVYtRNO83EAABX
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player disconnected: GXmg_DWHsNeDvYLDAABV
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player disconnected: 2-rbxJoVYtRNO83EAABX
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player connected: HR8olhU33yPu6uLWAABZ
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player connected: wA6MtXSfHAzANVUdAABb
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player disconnected: HR8olhU33yPu6uLWAABZ
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player disconnected: wA6MtXSfHAzANVUdAABb
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player connected: MfxKhQ4vZw5U-R4gAABd
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player connected: zCLiEPGu7nKxt9-OAABf
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player disconnected: MfxKhQ4vZw5U-R4gAABd
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player disconnected: zCLiEPGu7nKxt9-OAABf
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player connected: XSqPJzMCdXMNeEoaAABh
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player connected: xkPAfo6lOxEMD5P9AABj
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player disconnected: XSqPJzMCdXMNeEoaAABh
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player disconnected: xkPAfo6lOxEMD5P9AABj
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player connected: hohat-191TwCiB8sAABl
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player connected: WRkXiQRdK1ehOkKWAABn
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player disconnected: hohat-191TwCiB8sAABl
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player disconnected: WRkXiQRdK1ehOkKWAABn
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player connected: Un9RpKLekD6w2Lb5AABp
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player connected: sKoHTLAYK2_siTM_AABr
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+[loot] picked up id=loot_test value=15 by Un9RpKLekD6w2Lb5AABp (currency=15)
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player disconnected: Un9RpKLekD6w2Lb5AABp
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player disconnected: sKoHTLAYK2_siTM_AABr
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player connected: ehdJ4sYI-dGC5WWdAABt
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player connected: -gyJqXfe9tlVXmTvAABv
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player disconnected: ehdJ4sYI-dGC5WWdAABt
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player disconnected: -gyJqXfe9tlVXmTvAABv
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player connected: WQ_mDUxgyYIMWFTrAABx
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player connected: w-WVPklnlJfla1lSAABz
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player disconnected: WQ_mDUxgyYIMWFTrAABx
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player disconnected: w-WVPklnlJfla1lSAABz
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player connected: NpW_FFpKxLdMmNCTAAB1
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player connected: NdP2QPJIP18zderdAAB3
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player disconnected: NpW_FFpKxLdMmNCTAAB1
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player disconnected: NdP2QPJIP18zderdAAB3
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player connected: -GgoP8aBbLUMtbw4AAB5
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player connected: AQalNNodMZYetem1AAB7
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player disconnected: -GgoP8aBbLUMtbw4AAB5
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player disconnected: AQalNNodMZYetem1AAB7
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player connected: jcapLLp6x1c4B9niAAB9
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player connected: q--MDiKGQuQuU42IAAB_
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player disconnected: jcapLLp6x1c4B9niAAB9
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player disconnected: q--MDiKGQuQuU42IAAB_
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player connected: ljA6puqb38UyH20rAACB
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player connected: 3h4zuUvPlXLI8C4QAACD
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player disconnected: ljA6puqb38UyH20rAACB
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player disconnected: 3h4zuUvPlXLI8C4QAACD
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player connected: OzgheNTIIRqyyENaAACF
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player connected: L_C5VEylupqBx2TMAACH
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player disconnected: OzgheNTIIRqyyENaAACF
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player disconnected: L_C5VEylupqBx2TMAACH
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player connected: DStecJHpEE7lc80CAACJ
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player connected: kfcpOfGaF7LWvNtwAACL
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player disconnected: DStecJHpEE7lc80CAACJ
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player disconnected: kfcpOfGaF7LWvNtwAACL
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player connected: _C9T4cGhrUYEyL_3AACN
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player connected: VhqjuwIPWd6ytGsEAACP
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player disconnected: _C9T4cGhrUYEyL_3AACN
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player disconnected: VhqjuwIPWd6ytGsEAACP
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player connected: vYci66KpEr0YorVBAACR
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player connected: 1l1S1HmijSVgdt6qAACT
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player disconnected: vYci66KpEr0YorVBAACR
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player disconnected: 1l1S1HmijSVgdt6qAACT
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player connected: plqnYaZ8zgTB6buGAACV
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player connected: T0mX214a-BdYBAdHAACX
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player disconnected: plqnYaZ8zgTB6buGAACV
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player disconnected: T0mX214a-BdYBAdHAACX
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player connected: iv7PvN0to7uC_1TEAACZ
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player connected: JRmbJtQ3TbtgezvaAACb
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player connected: 45VJgIqVYtyzDTA3AACd
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player disconnected: 45VJgIqVYtyzDTA3AACd
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player disconnected: iv7PvN0to7uC_1TEAACZ
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player disconnected: JRmbJtQ3TbtgezvaAACb
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player connected: -1J_4HwnVkx5zMfFAACf
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player connected: CnV9u1idBFOsd3nPAACh
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player disconnected: -1J_4HwnVkx5zMfFAACf
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player disconnected: CnV9u1idBFOsd3nPAACh
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player connected: A6M0BekWVJnnP3i3AACj
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player connected: 60r9eRsuypjBWs8UAACl
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player disconnected: A6M0BekWVJnnP3i3AACj
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player disconnected: 60r9eRsuypjBWs8UAACl
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+Player connected: npv-bWweqrKG1JkEAACn
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+Player disconnected: npv-bWweqrKG1JkEAACn
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Player connected: V44LzskZXI3etjm9AACp
+
+stderr | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Rejected move from V44LzskZXI3etjm9AACp: invalid payload
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Player disconnected: V44LzskZXI3etjm9AACp
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player connected: TqYB7AYLdyB__4uZAACr
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player connected: QiMF6KYCXe79eAyzAACt
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player disconnected: TqYB7AYLdyB__4uZAACr
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player disconnected: QiMF6KYCXe79eAyzAACt
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player connected: -IhABo930aHKqj-YAACv
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player connected: CM2_vVGj4b0JatN0AACx
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player disconnected: -IhABo930aHKqj-YAACv
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player disconnected: CM2_vVGj4b0JatN0AACx
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+Player connected: FG-yaZlANm3VwMFaAACz
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+Player disconnected: FG-yaZlANm3VwMFaAACz
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player connected: 7o0VZqM52iLIIomzAAC1
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player disconnected: 7o0VZqM52iLIIomzAAC1
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player connected: I95yjJB8Zq1B-rHqAAC3
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player disconnected: I95yjJB8Zq1B-rHqAAC3
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+Player connected: jhVN2Euvcw4HkFsJAAC5
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+Player disconnected: jhVN2Euvcw4HkFsJAAC5
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+Player connected: WxNwkRohUKNSGNqsAAC7
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+[loot] picked up id=loot_idempotent value=10 by WxNwkRohUKNSGNqsAAC7 (currency=10)
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+Player disconnected: WxNwkRohUKNSGNqsAAC7
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+Player connected: IfEnMROmFltiiBWUAAC9
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+Player disconnected: IfEnMROmFltiiBWUAAC9
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+Player connected: rzBnKlqCQ9cg_habAAC_
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+[loot] picked up id=loot_dead_test value=12 by rzBnKlqCQ9cg_habAAC_ (currency=12)
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+Player disconnected: rzBnKlqCQ9cg_habAAC_
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+Server listening on port 0
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+Player connected: QC5-crXnv57p2yAaAADB
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+Player disconnected: QC5-crXnv57p2yAaAADB
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+Server listening on port 0
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+Player connected: --iwEW03898PdmFoAADD
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+Player disconnected: --iwEW03898PdmFoAADD
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+Player connected: sjZ3AizVvNYqkan4AADF
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+Player disconnected: sjZ3AizVvNYqkan4AADF
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+Player connected: ISeOsRZDK4EQrF0rAADH
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+Player disconnected: ISeOsRZDK4EQrF0rAADH
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+Player connected: -QQGNYM2SlkbJWfFAADJ
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+Player disconnected: -QQGNYM2SlkbJWfFAADJ
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+Player connected: zlz7fTfioYDB16DDAADL
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+Player disconnected: zlz7fTfioYDB16DDAADL
+
+ ❯ |server| server/test/integration.test.js (68 tests | 17 failed) 37195ms
+   ✓ Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout 19ms
+   ✓ Socket Integration — Connection Flow > server registers the player in gameState.players 3ms
+   × Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position 115ms
+     → expected -10 to be 10 // Object.is equality
+   × Socket Integration — Move Event > clamps position to dungeon bounds 52ms
+     → expected -30 to be 39 // Object.is equality
+   ✓ Socket Integration — Move Event > dead player cannot move 2ms
+   ✓ Socket Integration — Invalid Move Rejection > rejects move with missing fields 2ms
+   ✓ Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields 2ms
+   ✓ Socket Integration — Invalid Move Rejection > rejects move with null payload 4ms
+   ✓ Socket Integration — Invalid Move Rejection > rejects move with array payload 2ms
+   ✓ Socket Integration — Invalid Move Rejection > rejects move with NaN fields 2ms
+   × Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed 105ms
+     → expected 50 to be 35 // Object.is equality
+   × Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones 59ms
+     → expected 60 to be 20 // Object.is equality
+   × Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones 2005ms
+     → null
+   × Socket Integration — useCard Event > Monster card > emits useCard, server spawns a minion in gameState.minions 61ms
+     → expected +0 to be 1 // Object.is equality
+   ✓ Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency 10ms
+   ✓ Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload 207ms
+   ✓ Socket Integration — Disconnect Event > removes player from gameState.players on disconnect 109ms
+   ✓ Socket Integration — Disconnect Event > cleans up owned minions on disconnect 106ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run 104ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects 110ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects 112ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected 157ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects  5157ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state 109ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects 168ms
+   ✓ Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame 64ms
+   ✓ Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady 18ms
+   ✓ dungeon run objective > both players receive state containing run object with correct initial values after game starts 57ms
+   × dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1 108ms
+     → expected +0 to be 1 // Object.is equality
+   × Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card 3057ms
+     → Timed out waiting for "runComplete"
+   ✓ Run terminal state — integration > runFailed is emitted when all connected players are dead during a run 57ms
+   ✓ Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false 58ms
+   ✓ Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective 106ms
+   ✓ Run terminal state — integration > ignores returnToLobby while the run is still playing 116ms
+   ✓ Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket 54ms
+   × Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory 3057ms
+     → Timed out waiting for "runComplete"
+   ✓ Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card 57ms
+   × Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary 3104ms
+     → Timed out waiting for "runComplete"
+   × Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved 3052ms
+     → Timed out waiting for "runComplete"
+   × Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run 3105ms
+     → Timed out waiting for "runComplete"
+   × Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards 3056ms
+     → Timed out waiting for "runComplete"
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged 116ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate 12ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored 257ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored 257ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError 8ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError 109ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError 13ms
+   ✓ Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other 109ms
+   ✓ Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards 68ms
+   ✓ Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small 14ms
+   × Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts 55ms
+     → expected 4 to be 8 // Object.is equality
+   ✓ Enemy telegraph integration > enemy enters windup before damaging player  1055ms
+   × Enemy telegraph integration > moving out of range avoids damage 1205ms
+     → expected 'windup' not to be 'windup' // Object.is equality
+   ✓ Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload 62ms
+   ✓ Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes) 63ms
+   ✓ Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed 102ms
+   ✓ Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated 113ms
+   ✓ Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds 158ms
+   ✓ Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once 110ms
+   ✓ Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op 58ms
+   ✓ Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged 109ms
+   × killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented 109ms
+     → expected { …(11) } to be undefined
+   × killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented 407ms
+     → expected { …(11) } to be undefined
+   ✓ spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase 53ms
+   ✓ spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs 53ms
+   ✓ spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id 54ms
+   ✓ spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected  4556ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 17 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  |server| server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+AssertionError: expected -10 to be 10 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 10[39m
+[31m+ -10[39m
+
+ ❯ server/test/integration.test.js:206:42
+    204| 
+    205|   // Check gameState directly
+    206|   expect(gameState.players[socket.id].x).toBe(10);
+       |                                          ^
+    207|   expect(gameState.players[socket.id].z).toBe(10);
+    208|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+AssertionError: expected -30 to be 39 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 39[39m
+[31m+ -30[39m
+
+ ❯ server/test/integration.test.js:216:42
+    214|   await sleep(50);
+    215| 
+    216|   expect(gameState.players[socket.id].x).toBe(gameState.dungeonBounds.…
+       |                                          ^
+    217|   expect(gameState.players[socket.id].z).toBe(gameState.dungeonBounds.…
+    218|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+AssertionError: expected 50 to be 35 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 35[39m
+[31m+ 50[39m
+
+ ❯ server/test/integration.test.js:313:21
+    311|    const enemy = gameState.enemies.find(e => e.id === 'e1');
+    312|    expect(enemy).toBeDefined();
+    313|    expect(enemy.hp).toBe(35); // 50 - 15 (iron_sword damage)
+       |                     ^
+    314|   });
+    315|  });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+AssertionError: expected 60 to be 20 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 20[39m
+[31m+ 60[39m
+
+ ❯ server/test/integration.test.js:338:21
+    336|    // Enemy should have taken summon damage
+    337|    const enemy = gameState.enemies.find(e => e.id === 'e1');
+    338|    expect(enemy.hp).toBe(20); // 60 - 40
+       |                     ^
+    339| 
+    340|    // Magic stones should be deducted (game loop may regen a bit, so c…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Unknown Error: null
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Socket Integration — useCard Event > Monster card > emits useCard, server spawns a minion in gameState.minions
+AssertionError: expected +0 to be 1 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+ ❯ server/test/integration.test.js:374:37
+    372|    await sleep(50);
+    373| 
+    374|    expect(gameState.minions.length).toBe(beforeCount + 1);
+       |                                     ^
+    375|    const minion = gameState.minions[gameState.minions.length - 1];
+    376|    expect(minion.ownerId).toBe(socket.id);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+AssertionError: expected +0 to be 1 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 1[39m
+[31m+ 0[39m
+
+ ❯ server/test/integration.test.js:765:54
+    763|   // Verify the broadcasted state contains the updated objective
+    764|   if (stateUpdate && stateUpdate.run) {
+    765|    expect(stateUpdate.run.objective.defeatedEnemies).toBe(defeatedBefo…
+       |                                                      ^
+    766|   }
+    767| 
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+ FAIL  |server| server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+ FAIL  |server| server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+ FAIL  |server| server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+ FAIL  |server| server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+ FAIL  |server| server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Error: Timed out waiting for "runComplete"
+ ❯ Timeout._onTimeout server/test/integration.test.js:107:41
+    105| function waitForEvent(socket, event, timeout = 3000) {
+    106|  return new Promise((resolve, reject) => {
+    107|   const timer = setTimeout(() => reject(new Error(`Timed out waiting f…
+       |                                         ^
+    108|   socket.once(event, (data) => {
+    109|    clearTimeout(timer);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+AssertionError: expected 4 to be 8 // Object.is equality
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- 8[39m
+[31m+ 4[39m
+
+ ❯ server/test/integration.test.js:1623:55
+    1621|   expect(stateUpdate.players[socket1.id]).toBeDefined();
+    1622|   expect(Array.isArray(stateUpdate.players[socket1.id].deck)).toBe(tru…
+    1623|   expect(stateUpdate.players[socket1.id].deck.length).toBe(deck1.lengt…
+       |                                                       ^
+    1624| 
+    1625|   // The deck should contain the same card ids as selectedDeck (shuffl…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+AssertionError: expected 'windup' not to be 'windup' // Object.is equality
+ ❯ server/test/integration.test.js:1749:48
+    1747| 
+    1748|   // Enemy should have cancelled the attack — attackState is no longer…
+    1749|   expect(gameState.enemies[0].attackState).not.toBe('windup');
+       |                                                ^
+    1750|  });
+    1751| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+AssertionError: expected { …(11) } to be undefined
+
+[32m- Expected:[39m 
+undefined
+
+[31m+ Received:[39m 
+{
+  "attackState": "windup",
+  "hp": 20,
+  "id": "38dc9506-f063-4265-8061-3be3e9be8eb1",
+  "maxHp": 20,
+  "state": "chasing",
+  "type": "skirmisher",
+  "wanderTarget": {
+    "x": 33,
+    "z": -30,
+  },
+  "windupStartTime": 1779315495443,
+  "windupTargetId": undefined,
+  "x": 33,
+  "z": -30,
+}
+
+ ❯ server/test/integration.test.js:2037:63
+    2035| 
+    2036|   // Enemy should be removed
+    2037|   expect(gameState.enemies.find(e => e.id === skirmisher.id)).toBeUnde…
+       |                                                               ^
+    2038| 
+    2039|   // defeatedEnemies should have incremented
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/17]⎯
+
+ FAIL  |server| server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+AssertionError: expected { …(11) } to be undefined
+
+[32m- Expected:[39m 
+undefined
+
+[31m+ Received:[39m 
+{
+  "attackState": "windup",
+  "hp": 150,
+  "id": "54444005-c784-42a0-8c04-09308ba64961",
+  "maxHp": 150,
+  "state": "chasing",
+  "type": "miniboss",
+  "wanderTarget": {
+    "x": 33,
+    "z": 30,
+  },
+  "windupStartTime": 1779315495551,
+  "windupTargetId": undefined,
+  "x": 33,
+  "z": 30,
+}
+
+ ❯ server/test/integration.test.js:2090:61
+    2088| 
+    2089|   // Miniboss should be removed
+    2090|   expect(gameState.enemies.find(e => e.id === miniboss.id)).toBeUndefi…
+       |                                                             ^
+    2091| 
+    2092|   // defeatedEnemies should have incremented
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/17]⎯
+
+⎯⎯⎯⎯⎯⎯ Unhandled Errors ⎯⎯⎯⎯⎯⎯
+
+Vitest caught 1 unhandled error during the test run.
+This might cause false positive tests. Resolve unhandled errors to make sure your tests are not affected.
+
+⎯⎯⎯⎯ Unhandled Rejection ⎯⎯⎯⎯⎯
+Error: Timed out waiting for "cardUsed"
+ ❯ Timeout._onTimeout server/test/integration.test.js:107:41
+ ❯ listOnTimeout node:internal/timers:588:17
+ ❯ processTimers node:internal/timers:523:7
+
+This error originated in "server/test/integration.test.js" test file. It doesn't mean the error was thrown inside the file itself, but while it was running.
+The latest test that might've caused the error is "does not reset run when a second player remains connected". It might mean one of the following:
+- The error was thrown, while Vitest was running this test.
+- If the error occurred after the test had been completed, this was the last documented test before it was thrown.
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯
+
+
+ Test Files  1 failed | 3 passed (4)
+      Tests  17 failed | 297 passed (314)
+     Errors  1 error
+   Start at  15:17:42
+   Duration  37.64s (transform 44ms, setup 15ms, collect 211ms, tests 37.57s, environment 207ms, prepare 188ms)
+
