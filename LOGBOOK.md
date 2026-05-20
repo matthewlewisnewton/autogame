@@ -1248,3 +1248,26 @@ None blocking. Acceptance criteria are fully satisfied and the captured game run
 
 ---
 
+
+## v0.55 — Cleanup nits from 089-cleanup-cleanup-codebase-cleanup  (2026-05-20 12:59:31)
+
+## Design and requirements consistency
+
+- **design.md:** No gameplay, networking, or UX changes — test-only alignment. Core loop and combat mechanics untouched.
+- **requirements.md:** No regression to 3D render, WebSocket connect, multiplayer presence, or movement sync. Capture probes confirm connected playing state with position updates after input.
+
+## Code quality
+
+- Change is minimal, focused, and consistent with adjacent `spawnLoot` tests.
+- `config` is already imported at the top of `server.test.js`.
+- `vi.restoreAllMocks()` still runs after the test.
+- No dead code, no new console errors, no production-path edits.
+
+## Debug scenarios
+
+This ticket did **not** add or change any `?scenario=` debug shortcut. Capture used existing `summon-ready` for smoke coverage only; no debug-scenario acceptance items apply. No blocking debug-path issues introduced.
+
+## Remaining gaps
+
+None. All acceptance criteria are fully met; runtime capture and tests agree.
+

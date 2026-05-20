@@ -1,0 +1,41 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+stdout | server/test/server.test.js
+[server] Dungeon seed: 4260251, rooms: 9
+[server] Dungeon bounds: x [-39.5, 39.5], z [-39.5, 18.0]
+
+stdout | server/test/server.test.js > updateMinions() > spawns loot for dead enemies and removes them
+[loot] spawned id=4e0dad6c-d1e5-4690-8023-81112437423c value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > creates loot with correct structure when it spawns
+[loot] spawned id=ba39ae06-e5e6-494b-95d1-4f23eb48e5b5 value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot value is in range [5, 20)
+[loot] spawned id=7e10ec58-2efd-4062-ac95-fc662c949ccf value=13
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot createdAt is a timestamp
+[loot] spawned id=15ad4bbf-fefd-4e05-a253-fe660511670c value=11
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+ ✓ |server| server/test/server.test.js (172 tests) 28ms
+
+ Test Files  1 passed (1)
+      Tests  172 passed (172)
+   Start at  12:58:18
+   Duration  414ms (transform 1ms, setup 0ms, collect 53ms, tests 28ms, environment 0ms, prepare 49ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   64.08 |    94.38 |   81.81 |   64.08 |                            
+ index.js |   64.08 |    94.38 |   81.81 |   64.08 | ...972,1039-1443,1447-1448 
+----------|---------|----------|---------|---------|----------------------------
