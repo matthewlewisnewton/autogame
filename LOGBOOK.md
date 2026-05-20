@@ -1041,3 +1041,26 @@ No design surface changes. Behavior is byte-identical except that
 ## Remaining gaps
 None blocking.
 
+
+## v0.46 — Cleanup nits from 083-cleanup-cleanup-enemy-type-spawner  (2026-05-20 06:20:46)
+
+## Design / requirements consistency
+
+No design.md or requirements.md surfaces are touched — this is a
+behavior-preserving local refactor inside `game/server/index.js`. The
+public contract of `spawnEnemy()` (returns the created enemy, already
+pushed to `gameState.enemies`) is unchanged from 083.
+
+## Code quality
+
+- No dead code, no console errors, no obvious bugs.
+- The new local `enemy` / `add` bindings shadow nothing problematic
+  (the outer `enemy` in `updateEnemies` is the iterated spawner — the
+  inner `add` name correctly distinguishes the spawned add).
+- No debug scenarios were added or changed in this ticket; the
+  `summon-ready` scenario invoked by the capture pre-exists.
+
+## Remaining gaps
+
+None blocking.
+
