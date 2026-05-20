@@ -93,6 +93,8 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [ ] [060-card-grinding-system](tickets/060-card-grinding-system/)
 - [ ] [061-new-card-pack](tickets/061-new-card-pack/)
 - [ ] [062-card-evolution-system](tickets/062-card-evolution-system/)
+- [ ] [079-synergistic-cards](tickets/079-synergistic-cards/)
+
 
 ## Backlog — Card Evolutions
 - [ ] [063-evo-steel-claymore](tickets/063-card-evolutions/063-evo-steel-claymore/)
