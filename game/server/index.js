@@ -644,7 +644,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
 
 // Helper: spawn 5 enemies inside generated rooms (mixed types)
 function spawnEnemies() {
-  const spawnTable = ['skirmisher', 'skirmisher', 'skirmisher', 'grunt', 'miniboss'];
+  const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   for (const type of spawnTable) {
     const pos = randomRoomPosition();
     spawnEnemy(pos.x, pos.z, type);

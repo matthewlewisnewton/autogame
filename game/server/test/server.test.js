@@ -2005,18 +2005,19 @@ describe('spawnEnemies() mixed pack', () => {
 		resetGameState();
 	});
 
-	it('produces 5 enemies: 3 skirmishers, 1 grunt, 1 miniboss', () => {
+	it('produces 5 enemies: 2 skirmishers, 1 grunt, 1 miniboss, 1 spawner', () => {
 		gameState.enemies = [];
 		spawnEnemies();
 		expect(gameState.enemies.length).toBe(5);
 
-		const counts = { skirmisher: 0, grunt: 0, miniboss: 0 };
+		const counts = { skirmisher: 0, grunt: 0, miniboss: 0, spawner: 0 };
 		for (const e of gameState.enemies) {
 			counts[e.type] = (counts[e.type] || 0) + 1;
 		}
-		expect(counts.skirmisher).toBe(3);
+		expect(counts.skirmisher).toBe(2);
 		expect(counts.grunt).toBe(1);
 		expect(counts.miniboss).toBe(1);
+		expect(counts.spawner).toBe(1);
 	});
 });
 
