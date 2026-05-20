@@ -47,6 +47,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [086-cleanup-pnpm-and-security](tickets/086-cleanup-pnpm-and-security/)
 - [x] [085-cleanup-cleanup-enemy-types-skirmisher-miniboss](tickets/085-cleanup-cleanup-enemy-types-skirmisher-miniboss/)
 - [x] [084-cleanup-cleanup-cleanup-enemy-type-spawner](tickets/084-cleanup-cleanup-cleanup-enemy-type-spawner/)
 - [x] [083-cleanup-cleanup-enemy-type-spawner](tickets/083-cleanup-cleanup-enemy-type-spawner/)
@@ -67,7 +68,7 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [032-cleanup-dungeon-run-objectives](tickets/032-cleanup-dungeon-run-objectives/)
 - [x] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
 - [x] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
-- [ ] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
+- [x] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [ ] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
 - [ ] [020-audit-client-server](tickets/020-audit-client-server/)
 - [ ] [021-persistence](tickets/021-persistence/)
