@@ -151,6 +151,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-low-mana',
   'summon-ready',
   'combat-damaged-player',
+  'mixed-enemies',
 ]);
 
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
@@ -707,6 +708,19 @@ function applyDebugScenario(socket, name) {
   } else if (name === 'combat-damaged-player') {
     player.hp = 25;
     player.magicStones = MAX_MAGIC_STONES;
+  } else if (name === 'mixed-enemies') {
+    // Spawn one of each enemy type near the player for visual verification
+    player.hp = 100;
+    player.magicStones = MAX_MAGIC_STONES;
+    // Clear any existing enemies so we get a clean set
+    gameState.enemies = [];
+    spawnEnemy(player.x + 3, player.z, 'grunt');
+    spawnEnemy(player.x - 3, player.z, 'skirmisher');
+    spawnEnemy(player.x, player.z + 4, 'miniboss');
+    // Set wander targets so they don't all stack
+    for (const e of gameState.enemies) {
+      e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
+    }
   }
 
   broadcastLobbyUpdate();

@@ -1334,3 +1334,206 @@ describe('Cooldown Enforcement (useCard)', () => {
 		expect(hand[1].remainingCharges).toBe(2);
 	});
 });
+
+// ── createEnemyMesh ──
+
+describe('createEnemyMesh()', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.createEnemyMesh).toBe('function');
+	});
+
+	it('creates a red cone for grunt (default) type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('grunt');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.5);
+		expect(mesh.geometry.parameters.height).toBe(1);
+		expect(mesh.material.color.getHex()).toBe(0xdc2626);
+	});
+
+	it('creates an orange cone for skirmisher type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('skirmisher');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.3);
+		expect(mesh.geometry.parameters.height).toBe(0.6);
+		expect(mesh.material.color.getHex()).toBe(0xff6600);
+	});
+
+	it('creates a purple cone for miniboss type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('miniboss');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.8);
+		expect(mesh.geometry.parameters.height).toBe(1.8);
+		expect(mesh.material.color.getHex()).toBe(0x8800cc);
+	});
+
+	it('defaults to grunt mesh for unknown types', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('unknown_type');
+		expect(mesh.geometry.parameters.radius).toBe(0.5);
+		expect(mesh.geometry.parameters.height).toBe(1);
+		expect(mesh.material.color.getHex()).toBe(0xdc2626);
+	});
+
+	it('defaults to grunt mesh when type is undefined', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh(undefined);
+		expect(mesh.geometry.parameters.radius).toBe(0.5);
+		expect(mesh.geometry.parameters.height).toBe(1);
+	});
+});
+
+// ── enemyMeshHalfHeight ──
+
+describe('enemyMeshHalfHeight()', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('returns correct half-heights for each enemy type', async () => {
+		await import('../main.js');
+
+		expect(window.enemyMeshHalfHeight('grunt')).toBe(0.5);
+		expect(window.enemyMeshHalfHeight('skirmisher')).toBe(0.3);
+		expect(window.enemyMeshHalfHeight('miniboss')).toBe(0.9);
+	});
+
+	it('defaults to grunt half-height for unknown types', async () => {
+		await import('../main.js');
+
+		expect(window.enemyMeshHalfHeight('unknown')).toBe(0.5);
+		expect(window.enemyMeshHalfHeight(undefined)).toBe(0.5);
+	});
+});
+
+// ── healthBarColor (per-enemy maxHp) ──
+
+describe('healthBarColor(hp, maxHp)', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('returns green when HP is above 50%', async () => {
+		await import('../main.js');
+
+		expect(window.healthBarColor(76, 150)).toBe(0x22c55e); // 50.7%
+		expect(window.healthBarColor(100, 100)).toBe(0x22c55e); // 100%
+	});
+
+	it('returns yellow when HP is between 25% and 50%', async () => {
+		await import('../main.js');
+
+		expect(window.healthBarColor(75, 150)).toBe(0xeab308);  // exactly 50% → green (pct > 0.5 is false, so 0.5 is yellow)
+		expect(window.healthBarColor(50, 100)).toBe(0xeab308);  // 50%
+		expect(window.healthBarColor(40, 100)).toBe(0xeab308);  // 40%
+	});
+
+	it('returns red when HP is at or below 25%', async () => {
+		await import('../main.js');
+
+		expect(window.healthBarColor(37, 150)).toBe(0xef4444);  // 24.7%
+		expect(window.healthBarColor(25, 100)).toBe(0xef4444);  // exactly 25% → red
+		expect(window.healthBarColor(10, 100)).toBe(0xef4444);  // 10%
+	});
+
+	it('handles miniboss at 75 HP out of 150 (50% → yellow)', async () => {
+		await import('../main.js');
+
+		expect(window.healthBarColor(75, 150)).toBe(0xeab308);
+	});
+
+	it('handles zero maxHp safely', async () => {
+		await import('../main.js');
+
+		expect(window.healthBarColor(0, 0)).toBe(0xef4444);
+	});
+});

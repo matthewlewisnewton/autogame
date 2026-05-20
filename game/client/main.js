@@ -753,16 +753,59 @@ function updateDamageNumbers() {
 	}
 }
 
-// ── Enemy health bar helpers ──
-
-const ENEMY_MAX_HP = 50;
+// ── Enemy mesh creation ──
 
 /**
- * Return a hex color for an enemy health bar based on HP percentage.
- * Green (full) → yellow (50 %) → red (empty).
+ * Mesh height per enemy type (half the cone height so we can set y-position).
  */
-function healthBarColor(hp) {
-	const pct = hp / ENEMY_MAX_HP;
+const ENEMY_MESH_HEIGHT = {
+	grunt:      0.5,   // ConeGeometry(0.5, 1, 8)  → half-height = 0.5
+	skirmisher: 0.3,   // ConeGeometry(0.3, 0.6, 8) → half-height = 0.3
+	miniboss:   0.9,   // ConeGeometry(0.8, 1.8, 12) → half-height = 0.9
+};
+
+/**
+ * Return the half-height for an enemy type (used to position mesh on ground).
+ */
+function enemyMeshHalfHeight(type) {
+	return ENEMY_MESH_HEIGHT[type] || ENEMY_MESH_HEIGHT.grunt;
+}
+
+/**
+ * Create a Three.js mesh for an enemy based on its type.
+ * @param {string} type - 'grunt', 'skirmisher', or 'miniboss'
+ * @returns {THREE.Mesh}
+ */
+function createEnemyMesh(type) {
+	switch (type) {
+		case 'skirmisher': {
+			const geo = new THREE.ConeGeometry(0.3, 0.6, 8);
+			const mat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'miniboss': {
+			const geo = new THREE.ConeGeometry(0.8, 1.8, 12);
+			const mat = new THREE.MeshStandardMaterial({ color: 0x8800cc });
+			return new THREE.Mesh(geo, mat);
+		}
+		default: { // grunt
+			const geo = new THREE.ConeGeometry(0.5, 1, 8);
+			const mat = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
+			return new THREE.Mesh(geo, mat);
+		}
+	}
+}
+
+// ── Enemy health bar helpers ──
+
+/**
+ * Return a hex color for an enemy health bar based on HP ratio.
+ * Green (full) → yellow (50 %) → red (empty).
+ * @param {number} hp - current HP
+ * @param {number} maxHp - maximum HP
+ */
+function healthBarColor(hp, maxHp) {
+	const pct = maxHp > 0 ? hp / maxHp : 0;
 	if (pct > 0.5) return 0x22c55e;       // green
 	if (pct > 0.25) return 0xeab308;      // yellow
 	return 0xef4444;                       // red
@@ -798,26 +841,33 @@ function applyWindupFlash(enemyId, isWindup) {
 
 /**
  * Create a health-bar mesh positioned above an enemy.
+ * @param {string} enemyId
+ * @param {number} x
+ * @param {number} z
+ * @param {string} [type] - enemy type for correct vertical placement
  */
-function createHealthBarMesh(enemyId, x, z) {
+function createHealthBarMesh(enemyId, x, z, type) {
 	const geo = new THREE.BoxGeometry(1.2, 0.1, 0.1);
 	const mat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
 	const mesh = new THREE.Mesh(geo, mat);
-	mesh.position.set(x, 1.5, z);
+	const halfHeight = enemyMeshHalfHeight(type);
+	mesh.position.set(x, halfHeight + 0.5, z);
 	scene.add(mesh);
 	return mesh;
 }
 
 /**
  * Update a health bar's scale and color to reflect current HP.
+ * Uses enemy.maxHp (from server) for ratio calculation.
  */
 function updateHealthBarMesh(enemyId, enemy) {
 	const mesh = enemyHealthBars[enemyId];
 	if (!mesh) return;
 
-	const ratio = Math.max(0, enemy.hp / ENEMY_MAX_HP);
+	const maxHp = enemy.maxHp || enemy.hp;
+	const ratio = Math.max(0, enemy.hp / maxHp);
 	mesh.scale.x = ratio;
-	mesh.material.color.setHex(healthBarColor(enemy.hp));
+	mesh.material.color.setHex(healthBarColor(enemy.hp, maxHp));
 }
 
 // ── Attack visual effects ──
@@ -1544,19 +1594,18 @@ function animate(timestamp) {
 
     for (const enemy of gameState.enemies) {
       if (!enemiesMeshes[enemy.id]) {
-        const geo = new THREE.ConeGeometry(0.5, 1, 8);
-        const mat = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
-        const mesh = new THREE.Mesh(geo, mat);
+        const mesh = createEnemyMesh(enemy.type);
         scene.add(mesh);
         enemiesMeshes[enemy.id] = mesh;
 
-        // Create health bar for new enemy
-        enemyHealthBars[enemy.id] = createHealthBarMesh(enemy.id, enemy.x, enemy.z);
+        // Create health bar for new enemy (pass type for correct y-position)
+        enemyHealthBars[enemy.id] = createHealthBarMesh(enemy.id, enemy.x, enemy.z, enemy.type);
       }
-      enemiesMeshes[enemy.id].position.set(enemy.x, 0.5, enemy.z);
+      const halfHeight = enemyMeshHalfHeight(enemy.type);
+      enemiesMeshes[enemy.id].position.set(enemy.x, halfHeight, enemy.z);
 
       // Update health bar position, scale, and color
-      enemyHealthBars[enemy.id].position.set(enemy.x, 1.5, enemy.z);
+      enemyHealthBars[enemy.id].position.set(enemy.x, halfHeight + 0.5, enemy.z);
       updateHealthBarMesh(enemy.id, enemy);
 
       // Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
@@ -1566,8 +1615,8 @@ function animate(timestamp) {
         if (!withinGrace) {
           flashMesh(enemiesMeshes[enemy.id], 0xff4444, 150);
 
-          // Spawn hit spark at enemy position
-          spawnHitSpark({ x: enemy.x, y: 1.0, z: enemy.z });
+          // Spawn hit spark at enemy mesh center
+          spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
 
           // Flash the nearest living minion (to show which minion attacked)
           let nearestMinion = null;
@@ -1772,6 +1821,8 @@ window.__playSoundCallLog = () => _playSoundCallLog; // test-only: get playSound
 window.__clearPlaySoundLog = () => { _playSoundCallLog.length = 0; }; // test-only: clear log
 window.__setGameState = (gs, id) => { gameState = gs; myId = id; }; // test-only: set gameState + myId
 window.enemyHealthBars = enemyHealthBars;
+window.createEnemyMesh = createEnemyMesh;
+window.enemyMeshHalfHeight = enemyMeshHalfHeight;
 window.healthBarColor = healthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
 window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
