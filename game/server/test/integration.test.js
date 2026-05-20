@@ -544,6 +544,40 @@ describe('Socket Integration — Last Player Disconnect Resets Run', () => {
 		if (socket2.connected) socket2.disconnect();
 	});
 
+	it('does not reset run when one of multiple players disconnects', async () => {
+		// Connect two clients
+		const socket2 = (await connectClient(baseUrl)).socket;
+
+		// Both players ready up and transition to playing
+		const startGame1 = waitForEvent(socket, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket.emit('playerReady', true);
+		await sleep(50);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+
+		// Verify initial playing state
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run).toBeDefined();
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+
+		// Disconnect socket1 — socket2 should remain
+		socket.disconnect();
+		await sleep(100);
+
+		// gamePhase must remain 'playing'
+		expect(gameState.gamePhase).toBe('playing');
+
+		// gameState.run must still exist
+		expect(gameState.run).toBeDefined();
+
+		// At least one enemy must remain (run not cleared)
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+
+		// The remaining socket's player must still be in gameState.players
+		expect(gameState.players[socket2.id]).toBeDefined();
+	});
+
 	it('resets to lobby when last player disconnects in terminal run state', async () => {
 		const startGamePromise = waitForEvent(socket, 'startGame');
 		socket.emit('playerReady', true);
