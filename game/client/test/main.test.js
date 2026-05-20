@@ -1471,7 +1471,7 @@ describe('enemyMeshHalfHeight()', () => {
 		expect(window.enemyMeshHalfHeight('grunt')).toBe(0.5);
 		expect(window.enemyMeshHalfHeight('skirmisher')).toBe(0.3);
 		expect(window.enemyMeshHalfHeight('miniboss')).toBe(0.9);
-		expect(window.enemyMeshHalfHeight('spawner')).toBe(0.5);
+		expect(window.enemyMeshHalfHeight('spawner')).toBe(0.6);
 	});
 
 	it('defaults to grunt half-height for unknown types', async () => {

@@ -760,19 +760,19 @@ function updateDamageNumbers() {
  * Both `createEnemyMesh()` and `enemyMeshHalfHeight()` derive from this map.
  */
 const ENEMY_GEOMETRY = {
-	grunt:      { type: 'cone', radius: 0.5, height: 1, segments: 8, color: 0xdc2626, halfHeight: 0.5 },
-	skirmisher: { type: 'cone', radius: 0.3, height: 0.6, segments: 8, color: 0xff6600, halfHeight: 0.3 },
-	miniboss:   { type: 'cone', radius: 0.8, height: 1.8, segments: 12, color: 0x8800cc, halfHeight: 0.9 },
-	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4, halfHeight: 0.5 },
+	grunt:      { type: 'cone', radius: 0.5, height: 1, segments: 8, color: 0xdc2626 },
+	skirmisher: { type: 'cone', radius: 0.3, height: 0.6, segments: 8, color: 0xff6600 },
+	miniboss:   { type: 'cone', radius: 0.8, height: 1.8, segments: 12, color: 0x8800cc },
+	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 };
 
 /**
  * Return the half-height for an enemy type (used to position mesh on ground).
- * Derives from the `halfHeight` field in ENEMY_GEOMETRY.
+ * Derives from geometry: `height / 2` for cones, `radius` for octahedra.
  */
 function enemyMeshHalfHeight(type) {
 	const def = ENEMY_GEOMETRY[type] || ENEMY_GEOMETRY.grunt;
-	return def.halfHeight;
+	return def.type === 'octahedron' ? def.radius : def.height / 2;
 }
 
 /**
