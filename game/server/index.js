@@ -12,6 +12,24 @@ const {
   MAX_ROOM_SIZE_INCLUSIVE,
   PASSAGE_WIDTH
 } = require('./dungeon');
+const {
+  TICK_RATE,
+  DETECTION_RADIUS,
+  ENEMY_ATTACK_RANGE,
+  ENEMY_ATTACK_RECOVERY_MS,
+  MAX_MAGIC_STONES,
+  MAGIC_STONES_REGEN_PER_TICK,
+  SUMMON_RADIUS,
+  ATTACK_RANGE,
+  ATTACK_CONE_ANGLE,
+  STALE_THRESHOLD,
+  BOUNDS_MARGIN,
+  SPAWN_PADDING,
+  DECK_MIN_SIZE,
+  DECK_MAX_SIZE,
+  MAX_HP,
+  VICTORY_REWARD_ROTATION
+} = require('./config');
 
 const app = express();
 const server = http.createServer(app);
@@ -42,9 +60,6 @@ const layoutSeed = Math.floor(Math.random() * 2147483647);
 gameState.layoutSeed = layoutSeed;
 gameState.layout = generateLayout(layoutSeed);
 console.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);
-
-const BOUNDS_MARGIN = 2;
-const SPAWN_PADDING = 2;
 
 function computeDungeonBounds(layout) {
   let minX = Infinity;
@@ -127,13 +142,6 @@ function resetGameState() {
   delete gameState._victoryCounters;
 }
 
-const TICK_RATE = 20; // 20 times per second
-const DETECTION_RADIUS = 8; // units
-
-// Enemy attack state machine parameters
-const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
-const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
-
 // Enemy type definitions — data layer only (no behavior changes yet)
 const ENEMY_DEFS = {
 	grunt:      { hp: 50,  chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800 },
@@ -143,8 +151,6 @@ const ENEMY_DEFS = {
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher' },
 };
 
-const MAX_MAGIC_STONES = 100;
-const MAGIC_STONES_REGEN_PER_TICK = 0.5;
 const DEBUG_SCENARIOS = new Set([
   'summon-low-mana',
   'summon-ready',
@@ -175,9 +181,6 @@ const STARTING_DECK_IDS = [
   'flame_blade'
 ];
 
-const DECK_MIN_SIZE = 4;
-const DECK_MAX_SIZE = 12;
-
 /**
  * Build a fresh player progress object.
  * Returns { currency, ownedCards, runRewards, currencyEarnedThisRun }.
@@ -195,14 +198,6 @@ function createPlayerProgress() {
     currencyEarnedThisRun: 0
   };
 }
-
-// Summon parameters
-const SUMMON_RADIUS = 10; // units — radial AoE
-
-// Weapon attack parameters
-const ATTACK_RANGE = 5; // units — max distance to hit
-const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
-const STALE_THRESHOLD = 10000; // 10 seconds
 
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList() {
@@ -311,16 +306,6 @@ function buildRunSummary(status) {
 }
 
 // ── Reward Helpers ──
-
-/**
- * Victory reward rotation — deterministic sequence of card ids handed out
- * on successive victories.  Each element is a card id present in CARD_DEFS.
- */
-const VICTORY_REWARD_ROTATION = [
-  'flame_blade',
-  'battle_familiar',
-  'dungeon_drake',
-];
 
 /**
  * Monotonic counter keyed by player id so that successive victories rotate
@@ -541,7 +526,7 @@ function returnPlayersToLobby() {
 
     player.ready = false;
     player.dead = false;
-    player.hp = 100;
+    player.hp = MAX_HP;
     player.x = spawn.x;
     player.y = 0.5;
     player.z = spawn.z;
@@ -591,7 +576,7 @@ function damagePlayer(playerId, amount) {
       const p = gameState.players[playerId];
       if (!p) return; // player may have disconnected
       const spawn = firstRoomPosition();
-      p.hp = 100;
+      p.hp = MAX_HP;
       p.dead = false;
       p.x = spawn.x;
       p.y = 0.5;
@@ -710,17 +695,17 @@ function applyDebugScenario(socket, name) {
   ensureNearbyEnemy(player.x, player.z);
 
   if (name === 'summon-low-mana') {
-    player.hp = 100;
+    player.hp = MAX_HP;
     player.magicStones = 0;
   } else if (name === 'summon-ready') {
-    player.hp = 100;
+    player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
   } else if (name === 'combat-damaged-player') {
     player.hp = 25;
     player.magicStones = MAX_MAGIC_STONES;
   } else if (name === 'mixed-enemies') {
     // Spawn one of each enemy type near the player for visual verification
-    player.hp = 100;
+    player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
     // Clear any existing enemies so we get a clean set
     gameState.enemies = [];
@@ -735,7 +720,7 @@ function applyDebugScenario(socket, name) {
   } else if (name === 'spawner-active') {
     // Spawn a spawner near the player with lastSpawnTime in the past so
     // the first add appears on the very next updateEnemies() tick.
-    player.hp = 100;
+    player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
     gameState.enemies = [];
     const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
@@ -1061,7 +1046,7 @@ function startServer(port) {
         z: spawn.z,
         rotation: 0,
         deck: [],
-        hp: 100,
+        hp: MAX_HP,
         dead: false,
         lastActivity: Date.now(),
         ready: false,
@@ -1514,6 +1499,8 @@ if (typeof module !== 'undefined' && module.exports) {
     CELL_SPACING,
     DECK_MIN_SIZE,
     DECK_MAX_SIZE,
+    MAX_HP,
+    VICTORY_REWARD_ROTATION,
     ENEMY_DEFS
   };
 }

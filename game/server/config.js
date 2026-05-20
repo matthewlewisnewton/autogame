@@ -1,0 +1,42 @@
+// Server configuration constants
+
+const TICK_RATE = 20; // times per second
+const DETECTION_RADIUS = 8; // units
+const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
+const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
+const MAX_MAGIC_STONES = 100;
+const MAGIC_STONES_REGEN_PER_TICK = 0.5;
+const SUMMON_RADIUS = 10; // units — radial AoE
+const ATTACK_RANGE = 5; // units — max distance to hit
+const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
+const STALE_THRESHOLD = 10000; // 10 seconds
+const BOUNDS_MARGIN = 2;
+const SPAWN_PADDING = 2;
+const DECK_MIN_SIZE = 4;
+const DECK_MAX_SIZE = 12;
+const MAX_HP = 100;
+
+const VICTORY_REWARD_ROTATION = [
+  'flame_blade',
+  'battle_familiar',
+  'dungeon_drake',
+];
+
+module.exports = {
+  TICK_RATE,
+  DETECTION_RADIUS,
+  ENEMY_ATTACK_RANGE,
+  ENEMY_ATTACK_RECOVERY_MS,
+  MAX_MAGIC_STONES,
+  MAGIC_STONES_REGEN_PER_TICK,
+  SUMMON_RADIUS,
+  ATTACK_RANGE,
+  ATTACK_CONE_ANGLE,
+  STALE_THRESHOLD,
+  BOUNDS_MARGIN,
+  SPAWN_PADDING,
+  DECK_MIN_SIZE,
+  DECK_MAX_SIZE,
+  MAX_HP,
+  VICTORY_REWARD_ROTATION
+};
