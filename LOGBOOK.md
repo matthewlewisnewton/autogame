@@ -1225,3 +1225,26 @@ See `nits.md` for optional follow-ups (config section header duplication; tests 
 
 ---
 
+
+## v0.54 — Cleanup nits from 088-cleanup-codebase-cleanup  (2026-05-20 12:53:48)
+
+
+- **design.md:** No gameplay or loop changes; documentation-only cleanup ticket.
+- **requirements.md:** 3D render, WebSocket connection, multiplayer representation, and movement sync all exercised in capture probes — no regression observed.
+
+---
+
+## Code quality
+
+- Minimal, focused diff (8 lines moved in config; test import + mock/comment updates).
+- No dead code introduced; no new console errors in capture logs (`server.log` / `client.log` clean).
+- No debug shortcuts that could mask normal-path regressions.
+
+---
+
+## Remaining gaps
+
+None blocking. Acceptance criteria are fully satisfied and the captured game run is healthy.
+
+---
+
