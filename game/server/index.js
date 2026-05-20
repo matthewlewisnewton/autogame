@@ -1428,7 +1428,10 @@ function startServer(port) {
     gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.id);
     io.emit('playerDisconnected', socket.id);
 
-    if (gameState.gamePhase === 'playing') {
+    if (Object.keys(gameState.players).length === 0) {
+      // Last player left — reset the session regardless of run state
+      returnPlayersToLobby();
+    } else if (gameState.gamePhase === 'playing') {
       checkRunTerminalState();
     }
 
