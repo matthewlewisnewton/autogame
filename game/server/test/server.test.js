@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import config from '../config.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -766,7 +767,7 @@ describe('spawnLoot(x, z)', () => {
 	beforeEach(() => resetState());
 
 	it('creates loot with correct structure when it spawns', () => {
-		vi.spyOn(Math, 'random').mockReturnValue(0.1); // < 0.5 so it spawns
+		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1); // below LOOT_SPAWN_CHANCE so it spawns
 
 		spawnLoot(10, 20);
 
@@ -785,7 +786,7 @@ describe('spawnLoot(x, z)', () => {
 	});
 
 	it('loot value is in range [5, 20)', () => {
-		vi.spyOn(Math, 'random').mockReturnValueOnce(0.1).mockReturnValueOnce(0.5);
+		vi.spyOn(Math, 'random').mockReturnValueOnce(config.LOOT_SPAWN_CHANCE - 0.1).mockReturnValueOnce(0.5); // below LOOT_SPAWN_CHANCE to spawn; 0.5 for value
 
 		spawnLoot(0, 0);
 		expect(gameState.loot[0].value).toBeGreaterThanOrEqual(5);
@@ -794,8 +795,8 @@ describe('spawnLoot(x, z)', () => {
 		vi.restoreAllMocks();
 	});
 
-	it('does not spawn loot 50% of the time', () => {
-		vi.spyOn(Math, 'random').mockReturnValue(0.9); // >= 0.5
+	it('does not spawn loot when random >= LOOT_SPAWN_CHANCE', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE + 0.1); // above LOOT_SPAWN_CHANCE
 
 		spawnLoot(0, 0);
 
@@ -805,7 +806,7 @@ describe('spawnLoot(x, z)', () => {
 	});
 
 	it('loot createdAt is a timestamp', () => {
-		vi.spyOn(Math, 'random').mockReturnValue(0.1);
+		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 
 		const before = Date.now();
 		spawnLoot(0, 0);
