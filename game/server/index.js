@@ -628,11 +628,12 @@ function spawnEnemy(x, z, type = 'grunt') {
   });
 }
 
-// Helper: spawn 5 enemies inside generated rooms
+// Helper: spawn 5 enemies inside generated rooms (mixed types)
 function spawnEnemies() {
-  for (let i = 0; i < 5; i++) {
-    const position = randomRoomPosition();
-    spawnEnemy(position.x, position.z, 'grunt');
+  const spawnTable = ['skirmisher', 'skirmisher', 'skirmisher', 'grunt', 'miniboss'];
+  for (const type of spawnTable) {
+    const pos = randomRoomPosition();
+    spawnEnemy(pos.x, pos.z, type);
     gameState.enemies[gameState.enemies.length - 1].wanderTarget = randomWanderTarget();
   }
 }
@@ -721,6 +722,8 @@ function updateEnemies() {
 	const players = Object.values(gameState.players).filter(p => !p.dead);
 
 	for (const enemy of gameState.enemies) {
+		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+
 		// Ensure attackState exists (backward compat for enemies spawned before this change)
 		if (!enemy.attackState) enemy.attackState = 'idle';
 
@@ -737,14 +740,14 @@ function updateEnemies() {
 		// ── Wind-up: wait, then revalidate range before striking ──
 		if (enemy.attackState === 'windup') {
 			const elapsed = Date.now() - enemy.windupStartTime;
-			if (elapsed >= ENEMY_ATTACK_WINDUP_MS) {
+			if (elapsed >= def.attackWindupMs) {
 				// Revalidate: find the target player and check range + alive
 				const target = gameState.players[enemy.windupTargetId];
 				if (target && !target.dead) {
 					const dist = Math.hypot(target.x - enemy.x, target.z - enemy.z);
 					if (dist <= ENEMY_ATTACK_RANGE) {
 						// Strike!
-						damagePlayer(enemy.windupTargetId, ENEMY_ATTACK_DAMAGE);
+						damagePlayer(enemy.windupTargetId, def.attackDamage);
 						enemy.attackState = 'recovering';
 						enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
 						continue;
@@ -791,7 +794,7 @@ function updateEnemies() {
 			const dist = Math.hypot(dx, dz);
 
 			if (dist > 0.1) {
-				const move = CHASE_SPEED * dt;
+				const move = def.chaseSpeed * dt;
 				enemy.x += (dx / dist) * move;
 				enemy.z += (dz / dist) * move;
 			}
@@ -812,7 +815,7 @@ function updateEnemies() {
 		}
 
 		// Normalize and move toward wander target
-		const move = WANDER_SPEED * dt;
+		const move = def.wanderSpeed * dt;
 		enemy.x += (wdx / wdist) * move;
 		enemy.z += (wdz / wdist) * move;
 	}
