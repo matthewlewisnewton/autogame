@@ -756,20 +756,23 @@ function updateDamageNumbers() {
 // ── Enemy mesh creation ──
 
 /**
- * Mesh height per enemy type (half the cone height so we can set y-position).
+ * Single source of truth for per-enemy-type geometry parameters and visual style.
+ * Both `createEnemyMesh()` and `enemyMeshHalfHeight()` derive from this map.
  */
-const ENEMY_MESH_HEIGHT = {
-	grunt:      0.5,   // ConeGeometry(0.5, 1, 8)  → half-height = 0.5
-	skirmisher: 0.3,   // ConeGeometry(0.3, 0.6, 8) → half-height = 0.3
-	miniboss:   0.9,   // ConeGeometry(0.8, 1.8, 12) → half-height = 0.9
-	spawner:    0.5,   // OctahedronGeometry(0.6)   → half-height ≈ 0.5
+const ENEMY_GEOMETRY = {
+	grunt:      { type: 'cone', radius: 0.5, height: 1, segments: 8, color: 0xdc2626, halfHeight: 0.5 },
+	skirmisher: { type: 'cone', radius: 0.3, height: 0.6, segments: 8, color: 0xff6600, halfHeight: 0.3 },
+	miniboss:   { type: 'cone', radius: 0.8, height: 1.8, segments: 12, color: 0x8800cc, halfHeight: 0.9 },
+	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4, halfHeight: 0.5 },
 };
 
 /**
  * Return the half-height for an enemy type (used to position mesh on ground).
+ * Derives from the `halfHeight` field in ENEMY_GEOMETRY.
  */
 function enemyMeshHalfHeight(type) {
-	return ENEMY_MESH_HEIGHT[type] || ENEMY_MESH_HEIGHT.grunt;
+	const def = ENEMY_GEOMETRY[type] || ENEMY_GEOMETRY.grunt;
+	return def.halfHeight;
 }
 
 /**
@@ -778,32 +781,20 @@ function enemyMeshHalfHeight(type) {
  * @returns {THREE.Mesh}
  */
 function createEnemyMesh(type) {
-	switch (type) {
-		case 'skirmisher': {
-			const geo = new THREE.ConeGeometry(0.3, 0.6, 8);
-			const mat = new THREE.MeshStandardMaterial({ color: 0xff6600 });
-			return new THREE.Mesh(geo, mat);
-		}
-		case 'miniboss': {
-			const geo = new THREE.ConeGeometry(0.8, 1.8, 12);
-			const mat = new THREE.MeshStandardMaterial({ color: 0x8800cc });
-			return new THREE.Mesh(geo, mat);
-		}
-		case 'spawner': {
-			const geo = new THREE.OctahedronGeometry(0.6);
-			const mat = new THREE.MeshStandardMaterial({
-				color: 0x00ccaa,
-				emissive: 0x00ccaa,
-				emissiveIntensity: 0.4
-			});
-			return new THREE.Mesh(geo, mat);
-		}
-		default: { // grunt
-			const geo = new THREE.ConeGeometry(0.5, 1, 8);
-			const mat = new THREE.MeshStandardMaterial({ color: 0xdc2626 });
-			return new THREE.Mesh(geo, mat);
-		}
+	const def = ENEMY_GEOMETRY[type] || ENEMY_GEOMETRY.grunt;
+	let geo;
+	if (def.type === 'octahedron') {
+		geo = new THREE.OctahedronGeometry(def.radius);
+	} else {
+		geo = new THREE.ConeGeometry(def.radius, def.height, def.segments);
 	}
+
+	const matProps = { color: def.color };
+	if (def.emissive != null) matProps.emissive = def.emissive;
+	if (def.emissiveIntensity != null) matProps.emissiveIntensity = def.emissiveIntensity;
+
+	const mat = new THREE.MeshStandardMaterial(matProps);
+	return new THREE.Mesh(geo, mat);
 }
 
 // ── Enemy health bar helpers ──
