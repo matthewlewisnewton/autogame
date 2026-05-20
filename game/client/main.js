@@ -591,9 +591,12 @@ socket.on('stateUpdate', (state) => {
     const serverHand = state.players[myId].hand;
     let changed = false;
     for (let i = 0; i < 4; i++) {
-      const localCard = hand[i];
       const serverCard = serverHand[i];
-      if (localCard?.id !== serverCard?.id) {
+      const localCard = hand[i];
+      if (!serverCard && !localCard) continue;
+      if (!serverCard || !localCard || localCard.id !== serverCard.id ||
+          localCard.remainingCharges !== serverCard.remainingCharges ||
+          localCard.charges !== serverCard.charges) {
         hand[i] = serverCard ? { ...serverCard } : null;
         changed = true;
       }
