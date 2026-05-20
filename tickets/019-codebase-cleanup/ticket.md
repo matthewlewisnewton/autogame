@@ -2,6 +2,8 @@
 
 Review and clean up the entire codebase, ensuring high code quality without introducing any regressions.
 
+## Difficulty: hard
+
 ## Acceptance Criteria
 - Code is refactored for readability, consistency, and maintainability.
 - Extracted constants and config values into shared files.

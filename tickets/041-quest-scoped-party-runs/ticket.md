@@ -4,6 +4,8 @@ Add the second half of a *Phantasy Star Online Episodes I&II*-inspired quest
 loop: selected quests should shape the next run's objective, enemy setup, and
 summary rewards.
 
+## Difficulty: medium
+
 ## Source Material Note
 
 PSO's lobby loop is not just "press ready and enter any dungeon"; players choose

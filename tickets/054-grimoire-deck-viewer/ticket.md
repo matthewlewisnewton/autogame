@@ -1,5 +1,7 @@
 # Ticket: Grimoire In-Game Deck Viewer
 
+## Difficulty: medium
+
 ## Goal
 Implement an in-game overlay that allows players to view the cards remaining in their draw pile (deck). This improves tactical decision-making by letting players know which summons or weapons are still available.
 

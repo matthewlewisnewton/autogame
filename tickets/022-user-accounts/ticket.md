@@ -2,6 +2,8 @@
 
 Add a system for user accounts where players can register, log in, and have their characters saved to the newly created persistence layer.
 
+## Difficulty: hard
+
 ## Acceptance Criteria
 - Implement a secure user registration and login flow.
 - Securely store user passwords (hashed and salted, e.g., using `bcrypt`).

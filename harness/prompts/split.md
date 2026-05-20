@@ -43,6 +43,16 @@ Each ticket must be valid ticket Markdown:
 
 <1–3 sentence summary of what this ticket delivers and why>
 
+## Difficulty: easy|medium|hard
+
+Classify each ticket you write:
+- **easy** — small, localized change; 1–3 files; clear acceptance criteria;
+  cleanup/wiring/nits; templated content once a framework exists.
+- **medium** — feature work with moderate scope; several files but well-defined
+  seams; integration is straightforward.
+- **hard** — cross-cutting architecture, auth/persistence, large refactors,
+  broad audits, or high integration/regression risk.
+
 ## Acceptance Criteria
 - <concrete, checkable criterion>
 - <...>

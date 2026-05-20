@@ -11,6 +11,8 @@ READ:
   `metrics.json` contains `screenshots[]` with screenshot filenames and
   descriptions, plus `capturePlanSource`, `capturePlanSummary`, and `scenarios`
   when the browser used agent-guided or development-scenario capture.
+- if present, `__ARTIFACTS_DIR__/coverage.log` — vitest coverage on files
+  changed since the ticket baseline (visibility only; thresholds are disabled).
 
 REVIEW THE LIVE CODEBASE, NOT A STATIC DIFF. The implementation is in the
 working tree right now — read the actual files under `game/`; the working tree

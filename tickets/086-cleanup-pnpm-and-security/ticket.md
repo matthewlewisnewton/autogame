@@ -8,6 +8,8 @@
 Minor, non-blocking nits the reviewer noted while passing `018-pnpm-and-security`.
 None blocked acceptance — clean them up when convenient.
 
+## Difficulty: easy
+
 ## Wire `check_package_age.js` into the build / CI
 `game/scripts/check_package_age.js` exists but is only invokable by hand. Expose it as a `package.json` script (e.g. `"check:deps": "node scripts/check_package_age.js"`) and/or add a GitHub Actions workflow that runs it on PRs that touch lockfiles, so the supply-chain check actually gates new dependency updates.
 ### Acceptance Criteria

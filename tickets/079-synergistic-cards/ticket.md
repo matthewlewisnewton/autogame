@@ -3,6 +3,8 @@
 > [!NOTE]
 > **Staleness note.** This ticket was written against commit `5064d0c` (2026-05-19). The codebase may have moved on since it was filed — before acting, re-check every file path and code reference below against the CURRENT code, and skip any issue that is already resolved.
 
+## Difficulty: hard
+
 ## Goal
 Implement a set of highly interactive "synergistic cards" that focus on resource generation (Magic Stones) and usage restoration (replenishing charges of other cards) to enable deep, strategic deck-building combos and playstyles.
 

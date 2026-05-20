@@ -2,6 +2,8 @@
 
 Improve the existing procedural dungeon so runs have more variety and readable room roles without changing the basic server-authoritative layout contract.
 
+## Difficulty: medium
+
 ## Goal
 
 The current dungeon generator creates connected rooms and passages. This ticket should make generated maps feel more like authored game spaces while keeping the implementation simple enough for the harness to verify visually.

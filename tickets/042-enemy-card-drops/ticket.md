@@ -4,6 +4,8 @@ Add the first half of a *Lost Kingdoms 1 & 2*-inspired card acquisition loop:
 defeated enemies should sometimes become concrete card rewards, not just generic
 currency or a fixed victory-card rotation.
 
+## Difficulty: medium
+
 ## Source Material Note
 
 `game/docs/design.md` names *Lost Kingdoms 1 & 2* as reference material. The most

@@ -3,6 +3,8 @@
 > [!NOTE]
 > **Staleness note.** This ticket was written against commit `70123f1` (2026-05-19). The codebase may have moved on since it was filed — before acting, re-check every file path and code reference below against the CURRENT code, and skip any issue that is already resolved.
 
+## Difficulty: hard
+
 ## Goal
 Refactor the player's card storage from a simple frequency map to a robust inventory system that supports unique properties (like level, grind, and elements) for each card instance.
 

@@ -2,6 +2,8 @@
 
 Audit the entire client and server architecture. Ensure that too much work is not being left to the client. The server must be the one managing game state and validating all actions to securely keep state across users and prevent cheating or desyncs.
 
+## Difficulty: hard
+
 ## Acceptance Criteria
 - Audit all WebSocket messages currently sent from the client to ensure they only convey "intents" (e.g., `attack_attempt`, `move_request`) rather than outcomes (e.g., `damage_dealt`, `position_updated`).
 - The server must validate all movement requests against collision geometry and player speed limits.

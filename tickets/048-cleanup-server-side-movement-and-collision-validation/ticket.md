@@ -7,6 +7,8 @@
 
 Prevent movement cheat vulnerabilities and desynchronization by validating and resolving player movement against dungeon wall bounds server-side.
 
+## Difficulty: medium
+
 ## Server-side Wall Collision Resolution
 
 Currently, when a client sends movement updates to the server via the `move` socket event:

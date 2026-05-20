@@ -7,6 +7,8 @@
 
 Minor, non-blocking improvements to the audio subsystem's robustness and user preferences handling.
 
+## Difficulty: easy
+
 ## AudioContext autoplay resume
 
 In `game/client/main.js`, `playSound()` lazily instantiates the `AudioContext`:
