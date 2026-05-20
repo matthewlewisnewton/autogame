@@ -658,7 +658,7 @@ const previousEnemyHp = {};
 // Track per-player HP from the previous frame, for detecting damage taken between state updates
 const previousPlayerHp = {};
 
-// Throttle: track loot IDs already emitted for pickup, cleared on each stateUpdate
+// Throttle: track loot IDs already emitted for pickup; pruned on each stateUpdate to drop IDs no longer present in state.loot
 const pickedUpLootIds = new Set();
 
 // ── Floating damage numbers ──
