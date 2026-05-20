@@ -43,6 +43,20 @@ YOUR JOB:
 2. Verify it is consistent with `game/docs/design.md` and does not regress the
    foundation in `game/docs/requirements.md`.
 3. Check code quality: no obvious bugs, no dead/broken code, no console errors.
+4. DEBUG SCENARIOS — if this ticket added or changed any development debug
+   scenario (a `?scenario=NAME` URL shortcut that jumps into a specific game
+   state), verify ALL of:
+   - It is gated behind a clearly debug/dev path — normal gameplay must not
+     touch it. The URL parameter must be the ONLY entry point.
+   - The same end-state is STILL REACHABLE through normal gameplay. A scenario
+     is a QA shortcut, not a substitute for the flow that gets a real player
+     there. Trace the normal path and confirm it reaches an equivalent state.
+   - The scenario does not weaken or short-circuit invariants (e.g. it must
+     not skip server-side validation, persistence, or net-replication that
+     normal play exercises).
+   If any of these fail, that is a BLOCKING GAP. A debug shortcut that bypasses
+   real gameplay is worse than no shortcut — it lets later tickets accidentally
+   regress the normal path while still passing QA.
 
 DISTINGUISH BLOCKING GAPS FROM NITS:
 - A BLOCKING GAP is anything that means an acceptance criterion is not met, or
