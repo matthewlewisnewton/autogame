@@ -880,3 +880,26 @@ pruning at `:576-585` does — it only removes ids no longer in `state.loot`
 rather than clearing the entire set. Behaviourally correct; comment could be
 tightened. Captured as a nit, not a blocker.
 
+
+## v0.39 — Cleanup nits from 023-cleanup-loot-and-currency  (2026-05-19 17:47:34)
+
+  }
+}
+```
+
+The new comment ("pruned on each stateUpdate to drop IDs no longer present in state.loot") is a precise, one-line summary of the loop's behaviour. The misleading "cleared" wording is gone. Criterion met.
+
+### Implicit AC: no code logic change
+`git diff 55a77d3..HEAD -- game/` is a single comment-line edit; the `Set`, the pruning loop, and every reference to `pickedUpLootIds` are unchanged. Runtime probes confirm the loot/currency flow behaves identically (HUD shows `GOLD 0`, no console noise).
+
+## Consistency with design / requirements
+The change is purely textual. No behaviour, network protocol, HUD, or render path is affected, so design.md and requirements.md are unaffected.
+
+## Code quality
+- Comment is accurate and matches the inline comment two screens up (576-577).
+- No dead code, no lingering references to "cleared".
+- No console errors introduced.
+
+## Remaining gaps
+None. The single acceptance criterion is fully satisfied, the game runs cleanly, and no regressions are visible in metrics, probes, or console output.
+
