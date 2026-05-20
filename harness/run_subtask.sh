@@ -29,22 +29,28 @@ LABEL="$(basename "$(dirname "$(dirname "$SUBDIR")")")/$(basename "$SUBDIR")"
 exec > >(tee -a "$SUBDIR/log.txt") 2>&1
 trap 'stop_game' EXIT
 
-start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>
+start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>; sets global PIPELINE_PID (0 = disabled)
   local artifacts_dir="$1"
   local out="$artifacts_dir/local-checks.log"
+  PIPELINE_PID=0
   if [ "$PIPELINE_LOCAL_CHECKS" != "1" ]; then
     return 1
   fi
 
   log "[pipeline] starting local verification in background..." >&2
   emit_progress_event "pipeline_check_start" "{\"label\":$(json_string "$LABEL"),\"artifacts\":$(json_string "$artifacts_dir"),\"command\":$(json_string "$PIPELINE_CHECK_COMMAND"),\"cwd\":$(json_string "$PIPELINE_CHECK_CWD"),\"timeoutSeconds\":$PIPELINE_CHECK_TIMEOUT}"
+  # NOTE: do NOT wrap this in a $(...) at the call site. Command substitution
+  # runs the function in a SUBSHELL, so `&` would background a child of *that*
+  # subshell — and the parent's later `wait $pid` would fail with "not a child
+  # of this shell" (bash can only wait on direct children). We assign PIPELINE_PID
+  # in the caller's shell scope here so the background process IS its direct child.
   (
     cd "$PIPELINE_CHECK_CWD" || exit 127
     printf '[pipeline] cwd=%s\n' "$(pwd)"
     printf '[pipeline] command=%s\n\n' "$PIPELINE_CHECK_COMMAND"
     timeout -k 30 "$PIPELINE_CHECK_TIMEOUT" bash -lc "$PIPELINE_CHECK_COMMAND"
   ) </dev/null > "$out" 2>&1 &
-  echo "$!"
+  PIPELINE_PID=$!
   return 0
 }
 
@@ -122,7 +128,9 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
   coder_toolfail=0
 
-  pipeline_pid="$(start_pipeline_checks "$ARTI" || echo 0)"
+  PIPELINE_PID=0
+  start_pipeline_checks "$ARTI" || :
+  pipeline_pid="$PIPELINE_PID"
 
   # 2. Start game + capture screenshots
   log "[game] starting servers..."
