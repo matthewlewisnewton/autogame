@@ -1450,13 +1450,16 @@ function animate(timestamp) {
 
   // ── Loot proximity check ──
   if (gameState && gameState.loot && gameState.loot.length > 0) {
-    for (const loot of gameState.loot) {
-      if (Math.hypot(myX - loot.x, myZ - loot.z) <= 2) {
-        if (!pickedUpLootIds.has(loot.id)) {
-          pickedUpLootIds.add(loot.id);
-          socket.emit('lootPickup', { lootId: loot.id });
+    const localPlayer = gameState.players[myId];
+    if (localPlayer && !localPlayer.dead) {
+      for (const loot of gameState.loot) {
+        if (Math.hypot(myX - loot.x, myZ - loot.z) <= 2) {
+          if (!pickedUpLootIds.has(loot.id)) {
+            pickedUpLootIds.add(loot.id);
+            socket.emit('lootPickup', { lootId: loot.id });
+          }
+          break; // one pickup per frame
         }
-        break; // one pickup per frame
       }
     }
   }
