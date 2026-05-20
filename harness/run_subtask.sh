@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Inner loop for ONE sub-ticket: qwen implements -> screenshot -> visual QA.
-# Visual QA is done by cursor-agent/composer (primary) with claude as the
-# last-resort fallback. The gemini CLI was retired (deprecated upstream); a
-# future revision may add agy/gemini-3.5-flash. Qwen vision can be enabled
-# as optional failed-QA feedback.
+# Visual QA chain: cursor-agent/composer (primary) -> qwen self-review
+# (fallback when the agent CLI is unavailable) -> claude (last resort).
+# The gemini CLI was retired (deprecated upstream); a future revision may
+# add agy/gemini-3.5-flash as a third independent tier. Qwen vision can be
+# enabled as optional failed-QA feedback.
 #
 #   harness/run_subtask.sh <sub-ticket-dir>
 #
@@ -159,15 +160,25 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
       TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
   fi
-  # QA agent chain: cursor-agent/composer-2.5-fast (primary) -> claude (last
-  # resort). Each tier is accepted only if it produced a real verdict line.
+  # QA agent chain:
+  #   1. cursor-agent/composer-2.5-fast (primary, independent reviewer)
+  #   2. qwen self-review (fallback when agent is unavailable — local + free,
+  #      so it keeps the loop moving even when both gemini AND cursor are out;
+  #      note this is the SAME model that wrote the code, so its verdict
+  #      inherits the writer's blind spots — accept that risk only because
+  #      it's the second-tier fallback, not the primary gate)
+  #   3. claude (last resort, most expensive)
+  # Each tier is accepted only if it produced a real verdict line.
   if run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "cursor-agent/$AGENT_MODEL"),\"mode\":$(json_string "$QA_MODE")}"
+  elif run_qwen "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+    log "[qa] verified by qwen self-review ($QA_MODE) — agent CLI unavailable"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"qwen-self\",\"mode\":$(json_string "$QA_MODE")}"
   else
-    log "[qa] agent produced no verdict — last-resort claude"
+    log "[qa] agent + qwen produced no verdict — last-resort claude"
     if ! run_claude "$QA_PROMPT" "$ARTI/qa.txt"; then
-      log "[tool-failure] claude QA unavailable (timeout/empty) after agent — escalating"
+      log "[tool-failure] claude QA unavailable (timeout/empty) after agent+qwen — escalating"
       exit 2
     fi
     if ! has_verdict "$ARTI/qa.txt"; then
