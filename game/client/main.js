@@ -31,6 +31,10 @@ import {
 	SUMMON_EXPAND_MS,
 	HIT_SPARK_DURATION,
 	LOOT_COLLECT_DURATION,
+	DAMAGE_NUMBER_DURATION,
+	CAMERA_FOV,
+	CAMERA_NEAR,
+	CAMERA_FAR,
 	acceleration,
 	friction,
 	CAMERA_OFFSET as CAMERA_OFFSET_CONFIG,
@@ -705,7 +709,7 @@ function spawnDamageNumber(x, y, z, amount, color, positive) {
 		element: el,
 		createdAt: performance.now(),
 		position3d: { x, y, z },
-		duration: 1000 // ms
+		duration: DAMAGE_NUMBER_DURATION
 	});
 }
 
@@ -1740,7 +1744,7 @@ function initScene() {
   scene.background = new THREE.Color(0x0f172a);
 
   // Camera
-  camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
   camera.position.set(spawnPosition.x, 5, spawnPosition.z + 10);
   camera.lookAt(spawnPosition.x, 0, spawnPosition.z);
 
