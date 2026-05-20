@@ -995,3 +995,26 @@ The change is a one-line refactor of branching logic in the disconnect handler. 
 
 None. The acceptance criteria are fully and robustly satisfied, the captured run is clean, and no regressions are visible.
 
+
+## v0.44 — Cleanup nits from 078-enemy-type-spawner  (2026-05-20 06:07:11)
+
+  `gameState.enemies.push(spawner)` have been removed cleanly.
+- No new console errors. `console.log` is silent apart from expected
+  vite/init/debugScenario lines.
+- The change is the smallest possible refactor — it does exactly what
+  the ticket asked.
+
+## Design / requirements consistency
+- `game/docs/design.md` calls out the spawner as a real enemy type;
+  surfacing it in both debug scenarios brings the QA tooling in line
+  with the design.
+- No foundation requirement is regressed: enemy-creation flow continues
+  to go through `spawnEnemy()` everywhere except a `lastSpawnTime`
+  override that mirrors what runtime ticking does.
+
+## Remaining gaps
+None. Both acceptance criteria are met, the captured run is clean, the
+refactor uses the shared helper, and the spawner is now visible in
+`mixed-enemies` (probe `enemies: 4`) and produces an add in
+`spawner-active` (probe `enemies: 2`).
+
