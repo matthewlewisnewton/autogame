@@ -15,7 +15,8 @@ import {
 	DETECTION_RADIUS,
 	TICK_RATE,
 	ENEMY_DEFS,
-	spawnEnemy
+	spawnEnemy,
+	updateEnemies
 } from '../index.js';
 
 // ── Helpers ──
@@ -1927,5 +1928,148 @@ describe('killing miniboss via weapon card (integration)', () => {
 
 		// defeatedEnemies should have incremented
 		expect(gameState.run.objective.defeatedEnemies).toBeGreaterThan(defeatedBefore);
+	});
+});
+
+describe('spawner spawns skirmishers (integration)', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('initial enemy list contains a spawner after entering playing phase', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spawner-active' });
+
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+
+		// Wait for stateUpdate to arrive after debug scenario
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Verify initial enemies contain a spawner
+		const spawners = gameState.enemies.filter(e => e.type === 'spawner');
+		expect(spawners.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('enemy count increases after advancing time past spawnIntervalMs', async () => {
+		// Enter playing phase via debug scenario to get a valid run state
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Manually set up a clean spawner — replaces all enemies so the
+		// concurrent game loop can't interfere with our baseline.
+		const spawner = {
+			id: 'test-spawner',
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: ENEMY_DEFS.spawner.hp,
+			maxHp: ENEMY_DEFS.spawner.hp,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		};
+		gameState.enemies = [spawner];
+		const initialCount = gameState.enemies.length;
+
+		updateEnemies();
+
+		// Enemy count should have increased (at least one new skirmisher add)
+		expect(gameState.enemies.length).toBeGreaterThan(initialCount);
+	});
+
+	it('new enemy has type skirmisher and spawnedBy matching spawner id', async () => {
+		// Enter playing phase via debug scenario to get a valid run state
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Manually set up a clean spawner
+		const spawner = {
+			id: 'test-spawner',
+			x: 0,
+			z: 0,
+			type: 'spawner',
+			hp: ENEMY_DEFS.spawner.hp,
+			maxHp: ENEMY_DEFS.spawner.hp,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 },
+			lastSpawnTime: Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 100,
+		};
+		const spawnerId = spawner.id;
+		gameState.enemies = [spawner];
+		const initialIds = new Set(gameState.enemies.map(e => e.id));
+
+		updateEnemies();
+
+		// Find the newly spawned enemy
+		const newEnemies = gameState.enemies.filter(e => !initialIds.has(e.id));
+		expect(newEnemies.length).toBeGreaterThanOrEqual(1);
+
+		// At least one new enemy should be a skirmisher spawned by the spawner
+		const add = newEnemies.find(e => e.type === 'skirmisher' && e.spawnedBy === spawnerId);
+		expect(add).toBeDefined();
+	});
+
+	it('no regression: grunt and miniboss enemies still present and unaffected', async () => {
+		// Enter playing phase via summon-ready (uses spawnEnemies which spawns mixed types)
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+
+		const debugResult = await debugResultPromise;
+		expect(debugResult.ok).toBe(true);
+
+		await waitForEvent(socket, 'stateUpdate');
+
+		// Verify grunt and miniboss exist in the initial spawn
+		const grunts = gameState.enemies.filter(e => e.type === 'grunt');
+		const minibosses = gameState.enemies.filter(e => e.type === 'miniboss');
+		expect(grunts.length).toBeGreaterThanOrEqual(1);
+		expect(minibosses.length).toBeGreaterThanOrEqual(1);
+
+		// Record their HP before advancing time
+		const gruntIds = new Set(grunts.map(g => g.id));
+		const minibossIds = new Set(minibosses.map(m => m.id));
+		const gruntHpBefore = {};
+		const minibossHpBefore = {};
+		for (const g of grunts) gruntHpBefore[g.id] = g.hp;
+		for (const m of minibosses) minibossHpBefore[m.id] = m.hp;
+
+		// Clear minions to avoid them damaging enemies during the time advance
+		gameState.minions = [];
+
+		// Advance time past spawnIntervalMs and call updateEnemies
+		await sleep(ENEMY_DEFS.spawner.spawnIntervalMs + 500);
+		updateEnemies();
+
+		// Verify grunts and minibosses are still present with same HP
+		for (const id of gruntIds) {
+			const enemy = gameState.enemies.find(e => e.id === id);
+			expect(enemy).toBeDefined();
+			expect(enemy.hp).toBe(gruntHpBefore[id]);
+		}
+		for (const id of minibossIds) {
+			const enemy = gameState.enemies.find(e => e.id === id);
+			expect(enemy).toBeDefined();
+			expect(enemy.hp).toBe(minibossHpBefore[id]);
+		}
 	});
 });
