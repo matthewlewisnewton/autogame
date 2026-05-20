@@ -280,6 +280,20 @@ function removeDeadEnemies() {
 }
 
 /**
+ * Spawn loot for all dead enemies, remove them, and check run terminal state.
+ * Replaces the 3-line inline pattern that appeared in updateMinions, the weapon
+ * card branch, and the summon card branch.
+ */
+function cleanupAfterDamage() {
+  for (const e of gameState.enemies) {
+    if (e.hp <= 0) spawnLoot(e.x, e.z);
+  }
+  if (removeDeadEnemies() > 0) {
+    checkRunTerminalState();
+  }
+}
+
+/**
  * Build a run summary object from the current game state.
  */
 function buildRunSummary(status) {
@@ -931,13 +945,8 @@ function updateMinions() {
     }
   }
 
-  // Spawn loot for dead enemies killed by minion attacks
-  for (const e of gameState.enemies) {
-    if (e.hp <= 0) spawnLoot(e.x, e.z);
-  }
-  if (removeDeadEnemies() > 0) {
-    checkRunTerminalState();
-  }
+  // Cleanup dead enemies after minion attacks
+  cleanupAfterDamage();
 
   // Decrement TTL and remove expired/dead minions
   for (const minion of gameState.minions) {
@@ -1144,13 +1153,8 @@ function startServer(port) {
         hits.push({ enemyId: enemy.id, hp: enemy.hp });
       }
 
-      // Spawn loot for dead enemies
-      for (const e of gameState.enemies) {
-        if (e.hp <= 0) spawnLoot(e.x, e.z);
-      }
-      if (removeDeadEnemies() > 0) {
-        checkRunTerminalState();
-      }
+      // Cleanup dead enemies after weapon attack
+      cleanupAfterDamage();
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -1196,13 +1200,8 @@ function startServer(port) {
         }
       }
 
-      // Spawn loot for dead enemies
-      for (const e of gameState.enemies) {
-        if (e.hp <= 0) spawnLoot(e.x, e.z);
-      }
-      if (removeDeadEnemies() > 0) {
-        checkRunTerminalState();
-      }
+      // Cleanup dead enemies after summon attack
+      cleanupAfterDamage();
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -1465,6 +1464,7 @@ if (typeof module !== 'undefined' && module.exports) {
     startDungeonRun,
     recordEnemyDefeated,
     removeDeadEnemies,
+    cleanupAfterDamage,
     clampObjectiveProgress,
     buildRunSummary,
     checkRunTerminalState,
