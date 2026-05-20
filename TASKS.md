@@ -25,8 +25,8 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
 - [x] [013-summon-cards](tickets/013-summon-cards/)
 - [x] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
-- [ ] [059-enemy-types-skirmisher-miniboss](tickets/059-enemy-types-skirmisher-miniboss/)
-- [ ] [060-enemy-type-spawner](tickets/060-enemy-type-spawner/)
+- [ ] [077-enemy-types-skirmisher-miniboss](tickets/077-enemy-types-skirmisher-miniboss/)
+- [ ] [078-enemy-type-spawner](tickets/078-enemy-type-spawner/)
 
 ## Backlog — World & Economy
 - [x] [016-loot-and-currency](tickets/016-loot-and-currency/)

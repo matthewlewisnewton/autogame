@@ -68,5 +68,5 @@ tune during implementation:
 
 ## Out of Scope
 
-- Spawner enemy that summons skirmishers → `060-enemy-type-spawner`
+- Spawner enemy that summons skirmishers → `078-enemy-type-spawner`
 - Room-based spawn weights, bosses with phases, new attack patterns
