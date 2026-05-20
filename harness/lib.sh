@@ -485,6 +485,16 @@ _run_cli() {
   local label="$1" out="$2" tmo="$3" prompt="$4"; shift 4
   local attempt=1 rc reason cli_pid quota_seen_at quota_fast_failed now started_ms ended_ms
   local quota_fast_fail_seconds="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
+  # Per-label retry budget. gemini has none on purpose: when the primary QA
+  # call fails (timeout, empty output, generic error), run_subtask's tier
+  # chain — cursor-agent/composer-2.5 then claude — *is* the retry. Burning
+  # ~31 min (3 × 600s + 2 × 20s backoff) on the same broken gemini call
+  # before falling through to composer is dead wall-clock.
+  local max_retries
+  case "$label" in
+    gemini) max_retries=0 ;;
+    *)      max_retries="$CLI_RETRIES" ;;
+  esac
   while :; do
     started_ms="$(date +%s%3N 2>/dev/null || date +%s000)"
     emit_progress_event "agent_start" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"timeoutSeconds\":$tmo}"
@@ -533,7 +543,7 @@ _run_cli() {
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"
       return 2
     fi
-    if [ "$attempt" -gt "$CLI_RETRIES" ]; then
+    if [ "$attempt" -gt "$max_retries" ]; then
       log "[tool-failure] $label failed after $attempt attempts (last rc=$rc, reason=$reason)"
       record_agent_usage "$label" "$out" "$attempt" "$rc" "tool_failure" "$reason" "$started_ms" "$ended_ms" "$prompt"
       emit_progress_event "agent_finish" "{\"agent\":$(json_string "$label"),\"outfile\":$(json_string "$out"),\"attempt\":$attempt,\"rc\":$rc,\"status\":\"tool_failure\",\"reason\":$(json_string "$reason")}"
