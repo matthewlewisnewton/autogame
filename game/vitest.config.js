@@ -20,7 +20,8 @@ export default defineConfig({
 				'server/index.js',
 				'client/cards.js',
 				'client/collision.js',
-				'client/hand.js'
+				'client/hand.js',
+				'client/delta.js'
 			],
 			thresholds: {
 				statements: 70,
