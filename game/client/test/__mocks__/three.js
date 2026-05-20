@@ -55,6 +55,7 @@ export const THREE = {
 	CylinderGeometry: stubClass('CylinderGeometry'),
 	ConeGeometry: stubClass('ConeGeometry'),
 	PlaneGeometry: stubClass('PlaneGeometry'),
+	OctahedronGeometry: stubClass('OctahedronGeometry'),
 	// Materials
 	MeshStandardMaterial: stubClass('MeshStandardMaterial', {
 		dispose: function() {},
@@ -85,6 +86,7 @@ export const RingGeometry = THREE.RingGeometry;
 export const CylinderGeometry = THREE.CylinderGeometry;
 export const ConeGeometry = THREE.ConeGeometry;
 export const PlaneGeometry = THREE.PlaneGeometry;
+export const OctahedronGeometry = THREE.OctahedronGeometry;
 export const MeshStandardMaterial = THREE.MeshStandardMaterial;
 export const Mesh = THREE.Mesh;
 export const DoubleSide = THREE.DoubleSide;

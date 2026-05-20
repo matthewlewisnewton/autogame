@@ -17,9 +17,13 @@ function stubClass(name) {
 				if (typeof this.color === 'number') {
 					this.color = { _value: this.color, getHex: function() { return this._value; }, setHex: function(v) { this._value = v; } };
 				}
+				// Wrap numeric emissive the same way
+				if (typeof this.emissive === 'number') {
+					this.emissive = { _value: this.emissive, getHex: function() { return this._value; }, setHex: function(v) { this._value = v; }, set: function(v) { this._value = v; } };
+				}
 			}
 			// Geometry constructors — store parameters so tests can inspect them
-			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry'];
+			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry'];
 			if (geoNames.includes(name)) {
 				this.parameters = {};
 				if (name === 'ConeGeometry') {
@@ -35,6 +39,8 @@ function stubClass(name) {
 				} else if (name === 'PlaneGeometry') {
 					this.parameters = { width: args[0], height: args[1] };
 				} else if (name === 'IcosahedronGeometry') {
+					this.parameters = { radius: args[0], detail: args[1] };
+				} else if (name === 'OctahedronGeometry') {
 					this.parameters = { radius: args[0], detail: args[1] };
 				}
 			}
@@ -99,6 +105,7 @@ const THREE = {
 	ConeGeometry: stubClass('ConeGeometry'),
 	PlaneGeometry: stubClass('PlaneGeometry'),
 	IcosahedronGeometry: stubClass('IcosahedronGeometry'),
+	OctahedronGeometry: stubClass('OctahedronGeometry'),
 	MeshStandardMaterial: stubClass('MeshStandardMaterial'),
 	Mesh: stubClass('Mesh'),
 	DoubleSide: 2,

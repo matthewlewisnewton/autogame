@@ -1394,6 +1394,17 @@ describe('createEnemyMesh()', () => {
 		expect(mesh.material.color.getHex()).toBe(0xff6600);
 	});
 
+	it('creates a teal octahedron for spawner type', async () => {
+		await import('../main.js');
+
+		const mesh = window.createEnemyMesh('spawner');
+		expect(mesh).toBeDefined();
+		expect(mesh.geometry.parameters.radius).toBe(0.6);
+		expect(mesh.material.color.getHex()).toBe(0x00ccaa);
+		expect(mesh.material.emissive.getHex()).toBe(0x00ccaa);
+		expect(mesh.material.emissiveIntensity).toBe(0.4);
+	});
+
 	it('creates a purple cone for miniboss type', async () => {
 		await import('../main.js');
 
@@ -1460,6 +1471,7 @@ describe('enemyMeshHalfHeight()', () => {
 		expect(window.enemyMeshHalfHeight('grunt')).toBe(0.5);
 		expect(window.enemyMeshHalfHeight('skirmisher')).toBe(0.3);
 		expect(window.enemyMeshHalfHeight('miniboss')).toBe(0.9);
+		expect(window.enemyMeshHalfHeight('spawner')).toBe(0.5);
 	});
 
 	it('defaults to grunt half-height for unknown types', async () => {
