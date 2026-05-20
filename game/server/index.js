@@ -1278,6 +1278,7 @@ function startServer(port) {
 
     const player = gameState.players[socket.id];
     if (!player) return;
+    if (player.dead) return; // dead players cannot collect loot
 
     const lootIdx = gameState.loot.findIndex(l => l.id === data.lootId);
     if (lootIdx === -1) return; // already removed — ignore duplicate

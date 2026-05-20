@@ -1716,3 +1716,52 @@ describe('Loot pickup throttle — idempotency', () => {
 		expect(player.currency).toBe(currencyBefore);
 	});
 });
+
+describe('Loot pickup — dead player exclusion', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await new Promise((resolve) => httpServer.close(resolve));
+	});
+
+	it('emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged', async () => {
+		const player = gameState.players[socket.id];
+		const lootValue = 12;
+
+		// Place a loot item near the player
+		gameState.loot.push({
+			id: 'loot_dead_test',
+			x: player.x + 1,
+			z: player.z + 1,
+			value: lootValue,
+			createdAt: Date.now()
+		});
+
+		// Mark the player as dead
+		player.dead = true;
+		const currencyBefore = player.currency;
+
+		// Attempt pickup — should be rejected
+		socket.emit('lootPickup', { lootId: 'loot_dead_test' });
+		await sleep(50);
+
+		// Loot must still exist
+		expect(gameState.loot.find(l => l.id === 'loot_dead_test')).toBeDefined();
+		// Currency must be unchanged
+		expect(player.currency).toBe(currencyBefore);
+
+		// Revive the player — pickup should now succeed
+		player.dead = false;
+		socket.emit('lootPickup', { lootId: 'loot_dead_test' });
+		await sleep(50);
+
+		expect(gameState.loot.find(l => l.id === 'loot_dead_test')).toBeUndefined();
+		expect(player.currency).toBe(currencyBefore + lootValue);
+	});
+});
