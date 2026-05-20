@@ -688,8 +688,14 @@ function checkAllReady() {
   const all = Object.values(gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
     gameState.gamePhase = 'playing';
-    // Create shuffled draw decks and initialize hands from each player's selected deck
+    // Reset every player to spawn position so no lobby position carries into the dungeon
+    const spawn = firstRoomPosition();
     for (const player of all) {
+      player.x = spawn.x;
+      player.y = 0.5;
+      player.z = spawn.z;
+      player.firstMoveAfterSpawn = false;
+      // Create shuffled draw decks and initialize hands from each player's selected deck
       createDrawDeckFromSelectedDeck(player);
       initPlayerHand(player);
     }
@@ -1210,7 +1216,7 @@ function startServer(port) {
   broadcastLobbyUpdate();
 
   socket.on('move', (data) => {
-    if (gameState.run && gameState.run.status !== 'playing') return;
+    if (gameState.gamePhase !== 'playing') return;
 
     const player = gameState.players[socket.id];
 
@@ -1224,14 +1230,11 @@ function startServer(port) {
 
     if (player) {
       // Speed check: reject moves that exceed MAX_MOVE_DISTANCE_PER_TICK
-      if (!player.firstMoveAfterSpawn) {
-        const dist = Math.hypot(data.x - player.x, data.z - player.z);
-        if (dist > MAX_MOVE_DISTANCE_PER_TICK) {
-          console.warn(`Rejected move from ${socket.id}: exceeded max distance (${dist.toFixed(2)} > ${MAX_MOVE_DISTANCE_PER_TICK.toFixed(2)})`);
-          return;
-        }
+      const dist = Math.hypot(data.x - player.x, data.z - player.z);
+      if (dist > MAX_MOVE_DISTANCE_PER_TICK) {
+        console.warn(`Rejected move from ${socket.id}: exceeded max distance (${dist.toFixed(2)} > ${MAX_MOVE_DISTANCE_PER_TICK.toFixed(2)})`);
+        return;
       }
-      player.firstMoveAfterSpawn = false;
 
       // Wall collision check: reject moves that place the player inside a wall
       const clamped = clampToDungeon(data.x, data.z);
@@ -1241,7 +1244,7 @@ function startServer(port) {
       }
 
       player.x = clamped.x;
-      player.y = data.y;
+      player.y = 0.5;
       player.z = clamped.z;
       player.rotation = data.rotation;
       player.lastActivity = Date.now();
