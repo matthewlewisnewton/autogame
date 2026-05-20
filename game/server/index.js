@@ -14,6 +14,7 @@ const {
 } = require('./dungeon');
 const {
   TICK_RATE,
+  MAX_MOVE_DISTANCE_PER_TICK,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
   ENEMY_ATTACK_RECOVERY_MS,
@@ -554,6 +555,7 @@ function returnPlayersToLobby() {
     player.ownedCards = preservedOwnedCards;
     player.runRewards = preservedRunRewards;
     player.currencyEarnedThisRun = 0;
+    player.firstMoveAfterSpawn = true;
     player.pendingSummons.clear();
   }
 
@@ -597,6 +599,7 @@ function damagePlayer(playerId, amount) {
       const spawn = firstRoomPosition();
       p.hp = MAX_HP;
       p.dead = false;
+      p.firstMoveAfterSpawn = true;
       p.x = spawn.x;
       p.y = 0.5;
       p.z = spawn.z;
@@ -705,6 +708,7 @@ function applyDebugScenario(socket, name) {
 
   player.ready = true;
   player.dead = false;
+  player.firstMoveAfterSpawn = true;
   player.x = spawn.x;
   player.y = 0.5;
   player.z = spawn.z;
@@ -1063,6 +1067,7 @@ function startServer(port) {
         hp: MAX_HP,
         dead: false,
         lastActivity: Date.now(),
+        firstMoveAfterSpawn: true,
         ready: false,
         magicStones: MAX_MAGIC_STONES,
         currency: progress.currency,
@@ -1095,6 +1100,16 @@ function startServer(port) {
     }
 
     if (player) {
+      // Speed check: reject moves that exceed MAX_MOVE_DISTANCE_PER_TICK
+      if (!player.firstMoveAfterSpawn) {
+        const dist = Math.hypot(data.x - player.x, data.z - player.z);
+        if (dist > MAX_MOVE_DISTANCE_PER_TICK) {
+          console.warn(`Rejected move from ${socket.id}: exceeded max distance (${dist.toFixed(2)} > ${MAX_MOVE_DISTANCE_PER_TICK.toFixed(2)})`);
+          return;
+        }
+      }
+      player.firstMoveAfterSpawn = false;
+
       const clamped = clampToDungeon(data.x, data.z);
       player.x = clamped.x;
       player.y = data.y;

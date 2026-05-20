@@ -1,6 +1,9 @@
 // Server configuration constants
 
 const TICK_RATE = 20; // times per second
+const MOVE_SPEED = 12; // units per second — maximum player movement speed (matches client terminal velocity)
+const MOVE_SPEED_TOLERANCE = 1.5; // multiplier to account for network latency / frame timing variance
+const MAX_MOVE_DISTANCE_PER_TICK = MOVE_SPEED * (1 / TICK_RATE) * MOVE_SPEED_TOLERANCE; // max units per tick (12 * 0.05 * 1.5 = 0.9)
 const DETECTION_RADIUS = 8; // units
 const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
 const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
@@ -28,6 +31,9 @@ const VICTORY_REWARD_ROTATION = [
 
 module.exports = {
   TICK_RATE,
+  MOVE_SPEED,
+  MOVE_SPEED_TOLERANCE,
+  MAX_MOVE_DISTANCE_PER_TICK,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
   ENEMY_ATTACK_RECOVERY_MS,
