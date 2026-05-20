@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
-import { drawCard, initHand as initHandFromModule, initHandFromDeck, hand, slotCooldowns, canUseSlot } from './hand.js';
+import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
 import { clampDelta } from './delta.js';
 import {
 	buildDungeon,
@@ -262,10 +262,21 @@ function renderHand() {
 }
 
 function initHand() {
-	const serverDeck = (gameState && gameState.players && gameState.players[myId])
-		? gameState.players[myId].deck
+	const serverHand = (gameState && gameState.players && gameState.players[myId])
+		? gameState.players[myId].hand
 		: null;
-	initHandFromDeck(serverDeck, renderHand);
+
+	if (Array.isArray(serverHand) && serverHand.length > 0) {
+		// Use server-authoritative hand
+		for (let i = 0; i < 4; i++) {
+			hand[i] = serverHand[i] ? { ...serverHand[i] } : null;
+		}
+		renderHand();
+		return;
+	}
+
+	// Fallback: init before run starts — use module's default starting deck
+	initHandFromModule(renderHand);
 }
 
 function refillSlot(index) {
@@ -575,8 +586,20 @@ socket.on('stateUpdate', (state) => {
   // Update objective HUD
   updateObjectiveHud();
 
-  // Re-render hand to sync .no-ms / .empty classes with current Magic Stones
-  if (state.gamePhase === 'playing') {
+  // Reconcile hand with server authority + re-render for .no-ms / .empty classes
+  if (state.gamePhase === 'playing' && myId && state.players[myId] && state.players[myId].hand) {
+    const serverHand = state.players[myId].hand;
+    let changed = false;
+    for (let i = 0; i < 4; i++) {
+      const localCard = hand[i];
+      const serverCard = serverHand[i];
+      if (localCard?.id !== serverCard?.id) {
+        hand[i] = serverCard ? { ...serverCard } : null;
+        changed = true;
+      }
+    }
+    if (changed) renderHand();
+  } else if (state.gamePhase === 'playing') {
     renderHand();
   }
 
