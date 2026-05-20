@@ -58,6 +58,9 @@ export const CAMERA_NEAR = 0.1;
 /** Camera far clipping plane */
 export const CAMERA_FAR = 1000;
 
+/** Camera offset relative to player position {x, y, z} */
+export const CAMERA_OFFSET = { x: 0, y: 5, z: 10 };
+
 // ── Movement ──
 
 /** Player acceleration (units/s²) */
@@ -65,11 +68,6 @@ export const acceleration = 15.0;
 
 /** Player friction factor (raised to delta*60 power each frame) */
 export const friction = 0.88;
-
-// ── Camera ──
-
-/** Camera offset relative to player position {x, y, z} */
-export const CAMERA_OFFSET = { x: 0, y: 5, z: 10 };
 
 // ── Dungeon ──
 
