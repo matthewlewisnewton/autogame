@@ -648,8 +648,8 @@ function spawnEnemies() {
   const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   for (const type of spawnTable) {
     const pos = randomRoomPosition();
-    spawnEnemy(pos.x, pos.z, type);
-    gameState.enemies[gameState.enemies.length - 1].wanderTarget = randomWanderTarget();
+    const enemy = spawnEnemy(pos.x, pos.z, type);
+    enemy.wanderTarget = randomWanderTarget();
   }
 }
 
@@ -681,8 +681,8 @@ function ensureNearbyEnemy(x, z) {
   const nearby = gameState.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);
   if (nearby) return;
 
-  spawnEnemy(x + 3, z, 'grunt');
-  gameState.enemies[gameState.enemies.length - 1].wanderTarget = { x: x + 3, z };
+  const enemy = spawnEnemy(x + 3, z, 'grunt');
+  enemy.wanderTarget = { x: x + 3, z };
 }
 
 function enterPlayingPhase() {
@@ -840,8 +840,8 @@ function updateEnemies() {
 				if (aliveAdds < spawnMaxAlive) {
 					// Place add within ~3 units of spawner
 					const addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);
-					spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
-					gameState.enemies[gameState.enemies.length - 1].wanderTarget = randomWanderTarget();
+					const add = spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
+					add.wanderTarget = randomWanderTarget();
 					enemy.lastSpawnTime = now;
 				}
 			}
