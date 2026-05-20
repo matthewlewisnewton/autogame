@@ -4,6 +4,7 @@ game/coverage/
 .env
 .DS_Store
 .claude/
+.antigravitycli/
 
 # harness run artifacts — transient. Progress is recorded via git tags + LOGBOOK.md.
 LOOPLOG.txt
