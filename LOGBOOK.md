@@ -1202,3 +1202,26 @@ PASS. This ticket did not add a new debug scenario or use a scenario capture. Th
 
 None blocking. Non-blocking cleanup opportunities are recorded separately in `nits.md`.
 
+
+## v0.53 — Cleanup nits from 019-codebase-cleanup  (2026-05-20 12:38:01)
+
+- **Production note:** `server.setMaxListeners(0)` applies in production too; acceptable for this codebase (test `startTestServer` stacks `once('error')` on the shared module server). Not a functional defect.
+
+---
+
+## Debug scenarios
+
+This ticket **did not add or modify** any `?debugScenario=` flow. Existing debug gating in `main.js` (localhost-only URL param → `socket.emit('debugScenario')`) is unchanged and was not exercised in capture (`debugScenario: null`). No debug-scenario review required.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are fully satisfied; runtime capture and tests corroborate the code.
+
+### Non-blocking nits (backlog)
+
+See `nits.md` for optional follow-ups (config section header duplication; tests hardcoding `0.5` loot threshold).
+
+---
+
