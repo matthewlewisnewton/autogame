@@ -730,6 +730,7 @@ function applyDebugScenario(socket, name) {
     spawnEnemy(player.x + 3, player.z, 'grunt');
     spawnEnemy(player.x - 3, player.z, 'skirmisher');
     spawnEnemy(player.x, player.z + 4, 'miniboss');
+    spawnEnemy(player.x, player.z - 4, 'spawner');
     // Set wander targets so they don't all stack
     for (const e of gameState.enemies) {
       e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
@@ -740,19 +741,9 @@ function applyDebugScenario(socket, name) {
     player.hp = 100;
     player.magicStones = MAX_MAGIC_STONES;
     gameState.enemies = [];
-    const spawner = {
-      id: crypto.randomUUID(),
-      x: player.x + 4,
-      z: player.z,
-      type: 'spawner',
-      hp: ENEMY_DEFS.spawner.hp,
-      maxHp: ENEMY_DEFS.spawner.hp,
-      state: 'idle',
-      attackState: 'idle',
-      wanderTarget: { x: player.x + 4, z: player.z },
-      lastSpawnTime: Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500,
-    };
-    gameState.enemies.push(spawner);
+    spawnEnemy(player.x + 4, player.z, 'spawner');
+    const spawner = gameState.enemies[gameState.enemies.length - 1];
+    spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
   }
 
   broadcastLobbyUpdate();
