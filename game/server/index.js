@@ -1433,9 +1433,8 @@ function startServer(port) {
       returnPlayersToLobby();
     } else if (gameState.gamePhase === 'playing') {
       checkRunTerminalState();
-    }
-
-    if (gameState.gamePhase === 'lobby') {
+    } else if (gameState.gamePhase === 'lobby') {
+      // Non-last player disconnects during lobby — broadcast updated player list
       broadcastLobbyUpdate();
     }
   });
