@@ -343,6 +343,39 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     continue
   fi
 
+  # --- 2b. Coverage on changed files (before Claude review) ---
+  # Runs tests affected by changed files with coverage reporting. Thresholds
+  # are disabled (--coverage.thresholds.min=0) so this is a visibility gate,
+  # not a hard blocker — the report is emitted to the review artifacts dir.
+  if [ "$PIPELINE_COVERAGE_ENABLED" = "1" ]; then
+    COVERAGE_DIR="$TDIR/coverage-round-$round"
+    mkdir -p "$COVERAGE_DIR"
+    log "[coverage] running coverage on changed files (baseline $BASE_REF)..."
+    emit_progress_event "coverage_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"baseline\":$(json_string "$BASE_REF")}"
+    (
+      cd "$PIPELINE_CHECK_CWD" || exit 127
+      timeout -k 15 "$PIPELINE_COVERAGE_TIMEOUT" npx vitest run \
+        --coverage \
+        --coverage.include 'server/index.js' \
+        --coverage.include 'client/cards.js' \
+        --coverage.include 'client/collision.js' \
+        --coverage.include 'client/hand.js' \
+        --coverage.include 'client/delta.js' \
+        --coverage.thresholds.statements 0 \
+        --coverage.thresholds.branches 0 \
+        --coverage.thresholds.functions 0 \
+        --coverage.thresholds.lines 0 \
+        --changed "$BASE_REF"
+    ) </dev/null > "$COVERAGE_DIR/coverage.log" 2>&1
+    coverage_rc=$?
+    if [ $coverage_rc -ne 0 ]; then
+      log "[coverage] coverage run finished non-zero (rc=$coverage_rc) — not blocking review"
+    else
+      log "[coverage] coverage report written to $COVERAGE_DIR"
+    fi
+    emit_progress_event "coverage_finish" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"rc\":$coverage_rc}"
+  fi
+
   # --- 3. CLAUDE REVIEW of the whole top-level ticket ---
   log "[review] all sub-tickets passed — running claude review"
   emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
