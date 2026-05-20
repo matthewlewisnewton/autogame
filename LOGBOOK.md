@@ -1156,3 +1156,26 @@ Vitest ran with no tests matching changed files (0% report). Expected for a scri
 
 None. All acceptance criteria are satisfied and the captured game run is healthy.
 
+
+## v0.51 — Cleanup nits from 086-cleanup-pnpm-and-security  (2026-05-20 09:54:24)
+
+
+- **`game/docs/design.md`:** Unaffected — no gameplay, combat, or lobby changes.
+- **`game/docs/requirements.md`:** No regression — changes are limited to project docs (`CONTEXT.md`) and supply-chain script comments.
+- **Integration:** Sub-tickets align with the top-level ticket; no drift between CONTEXT wording and script behavior.
+
+---
+
+## Code quality
+
+- Diff is minimal and focused (one CONTEXT sentence + comment-only script edits).
+- `check:deps` still passes on the current lockfile.
+- No dead code, no behavioral regressions introduced by this ticket.
+- Vitest coverage log shows no files changed in the game test surface (expected for a docs/comments ticket).
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are satisfied, runtime capture is healthy, and supply-chain tooling behavior is unchanged aside from clearer documentation.
+
