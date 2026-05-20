@@ -926,3 +926,26 @@ None. The single acceptance criterion is fully satisfied, the game runs cleanly,
 
 None blocking.
 
+
+## v0.41 — Enemy Type: Spawner (Summons Skirmishers)  (2026-05-20 05:08:14)
+
+  localhost/127.0.0.1/::1. The server further guards with
+  `isDebugScenarioAllowed()` (line 665) — local origin or
+  `ALLOW_DEBUG_SCENARIOS=1`. Normal gameplay never touches it.
+- Same end-state via normal play: the default spawn table now includes a
+  spawner, so a real run reaches the same "spawner present and producing
+  adds" state on its own — the debug scenario simply rewinds `lastSpawnTime`
+  to make the first add appear immediately.
+- The scenario does not skip invariants: it calls `enterPlayingPhase()` which
+  in turn calls `startDungeonRun()`, and the spawner it inserts uses the same
+  fields as any other spawner — so spawn-cap counting, `spawnedBy`
+  bookkeeping, removal on death, and objective-counter increments all run
+  through the production paths.
+- **Met.**
+
+## Remaining gaps
+
+None blocking. Spawn behaviour, mesh, integration test, regression coverage,
+and the debug scenario all check out, and the captured run shows the live
+game producing an add at the expected cadence.
+
