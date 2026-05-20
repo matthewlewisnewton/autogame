@@ -1110,3 +1110,26 @@ None blocking. See nits.md for non-blocking polish items.
 None blocking. The captured run is healthy, both acceptance criteria are
 satisfied robustly, and the tests pin the new behavior.
 
+
+## v0.49 — Package Manager Migration and Security  (2026-05-20 07:22:19)
+
+- **Met.**
+
+### 4. "The game client and server start up correctly after the migration"
+- Servers listening; client served; game reached `phase: playing` with 1 player and 5 enemies; player movement registered.
+- No console pageerrors, no server-side errors.
+- **Met.**
+
+## Consistency with design / requirements
+- `game/docs/design.md` has no package-manager references; nothing to regress.
+- No game code changed in this ticket. Only `CONTEXT.md`, `harness/lib.sh`, `harness/prompts/implement.md`, and the new `game/scripts/check_package_age.js`. No functional gameplay surface touched.
+- No debug scenario added or modified by this ticket.
+
+## Code quality
+- `check_package_age.js` has one tiny dead binding: the `const deps = node.dependencies || node.devDependencies || node.optionalDependencies;` at line 32 is never read (the function instead builds `depMaps` from the same fields below). Minor — non-blocking.
+- The script is not yet wired into `package.json` scripts (e.g. `pnpm run check:deps`) or any CI pipeline, so it requires manual invocation. Acceptance criterion only says "a script **or** GitHub Action is added" so this still meets the bar; the integration point is a follow-up.
+- No console errors. No new tests, but the ticket is infrastructure-only.
+
+## Remaining gaps
+None blocking.
+
