@@ -542,6 +542,58 @@ function createDrawDeckFromSelectedDeck(player) {
 }
 
 /**
+ * Draw one card from `player.deck` and return a card object.
+ * Returns null when the deck is empty.
+ * Card object shape: { id, name, type, charges, remainingCharges, magicStoneCost? }
+ */
+function drawCardFromDeck(player) {
+  if (!player.deck || player.deck.length === 0) return null;
+  const cardId = player.deck.pop();
+  const def = CARD_DEFS[cardId];
+  if (!def) return null;
+  const card = {
+    id: def.id,
+    name: def.name,
+    type: def.type,
+    charges: def.charges,
+    remainingCharges: def.charges,
+  };
+  if (def.magicStoneCost != null) {
+    card.magicStoneCost = def.magicStoneCost;
+  }
+  return card;
+}
+
+/**
+ * Deal up to 4 cards from `player.deck` into `player.hand`.
+ * Hand is an array of card objects (or undefined for empty slots).
+ */
+function initPlayerHand(player) {
+  player.hand = [];
+  for (let i = 0; i < 4; i++) {
+    const card = drawCardFromDeck(player);
+    if (card) {
+      player.hand.push(card);
+    }
+  }
+  return player.hand;
+}
+
+/**
+ * Draw a replacement card into the slot at `slotIndex` in `player.hand`.
+ * Does nothing when the deck is empty.
+ */
+function drawReplacementCard(player, slotIndex) {
+  const card = drawCardFromDeck(player);
+  if (card) {
+    player.hand[slotIndex] = card;
+  } else {
+    // Deck exhausted — remove the slot entry so client sees an empty slot
+    player.hand.splice(slotIndex, 1);
+  }
+}
+
+/**
  * Check whether the current run has reached a terminal state.
  * Emits exactly one terminal event per run (guarded by run.status === 'playing').
  *
@@ -636,9 +688,10 @@ function checkAllReady() {
   const all = Object.values(gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
     gameState.gamePhase = 'playing';
-    // Create shuffled draw decks from each player's selected deck
+    // Create shuffled draw decks and initialize hands from each player's selected deck
     for (const player of all) {
       createDrawDeckFromSelectedDeck(player);
+      initPlayerHand(player);
     }
     spawnEnemies();
     startDungeonRun();
@@ -756,6 +809,11 @@ function ensureNearbyEnemy(x, z) {
 function enterPlayingPhase() {
   if (gameState.gamePhase !== 'playing') {
     gameState.gamePhase = 'playing';
+    // Initialize draw decks and hands for all players (debug scenarios bypass checkAllReady)
+    for (const player of Object.values(gameState.players)) {
+      createDrawDeckFromSelectedDeck(player);
+      initPlayerHand(player);
+    }
     spawnEnemies();
     startDungeonRun();
     io.emit('startGame');
@@ -1206,11 +1264,20 @@ function startServer(port) {
     const player = gameState.players[socket.id];
     if (!player || player.dead) return;
 
+    // (4) Hand validation: slot must exist and card id must match
+    if (!player.hand || !player.hand[data.slotIndex] || player.hand[data.slotIndex].id !== data.cardId) {
+      return; // silently reject
+    }
+
+    const handCard = player.hand[data.slotIndex];
     const originX = player.x;
     const originZ = player.z;
 
     // ── Weapon branch (forward cone attack) ──
     if (cardDef.type === 'weapon') {
+      // Decrement remaining charges
+      handCard.remainingCharges -= 1;
+
       const rotation = player.rotation; // radians, 0 = +X axis
 
       // Forward direction vector from player rotation (on x-z plane)
@@ -1241,6 +1308,14 @@ function startServer(port) {
 
       // Cleanup dead enemies after weapon attack
       cleanupAfterDamage();
+
+      // Exhaust: if charges reach 0, remove card and draw replacement
+      if (handCard.remainingCharges <= 0) {
+        drawReplacementCard(player, data.slotIndex);
+      }
+
+      // Broadcast updated hand to all clients
+      io.emit('stateUpdate', stateSnapshot());
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -1289,6 +1364,12 @@ function startServer(port) {
       // Cleanup dead enemies after summon attack
       cleanupAfterDamage();
 
+      // Remove card from hand and draw replacement
+      drawReplacementCard(player, data.slotIndex);
+
+      // Broadcast updated hand to all clients
+      io.emit('stateUpdate', stateSnapshot());
+
       // Broadcast result to all clients
       io.emit('cardUsed', {
         playerId: socket.id,
@@ -1317,6 +1398,12 @@ function startServer(port) {
         ttl: 30
       };
       gameState.minions.push(minion);
+
+      // Remove card from hand and draw replacement
+      drawReplacementCard(player, data.slotIndex);
+
+      // Broadcast updated hand to all clients
+      io.emit('stateUpdate', stateSnapshot());
 
       io.emit('cardUsed', {
         playerId: socket.id,
@@ -1563,6 +1650,9 @@ if (typeof module !== 'undefined' && module.exports) {
     validateDeck,
     canAddCardToDeck,
     createDrawDeckFromSelectedDeck,
+    drawCardFromDeck,
+    initPlayerHand,
+    drawReplacementCard,
     CARD_DEFS,
     STARTING_DECK_IDS,
     checkWallCollision,
