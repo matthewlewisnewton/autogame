@@ -1929,11 +1929,12 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, spawner keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
 		expect(ENEMY_DEFS).toHaveProperty('miniboss');
+		expect(ENEMY_DEFS).toHaveProperty('spawner');
 	});
 
 	it('grunt has correct stat values', () => {
@@ -1959,6 +1960,17 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.miniboss.attackDamage).toBe(18);
 		expect(ENEMY_DEFS.miniboss.attackWindupMs).toBe(1200);
 	});
+
+	it('spawner has correct stat and spawning fields', () => {
+		expect(ENEMY_DEFS.spawner.hp).toBe(60);
+		expect(ENEMY_DEFS.spawner.chaseSpeed).toBe(1.8);
+		expect(ENEMY_DEFS.spawner.wanderSpeed).toBe(0.9);
+		expect(ENEMY_DEFS.spawner.attackDamage).toBe(8);
+		expect(ENEMY_DEFS.spawner.attackWindupMs).toBe(900);
+		expect(ENEMY_DEFS.spawner.spawnIntervalMs).toBe(4000);
+		expect(ENEMY_DEFS.spawner.spawnMaxAlive).toBe(3);
+		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
+	});
 });
 
 // ── spawnEnemy type validation ──
@@ -1981,7 +1993,8 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'grunt')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'skirmisher')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
-		expect(gameState.enemies.length).toBe(3);
+		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
+		expect(gameState.enemies.length).toBe(4);
 	});
 });
 
