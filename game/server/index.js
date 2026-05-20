@@ -27,6 +27,7 @@ const {
   ATTACK_CONE_ANGLE,
   STALE_THRESHOLD,
   BOUNDS_MARGIN,
+  COOLDOWN_MS,
   SPAWN_PADDING,
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
@@ -742,6 +743,7 @@ function returnPlayersToLobby() {
     player.currencyEarnedThisRun = 0;
     player.lastMoveTime = Date.now();
     player.pendingSummons.clear();
+    player.slotCooldowns = [null, null, null, null];
   }
 
   // 4. Broadcast state to all clients
@@ -766,6 +768,7 @@ function checkAllReady() {
       // Create shuffled draw decks and initialize hands from each player's selected deck
       createDrawDeckFromSelectedDeck(player);
       initPlayerHand(player);
+      player.slotCooldowns = [null, null, null, null];
     }
     spawnEnemies();
     startDungeonRun();
@@ -1280,7 +1283,8 @@ function startServer(port) {
         currencyEarnedThisRun: progress.currencyEarnedThisRun,
         selectedDeck: defaultDeck,
         debugScenario: null,
-        pendingSummons: new Set()
+        pendingSummons: new Set(),
+        slotCooldowns: [null, null, null, null]
       };
     }
 
@@ -1369,6 +1373,13 @@ function startServer(port) {
       return; // silently reject
     }
 
+    // (5) Cooldown check: reject if slot is still cooling down
+    const now = Date.now();
+    if (player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
+      socket.emit('cardError', { reason: 'Slot on cooldown' });
+      return;
+    }
+
     const handCard = player.hand[data.slotIndex];
     const originX = player.x;
     const originZ = player.z;
@@ -1408,6 +1419,9 @@ function startServer(port) {
 
       // Cleanup dead enemies after weapon attack
       cleanupAfterDamage();
+
+      // Set slot cooldown
+      player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
 
       // Exhaust: if charges reach 0, remove card and draw replacement
       if (handCard.remainingCharges <= 0) {
@@ -1464,6 +1478,9 @@ function startServer(port) {
       // Cleanup dead enemies after summon attack
       cleanupAfterDamage();
 
+      // Set slot cooldown
+      player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+
       // Remove card from hand and draw replacement
       drawReplacementCard(player, data.slotIndex);
 
@@ -1498,6 +1515,9 @@ function startServer(port) {
         ttl: 30
       };
       gameState.minions.push(minion);
+
+      // Set slot cooldown
+      player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
 
       // Remove card from hand and draw replacement
       drawReplacementCard(player, data.slotIndex);

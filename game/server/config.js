@@ -13,6 +13,7 @@ const SUMMON_RADIUS = 10; // units — radial AoE
 const ATTACK_RANGE = 5; // units — max distance to hit
 const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
 const STALE_THRESHOLD = 10000; // 10 seconds
+const COOLDOWN_MS = 800; // server-side cooldown between uses of the same slot (milliseconds)
 const BOUNDS_MARGIN = 2;
 const SPAWN_PADDING = 2;
 const DECK_MIN_SIZE = 4;
@@ -43,6 +44,7 @@ module.exports = {
   ATTACK_RANGE,
   ATTACK_CONE_ANGLE,
   STALE_THRESHOLD,
+  COOLDOWN_MS,
   BOUNDS_MARGIN,
   SPAWN_PADDING,
   DECK_MIN_SIZE,
