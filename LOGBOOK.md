@@ -834,3 +834,26 @@ pure-cleanup ticket and behaves like one.
 
 None blocking.
 
+
+## v0.37 — Cleanup nits from 017-test-coverage  (2026-05-19 17:12:20)
+
+`game/client/test/main.test.js` no longer contains collision/hand tests. Its describe blocks are now all about functions defined in `main.js` (`renderDeckEditor`, `flashMesh`, `spawnDamageNumber`, `spawnHitSpark`, `markLootCollected`, `renderHand`, `playSound`, `applyWindupFlash`, `Cooldown Enforcement`). Collision/hand coverage moved to `game/client/test/collision-hand.test.js` (373 lines). Filenames now accurately reflect what they test. **Met.**
+
+### 3. Include all tested client modules in coverage scope
+`coverage.include` now lists `server/index.js`, `client/cards.js`, `client/collision.js`, `client/hand.js`, `client/delta.js`. After running `npm test`, the coverage report shows `collision.js` 87.5%, `hand.js` 100%, `delta.js` 100%, `cards.js` 100%, `server/index.js` 96.88% — overall 96.7%, well above the 70% threshold. **Met.**
+
+### 4. Add a delta-time calculation unit test
+A pure helper was extracted to `game/client/delta.js` (`clampDelta(rawDelta)`) and is called from the `animate()` loop at `main.js:1434`. `game/client/test/delta.test.js` has four describe-cases covering normal pass-through, clamping at 0.1 s, zero, and negative inputs. Coverage is 100%. **Met.**
+
+### 5. Remove no-op loop in client/test/setup.js
+`game/client/test/setup.js` no longer contains the `for (const key of Object.keys(THREE)) { THREE[key] = THREE[key]; }` block. `npm test` still passes all 340 tests. **Met.**
+
+## Code quality
+- `clampDelta()` has one short JSDoc explaining *why* (tab-switch / GC spikes) — appropriate non-obvious context.
+- `main.js:5` imports `clampDelta` cleanly; the change to `animate()` is one localized line.
+- No dead code introduced. The split between `main.test.js` and `collision-hand.test.js` is clean — no duplication, imports are consistent.
+- All tests run in the correct environment (jsdom for client, node for server).
+
+## Remaining gaps
+None. Every sub-ticket's acceptance criterion is satisfied, the live game runs cleanly under the regression smoke capture, and the full test suite passes with coverage well above threshold.
+
