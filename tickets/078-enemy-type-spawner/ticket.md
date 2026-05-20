@@ -2,7 +2,7 @@
 
 ## Dependencies
 
-- `059-enemy-types-skirmisher-miniboss` — requires `ENEMY_DEFS`, `skirmisher`
+- `077-enemy-types-skirmisher-miniboss` — requires `ENEMY_DEFS`, `skirmisher`
   type, and per-type AI/stat plumbing.
 
 ## Context
@@ -39,7 +39,7 @@ Suggested behavior:
 
 ## Spawning in Runs
 
-- Adjust the run-start spawn table from 059 to include **one** spawner, e.g.:
+- Adjust the run-start spawn table from 077 to include **one** spawner, e.g.:
   - 2× skirmisher, 1× grunt, 1× miniboss, 1× spawner
 - Keep total initial spawn count ~5; spawner may raise enemy count mid-run.
 
@@ -57,7 +57,7 @@ Suggested behavior:
   use same placement rules as `randomRoomPosition()`.
 - Integration test: start run with spawner, advance time or tick loop, assert enemy
   count increases and at least one add has `skirmisher` type.
-- No regression to grunt/miniboss behavior from 059.
+- No regression to grunt/miniboss behavior from 077.
 
 ## Files
 
