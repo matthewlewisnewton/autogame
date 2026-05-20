@@ -1,0 +1,48 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+stdout | server/test/server.test.js
+[server] Dungeon seed: 138569260, rooms: 9
+[server] Dungeon bounds: x [-39.0, 39.0], z [-39.0, 39.5]
+
+stdout | server/test/server.test.js > updateMinions() > spawns loot for dead enemies and removes them
+[loot] spawned id=57ae8aed-4a0f-47a2-86b7-0450e43bc101 value=6
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > creates loot with correct structure when it spawns
+[loot] spawned id=9812edbc-b811-46f2-8b48-46f6dae6e50a value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot value is in range [5, 20)
+[loot] spawned id=21a64639-3778-44c4-a650-f72219383b99 value=13
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot createdAt is a timestamp
+[loot] spawned id=7f006b4d-9181-46c1-904d-c8d90c880c3c value=11
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+ ✓ |server| server/test/server.test.js (172 tests) 28ms
+ ✓ |client| client/test/main.test.js (71 tests) 364ms
+
+ Test Files  2 passed (2)
+      Tests  243 passed (243)
+   Start at  12:52:12
+   Duration  959ms (transform 41ms, setup 10ms, collect 102ms, tests 393ms, environment 186ms, prepare 106ms)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   62.08 |    93.61 |   71.69 |   62.08 |                       
+ client        |   54.44 |       80 |   22.22 |   54.44 |                       
+  cards.js     |   83.58 |      100 |       0 |   83.58 | 42-52                 
+  collision.js |    28.4 |      100 |       0 |    28.4 | 15-30,45-98           
+  delta.js     |   78.57 |      100 |       0 |   78.57 | 12-14                 
+  hand.js      |   54.46 |    66.66 |      40 |   54.46 | 23-38,47-64,78-102    
+ server        |   64.08 |    94.38 |   81.81 |   64.08 |                       
+  index.js     |   64.08 |    94.38 |   81.81 |   64.08 | ...039-1443,1447-1448 
+---------------|---------|----------|---------|---------|-----------------------
