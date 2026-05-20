@@ -44,9 +44,10 @@ then reviewed as a whole by claude. Order roughly respects dependencies.
 - [x] [037-fix-return-to-lobby-active-run-guard](tickets/037-fix-return-to-lobby-active-run-guard/)
 - [x] [038-fix-card-cooldown-enforcement](tickets/038-fix-card-cooldown-enforcement/)
 - [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
-- [ ] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
+- [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [082-cleanup-reset-state-on-last-disconnect](tickets/082-cleanup-reset-state-on-last-disconnect/)
 - [ ] [081-cleanup-enemy-type-spawner](tickets/081-cleanup-enemy-type-spawner/)
 - [ ] [080-cleanup-enemy-types-skirmisher-miniboss](tickets/080-cleanup-enemy-types-skirmisher-miniboss/)
 - [x] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)

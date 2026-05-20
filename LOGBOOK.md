@@ -949,3 +949,26 @@ None blocking. Spawn behaviour, mesh, integration test, regression coverage,
 and the debug scenario all check out, and the captured run shows the live
 game producing an add at the expected cadence.
 
+
+## v0.42 — Reset Game State When the Last Player Disconnects  (2026-05-20 05:38:01)
+
+**Met.**
+
+## Design & requirements consistency
+
+`game/docs/design.md` describes a lobby → dungeon → loot loop returning to the lobby; resetting to a clean lobby when no players are left is consistent with that loop. No invariants in `requirements.md` are weakened — currency/inventory/ownedCards/runRewards preservation inside `returnPlayersToLobby()` continues to behave the same way for any reconnecting players (and the no-players branch trivially has nothing to preserve).
+
+## Debug scenarios
+
+This ticket adds no `?scenario=…` or debug shortcut. The existing `debugScenario` plumbing in `server/index.js` and `client/main.js` is untouched. No debug-scenario gating to verify.
+
+## Code quality
+
+- Implementation is a minimal 3-line addition; reuses `returnPlayersToLobby()` per the ticket's suggestion.
+- No dead code, no new console noise, no broken paths.
+- Existing terminal-state tests around victory/failure still pass, so the `else if` ordering hasn't regressed run termination behaviour.
+
+## Remaining gaps
+
+None blocking.
+
