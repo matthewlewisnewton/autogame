@@ -2,7 +2,7 @@
 
 Top-level tickets, processed top-to-bottom by `harness/run_backlog.sh`. Each is
 decomposed by qwen into sub-tickets, built and QA'd by the qwen+gemini loop,
-then reviewed as a whole by a difficulty-routed reviewer (easy: composer-2.5,
+then reviewed as a whole by a difficulty-routed reviewer (easy: agy/Gemini-3.5-Flash,
 medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 `## Difficulty: easy|medium|hard`. Order roughly respects dependencies.
 

@@ -27,7 +27,6 @@ GEMINI_QUOTA_FAST_FAIL="${GEMINI_QUOTA_FAST_FAIL:-1}"
 GEMINI_QUOTA_FAST_FAIL_SECONDS="${GEMINI_QUOTA_FAST_FAIL_SECONDS:-12}"
 CLAUDE_TIMEOUT="${CLAUDE_TIMEOUT:-900}"
 AGENT_MODEL="${AGENT_MODEL:-composer-2.5-fast}" # cursor-agent QA fallback model
-REVIEW_EASY_MODEL="${REVIEW_EASY_MODEL:-composer-2.5}" # top-level review for easy tickets
 REVIEW_MEDIUM_MODEL="${REVIEW_MEDIUM_MODEL:-gpt-5.5-medium-fast}" # top-level review for medium tickets
 REVIEW_HARD_MODEL="${REVIEW_HARD_MODEL:-gpt-5.5-extra-high}" # top-level review for hard tickets
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-720}"  # 12 min — composer is now the primary QA reviewer (gemini dropped)
