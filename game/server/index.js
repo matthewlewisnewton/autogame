@@ -1298,6 +1298,18 @@ function updateMinions() {
   gameState.minions = gameState.minions.filter(m => m.ttl > 0 && m.hp > 0);
 }
 
+// Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
+// Socket.IO keys sockets by socket.id (a random string), not by playerId,
+// so we must iterate and match on socket.playerId.
+function findSocketByPlayerId(playerId) {
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.playerId === playerId) {
+      return socket;
+    }
+  }
+  return null;
+}
+
 // Helper: remove stale players (no activity for STALE_THRESHOLD ms)
 // Extracted so tests can invoke directly without setInterval
 function cleanupStalePlayers() {
@@ -1309,7 +1321,7 @@ function cleanupStalePlayers() {
       // If socket.disconnect() below triggers the handler, its own savePlayerData
       // is a redundant but harmless second save after this one.
       savePlayerData(playerId);
-      const socket = io.sockets.sockets.get(playerId);
+      const socket = findSocketByPlayerId(playerId);
       if (socket && socket.connected) {
         socket.disconnect();
       }
@@ -1989,6 +2001,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Server objects for integration tests
     server,
     io,
+    findSocketByPlayerId,
     _intervals,
     _timeouts,
     clearAllTimers,

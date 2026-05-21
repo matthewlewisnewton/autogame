@@ -13,6 +13,7 @@ import {
 	resetGameState,
 	gameState,
 	cleanupStalePlayers,
+	findSocketByPlayerId,
 	regenMagicStones,
 	createRunState,
 	startDungeonRun,
@@ -986,6 +987,125 @@ describe('cleanupStalePlayers', () => {
 		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p2', expect.objectContaining({ currency: 20 }));
 
 		setTestProvider(null);
+	});
+
+	it('disconnects socket by matching socket.playerId (not socket.id)', () => {
+		const disconnectCalled = [];
+		const mockSocket = {
+			id: 'random-socket-id-abc123',  // Socket.IO socket.id ≠ playerId
+			playerId: 'p1',
+			connected: true,
+			disconnect: () => disconnectCalled.push(true)
+		};
+
+		// Replace io.sockets.sockets with a map containing our mock socket
+		const originalSockets = serverIo.sockets.sockets;
+		const mockMap = new Map();
+		mockMap.set(mockSocket.id, mockSocket);
+		serverIo.sockets.sockets = mockMap;
+
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 1000 });
+
+		cleanupStalePlayers();
+
+		expect(disconnectCalled).toHaveLength(1);
+		expect(gameState.players['p1']).toBeUndefined();
+
+		// Restore original sockets
+		serverIo.sockets.sockets = originalSockets;
+	});
+
+	it('gracefully handles stale player with no connected socket', () => {
+		// Replace with empty map so findSocketByPlayerId returns null
+		const originalSockets = serverIo.sockets.sockets;
+		serverIo.sockets.sockets = new Map();
+
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 1000 });
+
+		// Should not throw even when socket is missing
+		expect(() => cleanupStalePlayers()).not.toThrow();
+		expect(gameState.players['p1']).toBeUndefined();
+
+		// Restore
+		serverIo.sockets.sockets = originalSockets;
+	});
+
+	it('does not disconnect socket for player that is not stale', () => {
+		const disconnectCalled = [];
+		const mockSocket = {
+			id: 'socket-xyz',
+			playerId: 'p1',
+			connected: true,
+			disconnect: () => disconnectCalled.push(true)
+		};
+
+		const originalSockets = serverIo.sockets.sockets;
+		const mockMap = new Map();
+		mockMap.set(mockSocket.id, mockSocket);
+		serverIo.sockets.sockets = mockMap;
+
+		addPlayer('p1', { lastActivity: Date.now() });
+
+		cleanupStalePlayers();
+
+		expect(disconnectCalled).toHaveLength(0);
+		expect(gameState.players['p1']).toBeDefined();
+
+		// Restore
+		serverIo.sockets.sockets = originalSockets;
+	});
+});
+
+describe('findSocketByPlayerId', () => {
+	beforeEach(() => {
+		// Restore original sockets map each time (in case previous test replaced it)
+		// We clear rather than replace since other tests may depend on the real Map
+		if (serverIo.sockets.sockets instanceof Map) {
+			serverIo.sockets.sockets.clear();
+		}
+	});
+
+	it('finds socket by matching socket.playerId', () => {
+		const mockSocket = {
+			id: 'random-socket-id',
+			playerId: 'player-alpha',
+			connected: true
+		};
+		serverIo.sockets.sockets.set(mockSocket.id, mockSocket);
+
+		const result = findSocketByPlayerId('player-alpha');
+
+		expect(result).toBe(mockSocket);
+	});
+
+	it('returns null when no socket matches the playerId', () => {
+		const mockSocket = {
+			id: 'some-socket',
+			playerId: 'other-player',
+			connected: true
+		};
+		serverIo.sockets.sockets.set(mockSocket.id, mockSocket);
+
+		const result = findSocketByPlayerId('nonexistent-player');
+
+		expect(result).toBeNull();
+	});
+
+	it('returns null when there are no connected sockets', () => {
+		expect(findSocketByPlayerId('anyone')).toBeNull();
+	});
+
+	it('finds correct socket among multiple connections', () => {
+		const s1 = { id: 'sock1', playerId: 'p1', connected: true };
+		const s2 = { id: 'sock2', playerId: 'p2', connected: true };
+		const s3 = { id: 'sock3', playerId: 'p3', connected: true };
+		serverIo.sockets.sockets.set(s1.id, s1);
+		serverIo.sockets.sockets.set(s2.id, s2);
+		serverIo.sockets.sockets.set(s3.id, s3);
+
+		expect(findSocketByPlayerId('p2')).toBe(s2);
+		expect(findSocketByPlayerId('p1')).toBe(s1);
+		expect(findSocketByPlayerId('p3')).toBe(s3);
 	});
 });
 
