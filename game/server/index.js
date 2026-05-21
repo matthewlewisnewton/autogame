@@ -921,6 +921,19 @@ function applyDebugScenario(socket, name) {
   player.debugScenario = name;
   player.pendingSummons.clear();
   enterPlayingPhase();
+
+  // Per-player initialization: when enterPlayingPhase() skipped because
+  // gamePhase was already 'playing' (multi-client debug scenario), this
+  // player may not have a hand, deck, cooldowns, or pendingSummons.
+  if (gameState.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = [null, null, null, null];
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
   ensureNearbyEnemy(player.x, player.z);
 
   if (name === 'summon-low-mana') {
