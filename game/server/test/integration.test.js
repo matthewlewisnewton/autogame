@@ -2978,3 +2978,176 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 		sock.disconnect();
 	});
 });
+
+describe('Restore Persisted Location on Cold Reconnect During Active Run', () => {
+	let testProvider;
+	let baseUrl;
+
+	beforeEach(async () => {
+		testProvider = new InMemoryProvider();
+		baseUrl = await startTestServer();
+		setTestProvider(testProvider);
+	});
+
+	afterEach(async () => {
+		setTestProvider(null);
+		await closeServer();
+	});
+
+	it('restores saved location when cold reconnecting during playing phase', async () => {
+		// --- Connect two players and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		expect(gameState.gamePhase).toBe('playing');
+
+		// --- Move player 2 to a non-default position ---
+		const player2Id = c2.socket._playerId;
+		const player2 = gameState.players[player2Id];
+		const originalX = player2.x;
+		const originalZ = player2.z;
+
+		// Teleport player2 in memory to simulate movement (easier than waiting for move tick)
+		player2.x = originalX + 5;
+		player2.z = originalZ + 5;
+		player2.rotation = 1.5;
+
+		// Force-save the moved position
+		const { savePlayerData } = await import('../index.js');
+		savePlayerData(player2Id);
+
+		// --- Disconnect player 2 (triggers save + removes from memory) ---
+		c2.socket.disconnect();
+		await sleep(100);
+
+		// Player 2 should be removed from memory, player 1 keeps the run alive
+		expect(gameState.players[player2Id]).toBeUndefined();
+		expect(gameState.gamePhase).toBe('playing');
+
+		// --- Cold reconnect player 2 with the same ID ---
+		const c2Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player2Id }
+			});
+			const timer = setTimeout(() => {
+				s.disconnect();
+				reject(new Error('connect timeout'));
+			}, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		// Server should reuse the same player ID
+		expect(c2Reconnect.init.playerId).toBe(player2Id);
+
+		// The restored player should have the saved location, not the spawn point
+		const restoredPlayer = gameState.players[player2Id];
+		expect(restoredPlayer).toBeDefined();
+		expect(restoredPlayer.x).toBe(originalX + 5);
+		expect(restoredPlayer.z).toBe(originalZ + 5);
+		expect(restoredPlayer.rotation).toBe(1.5);
+
+		// The init payload should contain the restored position in the state
+		expect(c2Reconnect.init.state.players[player2Id].x).toBe(originalX + 5);
+		expect(c2Reconnect.init.state.players[player2Id].z).toBe(originalZ + 5);
+
+		c1.socket.disconnect();
+		c2Reconnect.socket.disconnect();
+	});
+
+	it('restores location on cold reconnect in lobby (no regression)', async () => {
+		// --- Connect player, move them, disconnect ---
+		const c1 = await connectClient(baseUrl);
+		const player1Id = c1.socket._playerId;
+		const player1 = gameState.players[player1Id];
+
+		// Move player to a non-default position
+		player1.x = player1.x + 3;
+		player1.z = player1.z + 3;
+		player1.rotation = 2.0;
+
+		// Force-save
+		const { savePlayerData } = await import('../index.js');
+		savePlayerData(player1Id);
+
+		// Disconnect (last player → returns to lobby, but saves location)
+		c1.socket.disconnect();
+		await sleep(100);
+
+		// --- Cold reconnect ---
+		const c1Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player1Id }
+			});
+			const timer = setTimeout(() => {
+				s.disconnect();
+				reject(new Error('connect timeout'));
+			}, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		expect(c1Reconnect.init.playerId).toBe(player1Id);
+		const restored = gameState.players[player1Id];
+		expect(restored.x).toBe(player1.x);
+		expect(restored.z).toBe(player1.z);
+		expect(restored.rotation).toBe(2.0);
+
+		c1Reconnect.socket.disconnect();
+	});
+
+	it('spawns at default position when no saved data exists regardless of game phase', async () => {
+		// --- Connect player 1 and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		expect(gameState.gamePhase).toBe('playing');
+
+		// Get the spawn position
+		const spawnX = gameState.players[c1.socket._playerId].x;
+		const spawnZ = gameState.players[c1.socket._playerId].z;
+
+		// Disconnect player 2 so we know the run is still active
+		c2.socket.disconnect();
+		await sleep(50);
+
+		// --- Connect a brand new player (no saved data) during active run ---
+		const c3 = await connectClient(baseUrl);
+		const newPlayer = gameState.players[c3.socket._playerId];
+
+		// Should spawn at default position
+		expect(newPlayer.x).toBe(spawnX);
+		expect(newPlayer.z).toBe(spawnZ);
+
+		c1.socket.disconnect();
+		c3.socket.disconnect();
+	});
+});
