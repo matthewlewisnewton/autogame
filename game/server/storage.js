@@ -1,6 +1,6 @@
 // Abstract persistence interface — concrete backends extend this class.
 
-export class StorageProvider {
+class StorageProvider {
 	savePlayer(playerId, data) {
 		throw new Error('Not implemented');
 	}
@@ -13,3 +13,5 @@ export class StorageProvider {
 		throw new Error('Not implemented');
 	}
 }
+
+module.exports = { StorageProvider };

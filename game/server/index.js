@@ -2,6 +2,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const http = require('http');
 const crypto = require('crypto');
+const { InMemoryProvider, FileProvider } = require('./providers');
 const {
   mulberry32,
   generateLayout,
@@ -341,6 +342,41 @@ function createPlayerProgress() {
     runRewards: null,
     currencyEarnedThisRun: 0
   };
+}
+
+// ── Persistence Helpers ──
+
+/**
+ * Module-level storage provider. Initialized in startServer() based on
+ * PERSISTENCE_BACKEND env var. Tests can override by setting this directly.
+ */
+let provider = null;
+
+/**
+ * Extract the fields that should be persisted for a player.
+ * Returns { currency, ownedCards, selectedDeck }.
+ */
+function extractPersistentData(player) {
+  return {
+    currency: player.currency || 0,
+    ownedCards: player.ownedCards || {},
+    selectedDeck: player.selectedDeck || []
+  };
+}
+
+/**
+ * Persist a player's data to the configured storage backend.
+ * Logs errors via console.error but never throws.
+ */
+function savePlayerData(playerId) {
+  if (!provider) return;
+  const player = gameState.players[playerId];
+  if (!player) return;
+  try {
+    provider.savePlayer(playerId, extractPersistentData(player));
+  } catch (err) {
+    console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
+  }
 }
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -712,6 +748,11 @@ function checkRunTerminalState() {
     grantRunRewards(playerId, { status });
   }
 
+  // Persist player data after rewards are granted
+  for (const playerId of Object.keys(gameState.players)) {
+    savePlayerData(playerId);
+  }
+
   const summary = buildRunSummary(status);
   io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);
 }
@@ -731,6 +772,11 @@ function resetTransientRunState() {
  * and broadcast the updated state to all connected clients.
  */
 function returnPlayersToLobby() {
+  // 0. Persist player data before resetting transient state
+  for (const playerId of Object.keys(gameState.players)) {
+    savePlayerData(playerId);
+  }
+
   // 1. Clear transient run entities
   resetTransientRunState();
 
@@ -1301,6 +1347,15 @@ function stateSnapshot() {
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
 function startServer(port) {
+  // Initialize persistence provider based on PERSISTENCE_BACKEND env var
+  if (process.env.PERSISTENCE_BACKEND === 'file') {
+    provider = new FileProvider(process.env.PERSISTENCE_PATH || './data');
+    console.log(`[persistence] FileProvider initialized at ${process.env.PERSISTENCE_PATH || './data'}`);
+  } else {
+    provider = new InMemoryProvider();
+    console.log('[persistence] InMemoryProvider initialized (default)');
+  }
+
   // Remove previous connection handlers so repeated calls (in tests) don't stack
   io.removeAllListeners('connection');
   // Clear any previously created intervals/timeouts (from prior test runs)
@@ -1742,6 +1797,8 @@ function startServer(port) {
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     sweptCollisionLogTimes.delete(socket.id);
+    // Persist player data before removing from game state
+    savePlayerData(socket.id);
     delete gameState.players[socket.id];
     gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.id);
     io.emit('playerDisconnected', socket.id);
@@ -1854,6 +1911,10 @@ if (typeof module !== 'undefined' && module.exports) {
     DECK_MAX_SIZE,
     MAX_HP,
     VICTORY_REWARD_ROTATION,
-    ENEMY_DEFS
+    ENEMY_DEFS,
+    // Persistence
+    extractPersistentData,
+    savePlayerData,
+    provider
   };
 }

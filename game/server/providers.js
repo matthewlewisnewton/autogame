@@ -1,14 +1,14 @@
 // Concrete storage providers — InMemory (dev/test) and File (production).
 
-import { StorageProvider } from './storage.js';
-import fs from 'fs';
-import path from 'path';
+const { StorageProvider } = require('./storage');
+const fs = require('fs');
+const path = require('path');
 
 /**
  * In-memory provider — data lives in a Map and is lost on process exit.
  * Used for tests and development.
  */
-export class InMemoryProvider extends StorageProvider {
+class InMemoryProvider extends StorageProvider {
 	constructor() {
 		super();
 		this.store = new Map();
@@ -34,7 +34,7 @@ export class InMemoryProvider extends StorageProvider {
  *
  * Data path: {basePath}/{playerId}.json
  */
-export class FileProvider extends StorageProvider {
+class FileProvider extends StorageProvider {
 	constructor(basePath) {
 		super();
 		this.basePath = basePath;
@@ -65,3 +65,5 @@ export class FileProvider extends StorageProvider {
 		// no-op — no open handles to release
 	}
 }
+
+module.exports = { InMemoryProvider, FileProvider };
