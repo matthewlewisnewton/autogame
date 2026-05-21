@@ -354,6 +354,13 @@ function createPlayerProgress() {
 let provider = null;
 
 /**
+ * Override the module-level provider (test-only).
+ */
+function setTestProvider(p) {
+  provider = p;
+}
+
+/**
  * Extract the fields that should be persisted for a player.
  * Returns { currency, ownedCards, selectedDeck }.
  */
@@ -1936,6 +1943,7 @@ if (typeof module !== 'undefined' && module.exports) {
     extractPersistentData,
     savePlayerData,
     saveAllPlayers,
+    setTestProvider,
     provider
   };
 }
