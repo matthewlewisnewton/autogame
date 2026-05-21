@@ -151,6 +151,7 @@ function validateRecipe(input) {
     if (step.ms != null) clean.ms = clampInt(step.ms, 500, 50, 5000);
     if (typeof step.key === 'string' && /^[wasdWASD]$/.test(step.key)) clean.key = step.key.toLowerCase();
     if (Number.isInteger(step.slot) && step.slot >= 0 && step.slot <= 3) clean.slot = step.slot;
+    if (typeof step.cardType === 'string' && /^[a-z]+$/.test(step.cardType)) clean.cardType = step.cardType;
     return clean;
   });
 
@@ -353,7 +354,23 @@ async function executeRecipe(browser, recipe) {
       await page.keyboard.up(key);
       await page.waitForTimeout(250);
     } else if (step.action === 'pressCard') {
-      const slot = step.slot ?? 0;
+      let slot;
+      if (step.cardType) {
+        // Resolve slot by querying DOM for matching data-card-type
+        const resolved = await page.evaluate((ct) => {
+          const el = document.querySelector(`.card-slot[data-card-type="${ct}"]`);
+          return el ? el.dataset.slotIndex : null;
+        }, step.cardType);
+        if (resolved !== null) {
+          slot = parseInt(resolved, 10);
+        } else {
+          console.warn(`[pressCard] no .card-slot found with data-card-type="${step.cardType}" — skipping press`);
+          await page.waitForTimeout(step.ms || 500);
+          continue;
+        }
+      } else {
+        slot = step.slot ?? 0;
+      }
       await page.keyboard.press(String(slot + 1));
       await page.waitForTimeout(step.ms || 500);
     } else if (step.action === 'clickSlot') {

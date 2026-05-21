@@ -19,7 +19,7 @@ The harness will validate and execute only these actions:
 - readyAll: click the ready button on every connected player.
 - waitForGame: wait until gameplay is visible. Optional player, timeoutMs.
 - move: hold one WASD key. Required-ish fields: player, key, durationMs.
-- pressCard: press key 1-4 for a card slot. Fields: player, slot, ms.
+- pressCard: press key 1-4 for a card slot. Fields: player, slot, cardType (optional — card type name to resolve slot dynamically), ms.
 - clickSlot: click a card slot. Fields: player, slot, ms.
 - wait: bounded wait. Fields: player, ms.
 - screenshot: save a screenshot. Fields: player, name, description.
