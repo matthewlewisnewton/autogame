@@ -4,6 +4,7 @@ import {
 	savePlayerData,
 	saveAllPlayers,
 	setTestProvider,
+	persistenceKey,
 	gameState,
 	resetGameState,
 	provider as defaultProvider
@@ -436,5 +437,188 @@ describe('saveAllPlayers', () => {
 describe('PERIODIC_SAVE_INTERVAL_MS config', () => {
 	it('is exported from config with a value of 30000', () => {
 		expect(configMod.PERIODIC_SAVE_INTERVAL_MS).toBe(30000);
+	});
+});
+
+// ── persistenceKey ──
+
+describe('persistenceKey', () => {
+	beforeEach(() => {
+		resetGameState();
+	});
+
+	it('returns accountId for authenticated players', () => {
+		gameState.players['player-uuid-1'] = {
+			id: 'player-uuid-1',
+			accountId: 'acct-alice',
+			currency: 10,
+			ownedCards: {},
+			selectedDeck: [],
+		};
+		expect(persistenceKey('player-uuid-1')).toBe('acct-alice');
+	});
+
+	it('returns playerId for anonymous players (accountId null)', () => {
+		gameState.players['anon-uuid-1'] = {
+			id: 'anon-uuid-1',
+			accountId: null,
+			currency: 0,
+			ownedCards: {},
+			selectedDeck: [],
+		};
+		expect(persistenceKey('anon-uuid-1')).toBe('anon-uuid-1');
+	});
+
+	it('returns playerId for anonymous players (accountId undefined)', () => {
+		gameState.players['anon-uuid-2'] = {
+			id: 'anon-uuid-2',
+			currency: 0,
+			ownedCards: {},
+			selectedDeck: [],
+		};
+		expect(persistenceKey('anon-uuid-2')).toBe('anon-uuid-2');
+	});
+
+	it('returns playerId when player does not exist', () => {
+		expect(persistenceKey('nonexistent')).toBe('nonexistent');
+	});
+});
+
+// ── Authenticated save/load round-trip by accountId ──
+
+describe('authenticated save/load round-trip by accountId', () => {
+	let testProvider;
+
+	beforeEach(() => {
+		resetGameState();
+		testProvider = new InMemoryProvider();
+		setTestProvider(testProvider);
+	});
+
+	afterEach(() => {
+		setTestProvider(null);
+	});
+
+	it('saves under accountId and loads by accountId — round-trip preserves data', () => {
+		const testAccountId = 'acct-roundtrip-' + Date.now();
+		const playerId = 'player-uuid-' + Date.now();
+
+		// Simulate an authenticated player: playerId differs from accountId
+		gameState.players[playerId] = {
+			id: playerId,
+			accountId: testAccountId,
+			x: 5,
+			y: 0.5,
+			z: 10,
+			rotation: 1.57,
+			currency: 42,
+			ownedCards: { iron_sword: 3, flame_blade: 1 },
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+		};
+
+		// Save using playerId (as the server does)
+		savePlayerData(playerId);
+
+		// Verify data is stored under accountId, not playerId
+		expect(testProvider.loadPlayer(testAccountId)).toEqual({
+			x: 5,
+			y: 0.5,
+			z: 10,
+			rotation: 1.57,
+			currency: 42,
+			ownedCards: { iron_sword: 3, flame_blade: 1 },
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+		});
+
+		// Verify data is NOT stored under playerId
+		expect(testProvider.loadPlayer(playerId)).toBeNull();
+
+		// Simulate reconnect: load by accountId and verify data matches
+		const loaded = testProvider.loadPlayer(testAccountId);
+		expect(loaded.currency).toBe(42);
+		expect(loaded.ownedCards).toEqual({ iron_sword: 3, flame_blade: 1 });
+		expect(loaded.selectedDeck).toEqual(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake']);
+		expect(loaded.x).toBe(5);
+		expect(loaded.z).toBe(10);
+	});
+
+	it('multiple authenticated players save under distinct accountIds', () => {
+		gameState.players['p1'] = {
+			id: 'p1',
+			accountId: 'acct-user-a',
+			x: 0, y: 0.5, z: 0, rotation: 0,
+			currency: 100,
+			ownedCards: { iron_sword: 5 },
+			selectedDeck: ['iron_sword'],
+		};
+		gameState.players['p2'] = {
+			id: 'p2',
+			accountId: 'acct-user-b',
+			x: 10, y: 0.5, z: 20, rotation: 0,
+			currency: 200,
+			ownedCards: { flame_blade: 2 },
+			selectedDeck: ['flame_blade'],
+		};
+
+		savePlayerData('p1');
+		savePlayerData('p2');
+
+		expect(testProvider.loadPlayer('acct-user-a').currency).toBe(100);
+		expect(testProvider.loadPlayer('acct-user-b').currency).toBe(200);
+		// Data isolated between accounts
+		expect(testProvider.loadPlayer('acct-user-a').ownedCards).toEqual({ iron_sword: 5 });
+		expect(testProvider.loadPlayer('acct-user-b').ownedCards).toEqual({ flame_blade: 2 });
+	});
+});
+
+// ── Anonymous save/load round-trip by playerId ──
+
+describe('anonymous save/load round-trip by playerId', () => {
+	let testProvider;
+
+	beforeEach(() => {
+		resetGameState();
+		testProvider = new InMemoryProvider();
+		setTestProvider(testProvider);
+	});
+
+	afterEach(() => {
+		setTestProvider(null);
+	});
+
+	it('saves under playerId and loads by playerId — round-trip preserves data', () => {
+		const anonPlayerId = 'anon-player-' + Date.now();
+
+		// Simulate an anonymous player (no accountId)
+		gameState.players[anonPlayerId] = {
+			id: anonPlayerId,
+			accountId: null,
+			x: 3,
+			y: 0.5,
+			z: 7,
+			rotation: 0.8,
+			currency: 15,
+			ownedCards: { iron_sword: 2 },
+			selectedDeck: ['iron_sword', 'flame_blade'],
+		};
+
+		// Save using playerId
+		savePlayerData(anonPlayerId);
+
+		// Verify data is stored under playerId
+		const loaded = testProvider.loadPlayer(anonPlayerId);
+		expect(loaded).toEqual({
+			x: 3,
+			y: 0.5,
+			z: 7,
+			rotation: 0.8,
+			currency: 15,
+			ownedCards: { iron_sword: 2 },
+			selectedDeck: ['iron_sword', 'flame_blade'],
+		});
+
+		// Verify currency and ownedCards survive round-trip
+		expect(loaded.currency).toBe(15);
+		expect(loaded.ownedCards).toEqual({ iron_sword: 2 });
 	});
 });
