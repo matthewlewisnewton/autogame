@@ -500,42 +500,30 @@ describe('Socket Integration — useCard Event', () => {
 
 	describe('Monster card', () => {
 		it('emits useCard, server spawns a minion in gameState.minions', async () => {
-			// Enter playing phase so useCard is processed
+			// Use the monster-card debug scenario to guarantee a monster in hand
 			const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
-			socket.emit('debugScenario', { name: 'summon-ready' });
+			socket.emit('debugScenario', { name: 'monster-card' });
 			await debugResultPromise;
-			await waitForEvent(socket, 'stateUpdate');
 
-			const player = gameState.players[socket.id];
+			// Capture the stateUpdate emitted by applyDebugScenario
+			const initUpdate = await waitForEvent(socket, 'stateUpdate');
+			const playerKey = Object.keys(initUpdate.players).find(
+				k => initUpdate.players[k].debugScenario === 'monster-card'
+			);
+			expect(playerKey).toBeDefined();
+			const playerData = initUpdate.players[playerKey];
 
-			// Ensure a monster card is in hand — the random deal from summon-ready
-			// may not include dungeon_drake (only 1 of 8 deck cards), so we
-			// manually place one in the first empty slot or overwrite a slot.
-			let monsterSlot = player.hand.findIndex(c => c && c.type === 'monster');
-			if (monsterSlot < 0) {
-				// Find an empty slot or append
-				const emptySlot = player.hand.findIndex(c => !c);
-				if (emptySlot >= 0) {
-					player.hand[emptySlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
-					monsterSlot = emptySlot;
-				} else if (player.hand.length < 4) {
-					player.hand.push({ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 });
-					monsterSlot = player.hand.length - 1;
-				} else {
-					// Overwrite last slot — test still validates monster card behavior
-					player.hand[3] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
-					monsterSlot = 3;
-				}
-			}
-			const monsterCard = player.hand[monsterSlot];
-			expect(monsterCard).toBeDefined();
-			expect(monsterCard.type).toBe('monster');
+			// Find the monster card slot
+			const monsterSlot = playerData.hand.findIndex(c => c && c.type === 'monster');
+			expect(monsterSlot).toBeGreaterThanOrEqual(0);
+			const monsterCardId = playerData.hand[monsterSlot].id;
+			expect(monsterCardId).toBe('dungeon_drake');
 
 			const beforeCount = gameState.minions.length;
 
 			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 
-			socket.emit('useCard', { cardId: monsterCard.id, slotIndex: monsterSlot });
+			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
 
 			await cardUsedPromise;
 
