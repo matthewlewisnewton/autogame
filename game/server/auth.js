@@ -11,7 +11,9 @@ const JWT_EXPIRATION = '24h';
 /**
  * Initialize the JWT secret. Must be called before the server starts
  * accepting connections. Reads `JWT_SECRET` from `process.env`; falls back
- * to a fixed test secret when `NODE_ENV === 'test'`; throws otherwise.
+ * to a fixed test secret when `NODE_ENV === 'test'`; falls back to a
+ * dev-only secret when `NODE_ENV` is neither `'test'` nor `'production'`;
+ * throws when `NODE_ENV === 'production'` and no secret is set.
  *
  * @returns {string} The resolved secret.
  */
@@ -28,11 +30,21 @@ function initAuth() {
 		return JWT_SECRET;
 	}
 
-	throw new Error(
-		'Missing JWT_SECRET environment variable. ' +
-		'Set JWT_SECRET to a cryptographically random value before starting the server. ' +
-		'Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js'
+	if (process.env.NODE_ENV === 'production') {
+		throw new Error(
+			'Missing JWT_SECRET environment variable. ' +
+			'Set JWT_SECRET to a cryptographically random value before starting the server. ' +
+			'Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js'
+		);
+	}
+
+	// Dev fallback — allows `pnpm run dev` to start without JWT_SECRET
+	console.warn(
+		'[auth] JWT_SECRET not set — using dev fallback secret. ' +
+		'Do not use this in production. Set JWT_SECRET to a cryptographically random value.'
 	);
+	JWT_SECRET = 'dev-secret';
+	return JWT_SECRET;
 }
 
 /**
@@ -129,3 +141,4 @@ module.exports = router;
 module.exports.initAuth = initAuth;
 module.exports.getJWTSecret = function getJWTSecret() { return JWT_SECRET; };
 module.exports.verifyToken = verifyToken;
+module.exports.resetAuthSecret = function resetAuthSecret() { JWT_SECRET = null; };
