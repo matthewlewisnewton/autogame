@@ -153,38 +153,40 @@ function createSocket(token) {
     socket.disconnect();
   }
   socket = io({ auth: { token } });
-  attachSocketHandlers();
+  bindSocketHandlers(socket);
 }
 
 /**
- * Attach all Socket.IO event listeners to the current socket instance.
+ * Bind all Socket.IO event listeners to the given socket instance.
  * Called from createSocket() so handlers are wired after each (re)connection.
- * No-op when socket is null (no token / not logged in).
+ * This ensures that after login (which replaces the socket), the authenticated
+ * connection receives all game events.
+ * @param {Object} s - the socket instance to bind handlers on
  */
-function attachSocketHandlers() {
-  if (!socket) return;
+function bindSocketHandlers(s) {
+  if (!s) return;
 
-  socket.on('connect', () => {
+  s.on('connect', () => {
     updateStatus('Connected', 'connected');
     startHeartbeat();
   });
 
-  socket.on('disconnect', () => {
+  s.on('disconnect', () => {
     stopHeartbeat();
     updateStatus('Disconnected', 'disconnected');
     disposeAllLootMeshes();
   });
 
-  socket.io.on('reconnect_attempt', () => {
+  s.io.on('reconnect_attempt', () => {
     updateStatus('Reconnecting...', 'reconnecting');
   });
 
-  socket.io.on('reconnect', () => {
+  s.io.on('reconnect', () => {
     updateStatus('Connected', 'connected');
     startHeartbeat();
   });
 
-  socket.on('init', (data) => {
+  s.on('init', (data) => {
     myId = data.id;
     // Store stable playerId for reconnect sessions
     if (data.playerId) {
@@ -243,7 +245,7 @@ function attachSocketHandlers() {
     updateObjectiveHud();
   });
 
-  socket.on('stateUpdate', (state) => {
+  s.on('stateUpdate', (state) => {
     // Verify layout seed consistency on every state update
     if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
       console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
@@ -350,14 +352,14 @@ function attachSocketHandlers() {
     }
   });
 
-  socket.on('heartbeat_ack', (data) => {
+  s.on('heartbeat_ack', (data) => {
     if (connectionState === 'connected') {
       latency = data.latency;
       statusEl.innerText = `Latency: ${latency}ms`;
     }
   });
 
-  socket.on('debugScenarioResult', (data) => {
+  s.on('debugScenarioResult', (data) => {
     debugScenarioResult = data || null;
     if (data && data.ok) {
       console.log(`[debugScenario] applied ${data.scenario}`);
@@ -366,7 +368,7 @@ function attachSocketHandlers() {
     }
   });
 
-  socket.on('playerDisconnected', (id) => {
+  s.on('playerDisconnected', (id) => {
     if (playersMeshes[id]) {
       if (scene) {
         scene.remove(playersMeshes[id]);
@@ -376,7 +378,7 @@ function attachSocketHandlers() {
     delete previousPlayerHp[id];
   });
 
-  socket.on('cardUsed', (data) => {
+  s.on('cardUsed', (data) => {
     if (!data || !scene) return;
     playSound('card');
     if (weaponCardIds.has(data.cardId)) {
@@ -401,7 +403,7 @@ function attachSocketHandlers() {
     }
   });
 
-  socket.on('cardError', (data) => {
+  s.on('cardError', (data) => {
     if (!data || !data.reason) return;
     showCardErrorToast(data.reason);
     if (data.reason === 'Not enough Magic Stones' && lastUsedSlot >= 0) {
@@ -411,19 +413,19 @@ function attachSocketHandlers() {
     lastUsedSlot = -1;
   });
 
-  socket.on('deckUpdate', (data) => {
+  s.on('deckUpdate', (data) => {
     if (!data) return;
     if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
     if (data.ownedCards) myOwnedCards = data.ownedCards;
     renderDeckEditor();
   });
 
-  socket.on('deckError', (data) => {
+  s.on('deckError', (data) => {
     if (!data || !data.reason) return;
     showDeckError(data.reason);
   });
 
-  socket.on('lobbyUpdate', (data) => {
+  s.on('lobbyUpdate', (data) => {
     renderPlayerList(data.players);
     if (data.players && myId) {
       const me = data.players.find(p => p.id === myId);
@@ -434,7 +436,7 @@ function attachSocketHandlers() {
     }
   });
 
-  socket.on('startGame', () => {
+  s.on('startGame', () => {
     lobbyEl.classList.add('hidden');
     uiEl.style.display = 'block';
     cardHandEl.style.display = 'flex';
@@ -457,8 +459,8 @@ function attachSocketHandlers() {
     windupFlashing.clear();
   });
 
-  socket.on('runComplete', showRunSummary);
-  socket.on('runFailed', showRunSummary);
+  s.on('runComplete', showRunSummary);
+  s.on('runFailed', showRunSummary);
 }
 
 // On page load: only connect if we have a stored token; otherwise show auth overlay.
@@ -2060,6 +2062,8 @@ window.hideAuthOverlay = hideAuthOverlay;
 window.showRegisterForm = showRegisterForm;
 window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
+window.bindSocketHandlers = bindSocketHandlers;   // test-only: expose for handler-rebinding tests
+window.createSocket = createSocket;               // test-only: expose for socket creation tests
 window.__AUTOGAME_HARNESS_STATE__ = () => {
   const me = gameState && myId ? gameState.players[myId] : null;
   const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');

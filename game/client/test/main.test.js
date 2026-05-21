@@ -1805,3 +1805,123 @@ describe('auth overlay functions', () => {
 		expect(document.getElementById('login-error').textContent).toBe('');
 	});
 });
+
+// ── bindSocketHandlers rebinding on recreate ──
+
+describe('bindSocketHandlers() — handler rebinding on socket recreate', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('bindSocketHandlers is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.bindSocketHandlers).toBe('function');
+	});
+
+	it('createSocket calls bindSocketHandlers on the new socket (login path)', async () => {
+		await import('../main.js');
+
+		// main.js has already called createSocket(storedToken) at module load,
+		// which created the first mock socket and bound handlers to it.
+		const initialCounter = window.__socketCounter();
+		expect(initialCounter).toBeGreaterThanOrEqual(1);
+
+		// Simulate login: createSocket() is called again with a new token.
+		// This should disconnect the old socket and create a new one.
+		window.createSocket('new-login-token');
+
+		// A new socket should have been created
+		expect(window.__socketCounter()).toBe(initialCounter + 1);
+
+		// The new socket should have handlers bound
+		const newSocketId = `mock-socket-${window.__socketCounter()}`;
+		const events = window.__socketHandlerEvents(newSocketId);
+
+		// Verify all expected events are registered on the new socket
+		const expectedEvents = [
+			'connect', 'disconnect', 'init', 'stateUpdate',
+			'heartbeat_ack', 'debugScenarioResult', 'playerDisconnected',
+			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
+			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
+		];
+		for (const event of expectedEvents) {
+			expect(events.has(event)).toBe(true);
+		}
+	});
+
+	it('bindSocketHandlers registers all expected event listeners on a fresh socket', async () => {
+		await import('../main.js');
+
+		// Create a distinct mock socket manually
+		const freshSocket = {
+			id: 'manual-fresh-socket',
+			_handlers: {},
+			on: function(event, callback) {
+				if (!this._handlers[event]) this._handlers[event] = [];
+				this._handlers[event].push(callback);
+				return this;
+			},
+			io: {
+				_handlers: {},
+				on: function(event, callback) {
+					if (!this._handlers[event]) this._handlers[event] = [];
+					this._handlers[event].push(callback);
+					return this;
+				},
+			},
+		};
+
+		// Call bindSocketHandlers directly on the fresh socket
+		window.bindSocketHandlers(freshSocket);
+
+		const socketEvents = Object.keys(freshSocket._handlers);
+		const ioEvents = Object.keys(freshSocket.io._handlers);
+
+		// Verify socket-level events
+		const expectedSocketEvents = [
+			'connect', 'disconnect', 'init', 'stateUpdate',
+			'heartbeat_ack', 'debugScenarioResult', 'playerDisconnected',
+			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
+			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
+		];
+		for (const event of expectedSocketEvents) {
+			expect(socketEvents).toContain(event);
+		}
+
+		// Verify socket.io-level events (reconnect_attempt, reconnect)
+		expect(ioEvents).toContain('reconnect_attempt');
+		expect(ioEvents).toContain('reconnect');
+	});
+
+	it('bindSocketHandlers is a no-op when passed null', async () => {
+		await import('../main.js');
+		expect(() => window.bindSocketHandlers(null)).not.toThrow();
+	});
+});
