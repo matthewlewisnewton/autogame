@@ -993,11 +993,16 @@ function applyDebugScenario(socket, name) {
     const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
     spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
   } else if (name === 'monster-card') {
-    // Stay in lobby; guarantee a monster card in hand after initPlayerHand()
-    // runs during checkAllReady(). The post-hand-init hook in checkAllReady
-    // checks player.debugScenario === 'monster-card' and swaps a slot.
+    // Guarantee at least one monster card in hand so integration tests
+    // and visual capture can exercise monster-card behavior deterministically.
     player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
+    if (!player.hand.some(c => c && c.type === 'monster')) {
+      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'monster');
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
+      }
+    }
   }
 
   // Scenario enemy mutations above can add to or replace the enemy list
