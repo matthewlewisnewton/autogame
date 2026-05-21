@@ -1439,6 +1439,7 @@ function startServer(port) {
     // - No token     → fall through to the existing anonymous flow
     const token = socket.handshake.auth && socket.handshake.auth.token;
     let accountId = null;
+    let username = null;
 
     if (token) {
       const decoded = verifyToken(token);
@@ -1448,6 +1449,7 @@ function startServer(port) {
         return;
       }
       accountId = decoded.accountId;
+      username = decoded.username;
     }
 
     // ── Stable player identity ──
@@ -1571,7 +1573,7 @@ function startServer(port) {
       }
     }
 
-  socket.emit('init', { id: playerId, playerId, accountId, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
+  socket.emit('init', { id: playerId, playerId, accountId, username: player.username, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
 
   // Broadcast updated lobby on connect
   broadcastLobbyUpdate();

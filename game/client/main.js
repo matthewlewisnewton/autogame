@@ -50,7 +50,66 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const readyBtn = document.getElementById('ready-btn');
 const lobbyEl = document.getElementById('lobby');
 const uiEl = document.getElementById('ui');
+const logoutBtn = document.getElementById('logout-btn');
 const cardHandEl = document.getElementById('card-hand');
+
+// ── Auth overlay elements ──
+const authOverlayEl = document.getElementById('auth-overlay');
+const registerFormEl = document.getElementById('register-form');
+const loginFormEl = document.getElementById('login-form');
+const registerBtnEl = document.getElementById('register-btn');
+const loginBtnEl = document.getElementById('login-btn');
+const registerErrorEl = document.getElementById('register-error');
+const loginErrorEl = document.getElementById('login-error');
+const showLoginLinkEl = document.getElementById('show-login-link');
+const showRegisterLinkEl = document.getElementById('show-register-link');
+
+const TOKEN_KEY = 'autogame_token';
+
+/**
+ * Show the auth overlay and hide the lobby.
+ */
+function showAuthOverlay() {
+  if (authOverlayEl) authOverlayEl.classList.remove('hidden');
+  if (lobbyEl) lobbyEl.classList.add('hidden');
+}
+
+/**
+ * Hide the auth overlay and show the lobby.
+ */
+function hideAuthOverlay() {
+  if (authOverlayEl) authOverlayEl.classList.add('hidden');
+  if (lobbyEl) lobbyEl.classList.remove('hidden');
+}
+
+/**
+ * Show the registration form and hide the login form.
+ */
+function showRegisterForm() {
+  if (registerFormEl) registerFormEl.classList.remove('hidden');
+  if (loginFormEl) loginFormEl.classList.add('hidden');
+  if (registerErrorEl) registerErrorEl.textContent = '';
+}
+
+/**
+ * Show the login form and hide the registration form.
+ */
+function showLoginForm() {
+  if (loginFormEl) loginFormEl.classList.remove('hidden');
+  if (registerFormEl) registerFormEl.classList.add('hidden');
+  if (loginErrorEl) loginErrorEl.textContent = '';
+}
+
+/**
+ * Clear form inputs and error messages.
+ */
+function clearAuthForms() {
+  const inputs = authOverlayEl ? authOverlayEl.querySelectorAll('input') : [];
+  inputs.forEach(i => (i.value = ''));
+  if (registerErrorEl) registerErrorEl.textContent = '';
+  if (loginErrorEl) loginErrorEl.textContent = '';
+}
+
 const hpBarFill = document.getElementById('hp-bar-fill');
 const hpText = document.getElementById('hp-text');
 const hpLabel = document.getElementById('hp-label');
@@ -73,12 +132,45 @@ let debugScenarioRequested = false;
 let debugScenarioResult = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
-// Socket setup
+// Socket setup — lazy-created so we can attach JWT auth after login
 const STORAGE_KEY_PLAYER_ID = 'autogame_playerId';
 const storedPlayerId = (() => {
   try { return localStorage.getItem(STORAGE_KEY_PLAYER_ID); } catch (_) { return null; }
 })();
-const socket = io({ auth: { playerId: storedPlayerId || undefined } });
+const storedToken = (() => {
+  try { return localStorage.getItem(TOKEN_KEY); } catch (_) { return null; }
+})();
+
+let socket = null;
+
+/**
+ * Create (or recreate) the Socket.IO connection with optional JWT auth.
+ * @param {string|null} [token] - JWT token to send in auth payload
+ */
+function createSocket(token) {
+  if (socket) {
+    socket.disconnect();
+  }
+  const auth = {};
+  if (token) {
+    auth.token = token;
+  }
+  const pid = storedPlayerId;
+  if (pid) {
+    auth.playerId = pid;
+  }
+  socket = io({ auth });
+}
+
+// On page load: create socket (with token if available), show/hide auth overlay.
+createSocket(storedToken);
+if (storedToken) {
+  hideAuthOverlay();
+} else {
+  showAuthOverlay();
+  showRegisterForm();
+}
+
 let myId = null;
 let isReady = false;
 let gameState = null;
@@ -460,6 +552,125 @@ cardHandEl.addEventListener('click', (e) => {
   useCard(parseInt(slot.dataset.slotIndex, 10));
 });
 
+// ── Auth form event handlers ──
+
+// Toggle: show login form
+if (showLoginLinkEl) {
+  showLoginLinkEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    showLoginForm();
+  });
+}
+
+// Toggle: show register form
+if (showRegisterLinkEl) {
+  showRegisterLinkEl.addEventListener('click', (e) => {
+    e.preventDefault();
+    showRegisterForm();
+  });
+}
+
+// Register button
+if (registerBtnEl) {
+  registerBtnEl.addEventListener('click', async () => {
+    const usernameInput = document.getElementById('register-username');
+    const passwordInput = document.getElementById('register-password');
+    if (!usernameInput || !passwordInput) return;
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+
+    if (registerErrorEl) registerErrorEl.textContent = '';
+
+    if (!username || !password) {
+      if (registerErrorEl) registerErrorEl.textContent = 'Username and password are required';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Registration succeeded — switch to login form
+        if (registerErrorEl) {
+          registerErrorEl.textContent = 'Account created — please login';
+          registerErrorEl.style.color = '#4ade80';
+        }
+        showLoginForm();
+      } else {
+        if (registerErrorEl) registerErrorEl.textContent = data.error || 'Registration failed';
+      }
+    } catch (err) {
+      if (registerErrorEl) registerErrorEl.textContent = 'Network error — check connection';
+    }
+  });
+}
+
+// Login button
+if (loginBtnEl) {
+  loginBtnEl.addEventListener('click', async () => {
+    const usernameInput = document.getElementById('login-username');
+    const passwordInput = document.getElementById('login-password');
+    if (!usernameInput || !passwordInput) return;
+
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+
+    if (loginErrorEl) loginErrorEl.textContent = '';
+
+    if (!username || !password) {
+      if (loginErrorEl) loginErrorEl.textContent = 'Username and password are required';
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        // Store token and connect
+        try { localStorage.setItem(TOKEN_KEY, data.token); } catch (_) {}
+        createSocket(data.token);
+        hideAuthOverlay();
+        clearAuthForms();
+      } else {
+        if (loginErrorEl) loginErrorEl.textContent = data.error || 'Login failed';
+      }
+    } catch (err) {
+      if (loginErrorEl) loginErrorEl.textContent = 'Network error — check connection';
+    }
+  });
+}
+
+// Logout button
+if (logoutBtn) {
+  logoutBtn.addEventListener('click', () => {
+    try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+    if (socket) {
+      socket.disconnect();
+    }
+    // Reset UI state
+    myId = null;
+    if (logoutBtn) logoutBtn.classList.add('hidden');
+    if (uiEl) uiEl.style.display = 'none';
+    if (cardHandEl) cardHandEl.style.display = 'none';
+    if (lobbyEl) lobbyEl.classList.add('hidden');
+    updateStatus('Disconnected', 'disconnected');
+    showAuthOverlay();
+    showRegisterForm();
+    clearAuthForms();
+  });
+}
+
+// ── Socket event handlers ──
+
 socket.on('connect', () => {
   updateStatus('Connected', 'connected');
   startHeartbeat();
@@ -494,6 +705,14 @@ socket.on('init', (data) => {
   mySelectedDeck = data.selectedDeck || [];
   myOwnedCards = data.ownedCards || {};
   renderDeckEditor();
+
+  // ── Auth: display username and show logout button if logged in ──
+  if (data.accountId) {
+    const username = data.username || data.accountId;
+    if (statusEl) statusEl.textContent = `Logged in as ${username}`;
+    if (logoutBtn) logoutBtn.classList.remove('hidden');
+    if (lobbyEl) lobbyEl.classList.remove('hidden');
+  }
 
   // ── Layout consistency check ──
   const receivedSeed = data.layoutSeed;
@@ -1860,6 +2079,11 @@ window.__pickedUpLootIds = () => pickedUpLootIds; // test-only: access pickedUpL
 window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMeshes map
 window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
 window.__useCardForTest = useCard;                // test-only: expose useCard for cooldown tests
+window.showAuthOverlay = showAuthOverlay;         // test-only: expose auth overlay functions
+window.hideAuthOverlay = hideAuthOverlay;
+window.showRegisterForm = showRegisterForm;
+window.showLoginForm = showLoginForm;
+window.clearAuthForms = clearAuthForms;
 window.__AUTOGAME_HARNESS_STATE__ = () => {
   const me = gameState && myId ? gameState.players[myId] : null;
   const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');

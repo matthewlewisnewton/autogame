@@ -1604,3 +1604,204 @@ describe('healthBarColor(hp, maxHp)', () => {
 		expect(window.healthBarColor(0, 0)).toBe(0xef4444);
 	});
 });
+
+// ── showAuthOverlay / hideAuthOverlay / showRegisterForm / showLoginForm / clearAuthForms ──
+
+describe('auth overlay functions', () => {
+	beforeEach(() => {
+		// Create all required DOM elements that main.js queries at module load time
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+
+		// Create auth overlay DOM elements (not in index.html for jsdom tests)
+		if (!document.getElementById('auth-overlay')) {
+			const overlay = document.createElement('div');
+			overlay.id = 'auth-overlay';
+			overlay.classList.add('hidden');
+
+			const modal = document.createElement('div');
+			modal.id = 'auth-modal';
+
+			const registerForm = document.createElement('div');
+			registerForm.id = 'register-form';
+			const regUser = document.createElement('input');
+			regUser.type = 'text';
+			regUser.id = 'register-username';
+			const regPass = document.createElement('input');
+			regPass.type = 'password';
+			regPass.id = 'register-password';
+			const regBtn = document.createElement('button');
+			regBtn.id = 'register-btn';
+			const regError = document.createElement('span');
+			regError.id = 'register-error';
+			registerForm.appendChild(regUser);
+			registerForm.appendChild(regPass);
+			registerForm.appendChild(regBtn);
+			registerForm.appendChild(regError);
+
+			const loginForm = document.createElement('div');
+			loginForm.id = 'login-form';
+			loginForm.classList.add('hidden');
+			const logUser = document.createElement('input');
+			logUser.type = 'text';
+			logUser.id = 'login-username';
+			const logPass = document.createElement('input');
+			logPass.type = 'password';
+			logPass.id = 'login-password';
+			const logBtn = document.createElement('button');
+			logBtn.id = 'login-btn';
+			const logError = document.createElement('span');
+			logError.id = 'login-error';
+			loginForm.appendChild(logUser);
+			loginForm.appendChild(logPass);
+			loginForm.appendChild(logBtn);
+			loginForm.appendChild(logError);
+
+			modal.appendChild(registerForm);
+			modal.appendChild(loginForm);
+			overlay.appendChild(modal);
+			document.body.appendChild(overlay);
+		}
+
+		// Create logout button if missing
+		if (!document.getElementById('logout-btn')) {
+			const logoutBtn = document.createElement('button');
+			logoutBtn.id = 'logout-btn';
+			logoutBtn.classList.add('hidden');
+			document.body.appendChild(logoutBtn);
+		}
+	});
+
+	it('exposes auth overlay functions on window', async () => {
+		await import('../main.js');
+		expect(typeof window.showAuthOverlay).toBe('function');
+		expect(typeof window.hideAuthOverlay).toBe('function');
+		expect(typeof window.showRegisterForm).toBe('function');
+		expect(typeof window.showLoginForm).toBe('function');
+		expect(typeof window.clearAuthForms).toBe('function');
+	});
+
+	it('showAuthOverlay removes .hidden from #auth-overlay and adds it to #lobby', async () => {
+		await import('../main.js');
+
+		const overlay = document.getElementById('auth-overlay');
+		const lobby = document.getElementById('lobby');
+		overlay.classList.add('hidden');
+		lobby.classList.remove('hidden');
+
+		window.showAuthOverlay();
+
+		expect(overlay.classList.contains('hidden')).toBe(false);
+		expect(lobby.classList.contains('hidden')).toBe(true);
+	});
+
+	it('hideAuthOverlay adds .hidden to #auth-overlay and removes it from #lobby', async () => {
+		await import('../main.js');
+
+		const overlay = document.getElementById('auth-overlay');
+		const lobby = document.getElementById('lobby');
+		overlay.classList.remove('hidden');
+		lobby.classList.add('hidden');
+
+		window.hideAuthOverlay();
+
+		expect(overlay.classList.contains('hidden')).toBe(true);
+		expect(lobby.classList.contains('hidden')).toBe(false);
+	});
+
+	it('showRegisterForm shows register form and hides login form', async () => {
+		await import('../main.js');
+
+		const regForm = document.getElementById('register-form');
+		const logForm = document.getElementById('login-form');
+		regForm.classList.add('hidden');
+		logForm.classList.remove('hidden');
+
+		window.showRegisterForm();
+
+		expect(regForm.classList.contains('hidden')).toBe(false);
+		expect(logForm.classList.contains('hidden')).toBe(true);
+	});
+
+	it('showLoginForm shows login form and hides register form', async () => {
+		await import('../main.js');
+
+		const regForm = document.getElementById('register-form');
+		const logForm = document.getElementById('login-form');
+		regForm.classList.remove('hidden');
+		logForm.classList.add('hidden');
+
+		window.showLoginForm();
+
+		expect(regForm.classList.contains('hidden')).toBe(true);
+		expect(logForm.classList.contains('hidden')).toBe(false);
+	});
+
+	it('showRegisterForm clears register error message', async () => {
+		await import('../main.js');
+
+		const regError = document.getElementById('register-error');
+		regError.textContent = 'Previous error';
+
+		window.showRegisterForm();
+
+		expect(regError.textContent).toBe('');
+	});
+
+	it('showLoginForm clears login error message', async () => {
+		await import('../main.js');
+
+		const logError = document.getElementById('login-error');
+		logError.textContent = 'Invalid credentials';
+
+		window.showLoginForm();
+
+		expect(logError.textContent).toBe('');
+	});
+
+	it('clearAuthForms clears all inputs and error spans', async () => {
+		await import('../main.js');
+
+		document.getElementById('register-username').value = 'testuser';
+		document.getElementById('register-password').value = 'secret';
+		document.getElementById('login-username').value = 'other';
+		document.getElementById('login-password').value = 'pass';
+		document.getElementById('register-error').textContent = 'err1';
+		document.getElementById('login-error').textContent = 'err2';
+
+		window.clearAuthForms();
+
+		expect(document.getElementById('register-username').value).toBe('');
+		expect(document.getElementById('register-password').value).toBe('');
+		expect(document.getElementById('login-username').value).toBe('');
+		expect(document.getElementById('login-password').value).toBe('');
+		expect(document.getElementById('register-error').textContent).toBe('');
+		expect(document.getElementById('login-error').textContent).toBe('');
+	});
+});

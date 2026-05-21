@@ -114,6 +114,7 @@ const THREE = {
 // ── Mock socket.io-client ──
 const emitLog = [];
 const handlerLog = {}; // event -> array of callbacks
+let socketConnected = true;
 const fakeSocket = {
 	id: 'mock-socket-id',
 	on: function(event, callback) {
@@ -125,10 +126,83 @@ const fakeSocket = {
 		emitLog.push({ event, data });
 		return this;
 	},
+	connect: function() {
+		socketConnected = true;
+		return this;
+	},
+	disconnect: function() {
+		socketConnected = false;
+		return this;
+	},
 	io: { on: function() { return this; } }
 };
 
 const ioMock = function() { return fakeSocket; };
+
+// ── Create auth overlay DOM elements at setup time ──
+// main.js captures these references at module load time (top-level getElementById),
+// so they must exist before any test imports main.js.
+if (typeof document !== 'undefined') {
+	function ensureAuthElements() {
+		if (document.getElementById('auth-overlay')) return;
+
+		const overlay = document.createElement('div');
+		overlay.id = 'auth-overlay';
+		overlay.classList.add('hidden');
+
+		const modal = document.createElement('div');
+		modal.id = 'auth-modal';
+
+		const registerForm = document.createElement('div');
+		registerForm.id = 'register-form';
+		const regUser = document.createElement('input');
+		regUser.type = 'text';
+		regUser.id = 'register-username';
+		const regPass = document.createElement('input');
+		regPass.type = 'password';
+		regPass.id = 'register-password';
+		const regBtn = document.createElement('button');
+		regBtn.id = 'register-btn';
+		const regError = document.createElement('span');
+		regError.id = 'register-error';
+		registerForm.appendChild(regUser);
+		registerForm.appendChild(regPass);
+		registerForm.appendChild(regBtn);
+		registerForm.appendChild(regError);
+
+		const loginForm = document.createElement('div');
+		loginForm.id = 'login-form';
+		loginForm.classList.add('hidden');
+		const logUser = document.createElement('input');
+		logUser.type = 'text';
+		logUser.id = 'login-username';
+		const logPass = document.createElement('input');
+		logPass.type = 'password';
+		logPass.id = 'login-password';
+		const logBtn = document.createElement('button');
+		logBtn.id = 'login-btn';
+		const logError = document.createElement('span');
+		logError.id = 'login-error';
+		loginForm.appendChild(logUser);
+		loginForm.appendChild(logPass);
+		loginForm.appendChild(logBtn);
+		loginForm.appendChild(logError);
+
+		modal.appendChild(registerForm);
+		modal.appendChild(loginForm);
+		overlay.appendChild(modal);
+		document.body.appendChild(overlay);
+
+		// Logout button
+		if (!document.getElementById('logout-btn')) {
+			const logoutBtn = document.createElement('button');
+			logoutBtn.id = 'logout-btn';
+			logoutBtn.classList.add('hidden');
+			document.body.appendChild(logoutBtn);
+		}
+	}
+	ensureAuthElements();
+}
 
 // Expose emit log + reset helper for tests (only in jsdom environment)
 if (typeof window !== 'undefined') {
