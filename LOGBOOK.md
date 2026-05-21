@@ -1294,3 +1294,26 @@ Debug scenarios remain gated through the explicit debug query flow on the client
 
 No blocking gaps remain.
 
+
+## v0.57 — Cleanup nits from 020-audit-client-server  (2026-05-20 23:31:19)
+
+
+## Code quality
+
+- **Focused diff:** 13 lines removed (client), 1 line changed (server) — appropriate for a nit ticket.
+- **No dead code** introduced; removed block was the redundant path.
+- **No new console errors** in capture.
+- **Tests:** 328 tests passed in `coverage.log` for files touched since baseline.
+
+---
+
+## Remaining gaps
+
+None blocking. Both acceptance areas are satisfied in the working tree; runtime capture is healthy.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for backlog items (visual capture missed summon; monster-card optimistic draw parity; optional log throttling).
+
