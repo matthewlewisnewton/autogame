@@ -1238,19 +1238,6 @@ socket.on('cardUsed', (data) => {
   // Audio cue: playing any card
   playSound('card');
 
-  // Handle confirmed summon play for the local player: consume the card
-  if (data.playerId === myId && summonCardIds.has(data.cardId)) {
-    const idx = data.slotIndex;
-    if (idx >= 0 && idx < hand.length) {
-      hand[idx] = null;
-      const newCard = drawCard();
-      if (newCard) {
-        hand[idx] = newCard;
-      }
-      renderHand();
-    }
-  }
-
   // Spawn visual for weapon attacks
   if (weaponCardIds.has(data.cardId)) {
     const origin = data.origin || { x: 0, z: 0 };
