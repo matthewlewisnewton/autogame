@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { io as ClientIO } from 'socket.io-client';
+import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
@@ -11,6 +12,7 @@ import {
 	clearAllTimers,
 	setTestProvider,
 	savePlayerData,
+	getJWTSecret,
 	ENEMY_ATTACK_RANGE,
 	ENEMY_ATTACK_RECOVERY_MS,
 	DETECTION_RADIUS,
@@ -25,6 +27,17 @@ import { InMemoryProvider } from '../providers.js';
 import { COOLDOWN_MS, MAX_ELAPSED_MS, MOVE_SPEED, MAX_HP } from '../config.js';
 
 // ── Helpers ──
+
+/**
+ * Create a valid JWT token for a test account.
+ */
+function createTestToken(accountId, username) {
+	return jwt.sign(
+		{ accountId, username: username || accountId },
+		getJWTSecret(),
+		{ expiresIn: '1h' }
+	);
+}
 
 /**
  * Start a fresh server on a random port and return the base URL.
@@ -71,21 +84,20 @@ async function startTestServer() {
 
 /**
  * Connect a socket.io-client and resolve with { socket, init }.
- * We wait for the `init` event specifically (not `connect`) because the
- * server emits `init` in its connection handler, which arrives on the client
- * after the `connect` acknowledgment. Resolving on `connect` would leave
- * `initPayload` as null.
- *
- * A 10-second timeout rejects the Promise so vitest hookTimeout fires with
- * a clear error instead of hanging indefinitely.
+ * Each connection gets a unique accountId so tests don't collide.
+ * The client sends a valid JWT token in the auth payload.
  */
 function connectClient(baseUrl) {
+	const accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+	const token = createTestToken(accountId);
+
 	return new Promise((resolve, reject) => {
 		const socket = ClientIO(baseUrl, {
 			transports: ['websocket'],
 			retry: false,
 			autoConnect: true,
-			timeout: 5000
+			timeout: 5000,
+			auth: { token }
 		});
 
 		const timer = setTimeout(() => {
@@ -2918,7 +2930,7 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: serverId }
+				auth: { playerId: serverId, token: createTestToken(serverId) }
 			});
 			const timer = setTimeout(() => {
 				s.disconnect();
@@ -2947,17 +2959,19 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 		sock2.disconnect();
 	});
 
-	it('generates new UUID when providedPlayerId has no persisted data', async () => {
+	it('uses accountId from JWT as playerId (even with no persisted data)', async () => {
 		const fakeId = 'nonexistent-player-id-' + crypto.randomUUID();
 
-		// Connect with a fake ID that has no persisted data
+		// Connect with a JWT whose accountId is the fake ID.
+		// With JWT auth, the server uses decoded.accountId as playerId,
+		// regardless of whether persisted data exists.
 		const { socket: sock, init } = await new Promise((resolve, reject) => {
 			const s = ClientIO(baseUrl, {
 				transports: ['websocket'],
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: fakeId }
+				auth: { playerId: fakeId, token: createTestToken(fakeId) }
 			});
 			const timer = setTimeout(() => {
 				s.disconnect();
@@ -2970,10 +2984,10 @@ describe('Player ID Drift Prevention on Cold Reconnect', () => {
 			});
 		});
 
-		// Server should have generated a new UUID, not used the fake ID
-		expect(init.playerId).not.toBe(fakeId);
-		// The returned ID should be a valid UUID
-		expect(init.playerId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+		// Server should use the accountId from the JWT as playerId
+		expect(init.playerId).toBe(fakeId);
+		// The init payload should also include the accountId
+		expect(init.accountId).toBe(fakeId);
 
 		sock.disconnect();
 	});
@@ -3038,7 +3052,7 @@ describe('Restore Persisted Location on Cold Reconnect During Active Run', () =>
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player2Id }
+				auth: { playerId: player2Id, token: createTestToken(player2Id) }
 			});
 			const timer = setTimeout(() => {
 				s.disconnect();
@@ -3095,7 +3109,7 @@ describe('Restore Persisted Location on Cold Reconnect During Active Run', () =>
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player1Id }
+				auth: { playerId: player1Id, token: createTestToken(player1Id) }
 			});
 			const timer = setTimeout(() => {
 				s.disconnect();
@@ -3205,7 +3219,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player2Id }
+				auth: { playerId: player2Id, token: createTestToken(player2Id) }
 			});
 			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
 			s.on('init', (data) => {
@@ -3280,7 +3294,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player2Id }
+				auth: { playerId: player2Id, token: createTestToken(player2Id) }
 			});
 			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
 			s.on('init', (data) => {
@@ -3351,7 +3365,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player1Id }
+				auth: { playerId: player1Id, token: createTestToken(player1Id) }
 			});
 			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
 			s.on('init', (data) => {
@@ -3400,7 +3414,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player2Id }
+				auth: { playerId: player2Id, token: createTestToken(player2Id) }
 			});
 			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
 			s.on('init', (data) => {
@@ -3448,7 +3462,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 				retry: false,
 				autoConnect: true,
 				timeout: 5000,
-				auth: { playerId: player2Id }
+				auth: { playerId: player2Id, token: createTestToken(player2Id) }
 			});
 			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
 			s.on('init', (data) => {

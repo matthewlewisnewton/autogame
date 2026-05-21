@@ -139,6 +139,15 @@ const fakeSocket = {
 
 const ioMock = function() { return fakeSocket; };
 
+// ── Set up localStorage with a fake JWT token ──
+// main.js reads `autogame_token` from localStorage at module load time.
+// Without it, createSocket() is never called and `socket` stays null.
+if (typeof localStorage !== 'undefined') {
+	try {
+		localStorage.setItem('autogame_token', 'test-fake-jwt-token');
+	} catch (_) { /* ignore */ }
+}
+
 // ── Create auth overlay DOM elements at setup time ──
 // main.js captures these references at module load time (top-level getElementById),
 // so they must exist before any test imports main.js.

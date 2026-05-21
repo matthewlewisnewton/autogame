@@ -144,27 +144,326 @@ const storedToken = (() => {
 let socket = null;
 
 /**
- * Create (or recreate) the Socket.IO connection with optional JWT auth.
- * @param {string|null} [token] - JWT token to send in auth payload
+ * Create (or recreate) the Socket.IO connection with a JWT auth token.
+ * A valid token is required — anonymous connections are no longer supported.
+ * @param {string} token - JWT token to send in auth payload
  */
 function createSocket(token) {
   if (socket) {
     socket.disconnect();
   }
-  const auth = {};
-  if (token) {
-    auth.token = token;
-  }
-  const pid = storedPlayerId;
-  if (pid) {
-    auth.playerId = pid;
-  }
-  socket = io({ auth });
+  socket = io({ auth: { token } });
+  attachSocketHandlers();
 }
 
-// On page load: create socket (with token if available), show/hide auth overlay.
-createSocket(storedToken);
+/**
+ * Attach all Socket.IO event listeners to the current socket instance.
+ * Called from createSocket() so handlers are wired after each (re)connection.
+ * No-op when socket is null (no token / not logged in).
+ */
+function attachSocketHandlers() {
+  if (!socket) return;
+
+  socket.on('connect', () => {
+    updateStatus('Connected', 'connected');
+    startHeartbeat();
+  });
+
+  socket.on('disconnect', () => {
+    stopHeartbeat();
+    updateStatus('Disconnected', 'disconnected');
+    disposeAllLootMeshes();
+  });
+
+  socket.io.on('reconnect_attempt', () => {
+    updateStatus('Reconnecting...', 'reconnecting');
+  });
+
+  socket.io.on('reconnect', () => {
+    updateStatus('Connected', 'connected');
+    startHeartbeat();
+  });
+
+  socket.on('init', (data) => {
+    myId = data.id;
+    // Store stable playerId for reconnect sessions
+    if (data.playerId) {
+      try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
+    }
+    gameState = data.state;
+    currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
+    if (gameState && currentLayout) gameState.layout = currentLayout;
+
+    // Initialize deck editor state from server
+    mySelectedDeck = data.selectedDeck || [];
+    myOwnedCards = data.ownedCards || {};
+    renderDeckEditor();
+
+    // ── Auth: display username and show logout button if logged in ──
+    if (data.accountId) {
+      const username = data.username || data.accountId;
+      if (statusEl) statusEl.textContent = `Logged in as ${username}`;
+      if (logoutBtn) logoutBtn.classList.remove('hidden');
+      if (lobbyEl) lobbyEl.classList.remove('hidden');
+    }
+
+    // ── Layout consistency check ──
+    const receivedSeed = data.layoutSeed;
+
+    if (sceneInitialized && receivedSeed !== undefined) {
+      // Reconnect path: the server should keep one layout seed for the session.
+      if (receivedSeed !== currentLayoutSeed) {
+        console.warn(`[layout] Seed changed from ${currentLayoutSeed} to ${receivedSeed}; keeping existing geometry`);
+        currentLayoutSeed = receivedSeed;
+      }
+      // Same seed — dungeon geometry already exists, skip redundant rebuild.
+      // Reset local player position to spawn
+      myX = spawnPosition.x;
+      myZ = spawnPosition.z;
+      requestDebugScenario();
+      return;
+    }
+
+    // Fresh connect path
+    currentLayoutSeed = receivedSeed;
+    requestDebugScenario();
+
+    // If the server is already in 'playing' phase, skip the lobby entirely
+    if (data.state && data.state.gamePhase === 'playing') {
+      if (sceneInitialized) return;
+      lobbyEl.classList.add('hidden');
+      uiEl.style.display = 'block';
+      cardHandEl.style.display = 'flex';
+      initHand();
+      initScene();
+      updateObjectiveHud();
+      return;
+    }
+
+    updateObjectiveHud();
+  });
+
+  socket.on('stateUpdate', (state) => {
+    // Verify layout seed consistency on every state update
+    if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
+      console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
+      currentLayoutSeed = state.layoutSeed;
+    }
+    gameState = state;
+    if (gameState && currentLayout) gameState.layout = currentLayout;
+
+    // Return to lobby: switch UI back to lobby view
+    if (state.gamePhase === 'lobby') {
+      if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
+      if (uiEl) uiEl.style.display = 'none';
+      if (cardHandEl) cardHandEl.style.display = 'none';
+      if (lobbyEl) lobbyEl.classList.remove('hidden');
+      renderDeckEditor();
+    }
+
+    // Entering gameplay: ensure HUD is visible (symmetric with lobby branch above)
+    if (state.gamePhase === 'playing') {
+      if (uiEl) uiEl.style.display = 'block';
+      if (cardHandEl) cardHandEl.style.display = 'flex';
+      if (lobbyEl) lobbyEl.classList.add('hidden');
+    }
+
+    // Update currency HUD
+    if (myId && gameState.players[myId]) {
+      const currencyEl = document.getElementById('currency-display');
+      if (currencyEl) {
+        const newCurrency = gameState.players[myId].currency;
+        const oldCurrency = _lastCurrency;
+        _lastCurrency = newCurrency;
+
+        currencyEl.textContent = `GOLD ${newCurrency}`;
+
+        // Flash the currency display when it increases
+        if (oldCurrency !== undefined && newCurrency > oldCurrency) {
+          currencyEl.style.transition = 'none';
+          currencyEl.style.color = '#ffd700';
+          currencyEl.style.transform = 'scale(1.2)';
+          requestAnimationFrame(() => {
+            currencyEl.style.transition = 'color 0.4s, transform 0.4s';
+            currencyEl.style.color = '';
+            currencyEl.style.transform = 'scale(1)';
+          });
+          playSound('loot');
+        }
+      }
+
+      // Sync ownedCards from server state if present
+      if (gameState.players[myId].ownedCards) {
+        myOwnedCards = gameState.players[myId].ownedCards;
+      }
+    }
+
+    // Update objective HUD
+    updateObjectiveHud();
+
+    // Reconcile hand with server authority + re-render for .no-ms / .empty classes
+    if (state.gamePhase === 'playing' && myId && state.players[myId] && state.players[myId].hand) {
+      const serverHand = state.players[myId].hand;
+      let changed = false;
+      for (let i = 0; i < 4; i++) {
+        const serverCard = serverHand[i];
+        const localCard = hand[i];
+        if (!serverCard && !localCard) continue;
+        if (!serverCard || !localCard || localCard.id !== serverCard.id ||
+            localCard.remainingCharges !== serverCard.remainingCharges ||
+            localCard.charges !== serverCard.charges) {
+          hand[i] = serverCard ? { ...serverCard } : null;
+          changed = true;
+        }
+      }
+      if (changed) renderHand();
+    } else if (state.gamePhase === 'playing') {
+      renderHand();
+    }
+
+    // Prune pickedUpLootIds: remove any IDs no longer present in gameState.loot
+    // so that a respawned item reusing the same ID can be picked up again.
+    if (state.loot && Array.isArray(state.loot)) {
+      const currentLootIds = new Set(state.loot.map(l => l.id));
+      for (const id of pickedUpLootIds) {
+        if (!currentLootIds.has(id)) {
+          pickedUpLootIds.delete(id);
+        }
+      }
+    }
+
+    // ── Client prediction reconciliation ──
+    // After each stateUpdate, compare the client's predicted position against
+    // the server's authoritative position. If the drift exceeds a threshold,
+    // snap back to the server truth to correct for network lag or desync.
+    if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
+      const serverPlayer = gameState.players[myId];
+      if (!serverPlayer.dead) {
+        const dx = serverPlayer.x - myX;
+        const dz = serverPlayer.z - myZ;
+        const drift = Math.hypot(dx, dz);
+        if (drift > 0.5) {
+          myX = serverPlayer.x;
+          myZ = serverPlayer.z;
+        }
+      }
+    }
+  });
+
+  socket.on('heartbeat_ack', (data) => {
+    if (connectionState === 'connected') {
+      latency = data.latency;
+      statusEl.innerText = `Latency: ${latency}ms`;
+    }
+  });
+
+  socket.on('debugScenarioResult', (data) => {
+    debugScenarioResult = data || null;
+    if (data && data.ok) {
+      console.log(`[debugScenario] applied ${data.scenario}`);
+    } else if (data && data.reason) {
+      console.warn(`[debugScenario] ${data.reason}`);
+    }
+  });
+
+  socket.on('playerDisconnected', (id) => {
+    if (playersMeshes[id]) {
+      if (scene) {
+        scene.remove(playersMeshes[id]);
+      }
+      delete playersMeshes[id];
+    }
+    delete previousPlayerHp[id];
+  });
+
+  socket.on('cardUsed', (data) => {
+    if (!data || !scene) return;
+    playSound('card');
+    if (weaponCardIds.has(data.cardId)) {
+      const origin = data.origin || { x: 0, z: 0 };
+      const direction = data.direction || { x: 1, z: 0 };
+      spawnAttackEffect(origin, direction);
+    }
+    if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
+      const origin = data.origin || { x: 0, z: 0 };
+      spawnSummonEffect(origin, data.radius);
+    }
+    if (data.hits && data.hits.length > 0) {
+      playSound('enemyHit');
+      const now = performance.now();
+      for (const hit of data.hits) {
+        const mesh = enemiesMeshes[hit.enemyId];
+        if (mesh) {
+          flashMesh(mesh, 0xffffff, 200);
+          lastCardHitTime[hit.enemyId] = now;
+        }
+      }
+    }
+  });
+
+  socket.on('cardError', (data) => {
+    if (!data || !data.reason) return;
+    showCardErrorToast(data.reason);
+    if (data.reason === 'Not enough Magic Stones' && lastUsedSlot >= 0) {
+      const slot = cardSlots[lastUsedSlot];
+      if (slot) slot.classList.add('no-ms');
+    }
+    lastUsedSlot = -1;
+  });
+
+  socket.on('deckUpdate', (data) => {
+    if (!data) return;
+    if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+    if (data.ownedCards) myOwnedCards = data.ownedCards;
+    renderDeckEditor();
+  });
+
+  socket.on('deckError', (data) => {
+    if (!data || !data.reason) return;
+    showDeckError(data.reason);
+  });
+
+  socket.on('lobbyUpdate', (data) => {
+    renderPlayerList(data.players);
+    if (data.players && myId) {
+      const me = data.players.find(p => p.id === myId);
+      if (me) {
+        isReady = me.ready;
+        readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
+      }
+    }
+  });
+
+  socket.on('startGame', () => {
+    lobbyEl.classList.add('hidden');
+    uiEl.style.display = 'block';
+    cardHandEl.style.display = 'flex';
+    updateObjectiveHud();
+    if (!sceneInitialized) {
+      initHand();
+      initScene();
+      return;
+    }
+    initHand();
+    myX = spawnPosition.x;
+    myZ = spawnPosition.z;
+    playerRotation = 0;
+    wasDead = false;
+    disposeMeshMap(enemiesMeshes, scene);
+    disposeMeshMap(enemyHealthBars, scene);
+    disposeMeshMap(telegraphMeshes, scene);
+    disposeMeshMap(minionsMeshes, scene);
+    disposeMeshMap(lootMeshes, scene, true);
+    windupFlashing.clear();
+  });
+
+  socket.on('runComplete', showRunSummary);
+  socket.on('runFailed', showRunSummary);
+}
+
+// On page load: only connect if we have a stored token; otherwise show auth overlay.
 if (storedToken) {
+  createSocket(storedToken);
   hideAuthOverlay();
 } else {
   showAuthOverlay();
@@ -668,220 +967,6 @@ if (logoutBtn) {
     clearAuthForms();
   });
 }
-
-// ── Socket event handlers ──
-
-socket.on('connect', () => {
-  updateStatus('Connected', 'connected');
-  startHeartbeat();
-});
-
-socket.on('disconnect', () => {
-  stopHeartbeat();
-  updateStatus('Disconnected', 'disconnected');
-  disposeAllLootMeshes();
-});
-
-socket.io.on('reconnect_attempt', () => {
-  updateStatus('Reconnecting...', 'reconnecting');
-});
-
-socket.io.on('reconnect', () => {
-  updateStatus('Connected', 'connected');
-  startHeartbeat();
-});
-
-socket.on('init', (data) => {
-  myId = data.id;
-  // Store stable playerId for reconnect sessions
-  if (data.playerId) {
-    try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
-  }
-  gameState = data.state;
-  currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
-  if (gameState && currentLayout) gameState.layout = currentLayout;
-
-  // Initialize deck editor state from server
-  mySelectedDeck = data.selectedDeck || [];
-  myOwnedCards = data.ownedCards || {};
-  renderDeckEditor();
-
-  // ── Auth: display username and show logout button if logged in ──
-  if (data.accountId) {
-    const username = data.username || data.accountId;
-    if (statusEl) statusEl.textContent = `Logged in as ${username}`;
-    if (logoutBtn) logoutBtn.classList.remove('hidden');
-    if (lobbyEl) lobbyEl.classList.remove('hidden');
-  }
-
-  // ── Layout consistency check ──
-  const receivedSeed = data.layoutSeed;
-
-  if (sceneInitialized && receivedSeed !== undefined) {
-    // Reconnect path: the server should keep one layout seed for the session.
-    if (receivedSeed !== currentLayoutSeed) {
-      console.warn(`[layout] Seed changed from ${currentLayoutSeed} to ${receivedSeed}; keeping existing geometry`);
-      currentLayoutSeed = receivedSeed;
-    }
-    // Same seed — dungeon geometry already exists, skip redundant rebuild.
-    // Reset local player position to spawn
-    myX = spawnPosition.x;
-    myZ = spawnPosition.z;
-    requestDebugScenario();
-    return;
-  }
-
-  // Fresh connect path
-  currentLayoutSeed = receivedSeed;
-  requestDebugScenario();
-
-  // If the server is already in 'playing' phase, skip the lobby entirely
-  if (data.state && data.state.gamePhase === 'playing') {
-    if (sceneInitialized) return;
-    lobbyEl.classList.add('hidden');
-    uiEl.style.display = 'block';
-    cardHandEl.style.display = 'flex';
-    initHand();
-    initScene();
-    updateObjectiveHud();
-    return;
-  }
-
-  updateObjectiveHud();
-});
-
-socket.on('stateUpdate', (state) => {
-  // Verify layout seed consistency on every state update
-  if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
-    console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
-    currentLayoutSeed = state.layoutSeed;
-  }
-  gameState = state;
-  if (gameState && currentLayout) gameState.layout = currentLayout;
-
-  // Return to lobby: switch UI back to lobby view
-  if (state.gamePhase === 'lobby') {
-    if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
-    if (uiEl) uiEl.style.display = 'none';
-    if (cardHandEl) cardHandEl.style.display = 'none';
-    if (lobbyEl) lobbyEl.classList.remove('hidden');
-    renderDeckEditor();
-  }
-
-  // Entering gameplay: ensure HUD is visible (symmetric with lobby branch above)
-  if (state.gamePhase === 'playing') {
-    if (uiEl) uiEl.style.display = 'block';
-    if (cardHandEl) cardHandEl.style.display = 'flex';
-    if (lobbyEl) lobbyEl.classList.add('hidden');
-  }
-
-  // Update currency HUD
-  if (myId && gameState.players[myId]) {
-    const currencyEl = document.getElementById('currency-display');
-    if (currencyEl) {
-      const newCurrency = gameState.players[myId].currency;
-      const oldCurrency = _lastCurrency;
-      _lastCurrency = newCurrency;
-
-      currencyEl.textContent = `GOLD ${newCurrency}`;
-
-      // Flash the currency display when it increases
-      if (oldCurrency !== undefined && newCurrency > oldCurrency) {
-        currencyEl.style.transition = 'none';
-        currencyEl.style.color = '#ffd700';
-        currencyEl.style.transform = 'scale(1.2)';
-        requestAnimationFrame(() => {
-          currencyEl.style.transition = 'color 0.4s, transform 0.4s';
-          currencyEl.style.color = '';
-          currencyEl.style.transform = 'scale(1)';
-        });
-        playSound('loot');
-      }
-    }
-
-    // Sync ownedCards from server state if present
-    if (gameState.players[myId].ownedCards) {
-      myOwnedCards = gameState.players[myId].ownedCards;
-    }
-  }
-
-  // Update objective HUD
-  updateObjectiveHud();
-
-  // Reconcile hand with server authority + re-render for .no-ms / .empty classes
-  if (state.gamePhase === 'playing' && myId && state.players[myId] && state.players[myId].hand) {
-    const serverHand = state.players[myId].hand;
-    let changed = false;
-    for (let i = 0; i < 4; i++) {
-      const serverCard = serverHand[i];
-      const localCard = hand[i];
-      if (!serverCard && !localCard) continue;
-      if (!serverCard || !localCard || localCard.id !== serverCard.id ||
-          localCard.remainingCharges !== serverCard.remainingCharges ||
-          localCard.charges !== serverCard.charges) {
-        hand[i] = serverCard ? { ...serverCard } : null;
-        changed = true;
-      }
-    }
-    if (changed) renderHand();
-  } else if (state.gamePhase === 'playing') {
-    renderHand();
-  }
-
-  // Prune pickedUpLootIds: remove any IDs no longer present in gameState.loot
-  // so that a respawned item reusing the same ID can be picked up again.
-  if (state.loot && Array.isArray(state.loot)) {
-    const currentLootIds = new Set(state.loot.map(l => l.id));
-    for (const id of pickedUpLootIds) {
-      if (!currentLootIds.has(id)) {
-        pickedUpLootIds.delete(id);
-      }
-    }
-  }
-
-  // ── Client prediction reconciliation ──
-  // After each stateUpdate, compare the client's predicted position against
-  // the server's authoritative position. If the drift exceeds a threshold,
-  // snap back to the server truth to correct for network lag or desync.
-  if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
-    const serverPlayer = gameState.players[myId];
-    if (!serverPlayer.dead) {
-      const dx = serverPlayer.x - myX;
-      const dz = serverPlayer.z - myZ;
-      const drift = Math.hypot(dx, dz);
-      if (drift > 0.5) {
-        myX = serverPlayer.x;
-        myZ = serverPlayer.z;
-      }
-    }
-  }
-});
-
-socket.on('heartbeat_ack', (data) => {
-  if (connectionState === 'connected') {
-    latency = data.latency;
-    statusEl.innerText = `Latency: ${latency}ms`;
-  }
-});
-
-socket.on('debugScenarioResult', (data) => {
-  debugScenarioResult = data || null;
-  if (data && data.ok) {
-    console.log(`[debugScenario] applied ${data.scenario}`);
-  } else if (data && data.reason) {
-    console.warn(`[debugScenario] ${data.reason}`);
-  }
-});
-
-socket.on('playerDisconnected', (id) => {
-  if (playersMeshes[id]) {
-    if (scene) {
-      scene.remove(playersMeshes[id]);
-    }
-    delete playersMeshes[id];
-  }
-  delete previousPlayerHp[id];
-});
 
 // ── Hit flash helper ──
 
@@ -1458,67 +1543,6 @@ function disposeAllLootMeshes() {
   disposeMeshMap(lootMeshes, scene, true);
 }
 
-socket.on('cardUsed', (data) => {
-  if (!data || !scene) return;
-
-  // Audio cue: playing any card
-  playSound('card');
-
-  // Spawn visual for weapon attacks
-  if (weaponCardIds.has(data.cardId)) {
-    const origin = data.origin || { x: 0, z: 0 };
-    const direction = data.direction || { x: 1, z: 0 };
-    spawnAttackEffect(origin, direction);
-  }
-
-  // Spawn visual for summon AoE
-  if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
-    const origin = data.origin || { x: 0, z: 0 };
-    spawnSummonEffect(origin, data.radius);
-  }
-
-  // Flash hit enemies (weapon, summon, or any card that reports hits)
-  // Audio cue: play at most one enemyHit per card event, only when there are actual hits
-  if (data.hits && data.hits.length > 0) {
-    playSound('enemyHit');
-
-    const now = performance.now();
-    for (const hit of data.hits) {
-      const mesh = enemiesMeshes[hit.enemyId];
-      if (mesh) {
-        flashMesh(mesh, 0xffffff, 200);
-        lastCardHitTime[hit.enemyId] = now;
-      }
-    }
-  }
-});
-
-socket.on('cardError', (data) => {
-  if (!data || !data.reason) return;
-  showCardErrorToast(data.reason);
-
-  // Apply .no-ms visual to the slot that was just used
-  if (data.reason === 'Not enough Magic Stones' && lastUsedSlot >= 0) {
-    const slot = cardSlots[lastUsedSlot];
-    if (slot) {
-      slot.classList.add('no-ms');
-    }
-  }
-  lastUsedSlot = -1;
-});
-
-socket.on('deckUpdate', (data) => {
-  if (!data) return;
-  if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
-  if (data.ownedCards) myOwnedCards = data.ownedCards;
-  renderDeckEditor();
-});
-
-socket.on('deckError', (data) => {
-  if (!data || !data.reason) return;
-  showDeckError(data.reason);
-});
-
 function showCardErrorToast(message) {
   const toast = document.createElement('div');
   toast.textContent = message;
@@ -1560,19 +1584,6 @@ function renderPlayerList(players) {
   }
 }
 
-socket.on('lobbyUpdate', (data) => {
-  renderPlayerList(data.players);
-
-  // Sync local ready state from server truth so the button never desyncs
-  if (data.players && myId) {
-    const me = data.players.find(p => p.id === myId);
-    if (me) {
-      isReady = me.ready;
-      readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
-    }
-  }
-});
-
 readyBtn.addEventListener('click', () => {
   isReady = !isReady;
   socket.emit('playerReady', isReady);
@@ -1596,38 +1607,6 @@ document.addEventListener('click', (e) => {
 
 // Initialize button text if it already exists at import time
 updateMuteButton();
-
-socket.on('startGame', () => {
-  // Always transition UI to gameplay view (needed for subsequent runs after lobby return)
-  lobbyEl.classList.add('hidden');
-  uiEl.style.display = 'block';
-  cardHandEl.style.display = 'flex';
-  updateObjectiveHud();
-
-  if (!sceneInitialized) {
-    initHand();
-    initScene();
-    return;
-  }
-
-  // Subsequent run: re-init hand with a fresh draw, reset local position to spawn
-  // Also clean up meshes from the previous run
-  initHand();
-  myX = spawnPosition.x;
-  myZ = spawnPosition.z;
-  playerRotation = 0;
-  wasDead = false;
-
-  // Dispose previous run's meshes using centralized helper
-  disposeMeshMap(enemiesMeshes, scene);
-  disposeMeshMap(enemyHealthBars, scene);
-  disposeMeshMap(telegraphMeshes, scene);
-  disposeMeshMap(minionsMeshes, scene);
-  // Loot meshes share geometry/material — skip disposal
-  disposeMeshMap(lootMeshes, scene, true);
-  // Clear windup flashing tracking for new run
-  windupFlashing.clear();
-});
 
 // ── Run Summary Overlay ──
 
@@ -1681,9 +1660,6 @@ function showRunSummary(data) {
 
   runSummaryOverlay.style.display = 'flex';
 }
-
-socket.on('runComplete', showRunSummary);
-socket.on('runFailed', showRunSummary);
 
 returnToLobbyBtn.addEventListener('click', () => {
   socket.emit('returnToLobby');
