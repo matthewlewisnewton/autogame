@@ -393,6 +393,19 @@ function clampObjectiveProgress(run) {
 }
 
 /**
+ * Resync the active run's objective totals to the current authoritative
+ * enemy list. Used after debug scenarios mutate `gameState.enemies` after
+ * `startDungeonRun()` has already snapshot the initial count — without this,
+ * `totalEnemies` could disagree with the real enemy list and run completion
+ * would behave incorrectly. No-op when there is no active run.
+ */
+function syncRunObjectiveToEnemies() {
+  if (!gameState.run) return;
+  gameState.run.objective.totalEnemies = gameState.enemies.length;
+  clampObjectiveProgress(gameState.run);
+}
+
+/**
  * Record `count` enemy kills against the current run objective.
  * Safe no-op when gameState.run is undefined (e.g. lobby phase).
  */
@@ -975,6 +988,11 @@ function applyDebugScenario(socket, name) {
     const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
     spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
   }
+
+  // Scenario enemy mutations above can add to or replace the enemy list
+  // after enterPlayingPhase() / startDungeonRun() snapshot the count. Resync
+  // the run objective so totalEnemies reflects the final authoritative list.
+  syncRunObjectiveToEnemies();
 
   broadcastLobbyUpdate();
   io.emit('stateUpdate', stateSnapshot());
