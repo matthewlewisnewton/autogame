@@ -283,13 +283,15 @@ describe('Socket Integration — Move Event', () => {
 
 		const player = gameState.players[socket.id];
 
-		// Place player at dungeon center to avoid swept-collision rejection
-		// from wall proximity at the spawn point.
-		const bounds = gameState.dungeonBounds;
-		const centerX = (bounds.minX + bounds.maxX) / 2;
-		const centerZ = (bounds.minZ + bounds.maxZ) / 2;
-		player.x = centerX;
-		player.z = centerZ;
+		// Place player at the center of the largest room to avoid swept-collision
+		// rejection from wall proximity. The bounds center may fall in a passage
+		// or between rooms — a room center guarantees clearance.
+		const largestRoom = gameState.layout.rooms.reduce(
+			(best, r) => (r.width * r.depth > best.width * best.depth ? r : best),
+			gameState.layout.rooms[0]
+		);
+		player.x = largestRoom.x;
+		player.z = largestRoom.z;
 
 		const startX = player.x;
 
@@ -544,6 +546,59 @@ describe('Socket Integration — useCard Event', () => {
 			// TTL starts at 30 but game loop may have ticked a bit
 			expect(minion.ttl).toBeGreaterThan(29);
 			expect(minion.ttl).toBeLessThanOrEqual(30);
+		});
+
+		it('uses monster card via useCard: hand slot replaced, minion present, stateUpdate broadcast', async () => {
+			// Use the monster-card debug scenario to guarantee a monster in hand
+			const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+			socket.emit('debugScenario', { name: 'monster-card' });
+			await debugResultPromise;
+
+			// Capture the stateUpdate emitted by applyDebugScenario
+			const initUpdate = await waitForEvent(socket, 'stateUpdate');
+			const playerKey = Object.keys(initUpdate.players).find(
+				k => initUpdate.players[k].debugScenario === 'monster-card'
+			);
+			expect(playerKey).toBeDefined();
+			const player = initUpdate.players[playerKey];
+
+			// Find the monster card slot
+			const monsterSlot = player.hand.findIndex(c => c && c.type === 'monster');
+			expect(monsterSlot).toBeGreaterThanOrEqual(0);
+			const monsterCardId = player.hand[monsterSlot].id;
+			expect(monsterCardId).toBe('dungeon_drake');
+
+			const handSizeBefore = player.hand.length;
+			const minionCountBefore = gameState.minions.length;
+
+			// Capture the stateUpdate that the server emits after processing useCard
+			const stateUpdatePromise = new Promise((resolve) => {
+				socket.once('stateUpdate', resolve);
+			});
+
+			// Emit useCard on the monster slot
+			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
+			const updatedSnapshot = await stateUpdatePromise;
+
+			// Verify the hand slot was replaced with a new card (or shrunk if deck exhausted)
+			const updatedPlayer = updatedSnapshot.players[playerKey];
+			expect(updatedPlayer).toBeDefined();
+			if (updatedPlayer.hand.length === handSizeBefore) {
+				// Deck had cards — slot was replaced
+				expect(updatedPlayer.hand[monsterSlot]).toBeDefined();
+				expect(updatedPlayer.hand[monsterSlot].id).not.toBe(monsterCardId);
+			} else {
+				// Deck exhausted — slot was spliced out
+				expect(updatedPlayer.hand.length).toBe(handSizeBefore - 1);
+			}
+
+			// Verify a minion was added to gameState
+			expect(gameState.minions.length).toBe(minionCountBefore + 1);
+			const newMinion = gameState.minions[gameState.minions.length - 1];
+			expect(newMinion.ownerId).toBe(socket.id);
+			expect(newMinion.hp).toBe(50);
+			expect(newMinion.ttl).toBeGreaterThan(29);
+			expect(newMinion.ttl).toBeLessThanOrEqual(30);
 		});
 	});
 });
