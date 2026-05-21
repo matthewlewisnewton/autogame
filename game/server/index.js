@@ -1303,6 +1303,11 @@ function cleanupStalePlayers() {
   for (const playerId in gameState.players) {
     const player = gameState.players[playerId];
     if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
+      // Persist latest state before removing — covers the case where the
+      // socket is already disconnected and the 'disconnect' handler never fires.
+      // If socket.disconnect() below triggers the handler, its own savePlayerData
+      // is a redundant but harmless second save after this one.
+      savePlayerData(playerId);
       const socket = io.sockets.sockets.get(playerId);
       if (socket && socket.connected) {
         socket.disconnect();
