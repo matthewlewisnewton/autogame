@@ -75,18 +75,18 @@
         <!-- Registration form -->
         <div id="register-form">
           <h3>Create Account</h3>
-          <input type="text" id="register-username" placeholder="Username" autocomplete="username" />
-          <input type="password" id="register-password" placeholder="Password" autocomplete="new-password" />
-          <button id="register-btn">Register</button>
+          <input type="text" id="register-username" data-testid="register-username" placeholder="Username" autocomplete="username" />
+          <input type="password" id="register-password" data-testid="register-password" placeholder="Password" autocomplete="new-password" />
+          <button id="register-btn" data-testid="register-btn">Register</button>
           <span id="register-error"></span>
-          <p class="auth-toggle"><a id="show-login-link">Have an account? Login</a></p>
+          <p class="auth-toggle"><a id="show-login-link" data-testid="show-login-link">Have an account? Login</a></p>
         </div>
         <!-- Login form -->
         <div id="login-form" class="hidden">
           <h3>Login</h3>
-          <input type="text" id="login-username" placeholder="Username" autocomplete="username" />
-          <input type="password" id="login-password" placeholder="Password" autocomplete="current-password" />
-          <button id="login-btn">Login</button>
+          <input type="text" id="login-username" data-testid="login-username" placeholder="Username" autocomplete="username" />
+          <input type="password" id="login-password" data-testid="login-password" placeholder="Password" autocomplete="current-password" />
+          <button id="login-btn" data-testid="login-btn">Login</button>
           <span id="login-error"></span>
           <p class="auth-toggle"><a id="show-register-link">No account? Register</a></p>
         </div>

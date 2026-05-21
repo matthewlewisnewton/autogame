@@ -41,6 +41,8 @@ const baseScenario = new URL(baseUrl).searchParams.get('debugScenario');
 if (baseScenario && SCENARIO_RE.test(baseScenario)) scenarios.add(baseScenario);
 const ACTIONS = new Set([
   'connectPlayer',
+  'registerUser',
+  'loginUser',
   'readyAll',
   'waitForGame',
   'move',
@@ -154,6 +156,8 @@ function validateRecipe(input) {
     if (typeof step.key === 'string' && /^[wasdWASD]$/.test(step.key)) clean.key = step.key.toLowerCase();
     if (Number.isInteger(step.slot) && step.slot >= 0 && step.slot <= 3) clean.slot = step.slot;
     if (typeof step.cardType === 'string' && /^[a-z]+$/.test(step.cardType)) clean.cardType = step.cardType;
+    if (typeof step.username === 'string' && step.username.length >= 1 && step.username.length <= 64) clean.username = step.username;
+    if (typeof step.password === 'string' && step.password.length >= 1 && step.password.length <= 64) clean.password = step.password;
     return clean;
   });
 
@@ -165,12 +169,18 @@ function validateRecipe(input) {
 
 function fallbackRecipe() {
   return {
-    summary: 'Deterministic full-flow smoke capture: lobby, second player, ready transition, movement.',
+    summary: 'Deterministic full-flow smoke capture: auth, lobby, second player, ready transition, movement.',
     steps: [
       { action: 'connectPlayer', player: 'A' },
       { action: 'wait', player: 'A', ms: 1000 },
+      { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
+      { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
+      { action: 'wait', player: 'A', ms: 1000 },
       { action: 'screenshot', player: 'A', name: '01-initial', description: 'Initial load with one player in the lobby.' },
       { action: 'connectPlayer', player: 'B' },
+      { action: 'wait', player: 'B', ms: 1000 },
+      { action: 'registerUser', player: 'B', username: 'playerB', password: 'test123' },
+      { action: 'loginUser', player: 'B', username: 'playerB', password: 'test123' },
       { action: 'wait', player: 'A', ms: 1000 },
       { action: 'screenshot', player: 'A', name: '02-two-players', description: 'Two connected players visible in the lobby.' },
       { action: 'readyAll' },
@@ -347,6 +357,67 @@ async function executeRecipe(browser, recipe) {
       wire(page, player);
       await page.goto(makeUrl(step), { waitUntil: 'load', timeout: 30000 });
       await page.waitForTimeout(750);
+      continue;
+    }
+
+    if (step.action === 'registerUser') {
+      const page = getPage(player);
+      const username = step.username || `${player.toLowerCase()}${Date.now()}`;
+      const password = step.password || 'test123';
+
+      // Ensure the register form is visible
+      const registerForm = page.locator('#register-form');
+      if (!(await registerForm.isVisible().catch(() => false))) {
+        // Try showing the register form: click the show-register-link if visible
+        const showRegisterLink = page.locator('#show-register-link');
+        if (await showRegisterLink.isVisible().catch(() => false)) {
+          await showRegisterLink.click().catch(() => {});
+        }
+        // Also try the show-login-link path: sometimes the login form is shown first
+        const showLoginLink = page.locator('#show-login-link');
+        if (await showLoginLink.isVisible().catch(() => false)) {
+          // login form is visible, need to find register toggle
+          await showRegisterLink.click().catch(() => {});
+        }
+      }
+
+      // Fill the registration form using data-testid selectors
+      await page.locator('[data-testid="register-username"]').fill(username);
+      await page.locator('[data-testid="register-password"]').fill(password);
+      await page.locator('[data-testid="register-btn"]').click();
+      await page.waitForTimeout(500);
+      continue;
+    }
+
+    if (step.action === 'loginUser') {
+      const page = getPage(player);
+      const username = step.username || `${player.toLowerCase()}${Date.now()}`;
+      const password = step.password || 'test123';
+
+      // Ensure the login form is visible
+      const loginForm = page.locator('#login-form');
+      if (!(await loginForm.isVisible().catch(() => false))) {
+        // Click the show-login-link to switch from register to login form
+        const showLoginLink = page.locator('[data-testid="show-login-link"]');
+        if (await showLoginLink.isVisible().catch(() => false)) {
+          await showLoginLink.click().catch(() => {});
+        }
+      }
+
+      // Fill the login form using data-testid selectors
+      await page.locator('[data-testid="login-username"]').fill(username);
+      await page.locator('[data-testid="login-password"]').fill(password);
+      await page.locator('[data-testid="login-btn"]').click();
+
+      // Wait for socket connection: check #status text or #auth-overlay to hide
+      await page.waitForFunction(() => {
+        const status = document.querySelector('#status');
+        if (status && status.innerText.includes('Connected')) return true;
+        const authOverlay = document.querySelector('#auth-overlay');
+        if (authOverlay && authOverlay.classList.contains('hidden')) return true;
+        return false;
+      }, null, { timeout: step.timeoutMs || 10000 }).catch(() => {});
+      await page.waitForTimeout(500);
       continue;
     }
 
