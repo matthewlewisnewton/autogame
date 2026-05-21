@@ -3,4 +3,5 @@ packages:
   - 'server'
   - 'client'
 allowBuilds:
+  bcrypt: false
   esbuild: true
