@@ -14,6 +14,7 @@ harness/**/*.new
 harness/tmp/
 harness/.playtest/
 harness/progress/events.ndjson
+harness/progress/.tunnel-credentials
 tickets/**/artifacts/
 tickets/**/review-round-*/
 tickets/**/.reviews/
