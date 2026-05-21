@@ -1,9 +1,10 @@
 {
-  "summary": "Verifies two-player connection, lobby readiness, and transition to gameplay with basic movement.",
+  "summary": "Verifies two-player connection, lobby readiness, gameplay transition, and monster card usage (minion spawn + replacement draw via stateUpdate)",
   "steps": [
     {
       "action": "connectPlayer",
-      "player": "A"
+      "player": "A",
+      "scenario": "monster-card"
     },
     {
       "action": "connectPlayer",
@@ -54,14 +55,27 @@
       "action": "probe",
       "player": "A",
       "description": "Verify player A position change and entity sync"
+    },
+    {
+      "action": "pressCard",
+      "player": "A",
+      "cardType": "monster"
+    },
+    {
+      "action": "wait",
+      "player": "A",
+      "ms": 500
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "04-after-monster-card",
+      "description": "After pressing monster card - minion spawned, slot shows replacement card from stateUpdate"
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify monster slot card id before and after use, new replacement card arrived via stateUpdate with no client-side drawCard call, and a minion entity exists in scene"
     }
   ]
 }
-
-
-STDERR/ERROR:
-Warning: Basic terminal detected (TERM=dumb). Visual rendering will be limited. For the best experience, use a terminal emulator with truecolor support.
-YOLO mode is enabled. All tool calls will be automatically approved.
-YOLO mode is enabled. All tool calls will be automatically approved.
-Ripgrep is not available. Falling back to GrepTool.
-

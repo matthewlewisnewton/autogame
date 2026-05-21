@@ -300,6 +300,7 @@ const DEBUG_SCENARIOS = new Set([
   'combat-damaged-player',
   'mixed-enemies',
   'spawner-active',
+  'monster-card',
 ]);
 
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
@@ -991,6 +992,12 @@ function applyDebugScenario(socket, name) {
     gameState.enemies = [];
     const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
     spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
+  } else if (name === 'monster-card') {
+    // Stay in lobby; guarantee a monster card in hand after initPlayerHand()
+    // runs during checkAllReady(). The post-hand-init hook in checkAllReady
+    // checks player.debugScenario === 'monster-card' and swaps a slot.
+    player.hp = MAX_HP;
+    player.magicStones = MAX_MAGIC_STONES;
   }
 
   // Scenario enemy mutations above can add to or replace the enemy list
