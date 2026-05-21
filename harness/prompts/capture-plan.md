@@ -26,9 +26,12 @@ The harness will validate and execute only these actions:
 - probe: collect DOM/game-state metrics. Fields: player, description.
 
 Available development scenarios:
-- summon-low-mana: start in gameplay with the local player at low Magic Stones.
-- summon-ready: start in gameplay with full Magic Stones and nearby enemies.
-- combat-damaged-player: start in gameplay with the local player damaged.
+- summon-low-mana: start in gameplay with the local player at 0 Magic Stones (full HP).
+- summon-ready: start in gameplay with full Magic Stones, a summon card in hand, and nearby enemies.
+- combat-damaged-player: start in gameplay with the local player at low HP (25) and full Magic Stones.
+- mixed-enemies: start in gameplay with one of each enemy type (grunt, skirmisher, miniboss, spawner) spawned near the player.
+- spawner-active: start in gameplay with a spawner enemy ready to spawn its first add on the next tick.
+- monster-card: start in gameplay with full Magic Stones and a monster card (Dungeon Drake) guaranteed in hand.
 
 Use a debug scenario only when the ticket needs a hard-to-reach state. Prefer
 the normal lobby-to-game flow for tickets about onboarding, lobby readiness,
