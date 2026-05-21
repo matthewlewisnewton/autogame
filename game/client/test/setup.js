@@ -113,31 +113,38 @@ const THREE = {
 
 // ── Mock socket.io-client ──
 const emitLog = [];
-const handlerLog = {}; // event -> array of callbacks
+const handlerLog = {}; // event -> array of callbacks (keyed by "socketId:event")
 let socketConnected = true;
-const fakeSocket = {
-	id: 'mock-socket-id',
-	on: function(event, callback) {
-		if (!handlerLog[event]) handlerLog[event] = [];
-		handlerLog[event].push(callback);
-		return this;
-	},
-	emit: function(event, data) {
-		emitLog.push({ event, data });
-		return this;
-	},
-	connect: function() {
-		socketConnected = true;
-		return this;
-	},
-	disconnect: function() {
-		socketConnected = false;
-		return this;
-	},
-	io: { on: function() { return this; } }
-};
+let socketCounter = 0; // tracks how many times io() was called
 
-const ioMock = function() { return fakeSocket; };
+function createMockSocket() {
+	socketCounter++;
+	const id = `mock-socket-${socketCounter}`;
+	return {
+		id,
+		on: function(event, callback) {
+			const key = `${id}:${event}`;
+			if (!handlerLog[key]) handlerLog[key] = [];
+			handlerLog[key].push(callback);
+			return this;
+		},
+		emit: function(event, data) {
+			emitLog.push({ event, data, socketId: id });
+			return this;
+		},
+		connect: function() {
+			socketConnected = true;
+			return this;
+		},
+		disconnect: function() {
+			socketConnected = false;
+			return this;
+		},
+		io: { on: function() { return this; } }
+	};
+}
+
+const ioMock = function() { return createMockSocket(); };
 
 // ── Set up localStorage with a fake JWT token ──
 // main.js reads `autogame_token` from localStorage at module load time.
@@ -218,11 +225,26 @@ if (typeof window !== 'undefined') {
 	window.__socketEmitLog = () => emitLog;
 	window.__clearSocketEmitLog = () => { emitLog.length = 0; };
 	window.__triggerSocketEvent = function(event, data) {
-		const handlers = handlerLog[event];
-		if (handlers) {
-			for (const cb of handlers) cb(data);
+		// handlerLog is keyed by "socketId:event" — find all matching handlers
+		for (const key of Object.keys(handlerLog)) {
+			if (key.endsWith(`:${event}`)) {
+				for (const cb of handlerLog[key]) cb(data);
+			}
 		}
 	};
+	/** Return the set of events registered on a specific socket id. */
+	window.__socketHandlerEvents = function(socketId) {
+		const events = new Set();
+		const prefix = `${socketId}:`;
+		for (const key of Object.keys(handlerLog)) {
+			if (key.startsWith(prefix)) {
+				events.add(key.slice(prefix.length));
+			}
+		}
+		return events;
+	};
+	/** Return the current socket counter (how many mock sockets have been created). */
+	window.__socketCounter = () => socketCounter;
 	window.__soundLogEnabled = true; // enable _playSoundCallLog in test environment
 }
 
