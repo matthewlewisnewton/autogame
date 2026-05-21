@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Inner loop for ONE sub-ticket: qwen implements -> screenshot -> visual QA.
-# QA chain: cursor-agent/composer (primary independent reviewer) ->
-# agy/Gemini-3.5-Flash (second independent reviewer; gemini-CLI replacement)
-# -> qwen self-review (local "loop keeps moving" fallback) -> claude (last
-# resort). Qwen vision can be enabled as optional failed-QA feedback.
+# QA chain (qwen-first policy): qwen self-review (primary, local + free) ->
+# cursor-agent/composer (paid, independent reviewer; kicks in if qwen
+# produces no verdict) -> agy/Gemini-3.5-Flash (cloud, zero-cost; third
+# independent reviewer; gemini-CLI replacement) -> claude (last resort).
+# Qwen vision can be enabled as optional failed-QA feedback.
 #
 #   harness/run_subtask.sh <sub-ticket-dir>
 #
@@ -195,28 +196,33 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa.md" \
       TICKET_FILE "$TICKET_FILE" ARTIFACTS_DIR "$ARTI")"
   fi
-  # QA agent chain:
-  #   1. cursor-agent/composer-2.5-fast (primary, independent reviewer)
-  #   2. agy / Gemini 3.5 Flash (High) (second independent reviewer; cloud +
-  #      zero-cost — replaces the retired gemini CLI)
-  #   3. qwen self-review (loop-keeps-moving fallback — same model that wrote
-  #      the code, so its verdict inherits the writer's blind spots; accept
-  #      only because it's the third-tier fallback, not a primary gate)
-  #   4. claude (last resort, most expensive)
+  # QA agent chain — qwen-first policy:
+  #   1. qwen self-review (local, free — primary gate for sub-tickets).
+  #      Same model that wrote the code, so it can inherit the writer's blind
+  #      spots; accepted as primary because (a) qwen is invoked in a fresh
+  #      session here with the qa-* prompt, not the implement prompt, (b) sub-
+  #      ticket scope is narrow so a reviewer-mindset pass on a small diff is
+  #      a meaningful gate, and (c) the top-level review (run by a paid agent
+  #      with broader context) catches integration issues qwen would miss.
+  #   2. cursor-agent/composer-2.5-fast (paid, independent reviewer — kicks
+  #      in only when qwen produces no verdict, e.g. crash / timeout / blank).
+  #   3. agy / Gemini 3.5 Flash (High) (cloud, zero-cost — third independent
+  #      reviewer; replaces the retired gemini CLI).
+  #   4. claude (last resort, most expensive).
   # Each tier is accepted only if it produced a real verdict line.
-  if run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
-    log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE)"
+  if run_qwen "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+    log "[qa] verified by qwen self-review ($QA_MODE)"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"qwen-self\",\"mode\":$(json_string "$QA_MODE")}"
+  elif run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+    log "[qa] verified by cursor-agent/$AGENT_MODEL ($QA_MODE) — qwen unavailable"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "cursor-agent/$AGENT_MODEL"),\"mode\":$(json_string "$QA_MODE")}"
   elif run_agy "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
-    log "[qa] verified by agy/$AGY_MODEL_LABEL ($QA_MODE) — cursor-agent unavailable"
+    log "[qa] verified by agy/$AGY_MODEL_LABEL ($QA_MODE) — qwen + cursor-agent unavailable"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "agy/$AGY_MODEL_LABEL"),\"mode\":$(json_string "$QA_MODE")}"
-  elif run_qwen "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
-    log "[qa] verified by qwen self-review ($QA_MODE) — agent + agy unavailable"
-    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"qwen-self\",\"mode\":$(json_string "$QA_MODE")}"
   else
-    log "[qa] agent + agy + qwen produced no verdict — last-resort claude"
+    log "[qa] qwen + cursor-agent + agy produced no verdict — last-resort claude"
     if ! run_claude "$QA_PROMPT" "$ARTI/qa.txt"; then
-      log "[tool-failure] claude QA unavailable (timeout/empty) after agent+agy+qwen — escalating"
+      log "[tool-failure] claude QA unavailable (timeout/empty) after qwen+agent+agy — escalating"
       exit 2
     fi
     if ! has_verdict "$ARTI/qa.txt"; then
@@ -242,14 +248,14 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     # The harness still GUARANTEES verified progress is committed: if qwen left
     # anything uncommitted, commit the remainder deterministically.
     #
-    # Scope the dirtiness check to the loop's OWN committable paths. The whole
-    # repo can legitimately carry uncommitted harness/ edits (e.g. a fix left
-    # in place by a repair agent) — commit_verified deliberately never stages
-    # harness/, so a bare `git status --porcelain` would still report dirty
-    # after a successful commit and trigger a false "could not commit verified
+    # Scope the dirtiness check to everything EXCEPT harness/ — same scope
+    # commit_verified now uses. The whole repo can legitimately carry
+    # uncommitted harness/ edits (e.g. a fix left in place by a repair agent),
+    # so a bare `git status --porcelain` would still report dirty after a
+    # successful commit and trigger a false "could not commit verified
     # progress" escalation. commit_verified's own return code is the hard gate:
     # it stages the loop's files, commits, and asserts HEAD advanced.
-    if [ -n "$(git status --porcelain -- game/ TASKS.md LOGBOOK.md tickets/)" ]; then
+    if [ -n "$(git status --porcelain -- . ':!harness')" ]; then
       log "[commit] qwen left changes uncommitted — harness committing remainder"
       if ! commit_verified "$LABEL: sub-ticket verified (iter $iter)"; then
         log "=== ABORT $LABEL: could not commit verified progress — escalating ==="
