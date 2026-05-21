@@ -1,19 +1,14 @@
 {
-  "url": "http://localhost:6173",
+  "url": "http://localhost:5173",
   "ok": true,
   "ticketFile": null,
-  "capturePlanSource": "gemini",
+  "capturePlanSource": "file",
   "capturePlanValid": true,
-  "capturePlanAttempts": [
-    {
-      "source": "gemini",
-      "ok": true,
-      "status": 0,
-      "error": "Warning: Basic terminal detected (TERM=dumb). Visual rendering will be limited. For the best experience, use a terminal emulator with truecolor support.\nYOLO mode is enabled. All tool calls will be automatically approved.\nYOLO mode is enabled. All tool calls will be automatically approved.\nRipgrep is not available. Falling back to GrepTool.\n"
-    }
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Verifies two-player connection, lobby readiness, gameplay transition, and monster card usage (minion spawn + replacement draw via stateUpdate)",
+  "scenarios": [
+    "monster-card"
   ],
-  "capturePlanSummary": "Verifies two-player connection, lobby readiness, and transition to gameplay with basic movement.",
-  "scenarios": [],
   "screenshots": [
     {
       "file": "01-lobby.png",
@@ -29,6 +24,11 @@
       "file": "03-after-move.png",
       "player": "A",
       "description": "Player A moved right"
+    },
+    {
+      "file": "04-after-monster-card.png",
+      "player": "A",
+      "description": "After pressing monster card - minion spawned, slot shows replacement card from stateUpdate"
     }
   ],
   "probes": [
@@ -37,39 +37,71 @@
       "description": "Verify lobby state and player list",
       "data": {
         "harnessState": {
-          "debugScenario": null,
+          "debugScenario": "monster-card",
           "debugScenarioAllowed": true,
-          "debugScenarioResult": null,
-          "myId": "tyci_eErA7Fuw7B1AAAB",
-          "phase": "lobby",
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "monster-card"
+          },
+          "myId": "IE3DMjji4ofs30b_AAAF",
+          "phase": "playing",
           "connectionState": "connected",
-          "sceneInitialized": false,
-          "hasCanvas": false,
-          "lobbyVisible": true,
-          "cardHandVisible": false,
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
           "status": "Connected",
-          "hpText": "100/100",
+          "hpText": "90/100",
           "msText": "100/100",
           "currencyText": "GOLD 0",
           "player": {
-            "hp": 100,
+            "hp": 90,
             "magicStones": 100,
-            "debugScenario": null,
+            "debugScenario": "monster-card",
             "dead": false,
-            "x": 10,
+            "x": -10,
             "z": 10
           },
           "players": 2,
-          "enemies": 0,
-          "hand": []
+          "enemies": 6,
+          "hand": [
+            {
+              "id": "dungeon_drake",
+              "name": "Dungeon Drake",
+              "type": "monster",
+              "remainingCharges": 1,
+              "charges": 1
+            },
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            },
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            }
+          ]
         },
         "status": "Connected",
-        "hasCanvas": false,
-        "canvasCount": 0,
-        "lobbyVisible": true,
-        "cardHandVisible": false,
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
         "title": "3D Multiplayer Action Game",
-        "bodyText": "Lobby\nPLAYERS\ntyci_eErA7Fuw7B1AAAB — Not Ready\nfOqGgy-pAfV8mdyoAAAD — Not Ready\nOWNED CARDS\n⚔\nIron Sword\n3\n+ (3)\n⚔\nFlame Blade\n2\n+ (2)\n✦\nBattle Familiar\n2\n+ (2)\n🐉\nDungeon Drake\n1\n+ (1)\nSELECTED DECK 8/12\n⚔\nIron Sword\n✕\n⚔\nFlame Blade\n✕\n✦\nBattle Familiar\n✕\n🐉\nDungeon Drake\n✕\n⚔\nIron Sword\n✕\n⚔\nIron Sword\n✕\n✦\nBattle Familiar\n✕\n⚔\nFlame Blade\n✕\nReady"
+        "bodyText": "Multiplayer Game\n\nConnected\n\n🔊\nIE3DMjji HP\n90/100\nIE3DM MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 6\n🐉\nDungeon Drake\n1/1\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5"
       }
     },
     {
@@ -77,10 +109,13 @@
       "description": "Verify player A position change and entity sync",
       "data": {
         "harnessState": {
-          "debugScenario": null,
+          "debugScenario": "monster-card",
           "debugScenarioAllowed": true,
-          "debugScenarioResult": null,
-          "myId": "tyci_eErA7Fuw7B1AAAB",
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "monster-card"
+          },
+          "myId": "IE3DMjji4ofs30b_AAAF",
           "phase": "playing",
           "connectionState": "connected",
           "sceneInitialized": true,
@@ -88,20 +123,27 @@
           "lobbyVisible": false,
           "cardHandVisible": true,
           "status": "Latency: 0ms",
-          "hpText": "100/100",
+          "hpText": "80/100",
           "msText": "100/100",
           "currencyText": "GOLD 0",
           "player": {
-            "hp": 100,
+            "hp": 80,
             "magicStones": 100,
-            "debugScenario": null,
+            "debugScenario": "monster-card",
             "dead": false,
-            "x": 11.35,
+            "x": -3.4359999999999995,
             "z": 10
           },
           "players": 2,
-          "enemies": 5,
+          "enemies": 7,
           "hand": [
+            {
+              "id": "dungeon_drake",
+              "name": "Dungeon Drake",
+              "type": "monster",
+              "remainingCharges": 1,
+              "charges": 1
+            },
             {
               "id": "iron_sword",
               "name": "Iron Sword",
@@ -117,18 +159,11 @@
               "charges": 3
             },
             {
-              "id": "battle_familiar",
-              "name": "Battle Familiar",
-              "type": "summon",
-              "remainingCharges": 1,
-              "charges": 1
-            },
-            {
-              "id": "dungeon_drake",
-              "name": "Dungeon Drake",
-              "type": "monster",
-              "remainingCharges": 1,
-              "charges": 1
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
             }
           ]
         },
@@ -138,7 +173,151 @@
         "lobbyVisible": false,
         "cardHandVisible": true,
         "title": "3D Multiplayer Action Game",
-        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\ntyci_ HP\n100/100\ntyci_ MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 5\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n✦\nBattle Familiar\n1/1\n🐉\nDungeon Drake\n1/1"
+        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\nIE3DMjji HP\n80/100\nIE3DM MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 6\n🐉\nDungeon Drake\n1/1\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5"
+      }
+    },
+    {
+      "player": "A",
+      "description": "Capture hand state BEFORE pressing monster card — record monster slot index and card id (dungeon_drake)",
+      "data": {
+        "harnessState": {
+          "debugScenario": "monster-card",
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "monster-card"
+          },
+          "myId": "IE3DMjji4ofs30b_AAAF",
+          "phase": "playing",
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "80/100",
+          "msText": "100/100",
+          "currencyText": "GOLD 0",
+          "player": {
+            "hp": 80,
+            "magicStones": 100,
+            "debugScenario": "monster-card",
+            "dead": false,
+            "x": -3.4359999999999995,
+            "z": 10
+          },
+          "players": 2,
+          "enemies": 7,
+          "hand": [
+            {
+              "id": "dungeon_drake",
+              "name": "Dungeon Drake",
+              "type": "monster",
+              "remainingCharges": 1,
+              "charges": 1
+            },
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            },
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            }
+          ]
+        },
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "3D Multiplayer Action Game",
+        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\nIE3DMjji HP\n80/100\nIE3DM MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 6\n🐉\nDungeon Drake\n1/1\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5"
+      }
+    },
+    {
+      "player": "A",
+      "description": "Capture hand state AFTER pressing monster card — verify monster card removed, replacement card in slot (different id), minion entity present, no client-side drawCard called",
+      "data": {
+        "harnessState": {
+          "debugScenario": "monster-card",
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "monster-card"
+          },
+          "myId": "IE3DMjji4ofs30b_AAAF",
+          "phase": "playing",
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "80/100",
+          "msText": "100/100",
+          "currencyText": "GOLD 0",
+          "player": {
+            "hp": 80,
+            "magicStones": 100,
+            "debugScenario": "monster-card",
+            "dead": false,
+            "x": -3.4359999999999995,
+            "z": 10
+          },
+          "players": 2,
+          "enemies": 6,
+          "hand": [
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            },
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
+            {
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
+            }
+          ]
+        },
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "3D Multiplayer Action Game",
+        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\nIE3DMjji HP\n80/100\nIE3DM MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 1 / 6\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5"
       }
     },
     {
@@ -146,31 +325,41 @@
       "description": "Final capture probe.",
       "data": {
         "harnessState": {
-          "debugScenario": null,
+          "debugScenario": "monster-card",
           "debugScenarioAllowed": true,
-          "debugScenarioResult": null,
-          "myId": "tyci_eErA7Fuw7B1AAAB",
+          "debugScenarioResult": {
+            "ok": true,
+            "scenario": "monster-card"
+          },
+          "myId": "IE3DMjji4ofs30b_AAAF",
           "phase": "playing",
           "connectionState": "connected",
           "sceneInitialized": true,
           "hasCanvas": true,
           "lobbyVisible": false,
           "cardHandVisible": true,
-          "status": "Latency: 0ms",
-          "hpText": "100/100",
+          "status": "Latency: 1ms",
+          "hpText": "80/100",
           "msText": "100/100",
           "currencyText": "GOLD 0",
           "player": {
-            "hp": 100,
+            "hp": 80,
             "magicStones": 100,
-            "debugScenario": null,
+            "debugScenario": "monster-card",
             "dead": false,
-            "x": 11.35,
+            "x": -3.4359999999999995,
             "z": 10
           },
           "players": 2,
-          "enemies": 5,
+          "enemies": 6,
           "hand": [
+            {
+              "id": "flame_blade",
+              "name": "Flame Blade",
+              "type": "weapon",
+              "remainingCharges": 3,
+              "charges": 3
+            },
             {
               "id": "iron_sword",
               "name": "Iron Sword",
@@ -186,28 +375,40 @@
               "charges": 3
             },
             {
-              "id": "battle_familiar",
-              "name": "Battle Familiar",
-              "type": "summon",
-              "remainingCharges": 1,
-              "charges": 1
-            },
-            {
-              "id": "dungeon_drake",
-              "name": "Dungeon Drake",
-              "type": "monster",
-              "remainingCharges": 1,
-              "charges": 1
+              "id": "iron_sword",
+              "name": "Iron Sword",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5
             }
           ]
         },
-        "status": "Latency: 0ms",
+        "status": "Latency: 1ms",
         "hasCanvas": true,
         "canvasCount": 1,
         "lobbyVisible": false,
         "cardHandVisible": true,
         "title": "3D Multiplayer Action Game",
-        "bodyText": "Multiplayer Game\n\nLatency: 0ms\n\n🔊\ntyci_ HP\n100/100\ntyci_ MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 0 / 5\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n✦\nBattle Familiar\n1/1\n🐉\nDungeon Drake\n1/1"
+        "bodyText": "Multiplayer Game\n\nLatency: 1ms\n\n🔊\nIE3DMjji HP\n80/100\nIE3DM MS\n100/100\nGOLD 0\nDefeat all enemies\nDefeated 1 / 6\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5\n⚔\nFlame Blade\n3/3\n⚔\nIron Sword\n5/5",
+        "cardPress": {
+          "slot": 0,
+          "cardType": "monster",
+          "cardIdBefore": "dungeon_drake",
+          "cardIdAfter": "flame_blade",
+          "handBefore": [
+            "dungeon_drake",
+            "iron_sword",
+            "flame_blade",
+            "iron_sword"
+          ],
+          "handAfter": [
+            "flame_blade",
+            "iron_sword",
+            "flame_blade",
+            "iron_sword"
+          ],
+          "replacementViaStateUpdate": true
+        }
       }
     }
   ]
