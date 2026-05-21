@@ -74,7 +74,11 @@ let debugScenarioResult = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
 // Socket setup
-const socket = io();
+const STORAGE_KEY_PLAYER_ID = 'autogame_playerId';
+const storedPlayerId = (() => {
+  try { return localStorage.getItem(STORAGE_KEY_PLAYER_ID); } catch (_) { return null; }
+})();
+const socket = io({ auth: { playerId: storedPlayerId || undefined } });
 let myId = null;
 let isReady = false;
 let gameState = null;
@@ -478,6 +482,10 @@ socket.io.on('reconnect', () => {
 
 socket.on('init', (data) => {
   myId = data.id;
+  // Store stable playerId for reconnect sessions
+  if (data.playerId) {
+    try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
+  }
   gameState = data.state;
   currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
   if (gameState && currentLayout) gameState.layout = currentLayout;
