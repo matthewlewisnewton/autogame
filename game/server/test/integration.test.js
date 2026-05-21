@@ -2767,3 +2767,76 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 		expect(player.hand[weaponSlot].remainingCharges).toBe(chargesBefore - 1);
 	});
 });
+
+describe('Debug scenarios — run objective stays in sync with enemy list', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	// Capture all stateUpdates between emit and the scenario result, then
+	// return the first snapshot that has a `run` set — that is the snapshot
+	// emitted from inside applyDebugScenario itself, before any subsequent
+	// game-loop tick can mutate enemies (e.g. spawner adding a skirmisher).
+	async function runScenarioCaptureSnapshot(name) {
+		const updates = [];
+		const onUpdate = (data) => updates.push(data);
+		socket.on('stateUpdate', onUpdate);
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name });
+		const result = await debugResultPromise;
+		socket.off('stateUpdate', onUpdate);
+		expect(result.ok).toBe(true);
+		const withRun = updates.find(u => u.run);
+		expect(withRun, `no stateUpdate with run captured for ${name}`).toBeDefined();
+		return withRun;
+	}
+
+	for (const scenario of [
+		'summon-low-mana',
+		'summon-ready',
+		'combat-damaged-player',
+		'mixed-enemies',
+		'spawner-active',
+	]) {
+		it(`run.objective.totalEnemies matches the authoritative enemy list at scenario time for "${scenario}"`, async () => {
+			const snap = await runScenarioCaptureSnapshot(scenario);
+
+			// At scenario completion, the run objective and the authoritative
+			// enemy list must agree — otherwise debug scenarios could create
+			// states where run completion is unreachable (totalEnemies >
+			// actual, the pre-fix bug for mixed-enemies and spawner-active)
+			// or trivially satisfied (totalEnemies < actual).
+			expect(snap.run.objective.totalEnemies).toBe(snap.enemies.length);
+			expect(snap.run.objective.defeatedEnemies).toBeLessThanOrEqual(
+				snap.run.objective.totalEnemies
+			);
+			expect(snap.enemies.length).toBeGreaterThan(0);
+		});
+	}
+
+	it('"mixed-enemies" produces exactly 4 enemies of distinct types in the objective', async () => {
+		const snap = await runScenarioCaptureSnapshot('mixed-enemies');
+		expect(snap.enemies.length).toBe(4);
+		expect(snap.run.objective.totalEnemies).toBe(4);
+		const types = new Set(snap.enemies.map(e => e.type));
+		expect(types.has('grunt')).toBe(true);
+		expect(types.has('skirmisher')).toBe(true);
+		expect(types.has('miniboss')).toBe(true);
+		expect(types.has('spawner')).toBe(true);
+	});
+
+	it('"spawner-active" produces a single spawner that the objective accounts for', async () => {
+		const snap = await runScenarioCaptureSnapshot('spawner-active');
+		expect(snap.enemies.length).toBe(1);
+		expect(snap.enemies[0].type).toBe('spawner');
+		expect(snap.run.objective.totalEnemies).toBe(1);
+	});
+});
