@@ -1412,19 +1412,32 @@ function startServer(port) {
   io.on('connection', (socket) => {
     // ── Stable player identity ──
     // Accept a stable playerId from the client (via handshake auth).
-    // If the client provides a valid UUID that we already have, reuse it.
-    // Otherwise generate a new one.
+    // If the client provides a valid UUID that we already have in memory, reuse it.
+    // Otherwise check if persisted data exists for that ID (cold reconnect after
+    // disconnect cleanup) — if so, reuse the provided ID to prevent save-file drift.
+    // If no persisted data is found, generate a new UUID.
     const providedPlayerId = socket.handshake.auth && socket.handshake.auth.playerId;
     let playerId = null;
 
     if (providedPlayerId && gameState.players[providedPlayerId]) {
-      // Reconnecting with an existing stable id
+      // Reconnecting with an existing stable id already in memory
       playerId = providedPlayerId;
     } else if (providedPlayerId && typeof providedPlayerId === 'string' && providedPlayerId.length > 0) {
-      // Client sent a playerId we don't recognize — could be stale or from
-      // a previous server restart with InMemoryProvider. Generate a new one
-      // but attempt to load persisted data using the provided id.
-      playerId = crypto.randomUUID();
+      // Client sent a playerId we don't have in memory — check persistence.
+      let savedData = null;
+      try {
+        savedData = provider ? provider.loadPlayer(providedPlayerId) : null;
+      } catch (err) {
+        console.error(`[persistence] loadPlayer check failed for ${providedPlayerId}:`, err.message);
+        savedData = null;
+      }
+      if (savedData) {
+        // Persisted data exists — reuse the client's ID to prevent drift
+        playerId = providedPlayerId;
+      } else {
+        // No persisted data — generate a new UUID (fresh player or stale ID)
+        playerId = crypto.randomUUID();
+      }
     } else {
       // First connection — generate a new stable id
       playerId = crypto.randomUUID();
@@ -1439,14 +1452,7 @@ function startServer(port) {
     // ── Load persisted data (if any) ──
     let savedData = null;
     try {
-      // Try loading with the provided id first (server restart scenario),
-      // then with the resolved playerId.
-      if (providedPlayerId && providedPlayerId !== playerId) {
-        savedData = provider ? provider.loadPlayer(providedPlayerId) : null;
-      }
-      if (!savedData) {
-        savedData = provider ? provider.loadPlayer(playerId) : null;
-      }
+      savedData = provider ? provider.loadPlayer(playerId) : null;
     } catch (err) {
       console.error(`[persistence] loadPlayer failed for ${playerId}:`, err.message);
       savedData = null;

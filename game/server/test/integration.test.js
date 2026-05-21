@@ -9,6 +9,8 @@ import {
 	_intervals,
 	_timeouts,
 	clearAllTimers,
+	setTestProvider,
+	savePlayerData,
 	ENEMY_ATTACK_RANGE,
 	ENEMY_ATTACK_RECOVERY_MS,
 	DETECTION_RADIUS,
@@ -19,6 +21,7 @@ import {
 	damagePlayer,
 	checkRunTerminalState
 } from '../index.js';
+import { InMemoryProvider } from '../providers.js';
 import { COOLDOWN_MS, MAX_ELAPSED_MS, MOVE_SPEED, MAX_HP } from '../config.js';
 
 // ── Helpers ──
@@ -2867,5 +2870,111 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		const monsterSlot = player.hand.findIndex(c => c && c.type === 'monster');
 		expect(monsterSlot).toBeGreaterThanOrEqual(0);
 		expect(player.hand[monsterSlot].id).toBe('dungeon_drake');
+	});
+});
+
+describe('Player ID Drift Prevention on Cold Reconnect', () => {
+	let testProvider;
+	let baseUrl;
+
+	beforeEach(async () => {
+		testProvider = new InMemoryProvider();
+		baseUrl = await startTestServer();
+		// startServer() overwrites the provider — re-set after server starts
+		setTestProvider(testProvider);
+	});
+
+	afterEach(async () => {
+		setTestProvider(null);
+		await closeServer();
+	});
+
+	it('reuses providedPlayerId on cold reconnect when persisted data exists', async () => {
+		// --- First connection: connect WITHOUT auth, get server-assigned ID ---
+		const { socket: sock1, init: init1 } = await connectClient(baseUrl);
+		const serverId = init1.playerId;
+		expect(serverId).toBeDefined();
+		expect(gameState.players[serverId]).toBeDefined();
+
+		// Simulate earning currency
+		gameState.players[serverId].currency = 42;
+
+		// Disconnect — triggers savePlayerData + removes player from memory
+		sock1.disconnect();
+		await sleep(100);
+
+		// Player should be removed from memory
+		expect(gameState.players[serverId]).toBeUndefined();
+
+		// Verify data was persisted under serverId
+		const savedAfterDisconnect = testProvider.loadPlayer(serverId);
+		expect(savedAfterDisconnect).not.toBeNull();
+		expect(savedAfterDisconnect.currency).toBe(42);
+
+		// --- Second connection: reconnect with the server-assigned ID via auth ---
+		const { socket: sock2, init: init2 } = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: serverId }
+			});
+			const timer = setTimeout(() => {
+				s.disconnect();
+				reject(new Error('connect timeout'));
+			}, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		// Server should have reused the same ID — no drift
+		expect(init2.playerId).toBe(serverId);
+		expect(gameState.players[serverId]).toBeDefined();
+
+		// Verify only one save key exists in the provider (no orphaned files)
+		const savedKeys = Array.from(testProvider.store.keys());
+		expect(savedKeys).toContain(serverId);
+		// The serverId should be the only key matching its UUID prefix
+		const prefix = serverId.substring(0, 8);
+		const matchingKeys = savedKeys.filter(k => k.startsWith(prefix));
+		expect(matchingKeys.length).toBe(1);
+		expect(matchingKeys[0]).toBe(serverId);
+
+		sock2.disconnect();
+	});
+
+	it('generates new UUID when providedPlayerId has no persisted data', async () => {
+		const fakeId = 'nonexistent-player-id-' + crypto.randomUUID();
+
+		// Connect with a fake ID that has no persisted data
+		const { socket: sock, init } = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: fakeId }
+			});
+			const timer = setTimeout(() => {
+				s.disconnect();
+				reject(new Error('connect timeout'));
+			}, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		// Server should have generated a new UUID, not used the fake ID
+		expect(init.playerId).not.toBe(fakeId);
+		// The returned ID should be a valid UUID
+		expect(init.playerId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/);
+
+		sock.disconnect();
 	});
 });
