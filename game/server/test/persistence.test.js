@@ -176,11 +176,12 @@ describe('extractPersistentData', () => {
 		resetGameState();
 	});
 
-	it('extracts currency, ownedCards, and selectedDeck from a player', () => {
+	it('extracts currency, ownedCards, selectedDeck, and location from a player', () => {
 		const player = {
-			x: 0,
+			x: 3,
 			y: 0.5,
-			z: 0,
+			z: 7,
+			rotation: 1.57,
 			currency: 42,
 			ownedCards: { iron_sword: 3, flame_blade: 2 },
 			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
@@ -196,22 +197,34 @@ describe('extractPersistentData', () => {
 			currency: 42,
 			ownedCards: { iron_sword: 3, flame_blade: 2 },
 			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			x: 3,
+			y: 0.5,
+			z: 7,
+			rotation: 1.57,
 		});
 	});
 
 	it('returns defaults for missing fields', () => {
-		const player = { x: 0, y: 0.5, z: 0 };
+		const player = {};
 		const data = extractPersistentData(player);
 
 		expect(data).toEqual({
 			currency: 0,
 			ownedCards: {},
 			selectedDeck: [],
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
 		});
 	});
 
 	it('does not include transient fields (hp, dead, ready, hand, deck)', () => {
 		const player = {
+			x: 5,
+			y: 0.5,
+			z: 10,
+			rotation: 0,
 			currency: 10,
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
@@ -230,9 +243,14 @@ describe('extractPersistentData', () => {
 			currency: 10,
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
+			x: 5,
+			y: 0.5,
+			z: 10,
+			rotation: 0,
 		});
 		expect(data).not.toHaveProperty('hp');
 		expect(data).not.toHaveProperty('dead');
+		expect(data).not.toHaveProperty('ready');
 		expect(data).not.toHaveProperty('hand');
 		expect(data).not.toHaveProperty('deck');
 		expect(data).not.toHaveProperty('runRewards');
@@ -256,6 +274,10 @@ describe('savePlayerData', () => {
 
 	it('calls provider.savePlayer with the correct data shape', () => {
 		const player = {
+			x: 2,
+			y: 0.5,
+			z: 4,
+			rotation: 0.8,
 			currency: 100,
 			ownedCards: { iron_sword: 5 },
 			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
@@ -266,6 +288,10 @@ describe('savePlayerData', () => {
 
 		const loaded = testProvider.loadPlayer('testPlayer');
 		expect(loaded).toEqual({
+			x: 2,
+			y: 0.5,
+			z: 4,
+			rotation: 0.8,
 			currency: 100,
 			ownedCards: { iron_sword: 5 },
 			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
@@ -274,6 +300,10 @@ describe('savePlayerData', () => {
 
 	it('saves only persistent fields (excludes hp, dead, hand, etc.)', () => {
 		const player = {
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
 			currency: 50,
 			ownedCards: { flame_blade: 2 },
 			selectedDeck: ['flame_blade', 'battle_familiar'],
@@ -290,6 +320,10 @@ describe('savePlayerData', () => {
 
 		const loaded = testProvider.loadPlayer('p1');
 		expect(loaded).toEqual({
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
 			currency: 50,
 			ownedCards: { flame_blade: 2 },
 			selectedDeck: ['flame_blade', 'battle_familiar'],
@@ -348,17 +382,19 @@ describe('saveAllPlayers', () => {
 	});
 
 	it('calls savePlayerData for each player in gameState.players', () => {
-		gameState.players['a'] = { currency: 1, ownedCards: { iron_sword: 1 }, selectedDeck: ['iron_sword'] };
-		gameState.players['b'] = { currency: 2, ownedCards: { flame_blade: 1 }, selectedDeck: ['flame_blade'] };
+		gameState.players['a'] = { x: 1, y: 0.5, z: 2, rotation: 0, currency: 1, ownedCards: { iron_sword: 1 }, selectedDeck: ['iron_sword'] };
+		gameState.players['b'] = { x: 3, y: 0.5, z: 4, rotation: 1, currency: 2, ownedCards: { flame_blade: 1 }, selectedDeck: ['flame_blade'] };
 
 		saveAllPlayers();
 
 		expect(testProvider.loadPlayer('a')).toEqual({
+			x: 1, y: 0.5, z: 2, rotation: 0,
 			currency: 1,
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
 		});
 		expect(testProvider.loadPlayer('b')).toEqual({
+			x: 3, y: 0.5, z: 4, rotation: 1,
 			currency: 2,
 			ownedCards: { flame_blade: 1 },
 			selectedDeck: ['flame_blade'],
@@ -371,8 +407,8 @@ describe('saveAllPlayers', () => {
 	});
 
 	it('catches per-player errors without crashing the loop', () => {
-		gameState.players['p1'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
-		gameState.players['p2'] = { currency: 20, ownedCards: {}, selectedDeck: [] };
+		gameState.players['p1'] = { x: 0, y: 0.5, z: 0, rotation: 0, currency: 10, ownedCards: {}, selectedDeck: [] };
+		gameState.players['p2'] = { x: 0, y: 0.5, z: 0, rotation: 0, currency: 20, ownedCards: {}, selectedDeck: [] };
 
 		// Make p1's save throw but let p2's save call through to the real implementation
 		const originalSave = testProvider.savePlayer.bind(testProvider);
@@ -385,6 +421,7 @@ describe('saveAllPlayers', () => {
 		expect(() => saveAllPlayers()).not.toThrow();
 		// p2 should still have been saved
 		expect(testProvider.loadPlayer('p2')).toEqual({
+			x: 0, y: 0.5, z: 0, rotation: 0,
 			currency: 20,
 			ownedCards: {},
 			selectedDeck: [],

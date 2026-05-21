@@ -362,13 +362,17 @@ function setTestProvider(p) {
 
 /**
  * Extract the fields that should be persisted for a player.
- * Returns { currency, ownedCards, selectedDeck }.
+ * Returns { currency, ownedCards, selectedDeck, x, y, z, rotation }.
  */
 function extractPersistentData(player) {
   return {
     currency: player.currency || 0,
     ownedCards: player.ownedCards || {},
-    selectedDeck: player.selectedDeck || []
+    selectedDeck: player.selectedDeck || [],
+    x: player.x || 0,
+    y: player.y || 0.5,
+    z: player.z || 0,
+    rotation: player.rotation || 0
   };
 }
 
