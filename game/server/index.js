@@ -1392,6 +1392,13 @@ function stateSnapshot() {
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
 function startServer(port) {
+  // JSON body parsing for REST endpoints
+  app.use(express.json());
+
+  // Mount auth REST routes
+  const authRouter = require('./auth');
+  app.use('/api', authRouter);
+
   // Initialize persistence provider based on PERSISTENCE_BACKEND env var.
   // Default is FileProvider for durable persistence across restarts.
   // Set PERSISTENCE_BACKEND=memory to opt into the ephemeral in-memory provider.
@@ -2026,6 +2033,7 @@ if (typeof module !== 'undefined' && module.exports) {
     buildWallColliders,
     wallAABB,
     // Server objects for integration tests
+    app,
     server,
     io,
     findSocketByPlayerId,
