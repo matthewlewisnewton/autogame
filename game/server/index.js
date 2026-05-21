@@ -4,7 +4,7 @@ const http = require('http');
 const crypto = require('crypto');
 const path = require('path');
 const { InMemoryProvider, FileProvider } = require('./providers');
-const { verifyToken } = require('./auth');
+const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
   generateLayout,
@@ -1407,6 +1407,9 @@ function stateSnapshot() {
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
 function startServer(port) {
+  // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
+  initAuth();
+
   // JSON body parsing for REST endpoints
   app.use(express.json());
 
@@ -2103,6 +2106,7 @@ if (typeof module !== 'undefined' && module.exports) {
     persistenceKey,
     provider,
     // Auth
-    verifyToken
+    verifyToken,
+    getJWTSecret
   };
 }

@@ -5,8 +5,35 @@ const { createUser, findUserByUsername, comparePassword } = require('./users');
 
 const router = Router();
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
+let JWT_SECRET = null;
 const JWT_EXPIRATION = '24h';
+
+/**
+ * Initialize the JWT secret. Must be called before the server starts
+ * accepting connections. Reads `JWT_SECRET` from `process.env`; falls back
+ * to a fixed test secret when `NODE_ENV === 'test'`; throws otherwise.
+ *
+ * @returns {string} The resolved secret.
+ */
+function initAuth() {
+	if (JWT_SECRET) return JWT_SECRET; // idempotent — safe for repeated calls in tests
+
+	if (process.env.JWT_SECRET) {
+		JWT_SECRET = process.env.JWT_SECRET;
+		return JWT_SECRET;
+	}
+
+	if (process.env.NODE_ENV === 'test') {
+		JWT_SECRET = 'test-secret';
+		return JWT_SECRET;
+	}
+
+	throw new Error(
+		'Missing JWT_SECRET environment variable. ' +
+		'Set JWT_SECRET to a cryptographically random value before starting the server. ' +
+		'Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js'
+	);
+}
 
 /**
  * Verify a JWT token and return the decoded payload, or null on failure.
@@ -99,5 +126,6 @@ router.post('/login', (req, res) => {
 });
 
 module.exports = router;
-module.exports.JWT_SECRET = JWT_SECRET;
+module.exports.initAuth = initAuth;
+module.exports.getJWTSecret = function getJWTSecret() { return JWT_SECRET; };
 module.exports.verifyToken = verifyToken;

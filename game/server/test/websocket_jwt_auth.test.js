@@ -8,7 +8,8 @@ import {
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
-	verifyToken as serverVerifyToken
+	verifyToken as serverVerifyToken,
+	getJWTSecret
 } from '../index.js';
 import { clearUsers } from '../users.js';
 
@@ -78,7 +79,7 @@ async function closeTestServer() {
 function createTestToken(accountId, username = 'testuser') {
 	return jwt.sign(
 		{ accountId, username },
-		'dev-secret',
+		getJWTSecret(),
 		{ expiresIn: '1h' }
 	);
 }
