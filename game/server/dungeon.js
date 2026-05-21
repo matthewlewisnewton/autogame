@@ -207,6 +207,8 @@ function generateLayout(seed) {
     const to = cellPositions[p.to];
     const walls = [];
     const halfGap = PASSAGE_WIDTH / 2;
+    const fromRoom = rooms[p.from];
+    const toRoom = rooms[p.to];
 
     // Horizontal passage (same row, different column)
     if (from.r === to.r) {
@@ -222,7 +224,14 @@ function generateLayout(seed) {
       walls.push({ x: from.x + halfGap, z: wallCentreZ, length: CELL_SPACING, axis: 'z' });
     }
 
-    return { x1: from.x, z1: from.z, x2: to.x, z2: to.z, walls };
+    // Corridor length: the gap between the two connected rooms' edges
+    // This is used to trim passage-wall colliders so they don't intrude into room interiors
+    // Horizontal passages use room widths (along x), vertical passages use depths (along z)
+    const corridorLength = (from.r === to.r)
+      ? CELL_SPACING - fromRoom.width / 2 - toRoom.width / 2
+      : CELL_SPACING - fromRoom.depth / 2 - toRoom.depth / 2;
+
+    return { x1: from.x, z1: from.z, x2: to.x, z2: to.z, walls, corridorLength };
   });
 
   return { rooms, passages: passageObjects };
