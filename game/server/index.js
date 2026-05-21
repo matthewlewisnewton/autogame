@@ -2,6 +2,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const http = require('http');
 const crypto = require('crypto');
+const path = require('path');
 const { InMemoryProvider, FileProvider } = require('./providers');
 const {
   mulberry32,
@@ -1379,13 +1380,16 @@ function stateSnapshot() {
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
 function startServer(port) {
-  // Initialize persistence provider based on PERSISTENCE_BACKEND env var
-  if (process.env.PERSISTENCE_BACKEND === 'file') {
-    provider = new FileProvider(process.env.PERSISTENCE_PATH || './data');
-    console.log(`[persistence] FileProvider initialized at ${process.env.PERSISTENCE_PATH || './data'}`);
-  } else {
+  // Initialize persistence provider based on PERSISTENCE_BACKEND env var.
+  // Default is FileProvider for durable persistence across restarts.
+  // Set PERSISTENCE_BACKEND=memory to opt into the ephemeral in-memory provider.
+  const dataPath = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
+  if (process.env.PERSISTENCE_BACKEND === 'memory') {
     provider = new InMemoryProvider();
-    console.log('[persistence] InMemoryProvider initialized (default)');
+    console.log('[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)');
+  } else {
+    provider = new FileProvider(dataPath);
+    console.log(`[persistence] FileProvider initialized at ${dataPath}`);
   }
 
   // Remove previous connection handlers so repeated calls (in tests) don't stack
