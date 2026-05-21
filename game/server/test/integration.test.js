@@ -580,13 +580,20 @@ describe('Socket Integration — useCard Event', () => {
 				expect(updatedPlayer.hand.length).toBe(handSizeBefore - 1);
 			}
 
-			// Verify a minion was added to gameState
+			// Verify a minion was added to gameState (server-side)
 			expect(gameState.minions.length).toBe(minionCountBefore + 1);
 			const newMinion = gameState.minions[gameState.minions.length - 1];
 			expect(newMinion.ownerId).toBe(socket.id);
 			expect(newMinion.hp).toBe(50);
 			expect(newMinion.ttl).toBeGreaterThan(29);
 			expect(newMinion.ttl).toBeLessThanOrEqual(30);
+
+			// Assert the stateUpdate payload also includes the new minion — catches client-server replication gaps
+			expect(updatedSnapshot.minions).toBeDefined();
+			expect(updatedSnapshot.minions.length).toBe(minionCountBefore + 1);
+			const broadcastMinion = updatedSnapshot.minions[updatedSnapshot.minions.length - 1];
+			expect(broadcastMinion.ownerId).toBe(socket.id);
+			expect(broadcastMinion.hp).toBe(50);
 		});
 	});
 });
