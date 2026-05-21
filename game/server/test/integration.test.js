@@ -92,6 +92,8 @@ function connectClient(baseUrl) {
 
 		socket.on('init', (data) => {
 			clearTimeout(timer);
+			// Store the stable playerId on the socket for easy test access
+			socket._playerId = data.playerId || data.id;
 			resolve({ socket, init: data });
 		});
 		socket.on('connect_error', (e) => {
@@ -191,11 +193,12 @@ describe('Socket Integration — Connection Flow', () => {
 	});
 
 	it('server registers the player in gameState.players', async () => {
-		expect(gameState.players[socket.id]).toBeDefined();
-		expect(gameState.players[socket.id].hp).toBe(100);
+		const player = gameState.players[socket._playerId];
+		expect(player).toBeDefined();
+		expect(player.hp).toBe(100);
 		const spawn = firstRoomSpawn();
-		expect(gameState.players[socket.id].x).toBe(spawn.x);
-		expect(gameState.players[socket.id].z).toBe(spawn.z);
+		expect(player.x).toBe(spawn.x);
+		expect(player.z).toBe(spawn.z);
 	});
 });
 
@@ -219,7 +222,7 @@ describe('Socket Integration — Move Event', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const xBefore = player.x;
 		const zBefore = player.z;
 
@@ -247,7 +250,7 @@ describe('Socket Integration — Move Event', () => {
 		// socket.emit is async — wait for the server to process the event
 		await sleep(50);
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const bounds = gameState.dungeonBounds;
 		expect(player.x).toBeLessThanOrEqual(bounds.maxX);
 		expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
@@ -262,7 +265,7 @@ describe('Socket Integration — Move Event', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		player.hp = 0;
 		player.dead = true;
 
@@ -281,7 +284,7 @@ describe('Socket Integration — Move Event', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 
 		// Place player at the center of the largest room to avoid swept-collision
 		// rejection from wall proximity. The bounds center may fall in a passage
@@ -328,31 +331,31 @@ describe('Socket Integration — Invalid Move Rejection', () => {
 	it('rejects move with missing fields', () => {
 		const spawn = firstRoomSpawn();
 		socket.emit('move', { dx: 1 }); // missing dz, rotation
-		expect(gameState.players[socket.id].x).toBe(spawn.x);
+		expect(gameState.players[socket._playerId].x).toBe(spawn.x);
 	});
 
 	it('rejects move with non-numeric fields', () => {
 		const spawn = firstRoomSpawn();
 		socket.emit('move', { dx: 'abc', dz: 0.5, rotation: 0 });
-		expect(gameState.players[socket.id].x).toBe(spawn.x);
+		expect(gameState.players[socket._playerId].x).toBe(spawn.x);
 	});
 
 	it('rejects move with null payload', () => {
 		const spawn = firstRoomSpawn();
 		socket.emit('move', null);
-		expect(gameState.players[socket.id].x).toBe(spawn.x);
+		expect(gameState.players[socket._playerId].x).toBe(spawn.x);
 	});
 
 	it('rejects move with array payload', () => {
 		const spawn = firstRoomSpawn();
 		socket.emit('move', [1, 2, 3]);
-		expect(gameState.players[socket.id].x).toBe(spawn.x);
+		expect(gameState.players[socket._playerId].x).toBe(spawn.x);
 	});
 
 	it('rejects move with NaN fields', () => {
 		const spawn = firstRoomSpawn();
 		socket.emit('move', { dx: NaN, dz: 0.5, rotation: 0 });
-		expect(gameState.players[socket.id].x).toBe(spawn.x);
+		expect(gameState.players[socket._playerId].x).toBe(spawn.x);
 	});
 });
 
@@ -377,7 +380,7 @@ describe('Socket Integration — useCard Event', () => {
 			await debugResultPromise;
 			await waitForEvent(socket, 'stateUpdate');
 
-			const player = gameState.players[socket.id];
+			const player = gameState.players[socket._playerId];
 			// Find the slot with a weapon card in hand
 			const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
 			expect(weaponSlot).toBeGreaterThanOrEqual(0);
@@ -415,7 +418,7 @@ describe('Socket Integration — useCard Event', () => {
 			await debugResultPromise;
 			await waitForEvent(socket, 'stateUpdate');
 
-			const player = gameState.players[socket.id];
+			const player = gameState.players[socket._playerId];
 
 			// Ensure a summon card is in hand — the random deal from summon-ready
 			// may not include battle_familiar (2 of 8 deck cards), so we
@@ -448,7 +451,7 @@ describe('Socket Integration — useCard Event', () => {
 				wanderTarget: { x: player.x + 5, z: player.z }
 			});
 
-			const beforeStones = gameState.players[socket.id].magicStones;
+			const beforeStones = gameState.players[socket._playerId].magicStones;
 
 			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 
@@ -462,7 +465,7 @@ describe('Socket Integration — useCard Event', () => {
 			expect(enemy.hp).toBeLessThan(60);
 
 			// Magic stones should be deducted
-			const afterStones = gameState.players[socket.id].magicStones;
+			const afterStones = gameState.players[socket._playerId].magicStones;
 			expect(afterStones).toBeLessThan(beforeStones);
 		});
 
@@ -473,7 +476,7 @@ describe('Socket Integration — useCard Event', () => {
 			await debugResultPromise;
 			await waitForEvent(socket, 'stateUpdate');
 
-			const player = gameState.players[socket.id];
+			const player = gameState.players[socket._playerId];
 			player.magicStones = 10;
 
 			// Find the slot with a summon card in hand
@@ -538,7 +541,7 @@ describe('Socket Integration — useCard Event', () => {
 			// — Minion spawned in gameState.minions —
 			expect(gameState.minions.length).toBe(minionCountBefore + 1);
 			const newMinion = gameState.minions[gameState.minions.length - 1];
-			expect(newMinion.ownerId).toBe(socket.id);
+			expect(newMinion.ownerId).toBe(socket._playerId);
 			expect(newMinion.hp).toBe(50);
 			expect(newMinion.ttl).toBeGreaterThan(29);
 			expect(newMinion.ttl).toBeLessThanOrEqual(30);
@@ -547,7 +550,7 @@ describe('Socket Integration — useCard Event', () => {
 			expect(updatedSnapshot.minions).toBeDefined();
 			expect(updatedSnapshot.minions.length).toBe(minionCountBefore + 1);
 			const broadcastMinion = updatedSnapshot.minions[updatedSnapshot.minions.length - 1];
-			expect(broadcastMinion.ownerId).toBe(socket.id);
+			expect(broadcastMinion.ownerId).toBe(socket._playerId);
 			expect(broadcastMinion.hp).toBe(50);
 
 			// — Hand slot replaced (or shrunk if deck exhausted) —
@@ -597,7 +600,7 @@ describe('Socket Integration — Heartbeat Event', () => {
 
 		// lastActivity should not have been updated by invalid heartbeat
 		// (it was set on connect, so we just verify the player still exists)
-		expect(gameState.players[socket.id]).toBeDefined();
+		expect(gameState.players[socket._playerId]).toBeDefined();
 	});
 });
 
@@ -615,19 +618,19 @@ describe('Socket Integration — Disconnect Event', () => {
 	});
 
 	it('removes player from gameState.players on disconnect', async () => {
-		expect(gameState.players[socket.id]).toBeDefined();
+		expect(gameState.players[socket._playerId]).toBeDefined();
 
 		socket.disconnect();
 		await sleep(100);
 
-		expect(gameState.players[socket.id]).toBeUndefined();
+		expect(gameState.players[socket._playerId]).toBeUndefined();
 	});
 
 	it('cleans up owned minions on disconnect', async () => {
 		// Spawn a minion for this player
 		gameState.minions.push({
 			id: 'm1',
-			ownerId: socket.id,
+			ownerId: socket._playerId,
 			x: 0,
 			z: 0,
 			hp: 50,
@@ -639,7 +642,7 @@ describe('Socket Integration — Disconnect Event', () => {
 		socket.disconnect();
 		await sleep(100);
 
-		expect(gameState.minions.filter(m => m.ownerId === socket.id).length).toBe(0);
+		expect(gameState.minions.filter(m => m.ownerId === socket._playerId).length).toBe(0);
 	});
 });
 
@@ -689,7 +692,7 @@ describe('Socket Integration — Last Player Disconnect Resets Run', () => {
 		expect(gameState.enemies.length).toBeGreaterThan(0);
 
 		// Add some minions and loot
-		gameState.minions.push({ id: 'm1', ownerId: socket.id, x: 0, z: 0, hp: 50, ttl: 30 });
+		gameState.minions.push({ id: 'm1', ownerId: socket._playerId, x: 0, z: 0, hp: 50, ttl: 30 });
 		gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 
 		socket.disconnect();
@@ -755,7 +758,7 @@ describe('Socket Integration — Last Player Disconnect Resets Run', () => {
 		expect(gameState.enemies.length).toBeGreaterThan(0);
 
 		// The remaining socket's player must still be in gameState.players
-		expect(gameState.players[socket2.id]).toBeDefined();
+		expect(gameState.players[socket2._playerId]).toBeDefined();
 	});
 
 	it('resets to lobby when last player disconnects in terminal run state', async () => {
@@ -921,7 +924,7 @@ describe('dungeon run objective', () => {
 
 		// Place a weapon-range enemy in front of the player so useCard kills it
 		// Clear existing enemies to ensure only this one is in the weapon cone
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 		gameState.enemies = [{
 			id: 'e_kill',
 			x: player.x + 3, // within ATTACK_RANGE, in +X direction (rotation = 0)
@@ -980,7 +983,7 @@ describe('Run terminal state — integration', () => {
 		await waitForEvent(socket1, 'stateUpdate');
 
 		// Replace all enemies with a single low-HP enemy in weapon range
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 		gameState.enemies = [{
 			id: 'e_final',
 			x: player.x + 3,
@@ -1030,10 +1033,10 @@ describe('Run terminal state — integration', () => {
 		expect(gameState.run.status).toBe('playing');
 
 		// Set both players to dead with 0 HP
-		gameState.players[socket1.id].hp = 0;
-		gameState.players[socket1.id].dead = true;
-		gameState.players[socket2.id].hp = 0;
-		gameState.players[socket2.id].dead = true;
+		gameState.players[socket1._playerId].hp = 0;
+		gameState.players[socket1._playerId].dead = true;
+		gameState.players[socket2._playerId].hp = 0;
+		gameState.players[socket2._playerId].dead = true;
 
 		// Clear minions to avoid interference
 		gameState.minions = [];
@@ -1054,11 +1057,11 @@ describe('Run terminal state — integration', () => {
 		//
 		// Best approach: use damage event to kill one player (who isn't yet dead in the
 		// server's damagePlayer flow). Let's reset one player to alive, then kill them.
-		gameState.players[socket2.id].hp = 100;
-		gameState.players[socket2.id].dead = false;
+		gameState.players[socket2._playerId].hp = 100;
+		gameState.players[socket2._playerId].dead = false;
 
 		// Now kill socket2's player — socket1's player is already dead
-		damagePlayer(socket2.id, 100);
+		damagePlayer(socket2._playerId, 100);
 
 		const summary = await runFailedPromise;
 
@@ -1085,7 +1088,7 @@ describe('Run terminal state — integration', () => {
 		expect(gameState.enemies.length).toBeGreaterThan(0);
 
 		// Add some minions and loot to verify they're cleared
-		gameState.minions.push({ id: 'm1', ownerId: socket1.id, x: 0, z: 0, hp: 50, ttl: 30 });
+		gameState.minions.push({ id: 'm1', ownerId: socket1._playerId, x: 0, z: 0, hp: 50, ttl: 30 });
 		gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 
 		// Set run to terminal state so returnToLobby is allowed
@@ -1111,8 +1114,8 @@ describe('Run terminal state — integration', () => {
 		expect(gameState.loot.length).toBe(0);
 
 		// Verify players are set to ready: false
-		expect(gameState.players[socket1.id].ready).toBe(false);
-		expect(gameState.players[socket2.id].ready).toBe(false);
+		expect(gameState.players[socket1._playerId].ready).toBe(false);
+		expect(gameState.players[socket2._playerId].ready).toBe(false);
 	});
 
 	it('after returnToLobby, players can ready up and start a second run with a fresh objective', async () => {
@@ -1244,7 +1247,7 @@ describe('Rewards in run complete payload', () => {
 		await waitForEvent(socket1, 'stateUpdate');
 
 		// Replace all enemies with a single low-HP enemy in weapon range
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 		gameState.enemies = [{
 			id: 'e_final',
 			x: player.x + 3,
@@ -1259,7 +1262,7 @@ describe('Rewards in run complete payload', () => {
 
 		// Clear victory counter so we get a deterministic card
 		if (!gameState._victoryCounters) gameState._victoryCounters = {};
-		gameState._victoryCounters[socket1.id] = 0;
+		gameState._victoryCounters[socket1._playerId] = 0;
 
 		// Find a weapon card in hand
 		const weaponSlot = findWeaponSlot(player);
@@ -1273,7 +1276,7 @@ describe('Rewards in run complete payload', () => {
 		expect(summary.status).toBe('victory');
 		expect(summary.players.length).toBeGreaterThan(0);
 
-		const playerEntry = summary.players.find(p => p.id === socket1.id);
+		const playerEntry = summary.players.find(p => p.id === socket1._playerId);
 		expect(playerEntry).toBeDefined();
 		expect(playerEntry).toHaveProperty('rewards');
 		expect(playerEntry.rewards).toHaveProperty('currency');
@@ -1296,20 +1299,20 @@ describe('Rewards in run complete payload', () => {
 		expect(gameState.run).toBeDefined();
 
 		// Kill both players
-		gameState.players[socket1.id].hp = 0;
-		gameState.players[socket1.id].dead = true;
-		gameState.players[socket2.id].hp = 100;
-		gameState.players[socket2.id].dead = false;
+		gameState.players[socket1._playerId].hp = 0;
+		gameState.players[socket1._playerId].dead = true;
+		gameState.players[socket2._playerId].hp = 100;
+		gameState.players[socket2._playerId].dead = false;
 		gameState.minions = [];
 
 		const runFailedPromise = waitForEvent(socket1, 'runFailed');
-		damagePlayer(socket2.id, 100);
+		damagePlayer(socket2._playerId, 100);
 		const summary = await runFailedPromise;
 
 		expect(summary.status).toBe('failed');
 		expect(summary.players.length).toBeGreaterThan(0);
 
-		const playerEntry = summary.players.find(p => p.id === socket1.id);
+		const playerEntry = summary.players.find(p => p.id === socket1._playerId);
 		expect(playerEntry).toBeDefined();
 		expect(playerEntry).toHaveProperty('rewards');
 		expect(playerEntry.rewards).toHaveProperty('currency');
@@ -1317,7 +1320,7 @@ describe('Rewards in run complete payload', () => {
 
 		// On failure, the player should NOT have received a victory card reward.
 		// runRewards should exist but contain no bonus currency and no cards.
-		const actualPlayer = gameState.players[socket1.id];
+		const actualPlayer = gameState.players[socket1._playerId];
 		expect(actualPlayer.runRewards).not.toBeNull();
 		expect(actualPlayer.runRewards.cards.length).toBe(0);
 		expect(actualPlayer.runRewards.currency).toBe(0);
@@ -1330,7 +1333,7 @@ describe('Rewards in run complete payload', () => {
 		await debugResultPromise;
 		await waitForEvent(socket1, 'stateUpdate');
 
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 
 		// Place a loot item near the player
 		const lootValue = 15;
@@ -1377,7 +1380,7 @@ describe('Rewards in run complete payload', () => {
 
 		expect(summary.status).toBe('victory');
 
-		const playerEntry = summary.players.find(p => p.id === socket1.id);
+		const playerEntry = summary.players.find(p => p.id === socket1._playerId);
 		expect(playerEntry).toBeDefined();
 		// Player currency in summary should include the picked-up loot (+10 victory bonus)
 		expect(playerEntry.currency).toBe(currencyBefore + lootValue + 10);
@@ -1406,7 +1409,7 @@ describe('Reward state persistence across runs', () => {
 		await debugResultPromise;
 		await waitForEvent(socket1, 'stateUpdate');
 
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 
 		// Record initial ownedCards
 		const initialOwnedCards = { ...player.ownedCards };
@@ -1427,7 +1430,7 @@ describe('Reward state persistence across runs', () => {
 
 		// Clear victory counter for deterministic card reward
 		if (!gameState._victoryCounters) gameState._victoryCounters = {};
-		gameState._victoryCounters[socket1.id] = 0;
+		gameState._victoryCounters[socket1._playerId] = 0;
 
 		// Find a weapon card in hand
 		const weaponSlot = findWeaponSlot(player);
@@ -1466,7 +1469,7 @@ describe('Reward state persistence across runs', () => {
 		await debugResultPromise;
 		await waitForEvent(socket1, 'stateUpdate');
 
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 
 		// Set up a killable enemy
 		gameState.enemies = [{
@@ -1482,7 +1485,7 @@ describe('Reward state persistence across runs', () => {
 		gameState.minions = [];
 
 		if (!gameState._victoryCounters) gameState._victoryCounters = {};
-		gameState._victoryCounters[socket1.id] = 0;
+		gameState._victoryCounters[socket1._playerId] = 0;
 
 		// Find a weapon card in hand (first run)
 		const weaponSlot1 = findWeaponSlot(player);
@@ -1557,7 +1560,7 @@ describe('Reward state persistence across runs', () => {
 		await debugResultPromise;
 		await waitForEvent(socket1, 'stateUpdate');
 
-		const player = gameState.players[socket1.id];
+		const player = gameState.players[socket1._playerId];
 
 		// Set up and complete a victory
 		gameState.enemies = [{
@@ -1573,7 +1576,7 @@ describe('Reward state persistence across runs', () => {
 		gameState.minions = [];
 
 		if (!gameState._victoryCounters) gameState._victoryCounters = {};
-		gameState._victoryCounters[socket1.id] = 0;
+		gameState._victoryCounters[socket1._playerId] = 0;
 
 		// Find a weapon card in hand
 		const weaponSlot = findWeaponSlot(player);
@@ -1629,8 +1632,8 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 	});
 
 	it('player A adds a card and receives deckUpdate; player B deck is unchanged', async () => {
-		const playerA = gameState.players[socket1.id];
-		const deckB = [...gameState.players[socket2.id].selectedDeck];
+		const playerA = gameState.players[socket1._playerId];
+		const deckB = [...gameState.players[socket2._playerId].selectedDeck];
 
 		// Default deck already contains all owned cards, so remove one first to make room
 		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
@@ -1651,11 +1654,11 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		expect(playerA.selectedDeck.length).toBe(deckAfterRemove.length + 1);
 
 		// Player B's deck must be unchanged
-		expect(gameState.players[socket2.id].selectedDeck).toEqual(deckB);
+		expect(gameState.players[socket2._playerId].selectedDeck).toEqual(deckB);
 	});
 
 	it('player removes a card from deck and receives deckUpdate', async () => {
-		const playerA = gameState.players[socket1.id];
+		const playerA = gameState.players[socket1._playerId];
 		const deckBefore = [...playerA.selectedDeck];
 
 		// Remove dungeon_drake (only 1 copy in default deck)
@@ -1671,7 +1674,7 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 	});
 
 	it('deckAddCard during playing phase is silently ignored', async () => {
-		const playerA = gameState.players[socket1.id];
+		const playerA = gameState.players[socket1._playerId];
 		const deckBefore = [...playerA.selectedDeck];
 
 		// Enter playing phase
@@ -1691,7 +1694,7 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 	});
 
 	it('deckRemoveCard during playing phase is silently ignored', async () => {
-		const playerA = gameState.players[socket1.id];
+		const playerA = gameState.players[socket1._playerId];
 		const deckBefore = [...playerA.selectedDeck];
 
 		// Enter playing phase
@@ -1716,13 +1719,13 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		expect(err.reason).toContain('Unknown card');
 
 		// Deck must be unchanged
-		const playerA = gameState.players[socket1.id];
+		const playerA = gameState.players[socket1._playerId];
 		expect(playerA.selectedDeck.length).toBe(8); // default deck size
 	});
 
 	it('removing card not in deck emits deckError', async () => {
 		// dungeon_drake is in the default deck, so remove it first
-		const playerA = gameState.players[socket1.id];
+		const playerA = gameState.players[socket1._playerId];
 		const deckBefore = [...playerA.selectedDeck];
 
 		// Remove dungeon_drake from deck
@@ -1739,7 +1742,7 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 	});
 
 	it('adding too many copies of a card emits deckError', async () => {
-		const playerA = gameState.players[socket1.id];
+		const playerA = gameState.players[socket1._playerId];
 		// Default deck already contains all 3 owned iron_swords — adding another should fail
 		const deckErrorPromise = waitForEvent(socket1, 'deckError');
 		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
@@ -1753,8 +1756,8 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 	});
 
 	it('two players can edit decks independently without affecting each other', async () => {
-		const deckA = [...gameState.players[socket1.id].selectedDeck];
-		const deckB = [...gameState.players[socket2.id].selectedDeck];
+		const deckA = [...gameState.players[socket1._playerId].selectedDeck];
+		const deckB = [...gameState.players[socket2._playerId].selectedDeck];
 
 		// Player A removes dungeon_drake (only 1 copy in default deck)
 		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
@@ -1766,10 +1769,10 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		await deckUpdateB;
 
 		// Verify independence
-		expect(gameState.players[socket1.id].selectedDeck.length).toBe(deckA.length - 1);
-		expect(gameState.players[socket2.id].selectedDeck.length).toBe(deckB.length - 1);
-		expect(gameState.players[socket1.id].selectedDeck).not.toContain('dungeon_drake'); // A removed it
-		expect(gameState.players[socket2.id].selectedDeck).not.toContain('dungeon_drake'); // B removed it
+		expect(gameState.players[socket1._playerId].selectedDeck.length).toBe(deckA.length - 1);
+		expect(gameState.players[socket2._playerId].selectedDeck.length).toBe(deckB.length - 1);
+		expect(gameState.players[socket1._playerId].selectedDeck).not.toContain('dungeon_drake'); // A removed it
+		expect(gameState.players[socket2._playerId].selectedDeck).not.toContain('dungeon_drake'); // B removed it
 	});
 });
 
@@ -1805,7 +1808,7 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 
 	it('ready is rejected with deckError when deck is too small', async () => {
 		// Shrink socket1's deck below DECK_MIN_SIZE
-		gameState.players[socket1.id].selectedDeck = ['iron_sword', 'flame_blade'];
+		gameState.players[socket1._playerId].selectedDeck = ['iron_sword', 'flame_blade'];
 
 		const deckErrorPromise = waitForEvent(socket1, 'deckError');
 
@@ -1816,13 +1819,13 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		expect(err.reason).toContain('at least');
 
 		// player.ready should remain false
-		expect(gameState.players[socket1.id].ready).toBe(false);
+		expect(gameState.players[socket1._playerId].ready).toBe(false);
 	});
 
 	it('a valid selected deck populates player.deck when the run starts', async () => {
 		// Ensure both players have valid default decks (8 cards each)
-		const deck1 = [...gameState.players[socket1.id].selectedDeck];
-		const deck2 = [...gameState.players[socket2.id].selectedDeck];
+		const deck1 = [...gameState.players[socket1._playerId].selectedDeck];
+		const deck2 = [...gameState.players[socket2._playerId].selectedDeck];
 
 		// Wait for startGame on both sockets
 		const startGamePromise1 = waitForEvent(socket1, 'startGame');
@@ -1840,22 +1843,22 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		const stateUpdate = await stateUpdatePromise;
 
 		// Verify each player has a populated deck (4 cards drawn into hand, rest remain in deck)
-		expect(stateUpdate.players[socket1.id]).toBeDefined();
-		expect(Array.isArray(stateUpdate.players[socket1.id].deck)).toBe(true);
+		expect(stateUpdate.players[socket1._playerId]).toBeDefined();
+		expect(Array.isArray(stateUpdate.players[socket1._playerId].deck)).toBe(true);
 		// 4 cards are dealt into hand, so deck should have selectedDeck.length - 4
-		expect(stateUpdate.players[socket1.id].deck.length).toBe(deck1.length - 4);
+		expect(stateUpdate.players[socket1._playerId].deck.length).toBe(deck1.length - 4);
 
 		// The deck + hand should contain the same card ids as selectedDeck (shuffled)
-		const player1 = gameState.players[socket1.id];
-		const deck1Cards = [...stateUpdate.players[socket1.id].deck];
+		const player1 = gameState.players[socket1._playerId];
+		const deck1Cards = [...stateUpdate.players[socket1._playerId].deck];
 		const hand1Cards = player1.hand.filter(c => c).map(c => c.id);
 		const allCards = [...deck1Cards, ...hand1Cards].sort();
 		const selected1Sorted = [...deck1].sort();
 		expect(allCards).toEqual(selected1Sorted);
 
-		expect(stateUpdate.players[socket2.id]).toBeDefined();
-		expect(Array.isArray(stateUpdate.players[socket2.id].deck)).toBe(true);
-		expect(stateUpdate.players[socket2.id].deck.length).toBe(deck2.length - 4);
+		expect(stateUpdate.players[socket2._playerId]).toBeDefined();
+		expect(Array.isArray(stateUpdate.players[socket2._playerId].deck)).toBe(true);
+		expect(stateUpdate.players[socket2._playerId].deck.length).toBe(deck2.length - 4);
 	});
 });
 
@@ -1879,7 +1882,7 @@ describe('Enemy telegraph integration', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const initialHp = player.hp;
 
 		// Place an enemy in chasing state, within attack range of the player
@@ -1899,7 +1902,7 @@ describe('Enemy telegraph integration', () => {
 		const stateHandler = (data) => {
 			stateUpdates.push(data);
 			// Stop collecting after we see the damage
-			if (data.players && data.players[socket.id] && data.players[socket.id].hp < initialHp) {
+			if (data.players && data.players[socket._playerId] && data.players[socket._playerId].hp < initialHp) {
 				socket.off('stateUpdate', stateHandler);
 			}
 		};
@@ -1918,7 +1921,7 @@ describe('Enemy telegraph integration', () => {
 
 		// Find the first stateUpdate where player HP decreased
 		const damageUpdate = stateUpdates.find(su => {
-			return su.players && su.players[socket.id] && su.players[socket.id].hp < initialHp;
+			return su.players && su.players[socket._playerId] && su.players[socket._playerId].hp < initialHp;
 		});
 
 		expect(windupUpdate).toBeDefined();
@@ -1941,7 +1944,7 @@ describe('Enemy telegraph integration', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 
 		// Place enemy in chasing state, within attack range so it transitions to windup
 		gameState.enemies = [{
@@ -1989,7 +1992,7 @@ describe('Enemy telegraph integration', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		expect(player.hp).toBe(MAX_HP);
 
 		// Place a single grunt enemy within ENEMY_ATTACK_RANGE of the player
@@ -2118,7 +2121,7 @@ describe('Dungeon layout consistency', () => {
 		await debugResultPromise;
 		await waitForEvent(client.socket, 'stateUpdate');
 
-		const player = gameState.players[client.socket.id];
+		const player = gameState.players[client.socket._playerId];
 
 		// Move toward positive bounds — server clamps to dungeon bounds
 		client.socket.emit('move', { dx: 1, dz: 1, rotation: 0 });
@@ -2153,7 +2156,7 @@ describe('Loot pickup throttle — idempotency', () => {
 	});
 
 	it('emitting lootPickup twice for the same loot ID only credits currency once', async () => {
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const lootValue = 10;
 
 		// Place a loot item
@@ -2183,7 +2186,7 @@ describe('Loot pickup throttle — idempotency', () => {
 	});
 
 	it('emitting lootPickup for a non-existent loot ID is a no-op', async () => {
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const currencyBefore = player.currency;
 
 		socket.emit('lootPickup', { lootId: 'does_not_exist' });
@@ -2207,7 +2210,7 @@ describe('Loot pickup — dead player exclusion', () => {
 	});
 
 	it('emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged', async () => {
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const lootValue = 12;
 
 		// Place a loot item near the player
@@ -2269,7 +2272,7 @@ describe('killing skirmisher via weapon card (integration)', () => {
 		const defeatedBefore = gameState.run.objective.defeatedEnemies;
 
 		// Place a skirmisher in weapon range with low HP so a single weapon hit kills it
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		spawnEnemy(player.x + 3, player.z, 'skirmisher');
 		const skirmisher = gameState.enemies[gameState.enemies.length - 1];
 		expect(skirmisher.type).toBe('skirmisher');
@@ -2327,7 +2330,7 @@ describe('killing miniboss via weapon card (integration)', () => {
 		const defeatedBefore = gameState.run.objective.defeatedEnemies;
 
 		// Place a miniboss in weapon range
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		spawnEnemy(player.x + 3, player.z, 'miniboss');
 		const miniboss = gameState.enemies[gameState.enemies.length - 1];
 		expect(miniboss.type).toBe('miniboss');
@@ -2537,7 +2540,7 @@ describe('Swept collision — tunneling rejection', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 
 		// Find a wall in the dungeon layout and try to move through it.
 		const layout = gameState.layout;
@@ -2606,7 +2609,7 @@ describe('Card cooldown — COOLDOWN_MS', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 
 		// Find a weapon card in hand
 		const weaponSlot = findWeaponSlot(player);
@@ -2643,7 +2646,7 @@ describe('Card cooldown — COOLDOWN_MS', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 
 		// Find a weapon card in hand
 		const weaponSlot = findWeaponSlot(player);
@@ -2700,7 +2703,7 @@ describe('Elapsed cap — MAX_ELAPSED_MS', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 		const startX = player.x;
 
 		// Simulate a large time gap by setting lastMoveTime far in the past
@@ -2742,7 +2745,7 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket.id];
+		const player = gameState.players[socket._playerId];
 
 		// Find a weapon card in hand
 		const weaponSlot = findWeaponSlot(player);
@@ -2769,9 +2772,9 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 
 		// Verify the stateUpdate contains the player's hand with updated remainingCharges
 		expect(stateUpdate.players).toBeDefined();
-		expect(stateUpdate.players[socket.id]).toBeDefined();
-		expect(stateUpdate.players[socket.id].hand).toBeDefined();
-		const handInPayload = stateUpdate.players[socket.id].hand;
+		expect(stateUpdate.players[socket._playerId]).toBeDefined();
+		expect(stateUpdate.players[socket._playerId].hand).toBeDefined();
+		const handInPayload = stateUpdate.players[socket._playerId].hand;
 		const updatedCard = handInPayload[weaponSlot];
 		expect(updatedCard).toBeDefined();
 		expect(updatedCard.id).toBe(weaponCard.id);

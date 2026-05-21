@@ -994,7 +994,7 @@ function applyDebugScenario(socket, name) {
     return { ok: false, reason: `Unknown debug scenario: ${name}` };
   }
 
-  const player = gameState.players[socket.id];
+  const player = gameState.players[socket.playerId];
   if (!player) return { ok: false, reason: 'No player for debug scenario' };
   const spawn = firstRoomPosition();
 
@@ -1389,19 +1389,58 @@ function startServer(port) {
   clearAllTimers();
 
   io.on('connection', (socket) => {
-    console.log(`Player connected: ${socket.id}`);
+    // ── Stable player identity ──
+    // Accept a stable playerId from the client (via handshake auth).
+    // If the client provides a valid UUID that we already have, reuse it.
+    // Otherwise generate a new one.
+    const providedPlayerId = socket.handshake.auth && socket.handshake.auth.playerId;
+    let playerId = null;
+
+    if (providedPlayerId && gameState.players[providedPlayerId]) {
+      // Reconnecting with an existing stable id
+      playerId = providedPlayerId;
+    } else if (providedPlayerId && typeof providedPlayerId === 'string' && providedPlayerId.length > 0) {
+      // Client sent a playerId we don't recognize — could be stale or from
+      // a previous server restart with InMemoryProvider. Generate a new one
+      // but attempt to load persisted data using the provided id.
+      playerId = crypto.randomUUID();
+    } else {
+      // First connection — generate a new stable id
+      playerId = crypto.randomUUID();
+    }
+
+    // Map socket.id → stable playerId (for lookup in socket handlers)
+    socket.playerId = playerId;
+    console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
+
     const spawn = firstRoomPosition();
 
+    // ── Load persisted data (if any) ──
+    let savedData = null;
+    try {
+      // Try loading with the provided id first (server restart scenario),
+      // then with the resolved playerId.
+      if (providedPlayerId && providedPlayerId !== playerId) {
+        savedData = provider ? provider.loadPlayer(providedPlayerId) : null;
+      }
+      if (!savedData) {
+        savedData = provider ? provider.loadPlayer(playerId) : null;
+      }
+    } catch (err) {
+      console.error(`[persistence] loadPlayer failed for ${playerId}:`, err.message);
+      savedData = null;
+    }
+
     // Initialize player state on connection.
-    if (!gameState.players[socket.id]) {
+    if (!gameState.players[playerId]) {
       const progress = createPlayerProgress();
 
       // Default selected deck: the full 8-card starting deck (STARTING_DECK_IDS),
       // so players have a draw-deck reserve beyond the 4-card opening hand.
       const defaultDeck = [...STARTING_DECK_IDS];
 
-      gameState.players[socket.id] = {
-        id: socket.id,
+      gameState.players[playerId] = {
+        id: playerId,
         x: spawn.x,
         y: 0.5,
         z: spawn.z,
@@ -1424,8 +1463,24 @@ function startServer(port) {
       };
     }
 
-  const player = gameState.players[socket.id];
-  socket.emit('init', { id: socket.id, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
+    // ── Merge saved data into player state ──
+    const player = gameState.players[playerId];
+    if (savedData) {
+      player.currency = savedData.currency ?? player.currency;
+      player.ownedCards = savedData.ownedCards ?? player.ownedCards;
+      player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
+        ? savedData.selectedDeck
+        : player.selectedDeck;
+      // Restore location only if the player is in lobby (not mid-run)
+      if (gameState.gamePhase === 'lobby') {
+        player.x = savedData.x ?? player.x;
+        player.y = savedData.y ?? player.y;
+        player.z = savedData.z ?? player.z;
+        player.rotation = savedData.rotation ?? player.rotation;
+      }
+    }
+
+  socket.emit('init', { id: playerId, playerId, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
 
   // Broadcast updated lobby on connect
   broadcastLobbyUpdate();
@@ -1433,7 +1488,7 @@ function startServer(port) {
   socket.on('move', (data) => {
     if (gameState.gamePhase !== 'playing') return;
 
-    const player = gameState.players[socket.id];
+    const player = gameState.players[socket.playerId];
 
     if (player && player.dead) return;
 
@@ -1500,7 +1555,7 @@ function startServer(port) {
     if (!cardDef) return;
 
     // (3) Get player
-    const player = gameState.players[socket.id];
+    const player = gameState.players[socket.playerId];
     if (!player || player.dead) return;
 
     // (4) Hand validation: slot must exist and card id must match
@@ -1568,7 +1623,7 @@ function startServer(port) {
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
-        playerId: socket.id,
+        playerId: socket.playerId,
         cardId: data.cardId,
         origin: { x: originX, z: originZ },
         direction: { x: dirX, z: dirZ },
@@ -1624,7 +1679,7 @@ function startServer(port) {
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
-        playerId: socket.id,
+        playerId: socket.playerId,
         cardId: data.cardId,
         slotIndex: data.slotIndex,
         origin: { x: originX, z: originZ },
@@ -1643,7 +1698,7 @@ function startServer(port) {
     if (cardDef.type === 'monster') {
       const minion = {
         id: crypto.randomUUID(),
-        ownerId: socket.id,
+        ownerId: socket.playerId,
         x: originX,
         z: originZ,
         hp: 50,
@@ -1661,7 +1716,7 @@ function startServer(port) {
       io.emit('stateUpdate', stateSnapshot());
 
       io.emit('cardUsed', {
-        playerId: socket.id,
+        playerId: socket.playerId,
         cardId: data.cardId,
         slotIndex: data.slotIndex,
         origin: { x: originX, z: originZ }
@@ -1672,7 +1727,7 @@ function startServer(port) {
   });
 
   socket.on('playerReady', (ready) => {
-    const player = gameState.players[socket.id];
+    const player = gameState.players[socket.playerId];
     if (!player) return;
 
     if (ready) {
@@ -1710,7 +1765,7 @@ function startServer(port) {
     // Guard: only allowed in lobby phase
     if (gameState.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.id];
+    const player = gameState.players[socket.playerId];
     if (!player) return;
 
     const cardId = data && typeof data.cardId === 'string' ? data.cardId : null;
@@ -1751,7 +1806,7 @@ function startServer(port) {
     // Guard: only allowed in lobby phase
     if (gameState.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.id];
+    const player = gameState.players[socket.playerId];
     if (!player) return;
 
     const cardId = data && typeof data.cardId === 'string' ? data.cardId : null;
@@ -1793,8 +1848,8 @@ function startServer(port) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
       return;
     }
-    if (gameState.players[socket.id]) {
-      gameState.players[socket.id].lastActivity = Date.now();
+    if (gameState.players[socket.playerId]) {
+      gameState.players[socket.playerId].lastActivity = Date.now();
     }
     socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
   });
@@ -1802,7 +1857,7 @@ function startServer(port) {
   socket.on('lootPickup', (data) => {
     if (!data || !data.lootId) return;
 
-    const player = gameState.players[socket.id];
+    const player = gameState.players[socket.playerId];
     if (!player) return;
     if (player.dead) return; // dead players cannot collect loot
 
@@ -1825,10 +1880,12 @@ function startServer(port) {
     console.log(`Player disconnected: ${socket.id}`);
     sweptCollisionLogTimes.delete(socket.id);
     // Persist player data before removing from game state
-    savePlayerData(socket.id);
-    delete gameState.players[socket.id];
-    gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.id);
-    io.emit('playerDisconnected', socket.id);
+    if (socket.playerId) {
+      savePlayerData(socket.playerId);
+    }
+    delete gameState.players[socket.playerId];
+    gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.playerId);
+    io.emit('playerDisconnected', socket.playerId);
 
     if (Object.keys(gameState.players).length === 0) {
       // Last player left — reset the session regardless of run state
