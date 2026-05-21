@@ -273,6 +273,41 @@ describe('Socket Integration — Move Event', () => {
 		expect(player.x).toBe(spawn.x);
 		expect(player.z).toBe(spawn.z);
 	});
+
+	it('applies MOVE_SPEED to normalized input with capped elapsed', async () => {
+		// Enter playing phase so the move handler processes the intent
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket.id];
+
+		// Place player at dungeon center to avoid swept-collision rejection
+		// from wall proximity at the spawn point.
+		const bounds = gameState.dungeonBounds;
+		const centerX = (bounds.minX + bounds.maxX) / 2;
+		const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+		player.x = centerX;
+		player.z = centerZ;
+
+		const startX = player.x;
+
+		// Set lastMoveTime far enough in the past so that elapsed >= MAX_ELAPSED_MS,
+		// ensuring the cap kicks in and displacement = MOVE_SPEED * (MAX_ELAPSED_MS / 1000).
+		player.lastMoveTime = Date.now() - MAX_ELAPSED_MS - 100;
+
+		// Emit normalized movement intent: dx=1, dz=0 (magnitude = 1)
+		socket.emit('move', { dx: 1, dz: 0, rotation: 0 });
+
+		// Wait for the server tick to process the move
+		await sleep(50);
+
+		const expectedDisplacement = MOVE_SPEED * (MAX_ELAPSED_MS / 1000);
+		const actualDisplacement = Math.abs(player.x - startX);
+		expect(actualDisplacement).toBeGreaterThan(expectedDisplacement - 0.5);
+		expect(actualDisplacement).toBeLessThan(expectedDisplacement + 0.5);
+	});
 });
 
 describe('Socket Integration — Invalid Move Rejection', () => {
