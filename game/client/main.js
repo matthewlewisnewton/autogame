@@ -35,8 +35,8 @@ import {
 	CAMERA_FOV,
 	CAMERA_NEAR,
 	CAMERA_FAR,
-	acceleration,
-	friction,
+	MOVE_SPEED,
+	MAX_ELAPSED_MS,
 	CAMERA_OFFSET as CAMERA_OFFSET_CONFIG,
 	SOUND_CONFIG,
 } from './config.js';
@@ -155,9 +155,7 @@ const lootMeshes = {};
 const activeEffects = []; // { mesh, origin, direction, createdAt, duration }
 let myX = 0;
 let myZ = 0;
-let velocityX = 0;
-let velocityZ = 0;
-let playerRotation = 0; // facing angle in radians, derived from movement velocity
+let playerRotation = 0; // facing angle in radians, derived from movement direction
 let wasDead = false; // tracks previous-frame dead state for respawn detection
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
@@ -503,8 +501,6 @@ socket.on('init', (data) => {
     // Reset local player position to spawn
     myX = spawnPosition.x;
     myZ = spawnPosition.z;
-    velocityX = 0;
-    velocityZ = 0;
     requestDebugScenario();
     return;
   }
@@ -1406,8 +1402,6 @@ socket.on('startGame', () => {
   initHand();
   myX = spawnPosition.x;
   myZ = spawnPosition.z;
-  velocityX = 0;
-  velocityZ = 0;
   playerRotation = 0;
   wasDead = false;
 
@@ -1507,32 +1501,36 @@ function updateMyPlayer(delta) {
   const me = gameState && gameState.players[myId];
   if (me && me.dead) return;
 
-  if (keys.w) velocityZ -= acceleration * delta;
-  if (keys.s) velocityZ += acceleration * delta;
-  if (keys.a) velocityX -= acceleration * delta;
-  if (keys.d) velocityX += acceleration * delta;
-
-  myX += velocityX * delta;
-  myZ += velocityZ * delta;
-
-  // Resolve wall collision before applying position
-  const resolved = resolveWallCollisionFromDungeon(myX, myZ, wallColliders);
-  myX = resolved.x;
-  myZ = resolved.z;
-
-  const f = Math.pow(friction, delta * 60);
-  velocityX *= f;
-  velocityZ *= f;
-
-  // Update facing angle whenever there is meaningful movement
-  if (Math.abs(velocityX) > 0.01 || Math.abs(velocityZ) > 0.01) {
-    playerRotation = Math.atan2(velocityZ, velocityX);
+  // Compute movement direction from active keys, normalize to unit vector
+  let dirX = 0, dirZ = 0;
+  if (keys.w) dirZ -= 1;
+  if (keys.s) dirZ += 1;
+  if (keys.a) dirX -= 1;
+  if (keys.d) dirX += 1;
+  const mag = Math.hypot(dirX, dirZ);
+  if (mag > 0) {
+    dirX /= mag;
+    dirZ /= mag;
   }
 
-  // Always emit move while moving (preserves last non-zero rotation when stationary)
-  if (Math.abs(velocityX) > 0.001 || Math.abs(velocityZ) > 0.001) {
-    const mag = Math.hypot(velocityX, velocityZ);
-    socket.emit('move', { dx: velocityX / mag, dz: velocityZ / mag, rotation: playerRotation });
+  if (mag > 0) {
+    // Cap delta to prevent over-correction after input stalls
+    const cappedDelta = Math.min(delta, MAX_ELAPSED_MS / 1000);
+
+    // Apply fixed speed matching server's MOVE_SPEED
+    myX += dirX * MOVE_SPEED * cappedDelta;
+    myZ += dirZ * MOVE_SPEED * cappedDelta;
+
+    // Resolve wall collision before applying position
+    const resolved = resolveWallCollisionFromDungeon(myX, myZ, wallColliders);
+    myX = resolved.x;
+    myZ = resolved.z;
+
+    // Derive facing angle from movement direction
+    playerRotation = Math.atan2(dirZ, dirX);
+
+    // Emit move intent using normalized direction
+    socket.emit('move', { dx: dirX, dz: dirZ, rotation: playerRotation });
   }
 }
 
@@ -1603,8 +1601,6 @@ function animate(timestamp) {
       if (wasDead && !isDead) {
         myX = spawnPosition.x;
         myZ = spawnPosition.z;
-        velocityX = 0;
-        velocityZ = 0;
         playerRotation = 0;
       }
       wasDead = isDead;
