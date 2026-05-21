@@ -2695,13 +2695,13 @@ describe('Elapsed cap — MAX_ELAPSED_MS', () => {
 		socket.emit('move', { dx: 1, dz: 0, rotation: 0 });
 		await sleep(50);
 
-		// Max distance = MOVE_SPEED * (MAX_ELAPSED_MS / 1000) * MOVE_SPEED_TOLERANCE
-		// = 12 * 0.2 * 1.5 = 3.6
+		// Max distance = MOVE_SPEED * (MAX_ELAPSED_MS / 1000)
+		// = 12 * 0.2 = 2.4
 		// Actual distance should be well bounded (not a 60-second teleport)
-		const maxExpectedDist = MOVE_SPEED * (MAX_ELAPSED_MS / 1000) * 1.5;
+		const maxExpectedDist = MOVE_SPEED * (MAX_ELAPSED_MS / 1000);
 		const actualDist = Math.abs(player.x - startX);
 
-		expect(actualDist).toBeLessThanOrEqual(maxExpectedDist + 0.1); // small tolerance for floating point
+		expect(actualDist).toBeLessThanOrEqual(maxExpectedDist + 0.01); // small epsilon for floating point
 	});
 });
 

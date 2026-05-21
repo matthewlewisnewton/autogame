@@ -2,7 +2,6 @@
 
 const TICK_RATE = 20; // times per second
 const MOVE_SPEED = 12; // units per second — maximum player movement speed (matches client terminal velocity)
-const MOVE_SPEED_TOLERANCE = 1.5; // multiplier to account for network latency / frame timing variance
 const MAX_ELAPSED_MS = 200; // maximum milliseconds of movement granted per request (prevents teleport via large time delta)
 const DETECTION_RADIUS = 8; // units
 const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
@@ -33,7 +32,6 @@ const VICTORY_REWARD_ROTATION = [
 module.exports = {
   TICK_RATE,
   MOVE_SPEED,
-  MOVE_SPEED_TOLERANCE,
   MAX_ELAPSED_MS,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
