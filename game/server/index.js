@@ -1371,7 +1371,7 @@ function startServer(port) {
 
       // Swept collision check: reject moves whose path intersects any wall
       if (checkSweptCollision(player.x, player.z, newX, newZ)) {
-        console.warn(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
+        console.debug(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
         return;
       }
 
