@@ -1435,58 +1435,32 @@ function startServer(port) {
   clearAllTimers();
 
   io.on('connection', (socket) => {
-    // ── JWT authentication (optional) ──
-    // Read an optional JWT from the Socket.IO handshake auth object.
+    // ── JWT authentication (required) ──
+    // Every WebSocket connection must present a valid JWT token.
     // - Valid token  → use decoded.accountId as the stable player identity
-    // - Invalid token → disconnect immediately
-    // - No token     → fall through to the existing anonymous flow
+    // - Invalid/expired token → disconnect immediately
+    // - No token     → disconnect immediately (no anonymous fallback)
     const token = socket.handshake.auth && socket.handshake.auth.token;
-    let accountId = null;
-    let username = null;
 
-    if (token) {
-      const decoded = verifyToken(token);
-      if (!decoded) {
-        console.log(`[auth] Invalid or expired JWT — disconnecting socket ${socket.id}`);
-        socket.disconnect();
-        return;
-      }
-      accountId = decoded.accountId;
-      username = decoded.username;
+    if (!token) {
+      console.log(`[auth] No JWT token — disconnecting socket ${socket.id}`);
+      socket.disconnect();
+      return;
     }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      console.log(`[auth] Invalid or expired JWT — disconnecting socket ${socket.id}`);
+      socket.disconnect();
+      return;
+    }
+
+    const accountId = decoded.accountId;
+    const username = decoded.username;
 
     // ── Stable player identity ──
-    // If authenticated, use accountId as the playerId.
-    // Otherwise accept a stable playerId from the client (via handshake auth).
-    const providedPlayerId = socket.handshake.auth && socket.handshake.auth.playerId;
-    let playerId = null;
-
-    if (accountId) {
-      // Authenticated connection — accountId is the stable identity
-      playerId = accountId;
-    } else if (providedPlayerId && gameState.players[providedPlayerId]) {
-      // Reconnecting with an existing stable id already in memory
-      playerId = providedPlayerId;
-    } else if (providedPlayerId && typeof providedPlayerId === 'string' && providedPlayerId.length > 0) {
-      // Client sent a playerId we don't have in memory — check persistence.
-      let savedData = null;
-      try {
-        savedData = provider ? provider.loadPlayer(providedPlayerId) : null;
-      } catch (err) {
-        console.error(`[persistence] loadPlayer check failed for ${providedPlayerId}:`, err.message);
-        savedData = null;
-      }
-      if (savedData) {
-        // Persisted data exists — reuse the client's ID to prevent drift
-        playerId = providedPlayerId;
-      } else {
-        // No persisted data — generate a new UUID (fresh player or stale ID)
-        playerId = crypto.randomUUID();
-      }
-    } else {
-      // First connection — generate a new stable id
-      playerId = crypto.randomUUID();
-    }
+    // Authenticated connection — accountId is the stable identity
+    const playerId = accountId;
 
     // Map socket.id → stable playerId (for lookup in socket handlers)
     socket.playerId = playerId;
@@ -1516,6 +1490,7 @@ function startServer(port) {
       gameState.players[playerId] = {
         id: playerId,
         accountId: accountId,
+        username: username,
         x: spawn.x,
         y: 0.5,
         z: spawn.z,

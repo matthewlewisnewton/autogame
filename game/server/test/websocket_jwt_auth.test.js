@@ -197,31 +197,21 @@ describe('WebSocket JWT Authentication', () => {
 		expect(Object.keys(gameState.players).length).toBe(0);
 	});
 
-	it('falls back to anonymous playerId when no token is provided', async () => {
-		const { socket, init } = await connectWithAuth(baseUrl, {});
+	it('disconnects socket when no token is provided', async () => {
+		const { reason } = await connectExpectDisconnect(baseUrl, {});
 
-		// accountId should be null for anonymous connections
-		expect(init.accountId).toBeNull();
-		// playerId should be a server-generated UUID (not null)
-		expect(init.playerId).toBeDefined();
-		expect(typeof init.playerId).toBe('string');
-		expect(init.playerId.length).toBeGreaterThan(0);
+		// Socket.IO disconnect reason for server-initiated disconnect
+		expect(reason).toBeDefined();
 
-		// The player should exist in gameState with accountId = null
-		expect(gameState.players[init.playerId]).toBeDefined();
-		expect(gameState.players[init.playerId].accountId).toBeNull();
-
-		socket.disconnect();
+		// No player should have been created
+		expect(Object.keys(gameState.players).length).toBe(0);
 	});
 
-	it('falls back to anonymous when auth object is empty (no token key)', async () => {
-		const { socket, init } = await connectWithAuth(baseUrl, { playerId: 'some-id' });
+	it('disconnects socket when auth object is empty (no token key)', async () => {
+		const { reason } = await connectExpectDisconnect(baseUrl, { playerId: 'some-id' });
 
-		// No token provided, so should be anonymous
-		expect(init.accountId).toBeNull();
-		expect(init.playerId).toBeDefined();
-
-		socket.disconnect();
+		expect(reason).toBeDefined();
+		expect(Object.keys(gameState.players).length).toBe(0);
 	});
 
 	it('verifies token using server verifyToken helper', () => {
