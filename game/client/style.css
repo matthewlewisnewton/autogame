@@ -587,3 +587,137 @@ canvas {
   color: #a0aec0;
   cursor: not-allowed;
 }
+
+/* ── Logout Button ── */
+
+#logout-btn {
+  position: absolute;
+  top: 12px;
+  right: 60px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 12;
+  transition: background 0.2s ease;
+}
+
+#logout-btn:hover {
+  background: rgba(220, 38, 38, 0.7);
+}
+
+/* ── Auth Overlay ── */
+
+#auth-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(15, 23, 42, 0.95);
+  color: white;
+  z-index: 300;
+}
+
+#auth-modal {
+  width: 340px;
+  padding: 32px;
+  background: rgba(30, 41, 59, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  text-align: center;
+}
+
+#auth-modal h2 {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  margin-bottom: 4px;
+}
+
+#auth-modal h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+#register-form,
+#login-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#register-form input,
+#login-form input {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.8);
+  color: white;
+  outline: none;
+  box-sizing: border-box;
+}
+
+#register-form input:focus,
+#login-form input:focus {
+  border-color: #3b82f6;
+}
+
+#register-btn,
+#login-btn {
+  width: 100%;
+  padding: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  border: none;
+  border-radius: 6px;
+  background-color: #3b82f6;
+  color: white;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#register-btn:hover,
+#login-btn:hover {
+  background-color: #2563eb;
+}
+
+#register-error,
+#login-error {
+  width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+  min-height: 1em;
+}
+
+.auth-toggle {
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.auth-toggle a {
+  color: #3b82f6;
+  text-decoration: none;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.auth-toggle a:hover {
+  text-decoration: underline;
+}
