@@ -400,12 +400,9 @@ function useCard(slotIndex) {
   // (1) Emit useCard — only fires when cooldown has cleared
   socket.emit('useCard', { slotIndex, cardId: card.id });
 
-  // (1b) For monster cards: single-use, consumed optimistically (like weapons)
+  // (1b) For monster cards: skip optimistic consumption — wait for server
+  //     confirmation (stateUpdate reconciliation) before removing/redrawing.
   if (monsterCardIds.has(card.id)) {
-    hand[slotIndex] = null;
-    const newCard = drawCard();
-    if (newCard) hand[slotIndex] = newCard;
-    renderHand();
     slotCooldowns[slotIndex] = true;
     playActivationEffect(slotIndex);
     return;
