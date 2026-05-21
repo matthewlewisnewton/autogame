@@ -4,6 +4,7 @@ const http = require('http');
 const crypto = require('crypto');
 const path = require('path');
 const { InMemoryProvider, FileProvider } = require('./providers');
+const { verifyToken } = require('./auth');
 const {
   mulberry32,
   generateLayout,
@@ -1417,16 +1418,34 @@ function startServer(port) {
   clearAllTimers();
 
   io.on('connection', (socket) => {
+    // ── JWT authentication (optional) ──
+    // Read an optional JWT from the Socket.IO handshake auth object.
+    // - Valid token  → use decoded.accountId as the stable player identity
+    // - Invalid token → disconnect immediately
+    // - No token     → fall through to the existing anonymous flow
+    const token = socket.handshake.auth && socket.handshake.auth.token;
+    let accountId = null;
+
+    if (token) {
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        console.log(`[auth] Invalid or expired JWT — disconnecting socket ${socket.id}`);
+        socket.disconnect();
+        return;
+      }
+      accountId = decoded.accountId;
+    }
+
     // ── Stable player identity ──
-    // Accept a stable playerId from the client (via handshake auth).
-    // If the client provides a valid UUID that we already have in memory, reuse it.
-    // Otherwise check if persisted data exists for that ID (cold reconnect after
-    // disconnect cleanup) — if so, reuse the provided ID to prevent save-file drift.
-    // If no persisted data is found, generate a new UUID.
+    // If authenticated, use accountId as the playerId.
+    // Otherwise accept a stable playerId from the client (via handshake auth).
     const providedPlayerId = socket.handshake.auth && socket.handshake.auth.playerId;
     let playerId = null;
 
-    if (providedPlayerId && gameState.players[providedPlayerId]) {
+    if (accountId) {
+      // Authenticated connection — accountId is the stable identity
+      playerId = accountId;
+    } else if (providedPlayerId && gameState.players[providedPlayerId]) {
       // Reconnecting with an existing stable id already in memory
       playerId = providedPlayerId;
     } else if (providedPlayerId && typeof providedPlayerId === 'string' && providedPlayerId.length > 0) {
@@ -1475,6 +1494,7 @@ function startServer(port) {
 
       gameState.players[playerId] = {
         id: playerId,
+        accountId: accountId,
         x: spawn.x,
         y: 0.5,
         z: spawn.z,
@@ -1535,7 +1555,7 @@ function startServer(port) {
       }
     }
 
-  socket.emit('init', { id: playerId, playerId, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
+  socket.emit('init', { id: playerId, playerId, accountId, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
 
   // Broadcast updated lobby on connect
   broadcastLobbyUpdate();
@@ -2062,6 +2082,8 @@ if (typeof module !== 'undefined' && module.exports) {
     savePlayerData,
     saveAllPlayers,
     setTestProvider,
-    provider
+    provider,
+    // Auth
+    verifyToken
   };
 }

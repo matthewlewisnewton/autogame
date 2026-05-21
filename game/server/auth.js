@@ -9,6 +9,19 @@ const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret';
 const JWT_EXPIRATION = '24h';
 
 /**
+ * Verify a JWT token and return the decoded payload, or null on failure.
+ * Used by the WebSocket connection handler to authenticate socket clients.
+ */
+function verifyToken(token) {
+	if (!token || typeof token !== 'string') return null;
+	try {
+		return jwt.verify(token, JWT_SECRET);
+	} catch (e) {
+		return null;
+	}
+}
+
+/**
  * POST /api/register
  * Body: { username, password }
  * - 201 { accountId } on success
@@ -86,3 +99,5 @@ router.post('/login', (req, res) => {
 });
 
 module.exports = router;
+module.exports.JWT_SECRET = JWT_SECRET;
+module.exports.verifyToken = verifyToken;
