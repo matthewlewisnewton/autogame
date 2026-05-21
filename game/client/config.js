@@ -63,11 +63,11 @@ export const CAMERA_OFFSET = { x: 0, y: 5, z: 10 };
 
 // ── Movement ──
 
-/** Player acceleration (units/s²) */
-export const acceleration = 15.0;
+/** Player movement speed (units/s) — matches server constant exactly */
+export const MOVE_SPEED = 12;
 
-/** Player friction factor (raised to delta*60 power each frame) */
-export const friction = 0.88;
+/** Maximum ms of movement per frame — matches server constant to prevent drift */
+export const MAX_ELAPSED_MS = 200;
 
 // ── Dungeon ──
 
