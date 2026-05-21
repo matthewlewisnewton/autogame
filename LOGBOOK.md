@@ -1386,3 +1386,26 @@ None. All acceptance criteria are met and the captured run is healthy.
 
 ---
 
+
+## v0.61 — Cleanup nits from 094-cleanup-cleanup-cleanup-cleanup-audit-client-server  (2026-05-21 05:42:40)
+
+| Dev-gated entry | Client: `debugScenario` URL param only on `localhost` / `127.0.0.1` / `::1` (`main.js` ~70–72). Server: `isDebugScenarioAllowed()` (~881–893). Harness sets `?debugScenario=monster-card` on connect. |
+| Normal path still reaches equivalent state | Default deck includes `dungeon_drake` (`cards.js`); reached via `drawReplacementCard` after hand churn (not guaranteed in opening 4). Using the card still goes through `socket.emit('useCard')` → full server validation, minion spawn, `stateUpdate` replication. |
+| No invariant bypass | Scenario only ensures a monster card in hand (`index.js` ~995–1005); does not skip `useCard`, cooldown, or broadcast. Client waits for server `stateUpdate` for monsters (~405–410). |
+
+**No blocking debug-scenario issues.**
+
+---
+
+## Code quality
+
+- Focused diff: harness probe field + integration test refactor/assertions.
+- No dead code introduced; no console errors in capture.
+- Two monster integration tests overlap in setup (nit only — see `nits.md`).
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met and the captured run is healthy.
+
