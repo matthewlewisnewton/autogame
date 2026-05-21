@@ -1531,7 +1531,8 @@ function updateMyPlayer(delta) {
 
   // Always emit move while moving (preserves last non-zero rotation when stationary)
   if (Math.abs(velocityX) > 0.001 || Math.abs(velocityZ) > 0.001) {
-    socket.emit('move', { dx: velocityX, dz: velocityZ, rotation: playerRotation });
+    const mag = Math.hypot(velocityX, velocityZ);
+    socket.emit('move', { dx: velocityX / mag, dz: velocityZ / mag, rotation: playerRotation });
   }
 }
 
