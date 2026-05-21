@@ -1266,6 +1266,7 @@ function startServer(port) {
       const defaultDeck = [...STARTING_DECK_IDS];
 
       gameState.players[socket.id] = {
+        id: socket.id,
         x: spawn.x,
         y: 0.5,
         z: spawn.z,

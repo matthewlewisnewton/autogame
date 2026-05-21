@@ -10,6 +10,7 @@ import {
 	_timeouts,
 	clearAllTimers,
 	ENEMY_ATTACK_RANGE,
+	ENEMY_ATTACK_RECOVERY_MS,
 	DETECTION_RADIUS,
 	TICK_RATE,
 	ENEMY_DEFS,
@@ -18,7 +19,7 @@ import {
 	damagePlayer,
 	checkRunTerminalState
 } from '../index.js';
-import { COOLDOWN_MS, MAX_ELAPSED_MS, MOVE_SPEED } from '../config.js';
+import { COOLDOWN_MS, MAX_ELAPSED_MS, MOVE_SPEED, MAX_HP } from '../config.js';
 
 // ── Helpers ──
 
@@ -1929,6 +1930,35 @@ describe('Enemy telegraph integration', () => {
 
 		// Enemy should have cancelled the attack — attackState is no longer 'windup'
 		expect(gameState.enemies[0].attackState).not.toBe('windup');
+	});
+
+	it('standing still near enemy results in damage after windup + strike', async () => {
+		// Enter playing phase via debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket.id];
+		expect(player.hp).toBe(MAX_HP);
+
+		// Place a single grunt enemy within ENEMY_ATTACK_RANGE of the player
+		gameState.enemies = [{
+			id: 'e_damage_test',
+			x: player.x + ENEMY_ATTACK_RANGE - 1,
+			z: player.z,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'chasing',
+			wanderTarget: { x: player.x, z: player.z }
+		}];
+
+		// Wait for windup → strike → recovery + buffer
+		// The game tick processes: windup (800ms) → strike (damage applied) → recovery (1200ms)
+		await sleep(ENEMY_DEFS.grunt.attackWindupMs + ENEMY_ATTACK_RECOVERY_MS + 500);
+
+		// Player HP must be strictly less than MAX_HP — damage was applied
+		expect(player.hp).toBeLessThan(MAX_HP);
 	});
 });
 
