@@ -1498,13 +1498,11 @@ function startServer(port) {
       player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
         ? savedData.selectedDeck
         : player.selectedDeck;
-      // Restore location only if the player is in lobby (not mid-run)
-      if (gameState.gamePhase === 'lobby') {
-        player.x = savedData.x ?? player.x;
-        player.y = savedData.y ?? player.y;
-        player.z = savedData.z ?? player.z;
-        player.rotation = savedData.rotation ?? player.rotation;
-      }
+      // Restore persisted location regardless of game phase (lobby or mid-run)
+      player.x = savedData.x ?? player.x;
+      player.y = savedData.y ?? player.y;
+      player.z = savedData.z ?? player.z;
+      player.rotation = savedData.rotation ?? player.rotation;
     }
 
   socket.emit('init', { id: playerId, playerId, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
