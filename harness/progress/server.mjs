@@ -29,9 +29,18 @@ const fileDigests = new Map();
 const agentUsageByKey = new Map();
 const agentUsageDigests = new Map();
 const tokenTotals = emptyTokenTotals();
+const reviewDirActors = new Map();
 let nextId = 1;
 let lastGitHead = '';
 let lastGpuDigest = '';
+const gpuUptimePath = join(progressDir, 'gpu-uptime.json');
+const tokenTotalsPath = join(progressDir, 'token-totals.json');
+const GPU_ACTIVE_UTIL_MIN = Number(process.env.GPU_ACTIVE_UTIL_MIN || 3);
+const GPU_ACTIVE_VRAM_MIN = Number(process.env.GPU_ACTIVE_VRAM_MIN || 10);
+const GPU_ACTIVE_POWER_MIN = Number(process.env.GPU_ACTIVE_POWER_MIN || 80);
+const GPU_UPTIME_MAX_DELTA_MS = Number(process.env.GPU_UPTIME_MAX_DELTA_MS || 60000);
+
+let gpuUptime = loadGpuUptime();
 
 const LOCAL_POST_ADDRESSES = new Set([
   '127.0.0.1',
@@ -47,7 +56,8 @@ const WATCH_ROOTS = [
   'harness/progress/events.ndjson',
 ];
 
-const WATCH_FILE_RE = /(^|\/)(log\.txt|qwen\.txt|qa\.txt|commit\.txt|claude\.txt|review\.md|gaps\.md|nits\.md|changes\.diff|ticket\.diff|metrics\.json|screenshot\.log|events\.ndjson|LOOPLOG\.txt|LOGBOOK\.md|TASKS\.md)$/;
+const WATCH_FILE_RE = /(^|\/)(log\.txt|qwen\.txt|qa\.txt|commit\.txt|claude\.txt|composer\.txt|agent\.txt|review\.md|gaps\.md|nits\.md|changes\.diff|ticket\.diff|metrics\.json|screenshot\.log|events\.ndjson|LOOPLOG\.txt|LOGBOOK\.md|TASKS\.md)$/;
+const REVIEW_DIR_RE = /\/(?:review-round-\d+|rescue-review)$/;
 const MAX_LINE = 1200;
 const MAX_EVENTS = 1000;
 
@@ -60,7 +70,18 @@ function nowIso() {
   return new Date().toISOString();
 }
 
-function isLocalRequest(req) {
+function isProxiedRequest(req) {
+  // ngrok and other reverse proxies terminate TLS and forward to localhost,
+  // so remoteAddress alone is not enough to distinguish harness vs the internet.
+  return Boolean(
+    req.headers['x-forwarded-for'] ||
+    req.headers['x-forwarded-proto'] ||
+    req.headers['x-forwarded-host'],
+  );
+}
+
+function isHarnessLocalPost(req) {
+  if (isProxiedRequest(req)) return false;
   const address = req.socket.remoteAddress || '';
   return LOCAL_POST_ADDRESSES.has(address);
 }
@@ -73,12 +94,42 @@ function emptyTokenTotals() {
     estimated: { local: 0, remote: 0 },
     calls: 0,
     estimatedCalls: 0,
+    lastQwenTokPerSec: null,
   };
 }
 
 function numberOrZero(value) {
   const n = Number(value);
   return Number.isFinite(n) && n > 0 ? Math.round(n) : 0;
+}
+
+function isQwenAgent(agent) {
+  const label = String(agent || '').toLowerCase();
+  return label === 'qwen' || label === 'qwen-vision' || label.startsWith('qwen-');
+}
+
+function computeTokensPerSecond(usage) {
+  const tokens = numberOrZero(usage?.totalTokens);
+  const durationMs = Number(usage?.durationMs);
+  if (!tokens || !Number.isFinite(durationMs) || durationMs <= 0) return null;
+  const rate = tokens / (durationMs / 1000);
+  return Number.isFinite(rate) && rate > 0 ? rate : null;
+}
+
+function formatTokensPerSec(rate) {
+  if (!Number.isFinite(rate) || rate <= 0) return '';
+  if (rate < 10) return `~${rate.toFixed(1)}`;
+  if (rate < 10000) return `~${Math.round(rate)}`;
+  return `~${(rate / 1000).toFixed(1)}k`;
+}
+
+const FINAL_REVIEW_OUTFILE_RE = /\/(?:review-round-\d+|rescue-review)\/(?:composer|agent)\.txt$/;
+
+function isFinalReviewUsage(usage) {
+  if (!usage || usage.bucket !== 'remote') return false;
+  if (usage.usageKind === 'final_review') return true;
+  const outfile = String(usage.outfile || '').replaceAll('\\', '/');
+  return FINAL_REVIEW_OUTFILE_RE.test(outfile);
 }
 
 function normalizeUsagePayload(payload) {
@@ -93,12 +144,14 @@ function normalizeUsagePayload(payload) {
     agent: String(payload.agent || 'agent'),
     model: payload.model || null,
     bucket,
+    usageKind: payload.usageKind || null,
     outfile,
     attempt,
     rc: Number(payload.rc) || 0,
     status: payload.status || '',
     reason: payload.reason || null,
     durationMs: payload.durationMs === null || payload.durationMs === undefined ? null : numberOrZero(payload.durationMs),
+    endedAtMs: payload.endedAtMs === null || payload.endedAtMs === undefined ? null : numberOrZero(payload.endedAtMs),
     inputTokens: payload.inputTokens === null || payload.inputTokens === undefined ? null : numberOrZero(payload.inputTokens),
     outputTokens: payload.outputTokens === null || payload.outputTokens === undefined ? null : numberOrZero(payload.outputTokens),
     totalTokens,
@@ -109,7 +162,11 @@ function normalizeUsagePayload(payload) {
 
 function recomputeTokenTotals() {
   const next = emptyTokenTotals();
+  let latestQwenEndedAt = 0;
   for (const usage of agentUsageByKey.values()) {
+    const countsTowardTotals = usage.bucket === 'local' || isFinalReviewUsage(usage);
+    if (!countsTowardTotals) continue;
+
     next[usage.bucket] += usage.totalTokens;
     if (usage.estimated) {
       next.estimated[usage.bucket] += usage.totalTokens;
@@ -118,28 +175,72 @@ function recomputeTokenTotals() {
       next.exact[usage.bucket] += usage.totalTokens;
     }
     next.calls += 1;
+
+    if (isQwenAgent(usage.agent)) {
+      const rate = computeTokensPerSecond(usage);
+      const endedAt = Number(usage.endedAtMs) || 0;
+      if (rate != null && endedAt >= latestQwenEndedAt) {
+        latestQwenEndedAt = endedAt;
+        next.lastQwenTokPerSec = rate;
+      }
+    }
   }
   Object.assign(tokenTotals, next);
+}
+
+function loadTokenState() {
+  if (!existsSync(tokenTotalsPath)) return;
+  try {
+    const saved = JSON.parse(readFileSync(tokenTotalsPath, 'utf8'));
+    const usages = Array.isArray(saved.usages) ? saved.usages : [];
+    for (const usage of usages) {
+      const normalized = normalizeUsagePayload(usage);
+      if (!normalized) continue;
+      agentUsageDigests.set(normalized.key, JSON.stringify(normalized));
+      agentUsageByKey.set(normalized.key, normalized);
+    }
+    if (usages.length) recomputeTokenTotals();
+  } catch {
+    // ignore corrupt token snapshot
+  }
+}
+
+function saveTokenState() {
+  try {
+    const payload = {
+      savedAt: nowIso(),
+      totals: { ...tokenTotals },
+      usages: [...agentUsageByKey.values()],
+    };
+    writeFileSync(tokenTotalsPath, `${JSON.stringify(payload, null, 2)}\n`);
+  } catch {
+    // best-effort persistence
+  }
+}
+
+function ingestAgentUsage(payload) {
+  const usage = normalizeUsagePayload(payload || {});
+  if (!usage) return false;
+  const digest = JSON.stringify(usage);
+  if (agentUsageDigests.get(usage.key) === digest) return false;
+  agentUsageDigests.set(usage.key, digest);
+  agentUsageByKey.set(usage.key, usage);
+  return true;
 }
 
 function recordAgentUsage(payload, source) {
   const usage = normalizeUsagePayload(payload || {});
   if (!usage) return null;
+  if (!ingestAgentUsage(payload)) return { usage, changed: false };
 
-  const digest = JSON.stringify(usage);
-  if (agentUsageDigests.get(usage.key) === digest) {
-    return { usage, changed: false };
-  }
-
-  agentUsageDigests.set(usage.key, digest);
-  agentUsageByKey.set(usage.key, usage);
   recomputeTokenTotals();
+  saveTokenState();
 
   emitTransient({
     kind: 'token_usage',
     actor: 'harness',
     title: 'Token usage updated',
-    text: `local ${tokenTotals.local.toLocaleString()} / remote ${tokenTotals.remote.toLocaleString()}`,
+    text: `local ${tokenTotals.local.toLocaleString()} / remote reviews ${tokenTotals.remote.toLocaleString()}`,
     source,
     payload: {
       estimated: tokenTotals.estimatedCalls > 0,
@@ -151,15 +252,98 @@ function recordAgentUsage(payload, source) {
   return { usage, changed: true };
 }
 
+function reviewDirFromPath(path) {
+  const normalized = String(path || '').replaceAll('\\', '/');
+  const dir = normalized.includes('/')
+    ? normalized.slice(0, normalized.lastIndexOf('/'))
+    : '';
+  return REVIEW_DIR_RE.test(dir) ? dir : null;
+}
+
+function rememberReviewAgent(outfile, agent) {
+  const dir = reviewDirFromPath(outfile);
+  const label = String(agent || '').trim();
+  if (dir && label) reviewDirActors.set(dir, label);
+}
+
+function reviewAgentFromUsage(dirRel) {
+  const usagePath = join(repoRoot, dirRel, 'agent-usage.ndjson');
+  if (!existsSync(usagePath)) return null;
+  try {
+    const lines = readFileSync(usagePath, 'utf8').trim().split(/\r?\n/).filter(Boolean);
+    for (let i = lines.length - 1; i >= 0; i -= 1) {
+      const row = JSON.parse(lines[i]);
+      if (row.agent) return String(row.agent);
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
+function reviewAgentForDir(dirRel) {
+  if (!dirRel) return null;
+  if (reviewDirActors.has(dirRel)) return reviewDirActors.get(dirRel);
+  const fromUsage = reviewAgentFromUsage(dirRel);
+  if (fromUsage) return fromUsage;
+
+  const absDir = join(repoRoot, dirRel);
+  if (existsSync(join(absDir, 'composer.txt'))) return 'composer';
+  if (existsSync(join(absDir, 'agent.txt'))) return 'agent';
+  if (existsSync(join(absDir, 'claude.txt'))) return 'claude';
+  return null;
+}
+
+function reviewActorForPath(path) {
+  const normalized = String(path || '').replaceAll('\\', '/');
+  const base = normalized.split('/').pop();
+  const dir = reviewDirFromPath(normalized);
+
+  if (base === 'composer.txt') return reviewAgentForDir(dir) || 'composer';
+  if (base === 'agent.txt') return reviewAgentForDir(dir) || 'agent';
+  if (base === 'claude.txt') return 'claude';
+  if (base === 'review.md' || base === 'gaps.md' || base === 'nits.md') {
+    return reviewAgentForDir(dir) || 'review';
+  }
+  return null;
+}
+
+function difficultyFromLine(line) {
+  const m = String(line || '').match(/\(difficulty:\s*(easy|medium|hard)\)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
+function actorFromHarnessLog(line) {
+  const reviewing = line.match(/\[([^\]]+)\]\s+reviewing\b/i);
+  if (reviewing) return reviewing[1];
+  const verified = line.match(/verified by ([^\s(]+)/i);
+  if (verified) return verified[1];
+  if (/\[claude\]/i.test(line)) return 'claude';
+  if (/\[qwen\]/i.test(line)) return 'qwen';
+  if (/\[qa\]/i.test(line)) return 'qa';
+  if (/\[review\]/i.test(line)) return 'review';
+  return null;
+}
+
 function actorForPath(path) {
+  const reviewActor = reviewActorForPath(path);
+  if (reviewActor) return reviewActor;
+
   const base = path.split('/').pop();
   if (base === 'qwen.txt') return 'qwen';
   if (base === 'qa.txt') return 'qa';
-  if (base === 'claude.txt' || base === 'review.md') return 'claude';
   if (base === 'commit.txt' || path.endsWith('changes.diff') || path.endsWith('ticket.diff')) return 'git';
   if (base === 'metrics.json' || base === 'screenshot.log') return 'qa';
   if (base === 'events.ndjson') return 'harness';
   return 'harness';
+}
+
+function actorForSource(rel, line = '') {
+  if (rel.endsWith('LOOPLOG.txt') || rel.endsWith('log.txt')) {
+    const fromLine = actorFromHarnessLog(line);
+    if (fromLine) return fromLine;
+  }
+  return actorForPath(rel);
 }
 
 function kindForPath(path) {
@@ -181,6 +365,7 @@ function titleForLine(line, path) {
   if (line.includes('[qwen]')) return 'Qwen working';
   if (line.includes('[qa]')) return 'QA update';
   if (line.includes('[review]')) return 'Review update';
+  if (/\breviewing\b/i.test(line)) return 'Review started';
   if (line.includes('[git] committed')) return 'Commit created';
   return sub || ticket || path.split('/').pop();
 }
@@ -227,11 +412,41 @@ function emitTransient(event) {
   }
 }
 
+function writeSseEvent(res, event, id = event.id) {
+  res.write(`id: ${id}\n`);
+  res.write('event: progress\n');
+  res.write(`data: ${JSON.stringify(event)}\n\n`);
+}
+
 function replay(res) {
+  writeSseEvent(res, {
+    id: 'token-totals',
+    ts: nowIso(),
+    kind: 'token_usage',
+    actor: 'harness',
+    title: 'Token usage snapshot',
+    text: `local ${tokenTotals.local.toLocaleString()} / remote reviews ${tokenTotals.remote.toLocaleString()}`,
+    source: 'persisted',
+    payload: {
+      estimated: tokenTotals.estimatedCalls > 0,
+      totals: { ...tokenTotals },
+    },
+  }, 'token-totals');
+
+  const uptime = gpuUptimeSnapshot();
+  writeSseEvent(res, {
+    id: 'gpu-uptime',
+    ts: nowIso(),
+    kind: 'gpu_uptime',
+    actor: 'gpu',
+    title: 'GPU hours snapshot',
+    text: `${uptime.totalHours.toFixed(2)} GPU·hr`,
+    source: 'persisted',
+    payload: { uptime },
+  }, 'gpu-uptime');
+
   for (const event of events) {
-    res.write(`id: ${event.id}\n`);
-    res.write(`event: progress\n`);
-    res.write(`data: ${JSON.stringify(event)}\n\n`);
+    writeSseEvent(res, event);
   }
 }
 
@@ -303,12 +518,14 @@ function scanFile(file) {
   for (const raw of chunk.split(/\r?\n/)) {
     const line = raw.trimEnd();
     if (!line.trim()) continue;
+    const difficulty = difficultyFromLine(line);
     emit({
       kind: kindForPath(rel),
-      actor: actorForPath(rel),
+      actor: actorForSource(rel, line),
       title: titleForLine(line, rel),
       text: line.slice(0, MAX_LINE),
       source: rel,
+      payload: difficulty ? { difficulty } : undefined,
     });
   }
 }
@@ -434,24 +651,57 @@ function normalizeExplicitEvent(event, source, raw = '') {
     normalized.title = 'Screenshot capture complete';
     normalized.text = [label, payload.status].filter(Boolean).join(' ');
   } else if (kind === 'agent_start') {
+    rememberReviewAgent(payload.outfile, payload.agent);
     normalized.actor = payload.agent || 'agent';
     normalized.title = `${payload.agent || 'agent'} started`;
     normalized.text = payload.outfile || '';
   } else if (kind === 'agent_finish') {
+    rememberReviewAgent(payload.outfile, payload.agent);
     normalized.actor = payload.agent || 'agent';
     normalized.title = `${payload.agent || 'agent'} finished`;
     normalized.text = [payload.status, payload.reason].filter(Boolean).join(' ');
+  } else if (kind === 'ticket_start') {
+    normalized.title = payload.difficulty
+      ? `Ticket started (${payload.difficulty})`
+      : 'Ticket started';
+    normalized.text = [payload.ticket, payload.baseline].filter(Boolean).join(' ');
+  } else if (kind === 'review_start') {
+    const dir = payload.review ? reviewDirFromPath(payload.review) : null;
+    if (dir && payload.agent) rememberReviewAgent(`${dir}/review.md`, payload.agent);
+    normalized.actor = payload.agent || 'review';
+    normalized.title = payload.difficulty
+      ? `Review started (${payload.difficulty})`
+      : 'Review started';
+    normalized.text = [payload.ticket, payload.round != null ? `round ${payload.round}` : ''].filter(Boolean).join(' ');
+  } else if (kind === 'review_verdict') {
+    const dir = payload.review ? reviewDirFromPath(payload.review) : null;
+    normalized.actor = payload.agent || (dir ? reviewAgentForDir(dir) : null) || 'review';
+    normalized.title = payload.difficulty
+      ? `Review ${payload.verdict || 'verdict'} (${payload.difficulty})`
+      : `Review ${payload.verdict || 'verdict'}`;
+    normalized.text = [payload.ticket, payload.round != null ? `round ${payload.round}` : '', payload.review]
+      .filter(Boolean)
+      .join(' ');
   } else if (kind === 'agent_usage') {
     const usage = usageResult?.usage || normalizeUsagePayload(payload) || payload;
+    const tokPerSec = isQwenAgent(usage.agent) ? computeTokensPerSecond(usage) : null;
+    const rateText = tokPerSec != null ? ` · ${formatTokensPerSec(tokPerSec)} tok/s` : '';
+    const durationSec = usage.durationMs ? (usage.durationMs / 1000).toFixed(1) : null;
     normalized.actor = usage.agent || 'agent';
     normalized.title = `${usage.agent || 'agent'} token usage`;
-    normalized.text = `${usage.totalTokens || 0} token(s)${usage.estimated ? ' estimated' : ''}`;
+    normalized.text = `${usage.totalTokens || 0} token(s)${usage.estimated ? ' estimated' : ''}${rateText}`;
     normalized.payload = {
       ...payload,
-      usage,
+      usage: {
+        ...usage,
+        tokensPerSecond: tokPerSec,
+      },
       estimated: tokenTotals.estimatedCalls > 0,
       totals: { ...tokenTotals },
     };
+    if (durationSec) {
+      normalized.text += ` (${durationSec}s)`;
+    }
   } else if (kind === 'qa_verified' || kind === 'qa_verdict') {
     normalized.actor = 'qa';
     normalized.title = kind === 'qa_verdict' ? `QA ${payload.verdict || 'verdict'}` : 'QA verified';
@@ -554,6 +804,108 @@ function parseCsvLine(line) {
   return line.split(',').map(part => part.trim());
 }
 
+function loadGpuUptime() {
+  const empty = {
+    startedAt: null,
+    lastSampleAt: null,
+    totalMs: 0,
+    offsetMs: 0,
+    byIndex: {},
+  };
+  if (!existsSync(gpuUptimePath)) return empty;
+  try {
+    const saved = JSON.parse(readFileSync(gpuUptimePath, 'utf8'));
+    return {
+      startedAt: saved.startedAt || null,
+      lastSampleAt: saved.lastSampleAt || null,
+      totalMs: Number(saved.totalMs) || 0,
+      offsetMs: Number(saved.offsetMs) || 0,
+      byIndex: saved.byIndex && typeof saved.byIndex === 'object' ? saved.byIndex : {},
+    };
+  } catch {
+    return empty;
+  }
+}
+
+function saveGpuUptime() {
+  try {
+    writeFileSync(gpuUptimePath, `${JSON.stringify(gpuUptime, null, 2)}\n`);
+  } catch {
+    // best-effort persistence
+  }
+}
+
+function isGpuActive(gpu) {
+  const util = Number(gpu.gpuUtil) || 0;
+  const vram = Number(gpu.memUsedPercent) || 0;
+  const power = Number(gpu.powerDrawW) || 0;
+  return util >= GPU_ACTIVE_UTIL_MIN
+    || vram >= GPU_ACTIVE_VRAM_MIN
+    || power >= GPU_ACTIVE_POWER_MIN;
+}
+
+function gpuUptimeSnapshot(activeCount = 0) {
+  const now = Date.now();
+  const sessionMs = gpuUptime.startedAt ? Math.max(0, now - gpuUptime.startedAt) : 0;
+  const offsetMs = Number(gpuUptime.offsetMs) || 0;
+  const trackedMs = Number(gpuUptime.totalMs) || 0;
+  const totalMs = trackedMs + offsetMs;
+  const indexKeys = Object.keys(gpuUptime.byIndex);
+  const offsetShare = indexKeys.length > 0 ? offsetMs / indexKeys.length : 0;
+  const byIndex = Object.fromEntries(
+    Object.entries(gpuUptime.byIndex).map(([index, row]) => {
+      const ms = (Number(row.ms) || 0) + offsetShare;
+      return [index, { ms, trackedMs: Number(row.ms) || 0, hours: ms / 3600000 }];
+    }),
+  );
+  return {
+    startedAt: gpuUptime.startedAt,
+    lastSampleAt: gpuUptime.lastSampleAt,
+    sessionMs,
+    sessionHours: sessionMs / 3600000,
+    trackedMs,
+    trackedHours: trackedMs / 3600000,
+    offsetMs,
+    offsetHours: offsetMs / 3600000,
+    totalMs,
+    totalHours: totalMs / 3600000,
+    activeGpus: activeCount,
+    byIndex,
+  };
+}
+
+function accumulateGpuUptime(gpus) {
+  const now = Date.now();
+  if (!gpus.length) return gpuUptimeSnapshot(0);
+
+  if (!gpuUptime.startedAt) gpuUptime.startedAt = now;
+
+  if (gpuUptime.lastSampleAt) {
+    const delta = Math.min(
+      Math.max(0, now - gpuUptime.lastSampleAt),
+      GPU_UPTIME_MAX_DELTA_MS,
+    );
+    if (delta > 0) {
+      for (const gpu of gpus) {
+        if (!isGpuActive(gpu)) continue;
+        const key = String(gpu.index);
+        if (!gpuUptime.byIndex[key]) gpuUptime.byIndex[key] = { ms: 0 };
+        gpuUptime.byIndex[key].ms += delta;
+        gpuUptime.totalMs += delta;
+      }
+    }
+  }
+
+  let activeCount = 0;
+  for (const gpu of gpus) {
+    if (isGpuActive(gpu)) activeCount += 1;
+  }
+
+  gpuUptime.lastSampleAt = now;
+  saveGpuUptime();
+  return gpuUptimeSnapshot(activeCount);
+}
+
 function scanGpu() {
   if (process.env.GPU_PROGRESS === '0') return;
 
@@ -583,14 +935,21 @@ function scanGpu() {
   }
 
   const gpus = gpuResult.stdout.trim().split(/\r?\n/).map((line) => {
-    const [index, name, gpuUtil, memUtil, memUsed, memTotal, temp, powerDraw, powerLimit] = parseCsvLine(line);
+    const [index, name, gpuUtil, memBandwidthUtil, memUsed, memTotal, temp, powerDraw, powerLimit] = parseCsvLine(line);
+    const memUsedMb = Number(memUsed);
+    const memTotalMb = Number(memTotal);
+    const memUsedPercent = memTotalMb > 0
+      ? Math.round((memUsedMb / memTotalMb) * 100)
+      : 0;
     return {
       index: Number(index),
       name,
       gpuUtil: Number(gpuUtil),
-      memUtil: Number(memUtil),
-      memUsedMb: Number(memUsed),
-      memTotalMb: Number(memTotal),
+      // nvidia-smi utilization.memory = memory-controller bandwidth, not VRAM fill.
+      memBandwidthUtil: Number(memBandwidthUtil),
+      memUsedPercent,
+      memUsedMb,
+      memTotalMb,
       tempC: Number(temp),
       powerDrawW: Number(powerDraw),
       powerLimitW: Number(powerLimit),
@@ -614,12 +973,23 @@ function scanGpu() {
     })
     : [];
 
+  const uptime = accumulateGpuUptime(gpus);
   const digest = JSON.stringify({ gpus, processes });
-  if (digest === lastGpuDigest) return;
+  if (digest === lastGpuDigest) {
+    emitTransient({
+      kind: 'gpu_uptime',
+      actor: 'gpu',
+      title: 'GPU hours updated',
+      text: `${uptime.totalHours.toFixed(2)} GPU·hr (${uptime.activeGpus} active)`,
+      source: 'nvidia-smi',
+      payload: { uptime },
+    });
+    return;
+  }
   lastGpuDigest = digest;
 
   const summary = gpus.map(gpu =>
-    `GPU${gpu.index} ${gpu.gpuUtil}% · ${gpu.memUsedMb}/${gpu.memTotalMb} MiB · ${gpu.tempC}C`
+    `GPU${gpu.index} ${gpu.gpuUtil}% · VRAM ${gpu.memUsedPercent}% (${gpu.memUsedMb}/${gpu.memTotalMb} MiB) · ${gpu.tempC}C`
   ).join(' | ');
 
   emit({
@@ -633,6 +1003,7 @@ function scanGpu() {
       gpus,
       processes: processes.slice(0, 8),
       interactiveCommand: 'nvtop',
+      uptime,
     },
   });
 }
@@ -664,8 +1035,15 @@ function serveFile(res, path) {
 
 const server = createServer((req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+
+  if (isProxiedRequest(req) && !['GET', 'HEAD'].includes(req.method || 'GET')) {
+    res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
+    res.end('Write methods are not allowed through a reverse proxy');
+    return;
+  }
+
   if (url.pathname === '/events' && req.method === 'POST') {
-    if (!isLocalRequest(req)) {
+    if (!isHarnessLocalPost(req)) {
       res.writeHead(403, { 'content-type': 'text/plain; charset=utf-8' });
       res.end('POST /events is only accepted from localhost');
       return;
@@ -704,7 +1082,12 @@ const server = createServer((req, res) => {
 
   if (url.pathname === '/state') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify({ events, repoRoot, tokenTotals }, null, 2));
+    res.end(JSON.stringify({
+      events,
+      repoRoot,
+      tokenTotals,
+      gpuUptime: gpuUptimeSnapshot(),
+    }, null, 2));
     return;
   }
 
@@ -714,10 +1097,17 @@ const server = createServer((req, res) => {
     return;
   }
 
+  if (url.pathname === '/gpu/uptime') {
+    res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify(gpuUptimeSnapshot(), null, 2));
+    return;
+  }
+
   if (url.pathname === '/gpu') {
     const latest = [...events].reverse().find(event => event.kind === 'gpu_sample') || null;
+    const payload = latest?.payload || { available: false };
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
-    res.end(JSON.stringify(latest ? latest.payload : { available: false }, null, 2));
+    res.end(JSON.stringify({ ...payload, uptime: gpuUptimeSnapshot() }, null, 2));
     return;
   }
 
@@ -749,6 +1139,39 @@ setInterval(() => {
 }, 1500);
 const gpuPollInterval = Number(process.env.GPU_POLL_INTERVAL_MS || 5000);
 if (gpuPollInterval > 0) setInterval(scanGpu, gpuPollInterval);
+function seedFromEventsLog() {
+  const eventsPath = join(progressDir, 'events.ndjson');
+  if (!existsSync(eventsPath)) return;
+  let changed = false;
+  try {
+    const text = readFileSync(eventsPath, 'utf8');
+    for (const raw of splitJsonRecords(text)) {
+      if (!raw.trim()) continue;
+      try {
+        const event = JSON.parse(raw);
+        const payload = event.payload || {};
+        if (event.type === 'agent_start' || event.type === 'agent_finish') {
+          rememberReviewAgent(payload.outfile, payload.agent);
+        } else if (event.type === 'review_start' && payload.agent) {
+          rememberReviewAgent(payload.review, payload.agent);
+        } else if (event.type === 'agent_usage') {
+          if (ingestAgentUsage(payload)) changed = true;
+        }
+      } catch {
+        // ignore malformed rows while seeding
+      }
+    }
+  } catch {
+    // ignore unreadable events log
+  }
+  if (changed) {
+    recomputeTokenTotals();
+    saveTokenState();
+  }
+}
+
+loadTokenState();
+seedFromEventsLog();
 scanFiles();
 scanGit();
 if (gpuPollInterval > 0) scanGpu();

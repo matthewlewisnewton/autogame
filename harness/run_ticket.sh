@@ -48,8 +48,10 @@ exec > >(tee -a "$TDIR/log.txt") 2>&1
 trap 'stop_game' EXIT
 
 BASE_REF="$(git rev-parse HEAD)"
+TICKET_DIFFICULTY="$(ticket_difficulty "$TICKET_FILE")"
+[ -n "$TICKET_DIFFICULTY" ] || TICKET_DIFFICULTY="medium"
 log "########## top-level ticket: $NAME (baseline $BASE_REF) ##########"
-emit_progress_event "ticket_start" "{\"ticket\":$(json_string "$NAME"),\"ticketFile\":$(json_string "$TICKET_FILE"),\"baseline\":$(json_string "$BASE_REF")}"
+emit_progress_event "ticket_start" "{\"ticket\":$(json_string "$NAME"),\"ticketFile\":$(json_string "$TICKET_FILE"),\"baseline\":$(json_string "$BASE_REF"),\"difficulty\":$(json_string "$TICKET_DIFFICULTY")}"
 
 # --- helpers --------------------------------------------------------------
 
@@ -471,14 +473,15 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
   difficulty="$(ticket_difficulty "$TICKET_FILE")"
   [ -n "$difficulty" ] || difficulty="medium"
   log "[review] all sub-tickets passed — running $difficulty-tier review"
-  emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"difficulty\":$(json_string "$difficulty")}"
   RDIR="$TDIR/review-round-$round"
+  review_agent="$(review_agent_for_difficulty "$difficulty")"
+  emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"difficulty\":$(json_string "$difficulty"),\"agent\":$(json_string "$review_agent"),\"review\":$(json_string "$RDIR/review.md")}"
   capture_run "$RDIR"
   review_ticket "$RDIR" "$COVERAGE_DIR"
   protect_review "review-round-$round" "$RDIR"   # archive + lock read-only
 
   if is_pass "$REVIEW_OUT"; then
-    emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"PASS\",\"review\":$(json_string "$REVIEW_OUT")}"
+    emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"PASS\",\"review\":$(json_string "$REVIEW_OUT"),\"agent\":$(json_string "$review_agent"),\"difficulty\":$(json_string "$difficulty")}"
     if finalize "$RDIR" "$REVIEW_OUT"; then
       emit_progress_event "ticket_complete" "{\"ticket\":$(json_string "$NAME"),\"round\":$round}"
       exit 0
@@ -498,7 +501,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
 
   # FAIL — hand qwen the compact open-gaps list the reviewer wrote (overwrite).
   log "[review] FAIL — recording compacted feedback for remediation"
-  emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"FAIL\",\"review\":$(json_string "$REVIEW_OUT")}"
+  emit_progress_event "review_verdict" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"verdict\":\"FAIL\",\"review\":$(json_string "$REVIEW_OUT"),\"agent\":$(json_string "$review_agent"),\"difficulty\":$(json_string "$difficulty")}"
   if [ -s "$RDIR/gaps.md" ]; then
     put_review_fb < "$RDIR/gaps.md"
   else
@@ -530,6 +533,10 @@ verify_reviews
 
 # Re-review the rescued ticket.
 RDIR="$TDIR/rescue-review"
+rescue_difficulty="$(ticket_difficulty "$TICKET_FILE")"
+[ -n "$rescue_difficulty" ] || rescue_difficulty="medium"
+rescue_review_agent="$(review_agent_for_difficulty "$rescue_difficulty")"
+emit_progress_event "review_start" "{\"ticket\":$(json_string "$NAME"),\"round\":\"rescue\",\"difficulty\":$(json_string "$rescue_difficulty"),\"agent\":$(json_string "$rescue_review_agent"),\"review\":$(json_string "$RDIR/review.md")}"
 capture_run "$RDIR"
 review_ticket "$RDIR" "${COVERAGE_DIR:-}"
 protect_review "rescue-review" "$RDIR"

@@ -13,7 +13,15 @@
         <h1>Building the Game</h1>
       </div>
       <div class="top-status">
-        <div id="tokens" class="tokens" title="Estimated output tokens from agent artifacts">tokens: waiting...</div>
+        <div class="stats-stack" aria-label="Tokens and GPU hours">
+          <div id="tokens" class="tokens stats-row" title="Local agents and top-level ticket reviews only">
+            <span class="token-label">tokens</span>
+            <span class="token-stat"><strong>local</strong> <span id="token-local-count">—</span></span>
+            <span class="token-stat"><strong>remote reviews</strong> <span id="token-remote-reviews-count">—</span></span>
+            <span class="token-stat token-rate" id="token-qwen-rate" hidden><strong>qwen</strong> <span id="token-qwen-tps">—</span> tok/s</span>
+          </div>
+          <div id="gpu-hours" class="gpu-hours stats-row" title="Cumulative active GPU time (all cards)">GPU·hr: —</div>
+        </div>
         <div id="gpu" class="gpu">GPU: waiting...</div>
         <div id="status" class="status">connecting...</div>
       </div>
