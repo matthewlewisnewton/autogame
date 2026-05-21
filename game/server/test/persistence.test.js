@@ -1,14 +1,175 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	extractPersistentData,
 	savePlayerData,
 	saveAllPlayers,
+	setTestProvider,
 	gameState,
 	resetGameState,
-	provider
+	provider as defaultProvider
 } from '../index.js';
-import { InMemoryProvider } from '../providers.js';
+import { StorageProvider } from '../storage.js';
+import { InMemoryProvider, FileProvider } from '../providers.js';
 import * as configMod from '../config.js';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+// ── StorageProvider (abstract base class) ──
+
+describe('StorageProvider base class', () => {
+	it('savePlayer() throws when called on the abstract class', () => {
+		const sp = new StorageProvider();
+		expect(() => sp.savePlayer('p1', {})).toThrow('Not implemented');
+	});
+
+	it('loadPlayer() throws when called on the abstract class', () => {
+		const sp = new StorageProvider();
+		expect(() => sp.loadPlayer('p1')).toThrow('Not implemented');
+	});
+
+	it('close() throws when called on the abstract class', () => {
+		const sp = new StorageProvider();
+		expect(() => sp.close()).toThrow('Not implemented');
+	});
+});
+
+// ── InMemoryProvider ──
+
+describe('InMemoryProvider', () => {
+	let provider;
+
+	beforeEach(() => {
+		provider = new InMemoryProvider();
+	});
+
+	const sampleData = {
+		currency: 42,
+		ownedCards: { iron_sword: 2, flame_blade: 1 },
+		selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
+	};
+
+	it('savePlayer() then loadPlayer() returns the same data', () => {
+		provider.savePlayer('player1', sampleData);
+		expect(provider.loadPlayer('player1')).toEqual(sampleData);
+	});
+
+	it('loadPlayer() for unknown id returns null', () => {
+		expect(provider.loadPlayer('nonexistent')).toBeNull();
+	});
+
+	it('overwrites data on subsequent saves', () => {
+		provider.savePlayer('player1', sampleData);
+		const updated = { ...sampleData, currency: 100 };
+		provider.savePlayer('player1', updated);
+		expect(provider.loadPlayer('player1')).toEqual(updated);
+	});
+
+	it('isolates data between different players', () => {
+		provider.savePlayer('player1', sampleData);
+		provider.savePlayer('player2', { ...sampleData, currency: 99 });
+		expect(provider.loadPlayer('player1').currency).toBe(42);
+		expect(provider.loadPlayer('player2').currency).toBe(99);
+	});
+
+	it('save deep-copies input (mutations do not affect stored data)', () => {
+		provider.savePlayer('player1', sampleData);
+		sampleData.currency = 999;
+		expect(provider.loadPlayer('player1').currency).toBe(42);
+	});
+
+	it('load returns a deep copy (mutations do not affect stored data)', () => {
+		const data = { currency: 42, ownedCards: {}, selectedDeck: [] };
+		provider.savePlayer('player1', data);
+		const loaded = provider.loadPlayer('player1');
+		loaded.currency = 999;
+		expect(provider.loadPlayer('player1').currency).toBe(42);
+	});
+
+	it('close() is a no-op', () => {
+		expect(() => provider.close()).not.toThrow();
+	});
+});
+
+// ── FileProvider ──
+
+describe('FileProvider', () => {
+	let tmpDir;
+	let provider;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'fp-test-'));
+		provider = new FileProvider(tmpDir);
+	});
+
+	afterEach(() => {
+		provider.close();
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	});
+
+	const sampleData = {
+		currency: 42,
+		ownedCards: { iron_sword: 2, flame_blade: 1 },
+		selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
+	};
+
+	it('savePlayer() then loadPlayer() returns the same data', () => {
+		provider.savePlayer('player1', sampleData);
+		expect(provider.loadPlayer('player1')).toEqual(sampleData);
+	});
+
+	it('loadPlayer() for unknown id returns null', () => {
+		expect(provider.loadPlayer('nonexistent')).toBeNull();
+	});
+
+	it('overwrites data on subsequent saves', () => {
+		provider.savePlayer('player1', sampleData);
+		const updated = { ...sampleData, currency: 100 };
+		provider.savePlayer('player1', updated);
+		expect(provider.loadPlayer('player1')).toEqual(updated);
+	});
+
+	it('close() is a no-op', () => {
+		expect(() => provider.close()).not.toThrow();
+	});
+
+	it('data survives across separate FileProvider instances', () => {
+		provider.savePlayer('player1', sampleData);
+		provider.close();
+
+		const provider2 = new FileProvider(tmpDir);
+		expect(provider2.loadPlayer('player1')).toEqual(sampleData);
+		provider2.close();
+	});
+
+	it('isolates data between different player files', () => {
+		provider.savePlayer('player1', sampleData);
+		provider.savePlayer('player2', { ...sampleData, currency: 99 });
+		expect(provider.loadPlayer('player1').currency).toBe(42);
+		expect(provider.loadPlayer('player2').currency).toBe(99);
+	});
+
+	it('writes to .tmp file then renames (atomic save)', () => {
+		provider.savePlayer('player1', sampleData);
+		expect(fs.existsSync(path.join(tmpDir, 'player1.json'))).toBe(true);
+		expect(fs.existsSync(path.join(tmpDir, 'player1.json.tmp'))).toBe(false);
+	});
+
+	it('creates basePath directory if it does not exist', () => {
+		const nestedDir = path.join(tmpDir, 'deep', 'nested', 'dir');
+		expect(fs.existsSync(nestedDir)).toBe(false);
+		const nestedProvider = new FileProvider(nestedDir);
+		expect(fs.existsSync(nestedDir)).toBe(true);
+		nestedProvider.close();
+	});
+
+	it('throws on non-ENOENT errors (e.g. invalid JSON)', () => {
+		fs.writeFileSync(path.join(tmpDir, 'bad.json'), '{not valid json', 'utf-8');
+		expect(() => provider.loadPlayer('bad')).toThrow();
+	});
+});
+
+// ── extractPersistentData ──
 
 describe('extractPersistentData', () => {
 	beforeEach(() => {
@@ -78,21 +239,22 @@ describe('extractPersistentData', () => {
 	});
 });
 
+// ── savePlayerData ──
+
 describe('savePlayerData', () => {
 	let testProvider;
 
 	beforeEach(() => {
 		resetGameState();
 		testProvider = new InMemoryProvider();
-		// Override the module-level provider with our test instance
-		Object.assign(globalThis, { _testProvider: testProvider });
+		setTestProvider(testProvider);
 	});
 
 	afterEach(() => {
-		delete globalThis._testProvider;
+		setTestProvider(null);
 	});
 
-	it('saves player data to the provider when a player exists', () => {
+	it('calls provider.savePlayer with the correct data shape', () => {
 		const player = {
 			currency: 100,
 			ownedCards: { iron_sword: 5 },
@@ -100,10 +262,7 @@ describe('savePlayerData', () => {
 		};
 		gameState.players['testPlayer'] = player;
 
-		// Manually set the provider since savePlayerData references the module-level one
-		// We test the logic by calling the provider directly with extractPersistentData
-		const savedData = extractPersistentData(player);
-		testProvider.savePlayer('testPlayer', savedData);
+		savePlayerData('testPlayer');
 
 		const loaded = testProvider.loadPlayer('testPlayer');
 		expect(loaded).toEqual({
@@ -113,18 +272,49 @@ describe('savePlayerData', () => {
 		});
 	});
 
+	it('saves only persistent fields (excludes hp, dead, hand, etc.)', () => {
+		const player = {
+			currency: 50,
+			ownedCards: { flame_blade: 2 },
+			selectedDeck: ['flame_blade', 'battle_familiar'],
+			hp: 80,
+			dead: false,
+			ready: true,
+			hand: [{ id: 'flame_blade' }],
+			deck: ['battle_familiar'],
+			magicStones: 100,
+		};
+		gameState.players['p1'] = player;
+
+		savePlayerData('p1');
+
+		const loaded = testProvider.loadPlayer('p1');
+		expect(loaded).toEqual({
+			currency: 50,
+			ownedCards: { flame_blade: 2 },
+			selectedDeck: ['flame_blade', 'battle_familiar'],
+		});
+		expect(loaded).not.toHaveProperty('hp');
+		expect(loaded).not.toHaveProperty('hand');
+	});
+
 	it('does nothing when player does not exist in gameState', () => {
-		// savePlayerData checks gameState.players[playerId] — returns early if missing
-		// Since provider is null by default (not set without startServer), this is a no-op
 		expect(() => savePlayerData('nonexistent')).not.toThrow();
+		expect(testProvider.loadPlayer('nonexistent')).toBeNull();
 	});
 
 	it('does nothing when provider is null', () => {
-		// provider is null by default when startServer hasn't been called
+		setTestProvider(null);
+		gameState.players['anyone'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
 		expect(() => savePlayerData('anyone')).not.toThrow();
 	});
 
-	it('logs error without crashing when provider.savePlayer throws', () => {
+	it('catches and logs errors without rethrowing when provider.savePlayer throws', () => {
+		const throwingProvider = {
+			savePlayer: () => { throw new Error('disk full'); },
+		};
+		setTestProvider(throwingProvider);
+
 		const player = {
 			currency: 10,
 			ownedCards: {},
@@ -132,34 +322,47 @@ describe('savePlayerData', () => {
 		};
 		gameState.players['errPlayer'] = player;
 
-		// We can't easily test the module-level savePlayerData with a throwing provider
-		// without modifying the module, but we verify the try/catch pattern exists
-		// by checking that savePlayerData doesn't throw when provider is null
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		expect(() => savePlayerData('errPlayer')).not.toThrow();
+		expect(consoleErrorSpy).toHaveBeenCalledWith(
+			expect.stringContaining('[persistence] savePlayerData failed for errPlayer'),
+			expect.any(String)
+		);
+		consoleErrorSpy.mockRestore();
 	});
 });
 
-describe('PERIODIC_SAVE_INTERVAL_MS config', () => {
-	it('is exported from config with a value of 30000', () => {
-		expect(configMod.PERIODIC_SAVE_INTERVAL_MS).toBe(30000);
-	});
-});
+// ── saveAllPlayers ──
 
 describe('saveAllPlayers', () => {
+	let testProvider;
+
 	beforeEach(() => {
 		resetGameState();
+		testProvider = new InMemoryProvider();
+		setTestProvider(testProvider);
+	});
+
+	afterEach(() => {
+		setTestProvider(null);
 	});
 
 	it('calls savePlayerData for each player in gameState.players', () => {
-		// We test the iteration logic directly by setting up players.
-		// Since savePlayerData is a module-level function we can't easily
-		// spy on it from outside, we verify the function exists and
-		// doesn't throw with an empty or populated player map.
-		gameState.players['a'] = { currency: 1, ownedCards: {}, selectedDeck: [] };
-		gameState.players['b'] = { currency: 2, ownedCards: {}, selectedDeck: [] };
+		gameState.players['a'] = { currency: 1, ownedCards: { iron_sword: 1 }, selectedDeck: ['iron_sword'] };
+		gameState.players['b'] = { currency: 2, ownedCards: { flame_blade: 1 }, selectedDeck: ['flame_blade'] };
 
-		// With provider === null (no startServer), saveAllPlayers should be a no-op
-		expect(() => saveAllPlayers()).not.toThrow();
+		saveAllPlayers();
+
+		expect(testProvider.loadPlayer('a')).toEqual({
+			currency: 1,
+			ownedCards: { iron_sword: 1 },
+			selectedDeck: ['iron_sword'],
+		});
+		expect(testProvider.loadPlayer('b')).toEqual({
+			currency: 2,
+			ownedCards: { flame_blade: 1 },
+			selectedDeck: ['flame_blade'],
+		});
 	});
 
 	it('is a no-op when there are no players', () => {
@@ -168,11 +371,33 @@ describe('saveAllPlayers', () => {
 	});
 
 	it('catches per-player errors without crashing the loop', () => {
-		// Even if savePlayerData threw for one player (it won't with null provider,
-		// but the try/catch in saveAllPlayers guards against future changes),
-		// the loop should continue. We verify the function doesn't throw.
 		gameState.players['p1'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
 		gameState.players['p2'] = { currency: 20, ownedCards: {}, selectedDeck: [] };
+
+		// Make p1's save throw but let p2's save call through to the real implementation
+		const originalSave = testProvider.savePlayer.bind(testProvider);
+		vi.spyOn(testProvider, 'savePlayer').mockImplementation((id, data) => {
+			if (id === 'p1') throw new Error('fail');
+			originalSave(id, data);
+		});
+
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		expect(() => saveAllPlayers()).not.toThrow();
+		// p2 should still have been saved
+		expect(testProvider.loadPlayer('p2')).toEqual({
+			currency: 20,
+			ownedCards: {},
+			selectedDeck: [],
+		});
+		testProvider.savePlayer.mockRestore();
+		consoleErrorSpy.mockRestore();
+	});
+});
+
+// ── Config ──
+
+describe('PERIODIC_SAVE_INTERVAL_MS config', () => {
+	it('is exported from config with a value of 30000', () => {
+		expect(configMod.PERIODIC_SAVE_INTERVAL_MS).toBe(30000);
 	});
 });
