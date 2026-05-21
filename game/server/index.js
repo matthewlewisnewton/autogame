@@ -63,6 +63,10 @@ function createGameState() {
 // Game state (module-level singleton used by production)
 const gameState = createGameState();
 
+// Throttle state for swept-collision rejection logging (per-socket)
+const SWEPT_COLLISION_LOG_THROTTLE_MS = 1000;
+const sweptCollisionLogTimes = new Map();
+
 // Generate dungeon layout at startup
 const layoutSeed = Math.floor(Math.random() * 2147483647);
 gameState.layoutSeed = layoutSeed;
@@ -1371,7 +1375,11 @@ function startServer(port) {
 
       // Swept collision check: reject moves whose path intersects any wall
       if (checkSweptCollision(player.x, player.z, newX, newZ)) {
-        console.debug(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
+        const lastLogged = sweptCollisionLogTimes.get(socket.id) || 0;
+        if (Date.now() - lastLogged >= SWEPT_COLLISION_LOG_THROTTLE_MS) {
+          console.debug(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
+          sweptCollisionLogTimes.set(socket.id, Date.now());
+        }
         return;
       }
 
@@ -1721,6 +1729,7 @@ function startServer(port) {
 
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
+    sweptCollisionLogTimes.delete(socket.id);
     delete gameState.players[socket.id];
     gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.id);
     io.emit('playerDisconnected', socket.id);
