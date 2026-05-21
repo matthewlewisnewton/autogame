@@ -1363,3 +1363,26 @@ None. All acceptance criteria are satisfied; the captured run is healthy.
 
 See `nits.md` for backlog items (unused `lastCardUse`, optional integration play-through).
 
+
+## v0.60 — Cleanup nits from 093-cleanup-cleanup-cleanup-audit-client-server  (2026-05-21 05:06:42)
+
+---
+
+## Debug scenario: `monster-card`
+
+Ticket did not add this scenario (pre-existing from 093), but capture used it — verified per harness rules:
+
+| Rule | Assessment |
+|------|------------|
+| Gated to debug/dev | **Pass.** Client: `?debugScenario=` on localhost only (`debugScenarioAllowed`). Server: `isDebugScenarioAllowed(socket)` (local address/origin/host or `ALLOW_DEBUG_SCENARIOS=1`; disabled in production). |
+| Normal path still reaches equivalent state | **Pass.** `dungeon_drake` is in `STARTING_DECK_IDS` / default deck. `enterPlayingPhase` → `initPlayerHand` deals from deck; players reach monster-in-hand + `useCard` → minion via normal lobby → ready → start flow without the URL param. Scenario only *guarantees* a monster card for deterministic QA. |
+| Does not weaken invariants | **Pass.** Scenario adjusts hand/enemy setup for testability; `useCard` still runs full server validation, cooldown, `drawReplacementCard`, and `stateUpdate` broadcast. No client-side hand mutation or skipped server checks. |
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met and the captured run is healthy.
+
+---
+
