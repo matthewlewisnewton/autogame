@@ -1882,6 +1882,15 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
     } : null,
     players: gameState ? Object.keys(gameState.players).length : 0,
     enemies: gameState ? gameState.enemies.length : 0,
+    minions: gameState && gameState.minions ? gameState.minions.map(m => ({
+      id: m.id,
+      type: m.type,
+      ownerId: m.ownerId,
+      hp: m.hp,
+      maxHp: m.maxHp,
+      x: m.x,
+      z: m.z,
+    })) : [],
     hand: hand.map(card => card ? {
       id: card.id,
       name: card.name,
