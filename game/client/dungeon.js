@@ -150,7 +150,7 @@ export function buildWallColliders(layout) {
 	}
 	for (const passage of layout.passages) {
 		for (const wall of passage.walls) {
-			colliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
+			colliders.push(wallAABB({ ...wall, length: passage.corridorLength }, PASSAGE_WALL_THICKNESS / 2));
 		}
 	}
 
