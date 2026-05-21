@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { resetHandState, canUseSlot, hand, slotCooldowns } from '../hand.js';
 
 // ── renderDeckEditor ──
@@ -1332,6 +1332,61 @@ describe('Cooldown Enforcement (useCard)', () => {
 		window.__useCardForTest(1);
 
 		expect(hand[1].remainingCharges).toBe(2);
+	});
+
+	it('playing a monster card: server stateUpdate replaces hand slot and drawCard() is never called', async () => {
+		const handModule = await import('../hand.js');
+		const drawCardSpy = vi.spyOn(handModule, 'drawCard').mockReturnValue(null);
+
+		try {
+			await import('../main.js');
+
+			// Place a monster card in slot 2 with cooldown cleared
+			hand[2] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
+			slotCooldowns[2] = false;
+
+			window.__clearSocketEmitLog();
+
+			// Call useCard on the monster slot — should emit + set cooldown, then return
+			window.__useCardForTest(2);
+
+			// Verify: socket emitted useCard, cooldown set, drawCard NOT called
+			const log = window.__socketEmitLog();
+			const useCardEmits = log.filter(e => e.event === 'useCard');
+			expect(useCardEmits).toHaveLength(1);
+			expect(slotCooldowns[2]).toBe(true);
+			expect(drawCardSpy).not.toHaveBeenCalled();
+
+			// Simulate server stateUpdate: monster slot replaced by a new card
+			const replacementCard = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+			window.__setGameState({
+				gamePhase: 'playing',
+				players: {
+					'player1': {
+						hand: [null, null, replacementCard, null],
+						currency: 0,
+					},
+				},
+			}, 'player1');
+
+			window.__triggerSocketEvent('stateUpdate', {
+				gamePhase: 'playing',
+				players: {
+					'player1': {
+						hand: [null, null, replacementCard, null],
+						currency: 0,
+					},
+				},
+			});
+
+			// Assert drawCard was never invoked — server is authoritative
+			expect(drawCardSpy).not.toHaveBeenCalled();
+
+			// Assert hand[2] matches the server-provided replacement card
+			expect(hand[2]).toEqual(replacementCard);
+		} finally {
+			drawCardSpy.mockRestore();
+		}
 	});
 });
 
