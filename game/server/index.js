@@ -36,6 +36,7 @@ const {
   LOOT_LIFETIME_MS,
   LOOT_SPAWN_CHANCE,
   STALE_CLEANUP_INTERVAL_MS,
+  PERIODIC_SAVE_INTERVAL_MS,
   VICTORY_REWARD_ROTATION
 } = require('./config');
 
@@ -376,6 +377,21 @@ function savePlayerData(playerId) {
     provider.savePlayer(playerId, extractPersistentData(player));
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
+  }
+}
+
+/**
+ * Iterate over all connected players and persist each one.
+ * Errors from individual saves are caught and logged so one failure
+ * never interrupts the timer or skips the remaining players.
+ */
+function saveAllPlayers() {
+  for (const playerId of Object.keys(gameState.players)) {
+    try {
+      savePlayerData(playerId);
+    } catch (err) {
+      console.error(`[persistence] saveAllPlayers failed for ${playerId}:`, err.message);
+    }
   }
 }
 
@@ -1835,6 +1851,10 @@ _intervals.push(gameLoopId);
 const staleCleanupId = setInterval(cleanupStalePlayers, STALE_CLEANUP_INTERVAL_MS);
 _intervals.push(staleCleanupId);
 
+// Periodic auto-save (every 30 seconds)
+const periodicSaveId = setInterval(saveAllPlayers, PERIODIC_SAVE_INTERVAL_MS);
+_intervals.push(periodicSaveId);
+
 const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
 server.listen(listenPort, () => {
   console.log(`Server listening on port ${listenPort}`);
@@ -1915,6 +1935,7 @@ if (typeof module !== 'undefined' && module.exports) {
     // Persistence
     extractPersistentData,
     savePlayerData,
+    saveAllPlayers,
     provider
   };
 }

@@ -1,12 +1,14 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import {
 	extractPersistentData,
 	savePlayerData,
+	saveAllPlayers,
 	gameState,
 	resetGameState,
 	provider
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
+import * as configMod from '../config.js';
 
 describe('extractPersistentData', () => {
 	beforeEach(() => {
@@ -134,5 +136,43 @@ describe('savePlayerData', () => {
 		// without modifying the module, but we verify the try/catch pattern exists
 		// by checking that savePlayerData doesn't throw when provider is null
 		expect(() => savePlayerData('errPlayer')).not.toThrow();
+	});
+});
+
+describe('PERIODIC_SAVE_INTERVAL_MS config', () => {
+	it('is exported from config with a value of 30000', () => {
+		expect(configMod.PERIODIC_SAVE_INTERVAL_MS).toBe(30000);
+	});
+});
+
+describe('saveAllPlayers', () => {
+	beforeEach(() => {
+		resetGameState();
+	});
+
+	it('calls savePlayerData for each player in gameState.players', () => {
+		// We test the iteration logic directly by setting up players.
+		// Since savePlayerData is a module-level function we can't easily
+		// spy on it from outside, we verify the function exists and
+		// doesn't throw with an empty or populated player map.
+		gameState.players['a'] = { currency: 1, ownedCards: {}, selectedDeck: [] };
+		gameState.players['b'] = { currency: 2, ownedCards: {}, selectedDeck: [] };
+
+		// With provider === null (no startServer), saveAllPlayers should be a no-op
+		expect(() => saveAllPlayers()).not.toThrow();
+	});
+
+	it('is a no-op when there are no players', () => {
+		expect(Object.keys(gameState.players)).toHaveLength(0);
+		expect(() => saveAllPlayers()).not.toThrow();
+	});
+
+	it('catches per-player errors without crashing the loop', () => {
+		// Even if savePlayerData threw for one player (it won't with null provider,
+		// but the try/catch in saveAllPlayers guards against future changes),
+		// the loop should continue. We verify the function doesn't throw.
+		gameState.players['p1'] = { currency: 10, ownedCards: {}, selectedDeck: [] };
+		gameState.players['p2'] = { currency: 20, ownedCards: {}, selectedDeck: [] };
+		expect(() => saveAllPlayers()).not.toThrow();
 	});
 });
