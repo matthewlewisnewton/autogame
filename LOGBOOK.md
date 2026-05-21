@@ -1317,3 +1317,26 @@ None blocking. Both acceptance areas are satisfied in the working tree; runtime 
 
 See `nits.md` for backlog items (visual capture missed summon; monster-card optimistic draw parity; optional log throttling).
 
+
+## v0.58 — Cleanup nits from 091-cleanup-audit-client-server  (2026-05-21 00:19:06)
+
+This ticket did **not** add or change debug scenarios; capture reused existing `summon-ready`.
+
+| Check | Result |
+|-------|--------|
+| Gated behind dev path | Client: `?debugScenario=` only on localhost/127.0.0.1/::1. Server: `isDebugScenarioAllowed` (local address/origin/host or `ALLOW_DEBUG_SCENARIOS=1`; blocked in production). |
+| Normal path still reaches equivalent state | Lobby → deck select → ready → `startGame` still required for real players; scenario is QA-only via URL + `debugScenario` socket emit. |
+| Does not weaken invariants | Scenario sets phase/hand/MS but card plays still go through server `useCard` validation, `drawReplacementCard`, and `stateUpdate` — no bypass of authority. |
+
+Round-2 capture correctly uses slot 1 for summon; prior harness slot-0 bug was plan authoring, not a scenario invariant violation.
+
+---
+
+## Remaining gaps
+
+None. All three acceptance sections are satisfied; runtime health passes.
+
+Round-1 blocking gap (summon not exercised in capture) is resolved in round-2 probes and screenshots.
+
+---
+
