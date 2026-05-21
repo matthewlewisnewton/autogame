@@ -243,6 +243,7 @@ function renderHand() {
 				<span class="card-charges">${card.remainingCharges}/${card.charges}</span>
 			`;
 			slot.classList.remove('empty');
+			slot.dataset.cardType = card.type;
 
 			// Sync .no-ms: keep if summon card and player can't afford it; otherwise remove
 			if (summonCardIds.has(card.id) && card.magicStoneCost != null && playerMs < card.magicStoneCost) {
@@ -255,6 +256,7 @@ function renderHand() {
 			slot.innerHTML = '<span class="card-name">&mdash;</span>';
 			slot.classList.add('empty');
 			slot.classList.remove('no-ms');
+			delete slot.dataset.cardType;
 		}
 	}
 }
