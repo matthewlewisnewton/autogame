@@ -1340,3 +1340,26 @@ Round-1 blocking gap (summon not exercised in capture) is resolved in round-2 pr
 
 ---
 
+
+## v0.59 — Cleanup nits from 092-cleanup-cleanup-audit-client-server  (2026-05-21 04:26:18)
+
+## Debug scenario: `monster-card`
+
+| Requirement | Assessment |
+|-------------|------------|
+| Gated to debug/dev path | **Pass.** Client reads `?debugScenario=` only on localhost/127.0.0.1/`::1` and emits once on connect (`requestDebugScenario`). Server accepts via `debugScenario` socket only when `isDebugScenarioAllowed` (local address/origin/host or `ALLOW_DEBUG_SCENARIOS=1`, not production). |
+| Normal path still reaches equivalent state | **Pass.** `dungeon_drake` is in `createStartingDeck()` / server `STARTING_DECK_IDS`. A player can draw/play monsters through lobby → ready → dungeon without the URL shortcut. Scenario only pins hand composition for deterministic QA. |
+| Does not weaken invariants | **Pass.** Scenario still runs `validateDeck`, `enterPlayingPhase`, and full server `useCard` handling (minion spawn, server draw, `stateUpdate`). No skip of cooldown, validation, or replication. |
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; the captured run is healthy.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for backlog items (unused `lastCardUse`, optional integration play-through).
+
