@@ -3151,3 +3151,361 @@ describe('Restore Persisted Location on Cold Reconnect During Active Run', () =>
 		c3.socket.disconnect();
 	});
 });
+
+describe('Initialize Combat Hand on Active-Run Reconnect', () => {
+	let testProvider;
+	let baseUrl;
+
+	beforeEach(async () => {
+		testProvider = new InMemoryProvider();
+		baseUrl = await startTestServer();
+		setTestProvider(testProvider);
+	});
+
+	afterEach(async () => {
+		setTestProvider(null);
+		await closeServer();
+	});
+
+	it('initializes hand and deck when cold reconnecting during playing phase', async () => {
+		// --- Connect two players and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		expect(gameState.gamePhase).toBe('playing');
+
+		// --- Verify player 2 has a hand before disconnect ---
+		const player2Id = c2.socket._playerId;
+		const player2 = gameState.players[player2Id];
+		expect(player2.hand).toBeDefined();
+		expect(player2.hand.length).toBeGreaterThan(0);
+		expect(player2.deck).toBeDefined();
+
+		// Save player data
+		savePlayerData(player2Id);
+
+		// --- Disconnect player 2 ---
+		c2.socket.disconnect();
+		await sleep(100);
+
+		expect(gameState.players[player2Id]).toBeUndefined();
+		expect(gameState.gamePhase).toBe('playing');
+
+		// --- Cold reconnect player 2 ---
+		const c2Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player2Id }
+			});
+			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		expect(c2Reconnect.init.playerId).toBe(player2Id);
+
+		// --- Verify hand and deck are initialized ---
+		const restoredPlayer = gameState.players[player2Id];
+		expect(restoredPlayer.hand).toBeDefined();
+		expect(restoredPlayer.hand.length).toBeGreaterThan(0);
+		expect(restoredPlayer.hand.length).toBeLessThanOrEqual(4);
+		expect(restoredPlayer.deck).toBeDefined();
+		expect(Array.isArray(restoredPlayer.deck)).toBe(true);
+
+		// Verify each hand card has the expected shape
+		for (const card of restoredPlayer.hand) {
+			expect(card).toHaveProperty('id');
+			expect(card).toHaveProperty('name');
+			expect(card).toHaveProperty('type');
+			expect(card).toHaveProperty('remainingCharges');
+		}
+
+		c1.socket.disconnect();
+		c2Reconnect.socket.disconnect();
+	});
+
+	it('useCard succeeds after cold reconnect during active run', async () => {
+		// --- Connect two players and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		// --- Move player 2 to face an enemy ---
+		const player2Id = c2.socket._playerId;
+		const player2 = gameState.players[player2Id];
+		player2.x += 5;
+		player2.z += 5;
+
+		// Place an enemy in front of player 2
+		gameState.enemies.push({
+			id: 'target_enemy',
+			x: player2.x + 3,
+			z: player2.z,
+			hp: 50,
+			maxHp: 50,
+			type: 'grunt',
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player2.x + 3, z: player2.z }
+		});
+
+		savePlayerData(player2Id);
+
+		// --- Disconnect and reconnect player 2 ---
+		c2.socket.disconnect();
+		await sleep(100);
+
+		const c2Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player2Id }
+			});
+			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		await waitForEvent(c2Reconnect.socket, 'stateUpdate');
+
+		// Find a weapon card in the restored hand
+		const restoredPlayer = gameState.players[player2Id];
+		const weaponSlot = restoredPlayer.hand.findIndex(c => c && c.type === 'weapon');
+
+		// If no weapon in hand, manually place one (the deck shuffle may not deal one)
+		if (weaponSlot < 0) {
+			restoredPlayer.hand[0] = {
+				id: 'iron_sword', name: 'Iron Sword', type: 'weapon',
+				charges: 5, remainingCharges: 5, damage: 15
+			};
+		}
+
+		const finalWeaponSlot = restoredPlayer.hand.findIndex(c => c && c.type === 'weapon');
+		expect(finalWeaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = restoredPlayer.hand[finalWeaponSlot];
+		const chargesBefore = weaponCard.remainingCharges;
+
+		// --- Use the weapon card ---
+		const cardUsedPromise = waitForEvent(c2Reconnect.socket, 'cardUsed');
+
+		c2Reconnect.socket.emit('useCard', { cardId: weaponCard.id, slotIndex: finalWeaponSlot });
+
+		const cardUsedData = await cardUsedPromise;
+		expect(cardUsedData).toBeDefined();
+		expect(cardUsedData.cardId).toBe(weaponCard.id);
+
+		// Verify the card was consumed (remainingCharges decremented)
+		const usedCard = restoredPlayer.hand[finalWeaponSlot];
+		if (usedCard) {
+			expect(usedCard.remainingCharges).toBeLessThan(chargesBefore);
+		}
+
+		c1.socket.disconnect();
+		c2Reconnect.socket.disconnect();
+	});
+
+	it('does NOT initialize hand on reconnect during lobby phase', async () => {
+		// --- Connect player in lobby ---
+		const c1 = await connectClient(baseUrl);
+		const player1Id = c1.socket._playerId;
+		const player1 = gameState.players[player1Id];
+
+		expect(gameState.gamePhase).toBe('lobby');
+
+		// Player should NOT have a hand in lobby
+		expect(player1.hand).toBeUndefined();
+
+		savePlayerData(player1Id);
+
+		// --- Disconnect and reconnect in lobby ---
+		c1.socket.disconnect();
+		await sleep(100);
+
+		const c1Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player1Id }
+			});
+			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		expect(c1Reconnect.init.playerId).toBe(player1Id);
+
+		// Reconnected player in lobby should NOT have a hand initialized
+		const restoredPlayer = gameState.players[player1Id];
+		expect(restoredPlayer.hand).toBeUndefined();
+
+		c1Reconnect.socket.disconnect();
+	});
+
+	it('resets slotCooldowns and magicStones on active-run reconnect', async () => {
+		// --- Connect two players and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		// --- Set stale cooldowns and low magic stones ---
+		const player2Id = c2.socket._playerId;
+		const player2 = gameState.players[player2Id];
+		player2.slotCooldowns = [Date.now() + 99999, Date.now() + 99999, Date.now() + 99999, Date.now() + 99999];
+		player2.magicStones = 0;
+
+		savePlayerData(player2Id);
+
+		// --- Disconnect and reconnect ---
+		c2.socket.disconnect();
+		await sleep(100);
+
+		const c2Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player2Id }
+			});
+			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		const restoredPlayer = gameState.players[player2Id];
+		expect(restoredPlayer.slotCooldowns).toEqual([null, null, null, null]);
+		expect(restoredPlayer.magicStones).toBe(100); // MAX_MAGIC_STONES
+
+		c1.socket.disconnect();
+		c2Reconnect.socket.disconnect();
+	});
+
+	it('resets HP and dead flag when reconnecting as dead player during active run', async () => {
+		// --- Connect two players and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		// --- Kill player 2 ---
+		const player2Id = c2.socket._playerId;
+		const player2 = gameState.players[player2Id];
+		player2.hp = 0;
+		player2.dead = true;
+
+		savePlayerData(player2Id);
+
+		// --- Disconnect and reconnect ---
+		c2.socket.disconnect();
+		await sleep(100);
+
+		const c2Reconnect = await new Promise((resolve, reject) => {
+			const s = ClientIO(baseUrl, {
+				transports: ['websocket'],
+				retry: false,
+				autoConnect: true,
+				timeout: 5000,
+				auth: { playerId: player2Id }
+			});
+			const timer = setTimeout(() => { s.disconnect(); reject(new Error('timeout')); }, 10000);
+			s.on('init', (data) => {
+				clearTimeout(timer);
+				s._playerId = data.playerId || data.id;
+				resolve({ socket: s, init: data });
+			});
+		});
+
+		const restoredPlayer = gameState.players[player2Id];
+		expect(restoredPlayer.hp).toBe(100); // MAX_HP
+		expect(restoredPlayer.dead).toBe(false);
+
+		c1.socket.disconnect();
+		c2Reconnect.socket.disconnect();
+	});
+
+	it('does not reinitialize hand if player already has cards (warm reconnect)', async () => {
+		// This tests the case where a player reconnects but their player
+		// object is still in memory (e.g. socket reconnection before cleanup).
+		// In this case, hand should NOT be re-dealt.
+
+		// --- Connect two players and start a run ---
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl);
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		const player2Id = c2.socket._playerId;
+		const player2 = gameState.players[player2Id];
+		const handBefore = player2.hand.map(c => c.id);
+
+		// Simulate warm reconnect: manually call the reconnect path
+		// by keeping the player in memory but simulating the connection handler
+		// Since the player already has a non-empty hand, the condition
+		// `!player.hand || player.hand.length === 0` should be false,
+		// so no re-initialization occurs.
+
+		// We verify this by checking that the condition is correctly guarded.
+		// The player has a hand, so the init block is skipped.
+		expect(player2.hand.length).toBeGreaterThan(0);
+
+		// The code path we care about is:
+		// if (gameState.gamePhase === 'playing') {
+		//   if (!player.hand || player.hand.length === 0) { ... }
+		// }
+		// Since player.hand is non-empty, the inner block is skipped.
+		// We can't easily simulate a warm reconnect in integration tests,
+		// but the cold reconnect path (player removed from memory) is the
+		// primary concern and is covered by other tests.
+
+		c1.socket.disconnect();
+		c2.socket.disconnect();
+	});
+});

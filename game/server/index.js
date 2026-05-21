@@ -1505,6 +1505,29 @@ function startServer(port) {
       player.rotation = savedData.rotation ?? player.rotation;
     }
 
+    // ── Initialize combat hand/deck on active-run reconnect ──
+    // When a player cold-reconnects during an active dungeon run, the server
+    // restores their location from persisted data but leaves hand/deck undefined.
+    // Fix: detect active run and initialize a fresh draw deck + hand from
+    // the player's restored selectedDeck. Also reset transient combat state
+    // (cooldowns, magic stones, HP, death flag) to sensible defaults.
+    if (gameState.gamePhase === 'playing') {
+      if (!player.hand || player.hand.length === 0) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+      }
+      player.slotCooldowns = [null, null, null, null];
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!player.pendingSummons) {
+        player.pendingSummons = new Set();
+      }
+      // Reset combat state that can't be restored from persistence
+      if (player.hp == null || player.hp <= 0) {
+        player.hp = MAX_HP;
+        player.dead = false;
+      }
+    }
+
   socket.emit('init', { id: playerId, playerId, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
 
   // Broadcast updated lobby on connect
