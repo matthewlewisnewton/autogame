@@ -46,7 +46,9 @@ import {
 	DECK_MAX_SIZE,
 	ENEMY_ATTACK_RANGE,
 	ENEMY_ATTACK_RECOVERY_MS,
-	ENEMY_DEFS
+	ENEMY_DEFS,
+	savePlayerData,
+	setTestProvider
 } from '../index.js';
 
 // ── Helpers ──
@@ -921,6 +923,69 @@ describe('cleanupStalePlayers', () => {
 		expect(gameState.players['p1']).toBeUndefined();
 		expect(gameState.players['p2']).toBeUndefined();
 		expect(gameState.players['p3']).toBeDefined();
+	});
+
+	it('calls savePlayerData before deleting stale player', () => {
+		const mockProvider = {
+			savePlayer: vi.fn().mockResolvedValue(undefined),
+			loadPlayer: vi.fn().mockResolvedValue(null)
+		};
+		setTestProvider(mockProvider);
+
+		addPlayer('p1', {
+			lastActivity: Date.now() - STALE_THRESHOLD - 1000,
+			currency: 42,
+			ownedCards: { iron_sword: 3 },
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			x: 5,
+			y: 0.5,
+			z: 10,
+			rotation: 1.5
+		});
+
+		cleanupStalePlayers();
+
+		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p1', expect.objectContaining({
+			currency: 42,
+			ownedCards: { iron_sword: 3 },
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			x: 5,
+			y: 0.5,
+			z: 10,
+			rotation: 1.5
+		}));
+		expect(gameState.players['p1']).toBeUndefined();
+
+		setTestProvider(null);
+	});
+
+	it('saves stale player data even when provider is null (no crash)', () => {
+		setTestProvider(null);
+
+		addPlayer('p1', { lastActivity: Date.now() - STALE_THRESHOLD - 1000 });
+
+		// Should not throw
+		expect(() => cleanupStalePlayers()).not.toThrow();
+		expect(gameState.players['p1']).toBeUndefined();
+	});
+
+	it('saves multiple stale players before deleting', () => {
+		const mockProvider = {
+			savePlayer: vi.fn().mockResolvedValue(undefined),
+			loadPlayer: vi.fn().mockResolvedValue(null)
+		};
+		setTestProvider(mockProvider);
+
+		addPlayer('p1', { lastActivity: Date.now() - 20000, currency: 10 });
+		addPlayer('p2', { lastActivity: Date.now() - 15000, currency: 20 });
+
+		cleanupStalePlayers();
+
+		expect(mockProvider.savePlayer).toHaveBeenCalledTimes(2);
+		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p1', expect.objectContaining({ currency: 10 }));
+		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p2', expect.objectContaining({ currency: 20 }));
+
+		setTestProvider(null);
 	});
 });
 
