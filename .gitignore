@@ -16,6 +16,7 @@ harness/tmp/
 harness/.playtest/
 harness/progress/events.ndjson
 harness/progress/gpu-uptime.json
+harness/progress/token-totals.json
 harness/progress/.tunnel-credentials
 tickets/**/artifacts/
 tickets/**/review-round-*/

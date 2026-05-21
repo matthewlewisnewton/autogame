@@ -360,6 +360,15 @@ ticket_difficulty() {
     | grep -ioE 'easy|medium|hard' | head -1 | tr 'A-Z' 'a-z'
 }
 
+# review_agent_for_difficulty <easy|medium|hard> — label used in logs/progress (composer/… or agent/…).
+review_agent_for_difficulty() {
+  case "$1" in
+    easy) echo "composer/$REVIEW_EASY_MODEL" ;;
+    hard) echo "agent/$REVIEW_HARD_MODEL" ;;
+    *) echo "agent/$REVIEW_MEDIUM_MODEL" ;;
+  esac
+}
+
 record_agent_usage() {  # record_agent_usage <label> <outfile> <attempt> <rc> <status> <reason> <started-ms> <ended-ms> <prompt>
   local label="$1" out="$2" attempt="$3" rc="$4" status="$5" reason="$6" started_ms="$7" ended_ms="$8" prompt="$9"
   local model bucket out_dir usage_file payload
@@ -532,11 +541,13 @@ if (totalTokens === null && inputTokens !== null && outputTokens !== null) {
 
 const startedAtMs = toNumber(startedRaw);
 const endedAtMs = toNumber(endedRaw);
+const usageKind = process.env.HARNESS_USAGE_KIND || null;
 const usagePayload = {
   key: `${outfile}#${attemptRaw}`,
   agent,
   model: model || null,
   bucket,
+  usageKind,
   outfile,
   attempt: Number(attemptRaw) || 0,
   rc: Number(rcRaw) || 0,
@@ -745,7 +756,7 @@ run_agent_model_writable() {  # run_agent_model_writable <model> <prompt> <outfi
   local model="$1" prompt="$2" out="$3"
   local a=(agent -p --force --trust --model "$model")
   a+=("$prompt")
-  _run_cli "agent/$model" "$out" "$AGENT_TIMEOUT" "$prompt" "${a[@]}"
+  HARNESS_USAGE_KIND=final_review _run_cli "agent/$model" "$out" "$AGENT_TIMEOUT" "$prompt" "${a[@]}"
 }
 
 # Recover a "write this file" block from a reviewer transcript when the agent
