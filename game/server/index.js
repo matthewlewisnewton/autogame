@@ -929,6 +929,13 @@ function applyDebugScenario(socket, name) {
   } else if (name === 'summon-ready') {
     player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
+    // Guarantee at least one summon card in hand so integration tests are deterministic
+    if (!player.hand.some(c => c && c.type === 'summon')) {
+      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'summon');
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+      }
+    }
   } else if (name === 'combat-damaged-player') {
     player.hp = 25;
     player.magicStones = MAX_MAGIC_STONES;
