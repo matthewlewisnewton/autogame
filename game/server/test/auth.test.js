@@ -8,6 +8,7 @@ import {
 	getJWTSecret
 } from '../index.js';
 import { clearUsers } from '../users.js';
+import { initAuth, resetAuthSecret } from '../auth.js';
 import jwt from 'jsonwebtoken';
 
 // ── Helpers ──
@@ -295,5 +296,41 @@ describe('POST /api/login', () => {
 			body: JSON.stringify({ username: 'alice' })
 		});
 		expect(res.status).toBe(400);
+	});
+});
+
+// ── initAuth() dev fallback ──
+
+describe('initAuth() dev fallback', () => {
+	const origNodeEnv = process.env.NODE_ENV;
+	const origJwtSecret = process.env.JWT_SECRET;
+
+	beforeEach(() => {
+		resetAuthSecret();
+		delete process.env.JWT_SECRET;
+	});
+
+	afterEach(() => {
+		process.env.NODE_ENV = origNodeEnv;
+		process.env.JWT_SECRET = origJwtSecret;
+		resetAuthSecret();
+	});
+
+	it('uses dev fallback secret when NODE_ENV is not test or production', () => {
+		process.env.NODE_ENV = 'development';
+		const secret = initAuth();
+		expect(secret).toBe('dev-secret');
+	});
+
+	it('throws when NODE_ENV is production and JWT_SECRET is missing', () => {
+		process.env.NODE_ENV = 'production';
+		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
+	});
+
+	it('accepts JWT_SECRET from environment regardless of NODE_ENV', () => {
+		process.env.NODE_ENV = 'development';
+		process.env.JWT_SECRET = 'custom-secret';
+		const secret = initAuth();
+		expect(secret).toBe('custom-secret');
 	});
 });
