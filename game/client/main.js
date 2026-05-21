@@ -72,6 +72,7 @@ const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.l
 let debugScenarioRequested = false;
 let debugScenarioResult = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
+let lastCardUse = null; // { slot, cardIdBefore, cardType } — set before each useCard emit, cleared on stateUpdate
 
 // Socket setup
 const socket = io();

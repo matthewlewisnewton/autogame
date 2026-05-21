@@ -29,6 +29,8 @@ const logs = [];
 const screenshots = [];
 const probes = [];
 const scenarios = new Set();
+// Track hand state before pressCard so the final probe can document before/after
+const cardPressBefore = new Map(); // player -> { slot, cardIdBefore, cardType, handBefore }
 
 // Benign headless-Chromium rendering noise - not game bugs. Filtered out so the
 // QA agent only sees real signal.
@@ -236,6 +238,23 @@ function planCapture(ticketFile) {
     return { source: 'fallback', valid: true, attempts: [], recipe: fallbackRecipe() };
   }
 
+  // Try to reuse an existing capture plan from the output directory
+  const existingPlan = join(outDirAbs, 'capture-plan-gemini.txt');
+  if (existsSync(existingPlan)) {
+    try {
+      const raw = readFileSync(existingPlan, 'utf8');
+      const parsed = JSON.parse(stripJson(raw));
+      return {
+        source: 'file',
+        valid: true,
+        attempts: [],
+        recipe: validateRecipe(parsed),
+      };
+    } catch (e) {
+      // Invalid JSON or recipe — fall through to LLM generation
+    }
+  }
+
   const prompt = buildPlannerPrompt(ticketFile);
   const order = mode === 'gemini' ? ['gemini'] : mode === 'agent' ? ['agent'] : ['gemini', 'agent'];
   const attempts = [];
@@ -371,6 +390,16 @@ async function executeRecipe(browser, recipe) {
       } else {
         slot = step.slot ?? 0;
       }
+      // Capture hand state before pressing the card (for before/after documentation)
+      const handBefore = await page.evaluate(() => {
+        const state = typeof window.__AUTOGAME_HARNESS_STATE__ === 'function'
+          ? window.__AUTOGAME_HARNESS_STATE__()
+          : null;
+        return state && state.hand ? state.hand.map(c => c ? c.id : null) : null;
+      });
+      const cardIdBefore = handBefore ? handBefore[slot] : null;
+      cardPressBefore.set(player, { slot, cardIdBefore, cardType: step.cardType || null, handBefore });
+      console.log(`[pressCard] player ${player}: slot ${slot}, cardIdBefore=${cardIdBefore}, cardType=${step.cardType || 'none'}`);
       await page.keyboard.press(String(slot + 1));
       await page.waitForTimeout(step.ms || 500);
     } else if (step.action === 'clickSlot') {
@@ -399,7 +428,25 @@ async function executeRecipe(browser, recipe) {
 
   if (pages.size === 0) throw new Error('recipe did not connect any players');
   const primary = pages.get('A') || pages.values().next().value;
-  probes.push({ player: 'A', description: 'Final capture probe.', data: await collectProbe(primary) });
+  const finalData = await collectProbe(primary);
+
+  // Attach before/after card-id evidence to the final probe
+  const beforeInfo = cardPressBefore.get('A');
+  if (beforeInfo && finalData && finalData.harnessState && finalData.harnessState.hand) {
+    const handAfter = finalData.harnessState.hand.map(c => c ? c.id : null);
+    const cardIdAfter = handAfter[beforeInfo.slot];
+    finalData.cardPress = {
+      slot: beforeInfo.slot,
+      cardType: beforeInfo.cardType,
+      cardIdBefore: beforeInfo.cardIdBefore,
+      cardIdAfter,
+      handBefore: beforeInfo.handBefore,
+      handAfter,
+      replacementViaStateUpdate: beforeInfo.cardIdBefore !== cardIdAfter && cardIdAfter !== null,
+    };
+  }
+
+  probes.push({ player: 'A', description: 'Final capture probe.', data: finalData });
 
   for (const ctx of contexts.values()) {
     await ctx.close().catch(() => {});

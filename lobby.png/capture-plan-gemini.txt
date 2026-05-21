@@ -57,6 +57,11 @@
       "description": "Verify player A position change and entity sync"
     },
     {
+      "action": "probe",
+      "player": "A",
+      "description": "Capture hand state BEFORE pressing monster card — record monster slot index and card id (dungeon_drake)"
+    },
+    {
       "action": "pressCard",
       "player": "A",
       "cardType": "monster"
@@ -75,7 +80,7 @@
     {
       "action": "probe",
       "player": "A",
-      "description": "Verify monster slot card id before and after use, new replacement card arrived via stateUpdate with no client-side drawCard call, and a minion entity exists in scene"
+      "description": "Capture hand state AFTER pressing monster card — verify monster card removed, replacement card in slot (different id), minion entity present, no client-side drawCard called"
     }
   ]
 }
