@@ -2805,6 +2805,7 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		'combat-damaged-player',
 		'mixed-enemies',
 		'spawner-active',
+		'monster-card',
 	]) {
 		it(`run.objective.totalEnemies matches the authoritative enemy list at scenario time for "${scenario}"`, async () => {
 			const snap = await runScenarioCaptureSnapshot(scenario);
@@ -2838,5 +2839,15 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		expect(snap.enemies.length).toBe(1);
 		expect(snap.enemies[0].type).toBe('spawner');
 		expect(snap.run.objective.totalEnemies).toBe(1);
+	});
+
+	it('"monster-card" guarantees a monster card in hand', async () => {
+		const snap = await runScenarioCaptureSnapshot('monster-card');
+		const playerKey = Object.keys(snap.players).find(k => snap.players[k].debugScenario === 'monster-card');
+		expect(playerKey).toBeDefined();
+		const player = snap.players[playerKey];
+		const monsterSlot = player.hand.findIndex(c => c && c.type === 'monster');
+		expect(monsterSlot).toBeGreaterThanOrEqual(0);
+		expect(player.hand[monsterSlot].id).toBe('dungeon_drake');
 	});
 });
