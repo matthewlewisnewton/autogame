@@ -379,7 +379,20 @@ function extractPersistentData(player) {
 }
 
 /**
+ * Resolve the persistence key for a player.
+ * Returns `player.accountId` when the player is authenticated,
+ * otherwise falls back to the ephemeral `playerId`.
+ */
+function persistenceKey(playerId) {
+  const player = gameState.players[playerId];
+  if (!player) return playerId;
+  return player.accountId || playerId;
+}
+
+/**
  * Persist a player's data to the configured storage backend.
+ * Uses the player's `accountId` as the storage key when authenticated,
+ * falling back to `playerId` for anonymous players.
  * Logs errors via console.error but never throws.
  */
 function savePlayerData(playerId) {
@@ -387,7 +400,8 @@ function savePlayerData(playerId) {
   const player = gameState.players[playerId];
   if (!player) return;
   try {
-    provider.savePlayer(playerId, extractPersistentData(player));
+    const key = persistenceKey(playerId);
+    provider.savePlayer(key, extractPersistentData(player));
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
   }
@@ -1476,11 +1490,13 @@ function startServer(port) {
     const spawn = firstRoomPosition();
 
     // ── Load persisted data (if any) ──
+    // Use accountId as the persistence key when authenticated; fall back to playerId.
     let savedData = null;
+    const loadKey = accountId || playerId;
     try {
-      savedData = provider ? provider.loadPlayer(playerId) : null;
+      savedData = provider ? provider.loadPlayer(loadKey) : null;
     } catch (err) {
-      console.error(`[persistence] loadPlayer failed for ${playerId}:`, err.message);
+      console.error(`[persistence] loadPlayer failed for ${loadKey}:`, err.message);
       savedData = null;
     }
 
@@ -2082,6 +2098,7 @@ if (typeof module !== 'undefined' && module.exports) {
     savePlayerData,
     saveAllPlayers,
     setTestProvider,
+    persistenceKey,
     provider,
     // Auth
     verifyToken
