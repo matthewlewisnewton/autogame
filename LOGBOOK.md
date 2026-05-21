@@ -1432,3 +1432,26 @@ Agent-guided capture used `monster-card` and confirmed minion in harness state (
 
 None. Both acceptance criteria are met; runtime capture is healthy; no regressions identified in live code review.
 
+
+## v0.63 — Persistence  (2026-05-21 10:42:42)
+
+
+### Save Timing
+PASS. Saves happen on periodic auto-save, disconnect/logout, stale-player cleanup, run terminal reward persistence, and lobby return. This satisfies the ticket's key-event and/or periodic-save requirement.
+
+### Atomic Saves / Crash Corruption Protection
+PASS. `FileProvider` writes to a temporary file and renames it into place, keeping saves atomic for the file-backed provider.
+
+### Design And Requirements Consistency
+PASS. The implementation preserves the lobby-to-dungeon loop, card inventory/loadout flow, multiplayer socket connection, player visualization, and movement sync requirements. The captured run confirms the client and server still start and connect.
+
+### Debug Scenarios
+PASS. This ticket did not add a new persistence-specific debug scenario. The touched debug path still goes through the server-side handler, validates the selected deck before entering play, and does not replace the normal ready flow, which remains reachable through standard gameplay.
+
+### Tests / Coverage
+PASS. `coverage.log` reports 5 test files passing with 383 tests passed. Coverage thresholds were disabled, but the changed persistence and reconnect behavior is covered by focused provider, persistence, unit, and socket integration tests.
+
+## Remaining gaps
+
+None.
+

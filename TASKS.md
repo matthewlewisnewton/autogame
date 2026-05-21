@@ -83,7 +83,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
 - [x] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
 - [x] [020-audit-client-server](tickets/020-audit-client-server/)
-- [ ] [021-persistence](tickets/021-persistence/)
+- [x] [021-persistence](tickets/021-persistence/)
 - [ ] [022-user-accounts](tickets/022-user-accounts/)
 - [ ] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
