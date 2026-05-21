@@ -15,7 +15,6 @@ const {
 const {
   TICK_RATE,
   MOVE_SPEED,
-  MOVE_SPEED_TOLERANCE,
   MAX_ELAPSED_MS,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
@@ -1308,6 +1307,10 @@ function startServer(port) {
       return;
     }
 
+    // Normalize input vector to unit length (defensive against oversized dx/dz)
+    const mag = Math.hypot(data.dx, data.dz);
+    if (mag > 1) { data.dx /= mag; data.dz /= mag; }
+
     if (player) {
       const now = Date.now();
       let elapsed = (now - (player.lastMoveTime || now)) / 1000;
@@ -1319,15 +1322,6 @@ function startServer(port) {
       // Integrate position from input intent
       let moveX = data.dx * MOVE_SPEED * cappedElapsed;
       let moveZ = data.dz * MOVE_SPEED * cappedElapsed;
-
-      // Cap total distance to MOVE_SPEED * cappedElapsed * tolerance
-      const maxDist = MOVE_SPEED * cappedElapsed * MOVE_SPEED_TOLERANCE;
-      const dist = Math.hypot(moveX, moveZ);
-      if (dist > maxDist) {
-        const scale = maxDist / dist;
-        moveX *= scale;
-        moveZ *= scale;
-      }
 
       let newX = player.x + moveX;
       let newZ = player.z + moveZ;
