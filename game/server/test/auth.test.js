@@ -4,7 +4,8 @@ import {
 	resetGameState,
 	io as serverIo,
 	server as httpServer,
-	clearAllTimers
+	clearAllTimers,
+	getJWTSecret
 } from '../index.js';
 import { clearUsers } from '../users.js';
 import jwt from 'jsonwebtoken';
@@ -224,8 +225,8 @@ describe('POST /api/login', () => {
 		});
 		const loginData = await loginRes.json();
 
-		// Decode JWT (verify with dev-secret)
-		const decoded = jwt.verify(loginData.token, 'dev-secret');
+		// Decode JWT — verify with the secret the auth module is using (test-secret in NODE_ENV=test)
+		const decoded = jwt.verify(loginData.token, getJWTSecret());
 		expect(decoded.accountId).toBe(regData.accountId);
 		expect(decoded.username).toBe('carol');
 	});
@@ -244,7 +245,7 @@ describe('POST /api/login', () => {
 		});
 		const data = await res.json();
 
-		const decoded = jwt.verify(data.token, 'dev-secret');
+		const decoded = jwt.verify(data.token, getJWTSecret());
 		const now = Math.floor(Date.now() / 1000);
 		// exp should be roughly 24h from iat
 		expect(decoded.exp - decoded.iat).toBe(86400);
