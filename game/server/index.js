@@ -2,6 +2,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 const http = require('http');
 const crypto = require('crypto');
+const fs = require('fs');
 const path = require('path');
 const { InMemoryProvider, FileProvider } = require('./providers');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
@@ -1409,6 +1410,10 @@ function stateSnapshot() {
 function startServer(port) {
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
   initAuth();
+
+  // Ensure the data/ directory exists for user records and player persistence
+  const dataDir = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
+  fs.mkdirSync(dataDir, { recursive: true });
 
   // JSON body parsing for REST endpoints
   app.use(express.json());

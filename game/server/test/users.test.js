@@ -1,10 +1,17 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
 import {
 	hashPassword,
 	comparePassword,
 	createUser,
 	findUserByUsername,
-	clearUsers
+	clearUsers,
+	loadUsers,
+	saveUsers,
+	getUsersFilePath,
+	setTestFilePath
 } from '../users.js';
 
 // ── hashPassword ──
@@ -109,5 +116,103 @@ describe('findUserByUsername', () => {
 
 	it('returns null for an empty string', () => {
 		expect(findUserByUsername('')).toBeNull();
+	});
+});
+
+// ── File-backed persistence ──
+
+describe('file-backed persistence', () => {
+	let tmpDir;
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'users-test-'));
+		tmpFile = path.join(tmpDir, 'test_users.json');
+		// Point the module at our temp file
+		setTestFilePath(tmpFile);
+		// Clear the in-memory map for a clean slate
+		clearUsers();
+	});
+
+	afterEach(() => {
+		// Clean up temp files
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
+		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	});
+
+	it('saves user to disk on createUser', () => {
+		createUser('alice', 'pass123');
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		const data = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(data).toHaveLength(1);
+		expect(data[0].username).toBe('alice');
+		expect(data[0].accountId).toBeDefined();
+		expect(data[0].passwordHash).toBeDefined();
+	});
+
+	it('loads existing users from file on loadUsers call', () => {
+		// Create a user (which saves to file)
+		createUser('bob', 'bobpass');
+		const savedAccountId = findUserByUsername('bob').accountId;
+
+		// Clear the in-memory map to simulate a restart
+		clearUsers();
+		expect(findUserByUsername('bob')).toBeNull();
+
+		// Reload from file
+		loadUsers();
+		const loaded = findUserByUsername('bob');
+		expect(loaded).not.toBeNull();
+		expect(loaded.accountId).toBe(savedAccountId);
+	});
+
+	it('accountId stability across restarts (clear map, reload from file)', () => {
+		createUser('stable_user', 'mypass');
+		const originalId = findUserByUsername('stable_user').accountId;
+
+		// Simulate restart: clear memory, reload
+		clearUsers();
+		loadUsers();
+
+		const restored = findUserByUsername('stable_user');
+		expect(restored).not.toBeNull();
+		expect(restored.accountId).toBe(originalId);
+	});
+
+	it('handles missing file on loadUsers gracefully', () => {
+		// Clear map and ensure file doesn't exist
+		clearUsers();
+		try { fs.unlinkSync(tmpFile); } catch {}
+
+		// loadUsers should not throw when file is missing
+		expect(() => loadUsers()).not.toThrow();
+		expect(findUserByUsername('anyone')).toBeNull();
+	});
+
+	it('uses atomic write pattern (write to .tmp then rename)', () => {
+		createUser('atomic_test', 'pass');
+		// After save, the .json should exist, no leftover .tmp
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		expect(fs.existsSync(tmpFile + '.tmp')).toBe(false);
+	});
+
+	it('preserves multiple users across restart', () => {
+		createUser('user_a', 'pass');
+		createUser('user_b', 'pass');
+
+		const idA = findUserByUsername('user_a').accountId;
+		const idB = findUserByUsername('user_b').accountId;
+
+		// Simulate restart
+		clearUsers();
+		loadUsers();
+
+		expect(findUserByUsername('user_a').accountId).toBe(idA);
+		expect(findUserByUsername('user_b').accountId).toBe(idB);
+	});
+
+	it('getUsersFilePath returns the configured path', () => {
+		expect(getUsersFilePath()).toBe(tmpFile);
 	});
 });
