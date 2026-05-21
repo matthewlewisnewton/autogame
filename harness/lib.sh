@@ -716,11 +716,169 @@ run_gemini() {  # run_gemini <prompt> <outfile>
 run_agent() {  # run_agent <prompt> <outfile> — cursor-agent, QA fallback
   run_agent_model "${AGENT_MODEL:-composer-2.5-fast}" "$1" "$2"
 }
-run_agent_model() {  # run_agent_model <model> <prompt> <outfile> — cursor-agent with explicit model
+run_agent_model() {  # run_agent_model <model> <prompt> <outfile> — cursor-agent QA / read-only
   local model="$1" prompt="$2" out="$3"
   local a=(agent -p --force --trust --mode ask --model "$model")
   a+=("$prompt")
   _run_cli "agent/$model" "$out" "$AGENT_TIMEOUT" "$prompt" "${a[@]}"
+}
+# Writable variant for TOP-LEVEL REVIEWERS ONLY (composer-2.5 / gpt-5.5-*).
+# The review.md prompt asks the agent to write review.md / gaps.md / nits.md
+# to specific paths; under `--mode ask` it cannot, and silently falls back to
+# printing the contents as chat — which the harness then has to recover via
+# qwen_extract_review_files (~72s) or the awk extractor. Dropping `--mode
+# ask` here so the agent has its full toolset is the happy path: the agent
+# writes the three files directly, the harness picks them up, and round
+# N+1's decomposer reads gaps.md without any recovery hop.
+#
+# TRUST CAVEAT: a reviewer in this mode CAN write anywhere the harness can.
+# That includes game/, harness/, and the git index. The mitigating factors
+# are (1) the prompt explicitly tells it to write ONLY the three target
+# files and forbids editing game/ or harness/, (2) the harness's
+# recover_review_files() is still wired up as a safety net for the case
+# where a reviewer DOES revert to chat-only output, and (3) the next round
+# would catch any reviewer-driven game/ edits via git diff. We accept the
+# residual risk in exchange for skipping the recovery hop on the happy path.
+# This is for REVIEW callers only — keep QA chains on read-only
+# run_agent_model so a QA agent never accidentally edits the code it judges.
+run_agent_model_writable() {  # run_agent_model_writable <model> <prompt> <outfile>
+  local model="$1" prompt="$2" out="$3"
+  local a=(agent -p --force --trust --model "$model")
+  a+=("$prompt")
+  _run_cli "agent/$model" "$out" "$AGENT_TIMEOUT" "$prompt" "${a[@]}"
+}
+
+# Recover a "write this file" block from a reviewer transcript when the agent
+# ran in a read-only mode and printed the content as chat instead of writing
+# it to disk. The review.md prompt tells the agent to write review.md/gaps.md/
+# nits.md to specific paths; cursor-agent's `--mode ask` is read-only and the
+# observed fallback pattern (across composer-2.5 and gpt-5.5-extra-high) is to
+# emit each file as a fenced markdown block preceded by a marker line that
+# contains the filename in backticks, e.g.
+#
+#     `gaps.md` content:
+#
+#     ```markdown
+#     ...file body...
+#     ```
+#
+# or as a markdown heading like `## \`gaps.md\``. Both shapes are recognised:
+# the first backtick-wrapped occurrence of the target filename "arms" the
+# extractor, the next fenced block (delimited by lines starting with ```)
+# is captured, the opening fence's language tag is stripped, and the body is
+# printed to stdout. Returns the empty string if no marker / no fenced block.
+extract_file_block() {  # extract_file_block <transcript> <target-file>
+  awk -v target="$2" '
+    BEGIN { found=0; inblock=0 }
+    {
+      if (!inblock && !found) {
+        if (index($0, "`" target "`") > 0) { found=1 }
+        next
+      }
+      if (found && !inblock) {
+        if ($0 ~ /^```/) { inblock=1; next }
+        if ($0 ~ /^[[:space:]]*$/) next
+        # non-blank non-fence: the marker was prose mentioning the filename
+        # (e.g. "see gaps.md below"). Re-check this very line for a fresh
+        # marker and otherwise resume scanning.
+        found = (index($0, "`" target "`") > 0) ? 1 : 0
+        next
+      }
+      if (inblock) {
+        if ($0 ~ /^```/) { exit }
+        print
+      }
+    }
+  ' "$1"
+}
+
+# Use qwen to recover review.md / gaps.md / nits.md from a reviewer transcript
+# when the cursor-agent reviewer ran in read-only mode and printed the file
+# contents as chat instead of writing them. Qwen has native file-write tools
+# (Write/Edit), so we give it the *trimmed* transcript and three target paths
+# and let it copy each fenced block verbatim. This is the PRIMARY recovery
+# path: it tolerates format variations (header style, language tag,
+# surrounding prose) that a regex parser would miss. The deterministic awk
+# extractor in extract_file_block() runs as a fallback for any file qwen
+# leaves missing.
+#
+# CONTEXT-SIZE GUARD — qwen runs locally on ollama with a small context
+# (~32k tokens ≈ 128kB text). A fat reviewer transcript would force
+# mid-conversation compaction and yield garbled output. We trim by anchoring
+# at the first `\`<file>\`` marker in the transcript (everything before is
+# preamble — model/CLI noise, "I can't write..." apologies) and capping the
+# total size at 48kB. For typical reviewer transcripts (~4–10 kB) this is a
+# no-op; for huge ones it preserves the entire fenced-block region at the end
+# where file content actually lives.
+qwen_extract_review_files() {  # qwen_extract_review_files <transcript> <dir>
+  local t="$1" d="$2" prompt outfile trimmed start_line
+  outfile="$d/qwen-extract.txt"
+  trimmed="$(mktemp)"
+
+  # Anchor at the first file-marker line, if any. If none found, fall back to
+  # the full transcript — the size cap below still protects qwen's context.
+  start_line="$(grep -n -m1 -E '`review\.md`|`gaps\.md`|`nits\.md`' "$t" 2>/dev/null | cut -d: -f1)"
+  if [ -n "$start_line" ]; then
+    tail -n +"$start_line" "$t" > "$trimmed"
+  else
+    cp "$t" "$trimmed"
+  fi
+  # Hard cap at 48 kB. Last bytes win (file contents tend to be at the end
+  # after preamble + analysis), and trimming is safe because the marker
+  # anchoring above already discarded the front matter.
+  if [ "$(wc -c < "$trimmed")" -gt 49152 ]; then
+    tail -c 49152 "$trimmed" > "$trimmed.t" && mv "$trimmed.t" "$trimmed"
+  fi
+
+  # Heredoc with quoted EOF: no expansion, then sprintf-style replace below.
+  prompt=$(cat <<'EOF'
+You are recovering reviewer output files from a chat transcript in an
+autonomous game-development harness.
+
+A read-only review agent was asked to write three files at the paths below
+but, because it ran in ask mode, it printed their contents in chat instead.
+Your only job is to copy that content into the requested files verbatim.
+
+Transcript file (read-only — do not modify). It has been pre-trimmed to the
+region after the first file marker so you can read it in one pass without
+filling context:
+  __TRANSCRIPT__
+
+Target output files:
+  __REVIEW__   <- the full review body, verbatim
+  __GAPS__     <- the blocking gaps list (only present on a FAIL verdict)
+  __NITS__     <- the non-blocking nits backlog (only present if the
+                  reviewer wrote one)
+
+In the transcript, each file is typically a fenced markdown block whose
+opening fence is preceded by a marker line that contains the filename in
+backticks — e.g. `` `gaps.md` content: `` or `` ## `gaps.md` ``. The opening
+fence often has a language tag like ```markdown — strip the fence and tag,
+keep only the body.
+
+RULES:
+- Copy verbatim. Do NOT paraphrase, summarise, reformat, or "improve".
+- Strip only the surrounding fence (```) and its optional language tag.
+- If a file does NOT appear in the transcript, do NOT create it (omit).
+  In particular, nits.md is absent on most PASS verdicts and on FAIL
+  verdicts when the reviewer noted no nits.
+- Do NOT modify any file outside the three target paths.
+- Do NOT touch `game/`, `harness/`, or any source code.
+
+When finished, print one line per file you wrote, in this exact form:
+  WROTE: <absolute-or-relative-path> (<bytes> bytes)
+
+That is all. Do not commit, run servers, or anything else.
+EOF
+)
+  prompt="${prompt//__TRANSCRIPT__/$trimmed}"
+  prompt="${prompt//__REVIEW__/$d/review.md}"
+  prompt="${prompt//__GAPS__/$d/gaps.md}"
+  prompt="${prompt//__NITS__/$d/nits.md}"
+  run_qwen "$prompt" "$outfile"
+  local rc=$?
+  rm -f "$trimmed" "$trimmed.t" 2>/dev/null || true
+  return $rc
 }
 run_agy() {  # run_agy <prompt> <outfile> — Antigravity / Gemini 3.5 Flash (High), QA tier
   # No --model flag exists (model is globally pinned server-side via /model).
@@ -751,13 +909,18 @@ is_pass() {  # is_pass <file>
 
 # --- Git helpers ---
 # commit_verified <message> — HARD GATE for verified progress.
-# Stages the loop's OWN files only — game/ plus backlog bookkeeping — and never
-# harness/, so an in-flight harness edit can't be swept into a ticket commit.
-# Commits, and asserts HEAD advanced.
+# Stages every working-tree change EXCEPT harness/ — in-flight harness edits
+# are operator state, not ticket work, and excluding them keeps the original
+# guarantee that a harness fix sitting in the working tree can never be
+# swept into a ticket commit. Wider than the legacy explicit allowlist
+# (`game/ TASKS.md LOGBOOK.md tickets/`) so sub-tickets that legitimately
+# edit CONTEXT.md, README.md, .github/, or root configs (package.json,
+# pnpm-lock.yaml, etc.) actually persist when qwen's own commit step fails
+# and this fallback fires. Commits and asserts HEAD advanced.
 #   0 = committed (or nothing to commit — state already in HEAD)
 #   2 = commit could not be made → caller MUST escalate, never proceed
 commit_verified() {
-  git add -- game/ TASKS.md LOGBOOK.md tickets/
+  git add -- . ':!harness'
   if git diff --cached --quiet; then
     log "[git] no changes to commit — verified state already in HEAD"
     emit_progress_event "commit_skipped" "{\"message\":$(json_string "$1"),\"reason\":\"no_changes\"}"
@@ -780,12 +943,19 @@ commit_verified() {
   return 0
 }
 
-# Discard uncommitted changes under game/. Safe: verified progress is always
-# committed (commit_verified) before the harness moves on, so this can only
-# ever discard the current failed attempt.
+# Discard uncommitted changes from a failed sub-ticket attempt. Wider than
+# the historical name suggests: reverts every tracked file and removes every
+# untracked file EXCEPT under harness/ (in-flight harness edits — operator
+# state) and tickets/ (per-ticket bookkeeping — log.txt, feedback.md,
+# handoff.md, .passed markers, and any newly decomposed sub-ticket
+# folders whose ticket.md is not yet tracked). Safe: verified progress is
+# always committed (commit_verified) before the harness moves on, so this
+# can only ever discard the current failed attempt. Wider revert prevents
+# a failed sub-ticket's edits to CONTEXT.md, README.md, .github/, or root
+# configs from leaking into the NEXT sub-ticket's diff in the same round.
 revert_game_changes() {
-  git checkout -- game/ 2>/dev/null || true
-  git clean -fdq game/ 2>/dev/null || true
+  git checkout HEAD -- . ':!harness' ':!tickets' 2>/dev/null || true
+  git clean -fdq -- . ':!harness' ':!tickets' 2>/dev/null || true
 }
 
 next_version_tag() {  # echoes v0.<n> where n = (#existing v0.* tags)+1

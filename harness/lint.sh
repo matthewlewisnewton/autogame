@@ -10,6 +10,13 @@
 set -uo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")" || exit 2
 
+# Git hooks (and other automation that doesn't inherit an interactive login
+# shell's PATH — e.g. the Claude Code Bash tool) often lack ~/.local/bin
+# where the shellcheck binary is commonly installed. Mirror lib.sh's PATH
+# fixup so the hook can find it. Without this, the pre-commit hook reports
+# the lint tool as missing even when its binary is right there in ~/.local.
+case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac
+
 if ! command -v shellcheck >/dev/null 2>&1; then
   echo "lint: shellcheck not installed." >&2
   echo "  install: apt-get install shellcheck" >&2
