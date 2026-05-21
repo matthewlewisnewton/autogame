@@ -1409,3 +1409,26 @@ None. All acceptance criteria are met and the captured run is healthy.
 
 None. All acceptance criteria are met and the captured run is healthy.
 
+
+## v0.62 — Cleanup nits from 095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server  (2026-05-21 05:53:24)
+
+| Rule | Status |
+|------|--------|
+| Gated to dev | Client: `debugScenarioAllowed` only on localhost/127.0.0.1/::1; URL param is the client entry (`main.js` 70–72, 165–168). Server: `isDebugScenarioAllowed` blocks production / non-local (`index.js` 881+, 1698–1707). |
+| Normal path still reaches equivalent state | Lobby → ready → `startGame` → hand from deck (default includes `dungeon_drake`) → `useCard` on monster slot uses the same server branch (`index.js` 1560–1588). Scenario only guarantees a monster card in hand when missing; it does not spawn minions or skip `useCard` validation. |
+| No invariant short-circuit | `monster-card` adjusts hand/resources and resyncs objectives; minion spawn still requires `useCard` through the standard handler. |
+
+No debug-scenario blocking gaps for this ticket.
+
+---
+
+## Visual capture notes (informational)
+
+Agent-guided capture used `monster-card` and confirmed minion in harness state (50 HP, correct `ownerId`). Final probe `cardPress` reported `cardType: null` and unchanged hand IDs — likely harness timing/input, not a game fatal. Integration test assertions are the authoritative proof for hand replacement after `useCard`; they pass.
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are met; runtime capture is healthy; no regressions identified in live code review.
+

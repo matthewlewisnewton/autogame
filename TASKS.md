@@ -49,7 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
-- [ ] [096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
+- [x] [096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
 - [x] [095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
 - [x] [094-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/094-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
 - [x] [093-cleanup-cleanup-cleanup-audit-client-server](tickets/093-cleanup-cleanup-cleanup-audit-client-server/)
