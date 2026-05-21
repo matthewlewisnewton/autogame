@@ -1271,3 +1271,26 @@ This ticket did **not** add or change any `?scenario=` debug shortcut. Capture u
 
 None. All acceptance criteria are fully met; runtime capture and tests agree.
 
+
+## v0.56 — Audit Client/Server  (2026-05-20 23:19:43)
+
+- **Client WebSocket messages are intents, not outcomes:** PASS. Client movement now sends normalized directional intent (`dx`, `dz`, `rotation`) instead of absolute position updates. Card use sends `slotIndex` and `cardId` as an activation request, while the removed client `damage` socket path means clients no longer submit direct damage outcomes. Other client emissions (`playerReady`, deck add/remove, `lootPickup`, heartbeat, return-to-lobby) are requests or UI/session intents, with server-side checks before mutation.
+
+- **Server validates movement against collision geometry and speed limits:** PASS. The server integrates movement from input direction using server `MOVE_SPEED`, normalizes oversized vectors, caps elapsed movement time with `MAX_ELAPSED_MS`, clamps to dungeon bounds, and rejects swept wall collisions using server-generated dungeon wall colliders. The captured server log shows this validation actively rejecting wall-intersecting movement during play.
+
+- **Server exclusively calculates combat outcomes and broadcasts them:** PASS. `useCard` validates phase, run status, player liveness, slot index, card definition, server-authoritative hand contents, per-slot cooldown, and summon resource cost before applying effects. Weapon cone hits, summon radius hits, minion spawning, damage, enemy removal, loot, and run objective progress are all computed from server state and sent back through `stateUpdate`/`cardUsed`.
+
+- **Client prediction and reconciliation respect server authority:** PASS. The client predicts local movement at the same fixed speed as the server, emits only movement intent, and snaps to the authoritative server position when drift exceeds the reconciliation threshold. Server `stateUpdate` also reconciles the local hand from the authoritative per-player hand state, including card identity and remaining charges.
+
+## Design/Regression Check
+
+The changes preserve the documented lobby-to-dungeon multiplayer loop and the card-based action combat model. The foundation requirements are still met: the client connects over WebSockets, renders a Three.js scene, represents multiple players, and synchronizes movement through server state updates. Coverage artifacts show `344` passing tests with focused coverage over the changed server behavior.
+
+## Debug Scenarios
+
+Debug scenarios remain gated through the explicit debug query flow on the client and local/dev-only authorization on the server. The scenarios use the same server-side deck validation and normal `enterPlayingPhase`/run setup before applying QA state adjustments, and the resulting states are equivalent to normal reachable gameplay states such as having a summon available, low mana, damaged HP, mixed enemy types, or an active spawner. They do not replace the normal ready-up path for regular gameplay.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
