@@ -177,6 +177,15 @@ export const CARD_DEFS = {
     magicStoneCost: 30,
     specialEffect: 'mana_drain',
   },
+  soul_drain: {
+    id: 'soul_drain',
+    name: 'Soul Drain',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 30,
+    isEvolved: true,
+    specialEffect: 'soul_drain',
+  },
   dragons_breath: {
     id: 'dragons_breath',
     name: "Dragon's Breath",
@@ -196,6 +205,7 @@ export const EVOLUTION_TRANSFORMS = {
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
   dungeon_drake: 'ancient_drake',
+  mana_leach: 'soul_drain',
 };
 
 export const CARD_SELL_VALUES = {
@@ -212,6 +222,7 @@ export const CARD_SELL_VALUES = {
   sacrificial_altar: 14,
   battery_automaton: 12,
   chrono_trigger: 16,
+  soul_drain: 18,
 };
 
 export function getCardSellValue(cardId) {
@@ -271,6 +282,7 @@ export const CARD_ACCENT_STYLE = {
   gravity_well: { color: '#c084fc', icon: '◎' },
   echo_blade: { color: '#f472b6', icon: '〰' },
   mana_leach: { color: '#a855f7', icon: '◈' },
+  soul_drain: { color: '#e879f9', icon: '☠' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },
 };
 

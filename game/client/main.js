@@ -470,7 +470,12 @@ function bindSocketHandlers(s) {
 		}
 		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnSummonEffect(origin, data.radius);
+			const accent = CARD_ACCENT_STYLE[data.cardId];
+			const colorHex = accent?.color ? parseInt(accent.color.slice(1), 16) : undefined;
+			rendererSpawnSummonEffect(origin, data.radius, colorHex);
+		}
+		if (data.hpHealed > 0 && data.playerId === myId) {
+			playSound('loot');
 		}
 		if (data.hits && data.hits.length > 0) {
 			playSound('enemyHit');

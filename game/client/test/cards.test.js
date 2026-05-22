@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -158,6 +158,18 @@ describe('CARD_DEFS', () => {
 			name: 'Mana Leach',
 			type: 'summon',
 		});
+		expect(CARD_DEFS.soul_drain).toMatchObject({
+			id: 'soul_drain',
+			name: 'Soul Drain',
+			type: 'summon',
+			isEvolved: true,
+			specialEffect: 'soul_drain',
+		});
+		expect(EVOLUTION_TRANSFORMS.mana_leach).toBe('soul_drain');
+		expect(CARD_ACCENT_STYLE.soul_drain).toMatchObject({
+			color: '#e879f9',
+			icon: '☠',
+		});
 		expect(CARD_DEFS.dragons_breath).toMatchObject({
 			id: 'dragons_breath',
 			name: "Dragon's Breath",
@@ -246,9 +258,10 @@ describe('card ID sets', () => {
 		expect(summonCardIds.has('healing_font')).toBe(true);
 		expect(summonCardIds.has('gravity_well')).toBe(true);
 		expect(summonCardIds.has('mana_leach')).toBe(true);
+		expect(summonCardIds.has('soul_drain')).toBe(true);
 		expect(summonCardIds.has('dragons_breath')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
-		expect(summonCardIds.size).toBe(10);
+		expect(summonCardIds.size).toBe(11);
 	});
 
 	it('monsterCardIds contains base, evolved, and synergistic monster card IDs', () => {

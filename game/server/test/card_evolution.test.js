@@ -101,6 +101,32 @@ describe('card evolution', () => {
 		expect(snapshot.players.p1.inventory).toEqual(player.inventory);
 	});
 
+	it('evolves Mana Leach +10 into Soul Drain', () => {
+		const player = {
+			inventory: [
+				createCardInstance('mana_leach', {
+					instanceId: 'leach-1',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { mana_leach: 1 },
+			selectedDeck: ['leach-1'],
+		};
+
+		const result = evolveCard(player, 'leach-1');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('mana_leach');
+		expect(result.toCardId).toBe('soul_drain');
+		expect(player.inventory[0].cardId).toBe('soul_drain');
+		expect(CARD_DEFS.soul_drain).toMatchObject({
+			damage: 38,
+			magicStoneOnHit: 12,
+			healOnHit: 4,
+			healOnKill: 8,
+		});
+	});
+
 	it('defines every evolved card referenced by the transform table', () => {
 		for (const [baseCardId, evolvedCardId] of Object.entries(EVOLUTION_TRANSFORMS)) {
 			expect(CARD_DEFS[baseCardId]).toBeDefined();
