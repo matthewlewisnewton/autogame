@@ -10,7 +10,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
-_DEFAULT_PORT = int(os.environ.get("PROGRESS_PORT", "3001"))
+# server.mjs defaults to 8787 (overridable via PORT). Match that so a Python
+# supervisor reuses an existing live-view server rather than fighting it.
+_DEFAULT_PORT = int(os.environ.get("PROGRESS_PORT", os.environ.get("PORT", "8787")))
 _PID_FILE = Path(__file__).resolve().parents[1] / "progress" / ".server.pid"
 
 
@@ -51,6 +53,8 @@ def start_if_needed() -> ServerStatus:
     if not server_mjs.exists():
         return ServerStatus(listening=False, port=_DEFAULT_PORT, pid=None)
 
+    env = dict(os.environ)
+    env["PORT"] = str(_DEFAULT_PORT)
     try:
         proc = subprocess.Popen(
             ["node", str(server_mjs)],
@@ -58,6 +62,7 @@ def start_if_needed() -> ServerStatus:
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             stdin=subprocess.DEVNULL,
             start_new_session=True,
+            env=env,
         )
     except (FileNotFoundError, OSError):
         return ServerStatus(listening=False, port=_DEFAULT_PORT, pid=None)
