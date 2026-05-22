@@ -1662,3 +1662,26 @@ None blocking. All acceptance criteria are satisfied in the live working tree, a
 
 See `nits.md` for follow-up backlog items: missing `resumeAudioContext` unit tests, and no cold-import test for startup mute icon from pre-seeded `localStorage`.
 
+
+## v0.73 — Cleanup nits from 046-cleanup-audio-autoplay-resume-and-mute-persistence  (2026-05-22 05:38:30)
+
+---
+
+## Debug scenarios
+
+This ticket did **not** add or change any `?scenario=` debug shortcuts. Nothing to verify under the debug-scenario checklist.
+
+---
+
+## Integration / holistic check
+
+Sub-tickets `01-resume-audiocontext-tests` and `02-cold-start-mute-integration-test` together cover all acceptance criteria in the parent ticket. No gaps between sub-ticket scope and top-level ticket. Changes are confined to `game/client/main.js` (2 lines) and `game/client/test/main.test.js` (+211 lines of tests).
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; runtime capture is healthy; no blocking issues.
+
+---
+
