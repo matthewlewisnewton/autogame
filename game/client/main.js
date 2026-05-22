@@ -524,8 +524,8 @@ function bindSocketHandlers(s) {
 			playSound('enemyHit');
 			rendererSpawnAttackEffect(origin, direction);
 		}
-		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
-			rendererSpawnSummonEffect(origin, data.radius);
+		if (data.hpHealed > 0 && data.playerId === myId) {
+			playSound('loot');
 		}
 		const accent = CARD_ACCENT_STYLE[data.cardId];
 		const accentHex = accent && accent.color
@@ -544,13 +544,11 @@ function bindSocketHandlers(s) {
 			if (!data.shockwaveHits || data.shockwaveHits.length === 0) {
 				playSound('enemyHit');
 			}
-			const flashColor = accentHex ?? 0xffffff;
 			for (const hit of allHits) {
 				const mesh = maps.enemiesMeshes[hit.enemyId];
 				if (mesh) {
-					const flashColor = hit.frozenShatter ? 0x7dd3fc : 0xffffff;
+					const flashColor = hit.frozenShatter ? 0x7dd3fc : (accentHex ?? 0xffffff);
 					rendererFlashMesh(mesh, flashColor, hit.frozenShatter ? 350 : 200);
-					rendererFlashMesh(mesh, flashColor, 200);
 				}
 			}
 		}

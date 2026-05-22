@@ -1129,6 +1129,8 @@ function startServer(port) {
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
+        healOnHit: cardDef.healOnHit,
+        healOnKill: cardDef.healOnKill,
         attackerId: socket.playerId,
       });
       const hits = radial.hits;
@@ -1154,6 +1156,7 @@ function startServer(port) {
         radius: SUMMON_RADIUS,
         hits: hits,
         magicStonesGained: appliedMagicStones,
+        hpHealed: radial.hpHealed || 0,
       });
 
       // Do NOT delete pendingSummons here — leave the entry so any duplicate

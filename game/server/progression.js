@@ -342,6 +342,19 @@ const CARD_DEFS = {
     magicStoneOnHit: 8,
     specialEffect: 'mana_drain',
   },
+  soul_drain: {
+    id: 'soul_drain',
+    name: 'Soul Drain',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 30,
+    damage: 38,
+    magicStoneOnHit: 12,
+    healOnHit: 4,
+    healOnKill: 8,
+    isEvolved: true,
+    specialEffect: 'soul_drain',
+  },
   dragons_breath: {
     id: 'dragons_breath',
     name: "Dragon's Breath",
@@ -386,6 +399,7 @@ const EVOLUTION_TRANSFORMS = {
   storm_eagle: 'thunderbird',
   gravity_well: 'event_horizon',
   echo_blade: 'resonance_edge',
+  mana_leach: 'soul_drain',
 };
 
 const CARD_SELL_VALUES = {
@@ -409,6 +423,7 @@ const CARD_SELL_VALUES = {
   excalibur_photon: 12,
   infinite_disk: 18,
   event_horizon: 22,
+  soul_drain: 18,
 };
 
 function getCardSellValue(cardId) {
