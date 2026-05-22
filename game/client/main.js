@@ -186,6 +186,22 @@ function bindSocketHandlers(s) {
     startHeartbeat();
   });
 
+  s.on('connect_error', (reason) => {
+    // Server disconnected because of an invalid/expired JWT.
+    // Clear the bad token, destroy the socket (prevents auto-reconnect),
+    // and return the user to the auth overlay.
+    try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+    stopHeartbeat();
+    s.io.disconnect(); // destroy socket — prevents Socket.IO auto-reconnect with bad token
+    if (uiEl) uiEl.style.display = 'none';
+    if (cardHandEl) cardHandEl.style.display = 'none';
+    if (lobbyEl) lobbyEl.classList.add('hidden');
+    if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
+    showAuthOverlay();
+    showLoginForm();
+    updateStatus('Session expired — please log in again', 'disconnected');
+  });
+
   s.on('init', (data) => {
     myId = data.id;
     // Store stable playerId for reconnect sessions
@@ -2064,6 +2080,7 @@ window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
 window.bindSocketHandlers = bindSocketHandlers;   // test-only: expose for handler-rebinding tests
 window.createSocket = createSocket;               // test-only: expose for socket creation tests
+window.__connectionState = () => connectionState; // test-only: read connectionState
 window.__AUTOGAME_HARNESS_STATE__ = () => {
   const me = gameState && myId ? gameState.players[myId] : null;
   const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');

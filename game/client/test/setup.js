@@ -116,10 +116,18 @@ const emitLog = [];
 const handlerLog = {}; // event -> array of callbacks (keyed by "socketId:event")
 let socketConnected = true;
 let socketCounter = 0; // tracks how many times io() was called
+let ioDisconnected = false; // tracks whether socket.io.disconnect() was called
 
 function createMockSocket() {
 	socketCounter++;
 	const id = `mock-socket-${socketCounter}`;
+	const ioObj = {
+		on: function() { return this; },
+		disconnect: function() {
+			ioDisconnected = true;
+			return this;
+		}
+	};
 	return {
 		id,
 		on: function(event, callback) {
@@ -140,7 +148,7 @@ function createMockSocket() {
 			socketConnected = false;
 			return this;
 		},
-		io: { on: function() { return this; } }
+		io: ioObj
 	};
 }
 
@@ -245,6 +253,8 @@ if (typeof window !== 'undefined') {
 	};
 	/** Return the current socket counter (how many mock sockets have been created). */
 	window.__socketCounter = () => socketCounter;
+	window.__ioDisconnected = () => ioDisconnected;
+	window.__clearIoDisconnected = () => { ioDisconnected = false; };
 	window.__soundLogEnabled = true; // enable _playSoundCallLog in test environment
 }
 
