@@ -584,11 +584,32 @@ function updateObjectiveHud() {
 	}
 }
 
+function clearAdjacentCardHighlights() {
+	for (const slot of cardSlots) {
+		slot.classList.remove('synergy-adjacent');
+	}
+}
+
+function updateAdjacentCardHighlights(sourceIndex) {
+	clearAdjacentCardHighlights();
+	const card = hand[sourceIndex];
+	const def = card ? CARD_DEFS[card.id] : null;
+	if (!def || !def.adjacentChargeRestore) return;
+
+	for (const adjacentIndex of [sourceIndex - 1, sourceIndex + 1]) {
+		if (adjacentIndex < 0 || adjacentIndex > 3) continue;
+		if (!hand[adjacentIndex]) continue;
+		const slot = cardSlots[adjacentIndex];
+		if (slot) slot.classList.add('synergy-adjacent');
+	}
+}
+
 function renderHand() {
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
 		: 0;
 
+	clearAdjacentCardHighlights();
 	for (let i = 0; i < 4; i++) {
 		const slot = cardSlots[i];
 		const card = hand[i];
@@ -609,7 +630,8 @@ function renderHand() {
 			slot.classList.toggle('evolved-card', !!card.isEvolved);
 			slot.dataset.cardType = card.type;
 
-			if (summonCardIds.has(card.id) && card.magicStoneCost != null && playerMs < card.magicStoneCost) {
+			const cardCost = card.magicStoneCost ?? CARD_DEFS[card.id]?.magicStoneCost;
+			if (cardCost != null && cardCost > 0 && playerMs < cardCost) {
 				slot.classList.add('no-ms');
 			} else {
 				slot.classList.remove('no-ms');
@@ -623,6 +645,13 @@ function renderHand() {
 			delete slot.dataset.cardType;
 		}
 	}
+}
+
+for (let i = 0; i < cardSlots.length; i++) {
+	cardSlots[i].addEventListener('mouseenter', () => updateAdjacentCardHighlights(i));
+	cardSlots[i].addEventListener('mouseleave', clearAdjacentCardHighlights);
+	cardSlots[i].addEventListener('focus', () => updateAdjacentCardHighlights(i));
+	cardSlots[i].addEventListener('blur', clearAdjacentCardHighlights);
 }
 
 function initHand() {
@@ -805,6 +834,19 @@ function useCard(slotIndex) {
 	if (!card) return;
 
 	if (!canUseSlot(slotIndex)) return;
+
+	const cardDef = CARD_DEFS[card.id] || {};
+	const playerMs = (gameState && myId && gameState.players[myId])
+		? gameState.players[myId].magicStones
+		: 0;
+	const cardCost = card.magicStoneCost ?? cardDef.magicStoneCost;
+	if (cardCost != null && cardCost > 0 && playerMs < cardCost) {
+		lastUsedSlot = slotIndex;
+		showCardErrorToast('Not enough Magic Stones');
+		const slot = cardSlots[slotIndex];
+		if (slot) slot.classList.add('no-ms');
+		return;
+	}
 
 	lastUsedSlot = slotIndex;
 	socket.emit('useCard', { slotIndex, cardId: card.id });

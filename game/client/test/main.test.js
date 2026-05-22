@@ -691,6 +691,35 @@ describe('renderHand()', () => {
 		const slots = document.querySelectorAll('.card-slot');
 		expect(slots[0].classList.contains('no-ms')).toBe(false);
 	});
+
+	it('highlights adjacent cards when hovering Chrono Trigger', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 2 };
+		hand[1] = { id: 'chrono_trigger', name: 'Chrono Trigger', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 };
+		hand[2] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 1 };
+		hand[3] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+
+		window.__setGameState({
+			players: {
+				'player1': { magicStones: 100 }
+			},
+			gamePhase: 'playing'
+		}, 'player1');
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		slots[1].dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+
+		expect(slots[0].classList.contains('synergy-adjacent')).toBe(true);
+		expect(slots[2].classList.contains('synergy-adjacent')).toBe(true);
+		expect(slots[3].classList.contains('synergy-adjacent')).toBe(false);
+
+		slots[1].dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+		expect(slots[0].classList.contains('synergy-adjacent')).toBe(false);
+		expect(slots[2].classList.contains('synergy-adjacent')).toBe(false);
+	});
 });
 
 // ── playSound / mute toggle ──
