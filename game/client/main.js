@@ -9,6 +9,12 @@ import {
 } from './questBoard.js';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import {
+	MAX_CARD_LEVEL,
+	getUpgradeCost,
+	canAffordUpgrade,
+	getForgeStatPreview,
+} from './cardUpgrades.js';
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
 import {
 	playSound,
@@ -237,6 +243,7 @@ function bindSocketHandlers(s) {
 		}
 		renderDeckEditor();
 		applyQuestBoardState(data.quests, data.selectedQuestId || (data.state && data.state.selectedQuestId));
+		if (activeLobbyTab === 'forge') renderPhotonForge();
 
 		// Auth: display username and show logout button if logged in
 		if (data.accountId) {
@@ -344,6 +351,7 @@ function bindSocketHandlers(s) {
 			if (Array.isArray(gameState.players[myId].inventory)) {
 				myInventory = gameState.players[myId].inventory;
 			}
+			if (activeLobbyTab === 'forge') renderPhotonForge();
 		}
 
 		// Update objective HUD
@@ -460,6 +468,7 @@ function bindSocketHandlers(s) {
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		renderDeckEditor();
+		if (activeLobbyTab === 'forge') renderPhotonForge();
 	});
 
 	s.on('deckError', (data) => {
@@ -473,6 +482,29 @@ function bindSocketHandlers(s) {
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		renderDeckEditor();
+	});
+
+	s.on('cardUpgradeResult', (data) => {
+		if (!data) return;
+		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+		if (Array.isArray(data.inventory)) myInventory = data.inventory;
+		if (data.ownedCards) myOwnedCards = data.ownedCards;
+		if (gameState && myId && gameState.players[myId] && Number.isFinite(data.currency)) {
+			gameState.players[myId].currency = data.currency;
+			const currencyEl = document.getElementById('currency-display');
+			if (currencyEl) currencyEl.textContent = `GOLD ${data.currency}`;
+			_lastCurrency = data.currency;
+		}
+		renderDeckEditor();
+		if (activeLobbyTab === 'forge') {
+			renderPhotonForge();
+			playForgeUpgradeAnimation(data.instance && data.instance.instanceId);
+		}
+	});
+
+	s.on('cardUpgradeError', (data) => {
+		if (!data || !data.reason) return;
+		showForgeError(data.reason);
 	});
 
 	s.on('cardEvolutionError', (data) => {
@@ -804,6 +836,20 @@ const tradeTargetSelectEl = document.getElementById('trade-target-select');
 const tradeOfferSelectEl = document.getElementById('trade-offer-select');
 const tradeRequestSelectEl = document.getElementById('trade-request-select');
 const offerTradeBtn = document.getElementById('offer-trade-btn');
+const deckEditorEl = document.getElementById('deck-editor');
+const lobbyTabDeckBtn = document.getElementById('lobby-tab-deck');
+const lobbyTabForgeBtn = document.getElementById('lobby-tab-forge');
+const photonForgeEl = document.getElementById('photon-forge');
+const forgeInventoryGridEl = document.getElementById('forge-inventory-grid');
+const forgeSelectedNameEl = document.getElementById('forge-selected-name');
+const forgeSelectedMetaEl = document.getElementById('forge-selected-meta');
+const forgeStatRowsEl = document.getElementById('forge-stat-rows');
+const forgeUpgradeCostEl = document.getElementById('forge-upgrade-cost');
+const forgeUpgradeBtn = document.getElementById('forge-upgrade-btn');
+const forgeErrorEl = document.getElementById('forge-error');
+
+let activeLobbyTab = 'deck';
+let selectedForgeInstanceId = null;
 
 function getDeckInventory() {
 	return Array.isArray(myInventory) ? myInventory : [];
@@ -1033,6 +1079,143 @@ if (offerTradeBtn) {
 function showDeckError(message) {
 	deckErrorEl.textContent = message;
 	deckErrorEl.style.display = 'block';
+}
+
+function getMyCurrency() {
+	if (gameState && myId && gameState.players[myId]) {
+		return gameState.players[myId].currency || 0;
+	}
+	return 0;
+}
+
+function setLobbyTab(tab) {
+	activeLobbyTab = tab === 'forge' ? 'forge' : 'deck';
+	const deckEditor = document.getElementById('deck-editor');
+	const photonForge = document.getElementById('photon-forge');
+	const deckTabBtn = document.getElementById('lobby-tab-deck');
+	const forgeTabBtn = document.getElementById('lobby-tab-forge');
+	if (deckEditor) deckEditor.classList.toggle('hidden', activeLobbyTab !== 'deck');
+	if (photonForge) photonForge.classList.toggle('hidden', activeLobbyTab !== 'forge');
+	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
+	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
+	if (activeLobbyTab === 'forge') renderPhotonForge();
+}
+
+function showForgeError(message) {
+	const errorEl = document.getElementById('forge-error');
+	if (!errorEl) return;
+	errorEl.textContent = message;
+	errorEl.style.display = message ? 'block' : 'none';
+}
+
+function playForgeUpgradeAnimation(instanceId) {
+	const grid = document.getElementById('forge-inventory-grid');
+	if (!grid || !instanceId) return;
+	const tile = grid.querySelector(`[data-instance-id="${instanceId}"]`);
+	if (!tile) return;
+	tile.classList.remove('upgrade-success');
+	void tile.offsetWidth;
+	tile.classList.add('upgrade-success');
+	setTimeout(() => tile.classList.remove('upgrade-success'), 800);
+}
+
+function renderPhotonForge() {
+	const grid = document.getElementById('forge-inventory-grid');
+	if (!grid) return;
+
+	const inventory = getDeckInventory();
+	if (selectedForgeInstanceId && !inventory.some((card) => card.instanceId === selectedForgeInstanceId)) {
+		selectedForgeInstanceId = null;
+	}
+
+	grid.innerHTML = '';
+	for (const instance of inventory) {
+		const def = CARD_DEFS[instance.cardId];
+		if (!def) continue;
+		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+		const level = instance.level || 1;
+		const tile = document.createElement('button');
+		tile.type = 'button';
+		tile.className = `forge-card-tile${instance.instanceId === selectedForgeInstanceId ? ' selected' : ''}${def.isEvolved ? ' evolved-card' : ''}`;
+		tile.dataset.instanceId = instance.instanceId;
+		tile.innerHTML = `
+      <span class="card-icon">${style.icon}</span>
+      <span class="card-label">${def.name}</span>
+      <span class="forge-level-badge">Lv ${level}</span>
+    `;
+		tile.addEventListener('click', () => {
+			selectedForgeInstanceId = instance.instanceId;
+			renderPhotonForge();
+		});
+		grid.appendChild(tile);
+	}
+
+	const selected = selectedForgeInstanceId
+		? inventory.find((card) => card.instanceId === selectedForgeInstanceId)
+		: null;
+
+	const selectedNameEl = document.getElementById('forge-selected-name');
+	const selectedMetaEl = document.getElementById('forge-selected-meta');
+	const statRowsEl = document.getElementById('forge-stat-rows');
+	const upgradeCostEl = document.getElementById('forge-upgrade-cost');
+	const upgradeBtn = document.getElementById('forge-upgrade-btn');
+
+	if (!selected) {
+		if (selectedNameEl) selectedNameEl.textContent = 'Select a card';
+		if (selectedMetaEl) selectedMetaEl.textContent = 'Choose an inventory card to preview upgrades.';
+		if (statRowsEl) statRowsEl.innerHTML = '';
+		if (upgradeCostEl) upgradeCostEl.textContent = 'Cost: — GOLD';
+		if (upgradeBtn) upgradeBtn.disabled = true;
+		showForgeError('');
+		return;
+	}
+
+	const def = CARD_DEFS[selected.cardId];
+	const level = selected.level || 1;
+	const currency = getMyCurrency();
+	const atMaxLevel = level >= MAX_CARD_LEVEL;
+	const cost = atMaxLevel ? 0 : getUpgradeCost(level);
+	const canUpgrade = !atMaxLevel && canAffordUpgrade(currency, level);
+
+	if (selectedNameEl) selectedNameEl.textContent = def ? def.name : selected.cardId;
+	if (selectedMetaEl) {
+		const grind = selected.grind || 0;
+		selectedMetaEl.textContent = `Instance ${selected.instanceId.slice(0, 8)} · Grind +${grind}`;
+	}
+
+	if (statRowsEl) {
+		statRowsEl.innerHTML = '';
+		const rows = getForgeStatPreview(def, level);
+		for (const row of rows) {
+			const tr = document.createElement('tr');
+			tr.innerHTML = `<td>${row.label}</td><td>${row.current}</td><td>${row.next}</td>`;
+			statRowsEl.appendChild(tr);
+		}
+	}
+
+	if (upgradeCostEl) {
+		upgradeCostEl.textContent = atMaxLevel
+			? `Max level (${MAX_CARD_LEVEL}) reached`
+			: `Cost: ${cost} GOLD (you have ${currency})`;
+	}
+	if (upgradeBtn) {
+		upgradeBtn.disabled = !canUpgrade;
+		upgradeBtn.textContent = atMaxLevel ? 'Max Level' : 'Upgrade';
+	}
+	showForgeError('');
+}
+
+if (document.getElementById('lobby-tab-deck')) {
+	document.getElementById('lobby-tab-deck').addEventListener('click', () => setLobbyTab('deck'));
+}
+if (document.getElementById('lobby-tab-forge')) {
+	document.getElementById('lobby-tab-forge').addEventListener('click', () => setLobbyTab('forge'));
+}
+if (document.getElementById('forge-upgrade-btn')) {
+	document.getElementById('forge-upgrade-btn').addEventListener('click', () => {
+		if (!selectedForgeInstanceId) return;
+		socket.emit('upgradeCard', { instanceId: selectedForgeInstanceId });
+	});
 }
 
 // ── Card input handling ──
@@ -1411,6 +1594,13 @@ window.initScene = rendererInitScene;
 window.refillSlot = refillSlot;
 window.renderHand = renderHand;
 window.renderDeckEditor = renderDeckEditor;
+window.renderPhotonForge = renderPhotonForge;
+window.setLobbyTab = setLobbyTab;
+window.__setLobbyTabState = (tab, instanceId) => {
+	if (tab) activeLobbyTab = tab;
+	if (instanceId !== undefined) selectedForgeInstanceId = instanceId;
+};
+window.__getLobbyTabState = () => ({ activeLobbyTab, selectedForgeInstanceId });
 window.flashMesh = rendererFlashMesh;
 window.spawnDamageNumber = rendererSpawnDamageNumber;
 window.spawnHitSpark = rendererSpawnHitSpark;

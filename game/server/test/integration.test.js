@@ -2654,6 +2654,48 @@ describe('Lobby card sell and trade', () => {
 	});
 });
 
+describe('Card upgrade handler', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('upgrades an inventory instance through the socket event', async () => {
+		const player = gameState.players[socket._playerId];
+		player.currency = 500;
+		const instance = player.inventory.find((card) => card.cardId === 'iron_sword');
+
+		const upgradePromise = waitForEvent(socket, 'cardUpgradeResult');
+		socket.emit('upgradeCard', { instanceId: instance.instanceId });
+		const result = await upgradePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.newLevel).toBe(2);
+		expect(result.currency).toBe(400);
+		expect(result.inventory.find((card) => card.instanceId === instance.instanceId).level).toBe(2);
+	});
+
+	it('rejects socket upgrade when GOLD is insufficient', async () => {
+		const player = gameState.players[socket._playerId];
+		player.currency = 0;
+		const instance = player.inventory.find((card) => card.cardId === 'iron_sword');
+
+		const errorPromise = waitForEvent(socket, 'cardUpgradeError');
+		socket.emit('upgradeCard', { instanceId: instance.instanceId });
+		const error = await errorPromise;
+
+		expect(error.reason).toContain('Insufficient GOLD');
+		expect(instance.level).toBe(1);
+	});
+});
+
 describe('Enemy telegraph integration', () => {
 	let baseUrl, socket;
 

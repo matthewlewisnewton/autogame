@@ -196,6 +196,19 @@ function getCardSellValue(cardId) {
   return 5;
 }
 
+const MAX_CARD_LEVEL = 10;
+const UPGRADE_COST_BASE = 100;
+
+function getUpgradeCost(level) {
+  const currentLevel = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
+  return UPGRADE_COST_BASE * currentLevel;
+}
+
+function getLevelStatMultiplier(level) {
+  const lv = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
+  return 1 + (lv - 1) * 0.1;
+}
+
 function createCardInstance(cardId, overrides = {}) {
   if (!CARD_DEFS[cardId]) return null;
   const grind = Number.isFinite(overrides.grind) ? overrides.grind : 0;
@@ -370,6 +383,43 @@ function evolveCard(player, instanceId) {
     instance: { ...instance },
     fromCardId,
     toCardId
+  };
+}
+
+function upgradeCard(player, instanceId) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+  if (typeof instanceId !== 'string' || instanceId.length === 0) {
+    return { ok: false, reason: 'Missing instanceId' };
+  }
+
+  normalizePlayerInventory(player);
+
+  const instance = getInventoryInstance(player.inventory, instanceId);
+  if (!instance) {
+    return { ok: false, reason: `Unknown card instance: ${instanceId}` };
+  }
+
+  const currentLevel = instance.level || 1;
+  if (currentLevel >= MAX_CARD_LEVEL) {
+    return { ok: false, reason: `Card is already at max level (${MAX_CARD_LEVEL})` };
+  }
+
+  const cost = getUpgradeCost(currentLevel);
+  const currency = player.currency || 0;
+  if (currency < cost) {
+    return { ok: false, reason: `Insufficient GOLD (need ${cost}, have ${currency})` };
+  }
+
+  player.currency -= cost;
+  instance.level = currentLevel + 1;
+
+  return {
+    ok: true,
+    instance: { ...instance },
+    previousLevel: currentLevel,
+    newLevel: instance.level,
+    cost,
+    currency: player.currency
   };
 }
 
@@ -1357,6 +1407,11 @@ module.exports = {
   cardIdForDeckEntry,
   findAvailableInventoryInstance,
   evolveCard,
+  upgradeCard,
+  getUpgradeCost,
+  getLevelStatMultiplier,
+  MAX_CARD_LEVEL,
+  UPGRADE_COST_BASE,
   createPlayerProgress,
   extractPersistentData,
   persistenceKey,
