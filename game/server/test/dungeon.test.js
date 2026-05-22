@@ -578,6 +578,54 @@ describe('assignRoomRoles(layout)', () => {
       }
     }
   });
+
+  it('is deterministic — two calls with the same layout produce identical role assignments', () => {
+    const layout = generateLayout(42);
+    // generateLayout already calls assignRoomRoles internally, so roles are set.
+    // Strip roles and re-assign twice to verify determinism.
+    const rolesA = layout.rooms.map(r => ({ role: r.role, spawnWeight: r.spawnWeight, encounterTier: r.encounterTier }));
+    delete layout.rooms[0].role; // clear to re-assign
+    // We can't easily strip without side effects, so instead verify that two identical
+    // layouts produce the same roles.
+    const a = generateLayout(42);
+    const b = generateLayout(42);
+    for (let i = 0; i < a.rooms.length; i++) {
+      expect(a.rooms[i].role).toBe(b.rooms[i].role);
+      expect(a.rooms[i].spawnWeight).toBe(b.rooms[i].spawnWeight);
+      expect(a.rooms[i].encounterTier).toBeCloseTo(b.rooms[i].encounterTier, 5);
+    }
+  });
+
+  it('at least one room has role combat (when layout has > 1 room)', () => {
+    const layout = generateLayout(42);
+    if (layout.rooms.length > 1) {
+      const combats = layout.rooms.filter(r => r.role === 'combat');
+      expect(combats.length).toBeGreaterThan(0);
+    }
+  });
+
+  it('all rooms have role, spawnWeight, and encounterTier fields', () => {
+    const layout = generateLayout(42);
+    for (const room of layout.rooms) {
+      expect(typeof room.role).toBe('string');
+      expect(['start', 'combat', 'treasure']).toContain(room.role);
+      expect(typeof room.spawnWeight).toBe('number');
+      expect(typeof room.encounterTier).toBe('number');
+    }
+  });
+
+  it('all rooms remain reachable (BFS connectivity) after role assignment', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    // All distances should be finite — meaning every room is reachable from room 0
+    for (let i = 0; i < dist.length; i++) {
+      expect(dist[i]).toBeLessThan(Infinity);
+    }
+    // And the number of reachable rooms equals the total room count
+    const reachable = dist.filter(d => d < Infinity).length;
+    expect(reachable).toBe(layout.rooms.length);
+  });
 });
 
 // ── roomsByRole ──
