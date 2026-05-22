@@ -107,6 +107,32 @@ describe('renderDeckEditor()', () => {
 		expect(deckErrorEl.style.display).toBe('none');
 		expect(deckErrorEl.textContent).toBe('');
 	});
+
+	it('renders evolved cards with a lobby visual marker', async () => {
+		await import('../main.js');
+
+		const mockOwned = { steel_broadsword: 1 };
+		const mockDeck = ['steel_broadsword'];
+		const mockInventory = [
+			{
+				instanceId: 'steel-1',
+				cardId: 'steel_broadsword',
+				grind: 0,
+				level: 1,
+				isEvolved: true,
+				evolvedFrom: 'iron_sword',
+			},
+		];
+
+		window.__setDeckState(mockDeck, mockOwned, mockInventory);
+		window.renderDeckEditor();
+
+		const ownedEntry = document.querySelector('.owned-card-entry');
+		const deckEntry = document.querySelector('.deck-entry');
+		expect(ownedEntry.classList.contains('evolved-card')).toBe(true);
+		expect(deckEntry.classList.contains('evolved-card')).toBe(true);
+		expect(ownedEntry.querySelector('.evolved-badge').textContent).toBe('Evolved');
+	});
 });
 
 // ── flashMesh ──

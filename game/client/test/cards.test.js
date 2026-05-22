@@ -6,13 +6,14 @@ import {
 	weaponCardIds,
 	summonCardIds,
 	monsterCardIds,
+	EVOLUTION_TRANSFORMS,
 } from '../cards.js';
 
 // ── CARD_DEFS ──
 
 describe('CARD_DEFS', () => {
-	it('has exactly 4 entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(4);
+	it('has base and evolved card entries', () => {
+		expect(Object.keys(CARD_DEFS)).toHaveLength(8);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -51,6 +52,16 @@ describe('CARD_DEFS', () => {
 			type: 'monster',
 			charges: 1,
 		});
+	});
+
+	it('contains evolved cards with special effects', () => {
+		for (const evolvedId of Object.values(EVOLUTION_TRANSFORMS)) {
+			expect(CARD_DEFS[evolvedId]).toMatchObject({
+				id: evolvedId,
+				isEvolved: true,
+				specialEffect: expect.any(String),
+			});
+		}
 	});
 });
 
@@ -107,26 +118,30 @@ describe('CARD_TYPE_STYLE', () => {
 // ── Card ID Sets ──
 
 describe('card ID sets', () => {
-	it('weaponCardIds contains the two weapon card IDs', () => {
+	it('weaponCardIds contains base and evolved weapon card IDs', () => {
 		expect(weaponCardIds).toBeInstanceOf(Set);
 		expect(weaponCardIds.has('iron_sword')).toBe(true);
 		expect(weaponCardIds.has('flame_blade')).toBe(true);
+		expect(weaponCardIds.has('steel_broadsword')).toBe(true);
+		expect(weaponCardIds.has('inferno_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(2);
+		expect(weaponCardIds.size).toBe(4);
 	});
 
-	it('summonCardIds contains the summon card ID', () => {
+	it('summonCardIds contains base and evolved summon card IDs', () => {
 		expect(summonCardIds).toBeInstanceOf(Set);
 		expect(summonCardIds.has('battle_familiar')).toBe(true);
+		expect(summonCardIds.has('guardian_familiar')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
-		expect(summonCardIds.size).toBe(1);
+		expect(summonCardIds.size).toBe(2);
 	});
 
-	it('monsterCardIds contains the monster card ID', () => {
+	it('monsterCardIds contains base and evolved monster card IDs', () => {
 		expect(monsterCardIds).toBeInstanceOf(Set);
 		expect(monsterCardIds.has('dungeon_drake')).toBe(true);
+		expect(monsterCardIds.has('ancient_drake')).toBe(true);
 		expect(monsterCardIds.has('iron_sword')).toBe(false);
-		expect(monsterCardIds.size).toBe(1);
+		expect(monsterCardIds.size).toBe(2);
 	});
 });
