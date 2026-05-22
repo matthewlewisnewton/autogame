@@ -1547,3 +1547,26 @@ None. All acceptance criteria are met; the game starts and plays cleanly in the 
 
 ---
 
+
+## v0.68 — Cleanup nits from 098-cleanup-advanced-map-generation  (2026-05-22 01:32:33)
+
+## Code quality
+
+- **Scope:** Minimal — 2 comment lines + 53-line test file. No dead code or behavioral edits.
+- **Integration:** Client spawn comments now align with `dungeon.js` implementation (`find(r => r.role === 'start')` + `rooms[0]` fallback). Server-side spawn/role tests from 098 remain separate and unaffected.
+- **Console / server logs:** No uncaught client errors. Server `Rejected move` lines during W/D hold are normal swept-collision validation, not failures.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or change any `?scenario=` debug shortcut. Capture probes show `debugScenario: null` throughout normal lobby → ready → play flow. Nothing to audit under the debug-scenario checklist.
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are fully satisfied; runtime capture is clean; no integration regressions found in the live tree.
+
+---
+
