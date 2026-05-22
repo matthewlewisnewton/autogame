@@ -502,6 +502,13 @@ function bindSocketHandlers(s) {
 				rendererSpawnSummonEffect(origin, data.radius);
 			}
 		}
+		if (data.cardId === 'undead_commander') {
+			const origin = data.origin || { x: 0, z: 0 };
+			rendererSpawnSummonEffect(origin, 2);
+			for (const spawn of (data.summonedMinions || [])) {
+				rendererSpawnSummonEffect({ x: spawn.x, z: spawn.z }, 1.2);
+			}
+		}
 		if (data.hits && data.hits.length > 0) {
 			playSound('enemyHit');
 			const maps = getMeshMaps();
