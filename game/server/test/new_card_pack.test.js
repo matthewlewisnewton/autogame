@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -106,6 +106,18 @@ describe('new card combat helpers', () => {
 		const healed = healPlayer('p1', CARD_DEFS.healing_font.healAmount);
 		expect(healed).toBe(25);
 		expect(gameState.players.p1.hp).toBe(85);
+	});
+
+	it('Divine Grace heals 50% more than Healing Font and restores magic stones', () => {
+		expect(CARD_DEFS.divine_grace.healAmount).toBe(38);
+		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBe(10);
+		addPlayer('p1', { hp: 60, magicStones: 0 });
+		const healed = healPlayer('p1', CARD_DEFS.divine_grace.healAmount);
+		expect(healed).toBe(38);
+		expect(gameState.players.p1.hp).toBe(98);
+		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.divine_grace.magicStoneRestore);
+		expect(gained).toBe(10);
+		expect(gameState.players.p1.magicStones).toBe(10);
 	});
 
 	it('Gravity Well pulls enemies toward the origin', () => {

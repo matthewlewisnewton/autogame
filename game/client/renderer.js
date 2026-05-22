@@ -703,6 +703,38 @@ export function spawnSummonEffect(origin, radius) {
 }
 
 /**
+ * Golden heal burst for Divine Grace (heal + magic stone restore).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnDivineGraceEffect(origin, radius) {
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: 0xfde68a,
+		emissive: 0x86efac,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+	});
+}
+
+/**
  * Spawn an icosahedron spark at an enemy position (minion attack feedback).
  * @param {object} position - { x, y, z }
  */

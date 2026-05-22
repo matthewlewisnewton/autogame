@@ -969,6 +969,28 @@ function startServer(port) {
         return;
       }
 
+      if (cardDef.effect === 'divine_grace') {
+        const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
+        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius: SUMMON_RADIUS,
+          healAmount: healed,
+          magicStonesGained,
+        });
+
+        return;
+      }
+
       if (cardDef.effect === 'gravity_well') {
         const radius = cardDef.pullRadius || SUMMON_RADIUS;
         const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
