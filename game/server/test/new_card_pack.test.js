@@ -17,6 +17,7 @@ import {
 	applyFreezeInRadius,
 	pullEnemiesToward,
 	spawnDragonsBreathEffect,
+	spawnInfernoPillarEffect,
 	isEnemyFrozen,
 } from '../index.js';
 
@@ -56,7 +57,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -145,6 +146,28 @@ describe('new card combat helpers', () => {
 		const hpBefore = gameState.enemies[0].hp;
 		updateMinions();
 		expect(gameState.enemies[0].hp).toBeLessThan(hpBefore);
+	});
+
+	it('Inferno Pillar radial burst hits enemies behind the caster', () => {
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: -3, z: 0, hp: 40 }];
+		const result = collectRadialHits(0, 0, CARD_DEFS.inferno_pillar.attackRange, CARD_DEFS.inferno_pillar.damage);
+		expect(result.hits).toHaveLength(1);
+		expect(gameState.enemies[0].hp).toBe(40 - CARD_DEFS.inferno_pillar.damage);
+	});
+
+	it('Inferno Pillar leaves a ticking radial area effect', () => {
+		addPlayer('p1');
+		gameState.enemies = [
+			{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 },
+			{ id: 'e2', type: 'grunt', x: 0, z: -4, hp: 40 },
+		];
+		spawnInfernoPillarEffect(0, 0, CARD_DEFS.inferno_pillar, 'p1');
+		expect(gameState.areaEffects[0].type).toBe('inferno_pillar');
+		gameState.areaEffects[0].lastTickAt = Date.now() - CARD_DEFS.inferno_pillar.dotIntervalMs;
+		const hpBefore = gameState.enemies.map((enemy) => enemy.hp);
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBeLessThan(hpBefore[0]);
+		expect(gameState.enemies[1].hp).toBeLessThan(hpBefore[1]);
 	});
 
 	it('Skeleton Knight taunt draws enemy attacks toward the minion', () => {
