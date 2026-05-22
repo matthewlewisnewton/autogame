@@ -117,6 +117,19 @@ export function canUseSlot(slotIndex) {
 }
 
 /**
+ * Replace the draw pile with server-authoritative card ids.
+ *
+ * @param {string[] | null | undefined} cardIds
+ */
+export function setDrawPile(cardIds) {
+	deck.length = 0;
+	if (!Array.isArray(cardIds)) return;
+	for (const id of cardIds) {
+		deck.push(id);
+	}
+}
+
+/**
  * Reset hand / deck / cooldowns to empty defaults.
  * Useful for tests that need a clean slate between cases.
  */
