@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -125,6 +125,15 @@ describe('CARD_DEFS', () => {
 			type: 'summon',
 			effect: 'frost_nova',
 		});
+		expect(CARD_DEFS.glacier_collapse).toMatchObject({
+			id: 'glacier_collapse',
+			name: 'Glacier Collapse',
+			type: 'summon',
+			effect: 'glacier_collapse',
+			isEvolved: true,
+			specialEffect: 'shatter',
+		});
+		expect(EVOLUTION_TRANSFORMS.frost_nova).toBe('glacier_collapse');
 		expect(CARD_DEFS.healing_font).toMatchObject({
 			id: 'healing_font',
 			name: 'Healing Font',
@@ -243,12 +252,13 @@ describe('card ID sets', () => {
 		expect(summonCardIds.has('sacrificial_altar')).toBe(true);
 		expect(summonCardIds.has('chrono_trigger')).toBe(true);
 		expect(summonCardIds.has('frost_nova')).toBe(true);
+		expect(summonCardIds.has('glacier_collapse')).toBe(true);
 		expect(summonCardIds.has('healing_font')).toBe(true);
 		expect(summonCardIds.has('gravity_well')).toBe(true);
 		expect(summonCardIds.has('mana_leach')).toBe(true);
 		expect(summonCardIds.has('dragons_breath')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
-		expect(summonCardIds.size).toBe(10);
+		expect(summonCardIds.size).toBe(11);
 	});
 
 	it('monsterCardIds contains base, evolved, and synergistic monster card IDs', () => {
@@ -274,6 +284,7 @@ describe('card ID sets', () => {
 			'echo_blade',
 			'mana_leach',
 			'dragons_breath',
+			'glacier_collapse',
 		];
 		for (const cardId of packIds) {
 			expect(CARD_ACCENT_STYLE[cardId]).toMatchObject({

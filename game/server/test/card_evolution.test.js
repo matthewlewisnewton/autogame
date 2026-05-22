@@ -101,6 +101,20 @@ describe('card evolution', () => {
 		expect(snapshot.players.p1.inventory).toEqual(player.inventory);
 	});
 
+	it('evolves Frost Nova +10 into Glacier Collapse', () => {
+		const player = freshPlayer();
+		const instance = createCardInstance('frost_nova', { grind: EVOLUTION_GRIND_REQUIRED });
+		player.inventory.push(instance);
+		player.ownedCards.frost_nova = 1;
+		player.selectedDeck = [instance.instanceId, ...player.selectedDeck.slice(0, 3)];
+
+		const result = evolveCard(player, instance.instanceId);
+
+		expect(result.ok).toBe(true);
+		expect(result.toCardId).toBe('glacier_collapse');
+		expect(player.inventory.find((c) => c.instanceId === instance.instanceId).cardId).toBe('glacier_collapse');
+	});
+
 	it('defines every evolved card referenced by the transform table', () => {
 		for (const [baseCardId, evolvedCardId] of Object.entries(EVOLUTION_TRANSFORMS)) {
 			expect(CARD_DEFS[baseCardId]).toBeDefined();
