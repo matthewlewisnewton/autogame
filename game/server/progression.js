@@ -176,6 +176,18 @@ const CARD_DEFS = {
     effect: 'returning_projectile',
     specialEffect: 'returning_projectile',
   },
+  infinite_disk: {
+    id: 'infinite_disk',
+    name: 'Infinite Disk',
+    type: 'weapon',
+    damage: 18,
+    charges: 4,
+    attackRange: 8,
+    effect: 'triple_returning_projectile',
+    returnPasses: 3,
+    isEvolved: true,
+    specialEffect: 'triple_returning_projectile',
+  },
   frost_nova: {
     id: 'frost_nova',
     name: 'Frost Nova',
@@ -288,6 +300,7 @@ const EVOLUTION_TRANSFORMS = {
   battle_familiar: 'guardian_familiar',
   dungeon_drake: 'ancient_drake',
   saber_of_light: 'excalibur_photon',
+  photon_slicer: 'infinite_disk',
 };
 
 const CARD_SELL_VALUES = {
@@ -306,6 +319,7 @@ const CARD_SELL_VALUES = {
   chrono_trigger: 16,
   saber_of_light: 8,
   excalibur_photon: 12,
+  infinite_disk: 18,
 };
 
 function getCardSellValue(cardId) {

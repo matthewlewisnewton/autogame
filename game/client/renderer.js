@@ -647,11 +647,11 @@ export function applyWindupFlash(enemyId, isWindup) {
  * @param {object} origin - { x, z }
  * @param {object} direction - { x, z }
  */
-export function spawnAttackEffect(origin, direction) {
+export function spawnAttackEffect(origin, direction, style = {}) {
 	const geometry = new THREE.SphereGeometry(0.3, 8, 8);
 	const material = new THREE.MeshStandardMaterial({
-		color: 0xffdd44,
-		emissive: 0xffaa00,
+		color: style.color ?? 0xffdd44,
+		emissive: style.emissive ?? 0xffaa00,
 		emissiveIntensity: 0.8,
 		transparent: true,
 		opacity: 1.0,

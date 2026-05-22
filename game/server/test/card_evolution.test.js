@@ -140,4 +140,25 @@ describe('card evolution', () => {
 			});
 		}
 	});
+
+	it('evolves Photon Slicer +10 into Infinite Disk', () => {
+		const player = {
+			inventory: [
+				createCardInstance('photon_slicer', {
+					instanceId: 'slicer-plus-10',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { photon_slicer: 1 },
+			selectedDeck: ['slicer-plus-10'],
+		};
+
+		const result = evolveCard(player, 'slicer-plus-10');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('photon_slicer');
+		expect(result.toCardId).toBe('infinite_disk');
+		expect(player.inventory[0].cardId).toBe('infinite_disk');
+		expect(player.ownedCards.infinite_disk).toBe(1);
+	});
 });

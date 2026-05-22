@@ -466,13 +466,26 @@ function bindSocketHandlers(s) {
 		if (weaponCardIds.has(data.cardId)) {
 			const origin = data.origin || { x: 0, z: 0 };
 			const direction = data.direction || { x: 1, z: 0 };
-			const swingCount = data.swingCount || 1;
-			for (let swing = 0; swing < swingCount; swing++) {
-				const delayMs = data.specialEffect === 'photon_barrage' ? swing * 80 : 0;
-				if (delayMs > 0) {
-					setTimeout(() => rendererSpawnAttackEffect(origin, direction), delayMs);
-				} else {
-					rendererSpawnAttackEffect(origin, direction);
+			if (data.specialEffect === 'triple_returning_projectile' || data.cardId === 'infinite_disk') {
+				const perpX = -direction.z;
+				const perpZ = direction.x;
+				const offsets = [-0.6, 0, 0.6];
+				for (const offset of offsets) {
+					rendererSpawnAttackEffect(
+						{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
+						direction,
+						{ color: 0xa5f3fc, emissive: 0x22d3ee },
+					);
+				}
+			} else {
+				const swingCount = data.swingCount || 1;
+				for (let swing = 0; swing < swingCount; swing++) {
+					const delayMs = data.specialEffect === 'photon_barrage' ? swing * 80 : 0;
+					if (delayMs > 0) {
+						setTimeout(() => rendererSpawnAttackEffect(origin, direction), delayMs);
+					} else {
+						rendererSpawnAttackEffect(origin, direction);
+					}
 				}
 			}
 		}
