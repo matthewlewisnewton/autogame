@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -212,5 +212,50 @@ describe('new card combat helpers', () => {
 			gameState.enemies[0].z - gameState.minions[0].z
 		);
 		expect(distAfter).toBeGreaterThanOrEqual(distBefore - 0.5);
+	});
+
+	it('Thunderbird minion chains lightning damage to nearby enemies', () => {
+		addPlayer('p1', { x: 0, z: 0 });
+		gameState.enemies = [
+			{
+				id: 'e1',
+				type: 'grunt',
+				x: 6,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 6, z: 0 },
+			},
+			{
+				id: 'e2',
+				type: 'grunt',
+				x: 8,
+				z: 0,
+				hp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 8, z: 0 },
+			},
+		];
+		gameState.minions = [{
+			id: 'bird',
+			ownerId: 'p1',
+			type: 'thunderbird',
+			x: 0,
+			z: 0,
+			hp: 68,
+			attackRange: 11,
+			attackDamage: 18,
+			chainRadius: 5,
+			maxChainTargets: 2,
+			ttl: 30,
+		}];
+		gameState.run = { status: 'playing' };
+
+		updateMinions();
+		cleanupAfterDamage();
+		expect(gameState.enemies[0].hp).toBeLessThan(50);
+		expect(gameState.enemies[1].hp).toBeLessThan(50);
 	});
 });
