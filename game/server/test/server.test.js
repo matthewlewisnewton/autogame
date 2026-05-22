@@ -48,6 +48,10 @@ import {
 	normalizePlayerInventory,
 	getInventoryInstance,
 	createDrawDeckFromSelectedDeck,
+	initPlayerHand,
+	drawCardFromDeck,
+	drawReplacementCard,
+	validateUseCardHand,
 	stateSnapshot,
 	addMagicStones,
 	restoreCardCharges,
@@ -2597,6 +2601,108 @@ describe('createDrawDeckFromSelectedDeck(player)', () => {
 		const player = { selectedDeck, deck: [] };
 		createDrawDeckFromSelectedDeck(player);
 		expect(player.selectedDeck).toEqual(selectedDeck);
+	});
+});
+
+describe('server hand management', () => {
+	it('initPlayerHand deals up to 4 cards from the player deck', () => {
+		const player = {
+			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			deck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+		};
+
+		const hand = initPlayerHand(player);
+
+		expect(hand).toHaveLength(4);
+		expect(player.deck).toHaveLength(0);
+		expect(hand.every(card => card && card.id && card.remainingCharges === card.charges)).toBe(true);
+	});
+
+	it('drawCardFromDeck preserves evolved card metadata', () => {
+		const player = {
+			deck: ['inferno_edge'],
+		};
+
+		const card = drawCardFromDeck(player);
+
+		expect(card).toEqual(expect.objectContaining({
+			id: 'inferno_edge',
+			isEvolved: true,
+			specialEffect: 'fire_trail',
+		}));
+		expect(player.deck).toHaveLength(0);
+	});
+
+	it('drawReplacementCard replaces a slot or removes it when the deck is empty', () => {
+		const player = {
+			hand: [
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 0 },
+				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 0 },
+			],
+			deck: ['battle_familiar'],
+		};
+
+		drawReplacementCard(player, 0);
+		expect(player.hand[0].id).toBe('battle_familiar');
+		expect(player.deck).toHaveLength(0);
+
+		drawReplacementCard(player, 1);
+		expect(player.hand).toHaveLength(1);
+		expect(player.hand[0].id).toBe('battle_familiar');
+	});
+
+	it('validateUseCardHand rejects cards not present in the authoritative hand', () => {
+		const player = {
+			hand: [
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
+				null,
+				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 3 },
+			],
+		};
+
+		expect(validateUseCardHand(player, 0, 'iron_sword')).toEqual({
+			valid: true,
+			handCard: player.hand[0],
+		});
+		expect(validateUseCardHand(player, 0, 'flame_blade')).toEqual({
+			valid: false,
+			reason: 'Card not in hand',
+		});
+		expect(validateUseCardHand(player, 1, 'iron_sword')).toEqual({
+			valid: false,
+			reason: 'Card not in hand',
+		});
+	});
+
+	it('validateUseCardHand rejects exhausted charge cards', () => {
+		const player = {
+			hand: [{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 0 }],
+		};
+
+		expect(validateUseCardHand(player, 0, 'iron_sword')).toEqual({
+			valid: false,
+			reason: 'No charges remaining',
+		});
+	});
+
+	it('initPlayerHand works with instance-based selected decks', () => {
+		const progress = createPlayerProgress();
+		const player = {
+			inventory: progress.inventory,
+			selectedDeck: progress.inventory.map(instance => instance.instanceId),
+			deck: [],
+		};
+		normalizePlayerInventory(player);
+
+		createDrawDeckFromSelectedDeck(player);
+		initPlayerHand(player);
+
+		expect(player.hand).toHaveLength(4);
+		const handIds = player.hand.map(card => card.id).sort();
+		const deckCardIds = player.selectedDeck
+			.map(entry => cardIdForDeckEntry(entry, player.inventory))
+			.sort();
+		expect([...handIds, ...player.deck.slice().sort()].sort()).toEqual(deckCardIds);
 	});
 });
 

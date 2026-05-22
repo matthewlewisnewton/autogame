@@ -1611,6 +1611,39 @@ describe('Cooldown Enforcement (useCard)', () => {
 	});
 });
 
+describe('cardError handler — server hand rejection', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('shows a toast when the server rejects an unauthorized card use', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('cardError', { reason: 'Card not in hand' });
+
+		const toast = [...document.body.querySelectorAll('div')].find(el => el.textContent === 'Card not in hand');
+		expect(toast).toBeDefined();
+	});
+});
+
 // ── createEnemyMesh ──
 
 describe('createEnemyMesh()', () => {

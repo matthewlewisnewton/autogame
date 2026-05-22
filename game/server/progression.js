@@ -993,6 +993,26 @@ function drawReplacementCard(player, slotIndex) {
   }
 }
 
+function validateUseCardHand(player, slotIndex, cardId) {
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) {
+    return { valid: false, reason: 'Invalid slot' };
+  }
+  if (!player || !Array.isArray(player.hand)) {
+    return { valid: false, reason: 'Card not in hand' };
+  }
+
+  const handCard = player.hand[slotIndex];
+  if (!handCard || handCard.id !== cardId) {
+    return { valid: false, reason: 'Card not in hand' };
+  }
+
+  if (Number.isFinite(handCard.remainingCharges) && handCard.remainingCharges <= 0) {
+    return { valid: false, reason: 'No charges remaining' };
+  }
+
+  return { valid: true, handCard };
+}
+
 function addMagicStones(player, amount) {
   if (!player || !Number.isFinite(amount) || amount <= 0) return 0;
   const before = Number.isFinite(player.magicStones) ? player.magicStones : 0;
@@ -1362,6 +1382,7 @@ module.exports = {
   drawCardFromDeck,
   initPlayerHand,
   drawReplacementCard,
+  validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
   restoreHandCharges,
