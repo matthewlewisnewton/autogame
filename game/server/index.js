@@ -615,7 +615,19 @@ function startServer(port) {
       }
     }
 
-  socket.emit('init', { id: playerId, playerId, accountId, username: player.username, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, inventory: player.inventory, ownedCards: player.ownedCards });
+  socket.emit('init', {
+    id: playerId,
+    playerId,
+    accountId,
+    username: player.username,
+    state: gameState,
+    layoutSeed: gameState.layoutSeed,
+    layout: gameState.layout,
+    selectedDeck: player.selectedDeck,
+    inventory: player.inventory,
+    ownedCards: player.ownedCards,
+    ...buildQuestUpdatePayload(gameState)
+  });
 
   // Broadcast updated lobby on connect
   broadcastLobbyUpdate();
@@ -1006,6 +1018,8 @@ function startServer(port) {
     }
 
     gameState.selectedQuestId = questId;
+    const payload = buildQuestUpdatePayload(gameState);
+    io.emit('questUpdate', payload);
     broadcastLobbyUpdate();
   });
 
@@ -1401,6 +1415,11 @@ if (typeof module !== 'undefined' && module.exports) {
     get provider() { return getProvider(); },
     // Auth
     verifyToken,
-    getJWTSecret
+    getJWTSecret,
+    // Quests
+    QUEST_DEFS,
+    DEFAULT_QUEST_ID,
+    isValidQuestId,
+    buildQuestUpdatePayload
   };
 }
