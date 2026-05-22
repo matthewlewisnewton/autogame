@@ -18,6 +18,21 @@ export const passageFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d
 const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, roughness: 0.7 });
 export const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
 
+// Role-specific floor materials (shared across rooms to avoid per-room allocation)
+const roleFloorMaterials = {
+	start: new THREE.MeshStandardMaterial({ color: 0x3a5a3a, roughness: 0.8 }),
+	combat: floorMaterial, // default — no visual change
+	treasure: new THREE.MeshStandardMaterial({ color: 0x5a5a2a, roughness: 0.8 }),
+};
+
+// Treasure room marker material (emissive gold pillar)
+const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
+	color: 0xffd700,
+	emissive: 0xaa8800,
+	emissiveIntensity: 0.6,
+	roughness: 0.4,
+});
+
 /**
  * Remove all dungeon meshes from the scene and dispose geometries.
  * Shared materials are NOT disposed (they are reused across builds).
@@ -63,12 +78,24 @@ export function buildDungeon(scene, layout) {
 
 	// ── Build rooms ──
 	for (const room of layout.rooms) {
+		// Pick floor material based on room role (graceful fallback to default)
+		const floorMat = roleFloorMaterials[room.role] || floorMaterial;
+
 		// Room floor tile (raised slightly)
 		const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
-		const floorMesh = new THREE.Mesh(floorGeo, floorMaterial);
+		const floorMesh = new THREE.Mesh(floorGeo, floorMat);
 		floorMesh.position.set(room.x, FLOOR_Y, room.z);
 		scene.add(floorMesh);
 		meshes.push(floorMesh);
+
+		// Treasure room marker: glowing gold pillar at room center
+		if (room.role === 'treasure') {
+			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
+			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
+			marker.position.set(room.x, 0.75 + FLOOR_Y, room.z);
+			scene.add(marker);
+			meshes.push(marker);
+		}
 
 		// Room walls
 		for (const wall of room.walls) {
