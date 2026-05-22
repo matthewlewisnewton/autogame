@@ -52,6 +52,11 @@ import {
 	savePlayerData,
 	setTestProvider,
 	ENTITY_RADIUS,
+	PLAYER_RADIUS,
+	resolveWallCollision,
+	checkSweptCollision,
+	segmentAABBEntryT,
+	segmentIntersectsAABB,
 	isEntityPositionBlocked,
 	moveEntityToward,
 	MINION_FOLLOW_DISTANCE,
@@ -2818,6 +2823,47 @@ describe('isEntityPositionBlocked(x, z, radius)', () => {
 	it('defaults to ENTITY_RADIUS when radius is omitted', () => {
 		const room = gameState.layout.rooms[0];
 		expect(isEntityPositionBlocked(room.x, room.z)).toBe(false);
+	});
+});
+
+// ── server collision primitives ──
+
+describe('server collision primitives', () => {
+	const collider = { minX: 1.5, maxX: 2.5, minZ: -0.5, maxZ: 0.5 };
+	const expanded = {
+		minX: collider.minX - PLAYER_RADIUS,
+		maxX: collider.maxX + PLAYER_RADIUS,
+		minZ: collider.minZ - PLAYER_RADIUS,
+		maxZ: collider.maxZ + PLAYER_RADIUS,
+	};
+
+	it('allows endpoint touches when checking swept movement into a wall edge', () => {
+		expect(checkSweptCollision(0, 0, 1, 0, [collider])).toBe(true);
+		expect(checkSweptCollision(0, 0, 1, 0, [collider], { allowEndpointTouch: true })).toBe(false);
+		expect(checkSweptCollision(0, 0, 1.01, 0, [collider], { allowEndpointTouch: true })).toBe(true);
+	});
+
+	it('reports segment entry times and misses for parallel slab cases', () => {
+		expect(segmentAABBEntryT(0, 0, 2, 0, expanded)).toBeCloseTo(0.5);
+		expect(segmentAABBEntryT(0, 2, 2, 2, expanded)).toBeNull();
+		expect(segmentAABBEntryT(2, -2, 2, -1.5, expanded)).toBeNull();
+	});
+
+	it('detects segment intersections and parallel misses', () => {
+		expect(segmentIntersectsAABB(0, 0, 2, 0, expanded)).toBe(true);
+		expect(segmentIntersectsAABB(0, 2, 2, 2, expanded)).toBe(false);
+		expect(segmentIntersectsAABB(4, -2, 4, 2, expanded)).toBe(false);
+		expect(segmentIntersectsAABB(0, 2, 0, 3, expanded)).toBe(false);
+	});
+
+	it('resolves proposed wall overlaps back to the side the player came from', () => {
+		const horizontalWall = { minX: 0, maxX: 2, minZ: -1, maxZ: 1 };
+		expect(resolveWallCollision(0.3, 0, [horizontalWall], -1, 0)).toEqual({ x: -0.5, z: 0 });
+		expect(resolveWallCollision(1.7, 0, [horizontalWall], 3, 0)).toEqual({ x: 2.5, z: 0 });
+
+		const verticalWall = { minX: -1, maxX: 1, minZ: 0, maxZ: 2 };
+		expect(resolveWallCollision(0, 0.3, [verticalWall], 0, -1)).toEqual({ x: 0, z: -0.5 });
+		expect(resolveWallCollision(0, 1.7, [verticalWall], 0, 3)).toEqual({ x: 0, z: 2.5 });
 	});
 });
 

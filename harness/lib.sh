@@ -31,6 +31,38 @@ REVIEW_EASY_MODEL="${REVIEW_EASY_MODEL:-composer-2.5}" # top-level review for ea
 REVIEW_MEDIUM_MODEL="${REVIEW_MEDIUM_MODEL:-gpt-5.5-medium-fast}" # top-level review for medium tickets
 REVIEW_HARD_MODEL="${REVIEW_HARD_MODEL:-gpt-5.5-extra-high}" # top-level review for hard tickets
 AGENT_TIMEOUT="${AGENT_TIMEOUT:-720}"  # 12 min — composer is now the primary QA reviewer (gemini dropped)
+# IMPL_MODEL selects the sub-ticket IMPLEMENTER (run_subtask.sh step 1).
+#   ""              = default, route to run_qwen (local qwen CLI)
+#   "composer-2.5-fast" / "composer-2.5" / "gpt-5.5-*" / …  = cursor-agent --model <X>
+# The implementer must write files, so the cursor-agent path uses the WRITABLE
+# wrapper (no --mode ask). IMPL_TIMEOUT overrides AGENT_TIMEOUT for the impl call
+# only — composer can need longer than the 12-min QA ceiling on a real diff.
+IMPL_MODEL="${IMPL_MODEL:-}"
+IMPL_TIMEOUT="${IMPL_TIMEOUT:-1800}"   # 30 min — implementer ceiling when routed via cursor-agent
+# QA_MODEL prepends a cursor-agent reviewer as the PRIMARY sub-ticket QA hop
+# (run_subtask.sh step 3). When set, the chain becomes:
+#   1. cursor-agent/$QA_MODEL (NEW primary)        — READ-ONLY (--mode ask) so
+#      the QA agent cannot edit the code it judges (same rule as the existing
+#      cursor-agent QA fallback at run_agent_model).
+#   2. qwen self-review (was primary, now fallback)
+#   3. cursor-agent/$AGENT_MODEL (composer-2.5-fast fallback)
+#   4. agy / Gemini 3.5 Flash (High)
+#   5. claude (last resort)
+# Empty (default) leaves the original qwen-first chain untouched.
+QA_MODEL="${QA_MODEL:-}"
+# DECOMP_MODEL routes the ticket DECOMPOSER (run_ticket.sh, once per round)
+# through cursor-agent --model <X>. Uses the WRITABLE wrapper because the
+# decomposer creates `subtickets/*/ticket.md` files. Empty = qwen (legacy).
+DECOMP_MODEL="${DECOMP_MODEL:-}"
+DECOMP_TIMEOUT="${DECOMP_TIMEOUT:-1800}"
+# QWEN_DISABLED short-circuits run_qwen / run_qwen_vision so the local qwen
+# process can be unloaded (free up GPU) without every fallback chain stalling
+# on CLI timeouts. Pair with IMPL_MODEL/QA_MODEL/DECOMP_MODEL so the qwen
+# primary slots are replaced by cursor-agent. Other qwen callers (commit,
+# qwen-vision feedback, qwen_extract_review_files) already have graceful
+# fallbacks — fast-failing here lets those fallbacks fire immediately instead
+# of after a full QWEN_TIMEOUT.
+QWEN_DISABLED="${QWEN_DISABLED:-0}"
 # Antigravity CLI (Gemini 3.5 Flash, High). Model is pinned globally via the
 # interactive `/model` slash command and persisted server-side; there is NO
 # --model flag, so the harness has nothing to set per call. AGY_MODEL_LABEL is
@@ -44,6 +76,7 @@ QWEN_VISION_MODEL="${QWEN_VISION_MODEL:-${QWEN_MODEL:-qwen3.6:27b-q8_0}}"
 QWEN_VISION_BASE_URL="${QWEN_VISION_BASE_URL:-http://localhost:11434/v1}"
 QWEN_VISION_API_KEY="${QWEN_VISION_API_KEY:-ollama}"
 QWEN_VISION_TIMEOUT="${QWEN_VISION_TIMEOUT:-900}"
+QWEN_OPENAI_LOGGING="${QWEN_OPENAI_LOGGING:-1}"
 QWEN_VISION_OPENAI_LOGGING="${QWEN_VISION_OPENAI_LOGGING:-0}"
 PIPELINE_LOCAL_CHECKS="${PIPELINE_LOCAL_CHECKS:-1}" # run deterministic checks while screenshots/server startup happen
 PIPELINE_CHECK_CWD="${PIPELINE_CHECK_CWD:-game}"
@@ -53,6 +86,20 @@ PIPELINE_CLIENT_TIMEOUT="${PIPELINE_CLIENT_TIMEOUT:-120}"
 PIPELINE_CHECK_TIMEOUT="${PIPELINE_CHECK_TIMEOUT:-$((PIPELINE_SERVER_TIMEOUT + PIPELINE_CLIENT_TIMEOUT))}"
 PIPELINE_COVERAGE_ENABLED="${PIPELINE_COVERAGE_ENABLED:-1}" # run coverage on changed files before top-level review
 PIPELINE_COVERAGE_TIMEOUT="${PIPELINE_COVERAGE_TIMEOUT:-120}"
+
+# --- Live runtime overrides ---
+# Optional file sourced AFTER the default-assignment block above so its values
+# WIN over the `${X:-default}` defaults. Lets a long-running supervisor swap
+# tunables (IMPL_MODEL, MAX_ITER, *_TIMEOUT, …) between iterations without a
+# restart: edit the file, the next `bash run_ticket.sh` / `bash run_subtask.sh`
+# re-sources lib.sh and picks up the new values. Missing file is the normal
+# case — do not create it just to record defaults. Path can be overridden via
+# the RUNTIME_ENV env var if you want a per-experiment override file.
+RUNTIME_ENV="${RUNTIME_ENV:-$HARNESS_DIR/tmp/runtime.env}"
+if [ -f "$RUNTIME_ENV" ]; then
+  # shellcheck disable=SC1090
+  source "$RUNTIME_ENV"
+fi
 
 # Exit-code convention used across run_*.sh:
 #   0 = passed   1 = genuine task failure   2 = harness/tool failure (escalate)
@@ -512,6 +559,87 @@ function scanUsageDir(dir, target, remaining = { count: 120 }) {
   }
 }
 
+function parseHumanDuration(label) {
+  const s = String(label || '').trim().toLowerCase().replace(/\s+/g, ' ');
+  if (!s) return null;
+  let m = s.match(/^([\d.]+)\s*ms$/);
+  if (m) return Math.max(0, Math.round(Number(m[1])));
+  m = s.match(/^([\d.]+)\s*s$/);
+  if (m) return Math.max(0, Math.round(Number(m[1]) * 1000));
+  m = s.match(/^(\d+)\s*h(?:\s+(\d+)\s*m)?$/);
+  if (m) return (Number(m[1]) * 3600 + (Number(m[2]) || 0) * 60) * 1000;
+  m = s.match(/^(\d+)\s*m(?:\s+(\d+)\s*s)?$/);
+  if (m) return (Number(m[1]) * 60 + (Number(m[2]) || 0)) * 1000;
+  return null;
+}
+
+function qwenSessionStatsFromOutput(text) {
+  if (!text || !text.includes('Task Completed')) return null;
+  const durationMatch = text.match(/Duration:\s*([^|\n]+)/i);
+  const wallMs = durationMatch ? parseHumanDuration(durationMatch[1].trim()) : null;
+  const tokensMatch = text.match(/Tokens:\s*([\d,]+)/i);
+  const summaryTokens = tokensMatch ? Number(tokensMatch[1].replace(/,/g, '')) : null;
+  let toolMs = 0;
+  const toolSection = text.split(/Top tools:/i)[1];
+  if (toolSection) {
+    for (const line of toolSection.split('\n').slice(0, 16)) {
+      if (!/^\s*-\s+/.test(line)) break;
+      const m = line.match(/:\s*(\d+)\s+calls\b[^]*?\bavg\s+([\d.]+\s*(?:ms|s)|\d+\s*m(?:\s+\d+\s*s)?)/i);
+      if (!m) continue;
+      const count = Number(m[1]);
+      const avgMs = parseHumanDuration(m[2].trim());
+      if (count > 0 && avgMs > 0) toolMs += count * avgMs;
+    }
+  }
+  return {
+    wallMs: Number.isFinite(wallMs) ? wallMs : null,
+    toolMs: toolMs > 0 ? Math.round(toolMs) : 0,
+    summaryTokens: Number.isFinite(summaryTokens) ? summaryTokens : null,
+    hasSummary: true,
+  };
+}
+
+function collectOpenaiLogTimestamps(dir, times, remaining = { count: 120 }) {
+  if (!existsSync(dir) || remaining.count <= 0) return;
+  let entries = [];
+  try {
+    entries = readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return;
+  }
+  for (const entry of entries) {
+    if (remaining.count <= 0) return;
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      collectOpenaiLogTimestamps(path, times, remaining);
+      continue;
+    }
+    if (!entry.name.startsWith('openai-') || !entry.name.endsWith('.json')) continue;
+    remaining.count -= 1;
+    try {
+      const st = statSync(path);
+      if (!st.isFile() || st.size > 1024 * 1024) continue;
+      const data = JSON.parse(readFileSync(path, 'utf8'));
+      const ts = Date.parse(data.timestamp);
+      if (Number.isFinite(ts)) times.push(ts);
+    } catch {
+      // Ignore unreadable log files.
+    }
+  }
+}
+
+function toolMsFromOpenaiLogGaps(dir) {
+  const times = [];
+  collectOpenaiLogTimestamps(dir, times);
+  if (times.length < 2) return 0;
+  times.sort((a, b) => a - b);
+  let gapMs = 0;
+  for (let i = 1; i < times.length; i += 1) {
+    gapMs += Math.max(0, times[i] - times[i - 1]);
+  }
+  return Math.round(gapMs);
+}
+
 let outputText = '';
 try {
   outputText = readFileSync(outfile, 'utf8');
@@ -542,6 +670,30 @@ if (totalTokens === null && inputTokens !== null && outputTokens !== null) {
 const startedAtMs = toNumber(startedRaw);
 const endedAtMs = toNumber(endedRaw);
 const usageKind = process.env.HARNESS_USAGE_KIND || null;
+const isQwen = /^qwen(?:-|$)/i.test(agent);
+let wallDurationMs = startedAtMs !== null && endedAtMs !== null ? Math.max(0, endedAtMs - startedAtMs) : null;
+let toolDurationMs = null;
+let modelDurationMs = null;
+let tokensPerSecond = null;
+
+if (isQwen) {
+  const qwenStats = qwenSessionStatsFromOutput(outputText);
+  const logToolMs = toolMsFromOpenaiLogGaps(join(outputDir, 'qwen-openai-logs'));
+  if (qwenStats?.wallMs) wallDurationMs = qwenStats.wallMs;
+  const parsedToolMs = qwenStats?.toolMs || 0;
+  const toolMs = Math.max(parsedToolMs, logToolMs || 0);
+  if (toolMs > 0) toolDurationMs = toolMs;
+  if (wallDurationMs && wallDurationMs > 0) {
+    modelDurationMs = Math.max(1000, wallDurationMs - toolMs);
+  }
+  if (qwenStats?.summaryTokens && qwenStats.summaryTokens > 0) {
+    totalTokens = qwenStats.summaryTokens;
+  }
+  if (modelDurationMs && totalTokens) {
+    tokensPerSecond = totalTokens / (modelDurationMs / 1000);
+  }
+}
+
 const usagePayload = {
   key: `${outfile}#${attemptRaw}`,
   agent,
@@ -555,7 +707,11 @@ const usagePayload = {
   reason: reason || null,
   startedAtMs,
   endedAtMs,
-  durationMs: startedAtMs !== null && endedAtMs !== null ? Math.max(0, endedAtMs - startedAtMs) : null,
+  durationMs: wallDurationMs,
+  wallDurationMs,
+  toolDurationMs,
+  modelDurationMs,
+  tokensPerSecond,
   inputTokens,
   outputTokens,
   totalTokens: totalTokens || 0,
@@ -650,8 +806,24 @@ _run_cli() {
 
 # CLI wrappers — all non-interactive / unattended. Return 0 = ok, 2 = tool-failure.
 run_qwen() {  # run_qwen <prompt> <outfile>
-  local a=(qwen -y); [ -n "$QWEN_MODEL" ] && a+=(-m "$QWEN_MODEL"); a+=("$1")
-  _run_cli qwen "$2" "$QWEN_TIMEOUT" "$1" "${a[@]}"
+  local outfile="$2" logdir
+  if [ "$QWEN_DISABLED" = "1" ]; then
+    # Fast-fail when qwen is intentionally offline (e.g. GPU freed for another
+    # workload). Returns the standard tool-failure rc so every chain that
+    # currently treats qwen-timeout as "try the next tier" fires immediately.
+    mkdir -p "$(dirname "$outfile")" 2>/dev/null || true
+    printf '[qwen disabled — QWEN_DISABLED=1]\n' > "$outfile" 2>/dev/null || true
+    return 2
+  fi
+  logdir="$(dirname "$outfile")/qwen-openai-logs"
+  mkdir -p "$(dirname "$outfile")" 2>/dev/null || true
+  local a=(qwen -y)
+  if [ "$QWEN_OPENAI_LOGGING" = "1" ]; then
+    a+=(--openai-logging --openai-logging-dir "$logdir")
+  fi
+  [ -n "$QWEN_MODEL" ] && a+=(-m "$QWEN_MODEL")
+  a+=("$1")
+  _run_cli qwen "$outfile" "$QWEN_TIMEOUT" "$1" "${a[@]}"
 }
 write_qwen_vision_settings() {  # write_qwen_vision_settings <settings-file> <mcp-output-dir>
   local settings_file="$1" mcp_output_dir="$2"
@@ -711,6 +883,11 @@ NODE
 }
 run_qwen_vision() {  # run_qwen_vision <prompt> <outfile> <artifacts-dir>
   local prompt="$1" out="$2" artifacts_dir="$3"
+  if [ "$QWEN_DISABLED" = "1" ]; then
+    mkdir -p "$artifacts_dir" 2>/dev/null || true
+    printf '[qwen vision disabled — QWEN_DISABLED=1]\n' > "$out" 2>/dev/null || true
+    return 2
+  fi
   local settings_file="$artifacts_dir/qwen-vision-settings.json"
   local mcp_output_dir="$artifacts_dir/qwen-vision-mcp"
   write_qwen_vision_settings "$settings_file" "$mcp_output_dir" || return 2
@@ -759,6 +936,23 @@ run_agent_model_writable() {  # run_agent_model_writable <model> <prompt> <outfi
   HARNESS_USAGE_KIND=final_review _run_cli "agent/$model" "$out" "$AGENT_TIMEOUT" "$prompt" "${a[@]}"
 }
 
+# Sub-ticket IMPLEMENTER dispatcher. Selected by $IMPL_MODEL (see top of file).
+# Empty -> qwen (legacy default). Any non-empty value routes through cursor-agent
+# in writable mode so the implementer can actually edit files. Logs under
+# `impl/<model>` so progress UI can tell qwen-impl runs apart from cursor-impl
+# runs without scraping the wrapper's chosen output filename.
+run_impl() {  # run_impl <prompt> <outfile>
+  local prompt="$1" out="$2"
+  if [ -z "$IMPL_MODEL" ]; then
+    run_qwen "$prompt" "$out"
+    return $?
+  fi
+  local a=(agent -p --force --trust --model "$IMPL_MODEL")
+  a+=("$prompt")
+  HARNESS_USAGE_KIND=implementer \
+    _run_cli "impl/$IMPL_MODEL" "$out" "$IMPL_TIMEOUT" "$prompt" "${a[@]}"
+}
+
 # Recover a "write this file" block from a reviewer transcript when the agent
 # ran in a read-only mode and printed the content as chat instead of writing
 # it to disk. The review.md prompt tells the agent to write review.md/gaps.md/
@@ -773,45 +967,117 @@ run_agent_model_writable() {  # run_agent_model_writable <model> <prompt> <outfi
 #     ...file body...
 #     ```
 #
-# or as a markdown heading like `## \`gaps.md\``. Both shapes are recognised:
-# the first backtick-wrapped occurrence of the target filename "arms" the
-# extractor, the next fenced block (delimited by lines starting with ```)
-# is captured, the opening fence's language tag is stripped, and the body is
-# printed to stdout. Returns the empty string if no marker / no fenced block.
+# or as a markdown heading like `## gaps.md` or `## \`gaps.md\``. Both shapes
+# are recognised: the first target filename marker "arms" the extractor, the
+# next fenced block (delimited by lines starting with ```) is captured, the
+# opening fence's language tag is stripped, and the body is printed to stdout.
+# Returns the empty string if no marker / no fenced block is found.
 extract_file_block() {  # extract_file_block <transcript> <target-file>
   awk -v target="$2" '
+    function trim(s) {
+      sub(/^[[:space:]]+/, "", s)
+      sub(/[[:space:]]+$/, "", s)
+      return s
+    }
+    function is_marker(line, heading) {
+      if (index(line, "`" target "`") > 0) return 1
+      heading = line
+      if (heading !~ /^[[:space:]]*#[#]*[[:space:]]+/) return 0
+      sub(/^[[:space:]]*#[#]*[[:space:]]+/, "", heading)
+      heading = trim(heading)
+      gsub(/`/, "", heading)
+      sub(/:[[:space:]]*$/, "", heading)
+      return trim(heading) == target
+    }
     BEGIN { found=0; inblock=0 }
     {
       if (!inblock && !found) {
-        if (index($0, "`" target "`") > 0) { found=1 }
+        if (is_marker($0)) { found=1 }
         next
       }
       if (found && !inblock) {
-        if ($0 ~ /^```/) { inblock=1; next }
+        if ($0 ~ /^[[:space:]]*```/) { inblock=1; next }
         if ($0 ~ /^[[:space:]]*$/) next
         # non-blank non-fence: the marker was prose mentioning the filename
         # (e.g. "see gaps.md below"). Re-check this very line for a fresh
         # marker and otherwise resume scanning.
-        found = (index($0, "`" target "`") > 0) ? 1 : 0
+        found = is_marker($0) ? 1 : 0
         next
       }
       if (inblock) {
-        if ($0 ~ /^```/) { exit }
+        if ($0 ~ /^[[:space:]]*```/) { exit }
         print
       }
     }
   ' "$1"
 }
 
+# Walk the three expected review output files. If review.md is already on disk
+# and non-empty, the agent wrote it correctly and no recovery is needed
+# (gaps.md/nits.md may legitimately be absent on PASS or on FAIL-with-no-nits).
+# Otherwise, try deterministic transcript recovery first for each missing file.
+# qwen is only invoked as a last resort if review.md is still missing after the
+# deterministic pass; optional gaps.md/nits.md stay absent when the reviewer did
+# not print them. Never overwrites a non-empty file.
+recover_review_files() {  # recover_review_files <transcript> <dir>
+  local t="$1" d="$2" f path body preserve_dir qwen_ok
+  [ -f "$t" ] || return 0
+
+  # Skip recovery entirely if review.md is already populated — the agent wrote
+  # it, so any missing gaps.md / nits.md is intentional.
+  if [ -s "$d/review.md" ]; then
+    log "[review-recover] review.md already present — skipping transcript recovery"
+    return 0
+  fi
+
+  log "[review-recover] review.md missing — trying deterministic transcript recovery"
+  for f in review.md gaps.md nits.md; do
+    path="$d/$f"
+    [ -s "$path" ] && continue
+    body="$(extract_file_block "$t" "$f")"
+    if [ -n "$body" ]; then
+      printf '%s\n' "$body" > "$path"
+      log "[review-recover deterministic] wrote $f from transcript ($(wc -c < "$path" | tr -d ' ') bytes)"
+    fi
+  done
+
+  if [ -s "$d/review.md" ]; then
+    log "[review-recover] deterministic recovery found review.md; optional missing files left absent"
+    return 0
+  fi
+
+  preserve_dir="$(mktemp -d)"
+  for f in review.md gaps.md nits.md; do
+    [ -s "$d/$f" ] && cp "$d/$f" "$preserve_dir/$f"
+  done
+
+  log "[review-recover] deterministic recovery did not find review.md — invoking qwen extractor as last resort"
+  qwen_ok=0
+  if qwen_extract_review_files "$t" "$d"; then
+    qwen_ok=1
+  else
+    log "[review-recover] qwen extractor failed after deterministic recovery"
+  fi
+  for f in review.md gaps.md nits.md; do
+    if [ -s "$preserve_dir/$f" ]; then
+      cp "$preserve_dir/$f" "$d/$f"
+      log "[review-recover] preserved existing non-empty $f after qwen fallback"
+    fi
+  done
+  if [ "$qwen_ok" -eq 1 ]; then
+    for f in review.md gaps.md nits.md; do
+      [ -s "$d/$f" ] && log "[review-recover qwen] $f present ($(wc -c < "$d/$f" | tr -d ' ') bytes)"
+    done
+  fi
+  rm -rf "$preserve_dir"
+}
+
 # Use qwen to recover review.md / gaps.md / nits.md from a reviewer transcript
-# when the cursor-agent reviewer ran in read-only mode and printed the file
-# contents as chat instead of writing them. Qwen has native file-write tools
-# (Write/Edit), so we give it the *trimmed* transcript and three target paths
-# and let it copy each fenced block verbatim. This is the PRIMARY recovery
-# path: it tolerates format variations (header style, language tag,
-# surrounding prose) that a regex parser would miss. The deterministic awk
-# extractor in extract_file_block() runs as a fallback for any file qwen
-# leaves missing.
+# only when deterministic recovery cannot find review.md. Qwen has native
+# file-write tools (Write/Edit), so the last-resort path gives it the *trimmed*
+# transcript and three target paths and asks it to copy each fenced block
+# verbatim. Deterministic recovery remains the normal path for common marker and
+# heading formats.
 #
 # CONTEXT-SIZE GUARD — qwen runs locally on ollama with a small context
 # (~32k tokens ≈ 128kB text). A fat reviewer transcript would force
@@ -920,10 +1186,13 @@ is_pass() {  # is_pass <file>
 
 # --- Git helpers ---
 # commit_verified <message> — HARD GATE for verified progress.
-# Stages every working-tree change EXCEPT harness/ — in-flight harness edits
-# are operator state, not ticket work, and excluding them keeps the original
-# guarantee that a harness fix sitting in the working tree can never be
-# swept into a ticket commit. Wider than the legacy explicit allowlist
+# Stages every working-tree change EXCEPT harness/ by default — in-flight
+# harness edits are operator state, not ticket work, and excluding them keeps
+# the original guarantee that a harness fix sitting in the working tree can
+# never be swept into a normal game-ticket commit. Harness-scoped tickets set
+# COMMIT_INCLUDE_HARNESS=1 from run_subtask.sh so their verified harness edits
+# can still be committed by the deterministic fallback. Wider than the legacy
+# explicit allowlist
 # (`game/ TASKS.md LOGBOOK.md tickets/`) so sub-tickets that legitimately
 # edit CONTEXT.md, README.md, .github/, or root configs (package.json,
 # pnpm-lock.yaml, etc.) actually persist when qwen's own commit step fails
@@ -931,7 +1200,11 @@ is_pass() {  # is_pass <file>
 #   0 = committed (or nothing to commit — state already in HEAD)
 #   2 = commit could not be made → caller MUST escalate, never proceed
 commit_verified() {
-  git add -- . ':!harness'
+  if [ "${COMMIT_INCLUDE_HARNESS:-0}" = "1" ]; then
+    git add -- .
+  else
+    git add -- . ':!harness'
+  fi
   if git diff --cached --quiet; then
     log "[git] no changes to commit — verified state already in HEAD"
     emit_progress_event "commit_skipped" "{\"message\":$(json_string "$1"),\"reason\":\"no_changes\"}"

@@ -123,6 +123,18 @@ describe('resolveWallCollision()', () => {
 		// pMaxX = 0, wall minX = 0 → no overlap (pMaxX <= w.minX)
 		expect(result).toEqual({ x: -0.5, z: 0 });
 	});
+
+	it('performs a secondary push-out when the first wall resolution overlaps another wall', () => {
+		const colliders = [
+			{ minX: 0, maxX: 2, minZ: -1, maxZ: 1 },
+			{ minX: -1, maxX: 1, minZ: 0, maxZ: 2 },
+		];
+
+		const result = resolveWallCollision(0.3, 0, colliders);
+
+		expect(result.x).toBeCloseTo(-0.5);
+		expect(result.z).toBeCloseTo(-0.5);
+	});
 });
 
 // ── drawCard ──
