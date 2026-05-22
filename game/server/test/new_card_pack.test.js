@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -134,6 +134,27 @@ describe('new card combat helpers', () => {
 		addMagicStones(gameState.players.p1, result.magicStonesGained);
 		expect(result.magicStonesGained).toBe(16);
 		expect(gameState.players.p1.magicStones).toBe(16);
+	});
+
+	it('Soul Drain radial hits grant magic stones and heal the attacker', () => {
+		addPlayer('p1', { hp: 50, magicStones: 0 });
+		gameState.enemies = [
+			{ id: 'e1', type: 'grunt', x: 1, z: 0, hp: 40 },
+			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 40 },
+		];
+		const def = CARD_DEFS.soul_drain;
+		const result = collectRadialHits(0, 0, SUMMON_RADIUS, def.damage, {
+			magicStoneOnHit: def.magicStoneOnHit,
+			healOnHit: def.healOnHit,
+			healOnKill: def.healOnKill,
+			attackerId: 'p1',
+		});
+		addMagicStones(gameState.players.p1, result.magicStonesGained);
+		expect(def.damage).toBe(38);
+		expect(def.magicStoneOnHit).toBe(12);
+		expect(result.magicStonesGained).toBe(24);
+		expect(result.hpHealed).toBe(8);
+		expect(gameState.players.p1.hp).toBe(58);
 	});
 
 	it("Dragon's Breath leaves a ticking cone area effect", () => {
