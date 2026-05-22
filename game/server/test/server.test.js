@@ -43,6 +43,8 @@ import {
 	DEFAULT_QUEST_ID,
 	CARD_DEFS,
 	STARTING_DECK_IDS,
+	QUEST_DEFS,
+	DEFAULT_QUEST_ID,
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
@@ -1619,6 +1621,9 @@ describe('run state', () => {
 			expect(summary.players[0]).toHaveProperty('currency', 15);
 			expect(summary).toHaveProperty('defeatedEnemies', 1);
 			expect(summary).toHaveProperty('currencyCollected', 15);
+			expect(summary).toHaveProperty('questId', DEFAULT_QUEST_ID);
+			expect(summary).toHaveProperty('questName', QUEST_DEFS.training_caverns.name);
+			expect(summary.rewards.currency).toBe(QUEST_DEFS.training_caverns.rewardCurrency);
 		});
 
 		it('sums currencyCollected from multiple players', () => {

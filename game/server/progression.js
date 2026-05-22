@@ -459,10 +459,15 @@ function buildRunSummary(status) {
     runId: run.id,
     status,
     durationMs: Date.now() - run.startedAt,
+    questId: run.questId,
+    questName: run.questName,
     objective: { ...run.objective },
     players,
     defeatedEnemies: run.objective.defeatedEnemies,
-    currencyCollected: players.reduce((sum, p) => sum + p.currency, 0)
+    currencyCollected: players.reduce((sum, p) => sum + p.currency, 0),
+    rewards: {
+      currency: run.rewardCurrency ?? 0
+    }
   };
 }
 

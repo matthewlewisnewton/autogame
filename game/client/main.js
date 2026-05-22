@@ -68,6 +68,9 @@ import {
 	getPickedUpLootIds,
 	getWindupFlashing,
 } from './renderer.js';
+import {
+	renderQuestBoard,
+} from './questBoard.js';
 
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
@@ -76,6 +79,8 @@ const questBoardEl = document.getElementById('quest-board');
 const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const lobbyEl = document.getElementById('lobby');
+const questBoardEl = document.getElementById('quest-board');
+const questErrorEl = document.getElementById('quest-error');
 const uiEl = document.getElementById('ui');
 const logoutBtn = document.getElementById('logout-btn');
 const cardHandEl = document.getElementById('card-hand');
@@ -136,6 +141,7 @@ const msLabel = document.getElementById('ms-label');
 const objectiveHudEl = document.getElementById('objective-hud');
 const runSummaryOverlay = document.getElementById('run-summary-overlay');
 const summaryStatusEl = document.getElementById('summary-status');
+const summaryQuestEl = document.getElementById('summary-quest');
 const summaryDurationEl = document.getElementById('summary-duration');
 const summaryEnemiesEl = document.getElementById('summary-enemies');
 const summaryCurrencyEl = document.getElementById('summary-currency');
@@ -148,6 +154,8 @@ const debugScenario = new URLSearchParams(window.location.search).get('debugScen
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let debugScenarioRequested = false;
 let debugScenarioResult = null;
+let availableQuests = [];
+let selectedQuestId = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
 // ── Socket setup ──
@@ -222,9 +230,7 @@ function bindSocketHandlers(s) {
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
 		renderDeckEditor();
-		if (data.state) {
-			applyQuestBoardState(null, data.state.selectedQuestId);
-		}
+		applyQuestBoardState(data.quests, data.selectedQuestId || (data.state && data.state.selectedQuestId));
 
 		// Auth: display username and show logout button if logged in
 		if (data.accountId) {
@@ -485,6 +491,20 @@ function bindSocketHandlers(s) {
 				readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
 			}
 		}
+		if (data.quests || data.selectedQuestId) {
+			applyQuestBoardState(data.quests, data.selectedQuestId);
+		}
+	});
+
+	s.on('questUpdate', (data) => {
+		if (data && (data.quests || data.selectedQuestId)) {
+			applyQuestBoardState(data.quests, data.selectedQuestId);
+		}
+	});
+
+	s.on('questError', (data) => {
+		if (!data || !data.reason) return;
+		showQuestError(data.reason);
 	});
 
 	s.on('startGame', () => {
@@ -1131,6 +1151,10 @@ function showRunSummary(data) {
 
 	const statusText = data.status === 'victory' ? 'Victory!' : 'Run Failed';
 	summaryStatusEl.textContent = statusText;
+	if (summaryQuestEl) {
+		const questLabel = data.questName || (data.objective && data.objective.label) || '';
+		summaryQuestEl.textContent = questLabel ? `Quest: ${questLabel}` : '';
+	}
 	summaryDurationEl.textContent = `Duration: ${formatDuration(data.durationMs || 0)}`;
 	summaryEnemiesEl.textContent = `Enemies defeated: ${data.defeatedEnemies || 0}`;
 	summaryCurrencyEl.textContent = `Currency collected: ${data.currencyCollected || 0}`;
