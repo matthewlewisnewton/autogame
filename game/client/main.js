@@ -79,6 +79,7 @@ import {
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
+	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
 	markLootCollected as rendererMarkLootCollected,
 	disposeMeshMap as rendererDisposeMeshMap,
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
@@ -508,6 +509,10 @@ function bindSocketHandlers(s) {
 			for (const spawn of (data.summonedMinions || [])) {
 				rendererSpawnSummonEffect({ x: spawn.x, z: spawn.z }, 1.2);
 			}
+		}
+		if (data.specialEffect === 'chain_lightning' && data.origin) {
+			rendererSpawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+			playSound('enemyHit');
 		}
 		if (data.hits && data.hits.length > 0) {
 			playSound('enemyHit');

@@ -165,6 +165,31 @@ describe('card evolution', () => {
 		expect(player.ownedCards.divine_grace).toBe(1);
 	});
 
+	it('evolves Storm Eagle +10 into Thunderbird', () => {
+		const player = {
+			inventory: [
+				createCardInstance('storm_eagle', {
+					instanceId: 'eagle-instance',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { storm_eagle: 1 },
+			selectedDeck: ['eagle-instance'],
+		};
+
+		const result = evolveCard(player, 'eagle-instance');
+
+		expect(result.ok).toBe(true);
+		expect(result.toCardId).toBe('thunderbird');
+		expect(player.inventory[0].cardId).toBe('thunderbird');
+		expect(CARD_DEFS.thunderbird).toMatchObject({
+			minionHp: 68,
+			attackRange: 11,
+			attackDamage: 18,
+			specialEffect: 'chain_lightning',
+		});
+	});
+
 	it('defines every evolved card referenced by the transform table', () => {
 		for (const [baseCardId, evolvedCardId] of Object.entries(EVOLUTION_TRANSFORMS)) {
 			expect(CARD_DEFS[baseCardId]).toBeDefined();

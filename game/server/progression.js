@@ -269,6 +269,21 @@ const CARD_DEFS = {
     attackDamage: 12,
     specialEffect: 'ranged_strike',
   },
+  thunderbird: {
+    id: 'thunderbird',
+    name: 'Thunderbird',
+    type: 'monster',
+    charges: 1,
+    magicStoneCost: 40,
+    effect: 'thunderbird',
+    minionHp: 68,
+    attackRange: 11,
+    attackDamage: 18,
+    chainRadius: 5,
+    maxChainTargets: 2,
+    isEvolved: true,
+    specialEffect: 'chain_lightning',
+  },
   gravity_well: {
     id: 'gravity_well',
     name: 'Gravity Well',
@@ -342,6 +357,7 @@ const EVOLUTION_TRANSFORMS = {
   frost_nova: 'glacier_collapse',
   healing_font: 'divine_grace',
   skeleton_knight: 'undead_commander',
+  storm_eagle: 'thunderbird',
 };
 
 const CARD_SELL_VALUES = {
@@ -355,6 +371,7 @@ const CARD_SELL_VALUES = {
   ancient_drake: 20,
   divine_grace: 18,
   undead_commander: 18,
+  thunderbird: 18,
   mana_prism: 10,
   harvesting_scythe: 6,
   sacrificial_altar: 14,

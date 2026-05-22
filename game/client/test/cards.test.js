@@ -186,6 +186,13 @@ describe('CARD_DEFS', () => {
 			name: 'Storm Eagle',
 			type: 'monster',
 		});
+		expect(CARD_DEFS.thunderbird).toMatchObject({
+			id: 'thunderbird',
+			name: 'Thunderbird',
+			type: 'monster',
+			isEvolved: true,
+			specialEffect: 'chain_lightning',
+		});
 		expect(CARD_DEFS.gravity_well).toMatchObject({
 			id: 'gravity_well',
 			name: 'Gravity Well',
@@ -308,6 +315,7 @@ describe('card ID sets', () => {
 		expect(monsterCardIds.has('skeleton_knight')).toBe(true);
 		expect(monsterCardIds.has('undead_commander')).toBe(true);
 		expect(monsterCardIds.has('storm_eagle')).toBe(true);
+		expect(monsterCardIds.has('thunderbird')).toBe(true);
 		expect(monsterCardIds.has('iron_sword')).toBe(false);
 		expect(monsterCardIds.size).toBe(6);
 	});
@@ -322,6 +330,7 @@ describe('card ID sets', () => {
 			'skeleton_knight',
 			'undead_commander',
 			'storm_eagle',
+			'thunderbird',
 			'gravity_well',
 			'echo_blade',
 			'mana_leach',
