@@ -1,0 +1,58 @@
+{
+  "timestamp": "2026-05-22T08:16:41.486Z",
+  "request": {
+    "model": "qwen3.6:27b-q8_0",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are selecting memories that will be useful to an AI coding assistant as it processes a user's query. You will be given the user's query and a list of available memory files with their filenames and descriptions.\n\nReturn a list of filenames for the memories that will clearly be useful to the assistant as it processes the user's query (up to 5). Only include memories that you are certain will be helpful based on their name and description.\n- If you are unsure if a memory will be useful in processing the user's query, then do not include it in your list. Be selective and discerning.\n- If there are no memories in the list that would clearly be useful, feel free to return an empty list.\n- If a list of recently-used tools is provided, do not select memories that are usage reference or API documentation for those tools (the assistant is already exercising them). DO still select memories containing warnings, gotchas, or known issues about those tools — active use is exactly when those matter."
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "Query: You are the PLANNER in an autonomous game-development harness.\n\nRead `CONTEXT.md`, `game/docs/design.md`, and the top-level ticket at:\n\n  tickets/099-cleanup-cleanup-advanced-map-generation/ticket.md\n\nThis is the first decomposition of this ticket.\n\nYOUR JOB — break the top-level ticket into small SUB-TICKETS:\n\n1. Decide the smallest set of sub-tickets (1–6) that together fully deliver the\n   top-level ticket. Each sub-ticket must be independently implementable in one\n   focused pass AND verifiable by looking at the running game.\n2. For each sub-ticket, create a folder and a `ticket.md` inside it:\n\n     tickets/099-cleanup-cleanup-advanced-map-generation/subtickets/NN-short-name/ticket.md\n\n   Number them `01`, `02`, … in dependency order. Each `ticket.md` must contain:\n   - a `#` title line,\n   - a 1–3 sentence description,\n   - a `## Acceptance Criteria` section with a concrete, checkable bullet list,\n   - a `## Technical Specs` section naming the exact files under `game/` to\n     change and the key implementation details.\n   - a `## Verification: visual` OR `## Verification: code` line.\n     **DEFAULT TO `code`.** `code` QA reads the whole diff plus the logs — it\n     can verify HTML, CSS, structure, logic, handlers, server state, and\n     \"does X exist\". `visual` QA only sees screenshots of ONE happy-path run\n     (game loads, two players join, WASD movement) and can verify nothing else.\n     Use `visual` ONLY when EVERY acceptance criterion is purely about how\n     something renders, looks, or animates on screen in that run — and NONE of\n     the criteria concern a function/handler/structure existing, server state,\n     timing, a value/rate, an error path, or a disconnect/reconnect. If a\n     sub-ticket mixes \"it looks right\" with \"X exists\" or \"X behaves\", it is\n     `code`. When unsure, `code`. (Mis-picking `code` only loses a pixel-level\n     look check; mis-picking `visual` makes the sub-ticket fail forever.)\n\nRULES:\n- Do NOT write any game code in this step. Only create the sub-ticket folders\n  and their `ticket.md` files.\n- Do NOT run servers or git.\n- Existing sub-ticket folders that contain a `.passed` marker are DONE —\n  never modify, rename, or delete them.\n- An existing sub-ticket folder WITHOUT a `.passed` marker failed in an\n  earlier round. If it is mis-scoped (e.g. wrong verification mode, or it\n  bundles two concerns), and you are creating a better-scoped replacement,\n  DELETE the old failed folder (`rm -rf` it) — a failed sub-ticket that is\n  never retired makes the whole ticket impossible to complete.\n- Number any new sub-tickets after the highest existing number.\n\nWhen finished, print the list of sub-ticket folder paths you created.\n\nAvailable memories:\n- [project] project_023_advanced_map_generation_progress.md (2026-05-22T08:06:26.311Z): Decomposition of 023-advanced-map-generation into 5 sub-tickets (01-05)\n- [project] project_097_cleanup_user_accounts_progress.md (2026-05-22T06:06:30.242Z): Commit hashes for completed sub-tickets of 097-cleanup-user-accounts\n- [feedback] feedback_no_amend.md (2026-05-22T05:36:12.206Z): Never use git commit --amend under any circumstances - commits are permanent even without push\n- [project] project_022_user_accounts_progress.md (2026-05-22T01:50:13.376Z): Commit hashes for completed sub-tickets of 022-user-accounts\n- [project] project_021_persistence_progress.md (2026-05-21T16:54:22.662Z): Commit hashes for completed sub-tickets of 021-persistence\n- [project] project_096_cleanup_audit_client_server_progress.md (2026-05-21T12:50:17.681Z): Commit hashes for completed sub-tickets of 096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server\n- [project] project_095_cleanup_audit_client_server_progress.md (2026-05-21T12:13:27.251Z): Commit hashes for completed sub-tickets of 095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server\n- [project] project_020_audit_client_server_progress.md (2026-05-21T05:51:10.963Z): Commit hashes for completed sub-tickets of 020-audit-client-server\n- [project] project_086_cleanup_pnpm_and_security_progress.md (2026-05-20T15:50:39.283Z): Tracks committed sub-tickets of 086-cleanup-pnpm-and-security and their commit hashes\n- [project] project_081_cleanup_enemy_type_spawner_progress.md (2026-05-20T12:55:04.901Z): Tracks committed sub-tickets of 081-cleanup-enemy-type-spawner and their commit hashes\n- [project] project_082_cleanup_reset_state_on_last_disconnect_progress.md (2026-05-20T12:50:59.445Z): Tracks committed sub-tickets of 082-cleanup-reset-state-on-last-disconnect and their commit hashes\n- [project] project_058_reset_state_on_last_disconnect_progress.md (2026-05-20T12:34:20.201Z): Tracks committed sub-tickets of 058-reset-state-on-last-disconnect and their commit hashes\n- [project] project_078_enemy_type_spawner_progress.md (2026-05-20T12:04:30.020Z): Tracks committed sub-tickets of 078-enemy-type-spawner and their commit hashes\n- [project] project_077_enemy_types_skirmisher_miniboss_progress.md (2026-05-20T10:47:09.285Z): Tracks committed sub-tickets of 077-enemy-types-skirmisher-miniboss and their commit hashes\n- [project] project_031_cleanup_test_coverage_progress.md (2026-05-20T00:07:03.673Z): Commit hashes for completed sub-tickets of 031-cleanup-test-coverage\n- [project] project_033_cleanup_run_summary_return_to_lobby_progress.md (2026-05-19T23:02:29.490Z): Tracks committed sub-tickets of 033-cleanup-run-summary-return-to-lobby and their commit hashes\n- [project] project_015_dungeon_room_generation_progress.md (2026-05-19T17:49:22.435Z): Tracks committed sub-tickets of 015-dungeon-room-generation and their commit hashes\n- [project] project_030_encounter_telegraphs_audio_progress.md (2026-05-19T16:12:33.560Z): Tracks committed sub-tickets of 030-encounter-telegraphs-audio and their commit hashes\n- [project] project_029_combat_feedback_readability_progress.md (2026-05-19T14:50:36.083Z): Tracks committed sub-tickets of 029-combat-feedback-readability and their commit hashes\n- [project] project_028_lobby_deck_editor_progress.md (2026-05-19T11:23:41.379Z): Tracks committed sub-tickets of 028-lobby-deck-editor and their commit hashes\n- [project] project_026_card_rewards_deckbuilding_progress.md (2026-05-19T09:56:23.208Z): Tracks committed sub-tickets of 026-card-rewards-deckbuilding and their commit hashes\n- [project] project_027_run_summary_return_to_lobby_progress.md (2026-05-19T08:06:06.544Z): Tracks committed sub-tickets of 027-run-summary-return-to-lobby\n- [project] project_025_dungeon_run_objectives_progress.md (2026-05-19T07:22:32.356Z): Tracks which sub-tickets of 025-dungeon-run-objectives have been committed and their commit hashes\n- [project] project_017_test_coverage_progress.md (2026-05-19T04:24:25.981Z): Tracks which sub-tickets of 017-test-coverage have been committed and their commit hashes"
+          }
+        ]
+      }
+    ],
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "respond_in_schema",
+          "description": "Provide the response in provided schema",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "selected_memories": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "selected_memories"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ]
+  },
+  "response": null,
+  "error": {
+    "message": "Request was aborted.",
+    "stack": "Error: Request was aborted.\n    at OpenAI.makeRequest (file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:157482:19)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:158883:36\n    at async ContentGenerationPipeline.executeWithErrorHandling (file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:159129:26)\n    at async file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:148196:32\n    at async file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:142376:24\n    at async retryWithBackoff (file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:174938:22)\n    at async BaseLlmClient.generateJson (file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:175349:26)\n    at async runSideQuery (file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:176555:22)\n    at async selectRelevantAutoMemoryDocumentsByModel (file:///home/matt/.nvm/versions/node/v22.18.0/lib/node_modules/@qwen-code/qwen-code/cli.js:240955:20)"
+  },
+  "system": {
+    "hostname": "dreams1",
+    "platform": "linux",
+    "release": "6.12.10-76061203-generic",
+    "nodeVersion": "v22.18.0"
+  }
+}
