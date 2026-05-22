@@ -8,7 +8,7 @@ import {
 	renderQuestBoard,
 } from './questBoard.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
 import {
 	playSound,
@@ -232,6 +232,9 @@ function bindSocketHandlers(s) {
 		mySelectedDeck = data.selectedDeck || [];
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
+		if (data.state && data.state.players && data.state.players[myId]) {
+			myCurrency = data.state.players[myId].currency || 0;
+		}
 		renderDeckEditor();
 		applyQuestBoardState(data.quests, data.selectedQuestId || (data.state && data.state.selectedQuestId));
 
@@ -482,11 +485,34 @@ function bindSocketHandlers(s) {
 		showQuestError(data.reason);
 	});
 
+	s.on('cardInventoryUpdate', (data) => {
+		if (!data) return;
+		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+		if (Array.isArray(data.inventory)) myInventory = data.inventory;
+		if (data.ownedCards) myOwnedCards = data.ownedCards;
+		if (Number.isFinite(data.currency)) myCurrency = data.currency;
+		renderDeckEditor();
+	});
+
+	s.on('tradeOffer', (data) => {
+		if (!data || !data.tradeId) return;
+		pendingTradeOffer = data;
+		renderTradeOffer();
+	});
+
+	s.on('tradeUpdate', (data) => {
+		if (!data) return;
+		if (data.status === 'accepted' || data.status === 'rejected') {
+			if (pendingTradeOffer && pendingTradeOffer.tradeId === data.tradeId) {
+				pendingTradeOffer = null;
+			}
+			renderTradeOffer();
+		}
+	});
+
 	s.on('lobbyUpdate', (data) => {
 		renderPlayerList(data.players);
-		if (data.quests || data.selectedQuestId) {
-			applyQuestBoardState(data.quests, data.selectedQuestId);
-		}
+		renderTradeForm(data.players);
 		if (data.players && myId) {
 			const me = data.players.find((p) => p.id === myId);
 			if (me) {
@@ -576,6 +602,8 @@ let availableQuests = [];
 let selectedQuestId = 'training_caverns';
 let currentCardChoices = [];
 let claimedCardRewardId = null;
+let myCurrency = 0;
+let pendingTradeOffer = null;
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 
 function applyQuestBoardState(quests, questId) {
@@ -767,6 +795,15 @@ const ownedCardsListEl = document.getElementById('owned-cards-list');
 const selectedDeckListEl = document.getElementById('selected-deck-list');
 const deckSizeDisplayEl = document.getElementById('deck-size-display');
 const deckErrorEl = document.getElementById('deck-error');
+const lobbyCurrencyDisplayEl = document.getElementById('lobby-currency-display');
+const pendingTradeOfferEl = document.getElementById('pending-trade-offer');
+const pendingTradeTextEl = document.getElementById('pending-trade-text');
+const acceptTradeBtn = document.getElementById('accept-trade-btn');
+const rejectTradeBtn = document.getElementById('reject-trade-btn');
+const tradeTargetSelectEl = document.getElementById('trade-target-select');
+const tradeOfferSelectEl = document.getElementById('trade-offer-select');
+const tradeRequestSelectEl = document.getElementById('trade-request-select');
+const offerTradeBtn = document.getElementById('offer-trade-btn');
 
 function getDeckInventory() {
 	return Array.isArray(myInventory) ? myInventory : [];
@@ -822,6 +859,10 @@ function renderDeckEditor() {
 		const evolvableInstance = findEvolvableInstance(cardId);
 		const evolvedBadge = def.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
 
+		const sellableInstance = findAvailableInventoryInstance(cardId);
+		const sellValue = getCardSellValue(cardId);
+		const canSell = !!sellableInstance;
+
 		const entry = document.createElement('div');
 		entry.className = `owned-card-entry${def.isEvolved ? ' evolved-card' : ''}`;
 		entry.innerHTML = `
@@ -829,9 +870,18 @@ function renderDeckEditor() {
       <span class="card-label">${def.name}</span>
       ${evolvedBadge}
       <span class="card-count">${count}</span>
+      <span class="card-sell-value">${sellValue}g</span>
+      <button class="sell-card-btn" ${canSell ? '' : 'disabled'}>Sell</button>
       <button class="evolve-card-btn" ${evolvableInstance ? '' : 'disabled'}>Evolve</button>
       <button class="deck-add-btn" ${canAdd ? '' : 'disabled'}>+${inDeckCount > 0 ? ` (${inDeckCount})` : ''}</button>
     `;
+		const sellBtn = entry.querySelector('.sell-card-btn');
+		sellBtn.addEventListener('click', () => {
+			const instance = findAvailableInventoryInstance(cardId);
+			if (instance) {
+				socket.emit('sellCard', { instanceId: instance.instanceId, cardId });
+			}
+		});
 		const evolveBtn = entry.querySelector('.evolve-card-btn');
 		evolveBtn.addEventListener('click', () => {
 			const instance = findEvolvableInstance(cardId);
@@ -882,6 +932,102 @@ function renderDeckEditor() {
 
 	deckErrorEl.style.display = 'none';
 	deckErrorEl.textContent = '';
+
+	if (lobbyCurrencyDisplayEl) {
+		lobbyCurrencyDisplayEl.textContent = `Gold: ${myCurrency}`;
+	}
+	renderTradeForm();
+}
+
+function renderTradeOffer() {
+	if (!pendingTradeOfferEl || !pendingTradeTextEl) return;
+	if (!pendingTradeOffer) {
+		pendingTradeOfferEl.style.display = 'none';
+		pendingTradeTextEl.textContent = '';
+		return;
+	}
+
+	const offeredName = CARD_DEFS[pendingTradeOffer.offeredCardId]?.name || pendingTradeOffer.offeredCardId;
+	const requestedName = CARD_DEFS[pendingTradeOffer.requestedCardId]?.name || pendingTradeOffer.requestedCardId;
+	const fromName = pendingTradeOffer.fromUsername || pendingTradeOffer.fromPlayerId;
+	pendingTradeTextEl.textContent = `${fromName} offers ${offeredName} for your ${requestedName}`;
+	pendingTradeOfferEl.style.display = 'block';
+}
+
+function renderTradeForm(players = null) {
+	if (!tradeTargetSelectEl || !tradeOfferSelectEl || !tradeRequestSelectEl) return;
+
+	const playerList = players || (gameState && gameState.players
+		? Object.entries(gameState.players).map(([id, p]) => ({ id, username: p.username || id }))
+		: []);
+	const others = playerList.filter((p) => p.id !== myId);
+
+	tradeTargetSelectEl.innerHTML = '';
+	if (others.length === 0) {
+		const option = document.createElement('option');
+		option.value = '';
+		option.textContent = 'No other players';
+		tradeTargetSelectEl.appendChild(option);
+		if (offerTradeBtn) offerTradeBtn.disabled = true;
+	} else {
+		for (const player of others) {
+			const option = document.createElement('option');
+			option.value = player.id;
+			option.textContent = player.username || player.id;
+			tradeTargetSelectEl.appendChild(option);
+		}
+		if (offerTradeBtn) offerTradeBtn.disabled = false;
+	}
+
+	const fillCardSelect = (selectEl, includeAllOwned = false) => {
+		selectEl.innerHTML = '';
+		const ownedCounts = getDeckOwnedCounts();
+		for (const [cardId, count] of Object.entries(ownedCounts)) {
+			if (!CARD_DEFS[cardId]) continue;
+			if (!includeAllOwned && !findAvailableInventoryInstance(cardId)) continue;
+			const option = document.createElement('option');
+			option.value = cardId;
+			option.textContent = `${CARD_DEFS[cardId].name} (${count})`;
+			selectEl.appendChild(option);
+		}
+		if (selectEl.options.length === 0) {
+			const option = document.createElement('option');
+			option.value = '';
+			option.textContent = 'No cards';
+			selectEl.appendChild(option);
+		}
+	};
+
+	fillCardSelect(tradeOfferSelectEl, false);
+	fillCardSelect(tradeRequestSelectEl, true);
+}
+
+if (acceptTradeBtn) {
+	acceptTradeBtn.addEventListener('click', () => {
+		if (!pendingTradeOffer) return;
+		socket.emit('respondCardTrade', { tradeId: pendingTradeOffer.tradeId, accepted: true });
+		pendingTradeOffer = null;
+		renderTradeOffer();
+	});
+}
+
+if (rejectTradeBtn) {
+	rejectTradeBtn.addEventListener('click', () => {
+		if (!pendingTradeOffer) return;
+		socket.emit('respondCardTrade', { tradeId: pendingTradeOffer.tradeId, accepted: false });
+		pendingTradeOffer = null;
+		renderTradeOffer();
+	});
+}
+
+if (offerTradeBtn) {
+	offerTradeBtn.addEventListener('click', () => {
+		const targetPlayerId = tradeTargetSelectEl?.value;
+		const offeredCardId = tradeOfferSelectEl?.value;
+		const requestedCardId = tradeRequestSelectEl?.value;
+		if (!targetPlayerId || !offeredCardId || !requestedCardId) return;
+		socket.emit('offerCardTrade', { targetPlayerId, offeredCardId, requestedCardId });
+	});
 }
 
 function showDeckError(message) {

@@ -27,6 +27,7 @@ import {
 	ENTITY_RADIUS,
 	PLAYER_RADIUS,
 	cardIdForDeckEntry,
+	validateDeck,
 	wallAABB
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
@@ -2441,6 +2442,133 @@ describe('Card evolution handler', () => {
 
 		expect(error.reason).toContain('No evolution available');
 		expect(instance.cardId).toBe('steel_broadsword');
+	});
+});
+
+describe('Lobby card sell and trade', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await closeServer();
+	});
+
+	async function removeFromDeck(socket, player, cardId, count = 1) {
+		const instances = player.inventory.filter((instance) => instance.cardId === cardId);
+		let removed = 0;
+		for (const instance of instances) {
+			if (removed >= count) break;
+			if (!player.selectedDeck.includes(instance.instanceId)) continue;
+			const promise = waitForEvent(socket, 'deckUpdate');
+			socket.emit('deckRemoveCard', { instanceId: instance.instanceId, cardId });
+			await promise;
+			removed++;
+		}
+	}
+
+	it('selling an extra owned card grants currency and preserves deck validity', async () => {
+		const player = gameState.players[socket1._playerId];
+		await removeFromDeck(socket1, player, 'iron_sword', 1);
+
+		const deckBefore = [...player.selectedDeck];
+		const currencyBefore = player.currency;
+
+		const updatePromise = waitForEvent(socket1, 'cardInventoryUpdate');
+		socket1.emit('sellCard', { cardId: 'iron_sword' });
+		await updatePromise;
+
+		expect(player.ownedCards.iron_sword).toBe(2);
+		expect(player.currency).toBeGreaterThan(currencyBefore);
+		expect(player.selectedDeck).toEqual(deckBefore);
+		expect(validateDeck(player.selectedDeck, player.inventory).valid).toBe(true);
+	});
+
+	it('rejects selling a card that is required by the selected deck', async () => {
+		const player = gameState.players[socket1._playerId];
+		const flames = player.inventory.filter((instance) => instance.cardId === 'flame_blade');
+		expect(flames.length).toBe(2);
+		for (const instance of flames) {
+			expect(player.selectedDeck).toContain(instance.instanceId);
+		}
+
+		const errorPromise = waitForEvent(socket1, 'deckError');
+		socket1.emit('sellCard', { cardId: 'flame_blade' });
+		const err = await errorPromise;
+
+		expect(err.reason).toMatch(/deck/i);
+		expect(player.ownedCards.flame_blade).toBe(2);
+	});
+
+	it('trade offer/accept swaps cards once and preserves both decks', async () => {
+		const playerA = gameState.players[socket1._playerId];
+		const playerB = gameState.players[socket2._playerId];
+
+		await removeFromDeck(socket1, playerA, 'iron_sword', 1);
+		await removeFromDeck(socket2, playerB, 'flame_blade', 1);
+
+		const aIronBefore = playerA.ownedCards.iron_sword;
+		const aFlameBefore = playerA.ownedCards.flame_blade || 0;
+		const bIronBefore = playerB.ownedCards.iron_sword || 0;
+		const bFlameBefore = playerB.ownedCards.flame_blade;
+		const deckABefore = [...playerA.selectedDeck];
+		const deckBBefore = [...playerB.selectedDeck];
+
+		const offerPromise = waitForEvent(socket2, 'tradeOffer');
+		socket1.emit('offerCardTrade', {
+			targetPlayerId: socket2._playerId,
+			offeredCardId: 'iron_sword',
+			requestedCardId: 'flame_blade'
+		});
+		const offer = await offerPromise;
+		expect(offer.tradeId).toBeTruthy();
+
+		const aUpdatePromise = waitForEvent(socket1, 'cardInventoryUpdate');
+		const bUpdatePromise = waitForEvent(socket2, 'cardInventoryUpdate');
+		socket2.emit('respondCardTrade', { tradeId: offer.tradeId, accepted: true });
+		await Promise.all([aUpdatePromise, bUpdatePromise]);
+
+		expect(playerA.ownedCards.iron_sword).toBe(aIronBefore - 1);
+		expect(playerA.ownedCards.flame_blade).toBe(aFlameBefore + 1);
+		expect(playerB.ownedCards.iron_sword).toBe(bIronBefore + 1);
+		expect(playerB.ownedCards.flame_blade).toBe(bFlameBefore - 1);
+		expect(playerA.selectedDeck).toEqual(deckABefore);
+		expect(playerB.selectedDeck).toEqual(deckBBefore);
+		expect(validateDeck(playerA.selectedDeck, playerA.inventory).valid).toBe(true);
+		expect(validateDeck(playerB.selectedDeck, playerB.inventory).valid).toBe(true);
+	});
+
+	it('trade reject does not mutate inventories', async () => {
+		const playerA = gameState.players[socket1._playerId];
+		const playerB = gameState.players[socket2._playerId];
+
+		await removeFromDeck(socket1, playerA, 'iron_sword', 1);
+		await removeFromDeck(socket2, playerB, 'flame_blade', 1);
+
+		const aSnapshot = JSON.stringify(playerA.inventory);
+		const bSnapshot = JSON.stringify(playerB.inventory);
+
+		const offerPromise = waitForEvent(socket2, 'tradeOffer');
+		socket1.emit('offerCardTrade', {
+			targetPlayerId: socket2._playerId,
+			offeredCardId: 'iron_sword',
+			requestedCardId: 'flame_blade'
+		});
+		const offer = await offerPromise;
+
+		const rejectPromise = waitForEvent(socket2, 'tradeUpdate');
+		socket2.emit('respondCardTrade', { tradeId: offer.tradeId, accepted: false });
+		const result = await rejectPromise;
+
+		expect(result.status).toBe('rejected');
+		expect(JSON.stringify(playerA.inventory)).toBe(aSnapshot);
+		expect(JSON.stringify(playerB.inventory)).toBe(bSnapshot);
 	});
 });
 

@@ -16,12 +16,18 @@ describe('renderDeckEditor()', () => {
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
 			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'lobby-currency-display', 'pending-trade-offer', 'pending-trade-text',
+			'accept-trade-btn', 'reject-trade-btn', 'trade-target-select',
+			'trade-offer-select', 'trade-request-select', 'offer-trade-btn',
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' ||
+					id === 'accept-trade-btn' || id === 'reject-trade-btn' || id === 'offer-trade-btn')
 					? document.createElement('button')
-					: document.createElement('div');
+					: id === 'trade-target-select' || id === 'trade-offer-select' || id === 'trade-request-select'
+						? document.createElement('select')
+						: document.createElement('div');
 				el.id = id;
 				document.body.appendChild(el);
 			}
@@ -75,6 +81,39 @@ describe('renderDeckEditor()', () => {
 		const readyBtn = document.getElementById('ready-btn');
 		expect(readyBtn.disabled).toBe(false);
 		expect(readyBtn.classList.contains('deck-invalid')).toBe(false);
+	});
+
+	it('renders sell value and sell buttons for sellable owned cards', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'iron-1', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'iron-2', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'iron-3', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'flame-1', cardId: 'flame_blade', grind: 0, level: 1 },
+			{ instanceId: 'fam-1', cardId: 'battle_familiar', grind: 0, level: 1 },
+			{ instanceId: 'drake-1', cardId: 'dungeon_drake', grind: 0, level: 1 },
+		];
+		const mockOwned = {
+			iron_sword: 3,
+			flame_blade: 1,
+			battle_familiar: 1,
+			dungeon_drake: 1,
+		};
+		const mockDeck = ['iron-1', 'flame-1', 'fam-1', 'drake-1'];
+
+		window.__setDeckState(mockDeck, mockOwned, mockInventory);
+		window.renderDeckEditor();
+
+		const ironEntry = Array.from(document.querySelectorAll('.owned-card-entry'))
+			.find((entry) => entry.querySelector('.card-label').textContent === 'Iron Sword');
+		expect(ironEntry).toBeTruthy();
+		expect(ironEntry.querySelector('.card-sell-value').textContent).toBe('5g');
+		expect(ironEntry.querySelector('.sell-card-btn').disabled).toBe(false);
+
+		const flameEntry = Array.from(document.querySelectorAll('.owned-card-entry'))
+			.find((entry) => entry.querySelector('.card-label').textContent === 'Flame Blade');
+		expect(flameEntry.querySelector('.sell-card-btn').disabled).toBe(true);
 	});
 
 	it('disables ready button when deck is too small', async () => {

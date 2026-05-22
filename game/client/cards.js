@@ -116,6 +116,34 @@ export const EVOLUTION_TRANSFORMS = {
   dungeon_drake: 'ancient_drake',
 };
 
+export const CARD_SELL_VALUES = {
+  iron_sword: 5,
+  flame_blade: 8,
+  battle_familiar: 12,
+  dungeon_drake: 10,
+  steel_broadsword: 15,
+  inferno_edge: 18,
+  guardian_familiar: 25,
+  ancient_drake: 20,
+  mana_prism: 10,
+  harvesting_scythe: 6,
+  sacrificial_altar: 14,
+  battery_automaton: 12,
+  chrono_trigger: 16,
+};
+
+export function getCardSellValue(cardId) {
+  if (Object.prototype.hasOwnProperty.call(CARD_SELL_VALUES, cardId)) {
+    return CARD_SELL_VALUES[cardId];
+  }
+  const def = CARD_DEFS[cardId];
+  if (!def) return 0;
+  if (def.isEvolved) return 15;
+  if (def.type === 'summon') return 12;
+  if (def.type === 'monster') return 10;
+  return 5;
+}
+
 // ── Starting Deck ──
 // Returns an array of card id strings. First 4 become the initial hand;
 // the rest are available for draws during play.
