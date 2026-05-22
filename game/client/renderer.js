@@ -674,6 +674,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
  * Spawn an expanding ring AoE effect on the ground.
  * @param {object} origin - { x, z }
  * @param {number} radius
+ * @param {number} [colorHex] - optional accent color (0xRRGGBB)
  */
 export function spawnSummonEffect(origin, radius, style = {}) {
 	const color = style.color ?? 0xf59e0b;
@@ -682,6 +683,12 @@ export function spawnSummonEffect(origin, radius, style = {}) {
 	const material = new THREE.MeshStandardMaterial({
 		color,
 		emissive,
+export function spawnSummonEffect(origin, radius, colorHex) {
+	const color = colorHex ?? 0xf59e0b;
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color,
+		emissive: color,
 		emissiveIntensity: 1.0,
 		transparent: true,
 		opacity: 1.0,

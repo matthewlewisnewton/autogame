@@ -234,6 +234,14 @@ export const CARD_DEFS = {
     charges: 5,
     specialEffect: 'shockwave',
   },
+  resonance_edge: {
+    id: 'resonance_edge',
+    name: 'Resonance Edge',
+    type: 'weapon',
+    charges: 5,
+    isEvolved: true,
+    specialEffect: 'shockwave',
+  },
   mana_leach: {
     id: 'mana_leach',
     name: 'Mana Leach',
@@ -268,6 +276,7 @@ export const EVOLUTION_TRANSFORMS = {
   skeleton_knight: 'undead_commander',
   storm_eagle: 'thunderbird',
   gravity_well: 'event_horizon',
+  echo_blade: 'resonance_edge',
 };
 
 export const CARD_SELL_VALUES = {
@@ -355,6 +364,7 @@ export const CARD_ACCENT_STYLE = {
   gravity_well: { color: '#c084fc', icon: '◎' },
   event_horizon: { color: '#581c87', icon: '◉' },
   echo_blade: { color: '#f472b6', icon: '〰' },
+  resonance_edge: { color: '#e879f9', icon: '≋' },
   mana_leach: { color: '#a855f7', icon: '◈' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },
 };
