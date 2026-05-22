@@ -117,9 +117,13 @@ function getUsersFilePath() {
 /**
  * Override the users file path (test-only). After calling this,
  * subsequent loadUsers() / saveUsers() / createUser() use the new path.
+ * Also clears the in-memory map and attempts to load from the new path
+ * so that a fresh temp file starts with an empty store.
  */
 function setTestFilePath(filePath) {
 	usersFilePath = filePath;
+	users.clear();
+	loadUsers();
 }
 
 module.exports = {

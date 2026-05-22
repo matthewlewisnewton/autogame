@@ -1,4 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 import {
 	startServer,
 	resetGameState,
@@ -7,7 +10,7 @@ import {
 	clearAllTimers,
 	getJWTSecret
 } from '../index.js';
-import { clearUsers } from '../users.js';
+import { clearUsers, setTestFilePath } from '../users.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import jwt from 'jsonwebtoken';
 
@@ -66,14 +69,20 @@ async function closeTestServer() {
 }
 
 let baseUrl;
+let tmpUserFile;
 
 beforeEach(async () => {
-	baseUrl = await startTestServer();
+	tmpUserFile = path.join(os.tmpdir(), `auth-test-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+	setTestFilePath(tmpUserFile);
 	clearUsers();
+	baseUrl = await startTestServer();
 });
 
 afterEach(async () => {
 	await closeTestServer();
+	// Clean up temp user file
+	try { fs.unlinkSync(tmpUserFile); } catch {}
+	try { fs.unlinkSync(tmpUserFile + '.tmp'); } catch {}
 });
 
 // ── POST /api/register ──
