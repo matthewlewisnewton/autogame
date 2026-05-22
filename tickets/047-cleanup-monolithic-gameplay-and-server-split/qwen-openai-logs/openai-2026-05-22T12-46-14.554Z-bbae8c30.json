@@ -1,0 +1,769 @@
+{
+  "timestamp": "2026-05-22T12:46:14.554Z",
+  "request": {
+    "model": "qwen3.6:27b-q8_0",
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a file search specialist agent. You excel at thoroughly navigating and exploring codebases.\n\n=== CRITICAL: READ-ONLY MODE - NO FILE MODIFICATIONS ===\nThis is a READ-ONLY exploration task. You are STRICTLY PROHIBITED from:\n- Creating new files (no WriteFile, touch, or file creation of any kind)\n- Modifying existing files (no Edit operations)\n- Deleting files (no rm or deletion)\n- Moving or copying files (no mv or cp)\n- Creating temporary files anywhere, including /tmp\n- Using redirect operators (>, >>, |) or heredocs to write to files\n- Running ANY commands that change system state\n\nYour role is EXCLUSIVELY to search and analyze existing code. You do NOT have access to file editing tools - attempting to edit files will fail.\n\nYour strengths:\n- Rapidly finding files using glob patterns\n- Searching code and text with powerful regex patterns\n- Reading and analyzing file contents\n\nGuidelines:\n- Use Glob for broad file pattern matching\n- Use Grep for searching file contents with regex\n- Use ReadFile when you know the specific file path you need to read\n- Use Shell ONLY for read-only operations (ls, git status, git log, git diff, find, cat, head, tail)\n- NEVER use Shell for: mkdir, touch, rm, cp, mv, git add, git commit, npm install, pip install, or any file creation/modification\n- Adapt your search approach based on the thoroughness level specified by the caller\n- Return file paths as absolute paths in your final response\n- For clear communication, avoid using emojis\n- Communicate your final report directly as a regular message - do NOT attempt to create files\n\nNOTE: You are meant to be a fast agent that returns output as quickly as possible. In order to achieve this you must:\n- Make efficient use of the tools that you have at your disposal: be smart about how you search for files and implementations\n- Wherever possible you should try to spawn multiple parallel tool calls for grepping and reading files\n\nComplete the user's search request efficiently and report your findings clearly.\n\nNotes:\n- Agent threads always have their cwd reset between bash calls, as a result please only use absolute file paths.\n- In your final response, share file paths (always absolute, never relative) that are relevant to the task. Include code snippets only when the exact text is load-bearing (e.g., a bug you found, a function signature the caller asked for) — do not recap code you merely read.\n- For clear communication with the user the assistant MUST avoid using emojis.\n\nImportant Rules:\n - You operate in non-interactive mode: do not ask the user questions; proceed with available context.\n - Use tools only when necessary to obtain facts or make changes.\n - When the task is complete, return the final result as a normal model response (not a tool call) and stop.\n\n---\n\n--- Context from: ../../.qwen/output-language.md ---\n# Output language preference: English\n<!-- qwen-code:llm-output-language: English -->\n\n## Rule\nYou MUST always respond in **English** regardless of the user's input language.\nThis is a mandatory requirement, not a preference.\n\n## Exception\nIf the user **explicitly** requests a response in a specific language (e.g., \"please reply in English\", \"用中文回答\"), switch to the user's requested language for the remainder of the conversation.\n\n## Keep technical artifacts unchanged\nDo **not** translate or rewrite:\n- Code blocks, CLI commands, file paths, stack traces, logs, JSON keys, identifiers\n- Exact quoted text from the user (keep quotes verbatim)\n\n## Tool / system outputs\nRaw tool/system outputs may contain fixed-format English. Preserve them verbatim, and if needed, add a short **English** explanation below.\n--- End of Context from: ../../.qwen/output-language.md ---\n\n---\n\n# auto memory\n\nYou have a persistent, file-based memory system at `/home/matt/.qwen/projects/-home-matt-workspace-autogame/memory`. This directory already exists — write to it directly with the write_file tool (do not run mkdir or check for its existence).\n\nYou should build up this memory system over time so that future conversations can have a complete picture of who the user is, how they'd like to collaborate with you, what behaviors to avoid or repeat, and the context behind the work the user gives you.\n\nIf the user explicitly asks you to remember something, save it immediately as whichever type fits best. If they ask you to forget something, find and remove the relevant entry.\n\n## Types of memory\n\nThere are several discrete types of memory that you can store in your memory system:\n\n<types>\n<type>\n    <name>user</name>\n    <description>Contain information about the user's role, goals, responsibilities, and knowledge. Great user memories help you tailor your future behavior to the user's preferences and perspective. Your goal in reading and writing these memories is to build up an understanding of who the user is and how you can be most helpful to them specifically. For example, you should collaborate with a senior software engineer differently than a student who is coding for the very first time. Keep in mind, that the aim here is to be helpful to the user. Avoid writing memories about the user that could be viewed as a negative judgement or that are not relevant to the work you're trying to accomplish together.</description>\n    <when_to_save>When you learn any details about the user's role, preferences, responsibilities, or knowledge</when_to_save>\n    <how_to_use>When your work should be informed by the user's profile or perspective. For example, if the user is asking you to explain a part of the code, you should answer that question in a way that is tailored to the specific details that they will find most valuable or that helps them build their mental model in relation to domain knowledge they already have.</how_to_use>\n    <examples>\n    user: I'm a data scientist investigating what logging we have in place\n    assistant: [saves user memory: user is a data scientist, currently focused on observability/logging]\n\n    user: I've been writing Go for ten years but this is my first time touching the React side of this repo\n    assistant: [saves user memory: deep Go expertise, new to React and this project's frontend — frame frontend explanations in terms of backend analogues]\n    </examples>\n</type>\n<type>\n    <name>feedback</name>\n    <description>Guidance the user has given you about how to approach work — both what to avoid and what to keep doing. These are a very important type of memory to read and write as they allow you to remain coherent and responsive to the way you should approach work in the project. Record from failure AND success: if you only save corrections, you will avoid past mistakes but drift away from approaches the user has already validated, and may grow overly cautious.</description>\n    <when_to_save>Any time the user corrects your approach (\"no not that\", \"don't\", \"stop doing X\") OR confirms a non-obvious approach worked (\"yes exactly\", \"perfect, keep doing that\", accepting an unusual choice without pushback). Corrections are easy to notice; confirmations are quieter — watch for them. In both cases, save what is applicable to future conversations, especially if surprising or not obvious from the code. Include *why* so you can judge edge cases later.</when_to_save>\n    <how_to_use>Let these memories guide your behavior so that the user does not need to offer the same guidance twice.</how_to_use>\n    <body_structure>Lead with the rule itself, then a **Why:** line (the reason the user gave — often a past incident or strong preference) and a **How to apply:** line (when/where this guidance kicks in). Knowing *why* lets you judge edge cases instead of blindly following the rule.</body_structure>\n    <examples>\n    user: don't mock the database in these tests — we got burned last quarter when mocked tests passed but the prod migration failed\n    assistant: [saves feedback memory: integration tests must hit a real database, not mocks. Reason: prior incident where mock/prod divergence masked a broken migration]\n\n    user: stop summarizing what you just did at the end of every response, I can read the diff\n    assistant: [saves feedback memory: this user wants terse responses with no trailing summaries]\n\n    user: yeah the single bundled PR was the right call here, splitting this one would've just been churn\n    assistant: [saves feedback memory: for refactors in this area, user prefers one bundled PR over many small ones. Confirmed after I chose this approach — a validated judgment call, not a correction]\n    </examples>\n</type>\n<type>\n    <name>project</name>\n    <description>Information that you learn about ongoing work, goals, initiatives, bugs, or incidents within the project that is not otherwise derivable from the code or git history. Project memories help you understand the broader context and motivation behind the work the user is doing within this working directory.</description>\n    <when_to_save>When you learn who is doing what, why, or by when. These states change relatively quickly so try to keep your understanding of this up to date. Always convert relative dates in user messages to absolute dates when saving (e.g., \"Thursday\" → \"2026-03-05\"), so the memory remains interpretable after time passes.</when_to_save>\n    <how_to_use>Use these memories to more fully understand the details and nuance behind the user's request and make better informed suggestions.</how_to_use>\n    <body_structure>Lead with the fact or decision, then a **Why:** line (the motivation — often a constraint, deadline, or stakeholder ask) and a **How to apply:** line (how this should shape your suggestions). Project memories decay fast, so the why helps future-you judge whether the memory is still load-bearing.</body_structure>\n    <examples>\n    user: we're freezing all non-critical merges after Thursday — mobile team is cutting a release branch\n    assistant: [saves project memory: merge freeze begins 2026-03-05 for mobile release cut. Flag any non-critical PR work scheduled after that date]\n\n    user: the reason we're ripping out the old auth middleware is that legal flagged it for storing session tokens in a way that doesn't meet the new compliance requirements\n    assistant: [saves project memory: auth middleware rewrite is driven by legal/compliance requirements around session token storage, not tech-debt cleanup — scope decisions should favor compliance over ergonomics]\n    </examples>\n</type>\n<type>\n    <name>reference</name>\n    <description>Stores pointers to where information can be found in external systems. These memories allow you to remember where to look to find up-to-date information outside of the project directory.</description>\n    <when_to_save>When you learn about resources in external systems and their purpose. For example, that bugs are tracked in a specific project in Linear or that feedback can be found in a specific Slack channel.</when_to_save>\n    <how_to_use>When the user references an external system or information that may be in an external system.</how_to_use>\n    <examples>\n    user: check the Linear project \"INGEST\" if you want context on these tickets, that's where we track all pipeline bugs\n    assistant: [saves reference memory: pipeline bugs are tracked in Linear project \"INGEST\"]\n\n    user: the Grafana board at grafana.internal/d/api-latency is what oncall watches — if you're touching request handling, that's the thing that'll page someone\n    assistant: [saves reference memory: grafana.internal/d/api-latency is the oncall latency dashboard — check it when editing request-path code]\n    </examples>\n</type>\n</types>\n\n## What NOT to save in memory\n\n- Code patterns, conventions, architecture, file paths, or project structure — these can be derived by reading the current project state.\n- Git history, recent changes, or who-changed-what — `git log` / `git blame` are authoritative.\n- Debugging solutions or fix recipes — the fix is in the code; the commit message has the context.\n- Anything already documented in QWEN.md or AGENTS.md files.\n- Ephemeral task details: in-progress work, temporary state, current conversation context.\n\nThese exclusions apply even when the user explicitly asks you to save. If they ask you to save a PR list or activity summary, ask what was *surprising* or *non-obvious* about it — that is the part worth keeping.\n\n## How to save memories\n\nSaving a memory is a two-step process:\n\n**Step 1** — write the memory to its own file (e.g., `user_role.md`, `feedback_testing.md`) using this frontmatter format:\n\n```markdown\n---\nname: {{memory name}}\ndescription: {{one-line description — used to decide relevance in future conversations, so be specific}}\ntype: {{user, feedback, project, reference}}\n---\n\n{{memory content — for feedback/project types, structure as: rule/fact, then **Why:** and **How to apply:** lines}}\n```\n\n**Step 2** — add a pointer to that file in `/home/matt/.qwen/projects/-home-matt-workspace-autogame/memory/MEMORY.md` (the full absolute path). This index file is an index, not a memory — each entry should be one line, under ~150 characters: `- [Title](file.md) — one-line hook`. It has no frontmatter. Never write memory content directly into `/home/matt/.qwen/projects/-home-matt-workspace-autogame/memory/MEMORY.md`.\n\n- `/home/matt/.qwen/projects/-home-matt-workspace-autogame/memory/MEMORY.md` is always loaded into your conversation context — lines after 200 will be truncated, so keep the index concise\n- Keep the name, description, and type fields in memory files up-to-date with the content\n- Organize memory semantically by topic, not chronologically.\n- Update or remove memories that turn out to be wrong or outdated.\n- Do not write duplicate memories. First check if there is an existing memory you can update before writing a new one.\n\n## When to access memories\n- When memories seem relevant, or the user references prior-conversation work.\n- You MUST access memory when the user explicitly asks you to check, recall, or remember.\n- If the user says to *ignore* or *not use* memory: proceed as if MEMORY.md were empty. Do not apply remembered facts, cite, compare against, or mention memory content.\n- Memory records can become stale over time. Use memory as context for what was true at a given point in time. Before answering the user or building assumptions based solely on information in memory records, verify that the memory is still correct and up-to-date by reading the current state of the files or resources. If a recalled memory conflicts with current information, trust what you observe now — and update or remove the stale memory rather than acting on it.\n\n## Before recommending from memory\n\nA memory that names a specific function, file, or flag is a claim that it existed when the memory was written. It may have been renamed, removed, or never merged. Before recommending it:\n\n- If the memory names a file path: check the file exists.\n- If the memory names a function or flag: grep for it.\n- If the user is about to act on your recommendation (not just asking about history), verify first.\n\n\"The memory says X exists\" is not the same as \"X exists now.\"\n\nA memory that summarizes repo state (activity logs, architecture snapshots) is frozen in time. If the user asks about *recent* or *current* state, prefer `git log` or reading the code over recalling the snapshot.\n\n## Memory and other forms of persistence\nMemory is one of several persistence mechanisms available to you as you assist the user in a given conversation. The distinction is often that memory can be recalled in future conversations and should not be used for persisting information that is only useful within the scope of the current conversation.\n- When to use or update a plan instead of memory: If you are about to start a non-trivial implementation task and would like to reach alignment with the user on your approach you should use a Plan rather than saving this information to memory. Similarly, if you already have a plan within the conversation and you have changed your approach persist that change by updating the plan rather than saving a memory.\n- When to use or update tasks instead of memory: When you need to break your work in current conversation into discrete steps or keep track of your progress use tasks instead of saving to memory. Tasks are great for persisting information about the work that needs to be done in the current conversation, but memory should be reserved for information that will be useful in future conversations.\n\n## /home/matt/.qwen/projects/-home-matt-workspace-autogame/memory/MEMORY.md\n\n- [015-dungeon-room-generation sub-ticket progress](project_015_dungeon_room_generation_progress.md) — Commit hashes for completed sub-tickets of 015-dungeon-room-generation\n- [030-encounter-telegraphs-audio sub-ticket progress](project_030_encounter_telegraphs_audio_progress.md) — Commit hashes for completed sub-tickets of 030-encounter-telegraphs-audio\n- [017-test-coverage sub-ticket progress](project_017_test_coverage_progress.md) — Commit hashes for completed sub-tickets of 017-test-coverage\n- [025-dungeon-run-objectives sub-ticket progress](project_025_dungeon_run_objectives_progress.md) — Commit hashes for completed sub-tickets of 025-dungeon-run-objectives\n- [027-run-summary-return-to-lobby sub-ticket progress](project_027_run_summary_return_to_lobby_progress.md) — Commit hashes for completed sub-tickets of 027-run-summary-return-to-lobby\n- [026-card-rewards-deckbuilding sub-ticket progress](project_026_card_rewards_deckbuilding_progress.md) — Commit hashes for completed sub-tickets of 026-card-rewards-deckbuilding\n- [028-lobby-deck-editor sub-ticket progress](project_028_lobby_deck_editor_progress.md) — Commit hashes for completed sub-tickets of 028-lobby-deck-editor\n- [029-combat-feedback-readability sub-ticket progress](project_029_combat_feedback_readability_progress.md) — Commit hashes for completed sub-tickets of 029-combat-feedback-readability\n- [036-cleanup-combat-feedback-readability completion](project_036_cleanup_combat_feedback_readability_progress.md) — All 3 nits resolved (flashMesh already fixed, hit-spark scene capture, tracking map pruning); 328 tests pass\n- [033-cleanup-run-summary-return-to-lobby sub-ticket progress](project_033_cleanup_run_summary_return_to_lobby_progress.md) — Tracks committed sub-tickets of 033-cleanup-run-summary-return-to-lobby\n- [077-enemy-types-skirmisher-miniboss sub-ticket progress](project_077_enemy_types_skirmisher_miniboss_progress.md) — Commit hashes for completed sub-tickets of 077-enemy-types-skirmisher-miniboss\n- [078-enemy-type-spawner sub-ticket progress](project_078_enemy_type_spawner_progress.md) — Commit hashes for completed sub-tickets of 078-enemy-type-spawner\n- [058-reset-state-on-last-disconnect sub-ticket progress](project_058_reset_state_on_last_disconnect_progress.md) — Commit hashes for completed sub-tickets of 058-reset-state-on-last-disconnect\n- [082-cleanup-reset-state-on-last-disconnect sub-ticket progress](project_082_cleanup_reset_state_on_last_disconnect_progress.md) — Commit hashes for completed sub-tickets of 082-cleanup-reset-state-on-last-disconnect\n- [081-cleanup-enemy-type-spawner sub-ticket progress](project_081_cleanup_enemy_type_spawner_progress.md) — Commit hashes for completed sub-tickets of 081-cleanup-enemy-type-spawner\n- [086-cleanup-pnpm-and-security sub-ticket progress](project_086_cleanup_pnpm_and_security_progress.md) — Commit hashes for completed sub-tickets of 086-cleanup-pnpm-and-security\n- [087-cleanup-cleanup-pnpm-and-security sub-ticket progress](project_087_cleanup_cleanup_pnpm_and_security_progress.md) — Commit hashes for completed sub-tickets of 087-cleanup-cleanup-pnpm-and-security\n- [095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server sub-ticket progress](project_095_cleanup_audit_client_server_progress.md) — Commit hashes for completed sub-tickets of 095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server\n- [096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server sub-ticket progress](project_096_cleanup_audit_client_server_progress.md) — Commit hashes for completed sub-tickets of 096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server\n- [020-audit-client-server sub-ticket progress](project_020_audit_client_server_progress.md) — Commit hashes for completed sub-tickets of 020-audit-client-server\n- [021-persistence sub-ticket progress](project_021_persistence_progress.md) — Commit hashes for completed sub-tickets of 021-persistence\n- [022-user-accounts sub-ticket progress](project_022_user_accounts_progress.md) — Commit hashes for completed sub-tickets of 022-user-accounts\n- [023-advanced-map-generation decomposition](project_023_advanced_map_generation_progress.md) — 5 sub-tickets (01–05): server roles, spawn helpers, wiring, client visuals, tests\n- [099-cleanup-cleanup-advanced-map-generation sub-ticket progress](project_099_cleanup_cleanup_advanced_map_generation_progress.md) — 2 sub-tickets: stale comment fix, client spawn role tests\n- [102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence sub-ticket progress](project_102_cleanup_audio_autoplay_resume_and_mute_persistence_progress.md) — Commit hashes for completed sub-tickets of 102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence"
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "This is the Qwen Code. We are setting up the context for our chat.\nToday's date is Friday, May 22, 2026 (formatted according to the user's locale).\nMy operating system is: linux\nI'm currently working in the directory: /home/matt/workspace/autogame\nHere is the folder structure of the current working directories:\n\nShowing up to 20 items:\n\n/home/matt/workspace/autogame/\n├───.gitignore\n├───CONTEXT.md\n├───LOGBOOK.md\n├───TASKS.md\n├───.antigravitycli/\n├───.claude/\n├───.cursor/\n├───.git/...\n├───.github/\n│   └───workflows/\n├───game/\n│   ├───.npmrc\n│   ├───package.json\n│   ├───...\n│   └───...\n├───harness/\n├───lobby.png/\n├───memory/\n├───node_modules/...\n├───scratch/\n├───temp_artifacts/\n└───tickets/"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "Got it. Thanks for the context!"
+      },
+      {
+        "role": "user",
+        "content": [
+          {
+            "type": "text",
+            "text": "I need to understand the structure of /home/matt/workspace/autogame/game/server/index.js (2299 lines). It's a monolithic server file that needs to be split. Please:\n\n1. Read through the file in chunks to identify the major logical sections\n2. For each section, note:\n   - Approximate line range\n   - What it does\n   - Key functions/constants\n   - Dependencies on other sections\n\n3. Specifically identify:\n   - The Express/Socket.IO bootstrapping and route delegation\n   - The tick-based entity AI (wander states, minion chase, attack validations)\n   - The reward/progression logic (VICTORY_REWARD_ROTATION, currency grants, deck validation, grantRunRewards, grantCard, etc.)\n   - The game loop\n   - Player connection/disconnection handling\n   - The game state object\n\nDon't write any code. Just give me a detailed structural analysis with line ranges."
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "I'll read the file in chunks to build a comprehensive structural map. Let me start with multiple parallel reads.",
+        "tool_calls": [
+          {
+            "id": "call_rlbhistq",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":0}"
+            }
+          },
+          {
+            "id": "call_w1rktwny",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":100}"
+            }
+          },
+          {
+            "id": "call_1apahrh1",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":200}"
+            }
+          },
+          {
+            "id": "call_7m9nebs9",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":300}"
+            }
+          }
+        ],
+        "reasoning_content": "The user wants a detailed structural analysis of a large monolithic server file (2299 lines). I need to read it in chunks and identify the major logical sections. Let me start by reading the file in chunks to understand its structure."
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_rlbhistq",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1-100 of 2300 total lines.\n\n---\n\nconst express = require('express');\nconst { Server } = require('socket.io');\nconst http = require('http');\nconst crypto = require('crypto');\nconst fs = require('fs');\nconst path = require('path');\nconst { InMemoryProvider, FileProvider } = require('./providers');\nconst { verifyToken, initAuth, getJWTSecret } = require('./auth');\nconst {\n  mulberry32,\n  generateLayout,\n  roomsByRole,\n  randomRoomPositionByRole,\n  GRID_COLS,\n  GRID_ROWS,\n  CELL_SPACING,\n  MIN_ROOM_SIZE,\n  MAX_ROOM_SIZE_INCLUSIVE,\n  PASSAGE_WIDTH\n} = require('./dungeon');\nconst {\n  TICK_RATE,\n  MOVE_SPEED,\n  MAX_ELAPSED_MS,\n  DETECTION_RADIUS,\n  ENEMY_ATTACK_RANGE,\n  ENEMY_ATTACK_RECOVERY_MS,\n  MAX_MAGIC_STONES,\n  MAGIC_STONES_REGEN_PER_TICK,\n  SUMMON_RADIUS,\n  ATTACK_RANGE,\n  ATTACK_CONE_ANGLE,\n  STALE_THRESHOLD,\n  BOUNDS_MARGIN,\n  COOLDOWN_MS,\n  SPAWN_PADDING,\n  DECK_MIN_SIZE,\n  DECK_MAX_SIZE,\n  MAX_HP,\n  RESPAWN_DELAY_MS,\n  LOOT_LIFETIME_MS,\n  LOOT_SPAWN_CHANCE,\n  STALE_CLEANUP_INTERVAL_MS,\n  PERIODIC_SAVE_INTERVAL_MS,\n  VICTORY_REWARD_ROTATION\n} = require('./config');\n\nconst app = express();\nconst server = http.createServer(app);\nconst io = new Server(server, {\n  cors: {\n    origin: \"*\", // Adjust later for production\n    methods: [\"GET\", \"POST\"]\n  }\n});\nserver.setMaxListeners(0);\n\n// Game state factory — used by tests to get a fresh state\nfunction createGameState() {\n  return {\n    players: {},\n    enemies: [],\n    minions: [],\n    loot: [],\n    lobby: [],\n    gamePhase: 'lobby'\n  };\n}\n\n// Game state (module-level singleton used by production)\nconst gameState = createGameState();\n\n// Throttle state for swept-collision rejection logging (per-socket)\nconst SWEPT_COLLISION_LOG_THROTTLE_MS = 1000;\nconst sweptCollisionLogTimes = new Map();\n\n// Generate dungeon layout at startup\nconst layoutSeed = Math.floor(Math.random() * 2147483647);\ngameState.layoutSeed = layoutSeed;\ngameState.layout = generateLayout(layoutSeed);\nconsole.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);\n\nfunction computeDungeonBounds(layout) {\n  let minX = Infinity;\n  let maxX = -Infinity;\n  let minZ = Infinity;\n  let maxZ = -Infinity;\n\n  for (const room of layout.rooms) {\n    const halfW = room.width / 2;\n    const halfD = room.depth / 2;\n    minX = Math.min(minX, room.x - halfW);\n    maxX = Math.max(maxX, room.x + halfW);\n    minZ = Math.min(minZ, room.z - halfD);\n    maxZ = Math.max(maxZ, room.z + halfD);\n  }\n\n  return {\n    minX: minX - BOUNDS_MARGIN,\n    maxX: maxX + BOUNDS_MARGIN,"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_w1rktwny",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 101-200 of 2300 total lines.\n\n---\n\n    minZ: minZ - BOUNDS_MARGIN,\n    maxZ: maxZ + BOUNDS_MARGIN,\n  };\n}\n\nfunction firstRoomPosition() {\n  const layout = gameState.layout;\n  // Prefer the room with role 'start' (assigned by assignRoomRoles)\n  const startRoom = layout.rooms.find(r => r.role === 'start');\n  const room = startRoom || layout.rooms[0]; // defensive fallback\n  return { x: room.x, z: room.z };\n}\n\nfunction randomRoomPosition() {\n  const room = gameState.layout.rooms[Math.floor(Math.random() * gameState.layout.rooms.length)];\n  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);\n  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);\n  return {\n    x: room.x + (Math.random() * 2 - 1) * halfW,\n    z: room.z + (Math.random() * 2 - 1) * halfD,\n  };\n}\n\nfunction clampToDungeon(x, z) {\n  const bounds = gameState.dungeonBounds;\n  return {\n    x: Math.max(bounds.minX, Math.min(bounds.maxX, x)),\n    z: Math.max(bounds.minZ, Math.min(bounds.maxZ, z)),\n  };\n}\n\nconst PLAYER_RADIUS = 0.5;\nconst WALL_THICKNESS = 0.4;\nconst PASSAGE_WALL_THICKNESS = 0.3;\n\n/**\n * Build AABB colliders from the current dungeon layout walls.\n * Returns an array of { minX, maxX, minZ, maxZ } objects.\n */\nfunction buildWallColliders() {\n  const colliders = [];\n  const layout = gameState.layout;\n  if (!layout || !layout.rooms || !layout.passages) return colliders;\n\n  for (const room of layout.rooms) {\n    for (const wall of room.walls) {\n      colliders.push(wallAABB(wall, WALL_THICKNESS / 2));\n    }\n  }\n  for (const passage of layout.passages) {\n    for (const wall of passage.walls) {\n      colliders.push(wallAABB({ ...wall, length: passage.corridorLength }, PASSAGE_WALL_THICKNESS / 2));\n    }\n  }\n\n  return colliders;\n}\n\n/**\n * Compute the AABB for a wall segment given its half-thickness.\n */\nfunction wallAABB(wall, halfThickness) {\n  if (wall.axis === 'x') {\n    return {\n      minX: wall.x - wall.length / 2 - halfThickness,\n      maxX: wall.x + wall.length / 2 + halfThickness,\n      minZ: wall.z - halfThickness,\n      maxZ: wall.z + halfThickness,\n    };\n  } else {\n    return {\n      minX: wall.x - halfThickness,\n      maxX: wall.x + halfThickness,\n      minZ: wall.z - wall.length / 2 - halfThickness,\n      maxZ: wall.z + wall.length / 2 + halfThickness,\n    };\n  }\n}\n\n/**\n * Check if a proposed player position overlaps any wall collider.\n * Returns true if the position is inside a wall (collision), false otherwise.\n */\nfunction checkWallCollision(px, pz) {\n  const colliders = buildWallColliders();\n  const pr = PLAYER_RADIUS;\n\n  for (const w of colliders) {\n    if (px + pr <= w.minX || px - pr >= w.maxX) continue;\n    if (pz + pr <= w.minZ || pz - pr >= w.maxZ) continue;\n    return true; // overlap\n  }\n\n  return false;\n}\n\n/**\n * Check if the line segment from (fromX, fromZ) to (toX, toZ) intersects\n * any wall collider expanded by PLAYER_RADIUS. Returns true on intersection.\n * Uses a slab-based segment-AABB intersection test."
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_1apahrh1",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 201-300 of 2300 total lines.\n\n---\n\n */\nfunction checkSweptCollision(fromX, fromZ, toX, toZ) {\n  const colliders = buildWallColliders();\n  const pr = PLAYER_RADIUS;\n\n  for (const w of colliders) {\n    // Expand AABB by player radius\n    const aabb = {\n      minX: w.minX - pr,\n      maxX: w.maxX + pr,\n      minZ: w.minZ - pr,\n      maxZ: w.maxZ + pr,\n    };\n\n    if (segmentIntersectsAABB(fromX, fromZ, toX, toZ, aabb)) {\n      return true;\n    }\n  }\n\n  return false;\n}\n\n/**\n * Segment-AABB intersection using the slab method (Li-Whitted).\n * Returns true if the segment from (x1, z1) to (x2, z2) intersects the AABB.\n */\nfunction segmentIntersectsAABB(x1, z1, x2, z2, aabb) {\n  const dx = x2 - x1;\n  const dz = z2 - z1;\n\n  let tmin = 0;\n  let tmax = 1;\n\n  // X slab\n  if (Math.abs(dx) > 1e-8) {\n    let t0 = (aabb.minX - x1) / dx;\n    let t1 = (aabb.maxX - x1) / dx;\n    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }\n    tmin = Math.max(tmin, t0);\n    tmax = Math.min(tmax, t1);\n    if (tmin > tmax) return false;\n  } else {\n    // Segment is axis-aligned in X — check if x1 is inside slab\n    if (x1 < aabb.minX || x1 > aabb.maxX) return false;\n  }\n\n  // Z slab\n  if (Math.abs(dz) > 1e-8) {\n    let t0 = (aabb.minZ - z1) / dz;\n    let t1 = (aabb.maxZ - z1) / dz;\n    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }\n    tmin = Math.max(tmin, t0);\n    tmax = Math.min(tmax, t1);\n    if (tmin > tmax) return false;\n  } else {\n    // Segment is axis-aligned in Z — check if z1 is inside slab\n    if (z1 < aabb.minZ || z1 > aabb.maxZ) return false;\n  }\n\n  return true;\n}\n\n// ── Entity collision helpers ──\n\nconst ENTITY_RADIUS = 0.45;\n\n/**\n * Check if a point position overlaps any wall collider expanded by radius.\n * Returns true when overlapping a wall, false otherwise.\n */\nfunction isEntityPositionBlocked(x, z, radius) {\n  const colliders = buildWallColliders();\n  const r = radius != null ? radius : ENTITY_RADIUS;\n\n  for (const w of colliders) {\n    if (x + r <= w.minX || x - r >= w.maxX) continue;\n    if (z + r <= w.minZ || z - r >= w.maxZ) continue;\n    return true; // overlap\n  }\n\n  return false;\n}\n\n/**\n * Attempt to move an entity toward a target while respecting wall colliders\n * and dungeon bounds. Uses axis-separated wall-slide when direct movement\n * is blocked.\n *\n * Returns { moved, blocked, reached } metadata.\n */\nfunction moveEntityToward(entity, target, maxDistance, options) {\n  const radius = (options && options.radius) != null ? options.radius : ENTITY_RADIUS;\n  const stopDistance = (options && options.stopDistance) != null ? options.stopDistance : 0.1;\n\n  const dx = target.x - entity.x;\n  const dz = target.z - entity.z;\n  const dist = Math.hypot(dx, dz);\n\n  // Already within stop distance\n  if (dist <= stopDistance) {"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_7m9nebs9",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 301-400 of 2300 total lines.\n\n---\n\n    return { moved: false, blocked: false, reached: true };\n  }\n\n  // Normalize direction\n  const ndx = dx / dist;\n  const ndz = dz / dist;\n\n  // Clamp movement to maxDistance\n  const move = Math.min(dist, maxDistance);\n\n  // Proposed position\n  const proposedX = entity.x + ndx * move;\n  const proposedZ = entity.z + ndz * move;\n\n  // Try direct movement\n  if (!isEntityPositionBlocked(proposedX, proposedZ, radius)) {\n    const clamped = clampToDungeon(proposedX, proposedZ);\n    entity.x = clamped.x;\n    entity.z = clamped.z;\n    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);\n    return { moved: true, blocked: false, reached: postDist <= stopDistance };\n  }\n\n  // Direct is blocked — try axis-separated movement (wall-slide)\n  // Try X-only\n  const xProposed = entity.x + ndx * move;\n  const xOnlyBlocked = (Math.abs(xProposed - entity.x) > 1e-8)\n    ? isEntityPositionBlocked(xProposed, entity.z, radius)\n    : true; // no displacement on X — treat as blocked\n  // Try Z-only\n  const zProposed = entity.z + ndz * move;\n  const zOnlyBlocked = (Math.abs(zProposed - entity.z) > 1e-8)\n    ? isEntityPositionBlocked(entity.x, zProposed, radius)\n    : true; // no displacement on Z — treat as blocked\n\n  if (!xOnlyBlocked) {\n    const clamped = clampToDungeon(xProposed, entity.z);\n    entity.x = clamped.x;\n    entity.z = clamped.z;\n    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);\n    return { moved: true, blocked: true, reached: postDist <= stopDistance };\n  } else if (!zOnlyBlocked) {\n    const clamped = clampToDungeon(entity.x, zProposed);\n    entity.x = clamped.x;\n    entity.z = clamped.z;\n    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);\n    return { moved: true, blocked: true, reached: postDist <= stopDistance };\n  }\n\n  // Both axes blocked\n  return { moved: false, blocked: true, reached: false };\n}\n\ngameState.dungeonBounds = computeDungeonBounds(gameState.layout);\nconsole.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);\n\n// Store interval/timeout IDs so tests can clean them up\nconst _intervals = [];\nconst _timeouts = [];\n\n/**\n * Clear all tracked intervals and timeouts. Call before resetting state in tests.\n */\nfunction clearAllTimers() {\n  for (const id of _intervals) clearInterval(id);\n  _intervals.length = 0;\n  for (const id of _timeouts) clearTimeout(id);\n  _timeouts.length = 0;\n}\n\n/**\n * Reset gameState to a fresh state. Used by integration tests to isolate tests.\n * Regenerates dungeon layout with a new random seed.\n */\nfunction resetGameState() {\n  const fresh = createGameState();\n  Object.keys(gameState).forEach(k => delete gameState[k]);\n  Object.assign(gameState, fresh);\n  const seed = Math.floor(Math.random() * 2147483647);\n  gameState.layoutSeed = seed;\n  gameState.layout = generateLayout(seed);\n  gameState.dungeonBounds = computeDungeonBounds(gameState.layout);\n  // Ensure run is cleared — it should not exist after a reset\n  delete gameState.run;\n  // Clear victory counters so reward card selection resets between tests\n  delete gameState._victoryCounters;\n}\n\n// Enemy type definitions — data layer only (no behavior changes yet)\nconst ENEMY_DEFS = {\n\tgrunt:      { hp: 50,  chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800 },\n\tskirmisher: { hp: 20,  chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6,  attackWindupMs: 500 },\n\tminiboss:   { hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200 },\n\tspawner:    { hp: 60,  chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8,  attackWindupMs: 900,\n\t\tspawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher' },\n};\n\n// Minion behavior constants\nconst MINION_FOLLOW_DISTANCE = 3;\nconst MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_8gjq27yt",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":400}"
+            }
+          },
+          {
+            "id": "call_j4rdow7e",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":500}"
+            }
+          },
+          {
+            "id": "call_o8d8qjg4",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":600}"
+            }
+          },
+          {
+            "id": "call_654oku68",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":700}"
+            }
+          }
+        ],
+        "reasoning_content": "Good, I've got the first 400 lines. Let me continue reading the rest of the file in chunks."
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_8gjq27yt",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 401-500 of 2300 total lines.\n\n---\n\n\nconst DEBUG_SCENARIOS = new Set([\n  'summon-low-mana',\n  'summon-ready',\n  'combat-damaged-player',\n  'mixed-enemies',\n  'spawner-active',\n  'monster-card',\n]);\n\n// Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)\nconst CARD_DEFS = {\n  iron_sword: { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', damage: 15, charges: 5 },\n  flame_blade: { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', damage: 25, charges: 3 },\n  battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, magicStoneCost: 50, damage: 40 },\n  dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1 },\n};\n\n// Starting deck card ids — mirrors createStartingDeck() in client/cards.js.\n// Duplicates are intentional (the deck has more than 4 cards); unique ids are\n// derived at runtime for the player's ownedCards inventory.\nconst STARTING_DECK_IDS = [\n  'iron_sword',\n  'flame_blade',\n  'battle_familiar',\n  'dungeon_drake',\n  'iron_sword',\n  'iron_sword',\n  'battle_familiar',\n  'flame_blade'\n];\n\n/**\n * Build a fresh player progress object.\n * Returns { currency, ownedCards, runRewards, currencyEarnedThisRun }.\n * `ownedCards` is a frequency map from the starting deck (e.g. iron_sword: 3).\n */\nfunction createPlayerProgress() {\n  const ownedCards = {};\n  for (const cardId of STARTING_DECK_IDS) {\n    ownedCards[cardId] = (ownedCards[cardId] || 0) + 1;\n  }\n  return {\n    currency: 0,\n    ownedCards,\n    runRewards: null,\n    currencyEarnedThisRun: 0\n  };\n}\n\n// ── Persistence Helpers ──\n\n/**\n * Module-level storage provider. Initialized in startServer() based on\n * PERSISTENCE_BACKEND env var. Tests can override by setting this directly.\n */\nlet provider = null;\n\n/**\n * Override the module-level provider (test-only).\n */\nfunction setTestProvider(p) {\n  provider = p;\n}\n\n/**\n * Extract the fields that should be persisted for a player.\n * Returns { currency, ownedCards, selectedDeck, x, y, z, rotation }.\n */\nfunction extractPersistentData(player) {\n  return {\n    currency: player.currency || 0,\n    ownedCards: player.ownedCards || {},\n    selectedDeck: player.selectedDeck || [],\n    x: player.x || 0,\n    y: player.y || 0.5,\n    z: player.z || 0,\n    rotation: player.rotation || 0\n  };\n}\n\n/**\n * Resolve the persistence key for a player.\n * Returns `player.accountId` when the player is authenticated,\n * otherwise falls back to the ephemeral `playerId`.\n */\nfunction persistenceKey(playerId) {\n  const player = gameState.players[playerId];\n  if (!player) return playerId;\n  return player.accountId || playerId;\n}\n\n/**\n * Persist a player's data to the configured storage backend.\n * Uses the player's `accountId` as the storage key when authenticated,\n * falling back to `playerId` for anonymous players.\n * Logs errors via console.error but never throws.\n */\nfunction savePlayerData(playerId) {\n  if (!provider) return;"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_j4rdow7e",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 501-600 of 2300 total lines.\n\n---\n\n  const player = gameState.players[playerId];\n  if (!player) return;\n  try {\n    const key = persistenceKey(playerId);\n    provider.savePlayer(key, extractPersistentData(player));\n  } catch (err) {\n    console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);\n  }\n}\n\n/**\n * Iterate over all connected players and persist each one.\n * Errors from individual saves are caught and logged so one failure\n * never interrupts the timer or skips the remaining players.\n */\nfunction saveAllPlayers() {\n  for (const playerId of Object.keys(gameState.players)) {\n    try {\n      savePlayerData(playerId);\n    } catch (err) {\n      console.error(`[persistence] saveAllPlayers failed for ${playerId}:`, err.message);\n    }\n  }\n}\n\n// Helper: build a compact player list for lobbyUpdate payloads\nfunction lobbyPlayerList() {\n  return Object.entries(gameState.players).map(([id, p]) => ({\n    id,\n    ready: p.ready\n  }));\n}\n\n// Helper: broadcast lobbyUpdate to all connected clients\nfunction broadcastLobbyUpdate() {\n  io.emit('lobbyUpdate', {\n    players: lobbyPlayerList(),\n    gamePhase: gameState.gamePhase\n  });\n}\n\n// ── Run State Helpers ──\n\n/**\n * Build a fresh run object from the current game state.\n */\nfunction createRunState() {\n  return {\n    id: crypto.randomUUID(),\n    status: 'playing',\n    objective: {\n      type: 'defeat_enemies',\n      label: 'Defeat all enemies',\n      totalEnemies: gameState.enemies.length,\n      defeatedEnemies: 0\n    },\n    startedAt: Date.now()\n  };\n}\n\n/**\n * Assign a new run object to gameState.run.\n */\nfunction startDungeonRun() {\n  gameState.run = createRunState();\n  // Reset per-run tracking for all players\n  for (const p of Object.values(gameState.players)) {\n    p.currencyEarnedThisRun = 0;\n    p.runRewards = null;\n  }\n}\n\n/**\n * Cap defeatedEnemies at totalEnemies so the counter never overshoots.\n */\nfunction clampObjectiveProgress(run) {\n  run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);\n}\n\n/**\n * Resync the active run's objective totals to the current authoritative\n * enemy list. Used after debug scenarios mutate `gameState.enemies` after\n * `startDungeonRun()` has already snapshot the initial count — without this,\n * `totalEnemies` could disagree with the real enemy list and run completion\n * would behave incorrectly. No-op when there is no active run.\n */\nfunction syncRunObjectiveToEnemies() {\n  if (!gameState.run) return;\n  gameState.run.objective.totalEnemies = gameState.enemies.length;\n  clampObjectiveProgress(gameState.run);\n}\n\n/**\n * Record `count` enemy kills against the current run objective.\n * Safe no-op when gameState.run is undefined (e.g. lobby phase).\n */\nfunction recordEnemyDefeated(count = 1) {\n  if (!gameState.run) return;\n  gameState.run.objective.defeatedEnemies += count;\n  clampObjectiveProgress(gameState.run);"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_o8d8qjg4",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 601-700 of 2300 total lines.\n\n---\n\n}\n\n/**\n * Filter dead enemies (`hp <= 0`) from `gameState.enemies` and record\n * the count of removed enemies against the current run objective.\n *\n * Returns the number of enemies that were removed.\n */\nfunction removeDeadEnemies() {\n  const before = gameState.enemies.length;\n  gameState.enemies = gameState.enemies.filter(e => e.hp > 0);\n  const removed = before - gameState.enemies.length;\n  if (removed > 0) {\n    recordEnemyDefeated(removed);\n  }\n  return removed;\n}\n\n/**\n * Remove dead enemies and check run terminal state.\n * Loot is pre-spawned at run start via spawnLoot() — no death-drop needed.\n */\nfunction cleanupAfterDamage() {\n  if (removeDeadEnemies() > 0) {\n    checkRunTerminalState();\n  }\n}\n\n/**\n * Build a run summary object from the current game state.\n */\nfunction buildRunSummary(status) {\n  const run = gameState.run;\n  if (!run) return null;\n\n  const players = Object.entries(gameState.players).map(([id, p]) => ({\n    id,\n    hp: p.hp,\n    dead: p.dead,\n    currency: p.currency,\n    rewards: buildPlayerRewardSummary(id)\n  }));\n\n  return {\n    runId: run.id,\n    status,\n    durationMs: Date.now() - run.startedAt,\n    objective: { ...run.objective },\n    players,\n    defeatedEnemies: run.objective.defeatedEnemies,\n    currencyCollected: players.reduce((sum, p) => sum + p.currency, 0)\n  };\n}\n\n// ── Reward Helpers ──\n\n/**\n * Monotonic counter keyed by player id so that successive victories rotate\n * through different card rewards.  Lives on gameState so it survives across\n * runs but is reset when the server restarts.\n */\n// (initialized lazily inside grantRunRewards)\n\n/**\n * Increment `player.ownedCards[cardId]` by 1.\n * Returns `true` on success, `false` when `cardId` is unknown.\n */\nfunction grantCard(player, cardId) {\n  if (!CARD_DEFS[cardId]) return false;\n  if (!player.ownedCards) player.ownedCards = {};\n  if (player.ownedCards[cardId] === undefined) {\n    player.ownedCards[cardId] = 0;\n  }\n  player.ownedCards[cardId] += 1;\n  return true;\n}\n\n/**\n * Grant run-end rewards to a player based on the run summary status.\n *\n * Victory  →  +10 currency bonus, one card reward (rotation), summary saved.\n *            `player.runRewards` includes bonus + loot-pickup currency + card.\n * Failure  →  no bonus currency, no card reward; summary shows only loot currency.\n */\nfunction grantRunRewards(playerId, summary) {\n  const player = gameState.players[playerId];\n  if (!player) return;\n\n  const lootCurrency = player.currencyEarnedThisRun || 0;\n\n  if (summary.status === 'victory') {\n    const currencyBonus = 10;\n    player.currency += currencyBonus;\n\n    // Pick a card from the rotation\n    if (!gameState._victoryCounters) gameState._victoryCounters = {};\n    const idx = gameState._victoryCounters[playerId] || 0;\n    const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];\n    gameState._victoryCounters[playerId] = idx + 1;\n"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_654oku68",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 701-800 of 2300 total lines.\n\n---\n\n    const cards = [];\n    if (grantCard(player, cardId)) {\n      const cardDef = CARD_DEFS[cardId];\n      cards.push({ id: cardId, name: cardDef.name, count: 1 });\n    }\n\n    player.runRewards = {\n      currency: currencyBonus + lootCurrency,\n      cards\n    };\n  } else {\n    // Failure: no bonus, no card — but still show any loot currency earned\n    player.runRewards = {\n      currency: lootCurrency,\n      cards: []\n    };\n  }\n}\n\n/**\n * Build a structured reward summary for a player.\n * Returns the run-only rewards object saved by grantRunRewards(),\n * or an empty default `{ currency: 0, cards: [] }` if none exist.\n *\n * This is intentionally NOT the player's total balance or full inventory —\n * it reports only what was earned during the current run (bonus + loot + card).\n */\nfunction buildPlayerRewardSummary(playerId) {\n  const player = gameState.players[playerId];\n  if (!player || !player.runRewards) return { currency: 0, cards: [] };\n\n  return player.runRewards;\n}\n\n/**\n * Validate a deck against card definitions, size bounds, and owned inventory.\n *\n * Returns `{ valid: true }` when the deck is valid,\n * or `{ valid: false, reason: '<explanation>' }` when invalid.\n */\nfunction validateDeck(deck, ownedCards) {\n  // Check deck length bounds\n  if (deck.length < DECK_MIN_SIZE) {\n    return { valid: false, reason: `Deck must have at least ${DECK_MIN_SIZE} cards` };\n  }\n  if (deck.length > DECK_MAX_SIZE) {\n    return { valid: false, reason: `Deck can have at most ${DECK_MAX_SIZE} cards` };\n  }\n\n  // Check each card id and count ownership\n  const counts = {};\n  for (const cardId of deck) {\n    if (!CARD_DEFS[cardId]) {\n      return { valid: false, reason: `Unknown card id: ${cardId}` };\n    }\n    counts[cardId] = (counts[cardId] || 0) + 1;\n  }\n\n  for (const [cardId, count] of Object.entries(counts)) {\n    const owned = ownedCards[cardId] || 0;\n    if (count > owned) {\n      return { valid: false, reason: `Not enough copies of ${cardId} (have ${owned}, need ${count})` };\n    }\n  }\n\n  return { valid: true };\n}\n\n/**\n * Check whether adding one copy of `cardId` to `deck` would keep the deck valid.\n */\nfunction canAddCardToDeck(cardId, deck, ownedCards) {\n  if (!CARD_DEFS[cardId]) return false;\n  if (deck.length >= DECK_MAX_SIZE) return false;\n\n  const currentCount = deck.filter(id => id === cardId).length;\n  const owned = ownedCards[cardId] || 0;\n  if (currentCount >= owned) return false;\n\n  return true;\n}\n\n/**\n * Shuffle an array in place using Fisher-Yates and return it.\n */\nfunction shuffleArray(arr) {\n  for (let i = arr.length - 1; i > 0; i--) {\n    const j = Math.floor(Math.random() * (i + 1));\n    [arr[i], arr[j]] = [arr[j], arr[i]];\n  }\n  return arr;\n}\n\n/**\n * Create a shuffled draw deck from the player's selected deck.\n * Copies `player.selectedDeck` into a new array, shuffles it, and assigns\n * the result to `player.deck`.  Returns the deck array.\n */\nfunction createDrawDeckFromSelectedDeck(player) {\n  const deck = player.selectedDeck.slice();"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_3eu9u3k1",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":800}"
+            }
+          },
+          {
+            "id": "call_x3xls2r5",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":900}"
+            }
+          },
+          {
+            "id": "call_4mm0spuy",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1000}"
+            }
+          },
+          {
+            "id": "call_8lyclrn3",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1100}"
+            }
+          }
+        ],
+        "reasoning_content": "Good, I'm getting a clear picture. Let me continue reading the rest of the file."
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_3eu9u3k1",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 801-900 of 2300 total lines.\n\n---\n\n  shuffleArray(deck);\n  player.deck = deck;\n  return deck;\n}\n\n/**\n * Draw one card from `player.deck` and return a card object.\n * Returns null when the deck is empty.\n * Card object shape: { id, name, type, charges, remainingCharges, magicStoneCost? }\n */\nfunction drawCardFromDeck(player) {\n  if (!player.deck || player.deck.length === 0) return null;\n  const cardId = player.deck.pop();\n  const def = CARD_DEFS[cardId];\n  if (!def) return null;\n  const card = {\n    id: def.id,\n    name: def.name,\n    type: def.type,\n    charges: def.charges,\n    remainingCharges: def.charges,\n  };\n  if (def.magicStoneCost != null) {\n    card.magicStoneCost = def.magicStoneCost;\n  }\n  return card;\n}\n\n/**\n * Deal up to 4 cards from `player.deck` into `player.hand`.\n * Hand is an array of card objects (or undefined for empty slots).\n */\nfunction initPlayerHand(player) {\n  player.hand = [];\n  for (let i = 0; i < 4; i++) {\n    const card = drawCardFromDeck(player);\n    if (card) {\n      player.hand.push(card);\n    }\n  }\n  return player.hand;\n}\n\n/**\n * Draw a replacement card into the slot at `slotIndex` in `player.hand`.\n * Does nothing when the deck is empty.\n */\nfunction drawReplacementCard(player, slotIndex) {\n  const card = drawCardFromDeck(player);\n  if (card) {\n    player.hand[slotIndex] = card;\n  } else {\n    // Deck exhausted — remove the slot entry so client sees an empty slot\n    player.hand.splice(slotIndex, 1);\n  }\n}\n\n/**\n * Check whether the current run has reached a terminal state.\n * Emits exactly one terminal event per run (guarded by run.status === 'playing').\n *\n * Flow: determine status → set run.status → grantRunRewards() per player → build summary → emit.\n */\nfunction checkRunTerminalState() {\n  if (!gameState.run || gameState.run.status !== 'playing') return;\n\n  let status = null;\n\n  // Victory condition: all enemies defeated\n  if (gameState.run.objective.defeatedEnemies >= gameState.run.objective.totalEnemies) {\n    status = 'victory';\n  }\n\n  // Failure condition: every connected active player is dead\n  if (!status) {\n    const activePlayers = Object.values(gameState.players);\n    if (activePlayers.length > 0 && activePlayers.every(p => p.hp <= 0)) {\n      status = 'failed';\n    }\n  }\n\n  if (!status) return;\n\n  // Set status, grant rewards per player, build summary, emit\n  gameState.run.status = status;\n\n  for (const playerId of Object.keys(gameState.players)) {\n    grantRunRewards(playerId, { status });\n  }\n\n  // Persist player data after rewards are granted\n  for (const playerId of Object.keys(gameState.players)) {\n    savePlayerData(playerId);\n  }\n\n  const summary = buildRunSummary(status);\n  io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);\n}\n\n/**"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_x3xls2r5",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 901-1000 of 2300 total lines.\n\n---\n\n * Clear all transient run entities (enemies, minions, loot).\n * Does NOT regenerate the dungeon layout — layout is session-level.\n */\nfunction resetTransientRunState() {\n  gameState.enemies = [];\n  gameState.minions = [];\n  gameState.loot = [];\n}\n\n/**\n * Full lobby reset: clear transient state, restore players to lobby,\n * and broadcast the updated state to all connected clients.\n */\nfunction returnPlayersToLobby() {\n  // 0. Persist player data before resetting transient state\n  for (const playerId of Object.keys(gameState.players)) {\n    savePlayerData(playerId);\n  }\n\n  // 1. Clear transient run entities\n  resetTransientRunState();\n\n  // 2. Reset game phase and delete run object\n  gameState.gamePhase = 'lobby';\n  delete gameState.run;\n\n  // 3. Reset every player: position, HP, readiness — preserve currency, inventory, ownedCards, runRewards\n  const spawn = firstRoomPosition();\n  for (const playerId of Object.keys(gameState.players)) {\n    const player = gameState.players[playerId];\n    const preservedCurrency = player.currency;\n    const preservedInventory = player.inventory;\n    const preservedOwnedCards = player.ownedCards;\n    const preservedRunRewards = player.runRewards;\n\n    player.ready = false;\n    player.dead = false;\n    player.hp = MAX_HP;\n    player.x = spawn.x;\n    player.y = 0.5;\n    player.z = spawn.z;\n    player.currency = preservedCurrency;\n    player.inventory = preservedInventory;\n    player.ownedCards = preservedOwnedCards;\n    player.runRewards = preservedRunRewards;\n    player.currencyEarnedThisRun = 0;\n    player.lastMoveTime = Date.now();\n    player.pendingSummons.clear();\n    player.slotCooldowns = [null, null, null, null];\n  }\n\n  // 4. Broadcast state to all clients\n  io.emit('stateUpdate', stateSnapshot());\n\n  // 5. Update lobby UI\n  broadcastLobbyUpdate();\n}\n\n// Helper: check if all players are ready and transition if so\nfunction checkAllReady() {\n  const all = Object.values(gameState.players);\n  if (all.length > 0 && all.every(p => p.ready)) {\n    gameState.gamePhase = 'playing';\n    // Reset every player to spawn position so no lobby position carries into the dungeon\n    const spawn = firstRoomPosition();\n    for (const player of all) {\n      player.x = spawn.x;\n      player.y = 0.5;\n      player.z = spawn.z;\n      player.lastMoveTime = Date.now();\n      // Create shuffled draw decks and initialize hands from each player's selected deck\n      createDrawDeckFromSelectedDeck(player);\n      initPlayerHand(player);\n      player.slotCooldowns = [null, null, null, null];\n    }\n    spawnEnemies();\n    startDungeonRun();\n    io.emit('startGame');\n  }\n}\n\n// Helper: apply damage to a player, handle death + 3s respawn\nfunction damagePlayer(playerId, amount) {\n  const player = gameState.players[playerId];\n  if (!player) return;\n\n  player.hp = Math.max(0, player.hp - amount);\n\n  if (player.hp <= 0 && !player.dead) {\n    player.dead = true;\n\n    checkRunTerminalState();\n\n    const respawnId = setTimeout(() => {\n      const p = gameState.players[playerId];\n      if (!p) return; // player may have disconnected\n      const spawn = firstRoomPosition();\n      p.hp = MAX_HP;\n      p.dead = false;\n      p.lastMoveTime = Date.now();"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_4mm0spuy",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1001-1100 of 2300 total lines.\n\n---\n\n      p.x = spawn.x;\n      p.y = 0.5;\n      p.z = spawn.z;\n    }, RESPAWN_DELAY_MS);\n    _timeouts.push(respawnId);\n  }\n}\n\nfunction randomWanderTarget() {\n  return randomRoomPosition();\n}\n\n/**\n * Create a single enemy at (x, z) with the given type and push it to\n * gameState.enemies[].  `type` must be a key in ENEMY_DEFS; defaults to\n * 'grunt' when omitted.  Throws on unknown types.\n *\n * `spawnedBy` — optional parent spawner id; used for spawn-cap bookkeeping.\n * Spawners get a `lastSpawnTime` field initialised to `Date.now()`.\n */\nfunction spawnEnemy(x, z, type = 'grunt', spawnedBy) {\n  if (!ENEMY_DEFS[type]) {\n    throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);\n  }\n  const def = ENEMY_DEFS[type];\n  const enemy = {\n    id: crypto.randomUUID(),\n    x,\n    z,\n    type,\n    hp: def.hp,\n    maxHp: def.hp,\n    state: 'idle',\n    attackState: 'idle',\n    wanderTarget: { x, z }\n  };\n  if (type === 'spawner') {\n    enemy.lastSpawnTime = Date.now();\n  }\n  if (spawnedBy !== undefined) {\n    enemy.spawnedBy = spawnedBy;\n  }\n  gameState.enemies.push(enemy);\n  return enemy;\n}\n\n// Helper: spawn 5 enemies inside generated rooms (mixed types)\nfunction spawnEnemies() {\n  const layout = gameState.layout;\n  const seed = gameState.layoutSeed || 42;\n  const rng = mulberry32(seed + 1000); // offset seed so enemies differ from loot\n\n  const combatRooms = roomsByRole(layout, 'combat');\n  // Fallback: any non-start room\n  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');\n\n  const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];\n  for (const type of spawnTable) {\n    let pos;\n    if (combatRooms.length > 0) {\n      pos = randomRoomPositionByRole(layout, 'combat', rng);\n    } else if (nonStartRooms.length > 0) {\n      // No combat rooms — pick from non-start rooms directly\n      const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];\n      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);\n      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);\n      pos = {\n        x: room.x + (rng() * 2 - 1) * halfW,\n        z: room.z + (rng() * 2 - 1) * halfD,\n      };\n    } else {\n      pos = randomRoomPosition(); // last resort: any room\n    }\n    const enemy = spawnEnemy(pos.x, pos.z, type);\n    enemy.wanderTarget = randomWanderTarget();\n  }\n\n  // Pre-spawn loot in treasure rooms (role-aware placement)\n  spawnLoot(layout, rng);\n}\n\n// Helper: spawn loot items using role-aware placement (50 % chance per call)\n// When a treasure room exists, loot spawns there; otherwise falls back to\n// any non-start room.  `layout` and `rng` are passed in for determinism.\nfunction spawnLoot(layout, rng) {\n  if (Math.random() >= LOOT_SPAWN_CHANCE) return;\n\n  const treasureRooms = roomsByRole(layout, 'treasure');\n  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');\n  let pos;\n\n  if (treasureRooms.length > 0) {\n    const room = treasureRooms[Math.floor(rng() * treasureRooms.length)];\n    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);\n    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);\n    pos = {\n      x: room.x + (rng() * 2 - 1) * halfW,\n      z: room.z + (rng() * 2 - 1) * halfD,\n    };\n  } else if (nonStartRooms.length > 0) {"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_8lyclrn3",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1101-1200 of 2300 total lines.\n\n---\n\n    const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];\n    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);\n    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);\n    pos = {\n      x: room.x + (rng() * 2 - 1) * halfW,\n      z: room.z + (rng() * 2 - 1) * halfD,\n    };\n  } else {\n    pos = randomRoomPosition(); // last resort\n  }\n\n  const value = Math.floor(Math.random() * 16) + 5;\n  const id = crypto.randomUUID();\n  gameState.loot.push({ id, x: pos.x, z: pos.z, value, createdAt: Date.now() });\n  console.log(`[loot] spawned id=${id} value=${value}`);\n}\n\nfunction isDebugScenarioAllowed(socket) {\n  if (process.env.ALLOW_DEBUG_SCENARIOS === '1') return true;\n  if (process.env.NODE_ENV === 'production') return false;\n\n  const address = socket.handshake.address || '';\n  const origin = socket.handshake.headers.origin || '';\n  const host = socket.handshake.headers.host || '';\n  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');\n  const localOrigin = /^https?:\\/\\/(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?$/i.test(origin);\n  const localHost = /^(localhost|127\\.0\\.0\\.1|\\[::1\\])(?::\\d+)?$/i.test(host);\n\n  return localAddress || localOrigin || localHost;\n}\n\nfunction ensureNearbyEnemy(x, z) {\n  const nearby = gameState.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);\n  if (nearby) return;\n\n  const enemy = spawnEnemy(x + 3, z, 'grunt');\n  enemy.wanderTarget = { x: x + 3, z };\n}\n\nfunction enterPlayingPhase() {\n  if (gameState.gamePhase !== 'playing') {\n    gameState.gamePhase = 'playing';\n    // Initialize draw decks and hands for all players (idempotent — safe to call from both checkAllReady and applyDebugScenario)\n    for (const player of Object.values(gameState.players)) {\n      if (!player.hand || player.hand.length === 0) {\n        createDrawDeckFromSelectedDeck(player);\n        initPlayerHand(player);\n      }\n    }\n    spawnEnemies();\n    startDungeonRun();\n    io.emit('startGame');\n  }\n}\n\nfunction applyDebugScenario(socket, name) {\n  if (!DEBUG_SCENARIOS.has(name)) {\n    return { ok: false, reason: `Unknown debug scenario: ${name}` };\n  }\n\n  const player = gameState.players[socket.playerId];\n  if (!player) return { ok: false, reason: 'No player for debug scenario' };\n  const spawn = firstRoomPosition();\n\n  // Validate deck — same check the normal playerReady path uses\n  const result = validateDeck(player.selectedDeck, player.ownedCards);\n  if (!result.valid) return { ok: false, reason: result.reason };\n\n  player.ready = true;\n  player.dead = false;\n  player.firstMoveAfterSpawn = false;\n  player.lastMoveTime = Date.now();\n  player.x = spawn.x;\n  player.y = 0.5;\n  player.z = spawn.z;\n  player.debugScenario = name;\n  player.pendingSummons.clear();\n  enterPlayingPhase();\n\n  // Per-player initialization: when enterPlayingPhase() skipped because\n  // gamePhase was already 'playing' (multi-client debug scenario), this\n  // player may not have a hand, deck, cooldowns, or pendingSummons.\n  if (gameState.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {\n    createDrawDeckFromSelectedDeck(player);\n    initPlayerHand(player);\n    player.slotCooldowns = [null, null, null, null];\n    if (!player.pendingSummons) {\n      player.pendingSummons = new Set();\n    }\n  }\n\n  ensureNearbyEnemy(player.x, player.z);\n\n  if (name === 'summon-low-mana') {\n    player.hp = MAX_HP;\n    player.magicStones = 0;\n  } else if (name === 'summon-ready') {\n    player.hp = MAX_HP;\n    player.magicStones = MAX_MAGIC_STONES;\n    // Guarantee at least one summon card in hand so integration tests are deterministic"
+          }
+        ]
+      },
+      {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+          {
+            "id": "call_7qw5w6x9",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1200}"
+            }
+          },
+          {
+            "id": "call_ke1c1qy1",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1300}"
+            }
+          },
+          {
+            "id": "call_76zibj8k",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1400}"
+            }
+          },
+          {
+            "id": "call_wybix6ql",
+            "type": "function",
+            "function": {
+              "name": "read_file",
+              "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1500}"
+            }
+          }
+        ],
+        "reasoning_content": "I've read up to line 1200. Let me continue reading the rest of the file to get a complete picture."
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_7qw5w6x9",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1201-1300 of 2300 total lines.\n\n---\n\n    if (!player.hand.some(c => c && c.type === 'summon')) {\n      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'summon');\n      if (replaceSlot >= 0) {\n        player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };\n      }\n    }\n  } else if (name === 'combat-damaged-player') {\n    player.hp = 25;\n    player.magicStones = MAX_MAGIC_STONES;\n  } else if (name === 'mixed-enemies') {\n    // Spawn one of each enemy type near the player for visual verification\n    player.hp = MAX_HP;\n    player.magicStones = MAX_MAGIC_STONES;\n    // Clear any existing enemies so we get a clean set\n    gameState.enemies = [];\n    spawnEnemy(player.x + 3, player.z, 'grunt');\n    spawnEnemy(player.x - 3, player.z, 'skirmisher');\n    spawnEnemy(player.x, player.z + 4, 'miniboss');\n    spawnEnemy(player.x, player.z - 4, 'spawner');\n    // Set wander targets so they don't all stack\n    for (const e of gameState.enemies) {\n      e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };\n    }\n  } else if (name === 'spawner-active') {\n    // Spawn a spawner near the player with lastSpawnTime in the past so\n    // the first add appears on the very next updateEnemies() tick.\n    player.hp = MAX_HP;\n    player.magicStones = MAX_MAGIC_STONES;\n    gameState.enemies = [];\n    const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');\n    spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;\n  } else if (name === 'monster-card') {\n    // Guarantee at least one monster card in hand so integration tests\n    // and visual capture can exercise monster-card behavior deterministically.\n    player.hp = MAX_HP;\n    player.magicStones = MAX_MAGIC_STONES;\n    if (!player.hand.some(c => c && c.type === 'monster')) {\n      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'monster');\n      if (replaceSlot >= 0) {\n        player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };\n      }\n    }\n  }\n\n  // Scenario enemy mutations above can add to or replace the enemy list\n  // after enterPlayingPhase() / startDungeonRun() snapshot the count. Resync\n  // the run objective so totalEnemies reflects the final authoritative list.\n  syncRunObjectiveToEnemies();\n\n  broadcastLobbyUpdate();\n  io.emit('stateUpdate', stateSnapshot());\n  return { ok: true, scenario: name };\n}\n\n/**\n * Try to find a position within `radius` units of (x, z) that is inside\n * dungeon bounds.  Falls back to `randomRoomPosition()` when clamping\n * pushes the candidate outside the radius (near dungeon edges).\n *\n * Uses polar coordinates (random angle + random radius) so the raw\n * candidate is always within the circle — no spurious fallbacks.\n */\nfunction nearbySpawnPosition(x, z, radius) {\n  const bounds = gameState.dungeonBounds;\n  // Polar sampling: uniform angle, uniform distance within circle\n  const angle = Math.random() * Math.PI * 2;\n  const dist = Math.sqrt(Math.random()) * radius;\n  const candidate = {\n    x: x + Math.cos(angle) * dist,\n    z: z + Math.sin(angle) * dist,\n  };\n  // Clamp to dungeon bounds\n  candidate.x = Math.max(bounds.minX, Math.min(bounds.maxX, candidate.x));\n  candidate.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, candidate.z));\n  // After clamping, verify it's still within radius (edge case: near dungeon boundary)\n  if (Math.hypot(candidate.x - x, candidate.z - z) <= radius) return candidate;\n  // Fall back to a random room position\n  return randomRoomPosition();\n}\n\n// Helper: update enemy wander AI each tick\nfunction updateEnemies() {\n\tif (gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed')) return;\n\n\tconst dt = 1 / TICK_RATE;\n\tconst players = Object.values(gameState.players).filter(p => !p.dead);\n\n\tfor (const enemy of gameState.enemies) {\n\t\tconst def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;\n\n\t\t// Ensure attackState exists (backward compat for enemies spawned before this change)\n\t\tif (!enemy.attackState) enemy.attackState = 'idle';\n\n\t\t// ── Recovery: wait out cooldown, then return to chasing or idle ──\n\t\tif (enemy.attackState === 'recovering') {\n\t\t\tif (Date.now() >= enemy.recoverUntil) {\n\t\t\t\tenemy.attackState = 'chasing';\n\t\t\t} else {\n\t\t\t\tcontinue; // do not move while recovering\n\t\t\t}"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_ke1c1qy1",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1301-1400 of 2300 total lines.\n\n---\n\n\t\t\t// fall through to chasing/idle logic below\n\t\t}\n\n\t\t// ── Wind-up: wait, then revalidate range before striking ──\n\t\tif (enemy.attackState === 'windup') {\n\t\t\tconst elapsed = Date.now() - enemy.windupStartTime;\n\t\t\tif (elapsed >= def.attackWindupMs) {\n\t\t\t\t// Revalidate: find the target player and check range + alive\n\t\t\t\tconst target = gameState.players[enemy.windupTargetId];\n\t\t\t\tif (target && !target.dead) {\n\t\t\t\t\tconst dist = Math.hypot(target.x - enemy.x, target.z - enemy.z);\n\t\t\t\t\tif (dist <= ENEMY_ATTACK_RANGE) {\n\t\t\t\t\t\t// Strike!\n\t\t\t\t\t\tdamagePlayer(enemy.windupTargetId, def.attackDamage);\n\t\t\t\t\t\tenemy.attackState = 'recovering';\n\t\t\t\t\t\tenemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;\n\t\t\t\t\t\tcontinue;\n\t\t\t\t\t}\n\t\t\t\t}\n\t\t\t\t// Target out of range or dead — cancel attack, return to chasing\n\t\t\t\tenemy.attackState = 'chasing';\n\t\t\t\tcontinue;\n\t\t\t} else {\n\t\t\t\tcontinue; // still winding up, do not move\n\t\t\t}\n\t\t}\n\n\t\t// ── Spawner: periodically spawn adds ──\n\t\tif (enemy.type === 'spawner' && enemy.hp > 0) {\n\t\t\tconst spawnInterval = def.spawnIntervalMs || 4000;\n\t\t\tconst spawnMaxAlive = def.spawnMaxAlive || 3;\n\t\t\tconst spawnType = def.spawnType || 'skirmisher';\n\t\t\tconst now = Date.now();\n\n\t\t\tif (now - enemy.lastSpawnTime >= spawnInterval) {\n\t\t\t\t// Count living adds belonging to this spawner\n\t\t\t\tconst aliveAdds = gameState.enemies.filter(\n\t\t\t\t\te => e.spawnedBy === enemy.id && e.hp > 0\n\t\t\t\t).length;\n\n\t\t\t\tif (aliveAdds < spawnMaxAlive) {\n\t\t\t\t\t// Place add within ~3 units of spawner\n\t\t\t\t\tconst addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);\n\t\t\t\t\tconst add = spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);\n\t\t\t\t\tadd.wanderTarget = randomWanderTarget();\n\t\t\t\t\tenemy.lastSpawnTime = now;\n\t\t\t\t}\n\t\t\t}\n\t\t}\n\n\t\t// ── Find nearest living player ──\n\t\tlet nearestDist = Infinity;\n\t\tlet nearestPlayer = null;\n\t\tfor (const player of players) {\n\t\t\tconst dx = player.x - enemy.x;\n\t\t\tconst dz = player.z - enemy.z;\n\t\t\tconst dist = Math.hypot(dx, dz);\n\t\t\tif (dist < nearestDist) {\n\t\t\t\tnearestDist = dist;\n\t\t\t\tnearestPlayer = player;\n\t\t\t}\n\t\t}\n\n\t\t// ── Chasing: move toward player, transition to windup in range ──\n\t\tif (nearestPlayer && nearestDist < DETECTION_RADIUS) {\n\t\t\tenemy.state = 'chasing';\n\n\t\t\t// If in chasing (not mid-windup/recover) and within attack range, start wind-up\n\t\t\tif (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {\n\t\t\t\tif (nearestDist <= ENEMY_ATTACK_RANGE) {\n\t\t\t\t\tenemy.attackState = 'windup';\n\t\t\t\t\tenemy.windupTargetId = nearestPlayer.id;\n\t\t\t\t\tenemy.windupStartTime = Date.now();\n\t\t\t\t\tcontinue; // do not move during wind-up\n\t\t\t\t}\n\t\t\t\tenemy.attackState = 'chasing';\n\t\t\t}\n\n\t\t\tconst chaseResult = moveEntityToward(enemy, nearestPlayer, def.chaseSpeed * dt);\n\t\t\t// If blocked while chasing, enemy stops at wall edge (wall-slide handles sliding)\n\t\t\tvoid chaseResult;\n\t\t\tcontinue;\n\t\t}\n\n\t\t// ── No player in detection range — revert to idle and wander ──\n\t\tenemy.state = 'idle';\n\t\tenemy.attackState = 'idle';\n\t\tconst wdx = enemy.wanderTarget.x - enemy.x;\n\t\tconst wdz = enemy.wanderTarget.z - enemy.z;\n\t\tconst wdist = Math.hypot(wdx, wdz);\n\n\t\t// Reached wander target — pick a new one\n\t\tif (wdist < 0.5) {\n\t\t\tenemy.wanderTarget = randomWanderTarget();\n\t\t\tenemy.blockedTicks = 0;\n\t\t\tcontinue;\n\t\t}\n\n\t\t// Move toward wander target using wall-aware movement\n\t\tconst wanderResult = moveEntityToward(enemy, enemy.wanderTarget, def.wanderSpeed * dt);"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_76zibj8k",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1401-1500 of 2300 total lines.\n\n---\n\n\n\t\t// Track consecutive blocked ticks — pick a new target after too many blocks\n\t\tif (wanderResult.blocked) {\n\t\t\tif (!enemy.blockedTicks) enemy.blockedTicks = 0;\n\t\t\tenemy.blockedTicks += 1;\n\t\t\tif (enemy.blockedTicks > 10) {\n\t\t\t\tenemy.wanderTarget = randomWanderTarget();\n\t\t\t\tenemy.blockedTicks = 0;\n\t\t\t}\n\t\t} else {\n\t\t\tenemy.blockedTicks = 0;\n\t\t}\n\t}\n}\n\n// Helper: decrement minion TTL and remove expired/dead minions\nfunction updateMinions() {\n  const dt = 1 / TICK_RATE;\n  const runTerminal = gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed');\n\n  // AI: each living minion seeks nearest enemy, chases, and attacks\n  // If no enemy is nearby, follows its owner.\n  // Skipped entirely when the run is terminal (victory or failed)\n  if (!runTerminal) {\n    for (const minion of gameState.minions) {\n      let nearestDist = Infinity;\n      let nearestEnemy = null;\n\n      for (const enemy of gameState.enemies) {\n        const dx = enemy.x - minion.x;\n        const dz = enemy.z - minion.z;\n        const dist = Math.hypot(dx, dz);\n        if (dist < nearestDist) {\n          nearestDist = dist;\n          nearestEnemy = enemy;\n        }\n      }\n\n      // Chase if an enemy is within detection range\n      if (nearestEnemy && nearestDist < DETECTION_RADIUS) {\n        // Attack if within attack range\n        if (nearestDist <= ATTACK_RANGE) {\n          nearestEnemy.hp -= 5;\n        } else {\n          // Move toward enemy using moveEntityToward (wall-aware)\n          moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);\n        }\n      } else {\n        // No enemy in range — follow owner\n        const owner = gameState.players[minion.ownerId];\n        if (owner && !owner.dead) {\n          const dx = owner.x - minion.x;\n          const dz = owner.z - minion.z;\n          const distToOwner = Math.hypot(dx, dz);\n          if (distToOwner > MINION_FOLLOW_DISTANCE) {\n            moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });\n          }\n          // Within follow distance — stay put\n        }\n        // Owner missing, disconnected, or dead — stay stationary\n      }\n    }\n  }\n\n  // Cleanup dead enemies after minion attacks\n  cleanupAfterDamage();\n\n  // Decrement TTL and remove expired/dead minions\n  for (const minion of gameState.minions) {\n    minion.ttl -= dt;\n  }\n  gameState.minions = gameState.minions.filter(m => m.ttl > 0 && m.hp > 0);\n}\n\n// Helper: find a live Socket.IO socket by the stable playerId assigned on connect.\n// Socket.IO keys sockets by socket.id (a random string), not by playerId,\n// so we must iterate and match on socket.playerId.\nfunction findSocketByPlayerId(playerId) {\n  for (const socket of io.sockets.sockets.values()) {\n    if (socket.playerId === playerId) {\n      return socket;\n    }\n  }\n  return null;\n}\n\n// Helper: remove stale players (no activity for STALE_THRESHOLD ms)\n// Extracted so tests can invoke directly without setInterval\nfunction cleanupStalePlayers() {\n  for (const playerId in gameState.players) {\n    const player = gameState.players[playerId];\n    if (Date.now() - player.lastActivity > STALE_THRESHOLD) {\n      // Persist latest state before removing — covers the case where the\n      // socket is already disconnected and the 'disconnect' handler never fires.\n      // If socket.disconnect() below triggers the handler, its own savePlayerData\n      // is a redundant but harmless second save after this one.\n      savePlayerData(playerId);\n      const socket = findSocketByPlayerId(playerId);\n      if (socket && socket.connected) {\n        socket.disconnect();"
+          }
+        ]
+      },
+      {
+        "role": "tool",
+        "tool_call_id": "call_wybix6ql",
+        "content": [
+          {
+            "type": "text",
+            "text": "Showing lines 1501-1600 of 2300 total lines.\n\n---\n\n      }\n      delete gameState.players[playerId];\n      console.log(`Player disconnected due to inactivity: ${playerId}`);\n    }\n  }\n}\n\n// Helper: regenerate Magic Stones for all players (one tick)\nfunction regenMagicStones() {\n  for (const p of Object.values(gameState.players)) {\n    if (p.debugScenario === 'summon-low-mana') {\n      p.magicStones = 0;\n    } else {\n      p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);\n    }\n    p.pendingSummons.clear();\n  }\n}\n\n/**\n * Build a clean public snapshot of gameState for stateUpdate broadcasts.\n * Includes only client-relevant fields; excludes internal-only data\n * (layout, _victoryCounters, dungeonBounds) and non-serializable per-player\n * fields (pendingSummons, lastActivity).\n */\nfunction stateSnapshot() {\n  const players = {};\n  for (const [id, p] of Object.entries(gameState.players)) {\n    players[id] = {\n      x: p.x,\n      y: p.y,\n      z: p.z,\n      rotation: p.rotation,\n      deck: p.deck,\n      hand: p.hand,\n      hp: p.hp,\n      dead: p.dead,\n      ready: p.ready,\n      magicStones: p.magicStones,\n      currency: p.currency,\n      ownedCards: p.ownedCards,\n      runRewards: p.runRewards,\n      currencyEarnedThisRun: p.currencyEarnedThisRun,\n      selectedDeck: p.selectedDeck,\n      inventory: p.inventory,\n      debugScenario: p.debugScenario\n    };\n  }\n\n  const snapshot = {\n    players,\n    enemies: gameState.enemies,\n    minions: gameState.minions,\n    loot: gameState.loot,\n    lobby: gameState.lobby,\n    gamePhase: gameState.gamePhase,\n    run: gameState.run,\n    dungeonBounds: gameState.dungeonBounds,\n    layoutSeed: gameState.layoutSeed,\n    currency: gameState.currency\n  };\n\n  return snapshot;\n}\n\n// Track whether Express routes have been mounted — prevents stacking\n// on repeated startServer() calls (tests call startServer in beforeEach).\nlet _routesMounted = false;\n// Track whether Socket.IO middleware has been registered — prevents stacking\n// on repeated startServer() calls.\nlet _middlewareRegistered = false;\n\n// ── Server startup (deferred so tests can import without starting HTTP) ──\n\nfunction startServer(port) {\n  // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')\n  initAuth();\n\n  // Ensure the data/ directory exists for user records and player persistence\n  const dataDir = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');\n  fs.mkdirSync(dataDir, { recursive: true });\n\n  // Mount Express routes exactly once per process.  The auth router is a\n  // module-level singleton (require('./auth')) — calling app.use() again\n  // would stack a duplicate set of handlers.  The guard below ensures each\n  // route is registered a single time, even when tests call startServer()\n  // repeatedly in beforeEach.\n  if (!_routesMounted) {\n    app.use(express.json());\n    const authRouter = require('./auth');\n    app.use('/api', authRouter);\n    _routesMounted = true;\n  }\n\n  // In test mode, clear the in-memory users Map to prevent contamination\n  // from prior test files sharing the same module instance.  This pairs\n  // with setTestFilePath() / clearUsers() called in test beforeEach hooks.\n  if (process.env.NODE_ENV === 'test') {\n    const { clearUsers } = require('./users');\n    clearUsers();"
+          }
+        ]
+      }
+    ],
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    },
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "read_file",
+          "description": "Reads and returns the content of a specified file. If the file is large, the content will be truncated. The tool's response will clearly indicate if truncation has occurred and will provide details on how to read more of the file using the 'offset' and 'limit' parameters. Handles text, images (PNG, JPG, GIF, WEBP, SVG, BMP), PDF files, and Jupyter notebooks (.ipynb). For text files, it can read specific line ranges. For PDF files, use the 'pages' parameter to extract specific page ranges as text (e.g. '1-5'). Max 20 pages per request. This tool can read Jupyter notebooks (.ipynb) and returns structured cell content with outputs.",
+          "parameters": {
+            "properties": {
+              "file_path": {
+                "description": "The absolute path to the file to read (e.g., '/home/user/project/file.txt'). Relative paths are not supported. You must provide an absolute path.",
+                "type": "string"
+              },
+              "offset": {
+                "description": "Optional: For text files, the 0-based line number to start reading from. Requires 'limit' to be set. Use for paginating through large files.",
+                "type": "number"
+              },
+              "limit": {
+                "description": "Optional: For text files, maximum number of lines to read. Use with 'offset' to paginate through large files. If omitted, reads the entire file (if feasible, up to a default limit).",
+                "type": "number"
+              },
+              "pages": {
+                "description": "Optional: For PDF files, the page range to extract as text (e.g., '1-5', '3', '10-20'). Pages are 1-indexed. Max 20 pages per request. Open-ended ranges like '3-' are not supported. When provided, PDF content is extracted as text regardless of model capabilities.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "file_path"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "grep_search",
+          "description": "A powerful search tool built on ripgrep\n\n  Usage:\n  - ALWAYS use Grep for search tasks. NEVER invoke `grep` or `rg` as a Bash command. The Grep tool has been optimized for correct permissions and access.\n  - Supports full regex syntax (e.g., \"log.*Error\", \"function\\s+\\w+\")\n  - Filter files with glob parameter (e.g., \"*.js\", \"**/*.tsx\")\n  - Use Agent tool for open-ended searches requiring multiple rounds\n  - Pattern syntax: Uses ripgrep (not grep) - special regex characters need escaping (use `interface\\{\\}` to find `interface{}` in Go code)\n",
+          "parameters": {
+            "properties": {
+              "pattern": {
+                "type": "string",
+                "description": "The regular expression pattern to search for in file contents"
+              },
+              "glob": {
+                "type": "string",
+                "description": "Glob pattern to filter files (e.g. \"*.js\", \"*.{ts,tsx}\") - maps to rg --glob"
+              },
+              "path": {
+                "type": "string",
+                "description": "File or directory to search in (rg PATH). Defaults to current working directory."
+              },
+              "limit": {
+                "type": "number",
+                "description": "Limit output to first N lines/entries. Optional - shows all matches if not specified."
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "glob",
+          "description": "Fast file pattern matching tool that works with any codebase size\n- Supports glob patterns like \"**/*.js\" or \"src/**/*.ts\"\n- Returns matching file paths sorted by modification time\n- Use this tool when you need to find files by name patterns\n- When you are doing an open ended search that may require multiple rounds of globbing and grepping, use the Agent tool instead\n- You have the capability to call multiple tools in a single response. It is always better to speculatively perform multiple searches as a batch that are potentially useful.",
+          "parameters": {
+            "properties": {
+              "pattern": {
+                "description": "The glob pattern to match files against",
+                "type": "string"
+              },
+              "path": {
+                "description": "The directory to search in. If not specified, the current working directory will be used. IMPORTANT: Omit this field to use the default directory. DO NOT enter \"undefined\" or \"null\" - simply omit it for the default behavior. Must be a valid directory path if provided.",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pattern"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "run_shell_command",
+          "description": "Executes a given shell command (as `bash -c <command>`) in a persistent shell session with optional timeout, ensuring proper handling and security measures.\n\nIMPORTANT: This tool is for terminal operations like git, npm, docker, etc. DO NOT use it for file operations (reading, writing, editing, searching, finding files) - use the specialized tools for this instead.\n\n**Usage notes**:\n- The command argument is required.\n- You can specify an optional timeout in milliseconds (up to 600000ms / 10 minutes). If not specified, commands will timeout after 120000ms (2 minutes).\n- It is very helpful if you write a clear, concise description of what this command does in 5-10 words.\n\n- Avoid using run_shell_command with the `find`, `grep`, `cat`, `head`, `tail`, `sed`, `awk`, or `echo` commands, unless explicitly instructed or when these commands are truly necessary for the task. Instead, always prefer using the dedicated tools for these commands:\n  - File search: Use glob (NOT find or ls)\n  - Content search: Use grep_search (NOT grep or rg)\n  - Read files: Use read_file (NOT cat/head/tail)\n  - Edit files: Use edit (NOT sed/awk)\n  - Write files: Use write_file (NOT echo >/cat <<EOF)\n  - Communication: Output text directly (NOT echo/printf)\n- **Shell argument quoting and special characters**: When passing arguments that contain special characters (parentheses `()`, backticks ````, dollar signs `$`, backslashes `\\`, semicolons `;`, pipes `|`, angle brackets `<>`, ampersands `&`, exclamation marks `!`, etc.), you MUST ensure they are properly quoted to prevent the shell from misinterpreting them as shell syntax:\n  - **Single quotes** `'...'` pass everything literally, but cannot contain a literal single quote.\n  - **ANSI-C quoting** `$'...'` supports escape sequences (e.g. `\\n` for newline, `\\'` for single quote) and is the safest approach for multi-line strings or strings with single quotes.\n  - **Heredoc** is the most robust approach for large, multi-line text with mixed quotes:\n    ```bash\n    gh pr create --title \"My Title\" --body \"$(cat <<'HEREDOC'\n    Multi-line body with (parentheses), `backticks`, and 'single-quotes'.\n    HEREDOC\n    )\"\n    ```\n  - NEVER use unescaped single quotes inside single-quoted strings (e.g. `'it\\'s'` is wrong; use `$'it\\'s'` or `\"it's\"` instead).\n  - If unsure, prefer double-quoting arguments and escape inner double-quotes as `\\\"`.\n- When issuing multiple commands:\n  - If the commands are independent and can run in parallel, make multiple run_shell_command tool calls in a single message. For example, if you need to run \"git status\" and \"git diff\", send a single message with two run_shell_command tool calls in parallel.\n  - If the commands depend on each other and must run sequentially, use a single run_shell_command call with '&&' to chain them together (e.g., `git add . && git commit -m \"message\" && git push`). For instance, if one operation must complete before another starts (like mkdir before cp, Write before run_shell_command for git operations, or git add before git commit), run these operations sequentially instead.\n  - Use ';' only when you need to run commands sequentially but don't care if earlier commands fail\n  - DO NOT use newlines to separate commands (newlines are ok in quoted strings)\n- Try to maintain your current working directory throughout the session by using absolute paths and avoiding usage of `cd`. You may use `cd` if the User explicitly requests it.\n  <good-example>\n  pytest /foo/bar/tests\n  </good-example>\n  <bad-example>\n  cd /foo/bar && pytest tests\n  </bad-example>\n\n**Background vs Foreground Execution:**\n- You should decide whether commands should run in background or foreground based on their nature:\n- Use background execution (is_background: true) for:\n  - Long-running development servers: `npm run start`, `npm run dev`, `yarn dev`, `bun run start`\n  - Build watchers: `npm run watch`, `webpack --watch`\n  - Database servers: `mongod`, `mysql`, `redis-server`\n  - Web servers: `python -m http.server`, `php -S localhost:8000`\n  - Any command expected to run indefinitely until manually stopped\n\n  - Command is executed as a subprocess that leads its own process group. Command process group can be terminated as `kill -- -PGID` or signaled as `kill -s SIGNAL -- -PGID`.\n- Use foreground execution (is_background: false) for:\n  - One-time commands: `ls`, `cat`, `grep`\n  - Build commands: `npm run build`, `make`\n  - Installation commands: `npm install`, `pip install`\n  - Git operations: `git commit`, `git push`\n  - Test runs: `npm test`, `pytest`\n",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "command": {
+                "type": "string",
+                "description": "Exact bash command to execute as `bash -c <command>`"
+              },
+              "is_background": {
+                "type": "boolean",
+                "description": "Optional: Whether to run the command in background. If not specified, defaults to false (foreground execution). Explicitly set to true for long-running processes like development servers, watchers, or daemons that should continue running without blocking further commands."
+              },
+              "timeout": {
+                "type": "number",
+                "description": "Optional timeout in milliseconds (max 600000)"
+              },
+              "description": {
+                "type": "string",
+                "description": "Brief description of the command for the user. Be specific and concise. Ideally a single sentence. Can be up to 3 sentences for clarity. No line breaks."
+              },
+              "directory": {
+                "type": "string",
+                "description": "(OPTIONAL) The absolute path of the directory to run the command in. If not provided, the project root directory is used. Must be a directory within the workspace and must already exist."
+              }
+            },
+            "required": [
+              "command"
+            ]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "list_directory",
+          "description": "Lists the names of files and subdirectories directly within a specified directory path. Can optionally ignore entries matching provided glob patterns.",
+          "parameters": {
+            "properties": {
+              "path": {
+                "description": "The absolute path to the directory to list (must be absolute, not relative)",
+                "type": "string"
+              },
+              "ignore": {
+                "description": "List of glob patterns to ignore",
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              "file_filtering_options": {
+                "description": "Optional: Whether to respect ignore patterns from .gitignore or .qwenignore",
+                "type": "object",
+                "properties": {
+                  "respect_git_ignore": {
+                    "description": "Optional: Whether to respect .gitignore patterns when listing files. Only available in git repositories. Defaults to true.",
+                    "type": "boolean"
+                  },
+                  "respect_qwen_ignore": {
+                    "description": "Optional: Whether to respect .qwenignore patterns when listing files. Defaults to true.",
+                    "type": "boolean"
+                  }
+                }
+              }
+            },
+            "required": [
+              "path"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "web_fetch",
+          "description": "Fetches content from a specified URL and processes it using an AI model\n- Takes a URL and a prompt as input\n- Supports content negotiation for markdown (reduces tokens by ~80%)\n- Fetches the URL content, converts HTML to text if needed\n- Processes the content with the prompt using a small, fast model\n- Returns the model's response about the content\n- Use this tool when you need to retrieve and analyze web content\n\nUsage notes:\n  - IMPORTANT: If an MCP-provided web fetch tool is available, prefer using that tool instead of this one, as it may have fewer restrictions. All MCP-provided tools start with \"mcp__\".\n  - The URL must be a fully-formed valid URL\n  - The prompt should describe what information you want to extract from the page\n  - format parameter (optional): controls only the Accept header sent to the server. All content is normalized to plain text for LLM processing, regardless of format.\n  - \"auto\" (default): Prefers markdown via content negotiation, accepts HTML as fallback. Use when user does NOT specify a format.\n  - \"markdown\": Sends Accept: text/markdown. Use when user explicitly asks for markdown content.\n  - \"html\": Sends Accept: text/html. Content is still converted to plain text for LLM processing.\n  - \"text\": Sends Accept: text/plain. Use when user explicitly asks for plain text.\n  - This tool is read-only and does not modify any files\n  - Results may be summarized if the content is very large\n  - Supports both public and private/localhost URLs using direct fetch",
+          "parameters": {
+            "properties": {
+              "url": {
+                "description": "The URL to fetch content from",
+                "type": "string"
+              },
+              "prompt": {
+                "description": "The prompt to run on the fetched content",
+                "type": "string"
+              },
+              "format": {
+                "description": "Preferred content format (Accept header only): auto (default, prefers markdown), markdown, html, or text. All content is normalized to plain text.",
+                "type": "string",
+                "enum": [
+                  "auto",
+                  "markdown",
+                  "html",
+                  "text"
+                ]
+              }
+            },
+            "required": [
+              "url",
+              "prompt"
+            ],
+            "type": "object"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "todo_write",
+          "description": "\nUse this tool to create and manage a structured task list for your current coding session. This helps you track progress, organize complex tasks, and demonstrate thoroughness to the user.\nIt also helps the user understand the progress of the task and overall progress of their requests.\n\n## When to Use This Tool\nUse this tool proactively in these scenarios:\n\n1. Complex multi-step tasks - When a task requires 3 or more distinct steps or actions\n2. Non-trivial and complex tasks - Tasks that require careful planning or multiple operations\n3. User explicitly requests todo list - When the user directly asks you to use the todo list\n4. User provides multiple tasks - When users provide a list of things to be done (numbered or comma-separated)\n5. After receiving new instructions - Immediately capture user requirements as todos\n6. When you start working on a task - Mark it as in_progress BEFORE beginning work. Ideally you should only have one todo as in_progress at a time\n7. After completing a task - Mark it as completed and add any new follow-up tasks discovered during implementation\n\n## When NOT to Use This Tool\n\nSkip using this tool when:\n1. There is only a single, straightforward task\n2. The task is trivial and tracking it provides no organizational benefit\n3. The task can be completed in less than 3 trivial steps\n4. The task is purely conversational or informational\n\nNOTE that you should not use this tool if there is only one trivial task to do. In this case you are better off just doing the task directly.\n\n## Examples of When to Use the Todo List\n\n<example>\nUser: I want to add a dark mode toggle to the application settings. Make sure you run the tests and build when you're done!\nAssistant: I'll help add a dark mode toggle to your application settings. Let me create a todo list to track this implementation.\n*Creates todo list with the following items:*\n1. Create dark mode toggle component in Settings page\n2. Add dark mode state management (context/store)\n3. Implement CSS-in-JS styles for dark theme\n4. Update existing components to support theme switching\n5. Run tests and build process, addressing any failures or errors that occur\n*Begins working on the first task*\n\n<reasoning>\nThe assistant used the todo list because:\n1. Adding dark mode is a multi-step feature requiring UI, state management, and styling changes\n2. The user explicitly requested tests and build be run afterward\n3. The assistant inferred that tests and build need to pass by adding \"Ensure tests and build succeed\" as the final task\n</reasoning>\n</example>\n\n<example>\nUser: Help me rename the function getCwd to getCurrentWorkingDirectory across my project\nAssistant: Let me first search through your codebase to find all occurrences of 'getCwd'.\n*Uses grep or search tools to locate all instances of getCwd in the codebase*\nAssistant: I've found 15 instances of 'getCwd' across 8 different files. Let me create a todo list to track these changes.\n*Creates todo list with specific items for each file that needs updating*\n\n<reasoning>\nThe assistant used the todo list because:\n1. First, the assistant searched to understand the scope of the task\n2. Upon finding multiple occurrences across different files, it determined this was a complex task with multiple steps\n3. The todo list helps ensure every instance is tracked and updated systematically\n4. This approach prevents missing any occurrences and maintains code consistency\n</reasoning>\n</example>\n\n\n<example>\nUser: I need to implement these features for my e-commerce site: user registration, product catalog, shopping cart, and checkout flow.\nAssistant: I'll help implement these features. First, let's add all the features to the todo list.\n*Creates a todo list breaking down each feature into specific tasks based on the project architecture*\nAssistant: Let's start with user registration. This will involve creating database models, API endpoints, and frontend forms that integrate with your existing authentication system.\n\n<reasoning>\nThe assistant used the todo list because:\n1. The user provided multiple complex features to implement in a comma separated list\n2. The todo list helps organize these large features into manageable tasks\n3. This approach allows for tracking progress across the entire implementation\n</reasoning>\n</example>\n\n<example>\nUser: Can you help optimize my React application? It's rendering slowly and has performance issues.</user>\nAssistant: I'll help optimize your React application. First, let me examine your codebase to identify potential performance bottlenecks.\n*Reviews component structure, render patterns, state management, and data fetching*\nAssistant: After analyzing your codebase, I've identified several performance issues. Let me create a todo list to track our optimization efforts.\n*Creates todo list with items like: 1) Implement memoization for expensive calculations in ProductList, 2) Add virtualization for long lists in Dashboard, 3) Optimize image loading in Gallery component, 4) Fix state update loops in ShoppingCart, 5) Review bundle size and implement code splitting*\nLet's start by implementing memoization for the expensive calculations in your ProductList component.</assistant>\n\n<reasoning>\nThe assistant used the todo list because:\n1. First, the assistant examined the codebase to identify specific performance issues\n2. Based on this analysis, it identified multiple optimization opportunities\n3. Performance optimization is a non-trivial task requiring multiple steps\n4. The todo list helps methodically track improvements across different components\n5. This systematic approach ensures all performance bottlenecks are addressed\n</reasoning>\n</example>\n\n## Examples of When NOT to Use the Todo List\n\n<example>\nUser: How do I print 'Hello World' in Python?\nAssistant: In Python, you can print \"Hello World\" with this simple code:\n\npython\nprint(\"Hello World\")\n\nThis will output the text \"Hello World\" to the console when executed.</assistant>\n\n<reasoning>\nThe assistant did not use the todo list because this is a single, trivial task that can be completed in one step. There's no need to track multiple tasks or steps for such a straightforward request.\n</reasoning>\n</example>\n\n<example>\nUser: What does the git status command do?\nAssistant: The git status command shows the current state of your working directory and staging area. It displays which changes have been staged, which haven't, and which files aren't being tracked by Git. This is a fundamental command for understanding the current state of your repository before making commits.\n\n<reasoning>\nThe assistant did not use the todo list because this is an informational request with no actual coding task to complete. The user is simply asking for an explanation, not for the assistant to perform multiple steps or tasks.\n</reasoning>\n</example>\n\n<example>\nUser: Can you add a comment to the calculateTotal function to explain what it does?\nAssistant: Sure, let me add a comment to the calculateTotal function to explain what it does.\n* Uses the Edit tool to add a comment to the calculateTotal function *\n\n<reasoning>\nThe assistant did not use the todo list because this is a single, straightforward task confined to one location in the code. Adding a comment doesn't require tracking multiple steps or systematic organization.\n</reasoning>\n</example>\n\n<example>\nUser: Run npm install for me and tell me what happens.\nAssistant: I'll run the npm install command for you.\n\n*Executes: npm install*\n\nThe command completed successfully. Here's the output:\n[Output of npm install command]\n\nAll dependencies have been installed according to your package.json file.\n\n<reasoning>\nThe assistant did not use the todo list because this is a single command execution with immediate results. There are no multiple steps to track or organize, making the todo list unnecessary for this straightforward task.\n</reasoning>\n</example>\n\n## Task States and Management\n\n1. **Task States**: Use these states to track progress:\n   - pending: Task not yet started\n   - in_progress: Currently working on (limit to ONE task at a time)\n   - completed: Task finished successfully\n\n2. **Task Management**:\n   - Update task status in real-time as you work\n   - Mark tasks complete IMMEDIATELY after finishing (don't batch completions)\n   - Only have ONE task in_progress at any time\n   - Complete current tasks before starting new ones\n   - Remove tasks that are no longer relevant from the list entirely\n\n3. **Task Completion Requirements**:\n   - ONLY mark a task as completed when you have FULLY accomplished it\n   - If you encounter errors, blockers, or cannot finish, keep the task as in_progress\n   - When blocked, create a new task describing what needs to be resolved\n   - Never mark a task as completed if:\n     - Tests are failing\n     - Implementation is partial\n     - You encountered unresolved errors\n     - You couldn't find necessary files or dependencies\n\n4. **Task Breakdown**:\n   - Create specific, actionable items\n   - Break complex tasks into smaller, manageable steps\n   - Use clear, descriptive task names\n\nWhen in doubt, use this tool. Being proactive with task management demonstrates attentiveness and ensures you complete all requirements successfully.\n",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "todos": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "content": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "pending",
+                        "in_progress",
+                        "completed"
+                      ]
+                    },
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "content",
+                    "status",
+                    "id"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "The updated todo list"
+              }
+            },
+            "required": [
+              "todos"
+            ],
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "skill",
+          "description": "Execute a skill within the main conversation\n\n<skills_instructions>\nWhen users ask you to perform tasks, check if any of the available skills below can help complete the task more effectively. Skills provide specialized capabilities and domain knowledge.\n\nHow to invoke:\n- Use this tool with the skill name only (no arguments)\n- Examples:\n  - `skill: \"pdf\"` - invoke the pdf skill\n  - `skill: \"xlsx\"` - invoke the xlsx skill\n  - `skill: \"ms-office-suite:pdf\"` - invoke using fully qualified name\n\nImportant:\n- When a skill is relevant, you must invoke this tool IMMEDIATELY as your first action\n- NEVER just announce or mention a skill in your text response without actually calling this tool\n- This is a BLOCKING REQUIREMENT: invoke the relevant Skill tool BEFORE generating any other response about the task\n- Only use skills listed in <available_skills> below\n- Do not invoke a skill that is already running\n- Do not use this tool for built-in CLI commands (like /help, /clear, etc.)\n- When executing scripts or loading referenced files, ALWAYS resolve absolute paths from skill's base directory. Examples:\n  - `bash scripts/init.sh` -> `bash /path/to/skill/scripts/init.sh`\n  - `python scripts/helper.py` -> `python /path/to/skill/scripts/helper.py`\n  - `reference.md` -> `/path/to/skill/reference.md`\n</skills_instructions>\n\n<available_skills>\n<skill>\n<name>\nbatch\n</name>\n<description>\nExecute batch operations on multiple files in parallel. Automatically discovers files, splits into chunks, and processes with parallel worker agents. Use `/batch` followed by operation and file pattern. (bundled)\n</description>\n<location>\nbundled\n</location>\n</skill>\n<skill>\n<name>\nloop\n</name>\n<description>\nCreate a recurring loop that runs a prompt on a schedule. Usage - /loop 5m check the build, /loop check the PR every 30m, /loop run tests (defaults to 10m). /loop list to show jobs, /loop clear to cancel all. (bundled)\n</description>\n<location>\nbundled\n</location>\n</skill>\n<skill>\n<name>\nqc-helper\n</name>\n<description>\nAnswer any question about Qwen Code usage, features, configuration, and troubleshooting by referencing the official user documentation. Also helps users view or modify their settings.json. Invoke with `/qc-helper` followed by a question, e.g. `/qc-helper how do I configure MCP servers?` or `/qc-helper change approval mode to yolo`. (bundled)\n</description>\n<location>\nbundled\n</location>\n</skill>\n<skill>\n<name>\nreview\n</name>\n<description>\nReview changed code for correctness, security, code quality, and performance. Use when the user asks to review code changes, a PR, or specific files. Invoke with `/review`, `/review &lt;pr-number&gt;`, `/review &lt;file-path&gt;`, or `/review &lt;pr-number&gt; --comment` to post inline comments on the PR. (bundled)\n</description>\n<location>\nbundled\n</location>\n</skill>\n</available_skills>",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "skill": {
+                "type": "string",
+                "description": "The skill name (no arguments). E.g., \"pdf\" or \"xlsx\""
+              }
+            },
+            "required": [
+              "skill"
+            ],
+            "additionalProperties": false,
+            "$schema": "http://json-schema.org/draft-07/schema#"
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "ask_user_question",
+          "description": "Use this tool when you need to ask the user questions during execution. This allows you to:\n1. Gather user preferences or requirements\n2. Clarify ambiguous instructions\n3. Get decisions on implementation choices as you work\n4. Offer choices to the user about what direction to take.\n\nUsage notes:\n- Users will always be able to select \"Other\" to provide custom text input\n- Use multiSelect: true to allow multiple answers to be selected for a question\n- If you recommend a specific option, make that the first option in the list and add \"(Recommended)\" at the end of the label\n\nPlan mode note: In plan mode, use this tool to clarify requirements or choose between approaches BEFORE finalizing your plan. Do NOT use this tool to ask \"Is this plan ready?\" or \"Should I proceed?\" - use ExitPlanMode for plan approval.\n",
+          "parameters": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "type": "object",
+            "properties": {
+              "questions": {
+                "description": "Questions to ask the user (1-4 questions)",
+                "minItems": 1,
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "question": {
+                      "description": "The complete question to ask the user. Should be clear, specific, and end with a question mark. Example: \"Which library should we use for date formatting?\" If multiSelect is true, phrase it accordingly, e.g. \"Which features do you want to enable?\"",
+                      "type": "string"
+                    },
+                    "header": {
+                      "description": "Very short label displayed as a chip/tag (max 12 chars). Examples: \"Auth method\", \"Library\", \"Approach\".",
+                      "type": "string"
+                    },
+                    "options": {
+                      "description": "The available choices for this question. Must have 2-4 options. Each option should be a distinct, mutually exclusive choice (unless multiSelect is enabled). There should be no 'Other' option, that will be provided automatically.",
+                      "minItems": 2,
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "description": "The display text for this option that the user will see and select. Should be concise (1-5 words) and clearly describe the choice.",
+                            "type": "string"
+                          },
+                          "description": {
+                            "description": "Explanation of what this option means or what will happen if chosen. Useful for providing context about trade-offs or implications.",
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "description"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "multiSelect": {
+                      "description": "Set to true to allow the user to select multiple options instead of just one. Use when choices are not mutually exclusive.",
+                      "default": false,
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "question",
+                    "header",
+                    "options"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "metadata": {
+                "description": "Optional metadata for tracking and analytics purposes. Not displayed to user.",
+                "type": "object",
+                "properties": {
+                  "source": {
+                    "description": "Optional identifier for the source of this question (e.g., \"remember\" for /remember command). Used for analytics tracking.",
+                    "type": "string"
+                  }
+                },
+                "additionalProperties": false
+              }
+            },
+            "required": [
+              "questions"
+            ],
+            "additionalProperties": false
+          }
+        }
+      }
+    ]
+  },
+  "response": {
+    "id": "chatcmpl-903",
+    "object": "chat.completion",
+    "created": 1779453,
+    "model": "qwen3.6:27b-q8_0",
+    "choices": [
+      {
+        "index": 0,
+        "message": {
+          "role": "assistant",
+          "content": null,
+          "refusal": null,
+          "reasoning_content": "I'm making good progress. Let me continue reading the remaining sections of the file.",
+          "tool_calls": [
+            {
+              "id": "call_2czpycyn",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1600}"
+              }
+            },
+            {
+              "id": "call_owl041l2",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1700}"
+              }
+            },
+            {
+              "id": "call_u6q5cg51",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1800}"
+              }
+            },
+            {
+              "id": "call_jdix75h8",
+              "type": "function",
+              "function": {
+                "name": "read_file",
+                "arguments": "{\"file_path\":\"/home/matt/workspace/autogame/game/server/index.js\",\"limit\":100,\"offset\":1900}"
+              }
+            }
+          ]
+        },
+        "finish_reason": "stop",
+        "logprobs": null
+      }
+    ],
+    "usage": {
+      "prompt_tokens": 29649,
+      "completion_tokens": 284,
+      "total_tokens": 29933,
+      "prompt_tokens_details": {
+        "cached_tokens": 0
+      }
+    }
+  },
+  "error": null,
+  "system": {
+    "hostname": "dreams1",
+    "platform": "linux",
+    "release": "6.12.10-76061203-generic",
+    "nodeVersion": "v22.18.0"
+  }
+}
