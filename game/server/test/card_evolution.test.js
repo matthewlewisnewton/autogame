@@ -221,4 +221,24 @@ describe('card evolution', () => {
 		expect(player.inventory[0].cardId).toBe('infinite_disk');
 		expect(player.ownedCards.infinite_disk).toBe(1);
 	});
+
+	it('evolves a +10 Gravity Well into Event Horizon', () => {
+		const player = {
+			inventory: [
+				createCardInstance('gravity_well', {
+					instanceId: 'gw-1',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { gravity_well: 1 },
+			selectedDeck: ['gw-1'],
+		};
+
+		const result = evolveCard(player, 'gw-1');
+
+		expect(result.ok).toBe(true);
+		expect(result.toCardId).toBe('event_horizon');
+		expect(player.inventory[0].cardId).toBe('event_horizon');
+		expect(player.ownedCards.event_horizon).toBe(1);
+	});
 });

@@ -199,6 +199,15 @@ describe('CARD_DEFS', () => {
 			type: 'summon',
 			effect: 'gravity_well',
 		});
+		expect(CARD_DEFS.event_horizon).toMatchObject({
+			id: 'event_horizon',
+			name: 'Event Horizon',
+			type: 'summon',
+			effect: 'event_horizon',
+			isEvolved: true,
+			specialEffect: 'crush',
+		});
+		expect(EVOLUTION_TRANSFORMS.gravity_well).toBe('event_horizon');
 		expect(CARD_DEFS.echo_blade).toMatchObject({
 			id: 'echo_blade',
 			name: 'Echo Blade',
@@ -301,6 +310,7 @@ describe('card ID sets', () => {
 		expect(summonCardIds.has('healing_font')).toBe(true);
 		expect(summonCardIds.has('divine_grace')).toBe(true);
 		expect(summonCardIds.has('gravity_well')).toBe(true);
+		expect(summonCardIds.has('event_horizon')).toBe(true);
 		expect(summonCardIds.has('mana_leach')).toBe(true);
 		expect(summonCardIds.has('dragons_breath')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
@@ -332,6 +342,7 @@ describe('card ID sets', () => {
 			'storm_eagle',
 			'thunderbird',
 			'gravity_well',
+			'event_horizon',
 			'echo_blade',
 			'mana_leach',
 			'dragons_breath',
