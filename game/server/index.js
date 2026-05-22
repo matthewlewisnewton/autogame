@@ -122,6 +122,7 @@ const {
   pullEnemiesToward,
   applyEventHorizon,
   spawnDragonsBreathEffect,
+  spawnInfernoPillarEffect,
   isEnemyFrozen,
   cleanupStalePlayers,
   regenMagicStones,
@@ -1091,6 +1092,38 @@ function startServer(port) {
         return;
       }
 
+      if (cardDef.effect === 'inferno_pillar') {
+        const range = cardDef.attackRange || 7;
+        const { hits, magicStonesGained } = collectRadialHits(
+          originX,
+          originZ,
+          range,
+          cardDef.damage || 12,
+          { attackerId: socket.playerId }
+        );
+        spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId);
+        cleanupAfterDamage();
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius: range,
+          radialBurst: true,
+          hits,
+          magicStonesGained,
+          dotTicks: cardDef.dotTicks || 4,
+        });
+
+        return;
+      }
+
       if (cardDef.effect === 'mana_prism') {
         const prism = {
           id: crypto.randomUUID(),
@@ -1778,6 +1811,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pullEnemiesToward,
     applyEventHorizon,
     spawnDragonsBreathEffect,
+    spawnInfernoPillarEffect,
     isEnemyFrozen,
     updateEnemies,
     updateMinions,

@@ -268,6 +268,16 @@ export const CARD_DEFS = {
     effect: 'dragons_breath',
     specialEffect: 'fire_dot',
   },
+  inferno_pillar: {
+    id: 'inferno_pillar',
+    name: 'Inferno Pillar',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 40,
+    effect: 'inferno_pillar',
+    isEvolved: true,
+    specialEffect: 'fire_dot',
+  },
 };
 
 export const EVOLUTION_GRIND_REQUIRED = 10;
@@ -287,6 +297,7 @@ export const EVOLUTION_TRANSFORMS = {
   gravity_well: 'event_horizon',
   echo_blade: 'resonance_edge',
   mana_leach: 'soul_drain',
+  dragons_breath: 'inferno_pillar',
 };
 
 export const CARD_SELL_VALUES = {
@@ -311,6 +322,8 @@ export const CARD_SELL_VALUES = {
   infinite_disk: 18,
   event_horizon: 22,
   soul_drain: 18,
+  dragons_breath: 14,
+  inferno_pillar: 22,
 };
 
 export function getCardSellValue(cardId) {
@@ -380,6 +393,7 @@ export const CARD_ACCENT_STYLE = {
   mana_leach: { color: '#a855f7', icon: '◈' },
   soul_drain: { color: '#e879f9', icon: '☠' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },
+  inferno_pillar: { color: '#ef4444', icon: '🌋' },
 };
 
 // ── Card ID Sets by Type ──
