@@ -928,14 +928,15 @@ function startServer(port) {
         return;
       }
 
-      if (cardDef.effect === 'frost_nova') {
+      if (cardDef.effect === 'frost_nova' || cardDef.effect === 'glacier_collapse') {
         const radius = cardDef.radius || SUMMON_RADIUS;
         const hits = applyFreezeInRadius(
           originX,
           originZ,
           radius,
           cardDef.freezeDurationMs || 2500,
-          cardDef.damage || 0
+          cardDef.damage || 0,
+          cardDef.frozenBonusDamage || 0
         );
         cleanupAfterDamage();
 
