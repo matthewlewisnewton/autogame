@@ -127,6 +127,15 @@ describe('CARD_DEFS', () => {
 			type: 'weapon',
 			specialEffect: 'returning_projectile',
 		});
+		expect(CARD_DEFS.infinite_disk).toMatchObject({
+			id: 'infinite_disk',
+			name: 'Infinite Disk',
+			type: 'weapon',
+			charges: 4,
+			isEvolved: true,
+			specialEffect: 'triple_returning_projectile',
+		});
+		expect(EVOLUTION_TRANSFORMS.photon_slicer).toBe('infinite_disk');
 		expect(CARD_DEFS.frost_nova).toMatchObject({
 			id: 'frost_nova',
 			name: 'Frost Nova',
@@ -237,6 +246,7 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('harvesting_scythe')).toBe(true);
 		expect(weaponCardIds.has('saber_of_light')).toBe(true);
 		expect(weaponCardIds.has('photon_slicer')).toBe(true);
+		expect(weaponCardIds.has('infinite_disk')).toBe(true);
 		expect(weaponCardIds.has('echo_blade')).toBe(true);
 		expect(weaponCardIds.has('excalibur_photon')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
@@ -291,5 +301,9 @@ describe('card ID sets', () => {
 				icon: expect.any(String),
 			});
 		}
+		expect(CARD_ACCENT_STYLE.infinite_disk).toMatchObject({
+			color: '#a5f3fc',
+			icon: '∞',
+		});
 	});
 });

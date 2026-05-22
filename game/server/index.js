@@ -782,8 +782,11 @@ function startServer(port) {
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
-        if (cardDef.effect === 'returning_projectile') {
+        if (cardDef.effect === 'returning_projectile' || cardDef.effect === 'triple_returning_projectile') {
+          const returnPasses = cardDef.returnPasses
+            || (cardDef.effect === 'triple_returning_projectile' ? 3 : 1);
           swingResult = collectReturningProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
+            returnPasses,
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
             attackerId: socket.playerId,
