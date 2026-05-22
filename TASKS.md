@@ -49,7 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
-- [ ] [101-cleanup-cleanup-entity-ai-improvements](tickets/101-cleanup-cleanup-entity-ai-improvements/)
+- [x] [101-cleanup-cleanup-entity-ai-improvements](tickets/101-cleanup-cleanup-entity-ai-improvements/)
 - [x] [100-cleanup-entity-ai-improvements](tickets/100-cleanup-entity-ai-improvements/)
 - [x] [099-cleanup-cleanup-advanced-map-generation](tickets/099-cleanup-cleanup-advanced-map-generation/)
 - [x] [098-cleanup-advanced-map-generation](tickets/098-cleanup-advanced-map-generation/)

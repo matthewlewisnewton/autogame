@@ -1616,3 +1616,26 @@ No blocking gaps. Acceptance criteria are fully satisfied and the game runs clea
 
 ---
 
+
+## v0.71 — Cleanup nits from 100-cleanup-entity-ai-improvements  (2026-05-22 04:44:23)
+
+
+- **Diff surface:** Minimal and correct — single identifier string in one test.
+- **Dead/broken code:** None introduced.
+- **Console errors from game code:** None in `console.log`; server log shows expected swept-collision rejections during movement capture, not crashes.
+- **Integration:** Sub-ticket scope fully delivered; no dangling references or partial refactors.
+
+---
+
+## Debug scenarios
+
+This ticket did not add or change any `?scenario=` development shortcuts. Capture listed `mixed-enemies` in plan metadata but probes ran with `debugScenario: null` after fallback smoke capture — normal lobby → ready → play path. No debug-scenario review items apply.
+
+---
+
+## Remaining gaps
+
+None. The misnamed test nit from ticket 100 is resolved; runtime and acceptance criteria are satisfied.
+
+---
+
