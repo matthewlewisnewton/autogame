@@ -175,6 +175,94 @@ describe('renderDeckEditor()', () => {
 	});
 });
 
+// ── Photon Forge ──
+
+describe('Photon Forge UI', () => {
+	const FORGE_DOM_IDS = [
+		'deck-editor',
+		'lobby-tab-deck',
+		'lobby-tab-forge',
+		'photon-forge',
+		'forge-inventory-grid',
+		'forge-selected-name',
+		'forge-selected-meta',
+		'forge-stat-rows',
+		'forge-upgrade-cost',
+		'forge-upgrade-btn',
+		'forge-error',
+	];
+
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			...FORGE_DOM_IDS,
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id.endsWith('-btn') || id.startsWith('lobby-tab-'))
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				if (id === 'forge-upgrade-btn') el.disabled = true;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('switches between deck editor and photon forge tabs', async () => {
+		await import('../main.js');
+
+		window.setLobbyTab('forge');
+		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('lobby-tab-forge').classList.contains('active')).toBe(true);
+
+		window.setLobbyTab('deck');
+		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
+	});
+
+	it('renders inventory tiles and disables upgrade when GOLD is insufficient', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'sword-1', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'blade-1', cardId: 'flame_blade', grind: 0, level: 1 },
+		];
+		window.__setDeckState([], { iron_sword: 1, flame_blade: 1 }, mockInventory);
+		window.__setGameState({ players: { p1: { currency: 0 } } }, 'p1');
+		window.__setLobbyTabState('forge', 'sword-1');
+		window.renderPhotonForge();
+
+		expect(document.querySelectorAll('.forge-card-tile').length).toBe(2);
+		expect(document.getElementById('forge-selected-name').textContent).toBe('Iron Sword');
+		expect(document.getElementById('forge-stat-rows').querySelectorAll('tr').length).toBeGreaterThan(0);
+		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(true);
+		expect(document.getElementById('forge-upgrade-cost').textContent).toContain('100 GOLD');
+	});
+
+	it('enables upgrade when the player can afford the next level', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'sword-1', cardId: 'iron_sword', grind: 0, level: 1 },
+		];
+		window.__setDeckState([], { iron_sword: 1 }, mockInventory);
+		window.__setGameState({ players: { p1: { currency: 250 } } }, 'p1');
+		window.__setLobbyTabState('forge', 'sword-1');
+		window.renderPhotonForge();
+
+		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(false);
+	});
+});
+
 // ── flashMesh ──
 
 describe('flashMesh()', () => {

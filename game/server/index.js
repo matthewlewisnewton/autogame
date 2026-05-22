@@ -145,6 +145,11 @@ const {
   cancelTradesForPlayer,
   offerCardTrade,
   respondCardTrade,
+  upgradeCard,
+  getUpgradeCost,
+  getLevelStatMultiplier,
+  MAX_CARD_LEVEL,
+  UPGRADE_COST_BASE,
   createPlayerProgress,
   extractPersistentData,
   persistenceKey,
@@ -1259,6 +1264,28 @@ function startServer(port) {
     savePlayerData(socket.playerId);
   });
 
+  socket.on('upgradeCard', (data) => {
+    if (gameState.gamePhase !== 'lobby') return;
+
+    const player = gameState.players[socket.playerId];
+    if (!player) return;
+
+    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const result = upgradeCard(player, instanceId);
+    if (!result.ok) {
+      socket.emit('cardUpgradeError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardUpgradeResult', {
+      ...result,
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
+    savePlayerData(socket.playerId);
+  });
+
   socket.on('offerCardTrade', (data) => {
     if (gameState.gamePhase !== 'lobby') return;
 
@@ -1549,6 +1576,11 @@ if (typeof module !== 'undefined' && module.exports) {
     cancelTradesForPlayer,
     offerCardTrade,
     respondCardTrade,
+    upgradeCard,
+    getUpgradeCost,
+    getLevelStatMultiplier,
+    MAX_CARD_LEVEL,
+    UPGRADE_COST_BASE,
     checkWallCollision,
     buildWallColliders,
     rebuildWallColliders,
