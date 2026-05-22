@@ -707,6 +707,7 @@ function updateMinions() {
       if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
         // Attack if within attack range
         if (nearestDist <= ATTACK_RANGE) {
+          nearestEnemy.lastDamagedBy = minion.ownerId;
           nearestEnemy.hp -= 5;
         } else {
           // Move toward enemy using moveEntityToward (wall-aware)

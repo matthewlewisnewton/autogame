@@ -13,7 +13,8 @@ describe('renderDeckEditor()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -147,7 +148,8 @@ describe('flashMesh()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -246,7 +248,8 @@ describe('spawnDamageNumber()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -348,7 +351,8 @@ describe('spawnHitSpark()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -467,7 +471,8 @@ describe('markLootCollected()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -575,7 +580,8 @@ describe('renderHand()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -734,7 +740,8 @@ describe('playSound() and mute toggle', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'mute-btn',
 		];
@@ -890,7 +897,8 @@ describe('resumeAudioContext', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'mute-btn',
 		];
@@ -1006,7 +1014,8 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'mute-btn',
 		];
@@ -1119,7 +1128,8 @@ describe('applyWindupFlash()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -1372,7 +1382,8 @@ describe('Cooldown Enforcement (useCard)', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -1572,7 +1583,8 @@ describe('createEnemyMesh()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -1670,7 +1682,8 @@ describe('enemyMeshHalfHeight()', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -1719,7 +1732,8 @@ describe('healthBarColor(hp, maxHp)', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -1788,7 +1802,8 @@ describe('auth overlay functions', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -1988,7 +2003,8 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 		];
 		for (const id of requiredIds) {
@@ -2108,7 +2124,8 @@ describe('connect_error handler', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'auth-overlay', 'auth-modal',
 			'register-form', 'register-username', 'register-password', 'register-btn', 'register-error',
@@ -2228,6 +2245,81 @@ describe('connect_error handler', () => {
 	});
 });
 
+describe('run summary card choices', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'mute-btn',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('renders card choice buttons with name, type, and description', async () => {
+		await import('../main.js');
+		window.__setGameState({}, 'player-1');
+
+		window.showRunSummary({
+			status: 'victory',
+			durationMs: 1000,
+			defeatedEnemies: 1,
+			currencyCollected: 10,
+			players: [{
+				id: 'player-1',
+				rewards: { currency: 10, cards: [] },
+				cardChoices: [{
+					id: 'dungeon_drake',
+					name: 'Dungeon Drake',
+					type: 'monster',
+					description: 'Spawns a minion',
+				}],
+			}],
+		});
+
+		const buttons = document.querySelectorAll('.card-choice-btn');
+		expect(buttons.length).toBe(1);
+		expect(buttons[0].textContent).toContain('Dungeon Drake');
+		expect(buttons[0].textContent).toContain('monster');
+		expect(buttons[0].textContent).toContain('Spawns a minion');
+	});
+
+	it('shows empty-state copy when no card choices were earned', async () => {
+		await import('../main.js');
+		window.__setGameState({}, 'player-1');
+
+		window.showRunSummary({
+			status: 'victory',
+			durationMs: 1000,
+			defeatedEnemies: 1,
+			currencyCollected: 10,
+			players: [{
+				id: 'player-1',
+				rewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Flame Blade', count: 1 }] },
+				cardChoices: [],
+			}],
+		});
+
+		const emptyEl = document.getElementById('summary-card-choices-empty');
+		expect(emptyEl.style.display).not.toBe('none');
+		expect(emptyEl.textContent).toContain('No card choices were found');
+	});
+});
+
 // ── Mute persistence via localStorage ──
 
 describe('Mute persistence (localStorage)', () => {
@@ -2240,7 +2332,8 @@ describe('Mute persistence (localStorage)', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'mute-btn',
 		];
@@ -2388,7 +2481,8 @@ describe('Cold-start mute persistence', () => {
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
-			'summary-rewards-cards', 'return-to-lobby-btn',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'mute-btn',
 			'auth-overlay', 'auth-modal', 'register-form', 'login-form',

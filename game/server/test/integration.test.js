@@ -1657,6 +1657,91 @@ describe('Rewards in run complete payload', () => {
 		expect(playerEntry.rewards.cards[0]).toHaveProperty('count');
 	});
 
+	it('offers card choices from defeated enemies and claims exactly one card', async () => {
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = gameState.players[socket1._playerId];
+		gameState.enemies = [{
+			id: 'drop_enemy',
+			type: 'drake',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		const before = player.ownedCards.dungeon_drake || 0;
+		const weaponSlot = findWeaponSlot(player);
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		const summary = await runCompletePromise;
+
+		expect(summary.players.find(p => p.id === socket1._playerId).cardChoices)
+			.toEqual(expect.arrayContaining([
+				expect.objectContaining({ id: 'dungeon_drake' })
+			]));
+
+		expect(player.ownedCards.dungeon_drake || 0).toBe(before);
+
+		const rewardClaimed = waitForEvent(socket1, 'cardRewardClaimed');
+		socket1.emit('claimCardReward', { cardId: 'dungeon_drake' });
+		await rewardClaimed;
+
+		expect(player.ownedCards.dungeon_drake).toBe(before + 1);
+	});
+
+	it('rejecting duplicate card reward claims does not add a second copy', async () => {
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = gameState.players[socket1._playerId];
+		gameState.enemies = [{
+			id: 'drop_enemy',
+			type: 'drake',
+			x: player.x + 3,
+			z: player.z,
+			hp: 10,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z }
+		}];
+		gameState.run.objective.totalEnemies = 1;
+		gameState.run.objective.defeatedEnemies = 0;
+		gameState.minions = [];
+
+		const weaponSlot = findWeaponSlot(player);
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+
+		const runCompletePromise = waitForEvent(socket1, 'runComplete');
+		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		await runCompletePromise;
+
+		const before = player.ownedCards.dungeon_drake || 0;
+
+		const firstClaim = waitForEvent(socket1, 'cardRewardClaimed');
+		socket1.emit('claimCardReward', { cardId: 'dungeon_drake' });
+		await firstClaim;
+
+		socket1.emit('claimCardReward', { cardId: 'dungeon_drake' });
+		await sleep(50);
+
+		expect(player.ownedCards.dungeon_drake).toBe(before + 1);
+	});
+
 	it('runFailed payload contains per-player rewards but no victory card', async () => {
 		// Enter playing phase via debug scenario
 		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
