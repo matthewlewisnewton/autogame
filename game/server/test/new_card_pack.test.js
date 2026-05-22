@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -120,6 +120,20 @@ describe('new card combat helpers', () => {
 		const result = collectRadialHits(0, 0, CARD_DEFS.echo_blade.shockwaveRadius, CARD_DEFS.echo_blade.shockwaveDamage);
 		expect(result.hits).toHaveLength(1);
 		expect(CARD_DEFS.echo_blade.shockwaveEvery).toBe(3);
+	});
+
+	it('Resonance Edge inherits buffed shockwave stats and triggers every second hit', () => {
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 4, z: 0, hp: 40 }];
+		const def = CARD_DEFS.resonance_edge;
+		const result = collectRadialHits(0, 0, def.shockwaveRadius, def.shockwaveDamage);
+		expect(result.hits).toHaveLength(1);
+		expect(def).toMatchObject({
+			damage: 21,
+			shockwaveEvery: 2,
+			shockwaveDamage: 30,
+			isEvolved: true,
+			specialEffect: 'shockwave',
+		});
 	});
 
 	it('Mana Leach radial hits grant magic stones per enemy hit', () => {

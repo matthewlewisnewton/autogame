@@ -463,22 +463,36 @@ function bindSocketHandlers(s) {
 	s.on('cardUsed', (data) => {
 		if (!data || !getScene()) return;
 		playSound('card');
+		const origin = data.origin || { x: 0, z: 0 };
+		const direction = data.direction || { x: 1, z: 0 };
 		if (weaponCardIds.has(data.cardId)) {
-			const origin = data.origin || { x: 0, z: 0 };
-			const direction = data.direction || { x: 1, z: 0 };
 			rendererSpawnAttackEffect(origin, direction);
 		}
 		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
-			const origin = data.origin || { x: 0, z: 0 };
 			rendererSpawnSummonEffect(origin, data.radius);
 		}
-		if (data.hits && data.hits.length > 0) {
+		const accent = CARD_ACCENT_STYLE[data.cardId];
+		const accentHex = accent && accent.color
+			? parseInt(accent.color.slice(1), 16)
+			: undefined;
+		if (data.shockwaveHits && data.shockwaveHits.length > 0) {
+			rendererSpawnSummonEffect(origin, 6, accentHex);
 			playSound('enemyHit');
-			const maps = getMeshMaps();
-			for (const hit of data.hits) {
+		}
+		const maps = getMeshMaps();
+		const allHits = [
+			...(data.hits || []),
+			...(data.shockwaveHits || []),
+		];
+		if (allHits.length > 0) {
+			if (!data.shockwaveHits || data.shockwaveHits.length === 0) {
+				playSound('enemyHit');
+			}
+			const flashColor = accentHex ?? 0xffffff;
+			for (const hit of allHits) {
 				const mesh = maps.enemiesMeshes[hit.enemyId];
 				if (mesh) {
-					rendererFlashMesh(mesh, 0xffffff, 200);
+					rendererFlashMesh(mesh, flashColor, 200);
 				}
 			}
 		}

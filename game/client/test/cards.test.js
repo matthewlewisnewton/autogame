@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -153,6 +153,13 @@ describe('CARD_DEFS', () => {
 			type: 'weapon',
 			specialEffect: 'shockwave',
 		});
+		expect(CARD_DEFS.resonance_edge).toMatchObject({
+			id: 'resonance_edge',
+			name: 'Resonance Edge',
+			type: 'weapon',
+			isEvolved: true,
+			specialEffect: 'shockwave',
+		});
 		expect(CARD_DEFS.mana_leach).toMatchObject({
 			id: 'mana_leach',
 			name: 'Mana Leach',
@@ -230,9 +237,10 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('saber_of_light')).toBe(true);
 		expect(weaponCardIds.has('photon_slicer')).toBe(true);
 		expect(weaponCardIds.has('echo_blade')).toBe(true);
+		expect(weaponCardIds.has('resonance_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(8);
+		expect(weaponCardIds.size).toBe(9);
 	});
 
 	it('summonCardIds contains base, evolved, and synergistic summon card IDs', () => {
@@ -272,6 +280,7 @@ describe('card ID sets', () => {
 			'storm_eagle',
 			'gravity_well',
 			'echo_blade',
+			'resonance_edge',
 			'mana_leach',
 			'dragons_breath',
 		];
