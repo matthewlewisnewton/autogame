@@ -1478,3 +1478,26 @@ No new review-round capture scenarios were used (`metrics.json` has an empty `sc
 
 No blocking gaps found.
 
+
+## v0.65 — Cleanup nits from 022-user-accounts  (2026-05-21 23:09:20)
+
+**No impact.** The ticket touches only package-manager configuration. Lobby, dungeon, combat, multiplayer sync, and auth behavior are unchanged. Foundation requirements (3D render, WebSocket connect, multiplayer presence, WASD sync) remain exercised by the captured smoke flow.
+
+### Code quality
+
+**Good for scope.** Two-file diff, no application logic changes, no dead code introduced. Server `users.js` continues to use bcrypt for password hashing; native module is present after fresh install.
+
+### Debug scenarios
+
+**Not applicable.** This ticket did not add or change `?debugScenario=` / `debugScenario` shortcuts. Probes show `debugScenario: null` and `debugScenarioAllowed: true` (localhost dev default only).
+
+## Integration / sub-ticket notes
+
+- Sub-ticket `01-main` (round 2) removed the explicit `bcrypt: false` deny but was insufficient for pnpm 11 fresh installs — correctly failed review round 2.
+- Sub-ticket `01-fix-bcrypt-build-config` adds `allowBuilds.bcrypt: true` and empties `.npmrc`, addressing both round-2 blocking gaps.
+- `coverage.log` reports no tests for the changed YAML/`.npmrc` files (expected for tooling-only work).
+
+## Remaining gaps
+
+None. Both acceptance criteria are satisfied on a clean install under pnpm 11, and the captured game run starts and plays through dungeon smoke successfully.
+
