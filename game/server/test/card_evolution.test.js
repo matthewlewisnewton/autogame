@@ -16,7 +16,7 @@ function freshPlayer() {
 	const progress = createPlayerProgress();
 	return {
 		...progress,
-		selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+		selectedDeck: progress.inventory.slice(0, 4).map((card) => card.instanceId),
 	};
 }
 
@@ -43,7 +43,7 @@ describe('card evolution', () => {
 		expect(evolvedInstance.isEvolved).toBe(true);
 		expect(player.ownedCards.steel_broadsword).toBe(1);
 		expect(player.ownedCards.iron_sword).toBe(2);
-		expect(player.selectedDeck).toContain('steel_broadsword');
+		expect(player.selectedDeck).toContain(instance.instanceId);
 	});
 
 	it('rejects evolution below +10 without mutating the card', () => {

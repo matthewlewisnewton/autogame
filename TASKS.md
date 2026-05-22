@@ -118,12 +118,12 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [ ] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
 
 ## Backlog — Progression & Content
-- [ ] [058-inventory-system-refactor](tickets/058-inventory-system-refactor/)
+- [x] [058-inventory-system-refactor](tickets/058-inventory-system-refactor/)
 - [ ] [059-lobby-photon-forge-ui](tickets/059-lobby-photon-forge-ui/)
 - [ ] [060-card-grinding-system](tickets/060-card-grinding-system/)
 - [ ] [061-new-card-pack](tickets/061-new-card-pack/)
-- [ ] [062-card-evolution-system](tickets/062-card-evolution-system/)
-- [ ] [079-synergistic-cards](tickets/079-synergistic-cards/)
+- [x] [062-card-evolution-system](tickets/062-card-evolution-system/)
+- [x] [079-synergistic-cards](tickets/079-synergistic-cards/)
 
 
 ## Backlog — Card Evolutions
