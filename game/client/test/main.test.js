@@ -7,8 +7,10 @@ describe('renderDeckEditor()', () => {
 	beforeEach(() => {
 		// Create all DOM elements that main.js queries at module load time
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -269,8 +271,10 @@ describe('flashMesh()', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -369,8 +373,10 @@ describe('spawnDamageNumber()', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -472,8 +478,10 @@ describe('spawnHitSpark()', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -592,8 +600,10 @@ describe('markLootCollected()', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -701,8 +711,10 @@ describe('renderHand()', () => {
 	beforeEach(() => {
 		// Create all DOM elements that main.js queries at module load time
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -861,8 +873,10 @@ describe('playSound() and mute toggle', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1018,8 +1032,10 @@ describe('playSound() and mute toggle', () => {
 describe('resumeAudioContext', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1135,8 +1151,10 @@ describe('resumeAudioContext', () => {
 describe('cardUsed handler — enemyHit sound throttle', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1249,8 +1267,10 @@ describe('applyWindupFlash()', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1503,8 +1523,10 @@ describe('Cooldown Enforcement (useCard)', () => {
 	beforeEach(() => {
 		// Create required DOM elements for main.js import
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1737,8 +1759,10 @@ describe('cardError handler — server hand rejection', () => {
 describe('createEnemyMesh()', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1836,8 +1860,10 @@ describe('createEnemyMesh()', () => {
 describe('enemyMeshHalfHeight()', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1886,8 +1912,10 @@ describe('enemyMeshHalfHeight()', () => {
 describe('healthBarColor(hp, maxHp)', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1956,8 +1984,10 @@ describe('auth overlay functions', () => {
 	beforeEach(() => {
 		// Create all required DOM elements that main.js queries at module load time
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2157,8 +2187,10 @@ describe('auth overlay functions', () => {
 describe('bindSocketHandlers() — handler rebinding on socket recreate', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2278,8 +2310,10 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 describe('connect_error handler', () => {
 	beforeEach(() => {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2486,8 +2520,10 @@ describe('Mute persistence (localStorage)', () => {
 	beforeEach(() => {
 		// Ensure required DOM elements exist
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2635,8 +2671,10 @@ describe('Cold-start mute persistence', () => {
 	/** Create all DOM elements required by main.js top-level queries. */
 	function createRequiredDom() {
 		const requiredIds = [
-			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',

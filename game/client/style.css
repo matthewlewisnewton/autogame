@@ -340,107 +340,238 @@ canvas {
   background-color: #2563eb;
 }
 
-/* ── HP Bar ── */
+/* ── Vanguard HUD (PSO-inspired) ── */
 
-#hp-bar-container {
+#vanguard-hud {
   position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 12px;
+  left: 12px;
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: flex-start;
+  gap: 10px;
   z-index: 11;
   pointer-events: none;
 }
 
-#hp-label {
-  font-size: 13px;
+#vanguard-portrait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+#character-frame {
+  width: 54px;
+  height: 54px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 30%, #1e3a5f 0%, #0f172a 70%);
+  border: 2px solid #38bdf8;
+  clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
+  box-shadow:
+    0 0 10px rgba(56, 189, 248, 0.55),
+    inset 0 0 12px rgba(56, 189, 248, 0.15);
+}
+
+#character-id {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 16px;
   font-weight: 700;
-  color: #cbd5e1;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  min-width: 24px;
+  color: #e0f2fe;
+  letter-spacing: 1px;
+  text-shadow: 0 0 8px rgba(56, 189, 248, 0.8);
+}
+
+#level-indicator {
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  color: #94a3b8;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+#level-indicator .lv-label {
+  color: #64748b;
+  font-size: 9px;
+  letter-spacing: 0.5px;
+}
+
+#player-level {
+  color: #fbbf24;
+}
+
+#vanguard-bars {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+#hp-bar-container,
+#ms-bar-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#hp-label {
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: #86efac;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.6);
+  min-width: 20px;
+  letter-spacing: 0.5px;
 }
 
 #hp-bar-bg {
-  width: 220px;
-  height: 18px;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 4px;
+  position: relative;
+  width: 190px;
+  height: 20px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  border-radius: 50% 6px 6px 50% / 50% 100% 100% 50%;
   overflow: hidden;
+  transform: skewX(-6deg);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 #hp-bar-fill {
   height: 100%;
   width: 100%;
-  background: #22c55e;
-  border-radius: 3px;
-  transition: width 0.15s ease-out, background 0.3s ease;
+  border-radius: inherit;
+  transform: skewX(6deg) scaleX(1);
+  transform-origin: left center;
+  transition: width 0.15s ease-out;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.7));
+}
+
+#hp-bar-fill.hp-high {
+  background: linear-gradient(90deg, #15803d 0%, #22c55e 45%, #4ade80 100%);
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.55);
+}
+
+#hp-bar-fill.hp-mid {
+  background: linear-gradient(90deg, #a16207 0%, #eab308 50%, #facc15 100%);
+  filter: drop-shadow(0 0 4px rgba(234, 179, 8, 0.7));
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.45);
+}
+
+#hp-bar-fill.hp-low {
+  background: linear-gradient(90deg, #991b1b 0%, #ef4444 50%, #f87171 100%);
+  filter: drop-shadow(0 0 4px rgba(239, 68, 68, 0.8));
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.55);
 }
 
 #hp-text {
-  font-size: 12px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
   font-weight: 600;
-  color: #e2e8f0;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  min-width: 48px;
+  color: #dcfce7;
+  text-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+  min-width: 52px;
   text-align: right;
 }
 
-/* ── Magic Stones Bar ── */
-
-#ms-bar-container {
-  position: absolute;
-  top: 42px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  z-index: 11;
-  pointer-events: none;
-}
-
 #ms-label {
-  font-size: 13px;
+  font-family: 'Exo 2', sans-serif;
+  font-size: 11px;
   font-weight: 700;
-  color: #fbbf24;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  min-width: 24px;
+  color: #fcd34d;
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.6);
+  min-width: 20px;
+  letter-spacing: 0.5px;
 }
 
 #ms-bar-bg {
-  width: 220px;
-  height: 18px;
-  background: rgba(15, 23, 42, 0.85);
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 4px;
+  position: relative;
+  width: 175px;
+  height: 16px;
+  margin-left: 8px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 50% 5px 5px 50% / 50% 100% 100% 50%;
   overflow: hidden;
+  transform: skewX(-6deg);
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5);
 }
 
 #ms-bar-fill {
   height: 100%;
   width: 100%;
-  background: #f59e0b;
-  border-radius: 3px;
-  transition: width 0.15s ease-out, background 0.3s ease;
+  background: linear-gradient(90deg, #b45309 0%, #f59e0b 45%, #fbbf24 100%);
+  border-radius: inherit;
+  transform: skewX(6deg) scaleX(1);
+  transform-origin: left center;
+  transition: width 0.15s ease-out;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.75));
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.45);
 }
 
 #ms-text {
-  font-size: 12px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 11px;
   font-weight: 600;
-  color: #fbbf24;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  min-width: 48px;
+  color: #fef3c7;
+  text-shadow: 0 0 6px rgba(245, 158, 11, 0.4);
+  min-width: 52px;
   text-align: right;
+}
+
+#deck-stats-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-left: 28px;
+  padding: 4px 8px;
+  background: rgba(15, 23, 42, 0.78);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 4px;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.12);
+}
+
+#deck-count {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #cbd5e1;
+  letter-spacing: 0.3px;
+}
+
+#deck-type-breakdown {
+  display: flex;
+  gap: 10px;
+}
+
+.deck-type-count {
+  font-family: 'Roboto Mono', monospace;
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+}
+
+.deck-type-count[data-type="weapon"] {
+  color: #60a5fa;
+}
+
+.deck-type-count[data-type="summon"] {
+  color: #f59e0b;
+}
+
+.deck-type-count[data-type="monster"] {
+  color: #a78bfa;
 }
 
 /* ── Currency Display ── */
 
 #currency-display {
   position: absolute;
-  top: 68px;
+  top: 16px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 13px;
@@ -455,7 +586,7 @@ canvas {
 
 #objective-hud {
   position: absolute;
-  top: 88px;
+  top: 40px;
   left: 50%;
   transform: translateX(-50%);
   font-size: 13px;

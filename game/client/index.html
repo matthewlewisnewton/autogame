@@ -4,6 +4,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>3D Multiplayer Action Game</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&family=Roboto+Mono:wght@500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
@@ -12,19 +15,40 @@
       <p id="status">Connecting...</p>
       <button id="logout-btn" class="hidden">Logout</button>
       <button id="mute-btn">🔊</button>
-      <div id="hp-bar-container">
-        <span id="hp-label">HP</span>
-        <div id="hp-bar-bg">
-          <div id="hp-bar-fill"></div>
+      <div id="vanguard-hud">
+        <div id="vanguard-portrait">
+          <div id="character-frame">
+            <span id="character-id">?</span>
+          </div>
+          <div id="level-indicator">
+            <span class="lv-label">LV</span>
+            <span id="player-level">1</span>
+          </div>
         </div>
-        <span id="hp-text">100/100</span>
-      </div>
-      <div id="ms-bar-container">
-        <span id="ms-label">MS</span>
-        <div id="ms-bar-bg">
-          <div id="ms-bar-fill"></div>
+        <div id="vanguard-bars">
+          <div id="hp-bar-container">
+            <span id="hp-label">HP</span>
+            <div id="hp-bar-bg">
+              <div id="hp-bar-fill" class="hp-high"></div>
+            </div>
+            <span id="hp-text">100/100</span>
+          </div>
+          <div id="ms-bar-container">
+            <span id="ms-label">MS</span>
+            <div id="ms-bar-bg">
+              <div id="ms-bar-fill"></div>
+            </div>
+            <span id="ms-text">100/100</span>
+          </div>
+          <div id="deck-stats-panel">
+            <span id="deck-count">Deck: 0/0</span>
+            <div id="deck-type-breakdown">
+              <span class="deck-type-count" data-type="weapon">⚔ <span id="deck-weapon-count">0</span></span>
+              <span class="deck-type-count" data-type="summon">✦ <span id="deck-summon-count">0</span></span>
+              <span class="deck-type-count" data-type="monster">🐉 <span id="deck-monster-count">0</span></span>
+            </div>
+          </div>
         </div>
-        <span id="ms-text">100/100</span>
       </div>
       <div id="currency-display">GOLD 0</div>
       <div id="objective-hud"></div>
