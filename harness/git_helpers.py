@@ -145,14 +145,27 @@ def scope_audit(workspace, head_before: str, untracked_before: set[str],
             out_of_scope.append(path)
             remove_paths.append(Path(workspace.root) / path)
 
+    # v4.2 hotfix: log revert failures so a violation report with residue
+    # in the working tree is visible to the operator. Pre-v4.2 these
+    # exceptions were swallowed silently (gpt R2 blocker #3 — a "reported
+    # violation" could leave files in place if checkout/rm failed).
+    revert_failures: list[str] = []
     if revert_modified:
         try:
             workspace.checkout(revert_modified, ref=head_before)
-        except Exception:
-            pass
+        except Exception as e:
+            revert_failures.append(f"checkout({revert_modified}): {e}")
     for p in remove_paths:
         try:
             workspace.remove(p)
+        except Exception as e:
+            revert_failures.append(f"remove({p}): {e}")
+    if revert_failures:
+        # Defer import to avoid telemetry pulling in at module load.
+        try:
+            from harness.telemetry.logging import log
+            for f in revert_failures:
+                log(f"[scope_audit] WARN: revert failed — {f}")
         except Exception:
             pass
 

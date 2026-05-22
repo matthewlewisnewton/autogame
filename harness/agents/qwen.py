@@ -52,8 +52,9 @@ class QwenVisionAgentConfig:
 
 
 def _qwen_disabled() -> bool:
-    """Read the tunable. Phase 2 falls back to env var; Phase 3's
-    config.tunables.get_tunables() becomes the canonical source."""
+    """Read the qwen_disabled tunable from the active Tunables; fall back
+    to the QWEN_DISABLED env var when no Tunables have been set (test
+    scenarios, doctor subcommand)."""
     try:
         from harness.config.tunables import get_tunables  # type: ignore
         return bool(getattr(get_tunables(), "qwen_disabled", False))
@@ -184,9 +185,10 @@ class QwenVisionAgent(Agent):
                      "--openai-logging-dir", str(artifacts_dir / "qwen-openai-logs")]
 
         # `env QWEN_CODE_SYSTEM_SETTINGS_PATH=…` in bash maps to a subprocess
-        # env override. spawn() doesn't take env= yet (Phase 3 may add it);
-        # for now, set on the parent env across the call. The change is
-        # scoped to this thread's view of os.environ via try/finally.
+        # env override. spawn() doesn't take env= today; set on the parent
+        # env across the call, scoped via try/finally. PHASE-6 NOTE: this
+        # is not thread-safe — parallel-workers will need an env= param
+        # on spawn().
         original = os.environ.get("QWEN_CODE_SYSTEM_SETTINGS_PATH")
         os.environ["QWEN_CODE_SYSTEM_SETTINGS_PATH"] = str(settings_file)
         try:
