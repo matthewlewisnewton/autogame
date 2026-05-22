@@ -2916,3 +2916,181 @@ describe('moveEntityToward(entity, target, maxDistance, options)', () => {
 		expect(entity.z).not.toBe(startZ);
 	});
 });
+
+// ── Wall-aware enemy movement (updateEnemies) ──
+
+describe('Wall-aware enemy movement in updateEnemies()', () => {
+	beforeEach(() => resetState());
+
+	it('enemy stops at wall during chase (does not pass through)', () => {
+		// Find a wall to use as a barrier
+		const room = gameState.layout.rooms[0];
+		const wall = room.walls[0];
+
+		// Place player and enemy on opposite sides of the wall (across its thin dimension),
+		// near the wall center so they're within DETECTION_RADIUS
+		const playerSide = wall.axis === 'x'
+			? { x: wall.x, z: wall.z + 2 }
+			: { x: wall.x + 2, z: wall.z };
+
+		addPlayer('p1', {
+			id: 'p1',
+			x: playerSide.x,
+			z: playerSide.z,
+			dead: false
+		});
+
+		// Place enemy on the other side of the wall, within DETECTION_RADIUS
+		const enemySide = wall.axis === 'x'
+			? { x: wall.x, z: wall.z - 2 }
+			: { x: wall.x - 2, z: wall.z };
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: enemySide.x,
+			z: enemySide.z,
+			hp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		// Ensure the player is within detection range
+		const dist = Math.hypot(playerSide.x - enemySide.x, playerSide.z - enemySide.z);
+		expect(dist).toBeLessThan(DETECTION_RADIUS);
+
+		updateEnemies();
+
+		// Enemy should be in chasing state
+		expect(gameState.enemies[0].state).toBe('chasing');
+
+		// Enemy should not overlap the wall after movement
+		expect(isEntityPositionBlocked(gameState.enemies[0].x, gameState.enemies[0].z, ENTITY_RADIUS)).toBe(false);
+	});
+
+	it('enemy picks new wander target after repeated blocks (blockedTicks > 10)', () => {
+		// Place enemy in a corner where it will be blocked wandering toward a wall
+		const room = gameState.layout.rooms[0];
+		const wall = room.walls[0];
+
+		// Place enemy very close to the wall, with wanderTarget through the wall
+		const enemyPos = wall.axis === 'x'
+			? { x: wall.x + wall.length / 2 - 1, z: wall.z }
+			: { x: wall.x, z: wall.z + wall.length / 2 - 1 };
+
+		const throughWall = wall.axis === 'x'
+			? { x: wall.x + wall.length / 2 + 5, z: wall.z }
+			: { x: wall.x, z: wall.z + wall.length / 2 + 5 };
+
+		// Place player far away so enemy wanders
+		addPlayer('p1', {
+			id: 'p1',
+			x: enemyPos.x + 200,
+			z: enemyPos.z + 200,
+			dead: false
+		});
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: enemyPos.x,
+			z: enemyPos.z,
+			hp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: throughWall,
+			blockedTicks: 10 // already at threshold
+		});
+
+		const oldTarget = { ...gameState.enemies[0].wanderTarget };
+
+		updateEnemies();
+
+		// After one more blocked tick (> 10), enemy should pick a new wander target
+		expect(gameState.enemies[0].wanderTarget).not.toEqual(oldTarget);
+		expect(gameState.enemies[0].blockedTicks).toBe(0);
+	});
+
+	it('blockedTicks resets on successful wander movement', () => {
+		// Place enemy in open space with wander target in clear direction
+		const room = gameState.layout.rooms[0];
+		const halfW = room.width / 2 - 2;
+		const halfD = room.depth / 2 - 2;
+
+		// Place player far away so enemy wanders
+		addPlayer('p1', {
+			id: 'p1',
+			x: room.x + 200,
+			z: room.z + 200,
+			dead: false
+		});
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: room.x - 1,
+			z: room.z,
+			hp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: room.x + halfW, z: room.z }, // toward center of room
+			blockedTicks: 5
+		});
+
+		updateEnemies();
+
+		// blockedTicks should be reset to 0 after successful movement
+		expect(gameState.enemies[0].blockedTicks).toBe(0);
+	});
+
+	it('chase movement uses moveEntityToward (wall-slide when blocked)', () => {
+		// Place player behind a wall relative to enemy
+		const room = gameState.layout.rooms[0];
+		const wall = room.walls[0];
+
+		// Place player and enemy on opposite sides of the wall (across its thin dimension),
+		// offset along the wall axis so wall-slide has room to move
+		const playerSide = wall.axis === 'x'
+			? { x: wall.x + 2, z: wall.z + 2 }
+			: { x: wall.x + 2, z: wall.z };
+
+		addPlayer('p1', {
+			id: 'p1',
+			x: playerSide.x,
+			z: playerSide.z,
+			dead: false
+		});
+
+		// Enemy on other side, close enough to detect player, offset to allow wall-slide
+		const enemySide = wall.axis === 'x'
+			? { x: wall.x - 2, z: wall.z - 2 }
+			: { x: wall.x - 2, z: wall.z + 2 };
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: enemySide.x,
+			z: enemySide.z,
+			hp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		const dist = Math.hypot(playerSide.x - enemySide.x, playerSide.z - enemySide.z);
+		expect(dist).toBeLessThan(DETECTION_RADIUS);
+
+		const posBefore = { x: gameState.enemies[0].x, z: gameState.enemies[0].z };
+
+		updateEnemies();
+
+		// Enemy should have moved (wall-slide allows sliding along wall)
+		// and should not be inside a wall
+		expect(isEntityPositionBlocked(gameState.enemies[0].x, gameState.enemies[0].z, ENTITY_RADIUS)).toBe(false);
+		// Position should have changed from before (either direct or wall-slide)
+		expect(
+			gameState.enemies[0].x !== posBefore.x || gameState.enemies[0].z !== posBefore.z
+		).toBe(true);
+	});
+});

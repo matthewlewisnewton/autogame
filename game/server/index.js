@@ -1369,15 +1369,9 @@ function updateEnemies() {
 				enemy.attackState = 'chasing';
 			}
 
-			const dx = nearestPlayer.x - enemy.x;
-			const dz = nearestPlayer.z - enemy.z;
-			const dist = Math.hypot(dx, dz);
-
-			if (dist > 0.1) {
-				const move = def.chaseSpeed * dt;
-				enemy.x += (dx / dist) * move;
-				enemy.z += (dz / dist) * move;
-			}
+			const chaseResult = moveEntityToward(enemy, nearestPlayer, def.chaseSpeed * dt);
+			// If blocked while chasing, enemy stops at wall edge (wall-slide handles sliding)
+			void chaseResult;
 			continue;
 		}
 
@@ -1391,13 +1385,24 @@ function updateEnemies() {
 		// Reached wander target — pick a new one
 		if (wdist < 0.5) {
 			enemy.wanderTarget = randomWanderTarget();
+			enemy.blockedTicks = 0;
 			continue;
 		}
 
-		// Normalize and move toward wander target
-		const move = def.wanderSpeed * dt;
-		enemy.x += (wdx / wdist) * move;
-		enemy.z += (wdz / wdist) * move;
+		// Move toward wander target using wall-aware movement
+		const wanderResult = moveEntityToward(enemy, enemy.wanderTarget, def.wanderSpeed * dt);
+
+		// Track consecutive blocked ticks — pick a new target after too many blocks
+		if (wanderResult.blocked) {
+			if (!enemy.blockedTicks) enemy.blockedTicks = 0;
+			enemy.blockedTicks += 1;
+			if (enemy.blockedTicks > 10) {
+				enemy.wanderTarget = randomWanderTarget();
+				enemy.blockedTicks = 0;
+			}
+		} else {
+			enemy.blockedTicks = 0;
+		}
 	}
 }
 
@@ -2239,6 +2244,7 @@ if (typeof module !== 'undefined' && module.exports) {
     ENTITY_RADIUS,
     isEntityPositionBlocked,
     moveEntityToward,
+    randomWanderTarget,
     // Server objects for integration tests
     app,
     server,
