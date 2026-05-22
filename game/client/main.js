@@ -8,7 +8,7 @@ import {
 	renderQuestBoard,
 } from './questBoard.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import {
 	MAX_CARD_LEVEL,
 	getUpgradeCost,
@@ -779,7 +779,7 @@ function renderHand() {
 		const card = hand[i];
 
 		if (card) {
-			const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
+			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
 			const evolvedBadge = card.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
 			const grindBadge = (card.grind || 0) > 0 ? `<span class="grind-badge">+${card.grind}</span>` : '';
@@ -936,7 +936,7 @@ function renderDeckEditor() {
 	for (const [cardId, count] of Object.entries(ownedCounts)) {
 		const def = CARD_DEFS[cardId];
 		if (!def) continue;
-		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+		const style = CARD_ACCENT_STYLE[cardId] || CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
 		const inDeckCount = mySelectedDeck.filter((id) => cardIdForDeckEntry(id) === cardId).length;
 		const availableInstance = findAvailableInventoryInstance(cardId);
 		const canAdd = Array.isArray(myInventory)
@@ -1001,7 +1001,7 @@ function renderDeckEditor() {
 		const cardId = cardIdForDeckEntry(entryId);
 		const def = CARD_DEFS[cardId];
 		if (!def) continue;
-		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+		const style = CARD_ACCENT_STYLE[cardId] || CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
 		const deckInstance = getDeckInventory().find((card) => card.instanceId === entryId);
 		const evolvedBadge = def.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
 		const grindBadge = grindBadgeForInstance(deckInstance);

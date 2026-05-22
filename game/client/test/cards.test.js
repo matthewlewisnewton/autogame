@@ -3,6 +3,7 @@ import {
 	CARD_DEFS,
 	createStartingDeck,
 	CARD_TYPE_STYLE,
+	CARD_ACCENT_STYLE,
 	weaponCardIds,
 	summonCardIds,
 	monsterCardIds,
@@ -12,8 +13,8 @@ import {
 // ── CARD_DEFS ──
 
 describe('CARD_DEFS', () => {
-	it('has base, evolved, and synergistic card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(13);
+	it('has base, evolved, synergistic, and pack card entries', () => {
+		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -105,6 +106,65 @@ describe('CARD_DEFS', () => {
 			adjacentChargeRestore: 2,
 		});
 	});
+
+	it('contains the new card pack entries', () => {
+		expect(CARD_DEFS.saber_of_light).toMatchObject({
+			id: 'saber_of_light',
+			name: 'Saber of Light',
+			type: 'weapon',
+		});
+		expect(CARD_DEFS.photon_slicer).toMatchObject({
+			id: 'photon_slicer',
+			name: 'Photon Slicer',
+			type: 'weapon',
+			specialEffect: 'returning_projectile',
+		});
+		expect(CARD_DEFS.frost_nova).toMatchObject({
+			id: 'frost_nova',
+			name: 'Frost Nova',
+			type: 'summon',
+			effect: 'frost_nova',
+		});
+		expect(CARD_DEFS.healing_font).toMatchObject({
+			id: 'healing_font',
+			name: 'Healing Font',
+			type: 'summon',
+			effect: 'healing_font',
+		});
+		expect(CARD_DEFS.skeleton_knight).toMatchObject({
+			id: 'skeleton_knight',
+			name: 'Skeleton Knight',
+			type: 'monster',
+		});
+		expect(CARD_DEFS.storm_eagle).toMatchObject({
+			id: 'storm_eagle',
+			name: 'Storm Eagle',
+			type: 'monster',
+		});
+		expect(CARD_DEFS.gravity_well).toMatchObject({
+			id: 'gravity_well',
+			name: 'Gravity Well',
+			type: 'summon',
+			effect: 'gravity_well',
+		});
+		expect(CARD_DEFS.echo_blade).toMatchObject({
+			id: 'echo_blade',
+			name: 'Echo Blade',
+			type: 'weapon',
+			specialEffect: 'shockwave',
+		});
+		expect(CARD_DEFS.mana_leach).toMatchObject({
+			id: 'mana_leach',
+			name: 'Mana Leach',
+			type: 'summon',
+		});
+		expect(CARD_DEFS.dragons_breath).toMatchObject({
+			id: 'dragons_breath',
+			name: "Dragon's Breath",
+			type: 'summon',
+			effect: 'dragons_breath',
+		});
+	});
 });
 
 // ── createStartingDeck ──
@@ -167,9 +227,12 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('steel_broadsword')).toBe(true);
 		expect(weaponCardIds.has('inferno_edge')).toBe(true);
 		expect(weaponCardIds.has('harvesting_scythe')).toBe(true);
+		expect(weaponCardIds.has('saber_of_light')).toBe(true);
+		expect(weaponCardIds.has('photon_slicer')).toBe(true);
+		expect(weaponCardIds.has('echo_blade')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(5);
+		expect(weaponCardIds.size).toBe(8);
 	});
 
 	it('summonCardIds contains base, evolved, and synergistic summon card IDs', () => {
@@ -179,8 +242,13 @@ describe('card ID sets', () => {
 		expect(summonCardIds.has('mana_prism')).toBe(true);
 		expect(summonCardIds.has('sacrificial_altar')).toBe(true);
 		expect(summonCardIds.has('chrono_trigger')).toBe(true);
+		expect(summonCardIds.has('frost_nova')).toBe(true);
+		expect(summonCardIds.has('healing_font')).toBe(true);
+		expect(summonCardIds.has('gravity_well')).toBe(true);
+		expect(summonCardIds.has('mana_leach')).toBe(true);
+		expect(summonCardIds.has('dragons_breath')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
-		expect(summonCardIds.size).toBe(5);
+		expect(summonCardIds.size).toBe(10);
 	});
 
 	it('monsterCardIds contains base, evolved, and synergistic monster card IDs', () => {
@@ -188,7 +256,30 @@ describe('card ID sets', () => {
 		expect(monsterCardIds.has('dungeon_drake')).toBe(true);
 		expect(monsterCardIds.has('ancient_drake')).toBe(true);
 		expect(monsterCardIds.has('battery_automaton')).toBe(true);
+		expect(monsterCardIds.has('skeleton_knight')).toBe(true);
+		expect(monsterCardIds.has('storm_eagle')).toBe(true);
 		expect(monsterCardIds.has('iron_sword')).toBe(false);
-		expect(monsterCardIds.size).toBe(3);
+		expect(monsterCardIds.size).toBe(5);
+	});
+
+	it('CARD_ACCENT_STYLE defines icon and color for each new pack card', () => {
+		const packIds = [
+			'saber_of_light',
+			'photon_slicer',
+			'frost_nova',
+			'healing_font',
+			'skeleton_knight',
+			'storm_eagle',
+			'gravity_well',
+			'echo_blade',
+			'mana_leach',
+			'dragons_breath',
+		];
+		for (const cardId of packIds) {
+			expect(CARD_ACCENT_STYLE[cardId]).toMatchObject({
+				color: expect.any(String),
+				icon: expect.any(String),
+			});
+		}
 	});
 });

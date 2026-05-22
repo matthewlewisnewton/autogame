@@ -68,6 +68,7 @@ function createGameState() {
     enemies: [],
     minions: [],
     loot: [],
+    areaEffects: [],
     lobby: [],
     gamePhase: 'lobby',
     selectedQuestId: DEFAULT_QUEST_ID,
@@ -113,6 +114,14 @@ const {
   updateEnemies,
   updateMinions,
   damagePlayer,
+  healPlayer,
+  collectConeHits,
+  collectRadialHits,
+  collectReturningProjectileHits,
+  applyFreezeInRadius,
+  pullEnemiesToward,
+  spawnDragonsBreathEffect,
+  isEnemyFrozen,
   cleanupStalePlayers,
   regenMagicStones,
   randomWanderTarget,
@@ -756,73 +765,73 @@ function startServer(port) {
 
     // ── Weapon branch (forward cone attack) ──
     if (cardDef.type === 'weapon') {
-      // Decrement remaining charges
       handCard.remainingCharges -= 1;
 
-      const rotation = player.rotation; // radians, 0 = +X axis
+      const rotation = player.rotation;
       const attackRange = cardDef.attackRange || ATTACK_RANGE;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
       const grind = handCard.grind || 0;
       const damage = scaledGrindStat(cardDef.damage || 0, grind);
-
-      // Forward direction vector from player rotation (on x-z plane)
       const dirX = Math.cos(rotation);
       const dirZ = Math.sin(rotation);
+      const cooldownMs = cardDef.cooldownMs || COOLDOWN_MS;
 
-      // Check each enemy for hit (forward cone + range)
-      const hits = [];
+      let hits = [];
       let magicStonesGained = 0;
-      for (const enemy of gameState.enemies) {
-        const dx = enemy.x - originX;
-        const dz = enemy.z - originZ;
-        const dist = Math.hypot(dx, dz);
 
-        // Range check
-        if (dist > attackRange) continue;
+      if (cardDef.effect === 'returning_projectile') {
+        const result = collectReturningProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
+          magicStoneOnHit: cardDef.magicStoneOnHit,
+          magicStoneOnKill: cardDef.magicStoneOnKill,
+        });
+        hits = result.hits;
+        magicStonesGained = result.magicStonesGained;
+      } else {
+        const result = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
+          magicStoneOnHit: cardDef.magicStoneOnHit,
+          magicStoneOnKill: cardDef.magicStoneOnKill,
+        });
+        hits = result.hits;
+        magicStonesGained = result.magicStonesGained;
+      }
 
-        // Cone check: dot product between forward dir and enemy direction
-        const enemyDirX = dist > 0 ? dx / dist : dirX;
-        const enemyDirZ = dist > 0 ? dz / dist : dirZ;
-        const dot = dirX * enemyDirX + dirZ * enemyDirZ;
-
-        if (dot < Math.cos(attackConeAngle / 2)) continue;
-
-        // Hit — apply damage
-        const hpBefore = enemy.hp;
-        enemy.lastDamagedBy = socket.playerId;
-        enemy.hp -= damage;
-        const killed = hpBefore > 0 && enemy.hp <= 0;
-        const hitGain = cardDef.magicStoneOnHit || 0;
-        const killGain = killed ? (cardDef.magicStoneOnKill || 0) : 0;
-        magicStonesGained += hitGain + killGain;
-        hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
+      let shockwaveHits = [];
+      if (cardDef.shockwaveEvery) {
+        if (!player.weaponComboCounts) player.weaponComboCounts = {};
+        const comboKey = data.cardId;
+        const nextCount = (player.weaponComboCounts[comboKey] || 0) + 1;
+        player.weaponComboCounts[comboKey] = nextCount;
+        if (nextCount % cardDef.shockwaveEvery === 0) {
+          const shockwave = collectRadialHits(
+            originX,
+            originZ,
+            cardDef.shockwaveRadius || SUMMON_RADIUS,
+            cardDef.shockwaveDamage || damage
+          );
+          shockwaveHits = shockwave.hits;
+        }
       }
 
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
-
-      // Cleanup dead enemies after weapon attack
       cleanupAfterDamage();
 
-      // Set slot cooldown
-      player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+      player.slotCooldowns[data.slotIndex] = now + cooldownMs;
 
-      // Exhaust: if charges reach 0, remove card and draw replacement
       if (handCard.remainingCharges <= 0) {
         drawReplacementCard(player, data.slotIndex);
       }
 
-      // Broadcast updated hand to all clients
       io.emit('stateUpdate', stateSnapshot());
-
-      // Broadcast result to all clients
       io.emit('cardUsed', {
         playerId: socket.playerId,
         cardId: data.cardId,
         specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
         direction: { x: dirX, z: dirZ },
-        hits: hits,
-        magicStonesGained: appliedMagicStones
+        hits,
+        shockwaveHits,
+        magicStonesGained: appliedMagicStones,
+        comboCount: player.weaponComboCounts ? player.weaponComboCounts[data.cardId] : undefined,
       });
 
       return;
@@ -893,7 +902,7 @@ function startServer(port) {
           slots: [data.slotIndex - 1, data.slotIndex + 1],
         });
 
-        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
         io.emit('stateUpdate', stateSnapshot());
@@ -903,6 +912,114 @@ function startServer(port) {
           slotIndex: data.slotIndex,
           origin: { x: originX, z: originZ },
           restoredCharges,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'frost_nova') {
+        const radius = cardDef.radius || SUMMON_RADIUS;
+        const hits = applyFreezeInRadius(
+          originX,
+          originZ,
+          radius,
+          cardDef.freezeDurationMs || 2500,
+          cardDef.damage || 0
+        );
+        cleanupAfterDamage();
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius,
+          hits,
+          frozen: true,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'healing_font') {
+        const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius: SUMMON_RADIUS,
+          healAmount: healed,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'gravity_well') {
+        const radius = cardDef.pullRadius || SUMMON_RADIUS;
+        const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius,
+          pulled,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'dragons_breath') {
+        const rotation = player.rotation;
+        const dirX = Math.cos(rotation);
+        const dirZ = Math.sin(rotation);
+        const range = cardDef.attackRange || 7;
+        const coneAngle = cardDef.attackConeAngle || Math.PI / 3;
+        const { hits, magicStonesGained } = collectConeHits(
+          originX,
+          originZ,
+          dirX,
+          dirZ,
+          range,
+          coneAngle,
+          cardDef.damage || 0
+        );
+        spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
+        cleanupAfterDamage();
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          direction: { x: dirX, z: dirZ },
+          radius: range,
+          hits,
+          magicStonesGained,
+          dotTicks: cardDef.dotTicks || 4,
         });
 
         return;
@@ -941,23 +1058,18 @@ function startServer(port) {
       }
 
       // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
-      const hits = [];
       const grind = handCard.grind || 0;
       const summonDamage = scaledGrindStat(cardDef.damage || 0, grind);
-      for (const enemy of gameState.enemies) {
-        const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
-        if (dist <= SUMMON_RADIUS) {
-          enemy.lastDamagedBy = socket.playerId;
-          enemy.hp -= summonDamage;
-          hits.push({ enemyId: enemy.id, hp: enemy.hp });
-        }
-      }
+      const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
+        magicStoneOnHit: cardDef.magicStoneOnHit,
+        magicStoneOnKill: cardDef.magicStoneOnKill,
+      });
+      const hits = radial.hits;
+      const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
 
-      // Cleanup dead enemies after summon attack
       cleanupAfterDamage();
 
-      // Set slot cooldown
-      player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+      player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
 
       // Remove card from hand and draw replacement
       drawReplacementCard(player, data.slotIndex);
@@ -973,7 +1085,8 @@ function startServer(port) {
         specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
         radius: SUMMON_RADIUS,
-        hits: hits
+        hits: hits,
+        magicStonesGained: appliedMagicStones,
       });
 
       // Do NOT delete pendingSummons here — leave the entry so any duplicate
@@ -1007,6 +1120,13 @@ function startServer(port) {
         ttl: minionTtl,
         createdAt: now
       };
+      if (cardDef.taunt) {
+        minion.taunt = true;
+      }
+      if (cardDef.effect === 'storm_eagle') {
+        minion.attackRange = cardDef.attackRange || 7;
+        minion.attackDamage = cardDef.attackDamage || 12;
+      }
       if (cardDef.effect === 'battery_automaton') {
         minion.lastChargePulseAt = now;
         minion.chargePulseIntervalMs = cardDef.chargePulseIntervalMs || 6000;
@@ -1543,6 +1663,14 @@ if (typeof module !== 'undefined' && module.exports) {
     mulberry32,
     generateLayout,
     damagePlayer,
+    healPlayer,
+    collectConeHits,
+    collectRadialHits,
+    collectReturningProjectileHits,
+    applyFreezeInRadius,
+    pullEnemiesToward,
+    spawnDragonsBreathEffect,
+    isEnemyFrozen,
     updateEnemies,
     updateMinions,
     spawnLoot,
@@ -1656,6 +1784,8 @@ if (typeof module !== 'undefined' && module.exports) {
     MAGIC_STONES_REGEN_PER_TICK,
     DETECTION_RADIUS,
     ATTACK_RANGE,
+    SUMMON_RADIUS,
+    COOLDOWN_MS,
     TICK_RATE,
     ENEMY_ATTACK_RANGE,
     ENEMY_ATTACK_RECOVERY_MS,

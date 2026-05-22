@@ -106,6 +106,86 @@ export const CARD_DEFS = {
     effect: 'chrono_trigger',
     adjacentChargeRestore: 2,
   },
+  saber_of_light: {
+    id: 'saber_of_light',
+    name: 'Saber of Light',
+    type: 'weapon',
+    charges: 6,
+    specialEffect: 'swift_slash',
+  },
+  photon_slicer: {
+    id: 'photon_slicer',
+    name: 'Photon Slicer',
+    type: 'weapon',
+    charges: 4,
+    specialEffect: 'returning_projectile',
+  },
+  frost_nova: {
+    id: 'frost_nova',
+    name: 'Frost Nova',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 35,
+    effect: 'frost_nova',
+    specialEffect: 'freeze',
+  },
+  healing_font: {
+    id: 'healing_font',
+    name: 'Healing Font',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'healing_font',
+    specialEffect: 'heal',
+  },
+  skeleton_knight: {
+    id: 'skeleton_knight',
+    name: 'Skeleton Knight',
+    type: 'monster',
+    charges: 1,
+    specialEffect: 'taunt',
+  },
+  storm_eagle: {
+    id: 'storm_eagle',
+    name: 'Storm Eagle',
+    type: 'monster',
+    charges: 1,
+    magicStoneCost: 40,
+    specialEffect: 'ranged_strike',
+  },
+  gravity_well: {
+    id: 'gravity_well',
+    name: 'Gravity Well',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 45,
+    effect: 'gravity_well',
+    specialEffect: 'pull',
+  },
+  echo_blade: {
+    id: 'echo_blade',
+    name: 'Echo Blade',
+    type: 'weapon',
+    charges: 5,
+    specialEffect: 'shockwave',
+  },
+  mana_leach: {
+    id: 'mana_leach',
+    name: 'Mana Leach',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 30,
+    specialEffect: 'mana_drain',
+  },
+  dragons_breath: {
+    id: 'dragons_breath',
+    name: "Dragon's Breath",
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 40,
+    effect: 'dragons_breath',
+    specialEffect: 'fire_dot',
+  },
 };
 
 export const EVOLUTION_GRIND_REQUIRED = 10;
@@ -178,6 +258,20 @@ export const CARD_TYPE_STYLE = {
   weapon: { color: '#60a5fa', icon: '⚔' },
   summon: { color: '#f59e0b', icon: '✦' },
   monster: { color: '#a78bfa', icon: '🐉' },
+};
+
+// Optional per-card accent overrides for the expanded pack.
+export const CARD_ACCENT_STYLE = {
+  saber_of_light: { color: '#fef08a', icon: '☀' },
+  photon_slicer: { color: '#22d3ee', icon: '⟲' },
+  frost_nova: { color: '#67e8f9', icon: '❄' },
+  healing_font: { color: '#86efac', icon: '♥' },
+  skeleton_knight: { color: '#d4d4d8', icon: '💀' },
+  storm_eagle: { color: '#93c5fd', icon: '🦅' },
+  gravity_well: { color: '#c084fc', icon: '◎' },
+  echo_blade: { color: '#f472b6', icon: '〰' },
+  mana_leach: { color: '#a855f7', icon: '◈' },
+  dragons_breath: { color: '#fb923c', icon: '🔥' },
 };
 
 // ── Card ID Sets by Type ──
