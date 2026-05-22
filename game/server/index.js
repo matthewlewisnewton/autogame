@@ -1405,6 +1405,10 @@ function stateSnapshot() {
   return snapshot;
 }
 
+// Track whether Express routes have been mounted — prevents stacking
+// on repeated startServer() calls (tests call startServer in beforeEach).
+let _routesMounted = false;
+
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
 function startServer(port) {
@@ -1415,12 +1419,25 @@ function startServer(port) {
   const dataDir = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
   fs.mkdirSync(dataDir, { recursive: true });
 
-  // JSON body parsing for REST endpoints
-  app.use(express.json());
+  // Mount Express routes exactly once per process.  The auth router is a
+  // module-level singleton (require('./auth')) — calling app.use() again
+  // would stack a duplicate set of handlers.  The guard below ensures each
+  // route is registered a single time, even when tests call startServer()
+  // repeatedly in beforeEach.
+  if (!_routesMounted) {
+    app.use(express.json());
+    const authRouter = require('./auth');
+    app.use('/api', authRouter);
+    _routesMounted = true;
+  }
 
-  // Mount auth REST routes
-  const authRouter = require('./auth');
-  app.use('/api', authRouter);
+  // In test mode, clear the in-memory users Map to prevent contamination
+  // from prior test files sharing the same module instance.  This pairs
+  // with setTestFilePath() / clearUsers() called in test beforeEach hooks.
+  if (process.env.NODE_ENV === 'test') {
+    const { clearUsers } = require('./users');
+    clearUsers();
+  }
 
   // Initialize persistence provider based on PERSISTENCE_BACKEND env var.
   // Default is FileProvider for durable persistence across restarts.
