@@ -389,7 +389,7 @@ at the first sub-ticket.
 
 ```
 harness/
-  pyproject.toml              # py3.12; stdlib subprocess + threading
+  pyproject.toml              # py3.10; stdlib subprocess + threading; pydantic + pytest as deps
   roles.yaml                  # roster + tunables (committed)
   roles.local.yaml            # optional, gitignored — runtime overrides
   __main__.py                 # `python -m harness <subcommand>`
@@ -2327,7 +2327,7 @@ exercises agents as part of full role/pipeline tests.
 
 | #  | Question                                                                    | Status                                                                                                  |
 | -- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Q1 | Python version                                                              | 3.12. Confirmed on the box. Uses stdlib only (no anyio).                                                |
+| Q1 | Python version                                                              | **3.10** (target box has python3.10.12; not worth installing 3.12 for the syntax sugar we'd use). Uses stdlib only (no anyio). Type-hint syntax avoids `Self` (3.11+) and PEP 695 generics (3.12+). |
 | Q2 | Async or sync?                                                              | Sync day 1. Async in phase 6 only where workers benefit. (Both reviewers correctly flagged async on day 1 as no-rent.) |
 | Q3 | Single-process or per-pipeline subprocess?                                  | **Per-sub-ticket subprocess** (`python -m harness subtask <dir>` spawned by `ticket()`). Hard requirement for day 1: same isolation as bash; cheap context teardown. Phase 6 may move to single-process with the worker pool. |
 | Q4 | Anchor merging across YAML files                                            | Resolved: named `agents:` mapping (§6.3), no anchors needed. Local file can add new agents to the map.   |

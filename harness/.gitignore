@@ -1,0 +1,14 @@
+# Python build artifacts
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# Runtime files
+roles.local.yaml          # operator overrides — never committed
+tmp/
+
+# CLI output capture under tests/ that real CLIs would create
+tests/fixtures/cli_outputs/*-out.txt

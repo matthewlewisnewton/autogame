@@ -1,0 +1,62 @@
+[build-system]
+# Stdlib + a handful of declared deps. Setuptools is enough; poetry would also
+# work but isn't installed on the target box and isn't worth pulling in just
+# for dependency management.
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autogame-harness"
+version = "0.1.0a0"
+description = "Python rewrite of the bash autogame orchestrator. See harness/docs/python-rewrite.md (v5)."
+readme = "docs/python-rewrite.md"
+requires-python = ">=3.10"
+authors = [{name = "Matt"}]
+dependencies = [
+  # Pydantic for the roles.yaml schema model (config/schema.py).
+  "pydantic>=2.5,<3",
+  # PyYAML for loading roles.yaml + roles.local.yaml.
+  "PyYAML>=6,<7",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=7.4,<9",
+  "pytest-mock>=3.12,<4",
+]
+
+[project.scripts]
+# `pip install -e .` registers this entry point so `harness <subcommand>` also
+# works alongside `python -m harness <subcommand>`. The doc standardizes on
+# the `python -m harness` form for tmux launch consistency, but the CLI alias
+# is convenient for interactive debugging.
+harness = "harness.cli:main"
+
+# The package layout is the directory containing this pyproject.toml — i.e.
+# `harness/` itself is the importable package. Running tests / `pip install -e .`
+# from this directory works; running `python -m harness` requires the parent
+# (autogame/) to be on sys.path, which the doc's `cd autogame && python -m
+# harness supervisor` invocation satisfies naturally.
+#
+# This is the conventional layout despite living one directory deeper than
+# `autogame/`. We don't use src/ because the doc's §4 module map doesn't show
+# one, and the bash files + Python coexist under harness/ anyway during the
+# phased migration.
+[tool.setuptools.packages.find]
+where = [".."]
+include = ["harness*"]
+exclude = ["harness.docs*", "harness.tests*", "harness.prompts*", "harness.progress*",
+           "harness.githooks*", "harness.node_modules*", "harness.tmp*"]
+namespaces = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# Markers per design doc §11.4 — smoke tests gated by env / explicit -m flag.
+markers = [
+  "smoke_qwen: requires ollama + qwen3.6:27b-q8_0 loaded",
+  "smoke_cursor: requires `agent` CLI logged in",
+  "smoke_agy: requires antigravity CLI logged in",
+  "smoke_claude: requires `claude` CLI + auth",
+]
+# Smoke tests don't run by default; require explicit `-m smoke_*` to opt in.
+addopts = "-m 'not smoke_qwen and not smoke_cursor and not smoke_agy and not smoke_claude'"
