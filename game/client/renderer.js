@@ -676,19 +676,16 @@ export function spawnAttackEffect(origin, direction, style = {}) {
  * @param {number} radius
  * @param {number} [colorHex] - optional accent color (0xRRGGBB)
  */
-export function spawnSummonEffect(origin, radius, style = {}) {
+export function spawnSummonEffect(origin, radius, styleOrColor = {}) {
+	const style = typeof styleOrColor === 'number'
+		? { color: styleOrColor, emissive: styleOrColor }
+		: styleOrColor;
 	const color = style.color ?? 0xf59e0b;
 	const emissive = style.emissive ?? color;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
 		color,
 		emissive,
-export function spawnSummonEffect(origin, radius, colorHex) {
-	const color = colorHex ?? 0xf59e0b;
-	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
-	const material = new THREE.MeshStandardMaterial({
-		color,
-		emissive: color,
 		emissiveIntensity: 1.0,
 		transparent: true,
 		opacity: 1.0,
