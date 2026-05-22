@@ -1593,3 +1593,26 @@ PASS. Coverage ran successfully with 391 tests passing across 8 files. The added
 
 None.
 
+
+## v0.70 — Cleanup nits from 024-entity-ai-improvements  (2026-05-22 04:36:14)
+
+## Debug scenarios
+
+**Not applicable.** This ticket did not add or modify any `?scenario=` / `debugScenario` flow. Capture used normal ready-up gameplay (`debugScenario: null`). No debug-scenario regression review required.
+
+---
+
+## Integration / holistic notes
+
+- Single sub-ticket (`01-fix-reached-metadata`) fully covers the top-level ticket; no integration gaps between sub-tickets.
+- Ticket staleness note references commit `8af88db`; actual harness baseline `4374f9b` is valid and yields a focused two-commit diff.
+- `metrics.json` lists scenario `mixed-enemies` but capture ran standard smoke without applying a debug scenario — appropriate for this metadata-only server change.
+
+---
+
+## Remaining gaps
+
+No blocking gaps. Acceptance criteria are fully satisfied and the game runs cleanly in capture.
+
+---
+
