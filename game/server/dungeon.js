@@ -350,6 +350,34 @@ function assignRoomRoles(layout) {
   }
 }
 
+// ── Role-Aware Spawn Helpers ──
+
+const SPAWN_PADDING = 2;
+
+/**
+ * Return rooms from the layout matching the given role string.
+ */
+function roomsByRole(layout, role) {
+  return layout.rooms.filter(r => r.role === role);
+}
+
+/**
+ * Return a random position {x, z} within a room of the specified role.
+ * Uses a seeded RNG (Mulberry32) for determinism.
+ * Falls back to any room when no rooms match the requested role.
+ */
+function randomRoomPositionByRole(layout, role, rng) {
+  const matched = roomsByRole(layout, role);
+  const pool = matched.length > 0 ? matched : layout.rooms;
+  const room = pool[Math.floor(rng() * pool.length)];
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  return {
+    x: room.x + (rng() * 2 - 1) * halfW,
+    z: room.z + (rng() * 2 - 1) * halfD,
+  };
+}
+
 // ── Exports ──
 
 module.exports = {
@@ -359,6 +387,8 @@ module.exports = {
   bfsDistances,
   findFarthestRoom,
   assignRoomRoles,
+  roomsByRole,
+  randomRoomPositionByRole,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,

@@ -6,6 +6,8 @@ import {
   bfsDistances,
   findFarthestRoom,
   assignRoomRoles,
+  roomsByRole,
+  randomRoomPositionByRole,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
@@ -575,5 +577,135 @@ describe('assignRoomRoles(layout)', () => {
         expect(typeof room.encounterTier).toBe('number');
       }
     }
+  });
+});
+
+// ── roomsByRole ──
+
+describe('roomsByRole(layout, role)', () => {
+  it('returns an array', () => {
+    const layout = generateLayout(42);
+    expect(Array.isArray(roomsByRole(layout, 'combat'))).toBe(true);
+  });
+
+  it('returns only rooms matching the requested role', () => {
+    const layout = generateLayout(42);
+    const combats = roomsByRole(layout, 'combat');
+    for (const room of combats) {
+      expect(room.role).toBe('combat');
+    }
+  });
+
+  it('returns exactly one start room', () => {
+    const layout = generateLayout(42);
+    expect(roomsByRole(layout, 'start').length).toBe(1);
+  });
+
+  it('returns exactly one treasure room', () => {
+    const layout = generateLayout(42);
+    expect(roomsByRole(layout, 'treasure').length).toBe(1);
+  });
+
+  it('returns an empty array for a non-existent role', () => {
+    const layout = generateLayout(42);
+    expect(roomsByRole(layout, 'boss').length).toBe(0);
+  });
+
+  it('combined role counts equal total room count', () => {
+    const layout = generateLayout(42);
+    const total = roomsByRole(layout, 'start').length +
+      roomsByRole(layout, 'combat').length +
+      roomsByRole(layout, 'treasure').length;
+    expect(total).toBe(layout.rooms.length);
+  });
+
+  it('is deterministic for the same layout', () => {
+    const layout = generateLayout(777);
+    const a = roomsByRole(layout, 'combat');
+    const b = roomsByRole(layout, 'combat');
+    expect(a).toStrictEqual(b);
+  });
+});
+
+// ── randomRoomPositionByRole ──
+
+describe('randomRoomPositionByRole(layout, role, rng)', () => {
+  it('returns an object with x and z properties', () => {
+    const layout = generateLayout(42);
+    const rng = mulberry32(42);
+    const pos = randomRoomPositionByRole(layout, 'combat', rng);
+    expect(typeof pos.x).toBe('number');
+    expect(typeof pos.z).toBe('number');
+  });
+
+  it('returned position is within the bounds of a matching room', () => {
+    const layout = generateLayout(42);
+    const rng = mulberry32(99);
+    const pos = randomRoomPositionByRole(layout, 'combat', rng);
+    const combats = roomsByRole(layout, 'combat');
+    const within = combats.some(r => {
+      const halfW = r.width / 2;
+      const halfD = r.depth / 2;
+      return pos.x >= r.x - halfW && pos.x <= r.x + halfW &&
+             pos.z >= r.z - halfD && pos.z <= r.z + halfD;
+    });
+    expect(within).toBe(true);
+  });
+
+  it('falls back to any room when role does not exist', () => {
+    const layout = generateLayout(42);
+    const rng = mulberry32(42);
+    const pos = randomRoomPositionByRole(layout, 'nonexistent', rng);
+    const within = layout.rooms.some(r => {
+      const halfW = r.width / 2;
+      const halfD = r.depth / 2;
+      return pos.x >= r.x - halfW && pos.x <= r.x + halfW &&
+             pos.z >= r.z - halfD && pos.z <= r.z + halfD;
+    });
+    expect(within).toBe(true);
+  });
+
+  it('is deterministic with the same seed', () => {
+    const layout = generateLayout(42);
+    const rngA = mulberry32(123);
+    const rngB = mulberry32(123);
+    const posA = randomRoomPositionByRole(layout, 'combat', rngA);
+    const posB = randomRoomPositionByRole(layout, 'combat', rngB);
+    expect(posA).toEqual(posB);
+  });
+
+  it('produces different positions for different seeds', () => {
+    const layout = generateLayout(42);
+    const posA = randomRoomPositionByRole(layout, 'combat', mulberry32(1));
+    const posB = randomRoomPositionByRole(layout, 'combat', mulberry32(2));
+    expect(posA).not.toEqual(posB);
+  });
+
+  it('position respects spawn padding (stays inside room edges)', () => {
+    const layout = generateLayout(42);
+    const rng = mulberry32(42);
+    const pos = randomRoomPositionByRole(layout, 'start', rng);
+    const startRoom = roomsByRole(layout, 'start')[0];
+    const padding = 2;
+    const halfW = startRoom.width / 2 - padding;
+    const halfD = startRoom.depth / 2 - padding;
+    expect(pos.x).toBeGreaterThanOrEqual(startRoom.x - halfW);
+    expect(pos.x).toBeLessThanOrEqual(startRoom.x + halfW);
+    expect(pos.z).toBeGreaterThanOrEqual(startRoom.z - halfD);
+    expect(pos.z).toBeLessThanOrEqual(startRoom.z + halfD);
+  });
+
+  it('works correctly for treasure role', () => {
+    const layout = generateLayout(42);
+    const rng = mulberry32(77);
+    const pos = randomRoomPositionByRole(layout, 'treasure', rng);
+    const treasure = roomsByRole(layout, 'treasure')[0];
+    const padding = 2;
+    const halfW = treasure.width / 2 - padding;
+    const halfD = treasure.depth / 2 - padding;
+    expect(pos.x).toBeGreaterThanOrEqual(treasure.x - halfW);
+    expect(pos.x).toBeLessThanOrEqual(treasure.x + halfW);
+    expect(pos.z).toBeGreaterThanOrEqual(treasure.z - halfD);
+    expect(pos.z).toBeLessThanOrEqual(treasure.z + halfD);
   });
 });
