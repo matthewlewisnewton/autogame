@@ -212,6 +212,7 @@ function bindSocketHandlers(s) {
 
 		// Initialize deck editor state from server
 		mySelectedDeck = data.selectedDeck || [];
+		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
 		renderDeckEditor();
 
@@ -310,7 +311,10 @@ function bindSocketHandlers(s) {
 				}
 			}
 
-			// Sync ownedCards from server state if present
+			// Sync inventory/ownedCards from server state if present
+			if (Array.isArray(gameState.players[myId].inventory)) {
+				myInventory = gameState.players[myId].inventory;
+			}
 			if (gameState.players[myId].ownedCards) {
 				myOwnedCards = gameState.players[myId].ownedCards;
 			}
@@ -427,6 +431,7 @@ function bindSocketHandlers(s) {
 	s.on('deckUpdate', (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		renderDeckEditor();
 	});
@@ -497,6 +502,7 @@ let currentLayout = null; // persisted layout from init; stateUpdate omits it
 
 // Deck editor state
 let mySelectedDeck = [];
+let myInventory = null;
 let myOwnedCards = {};
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 
@@ -632,14 +638,48 @@ const selectedDeckListEl = document.getElementById('selected-deck-list');
 const deckSizeDisplayEl = document.getElementById('deck-size-display');
 const deckErrorEl = document.getElementById('deck-error');
 
+function getDeckInventory() {
+	return Array.isArray(myInventory) ? myInventory : [];
+}
+
+function getDeckOwnedCounts() {
+	const inventory = getDeckInventory();
+	if (Array.isArray(myInventory)) {
+		return inventory.reduce((counts, instance) => {
+			if (instance && CARD_DEFS[instance.cardId]) {
+				counts[instance.cardId] = (counts[instance.cardId] || 0) + 1;
+			}
+			return counts;
+		}, {});
+	}
+	return myOwnedCards || {};
+}
+
+function cardIdForDeckEntry(entryId) {
+	const instance = getDeckInventory().find((card) => card.instanceId === entryId);
+	if (instance) return instance.cardId;
+	return CARD_DEFS[entryId] ? entryId : null;
+}
+
+function findAvailableInventoryInstance(cardId) {
+	const selected = new Set(mySelectedDeck);
+	return getDeckInventory().find((instance) =>
+		instance.cardId === cardId && !selected.has(instance.instanceId)
+	) || null;
+}
+
 function renderDeckEditor() {
 	ownedCardsListEl.innerHTML = '';
-	for (const [cardId, count] of Object.entries(myOwnedCards)) {
+	const ownedCounts = getDeckOwnedCounts();
+	for (const [cardId, count] of Object.entries(ownedCounts)) {
 		const def = CARD_DEFS[cardId];
 		if (!def) continue;
 		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
-		const inDeckCount = mySelectedDeck.filter((id) => id === cardId).length;
-		const canAdd = inDeckCount < count && mySelectedDeck.length < DECK_MAX_SIZE;
+		const inDeckCount = mySelectedDeck.filter((id) => cardIdForDeckEntry(id) === cardId).length;
+		const availableInstance = findAvailableInventoryInstance(cardId);
+		const canAdd = Array.isArray(myInventory)
+			? !!availableInstance && mySelectedDeck.length < DECK_MAX_SIZE
+			: inDeckCount < count && mySelectedDeck.length < DECK_MAX_SIZE;
 
 		const entry = document.createElement('div');
 		entry.className = 'owned-card-entry';
@@ -651,14 +691,16 @@ function renderDeckEditor() {
     `;
 		const addBtn = entry.querySelector('.deck-add-btn');
 		addBtn.addEventListener('click', () => {
-			socket.emit('deckAddCard', { cardId });
+			const instance = findAvailableInventoryInstance(cardId);
+			socket.emit('deckAddCard', instance ? { instanceId: instance.instanceId, cardId } : { cardId });
 		});
 		ownedCardsListEl.appendChild(entry);
 	}
 
 	selectedDeckListEl.innerHTML = '';
 	for (let i = 0; i < mySelectedDeck.length; i++) {
-		const cardId = mySelectedDeck[i];
+		const entryId = mySelectedDeck[i];
+		const cardId = cardIdForDeckEntry(entryId);
 		const def = CARD_DEFS[cardId];
 		if (!def) continue;
 		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
@@ -672,7 +714,8 @@ function renderDeckEditor() {
     `;
 		const removeBtn = entry.querySelector('.deck-remove-btn');
 		removeBtn.addEventListener('click', () => {
-			socket.emit('deckRemoveCard', { cardId });
+			const instance = getDeckInventory().find((card) => card.instanceId === entryId);
+			socket.emit('deckRemoveCard', instance ? { instanceId: entryId, cardId } : { cardId });
 		});
 		selectedDeckListEl.appendChild(entry);
 	}
@@ -1024,7 +1067,11 @@ window.createEnemyMesh = rendererCreateEnemyMesh;
 window.enemyMeshHalfHeight = rendererEnemyMeshHalfHeight;
 window.healthBarColor = rendererHealthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
-window.__setDeckState = (deck, owned) => { mySelectedDeck = deck || mySelectedDeck; myOwnedCards = owned || myOwnedCards; };
+window.__setDeckState = (deck, owned, inventory) => {
+	mySelectedDeck = deck || mySelectedDeck;
+	myOwnedCards = owned || myOwnedCards;
+	if (inventory !== undefined) myInventory = inventory;
+};
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;

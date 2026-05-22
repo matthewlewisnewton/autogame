@@ -66,23 +66,152 @@ const STARTING_DECK_IDS = [
   'flame_blade'
 ];
 
-function createPlayerProgress() {
-  const ownedCards = {};
-  for (const cardId of STARTING_DECK_IDS) {
-    ownedCards[cardId] = (ownedCards[cardId] || 0) + 1;
+function createCardInstance(cardId, overrides = {}) {
+  if (!CARD_DEFS[cardId]) return null;
+  const grind = Number.isFinite(overrides.grind) ? overrides.grind : 0;
+  const level = Number.isFinite(overrides.level) ? overrides.level : 1;
+  const instanceId = typeof overrides.instanceId === 'string' && overrides.instanceId.length > 0
+    ? overrides.instanceId
+    : crypto.randomUUID();
+  return {
+    ...overrides,
+    instanceId,
+    cardId,
+    grind,
+    level
+  };
+}
+
+function createInventoryFromCardIds(cardIds) {
+  return cardIds.map(cardId => createCardInstance(cardId)).filter(Boolean);
+}
+
+function createInventoryFromOwnedCards(ownedCards = {}) {
+  const inventory = [];
+  for (const [cardId, count] of Object.entries(ownedCards || {})) {
+    if (!CARD_DEFS[cardId]) continue;
+    const copies = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+    for (let i = 0; i < copies; i++) {
+      inventory.push(createCardInstance(cardId));
+    }
   }
+  return inventory;
+}
+
+function normalizeInventory(inventory, ownedCards) {
+  if (!Array.isArray(inventory)) {
+    return createInventoryFromOwnedCards(ownedCards);
+  }
+
+  const usedIds = new Set();
+  const normalized = [];
+  for (const entry of inventory) {
+    if (!entry || typeof entry !== 'object' || !CARD_DEFS[entry.cardId]) continue;
+    let instance = createCardInstance(entry.cardId, entry);
+    if (!instance) continue;
+    if (usedIds.has(instance.instanceId)) {
+      instance = { ...instance, instanceId: crypto.randomUUID() };
+    }
+    usedIds.add(instance.instanceId);
+    normalized.push(instance);
+  }
+  return normalized;
+}
+
+function inventoryToOwnedCards(inventory = []) {
+  const ownedCards = {};
+  for (const instance of Array.isArray(inventory) ? inventory : []) {
+    if (!instance || !CARD_DEFS[instance.cardId]) continue;
+    ownedCards[instance.cardId] = (ownedCards[instance.cardId] || 0) + 1;
+  }
+  return ownedCards;
+}
+
+function getInventoryInstance(inventory, instanceId) {
+  if (!Array.isArray(inventory) || typeof instanceId !== 'string') return null;
+  return inventory.find(instance => instance && instance.instanceId === instanceId) || null;
+}
+
+function cardIdForDeckEntry(entry, inventory) {
+  const instance = getInventoryInstance(inventory, entry);
+  if (instance) return instance.cardId;
+  return CARD_DEFS[entry] ? entry : null;
+}
+
+function normalizeSelectedDeck(selectedDeck, inventory) {
+  if (!Array.isArray(selectedDeck)) return [];
+  const usedInstanceIds = new Set();
+  const normalized = [];
+
+  for (const entry of selectedDeck) {
+    if (typeof entry !== 'string') continue;
+
+    const exactInstance = getInventoryInstance(inventory, entry);
+    if (exactInstance) {
+      if (!usedInstanceIds.has(exactInstance.instanceId)) {
+        usedInstanceIds.add(exactInstance.instanceId);
+        normalized.push(exactInstance.instanceId);
+      }
+      continue;
+    }
+
+    if (CARD_DEFS[entry]) {
+      const available = inventory.find(instance =>
+        instance.cardId === entry && !usedInstanceIds.has(instance.instanceId)
+      );
+      if (available) {
+        usedInstanceIds.add(available.instanceId);
+        normalized.push(available.instanceId);
+      } else {
+        normalized.push(entry);
+      }
+      continue;
+    }
+
+    normalized.push(entry);
+  }
+
+  return normalized;
+}
+
+function normalizePlayerInventory(player) {
+  if (!player) return player;
+  player.inventory = normalizeInventory(player.inventory, player.ownedCards);
+  player.ownedCards = inventoryToOwnedCards(player.inventory);
+  player.selectedDeck = normalizeSelectedDeck(player.selectedDeck || [], player.inventory);
+  return player;
+}
+
+function findAvailableInventoryInstance(cardId, deck, inventory) {
+  if (!CARD_DEFS[cardId] || !Array.isArray(inventory)) return null;
+  const selected = new Set(Array.isArray(deck) ? deck : []);
+  return inventory.find(instance => instance.cardId === cardId && !selected.has(instance.instanceId)) || null;
+}
+
+function canAddCardInstanceToDeck(instanceId, deck, inventory) {
+  if (!Array.isArray(deck) || deck.length >= DECK_MAX_SIZE) return false;
+  const instance = getInventoryInstance(inventory, instanceId);
+  if (!instance) return false;
+  return !deck.includes(instance.instanceId);
+}
+
+function createPlayerProgress() {
+  const inventory = createInventoryFromCardIds(STARTING_DECK_IDS);
   return {
     currency: 0,
-    ownedCards,
+    inventory,
+    ownedCards: inventoryToOwnedCards(inventory),
     runRewards: null,
     currencyEarnedThisRun: 0
   };
 }
 
 function extractPersistentData(player) {
+  normalizePlayerInventory(player);
   return {
     currency: player.currency || 0,
-    ownedCards: player.ownedCards || {},
+    inventory: player.inventory.map(instance => ({ ...instance })),
+    ownedCards: inventoryToOwnedCards(player.inventory),
     selectedDeck: player.selectedDeck || [],
     x: player.x || 0,
     y: player.y || 0.5,
@@ -182,11 +311,9 @@ function buildRunSummary(status) {
 
 function grantCard(player, cardId) {
   if (!CARD_DEFS[cardId]) return false;
-  if (!player.ownedCards) player.ownedCards = {};
-  if (player.ownedCards[cardId] === undefined) {
-    player.ownedCards[cardId] = 0;
-  }
-  player.ownedCards[cardId] += 1;
+  normalizePlayerInventory(player);
+  player.inventory.push(createCardInstance(cardId));
+  player.ownedCards = inventoryToOwnedCards(player.inventory);
   return true;
 }
 
@@ -229,7 +356,7 @@ function buildPlayerRewardSummary(playerId) {
   return player.runRewards;
 }
 
-function validateDeck(deck, ownedCards) {
+function validateDeck(deck, ownedOrInventory) {
   if (deck.length < DECK_MIN_SIZE) {
     return { valid: false, reason: `Deck must have at least ${DECK_MIN_SIZE} cards` };
   }
@@ -237,10 +364,30 @@ function validateDeck(deck, ownedCards) {
     return { valid: false, reason: `Deck can have at most ${DECK_MAX_SIZE} cards` };
   }
 
+  const inventory = Array.isArray(ownedOrInventory) ? normalizeInventory(ownedOrInventory) : null;
+  const ownedCards = inventory ? inventoryToOwnedCards(inventory) : (ownedOrInventory || {});
+  const usedInstanceIds = new Set();
   const counts = {};
-  for (const cardId of deck) {
+  for (const entry of deck) {
+    let cardId = null;
+
+    if (inventory) {
+      const instance = getInventoryInstance(inventory, entry);
+      if (instance) {
+        if (usedInstanceIds.has(instance.instanceId)) {
+          return { valid: false, reason: `Duplicate card instance in deck: ${instance.instanceId}` };
+        }
+        usedInstanceIds.add(instance.instanceId);
+        cardId = instance.cardId;
+      } else {
+        cardId = CARD_DEFS[entry] ? entry : null;
+      }
+    } else {
+      cardId = CARD_DEFS[entry] ? entry : null;
+    }
+
     if (!CARD_DEFS[cardId]) {
-      return { valid: false, reason: `Unknown card id: ${cardId}` };
+      return { valid: false, reason: `Unknown card id: ${entry}` };
     }
     counts[cardId] = (counts[cardId] || 0) + 1;
   }
@@ -255,7 +402,16 @@ function validateDeck(deck, ownedCards) {
   return { valid: true };
 }
 
-function canAddCardToDeck(cardId, deck, ownedCards) {
+function canAddCardToDeck(cardId, deck, ownedOrInventory) {
+  const inventory = Array.isArray(ownedOrInventory) ? normalizeInventory(ownedOrInventory) : null;
+  if (inventory) {
+    const instance = getInventoryInstance(inventory, cardId);
+    if (instance) return canAddCardInstanceToDeck(instance.instanceId, deck, inventory);
+    if (!CARD_DEFS[cardId]) return false;
+    return !!findAvailableInventoryInstance(cardId, deck, inventory) && deck.length < DECK_MAX_SIZE;
+  }
+
+  const ownedCards = ownedOrInventory || {};
   if (!CARD_DEFS[cardId]) return false;
   if (deck.length >= DECK_MAX_SIZE) return false;
 
@@ -275,7 +431,10 @@ function shuffleArray(arr) {
 }
 
 function createDrawDeckFromSelectedDeck(player) {
-  const deck = player.selectedDeck.slice();
+  normalizePlayerInventory(player);
+  const deck = player.selectedDeck
+    .map(entry => cardIdForDeckEntry(entry, player.inventory))
+    .filter(Boolean);
   shuffleArray(deck);
   player.deck = deck;
   return deck;
@@ -481,11 +640,11 @@ function stateSnapshot() {
       ready: p.ready,
       magicStones: p.magicStones,
       currency: p.currency,
-      ownedCards: p.ownedCards,
+      ownedCards: p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined),
       runRewards: p.runRewards,
       currencyEarnedThisRun: p.currencyEarnedThisRun,
       selectedDeck: p.selectedDeck,
-      inventory: p.inventory,
+      inventory: Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory,
       debugScenario: p.debugScenario
     };
   }
@@ -519,7 +678,7 @@ function returnPlayersToLobby() {
     const player = _gameState.players[playerId];
     const preservedCurrency = player.currency;
     const preservedInventory = player.inventory;
-    const preservedOwnedCards = player.ownedCards;
+    const preservedOwnedCards = player.ownedCards || inventoryToOwnedCards(player.inventory);
     const preservedRunRewards = player.runRewards;
 
     player.ready = false;
@@ -589,7 +748,18 @@ module.exports = {
   grantCard,
   grantRunRewards,
   buildPlayerRewardSummary,
+  createCardInstance,
+  createInventoryFromCardIds,
+  createInventoryFromOwnedCards,
+  normalizeInventory,
+  inventoryToOwnedCards,
+  normalizeSelectedDeck,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
   validateDeck,
+  canAddCardInstanceToDeck,
   canAddCardToDeck,
   createDrawDeckFromSelectedDeck,
   drawCardFromDeck,

@@ -28,6 +28,10 @@ import {
 	grantCard,
 	grantRunRewards,
 	buildPlayerRewardSummary,
+	createInventoryFromOwnedCards,
+	inventoryToOwnedCards,
+	normalizePlayerInventory,
+	cardIdForDeckEntry,
 	validateDeck,
 	canAddCardToDeck,
 	createDrawDeckFromSelectedDeck,
@@ -1111,12 +1115,15 @@ describe('cleanupStalePlayers', () => {
 		expect(mockProvider.savePlayer).toHaveBeenCalledWith('p1', expect.objectContaining({
 			currency: 42,
 			ownedCards: { iron_sword: 3 },
-			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			x: 5,
 			y: 0.5,
 			z: 10,
 			rotation: 1.5
 		}));
+		const saved = mockProvider.savePlayer.mock.calls[0][1];
+		expect(saved.inventory).toHaveLength(3);
+		expect(saved.inventory.every((instance) => instance.cardId === 'iron_sword')).toBe(true);
+		expect(saved.selectedDeck[0]).toBe(saved.inventory[0].instanceId);
 		expect(gameState.players['p1']).toBeUndefined();
 
 		setTestProvider(null);
@@ -1844,11 +1851,75 @@ describe('run state', () => {
 			}
 		});
 
+		it('populates inventory with one unique instance per starting card copy', () => {
+			const progress = createPlayerProgress();
+			expect(progress.inventory).toHaveLength(STARTING_DECK_IDS.length);
+			expect(inventoryToOwnedCards(progress.inventory)).toEqual(progress.ownedCards);
+			expect(new Set(progress.inventory.map((card) => card.instanceId)).size).toBe(progress.inventory.length);
+			for (const instance of progress.inventory) {
+				expect(instance).toEqual(expect.objectContaining({
+					instanceId: expect.any(String),
+					cardId: expect.any(String),
+					grind: 0,
+					level: 1
+				}));
+				expect(CARD_DEFS[instance.cardId]).toBeDefined();
+			}
+		});
+
 		it('returns independent objects on each call', () => {
 			const a = createPlayerProgress();
 			const b = createPlayerProgress();
 			a.ownedCards.iron_sword = 99;
 			expect(b.ownedCards.iron_sword).toBe(3);
+			a.inventory[0].level = 99;
+			expect(b.inventory[0].level).toBe(1);
+		});
+	});
+
+	describe('inventory normalization', () => {
+		it('converts old ownedCards count maps to inventory instances', () => {
+			const player = {
+				ownedCards: { iron_sword: 2, flame_blade: 1 },
+				selectedDeck: ['iron_sword', 'flame_blade', 'iron_sword']
+			};
+
+			normalizePlayerInventory(player);
+
+			expect(player.inventory).toHaveLength(3);
+			expect(inventoryToOwnedCards(player.inventory)).toEqual({ iron_sword: 2, flame_blade: 1 });
+			expect(player.selectedDeck).toHaveLength(3);
+			expect(new Set(player.selectedDeck).size).toBe(3);
+			expect(player.selectedDeck.map((entry) => cardIdForDeckEntry(entry, player.inventory)).sort()).toEqual([
+				'flame_blade',
+				'iron_sword',
+				'iron_sword'
+			]);
+		});
+
+		it('preserves existing instance metadata while filling defaults', () => {
+			const inventory = [{
+				instanceId: 'card-1',
+				cardId: 'iron_sword',
+				level: 5,
+				grind: 2,
+				element: 'fire'
+			}];
+
+			const normalized = createInventoryFromOwnedCards({ flame_blade: 1 });
+			expect(normalized).toHaveLength(1);
+
+			const player = { inventory, selectedDeck: ['card-1'] };
+			normalizePlayerInventory(player);
+
+			expect(player.inventory[0]).toEqual(expect.objectContaining({
+				instanceId: 'card-1',
+				cardId: 'iron_sword',
+				level: 5,
+				grind: 2,
+				element: 'fire'
+			}));
+			expect(player.selectedDeck).toEqual(['card-1']);
 		});
 	});
 
@@ -2235,12 +2306,14 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 	});
 
 	it('preserves all client-facing player fields', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 2, flame_blade: 1 });
 		addPlayer('p1', {
 			hp: 75,
 			magicStones: 30,
 			currency: 25,
 			deck: ['iron_sword', 'flame_blade'],
-			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar'],
+			inventory,
+			selectedDeck: inventory.map((instance) => instance.instanceId),
 			ownedCards: { iron_sword: 2, flame_blade: 1 },
 			runRewards: { currency: 10, cards: [] },
 			currencyEarnedThisRun: 5
@@ -2252,7 +2325,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(p.magicStones).toBe(30);
 		expect(p.currency).toBe(25);
 		expect(p.deck).toEqual(['iron_sword', 'flame_blade']);
-		expect(p.selectedDeck).toEqual(['iron_sword', 'flame_blade', 'battle_familiar']);
+		expect(p.selectedDeck).toEqual(inventory.map((instance) => instance.instanceId));
+		expect(p.inventory).toEqual(inventory);
 		expect(p.ownedCards).toEqual({ iron_sword: 2, flame_blade: 1 });
 		expect(p.runRewards).toEqual({ currency: 10, cards: [] });
 		expect(p.currencyEarnedThisRun).toBe(5);
