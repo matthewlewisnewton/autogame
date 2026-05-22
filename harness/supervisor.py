@@ -46,10 +46,27 @@ class Supervisor:
         except Exception:
             return 0
 
+    def _on_sigterm(self, *_):
+        """SIGTERM cleanup: stop the progress server we started so the
+        next supervisor boot can fork a fresh one. v5.1 hotfix per gpt
+        impl-review blocker. Re-raises after cleanup so the process
+        actually exits (Python's default SIGTERM handler is to terminate,
+        but installing any handler suppresses that default)."""
+        log("[supervisor] SIGTERM received — stopping progress server and exiting")
+        try:
+            progress_server.stop()
+        except Exception:
+            pass
+        # Restore default disposition and re-deliver so the loop unwinds.
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        import os as _os
+        _os.kill(_os.getpid(), signal.SIGTERM)
+
     def run(self) -> int:
         self.roster = Roster.load(self.roles_path, self.local_roles_path)
         progress_server.start_if_needed()
         signal.signal(signal.SIGHUP, self._on_sighup)
+        signal.signal(signal.SIGTERM, self._on_sigterm)
         log(f"######## supervisor started ({time.strftime('%F %T')}) ########")
 
         while True:

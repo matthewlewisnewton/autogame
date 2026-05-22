@@ -73,6 +73,13 @@ def split(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
     log(f"[split] claude restructuring {ticket_name} into smaller tickets...")
 
     split_out_md = split_dir / "split-out.md"
+    # split role writes new tickets under tickets/; that needs to be safe.
+    try:
+        tickets_rel = (Path(workspace.root) / "tickets").resolve().relative_to(
+            Path(workspace.root).resolve())
+        extra_safe = [f"{tickets_rel}/**"]
+    except (ValueError, AttributeError):
+        extra_safe = ["tickets/**"]
     chain = role.execute(
         workspace=workspace,
         prompt_vars={
@@ -82,6 +89,7 @@ def split(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
         },
         artifacts_dir=split_dir,
         telemetry=telemetry,
+        extra_safe_paths=extra_safe,
     )
     if chain.accepted_by is None:
         log("[split] role exhausted without producing a usable split plan")
@@ -104,7 +112,11 @@ def split(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
             pass
 
     for path in ticket_dir.iterdir() if ticket_dir.is_dir() else []:
-        if path.name.startswith(("review-round-", ".reviews")) or path.name in ("rescue", "rescue-review", "review-feedback.md"):
+        # claude impl-review fix: Python pipeline writes per-round dirs as
+        # `round-N`, not `review-round-N` (the bash naming). The cleanup
+        # below needs to match both prefixes so stale `round-N/` dirs
+        # don't linger after a split.
+        if path.name.startswith(("round-", "review-round-", ".reviews")) or path.name in ("rescue", "rescue-review", "review-feedback.md"):
             subprocess.run(["chmod", "-R", "u+w", str(path)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
             if path.is_dir():

@@ -57,9 +57,20 @@ class Role:
         artifacts_dir: Path,
         *,
         telemetry=None,
+        extra_safe_paths: "list[str] | None" = None,
     ) -> "ChainResult":
         """Run the primary, then each fallback in order. See module docstring
-        for the per-tier sequence."""
+        for the per-tier sequence.
+
+        `extra_safe_paths` (v5.1 hotfix): caller-supplied paths the role's
+        prompt explicitly directs the agent to write to OUTSIDE the
+        artifacts dir (e.g. implementer writes handoff.md in the sub-ticket
+        root; decomposer writes sub-ticket folders under subtickets/;
+        split() writes new tickets under tickets/). These get unioned with
+        the auto-derived `artifacts_dir/**` safe path and passed to
+        scope_audit as the safe-list — the rule there overrides deny so
+        the harness's own writes don't false-trip the audit.
+        """
         artifacts_dir = Path(artifacts_dir)
         out_path = artifacts_dir / self.out_file
 
@@ -74,13 +85,25 @@ class Role:
             usage_kind=self.usage_kind,
         )
 
+        # Build the harness-internal safe-paths list. artifacts_dir is
+        # always safe (it's the role's own bookkeeping). Caller may add
+        # role-specific extras (handoff.md, subtickets dir, etc.).
+        try:
+            arti_rel = artifacts_dir.resolve().relative_to(
+                Path(workspace.root).resolve())
+            safe_paths = [f"{arti_rel}/**"]
+        except (ValueError, AttributeError):
+            safe_paths = []
+        if extra_safe_paths:
+            safe_paths.extend(extra_safe_paths)
+
         tiers: list[TierResult] = []
         for agent in [self.primary, *self.fallbacks]:
             # Snapshot before write — only for writable agents (read-only
             # roles have nothing to audit and skip the snapshot cost).
             audit: Optional[ScopeAuditResult] = None
             head_before: Optional[str] = None
-            untracked_before: set[Path] = set()
+            untracked_before: set = set()
             if getattr(agent, "writable", False):
                 try:
                     head_before = workspace.head()
@@ -91,7 +114,8 @@ class Role:
             result = agent.run(invocation, workspace, telemetry=telemetry)
 
             if getattr(agent, "writable", False) and head_before is not None:
-                audit = scope_audit(workspace, head_before, untracked_before, self.scope)
+                audit = scope_audit(workspace, head_before, untracked_before,
+                                    self.scope, safe_paths=safe_paths)
                 if audit.had_violations:
                     # Downgrade tier — AgentResult is a @dataclass, so use
                     # dataclasses.replace (NOT result._replace which is
@@ -216,14 +240,28 @@ class Roster:
 
         For roles like 'review' that use primary_by_difficulty, pass
         difficulty=...; for simple roles, leave it None.
+
+        v5.1 hotfix: _role_defaults application. Pre-v5.1 the family
+        defaults dict was looked up via _family_defaults() and then
+        DROPPED — every role in roles.yaml had to restate every field
+        verbatim. This version merges family defaults UNDER the role's
+        own fields (role wins on overlap) before constructing the Role.
         """
         spec = self._role_specs.get(name)
         if spec is None:
             raise KeyError(f"No role {name!r} in roster (available: {sorted(self._role_specs)})")
 
-        # Family defaults — pick the most specific match by name prefix.
-        # E.g. "qa:code" → tries "qa:code" then "qa".
+        # Family defaults — apply UNDER the role's own values.
         defaults = self._family_defaults(name)
+        if defaults:
+            # Pydantic dump → defaults overlay → pydantic re-validate.
+            role_dict = spec.model_dump(exclude_unset=True)
+            merged: dict = {}
+            for key, dval in defaults.items():
+                if key not in role_dict:
+                    merged[key] = dval
+            merged.update(role_dict)
+            spec = type(spec).model_validate(merged)
 
         # Build the Role's concrete agent refs.
         if spec.primary is not None:

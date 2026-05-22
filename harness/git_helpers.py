@@ -50,8 +50,18 @@ def _match_any(path: str, patterns: list[str]) -> bool:
     return False
 
 
-def _classify(path: str, scope: PathScope) -> bool:
-    """True iff IN scope. Deny wins; absence-from-allow → deny."""
+def _classify(path: str, scope: PathScope,
+              safe_paths: "list[str] | None" = None) -> bool:
+    """True iff IN scope. Precedence:
+      1. safe_paths match → ALWAYS in-scope (overrides deny). These are
+         the harness's own artifact / handoff / sub-ticket paths that
+         a role must write to — declared by Role.execute, not the YAML.
+      2. Deny match → out-of-scope.
+      3. Allow match → in-scope.
+      4. Else → out-of-scope (implicit deny).
+    """
+    if safe_paths and _match_any(path, safe_paths):
+        return True
     if _match_any(path, scope.deny):
         return False
     if _match_any(path, scope.allow):
@@ -60,13 +70,21 @@ def _classify(path: str, scope: PathScope) -> bool:
 
 
 def scope_audit(workspace, head_before: str, untracked_before: set[str],
-                scope: PathScope) -> ScopeAuditResult:
+                scope: PathScope,
+                safe_paths: "list[str] | None" = None) -> ScopeAuditResult:
     """Detect, classify, revert out-of-scope edits since the snapshot.
 
     Per doc §7.4: combines `git diff --name-status <head_before>` (tracked)
     with `git status --porcelain --untracked-files=all` minus
     `untracked_before` (new-since-call untracked files). v3's stale-untracked
     bug (which would rm -f pre-existing scratch files) is gone in v5.
+
+    `safe_paths` is the v5.1 hotfix: the agent's own out_file lives under
+    artifacts_dir (often inside `tickets/**` which the implementer scope
+    denies), so without an overriding safe-list every implementer call
+    would scope-violate on its own stdout capture. Role.execute populates
+    safe_paths from artifacts_dir + caller-declared extras (handoff.md,
+    subtickets dir for the decomposer, tickets root for split, etc.).
     """
     in_scope: list[str] = []
     out_of_scope: list[str] = []
@@ -83,15 +101,30 @@ def scope_audit(workspace, head_before: str, untracked_before: set[str],
         parts = line.split("\t")
         status = parts[0]
         if status.startswith("R"):
+            # Rename: treat the rename as ONE logical change. If EITHER end is
+            # out-of-scope, restore BOTH paths together so the rename is fully
+            # undone. v5.1 fix: prior version classified independently and
+            # missed the in-scope-old → out-of-scope-new case (the in-scope
+            # old path was DELETED by the rename but only the new path was
+            # rolled back, leaving the old file gone). Reviewer #1 R1 blocker.
             old_path = parts[1] if len(parts) > 1 else ""
             new_path = parts[2] if len(parts) > 2 else ""
-            for p in (old_path, new_path):
-                (in_scope if _classify(p, scope) else out_of_scope).append(p)
-                if not _classify(p, scope):
-                    revert_modified.append(p)
+            old_in = _classify(old_path, scope, safe_paths)
+            new_in = _classify(new_path, scope, safe_paths)
+            if old_in and new_in:
+                in_scope.extend([old_path, new_path])
+            else:
+                # Either side out-of-scope → rename is out-of-scope as a whole.
+                # OLD path existed at head_before → checkout to restore content.
+                # NEW path was CREATED by the rename, didn't exist at head_before
+                # → rm -f from working tree (a checkout against head_before
+                # would fail because the path is unknown to that commit).
+                out_of_scope.extend([old_path, new_path])
+                revert_modified.append(old_path)
+                remove_paths.append(Path(workspace.root) / new_path)
             continue
         path = parts[1] if len(parts) > 1 else ""
-        if _classify(path, scope):
+        if _classify(path, scope, safe_paths):
             in_scope.append(path)
         else:
             out_of_scope.append(path)
@@ -106,7 +139,7 @@ def scope_audit(workspace, head_before: str, untracked_before: set[str],
         post_untracked = set()
     new_untracked = post_untracked - untracked_before
     for path in sorted(new_untracked):
-        if _classify(path, scope):
+        if _classify(path, scope, safe_paths):
             in_scope.append(path)
         else:
             out_of_scope.append(path)
