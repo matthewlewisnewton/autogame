@@ -466,7 +466,15 @@ function bindSocketHandlers(s) {
 		if (weaponCardIds.has(data.cardId)) {
 			const origin = data.origin || { x: 0, z: 0 };
 			const direction = data.direction || { x: 1, z: 0 };
-			rendererSpawnAttackEffect(origin, direction);
+			const swingCount = data.swingCount || 1;
+			for (let swing = 0; swing < swingCount; swing++) {
+				const delayMs = data.specialEffect === 'photon_barrage' ? swing * 80 : 0;
+				if (delayMs > 0) {
+					setTimeout(() => rendererSpawnAttackEffect(origin, direction), delayMs);
+				} else {
+					rendererSpawnAttackEffect(origin, direction);
+				}
+			}
 		}
 		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };

@@ -155,6 +155,17 @@ const CARD_DEFS = {
     cooldownMs: 400,
     specialEffect: 'swift_slash',
   },
+  excalibur_photon: {
+    id: 'excalibur_photon',
+    name: 'Excalibur Photon',
+    type: 'weapon',
+    damage: 12,
+    charges: 6,
+    cooldownMs: 200,
+    isEvolved: true,
+    swingsPerUse: 2,
+    specialEffect: 'photon_barrage',
+  },
   photon_slicer: {
     id: 'photon_slicer',
     name: 'Photon Slicer',
@@ -275,7 +286,8 @@ const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake'
+  dungeon_drake: 'ancient_drake',
+  saber_of_light: 'excalibur_photon',
 };
 
 const CARD_SELL_VALUES = {
@@ -291,7 +303,9 @@ const CARD_SELL_VALUES = {
   harvesting_scythe: 6,
   sacrificial_altar: 14,
   battery_automaton: 12,
-  chrono_trigger: 16
+  chrono_trigger: 16,
+  saber_of_light: 8,
+  excalibur_photon: 12,
 };
 
 function getCardSellValue(cardId) {

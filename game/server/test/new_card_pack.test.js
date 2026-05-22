@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -79,6 +79,25 @@ describe('new card combat helpers', () => {
 	it('Saber of Light uses a faster cooldown than default weapons', () => {
 		expect(CARD_DEFS.saber_of_light.cooldownMs).toBeLessThan(COOLDOWN_MS);
 		expect(CARD_DEFS.saber_of_light.damage).toBeLessThan(CARD_DEFS.iron_sword.damage);
+	});
+
+	it('Excalibur Photon inherits Saber stats with +50% damage and double swings', () => {
+		expect(CARD_DEFS.excalibur_photon.damage).toBe(
+			Math.round(CARD_DEFS.saber_of_light.damage * 1.5)
+		);
+		expect(CARD_DEFS.excalibur_photon.charges).toBe(CARD_DEFS.saber_of_light.charges);
+		expect(CARD_DEFS.excalibur_photon.cooldownMs).toBeLessThan(CARD_DEFS.saber_of_light.cooldownMs);
+		expect(CARD_DEFS.excalibur_photon.swingsPerUse).toBe(2);
+	});
+
+	it('Excalibur Photon double swing applies cone damage twice', () => {
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 }];
+		const damage = CARD_DEFS.excalibur_photon.damage;
+		const swings = CARD_DEFS.excalibur_photon.swingsPerUse;
+		for (let swing = 0; swing < swings; swing++) {
+			collectConeHits(0, 0, 1, 0, ATTACK_RANGE, Math.PI / 2, damage);
+		}
+		expect(gameState.enemies[0].hp).toBe(40 - damage * swings);
 	});
 
 	it('Photon Slicer returning projectile can hit on outbound and return passes', () => {

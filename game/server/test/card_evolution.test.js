@@ -80,6 +80,35 @@ describe('card evolution', () => {
 		expect(player.inventory[0].cardId).toBe('steel_broadsword');
 	});
 
+	it('evolves Saber of Light +10 into Excalibur Photon', () => {
+		const player = {
+			inventory: [
+				createCardInstance('saber_of_light', {
+					instanceId: 'saber-instance',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { saber_of_light: 1 },
+			selectedDeck: ['saber-instance'],
+		};
+
+		const result = evolveCard(player, 'saber-instance');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('saber_of_light');
+		expect(result.toCardId).toBe('excalibur_photon');
+		expect(player.inventory[0].cardId).toBe('excalibur_photon');
+		expect(player.inventory[0].evolvedFrom).toBe('saber_of_light');
+		expect(player.ownedCards.excalibur_photon).toBe(1);
+		expect(CARD_DEFS.excalibur_photon).toMatchObject({
+			damage: 12,
+			charges: 6,
+			cooldownMs: 200,
+			swingsPerUse: 2,
+			specialEffect: 'photon_barrage',
+		});
+	});
+
 	it('persists evolved inventory and exposes it in snapshots', () => {
 		const player = freshPlayer();
 		const instance = player.inventory.find((card) => card.cardId === 'battle_familiar');

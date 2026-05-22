@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -113,6 +113,14 @@ describe('CARD_DEFS', () => {
 			name: 'Saber of Light',
 			type: 'weapon',
 		});
+		expect(CARD_DEFS.excalibur_photon).toMatchObject({
+			id: 'excalibur_photon',
+			name: 'Excalibur Photon',
+			type: 'weapon',
+			isEvolved: true,
+			specialEffect: 'photon_barrage',
+		});
+		expect(EVOLUTION_TRANSFORMS.saber_of_light).toBe('excalibur_photon');
 		expect(CARD_DEFS.photon_slicer).toMatchObject({
 			id: 'photon_slicer',
 			name: 'Photon Slicer',
@@ -230,9 +238,10 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('saber_of_light')).toBe(true);
 		expect(weaponCardIds.has('photon_slicer')).toBe(true);
 		expect(weaponCardIds.has('echo_blade')).toBe(true);
+		expect(weaponCardIds.has('excalibur_photon')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(8);
+		expect(weaponCardIds.size).toBe(9);
 	});
 
 	it('summonCardIds contains base, evolved, and synergistic summon card IDs', () => {
@@ -265,6 +274,7 @@ describe('card ID sets', () => {
 	it('CARD_ACCENT_STYLE defines icon and color for each new pack card', () => {
 		const packIds = [
 			'saber_of_light',
+			'excalibur_photon',
 			'photon_slicer',
 			'frost_nova',
 			'healing_font',

@@ -776,25 +776,29 @@ function startServer(port) {
       const dirZ = Math.sin(rotation);
       const cooldownMs = cardDef.cooldownMs || COOLDOWN_MS;
 
+      const swingsPerUse = cardDef.swingsPerUse || 1;
       let hits = [];
       let magicStonesGained = 0;
 
-      if (cardDef.effect === 'returning_projectile') {
-        const result = collectReturningProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
-          magicStoneOnHit: cardDef.magicStoneOnHit,
-          magicStoneOnKill: cardDef.magicStoneOnKill,
-          attackerId: socket.playerId,
-        });
-        hits = result.hits;
-        magicStonesGained = result.magicStonesGained;
-      } else {
-        const result = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
-          magicStoneOnHit: cardDef.magicStoneOnHit,
-          magicStoneOnKill: cardDef.magicStoneOnKill,
-          attackerId: socket.playerId,
-        });
-        hits = result.hits;
-        magicStonesGained = result.magicStonesGained;
+      for (let swing = 0; swing < swingsPerUse; swing++) {
+        let swingResult;
+        if (cardDef.effect === 'returning_projectile') {
+          swingResult = collectReturningProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+          });
+        } else {
+          swingResult = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+          });
+        }
+        for (const hit of swingResult.hits) {
+          hits.push({ ...hit, swing: swing + 1 });
+        }
+        magicStonesGained += swingResult.magicStonesGained;
       }
 
       let shockwaveHits = [];
@@ -834,6 +838,7 @@ function startServer(port) {
         hits,
         shockwaveHits,
         magicStonesGained: appliedMagicStones,
+        swingCount: swingsPerUse,
         comboCount: player.weaponComboCounts ? player.weaponComboCounts[data.cardId] : undefined,
       });
 
