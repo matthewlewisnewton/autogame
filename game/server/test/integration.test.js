@@ -837,9 +837,13 @@ describe('Server hand authority — useCard validation', () => {
 		const weaponSlot = findWeaponSlot(player);
 		expect(weaponSlot).toBeGreaterThanOrEqual(0);
 		const weaponCard = player.hand[weaponSlot];
+		const mismatchedSlot = player.hand.findIndex((card, index) =>
+			index !== weaponSlot && card && card.id !== weaponCard.id
+		);
+		expect(mismatchedSlot).toBeGreaterThanOrEqual(0);
 
 		const cardErrorPromise = waitForEvent(socket, 'cardError');
-		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: (weaponSlot + 1) % 4 });
+		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: mismatchedSlot });
 
 		const err = await cardErrorPromise;
 		expect(err.reason).toBe('Card not in hand');
@@ -874,7 +878,8 @@ describe('Server hand authority — useCard validation', () => {
 		await cardUsedPromise;
 		await stateUpdatePromise;
 
-		expect(player.hand[weaponSlot].id).not.toBe(cardIdBefore);
+		expect(player.hand[weaponSlot]).toBeTruthy();
+		expect(player.hand[weaponSlot].remainingCharges).toBe(player.hand[weaponSlot].charges);
 		expect(player.deck.length).toBe(deckSizeBefore - 1);
 	});
 });

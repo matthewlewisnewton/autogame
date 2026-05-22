@@ -498,6 +498,7 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
   let magicStonesGained = 0;
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
 
   for (const enemy of _gameState.enemies) {
     const dx = enemy.x - originX;
@@ -511,6 +512,7 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
     if (dot < Math.cos(coneAngle / 2)) continue;
 
     const hpBefore = enemy.hp;
+    if (attackerId) enemy.lastDamagedBy = attackerId;
     enemy.hp -= damage;
     const killed = hpBefore > 0 && enemy.hp <= 0;
     const hitGain = magicStoneOnHit;
@@ -527,12 +529,14 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   let magicStonesGained = 0;
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
 
   for (const enemy of _gameState.enemies) {
     const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
     if (dist > radius) continue;
 
     const hpBefore = enemy.hp;
+    if (attackerId) enemy.lastDamagedBy = attackerId;
     enemy.hp -= damage;
     const killed = hpBefore > 0 && enemy.hp <= 0;
     const hitGain = magicStoneOnHit;
@@ -549,6 +553,7 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   let magicStonesGained = 0;
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
 
   for (let pass = 0; pass < 2; pass++) {
@@ -566,6 +571,7 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
         if (dist > PROJECTILE_HIT_WIDTH) continue;
 
         const hpBefore = enemy.hp;
+        if (attackerId) enemy.lastDamagedBy = attackerId;
         enemy.hp -= damage;
         const killed = hpBefore > 0 && enemy.hp <= 0;
         const hitGain = magicStoneOnHit;
