@@ -101,34 +101,62 @@ const {
   damagePlayer,
   cleanupStalePlayers,
   regenMagicStones,
-  spawnEnemy,
-  spawnEnemies,
-  spawnLoot,
   randomWanderTarget,
   nearbySpawnPosition,
-  removeDeadEnemies,
-  cleanupAfterDamage,
   setTerminalCheckCallback,
-  setCleanupAfterDamageCallback,
   setFindSocketCallback,
   setSavePlayerCallback
 } = require('./simulation');
+
+const progression = require('./progression');
+const {
+  CARD_DEFS,
+  STARTING_DECK_IDS,
+  createPlayerProgress,
+  extractPersistentData,
+  persistenceKey,
+  savePlayerData,
+  saveAllPlayers,
+  setTestProvider,
+  getProvider,
+  createRunState,
+  startDungeonRun,
+  clampObjectiveProgress,
+  syncRunObjectiveToEnemies,
+  recordEnemyDefeated,
+  buildRunSummary,
+  grantCard,
+  grantRunRewards,
+  buildPlayerRewardSummary,
+  validateDeck,
+  canAddCardToDeck,
+  createDrawDeckFromSelectedDeck,
+  drawCardFromDeck,
+  initPlayerHand,
+  drawReplacementCard,
+  spawnEnemy,
+  spawnEnemies,
+  spawnLoot,
+  removeDeadEnemies,
+  cleanupAfterDamage,
+  checkRunTerminalState,
+  resetTransientRunState,
+  returnPlayersToLobby,
+  checkAllReady,
+  stateSnapshot
+} = progression;
 
 // Throttle state for swept-collision rejection logging (per-socket)
 const SWEPT_COLLISION_LOG_THROTTLE_MS = 1000;
 const sweptCollisionLogTimes = new Map();
 
-// Initialize simulation module with gameState and timeouts
+// Initialize simulation and progression modules with gameState and timeouts
 const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
+progression.initProgression({ gameState, getIo: () => io });
 
-// Wire simulation callbacks (so simulation.js can call back into index.js).
-// These are function declarations in this file, so they're hoisted and
-// available at module load time — tests that import cleanupStalePlayers
-// or damagePlayer directly (without calling startServer) still get
-// save/disconnect behavior through these callbacks.
+// Wire simulation callbacks (so simulation.js can call back into progression).
 setTerminalCheckCallback(checkRunTerminalState);
-setCleanupAfterDamageCallback(checkRunTerminalState);
 setFindSocketCallback(findSocketByPlayerId);
 setSavePlayerCallback(savePlayerData);
 
@@ -178,121 +206,6 @@ const DEBUG_SCENARIOS = new Set([
   'monster-card',
 ]);
 
-// Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
-const CARD_DEFS = {
-  iron_sword: { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', damage: 15, charges: 5 },
-  flame_blade: { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', damage: 25, charges: 3 },
-  battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, magicStoneCost: 50, damage: 40 },
-  dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1 },
-};
-
-// Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
-// Duplicates are intentional (the deck has more than 4 cards); unique ids are
-// derived at runtime for the player's ownedCards inventory.
-const STARTING_DECK_IDS = [
-  'iron_sword',
-  'flame_blade',
-  'battle_familiar',
-  'dungeon_drake',
-  'iron_sword',
-  'iron_sword',
-  'battle_familiar',
-  'flame_blade'
-];
-
-/**
- * Build a fresh player progress object.
- * Returns { currency, ownedCards, runRewards, currencyEarnedThisRun }.
- * `ownedCards` is a frequency map from the starting deck (e.g. iron_sword: 3).
- */
-function createPlayerProgress() {
-  const ownedCards = {};
-  for (const cardId of STARTING_DECK_IDS) {
-    ownedCards[cardId] = (ownedCards[cardId] || 0) + 1;
-  }
-  return {
-    currency: 0,
-    ownedCards,
-    runRewards: null,
-    currencyEarnedThisRun: 0
-  };
-}
-
-// ── Persistence Helpers ──
-
-/**
- * Module-level storage provider. Initialized in startServer() based on
- * PERSISTENCE_BACKEND env var. Tests can override by setting this directly.
- */
-let provider = null;
-
-/**
- * Override the module-level provider (test-only).
- */
-function setTestProvider(p) {
-  provider = p;
-}
-
-/**
- * Extract the fields that should be persisted for a player.
- * Returns { currency, ownedCards, selectedDeck, x, y, z, rotation }.
- */
-function extractPersistentData(player) {
-  return {
-    currency: player.currency || 0,
-    ownedCards: player.ownedCards || {},
-    selectedDeck: player.selectedDeck || [],
-    x: player.x || 0,
-    y: player.y || 0.5,
-    z: player.z || 0,
-    rotation: player.rotation || 0
-  };
-}
-
-/**
- * Resolve the persistence key for a player.
- * Returns `player.accountId` when the player is authenticated,
- * otherwise falls back to the ephemeral `playerId`.
- */
-function persistenceKey(playerId) {
-  const player = gameState.players[playerId];
-  if (!player) return playerId;
-  return player.accountId || playerId;
-}
-
-/**
- * Persist a player's data to the configured storage backend.
- * Uses the player's `accountId` as the storage key when authenticated,
- * falling back to `playerId` for anonymous players.
- * Logs errors via console.error but never throws.
- */
-function savePlayerData(playerId) {
-  if (!provider) return;
-  const player = gameState.players[playerId];
-  if (!player) return;
-  try {
-    const key = persistenceKey(playerId);
-    provider.savePlayer(key, extractPersistentData(player));
-  } catch (err) {
-    console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
-  }
-}
-
-/**
- * Iterate over all connected players and persist each one.
- * Errors from individual saves are caught and logged so one failure
- * never interrupts the timer or skips the remaining players.
- */
-function saveAllPlayers() {
-  for (const playerId of Object.keys(gameState.players)) {
-    try {
-      savePlayerData(playerId);
-    } catch (err) {
-      console.error(`[persistence] saveAllPlayers failed for ${playerId}:`, err.message);
-    }
-  }
-}
-
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList() {
   return Object.entries(gameState.players).map(([id, p]) => ({
@@ -309,428 +222,7 @@ function broadcastLobbyUpdate() {
   });
 }
 
-// ── Run State Helpers ──
-
-/**
- * Build a fresh run object from the current game state.
- */
-function createRunState() {
-  return {
-    id: crypto.randomUUID(),
-    status: 'playing',
-    objective: {
-      type: 'defeat_enemies',
-      label: 'Defeat all enemies',
-      totalEnemies: gameState.enemies.length,
-      defeatedEnemies: 0
-    },
-    startedAt: Date.now()
-  };
-}
-
-/**
- * Assign a new run object to gameState.run.
- */
-function startDungeonRun() {
-  gameState.run = createRunState();
-  // Reset per-run tracking for all players
-  for (const p of Object.values(gameState.players)) {
-    p.currencyEarnedThisRun = 0;
-    p.runRewards = null;
-  }
-}
-
-/**
- * Cap defeatedEnemies at totalEnemies so the counter never overshoots.
- */
-function clampObjectiveProgress(run) {
-  run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
-}
-
-/**
- * Resync the active run's objective totals to the current authoritative
- * enemy list. Used after debug scenarios mutate `gameState.enemies` after
- * `startDungeonRun()` has already snapshot the initial count — without this,
- * `totalEnemies` could disagree with the real enemy list and run completion
- * would behave incorrectly. No-op when there is no active run.
- */
-function syncRunObjectiveToEnemies() {
-  if (!gameState.run) return;
-  gameState.run.objective.totalEnemies = gameState.enemies.length;
-  clampObjectiveProgress(gameState.run);
-}
-
-/**
- * Record `count` enemy kills against the current run objective.
- * Safe no-op when gameState.run is undefined (e.g. lobby phase).
- */
-function recordEnemyDefeated(count = 1) {
-  if (!gameState.run) return;
-  gameState.run.objective.defeatedEnemies += count;
-  clampObjectiveProgress(gameState.run);
-}
-
-// removeDeadEnemies and cleanupAfterDamage are in simulation.js.
-// They use callbacks to call back into checkRunTerminalState() here.
-// The callbacks are wired below after checkRunTerminalState is defined.
-
-/**
- * Build a run summary object from the current game state.
- */
-function buildRunSummary(status) {
-  const run = gameState.run;
-  if (!run) return null;
-
-  const players = Object.entries(gameState.players).map(([id, p]) => ({
-    id,
-    hp: p.hp,
-    dead: p.dead,
-    currency: p.currency,
-    rewards: buildPlayerRewardSummary(id)
-  }));
-
-  return {
-    runId: run.id,
-    status,
-    durationMs: Date.now() - run.startedAt,
-    objective: { ...run.objective },
-    players,
-    defeatedEnemies: run.objective.defeatedEnemies,
-    currencyCollected: players.reduce((sum, p) => sum + p.currency, 0)
-  };
-}
-
-// ── Reward Helpers ──
-
-/**
- * Monotonic counter keyed by player id so that successive victories rotate
- * through different card rewards.  Lives on gameState so it survives across
- * runs but is reset when the server restarts.
- */
-// (initialized lazily inside grantRunRewards)
-
-/**
- * Increment `player.ownedCards[cardId]` by 1.
- * Returns `true` on success, `false` when `cardId` is unknown.
- */
-function grantCard(player, cardId) {
-  if (!CARD_DEFS[cardId]) return false;
-  if (!player.ownedCards) player.ownedCards = {};
-  if (player.ownedCards[cardId] === undefined) {
-    player.ownedCards[cardId] = 0;
-  }
-  player.ownedCards[cardId] += 1;
-  return true;
-}
-
-/**
- * Grant run-end rewards to a player based on the run summary status.
- *
- * Victory  →  +10 currency bonus, one card reward (rotation), summary saved.
- *            `player.runRewards` includes bonus + loot-pickup currency + card.
- * Failure  →  no bonus currency, no card reward; summary shows only loot currency.
- */
-function grantRunRewards(playerId, summary) {
-  const player = gameState.players[playerId];
-  if (!player) return;
-
-  const lootCurrency = player.currencyEarnedThisRun || 0;
-
-  if (summary.status === 'victory') {
-    const currencyBonus = 10;
-    player.currency += currencyBonus;
-
-    // Pick a card from the rotation
-    if (!gameState._victoryCounters) gameState._victoryCounters = {};
-    const idx = gameState._victoryCounters[playerId] || 0;
-    const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
-    gameState._victoryCounters[playerId] = idx + 1;
-
-    const cards = [];
-    if (grantCard(player, cardId)) {
-      const cardDef = CARD_DEFS[cardId];
-      cards.push({ id: cardId, name: cardDef.name, count: 1 });
-    }
-
-    player.runRewards = {
-      currency: currencyBonus + lootCurrency,
-      cards
-    };
-  } else {
-    // Failure: no bonus, no card — but still show any loot currency earned
-    player.runRewards = {
-      currency: lootCurrency,
-      cards: []
-    };
-  }
-}
-
-/**
- * Build a structured reward summary for a player.
- * Returns the run-only rewards object saved by grantRunRewards(),
- * or an empty default `{ currency: 0, cards: [] }` if none exist.
- *
- * This is intentionally NOT the player's total balance or full inventory —
- * it reports only what was earned during the current run (bonus + loot + card).
- */
-function buildPlayerRewardSummary(playerId) {
-  const player = gameState.players[playerId];
-  if (!player || !player.runRewards) return { currency: 0, cards: [] };
-
-  return player.runRewards;
-}
-
-/**
- * Validate a deck against card definitions, size bounds, and owned inventory.
- *
- * Returns `{ valid: true }` when the deck is valid,
- * or `{ valid: false, reason: '<explanation>' }` when invalid.
- */
-function validateDeck(deck, ownedCards) {
-  // Check deck length bounds
-  if (deck.length < DECK_MIN_SIZE) {
-    return { valid: false, reason: `Deck must have at least ${DECK_MIN_SIZE} cards` };
-  }
-  if (deck.length > DECK_MAX_SIZE) {
-    return { valid: false, reason: `Deck can have at most ${DECK_MAX_SIZE} cards` };
-  }
-
-  // Check each card id and count ownership
-  const counts = {};
-  for (const cardId of deck) {
-    if (!CARD_DEFS[cardId]) {
-      return { valid: false, reason: `Unknown card id: ${cardId}` };
-    }
-    counts[cardId] = (counts[cardId] || 0) + 1;
-  }
-
-  for (const [cardId, count] of Object.entries(counts)) {
-    const owned = ownedCards[cardId] || 0;
-    if (count > owned) {
-      return { valid: false, reason: `Not enough copies of ${cardId} (have ${owned}, need ${count})` };
-    }
-  }
-
-  return { valid: true };
-}
-
-/**
- * Check whether adding one copy of `cardId` to `deck` would keep the deck valid.
- */
-function canAddCardToDeck(cardId, deck, ownedCards) {
-  if (!CARD_DEFS[cardId]) return false;
-  if (deck.length >= DECK_MAX_SIZE) return false;
-
-  const currentCount = deck.filter(id => id === cardId).length;
-  const owned = ownedCards[cardId] || 0;
-  if (currentCount >= owned) return false;
-
-  return true;
-}
-
-/**
- * Shuffle an array in place using Fisher-Yates and return it.
- */
-function shuffleArray(arr) {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-/**
- * Create a shuffled draw deck from the player's selected deck.
- * Copies `player.selectedDeck` into a new array, shuffles it, and assigns
- * the result to `player.deck`.  Returns the deck array.
- */
-function createDrawDeckFromSelectedDeck(player) {
-  const deck = player.selectedDeck.slice();
-  shuffleArray(deck);
-  player.deck = deck;
-  return deck;
-}
-
-/**
- * Draw one card from `player.deck` and return a card object.
- * Returns null when the deck is empty.
- * Card object shape: { id, name, type, charges, remainingCharges, magicStoneCost? }
- */
-function drawCardFromDeck(player) {
-  if (!player.deck || player.deck.length === 0) return null;
-  const cardId = player.deck.pop();
-  const def = CARD_DEFS[cardId];
-  if (!def) return null;
-  const card = {
-    id: def.id,
-    name: def.name,
-    type: def.type,
-    charges: def.charges,
-    remainingCharges: def.charges,
-  };
-  if (def.magicStoneCost != null) {
-    card.magicStoneCost = def.magicStoneCost;
-  }
-  return card;
-}
-
-/**
- * Deal up to 4 cards from `player.deck` into `player.hand`.
- * Hand is an array of card objects (or undefined for empty slots).
- */
-function initPlayerHand(player) {
-  player.hand = [];
-  for (let i = 0; i < 4; i++) {
-    const card = drawCardFromDeck(player);
-    if (card) {
-      player.hand.push(card);
-    }
-  }
-  return player.hand;
-}
-
-/**
- * Draw a replacement card into the slot at `slotIndex` in `player.hand`.
- * Does nothing when the deck is empty.
- */
-function drawReplacementCard(player, slotIndex) {
-  const card = drawCardFromDeck(player);
-  if (card) {
-    player.hand[slotIndex] = card;
-  } else {
-    // Deck exhausted — remove the slot entry so client sees an empty slot
-    player.hand.splice(slotIndex, 1);
-  }
-}
-
-/**
- * Check whether the current run has reached a terminal state.
- * Emits exactly one terminal event per run (guarded by run.status === 'playing').
- *
- * Flow: determine status → set run.status → grantRunRewards() per player → build summary → emit.
- */
-function checkRunTerminalState() {
-  if (!gameState.run || gameState.run.status !== 'playing') return;
-
-  let status = null;
-
-  // Victory condition: all enemies defeated
-  if (gameState.run.objective.defeatedEnemies >= gameState.run.objective.totalEnemies) {
-    status = 'victory';
-  }
-
-  // Failure condition: every connected active player is dead
-  if (!status) {
-    const activePlayers = Object.values(gameState.players);
-    if (activePlayers.length > 0 && activePlayers.every(p => p.hp <= 0)) {
-      status = 'failed';
-    }
-  }
-
-  if (!status) return;
-
-  // Set status, grant rewards per player, build summary, emit
-  gameState.run.status = status;
-
-  for (const playerId of Object.keys(gameState.players)) {
-    grantRunRewards(playerId, { status });
-  }
-
-  // Persist player data after rewards are granted
-  for (const playerId of Object.keys(gameState.players)) {
-    savePlayerData(playerId);
-  }
-
-  const summary = buildRunSummary(status);
-  io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);
-}
-
-/**
- * Clear all transient run entities (enemies, minions, loot).
- * Does NOT regenerate the dungeon layout — layout is session-level.
- */
-function resetTransientRunState() {
-  gameState.enemies = [];
-  gameState.minions = [];
-  gameState.loot = [];
-}
-
-/**
- * Full lobby reset: clear transient state, restore players to lobby,
- * and broadcast the updated state to all connected clients.
- */
-function returnPlayersToLobby() {
-  // 0. Persist player data before resetting transient state
-  for (const playerId of Object.keys(gameState.players)) {
-    savePlayerData(playerId);
-  }
-
-  // 1. Clear transient run entities
-  resetTransientRunState();
-
-  // 2. Reset game phase and delete run object
-  gameState.gamePhase = 'lobby';
-  delete gameState.run;
-
-  // 3. Reset every player: position, HP, readiness — preserve currency, inventory, ownedCards, runRewards
-  const spawn = firstRoomPosition();
-  for (const playerId of Object.keys(gameState.players)) {
-    const player = gameState.players[playerId];
-    const preservedCurrency = player.currency;
-    const preservedInventory = player.inventory;
-    const preservedOwnedCards = player.ownedCards;
-    const preservedRunRewards = player.runRewards;
-
-    player.ready = false;
-    player.dead = false;
-    player.hp = MAX_HP;
-    player.x = spawn.x;
-    player.y = 0.5;
-    player.z = spawn.z;
-    player.currency = preservedCurrency;
-    player.inventory = preservedInventory;
-    player.ownedCards = preservedOwnedCards;
-    player.runRewards = preservedRunRewards;
-    player.currencyEarnedThisRun = 0;
-    player.lastMoveTime = Date.now();
-    player.pendingSummons.clear();
-    player.slotCooldowns = [null, null, null, null];
-  }
-
-  // 4. Broadcast state to all clients
-  io.emit('stateUpdate', stateSnapshot());
-
-  // 5. Update lobby UI
-  broadcastLobbyUpdate();
-}
-
-// Helper: check if all players are ready and transition if so
-function checkAllReady() {
-  const all = Object.values(gameState.players);
-  if (all.length > 0 && all.every(p => p.ready)) {
-    gameState.gamePhase = 'playing';
-    // Reset every player to spawn position so no lobby position carries into the dungeon
-    const spawn = firstRoomPosition();
-    for (const player of all) {
-      player.x = spawn.x;
-      player.y = 0.5;
-      player.z = spawn.z;
-      player.lastMoveTime = Date.now();
-      // Create shuffled draw decks and initialize hands from each player's selected deck
-      createDrawDeckFromSelectedDeck(player);
-      initPlayerHand(player);
-      player.slotCooldowns = [null, null, null, null];
-    }
-    spawnEnemies();
-    startDungeonRun();
-    io.emit('startGame');
-  }
-}
-
-// damagePlayer, randomWanderTarget, spawnEnemy, spawnEnemies, spawnLoot,
-// nearbySpawnPosition, updateEnemies, updateMinions, cleanupStalePlayers,
-// regenMagicStones are all in simulation.js — imported above via destructured require.
-// Callbacks (setTerminalCheckCallback etc.) are wired in startServer().
+progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 
 // Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
 // Socket.IO keys sockets by socket.id (a random string), not by playerId,
@@ -881,52 +373,6 @@ function applyDebugScenario(socket, name) {
   return { ok: true, scenario: name };
 }
 
-/**
- * Build a clean public snapshot of gameState for stateUpdate broadcasts.
- * Includes only client-relevant fields; excludes internal-only data
- * (layout, _victoryCounters, dungeonBounds) and non-serializable per-player
- * fields (pendingSummons, lastActivity).
- */
-function stateSnapshot() {
-  const players = {};
-  for (const [id, p] of Object.entries(gameState.players)) {
-    players[id] = {
-      x: p.x,
-      y: p.y,
-      z: p.z,
-      rotation: p.rotation,
-      deck: p.deck,
-      hand: p.hand,
-      hp: p.hp,
-      dead: p.dead,
-      ready: p.ready,
-      magicStones: p.magicStones,
-      currency: p.currency,
-      ownedCards: p.ownedCards,
-      runRewards: p.runRewards,
-      currencyEarnedThisRun: p.currencyEarnedThisRun,
-      selectedDeck: p.selectedDeck,
-      inventory: p.inventory,
-      debugScenario: p.debugScenario
-    };
-  }
-
-  const snapshot = {
-    players,
-    enemies: gameState.enemies,
-    minions: gameState.minions,
-    loot: gameState.loot,
-    lobby: gameState.lobby,
-    gamePhase: gameState.gamePhase,
-    run: gameState.run,
-    dungeonBounds: gameState.dungeonBounds,
-    layoutSeed: gameState.layoutSeed,
-    currency: gameState.currency
-  };
-
-  return snapshot;
-}
-
 // Track whether Express routes have been mounted — prevents stacking
 // on repeated startServer() calls (tests call startServer in beforeEach).
 let _routesMounted = false;
@@ -969,10 +415,10 @@ function startServer(port) {
   // Set PERSISTENCE_BACKEND=memory to opt into the ephemeral in-memory provider.
   const dataPath = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
   if (process.env.PERSISTENCE_BACKEND === 'memory') {
-    provider = new InMemoryProvider();
+    setTestProvider(new InMemoryProvider());
     console.log('[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)');
   } else {
-    provider = new FileProvider(dataPath);
+    setTestProvider(new FileProvider(dataPath));
     console.log(`[persistence] FileProvider initialized at ${dataPath}`);
   }
 
@@ -1034,7 +480,7 @@ function startServer(port) {
     let savedData = null;
     const loadKey = accountId || playerId;
     try {
-      savedData = provider ? provider.loadPlayer(loadKey) : null;
+      savedData = getProvider() ? getProvider().loadPlayer(loadKey) : null;
     } catch (err) {
       console.error(`[persistence] loadPlayer failed for ${loadKey}:`, err.message);
       savedData = null;
@@ -1655,7 +1101,7 @@ if (typeof module !== 'undefined' && module.exports) {
     saveAllPlayers,
     setTestProvider,
     persistenceKey,
-    provider,
+    get provider() { return getProvider(); },
     // Auth
     verifyToken,
     getJWTSecret

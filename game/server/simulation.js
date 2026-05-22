@@ -18,21 +18,8 @@ const {
   SPAWN_PADDING,
   MAX_HP,
   RESPAWN_DELAY_MS,
-  LOOT_LIFETIME_MS,
-  LOOT_SPAWN_CHANCE,
   COOLDOWN_MS
 } = require('./config');
-const {
-  mulberry32,
-  roomsByRole,
-  randomRoomPositionByRole,
-  GRID_COLS,
-  GRID_ROWS,
-  CELL_SPACING,
-  MIN_ROOM_SIZE,
-  MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
-} = require('./dungeon');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -41,9 +28,12 @@ const {
 let _gameState = null;
 let _timeouts = null;
 let _onTerminalCheck = null;       // checkRunTerminalState()
-let _onCleanupAfterDamage = null;  // callback after removeDeadEnemies > 0
 let _findSocketByPlayerId = null;
 let _savePlayerData = null;
+
+function _progression() {
+  return require('./progression');
+}
 
 function setGameState(gs, timeouts) {
   _gameState = gs;
@@ -51,7 +41,6 @@ function setGameState(gs, timeouts) {
 }
 
 function setTerminalCheckCallback(fn) { _onTerminalCheck = fn; }
-function setCleanupAfterDamageCallback(fn) { _onCleanupAfterDamage = fn; }
 function setFindSocketCallback(fn) { _findSocketByPlayerId = fn; }
 function setSavePlayerCallback(fn) { _savePlayerData = fn; }
 
@@ -422,77 +411,6 @@ function damagePlayer(playerId, amount) {
   }
 }
 
-// ── Enemy Spawning ──
-
-/**
- * Create a single enemy at (x, z) with the given type and push it to
- * gameState.enemies[].  `type` must be a key in ENEMY_DEFS; defaults to
- * 'grunt' when omitted.  Throws on unknown types.
- *
- * `spawnedBy` — optional parent spawner id; used for spawn-cap bookkeeping.
- * Spawners get a `lastSpawnTime` field initialised to `Date.now()`.
- */
-function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
-  if (!ENEMY_DEFS[type]) {
-    throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
-  }
-  const def = ENEMY_DEFS[type];
-  const enemy = {
-    id: crypto.randomUUID(),
-    x,
-    z,
-    type,
-    hp: def.hp,
-    maxHp: def.hp,
-    state: 'idle',
-    attackState: 'idle',
-    wanderTarget: { x, z }
-  };
-  if (type === 'spawner') {
-    enemy.lastSpawnTime = Date.now();
-  }
-  if (spawnedBy !== undefined) {
-    enemy.spawnedBy = spawnedBy;
-  }
-  _gameState.enemies.push(enemy);
-  return enemy;
-}
-
-/**
- * Filter dead enemies (`hp <= 0`) from `gameState.enemies` and record
- * the count of removed enemies against the current run objective.
- *
- * Returns the number of enemies that were removed.
- */
-function removeDeadEnemies() {
-  const before = _gameState.enemies.length;
-  _gameState.enemies = _gameState.enemies.filter(e => e.hp > 0);
-  const removed = before - _gameState.enemies.length;
-  if (removed > 0) {
-    // Record against run objective if there's an active run
-    if (_gameState.run) {
-      _gameState.run.objective.defeatedEnemies += removed;
-      _gameState.run.objective.defeatedEnemies = Math.min(
-        _gameState.run.objective.defeatedEnemies,
-        _gameState.run.objective.totalEnemies
-      );
-    }
-  }
-  return removed;
-}
-
-/**
- * Remove dead enemies and check run terminal state.
- * Callback-based to avoid circular dependency.
- */
-function cleanupAfterDamage() {
-  if (removeDeadEnemies() > 0) {
-    if (_onCleanupAfterDamage) {
-      _onCleanupAfterDamage();
-    }
-  }
-}
-
 // ── Enemy AI Tick ──
 
 function updateEnemies() {
@@ -557,7 +475,7 @@ function updateEnemies() {
 				if (aliveAdds < spawnMaxAlive) {
 					// Place add within ~3 units of spawner
 					const addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);
-					const add = spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
+					const add = _progression().spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
 					add.wanderTarget = randomWanderTarget();
 					enemy.lastSpawnTime = now;
 				}
@@ -680,7 +598,7 @@ function updateMinions() {
   }
 
   // Cleanup dead enemies after minion attacks
-  cleanupAfterDamage();
+  _progression().cleanupAfterDamage();
 
   // Decrement TTL and remove expired/dead minions
   for (const minion of _gameState.minions) {
@@ -727,88 +645,12 @@ function cleanupStalePlayers() {
   }
 }
 
-// ── Loot Spawning ──
-
-/**
- * Spawn loot items using role-aware placement (50 % chance per call).
- * When a treasure room exists, loot spawns there; otherwise falls back to
- * any non-start room.  `layout` and `rng` are passed in for determinism.
- */
-function spawnLoot(layout, rng) {
-  if (Math.random() >= LOOT_SPAWN_CHANCE) return;
-
-  const treasureRooms = roomsByRole(layout, 'treasure');
-  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
-  let pos;
-
-  if (treasureRooms.length > 0) {
-    const room = treasureRooms[Math.floor(rng() * treasureRooms.length)];
-    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-    pos = {
-      x: room.x + (rng() * 2 - 1) * halfW,
-      z: room.z + (rng() * 2 - 1) * halfD,
-    };
-  } else if (nonStartRooms.length > 0) {
-    const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
-    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-    pos = {
-      x: room.x + (rng() * 2 - 1) * halfW,
-      z: room.z + (rng() * 2 - 1) * halfD,
-    };
-  } else {
-    pos = randomRoomPosition(); // last resort
-  }
-
-  const value = Math.floor(Math.random() * 16) + 5;
-  const id = crypto.randomUUID();
-  _gameState.loot.push({ id, x: pos.x, z: pos.z, value, createdAt: Date.now() });
-  console.log(`[loot] spawned id=${id} value=${value}`);
-}
-
-// Helper: spawn 5 enemies inside generated rooms (mixed types)
-function spawnEnemies() {
-  const layout = _gameState.layout;
-  const seed = _gameState.layoutSeed || 42;
-  const rng = mulberry32(seed + 1000); // offset seed so enemies differ from loot
-
-  const combatRooms = roomsByRole(layout, 'combat');
-  // Fallback: any non-start room
-  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
-
-  const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
-  for (const type of spawnTable) {
-    let pos;
-    if (combatRooms.length > 0) {
-      pos = randomRoomPositionByRole(layout, 'combat', rng);
-    } else if (nonStartRooms.length > 0) {
-      // No combat rooms — pick from non-start rooms directly
-      const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
-      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-      pos = {
-        x: room.x + (rng() * 2 - 1) * halfW,
-        z: room.z + (rng() * 2 - 1) * halfD,
-      };
-    } else {
-      pos = randomRoomPosition(); // last resort: any room
-    }
-    const enemy = spawnEnemy(pos.x, pos.z, type);
-    enemy.wanderTarget = randomWanderTarget();
-  }
-
-  // Pre-spawn loot in treasure rooms (role-aware placement)
-  spawnLoot(layout, rng);
-}
-
 // ── Exports ──
 
 module.exports = {
   // Setup (called by index.js after both modules are loaded)
   setGameState,
   setTerminalCheckCallback,
-  setCleanupAfterDamageCallback,
   setFindSocketCallback,
   setSavePlayerCallback,
 
@@ -838,10 +680,6 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
-  spawnEnemy,
-  spawnEnemies,
-  removeDeadEnemies,
-  cleanupAfterDamage,
 
   // Minion AI
   updateMinions,
@@ -853,8 +691,5 @@ module.exports = {
   regenMagicStones,
 
   // Stale player cleanup
-  cleanupStalePlayers,
-
-  // Loot
-  spawnLoot
+  cleanupStalePlayers
 };
