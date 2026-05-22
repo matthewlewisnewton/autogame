@@ -1570,3 +1570,26 @@ None. Both acceptance criteria are fully satisfied; runtime capture is clean; no
 
 ---
 
+
+## v0.69 — Entity AI Movement and Minion Follow  (2026-05-22 04:02:48)
+
+
+### Enemy Movement
+PASS. `updateEnemies()` uses `moveEntityToward()` for both player chase and wander movement. Wandering enemies track consecutive blocked ticks and select a new `wanderTarget` after repeated blockage. Chase movement no longer directly mutates `x`/`z`, so enemies stop or slide at walls instead of snapping through. Existing detection radius and speed constants are preserved.
+
+### Minion Movement
+PASS. `updateMinions()` uses the shared movement helper while chasing enemies. When no enemy is within detection range, a living minion follows its living owner only if farther than `MINION_FOLLOW_DISTANCE`, moving at `MINION_FOLLOW_SPEED` with wall-aware collision. Missing/disconnected/dead owners leave the minion stationary, and existing TTL, hp cleanup, and attack behavior remain intact.
+
+### Debug Scenarios
+PASS. This ticket did not add a new debug scenario entry point. The reviewed debug scenario machinery remains gated through the localhost/dev-only `debugScenario` URL/socket path, validates decks before forcing play, reuses normal hand initialization/start-run routines, and resynchronizes objectives after scenario-specific enemy mutations. The normal ready flow still reaches the same playing state without using a debug shortcut.
+
+### Design and Requirements Consistency
+PASS. The changes support the design goal of independent monster/minion behavior and dungeon combat without adding out-of-scope pathfinding, boss behavior, or combat telegraphs. The foundation requirements are not regressed: captured gameplay shows the client connects, renders the 3D scene, enters multiplayer gameplay, and accepts movement.
+
+### Verification Evidence
+PASS. Coverage ran successfully with 391 tests passing across 8 files. The added server and integration tests cover wall-aware enemy movement, movement helper behavior, blocked wander retargeting, and idle minion owner-follow. The review-round metrics include probes from connected gameplay; the referenced screenshot PNG files were not present in the review folder, but the runtime logs and probes were sufficient for this ticket-level judgment.
+
+## Remaining gaps
+
+None.
+

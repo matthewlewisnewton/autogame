@@ -49,6 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [100-cleanup-entity-ai-improvements](tickets/100-cleanup-entity-ai-improvements/)
 - [x] [099-cleanup-cleanup-advanced-map-generation](tickets/099-cleanup-cleanup-advanced-map-generation/)
 - [x] [098-cleanup-advanced-map-generation](tickets/098-cleanup-advanced-map-generation/)
 - [x] [097-cleanup-user-accounts](tickets/097-cleanup-user-accounts/)
@@ -89,7 +90,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [021-persistence](tickets/021-persistence/)
 - [x] [022-user-accounts](tickets/022-user-accounts/)
 - [x] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
-- [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
+- [x] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
 - [ ] [046-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/046-cleanup-audio-autoplay-resume-and-mute-persistence/)
 - [ ] [047-cleanup-monolithic-gameplay-and-server-split](tickets/047-cleanup-monolithic-gameplay-and-server-split/)
 - [ ] [048-cleanup-server-side-movement-and-collision-validation](tickets/048-cleanup-server-side-movement-and-collision-validation/)
