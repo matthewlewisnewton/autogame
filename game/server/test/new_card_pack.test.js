@@ -16,6 +16,7 @@ import {
 	collectReturningProjectileHits,
 	applyFreezeInRadius,
 	pullEnemiesToward,
+	applyEventHorizon,
 	spawnDragonsBreathEffect,
 	isEnemyFrozen,
 } from '../index.js';
@@ -56,7 +57,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -113,6 +114,24 @@ describe('new card combat helpers', () => {
 		const before = gameState.enemies[0].x;
 		pullEnemiesToward(0, 0, CARD_DEFS.gravity_well.pullRadius, CARD_DEFS.gravity_well.pullStrength);
 		expect(gameState.enemies[0].x).toBeLessThan(before);
+	});
+
+	it('Event Horizon pulls harder and crushes enemies at the center', () => {
+		addPlayer('p1');
+		gameState.enemies = [
+			{ id: 'edge', type: 'grunt', x: 10, z: 0, hp: 40 },
+			{ id: 'core', type: 'grunt', x: 0.5, z: 0, hp: 40 },
+		];
+		const edgeBefore = gameState.enemies[0].x;
+		const coreHpBefore = gameState.enemies[1].hp;
+		const { pulled, crushed } = applyEventHorizon(0, 0, CARD_DEFS.event_horizon, 'p1');
+		expect(gameState.enemies[0].x).toBeLessThan(edgeBefore);
+		expect(CARD_DEFS.event_horizon.pullStrength).toBeGreaterThan(CARD_DEFS.gravity_well.pullStrength);
+		expect(pulled.length).toBeGreaterThan(0);
+		expect(crushed).toHaveLength(1);
+		expect(crushed[0].enemyId).toBe('core');
+		expect(gameState.enemies[1].hp).toBe(coreHpBefore - CARD_DEFS.event_horizon.centerDamage);
+		expect(gameState.enemies[0].hp).toBe(40);
 	});
 
 	it('Echo Blade shockwave hits radially on the configured combo count', () => {
