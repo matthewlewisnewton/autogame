@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 def decompose(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
               subtickets_dir: Path, round_n: int, review_fb: Path,
               artifacts_dir: Path, telemetry=None) -> "ChainResult":
+    """Run decomposer. extra_safe_paths includes the subtickets dir
+    because the decomposer's job IS to write sub-ticket folders there
+    (outside the artifacts dir)."""
     log(f"[decompose] round {round_n} for {ticket_name}...")
     emit_progress_event("decompose_start", {"ticket": ticket_name, "round": round_n})
 
@@ -31,6 +34,13 @@ def decompose(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
     else:
         remediation = ""
 
+    try:
+        subroot_rel = Path(subtickets_dir).resolve().relative_to(
+            Path(workspace.root).resolve())
+        extra_safe = [f"{subroot_rel}/**"]
+    except (ValueError, AttributeError):
+        extra_safe = []
+
     return role.execute(
         workspace=workspace,
         prompt_vars={
@@ -40,6 +50,7 @@ def decompose(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
         },
         artifacts_dir=artifacts_dir,
         telemetry=telemetry,
+        extra_safe_paths=extra_safe,
     )
 
 

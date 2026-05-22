@@ -10,7 +10,7 @@ from typing import Optional
 from harness.config.tunables import Tunables, get_tunables
 from harness.pipelines.ticket import TicketContext, ticket
 from harness.roles import Roster
-from harness.telemetry.logging import log
+from harness.telemetry.logging import log, tee_pipeline_log
 from harness.workspace.repo import Repo
 
 
@@ -35,6 +35,16 @@ class BacklogContext:
 
 
 def backlog(ctx: BacklogContext) -> int:
+    """Backlog loop. Appends all output to LOOPLOG.txt at the repo root
+    — matches bash supervisor.sh's `2>&1 | tee -a LOOPLOG.txt`. Each
+    ticket() call has its own log.txt as well; LOOPLOG is the
+    supervisor-level cumulative view."""
+    log_path = Path(ctx.workspace.root) / "LOOPLOG.txt"
+    with tee_pipeline_log(log_path):
+        return _backlog_body(ctx)
+
+
+def _backlog_body(ctx: BacklogContext) -> int:
     """Returns 0 = all tickets complete, 2 = tool failure."""
     completed = 0
     while True:

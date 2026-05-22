@@ -281,10 +281,26 @@ def spawn(
     timing. The caller decides what to do with non-ok results (typically:
     let Role.execute fall through to the next fallback tier).
     """
-    if retries is None:
-        retries = int(os.environ.get("CLI_RETRIES", "2"))
-    if retry_backoff_s is None:
-        retry_backoff_s = float(os.environ.get("CLI_RETRY_BACKOFF", "20"))
+    # Defaults: prefer tunables (the YAML knob), fall back to env, then hardcode.
+    # gpt+claude impl-review item: pre-v5.1 spawn ignored tunables.cli_retries
+    # entirely (read env only), so the documented YAML knob was dead. v5.1
+    # plumbs it through get_tunables().
+    if retries is None or retry_backoff_s is None:
+        try:
+            from harness.config.tunables import get_tunables
+            tun = get_tunables()
+        except Exception:
+            tun = None
+        if retries is None:
+            if tun is not None:
+                retries = tun.cli_retries
+            else:
+                retries = int(os.environ.get("CLI_RETRIES", "2"))
+        if retry_backoff_s is None:
+            if tun is not None:
+                retry_backoff_s = float(tun.cli_retry_backoff_s)
+            else:
+                retry_backoff_s = float(os.environ.get("CLI_RETRY_BACKOFF", "20"))
 
     cwd = Path(getattr(workspace, "root", Path.cwd()))
 

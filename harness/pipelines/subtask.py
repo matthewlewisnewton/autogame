@@ -26,7 +26,7 @@ from harness.steps.qa import parse_verdict, qa
 from harness.steps.revert_game import revert_game_changes
 from harness.steps.screenshot import capture
 from harness.steps.vision_feedback import optional_vision_feedback
-from harness.telemetry.logging import log
+from harness.telemetry.logging import log, tee_pipeline_log
 from harness.telemetry.progress import emit_progress_event
 from harness.workspace.repo import Repo
 
@@ -73,6 +73,19 @@ class SubtaskContext:
 
 
 def subtask(ctx: SubtaskContext) -> int:
+    """Inner loop. Wraps the body in tee_pipeline_log so all stdout/stderr
+    AND log() lines land in ctx.subdir/log.txt — the same shape as
+    bash's `exec > >(tee -a "$SUBDIR/log.txt") 2>&1` (claude impl-review
+    blocker; was silently unwired in Phase 4)."""
+    log_path = ctx.subdir / "log.txt"
+    # Truncate at start of sub-ticket — bash's `: > "$SUBDIR/log.txt"`.
+    ctx.subdir.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("")
+    with tee_pipeline_log(log_path):
+        return _subtask_body(ctx)
+
+
+def _subtask_body(ctx: SubtaskContext) -> int:
     qa_mode = _detect_qa_mode(ctx.ticket_file)
     ticket_allows_harness = _detect_ticket_allows_harness(ctx.ticket_file)
     log(f"=== sub-ticket: {ctx.label} — QA mode: {qa_mode} ===")

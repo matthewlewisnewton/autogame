@@ -26,7 +26,7 @@ from harness.steps.protect_review import protect_review, verify_reviews
 from harness.steps.rescue import rescue
 from harness.steps.review import recover_review_files
 from harness.steps.split import split
-from harness.telemetry.logging import log
+from harness.telemetry.logging import log, tee_pipeline_log
 from harness.telemetry.progress import emit_progress_event
 from harness.workspace.repo import Repo
 
@@ -84,6 +84,16 @@ def _carry_scope_conflict_into_feedback(ctx: TicketContext, review_fb: Path,
 
 
 def ticket(ctx: TicketContext) -> int:
+    """Ticket loop. Wraps body in tee_pipeline_log → tdir/log.txt (claude
+    impl-review blocker fix)."""
+    log_path = ctx.tdir / "log.txt"
+    ctx.tdir.mkdir(parents=True, exist_ok=True)
+    log_path.write_text("")
+    with tee_pipeline_log(log_path):
+        return _ticket_body(ctx)
+
+
+def _ticket_body(ctx: TicketContext) -> int:
     base_ref = ctx.workspace.head()
     review_fb = ctx.tdir / "review-feedback.md"
     decomp_role = ctx.roster.role("decomposer")

@@ -26,7 +26,15 @@ def protect_review(*, label: str, working_dir: Path, archive_dir: Path) -> None:
 
 
 def verify_reviews(reviews_dir: Path, ticket_dir: Path) -> None:
-    """Integrity check + restore from archive."""
+    """Integrity check + restore from archive.
+
+    Handles two tamper modes:
+      1. Live file modified vs archive → restore from archive.
+      2. Live file DELETED — earlier version of this function skipped this
+         case; gpt impl-review blocker. The bash equivalent restores in
+         both cases. v5.1 hotfix: copy archive → live + reapply chmod a-w
+         when live is missing.
+    """
     reviews_dir = Path(reviews_dir)
     ticket_dir = Path(ticket_dir)
     if not reviews_dir.is_dir():
@@ -37,8 +45,19 @@ def verify_reviews(reviews_dir: Path, ticket_dir: Path) -> None:
         for name in _PROTECTED_NAMES:
             archived = label_dir / name
             live = live_dir / name
-            if not archived.exists() or not live.exists():
+            if not archived.exists():
                 continue
+            # CASE 2: live missing — restore.
+            if not live.exists():
+                log(f"[integrity] {label}/{name} was DELETED after it was written — restoring from archive")
+                live_dir.mkdir(parents=True, exist_ok=True)
+                try:
+                    shutil.copy2(archived, live)
+                except OSError:
+                    continue
+                chmod_a_minus_w_recursive(live)
+                continue
+            # CASE 1: live differs from archive — restore.
             try:
                 same = filecmp.cmp(str(archived), str(live), shallow=False)
             except OSError:
