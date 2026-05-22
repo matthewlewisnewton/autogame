@@ -52,8 +52,17 @@ describe('comparePassword', () => {
 // ── createUser ──
 
 describe('createUser', () => {
+	let tmpFile;
+
 	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-create-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+		setTestFilePath(tmpFile);
 		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
 	});
 
 	it('creates a user and returns { ok: true }', () => {
@@ -99,8 +108,17 @@ describe('createUser', () => {
 // ── findUserByUsername ──
 
 describe('findUserByUsername', () => {
+	let tmpFile;
+
 	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-find-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+		setTestFilePath(tmpFile);
 		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
 	});
 
 	it('returns the user record for an existing username', () => {
