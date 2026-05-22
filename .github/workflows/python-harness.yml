@@ -1,0 +1,38 @@
+name: python-harness
+
+# Tests for the Python harness rewrite (harness/, post-Phase-1).
+# Runs only when the harness/ Python code or this workflow changes.
+# The existing bash harness has no CI; this is the first lint+test gate
+# for the cutover branch and main.
+
+on:
+  push:
+    branches: [main, python-rewrite-cutover]
+    paths:
+      - 'harness/pyproject.toml'
+      - 'harness/**/*.py'
+      - '.github/workflows/python-harness.yml'
+  pull_request:
+    paths:
+      - 'harness/pyproject.toml'
+      - 'harness/**/*.py'
+      - '.github/workflows/python-harness.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: harness
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          # Match the target box (the design doc Q1 explains).
+          python-version: "3.10"
+      - name: Install package + test deps
+        run: pip install -e '.[test]'
+      - name: Pytest (smoke + unit + integration; smoke_* markers excluded by default)
+        # The pyproject.toml addopts already exclude smoke_* markers — CI
+        # never has the real CLIs (qwen, agent, agy, claude) available.
+        run: pytest -v
