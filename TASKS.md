@@ -97,6 +97,11 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [ ] [047-cleanup-monolithic-gameplay-and-server-split](tickets/047-cleanup-monolithic-gameplay-and-server-split/)
 - [ ] [048-cleanup-server-side-movement-and-collision-validation](tickets/048-cleanup-server-side-movement-and-collision-validation/)
 
+## Backlog — Harness Cleanup
+- [ ] [103-cleanup-hard-gate-local-subtask-checks](tickets/103-cleanup-hard-gate-local-subtask-checks/)
+- [ ] [104-cleanup-deterministic-review-file-recovery](tickets/104-cleanup-deterministic-review-file-recovery/)
+- [ ] [105-cleanup-harness-port-ownership](tickets/105-cleanup-harness-port-ownership/)
+
 ## Backlog — Reference Game Loops
 - [ ] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
 - [ ] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
