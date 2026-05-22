@@ -1614,6 +1614,8 @@ function startServer(port) {
       player.rotation = data.rotation;
       player.lastMoveTime = now;
       player.lastActivity = now;
+
+      savePlayerData(socket.playerId);
     }
   });
 
@@ -1876,6 +1878,8 @@ function startServer(port) {
       selectedDeck: player.selectedDeck,
       ownedCards: player.ownedCards
     });
+
+    savePlayerData(socket.playerId);
   });
 
   socket.on('deckRemoveCard', (data) => {
@@ -1906,6 +1910,8 @@ function startServer(port) {
       selectedDeck: player.selectedDeck,
       ownedCards: player.ownedCards
     });
+
+    savePlayerData(socket.playerId);
   });
 
   socket.on('debugScenario', (data) => {
@@ -1950,6 +1956,8 @@ function startServer(port) {
     gameState.loot.splice(lootIdx, 1);
 
     console.log(`[loot] picked up id=${loot.id} value=${loot.value} by ${socket.id} (currency=${player.currency})`);
+
+    savePlayerData(socket.playerId);
   });
 
   socket.on('disconnect', () => {
