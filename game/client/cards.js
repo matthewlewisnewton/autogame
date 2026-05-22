@@ -120,6 +120,14 @@ export const CARD_DEFS = {
     charges: 4,
     specialEffect: 'returning_projectile',
   },
+  infinite_disk: {
+    id: 'infinite_disk',
+    name: 'Infinite Disk',
+    type: 'weapon',
+    charges: 4,
+    isEvolved: true,
+    specialEffect: 'triple_returning_projectile',
+  },
   frost_nova: {
     id: 'frost_nova',
     name: 'Frost Nova',
@@ -196,6 +204,7 @@ export const EVOLUTION_TRANSFORMS = {
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
   dungeon_drake: 'ancient_drake',
+  photon_slicer: 'infinite_disk',
 };
 
 export const CARD_SELL_VALUES = {
@@ -212,6 +221,7 @@ export const CARD_SELL_VALUES = {
   sacrificial_altar: 14,
   battery_automaton: 12,
   chrono_trigger: 16,
+  infinite_disk: 18,
 };
 
 export function getCardSellValue(cardId) {
@@ -264,6 +274,7 @@ export const CARD_TYPE_STYLE = {
 export const CARD_ACCENT_STYLE = {
   saber_of_light: { color: '#fef08a', icon: '☀' },
   photon_slicer: { color: '#22d3ee', icon: '⟲' },
+  infinite_disk: { color: '#a5f3fc', icon: '∞' },
   frost_nova: { color: '#67e8f9', icon: '❄' },
   healing_font: { color: '#86efac', icon: '♥' },
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },

@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -92,6 +92,24 @@ describe('new card combat helpers', () => {
 		expect(result.hits.some(h => h.enemyId === 'near')).toBe(true);
 		expect(result.hits.some(h => h.enemyId === 'far')).toBe(true);
 		expect(result.hits.some(h => h.pass === 2)).toBe(true);
+	});
+
+	it('Infinite Disk triple return passes hit enemies on each return split', () => {
+		gameState.enemies = [{ id: 'mid', type: 'grunt', x: 4, z: 0, hp: 100 }];
+
+		const result = collectReturningProjectileHits(
+			0, 0, 1, 0, ATTACK_RANGE + 3, CARD_DEFS.infinite_disk.damage, { returnPasses: 3 },
+		);
+		const returnHits = result.hits.filter((h) => h.pass >= 2);
+		expect(returnHits.length).toBe(3);
+		expect(returnHits.every((h) => h.enemyId === 'mid')).toBe(true);
+		expect(CARD_DEFS.infinite_disk).toMatchObject({
+			damage: 18,
+			charges: 4,
+			effect: 'triple_returning_projectile',
+			returnPasses: 3,
+			isEvolved: true,
+		});
 	});
 
 	it('Frost Nova freezes enemies in radius', () => {
