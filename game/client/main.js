@@ -4,6 +4,18 @@ import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardId
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
 import { clampDelta } from './delta.js';
 import {
+	playSound,
+	isSoundEnabled,
+	setSoundEnabled,
+	resumeAudioContext,
+	getAudioContext,
+	setAudioContext,
+	loadSoundEnabled,
+	saveSoundEnabled,
+	_soundLogEnabled,
+	_playSoundCallLog,
+} from './audio.js';
+import {
 	buildDungeon,
 	clearDungeon,
 	buildWallColliders,
@@ -38,7 +50,6 @@ import {
 	MOVE_SPEED,
 	MAX_ELAPSED_MS,
 	CAMERA_OFFSET as CAMERA_OFFSET_CONFIG,
-	SOUND_CONFIG,
 } from './config.js';
 
 // v8 ignore start
@@ -502,109 +513,7 @@ let currentLayout = null; // persisted layout from init; stateUpdate omits it
 let mySelectedDeck = [];
 let myOwnedCards = {};
 
-// ── Audio system ──
-
-const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
-
-/**
- * Read the persisted sound preference from localStorage.
- * Returns `true` (unmuted) if the key is absent or localStorage is unavailable.
- */
-function loadSoundEnabled() {
-  try {
-    const val = localStorage.getItem(SOUND_ENABLED_KEY);
-    if (val === null) return true; // no stored preference — default to unmuted
-    return val === 'true';
-  } catch (_) {
-    return true; // localStorage blocked (e.g. private mode)
-  }
-}
-
-/**
- * Persist the current sound preference to localStorage.
- * No-ops if localStorage is unavailable.
- * @param {boolean} value
- */
-function saveSoundEnabled(value) {
-  try {
-    localStorage.setItem(SOUND_ENABLED_KEY, String(value));
-  } catch (_) {
-    // localStorage blocked — silent fail
-  }
-}
-
-let soundEnabled = loadSoundEnabled();
-let audioCtx = null;
-
-/**
- * Resume the AudioContext if it was suspended by the browser's autoplay policy.
- * Safe to call multiple times — no-ops when context is already running or unavailable.
- */
-function resumeAudioContext() {
-  try {
-    if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume();
-    }
-  } catch (e) {
-    // Silent — resume may fail in restricted environments
-  }
-}
-
-/**
- * Play a short oscillator-based sound effect via the Web Audio API.
- * Never throws — catches errors silently if AudioContext is unavailable or blocked.
- * @param {string} type - one of 'card', 'enemyHit', 'playerDamage', 'loot', 'victory', 'failure'
- */
-const _playSoundCallLog = []; // test-only: tracks playSound(type) calls
-const _soundLogEnabled = typeof window !== 'undefined' && !!window.__soundLogEnabled; // test-only flag — disabled in production
-function playSound(type) {
-  if (_soundLogEnabled) _playSoundCallLog.push(type);
-  try {
-    if (!soundEnabled) return;
-
-    resumeAudioContext();
-
-    if (!audioCtx) {
-      const Ctx = window.AudioContext || window.webkitAudioContext;
-      audioCtx = Ctx ? new Ctx() : null;
-    }
-    if (!audioCtx) return;
-
-    const config = SOUND_CONFIG[type];
-    if (!config) return;
-
-    const now = audioCtx.currentTime;
-
-    if (config.notes) {
-      // Multi-note sound (victory / failure)
-      let offset = 0;
-      for (const note of config.notes) {
-        const osc = audioCtx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.value = note.freq;
-        osc.connect(audioCtx.destination);
-        osc.start(now + offset);
-        osc.stop(now + offset + note.duration);
-        offset += note.duration;
-      }
-    } else {
-      // Single-note sound
-      const osc = audioCtx.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.value = config.freq;
-      osc.connect(audioCtx.destination);
-      osc.start(now);
-      osc.stop(now + config.duration);
-    }
-  } catch (e) {
-    // Silent — AudioContext may be unavailable or blocked by the browser
-  }
-}
-
-// Resume AudioContext on first user interaction (browser autoplay policy)
-function __resumeAudioCtxListener() { resumeAudioContext(); }
-document.addEventListener('click', __resumeAudioCtxListener, { once: true });
-document.addEventListener('keydown', __resumeAudioCtxListener, { once: true });
+// ── Audio system ── (extracted to audio.js; imported above)
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -1662,14 +1571,13 @@ readyBtn.addEventListener('click', () => {
 
 function updateMuteButton() {
   const btn = document.getElementById('mute-btn');
-  if (btn) btn.textContent = soundEnabled ? '🔊' : '🔇';
+  if (btn) btn.textContent = isSoundEnabled() ? '🔊' : '🔇';
 }
 
 // Use event delegation so the handler works even if #mute-btn is added after import
 document.addEventListener('click', (e) => {
   if (e.target && e.target.id === 'mute-btn') {
-    soundEnabled = !soundEnabled;
-    saveSoundEnabled(soundEnabled);
+    setSoundEnabled(!isSoundEnabled());
     updateMuteButton();
   }
 });
@@ -2104,10 +2012,10 @@ window.spawnDamageNumber = spawnDamageNumber;
 window.spawnHitSpark = spawnHitSpark;
 window.markLootCollected = markLootCollected;
 window.playSound = playSound;
-window.__soundEnabled = () => soundEnabled;
+window.__soundEnabled = () => isSoundEnabled();
 window.__updateMuteButton = updateMuteButton;
-window.__setSoundEnabled = (v) => { soundEnabled = v; saveSoundEnabled(v); updateMuteButton(); };
-window.__getPersistedMute = () => { try { return localStorage.getItem(SOUND_ENABLED_KEY); } catch (_) { return null; } };
+window.__setSoundEnabled = (v) => { setSoundEnabled(v); updateMuteButton(); };
+window.__getPersistedMute = () => { try { return localStorage.getItem('autogame:soundEnabled'); } catch (_) { return null; } };
 window.__loadSoundEnabled = loadSoundEnabled; // test-only: verify localStorage read on init
 window.activeEffects = () => activeEffects;
 window.__setScene = (s) => { window.___test_scene = s; scene = s; }; // test-only: override scene
@@ -2127,8 +2035,8 @@ window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMe
 window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
 window.__useCardForTest = useCard;                // test-only: expose useCard for cooldown tests
 window.__resumeAudioContext = resumeAudioContext; // test-only: expose resumeAudioContext
-window.__setAudioCtx = (ctx) => { audioCtx = ctx; }; // test-only: inject mock AudioContext
-window.__getAudioCtx = () => audioCtx;              // test-only: read current AudioContext
+window.__setAudioCtx = (ctx) => { setAudioContext(ctx); }; // test-only: inject mock AudioContext
+window.__getAudioCtx = () => getAudioContext();    // test-only: read current AudioContext
 window.showAuthOverlay = showAuthOverlay;         // test-only: expose auth overlay functions
 window.hideAuthOverlay = hideAuthOverlay;
 window.showRegisterForm = showRegisterForm;
