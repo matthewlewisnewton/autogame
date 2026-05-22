@@ -554,12 +554,15 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
   const attackerId = options.attackerId;
+  const returnPasses = Math.max(1, options.returnPasses || 1);
+  const totalPasses = 1 + returnPasses;
   const sampleCount = Math.max(4, Math.ceil(range * 2));
 
-  for (let pass = 0; pass < 2; pass++) {
+  for (let pass = 0; pass < totalPasses; pass++) {
     const hitEnemyIds = new Set();
-    const start = pass === 0 ? 0 : range;
-    const end = pass === 0 ? range : 0;
+    const isOutbound = pass === 0;
+    const start = isOutbound ? 0 : range;
+    const end = isOutbound ? range : 0;
     for (let i = 0; i <= sampleCount; i++) {
       const t = start + (end - start) * (i / sampleCount);
       const px = originX + dirX * t;
