@@ -21,7 +21,9 @@ import {
 	spawnEnemy,
 	updateEnemies,
 	damagePlayer,
-	checkRunTerminalState
+	checkRunTerminalState,
+	isEntityPositionBlocked,
+	ENTITY_RADIUS
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 import { COOLDOWN_MS, MAX_ELAPSED_MS, MOVE_SPEED, MAX_HP } from '../config.js';
@@ -3521,5 +3523,72 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		c1.socket.disconnect();
 		c2.socket.disconnect();
+	});
+});
+
+describe('Socket Integration — Wall-Aware Enemy Movement', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('enemy does not cross wall when chasing player on opposite side', async () => {
+		// Enter playing phase so enemies are active
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket._playerId];
+
+		// Find a room with walls to use as a barrier
+		const room = gameState.layout.rooms[0];
+		const wall = room.walls[0];
+
+		// Place player on one side of the wall (inside the room)
+		const playerSide = wall.axis === 'x'
+			? { x: wall.x + wall.length / 2 - 1, z: wall.z }
+			: { x: wall.x, z: wall.z + wall.length / 2 - 1 };
+
+		// Move player to that position
+		player.x = playerSide.x;
+		player.z = playerSide.z;
+
+		// Place enemy on the other side of the wall (outside the room), within detection range
+		const enemySide = wall.axis === 'x'
+			? { x: wall.x - wall.length / 2 - 1, z: wall.z }
+			: { x: wall.x, z: wall.z - wall.length / 2 - 1 };
+
+		// Remove existing enemies and add one for this test
+		gameState.enemies = [];
+		spawnEnemy(enemySide.x, enemySide.z, 'grunt');
+		gameState.enemies[0].wanderTarget = { x: enemySide.x, z: enemySide.z };
+
+		// Record which side of the wall the enemy started on
+		const enemyStartSide = wall.axis === 'x'
+			? (gameState.enemies[0].x < wall.x ? 'left' : 'right')
+			: (gameState.enemies[0].z < wall.z ? 'below' : 'above');
+
+		// Tick enemy AI multiple times
+		for (let i = 0; i < 20; i++) {
+			updateEnemies();
+		}
+
+		// Verify the enemy never crossed to the player's side of the wall
+		const enemyEndSide = wall.axis === 'x'
+			? (gameState.enemies[0].x < wall.x ? 'left' : 'right')
+			: (gameState.enemies[0].z < wall.z ? 'below' : 'above');
+
+		expect(enemyEndSide).toBe(enemyStartSide);
+
+		// Also verify the enemy is not overlapping the wall
+		expect(isEntityPositionBlocked(gameState.enemies[0].x, gameState.enemies[0].z, ENTITY_RADIUS)).toBe(false);
 	});
 });
