@@ -1,0 +1,178 @@
+# harness/roles.yaml — committed; canonical roster + tunables.
+# Loaded once by the Supervisor (and SIGHUP reload). Operators override
+# per-experiment via harness/roles.local.yaml (gitignored — see .gitignore).
+#
+# Schema spec: harness/config/schema.py (RosterFile). Doc reference:
+# harness/docs/python-rewrite.md §6.3.
+
+schema_version: 1
+
+# --- Non-role tunables (replaces lib.sh ${X:-default} block + runtime.env)
+tunables:
+  max_iter: 5
+  ticket_max_rounds: 10
+  game_url: "http://localhost:5173"
+  pipeline:
+    local_checks: true
+    check_cwd: "game"
+    server_timeout_s: 300
+    client_timeout_s: 120
+    coverage_enabled: true
+    coverage_timeout_s: 120
+  vision:
+    feedback_on_fail: true
+    timeout_s: 900
+  qwen_disabled: false
+  cli_retries: 2
+  cli_retry_backoff_s: 20
+  agent_timeout_s: 720
+
+# --- Named Agent instances. Roles reference them by name (not anchor).
+agents:
+  qwen:                  { backend: qwen }
+  qwen_vision:           { backend: qwen, is_vision: true, vision_model: "qwen3.6:27b-q8_0" }
+  composer_fast_write:   { backend: cursor, model: composer-2.5-fast,    writable: true  }
+  composer_fast_read:    { backend: cursor, model: composer-2.5-fast,    writable: false }
+  composer_write:        { backend: cursor, model: composer-2.5,         writable: true  }
+  composer_read:         { backend: cursor, model: composer-2.5,         writable: false }
+  gpt5_medium_write:     { backend: cursor, model: gpt-5.5-medium-fast,  writable: true  }
+  gpt5_extra_write:      { backend: cursor, model: gpt-5.5-extra-high,   writable: true  }
+  agy:                   { backend: agy,    model_label: "Gemini 3.5 Flash (High)" }
+  claude:                { backend: claude }
+
+# --- Per-family defaults. Roles in a family inherit these unless they
+# override the same field. Phase 3 supports exact-name lookup
+# (e.g. "qa:code" → family "qa"); Phase 4 may extend.
+_role_defaults:
+  qa:
+    acceptance: { kind: verdict, pattern: '^VERDICT:\s*(PASS|FAIL)\b' }
+    out_file: "qa.txt"
+    timeout_s: 720
+    usage_kind: qa
+  review:
+    acceptance: { kind: review, review_filename: "review.md" }
+    out_file: "review-attempt.txt"
+    timeout_s: 720
+    usage_kind: final_review
+
+# --- Roles. Names are the keys; pipelines look them up by these names.
+roles:
+
+  # Sub-ticket: implementer
+  implementer:
+    primary: qwen
+    fallbacks: []                    # see doc §6.4
+    timeout_s: 7200
+    out_file: "qwen.txt"
+    prompt_template: harness/prompts/implement.md
+    acceptance: { kind: ok_rc }
+    usage_kind: implementer
+    scope:
+      allow: ["game/**"]
+      deny: ["tickets/**"]
+
+  # Sub-ticket: QA (per-mode variants)
+  qa:code:
+    primary: qwen
+    fallbacks: [composer_fast_read, agy, claude]
+    prompt_template: harness/prompts/qa-code.md
+    out_file: "qa.txt"
+    timeout_s: 720
+    usage_kind: qa
+    acceptance: { kind: verdict, pattern: '^VERDICT:\s*(PASS|FAIL)\b' }
+    scope: { allow: [], deny: ["**"] }
+
+  qa:visual:
+    primary: qwen
+    fallbacks: [composer_fast_read, agy, claude]
+    prompt_template: harness/prompts/qa.md
+    out_file: "qa.txt"
+    timeout_s: 720
+    usage_kind: qa
+    acceptance: { kind: verdict, pattern: '^VERDICT:\s*(PASS|FAIL)\b' }
+    scope: { allow: [], deny: ["**"] }
+
+  # Sub-ticket: commit (commit_verified deterministic fallback covers failure)
+  committer:
+    primary: qwen
+    fallbacks: []
+    timeout_s: 600
+    out_file: "commit.txt"
+    prompt_template: harness/prompts/commit.md
+    acceptance: { kind: ok_rc }
+    usage_kind: committer
+    scope: { allow: ["**"], deny: [] }
+
+  # Optional vision feedback on visual QA fail
+  vision_feedback:
+    primary: qwen_vision
+    fallbacks: []
+    timeout_s: 900
+    out_file: "qwen-vision.txt"
+    prompt_template: harness/prompts/qwen-vision-feedback.md
+    acceptance: { kind: ok_rc }
+    usage_kind: vision
+    scope: { allow: [], deny: ["**"] }
+
+  # Ticket: decomposer
+  decomposer:
+    primary: qwen
+    fallbacks: []
+    timeout_s: 1800
+    out_file: "decompose.txt"
+    prompt_template: harness/prompts/decompose.md
+    acceptance: { kind: ok_rc }
+    usage_kind: decomposer
+    scope: { allow: ["tickets/**"], deny: [] }
+
+  # Ticket: top-level review (parameterized by difficulty)
+  review:
+    primary_by_difficulty:
+      easy:   composer_write
+      medium: gpt5_medium_write
+      hard:   gpt5_extra_write
+    fallbacks: [composer_write, claude]
+    fallbacks_by_difficulty:
+      hard: [claude]                 # extra-high → claude; skip composer-2.5
+    prompt_template: harness/prompts/review.md
+    out_file: "review-attempt.txt"
+    timeout_s: 720
+    usage_kind: final_review
+    acceptance: { kind: review, review_filename: "review.md" }
+    scope:
+      allow: ["tickets/**"]
+      deny:  ["game/**", "harness/**"]
+
+  # Recovery
+  rescue:
+    primary: claude
+    fallbacks: []
+    timeout_s: 1800
+    out_file: "rescue.txt"
+    prompt_template: harness/prompts/rescue.md
+    acceptance: { kind: ok_rc }
+    usage_kind: rescue
+    scope: { allow: ["game/**"], deny: ["tickets/**"] }
+
+  split:
+    primary: claude
+    fallbacks: []
+    timeout_s: 1800
+    out_file: "split.txt"
+    prompt_template: harness/prompts/split.md
+    acceptance: { kind: ok_rc }
+    usage_kind: split
+    scope: { allow: ["tickets/**"], deny: ["game/**"] }
+
+  # Supervisor: repair (escalation path on rc=2)
+  repair:
+    primary: claude
+    fallbacks: []
+    timeout_s: 900
+    out_file: "diagnosis.txt"
+    prompt_template: harness/prompts/diagnose.md
+    acceptance: { kind: ok_rc }
+    usage_kind: repair
+    scope:
+      allow: ["harness/**"]
+      deny:  ["game/**", "tickets/**"]

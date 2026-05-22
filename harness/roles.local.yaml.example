@@ -1,0 +1,37 @@
+# harness/roles.local.yaml — operator overrides (gitignored, not committed).
+# Copy to harness/roles.local.yaml, edit, then SIGHUP the supervisor:
+#   kill -HUP $(pgrep -f 'python -m harness supervisor')
+#
+# Field-level merge: any field present here overrides the same field in
+# roles.yaml; absent fields fall through. Lists REPLACE WHOLE (not append) —
+# use fallbacks_by_difficulty for per-difficulty fallback overrides.
+#
+# Examples below show the experiments from earlier today (composer-2.5-fast
+# implementer + composer-2.5 QA). Real local files should be much shorter:
+# usually one field on one role.
+
+schema_version: 1
+
+roles:
+  # Route the implementer through cursor-agent / composer-2.5-fast in
+  # writable mode; keep qwen as fallback.
+  implementer:
+    primary: composer_fast_write
+    fallbacks: [qwen]
+    timeout_s: 1800                  # composer can need more than qwen's 12-min cap
+
+  # Use composer-2.5 (not -fast) as primary sub-ticket QA; bigger model
+  # for review-mindset judgment, qwen + composer_fast_read + agy + claude
+  # as the fallback ladder.
+  qa:code:
+    primary: composer_read
+    fallbacks: [qwen, composer_fast_read, agy, claude]
+
+# Examples of tunable overrides:
+#
+# tunables:
+#   max_iter: 8                      # raise the per-sub-ticket iteration cap
+#   ticket_max_rounds: 5             # lower the per-ticket round cap
+#   pipeline:
+#     coverage_enabled: false        # skip vitest --coverage to save time
+#   qwen_disabled: true              # short-circuit QwenAgent.available()
