@@ -2451,7 +2451,8 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 
 		// The deck + hand should contain the same card ids as selectedDeck (shuffled)
 		const player1 = gameState.players[socket1._playerId];
-		const deck1Cards = [...stateUpdate.players[socket1._playerId].deck];
+		const deck1Cards = stateUpdate.players[socket1._playerId].deck
+			.map((entry) => cardIdForDeckEntry(entry, player1.inventory));
 		const hand1Cards = player1.hand.filter(c => c).map(c => c.id);
 		const allCards = [...deck1Cards, ...hand1Cards].sort();
 		const selected1Sorted = selectedDeckCardIds(player1, deck1).sort();
@@ -2693,6 +2694,81 @@ describe('Card upgrade handler', () => {
 
 		expect(error.reason).toContain('Insufficient GOLD');
 		expect(instance.level).toBe(1);
+	});
+});
+
+describe('Card grinding handler', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('grinds an inventory instance through the socket event', async () => {
+		const player = gameState.players[socket._playerId];
+		player.currency = 500;
+		const instance = player.inventory.find((card) => card.cardId === 'iron_sword');
+
+		const grindPromise = waitForEvent(socket, 'cardGrindResult');
+		socket.emit('grindCard', { instanceId: instance.instanceId });
+		const result = await grindPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.instance.instanceId).toBe(instance.instanceId);
+		expect(result.instance.grind).toBe(1);
+		expect(result.currency).toBe(400);
+		expect(result.inventory.find((card) => card.instanceId === instance.instanceId).grind).toBe(1);
+	});
+
+	it('rejects socket grinding without enough gold', async () => {
+		const player = gameState.players[socket._playerId];
+		player.currency = 0;
+		const instance = player.inventory.find((card) => card.cardId === 'flame_blade');
+
+		const errorPromise = waitForEvent(socket, 'cardGrindError');
+		socket.emit('grindCard', { instanceId: instance.instanceId });
+		const error = await errorPromise;
+
+		expect(error.reason).toContain('Not enough gold');
+		expect(instance.grind).toBe(0);
+	});
+
+	it('applies grind multiplier to weapon damage during a run', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket._playerId];
+		const weaponSlot = player.hand.findIndex((card) => card && card.type === 'weapon');
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		player.hand[weaponSlot] = {
+			...player.hand[weaponSlot],
+			id: 'iron_sword',
+			grind: 5,
+		};
+
+		gameState.enemies = [{
+			id: 'e_grind',
+			x: player.x + 3,
+			z: player.z,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z },
+		}];
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { cardId: 'iron_sword', slotIndex: weaponSlot });
+		const cardUsed = await cardUsedPromise;
+
+		expect(cardUsed.hits).toHaveLength(1);
+		expect(cardUsed.hits[0].hp).toBe(100 - Math.round(15 * 1.25));
 	});
 });
 

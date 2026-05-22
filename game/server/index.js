@@ -128,6 +128,12 @@ const {
   STARTING_DECK_IDS,
   EVOLUTION_GRIND_REQUIRED,
   EVOLUTION_TRANSFORMS,
+  GRIND_COST_BASE,
+  GRIND_STAT_SCALE,
+  getGrindCost,
+  getStatMultiplier,
+  scaledGrindStat,
+  grindCard,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,
@@ -756,7 +762,8 @@ function startServer(port) {
       const rotation = player.rotation; // radians, 0 = +X axis
       const attackRange = cardDef.attackRange || ATTACK_RANGE;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
-      const damage = cardDef.damage || 0;
+      const grind = handCard.grind || 0;
+      const damage = scaledGrindStat(cardDef.damage || 0, grind);
 
       // Forward direction vector from player rotation (on x-z plane)
       const dirX = Math.cos(rotation);
@@ -935,11 +942,13 @@ function startServer(port) {
 
       // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
       const hits = [];
+      const grind = handCard.grind || 0;
+      const summonDamage = scaledGrindStat(cardDef.damage || 0, grind);
       for (const enemy of gameState.enemies) {
         const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
         if (dist <= SUMMON_RADIUS) {
           enemy.lastDamagedBy = socket.playerId;
-          enemy.hp -= cardDef.damage || 0;
+          enemy.hp -= summonDamage;
           hits.push({ enemyId: enemy.id, hp: enemy.hp });
         }
       }
@@ -983,16 +992,19 @@ function startServer(port) {
       }
       player.magicStones -= magicStoneCost;
 
+      const grind = handCard.grind || 0;
+      const minionHp = scaledGrindStat(cardDef.minionHp || 50, grind);
+      const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
       const minion = {
         id: crypto.randomUUID(),
         ownerId: socket.playerId,
         type: cardDef.effect || data.cardId,
         x: originX,
         z: originZ,
-        hp: cardDef.minionHp || 50,
-        maxHp: cardDef.minionHp || 50,
+        hp: minionHp,
+        maxHp: minionHp,
         specialEffect: cardDef.specialEffect,
-        ttl: cardDef.minionTtl || 30,
+        ttl: minionTtl,
         createdAt: now
       };
       if (cardDef.effect === 'battery_automaton') {
@@ -1286,6 +1298,35 @@ function startServer(port) {
     savePlayerData(socket.playerId);
   });
 
+  socket.on('grindCard', (data) => {
+    if (gameState.gamePhase !== 'lobby') return;
+
+    const player = gameState.players[socket.playerId];
+    if (!player) return;
+
+    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const result = grindCard(player, instanceId);
+    if (!result.ok) {
+      socket.emit('cardGrindError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardGrindResult', {
+      ...result,
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency
+    });
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency
+    });
+    savePlayerData(socket.playerId);
+  });
+
   socket.on('offerCardTrade', (data) => {
     if (gameState.gamePhase !== 'lobby') return;
 
@@ -1562,6 +1603,12 @@ if (typeof module !== 'undefined' && module.exports) {
     STARTING_DECK_IDS,
     EVOLUTION_GRIND_REQUIRED,
     EVOLUTION_TRANSFORMS,
+    GRIND_COST_BASE,
+    GRIND_STAT_SCALE,
+    getGrindCost,
+    getStatMultiplier,
+    scaledGrindStat,
+    grindCard,
     createCardInstance,
     createInventoryFromCardIds,
     createInventoryFromOwnedCards,

@@ -32,6 +32,7 @@ import {
 	grantCard,
 	grantRunRewards,
 	buildPlayerRewardSummary,
+	createCardInstance,
 	createInventoryFromOwnedCards,
 	inventoryToOwnedCards,
 	normalizePlayerInventory,
@@ -2587,13 +2588,25 @@ describe('createDrawDeckFromSelectedDeck(player)', () => {
 		expect(player.deck).toBe(deck);
 	});
 
-	it('contains the same card ids as selectedDeck (possibly reordered)', () => {
+	it('contains the same deck entries as selectedDeck (possibly reordered)', () => {
 		const player = {
 			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade', 'battle_familiar'],
 			deck: []
 		};
 		const deck = createDrawDeckFromSelectedDeck(player);
 		expect(deck.sort()).toEqual(player.selectedDeck.slice().sort());
+	});
+
+	it('preserves instance ids so grind metadata survives shuffling', () => {
+		const instanceA = createCardInstance('iron_sword', { instanceId: 'sword-a', grind: 3 });
+		const instanceB = createCardInstance('iron_sword', { instanceId: 'sword-b', grind: 0 });
+		const player = {
+			inventory: [instanceA, instanceB],
+			selectedDeck: ['sword-a', 'sword-b'],
+			deck: [],
+		};
+		const deck = createDrawDeckFromSelectedDeck(player);
+		expect(deck.sort()).toEqual(['sword-a', 'sword-b']);
 	});
 
 	it('does not mutate the original selectedDeck', () => {

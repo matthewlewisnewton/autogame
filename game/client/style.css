@@ -951,7 +951,8 @@ canvas {
 .deck-add-btn,
 .deck-remove-btn,
 .evolve-card-btn,
-.sell-card-btn {
+.sell-card-btn,
+.grind-card-btn {
   padding: 2px 10px;
   font-size: 13px;
   font-weight: 700;
@@ -1006,9 +1007,34 @@ canvas {
   cursor: not-allowed;
 }
 
+.grind-card-btn {
+  background-color: #6366f1;
+  color: #fff;
+}
+
+.grind-card-btn:hover {
+  background-color: #818cf8;
+}
+
+.grind-card-btn:disabled {
+  background-color: #4a5568;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
 .owned-card-entry .card-sell-value {
   font-size: 11px;
   color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.grind-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #c4b5fd;
+  background: rgba(99, 102, 241, 0.2);
+  border-radius: 4px;
+  padding: 1px 6px;
   flex-shrink: 0;
 }
 

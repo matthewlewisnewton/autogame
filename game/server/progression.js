@@ -161,6 +161,8 @@ const STARTING_DECK_IDS = [
 ];
 
 const EVOLUTION_GRIND_REQUIRED = 10;
+const GRIND_COST_BASE = 100;
+const GRIND_STAT_SCALE = 0.05;
 const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
@@ -336,6 +338,56 @@ function canAddCardInstanceToDeck(instanceId, deck, inventory) {
   const instance = getInventoryInstance(inventory, instanceId);
   if (!instance) return false;
   return !deck.includes(instance.instanceId);
+}
+
+function getGrindCost(grind) {
+  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  return GRIND_COST_BASE * (level + 1);
+}
+
+function getStatMultiplier(grind) {
+  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  return 1.0 + (level * GRIND_STAT_SCALE);
+}
+
+function scaledGrindStat(baseValue, grind) {
+  if (!Number.isFinite(baseValue)) return baseValue;
+  return Math.round(baseValue * getStatMultiplier(grind));
+}
+
+function grindCard(player, instanceId) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+  if (typeof instanceId !== 'string' || instanceId.length === 0) {
+    return { ok: false, reason: 'Missing instanceId' };
+  }
+
+  normalizePlayerInventory(player);
+
+  const instance = getInventoryInstance(player.inventory, instanceId);
+  if (!instance) {
+    return { ok: false, reason: `Unknown card instance: ${instanceId}` };
+  }
+
+  const currentGrind = instance.grind || 0;
+  if (currentGrind >= EVOLUTION_GRIND_REQUIRED) {
+    return { ok: false, reason: `Card is already +${EVOLUTION_GRIND_REQUIRED}` };
+  }
+
+  const cost = getGrindCost(currentGrind);
+  const currency = player.currency || 0;
+  if (currency < cost) {
+    return { ok: false, reason: `Not enough gold (need ${cost}, have ${currency})` };
+  }
+
+  player.currency -= cost;
+  instance.grind = currentGrind + 1;
+
+  return {
+    ok: true,
+    instance: { ...instance },
+    cost,
+    currency: player.currency
+  };
 }
 
 function evolveCard(player, instanceId) {
@@ -991,18 +1043,33 @@ function shuffleArray(arr) {
 
 function createDrawDeckFromSelectedDeck(player) {
   normalizePlayerInventory(player);
-  const deck = player.selectedDeck
-    .map(entry => cardIdForDeckEntry(entry, player.inventory))
-    .filter(Boolean);
+  const deck = player.selectedDeck.filter(entry => {
+    if (typeof entry !== 'string') return false;
+    if (getInventoryInstance(player.inventory, entry)) return true;
+    return !!CARD_DEFS[entry];
+  });
   shuffleArray(deck);
   player.deck = deck;
   return deck;
 }
 
+function resolveDeckEntry(entry, inventory) {
+  const instance = getInventoryInstance(inventory, entry);
+  if (instance) {
+    return { cardId: instance.cardId, grind: instance.grind || 0, instanceId: instance.instanceId };
+  }
+  if (CARD_DEFS[entry]) {
+    return { cardId: entry, grind: 0, instanceId: null };
+  }
+  return null;
+}
+
 function drawCardFromDeck(player) {
   if (!player.deck || player.deck.length === 0) return null;
-  const cardId = player.deck.pop();
-  const def = CARD_DEFS[cardId];
+  const entry = player.deck.pop();
+  const resolved = resolveDeckEntry(entry, player.inventory);
+  if (!resolved) return null;
+  const def = CARD_DEFS[resolved.cardId];
   if (!def) return null;
   const card = {
     id: def.id,
@@ -1010,7 +1077,11 @@ function drawCardFromDeck(player) {
     type: def.type,
     charges: def.charges,
     remainingCharges: def.charges,
+    grind: resolved.grind,
   };
+  if (resolved.instanceId) {
+    card.instanceId = resolved.instanceId;
+  }
   if (def.magicStoneCost != null) {
     card.magicStoneCost = def.magicStoneCost;
   }
@@ -1388,6 +1459,8 @@ module.exports = {
   CARD_DEFS,
   STARTING_DECK_IDS,
   EVOLUTION_GRIND_REQUIRED,
+  GRIND_COST_BASE,
+  GRIND_STAT_SCALE,
   EVOLUTION_TRANSFORMS,
   CARD_SELL_VALUES,
   getCardSellValue,
@@ -1396,6 +1469,10 @@ module.exports = {
   cancelTradesForPlayer,
   offerCardTrade,
   respondCardTrade,
+  getGrindCost,
+  getStatMultiplier,
+  scaledGrindStat,
+  grindCard,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,
