@@ -1,0 +1,1939 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/providers.test.js (16 tests) 6ms
+ ✓ |server| server/test/dungeon.test.js (23 tests) 19ms
+stdout | server/test/users.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+
+stdout | server/test/integration.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 443899572, rooms: 9
+[server] Dungeon bounds: x [-39.0, 38.0], z [-19.5, 39.5]
+
+stdout | server/test/server.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 1297021434, rooms: 9
+[server] Dungeon bounds: x [-38.5, 38.0], z [-38.0, 39.0]
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+Server listening on port 0
+
+stdout | server/test/auth.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 21990507, rooms: 9
+[server] Dungeon bounds: x [-39.5, 39.5], z [-38.5, 39.5]
+
+stdout | server/test/persistence.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 1839869554, rooms: 9
+[server] Dungeon bounds: x [-39.5, 39.0], z [-39.0, 39.5]
+
+stdout | server/test/auth.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+
+stdout | server/test/auth.test.js > POST /api/register > returns 201 with accountId on success
+[users] No existing user file at /tmp/auth-test-1779428208072-e5x35y7nmt7.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 201 with accountId on success
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+Player connected: socket=JxtOLXyoxSZ0jUzDAAAB, playerId=test-1779428208057-xkc110
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > client receives init event with id, state, layoutSeed, layout
+Player disconnected: JxtOLXyoxSZ0jUzDAAAB
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+Server listening on port 0
+
+stdout | server/test/server.test.js > updateMinions() > spawns loot for dead enemies and removes them
+[loot] spawned id=edf72c56-8003-40aa-816d-e3ef06925209 value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > creates loot with correct structure when it spawns
+[loot] spawned id=36b3201c-1213-4226-ab3d-424daae05da3 value=11
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot value is in range [5, 20)
+[loot] spawned id=e3796441-537d-4307-b0b7-2ce766d1a85a value=13
+
+stdout | server/test/server.test.js > spawnLoot(x, z) > loot createdAt is a timestamp
+[loot] spawned id=3ff914d3-b6f7-4e93-82f1-ce888b94a1e7 value=11
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+Player connected: socket=r6FfTBdahu0_sQZTAAAD, playerId=test-1779428208083-wftnrh
+
+stdout | server/test/integration.test.js > Socket Integration — Connection Flow > server registers the player in gameState.players
+Player disconnected: r6FfTBdahu0_sQZTAAAD
+
+stdout | server/test/server.test.js > cleanupStalePlayers > calls savePlayerData before deleting stale player
+Player disconnected due to inactivity: p1
+
+stdout | server/test/persistence_save_triggers.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 714781312, rooms: 9
+[server] Dungeon bounds: x [-18.5, 39.5], z [-19.5, 39.5]
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves stale player data even when provider is null (no crash)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+Server listening on port 0
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves multiple stale players before deleting
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > disconnects socket by matching socket.playerId (not socket.id)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > gracefully handles stale player with no connected socket
+Player disconnected due to inactivity: p1
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+Player connected: socket=RRvUd7WrkEyNblblAAAF, playerId=test-1779428208087-802fb0
+
+stdout | server/test/jwt_recovery.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 282524115, rooms: 9
+[server] Dungeon bounds: x [-39.5, 39.5], z [-19.5, 38.0]
+
+stdout | server/test/jwt_recovery.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+
+stdout | server/test/card_sync.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 2122786534, rooms: 9
+[server] Dungeon bounds: x [-39.5, 38.0], z [-18.0, 39.0]
+
+stdout | server/test/websocket_jwt_auth.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+[server] Dungeon seed: 2068506119, rooms: 9
+[server] Dungeon bounds: x [-19.5, 39.5], z [-38.5, 38.0]
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > move handler calls savePlayerData after a successful position update
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js
+[users] Loaded 1 user record(s) from /home/matt/workspace/autogame/game/data/users.json
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > move handler calls savePlayerData after a successful position update
+Server listening on port 0
+
+ ✓ |server| server/test/persistence.test.js (38 tests) 15ms
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > invalid token triggers connect_error (not connect)
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > invalid token triggers connect_error (not connect)
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > move handler calls savePlayerData after a successful position update
+Player connected: socket=n3QspgiCIgYUgKfKAAAB, playerId=test-1779428208096-wbae7f
+
+ ✓ |server| server/test/server.test.js (182 tests) 46ms
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+Player connected: socket=UJvJBbutb1YmGGiAAAAB, playerId=acct-test-1779428208108
+
+ ✓ |server| server/test/card_sync.test.js (3 tests) 4ms
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+Player disconnected: UJvJBbutb1YmGGiAAAAB
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on invalid/expired token
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on invalid/expired token
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on malformed JWT
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on malformed JWT
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on expired JWT
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on expired JWT
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when no token is provided — via connect_error
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when no token is provided — via connect_error
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when auth object is empty (no token key) — via connect_error
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when auth object is empty (no token key) — via connect_error
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > does NOT emit connect event for rejected tokens
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > does NOT emit connect event for rejected tokens
+Server listening on port 0
+
+ ✓ |client| client/test/delta.test.js (4 tests) 3ms
+stdout | server/test/auth.test.js > POST /api/register > returns 409 when username is already taken
+[users] No existing user file at /tmp/auth-test-1779428208145-em9k1uf4i7r.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 409 when username is already taken
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is missing
+[users] No existing user file at /tmp/auth-test-1779428208192-l47zfenotz.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is missing
+Server listening on port 0
+
+ ✓ |client| client/test/cards.test.js (15 tests) 4ms
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is missing
+[users] No existing user file at /tmp/auth-test-1779428208195-5arz2kqo3xe.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when both fields are missing
+[users] No existing user file at /tmp/auth-test-1779428208199-1vnifl7gd51j.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when both fields are missing
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > move handler calls savePlayerData after a successful position update
+Player disconnected: n3QspgiCIgYUgKfKAAAB
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is less than 3 characters
+[users] No existing user file at /tmp/auth-test-1779428208201-tzld0twunuh.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is less than 3 characters
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > lootPickup handler calls savePlayerData after currency is incremented
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > lootPickup handler calls savePlayerData after currency is incremented
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is more than 32 characters
+[users] No existing user file at /tmp/auth-test-1779428208203-p2psb39izmh.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is more than 32 characters
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > lootPickup handler calls savePlayerData after currency is incremented
+Player connected: socket=uuds8omAJmdWHrN_AAAD, playerId=test-1779428208202-aavq9x
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is empty string
+[users] No existing user file at /tmp/auth-test-1779428208205-m6lsfhsyj5n.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is empty string
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is not a string
+[users] No existing user file at /tmp/auth-test-1779428208207-y6owel7a0nj.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is not a string
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is not a string
+[users] No existing user file at /tmp/auth-test-1779428208208-by0v6alcvql.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is not a string
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 200 with JWT token on success
+[users] No existing user file at /tmp/auth-test-1779428208210-xmpiojbrdyo.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > returns 200 with JWT token on success
+Server listening on port 0
+
+ ✓ |client| client/test/collision-hand.test.js (38 tests) 9ms
+stdout | server/test/integration.test.js > Socket Integration — Move Event > emits move and server broadcasts stateUpdate with new position
+Player disconnected: RRvUd7WrkEyNblblAAAF
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+Player connected: socket=wqD6LM140Aa4f7pqAAAH, playerId=test-1779428208239-qn2jp3
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > lootPickup handler calls savePlayerData after currency is incremented
+[loot] picked up id=loot_save_test value=15 by uuds8omAJmdWHrN_AAAD (currency=15)
+
+stdout | server/test/auth.test.js > POST /api/login > returns a JWT containing accountId and username
+[users] No existing user file at /tmp/auth-test-1779428208283-2gksu2oyadn.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > returns a JWT containing accountId and username
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > lootPickup handler calls savePlayerData after currency is incremented
+Player disconnected: uuds8omAJmdWHrN_AAAD
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckAddCard handler calls savePlayerData after a card is added to the deck
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckAddCard handler calls savePlayerData after a card is added to the deck
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckAddCard handler calls savePlayerData after a card is added to the deck
+Player connected: socket=buFG8RU_XWw1IsZ8AAAF, playerId=test-1779428208305-43sof9
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckAddCard handler calls savePlayerData after a card is added to the deck
+Player disconnected: buFG8RU_XWw1IsZ8AAAF
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckRemoveCard handler calls savePlayerData after a card is removed from the deck
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckRemoveCard handler calls savePlayerData after a card is removed from the deck
+Server listening on port 0
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckRemoveCard handler calls savePlayerData after a card is removed from the deck
+Player connected: socket=f9bnHi1Qmqe7z-2-AAAH, playerId=test-1779428208309-58fo4l
+
+stdout | server/test/persistence_save_triggers.test.js > savePlayerData triggers on state-changing handlers > deckRemoveCard handler calls savePlayerData after a card is removed from the deck
+Player disconnected: f9bnHi1Qmqe7z-2-AAAH
+
+ ✓ |server| server/test/persistence_save_triggers.test.js (4 tests) 220ms
+stdout | server/test/users.test.js > createUser > creates a user and returns { ok: true }
+[users] No existing user file at /tmp/users-create-1779428208335-vwchebntiuc.json — starting fresh
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > clamps position to dungeon bounds
+Player disconnected: wqD6LM140Aa4f7pqAAAH
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+Player connected: socket=bOc3-LL1rbKwH9KTAAAJ, playerId=test-1779428208341-y86chu
+
+stdout | server/test/auth.test.js > POST /api/login > JWT token has ~24h expiration
+[users] No existing user file at /tmp/auth-test-1779428208356-ctsh4qbha8c.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > JWT token has ~24h expiration
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > stores a user record with username, passwordHash, and accountId
+[users] No existing user file at /tmp/users-create-1779428208374-71rqwsvyfht.json — starting fresh
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > dead player cannot move
+Player disconnected: bOc3-LL1rbKwH9KTAAAJ
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > applies MOVE_SPEED to normalized input with capped elapsed
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > applies MOVE_SPEED to normalized input with capped elapsed
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > applies MOVE_SPEED to normalized input with capped elapsed
+Player connected: socket=URq4belygCq60I6IAAAL, playerId=test-1779428208392-q3jqdq
+
+stdout | server/test/users.test.js > createUser > verifies the stored password hash with comparePassword
+[users] No existing user file at /tmp/users-create-1779428208410-lrxqk2y4xj.json — starting fresh
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for unknown username
+[users] No existing user file at /tmp/auth-test-1779428208440-3gate2be17p.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for unknown username
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for wrong password
+[users] No existing user file at /tmp/auth-test-1779428208442-70nm9pygfcj.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for wrong password
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > rejects duplicate usernames
+[users] No existing user file at /tmp/users-create-1779428208479-oxp16cj9qom.json — starting fresh
+
+stdout | server/test/integration.test.js > Socket Integration — Move Event > applies MOVE_SPEED to normalized input with capped elapsed
+Player disconnected: URq4belygCq60I6IAAAL
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+Player connected: socket=GIA5TPBvQTzVIJ5bAAAN, playerId=test-1779428208493-o512kx
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with missing fields
+Player disconnected: GIA5TPBvQTzVIJ5bAAAN
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+Player connected: socket=JP008ioFxrLjF9D_AAAP, playerId=test-1779428208496-lvhtz7
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with non-numeric fields
+Player disconnected: JP008ioFxrLjF9D_AAAP
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+Player connected: socket=9t1Qb5y83tBdGyKEAAAR, playerId=test-1779428208499-tphcgn
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with null payload
+Player disconnected: 9t1Qb5y83tBdGyKEAAAR
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+Player connected: socket=sQg3kL96X7ue2vEUAAAT, playerId=test-1779428208502-o5ufxm
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with array payload
+Player disconnected: sQg3kL96X7ue2vEUAAAT
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+Server listening on port 0
+
+ ✓ |client| client/test/main.test.js (91 tests) 357ms
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+Player connected: socket=LXniOamt1aTvXC3QAAAV, playerId=test-1779428208504-khybqr
+
+stdout | server/test/integration.test.js > Socket Integration — Invalid Move Rejection > rejects move with NaN fields
+Player disconnected: LXniOamt1aTvXC3QAAAV
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+Player connected: socket=WzOB-mySJ-dO68iUAAAX, playerId=test-1779428208507-jbkxfw
+
+stdout | server/test/users.test.js > createUser > generates unique accountIds for different users
+[users] No existing user file at /tmp/users-create-1779428208513-cfco0tysrvt.json — starting fresh
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when username is missing
+[users] No existing user file at /tmp/auth-test-1779428208515-04u9ohwxvkzn.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when username is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when password is missing
+[users] No existing user file at /tmp/auth-test-1779428208517-uqmydwi1z1a.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when password is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when NODE_ENV is not test or production
+[users] No existing user file at /tmp/auth-test-1779428208520-8a8rykjkaft.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when NODE_ENV is not test or production
+Server listening on port 0
+
+stderr | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when NODE_ENV is not test or production
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws when NODE_ENV is production and JWT_SECRET is missing
+[users] No existing user file at /tmp/auth-test-1779428208521-av7xbkmf58l.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws when NODE_ENV is production and JWT_SECRET is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > accepts JWT_SECRET from environment regardless of NODE_ENV
+[users] No existing user file at /tmp/auth-test-1779428208522-r35w6szq1n.json — starting fresh
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > accepts JWT_SECRET from environment regardless of NODE_ENV
+Server listening on port 0
+
+ ✓ |server| server/test/auth.test.js (20 tests) 452ms
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Weapon card > emits useCard, server processes cone attack and broadcasts cardUsed
+Player disconnected: WzOB-mySJ-dO68iUAAAX
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+Player connected: socket=Lq_jzzpKcRmf1jVBAAAZ, playerId=test-1779428208559-fjs1yg
+
+stdout | server/test/users.test.js > findUserByUsername > returns the user record for an existing username
+[users] No existing user file at /tmp/users-find-1779428208582-2p06cuzb68n.json — starting fresh
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > emits useCard, server processes radial AoE and deducts magic stones
+Player disconnected: Lq_jzzpKcRmf1jVBAAAZ
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Player connected: socket=FzHID_-rjZPWk2a5AAAb, playerId=test-1779428208611-6y9xjd
+
+stdout | server/test/users.test.js > findUserByUsername > returns null for a non-existent username
+[users] No existing user file at /tmp/users-find-1779428208617-ida7lphdojf.json — starting fresh
+
+stdout | server/test/users.test.js > findUserByUsername > returns null for an empty string
+[users] No existing user file at /tmp/users-find-1779428208617-3owtsgdgi22.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > saves user to disk on createUser
+[users] No existing user file at /tmp/users-test-FX0zXn/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > loads existing users from file on loadUsers call
+[users] No existing user file at /tmp/users-test-DETvV3/test_users.json — starting fresh
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Summon card > rejects summon when not enough magic stones
+Player disconnected: FzHID_-rjZPWk2a5AAAb
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > uses monster card: minion spawned, stateUpdate broadcast, hand slot replaced
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > uses monster card: minion spawned, stateUpdate broadcast, hand slot replaced
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > uses monster card: minion spawned, stateUpdate broadcast, hand slot replaced
+Player connected: socket=6hHrghfHm7gMNUEpAAAd, playerId=test-1779428208663-y0pzmc
+
+stdout | server/test/users.test.js > file-backed persistence > loads existing users from file on loadUsers call
+[users] Loaded 1 user record(s) from /tmp/users-test-DETvV3/test_users.json
+
+stdout | server/test/users.test.js > file-backed persistence > accountId stability across restarts (clear map, reload from file)
+[users] No existing user file at /tmp/users-test-wx9qHg/test_users.json — starting fresh
+
+stdout | server/test/integration.test.js > Socket Integration — useCard Event > Monster card > uses monster card: minion spawned, stateUpdate broadcast, hand slot replaced
+Player disconnected: 6hHrghfHm7gMNUEpAAAd
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+Player connected: socket=LxqSU-oncF_HfzjxAAAf, playerId=test-1779428208715-hymtnt
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > client emits heartbeat, server responds with heartbeat_ack containing latency
+Player disconnected: LxqSU-oncF_HfzjxAAAf
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Player connected: socket=WeEwjKWPpSbxKpqgAAAh, playerId=test-1779428208719-up0iam
+
+stderr | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Rejected heartbeat from WeEwjKWPpSbxKpqgAAAh: invalid payload
+
+stdout | server/test/users.test.js > file-backed persistence > accountId stability across restarts (clear map, reload from file)
+[users] Loaded 1 user record(s) from /tmp/users-test-wx9qHg/test_users.json
+
+stdout | server/test/users.test.js > file-backed persistence > handles missing file on loadUsers gracefully
+[users] No existing user file at /tmp/users-test-raEPGh/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > handles missing file on loadUsers gracefully
+[users] No existing user file at /tmp/users-test-raEPGh/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > uses atomic write pattern (write to .tmp then rename)
+[users] No existing user file at /tmp/users-test-kyg8Ez/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > preserves multiple users across restart
+[users] No existing user file at /tmp/users-test-9m4Qux/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > preserves multiple users across restart
+[users] Loaded 2 user record(s) from /tmp/users-test-9m4Qux/test_users.json
+
+stdout | server/test/users.test.js > file-backed persistence > getUsersFilePath returns the configured path
+[users] No existing user file at /tmp/users-test-qikbdH/test_users.json — starting fresh
+
+ ✓ |server| server/test/users.test.js (20 tests) 838ms
+stdout | server/test/integration.test.js > Socket Integration — Heartbeat Event > rejects heartbeat with invalid payload
+Player disconnected: WeEwjKWPpSbxKpqgAAAh
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+Player connected: socket=3AxUbjctkSuVjEngAAAj, playerId=test-1779428208922-42x4jp
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > removes player from gameState.players on disconnect
+Player disconnected: 3AxUbjctkSuVjEngAAAj
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+Player connected: socket=_8tY9fcRut8HtLVtAAAl, playerId=test-1779428209026-5rrj0q
+
+stdout | server/test/integration.test.js > Socket Integration — Disconnect Event > cleans up owned minions on disconnect
+Player disconnected: _8tY9fcRut8HtLVtAAAl
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+Player connected: socket=sj6cDOMlc-do3ixvAAAn, playerId=test-1779428209128-mxtmv0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets gamePhase to lobby when last player disconnects during active run
+Player disconnected: sj6cDOMlc-do3ixvAAAn
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+Player connected: socket=C46E7Vpe7mRLMoINAAAp, playerId=test-1779428209233-6t2yl9
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears gameState.run when last player disconnects
+Player disconnected: C46E7Vpe7mRLMoINAAAp
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+Player connected: socket=ek2nZyyNk3orBabNAAAr, playerId=test-1779428209341-62ok37
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > clears enemies, minions, and loot when last player disconnects
+Player disconnected: ek2nZyyNk3orBabNAAAr
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player connected: socket=_BeUNE19WZFKTqbvAAAt, playerId=test-1779428209449-zbb2fp
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player connected: socket=Zv4GEyTpzsaApikiAAAv, playerId=test-1779428209457-61ovpb
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player disconnected: _BeUNE19WZFKTqbvAAAt
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > no token triggers connect_error
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > no token triggers connect_error
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when a second player remains connected
+Player disconnected: Zv4GEyTpzsaApikiAAAv
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+Player connected: socket=qxr0PdtsQTL1SH3YAAAF, playerId=acct-jwt-recovery-1779428209614
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player connected: socket=UHibgx3tqEeyVwg5AAAx, playerId=test-1779428209618-jukuy6
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+Player disconnected: qxr0PdtsQTL1SH3YAAAF
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > token signed with wrong secret triggers connect_error
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > token signed with wrong secret triggers connect_error
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player connected: socket=OTsWlYdlMJ8pAWsbAAAz, playerId=test-1779428209621-cpxcdc
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > expired token triggers connect_error
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > expired token triggers connect_error
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > auth object with extra keys but no token triggers connect_error
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > auth object with extra keys but no token triggers connect_error
+Server listening on port 0
+
+ ✓ |server| server/test/jwt_recovery.test.js (6 tests) 1533ms
+   ✓ JWT Recovery Integration > invalid token triggers connect_error (not connect)  1515ms
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > verifies token using server verifyToken helper
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > verifies token using server verifyToken helper
+Server listening on port 0
+
+ ✓ |server| server/test/websocket_jwt_auth.test.js (8 tests) 1537ms
+   ✓ WebSocket JWT Authentication > does NOT emit connect event for rejected tokens  1501ms
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player disconnected: UHibgx3tqEeyVwg5AAAx
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects
+Player disconnected: OTsWlYdlMJ8pAWsbAAAz
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+Player connected: socket=I3fjA374CY-DKYqgAAA1, playerId=test-1779428214779-4c9kb6
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > resets to lobby when last player disconnects in terminal run state
+Player disconnected: I3fjA374CY-DKYqgAAA1
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player connected: socket=EBbnp-fj0fm37wtrAAA3, playerId=test-1779428214887-z2ntd4
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player disconnected: EBbnp-fj0fm37wtrAAA3
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player connected: socket=B7tKmh0T41wh000oAAA5, playerId=test-1779428215038-ap6w6j
+
+stdout | server/test/integration.test.js > Socket Integration — Last Player Disconnect Resets Run > new connection receives clean lobby init after last player disconnects
+Player disconnected: B7tKmh0T41wh000oAAA5
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player connected: socket=XymoepFseWRKVllyAAA7, playerId=test-1779428215042-6mui95
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player connected: socket=aihgG9PxS0rITKgDAAA9, playerId=test-1779428215043-b271kq
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player disconnected: XymoepFseWRKVllyAAA7
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > two players connect, both emit playerReady(true), both receive startGame
+Player disconnected: aihgG9PxS0rITKgDAAA9
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player connected: socket=3sXWLZhvDYkHVE41AAA_, playerId=test-1779428215105-w99fl4
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player connected: socket=xdEqR_DqtoX3UuXTAABB, playerId=test-1779428215113-7ospcp
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player disconnected: xdEqR_DqtoX3UuXTAABB
+
+stdout | server/test/integration.test.js > Socket Integration — Lobby / playerReady Flow > broadcasts lobbyUpdate on playerReady
+Player disconnected: 3sXWLZhvDYkHVE41AAA_
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Server listening on port 0
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player connected: socket=HAHnQdASfQA5HzCsAABD, playerId=test-1779428215118-6se5bp
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player connected: socket=CSYABpKZ9mWVtKJhAABF, playerId=test-1779428215119-f33z44
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player disconnected: HAHnQdASfQA5HzCsAABD
+
+stdout | server/test/integration.test.js > dungeon run objective > both players receive state containing run object with correct initial values after game starts
+Player disconnected: CSYABpKZ9mWVtKJhAABF
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Server listening on port 0
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player connected: socket=dwQ2tdzWZOYVbmDRAABH, playerId=test-1779428215175-u03j34
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player connected: socket=J3hTaEhLxa20dYbvAABJ, playerId=test-1779428215181-mnfufp
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player disconnected: dwQ2tdzWZOYVbmDRAABH
+
+stdout | server/test/integration.test.js > dungeon run objective > killing an enemy through useCard advances run.objective.defeatedEnemies by 1
+Player disconnected: J3hTaEhLxa20dYbvAABJ
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player connected: socket=ETK5O-XV0Iug6pD-AABL, playerId=test-1779428215233-sux9rv
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player connected: socket=ZXJ-YUT-_zWeAZdUAABN, playerId=test-1779428215240-68xhlr
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player disconnected: ETK5O-XV0Iug6pD-AABL
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runComplete is emitted after the last enemy is defeated via a weapon card
+Player disconnected: ZXJ-YUT-_zWeAZdUAABN
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player connected: socket=YmpaP4gIzwqgmM2DAABP, playerId=test-1779428215293-j0qatm
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player connected: socket=3ULs6TUqGP86K_89AABR, playerId=test-1779428215299-kc6fef
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player disconnected: YmpaP4gIzwqgmM2DAABP
+
+stdout | server/test/integration.test.js > Run terminal state — integration > runFailed is emitted when all connected players are dead during a run
+Player disconnected: 3ULs6TUqGP86K_89AABR
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player connected: socket=uI5_pLsPFMJMWUMKAABT, playerId=test-1779428215351-gc2jt4
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player connected: socket=0F96dNH3zg5edC_aAABV, playerId=test-1779428215356-i3yqe1
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player disconnected: uI5_pLsPFMJMWUMKAABT
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false
+Player disconnected: 0F96dNH3zg5edC_aAABV
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player connected: socket=5aW6bk4fNFROiJh1AABX, playerId=test-1779428215409-c77021
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player connected: socket=hhLiAO2fREg-jpM1AABZ, playerId=test-1779428215415-al2en2
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player disconnected: 5aW6bk4fNFROiJh1AABX
+
+stdout | server/test/integration.test.js > Run terminal state — integration > after returnToLobby, players can ready up and start a second run with a fresh objective
+Player disconnected: hhLiAO2fREg-jpM1AABZ
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player connected: socket=uMBEe6fVi8zrGLJKAABb, playerId=test-1779428215516-f5kf1b
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player connected: socket=FwT11YG_qJURyve2AABd, playerId=test-1779428215523-31k5wy
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player disconnected: uMBEe6fVi8zrGLJKAABb
+
+stdout | server/test/integration.test.js > Run terminal state — integration > ignores returnToLobby while the run is still playing
+Player disconnected: FwT11YG_qJURyve2AABd
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player connected: socket=wWGI4iszsh5fpvC1AABf, playerId=test-1779428215634-uzbw9d
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player connected: socket=RfWn1fEsg9RGr0v0AABh, playerId=test-1779428215642-l219yl
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player disconnected: wWGI4iszsh5fpvC1AABf
+
+stdout | server/test/integration.test.js > Run terminal state — integration > returnToLobby rejects request while run is still playing and emits runError to requesting socket
+Player disconnected: RfWn1fEsg9RGr0v0AABh
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player connected: socket=L3PcyIfprbEYD8a-AABj, playerId=test-1779428215691-lwfl2e
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player connected: socket=Z__5n1RtMYrZ-Ir7AABl, playerId=test-1779428215698-yo4pth
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player disconnected: L3PcyIfprbEYD8a-AABj
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runComplete payload contains per-player rewards with at least one card after a victory
+Player disconnected: Z__5n1RtMYrZ-Ir7AABl
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player connected: socket=1cAAroKFDG9oEEAzAABn, playerId=test-1779428215750-vdauc9
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player connected: socket=wwwk0iKMowv2PPr6AABp, playerId=test-1779428215757-i1rono
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player disconnected: 1cAAroKFDG9oEEAzAABn
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > runFailed payload contains per-player rewards but no victory card
+Player disconnected: wwwk0iKMowv2PPr6AABp
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player connected: socket=PcPnlqUFX7UyJGaAAABr, playerId=test-1779428215807-yaar78
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player connected: socket=RAlvqTh287xVeWuFAABt, playerId=test-1779428215814-o0pbtp
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+[loot] picked up id=loot_test value=15 by PcPnlqUFX7UyJGaAAABr (currency=15)
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player disconnected: PcPnlqUFX7UyJGaAAABr
+
+stdout | server/test/integration.test.js > Rewards in run complete payload > currency picked up via lootPickup appears in player currency in the run summary
+Player disconnected: RAlvqTh287xVeWuFAABt
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player connected: socket=Qe5g5481SLpovHIrAABv, playerId=test-1779428215917-4hqzzs
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player connected: socket=QKrc5DEaYSYmdH85AABx, playerId=test-1779428215921-7rby67
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player disconnected: Qe5g5481SLpovHIrAABv
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > after completing a run and returning to lobby, currency and ownedCards are preserved
+Player disconnected: QKrc5DEaYSYmdH85AABx
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player connected: socket=2Mo5L8yvwYXlRlOBAABz, playerId=test-1779428215974-vczl3e
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player connected: socket=cqeITTbwBAfX5ShsAAB1, playerId=test-1779428215978-9s2kvh
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player disconnected: 2Mo5L8yvwYXlRlOBAABz
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > starting a second run after returning to lobby uses the same currency and ownedCards from previous run
+Player disconnected: cqeITTbwBAfX5ShsAAB1
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player connected: socket=1VMeYh5tI-ZkLePUAAB3, playerId=test-1779428216079-3ihetf
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player connected: socket=mb0ciPbmg0rjfk_XAAB5, playerId=test-1779428216082-5kjj8c
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player disconnected: 1VMeYh5tI-ZkLePUAAB3
+
+stdout | server/test/integration.test.js > Reward state persistence across runs > returnPlayersToLobby preserves ownedCards and runRewards
+Player disconnected: mb0ciPbmg0rjfk_XAAB5
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player connected: socket=SOjQndQfJC-OnWecAAB7, playerId=test-1779428216141-1224mp
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player connected: socket=wzm5WcoJDi4wYIGIAAB9, playerId=test-1779428216147-vi3biq
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player disconnected: SOjQndQfJC-OnWecAAB7
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player A adds a card and receives deckUpdate; player B deck is unchanged
+Player disconnected: wzm5WcoJDi4wYIGIAAB9
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player connected: socket=frvU3YZB28sQGV-fAAB_, playerId=test-1779428216261-89qam9
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player connected: socket=tljOwWRnnXQkP8K6AACB, playerId=test-1779428216263-ydxun9
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player disconnected: frvU3YZB28sQGV-fAAB_
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > player removes a card from deck and receives deckUpdate
+Player disconnected: tljOwWRnnXQkP8K6AACB
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player connected: socket=QfGrnD0nNCuw6qONAACD, playerId=test-1779428216269-akccwh
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player connected: socket=m5ApsVf26JhHTt9XAACF, playerId=test-1779428216272-d81guu
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player disconnected: QfGrnD0nNCuw6qONAACD
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckAddCard during playing phase is silently ignored
+Player disconnected: m5ApsVf26JhHTt9XAACF
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player connected: socket=Ddan3DeywMG7_DHTAACH, playerId=test-1779428216521-pwddgn
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player connected: socket=2hcJ5GlunP07O719AACJ, playerId=test-1779428216523-2x0ifn
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player disconnected: Ddan3DeywMG7_DHTAACH
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > deckRemoveCard during playing phase is silently ignored
+Player disconnected: 2hcJ5GlunP07O719AACJ
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player connected: socket=G9aZxk8ffG-go4VLAACL, playerId=test-1779428216779-xt4gcn
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player connected: socket=dXLRHxtUIM7jtYkzAACN, playerId=test-1779428216785-bhaw15
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player disconnected: G9aZxk8ffG-go4VLAACL
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding unknown card emits deckError
+Player disconnected: dXLRHxtUIM7jtYkzAACN
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player connected: socket=HMU6g45Q5kRXZ1khAACP, playerId=test-1779428216792-h9upip
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player connected: socket=wjRIEC6LtzqQlC1YAACR, playerId=test-1779428216794-jgn1tt
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player disconnected: HMU6g45Q5kRXZ1khAACP
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > removing card not in deck emits deckError
+Player disconnected: wjRIEC6LtzqQlC1YAACR
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player connected: socket=-lr1UXX-rkmiyaoEAACT, playerId=test-1779428216902-93ik9g
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player connected: socket=Go_MhVkXQdZ5t-6-AACV, playerId=test-1779428216911-i88a4w
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player disconnected: -lr1UXX-rkmiyaoEAACT
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > adding too many copies of a card emits deckError
+Player disconnected: Go_MhVkXQdZ5t-6-AACV
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player connected: socket=dYrwInU87K1MMWH5AACX, playerId=test-1779428216917-skxq6u
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player connected: socket=H8s53xfbyAlP9hnnAACZ, playerId=test-1779428216920-a6xps3
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player disconnected: dYrwInU87K1MMWH5AACX
+
+stdout | server/test/integration.test.js > Deck edit handlers — deckAddCard / deckRemoveCard > two players can edit decks independently without affecting each other
+Player disconnected: H8s53xfbyAlP9hnnAACZ
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player connected: socket=xPXh92oXf1SCWUYNAACb, playerId=test-1779428217030-4yvo24
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player connected: socket=1jCrskdFjlK0dt27AACd, playerId=test-1779428217039-5g2xww
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player connected: socket=IMN_gwk3fmmsF6AzAACf, playerId=test-1779428217047-tfopxu
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player disconnected: IMN_gwk3fmmsF6AzAACf
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player disconnected: xPXh92oXf1SCWUYNAACb
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > client receives init event containing selectedDeck and ownedCards
+Player disconnected: 1jCrskdFjlK0dt27AACd
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player connected: socket=hBtZE94f40BfMQdqAACh, playerId=test-1779428217109-2niag7
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player connected: socket=Ct8Aoune14g7kpPZAACj, playerId=test-1779428217116-dlm2ki
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player disconnected: hBtZE94f40BfMQdqAACh
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > ready is rejected with deckError when deck is too small
+Player disconnected: Ct8Aoune14g7kpPZAACj
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player connected: socket=ISs_c_LYlvEEohniAACl, playerId=test-1779428217124-2d7ueb
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player connected: socket=TB2VGifZ_bufgq4MAACn, playerId=test-1779428217126-4km43q
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player disconnected: ISs_c_LYlvEEohniAACl
+
+stdout | server/test/integration.test.js > Server Ready Validation and Deck-to-Hand > a valid selected deck populates player.deck when the run starts
+Player disconnected: TB2VGifZ_bufgq4MAACn
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+Player connected: socket=udZgaT6E7lMsF1N9AACp, playerId=test-1779428217181-yxlak5
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > enemy enters windup before damaging player
+Player disconnected: udZgaT6E7lMsF1N9AACp
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Player connected: socket=hdNnhjXQJq3NaDupAACr, playerId=test-1779428218236-obklja
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > moving out of range avoids damage
+Player disconnected: hdNnhjXQJq3NaDupAACr
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > standing still near enemy results in damage after windup + strike
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > standing still near enemy results in damage after windup + strike
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > standing still near enemy results in damage after windup + strike
+Player connected: socket=if897YOiMVHj7iczAACt, playerId=test-1779428219997-0z908d
+
+stdout | server/test/integration.test.js > Enemy telegraph integration > standing still near enemy results in damage after windup + strike
+Player disconnected: if897YOiMVHj7iczAACt
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player connected: socket=nTJBGylnRV6xaGqZAACv, playerId=test-1779428222549-chhgmn
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player connected: socket=rPbXb0yHlAjJZTeJAACx, playerId=test-1779428222551-bxpusc
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player disconnected: nTJBGylnRV6xaGqZAACv
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients connect to the same server and both receive the same layoutSeed in their init payload
+Player disconnected: rPbXb0yHlAjJZTeJAACx
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player connected: socket=5EkVX_eOa1rSXbsGAACz, playerId=test-1779428222604-e4jkve
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player connected: socket=13st9jbaGwniatloAAC1, playerId=test-1779428222606-rtmapb
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player disconnected: 5EkVX_eOa1rSXbsGAACz
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > two clients receive identical layout.rooms arrays (same count, same positions/sizes)
+Player disconnected: 13st9jbaGwniatloAAC1
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+Player connected: socket=rjBSpo5d_PXttV-gAAC3, playerId=test-1779428222659-uam29f
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > stateUpdate payloads include layoutSeed matching the original init seed
+Player disconnected: rjBSpo5d_PXttV-gAAC3
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player connected: socket=hki0_-HGE46iIAj7AAC5, playerId=test-1779428222763-99qkxo
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player disconnected: hki0_-HGE46iIAj7AAC5
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player connected: socket=4f5JORQblvFe3CJsAAC7, playerId=test-1779428222822-4h3ivu
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > after resetGameState() a new layout with a different seed is generated
+Player disconnected: 4f5JORQblvFe3CJsAAC7
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+Player connected: socket=C_ukFp1h7dfOOCqoAAC9, playerId=test-1779428222882-zw3bxh
+
+stdout | server/test/integration.test.js > Dungeon layout consistency > clampToDungeon() prevents player movement beyond dungeon bounds
+Player disconnected: C_ukFp1h7dfOOCqoAAC9
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+Player connected: socket=r29D391rUwYI9OqKAAC_, playerId=test-1779428223089-jid8ma
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+[loot] picked up id=loot_idempotent value=10 by r29D391rUwYI9OqKAAC_ (currency=10)
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup twice for the same loot ID only credits currency once
+Player disconnected: r29D391rUwYI9OqKAAC_
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+Player connected: socket=71mDl26ize_U43LPAADB, playerId=test-1779428223203-4h4pet
+
+stdout | server/test/integration.test.js > Loot pickup throttle — idempotency > emitting lootPickup for a non-existent loot ID is a no-op
+Player disconnected: 71mDl26ize_U43LPAADB
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+Player connected: socket=bunLsUld2Exsre4yAADD, playerId=test-1779428223266-np1j8o
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+[loot] picked up id=loot_dead_test value=12 by bunLsUld2Exsre4yAADD (currency=12)
+
+stdout | server/test/integration.test.js > Loot pickup — dead player exclusion > emitting lootPickup as a dead player leaves loot in gameState.loot and currency unchanged
+Player disconnected: bunLsUld2Exsre4yAADD
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+Server listening on port 0
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+Player connected: socket=VxPfInmaaAZBlxh8AADF, playerId=test-1779428223379-yea6h7
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+[loot] spawned id=9b065238-917d-4401-965f-80bdb3204e65 value=14
+
+stdout | server/test/integration.test.js > killing skirmisher via weapon card (integration) > player uses a weapon card to kill a skirmisher — hp goes to 0, enemy removed, defeatedEnemies incremented
+Player disconnected: VxPfInmaaAZBlxh8AADF
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+Server listening on port 0
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+Player connected: socket=jJNn9w1GFcSiKK-EAADH, playerId=test-1779428223436-4g7y1j
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+[loot] spawned id=e0d84d2a-df49-4f19-8b0b-f8705ecfe6f4 value=13
+
+stdout | server/test/integration.test.js > killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented
+Player disconnected: jJNn9w1GFcSiKK-EAADH
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+Player connected: socket=B-HesFpubXPrUCUrAADJ, playerId=test-1779428226210-zlwnn3
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > initial enemy list contains a spawner after entering playing phase
+Player disconnected: B-HesFpubXPrUCUrAADJ
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+Player connected: socket=qoFGBDObv35UHbCjAADL, playerId=test-1779428226263-gda445
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > enemy count increases after advancing time past spawnIntervalMs
+Player disconnected: qoFGBDObv35UHbCjAADL
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+Player connected: socket=7DQ70fYTS_oXZvaPAADN, playerId=test-1779428226318-7y0ykk
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > new enemy has type skirmisher and spawnedBy matching spawner id
+Player disconnected: 7DQ70fYTS_oXZvaPAADN
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+Server listening on port 0
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+Player connected: socket=-VbCEnoCUgw3b4EJAADP, playerId=test-1779428226371-uwppaa
+
+stdout | server/test/integration.test.js > spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected
+Player disconnected: -VbCEnoCUgw3b4EJAADP
+
+stdout | server/test/integration.test.js > Swept collision — tunneling rejection > a move that tunnels through a wall is rejected
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Swept collision — tunneling rejection > a move that tunnels through a wall is rejected
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Swept collision — tunneling rejection > a move that tunnels through a wall is rejected
+Player connected: socket=b3hGYeuNGm4X_WRnAADR, playerId=test-1779428230927-65ie04
+
+stdout | server/test/integration.test.js > Swept collision — tunneling rejection > a move that tunnels through a wall is rejected
+Player disconnected: b3hGYeuNGm4X_WRnAADR
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > a second useCard on the same slot within COOLDOWN_MS is rejected with cardError
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > a second useCard on the same slot within COOLDOWN_MS is rejected with cardError
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > a second useCard on the same slot within COOLDOWN_MS is rejected with cardError
+Player connected: socket=AHGG-siWZNF_mnS1AADT, playerId=test-1779428231083-ztbl9r
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > a second useCard on the same slot within COOLDOWN_MS is rejected with cardError
+Player disconnected: AHGG-siWZNF_mnS1AADT
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > useCard on the same slot succeeds after COOLDOWN_MS has elapsed
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > useCard on the same slot succeeds after COOLDOWN_MS has elapsed
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > useCard on the same slot succeeds after COOLDOWN_MS has elapsed
+Player connected: socket=irLcUnS_ulFbHQtWAADV, playerId=test-1779428231139-1mm7ry
+
+stdout | server/test/integration.test.js > Card cooldown — COOLDOWN_MS > useCard on the same slot succeeds after COOLDOWN_MS has elapsed
+Player disconnected: irLcUnS_ulFbHQtWAADV
+
+stdout | server/test/integration.test.js > Elapsed cap — MAX_ELAPSED_MS > simulating a large time gap caps movement to MAX_ELAPSED_MS
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Elapsed cap — MAX_ELAPSED_MS > simulating a large time gap caps movement to MAX_ELAPSED_MS
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Elapsed cap — MAX_ELAPSED_MS > simulating a large time gap caps movement to MAX_ELAPSED_MS
+Player connected: socket=ZOBEzjcxvH87sL8iAADX, playerId=test-1779428232097-ufgwow
+
+stdout | server/test/integration.test.js > Elapsed cap — MAX_ELAPSED_MS > simulating a large time gap caps movement to MAX_ELAPSED_MS
+Player disconnected: ZOBEzjcxvH87sL8iAADX
+
+stdout | server/test/integration.test.js > Hand reconciliation — remainingCharges via stateUpdate > server corrections to remainingCharges are reflected in the client stateUpdate payload
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Hand reconciliation — remainingCharges via stateUpdate > server corrections to remainingCharges are reflected in the client stateUpdate payload
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Hand reconciliation — remainingCharges via stateUpdate > server corrections to remainingCharges are reflected in the client stateUpdate payload
+Player connected: socket=iXJ9Kq7Hh8kqzfBhAADZ, playerId=test-1779428232204-v07p9b
+
+stdout | server/test/integration.test.js > Hand reconciliation — remainingCharges via stateUpdate > server corrections to remainingCharges are reflected in the client stateUpdate payload
+Player disconnected: iXJ9Kq7Hh8kqzfBhAADZ
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-low-mana"
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-low-mana"
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-low-mana"
+Player connected: socket=0MbCPt0J0U2IcTRaAADb, playerId=test-1779428232259-t2c2hg
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-low-mana"
+Player disconnected: 0MbCPt0J0U2IcTRaAADb
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-ready"
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-ready"
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-ready"
+Player connected: socket=ETxg9vKj5YWNjAV8AADd, playerId=test-1779428232271-f33sav
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "summon-ready"
+Player disconnected: ETxg9vKj5YWNjAV8AADd
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "combat-damaged-player"
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "combat-damaged-player"
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "combat-damaged-player"
+Player connected: socket=2l4YRWIyAFPYXEAJAADf, playerId=test-1779428232276-nvs434
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "combat-damaged-player"
+Player disconnected: 2l4YRWIyAFPYXEAJAADf
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "mixed-enemies"
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "mixed-enemies"
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "mixed-enemies"
+Player connected: socket=cPB6Au7lCPyqa492AADh, playerId=test-1779428232279-rzl8s6
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "mixed-enemies"
+Player disconnected: cPB6Au7lCPyqa492AADh
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "spawner-active"
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "spawner-active"
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "spawner-active"
+Player connected: socket=5aQZHhMw2VzKFBerAADj, playerId=test-1779428232282-qb4w7z
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "spawner-active"
+Player disconnected: 5aQZHhMw2VzKFBerAADj
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "monster-card"
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "monster-card"
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "monster-card"
+Player connected: socket=JcbCkqRoRx8LshsFAADl, playerId=test-1779428232284-7327fk
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > run.objective.totalEnemies matches the authoritative enemy list at scenario time for "monster-card"
+Player disconnected: JcbCkqRoRx8LshsFAADl
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "mixed-enemies" produces exactly 4 enemies of distinct types in the objective
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "mixed-enemies" produces exactly 4 enemies of distinct types in the objective
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "mixed-enemies" produces exactly 4 enemies of distinct types in the objective
+Player connected: socket=zpvbtxCMQmU6DsZ8AADn, playerId=test-1779428232286-264usj
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "mixed-enemies" produces exactly 4 enemies of distinct types in the objective
+Player disconnected: zpvbtxCMQmU6DsZ8AADn
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "spawner-active" produces a single spawner that the objective accounts for
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "spawner-active" produces a single spawner that the objective accounts for
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "spawner-active" produces a single spawner that the objective accounts for
+Player connected: socket=pKOLO6FJILvNfgivAADp, playerId=test-1779428232289-i4lq8f
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "spawner-active" produces a single spawner that the objective accounts for
+Player disconnected: pKOLO6FJILvNfgivAADp
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "monster-card" guarantees a monster card in hand
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "monster-card" guarantees a monster card in hand
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "monster-card" guarantees a monster card in hand
+Player connected: socket=r2rDgpm5gNeleQ7jAADr, playerId=test-1779428232292-bt2w7h
+
+stdout | server/test/integration.test.js > Debug scenarios — run objective stays in sync with enemy list > "monster-card" guarantees a monster card in hand
+Player disconnected: r2rDgpm5gNeleQ7jAADr
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > reuses providedPlayerId on cold reconnect when persisted data exists
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > reuses providedPlayerId on cold reconnect when persisted data exists
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > reuses providedPlayerId on cold reconnect when persisted data exists
+Player connected: socket=z7X65JD8nEHQn_wTAADt, playerId=test-1779428232294-67l40q
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > reuses providedPlayerId on cold reconnect when persisted data exists
+Player disconnected: z7X65JD8nEHQn_wTAADt
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > reuses providedPlayerId on cold reconnect when persisted data exists
+Player connected: socket=8cgb30fzKPusjv46AADv, playerId=test-1779428232294-67l40q
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > reuses providedPlayerId on cold reconnect when persisted data exists
+Player disconnected: 8cgb30fzKPusjv46AADv
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > uses accountId from JWT as playerId (even with no persisted data)
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > uses accountId from JWT as playerId (even with no persisted data)
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > uses accountId from JWT as playerId (even with no persisted data)
+Player connected: socket=H_8HOel06Wne__81AADx, playerId=nonexistent-player-id-ab16b0fd-9490-457c-8153-9f1cf8ef5aff
+
+stdout | server/test/integration.test.js > Player ID Drift Prevention on Cold Reconnect > uses accountId from JWT as playerId (even with no persisted data)
+Player disconnected: H_8HOel06Wne__81AADx
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Player connected: socket=_9dDjSTTQqwRKQVYAADz, playerId=test-1779428232416-jz3ali
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Player connected: socket=XQTEkIuLdbXbFR8iAAD1, playerId=test-1779428232419-qfr8pn
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Player disconnected: XQTEkIuLdbXbFR8iAAD1
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Player connected: socket=QjmA-H2eachCD4thAAD3, playerId=test-1779428232419-qfr8pn
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Player disconnected: _9dDjSTTQqwRKQVYAADz
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores saved location when cold reconnecting during playing phase
+Player disconnected: QjmA-H2eachCD4thAAD3
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores location on cold reconnect in lobby (no regression)
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores location on cold reconnect in lobby (no regression)
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores location on cold reconnect in lobby (no regression)
+Player connected: socket=ek_ftx4mBFQsSz1lAAD5, playerId=test-1779428232576-25gzgs
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores location on cold reconnect in lobby (no regression)
+Player disconnected: ek_ftx4mBFQsSz1lAAD5
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores location on cold reconnect in lobby (no regression)
+Player connected: socket=xuJzD005KaN7HbWjAAD7, playerId=test-1779428232576-25gzgs
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > restores location on cold reconnect in lobby (no regression)
+Player disconnected: xuJzD005KaN7HbWjAAD7
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Player connected: socket=ozteactjQ0wY2VqAAAD9, playerId=test-1779428232691-20l8ok
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Player connected: socket=NOPppOI1ZKTWODZuAAD_, playerId=test-1779428232696-uyptl7
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Player disconnected: NOPppOI1ZKTWODZuAAD_
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Player connected: socket=QGjfApNDhJgmSNGnAAEB, playerId=test-1779428232792-3wqmme
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Player disconnected: ozteactjQ0wY2VqAAAD9
+
+stdout | server/test/integration.test.js > Restore Persisted Location on Cold Reconnect During Active Run > spawns at default position when no saved data exists regardless of game phase
+Player disconnected: QGjfApNDhJgmSNGnAAEB
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Player connected: socket=yU8M3M4XBGj3WmeoAAED, playerId=test-1779428232805-al8hih
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Player connected: socket=9Gywk6rbnzdkh-WUAAEF, playerId=test-1779428232810-vwdmjx
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Player disconnected: 9Gywk6rbnzdkh-WUAAEF
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Player connected: socket=t7ocGVmAXlb49A0jAAEH, playerId=test-1779428232810-vwdmjx
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Player disconnected: yU8M3M4XBGj3WmeoAAED
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > initializes hand and deck when cold reconnecting during playing phase
+Player disconnected: t7ocGVmAXlb49A0jAAEH
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Player connected: socket=4hi-gxlieuUnFivDAAEJ, playerId=test-1779428232958-ijxlbp
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Player connected: socket=9NTPOOQ2lKDmC-6kAAEL, playerId=test-1779428232960-3zxvwx
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Player disconnected: 9NTPOOQ2lKDmC-6kAAEL
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Player connected: socket=WG-pXFuRh93-shoNAAEN, playerId=test-1779428232960-3zxvwx
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Player disconnected: 4hi-gxlieuUnFivDAAEJ
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > useCard succeeds after cold reconnect during active run
+Player disconnected: WG-pXFuRh93-shoNAAEN
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does NOT initialize hand on reconnect during lobby phase
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does NOT initialize hand on reconnect during lobby phase
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does NOT initialize hand on reconnect during lobby phase
+Player connected: socket=ZvqOg9LDz_WghUbPAAEP, playerId=test-1779428233168-wq4g85
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does NOT initialize hand on reconnect during lobby phase
+Player disconnected: ZvqOg9LDz_WghUbPAAEP
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does NOT initialize hand on reconnect during lobby phase
+Player connected: socket=Xmp6yBdQFvZreePfAAER, playerId=test-1779428233168-wq4g85
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does NOT initialize hand on reconnect during lobby phase
+Player disconnected: Xmp6yBdQFvZreePfAAER
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Player connected: socket=isX7eRHRXWvDkSInAAET, playerId=test-1779428233290-vxgvns
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Player connected: socket=Tbe_S7ju5fWmcIFvAAEV, playerId=test-1779428233295-v7y8oi
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Player disconnected: Tbe_S7ju5fWmcIFvAAEV
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Player connected: socket=UT8ApiYN6X1QBOc5AAEX, playerId=test-1779428233295-v7y8oi
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Player disconnected: isX7eRHRXWvDkSInAAET
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets slotCooldowns and magicStones on active-run reconnect
+Player disconnected: UT8ApiYN6X1QBOc5AAEX
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Player connected: socket=nm-CQTUUtyrprA-QAAEZ, playerId=test-1779428233449-5nvyxi
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Player connected: socket=7yYvcPopkwiPKLieAAEb, playerId=test-1779428233450-0lswkp
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Player disconnected: 7yYvcPopkwiPKLieAAEb
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Player connected: socket=RWj_tXBdgxxRa0ZmAAEd, playerId=test-1779428233450-0lswkp
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Player disconnected: nm-CQTUUtyrprA-QAAEZ
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > resets HP and dead flag when reconnecting as dead player during active run
+Player disconnected: RWj_tXBdgxxRa0ZmAAEd
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does not reinitialize hand if player already has cards (warm reconnect)
+[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does not reinitialize hand if player already has cards (warm reconnect)
+Server listening on port 0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does not reinitialize hand if player already has cards (warm reconnect)
+Player connected: socket=4cMZtEV8QRs_qqhAAAEf, playerId=test-1779428233607-2dnb1r
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does not reinitialize hand if player already has cards (warm reconnect)
+Player connected: socket=H0EO_YuAPu49YmejAAEh, playerId=test-1779428233609-tgrun0
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does not reinitialize hand if player already has cards (warm reconnect)
+Player disconnected: 4cMZtEV8QRs_qqhAAAEf
+
+stdout | server/test/integration.test.js > Initialize Combat Hand on Active-Run Reconnect > does not reinitialize hand if player already has cards (warm reconnect)
+Player disconnected: H0EO_YuAPu49YmejAAEh
+
+ ✓ |server| server/test/integration.test.js (95 tests) 25609ms
+   ✓ Socket Integration — Last Player Disconnect Resets Run > does not reset run when one of multiple players disconnects  5160ms
+   ✓ Enemy telegraph integration > enemy enters windup before damaging player  1055ms
+   ✓ Enemy telegraph integration > moving out of range avoids damage  1761ms
+   ✓ Enemy telegraph integration > standing still near enemy results in damage after windup + strike  2553ms
+   ✓ killing miniboss via weapon card (integration) > player uses weapon cards to kill a miniboss — requires multiple hits, defeatedEnemies incremented  2773ms
+   ✓ spawner spawns skirmishers (integration) > no regression: grunt and miniboss enemies still present and unaffected  4556ms
+   ✓ Card cooldown — COOLDOWN_MS > useCard on the same slot succeeds after COOLDOWN_MS has elapsed  958ms
+
+ Test Files  15 passed (15)
+      Tests  563 passed (563)
+   Start at  22:36:47
+   Duration  26.17s (transform 500ms, setup 51ms, collect 2.16s, tests 30.65s, environment 971ms, prepare 1.42s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   95.39 |    84.04 |   98.52 |   95.39 |                       
+ client        |   96.08 |    94.44 |     100 |   96.08 |                       
+  cards.js     |     100 |      100 |     100 |     100 |                       
+  collision.js |    87.5 |    83.33 |     100 |    87.5 | 83-93                 
+  delta.js     |     100 |      100 |     100 |     100 |                       
+  hand.js      |     100 |      100 |     100 |     100 |                       
+ server        |   95.26 |    82.69 |    98.3 |   95.26 |                       
+  index.js     |   95.26 |    82.69 |    98.3 |   95.26 | ...954-1956,2052-2053 
+---------------|---------|----------|---------|---------|-----------------------
