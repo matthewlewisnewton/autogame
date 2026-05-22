@@ -71,10 +71,11 @@ export function buildDungeon(scene, layout) {
 	scene.add(ground);
 	meshes.push(ground);
 
-	// Spawn position: center of first room
-	const spawnPosition = layout.rooms.length > 0
-		? { x: layout.rooms[0].x, z: layout.rooms[0].z }
-		: { x: 0, z: 0 };
+	// Spawn position: center of the room with role 'start' (designated by server),
+	// falling back to the first room, or { x: 0, z: 0 } if the layout is empty.
+	const startRoom = layout.rooms.find(r => r.role === 'start');
+	const spawnRoom = startRoom || (layout.rooms.length > 0 ? layout.rooms[0] : null);
+	const spawnPosition = spawnRoom ? { x: spawnRoom.x, z: spawnRoom.z } : { x: 0, z: 0 };
 
 	// ── Build rooms ──
 	for (const room of layout.rooms) {
