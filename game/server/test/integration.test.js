@@ -797,6 +797,88 @@ describe('Socket Integration — useCard Event', () => {
 	});
 });
 
+describe('Server hand authority — useCard validation', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('rejects a card id that is not in the player hand with cardError', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket._playerId];
+		const weaponSlot = findWeaponSlot(player);
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+
+		const cardErrorPromise = waitForEvent(socket, 'cardError');
+		socket.emit('useCard', { cardId: 'chrono_trigger', slotIndex: weaponSlot });
+
+		const err = await cardErrorPromise;
+		expect(err.reason).toBe('Card not in hand');
+	});
+
+	it('rejects a mismatched card id at the requested slot with cardError', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket._playerId];
+		const weaponSlot = findWeaponSlot(player);
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+
+		const cardErrorPromise = waitForEvent(socket, 'cardError');
+		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: (weaponSlot + 1) % 4 });
+
+		const err = await cardErrorPromise;
+		expect(err.reason).toBe('Card not in hand');
+	});
+
+	it('server decrements charges and redraws when a weapon exhausts', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket._playerId];
+		const weaponSlot = findWeaponSlot(player);
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+
+		player.hand[weaponSlot].remainingCharges = 1;
+		const cardIdBefore = player.hand[weaponSlot].id;
+		const deckSizeBefore = player.deck.length;
+
+		gameState.enemies.push({
+			id: 'e_exhaust',
+			x: player.x + 3,
+			z: player.z,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z },
+		});
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: cardIdBefore, slotIndex: weaponSlot });
+		await cardUsedPromise;
+		await stateUpdatePromise;
+
+		expect(player.hand[weaponSlot].id).not.toBe(cardIdBefore);
+		expect(player.deck.length).toBe(deckSizeBefore - 1);
+	});
+});
+
 describe('Socket Integration — Heartbeat Event', () => {
 	let baseUrl, socket;
 

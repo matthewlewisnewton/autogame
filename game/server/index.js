@@ -172,6 +172,7 @@ const {
   drawCardFromDeck,
   initPlayerHand,
   drawReplacementCard,
+  validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
   restoreHandCharges,
@@ -713,30 +714,32 @@ function startServer(port) {
 
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
-    // (1) Validate slot index
-    if (data.slotIndex < 0 || data.slotIndex > 3) return;
-
-    // (2) Look up card definition
+    // (1) Look up card definition
     const cardDef = CARD_DEFS[data.cardId];
-    if (!cardDef) return;
+    if (!cardDef) {
+      socket.emit('cardError', { reason: 'Unknown card' });
+      return;
+    }
 
-    // (3) Get player
+    // (2) Get player
     const player = gameState.players[socket.playerId];
     if (!player || player.dead) return;
 
-    // (4) Hand validation: slot must exist and card id must match
-    if (!player.hand || !player.hand[data.slotIndex] || player.hand[data.slotIndex].id !== data.cardId) {
-      return; // silently reject
+    // (3) Authoritative hand validation: slot must hold the requested card
+    const handValidation = validateUseCardHand(player, data.slotIndex, data.cardId);
+    if (!handValidation.valid) {
+      socket.emit('cardError', { reason: handValidation.reason });
+      return;
     }
 
-    // (5) Cooldown check: reject if slot is still cooling down
+    // (4) Cooldown check: reject if slot is still cooling down
     const now = Date.now();
     if (player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
       socket.emit('cardError', { reason: 'Slot on cooldown' });
       return;
     }
 
-    const handCard = player.hand[data.slotIndex];
+    const handCard = handValidation.handCard;
     const originX = player.x;
     const originZ = player.z;
 
@@ -1520,6 +1523,7 @@ if (typeof module !== 'undefined' && module.exports) {
     drawCardFromDeck,
     initPlayerHand,
     drawReplacementCard,
+    validateUseCardHand,
     addMagicStones,
     restoreCardCharges,
     restoreHandCharges,
