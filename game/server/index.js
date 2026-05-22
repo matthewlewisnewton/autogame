@@ -260,6 +260,94 @@ function segmentIntersectsAABB(x1, z1, x2, z2, aabb) {
   return true;
 }
 
+// ── Entity collision helpers ──
+
+const ENTITY_RADIUS = 0.45;
+
+/**
+ * Check if a point position overlaps any wall collider expanded by radius.
+ * Returns true when overlapping a wall, false otherwise.
+ */
+function isEntityPositionBlocked(x, z, radius) {
+  const colliders = buildWallColliders();
+  const r = radius != null ? radius : ENTITY_RADIUS;
+
+  for (const w of colliders) {
+    if (x + r <= w.minX || x - r >= w.maxX) continue;
+    if (z + r <= w.minZ || z - r >= w.maxZ) continue;
+    return true; // overlap
+  }
+
+  return false;
+}
+
+/**
+ * Attempt to move an entity toward a target while respecting wall colliders
+ * and dungeon bounds. Uses axis-separated wall-slide when direct movement
+ * is blocked.
+ *
+ * Returns { moved, blocked, reached } metadata.
+ */
+function moveEntityToward(entity, target, maxDistance, options) {
+  const radius = (options && options.radius) != null ? options.radius : ENTITY_RADIUS;
+  const stopDistance = (options && options.stopDistance) != null ? options.stopDistance : 0.1;
+
+  const dx = target.x - entity.x;
+  const dz = target.z - entity.z;
+  const dist = Math.hypot(dx, dz);
+
+  // Already within stop distance
+  if (dist <= stopDistance) {
+    return { moved: false, blocked: false, reached: true };
+  }
+
+  // Normalize direction
+  const ndx = dx / dist;
+  const ndz = dz / dist;
+
+  // Clamp movement to maxDistance
+  const move = Math.min(dist, maxDistance);
+
+  // Proposed position
+  const proposedX = entity.x + ndx * move;
+  const proposedZ = entity.z + ndz * move;
+
+  // Try direct movement
+  if (!isEntityPositionBlocked(proposedX, proposedZ, radius)) {
+    const clamped = clampToDungeon(proposedX, proposedZ);
+    entity.x = clamped.x;
+    entity.z = clamped.z;
+    return { moved: true, blocked: false, reached: false };
+  }
+
+  // Direct is blocked — try axis-separated movement (wall-slide)
+  // Try X-only
+  const xProposed = entity.x + ndx * move;
+  const xOnlyBlocked = (Math.abs(xProposed - entity.x) > 1e-8)
+    ? isEntityPositionBlocked(xProposed, entity.z, radius)
+    : true; // no displacement on X — treat as blocked
+  // Try Z-only
+  const zProposed = entity.z + ndz * move;
+  const zOnlyBlocked = (Math.abs(zProposed - entity.z) > 1e-8)
+    ? isEntityPositionBlocked(entity.x, zProposed, radius)
+    : true; // no displacement on Z — treat as blocked
+
+  if (!xOnlyBlocked) {
+    const clamped = clampToDungeon(xProposed, entity.z);
+    entity.x = clamped.x;
+    entity.z = clamped.z;
+    return { moved: true, blocked: true, reached: false };
+  } else if (!zOnlyBlocked) {
+    const clamped = clampToDungeon(entity.x, zProposed);
+    entity.x = clamped.x;
+    entity.z = clamped.z;
+    return { moved: true, blocked: true, reached: false };
+  }
+
+  // Both axes blocked
+  return { moved: false, blocked: true, reached: false };
+}
+
 gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
@@ -2148,6 +2236,9 @@ if (typeof module !== 'undefined' && module.exports) {
     checkWallCollision,
     buildWallColliders,
     wallAABB,
+    ENTITY_RADIUS,
+    isEntityPositionBlocked,
+    moveEntityToward,
     // Server objects for integration tests
     app,
     server,
