@@ -571,7 +571,7 @@ let myZ = 0;
 let playerRotation = 0; // facing angle in radians, derived from movement direction
 let wasDead = false; // tracks previous-frame dead state for respawn detection
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
-let spawnPosition = { x: 0, z: 0 }; // center of first room, set by buildDungeon
+let spawnPosition = { x: 0, z: 0 }; // center of start room (role='start'), set by buildDungeon
 let wallColliders = []; // flat array of wall AABBs: { minX, maxX, minZ, maxZ }
 let dungeonMeshes = []; // meshes created by buildDungeon(), managed by clearDungeon()
 
@@ -2017,7 +2017,7 @@ function initScene() {
     wallColliders = buildWallColliders(currentLayout);
   }
 
-  // Place player at spawn position (center of first room)
+  // Place player at spawn position (center of start room)
   myX = spawnPosition.x;
   myZ = spawnPosition.z;
 
