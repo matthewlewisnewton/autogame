@@ -1,1 +1,65 @@
-"""Skeleton — Phase 1; body lands in Phase 2-4 per design doc §12."""
+"""backlog() — port of run_backlog.sh per design doc §8.3."""
+from __future__ import annotations
+
+import re
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Optional
+
+from harness.config.tunables import Tunables, get_tunables
+from harness.pipelines.ticket import TicketContext, ticket
+from harness.roles import Roster
+from harness.telemetry.logging import log
+from harness.workspace.repo import Repo
+
+
+_UNCHECKED_RE = re.compile(r"^- \[ \] \[([^\]]+)\]", re.MULTILINE)
+
+
+def next_open_ticket(workspace) -> Optional[str]:
+    tasks_md = Path(workspace.root) / "TASKS.md"
+    if not tasks_md.exists():
+        return None
+    m = _UNCHECKED_RE.search(tasks_md.read_text())
+    return m.group(1) if m else None
+
+
+@dataclass
+class BacklogContext:
+    workspace: Repo
+    roster: Roster
+    tunables: Tunables = field(default_factory=get_tunables)
+    telemetry: object = None
+    retry_sleep_s: int = 30
+
+
+def backlog(ctx: BacklogContext) -> int:
+    """Returns 0 = all tickets complete, 2 = tool failure."""
+    completed = 0
+    while True:
+        name = next_open_ticket(ctx.workspace)
+        if not name:
+            log(f"=== backlog finished — {completed} ticket(s) completed; no unchecked tickets remain ===")
+            return 0
+        log(f">>> ticket: {name}")
+        tdir = Path(ctx.workspace.root) / "tickets" / name
+        rc = ticket(TicketContext(
+            workspace=ctx.workspace, roster=ctx.roster, name=name, tdir=tdir,
+            tunables=ctx.tunables, telemetry=ctx.telemetry,
+        ))
+        if rc == 0:
+            completed += 1
+            log(f">>> COMPLETE: {name}")
+        elif rc == 2:
+            log(f">>> HARNESS/TOOL FAILURE on: {name} — stopping backlog for escalation")
+            log(f"=== summary: {completed} ticket(s) completed before the tool failure ===")
+            return 2
+        elif rc == 3:
+            log(f">>> SPLIT: {name} restructured into smaller tickets — re-scanning backlog")
+        else:
+            log(f">>> INCOMPLETE: {name} — retrying; the backlog will not advance past an unsolved ticket")
+            time.sleep(ctx.retry_sleep_s)
+
+
+__all__ = ["BacklogContext", "backlog", "next_open_ticket"]

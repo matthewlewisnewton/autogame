@@ -58,13 +58,21 @@ def test_cli_help_works():
     assert "subtask" in result.stdout
 
 
-def test_cli_subcommand_stub_exits_nonzero():
-    """Phase 1 stubs exit non-zero so CI catches stray production invocations."""
+def test_cli_invalid_subcommand_exits_nonzero():
+    """The CLI router rejects unknown subcommands. Phase-1 used to test
+    'supervisor' exits non-zero with 'not implemented' — but once cli.py
+    wires subcommand bodies (Phase 4), running 'supervisor' here would
+    SPAWN A REAL SUPERVISOR for the duration of the test. That actually
+    happened once and corrupted the working tree. Test the routing surface
+    via a deliberately invalid subcommand instead."""
     result = subprocess.run(
-        [sys.executable, "-m", "harness", "supervisor"],
+        [sys.executable, "-m", "harness", "definitely_not_a_real_subcommand"],
         capture_output=True,
         text=True,
         cwd="..",
+        timeout=15,
     )
     assert result.returncode != 0
-    assert "not implemented" in result.stderr.lower()
+    # argparse error has "invalid choice" + the bad subcommand name
+    err = (result.stderr + result.stdout).lower()
+    assert "invalid choice" in err or "error" in err
