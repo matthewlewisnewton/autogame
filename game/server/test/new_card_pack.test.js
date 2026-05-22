@@ -56,7 +56,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -99,6 +99,28 @@ describe('new card combat helpers', () => {
 		const hits = applyFreezeInRadius(0, 0, SUMMON_RADIUS, 2000, CARD_DEFS.frost_nova.damage);
 		expect(hits).toHaveLength(1);
 		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
+	});
+
+	it('Glacier Collapse deals bonus damage to already-frozen enemies', () => {
+		const now = Date.now();
+		const def = CARD_DEFS.glacier_collapse;
+		gameState.enemies = [
+			{ id: 'e1', type: 'grunt', x: 2, z: 0, hp: 100, frozenUntil: now + 5000 },
+			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 100 },
+		];
+		const hits = applyFreezeInRadius(
+			0,
+			0,
+			SUMMON_RADIUS,
+			def.freezeDurationMs,
+			def.damage,
+			def.frozenBonusDamage
+		);
+		expect(hits).toHaveLength(2);
+		expect(gameState.enemies[0].hp).toBe(100 - def.damage - def.frozenBonusDamage);
+		expect(hits[0].frozenShatter).toBe(true);
+		expect(gameState.enemies[1].hp).toBe(100 - def.damage);
+		expect(hits[1].frozenShatter).toBeUndefined();
 	});
 
 	it('Healing Font restores player HP up to max', () => {

@@ -586,7 +586,7 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
   return { hits, magicStonesGained };
 }
 
-function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0) {
+function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, frozenBonusDamage = 0) {
   const now = Date.now();
   const frozenUntil = now + durationMs;
   const hits = [];
@@ -594,9 +594,18 @@ function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0) {
   for (const enemy of _gameState.enemies) {
     const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
     if (dist > radius) continue;
-    if (damage > 0) {
-      enemy.hp -= damage;
-      hits.push({ enemyId: enemy.id, hp: enemy.hp });
+    const wasFrozen = enemy.frozenUntil != null && enemy.frozenUntil > now;
+    let hitDamage = damage;
+    if (wasFrozen && frozenBonusDamage > 0) {
+      hitDamage += frozenBonusDamage;
+    }
+    if (hitDamage > 0) {
+      enemy.hp -= hitDamage;
+      const hit = { enemyId: enemy.id, hp: enemy.hp };
+      if (wasFrozen && frozenBonusDamage > 0) {
+        hit.frozenShatter = true;
+      }
+      hits.push(hit);
     }
     enemy.frozenUntil = Math.max(enemy.frozenUntil || 0, frozenUntil);
   }
