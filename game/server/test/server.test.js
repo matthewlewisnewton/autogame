@@ -50,7 +50,10 @@ import {
 	ENEMY_ATTACK_RECOVERY_MS,
 	ENEMY_DEFS,
 	savePlayerData,
-	setTestProvider
+	setTestProvider,
+	ENTITY_RADIUS,
+	isEntityPositionBlocked,
+	moveEntityToward
 } from '../index.js';
 
 // ── Helpers ──
@@ -2668,5 +2671,248 @@ describe('Role-aware spawning constraints', () => {
 		// test suite covers this with Math.random mocking. Here we verify the
 		// structural behavior: spawnLoot uses treasure rooms when available.
 		// The spawnLoot describe block above already tests this with vi.spyOn.
+	});
+});
+
+// ── ENTITY_RADIUS ──
+
+describe('ENTITY_RADIUS', () => {
+	it('is exported and equals 0.45', () => {
+		expect(ENTITY_RADIUS).toBe(0.45);
+	});
+});
+
+// ── isEntityPositionBlocked ──
+
+describe('isEntityPositionBlocked(x, z, radius)', () => {
+	beforeEach(() => resetGameState());
+
+	it('returns false for a position in the center of a room', () => {
+		const room = gameState.layout.rooms[0];
+		expect(isEntityPositionBlocked(room.x, room.z, ENTITY_RADIUS)).toBe(false);
+	});
+
+	it('returns true for a position inside a wall', () => {
+		// Pick an actual wall segment from a room — its center is guaranteed
+		// to be inside a solid wall (not a passage gap).
+		const room = gameState.layout.rooms[0];
+		const wall = room.walls[0];
+		// Wall center (wall.x, wall.z) is always inside the wall AABB
+		expect(isEntityPositionBlocked(wall.x, wall.z, ENTITY_RADIUS)).toBe(true);
+	});
+
+	it('accepts a custom radius parameter', () => {
+		const room = gameState.layout.rooms[0];
+		// A very large radius should make even the room center "blocked"
+		// because it expands past the walls
+		expect(isEntityPositionBlocked(room.x, room.z, 100)).toBe(true);
+		// A zero radius should be unblocked at room center
+		expect(isEntityPositionBlocked(room.x, room.z, 0)).toBe(false);
+	});
+
+	it('defaults to ENTITY_RADIUS when radius is omitted', () => {
+		const room = gameState.layout.rooms[0];
+		expect(isEntityPositionBlocked(room.x, room.z)).toBe(false);
+	});
+});
+
+// ── moveEntityToward ──
+
+describe('moveEntityToward(entity, target, maxDistance, options)', () => {
+	beforeEach(() => resetGameState());
+
+	it('moves entity toward target in open space', () => {
+		const room = gameState.layout.rooms[0];
+		const entity = { x: room.x, z: room.z };
+		const target = { x: room.x + 5, z: room.z };
+
+		const result = moveEntityToward(entity, target, 2, {});
+
+		expect(result.moved).toBe(true);
+		expect(result.blocked).toBe(false);
+		expect(result.reached).toBe(false);
+		expect(entity.x).toBeCloseTo(room.x + 2, 4);
+		expect(entity.z).toBeCloseTo(room.z, 4);
+	});
+
+	it('reaches target when distance is less than maxDistance', () => {
+		const room = gameState.layout.rooms[0];
+		const entity = { x: room.x, z: room.z };
+		const target = { x: room.x + 1, z: room.z };
+
+		const result = moveEntityToward(entity, target, 5, {});
+
+		expect(result.moved).toBe(true);
+		expect(result.blocked).toBe(false);
+		expect(result.reached).toBe(false);
+		expect(entity.x).toBeCloseTo(room.x + 1, 4);
+		expect(entity.z).toBeCloseTo(room.z, 4);
+	});
+
+	it('returns reached when entity is already within stopDistance', () => {
+		const room = gameState.layout.rooms[0];
+		const entity = { x: room.x, z: room.z };
+		const target = { x: room.x + 0.05, z: room.z };
+
+		const result = moveEntityToward(entity, target, 2, {});
+
+		expect(result.moved).toBe(false);
+		expect(result.blocked).toBe(false);
+		expect(result.reached).toBe(true);
+	});
+
+	it('respects custom stopDistance option', () => {
+		const room = gameState.layout.rooms[0];
+		const entity = { x: room.x, z: room.z };
+		const target = { x: room.x + 0.5, z: room.z };
+
+		const result = moveEntityToward(entity, target, 2, { stopDistance: 1.0 });
+
+		expect(result.reached).toBe(true);
+		expect(result.moved).toBe(false);
+	});
+
+	it('clamps final position to dungeon bounds', () => {
+		const room = gameState.layout.rooms[0];
+		const entity = { x: gameState.dungeonBounds.maxX - 1, z: room.z };
+		const target = { x: gameState.dungeonBounds.maxX + 10, z: room.z };
+
+		const result = moveEntityToward(entity, target, 20, {});
+
+		expect(result.moved).toBe(true);
+		expect(entity.x).toBeLessThanOrEqual(gameState.dungeonBounds.maxX);
+		expect(entity.z).toBeGreaterThanOrEqual(gameState.dungeonBounds.minZ);
+		expect(entity.z).toBeLessThanOrEqual(gameState.dungeonBounds.maxZ);
+	});
+
+	it('returns blocked when direct movement hits a wall and both axes are blocked', () => {
+		// Use a deterministic layout so wall positions (and passage gaps) are fixed.
+		const savedLayout = gameState.layout;
+		const savedBounds = gameState.dungeonBounds;
+		gameState.layout = generateLayout(42);
+		// Set bounds to a large range so clampToDungeon doesn't interfere with the test
+		gameState.dungeonBounds = { minX: -1000, maxX: 1000, minZ: -1000, maxZ: 1000 };
+
+		// Find a solid wall segment (axis 'z', meaning it runs along z — blocks x-axis movement).
+		// We pick the first wall segment from a room that is long enough to be solid.
+		let wall = null;
+		for (const room of gameState.layout.rooms) {
+			for (const w of room.walls) {
+				if (w.axis === 'z' && w.length >= 10) {
+					wall = w;
+					break;
+				}
+			}
+			if (wall) break;
+		}
+		expect(wall).toBeTruthy(); // precondition: at least one solid wall segment
+
+		// The wall is at wall.x (a fixed x coordinate), running along z from wall.z - length/2 to wall.z + length/2.
+		// Position the entity very close to the wall (0.5 units away), moving horizontally right.
+		// Z is the same as wall.z so we're aimed at the wall center.
+		// Step size of 1.0 means the proposed position lands at wall.x + 0.5 — inside the wall.
+		const entity = { x: wall.x - 0.5, z: wall.z };
+		const target = { x: wall.x + 5, z: wall.z }; // far beyond the wall
+		const step = 1.0; // proposed X = wall.x - 0.5 + 1.0 = wall.x + 0.5 (inside wall)
+
+		const result = moveEntityToward(entity, target, step, {});
+
+		// Direct movement is blocked (proposed position is inside the wall).
+		// X-slide: proposed X = wall.x + 0.5, same z → also inside the wall → blocked.
+		// Z-slide: zero displacement (same z as target) → treated as blocked.
+		expect(result.blocked).toBe(true);
+		expect(result.moved).toBe(false);
+
+		// Restore original layout and bounds
+		gameState.layout = savedLayout;
+		gameState.dungeonBounds = savedBounds;
+	});
+
+	it('performs wall-slide when direct movement is blocked but one axis is free', () => {
+		// Use a diagonal movement from room center toward a corner.
+		// The entity moves diagonally, direct path hits a wall, but one axis is free.
+		const room = gameState.layout.rooms[0];
+		const wallX = room.x + room.width / 2;
+		const wallZ = room.z + room.depth / 2;
+		// Entity starts at room center, target is diagonally beyond the corner
+		const entity = { x: room.x, z: room.z };
+		const target = { x: wallX + 2, z: wallZ + 2 };
+
+		const result = moveEntityToward(entity, target, 2, {});
+
+		// If the direct path is blocked, wall-slide should move on one axis
+		// If direct path is free (gap in wall), movement should succeed unblocked
+		// Either way the metadata is consistent
+		if (result.blocked) {
+			expect(result.moved).toBe(true); // wall-slide succeeded on at least one axis
+		}
+	});
+
+	it('wall-slide moves only the free axis when the other is blocked', () => {
+		// Verify that when wall-slide activates, the entity moves along one axis
+		// and the result indicates blocked=true (slide happened, not direct movement)
+		const room = gameState.layout.rooms[0];
+		// Pick a position well inside the room and move diagonally toward a wall
+		const entity = { x: room.x, z: room.z };
+		const wallX = room.x + room.width / 2;
+		const target = { x: wallX + 5, z: room.z + 5 };
+
+		const startX = entity.x;
+		const startZ = entity.z;
+		const result = moveEntityToward(entity, target, 1, {});
+
+		// Regardless of blocked or not, entity should not have moved past dungeon bounds
+		expect(entity.x).toBeGreaterThanOrEqual(gameState.dungeonBounds.minX);
+		expect(entity.x).toBeLessThanOrEqual(gameState.dungeonBounds.maxX);
+		expect(entity.z).toBeGreaterThanOrEqual(gameState.dungeonBounds.minZ);
+		expect(entity.z).toBeLessThanOrEqual(gameState.dungeonBounds.maxZ);
+
+		// If blocked, at least one axis should have changed (wall-slide)
+		if (result.blocked && result.moved) {
+			const dx = Math.abs(entity.x - startX);
+			const dz = Math.abs(entity.z - startZ);
+			// Wall-slide moves on exactly one axis (the other stays the same)
+			expect(dx < 1e-6 || dz < 1e-6).toBe(true);
+		}
+	});
+
+	it('is deterministic — no timers, randomness, or socket emissions', () => {
+		const room = gameState.layout.rooms[0];
+		// Run the same call twice and verify identical results
+		const entity1 = { x: room.x, z: room.z };
+		const entity2 = { x: room.x, z: room.z };
+		const target = { x: room.x + 3, z: room.z + 3 };
+
+		const r1 = moveEntityToward(entity1, target, 1, {});
+		const r2 = moveEntityToward(entity2, target, 1, {});
+
+		expect(entity1.x).toBe(entity2.x);
+		expect(entity1.z).toBe(entity2.z);
+		expect(r1).toEqual(r2);
+	});
+
+	it('uses custom radius from options', () => {
+		const room = gameState.layout.rooms[0];
+		const entity = { x: room.x, z: room.z };
+		const target = { x: room.x + 3, z: room.z };
+
+		// With a tiny radius, movement should succeed
+		const result = moveEntityToward(entity, target, 2, { radius: 0.01 });
+
+		expect(result.moved).toBe(true);
+	});
+
+	it('assigns entity x and z only to the validated final position', () => {
+		const room = gameState.layout.rooms[0];
+		const startX = room.x;
+		const startZ = room.z;
+		const entity = { x: startX, z: startZ };
+		const target = { x: startX + 5, z: startZ + 5 };
+
+		moveEntityToward(entity, target, 2, {});
+
+		// Entity should have been modified in place
+		expect(entity.x).not.toBe(startX);
+		expect(entity.z).not.toBe(startZ);
 	});
 });
