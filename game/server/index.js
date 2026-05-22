@@ -104,8 +104,11 @@ function computeDungeonBounds(layout) {
 }
 
 function firstRoomPosition() {
-  const first = gameState.layout.rooms[0];
-  return { x: first.x, z: first.z };
+  const layout = gameState.layout;
+  // Prefer the room with role 'start' (assigned by assignRoomRoles)
+  const startRoom = layout.rooms.find(r => r.role === 'start');
+  const room = startRoom || layout.rooms[0]; // defensive fallback
+  return { x: room.x, z: room.z };
 }
 
 function randomRoomPosition() {
@@ -519,14 +522,10 @@ function removeDeadEnemies() {
 }
 
 /**
- * Spawn loot for all dead enemies, remove them, and check run terminal state.
- * Replaces the 3-line inline pattern that appeared in updateMinions, the weapon
- * card branch, and the summon card branch.
+ * Remove dead enemies and check run terminal state.
+ * Loot is pre-spawned at run start via spawnLoot() — no death-drop needed.
  */
 function cleanupAfterDamage() {
-  for (const e of gameState.enemies) {
-    if (e.hp <= 0) spawnLoot(e.x, e.z);
-  }
   if (removeDeadEnemies() > 0) {
     checkRunTerminalState();
   }
@@ -952,21 +951,72 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
 
 // Helper: spawn 5 enemies inside generated rooms (mixed types)
 function spawnEnemies() {
+  const layout = gameState.layout;
+  const seed = gameState.layoutSeed || 42;
+  const rng = mulberry32(seed + 1000); // offset seed so enemies differ from loot
+
+  const combatRooms = roomsByRole(layout, 'combat');
+  // Fallback: any non-start room
+  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
+
   const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   for (const type of spawnTable) {
-    const pos = randomRoomPosition();
+    let pos;
+    if (combatRooms.length > 0) {
+      pos = randomRoomPositionByRole(layout, 'combat', rng);
+    } else if (nonStartRooms.length > 0) {
+      // No combat rooms — pick from non-start rooms directly
+      const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
+      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+      pos = {
+        x: room.x + (rng() * 2 - 1) * halfW,
+        z: room.z + (rng() * 2 - 1) * halfD,
+      };
+    } else {
+      pos = randomRoomPosition(); // last resort: any room
+    }
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
   }
+
+  // Pre-spawn loot in treasure rooms (role-aware placement)
+  spawnLoot(layout, rng);
 }
 
-// Helper: spawn a loot item at the given position (50 % chance)
-function spawnLoot(x, z) {
+// Helper: spawn loot items using role-aware placement (50 % chance per call)
+// When a treasure room exists, loot spawns there; otherwise falls back to
+// any non-start room.  `layout` and `rng` are passed in for determinism.
+function spawnLoot(layout, rng) {
   if (Math.random() >= LOOT_SPAWN_CHANCE) return;
+
+  const treasureRooms = roomsByRole(layout, 'treasure');
+  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
+  let pos;
+
+  if (treasureRooms.length > 0) {
+    const room = treasureRooms[Math.floor(rng() * treasureRooms.length)];
+    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+    pos = {
+      x: room.x + (rng() * 2 - 1) * halfW,
+      z: room.z + (rng() * 2 - 1) * halfD,
+    };
+  } else if (nonStartRooms.length > 0) {
+    const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
+    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+    pos = {
+      x: room.x + (rng() * 2 - 1) * halfW,
+      z: room.z + (rng() * 2 - 1) * halfD,
+    };
+  } else {
+    pos = randomRoomPosition(); // last resort
+  }
 
   const value = Math.floor(Math.random() * 16) + 5;
   const id = crypto.randomUUID();
-  gameState.loot.push({ id, x, z, value, createdAt: Date.now() });
+  gameState.loot.push({ id, x: pos.x, z: pos.z, value, createdAt: Date.now() });
   console.log(`[loot] spawned id=${id} value=${value}`);
 }
 
@@ -2065,6 +2115,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnLoot,
     spawnEnemy,
     spawnEnemies,
+    firstRoomPosition,
     createGameState,
     resetGameState,
     gameState,
