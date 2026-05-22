@@ -2320,3 +2320,98 @@ describe('Mute persistence (localStorage)', () => {
 		expect(window.__getPersistedMute()).toBe(null);
 	});
 });
+
+// ── Cold-start mute persistence ──
+
+describe('Cold-start mute persistence', () => {
+	/** Create all DOM elements required by main.js top-level queries. */
+	function createRequiredDom() {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'mute-btn',
+			'auth-overlay', 'auth-modal', 'register-form', 'login-form',
+			'register-username', 'register-password', 'register-btn', 'register-error',
+			'login-username', 'login-password', 'login-btn', 'login-error',
+			'show-login-link', 'show-register-link', 'logout-btn',
+		];
+		// Remove any existing elements from previous imports so we get a clean DOM
+		requiredIds.forEach(id => {
+			const existing = document.getElementById(id);
+			if (existing) existing.remove();
+		});
+		for (const id of requiredIds) {
+			const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' ||
+				id === 'mute-btn' || id === 'register-btn' || id === 'login-btn' ||
+				id === 'logout-btn' || id === 'show-login-link' || id === 'show-register-link')
+				? document.createElement('button')
+				: (id.startsWith('register-') || id.startsWith('login-'))
+					? document.createElement('input')
+					: document.createElement('div');
+			el.id = id;
+			document.body.appendChild(el);
+		}
+		// Create card slots inside #card-hand
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	}
+
+	beforeEach(() => {
+		createRequiredDom();
+	});
+
+	afterEach(() => {
+		// Clear localStorage and reset modules to avoid polluting other tests
+		try { localStorage.clear(); } catch (_) {}
+		vi.resetModules();
+	});
+
+	it('initializes soundEnabled=false and mute button as 🔇 when localStorage pre-seeded', async () => {
+		// Clear module cache so top-level `let soundEnabled = loadSoundEnabled()` re-runs
+		vi.resetModules();
+
+		// Re-create DOM after reset (previous import may have mutated references)
+		createRequiredDom();
+
+		// Pre-seed localStorage BEFORE importing main.js
+		try { localStorage.setItem('autogame:soundEnabled', 'false'); } catch (_) {}
+		// Ensure auth token exists so socket is created (required for import to succeed)
+		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) {}
+
+		// Cold import — module-level loadSoundEnabled() reads the persisted value
+		await import('../main.js');
+
+		// Prove the module-level soundEnabled initialized to false
+		expect(window.__soundEnabled()).toBe(false);
+
+		// Prove the mute button reflects the loaded state without any user click
+		expect(document.getElementById('mute-btn').textContent).toBe('🔇');
+	});
+
+	it('initializes soundEnabled=true and mute button as 🔊 when no localStorage preference', async () => {
+		vi.resetModules();
+		createRequiredDom();
+
+		// No autogame:soundEnabled key — should default to unmuted
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
+		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) {}
+
+		await import('../main.js');
+
+		expect(window.__soundEnabled()).toBe(true);
+		expect(document.getElementById('mute-btn').textContent).toBe('🔊');
+	});
+});
