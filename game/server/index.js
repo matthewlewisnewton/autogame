@@ -154,6 +154,9 @@ const {
   drawCardFromDeck,
   initPlayerHand,
   drawReplacementCard,
+  addMagicStones,
+  restoreCardCharges,
+  restoreHandCharges,
   spawnEnemy,
   spawnEnemies,
   spawnLoot,
@@ -398,6 +401,20 @@ function applyDebugScenario(socket, name) {
   broadcastLobbyUpdate();
   io.emit('stateUpdate', stateSnapshot());
   return { ok: true, scenario: name };
+}
+
+function findSacrificeTarget(playerId, x, z, radius) {
+  return gameState.minions
+    .map((minion, index) => ({ minion, index }))
+    .filter(({ minion }) => {
+      if (!minion || minion.ownerId !== playerId || minion.hp <= 0) return false;
+      return Math.hypot(minion.x - x, minion.z - z) <= radius;
+    })
+    .sort((a, b) => {
+      const aCreated = Number.isFinite(a.minion.createdAt) ? a.minion.createdAt : 0;
+      const bCreated = Number.isFinite(b.minion.createdAt) ? b.minion.createdAt : 0;
+      return aCreated - bCreated || a.index - b.index;
+    })[0] || null;
 }
 
 // Track whether Express routes have been mounted — prevents stacking
@@ -698,6 +715,9 @@ function startServer(port) {
       handCard.remainingCharges -= 1;
 
       const rotation = player.rotation; // radians, 0 = +X axis
+      const attackRange = cardDef.attackRange || ATTACK_RANGE;
+      const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
+      const damage = cardDef.damage || 0;
 
       // Forward direction vector from player rotation (on x-z plane)
       const dirX = Math.cos(rotation);
@@ -705,25 +725,33 @@ function startServer(port) {
 
       // Check each enemy for hit (forward cone + range)
       const hits = [];
+      let magicStonesGained = 0;
       for (const enemy of gameState.enemies) {
         const dx = enemy.x - originX;
         const dz = enemy.z - originZ;
         const dist = Math.hypot(dx, dz);
 
         // Range check
-        if (dist > ATTACK_RANGE) continue;
+        if (dist > attackRange) continue;
 
         // Cone check: dot product between forward dir and enemy direction
-        const enemyDirX = dx / dist;
-        const enemyDirZ = dz / dist;
+        const enemyDirX = dist > 0 ? dx / dist : dirX;
+        const enemyDirZ = dist > 0 ? dz / dist : dirZ;
         const dot = dirX * enemyDirX + dirZ * enemyDirZ;
 
-        if (dot < Math.cos(ATTACK_CONE_ANGLE / 2)) continue;
+        if (dot < Math.cos(attackConeAngle / 2)) continue;
 
         // Hit — apply damage
-        enemy.hp -= cardDef.damage;
-        hits.push({ enemyId: enemy.id, hp: enemy.hp });
+        const hpBefore = enemy.hp;
+        enemy.hp -= damage;
+        const killed = hpBefore > 0 && enemy.hp <= 0;
+        const hitGain = cardDef.magicStoneOnHit || 0;
+        const killGain = killed ? (cardDef.magicStoneOnKill || 0) : 0;
+        magicStonesGained += hitGain + killGain;
+        hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
       }
+
+      const appliedMagicStones = addMagicStones(player, magicStonesGained);
 
       // Cleanup dead enemies after weapon attack
       cleanupAfterDamage();
@@ -746,7 +774,8 @@ function startServer(port) {
         specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
         direction: { x: dirX, z: dirZ },
-        hits: hits
+        hits: hits,
+        magicStonesGained: appliedMagicStones
       });
 
       return;
@@ -762,9 +791,47 @@ function startServer(port) {
         return;
       }
 
+      const magicStoneCost = cardDef.magicStoneCost || 0;
+
       // Validate Magic Stones
-      if (player.magicStones < cardDef.magicStoneCost) {
+      if (player.magicStones < magicStoneCost) {
         socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        return;
+      }
+
+      if (cardDef.effect === 'sacrificial_altar') {
+        const sacrificeRadius = cardDef.sacrificeRadius || SUMMON_RADIUS;
+        const target = findSacrificeTarget(socket.playerId, originX, originZ, sacrificeRadius);
+        if (!target) {
+          socket.emit('cardError', { reason: 'No friendly summon to sacrifice' });
+          return;
+        }
+
+        player.pendingSummons.add(summonKey);
+        player.magicStones -= magicStoneCost;
+        gameState.minions.splice(target.index, 1);
+        const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
+        const restoredCharges = restoreHandCharges(player, cardDef.chargeRestore || 0, {
+          types: ['weapon'],
+          maxTargets: 1,
+          selection: 'random',
+        });
+
+        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          origin: { x: originX, z: originZ },
+          radius: sacrificeRadius,
+          sacrificedMinionId: target.minion.id,
+          magicStonesGained,
+          restoredCharges,
+        });
+
         return;
       }
 
@@ -772,14 +839,66 @@ function startServer(port) {
       player.pendingSummons.add(summonKey);
 
       // Deduct cost
-      player.magicStones -= cardDef.magicStoneCost;
+      player.magicStones -= magicStoneCost;
+
+      if (cardDef.effect === 'chrono_trigger') {
+        const restoredCharges = restoreHandCharges(player, cardDef.adjacentChargeRestore || 0, {
+          slots: [data.slotIndex - 1, data.slotIndex + 1],
+        });
+
+        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          origin: { x: originX, z: originZ },
+          restoredCharges,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'mana_prism') {
+        const prism = {
+          id: crypto.randomUUID(),
+          ownerId: socket.playerId,
+          type: 'mana_prism',
+          x: originX,
+          z: originZ,
+          hp: 1,
+          maxHp: 1,
+          ttl: cardDef.durationSeconds || 12,
+          createdAt: now,
+          lastPulseAt: now,
+          pulseIntervalMs: cardDef.pulseIntervalMs || 2000,
+          magicStonePulse: cardDef.magicStonePulse || 10,
+        };
+        gameState.minions.push(prism);
+
+        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          origin: { x: originX, z: originZ },
+          radius: 1,
+        });
+
+        return;
+      }
 
       // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
       const hits = [];
       for (const enemy of gameState.enemies) {
         const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
         if (dist <= SUMMON_RADIUS) {
-          enemy.hp -= cardDef.damage;
+          enemy.hp -= cardDef.damage || 0;
           hits.push({ enemyId: enemy.id, hp: enemy.hp });
         }
       }
@@ -816,16 +935,30 @@ function startServer(port) {
 
     // ── Monster branch (spawn persistent minion) ──
     if (cardDef.type === 'monster') {
+      const magicStoneCost = cardDef.magicStoneCost || 0;
+      if (player.magicStones < magicStoneCost) {
+        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        return;
+      }
+      player.magicStones -= magicStoneCost;
+
       const minion = {
         id: crypto.randomUUID(),
         ownerId: socket.playerId,
+        type: cardDef.effect || data.cardId,
         x: originX,
         z: originZ,
         hp: cardDef.minionHp || 50,
         maxHp: cardDef.minionHp || 50,
         specialEffect: cardDef.specialEffect,
-        ttl: 30
+        ttl: cardDef.minionTtl || 30,
+        createdAt: now
       };
+      if (cardDef.effect === 'battery_automaton') {
+        minion.lastChargePulseAt = now;
+        minion.chargePulseIntervalMs = cardDef.chargePulseIntervalMs || 6000;
+        minion.chargeRestore = cardDef.chargeRestore || 1;
+      }
       gameState.minions.push(minion);
 
       // Set slot cooldown
@@ -842,7 +975,8 @@ function startServer(port) {
         cardId: data.cardId,
         slotIndex: data.slotIndex,
         specialEffect: cardDef.specialEffect,
-        origin: { x: originX, z: originZ }
+        origin: { x: originX, z: originZ },
+        minionId: minion.id
       });
 
       return;
@@ -1172,6 +1306,9 @@ if (typeof module !== 'undefined' && module.exports) {
     drawCardFromDeck,
     initPlayerHand,
     drawReplacementCard,
+    addMagicStones,
+    restoreCardCharges,
+    restoreHandCharges,
     CARD_DEFS,
     STARTING_DECK_IDS,
     EVOLUTION_GRIND_REQUIRED,

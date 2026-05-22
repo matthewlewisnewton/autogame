@@ -639,6 +639,106 @@ describe('Socket Integration — useCard Event', () => {
 		});
 	});
 
+	describe('Synergistic cards', () => {
+		async function enterScenario() {
+			const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+			socket.emit('debugScenario', { name: 'summon-ready' });
+			await debugResultPromise;
+			await waitForEvent(socket, 'stateUpdate');
+			return gameState.players[socket._playerId];
+		}
+
+		it('Chrono Trigger restores charges to adjacent hand cards', async () => {
+			const player = await enterScenario();
+			player.deck = [];
+			player.hand = [
+				{ id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 1 },
+				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
+				{ id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 1 },
+			];
+
+			const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+			socket.emit('useCard', { cardId: 'chrono_trigger', slotIndex: 1 });
+			await stateUpdatePromise;
+
+			const sword = player.hand.find(c => c && c.id === 'iron_sword');
+			const flame = player.hand.find(c => c && c.id === 'flame_blade');
+			expect(sword.remainingCharges).toBe(3);
+			expect(flame.remainingCharges).toBe(3);
+		});
+
+		it('Harvesting Scythe grants Magic Stones on hit and kill', async () => {
+			const player = await enterScenario();
+			player.magicStones = 0;
+			player.deck = [];
+			player.hand = [
+				{ id: 'harvesting_scythe', name: 'Harvesting Scythe', type: 'weapon', charges: 3, remainingCharges: 3 },
+			];
+			gameState.enemies = [
+				{ id: 'scythe-hit', x: player.x + 3, z: player.z, hp: 50, state: 'idle', wanderTarget: { x: player.x + 3, z: player.z } },
+				{ id: 'scythe-kill', x: player.x + 4, z: player.z, hp: 8, state: 'idle', wanderTarget: { x: player.x + 4, z: player.z } },
+			];
+
+			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+			socket.emit('useCard', { cardId: 'harvesting_scythe', slotIndex: 0 });
+			const used = await cardUsedPromise;
+
+			expect(used.magicStonesGained).toBe(25);
+			expect(player.magicStones).toBeGreaterThanOrEqual(25);
+			expect(player.magicStones).toBeLessThan(27);
+			expect(gameState.enemies.some(e => e.id === 'scythe-kill')).toBe(false);
+		});
+
+		it('Sacrificial Altar consumes the oldest nearby friendly minion for Magic Stones and weapon charges', async () => {
+			const player = await enterScenario();
+			player.magicStones = 0;
+			player.deck = [];
+			player.hand = [
+				{ id: 'sacrificial_altar', name: 'Sacrificial Altar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
+				{ id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 1 },
+			];
+			gameState.minions = [
+				{ id: 'old-minion', ownerId: socket._playerId, type: 'dungeon_drake', x: player.x + 1, z: player.z, hp: 20, ttl: 30, createdAt: 10 },
+				{ id: 'new-minion', ownerId: socket._playerId, type: 'dungeon_drake', x: player.x + 2, z: player.z, hp: 20, ttl: 30, createdAt: 20 },
+			];
+
+			const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+			socket.emit('useCard', { cardId: 'sacrificial_altar', slotIndex: 0 });
+			const used = await cardUsedPromise;
+
+			expect(used.sacrificedMinionId).toBe('old-minion');
+			expect(player.magicStones).toBe(100);
+			expect(gameState.minions.map(m => m.id)).toEqual(['new-minion']);
+			expect(player.hand.find(c => c && c.id === 'iron_sword').remainingCharges).toBe(3);
+		});
+
+		it('Mana Prism and Battery Automaton spawn their resource minions', async () => {
+			const player = await enterScenario();
+			player.magicStones = 50;
+			player.deck = [];
+			player.hand = [
+				{ id: 'mana_prism', name: 'Mana Prism', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
+				{ id: 'battery_automaton', name: 'Battery Automaton', type: 'monster', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
+			];
+
+			let cardUsedPromise = waitForEvent(socket, 'cardUsed');
+			socket.emit('useCard', { cardId: 'mana_prism', slotIndex: 0 });
+			await cardUsedPromise;
+
+			expect(gameState.minions.some(m => m.type === 'mana_prism' && m.ownerId === socket._playerId)).toBe(true);
+			player.slotCooldowns[0] = null;
+
+			cardUsedPromise = waitForEvent(socket, 'cardUsed');
+			socket.emit('useCard', { cardId: 'battery_automaton', slotIndex: 0 });
+			await cardUsedPromise;
+
+			const battery = gameState.minions.find(m => m.type === 'battery_automaton' && m.ownerId === socket._playerId);
+			expect(battery).toBeDefined();
+			expect(battery.hp).toBe(80);
+			expect(player.magicStones).toBeLessThanOrEqual(1);
+		});
+	});
+
 	describe('Minion owner-follow', () => {
 		it('minion moves closer to owner when no enemies are nearby', async () => {
 			// Connect and set up a player in the dungeon

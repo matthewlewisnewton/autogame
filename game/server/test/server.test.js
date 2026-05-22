@@ -36,6 +36,9 @@ import {
 	canAddCardToDeck,
 	createDrawDeckFromSelectedDeck,
 	stateSnapshot,
+	addMagicStones,
+	restoreCardCharges,
+	restoreHandCharges,
 	CARD_DEFS,
 	STARTING_DECK_IDS,
 	io as serverIo,
@@ -1044,6 +1047,109 @@ describe('regenMagicStones (game tick)', () => {
 
 	it('max magic stones constant is correct', () => {
 		expect(MAX_MAGIC_STONES).toBe(100);
+	});
+});
+
+// ── Synergistic card helpers and minion pulses ──
+
+describe('synergistic card helpers', () => {
+	beforeEach(() => resetState());
+
+	it('addMagicStones caps at MAX_MAGIC_STONES and reports applied gain', () => {
+		addPlayer('p1', { magicStones: 95 });
+		const gained = addMagicStones(gameState.players['p1'], 25);
+
+		expect(gained).toBe(5);
+		expect(gameState.players['p1'].magicStones).toBe(MAX_MAGIC_STONES);
+	});
+
+	it('restoreCardCharges restores without exceeding max charges', () => {
+		const card = { id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 4 };
+		const restored = restoreCardCharges(card, 3);
+
+		expect(restored).toBe(1);
+		expect(card.remainingCharges).toBe(5);
+	});
+
+	it('restoreHandCharges can target adjacent slots for Chrono Trigger', () => {
+		addPlayer('p1', {
+			hand: [
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 1 },
+				{ id: 'chrono_trigger', type: 'summon', charges: 1, remainingCharges: 1 },
+				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 1 },
+			],
+		});
+
+		const restored = restoreHandCharges(gameState.players['p1'], 2, { slots: [0, 2] });
+
+		expect(restored).toEqual([
+			{ slotIndex: 0, cardId: 'iron_sword', amount: 2 },
+			{ slotIndex: 2, cardId: 'flame_blade', amount: 2 },
+		]);
+		expect(gameState.players['p1'].hand[0].remainingCharges).toBe(3);
+		expect(gameState.players['p1'].hand[2].remainingCharges).toBe(3);
+	});
+});
+
+describe('synergistic minion pulses', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+		vi.setSystemTime(0);
+		gameState.run = { status: 'playing' };
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('Mana Prism pulses Magic Stones while active', () => {
+		addPlayer('p1', { magicStones: 0 });
+		gameState.minions.push({
+			id: 'prism-1',
+			ownerId: 'p1',
+			type: 'mana_prism',
+			x: 0,
+			z: 0,
+			hp: 1,
+			ttl: 12,
+			lastPulseAt: 0,
+			pulseIntervalMs: 2000,
+			magicStonePulse: 10,
+		});
+
+		vi.setSystemTime(4000);
+		updateMinions();
+
+		expect(gameState.players['p1'].magicStones).toBe(20);
+		expect(gameState.minions[0].lastPulseAt).toBe(4000);
+	});
+
+	it('Battery Automaton restores charges periodically', () => {
+		addPlayer('p1', {
+			hand: [
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 4 },
+				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 3 },
+			],
+		});
+		gameState.minions.push({
+			id: 'battery-1',
+			ownerId: 'p1',
+			type: 'battery_automaton',
+			x: 0,
+			z: 0,
+			hp: 80,
+			ttl: 30,
+			lastChargePulseAt: 0,
+			chargePulseIntervalMs: 6000,
+			chargeRestore: 1,
+		});
+
+		vi.setSystemTime(6000);
+		updateMinions();
+
+		expect(gameState.players['p1'].hand[0].remainingCharges).toBe(5);
+		expect(gameState.minions[0].lastChargePulseAt).toBe(6000);
 	});
 });
 

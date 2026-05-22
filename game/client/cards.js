@@ -67,6 +67,45 @@ export const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'bleed',
   },
+  mana_prism: {
+    id: 'mana_prism',
+    name: 'Mana Prism',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'mana_prism',
+  },
+  harvesting_scythe: {
+    id: 'harvesting_scythe',
+    name: 'Harvesting Scythe',
+    type: 'weapon',
+    charges: 3,
+  },
+  sacrificial_altar: {
+    id: 'sacrificial_altar',
+    name: 'Sacrificial Altar',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'sacrificial_altar',
+  },
+  battery_automaton: {
+    id: 'battery_automaton',
+    name: 'Battery Automaton',
+    type: 'monster',
+    charges: 1,
+    magicStoneCost: 50,
+    effect: 'battery_automaton',
+  },
+  chrono_trigger: {
+    id: 'chrono_trigger',
+    name: 'Chrono Trigger',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'chrono_trigger',
+    adjacentChargeRestore: 2,
+  },
 };
 
 export const EVOLUTION_GRIND_REQUIRED = 10;

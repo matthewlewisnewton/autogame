@@ -7,6 +7,7 @@ const {
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
   MAX_HP,
+  MAX_MAGIC_STONES,
   SPAWN_PADDING,
   LOOT_SPAWN_CHANCE,
   VICTORY_REWARD_ROTATION
@@ -88,6 +89,59 @@ const CARD_DEFS = {
     minionHp: 90,
     isEvolved: true,
     specialEffect: 'bleed'
+  },
+  mana_prism: {
+    id: 'mana_prism',
+    name: 'Mana Prism',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'mana_prism',
+    durationSeconds: 12,
+    magicStonePulse: 10,
+    pulseIntervalMs: 2000,
+  },
+  harvesting_scythe: {
+    id: 'harvesting_scythe',
+    name: 'Harvesting Scythe',
+    type: 'weapon',
+    damage: 8,
+    charges: 3,
+    attackConeAngle: Math.PI,
+    magicStoneOnHit: 5,
+    magicStoneOnKill: 15,
+  },
+  sacrificial_altar: {
+    id: 'sacrificial_altar',
+    name: 'Sacrificial Altar',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'sacrificial_altar',
+    sacrificeRadius: 10,
+    magicStoneGain: 100,
+    chargeRestore: 2,
+  },
+  battery_automaton: {
+    id: 'battery_automaton',
+    name: 'Battery Automaton',
+    type: 'monster',
+    charges: 1,
+    magicStoneCost: 50,
+    effect: 'battery_automaton',
+    minionHp: 80,
+    minionTtl: 30,
+    chargeRestore: 1,
+    chargePulseIntervalMs: 6000,
+  },
+  chrono_trigger: {
+    id: 'chrono_trigger',
+    name: 'Chrono Trigger',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'chrono_trigger',
+    adjacentChargeRestore: 2,
   },
 };
 
@@ -577,6 +631,61 @@ function drawReplacementCard(player, slotIndex) {
   }
 }
 
+function addMagicStones(player, amount) {
+  if (!player || !Number.isFinite(amount) || amount <= 0) return 0;
+  const before = Number.isFinite(player.magicStones) ? player.magicStones : 0;
+  player.magicStones = Math.min(MAX_MAGIC_STONES, before + amount);
+  return player.magicStones - before;
+}
+
+function restoreCardCharges(card, amount) {
+  if (!card || !Number.isFinite(amount) || amount <= 0) return 0;
+  const maxCharges = Number.isFinite(card.charges) ? card.charges : 0;
+  const before = Number.isFinite(card.remainingCharges) ? card.remainingCharges : maxCharges;
+  const after = Math.min(maxCharges, before + amount);
+  card.remainingCharges = after;
+  return after - before;
+}
+
+function restoreHandCharges(player, amount, options = {}) {
+  if (!player || !Array.isArray(player.hand)) return [];
+
+  const allowedTypes = options.types ? new Set(options.types) : null;
+  const slots = Array.isArray(options.slots)
+    ? options.slots
+    : player.hand.map((_, index) => index);
+
+  let candidates = slots
+    .filter((slotIndex) => slotIndex >= 0 && slotIndex < player.hand.length)
+    .map((slotIndex) => ({ slotIndex, card: player.hand[slotIndex] }))
+    .filter(({ card }) => {
+      if (!card) return false;
+      if (allowedTypes && !allowedTypes.has(card.type)) return false;
+      return Number.isFinite(card.remainingCharges) && Number.isFinite(card.charges) && card.remainingCharges < card.charges;
+    });
+
+  if (options.selection === 'mostDepleted') {
+    candidates = candidates.sort((a, b) => {
+      const aMissing = a.card.charges - a.card.remainingCharges;
+      const bMissing = b.card.charges - b.card.remainingCharges;
+      return bMissing - aMissing || a.slotIndex - b.slotIndex;
+    });
+  } else if (options.selection === 'random' && candidates.length > 1) {
+    const start = Math.floor(Math.random() * candidates.length);
+    candidates = candidates.slice(start).concat(candidates.slice(0, start));
+  }
+
+  const limit = Number.isFinite(options.maxTargets) ? options.maxTargets : candidates.length;
+  const restored = [];
+  for (const { slotIndex, card } of candidates.slice(0, limit)) {
+    const restoredAmount = restoreCardCharges(card, amount);
+    if (restoredAmount > 0) {
+      restored.push({ slotIndex, cardId: card.id, amount: restoredAmount });
+    }
+  }
+  return restored;
+}
+
 function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
   if (!ENEMY_DEFS[type]) {
     throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
@@ -867,6 +976,9 @@ module.exports = {
   drawCardFromDeck,
   initPlayerHand,
   drawReplacementCard,
+  addMagicStones,
+  restoreCardCharges,
+  restoreHandCharges,
   spawnEnemy,
   removeDeadEnemies,
   cleanupAfterDamage,

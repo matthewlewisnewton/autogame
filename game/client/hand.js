@@ -13,7 +13,7 @@ export let slotCooldowns = [false, false, false, false];
  * Draw one card from the deck.
  * Returns null if the deck is empty or the card id is unknown.
  *
- * Copies `magicStoneCost` from the card definition when present (summon cards),
+ * Copies `magicStoneCost` from the card definition when present,
  * so the client can evaluate affordability in renderHand() and sync the
  * `.no-ms` CSS class when Magic Stones regenerate.
  *

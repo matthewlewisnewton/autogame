@@ -12,8 +12,8 @@ import {
 // ── CARD_DEFS ──
 
 describe('CARD_DEFS', () => {
-	it('has base and evolved card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(8);
+	it('has base, evolved, and synergistic card entries', () => {
+		expect(Object.keys(CARD_DEFS)).toHaveLength(13);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -62,6 +62,48 @@ describe('CARD_DEFS', () => {
 				specialEffect: expect.any(String),
 			});
 		}
+	});
+
+	it('contains synergistic resource and charge cards', () => {
+		expect(CARD_DEFS.mana_prism).toMatchObject({
+			id: 'mana_prism',
+			name: 'Mana Prism',
+			type: 'summon',
+			charges: 1,
+			magicStoneCost: 0,
+			effect: 'mana_prism',
+		});
+		expect(CARD_DEFS.harvesting_scythe).toMatchObject({
+			id: 'harvesting_scythe',
+			name: 'Harvesting Scythe',
+			type: 'weapon',
+			charges: 3,
+		});
+		expect(CARD_DEFS.sacrificial_altar).toMatchObject({
+			id: 'sacrificial_altar',
+			name: 'Sacrificial Altar',
+			type: 'summon',
+			charges: 1,
+			magicStoneCost: 0,
+			effect: 'sacrificial_altar',
+		});
+		expect(CARD_DEFS.battery_automaton).toMatchObject({
+			id: 'battery_automaton',
+			name: 'Battery Automaton',
+			type: 'monster',
+			charges: 1,
+			magicStoneCost: 50,
+			effect: 'battery_automaton',
+		});
+		expect(CARD_DEFS.chrono_trigger).toMatchObject({
+			id: 'chrono_trigger',
+			name: 'Chrono Trigger',
+			type: 'summon',
+			charges: 1,
+			magicStoneCost: 0,
+			effect: 'chrono_trigger',
+			adjacentChargeRestore: 2,
+		});
 	});
 });
 
@@ -118,30 +160,35 @@ describe('CARD_TYPE_STYLE', () => {
 // ── Card ID Sets ──
 
 describe('card ID sets', () => {
-	it('weaponCardIds contains base and evolved weapon card IDs', () => {
+	it('weaponCardIds contains base, evolved, and synergistic weapon card IDs', () => {
 		expect(weaponCardIds).toBeInstanceOf(Set);
 		expect(weaponCardIds.has('iron_sword')).toBe(true);
 		expect(weaponCardIds.has('flame_blade')).toBe(true);
 		expect(weaponCardIds.has('steel_broadsword')).toBe(true);
 		expect(weaponCardIds.has('inferno_edge')).toBe(true);
+		expect(weaponCardIds.has('harvesting_scythe')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(4);
+		expect(weaponCardIds.size).toBe(5);
 	});
 
-	it('summonCardIds contains base and evolved summon card IDs', () => {
+	it('summonCardIds contains base, evolved, and synergistic summon card IDs', () => {
 		expect(summonCardIds).toBeInstanceOf(Set);
 		expect(summonCardIds.has('battle_familiar')).toBe(true);
 		expect(summonCardIds.has('guardian_familiar')).toBe(true);
+		expect(summonCardIds.has('mana_prism')).toBe(true);
+		expect(summonCardIds.has('sacrificial_altar')).toBe(true);
+		expect(summonCardIds.has('chrono_trigger')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
-		expect(summonCardIds.size).toBe(2);
+		expect(summonCardIds.size).toBe(5);
 	});
 
-	it('monsterCardIds contains base and evolved monster card IDs', () => {
+	it('monsterCardIds contains base, evolved, and synergistic monster card IDs', () => {
 		expect(monsterCardIds).toBeInstanceOf(Set);
 		expect(monsterCardIds.has('dungeon_drake')).toBe(true);
 		expect(monsterCardIds.has('ancient_drake')).toBe(true);
+		expect(monsterCardIds.has('battery_automaton')).toBe(true);
 		expect(monsterCardIds.has('iron_sword')).toBe(false);
-		expect(monsterCardIds.size).toBe(2);
+		expect(monsterCardIds.size).toBe(3);
 	});
 });

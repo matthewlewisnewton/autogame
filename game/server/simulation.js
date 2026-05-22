@@ -651,12 +651,45 @@ function updateEnemies() {
 function updateMinions() {
   const dt = 1 / TICK_RATE;
   const runTerminal = _gameState.run && (_gameState.run.status === 'victory' || _gameState.run.status === 'failed');
+  const now = Date.now();
+
+  for (const minion of _gameState.minions) {
+    const owner = _gameState.players[minion.ownerId];
+    if (!owner || owner.dead) continue;
+
+    if (minion.type === 'mana_prism') {
+      const interval = minion.pulseIntervalMs || 2000;
+      const lastPulseAt = minion.lastPulseAt ?? now;
+      if (now - lastPulseAt >= interval) {
+        const pulses = Math.floor((now - lastPulseAt) / interval);
+        _progression().addMagicStones(owner, pulses * (minion.magicStonePulse || 10));
+        minion.lastPulseAt = lastPulseAt + pulses * interval;
+      }
+    }
+
+    if (minion.type === 'battery_automaton') {
+      const interval = minion.chargePulseIntervalMs || 6000;
+      const lastPulseAt = minion.lastChargePulseAt ?? now;
+      if (now - lastPulseAt >= interval) {
+        const pulses = Math.floor((now - lastPulseAt) / interval);
+        for (let i = 0; i < pulses; i++) {
+          _progression().restoreHandCharges(owner, minion.chargeRestore || 1, {
+            maxTargets: 1,
+            selection: 'random',
+          });
+        }
+        minion.lastChargePulseAt = lastPulseAt + pulses * interval;
+      }
+    }
+  }
 
   // AI: each living minion seeks nearest enemy, chases, and attacks
   // If no enemy is nearby, follows its owner.
   // Skipped entirely when the run is terminal (victory or failed)
   if (!runTerminal) {
     for (const minion of _gameState.minions) {
+      if (minion.type === 'mana_prism') continue;
+
       let nearestDist = Infinity;
       let nearestEnemy = null;
 
