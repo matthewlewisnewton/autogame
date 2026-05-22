@@ -29,3 +29,12 @@ tickets/**/handoff.md
 tickets/**/review-feedback.md
 tickets/**/decompose-round-*.txt
 tickets/**/.passed
+
+# Python build artifacts. egg-info lands at repo root (not harness/) because
+# pyproject.toml uses `where = [".."]` to make `harness` importable as a
+# top-level package; setuptools then treats autogame/ as the project source.
+autogame_harness.egg-info/
+*.egg-info/
+__pycache__/
+*.py[cod]
+.pytest_cache/
