@@ -120,6 +120,7 @@ const {
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
+  applyEventHorizon,
   spawnDragonsBreathEffect,
   isEnemyFrozen,
   cleanupStalePlayers,
@@ -1021,6 +1022,36 @@ function startServer(port) {
         return;
       }
 
+      if (cardDef.effect === 'event_horizon') {
+        const radius = cardDef.pullRadius || SUMMON_RADIUS;
+        const { pulled, crushed } = applyEventHorizon(
+          originX,
+          originZ,
+          cardDef,
+          socket.playerId
+        );
+        cleanupAfterDamage();
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius,
+          pulled,
+          crushed,
+          centerRadius: cardDef.centerRadius,
+          hits: crushed,
+        });
+
+        return;
+      }
+
       if (cardDef.effect === 'dragons_breath') {
         const rotation = player.rotation;
         const dirX = Math.cos(rotation);
@@ -1742,6 +1773,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,
+    applyEventHorizon,
     spawnDragonsBreathEffect,
     isEnemyFrozen,
     updateEnemies,

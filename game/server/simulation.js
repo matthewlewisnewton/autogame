@@ -632,6 +632,19 @@ function pullEnemiesToward(originX, originZ, radius, strength) {
   return moved;
 }
 
+function applyEventHorizon(originX, originZ, cardDef, attackerId) {
+  const radius = cardDef.pullRadius || 12;
+  const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
+  const crush = collectRadialHits(
+    originX,
+    originZ,
+    cardDef.centerRadius || 2.5,
+    cardDef.centerDamage || 30,
+    { attackerId }
+  );
+  return { pulled, crushed: crush.hits };
+}
+
 function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
   if (!_gameState.areaEffects) _gameState.areaEffects = [];
   const now = Date.now();
@@ -1119,6 +1132,7 @@ module.exports = {
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
+  applyEventHorizon,
   spawnDragonsBreathEffect,
   updateAreaEffects,
   isEnemyFrozen,

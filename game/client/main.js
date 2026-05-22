@@ -497,10 +497,17 @@ function bindSocketHandlers(s) {
 			if (data.magicStonesGained > 0) playSound('loot');
 		} else if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
+			const accent = CARD_ACCENT_STYLE[data.cardId];
+			const summonStyle = accent
+				? { color: parseInt(accent.color.slice(1), 16), emissive: parseInt(accent.color.slice(1), 16) }
+				: {};
 			if (data.cardId === 'glacier_collapse') {
 				rendererSpawnSummonEffect(origin, data.radius, { color: 0x38bdf8, emissive: 0x0ea5e9 });
 			} else {
-				rendererSpawnSummonEffect(origin, data.radius);
+				rendererSpawnSummonEffect(origin, data.radius, summonStyle);
+			}
+			if (data.cardId === 'event_horizon' && data.centerRadius) {
+				rendererSpawnSummonEffect(origin, data.centerRadius, summonStyle);
 			}
 		}
 		if (data.cardId === 'undead_commander') {

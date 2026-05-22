@@ -217,6 +217,16 @@ export const CARD_DEFS = {
     effect: 'gravity_well',
     specialEffect: 'pull',
   },
+  event_horizon: {
+    id: 'event_horizon',
+    name: 'Event Horizon',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 45,
+    effect: 'event_horizon',
+    isEvolved: true,
+    specialEffect: 'crush',
+  },
   echo_blade: {
     id: 'echo_blade',
     name: 'Echo Blade',
@@ -257,6 +267,7 @@ export const EVOLUTION_TRANSFORMS = {
   healing_font: 'divine_grace',
   skeleton_knight: 'undead_commander',
   storm_eagle: 'thunderbird',
+  gravity_well: 'event_horizon',
 };
 
 export const CARD_SELL_VALUES = {
@@ -342,6 +353,7 @@ export const CARD_ACCENT_STYLE = {
   storm_eagle: { color: '#93c5fd', icon: '🦅' },
   thunderbird: { color: '#38bdf8', icon: '⚡' },
   gravity_well: { color: '#c084fc', icon: '◎' },
+  event_horizon: { color: '#581c87', icon: '◉' },
   echo_blade: { color: '#f472b6', icon: '〰' },
   mana_leach: { color: '#a855f7', icon: '◈' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },

@@ -295,6 +295,20 @@ const CARD_DEFS = {
     pullStrength: 4,
     specialEffect: 'pull',
   },
+  event_horizon: {
+    id: 'event_horizon',
+    name: 'Event Horizon',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 45,
+    effect: 'event_horizon',
+    pullRadius: 12,
+    pullStrength: 6,
+    centerRadius: 2.5,
+    centerDamage: 30,
+    isEvolved: true,
+    specialEffect: 'crush',
+  },
   echo_blade: {
     id: 'echo_blade',
     name: 'Echo Blade',
@@ -358,6 +372,7 @@ const EVOLUTION_TRANSFORMS = {
   healing_font: 'divine_grace',
   skeleton_knight: 'undead_commander',
   storm_eagle: 'thunderbird',
+  gravity_well: 'event_horizon',
 };
 
 const CARD_SELL_VALUES = {
@@ -380,6 +395,7 @@ const CARD_SELL_VALUES = {
   saber_of_light: 8,
   excalibur_photon: 12,
   infinite_disk: 18,
+  event_horizon: 22,
 };
 
 function getCardSellValue(cardId) {
