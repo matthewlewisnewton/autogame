@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -164,6 +164,14 @@ describe('CARD_DEFS', () => {
 			type: 'summon',
 			effect: 'dragons_breath',
 		});
+		expect(CARD_DEFS.inferno_pillar).toMatchObject({
+			id: 'inferno_pillar',
+			name: 'Inferno Pillar',
+			type: 'summon',
+			effect: 'inferno_pillar',
+			isEvolved: true,
+			specialEffect: 'fire_dot',
+		});
 	});
 });
 
@@ -247,8 +255,9 @@ describe('card ID sets', () => {
 		expect(summonCardIds.has('gravity_well')).toBe(true);
 		expect(summonCardIds.has('mana_leach')).toBe(true);
 		expect(summonCardIds.has('dragons_breath')).toBe(true);
+		expect(summonCardIds.has('inferno_pillar')).toBe(true);
 		expect(summonCardIds.has('iron_sword')).toBe(false);
-		expect(summonCardIds.size).toBe(10);
+		expect(summonCardIds.size).toBe(11);
 	});
 
 	it('monsterCardIds contains base, evolved, and synergistic monster card IDs', () => {
@@ -274,6 +283,7 @@ describe('card ID sets', () => {
 			'echo_blade',
 			'mana_leach',
 			'dragons_breath',
+			'inferno_pillar',
 		];
 		for (const cardId of packIds) {
 			expect(CARD_ACCENT_STYLE[cardId]).toMatchObject({

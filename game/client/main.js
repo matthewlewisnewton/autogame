@@ -78,6 +78,7 @@ import {
 	applyWindupFlash as rendererApplyWindupFlash,
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
+	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
 	markLootCollected as rendererMarkLootCollected,
 	disposeMeshMap as rendererDisposeMeshMap,
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
@@ -468,7 +469,10 @@ function bindSocketHandlers(s) {
 			const direction = data.direction || { x: 1, z: 0 };
 			rendererSpawnAttackEffect(origin, direction);
 		}
-		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
+		if (data.cardId === 'inferno_pillar' && data.radius !== undefined) {
+			const origin = data.origin || { x: 0, z: 0 };
+			rendererSpawnInfernoPillarEffect(origin, data.radius);
+		} else if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
 			rendererSpawnSummonEffect(origin, data.radius);
 		}

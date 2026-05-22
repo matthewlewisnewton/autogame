@@ -643,6 +643,26 @@ function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId
   });
 }
 
+function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
+  if (!_gameState.areaEffects) _gameState.areaEffects = [];
+  const now = Date.now();
+  const ticks = cardDef.dotTicks || 4;
+  const intervalMs = cardDef.dotIntervalMs || 500;
+  _gameState.areaEffects.push({
+    id: crypto.randomUUID(),
+    type: 'inferno_pillar',
+    ownerId,
+    originX,
+    originZ,
+    range: cardDef.attackRange || 7,
+    damagePerTick: cardDef.damage || 12,
+    ticksRemaining: ticks,
+    intervalMs,
+    lastTickAt: now,
+    expiresAt: now + ticks * intervalMs + 250,
+  });
+}
+
 function updateAreaEffects() {
   if (!_gameState.areaEffects || _gameState.areaEffects.length === 0) return;
   const now = Date.now();
@@ -651,15 +671,25 @@ function updateAreaEffects() {
     if (now >= effect.expiresAt || effect.ticksRemaining <= 0) continue;
     if (now - effect.lastTickAt < effect.intervalMs) continue;
 
-    const { hits } = collectConeHits(
-      effect.originX,
-      effect.originZ,
-      effect.dirX,
-      effect.dirZ,
-      effect.range,
-      effect.coneAngle,
-      effect.damagePerTick
-    );
+    let hits;
+    if (effect.type === 'inferno_pillar') {
+      ({ hits } = collectRadialHits(
+        effect.originX,
+        effect.originZ,
+        effect.range,
+        effect.damagePerTick
+      ));
+    } else {
+      ({ hits } = collectConeHits(
+        effect.originX,
+        effect.originZ,
+        effect.dirX,
+        effect.dirZ,
+        effect.range,
+        effect.coneAngle,
+        effect.damagePerTick
+      ));
+    }
     effect.lastTickAt = now;
     effect.ticksRemaining -= 1;
     effect.lastHits = hits;
@@ -1082,6 +1112,7 @@ module.exports = {
   applyFreezeInRadius,
   pullEnemiesToward,
   spawnDragonsBreathEffect,
+  spawnInfernoPillarEffect,
   updateAreaEffects,
   isEnemyFrozen,
 

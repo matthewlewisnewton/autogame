@@ -101,6 +101,26 @@ describe('card evolution', () => {
 		expect(snapshot.players.p1.inventory).toEqual(player.inventory);
 	});
 
+	it('evolves Dragon\'s Breath +10 into Inferno Pillar', () => {
+		const player = {
+			inventory: [
+				createCardInstance('dragons_breath', {
+					instanceId: 'db-evolve',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { dragons_breath: 1 },
+			selectedDeck: ['db-evolve'],
+		};
+
+		const result = evolveCard(player, 'db-evolve');
+
+		expect(result.ok).toBe(true);
+		expect(result.toCardId).toBe('inferno_pillar');
+		expect(player.inventory[0].cardId).toBe('inferno_pillar');
+		expect(CARD_DEFS.inferno_pillar.damage).toBe(12);
+	});
+
 	it('defines every evolved card referenced by the transform table', () => {
 		for (const [baseCardId, evolvedCardId] of Object.entries(EVOLUTION_TRANSFORMS)) {
 			expect(CARD_DEFS[baseCardId]).toBeDefined();
