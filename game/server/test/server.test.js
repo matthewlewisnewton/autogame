@@ -2891,7 +2891,7 @@ describe('moveEntityToward(entity, target, maxDistance, options)', () => {
 		expect(entity.x).toBeCloseTo(room.x + 0.5, 4);
 	});
 
-	it('returns reached: true after wall-slide lands within stopDistance', () => {
+	it('returns reached: false after wall-slide leaves entity beyond stopDistance', () => {
 		// Deterministic layout so wall positions are fixed.
 		const savedLayout = gameState.layout;
 		const savedBounds = gameState.dungeonBounds;
