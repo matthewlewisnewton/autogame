@@ -87,12 +87,16 @@ const {
   randomRoomPosition,
   clampToDungeon,
   buildWallColliders,
+  rebuildWallColliders,
+  getWallColliders,
   wallAABB,
   checkWallCollision,
+  resolveWallCollision,
   checkSweptCollision,
   isEntityPositionBlocked,
   moveEntityToward,
   ENTITY_RADIUS,
+  PLAYER_RADIUS,
   ENEMY_DEFS,
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
@@ -167,6 +171,7 @@ gameState.layout = generateLayout(layoutSeed);
 console.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);
 
 gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
+rebuildWallColliders();
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
 /**
@@ -191,6 +196,7 @@ function resetGameState() {
   gameState.layoutSeed = seed;
   gameState.layout = generateLayout(seed);
   gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
+  rebuildWallColliders();
   // Ensure run is cleared — it should not exist after a reset
   delete gameState.run;
   // Clear victory counters so reward card selection resets between tests
@@ -600,8 +606,14 @@ function startServer(port) {
       newX = clamped.x;
       newZ = clamped.z;
 
-      // Swept collision check: reject moves whose path intersects any wall
-      if (checkSweptCollision(player.x, player.z, newX, newZ)) {
+      const wallColliders = getWallColliders();
+      const resolved = resolveWallCollision(newX, newZ, wallColliders, player.x, player.z);
+      newX = resolved.x;
+      newZ = resolved.z;
+
+      // Swept collision check: reject moves that pass through a wall instead
+      // of stopping at the resolved edge of it.
+      if (checkSweptCollision(player.x, player.z, newX, newZ, wallColliders, { allowEndpointTouch: true })) {
         const lastLogged = sweptCollisionLogTimes.get(socket.id) || 0;
         if (Date.now() - lastLogged >= SWEPT_COLLISION_LOG_THROTTLE_MS) {
           console.debug(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
@@ -1063,8 +1075,12 @@ if (typeof module !== 'undefined' && module.exports) {
     STARTING_DECK_IDS,
     checkWallCollision,
     buildWallColliders,
+    rebuildWallColliders,
+    getWallColliders,
     wallAABB,
+    resolveWallCollision,
     ENTITY_RADIUS,
+    PLAYER_RADIUS,
     isEntityPositionBlocked,
     moveEntityToward,
     randomWanderTarget,
