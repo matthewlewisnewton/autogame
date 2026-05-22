@@ -9,6 +9,7 @@ import {
 	spawnLoot,
 	spawnEnemy,
 	spawnEnemies,
+	firstRoomPosition,
 	createGameState,
 	resetGameState,
 	gameState,
@@ -628,10 +629,7 @@ describe('updateMinions()', () => {
 		expect(gameState.minions[0].ttl).toBeCloseTo(10 - 1 / TICK_RATE, 4);
 	});
 
-	it('spawns loot for dead enemies and removes them', () => {
-		// Mock Math.random below config.LOOT_SPAWN_CHANCE to force loot spawn
-		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
-
+	it('removes dead enemies (loot is pre-spawned at run start, not on death)', () => {
 		gameState.minions.push({
 			id: 'm1',
 			ownerId: 'p1',
@@ -652,12 +650,8 @@ describe('updateMinions()', () => {
 		updateMinions();
 
 		expect(gameState.enemies.length).toBe(0);
-		expect(gameState.loot.length).toBe(1);
-		expect(gameState.loot[0]).toHaveProperty('id');
-		expect(gameState.loot[0]).toHaveProperty('value');
-		expect(gameState.loot[0]).toHaveProperty('x');
-		expect(gameState.loot[0]).toHaveProperty('z');
-		expect(gameState.loot[0]).toHaveProperty('createdAt');
+		// Loot is no longer death-dropped; it is pre-spawned by spawnLoot() at run start.
+		expect(gameState.loot.length).toBe(0);
 
 		vi.restoreAllMocks();
 	});
@@ -766,19 +760,21 @@ describe('updateMinions()', () => {
 
 // ── spawnLoot ──
 
-describe('spawnLoot(x, z)', () => {
+describe('spawnLoot(layout, rng)', () => {
 	beforeEach(() => resetState());
 
 	it('creates loot with correct structure when it spawns', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1); // below LOOT_SPAWN_CHANCE so it spawns
 
-		spawnLoot(10, 20);
+		const layout = generateLayout(42);
+		const rng = mulberry32(99);
+		spawnLoot(layout, rng);
 
 		expect(gameState.loot.length).toBe(1);
 		const loot = gameState.loot[0];
 		expect(loot).toHaveProperty('id');
-		expect(loot).toHaveProperty('x', 10);
-		expect(loot).toHaveProperty('z', 20);
+		expect(loot).toHaveProperty('x');
+		expect(loot).toHaveProperty('z');
 		expect(loot).toHaveProperty('value');
 		expect(loot).toHaveProperty('createdAt');
 		expect(typeof loot.id).toBe('string');
@@ -791,7 +787,9 @@ describe('spawnLoot(x, z)', () => {
 	it('loot value is in range [5, 20)', () => {
 		vi.spyOn(Math, 'random').mockReturnValueOnce(config.LOOT_SPAWN_CHANCE - 0.1).mockReturnValueOnce(0.5); // below LOOT_SPAWN_CHANCE to spawn; 0.5 for value
 
-		spawnLoot(0, 0);
+		const layout = generateLayout(42);
+		const rng = mulberry32(99);
+		spawnLoot(layout, rng);
 		expect(gameState.loot[0].value).toBeGreaterThanOrEqual(5);
 		expect(gameState.loot[0].value).toBeLessThan(20);
 
@@ -801,7 +799,9 @@ describe('spawnLoot(x, z)', () => {
 	it('does not spawn loot when random >= LOOT_SPAWN_CHANCE', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE + 0.1); // above LOOT_SPAWN_CHANCE
 
-		spawnLoot(0, 0);
+		const layout = generateLayout(42);
+		const rng = mulberry32(99);
+		spawnLoot(layout, rng);
 
 		expect(gameState.loot.length).toBe(0);
 
@@ -811,12 +811,61 @@ describe('spawnLoot(x, z)', () => {
 	it('loot createdAt is a timestamp', () => {
 		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
 
+		const layout = generateLayout(42);
+		const rng = mulberry32(99);
 		const before = Date.now();
-		spawnLoot(0, 0);
+		spawnLoot(layout, rng);
 		const after = Date.now();
 
 		expect(gameState.loot[0].createdAt).toBeGreaterThanOrEqual(before);
 		expect(gameState.loot[0].createdAt).toBeLessThanOrEqual(after);
+
+		vi.restoreAllMocks();
+	});
+
+	it('spawns loot in treasure room when one exists', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
+
+		const layout = generateLayout(42);
+		const rng = mulberry32(99);
+		spawnLoot(layout, rng);
+
+		const loot = gameState.loot[0];
+		const treasureRooms = layout.rooms.filter(r => r.role === 'treasure');
+		expect(treasureRooms.length).toBeGreaterThan(0);
+
+		// Verify loot is within the treasure room bounds
+		const inTreasureRoom = treasureRooms.some(room => {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			return Math.abs(loot.x - room.x) < halfW && Math.abs(loot.z - room.z) < halfD;
+		});
+		expect(inTreasureRoom).toBe(true);
+
+		vi.restoreAllMocks();
+	});
+
+	it('falls back to non-start room when no treasure room exists', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(config.LOOT_SPAWN_CHANCE - 0.1);
+
+		const layout = generateLayout(42);
+		// Remove treasure role to test fallback
+		layout.rooms.forEach(r => {
+			if (r.role === 'treasure') r.role = 'combat';
+		});
+		const rng = mulberry32(99);
+		spawnLoot(layout, rng);
+
+		const loot = gameState.loot[0];
+		const startRooms = layout.rooms.filter(r => r.role === 'start');
+
+		// Verify loot is NOT in the start room
+		const inStartRoom = startRooms.some(room => {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			return Math.abs(loot.x - room.x) < halfW && Math.abs(loot.z - room.z) < halfD;
+		});
+		expect(inStartRoom).toBe(false);
 
 		vi.restoreAllMocks();
 	});
