@@ -234,7 +234,120 @@ function generateLayout(seed) {
     return { x1: from.x, z1: from.z, x2: to.x, z2: to.z, walls, corridorLength };
   });
 
+  // Assign role metadata to every room
+  assignRoomRoles({ rooms, passages: passageObjects });
+
   return { rooms, passages: passageObjects };
+}
+
+// ── Room Role Assignment ──
+
+/**
+ * Build an adjacency map from the layout's passages.
+ * Returns Map<roomIndex, Set<neighborIndex>> keyed by room array index.
+ */
+function buildAdjacencyMap(layout) {
+  const adj = new Map();
+  for (let i = 0; i < layout.rooms.length; i++) {
+    adj.set(i, new Set());
+  }
+  for (const p of layout.passages) {
+    const fromIdx = layout.rooms.findIndex(r => r.x === p.x1 && r.z === p.z1);
+    const toIdx = layout.rooms.findIndex(r => r.x === p.x2 && r.z === p.z2);
+    if (fromIdx >= 0 && toIdx >= 0) {
+      adj.get(fromIdx).add(toIdx);
+      adj.get(toIdx).add(fromIdx);
+    }
+  }
+  return adj;
+}
+
+/**
+ * BFS from startIdx over the adjacency map.
+ * Returns number[] where index = room index, value = hop distance (Infinity if unreachable).
+ */
+function bfsDistances(adjacencyMap, startIdx) {
+  const dist = Array.from(adjacencyMap.keys()).map(() => Infinity);
+  dist[startIdx] = 0;
+  const queue = [startIdx];
+  let head = 0;
+  while (head < queue.length) {
+    const current = queue[head++];
+    const currentDist = dist[current];
+    for (const neighbor of adjacencyMap.get(current)) {
+      if (dist[neighbor] === Infinity) {
+        dist[neighbor] = currentDist + 1;
+        queue.push(neighbor);
+      }
+    }
+  }
+  return dist;
+}
+
+/**
+ * Return the room farthest (by BFS hop count) from the given start room.
+ * startRoom should be a room object from layout.rooms.
+ * Ties are broken by lowest index (deterministic).
+ */
+function findFarthestRoom(layout, startRoom) {
+  const startIdx = layout.rooms.indexOf(startRoom);
+  const adj = buildAdjacencyMap(layout);
+  const dist = bfsDistances(adj, startIdx);
+  let maxDist = -1;
+  let farthestIdx = startIdx;
+  for (let i = 0; i < dist.length; i++) {
+    if (dist[i] > maxDist) {
+      maxDist = dist[i];
+      farthestIdx = i;
+    }
+  }
+  return layout.rooms[farthestIdx];
+}
+
+/**
+ * Assign role metadata to every room in the layout.
+ * Mutates each room, adding: role, spawnWeight, encounterTier.
+ * - start room (index 0): role 'start', spawnWeight 0, encounterTier 0
+ * - farthest room: role 'treasure', spawnWeight 2, encounterTier 0
+ * - all others: role 'combat', spawnWeight 1, encounterTier = distance / maxDistance
+ */
+function assignRoomRoles(layout) {
+  const adj = buildAdjacencyMap(layout);
+  const startIdx = 0;
+  const dist = bfsDistances(adj, startIdx);
+
+  // Find the farthest room (same logic as findFarthestRoom)
+  let maxDist = 0;
+  for (let i = 1; i < dist.length; i++) {
+    if (dist[i] > maxDist) {
+      maxDist = dist[i];
+    }
+  }
+  let treasureIdx = startIdx;
+  for (let i = 0; i < dist.length; i++) {
+    if (dist[i] === maxDist) {
+      treasureIdx = i;
+      break;
+    }
+  }
+
+  for (let i = 0; i < layout.rooms.length; i++) {
+    const room = layout.rooms[i];
+    if (i === startIdx) {
+      room.role = 'start';
+      room.spawnWeight = 0;
+      room.encounterTier = 0;
+    } else if (i === treasureIdx) {
+      room.role = 'treasure';
+      room.spawnWeight = 2;
+      room.encounterTier = 0;
+    } else {
+      room.role = 'combat';
+      room.spawnWeight = 1;
+      // Normalized distance from start, clamped 0–1
+      room.encounterTier = maxDist > 0 ? Math.min(1, dist[i] / maxDist) : 0;
+    }
+  }
 }
 
 // ── Exports ──
@@ -242,6 +355,10 @@ function generateLayout(seed) {
 module.exports = {
   mulberry32,
   generateLayout,
+  buildAdjacencyMap,
+  bfsDistances,
+  findFarthestRoom,
+  assignRoomRoles,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
