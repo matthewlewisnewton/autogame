@@ -1639,3 +1639,26 @@ None. The misnamed test nit from ticket 100 is resolved; runtime and acceptance 
 
 ---
 
+
+## v0.72 — Audio Autoplay Resume & Mute Persistence  (2026-05-22 05:12:02)
+
+
+## Code quality
+
+- Focused diff (~150 lines in `main.js`, ~150 in tests); helpers are small and match existing `localStorage` patterns (`TOKEN_KEY`, `STORAGE_KEY_PLAYER_ID`).
+- Test-only exports (`__resumeAudioContext`, `__loadSoundEnabled`, `__getPersistedMute`) follow established conventions.
+- No dead code or obvious logic bugs in the persistence/resume paths.
+- Coverage run: 98 client tests pass; coverage report scoped to changed modules (hand/cards/collision/delta) — informational only.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied in the live working tree, and the captured run proves the game starts and plays cleanly.
+
+---
+
+## Nits (non-blocking, filed separately)
+
+See `nits.md` for follow-up backlog items: missing `resumeAudioContext` unit tests, and no cold-import test for startup mute icon from pre-seeded `localStorage`.
+
