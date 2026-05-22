@@ -824,6 +824,122 @@ describe('playSound() and mute toggle', () => {
 	});
 });
 
+// ── resumeAudioContext ──
+
+describe('resumeAudioContext', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'mute-btn',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				if (id === 'mute-btn') el.textContent = '🔊';
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	afterEach(() => {
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+	});
+
+	it('calls resume() once when AudioContext state is suspended', async () => {
+		await import('../main.js');
+
+		let resumeCallCount = 0;
+		const mockCtx = {
+			state: 'suspended',
+			resume: function() { resumeCallCount++; },
+		};
+		window.__setAudioCtx(mockCtx);
+
+		window.__resumeAudioContext();
+
+		expect(resumeCallCount).toBe(1);
+	});
+
+	it('does not call resume() when AudioContext state is running', async () => {
+		await import('../main.js');
+
+		let resumeCallCount = 0;
+		const mockCtx = {
+			state: 'running',
+			resume: function() { resumeCallCount++; },
+		};
+		window.__setAudioCtx(mockCtx);
+
+		window.__resumeAudioContext();
+
+		expect(resumeCallCount).toBe(0);
+	});
+
+	it('does not call resume() when audioCtx is null', async () => {
+		await import('../main.js');
+
+		window.__setAudioCtx(null);
+
+		expect(() => window.__resumeAudioContext()).not.toThrow();
+	});
+
+	it('playSound() with suspended context does not throw', async () => {
+		// Mock AudioContext constructor so playSound can create oscillators
+		let resumeCallCount = 0;
+		const mockCtx = {
+			state: 'suspended',
+			currentTime: 0,
+			destination: {},
+			resume: function() { resumeCallCount++; this.state = 'running'; },
+			createOscillator: function() {
+				return {
+					type: '',
+					frequency: { value: 0 },
+					connect: function() {},
+					start: function() {},
+					stop: function() {},
+				};
+			},
+		};
+
+		Object.defineProperty(window, 'AudioContext', {
+			value: function() { return mockCtx; },
+			writable: true,
+			configurable: true,
+		});
+
+		await import('../main.js');
+
+		// Inject the mock context so playSound finds it
+		window.__setAudioCtx(mockCtx);
+
+		// Should not throw — resumeAudioContext handles suspended state, then play proceeds
+		expect(() => window.playSound('card')).not.toThrow();
+		expect(resumeCallCount).toBe(1);
+	});
+});
+
 // ── cardUsed handler: enemyHit sound throttle ──
 
 describe('cardUsed handler — enemyHit sound throttle', () => {

@@ -2127,6 +2127,8 @@ window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMe
 window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
 window.__useCardForTest = useCard;                // test-only: expose useCard for cooldown tests
 window.__resumeAudioContext = resumeAudioContext; // test-only: expose resumeAudioContext
+window.__setAudioCtx = (ctx) => { audioCtx = ctx; }; // test-only: inject mock AudioContext
+window.__getAudioCtx = () => audioCtx;              // test-only: read current AudioContext
 window.showAuthOverlay = showAuthOverlay;         // test-only: expose auth overlay functions
 window.hideAuthOverlay = hideAuthOverlay;
 window.showRegisterForm = showRegisterForm;
