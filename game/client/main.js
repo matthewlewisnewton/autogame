@@ -2,6 +2,11 @@
 // All code below is UI/Three.js/Socket-dependent and cannot be unit tested.
 // Testable logic is extracted to cards.js, collision.js, and hand.js.
 
+import {
+	formatObjectiveSummary,
+	formatRewardSummary,
+	renderQuestBoard,
+} from './questBoard.js';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
@@ -67,6 +72,8 @@ import {
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
+const questBoardEl = document.getElementById('quest-board');
+const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const lobbyEl = document.getElementById('lobby');
 const uiEl = document.getElementById('ui');
@@ -215,6 +222,9 @@ function bindSocketHandlers(s) {
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
 		renderDeckEditor();
+		if (data.state) {
+			applyQuestBoardState(null, data.state.selectedQuestId);
+		}
 
 		// Auth: display username and show logout button if logged in
 		if (data.accountId) {
@@ -277,6 +287,7 @@ function bindSocketHandlers(s) {
 			if (cardHandEl) cardHandEl.style.display = 'none';
 			if (lobbyEl) lobbyEl.classList.remove('hidden');
 			renderDeckEditor();
+			applyQuestBoardState(null, state.selectedQuestId);
 			setGamePhase('lobby');
 		}
 
@@ -457,8 +468,16 @@ function bindSocketHandlers(s) {
 		showDeckError(data.reason);
 	});
 
+	s.on('questError', (data) => {
+		if (!data || !data.reason) return;
+		showQuestError(data.reason);
+	});
+
 	s.on('lobbyUpdate', (data) => {
 		renderPlayerList(data.players);
+		if (data.quests || data.selectedQuestId) {
+			applyQuestBoardState(data.quests, data.selectedQuestId);
+		}
 		if (data.players && myId) {
 			const me = data.players.find((p) => p.id === myId);
 			if (me) {
@@ -520,7 +539,32 @@ let currentLayout = null; // persisted layout from init; stateUpdate omits it
 let mySelectedDeck = [];
 let myInventory = null;
 let myOwnedCards = {};
+let availableQuests = [];
+let selectedQuestId = 'training_caverns';
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
+
+function applyQuestBoardState(quests, questId) {
+	if (Array.isArray(quests)) availableQuests = quests;
+	if (typeof questId === 'string') selectedQuestId = questId;
+	renderQuestBoardState();
+}
+
+function renderQuestBoardState() {
+	renderQuestBoard(questBoardEl, availableQuests, selectedQuestId, (questId) => {
+		if (!socket) return;
+		socket.emit('selectQuest', { questId });
+	});
+	if (questErrorEl) {
+		questErrorEl.style.display = 'none';
+		questErrorEl.textContent = '';
+	}
+}
+
+function showQuestError(message) {
+	if (!questErrorEl) return;
+	questErrorEl.textContent = message;
+	questErrorEl.style.display = 'block';
+}
 
 function requestDebugScenario() {
 	if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
@@ -1156,6 +1200,12 @@ window.__setDeckState = (deck, owned, inventory) => {
 	myOwnedCards = owned || myOwnedCards;
 	if (inventory !== undefined) myInventory = inventory;
 };
+window.renderQuestBoardState = renderQuestBoardState;
+window.__setQuestBoardState = (quests, questId) => applyQuestBoardState(quests, questId);
+window.__getSelectedQuestId = () => selectedQuestId;
+window.formatObjectiveSummary = formatObjectiveSummary;
+window.formatRewardSummary = formatRewardSummary;
+window.renderQuestBoard = renderQuestBoard;
 window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;

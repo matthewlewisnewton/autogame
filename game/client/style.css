@@ -229,6 +229,101 @@ canvas {
   font-size: 14px;
 }
 
+/* ── Quest board ── */
+
+#quest-board-wrapper {
+  width: min(720px, 92vw);
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+#quest-board-wrapper h3 {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: #94a3b8;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+#quest-board {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.quest-board-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  color: #64748b;
+  font-size: 13px;
+  margin: 0;
+}
+
+.quest-card {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  text-align: left;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(148, 163, 184, 0.15);
+  border-radius: 8px;
+  padding: 12px 14px;
+  color: #e2e8f0;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.quest-card:hover {
+  border-color: rgba(59, 130, 246, 0.5);
+  background: rgba(30, 41, 59, 0.85);
+}
+
+.quest-card.selected {
+  border-color: #3b82f6;
+  background: rgba(37, 99, 235, 0.15);
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
+}
+
+.quest-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.quest-description {
+  font-size: 13px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+
+.quest-objective,
+.quest-reward {
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+#quest-error {
+  width: 100%;
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  border-radius: 6px;
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fca5a5;
+  text-align: center;
+}
+
 #ready-btn {
   padding: 12px 32px;
   font-size: 16px;

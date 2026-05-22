@@ -4,6 +4,12 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const {
+  QUEST_DEFS,
+  DEFAULT_QUEST_ID,
+  isValidQuestId,
+  buildQuestUpdatePayload
+} = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
@@ -63,7 +69,8 @@ function createGameState() {
     minions: [],
     loot: [],
     lobby: [],
-    gamePhase: 'lobby'
+    gamePhase: 'lobby',
+    selectedQuestId: DEFAULT_QUEST_ID
   };
 }
 
@@ -243,7 +250,8 @@ function lobbyPlayerList() {
 function broadcastLobbyUpdate() {
   io.emit('lobbyUpdate', {
     players: lobbyPlayerList(),
-    gamePhase: gameState.gamePhase
+    gamePhase: gameState.gamePhase,
+    ...buildQuestUpdatePayload(gameState)
   });
 }
 
@@ -983,6 +991,24 @@ function startServer(port) {
     }
   });
 
+  socket.on('selectQuest', (data) => {
+    if (gameState.gamePhase !== 'lobby') return;
+
+    const questId = data && typeof data.questId === 'string' ? data.questId : null;
+    if (!questId) {
+      socket.emit('questError', { reason: 'Missing questId' });
+      return;
+    }
+
+    if (!isValidQuestId(questId)) {
+      socket.emit('questError', { reason: `Unknown quest: ${questId}` });
+      return;
+    }
+
+    gameState.selectedQuestId = questId;
+    broadcastLobbyUpdate();
+  });
+
   socket.on('playerReady', (ready) => {
     const player = gameState.players[socket.playerId];
     if (!player) return;
@@ -1309,6 +1335,10 @@ if (typeof module !== 'undefined' && module.exports) {
     addMagicStones,
     restoreCardCharges,
     restoreHandCharges,
+    QUEST_DEFS,
+    DEFAULT_QUEST_ID,
+    isValidQuestId,
+    buildQuestUpdatePayload,
     CARD_DEFS,
     STARTING_DECK_IDS,
     EVOLUTION_GRIND_REQUIRED,
