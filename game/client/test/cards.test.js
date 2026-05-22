@@ -157,6 +157,17 @@ describe('CARD_DEFS', () => {
 			type: 'summon',
 			effect: 'healing_font',
 		});
+		expect(CARD_DEFS.divine_grace).toMatchObject({
+			id: 'divine_grace',
+			name: 'Divine Grace',
+			type: 'summon',
+			effect: 'divine_grace',
+			healAmount: 38,
+			magicStoneRestore: 10,
+			isEvolved: true,
+			specialEffect: 'heal_and_mana',
+		});
+		expect(EVOLUTION_TRANSFORMS.healing_font).toBe('divine_grace');
 		expect(CARD_DEFS.skeleton_knight).toMatchObject({
 			id: 'skeleton_knight',
 			name: 'Skeleton Knight',
@@ -273,6 +284,7 @@ describe('card ID sets', () => {
 		expect(summonCardIds.has('frost_nova')).toBe(true);
 		expect(summonCardIds.has('glacier_collapse')).toBe(true);
 		expect(summonCardIds.has('healing_font')).toBe(true);
+		expect(summonCardIds.has('divine_grace')).toBe(true);
 		expect(summonCardIds.has('gravity_well')).toBe(true);
 		expect(summonCardIds.has('mana_leach')).toBe(true);
 		expect(summonCardIds.has('dragons_breath')).toBe(true);
@@ -315,6 +327,13 @@ describe('card ID sets', () => {
 		expect(CARD_ACCENT_STYLE.infinite_disk).toMatchObject({
 			color: '#a5f3fc',
 			icon: '∞',
+		});
+	});
+
+	it('CARD_ACCENT_STYLE defines icon and color for Divine Grace', () => {
+		expect(CARD_ACCENT_STYLE.divine_grace).toMatchObject({
+			color: '#fde68a',
+			icon: '✧',
 		});
 	});
 });

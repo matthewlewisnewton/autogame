@@ -167,6 +167,18 @@ describe('new card combat helpers', () => {
 		expect(gameState.players.p1.hp).toBe(85);
 	});
 
+	it('Divine Grace heals 50% more than Healing Font and restores magic stones', () => {
+		expect(CARD_DEFS.divine_grace.healAmount).toBe(38);
+		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBe(10);
+		addPlayer('p1', { hp: 60, magicStones: 0 });
+		const healed = healPlayer('p1', CARD_DEFS.divine_grace.healAmount);
+		expect(healed).toBe(38);
+		expect(gameState.players.p1.hp).toBe(98);
+		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.divine_grace.magicStoneRestore);
+		expect(gained).toBe(10);
+		expect(gameState.players.p1.magicStones).toBe(10);
+	});
+
 	it('Gravity Well pulls enemies toward the origin', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 8, z: 0, hp: 40 }];
 		const before = gameState.enemies[0].x;

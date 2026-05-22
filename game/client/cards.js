@@ -164,6 +164,18 @@ export const CARD_DEFS = {
     effect: 'healing_font',
     specialEffect: 'heal',
   },
+  divine_grace: {
+    id: 'divine_grace',
+    name: 'Divine Grace',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'divine_grace',
+    healAmount: 38,
+    magicStoneRestore: 10,
+    isEvolved: true,
+    specialEffect: 'heal_and_mana',
+  },
   skeleton_knight: {
     id: 'skeleton_knight',
     name: 'Skeleton Knight',
@@ -225,6 +237,7 @@ export const EVOLUTION_TRANSFORMS = {
   saber_of_light: 'excalibur_photon',
   photon_slicer: 'infinite_disk',
   frost_nova: 'glacier_collapse',
+  healing_font: 'divine_grace',
 };
 
 export const CARD_SELL_VALUES = {
@@ -236,6 +249,7 @@ export const CARD_SELL_VALUES = {
   inferno_edge: 18,
   guardian_familiar: 25,
   ancient_drake: 20,
+  divine_grace: 18,
   mana_prism: 10,
   harvesting_scythe: 6,
   sacrificial_altar: 14,
@@ -301,6 +315,7 @@ export const CARD_ACCENT_STYLE = {
   frost_nova: { color: '#67e8f9', icon: '❄' },
   glacier_collapse: { color: '#38bdf8', icon: '🧊' },
   healing_font: { color: '#86efac', icon: '♥' },
+  divine_grace: { color: '#fde68a', icon: '✧' },
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },
   storm_eagle: { color: '#93c5fd', icon: '🦅' },
   gravity_well: { color: '#c084fc', icon: '◎' },
