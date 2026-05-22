@@ -1,0 +1,860 @@
+// ── Server Simulation Module ──
+// Tick-based entity AI, collision, player damage, magic stone regen, stale cleanup.
+// Imported by index.js; re-exported from index.js for test compatibility.
+
+const crypto = require('crypto');
+const {
+  TICK_RATE,
+  MOVE_SPEED,
+  DETECTION_RADIUS,
+  ENEMY_ATTACK_RANGE,
+  ENEMY_ATTACK_RECOVERY_MS,
+  MAX_MAGIC_STONES,
+  MAGIC_STONES_REGEN_PER_TICK,
+  SUMMON_RADIUS,
+  ATTACK_RANGE,
+  STALE_THRESHOLD,
+  BOUNDS_MARGIN,
+  SPAWN_PADDING,
+  MAX_HP,
+  RESPAWN_DELAY_MS,
+  LOOT_LIFETIME_MS,
+  LOOT_SPAWN_CHANCE,
+  COOLDOWN_MS
+} = require('./config');
+const {
+  mulberry32,
+  roomsByRole,
+  randomRoomPositionByRole,
+  GRID_COLS,
+  GRID_ROWS,
+  CELL_SPACING,
+  MIN_ROOM_SIZE,
+  MAX_ROOM_SIZE_INCLUSIVE,
+  PASSAGE_WIDTH
+} = require('./dungeon');
+
+// ── Circular-dependency resolution ──
+// simulation.js must not require('./index') (circular). Instead, index.js
+// calls setGameState() / setCallbacks() after both modules are loaded.
+
+let _gameState = null;
+let _timeouts = null;
+let _onTerminalCheck = null;       // checkRunTerminalState()
+let _onCleanupAfterDamage = null;  // callback after removeDeadEnemies > 0
+let _findSocketByPlayerId = null;
+let _savePlayerData = null;
+
+function setGameState(gs, timeouts) {
+  _gameState = gs;
+  _timeouts = timeouts;
+}
+
+function setTerminalCheckCallback(fn) { _onTerminalCheck = fn; }
+function setCleanupAfterDamageCallback(fn) { _onCleanupAfterDamage = fn; }
+function setFindSocketCallback(fn) { _findSocketByPlayerId = fn; }
+function setSavePlayerCallback(fn) { _savePlayerData = fn; }
+
+// ── Collision System ──
+
+const PLAYER_RADIUS = 0.5;
+const WALL_THICKNESS = 0.4;
+const PASSAGE_WALL_THICKNESS = 0.3;
+const ENTITY_RADIUS = 0.45;
+
+/**
+ * Build AABB colliders from the current dungeon layout walls.
+ * Returns an array of { minX, maxX, minZ, maxZ } objects.
+ */
+function buildWallColliders() {
+  const colliders = [];
+  const layout = _gameState.layout;
+  if (!layout || !layout.rooms || !layout.passages) return colliders;
+
+  for (const room of layout.rooms) {
+    for (const wall of room.walls) {
+      colliders.push(wallAABB(wall, WALL_THICKNESS / 2));
+    }
+  }
+  for (const passage of layout.passages) {
+    for (const wall of passage.walls) {
+      colliders.push(wallAABB({ ...wall, length: passage.corridorLength }, PASSAGE_WALL_THICKNESS / 2));
+    }
+  }
+
+  return colliders;
+}
+
+/**
+ * Compute the AABB for a wall segment given its half-thickness.
+ */
+function wallAABB(wall, halfThickness) {
+  if (wall.axis === 'x') {
+    return {
+      minX: wall.x - wall.length / 2 - halfThickness,
+      maxX: wall.x + wall.length / 2 + halfThickness,
+      minZ: wall.z - halfThickness,
+      maxZ: wall.z + halfThickness,
+    };
+  } else {
+    return {
+      minX: wall.x - halfThickness,
+      maxX: wall.x + halfThickness,
+      minZ: wall.z - wall.length / 2 - halfThickness,
+      maxZ: wall.z + wall.length / 2 + halfThickness,
+    };
+  }
+}
+
+/**
+ * Check if a proposed player position overlaps any wall collider.
+ * Returns true if the position is inside a wall (collision), false otherwise.
+ */
+function checkWallCollision(px, pz) {
+  const colliders = buildWallColliders();
+  const pr = PLAYER_RADIUS;
+
+  for (const w of colliders) {
+    if (px + pr <= w.minX || px - pr >= w.maxX) continue;
+    if (pz + pr <= w.minZ || pz - pr >= w.maxZ) continue;
+    return true; // overlap
+  }
+
+  return false;
+}
+
+/**
+ * Check if the line segment from (fromX, fromZ) to (toX, toZ) intersects
+ * any wall collider expanded by PLAYER_RADIUS. Returns true on intersection.
+ * Uses a slab-based segment-AABB intersection test.
+ */
+function checkSweptCollision(fromX, fromZ, toX, toZ) {
+  const colliders = buildWallColliders();
+  const pr = PLAYER_RADIUS;
+
+  for (const w of colliders) {
+    // Expand AABB by player radius
+    const aabb = {
+      minX: w.minX - pr,
+      maxX: w.maxX + pr,
+      minZ: w.minZ - pr,
+      maxZ: w.maxZ + pr,
+    };
+
+    if (segmentIntersectsAABB(fromX, fromZ, toX, toZ, aabb)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Segment-AABB intersection using the slab method (Li-Whitted).
+ * Returns true if the segment from (x1, z1) to (x2, z2) intersects the AABB.
+ */
+function segmentIntersectsAABB(x1, z1, x2, z2, aabb) {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+
+  let tmin = 0;
+  let tmax = 1;
+
+  // X slab
+  if (Math.abs(dx) > 1e-8) {
+    let t0 = (aabb.minX - x1) / dx;
+    let t1 = (aabb.maxX - x1) / dx;
+    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }
+    tmin = Math.max(tmin, t0);
+    tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return false;
+  } else {
+    // Segment is axis-aligned in X — check if x1 is inside slab
+    if (x1 < aabb.minX || x1 > aabb.maxX) return false;
+  }
+
+  // Z slab
+  if (Math.abs(dz) > 1e-8) {
+    let t0 = (aabb.minZ - z1) / dz;
+    let t1 = (aabb.maxZ - z1) / dz;
+    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }
+    tmin = Math.max(tmin, t0);
+    tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return false;
+  } else {
+    // Segment is axis-aligned in Z — check if z1 is inside slab
+    if (z1 < aabb.minZ || z1 > aabb.maxZ) return false;
+  }
+
+  return true;
+}
+
+/**
+ * Check if a point position overlaps any wall collider expanded by radius.
+ * Returns true when overlapping a wall, false otherwise.
+ */
+function isEntityPositionBlocked(x, z, radius) {
+  const colliders = buildWallColliders();
+  const r = radius != null ? radius : ENTITY_RADIUS;
+
+  for (const w of colliders) {
+    if (x + r <= w.minX || x - r >= w.maxX) continue;
+    if (z + r <= w.minZ || z - r >= w.maxZ) continue;
+    return true; // overlap
+  }
+
+  return false;
+}
+
+/**
+ * Attempt to move an entity toward a target while respecting wall colliders
+ * and dungeon bounds. Uses axis-separated wall-slide when direct movement
+ * is blocked.
+ *
+ * Returns { moved, blocked, reached } metadata.
+ */
+function moveEntityToward(entity, target, maxDistance, options) {
+  const radius = (options && options.radius) != null ? options.radius : ENTITY_RADIUS;
+  const stopDistance = (options && options.stopDistance) != null ? options.stopDistance : 0.1;
+
+  const dx = target.x - entity.x;
+  const dz = target.z - entity.z;
+  const dist = Math.hypot(dx, dz);
+
+  // Already within stop distance
+  if (dist <= stopDistance) {
+    return { moved: false, blocked: false, reached: true };
+  }
+
+  // Normalize direction
+  const ndx = dx / dist;
+  const ndz = dz / dist;
+
+  // Clamp movement to maxDistance
+  const move = Math.min(dist, maxDistance);
+
+  // Proposed position
+  const proposedX = entity.x + ndx * move;
+  const proposedZ = entity.z + ndz * move;
+
+  // Try direct movement
+  if (!isEntityPositionBlocked(proposedX, proposedZ, radius)) {
+    const clamped = clampToDungeon(proposedX, proposedZ);
+    entity.x = clamped.x;
+    entity.z = clamped.z;
+    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
+    return { moved: true, blocked: false, reached: postDist <= stopDistance };
+  }
+
+  // Direct is blocked — try axis-separated movement (wall-slide)
+  // Try X-only
+  const xProposed = entity.x + ndx * move;
+  const xOnlyBlocked = (Math.abs(xProposed - entity.x) > 1e-8)
+    ? isEntityPositionBlocked(xProposed, entity.z, radius)
+    : true; // no displacement on X — treat as blocked
+  // Try Z-only
+  const zProposed = entity.z + ndz * move;
+  const zOnlyBlocked = (Math.abs(zProposed - entity.z) > 1e-8)
+    ? isEntityPositionBlocked(entity.x, zProposed, radius)
+    : true; // no displacement on Z — treat as blocked
+
+  if (!xOnlyBlocked) {
+    const clamped = clampToDungeon(xProposed, entity.z);
+    entity.x = clamped.x;
+    entity.z = clamped.z;
+    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
+    return { moved: true, blocked: true, reached: postDist <= stopDistance };
+  } else if (!zOnlyBlocked) {
+    const clamped = clampToDungeon(entity.x, zProposed);
+    entity.x = clamped.x;
+    entity.z = clamped.z;
+    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
+    return { moved: true, blocked: true, reached: postDist <= stopDistance };
+  }
+
+  // Both axes blocked
+  return { moved: false, blocked: true, reached: false };
+}
+
+// ── Dungeon Position Helpers ──
+
+/**
+ * Compute dungeon AABB bounds from layout rooms.
+ */
+function computeDungeonBounds(layout) {
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minZ = Infinity;
+  let maxZ = -Infinity;
+
+  for (const room of layout.rooms) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    minX = Math.min(minX, room.x - halfW);
+    maxX = Math.max(maxX, room.x + halfW);
+    minZ = Math.min(minZ, room.z - halfD);
+    maxZ = Math.max(maxZ, room.z + halfD);
+  }
+
+  return {
+    minX: minX - BOUNDS_MARGIN,
+    maxX: maxX + BOUNDS_MARGIN,
+    minZ: minZ - BOUNDS_MARGIN,
+    maxZ: maxZ + BOUNDS_MARGIN,
+  };
+}
+
+/**
+ * Returns spawn position in the start room.
+ */
+function firstRoomPosition() {
+  const layout = _gameState.layout;
+  const startRoom = layout.rooms.find(r => r.role === 'start');
+  const room = startRoom || layout.rooms[0]; // defensive fallback
+  return { x: room.x, z: room.z };
+}
+
+/**
+ * Returns random position in a random room.
+ */
+function randomRoomPosition() {
+  const room = _gameState.layout.rooms[Math.floor(Math.random() * _gameState.layout.rooms.length)];
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  return {
+    x: room.x + (Math.random() * 2 - 1) * halfW,
+    z: room.z + (Math.random() * 2 - 1) * halfD,
+  };
+}
+
+/**
+ * Clamps (x, z) to dungeon AABB bounds.
+ */
+function clampToDungeon(x, z) {
+  const bounds = _gameState.dungeonBounds;
+  return {
+    x: Math.max(bounds.minX, Math.min(bounds.maxX, x)),
+    z: Math.max(bounds.minZ, Math.min(bounds.maxZ, z)),
+  };
+}
+
+/**
+ * Try to find a position within `radius` units of (x, z) that is inside
+ * dungeon bounds. Falls back to the clamped candidate when all attempts
+ * are pushed outside the radius (near dungeon edges).
+ */
+function nearbySpawnPosition(x, z, radius) {
+  const bounds = _gameState.dungeonBounds;
+
+  // Try up to 8 random candidates within the circle
+  for (let i = 0; i < 8; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const dist = Math.sqrt(Math.random()) * radius;
+    const candidate = {
+      x: x + Math.cos(angle) * dist,
+      z: z + Math.sin(angle) * dist,
+    };
+    candidate.x = Math.max(bounds.minX, Math.min(bounds.maxX, candidate.x));
+    candidate.z = Math.max(bounds.minZ, Math.min(bounds.maxZ, candidate.z));
+    if (Math.hypot(candidate.x - x, candidate.z - z) <= radius) return candidate;
+  }
+
+  // All attempts exceeded radius after clamping (near dungeon edge).
+  // Return the point clamped to both bounds and radius.
+  const clamped = clampToDungeon(x, z);
+  const dx = clamped.x - x;
+  const dz = clamped.z - z;
+  const d = Math.hypot(dx, dz);
+  if (d <= radius) return clamped;
+  // Clamp to radius
+  const scale = radius / d;
+  return { x: x + dx * scale, z: z + dz * scale };
+}
+
+/**
+ * Returns a random wander target (random position in a random room).
+ */
+function randomWanderTarget() {
+  return randomRoomPosition();
+}
+
+// ── Enemy Type Definitions ──
+
+const ENEMY_DEFS = {
+	grunt:      { hp: 50,  chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800 },
+	skirmisher: { hp: 20,  chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6,  attackWindupMs: 500 },
+	miniboss:   { hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200 },
+	spawner:    { hp: 60,  chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8,  attackWindupMs: 900,
+		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher' },
+};
+
+// Minion behavior constants
+const MINION_FOLLOW_DISTANCE = 3;
+const MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;
+
+// ── Player Damage / Respawn ──
+
+function damagePlayer(playerId, amount) {
+  const player = _gameState.players[playerId];
+  if (!player) return;
+
+  player.hp = Math.max(0, player.hp - amount);
+
+  if (player.hp <= 0 && !player.dead) {
+    player.dead = true;
+
+    if (_onTerminalCheck) {
+      _onTerminalCheck();
+    }
+
+    const respawnId = setTimeout(() => {
+      const p = _gameState.players[playerId];
+      if (!p) return; // player may have disconnected
+      const spawn = firstRoomPosition();
+      p.hp = MAX_HP;
+      p.dead = false;
+      p.lastMoveTime = Date.now();
+      p.x = spawn.x;
+      p.y = 0.5;
+      p.z = spawn.z;
+    }, RESPAWN_DELAY_MS);
+    _timeouts.push(respawnId);
+  }
+}
+
+// ── Enemy Spawning ──
+
+/**
+ * Create a single enemy at (x, z) with the given type and push it to
+ * gameState.enemies[].  `type` must be a key in ENEMY_DEFS; defaults to
+ * 'grunt' when omitted.  Throws on unknown types.
+ *
+ * `spawnedBy` — optional parent spawner id; used for spawn-cap bookkeeping.
+ * Spawners get a `lastSpawnTime` field initialised to `Date.now()`.
+ */
+function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
+  if (!ENEMY_DEFS[type]) {
+    throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
+  }
+  const def = ENEMY_DEFS[type];
+  const enemy = {
+    id: crypto.randomUUID(),
+    x,
+    z,
+    type,
+    hp: def.hp,
+    maxHp: def.hp,
+    state: 'idle',
+    attackState: 'idle',
+    wanderTarget: { x, z }
+  };
+  if (type === 'spawner') {
+    enemy.lastSpawnTime = Date.now();
+  }
+  if (spawnedBy !== undefined) {
+    enemy.spawnedBy = spawnedBy;
+  }
+  _gameState.enemies.push(enemy);
+  return enemy;
+}
+
+/**
+ * Filter dead enemies (`hp <= 0`) from `gameState.enemies` and record
+ * the count of removed enemies against the current run objective.
+ *
+ * Returns the number of enemies that were removed.
+ */
+function removeDeadEnemies() {
+  const before = _gameState.enemies.length;
+  _gameState.enemies = _gameState.enemies.filter(e => e.hp > 0);
+  const removed = before - _gameState.enemies.length;
+  if (removed > 0) {
+    // Record against run objective if there's an active run
+    if (_gameState.run) {
+      _gameState.run.objective.defeatedEnemies += removed;
+      _gameState.run.objective.defeatedEnemies = Math.min(
+        _gameState.run.objective.defeatedEnemies,
+        _gameState.run.objective.totalEnemies
+      );
+    }
+  }
+  return removed;
+}
+
+/**
+ * Remove dead enemies and check run terminal state.
+ * Callback-based to avoid circular dependency.
+ */
+function cleanupAfterDamage() {
+  if (removeDeadEnemies() > 0) {
+    if (_onCleanupAfterDamage) {
+      _onCleanupAfterDamage();
+    }
+  }
+}
+
+// ── Enemy AI Tick ──
+
+function updateEnemies() {
+	if (_gameState.run && (_gameState.run.status === 'victory' || _gameState.run.status === 'failed')) return;
+
+	const dt = 1 / TICK_RATE;
+	const players = Object.values(_gameState.players).filter(p => !p.dead);
+
+	for (const enemy of _gameState.enemies) {
+		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+
+		// Ensure attackState exists (backward compat for enemies spawned before this change)
+		if (!enemy.attackState) enemy.attackState = 'idle';
+
+		// ── Recovery: wait out cooldown, then return to chasing or idle ──
+		if (enemy.attackState === 'recovering') {
+			if (Date.now() >= enemy.recoverUntil) {
+				enemy.attackState = 'chasing';
+			} else {
+				continue; // do not move while recovering
+			}
+			// fall through to chasing/idle logic below
+		}
+
+		// ── Wind-up: wait, then revalidate range before striking ──
+		if (enemy.attackState === 'windup') {
+			const elapsed = Date.now() - enemy.windupStartTime;
+			if (elapsed >= def.attackWindupMs) {
+				// Revalidate: find the target player and check range + alive
+				const target = _gameState.players[enemy.windupTargetId];
+				if (target && !target.dead) {
+					const dist = Math.hypot(target.x - enemy.x, target.z - enemy.z);
+					if (dist <= ENEMY_ATTACK_RANGE) {
+						// Strike!
+						damagePlayer(enemy.windupTargetId, def.attackDamage);
+						enemy.attackState = 'recovering';
+						enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+						continue;
+					}
+				}
+				// Target out of range or dead — cancel attack, return to chasing
+				enemy.attackState = 'chasing';
+				continue;
+			} else {
+				continue; // still winding up, do not move
+			}
+		}
+
+		// ── Spawner: periodically spawn adds ──
+		if (enemy.type === 'spawner' && enemy.hp > 0) {
+			const spawnInterval = def.spawnIntervalMs || 4000;
+			const spawnMaxAlive = def.spawnMaxAlive || 3;
+			const spawnType = def.spawnType || 'skirmisher';
+			const now = Date.now();
+
+			if (now - enemy.lastSpawnTime >= spawnInterval) {
+				// Count living adds belonging to this spawner
+				const aliveAdds = _gameState.enemies.filter(
+					e => e.spawnedBy === enemy.id && e.hp > 0
+				).length;
+
+				if (aliveAdds < spawnMaxAlive) {
+					// Place add within ~3 units of spawner
+					const addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);
+					const add = spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
+					add.wanderTarget = randomWanderTarget();
+					enemy.lastSpawnTime = now;
+				}
+			}
+		}
+
+		// ── Find nearest living player ──
+		let nearestDist = Infinity;
+		let nearestPlayer = null;
+		for (const player of players) {
+			const dx = player.x - enemy.x;
+			const dz = player.z - enemy.z;
+			const dist = Math.hypot(dx, dz);
+			if (dist < nearestDist) {
+				nearestDist = dist;
+				nearestPlayer = player;
+			}
+		}
+
+		// ── Chasing: move toward player, transition to windup in range ──
+		if (nearestPlayer && nearestDist < DETECTION_RADIUS) {
+			enemy.state = 'chasing';
+
+			// If in chasing (not mid-windup/recover) and within attack range, start wind-up
+			if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
+				if (nearestDist <= ENEMY_ATTACK_RANGE) {
+					enemy.attackState = 'windup';
+					enemy.windupTargetId = nearestPlayer.id;
+					enemy.windupStartTime = Date.now();
+					continue; // do not move during wind-up
+				}
+				enemy.attackState = 'chasing';
+			}
+
+			const chaseResult = moveEntityToward(enemy, nearestPlayer, def.chaseSpeed * dt);
+			// If blocked while chasing, enemy stops at wall edge (wall-slide handles sliding)
+			void chaseResult;
+			continue;
+		}
+
+		// ── No player in detection range — revert to idle and wander ──
+		enemy.state = 'idle';
+		enemy.attackState = 'idle';
+		const wdx = enemy.wanderTarget.x - enemy.x;
+		const wdz = enemy.wanderTarget.z - enemy.z;
+		const wdist = Math.hypot(wdx, wdz);
+
+		// Reached wander target — pick a new one
+		if (wdist < 0.5) {
+			enemy.wanderTarget = randomWanderTarget();
+			enemy.blockedTicks = 0;
+			continue;
+		}
+
+		// Move toward wander target using wall-aware movement
+		const wanderResult = moveEntityToward(enemy, enemy.wanderTarget, def.wanderSpeed * dt);
+
+		// Track consecutive blocked ticks — pick a new target after too many blocks
+		if (wanderResult.blocked) {
+			if (!enemy.blockedTicks) enemy.blockedTicks = 0;
+			enemy.blockedTicks += 1;
+			if (enemy.blockedTicks > 10) {
+				enemy.wanderTarget = randomWanderTarget();
+				enemy.blockedTicks = 0;
+			}
+		} else {
+			enemy.blockedTicks = 0;
+		}
+	}
+}
+
+// ── Minion AI Tick ──
+
+function updateMinions() {
+  const dt = 1 / TICK_RATE;
+  const runTerminal = _gameState.run && (_gameState.run.status === 'victory' || _gameState.run.status === 'failed');
+
+  // AI: each living minion seeks nearest enemy, chases, and attacks
+  // If no enemy is nearby, follows its owner.
+  // Skipped entirely when the run is terminal (victory or failed)
+  if (!runTerminal) {
+    for (const minion of _gameState.minions) {
+      let nearestDist = Infinity;
+      let nearestEnemy = null;
+
+      for (const enemy of _gameState.enemies) {
+        const dx = enemy.x - minion.x;
+        const dz = enemy.z - minion.z;
+        const dist = Math.hypot(dx, dz);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestEnemy = enemy;
+        }
+      }
+
+      // Chase if an enemy is within detection range
+      if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+        // Attack if within attack range
+        if (nearestDist <= ATTACK_RANGE) {
+          nearestEnemy.hp -= 5;
+        } else {
+          // Move toward enemy using moveEntityToward (wall-aware)
+          moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
+        }
+      } else {
+        // No enemy in range — follow owner
+        const owner = _gameState.players[minion.ownerId];
+        if (owner && !owner.dead) {
+          const dx = owner.x - minion.x;
+          const dz = owner.z - minion.z;
+          const distToOwner = Math.hypot(dx, dz);
+          if (distToOwner > MINION_FOLLOW_DISTANCE) {
+            moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+          }
+          // Within follow distance — stay put
+        }
+        // Owner missing, disconnected, or dead — stay stationary
+      }
+    }
+  }
+
+  // Cleanup dead enemies after minion attacks
+  cleanupAfterDamage();
+
+  // Decrement TTL and remove expired/dead minions
+  for (const minion of _gameState.minions) {
+    minion.ttl -= dt;
+  }
+  _gameState.minions = _gameState.minions.filter(m => m.ttl > 0 && m.hp > 0);
+}
+
+// ── Magic Stone Regen ──
+
+function regenMagicStones() {
+  for (const p of Object.values(_gameState.players)) {
+    if (p.debugScenario === 'summon-low-mana') {
+      p.magicStones = 0;
+    } else {
+      p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
+    }
+    p.pendingSummons.clear();
+  }
+}
+
+// ── Stale Player Cleanup ──
+
+/**
+ * Remove stale players (no activity for STALE_THRESHOLD ms).
+ */
+function cleanupStalePlayers() {
+  for (const playerId in _gameState.players) {
+    const player = _gameState.players[playerId];
+    if (Date.now() - player.lastActivity > STALE_THRESHOLD) {
+      // Persist latest state before removing
+      if (_savePlayerData) {
+        _savePlayerData(playerId);
+      }
+      if (_findSocketByPlayerId) {
+        const socket = _findSocketByPlayerId(playerId);
+        if (socket && socket.connected) {
+          socket.disconnect();
+        }
+      }
+      delete _gameState.players[playerId];
+      console.log(`Player disconnected due to inactivity: ${playerId}`);
+    }
+  }
+}
+
+// ── Loot Spawning ──
+
+/**
+ * Spawn loot items using role-aware placement (50 % chance per call).
+ * When a treasure room exists, loot spawns there; otherwise falls back to
+ * any non-start room.  `layout` and `rng` are passed in for determinism.
+ */
+function spawnLoot(layout, rng) {
+  if (Math.random() >= LOOT_SPAWN_CHANCE) return;
+
+  const treasureRooms = roomsByRole(layout, 'treasure');
+  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
+  let pos;
+
+  if (treasureRooms.length > 0) {
+    const room = treasureRooms[Math.floor(rng() * treasureRooms.length)];
+    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+    pos = {
+      x: room.x + (rng() * 2 - 1) * halfW,
+      z: room.z + (rng() * 2 - 1) * halfD,
+    };
+  } else if (nonStartRooms.length > 0) {
+    const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
+    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+    pos = {
+      x: room.x + (rng() * 2 - 1) * halfW,
+      z: room.z + (rng() * 2 - 1) * halfD,
+    };
+  } else {
+    pos = randomRoomPosition(); // last resort
+  }
+
+  const value = Math.floor(Math.random() * 16) + 5;
+  const id = crypto.randomUUID();
+  _gameState.loot.push({ id, x: pos.x, z: pos.z, value, createdAt: Date.now() });
+  console.log(`[loot] spawned id=${id} value=${value}`);
+}
+
+// Helper: spawn 5 enemies inside generated rooms (mixed types)
+function spawnEnemies() {
+  const layout = _gameState.layout;
+  const seed = _gameState.layoutSeed || 42;
+  const rng = mulberry32(seed + 1000); // offset seed so enemies differ from loot
+
+  const combatRooms = roomsByRole(layout, 'combat');
+  // Fallback: any non-start room
+  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
+
+  const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
+  for (const type of spawnTable) {
+    let pos;
+    if (combatRooms.length > 0) {
+      pos = randomRoomPositionByRole(layout, 'combat', rng);
+    } else if (nonStartRooms.length > 0) {
+      // No combat rooms — pick from non-start rooms directly
+      const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
+      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+      pos = {
+        x: room.x + (rng() * 2 - 1) * halfW,
+        z: room.z + (rng() * 2 - 1) * halfD,
+      };
+    } else {
+      pos = randomRoomPosition(); // last resort: any room
+    }
+    const enemy = spawnEnemy(pos.x, pos.z, type);
+    enemy.wanderTarget = randomWanderTarget();
+  }
+
+  // Pre-spawn loot in treasure rooms (role-aware placement)
+  spawnLoot(layout, rng);
+}
+
+// ── Exports ──
+
+module.exports = {
+  // Setup (called by index.js after both modules are loaded)
+  setGameState,
+  setTerminalCheckCallback,
+  setCleanupAfterDamageCallback,
+  setFindSocketCallback,
+  setSavePlayerCallback,
+
+  // Collision
+  buildWallColliders,
+  wallAABB,
+  checkWallCollision,
+  checkSweptCollision,
+  segmentIntersectsAABB,
+  isEntityPositionBlocked,
+  moveEntityToward,
+  ENTITY_RADIUS,
+  PLAYER_RADIUS,
+
+  // Dungeon position helpers
+  computeDungeonBounds,
+  firstRoomPosition,
+  randomRoomPosition,
+  clampToDungeon,
+  nearbySpawnPosition,
+  randomWanderTarget,
+
+  // Enemy definitions
+  ENEMY_DEFS,
+  MINION_FOLLOW_DISTANCE,
+  MINION_FOLLOW_SPEED,
+
+  // Enemy AI
+  updateEnemies,
+  spawnEnemy,
+  spawnEnemies,
+  removeDeadEnemies,
+  cleanupAfterDamage,
+
+  // Minion AI
+  updateMinions,
+
+  // Player damage
+  damagePlayer,
+
+  // Magic stones
+  regenMagicStones,
+
+  // Stale player cleanup
+  cleanupStalePlayers,
+
+  // Loot
+  spawnLoot
+};
