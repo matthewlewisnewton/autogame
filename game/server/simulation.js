@@ -50,14 +50,15 @@ const PLAYER_RADIUS = 0.5;
 const WALL_THICKNESS = 0.4;
 const PASSAGE_WALL_THICKNESS = 0.3;
 const ENTITY_RADIUS = 0.45;
+let _wallColliders = [];
+let _wallCollidersLayout = null;
 
 /**
  * Build AABB colliders from the current dungeon layout walls.
  * Returns an array of { minX, maxX, minZ, maxZ } objects.
  */
-function buildWallColliders() {
+function buildWallColliders(layout = _gameState && _gameState.layout) {
   const colliders = [];
-  const layout = _gameState.layout;
   if (!layout || !layout.rooms || !layout.passages) return colliders;
 
   for (const room of layout.rooms) {
@@ -72,6 +73,19 @@ function buildWallColliders() {
   }
 
   return colliders;
+}
+
+function rebuildWallColliders() {
+  _wallColliders = buildWallColliders();
+  _wallCollidersLayout = _gameState && _gameState.layout;
+  return _wallColliders;
+}
+
+function getWallColliders() {
+  if (!_gameState || _wallCollidersLayout !== _gameState.layout) {
+    return rebuildWallColliders();
+  }
+  return _wallColliders;
 }
 
 /**
@@ -99,8 +113,7 @@ function wallAABB(wall, halfThickness) {
  * Check if a proposed player position overlaps any wall collider.
  * Returns true if the position is inside a wall (collision), false otherwise.
  */
-function checkWallCollision(px, pz) {
-  const colliders = buildWallColliders();
+function checkWallCollision(px, pz, colliders = getWallColliders()) {
   const pr = PLAYER_RADIUS;
 
   for (const w of colliders) {
@@ -113,12 +126,63 @@ function checkWallCollision(px, pz) {
 }
 
 /**
+ * Resolve a proposed player position against wall colliders.
+ * When the previous position is provided, push back to that side of the wall
+ * so a client cannot tunnel through by landing inside the wall volume.
+ */
+function resolveWallCollision(newX, newZ, colliders = getWallColliders(), fromX = newX, fromZ = newZ) {
+  let resolvedX = newX;
+  let resolvedZ = newZ;
+
+  for (let pass = 0; pass < 2; pass++) {
+    let adjusted = false;
+
+    for (const w of colliders) {
+      const pMinX = resolvedX - PLAYER_RADIUS;
+      const pMaxX = resolvedX + PLAYER_RADIUS;
+      const pMinZ = resolvedZ - PLAYER_RADIUS;
+      const pMaxZ = resolvedZ + PLAYER_RADIUS;
+
+      if (pMaxX <= w.minX || pMinX >= w.maxX || pMaxZ <= w.minZ || pMinZ >= w.maxZ) continue;
+
+      const overlapX = Math.min(pMaxX - w.minX, w.maxX - pMinX);
+      const overlapZ = Math.min(pMaxZ - w.minZ, w.maxZ - pMinZ);
+
+      if (overlapX < overlapZ) {
+        if (fromX + PLAYER_RADIUS <= w.minX) {
+          resolvedX = w.minX - PLAYER_RADIUS;
+        } else if (fromX - PLAYER_RADIUS >= w.maxX) {
+          resolvedX = w.maxX + PLAYER_RADIUS;
+        } else {
+          const wallCX = (w.minX + w.maxX) / 2;
+          resolvedX += resolvedX < wallCX ? -overlapX : overlapX;
+        }
+      } else {
+        if (fromZ + PLAYER_RADIUS <= w.minZ) {
+          resolvedZ = w.minZ - PLAYER_RADIUS;
+        } else if (fromZ - PLAYER_RADIUS >= w.maxZ) {
+          resolvedZ = w.maxZ + PLAYER_RADIUS;
+        } else {
+          const wallCZ = (w.minZ + w.maxZ) / 2;
+          resolvedZ += resolvedZ < wallCZ ? -overlapZ : overlapZ;
+        }
+      }
+
+      adjusted = true;
+    }
+
+    if (!adjusted) break;
+  }
+
+  return { x: resolvedX, z: resolvedZ };
+}
+
+/**
  * Check if the line segment from (fromX, fromZ) to (toX, toZ) intersects
  * any wall collider expanded by PLAYER_RADIUS. Returns true on intersection.
  * Uses a slab-based segment-AABB intersection test.
  */
-function checkSweptCollision(fromX, fromZ, toX, toZ) {
-  const colliders = buildWallColliders();
+function checkSweptCollision(fromX, fromZ, toX, toZ, colliders = getWallColliders(), options = {}) {
   const pr = PLAYER_RADIUS;
 
   for (const w of colliders) {
@@ -130,12 +194,47 @@ function checkSweptCollision(fromX, fromZ, toX, toZ) {
       maxZ: w.maxZ + pr,
     };
 
-    if (segmentIntersectsAABB(fromX, fromZ, toX, toZ, aabb)) {
+    if (options.allowEndpointTouch) {
+      const entryT = segmentAABBEntryT(fromX, fromZ, toX, toZ, aabb);
+      if (entryT != null && entryT < 1 - 1e-8) return true;
+    } else if (segmentIntersectsAABB(fromX, fromZ, toX, toZ, aabb)) {
       return true;
     }
   }
 
   return false;
+}
+
+function segmentAABBEntryT(x1, z1, x2, z2, aabb) {
+  const dx = x2 - x1;
+  const dz = z2 - z1;
+
+  let tmin = 0;
+  let tmax = 1;
+
+  if (Math.abs(dx) > 1e-8) {
+    let t0 = (aabb.minX - x1) / dx;
+    let t1 = (aabb.maxX - x1) / dx;
+    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }
+    tmin = Math.max(tmin, t0);
+    tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return null;
+  } else if (x1 <= aabb.minX || x1 >= aabb.maxX) {
+    return null;
+  }
+
+  if (Math.abs(dz) > 1e-8) {
+    let t0 = (aabb.minZ - z1) / dz;
+    let t1 = (aabb.maxZ - z1) / dz;
+    if (t0 > t1) { const tmp = t0; t0 = t1; t1 = tmp; }
+    tmin = Math.max(tmin, t0);
+    tmax = Math.min(tmax, t1);
+    if (tmin > tmax) return null;
+  } else if (z1 <= aabb.minZ || z1 >= aabb.maxZ) {
+    return null;
+  }
+
+  return tmin;
 }
 
 /**
@@ -183,7 +282,7 @@ function segmentIntersectsAABB(x1, z1, x2, z2, aabb) {
  * Returns true when overlapping a wall, false otherwise.
  */
 function isEntityPositionBlocked(x, z, radius) {
-  const colliders = buildWallColliders();
+  const colliders = getWallColliders();
   const r = radius != null ? radius : ENTITY_RADIUS;
 
   for (const w of colliders) {
@@ -656,9 +755,13 @@ module.exports = {
 
   // Collision
   buildWallColliders,
+  rebuildWallColliders,
+  getWallColliders,
   wallAABB,
   checkWallCollision,
+  resolveWallCollision,
   checkSweptCollision,
+  segmentAABBEntryT,
   segmentIntersectsAABB,
   isEntityPositionBlocked,
   moveEntityToward,

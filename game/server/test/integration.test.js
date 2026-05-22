@@ -24,7 +24,9 @@ import {
 	damagePlayer,
 	checkRunTerminalState,
 	isEntityPositionBlocked,
-	ENTITY_RADIUS
+	ENTITY_RADIUS,
+	PLAYER_RADIUS,
+	wallAABB
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
 import { COOLDOWN_MS, MAX_ELAPSED_MS, MOVE_SPEED, MAX_HP } from '../config.js';
@@ -274,6 +276,56 @@ describe('Socket Integration — Move Event', () => {
 		expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
 		expect(player.z).toBeLessThanOrEqual(bounds.maxZ);
 		expect(player.z).toBeGreaterThanOrEqual(bounds.minZ);
+	});
+
+	it('resolves attempted movement into a room wall back to valid floor space', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		let probe = null;
+		for (const room of gameState.layout.rooms) {
+			for (const wall of room.walls) {
+				if (wall.axis !== 'z') continue;
+
+				const aabb = wallAABB(wall, 0.2);
+				const insideDirection = wall.x < room.x ? 1 : -1;
+				const floorEdgeX = insideDirection > 0
+					? aabb.maxX + PLAYER_RADIUS
+					: aabb.minX - PLAYER_RADIUS;
+
+				probe = {
+					x: floorEdgeX + insideDirection * 0.4,
+					z: wall.z,
+					dx: -insideDirection,
+					floorEdgeX,
+					insideDirection
+				};
+				break;
+			}
+			if (probe) break;
+		}
+		expect(probe).toBeTruthy();
+
+		const player = gameState.players[socket._playerId];
+		player.x = probe.x;
+		player.z = probe.z;
+		player.lastMoveTime = Date.now() - 80;
+
+		socket.emit('move', { dx: probe.dx, dz: 0, rotation: 0 });
+		await sleep(50);
+
+		if (probe.insideDirection > 0) {
+			expect(player.x).toBeLessThan(probe.x);
+			expect(player.x).toBeGreaterThanOrEqual(probe.floorEdgeX - 1e-6);
+		} else {
+			expect(player.x).toBeGreaterThan(probe.x);
+			expect(player.x).toBeLessThanOrEqual(probe.floorEdgeX + 1e-6);
+		}
+		expect(player.x).toBeCloseTo(probe.floorEdgeX, 5);
+		expect(player.z).toBeCloseTo(probe.z, 5);
+		expect(isEntityPositionBlocked(player.x, player.z, PLAYER_RADIUS)).toBe(false);
 	});
 
 	it('dead player cannot move', async () => {
