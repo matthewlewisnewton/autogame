@@ -1170,6 +1170,38 @@ function startServer(port) {
       }
       gameState.minions.push(minion);
 
+      const summonedMinions = [];
+      if (cardDef.effect === 'undead_commander') {
+        const skeletonCount = cardDef.summonSkeletonCount || 2;
+        const skeletonHp = scaledGrindStat(cardDef.summonSkeletonHp || 60, grind);
+        const skeletonOffsets = [
+          { x: -1.5, z: 0 },
+          { x: 1.5, z: 0 },
+          { x: 0, z: -1.5 },
+          { x: 0, z: 1.5 },
+        ];
+        for (let i = 0; i < skeletonCount; i++) {
+          const offset = skeletonOffsets[i % skeletonOffsets.length];
+          const skeleton = {
+            id: crypto.randomUUID(),
+            ownerId: socket.playerId,
+            type: 'skeleton_knight',
+            x: originX + offset.x,
+            z: originZ + offset.z,
+            hp: skeletonHp,
+            maxHp: skeletonHp,
+            ttl: minionTtl,
+            createdAt: now,
+          };
+          gameState.minions.push(skeleton);
+          summonedMinions.push({
+            id: skeleton.id,
+            x: skeleton.x,
+            z: skeleton.z,
+          });
+        }
+      }
+
       // Set slot cooldown
       player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
 
@@ -1185,7 +1217,8 @@ function startServer(port) {
         slotIndex: data.slotIndex,
         specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
-        minionId: minion.id
+        minionId: minion.id,
+        summonedMinions: summonedMinions.length > 0 ? summonedMinions : undefined,
       });
 
       return;
