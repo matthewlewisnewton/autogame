@@ -20,6 +20,7 @@ import {
 	ENEMY_DEFS,
 	spawnEnemy,
 	updateEnemies,
+	updateMinions,
 	damagePlayer,
 	checkRunTerminalState,
 	isEntityPositionBlocked,
@@ -579,6 +580,43 @@ describe('Socket Integration — useCard Event', () => {
 			} else {
 				expect(updatedPlayer.hand.length).toBe(handSizeBefore - 1);
 			}
+		});
+	});
+
+	describe('Minion owner-follow', () => {
+		it('minion moves closer to owner when no enemies are nearby', async () => {
+			// Connect and set up a player in the dungeon
+			gameState.gamePhase = 'dungeon';
+			const playerId = socket._playerId;
+			gameState.players[playerId].x = 10;
+			gameState.players[playerId].z = 10;
+			gameState.players[playerId].dead = false;
+
+			// Place a minion far from its owner, with no enemies
+			gameState.minions.push({
+				id: 'm1',
+				ownerId: playerId,
+				x: 0,
+				z: 0,
+				hp: 50,
+				ttl: 30
+			});
+			gameState.enemies = [];
+
+			const distBefore = Math.hypot(
+				gameState.players[playerId].x - gameState.minions[0].x,
+				gameState.players[playerId].z - gameState.minions[0].z
+			);
+
+			// Tick minion AI
+			updateMinions();
+
+			const distAfter = Math.hypot(
+				gameState.players[playerId].x - gameState.minions[0].x,
+				gameState.players[playerId].z - gameState.minions[0].z
+			);
+
+			expect(distAfter).toBeLessThan(distBefore);
 		});
 	});
 });
