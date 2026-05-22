@@ -77,16 +77,16 @@ canvas {
   left: 50%;
   transform: translateX(-50%);
   display: none;
-  gap: 12px;
-  padding: 16px;
+  gap: 8px;
+  padding: 12px 88px 12px 12px;
   pointer-events: none;
   z-index: 10;
   flex-direction: row;
 }
 
 .card-slot {
-  width: 80px;
-  height: 120px;
+  width: 76px;
+  height: 112px;
   border-radius: 8px;
   background: rgba(15, 23, 42, 0.75);
   border: 2px solid var(--slot-color, rgba(148, 163, 184, 0.3));
@@ -1412,4 +1412,124 @@ canvas {
 
 .auth-toggle a:hover {
   text-decoration: underline;
+}
+
+/* ── In-run draw pile (grimoire) ── */
+
+#deck-stack {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: 52px;
+  height: 72px;
+  pointer-events: auto;
+  cursor: pointer;
+  z-index: 11;
+}
+
+#deck-stack.hidden {
+  display: none;
+}
+
+#deck-stack .deck-stack-card {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 52px;
+  height: 72px;
+  border-radius: 6px;
+  background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  border: 2px solid rgba(148, 163, 184, 0.45);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  transform: translate(calc(var(--layer-index, 0) * -2px), calc(var(--layer-index, 0) * -3px));
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+#deck-stack:hover .deck-stack-card {
+  border-color: rgba(226, 232, 240, 0.65);
+}
+
+#deck-stack.deck-empty {
+  opacity: 0.45;
+}
+
+#deck-viewer-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.72);
+  z-index: 100;
+  pointer-events: auto;
+}
+
+#deck-viewer-overlay.hidden {
+  display: none;
+}
+
+#deck-viewer-panel {
+  width: min(720px, 92vw);
+  max-height: 80vh;
+  overflow: auto;
+  padding: 20px 24px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.95);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+#deck-viewer-panel h2 {
+  margin: 0 0 4px;
+  font-size: 20px;
+  color: #e2e8f0;
+}
+
+#deck-viewer-count {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+#deck-viewer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: 10px;
+}
+
+.deck-card-mini {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 88px;
+  padding: 8px 6px;
+  border-radius: 8px;
+  background: rgba(2, 6, 23, 0.55);
+  border: 2px solid var(--mini-color, rgba(148, 163, 184, 0.45));
+  text-align: center;
+}
+
+.deck-card-mini.evolved-card {
+  box-shadow: 0 0 10px rgba(167, 139, 250, 0.35);
+}
+
+.deck-mini-icon {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.deck-mini-name {
+  font-size: 11px;
+  font-weight: 700;
+  color: #e2e8f0;
+  line-height: 1.2;
+}
+
+.deck-viewer-hint {
+  margin: 16px 0 0;
+  font-size: 12px;
+  color: #64748b;
+  text-align: center;
 }

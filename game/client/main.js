@@ -15,7 +15,14 @@ import {
 	canAffordUpgrade,
 	getForgeStatPreview,
 } from './cardUpgrades.js';
-import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
+import { drawCard, initHand as initHandFromModule, hand, deck, slotCooldowns, canUseSlot, setDrawPile } from './hand.js';
+import {
+	buildDeckMiniEntries,
+	computeRunDeckTotal,
+	deckIdsForDisplay,
+	formatDeckCountLabel,
+	getDeckStackLayerCount,
+} from './deck-viewer.js';
 import {
 	playSound,
 	isSoundEnabled,
@@ -96,6 +103,10 @@ const questErrorEl = document.getElementById('quest-error');
 const uiEl = document.getElementById('ui');
 const logoutBtn = document.getElementById('logout-btn');
 const cardHandEl = document.getElementById('card-hand');
+const deckStackEl = document.getElementById('deck-stack');
+const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
+const deckViewerGridEl = document.getElementById('deck-viewer-grid');
+const deckViewerCountEl = document.getElementById('deck-viewer-count');
 
 // ── Auth overlay elements ──
 const authOverlayEl = document.getElementById('auth-overlay');
@@ -228,6 +239,7 @@ function bindSocketHandlers(s) {
 		s.io.disconnect();
 		if (uiEl) uiEl.style.display = 'none';
 		if (cardHandEl) cardHandEl.style.display = 'none';
+		setDeckStackVisible(false);
 		if (lobbyEl) lobbyEl.classList.add('hidden');
 		if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 		showAuthOverlay();
@@ -291,6 +303,7 @@ function bindSocketHandlers(s) {
 			lobbyEl.classList.add('hidden');
 			uiEl.style.display = 'block';
 			cardHandEl.style.display = 'flex';
+			setDeckStackVisible(true);
 			initHand();
 			rendererInitScene(currentLayout, getSpawnPosition());
 			updateObjectiveHud();
@@ -316,6 +329,7 @@ function bindSocketHandlers(s) {
 			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 			if (uiEl) uiEl.style.display = 'none';
 			if (cardHandEl) cardHandEl.style.display = 'none';
+			setDeckStackVisible(false);
 			if (lobbyEl) lobbyEl.classList.remove('hidden');
 			renderDeckEditor();
 			applyQuestBoardState(null, state.selectedQuestId);
@@ -326,6 +340,7 @@ function bindSocketHandlers(s) {
 		if (state.gamePhase === 'playing') {
 			if (uiEl) uiEl.style.display = 'block';
 			if (cardHandEl) cardHandEl.style.display = 'flex';
+			setDeckStackVisible(true);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
 			setGamePhase('playing');
 		}
@@ -396,6 +411,10 @@ function bindSocketHandlers(s) {
 			if (changed) renderHand();
 		} else if (state.gamePhase === 'playing') {
 			renderHand();
+		}
+
+		if (state.gamePhase === 'playing' && myId && state.players[myId]) {
+			syncDrawPileFromServer();
 		}
 
 		// Prune pickedUpLootIds: remove any IDs no longer present in gameState.loot
@@ -620,6 +639,7 @@ function bindSocketHandlers(s) {
 		lobbyEl.classList.add('hidden');
 		uiEl.style.display = 'block';
 		cardHandEl.style.display = 'flex';
+		setDeckStackVisible(true);
 		updateObjectiveHud();
 		if (!isSceneInitialized()) {
 			initHand();
@@ -682,6 +702,8 @@ let currentCardChoices = [];
 let claimedCardRewardId = null;
 let myCurrency = 0;
 let pendingTradeOffer = null;
+let runDeckTotal = 0;
+let deckViewerOpen = false;
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 
 function applyQuestBoardState(quests, questId) {
@@ -843,6 +865,96 @@ function renderHand() {
 	}
 }
 
+function updateRunDeckTotal() {
+	const serverPlayer = gameState && myId && gameState.players[myId];
+	if (serverPlayer && Array.isArray(serverPlayer.selectedDeck) && serverPlayer.selectedDeck.length > 0) {
+		runDeckTotal = serverPlayer.selectedDeck.length;
+		return;
+	}
+	if (mySelectedDeck.length > 0) {
+		runDeckTotal = mySelectedDeck.length;
+		return;
+	}
+	runDeckTotal = computeRunDeckTotal(deck.length, hand);
+}
+
+function syncDrawPileFromServer() {
+	const serverPlayer = gameState && myId && gameState.players[myId];
+	if (serverPlayer && Array.isArray(serverPlayer.deck)) {
+		setDrawPile(serverPlayer.deck);
+	}
+	updateRunDeckTotal();
+	updateDeckVisuals();
+}
+
+function setDeckStackVisible(visible) {
+	if (!deckStackEl) return;
+	if (visible) {
+		deckStackEl.classList.remove('hidden');
+	} else {
+		deckStackEl.classList.add('hidden');
+		hideDeckViewer();
+	}
+}
+
+function renderDeckStack() {
+	if (!deckStackEl) return;
+
+	const layers = getDeckStackLayerCount(deck.length);
+	const total = runDeckTotal || computeRunDeckTotal(deck.length, hand);
+	deckStackEl.title = formatDeckCountLabel(deck.length, total);
+	deckStackEl.classList.toggle('deck-empty', deck.length === 0);
+	deckStackEl.dataset.layers = String(layers);
+
+	deckStackEl.innerHTML = '';
+	for (let i = 0; i < layers; i++) {
+		const layer = document.createElement('div');
+		layer.className = 'deck-stack-card';
+		layer.style.setProperty('--layer-index', String(i));
+		deckStackEl.appendChild(layer);
+	}
+}
+
+function renderDeckViewer() {
+	if (!deckViewerGridEl) return;
+
+	const total = runDeckTotal || computeRunDeckTotal(deck.length, hand);
+	const entries = buildDeckMiniEntries(deckIdsForDisplay(deck));
+
+	deckViewerGridEl.innerHTML = '';
+	for (const entry of entries) {
+		const mini = document.createElement('div');
+		mini.className = `deck-card-mini${entry.isEvolved ? ' evolved-card' : ''}`;
+		mini.style.setProperty('--mini-color', entry.color);
+		mini.innerHTML = `
+			<span class="deck-mini-icon">${entry.icon}</span>
+			<span class="deck-mini-name">${entry.name}</span>
+		`;
+		deckViewerGridEl.appendChild(mini);
+	}
+
+	if (deckViewerCountEl) {
+		deckViewerCountEl.textContent = formatDeckCountLabel(deck.length, total);
+	}
+}
+
+function updateDeckVisuals() {
+	renderDeckStack();
+	if (deckViewerOpen) renderDeckViewer();
+}
+
+function toggleDeckViewer(forceOpen) {
+	if (!deckViewerOverlayEl) return;
+	deckViewerOpen = forceOpen !== undefined ? forceOpen : !deckViewerOpen;
+	deckViewerOverlayEl.classList.toggle('hidden', !deckViewerOpen);
+	if (deckViewerOpen) renderDeckViewer();
+}
+
+function hideDeckViewer() {
+	deckViewerOpen = false;
+	if (deckViewerOverlayEl) deckViewerOverlayEl.classList.add('hidden');
+}
+
 for (let i = 0; i < cardSlots.length; i++) {
 	cardSlots[i].addEventListener('mouseenter', () => updateAdjacentCardHighlights(i));
 	cardSlots[i].addEventListener('mouseleave', clearAdjacentCardHighlights);
@@ -851,19 +963,25 @@ for (let i = 0; i < cardSlots.length; i++) {
 }
 
 function initHand() {
-	const serverHand = (gameState && gameState.players && gameState.players[myId])
-		? gameState.players[myId].hand
+	const serverPlayer = (gameState && gameState.players && gameState.players[myId])
+		? gameState.players[myId]
 		: null;
+	const serverHand = serverPlayer ? serverPlayer.hand : null;
 
 	if (Array.isArray(serverHand) && serverHand.length > 0) {
 		for (let i = 0; i < 4; i++) {
 			hand[i] = serverHand[i] ? { ...serverHand[i] } : null;
 		}
+		syncDrawPileFromServer();
 		renderHand();
 		return;
 	}
 
-	initHandFromModule(renderHand);
+	initHandFromModule(() => {
+		renderHand();
+		updateRunDeckTotal();
+		updateDeckVisuals();
+	});
 }
 
 function refillSlot(index) {
@@ -874,6 +992,7 @@ function refillSlot(index) {
 	if (card) {
 		hand[index] = card;
 		renderHand();
+		updateDeckVisuals();
 	}
 	return card;
 }
@@ -1369,17 +1488,23 @@ function useCard(slotIndex) {
 	}
 
 	renderHand();
+	updateDeckVisuals();
 
 	slotCooldowns[slotIndex] = true;
 	playActivationEffect(slotIndex);
 }
 
-// Keyboard: keys 1-4 map to hand slots 0-3
+// Keyboard: keys 1-4 map to hand slots 0-3; V toggles draw pile viewer
 window.addEventListener('keydown', (e) => {
 	const slotMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
 	if (e.key in slotMap) {
 		if (e.repeat) return;
 		useCard(slotMap[e.key]);
+		return;
+	}
+	if ((e.key === 'v' || e.key === 'V') && gameState && gameState.gamePhase === 'playing') {
+		if (e.repeat) return;
+		toggleDeckViewer();
 	}
 });
 
@@ -1389,6 +1514,20 @@ cardHandEl.addEventListener('click', (e) => {
 	if (!slot) return;
 	useCard(parseInt(slot.dataset.slotIndex, 10));
 });
+
+if (deckStackEl) {
+	deckStackEl.addEventListener('click', () => {
+		if (gameState && gameState.gamePhase === 'playing') {
+			toggleDeckViewer();
+		}
+	});
+}
+
+if (deckViewerOverlayEl) {
+	deckViewerOverlayEl.addEventListener('click', (e) => {
+		if (e.target === deckViewerOverlayEl) hideDeckViewer();
+	});
+}
 
 // ── Auth form event handlers ──
 
@@ -1488,6 +1627,7 @@ if (logoutBtn) {
 		if (logoutBtn) logoutBtn.classList.add('hidden');
 		if (uiEl) uiEl.style.display = 'none';
 		if (cardHandEl) cardHandEl.style.display = 'none';
+		setDeckStackVisible(false);
 		if (lobbyEl) lobbyEl.classList.add('hidden');
 		updateStatus('Disconnected', 'disconnected');
 		showAuthOverlay();
@@ -1688,6 +1828,11 @@ window.__setLobbyTabState = (tab, instanceId) => {
 	if (instanceId !== undefined) selectedForgeInstanceId = instanceId;
 };
 window.__getLobbyTabState = () => ({ activeLobbyTab, selectedForgeInstanceId });
+window.renderDeckViewer = renderDeckViewer;
+window.renderDeckStack = renderDeckStack;
+window.toggleDeckViewer = toggleDeckViewer;
+window.__isDeckViewerOpen = () => deckViewerOpen;
+window.__setRunDeckTotal = (total) => { runDeckTotal = total; };
 window.flashMesh = rendererFlashMesh;
 window.spawnDamageNumber = rendererSpawnDamageNumber;
 window.spawnHitSpark = rendererSpawnHitSpark;
