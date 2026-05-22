@@ -5,6 +5,8 @@ import {
 	saveAllPlayers,
 	setTestProvider,
 	persistenceKey,
+	inventoryToOwnedCards,
+	cardIdForDeckEntry,
 	gameState,
 	resetGameState,
 	provider as defaultProvider
@@ -15,6 +17,20 @@ import * as configMod from '../config.js';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+
+function expectPersistentData(data, expected) {
+	expect(data).toEqual(expect.objectContaining({
+		currency: expected.currency,
+		ownedCards: expected.ownedCards,
+		x: expected.x,
+		y: expected.y,
+		z: expected.z,
+		rotation: expected.rotation,
+	}));
+	expect(Array.isArray(data.inventory)).toBe(true);
+	expect(inventoryToOwnedCards(data.inventory)).toEqual(expected.ownedCards);
+	expect(data.selectedDeck.map((entry) => cardIdForDeckEntry(entry, data.inventory))).toEqual(expected.selectedDeck);
+}
 
 // ── StorageProvider (abstract base class) ──
 
@@ -194,7 +210,7 @@ describe('extractPersistentData', () => {
 
 		const data = extractPersistentData(player);
 
-		expect(data).toEqual({
+		expectPersistentData(data, {
 			currency: 42,
 			ownedCards: { iron_sword: 3, flame_blade: 2 },
 			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
@@ -209,7 +225,7 @@ describe('extractPersistentData', () => {
 		const player = {};
 		const data = extractPersistentData(player);
 
-		expect(data).toEqual({
+		expectPersistentData(data, {
 			currency: 0,
 			ownedCards: {},
 			selectedDeck: [],
@@ -240,7 +256,7 @@ describe('extractPersistentData', () => {
 
 		const data = extractPersistentData(player);
 
-		expect(data).toEqual({
+		expectPersistentData(data, {
 			currency: 10,
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
@@ -288,7 +304,7 @@ describe('savePlayerData', () => {
 		savePlayerData('testPlayer');
 
 		const loaded = testProvider.loadPlayer('testPlayer');
-		expect(loaded).toEqual({
+		expectPersistentData(loaded, {
 			x: 2,
 			y: 0.5,
 			z: 4,
@@ -320,7 +336,7 @@ describe('savePlayerData', () => {
 		savePlayerData('p1');
 
 		const loaded = testProvider.loadPlayer('p1');
-		expect(loaded).toEqual({
+		expectPersistentData(loaded, {
 			x: 0,
 			y: 0.5,
 			z: 0,
@@ -388,13 +404,13 @@ describe('saveAllPlayers', () => {
 
 		saveAllPlayers();
 
-		expect(testProvider.loadPlayer('a')).toEqual({
+		expectPersistentData(testProvider.loadPlayer('a'), {
 			x: 1, y: 0.5, z: 2, rotation: 0,
 			currency: 1,
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
 		});
-		expect(testProvider.loadPlayer('b')).toEqual({
+		expectPersistentData(testProvider.loadPlayer('b'), {
 			x: 3, y: 0.5, z: 4, rotation: 1,
 			currency: 2,
 			ownedCards: { flame_blade: 1 },
@@ -421,7 +437,7 @@ describe('saveAllPlayers', () => {
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 		expect(() => saveAllPlayers()).not.toThrow();
 		// p2 should still have been saved
-		expect(testProvider.loadPlayer('p2')).toEqual({
+		expectPersistentData(testProvider.loadPlayer('p2'), {
 			x: 0, y: 0.5, z: 0, rotation: 0,
 			currency: 20,
 			ownedCards: {},
@@ -520,7 +536,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		savePlayerData(playerId);
 
 		// Verify data is stored under accountId, not playerId
-		expect(testProvider.loadPlayer(testAccountId)).toEqual({
+		expectPersistentData(testProvider.loadPlayer(testAccountId), {
 			x: 5,
 			y: 0.5,
 			z: 10,
@@ -537,7 +553,7 @@ describe('authenticated save/load round-trip by accountId', () => {
 		const loaded = testProvider.loadPlayer(testAccountId);
 		expect(loaded.currency).toBe(42);
 		expect(loaded.ownedCards).toEqual({ iron_sword: 3, flame_blade: 1 });
-		expect(loaded.selectedDeck).toEqual(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake']);
+		expect(loaded.selectedDeck.map((entry) => cardIdForDeckEntry(entry, loaded.inventory))).toEqual(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake']);
 		expect(loaded.x).toBe(5);
 		expect(loaded.z).toBe(10);
 	});
@@ -607,7 +623,7 @@ describe('anonymous save/load round-trip by playerId', () => {
 
 		// Verify data is stored under playerId
 		const loaded = testProvider.loadPlayer(anonPlayerId);
-		expect(loaded).toEqual({
+		expectPersistentData(loaded, {
 			x: 3,
 			y: 0.5,
 			z: 7,

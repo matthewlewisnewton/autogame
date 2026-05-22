@@ -26,6 +26,7 @@ import {
 	isEntityPositionBlocked,
 	ENTITY_RADIUS,
 	PLAYER_RADIUS,
+	cardIdForDeckEntry,
 	wallAABB
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
@@ -92,8 +93,7 @@ async function startTestServer() {
  * Each connection gets a unique accountId so tests don't collide.
  * The client sends a valid JWT token in the auth payload.
  */
-function connectClient(baseUrl) {
-	const accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`) {
 	const token = createTestToken(accountId);
 
 	return new Promise((resolve, reject) => {
@@ -141,6 +141,10 @@ function waitForEvent(socket, event, timeout = 3000) {
  */
 function sleep(ms) {
 	return new Promise(r => setTimeout(r, ms));
+}
+
+function selectedDeckCardIds(player, deck = player.selectedDeck) {
+	return deck.map((entry) => cardIdForDeckEntry(entry, player.inventory));
 }
 
 /**
@@ -1754,8 +1758,9 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 
 		expect(update.selectedDeck).toBeDefined();
 		expect(update.ownedCards).toBeDefined();
+		expect(update.inventory).toBeDefined();
 		expect(update.selectedDeck.length).toBe(deckAfterRemove.length + 1);
-		expect(update.selectedDeck).toContain('dungeon_drake');
+		expect(selectedDeckCardIds(playerA, update.selectedDeck)).toContain('dungeon_drake');
 
 		// Verify server state
 		expect(playerA.selectedDeck.length).toBe(deckAfterRemove.length + 1);
@@ -1774,10 +1779,42 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		const update = await deckUpdatePromise;
 
 		expect(update.selectedDeck.length).toBe(deckBefore.length - 1);
-		expect(update.selectedDeck).not.toContain('dungeon_drake');
+		expect(selectedDeckCardIds(playerA, update.selectedDeck)).not.toContain('dungeon_drake');
 
 		expect(playerA.selectedDeck.length).toBe(deckBefore.length - 1);
-		expect(playerA.selectedDeck).not.toContain('dungeon_drake');
+		expect(selectedDeckCardIds(playerA)).not.toContain('dungeon_drake');
+	});
+
+	it('adds and removes a specific duplicate card instance by instanceId', async () => {
+		const playerA = gameState.players[socket1._playerId];
+		const originalDeck = [...playerA.selectedDeck];
+		const ironInstances = playerA.inventory.filter((instance) => instance.cardId === 'iron_sword');
+		expect(ironInstances.length).toBeGreaterThan(1);
+
+		const firstIron = ironInstances[0];
+		const secondIron = ironInstances[1];
+
+		const removeFirstPromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('deckRemoveCard', { instanceId: firstIron.instanceId, cardId: firstIron.cardId });
+		await removeFirstPromise;
+
+		expect(playerA.selectedDeck).not.toContain(firstIron.instanceId);
+		expect(playerA.selectedDeck).toContain(secondIron.instanceId);
+
+		const addFirstPromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('deckAddCard', { instanceId: firstIron.instanceId, cardId: firstIron.cardId });
+		await addFirstPromise;
+
+		expect(playerA.selectedDeck).toContain(firstIron.instanceId);
+		expect(playerA.selectedDeck).toContain(secondIron.instanceId);
+		expect(playerA.selectedDeck.length).toBe(originalDeck.length);
+
+		const removeSecondPromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('deckRemoveCard', { instanceId: secondIron.instanceId, cardId: secondIron.cardId });
+		await removeSecondPromise;
+
+		expect(playerA.selectedDeck).toContain(firstIron.instanceId);
+		expect(playerA.selectedDeck).not.toContain(secondIron.instanceId);
 	});
 
 	it('deckAddCard during playing phase is silently ignored', async () => {
@@ -1845,7 +1882,7 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		const err = await deckErrorPromise;
 
 		expect(err.reason).toContain('not in deck');
-		expect(playerA.selectedDeck).not.toContain('dungeon_drake');
+		expect(selectedDeckCardIds(playerA)).not.toContain('dungeon_drake');
 	});
 
 	it('adding too many copies of a card emits deckError', async () => {
@@ -1858,7 +1895,7 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		expect(err.reason).toContain('No extra copies');
 
 		// Count iron_swords in deck — should be exactly 3 (unchanged)
-		const ironCount = playerA.selectedDeck.filter(id => id === 'iron_sword').length;
+		const ironCount = selectedDeckCardIds(playerA).filter(id => id === 'iron_sword').length;
 		expect(ironCount).toBe(3);
 	});
 
@@ -1878,8 +1915,8 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		// Verify independence
 		expect(gameState.players[socket1._playerId].selectedDeck.length).toBe(deckA.length - 1);
 		expect(gameState.players[socket2._playerId].selectedDeck.length).toBe(deckB.length - 1);
-		expect(gameState.players[socket1._playerId].selectedDeck).not.toContain('dungeon_drake'); // A removed it
-		expect(gameState.players[socket2._playerId].selectedDeck).not.toContain('dungeon_drake'); // B removed it
+		expect(selectedDeckCardIds(gameState.players[socket1._playerId])).not.toContain('dungeon_drake'); // A removed it
+		expect(selectedDeckCardIds(gameState.players[socket2._playerId])).not.toContain('dungeon_drake'); // B removed it
 	});
 });
 
@@ -1906,10 +1943,39 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		expect(init).toHaveProperty('selectedDeck');
 		expect(Array.isArray(init.selectedDeck)).toBe(true);
 		expect(init.selectedDeck.length).toBeGreaterThan(0);
+		expect(init).toHaveProperty('inventory');
+		expect(Array.isArray(init.inventory)).toBe(true);
 		expect(init).toHaveProperty('ownedCards');
 		expect(typeof init.ownedCards).toBe('object');
 
 		testSocket.disconnect();
+		await sleep(50);
+	});
+
+	it('converts old persisted ownedCards count-map data on connect', async () => {
+		const accountId = `legacy-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+		const testProvider = new InMemoryProvider();
+		testProvider.savePlayer(accountId, {
+			currency: 77,
+			ownedCards: { iron_sword: 2, flame_blade: 1 },
+			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
+			x: 1,
+			y: 0.5,
+			z: 2,
+			rotation: 0
+		});
+		setTestProvider(testProvider);
+
+		const { socket, init } = await connectClient(baseUrl, accountId);
+		const player = gameState.players[socket._playerId];
+
+		expect(init.ownedCards).toEqual({ iron_sword: 2, flame_blade: 1 });
+		expect(init.inventory).toHaveLength(3);
+		expect(new Set(init.inventory.map((instance) => instance.instanceId)).size).toBe(3);
+		expect(selectedDeckCardIds(player)).toEqual(['iron_sword', 'iron_sword', 'flame_blade']);
+
+		socket.disconnect();
+		setTestProvider(null);
 		await sleep(50);
 	});
 
@@ -1960,7 +2026,7 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		const deck1Cards = [...stateUpdate.players[socket1._playerId].deck];
 		const hand1Cards = player1.hand.filter(c => c).map(c => c.id);
 		const allCards = [...deck1Cards, ...hand1Cards].sort();
-		const selected1Sorted = [...deck1].sort();
+		const selected1Sorted = selectedDeckCardIds(player1, deck1).sort();
 		expect(allCards).toEqual(selected1Sorted);
 
 		expect(stateUpdate.players[socket2._playerId]).toBeDefined();

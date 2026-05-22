@@ -134,7 +134,18 @@ const {
   grantCard,
   grantRunRewards,
   buildPlayerRewardSummary,
+  createCardInstance,
+  createInventoryFromCardIds,
+  createInventoryFromOwnedCards,
+  normalizeInventory,
+  inventoryToOwnedCards,
+  normalizeSelectedDeck,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
   validateDeck,
+  canAddCardInstanceToDeck,
   canAddCardToDeck,
   createDrawDeckFromSelectedDeck,
   drawCardFromDeck,
@@ -292,7 +303,8 @@ function applyDebugScenario(socket, name) {
   const spawn = firstRoomPosition();
 
   // Validate deck — same check the normal playerReady path uses
-  const result = validateDeck(player.selectedDeck, player.ownedCards);
+  normalizePlayerInventory(player);
+  const result = validateDeck(player.selectedDeck, player.inventory);
   if (!result.valid) return { ok: false, reason: result.reason };
 
   player.ready = true;
@@ -500,7 +512,7 @@ function startServer(port) {
 
       // Default selected deck: the full 8-card starting deck (STARTING_DECK_IDS),
       // so players have a draw-deck reserve beyond the 4-card opening hand.
-      const defaultDeck = [...STARTING_DECK_IDS];
+      const defaultDeck = progress.inventory.map(instance => instance.instanceId);
 
       gameState.players[playerId] = {
         id: playerId,
@@ -518,6 +530,7 @@ function startServer(port) {
         ready: false,
         magicStones: MAX_MAGIC_STONES,
         currency: progress.currency,
+        inventory: progress.inventory,
         ownedCards: progress.ownedCards,
         runRewards: progress.runRewards,
         currencyEarnedThisRun: progress.currencyEarnedThisRun,
@@ -532,9 +545,12 @@ function startServer(port) {
     const player = gameState.players[playerId];
     if (savedData) {
       player.currency = savedData.currency ?? player.currency;
-      player.ownedCards = savedData.ownedCards ?? player.ownedCards;
+      if (savedData.inventory || savedData.ownedCards) {
+        player.inventory = normalizeInventory(savedData.inventory, savedData.ownedCards);
+        player.ownedCards = inventoryToOwnedCards(player.inventory);
+      }
       player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
-        ? savedData.selectedDeck
+        ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
         : player.selectedDeck;
       // Restore persisted location regardless of game phase (lobby or mid-run)
       player.x = savedData.x ?? player.x;
@@ -542,6 +558,7 @@ function startServer(port) {
       player.z = savedData.z ?? player.z;
       player.rotation = savedData.rotation ?? player.rotation;
     }
+    normalizePlayerInventory(player);
 
     // ── Initialize combat hand/deck on active-run reconnect ──
     // When a player cold-reconnects during an active dungeon run, the server
@@ -566,7 +583,7 @@ function startServer(port) {
       }
     }
 
-  socket.emit('init', { id: playerId, playerId, accountId, username: player.username, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, ownedCards: player.ownedCards });
+  socket.emit('init', { id: playerId, playerId, accountId, username: player.username, state: gameState, layoutSeed: gameState.layoutSeed, layout: gameState.layout, selectedDeck: player.selectedDeck, inventory: player.inventory, ownedCards: player.ownedCards });
 
   // Broadcast updated lobby on connect
   broadcastLobbyUpdate();
@@ -826,7 +843,8 @@ function startServer(port) {
 
     if (ready) {
       // Validate deck before accepting ready
-      const result = validateDeck(player.selectedDeck, player.ownedCards);
+      normalizePlayerInventory(player);
+      const result = validateDeck(player.selectedDeck, player.inventory);
       if (!result.valid) {
         player.ready = false;
         socket.emit('deckError', { reason: result.reason });
@@ -862,23 +880,41 @@ function startServer(port) {
     const player = gameState.players[socket.playerId];
     if (!player) return;
 
-    const cardId = data && typeof data.cardId === 'string' ? data.cardId : null;
-    if (!cardId) {
+    normalizePlayerInventory(player);
+
+    const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!requestedInstanceId && !requestedCardId) {
       socket.emit('deckError', { reason: 'Missing cardId' });
       return;
     }
 
-    // Validate card exists
-    if (!CARD_DEFS[cardId]) {
-      socket.emit('deckError', { reason: `Unknown card: ${cardId}` });
+    let instance = null;
+    if (requestedInstanceId) {
+      instance = getInventoryInstance(player.inventory, requestedInstanceId);
+      if (!instance) {
+        socket.emit('deckError', { reason: `Unknown card instance: ${requestedInstanceId}` });
+        return;
+      }
+    } else {
+      if (!CARD_DEFS[requestedCardId]) {
+        socket.emit('deckError', { reason: `Unknown card: ${requestedCardId}` });
+        return;
+      }
+      instance = findAvailableInventoryInstance(requestedCardId, player.selectedDeck, player.inventory);
+    }
+
+    const cardId = instance ? instance.cardId : requestedCardId;
+    if (!instance) {
+      socket.emit('deckError', { reason: `No extra copies of ${cardId} to add` });
       return;
     }
 
-    // Validate deck rules via canAddCardToDeck
-    if (!canAddCardToDeck(cardId, player.selectedDeck, player.ownedCards)) {
+    // Validate deck rules via the selected instance.
+    if (!canAddCardInstanceToDeck(instance.instanceId, player.selectedDeck, player.inventory)) {
       if (player.selectedDeck.length >= DECK_MAX_SIZE) {
         socket.emit('deckError', { reason: `Deck is full (${DECK_MAX_SIZE} cards max)` });
-      } else if (player.selectedDeck.filter(id => id === cardId).length >= (player.ownedCards[cardId] || 0)) {
+      } else if (!findAvailableInventoryInstance(cardId, player.selectedDeck, player.inventory)) {
         socket.emit('deckError', { reason: `No extra copies of ${cardId} to add` });
       } else {
         socket.emit('deckError', { reason: `Cannot add ${cardId} to deck` });
@@ -886,12 +922,13 @@ function startServer(port) {
       return;
     }
 
-    // Add card to deck
-    player.selectedDeck.push(cardId);
+    // Add this specific card instance to the deck.
+    player.selectedDeck.push(instance.instanceId);
 
     // Emit deckUpdate to the requesting player only
     socket.emit('deckUpdate', {
       selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
       ownedCards: player.ownedCards
     });
 
@@ -905,14 +942,27 @@ function startServer(port) {
     const player = gameState.players[socket.playerId];
     if (!player) return;
 
-    const cardId = data && typeof data.cardId === 'string' ? data.cardId : null;
-    if (!cardId) {
+    normalizePlayerInventory(player);
+
+    const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!requestedInstanceId && !requestedCardId) {
       socket.emit('deckError', { reason: 'Missing cardId' });
       return;
     }
 
-    // Find card in deck
-    const idx = player.selectedDeck.indexOf(cardId);
+    // Find the selected instance in the deck. Legacy cardId payloads remove
+    // the first matching card instance for backward compatibility.
+    let idx = -1;
+    let cardId = requestedCardId;
+    if (requestedInstanceId) {
+      idx = player.selectedDeck.indexOf(requestedInstanceId);
+      cardId = cardIdForDeckEntry(requestedInstanceId, player.inventory) || requestedInstanceId;
+    } else {
+      idx = player.selectedDeck.findIndex(entry =>
+        cardIdForDeckEntry(entry, player.inventory) === requestedCardId
+      );
+    }
     if (idx === -1) {
       socket.emit('deckError', { reason: `Card ${cardId} not in deck` });
       return;
@@ -924,6 +974,7 @@ function startServer(port) {
     // Emit deckUpdate to the requesting player only
     socket.emit('deckUpdate', {
       selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
       ownedCards: player.ownedCards
     });
 
@@ -1067,7 +1118,18 @@ if (typeof module !== 'undefined' && module.exports) {
     grantCard,
     grantRunRewards,
     buildPlayerRewardSummary,
+    createCardInstance,
+    createInventoryFromCardIds,
+    createInventoryFromOwnedCards,
+    normalizeInventory,
+    inventoryToOwnedCards,
+    normalizeSelectedDeck,
+    normalizePlayerInventory,
+    getInventoryInstance,
+    cardIdForDeckEntry,
+    findAvailableInventoryInstance,
     validateDeck,
+    canAddCardInstanceToDeck,
     canAddCardToDeck,
     createDrawDeckFromSelectedDeck,
     drawCardFromDeck,
