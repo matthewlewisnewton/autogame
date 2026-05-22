@@ -28,6 +28,16 @@ const VICTORY_REWARD_ROTATION = [
   'flame_blade',
   'battle_familiar',
   'dungeon_drake',
+  'saber_of_light',
+  'frost_nova',
+  'photon_slicer',
+  'healing_font',
+  'skeleton_knight',
+  'storm_eagle',
+  'gravity_well',
+  'echo_blade',
+  'mana_leach',
+  'dragons_breath',
 ];
 
 // Deterministic enemy-type → card drop mapping (Lost Kingdoms-style acquisition).

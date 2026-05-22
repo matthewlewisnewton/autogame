@@ -479,6 +479,207 @@ const ENEMY_DEFS = {
 // Minion behavior constants
 const MINION_FOLLOW_DISTANCE = 3;
 const MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;
+const PROJECTILE_HIT_WIDTH = 1.2;
+
+function isEnemyFrozen(enemy) {
+  return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
+}
+
+function healPlayer(playerId, amount) {
+  const player = _gameState.players[playerId];
+  if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
+  const before = Number.isFinite(player.hp) ? player.hp : MAX_HP;
+  player.hp = Math.min(MAX_HP, before + amount);
+  return player.hp - before;
+}
+
+function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+
+  for (const enemy of _gameState.enemies) {
+    const dx = enemy.x - originX;
+    const dz = enemy.z - originZ;
+    const dist = Math.hypot(dx, dz);
+    if (dist > range) continue;
+
+    const enemyDirX = dist > 0 ? dx / dist : dirX;
+    const enemyDirZ = dist > 0 ? dz / dist : dirZ;
+    const dot = dirX * enemyDirX + dirZ * enemyDirZ;
+    if (dot < Math.cos(coneAngle / 2)) continue;
+
+    const hpBefore = enemy.hp;
+    enemy.hp -= damage;
+    const killed = hpBefore > 0 && enemy.hp <= 0;
+    const hitGain = magicStoneOnHit;
+    const killGain = killed ? magicStoneOnKill : 0;
+    magicStonesGained += hitGain + killGain;
+    hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
+  }
+
+  return { hits, magicStonesGained };
+}
+
+function collectRadialHits(originX, originZ, radius, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+
+  for (const enemy of _gameState.enemies) {
+    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
+    if (dist > radius) continue;
+
+    const hpBefore = enemy.hp;
+    enemy.hp -= damage;
+    const killed = hpBefore > 0 && enemy.hp <= 0;
+    const hitGain = magicStoneOnHit;
+    const killGain = killed ? magicStoneOnKill : 0;
+    magicStonesGained += hitGain + killGain;
+    hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
+  }
+
+  return { hits, magicStonesGained };
+}
+
+function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const sampleCount = Math.max(4, Math.ceil(range * 2));
+
+  for (let pass = 0; pass < 2; pass++) {
+    const hitEnemyIds = new Set();
+    const start = pass === 0 ? 0 : range;
+    const end = pass === 0 ? range : 0;
+    for (let i = 0; i <= sampleCount; i++) {
+      const t = start + (end - start) * (i / sampleCount);
+      const px = originX + dirX * t;
+      const pz = originZ + dirZ * t;
+
+      for (const enemy of _gameState.enemies) {
+        if (hitEnemyIds.has(enemy.id)) continue;
+        const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+        if (dist > PROJECTILE_HIT_WIDTH) continue;
+
+        const hpBefore = enemy.hp;
+        enemy.hp -= damage;
+        const killed = hpBefore > 0 && enemy.hp <= 0;
+        const hitGain = magicStoneOnHit;
+        const killGain = killed ? magicStoneOnKill : 0;
+        magicStonesGained += hitGain + killGain;
+        hitEnemyIds.add(enemy.id);
+        hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain, pass: pass + 1 });
+      }
+    }
+  }
+
+  return { hits, magicStonesGained };
+}
+
+function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0) {
+  const now = Date.now();
+  const frozenUntil = now + durationMs;
+  const hits = [];
+
+  for (const enemy of _gameState.enemies) {
+    const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
+    if (dist > radius) continue;
+    if (damage > 0) {
+      enemy.hp -= damage;
+      hits.push({ enemyId: enemy.id, hp: enemy.hp });
+    }
+    enemy.frozenUntil = Math.max(enemy.frozenUntil || 0, frozenUntil);
+  }
+
+  return hits;
+}
+
+function pullEnemiesToward(originX, originZ, radius, strength) {
+  const moved = [];
+  for (const enemy of _gameState.enemies) {
+    const dx = originX - enemy.x;
+    const dz = originZ - enemy.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist <= 0.01 || dist > radius) continue;
+
+    const pull = Math.min(strength, dist);
+    enemy.x += (dx / dist) * pull;
+    enemy.z += (dz / dist) * pull;
+    moved.push({ enemyId: enemy.id, x: enemy.x, z: enemy.z });
+  }
+  return moved;
+}
+
+function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+  if (!_gameState.areaEffects) _gameState.areaEffects = [];
+  const now = Date.now();
+  const ticks = cardDef.dotTicks || 4;
+  const intervalMs = cardDef.dotIntervalMs || 500;
+  _gameState.areaEffects.push({
+    id: crypto.randomUUID(),
+    type: 'dragons_breath',
+    ownerId,
+    originX,
+    originZ,
+    dirX,
+    dirZ,
+    coneAngle: cardDef.attackConeAngle || Math.PI / 3,
+    range: cardDef.attackRange || 7,
+    damagePerTick: cardDef.damage || 8,
+    ticksRemaining: ticks,
+    intervalMs,
+    lastTickAt: now,
+    expiresAt: now + ticks * intervalMs + 250,
+  });
+}
+
+function updateAreaEffects() {
+  if (!_gameState.areaEffects || _gameState.areaEffects.length === 0) return;
+  const now = Date.now();
+
+  for (const effect of _gameState.areaEffects) {
+    if (now >= effect.expiresAt || effect.ticksRemaining <= 0) continue;
+    if (now - effect.lastTickAt < effect.intervalMs) continue;
+
+    const { hits } = collectConeHits(
+      effect.originX,
+      effect.originZ,
+      effect.dirX,
+      effect.dirZ,
+      effect.range,
+      effect.coneAngle,
+      effect.damagePerTick
+    );
+    effect.lastTickAt = now;
+    effect.ticksRemaining -= 1;
+    effect.lastHits = hits;
+  }
+
+  _gameState.areaEffects = _gameState.areaEffects.filter(
+    effect => effect.ticksRemaining > 0 && now < effect.expiresAt
+  );
+  _progression().cleanupAfterDamage();
+}
+
+function findTauntMinionNear(enemyX, enemyZ, detectionRadius) {
+  let nearestDist = Infinity;
+  let nearestMinion = null;
+
+  for (const minion of _gameState.minions) {
+    if (!minion.taunt || minion.hp <= 0) continue;
+    const dist = Math.hypot(minion.x - enemyX, minion.z - enemyZ);
+    if (dist <= detectionRadius && dist < nearestDist) {
+      nearestDist = dist;
+      nearestMinion = minion;
+    }
+  }
+
+  return nearestMinion;
+}
 
 // ── Player Damage / Respawn ──
 
@@ -520,6 +721,10 @@ function updateEnemies() {
 
 	for (const enemy of _gameState.enemies) {
 		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+
+		if (isEnemyFrozen(enemy)) {
+			continue;
+		}
 
 		// Ensure attackState exists (backward compat for enemies spawned before this change)
 		if (!enemy.attackState) enemy.attackState = 'idle';
@@ -581,7 +786,19 @@ function updateEnemies() {
 			}
 		}
 
-		// ── Find nearest living player ──
+		// ── Find nearest living player or taunt minion ──
+		const tauntMinion = findTauntMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
+		if (tauntMinion) {
+			enemy.state = 'chasing';
+			const dist = Math.hypot(tauntMinion.x - enemy.x, tauntMinion.z - enemy.z);
+			if (dist <= ENEMY_ATTACK_RANGE) {
+				tauntMinion.hp -= def.attackDamage;
+			} else {
+				moveEntityToward(enemy, tauntMinion, def.chaseSpeed * dt);
+			}
+			continue;
+		}
+
 		let nearestDist = Infinity;
 		let nearestPlayer = null;
 		for (const player of players) {
@@ -703,6 +920,30 @@ function updateMinions() {
         }
       }
 
+      if (minion.type === 'storm_eagle') {
+        const attackRange = minion.attackRange || 7;
+        const attackDamage = minion.attackDamage || 12;
+
+        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+          if (nearestDist <= attackRange) {
+            nearestEnemy.hp -= attackDamage;
+          } else {
+            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.skirmisher.chaseSpeed * dt);
+          }
+        } else {
+          const owner = _gameState.players[minion.ownerId];
+          if (owner && !owner.dead) {
+            const dx = owner.x - minion.x;
+            const dz = owner.z - minion.z;
+            const distToOwner = Math.hypot(dx, dz);
+            if (distToOwner > MINION_FOLLOW_DISTANCE) {
+              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+            }
+          }
+        }
+        continue;
+      }
+
       // Chase if an enemy is within detection range
       if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
         // Attack if within attack range
@@ -729,6 +970,9 @@ function updateMinions() {
       }
     }
   }
+
+  // Process lingering area effects (e.g. Dragon's Breath DoT)
+  updateAreaEffects();
 
   // Cleanup dead enemies after minion attacks
   _progression().cleanupAfterDamage();
@@ -821,8 +1065,19 @@ module.exports = {
   // Minion AI
   updateMinions,
 
-  // Player damage
+  // Player damage / heal
   damagePlayer,
+  healPlayer,
+
+  // Card combat helpers
+  collectConeHits,
+  collectRadialHits,
+  collectReturningProjectileHits,
+  applyFreezeInRadius,
+  pullEnemiesToward,
+  spawnDragonsBreathEffect,
+  updateAreaEffects,
+  isEnemyFrozen,
 
   // Magic stones
   regenMagicStones,
