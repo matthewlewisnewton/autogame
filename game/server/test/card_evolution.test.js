@@ -101,6 +101,28 @@ describe('card evolution', () => {
 		expect(snapshot.players.p1.inventory).toEqual(player.inventory);
 	});
 
+	it('evolves Echo Blade +10 into Resonance Edge', () => {
+		const player = {
+			inventory: [
+				createCardInstance('echo_blade', {
+					instanceId: 'echo-instance',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { echo_blade: 1 },
+			selectedDeck: ['echo-instance'],
+		};
+
+		const result = evolveCard(player, 'echo-instance');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('echo_blade');
+		expect(result.toCardId).toBe('resonance_edge');
+		expect(player.inventory[0].cardId).toBe('resonance_edge');
+		expect(player.inventory[0].isEvolved).toBe(true);
+		expect(player.ownedCards.resonance_edge).toBe(1);
+	});
+
 	it('defines every evolved card referenced by the transform table', () => {
 		for (const [baseCardId, evolvedCardId] of Object.entries(EVOLUTION_TRANSFORMS)) {
 			expect(CARD_DEFS[baseCardId]).toBeDefined();

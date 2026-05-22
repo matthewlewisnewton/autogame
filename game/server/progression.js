@@ -230,6 +230,18 @@ const CARD_DEFS = {
     shockwaveRadius: 6,
     specialEffect: 'shockwave',
   },
+  resonance_edge: {
+    id: 'resonance_edge',
+    name: 'Resonance Edge',
+    type: 'weapon',
+    damage: 21,
+    charges: 5,
+    shockwaveEvery: 2,
+    shockwaveDamage: 30,
+    shockwaveRadius: 6,
+    isEvolved: true,
+    specialEffect: 'shockwave',
+  },
   mana_leach: {
     id: 'mana_leach',
     name: 'Mana Leach',
@@ -275,7 +287,8 @@ const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake'
+  dungeon_drake: 'ancient_drake',
+  echo_blade: 'resonance_edge',
 };
 
 const CARD_SELL_VALUES = {
