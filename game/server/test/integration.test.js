@@ -2164,7 +2164,7 @@ describe('Card evolution handler', () => {
 		expect(result.instance.cardId).toBe('steel_broadsword');
 		expect(result.inventory.find((card) => card.instanceId === instance.instanceId).cardId).toBe('steel_broadsword');
 		expect(result.ownedCards.steel_broadsword).toBe(1);
-		expect(result.selectedDeck).toContain('steel_broadsword');
+		expect(result.selectedDeck).toContain(instance.instanceId);
 	});
 
 	it('rejects socket evolution below +10', async () => {
