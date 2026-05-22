@@ -8,7 +8,7 @@ import {
 	renderQuestBoard,
 } from './questBoard.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import {
 	MAX_CARD_LEVEL,
 	getUpgradeCost,
@@ -467,6 +467,11 @@ function bindSocketHandlers(s) {
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			const currencyEl = document.getElementById('currency-display');
+			if (currencyEl) currencyEl.textContent = `GOLD ${myCurrency}`;
+		}
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') renderPhotonForge();
 	});
@@ -524,6 +529,26 @@ function bindSocketHandlers(s) {
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		if (Number.isFinite(data.currency)) myCurrency = data.currency;
 		renderDeckEditor();
+		if (activeLobbyTab === 'forge') renderPhotonForge();
+	});
+
+	s.on('cardGrindResult', (data) => {
+		if (!data) return;
+		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+		if (Array.isArray(data.inventory)) myInventory = data.inventory;
+		if (data.ownedCards) myOwnedCards = data.ownedCards;
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			const currencyEl = document.getElementById('currency-display');
+			if (currencyEl) currencyEl.textContent = `GOLD ${myCurrency}`;
+		}
+		renderDeckEditor();
+		if (activeLobbyTab === 'forge') renderPhotonForge();
+	});
+
+	s.on('cardGrindError', (data) => {
+		if (!data || !data.reason) return;
+		showDeckError(data.reason);
 	});
 
 	s.on('tradeOffer', (data) => {
@@ -757,11 +782,13 @@ function renderHand() {
 			const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
 			const evolvedBadge = card.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
+			const grindBadge = (card.grind || 0) > 0 ? `<span class="grind-badge">+${card.grind}</span>` : '';
 			const effectText = card.specialEffect ? `<span class="card-effect">${card.specialEffect.replace(/_/g, ' ')}</span>` : '';
 			slot.innerHTML = `
 				<span class="card-icon">${style.icon}</span>
 				<span class="card-name">${card.name}</span>
 				${evolvedBadge}
+				${grindBadge}
 				${effectText}
 				<span class="card-charges">${card.remainingCharges}/${card.charges}</span>
 			`;
@@ -890,6 +917,19 @@ function findEvolvableInstance(cardId) {
 	) || null;
 }
 
+function findGrindableInstance(cardId) {
+	return getDeckInventory().find((instance) =>
+		instance &&
+		instance.cardId === cardId &&
+		(instance.grind || 0) < EVOLUTION_GRIND_REQUIRED
+	) || null;
+}
+
+function grindBadgeForInstance(instance) {
+	if (!instance || !(instance.grind > 0)) return '';
+	return `<span class="grind-badge">+${instance.grind}</span>`;
+}
+
 function renderDeckEditor() {
 	ownedCardsListEl.innerHTML = '';
 	const ownedCounts = getDeckOwnedCounts();
@@ -903,6 +943,13 @@ function renderDeckEditor() {
 			? !!availableInstance && mySelectedDeck.length < DECK_MAX_SIZE
 			: inDeckCount < count && mySelectedDeck.length < DECK_MAX_SIZE;
 		const evolvableInstance = findEvolvableInstance(cardId);
+		const grindableInstance = findGrindableInstance(cardId);
+		const grindCost = grindableInstance ? getGrindCost(grindableInstance.grind || 0) : 0;
+		const canGrind = !!grindableInstance && myCurrency >= grindCost;
+		const maxGrind = getDeckInventory()
+			.filter((instance) => instance.cardId === cardId)
+			.reduce((max, instance) => Math.max(max, instance.grind || 0), 0);
+		const grindBadge = maxGrind > 0 ? `<span class="grind-badge">+${maxGrind}</span>` : '';
 		const evolvedBadge = def.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
 
 		const sellableInstance = findAvailableInventoryInstance(cardId);
@@ -915,9 +962,11 @@ function renderDeckEditor() {
       <span class="card-icon">${style.icon}</span>
       <span class="card-label">${def.name}</span>
       ${evolvedBadge}
+      ${grindBadge}
       <span class="card-count">${count}</span>
       <span class="card-sell-value">${sellValue}g</span>
       <button class="sell-card-btn" ${canSell ? '' : 'disabled'}>Sell</button>
+      <button class="grind-card-btn" ${canGrind ? '' : 'disabled'}>${canGrind ? `Grind (${grindCost}g)` : 'Grind'}</button>
       <button class="evolve-card-btn" ${evolvableInstance ? '' : 'disabled'}>Evolve</button>
       <button class="deck-add-btn" ${canAdd ? '' : 'disabled'}>+${inDeckCount > 0 ? ` (${inDeckCount})` : ''}</button>
     `;
@@ -927,6 +976,11 @@ function renderDeckEditor() {
 			if (instance) {
 				socket.emit('sellCard', { instanceId: instance.instanceId, cardId });
 			}
+		});
+		const grindBtn = entry.querySelector('.grind-card-btn');
+		grindBtn.addEventListener('click', () => {
+			const instance = findGrindableInstance(cardId);
+			if (instance) socket.emit('grindCard', { instanceId: instance.instanceId });
 		});
 		const evolveBtn = entry.querySelector('.evolve-card-btn');
 		evolveBtn.addEventListener('click', () => {
@@ -948,7 +1002,9 @@ function renderDeckEditor() {
 		const def = CARD_DEFS[cardId];
 		if (!def) continue;
 		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+		const deckInstance = getDeckInventory().find((card) => card.instanceId === entryId);
 		const evolvedBadge = def.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
+		const grindBadge = grindBadgeForInstance(deckInstance);
 
 		const entry = document.createElement('div');
 		entry.className = `deck-entry${def.isEvolved ? ' evolved-card' : ''}`;
@@ -956,6 +1012,7 @@ function renderDeckEditor() {
       <span class="card-icon">${style.icon}</span>
       <span class="card-label">${def.name}</span>
       ${evolvedBadge}
+      ${grindBadge}
       <button class="deck-remove-btn">✕</button>
     `;
 		const removeBtn = entry.querySelector('.deck-remove-btn');
@@ -1627,10 +1684,11 @@ window.createEnemyMesh = rendererCreateEnemyMesh;
 window.enemyMeshHalfHeight = rendererEnemyMeshHalfHeight;
 window.healthBarColor = rendererHealthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
-window.__setDeckState = (deck, owned, inventory) => {
+window.__setDeckState = (deck, owned, inventory, currency) => {
 	mySelectedDeck = deck || mySelectedDeck;
 	myOwnedCards = owned || myOwnedCards;
 	if (inventory !== undefined) myInventory = inventory;
+	if (Number.isFinite(currency)) myCurrency = currency;
 };
 window.renderQuestBoardState = renderQuestBoardState;
 window.__setQuestBoardState = (quests, questId) => applyQuestBoardState(quests, questId);

@@ -109,6 +109,8 @@ export const CARD_DEFS = {
 };
 
 export const EVOLUTION_GRIND_REQUIRED = 10;
+export const GRIND_COST_BASE = 100;
+export const GRIND_STAT_SCALE = 0.05;
 export const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
@@ -142,6 +144,16 @@ export function getCardSellValue(cardId) {
   if (def.type === 'summon') return 12;
   if (def.type === 'monster') return 10;
   return 5;
+}
+
+export function getGrindCost(grind) {
+  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  return GRIND_COST_BASE * (level + 1);
+}
+
+export function getStatMultiplier(grind) {
+  const level = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  return 1.0 + (level * GRIND_STAT_SCALE);
 }
 
 // ── Starting Deck ──
