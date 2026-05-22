@@ -86,6 +86,10 @@ PIPELINE_CLIENT_TIMEOUT="${PIPELINE_CLIENT_TIMEOUT:-120}"
 PIPELINE_CHECK_TIMEOUT="${PIPELINE_CHECK_TIMEOUT:-$((PIPELINE_SERVER_TIMEOUT + PIPELINE_CLIENT_TIMEOUT))}"
 PIPELINE_COVERAGE_ENABLED="${PIPELINE_COVERAGE_ENABLED:-1}" # run coverage on changed files before top-level review
 PIPELINE_COVERAGE_TIMEOUT="${PIPELINE_COVERAGE_TIMEOUT:-120}"
+# HARNESS_BROAD_PORT_KILL=1 restores legacy fuser -k cleanup on game ports
+# 5173/3000. Default 0 limits kills to harness-started game/server + vite
+# processes (or tracked GAME_PIDS) so unrelated local dev servers survive.
+HARNESS_BROAD_PORT_KILL="${HARNESS_BROAD_PORT_KILL:-0}"
 
 # --- Live runtime overrides ---
 # Optional file sourced AFTER the default-assignment block above so its values
@@ -137,16 +141,100 @@ port_in_use() {  # port_in_use <port>
   ss -tlnp "sport = :$1" 2>/dev/null | grep -qv '^State'
 }
 
+# pids_on_port <port> — prints unique PIDs listening on the port (one per line).
+pids_on_port() {  # pids_on_port <port>
+  ss -tlnp "sport = :$1" 2>/dev/null \
+    | grep -oE 'pid=[0-9]+' \
+    | sed 's/pid=//' \
+    | sort -u
+}
+
+# pid_cmdline <pid> — prints the process command line (empty on failure).
+pid_cmdline() {  # pid_cmdline <pid>
+  local pid="$1"
+  [ -r "/proc/$pid/cmdline" ] || return 1
+  tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | sed 's/ $//'
+}
+
+# cmdline_is_harness_game <cmdline> <port> — true when cmdline matches a
+# harness-managed game server (3000) or vite client (5173). Uses anchored
+# patterns first; broader fallbacks mirror start_game/stop_game pkill rules.
+cmdline_is_harness_game() {  # cmdline_is_harness_game <cmdline> <port>
+  local cmdline="$1" port="$2"
+  [ -n "$cmdline" ] || return 1
+  case "$port" in
+    5173)
+      printf '%s\n' "$cmdline" | grep -qE '(^|[[:space:]])vite[[:space:]]+--port[[:space:]]+5173($|[[:space:]])|vite.*--port.*5173'
+      ;;
+    3000)
+      printf '%s\n' "$cmdline" | grep -qE '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])|node.*game/server/index'
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+# pid_is_tracked_game <pid> — true when pid was started by this harness session.
+pid_is_tracked_game() {  # pid_is_tracked_game <pid>
+  local target="$1" p
+  for p in "${GAME_PIDS[@]:-}"; do
+    [ "$p" = "$target" ] && return 0
+  done
+  return 1
+}
+
+# log_port_blockers <port> — describe processes still holding the port.
+log_port_blockers() {  # log_port_blockers <port>
+  local port="$1" pid cmdline
+  port_in_use "$port" || return 0
+  log "[port] :$port still bound — blockers:"
+  while IFS= read -r pid; do
+    [ -n "$pid" ] || continue
+    cmdline="$(pid_cmdline "$pid" 2>/dev/null || true)"
+    log "[port]   pid $pid: ${cmdline:-<unknown>}"
+  done < <(pids_on_port "$port")
+  if [ "${HARNESS_BROAD_PORT_KILL:-0}" != "1" ]; then
+    log "[port] Set HARNESS_BROAD_PORT_KILL=1 to force-kill any process on :$port (dangerous on shared machines)."
+  fi
+}
+
+# cleanup_port <port> — stop harness-owned holders; broad fuser kill is opt-in.
+cleanup_port() {  # cleanup_port <port>
+  local port="$1" pid cmdline
+  case "$port" in
+    5173)
+      pkill -9 -f '(^|[[:space:]])vite[[:space:]]+--port[[:space:]]+5173($|[[:space:]])' 2>/dev/null || true
+      pkill -9 -f 'vite.*--port.*5173' 2>/dev/null || true
+      ;;
+    3000)
+      pkill -9 -f '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])' 2>/dev/null || true
+      pkill -9 -f 'node.*game/server/index' 2>/dev/null || true
+      ;;
+  esac
+  while IFS= read -r pid; do
+    [ -n "$pid" ] || continue
+    cmdline="$(pid_cmdline "$pid" 2>/dev/null || true)"
+    if pid_is_tracked_game "$pid" || cmdline_is_harness_game "$cmdline" "$port"; then
+      log "[port] stopping harness-owned pid $pid on :$port (${cmdline:-unknown})"
+      kill -9 "$pid" 2>/dev/null || true
+    fi
+  done < <(pids_on_port "$port")
+  if [ "${HARNESS_BROAD_PORT_KILL:-0}" = "1" ]; then
+    fuser -k -9 "$port"/tcp 2>/dev/null || true
+  fi
+}
+
 # wait_port_free <port> [timeout-seconds] — blocks until the TCP port is no
 # longer bound (including TIME-WAIT).  Returns 0 on success, 1 on timeout.
 wait_port_free() {  # wait_port_free <port> [timeout-seconds]
   local port="$1" deadline=$(( $(date +%s) + ${2:-15} ))
   while [ "$(date +%s)" -lt "$deadline" ]; do
     port_in_use "$port" || return 0
-    # Port still bound — try harder each iteration.
-    fuser -k -9 "$port"/tcp 2>/dev/null || true
+    cleanup_port "$port"
     sleep 0.2
   done
+  log_port_blockers "$port"
   return 1
 }
 
@@ -154,17 +242,11 @@ start_game() {  # start_game <logdir>
   local logdir="$1"
   emit_progress_event "game_start" "{\"logdir\":$(json_string "$logdir")}"
 
-  # --- Port cleanup: kill everything on 5173 and 3000, then wait for release ---
-  # Phase 1: immediate SIGKILL on whatever holds the ports.
-  fuser -k -9 5173/tcp 2>/dev/null || true
-  fuser -k -9 3000/tcp 2>/dev/null || true
+  # --- Port cleanup: prefer harness-owned processes; broad kill is opt-in ---
+  cleanup_port 5173
+  cleanup_port 3000
 
-  # Phase 2: also pkill any vite/node processes by command-line pattern.
-  # Anchored patterns avoid killing unrelated node processes (e.g. Qwen itself).
-  pkill -9 -f 'vite.*--port.*5173' 2>/dev/null || true
-  pkill -9 -f 'node.*game/server/index' 2>/dev/null || true
-
-  # Phase 3: block until ports are actually free (kernel releases the socket).
+  # Block until ports are actually free (kernel releases the socket).
   # Uses `ss` to detect TIME-WAIT sockets that `fuser` cannot see — this is
   # the critical fix for EADDRINUSE after process kill.
   wait_port_free 5173 15 || log "[warn] port 5173 still bound after 15s"
@@ -184,11 +266,11 @@ start_game() {  # start_game <logdir>
     # Wait for Vite to either bind successfully or fail.
     sleep 3
     if grep -q 'EADDRINUSE\|already in use' "$logdir/client.log" 2>/dev/null; then
-      log "[warn] Vite EADDRINUSE on attempt $attempt — retrying after cleanup"
+      log "[warn] Vite EADDRINUSE on attempt $attempt — retrying after harness port cleanup"
       kill "${GAME_PIDS[-1]}" 2>/dev/null || true
       GAME_PIDS=("${GAME_PIDS[@]:0:${#GAME_PIDS[@]}-1}")
-      fuser -k -9 5173/tcp 2>/dev/null || true
-      wait_port_free 5173 10 || true
+      cleanup_port 5173
+      wait_port_free 5173 10 || log "[warn] port 5173 still bound after EADDRINUSE cleanup"
     else
       vite_started=1
     fi
