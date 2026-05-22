@@ -34,6 +34,12 @@ import {
 	MAX_HP,
 	MAX_MS,
 } from './config.js';
+import {
+	computeDeckHudStats,
+	formatCharacterId,
+	formatPlayerLevel,
+	getHpBarTier,
+} from './vanguard-hud.js';
 
 // ── Renderer module imports ──
 import {
@@ -144,6 +150,12 @@ const hpLabel = document.getElementById('hp-label');
 const msBarFill = document.getElementById('ms-bar-fill');
 const msText = document.getElementById('ms-text');
 const msLabel = document.getElementById('ms-label');
+const characterIdEl = document.getElementById('character-id');
+const playerLevelEl = document.getElementById('player-level');
+const deckCountEl = document.getElementById('deck-count');
+const deckWeaponCountEl = document.getElementById('deck-weapon-count');
+const deckSummonCountEl = document.getElementById('deck-summon-count');
+const deckMonsterCountEl = document.getElementById('deck-monster-count');
 const objectiveHudEl = document.getElementById('objective-hud');
 const runSummaryOverlay = document.getElementById('run-summary-overlay');
 const summaryStatusEl = document.getElementById('summary-status');
@@ -316,6 +328,15 @@ function bindSocketHandlers(s) {
 			if (cardHandEl) cardHandEl.style.display = 'flex';
 			if (lobbyEl) lobbyEl.classList.add('hidden');
 			setGamePhase('playing');
+		}
+
+		// Update Vanguard HUD (HP, MS, deck stats, portrait)
+		if (myId && gameState.players[myId] && state.gamePhase === 'playing') {
+			const me = gameState.players[myId];
+			updateHpBar(me.hp);
+			updateMsBar(me.magicStones);
+			updateDeckStats(me.deck, me.hand);
+			updateVanguardPortrait();
 		}
 
 		// Update currency HUD
@@ -713,25 +734,34 @@ function updateStatus(text, state) {
 function updateHpBar(hp) {
 	const clamped = Math.max(0, Math.min(MAX_HP, hp));
 	const pct = (clamped / MAX_HP) * 100;
-	hpBarFill.style.width = `${pct}%`;
-	hpText.textContent = `${clamped}/${MAX_HP}`;
-	hpLabel.textContent = myId ? `${myId.slice(0, 8)} HP` : 'HP';
-
-	if (pct > 50) {
-		hpBarFill.style.background = '#22c55e';
-	} else if (pct > 25) {
-		hpBarFill.style.background = '#eab308';
-	} else {
-		hpBarFill.style.background = '#ef4444';
+	if (hpBarFill) {
+		hpBarFill.style.width = `${pct}%`;
+		hpBarFill.classList.remove('hp-high', 'hp-mid', 'hp-low');
+		hpBarFill.classList.add(getHpBarTier(pct));
 	}
+	if (hpText) hpText.textContent = `${clamped}/${MAX_HP}`;
+	if (hpLabel) hpLabel.textContent = 'HP';
 }
 
 function updateMsBar(ms) {
 	const clamped = Math.max(0, Math.min(MAX_MS, ms));
 	const pct = (clamped / MAX_MS) * 100;
-	msBarFill.style.width = `${pct}%`;
-	msText.textContent = `${Math.floor(clamped)}/${MAX_MS}`;
-	msLabel.textContent = myId ? `${myId.slice(0, 5)} MS` : 'MS';
+	if (msBarFill) msBarFill.style.width = `${pct}%`;
+	if (msText) msText.textContent = `${Math.floor(clamped)}/${MAX_MS}`;
+	if (msLabel) msLabel.textContent = 'MS';
+}
+
+function updateDeckStats(deck, handCards) {
+	const stats = computeDeckHudStats(deck, handCards);
+	if (deckCountEl) deckCountEl.textContent = stats.label;
+	if (deckWeaponCountEl) deckWeaponCountEl.textContent = String(stats.types.weapon);
+	if (deckSummonCountEl) deckSummonCountEl.textContent = String(stats.types.summon);
+	if (deckMonsterCountEl) deckMonsterCountEl.textContent = String(stats.types.monster);
+}
+
+function updateVanguardPortrait() {
+	if (characterIdEl) characterIdEl.textContent = formatCharacterId(myId);
+	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
 }
 
 function updateObjectiveHud() {
