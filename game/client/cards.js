@@ -145,6 +145,16 @@ export const CARD_DEFS = {
     effect: 'frost_nova',
     specialEffect: 'freeze',
   },
+  glacier_collapse: {
+    id: 'glacier_collapse',
+    name: 'Glacier Collapse',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 35,
+    effect: 'glacier_collapse',
+    isEvolved: true,
+    specialEffect: 'shatter',
+  },
   healing_font: {
     id: 'healing_font',
     name: 'Healing Font',
@@ -214,6 +224,7 @@ export const EVOLUTION_TRANSFORMS = {
   dungeon_drake: 'ancient_drake',
   saber_of_light: 'excalibur_photon',
   photon_slicer: 'infinite_disk',
+  frost_nova: 'glacier_collapse',
 };
 
 export const CARD_SELL_VALUES = {
@@ -288,6 +299,7 @@ export const CARD_ACCENT_STYLE = {
   photon_slicer: { color: '#22d3ee', icon: '⟲' },
   infinite_disk: { color: '#a5f3fc', icon: '∞' },
   frost_nova: { color: '#67e8f9', icon: '❄' },
+  glacier_collapse: { color: '#38bdf8', icon: '🧊' },
   healing_font: { color: '#86efac', icon: '♥' },
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },
   storm_eagle: { color: '#93c5fd', icon: '🦅' },

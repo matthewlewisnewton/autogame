@@ -199,6 +199,19 @@ const CARD_DEFS = {
     freezeDurationMs: 2500,
     specialEffect: 'freeze',
   },
+  glacier_collapse: {
+    id: 'glacier_collapse',
+    name: 'Glacier Collapse',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 35,
+    effect: 'glacier_collapse',
+    damage: 15,
+    freezeDurationMs: 2500,
+    frozenBonusDamage: 40,
+    isEvolved: true,
+    specialEffect: 'shatter',
+  },
   healing_font: {
     id: 'healing_font',
     name: 'Healing Font',
@@ -301,6 +314,7 @@ const EVOLUTION_TRANSFORMS = {
   dungeon_drake: 'ancient_drake',
   saber_of_light: 'excalibur_photon',
   photon_slicer: 'infinite_disk',
+  frost_nova: 'glacier_collapse',
 };
 
 const CARD_SELL_VALUES = {

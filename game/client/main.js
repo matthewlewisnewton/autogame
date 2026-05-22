@@ -491,7 +491,11 @@ function bindSocketHandlers(s) {
 		}
 		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnSummonEffect(origin, data.radius);
+			if (data.cardId === 'glacier_collapse') {
+				rendererSpawnSummonEffect(origin, data.radius, { color: 0x38bdf8, emissive: 0x0ea5e9 });
+			} else {
+				rendererSpawnSummonEffect(origin, data.radius);
+			}
 		}
 		if (data.hits && data.hits.length > 0) {
 			playSound('enemyHit');
@@ -499,7 +503,8 @@ function bindSocketHandlers(s) {
 			for (const hit of data.hits) {
 				const mesh = maps.enemiesMeshes[hit.enemyId];
 				if (mesh) {
-					rendererFlashMesh(mesh, 0xffffff, 200);
+					const flashColor = hit.frozenShatter ? 0x7dd3fc : 0xffffff;
+					rendererFlashMesh(mesh, flashColor, hit.frozenShatter ? 350 : 200);
 				}
 			}
 		}
