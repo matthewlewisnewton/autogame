@@ -78,6 +78,7 @@ import {
 	applyWindupFlash as rendererApplyWindupFlash,
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
+	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
 	markLootCollected as rendererMarkLootCollected,
 	disposeMeshMap as rendererDisposeMeshMap,
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
@@ -471,6 +472,10 @@ function bindSocketHandlers(s) {
 		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
 			rendererSpawnSummonEffect(origin, data.radius);
+		}
+		if (data.specialEffect === 'chain_lightning' && data.origin) {
+			rendererSpawnChainLightningEffect(data.origin, { x: 1, z: 0 });
+			playSound('enemyHit');
 		}
 		if (data.hits && data.hits.length > 0) {
 			playSound('enemyHit');

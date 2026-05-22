@@ -1128,9 +1128,13 @@ function startServer(port) {
       if (cardDef.taunt) {
         minion.taunt = true;
       }
-      if (cardDef.effect === 'storm_eagle') {
+      if (cardDef.effect === 'storm_eagle' || cardDef.effect === 'thunderbird') {
         minion.attackRange = cardDef.attackRange || 7;
         minion.attackDamage = cardDef.attackDamage || 12;
+        if (cardDef.effect === 'thunderbird') {
+          minion.chainRadius = cardDef.chainRadius || 5;
+          minion.maxChainTargets = cardDef.maxChainTargets || 2;
+        }
       }
       if (cardDef.effect === 'battery_automaton') {
         minion.lastChargePulseAt = now;
