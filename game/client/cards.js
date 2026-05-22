@@ -113,6 +113,14 @@ export const CARD_DEFS = {
     charges: 6,
     specialEffect: 'swift_slash',
   },
+  excalibur_photon: {
+    id: 'excalibur_photon',
+    name: 'Excalibur Photon',
+    type: 'weapon',
+    charges: 6,
+    isEvolved: true,
+    specialEffect: 'photon_barrage',
+  },
   photon_slicer: {
     id: 'photon_slicer',
     name: 'Photon Slicer',
@@ -196,6 +204,7 @@ export const EVOLUTION_TRANSFORMS = {
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
   dungeon_drake: 'ancient_drake',
+  saber_of_light: 'excalibur_photon',
 };
 
 export const CARD_SELL_VALUES = {
@@ -212,6 +221,8 @@ export const CARD_SELL_VALUES = {
   sacrificial_altar: 14,
   battery_automaton: 12,
   chrono_trigger: 16,
+  saber_of_light: 8,
+  excalibur_photon: 12,
 };
 
 export function getCardSellValue(cardId) {
@@ -263,6 +274,7 @@ export const CARD_TYPE_STYLE = {
 // Optional per-card accent overrides for the expanded pack.
 export const CARD_ACCENT_STYLE = {
   saber_of_light: { color: '#fef08a', icon: '☀' },
+  excalibur_photon: { color: '#e879f9', icon: '⚡' },
   photon_slicer: { color: '#22d3ee', icon: '⟲' },
   frost_nova: { color: '#67e8f9', icon: '❄' },
   healing_font: { color: '#86efac', icon: '♥' },
