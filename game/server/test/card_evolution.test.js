@@ -144,6 +144,27 @@ describe('card evolution', () => {
 		expect(player.inventory.find((c) => c.instanceId === instance.instanceId).cardId).toBe('glacier_collapse');
 	});
 
+	it('evolves Healing Font +10 into Divine Grace', () => {
+		const player = {
+			inventory: [
+				createCardInstance('healing_font', {
+					instanceId: 'heal-font-1',
+					grind: EVOLUTION_GRIND_REQUIRED,
+				}),
+			],
+			ownedCards: { healing_font: 1 },
+			selectedDeck: ['heal-font-1'],
+		};
+
+		const result = evolveCard(player, 'heal-font-1');
+
+		expect(result.ok).toBe(true);
+		expect(result.fromCardId).toBe('healing_font');
+		expect(result.toCardId).toBe('divine_grace');
+		expect(player.inventory[0].cardId).toBe('divine_grace');
+		expect(player.ownedCards.divine_grace).toBe(1);
+	});
+
 	it('defines every evolved card referenced by the transform table', () => {
 		for (const [baseCardId, evolvedCardId] of Object.entries(EVOLUTION_TRANSFORMS)) {
 			expect(CARD_DEFS[baseCardId]).toBeDefined();

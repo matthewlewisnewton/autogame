@@ -78,6 +78,7 @@ import {
 	applyWindupFlash as rendererApplyWindupFlash,
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
+	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
 	markLootCollected as rendererMarkLootCollected,
 	disposeMeshMap as rendererDisposeMeshMap,
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
@@ -489,7 +490,11 @@ function bindSocketHandlers(s) {
 				}
 			}
 		}
-		if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
+		if (data.cardId === 'divine_grace' && data.radius !== undefined) {
+			const origin = data.origin || { x: 0, z: 0 };
+			rendererSpawnDivineGraceEffect(origin, data.radius);
+			if (data.magicStonesGained > 0) playSound('loot');
+		} else if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
 			if (data.cardId === 'glacier_collapse') {
 				rendererSpawnSummonEffect(origin, data.radius, { color: 0x38bdf8, emissive: 0x0ea5e9 });
