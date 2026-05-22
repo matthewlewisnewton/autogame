@@ -1906,7 +1906,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 
 		// Verify socket-level events
 		const expectedSocketEvents = [
-			'connect', 'disconnect', 'init', 'stateUpdate',
+			'connect', 'disconnect', 'connect_error', 'init', 'stateUpdate',
 			'heartbeat_ack', 'debugScenarioResult', 'playerDisconnected',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
@@ -1923,5 +1923,136 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 	it('bindSocketHandlers is a no-op when passed null', async () => {
 		await import('../main.js');
 		expect(() => window.bindSocketHandlers(null)).not.toThrow();
+	});
+});
+
+// ── connect_error handler (JWT recovery) ──
+
+describe('connect_error handler', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'auth-overlay', 'auth-modal',
+			'register-form', 'register-username', 'register-password', 'register-btn', 'register-error',
+			'login-form', 'login-username', 'login-password', 'login-btn', 'login-error',
+			'show-login-link', 'show-register-link',
+			'logout-btn',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'register-btn' || id === 'login-btn' || id === 'ready-btn' ||
+					id === 'return-to-lobby-btn' || id === 'logout-btn' ||
+					id === 'show-login-link' || id === 'show-register-link')
+					? document.createElement('button')
+					: (id === 'show-login-link' || id === 'show-register-link' ? document.createElement('a') : document.createElement('div'));
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		// Set up localStorage with a test token
+		try { localStorage.setItem('autogame_token', 'test-bad-token'); } catch (_) {}
+		// Reset ioDisconnected flag
+		if (typeof window.__clearIoDisconnected === 'function') window.__clearIoDisconnected();
+	});
+
+	afterEach(() => {
+		// Clean up localStorage
+		try { localStorage.removeItem('autogame_token'); } catch (_) {}
+	});
+
+	it('removes autogame_token from localStorage on connect_error', async () => {
+		await import('../main.js');
+
+		// Trigger connect_error via mock
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		expect(localStorage.getItem('autogame_token')).toBeNull();
+	});
+
+	it('destroys the socket to prevent auto-reconnect', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		expect(window.__ioDisconnected()).toBe(true);
+	});
+
+	it('hides game UI elements (card hand, HUD)', async () => {
+		await import('../main.js');
+
+		// Show UI first
+		const uiEl = document.getElementById('ui');
+		const cardHandEl = document.getElementById('card-hand');
+		uiEl.style.display = 'block';
+		cardHandEl.style.display = 'flex';
+
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		expect(uiEl.style.display).toBe('none');
+		expect(cardHandEl.style.display).toBe('none');
+	});
+
+	it('hides the lobby overlay', async () => {
+		await import('../main.js');
+
+		const lobbyEl = document.getElementById('lobby');
+		lobbyEl.classList.remove('hidden');
+
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		expect(lobbyEl.classList.contains('hidden')).toBe(true);
+	});
+
+	it('shows the auth overlay and login form', async () => {
+		await import('../main.js');
+
+		const authOverlay = document.getElementById('auth-overlay');
+		const loginForm = document.getElementById('login-form');
+		authOverlay.classList.add('hidden');
+		loginForm.classList.add('hidden');
+
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		expect(authOverlay.classList.contains('hidden')).toBe(false);
+		expect(loginForm.classList.contains('hidden')).toBe(false);
+	});
+
+	it('updates status text to indicate session expired', async () => {
+		await import('../main.js');
+
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		// Verify via connectionState (more reliable than DOM in jsdom)
+		expect(window.__connectionState()).toBe('disconnected');
+		// Also check the DOM element
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+	});
+
+	it('hides the run summary overlay', async () => {
+		await import('../main.js');
+
+		const runSummary = document.getElementById('run-summary-overlay');
+		runSummary.style.display = 'block';
+
+		window.__triggerSocketEvent('connect_error', 'error: invalid token');
+
+		expect(runSummary.style.display).toBe('none');
 	});
 });
