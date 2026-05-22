@@ -1455,3 +1455,26 @@ PASS. `coverage.log` reports 5 test files passing with 383 tests passed. Coverag
 
 None.
 
+
+## v0.64 — User Accounts  (2026-05-21 22:42:20)
+
+### Load and save the correct character through persistence
+
+Satisfied. On connection, the server loads persisted player data by `accountId`, merges currency, owned cards, selected deck, position, and rotation into the live player, and initializes sensible transient combat state for active-run reconnects. Durable state is saved by account key on movement, loot pickup, deck edits, run reward completion, return-to-lobby, stale cleanup, periodic autosave, and disconnect.
+
+## Design and foundation consistency
+
+The implementation keeps the existing lobby-to-dungeon multiplayer loop intact: the captured run reaches the lobby with two authenticated users, transitions to gameplay through ready state, renders the 3D scene, and synchronizes movement. It is consistent with the design goal of persistent player progression and does not regress the baseline requirements for Three.js rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization.
+
+## Debug scenarios
+
+No new review-round capture scenarios were used (`metrics.json` has an empty `scenarios` array). Existing debug scenarios remain behind the `debugScenario` URL-driven client path and server-side dev/local gating; normal gameplay proceeds through register/login, lobby ready, and gameplay without invoking a scenario.
+
+## Test and coverage signal
+
+`coverage.log` reports `15` passing test files and `563` passing tests, with coverage visibility at `95.39%` statements overall. The added coverage includes user storage, auth routes, WebSocket JWT rejection/acceptance, client JWT recovery, and persistence save triggers.
+
+## Remaining gaps
+
+No blocking gaps found.
+

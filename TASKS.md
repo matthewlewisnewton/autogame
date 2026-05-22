@@ -49,6 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [097-cleanup-user-accounts](tickets/097-cleanup-user-accounts/)
 - [x] [096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
 - [x] [095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
 - [x] [094-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/094-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
@@ -84,7 +85,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
 - [x] [020-audit-client-server](tickets/020-audit-client-server/)
 - [x] [021-persistence](tickets/021-persistence/)
-- [ ] [022-user-accounts](tickets/022-user-accounts/)
+- [x] [022-user-accounts](tickets/022-user-accounts/)
 - [ ] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [ ] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
 - [ ] [046-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/046-cleanup-audio-autoplay-resume-and-mute-persistence/)
