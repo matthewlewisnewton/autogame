@@ -2,6 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   mulberry32,
   generateLayout,
+  buildAdjacencyMap,
+  bfsDistances,
+  findFarthestRoom,
+  assignRoomRoles,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
@@ -299,5 +303,277 @@ describe('exported constants', () => {
 
   it('PASSAGE_WIDTH is 4', () => {
     expect(PASSAGE_WIDTH).toBe(4);
+  });
+});
+
+// ── buildAdjacencyMap ──
+
+describe('buildAdjacencyMap(layout)', () => {
+  it('returns a Map with an entry per room', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    expect(adj.size).toBe(layout.rooms.length);
+  });
+
+  it('each value is a Set of neighbor indices', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    for (const [idx, neighbors] of adj) {
+      expect(idx >= 0 && idx < layout.rooms.length).toBe(true);
+      expect(neighbors instanceof Set).toBe(true);
+      for (const n of neighbors) {
+        expect(n >= 0 && n < layout.rooms.length).toBe(true);
+      }
+    }
+  });
+
+  it('adjacency is symmetric (undirected graph)', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    for (const [a, neighbors] of adj) {
+      for (const b of neighbors) {
+        expect(adj.get(b).has(a)).toBe(true);
+      }
+    }
+  });
+
+  it('total edges match passage count', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    let edgeSum = 0;
+    for (const [, neighbors] of adj) {
+      edgeSum += neighbors.size;
+    }
+    // Each passage contributes 2 directed edges
+    expect(edgeSum).toBe(layout.passages.length * 2);
+  });
+
+  it('graph is connected (BFS from 0 reaches all nodes)', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const visited = new Set();
+    const queue = [0];
+    visited.add(0);
+    while (queue.length > 0) {
+      const current = queue.shift();
+      for (const n of adj.get(current)) {
+        if (!visited.has(n)) {
+          visited.add(n);
+          queue.push(n);
+        }
+      }
+    }
+    expect(visited.size).toBe(layout.rooms.length);
+  });
+});
+
+// ── bfsDistances ──
+
+describe('bfsDistances(adjacencyMap, startIdx)', () => {
+  it('returns an array with length equal to room count', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    expect(dist.length).toBe(layout.rooms.length);
+  });
+
+  it('start node has distance 0', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    expect(dist[0]).toBe(0);
+  });
+
+  it('all distances are finite in a connected layout', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    for (const d of dist) {
+      expect(Number.isFinite(d)).toBe(true);
+    }
+  });
+
+  it('immediate neighbors have distance 1', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    for (const neighbor of adj.get(0)) {
+      expect(dist[neighbor]).toBe(1);
+    }
+  });
+
+  it('distances are non-decreasing along edges', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    for (const [node, neighbors] of adj) {
+      for (const n of neighbors) {
+        expect(Math.abs(dist[n] - dist[node])).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('is deterministic for the same layout', () => {
+    const layout = generateLayout(777);
+    const adj = buildAdjacencyMap(layout);
+    const a = bfsDistances(adj, 0);
+    const b = bfsDistances(adj, 0);
+    expect(a).toEqual(b);
+  });
+});
+
+// ── findFarthestRoom ──
+
+describe('findFarthestRoom(layout, startRoom)', () => {
+  it('returns a room from the layout', () => {
+    const layout = generateLayout(42);
+    const farthest = findFarthestRoom(layout, layout.rooms[0]);
+    expect(layout.rooms.includes(farthest)).toBe(true);
+  });
+
+  it('farthest room is not the start room (when > 1 room)', () => {
+    const layout = generateLayout(42);
+    const farthest = findFarthestRoom(layout, layout.rooms[0]);
+    if (layout.rooms.length > 1) {
+      expect(farthest).not.toBe(layout.rooms[0]);
+    }
+  });
+
+  it('returned room has maximum BFS distance from start', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    const farthest = findFarthestRoom(layout, layout.rooms[0]);
+    const farthestIdx = layout.rooms.indexOf(farthest);
+    const maxDist = Math.max(...dist);
+    expect(dist[farthestIdx]).toBe(maxDist);
+  });
+
+  it('is deterministic for the same seed', () => {
+    const layout = generateLayout(999);
+    const a = findFarthestRoom(layout, layout.rooms[0]);
+    const b = findFarthestRoom(layout, layout.rooms[0]);
+    expect(a).toBe(b); // same object reference
+  });
+});
+
+// ── assignRoomRoles ──
+
+describe('assignRoomRoles(layout)', () => {
+  it('every room gets a role string', () => {
+    const layout = generateLayout(42);
+    for (const room of layout.rooms) {
+      expect(['start', 'combat', 'treasure']).toContain(room.role);
+    }
+  });
+
+  it('exactly one room has role start', () => {
+    const layout = generateLayout(42);
+    const starts = layout.rooms.filter(r => r.role === 'start');
+    expect(starts.length).toBe(1);
+  });
+
+  it('start room is the first room (index 0)', () => {
+    const layout = generateLayout(42);
+    expect(layout.rooms[0].role).toBe('start');
+  });
+
+  it('exactly one room has role treasure', () => {
+    const layout = generateLayout(42);
+    const treasures = layout.rooms.filter(r => r.role === 'treasure');
+    expect(treasures.length).toBe(1);
+  });
+
+  it('treasure room is the farthest from start', () => {
+    const layout = generateLayout(42);
+    const treasure = layout.rooms.find(r => r.role === 'treasure');
+    const farthest = findFarthestRoom(layout, layout.rooms[0]);
+    expect(treasure).toBe(farthest);
+  });
+
+  it('all remaining rooms have role combat', () => {
+    const layout = generateLayout(42);
+    const nonStartTreasure = layout.rooms.filter(r => r.role !== 'start' && r.role !== 'treasure');
+    for (const room of nonStartTreasure) {
+      expect(room.role).toBe('combat');
+    }
+  });
+
+  it('start room has spawnWeight 0 and encounterTier 0', () => {
+    const layout = generateLayout(42);
+    expect(layout.rooms[0].spawnWeight).toBe(0);
+    expect(layout.rooms[0].encounterTier).toBe(0);
+  });
+
+  it('treasure room has spawnWeight 2 and encounterTier 0', () => {
+    const layout = generateLayout(42);
+    const treasure = layout.rooms.find(r => r.role === 'treasure');
+    expect(treasure.spawnWeight).toBe(2);
+    expect(treasure.encounterTier).toBe(0);
+  });
+
+  it('combat rooms have spawnWeight 1', () => {
+    const layout = generateLayout(42);
+    for (const room of layout.rooms) {
+      if (room.role === 'combat') {
+        expect(room.spawnWeight).toBe(1);
+      }
+    }
+  });
+
+  it('combat room encounterTier is between 0 and 1', () => {
+    const layout = generateLayout(42);
+    for (const room of layout.rooms) {
+      if (room.role === 'combat') {
+        expect(room.encounterTier).toBeGreaterThanOrEqual(0);
+        expect(room.encounterTier).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+
+  it('encounterTier increases with BFS distance from start', () => {
+    const layout = generateLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    const maxDist = Math.max(...dist);
+    for (let i = 0; i < layout.rooms.length; i++) {
+      const room = layout.rooms[i];
+      if (room.role === 'combat') {
+        const expected = maxDist > 0 ? dist[i] / maxDist : 0;
+        expect(room.encounterTier).toBeCloseTo(expected, 5);
+      }
+    }
+  });
+
+  it('existing room fields are preserved (x, z, width, depth, walls)', () => {
+    const layout = generateLayout(42);
+    for (const room of layout.rooms) {
+      expect(typeof room.x).toBe('number');
+      expect(typeof room.z).toBe('number');
+      expect(typeof room.width).toBe('number');
+      expect(typeof room.depth).toBe('number');
+      expect(Array.isArray(room.walls)).toBe(true);
+    }
+  });
+
+  it('layout remains deterministic after role assignment', () => {
+    const a = generateLayout(777);
+    const b = generateLayout(777);
+    expect(a).toEqual(b);
+  });
+
+  it('role assignment is consistent across multiple seeds', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const layout = generateLayout(seed);
+      const starts = layout.rooms.filter(r => r.role === 'start');
+      const treasures = layout.rooms.filter(r => r.role === 'treasure');
+      expect(starts.length).toBe(1);
+      expect(treasures.length).toBe(1);
+      expect(starts[0]).toBe(layout.rooms[0]);
+      for (const room of layout.rooms) {
+        expect(typeof room.spawnWeight).toBe('number');
+        expect(typeof room.encounterTier).toBe('number');
+      }
+    }
   });
 });
