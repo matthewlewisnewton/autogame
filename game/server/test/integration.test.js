@@ -1947,6 +1947,8 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		expect(Array.isArray(init.inventory)).toBe(true);
 		expect(init).toHaveProperty('ownedCards');
 		expect(typeof init.ownedCards).toBe('object');
+		expect(init).toHaveProperty('inventory');
+		expect(Array.isArray(init.inventory)).toBe(true);
 
 		testSocket.disconnect();
 		await sleep(50);
@@ -2032,6 +2034,70 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		expect(stateUpdate.players[socket2._playerId]).toBeDefined();
 		expect(Array.isArray(stateUpdate.players[socket2._playerId].deck)).toBe(true);
 		expect(stateUpdate.players[socket2._playerId].deck.length).toBe(deck2.length - 4);
+	});
+});
+
+describe('Card evolution handler', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('evolves a +10 inventory instance through the socket event', async () => {
+		const player = gameState.players[socket._playerId];
+		const instance = player.inventory.find((card) => card.cardId === 'iron_sword');
+		instance.grind = 10;
+
+		const evolutionPromise = waitForEvent(socket, 'cardEvolutionResult');
+		socket.emit('evolveCard', { instanceId: instance.instanceId });
+		const result = await evolutionPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.instance.instanceId).toBe(instance.instanceId);
+		expect(result.instance.cardId).toBe('steel_broadsword');
+		expect(result.inventory.find((card) => card.instanceId === instance.instanceId).cardId).toBe('steel_broadsword');
+		expect(result.ownedCards.steel_broadsword).toBe(1);
+		expect(result.selectedDeck).toContain('steel_broadsword');
+	});
+
+	it('rejects socket evolution below +10', async () => {
+		const player = gameState.players[socket._playerId];
+		const instance = player.inventory.find((card) => card.cardId === 'flame_blade');
+		instance.grind = 9;
+
+		const errorPromise = waitForEvent(socket, 'cardEvolutionError');
+		socket.emit('evolveCard', { instanceId: instance.instanceId });
+		const error = await errorPromise;
+
+		expect(error.reason).toContain('+10');
+		expect(instance.cardId).toBe('flame_blade');
+	});
+
+	it('rejects socket evolution for cards with no transform', async () => {
+		const player = gameState.players[socket._playerId];
+		const instance = {
+			instanceId: 'already-evolved',
+			cardId: 'steel_broadsword',
+			grind: 10,
+			level: 1,
+			isEvolved: true,
+		};
+		player.inventory.push(instance);
+		player.ownedCards.steel_broadsword = 1;
+
+		const errorPromise = waitForEvent(socket, 'cardEvolutionError');
+		socket.emit('evolveCard', { instanceId: instance.instanceId });
+		const error = await errorPromise;
+
+		expect(error.reason).toContain('No evolution available');
+		expect(instance.cardId).toBe('steel_broadsword');
 	});
 });
 

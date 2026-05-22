@@ -3,7 +3,7 @@
 // Testable logic is extracted to cards.js, collision.js, and hand.js.
 
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
 import { drawCard, initHand as initHandFromModule, hand, slotCooldowns, canUseSlot } from './hand.js';
 import {
 	playSound,
@@ -318,6 +318,9 @@ function bindSocketHandlers(s) {
 			if (gameState.players[myId].ownedCards) {
 				myOwnedCards = gameState.players[myId].ownedCards;
 			}
+			if (Array.isArray(gameState.players[myId].inventory)) {
+				myInventory = gameState.players[myId].inventory;
+			}
 		}
 
 		// Update objective HUD
@@ -437,6 +440,19 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on('deckError', (data) => {
+		if (!data || !data.reason) return;
+		showDeckError(data.reason);
+	});
+
+	s.on('cardEvolutionResult', (data) => {
+		if (!data) return;
+		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
+		if (Array.isArray(data.inventory)) myInventory = data.inventory;
+		if (data.ownedCards) myOwnedCards = data.ownedCards;
+		renderDeckEditor();
+	});
+
+	s.on('cardEvolutionError', (data) => {
 		if (!data || !data.reason) return;
 		showDeckError(data.reason);
 	});
@@ -580,12 +596,17 @@ function renderHand() {
 		if (card) {
 			const style = CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
+			const evolvedBadge = card.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
+			const effectText = card.specialEffect ? `<span class="card-effect">${card.specialEffect.replace(/_/g, ' ')}</span>` : '';
 			slot.innerHTML = `
 				<span class="card-icon">${style.icon}</span>
 				<span class="card-name">${card.name}</span>
+				${evolvedBadge}
+				${effectText}
 				<span class="card-charges">${card.remainingCharges}/${card.charges}</span>
 			`;
 			slot.classList.remove('empty');
+			slot.classList.toggle('evolved-card', !!card.isEvolved);
 			slot.dataset.cardType = card.type;
 
 			if (summonCardIds.has(card.id) && card.magicStoneCost != null && playerMs < card.magicStoneCost) {
@@ -597,6 +618,7 @@ function renderHand() {
 			slot.style.removeProperty('--slot-color');
 			slot.innerHTML = '<span class="card-name">&mdash;</span>';
 			slot.classList.add('empty');
+			slot.classList.remove('evolved-card');
 			slot.classList.remove('no-ms');
 			delete slot.dataset.cardType;
 		}
@@ -668,6 +690,15 @@ function findAvailableInventoryInstance(cardId) {
 	) || null;
 }
 
+function findEvolvableInstance(cardId) {
+	return getDeckInventory().find((instance) =>
+		instance &&
+		instance.cardId === cardId &&
+		(instance.grind || 0) >= EVOLUTION_GRIND_REQUIRED &&
+		EVOLUTION_TRANSFORMS[instance.cardId]
+	) || null;
+}
+
 function renderDeckEditor() {
 	ownedCardsListEl.innerHTML = '';
 	const ownedCounts = getDeckOwnedCounts();
@@ -680,15 +711,24 @@ function renderDeckEditor() {
 		const canAdd = Array.isArray(myInventory)
 			? !!availableInstance && mySelectedDeck.length < DECK_MAX_SIZE
 			: inDeckCount < count && mySelectedDeck.length < DECK_MAX_SIZE;
+		const evolvableInstance = findEvolvableInstance(cardId);
+		const evolvedBadge = def.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
 
 		const entry = document.createElement('div');
-		entry.className = 'owned-card-entry';
+		entry.className = `owned-card-entry${def.isEvolved ? ' evolved-card' : ''}`;
 		entry.innerHTML = `
       <span class="card-icon">${style.icon}</span>
       <span class="card-label">${def.name}</span>
+      ${evolvedBadge}
       <span class="card-count">${count}</span>
+      <button class="evolve-card-btn" ${evolvableInstance ? '' : 'disabled'}>Evolve</button>
       <button class="deck-add-btn" ${canAdd ? '' : 'disabled'}>+${inDeckCount > 0 ? ` (${inDeckCount})` : ''}</button>
     `;
+		const evolveBtn = entry.querySelector('.evolve-card-btn');
+		evolveBtn.addEventListener('click', () => {
+			const instance = findEvolvableInstance(cardId);
+			if (instance) socket.emit('evolveCard', { instanceId: instance.instanceId });
+		});
 		const addBtn = entry.querySelector('.deck-add-btn');
 		addBtn.addEventListener('click', () => {
 			const instance = findAvailableInventoryInstance(cardId);
@@ -704,12 +744,14 @@ function renderDeckEditor() {
 		const def = CARD_DEFS[cardId];
 		if (!def) continue;
 		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+		const evolvedBadge = def.isEvolved ? '<span class="evolved-badge">Evolved</span>' : '';
 
 		const entry = document.createElement('div');
-		entry.className = 'deck-entry';
+		entry.className = `deck-entry${def.isEvolved ? ' evolved-card' : ''}`;
 		entry.innerHTML = `
       <span class="card-icon">${style.icon}</span>
       <span class="card-label">${def.name}</span>
+      ${evolvedBadge}
       <button class="deck-remove-btn">✕</button>
     `;
 		const removeBtn = entry.querySelector('.deck-remove-btn');
@@ -1135,6 +1177,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 					type: card.type,
 					remainingCharges: card.remainingCharges,
 					charges: card.charges,
+					isEvolved: !!card.isEvolved,
+					specialEffect: card.specialEffect,
 				}
 				: null,
 		),

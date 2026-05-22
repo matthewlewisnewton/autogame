@@ -118,6 +118,19 @@ const progression = require('./progression');
 const {
   CARD_DEFS,
   STARTING_DECK_IDS,
+  EVOLUTION_GRIND_REQUIRED,
+  EVOLUTION_TRANSFORMS,
+  createCardInstance,
+  createInventoryFromCardIds,
+  createInventoryFromOwnedCards,
+  normalizeInventory,
+  inventoryToOwnedCards,
+  normalizeSelectedDeck,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
+  evolveCard,
   createPlayerProgress,
   extractPersistentData,
   persistenceKey,
@@ -134,16 +147,6 @@ const {
   grantCard,
   grantRunRewards,
   buildPlayerRewardSummary,
-  createCardInstance,
-  createInventoryFromCardIds,
-  createInventoryFromOwnedCards,
-  normalizeInventory,
-  inventoryToOwnedCards,
-  normalizeSelectedDeck,
-  normalizePlayerInventory,
-  getInventoryInstance,
-  cardIdForDeckEntry,
-  findAvailableInventoryInstance,
   validateDeck,
   canAddCardInstanceToDeck,
   canAddCardToDeck,
@@ -379,6 +382,10 @@ function applyDebugScenario(socket, name) {
       const replaceSlot = player.hand.findIndex(c => c && c.type !== 'monster');
       if (replaceSlot >= 0) {
         player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
+        const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
+        if (deckMonsterIndex !== -1) {
+          player.deck.splice(deckMonsterIndex, 1);
+        }
       }
     }
   }
@@ -736,6 +743,7 @@ function startServer(port) {
       io.emit('cardUsed', {
         playerId: socket.playerId,
         cardId: data.cardId,
+        specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
         direction: { x: dirX, z: dirZ },
         hits: hits
@@ -793,6 +801,7 @@ function startServer(port) {
         playerId: socket.playerId,
         cardId: data.cardId,
         slotIndex: data.slotIndex,
+        specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
         radius: SUMMON_RADIUS,
         hits: hits
@@ -812,7 +821,9 @@ function startServer(port) {
         ownerId: socket.playerId,
         x: originX,
         z: originZ,
-        hp: 50,
+        hp: cardDef.minionHp || 50,
+        maxHp: cardDef.minionHp || 50,
+        specialEffect: cardDef.specialEffect,
         ttl: 30
       };
       gameState.minions.push(minion);
@@ -830,6 +841,7 @@ function startServer(port) {
         playerId: socket.playerId,
         cardId: data.cardId,
         slotIndex: data.slotIndex,
+        specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ }
       });
 
@@ -879,7 +891,6 @@ function startServer(port) {
 
     const player = gameState.players[socket.playerId];
     if (!player) return;
-
     normalizePlayerInventory(player);
 
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -941,7 +952,6 @@ function startServer(port) {
 
     const player = gameState.players[socket.playerId];
     if (!player) return;
-
     normalizePlayerInventory(player);
 
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -978,6 +988,33 @@ function startServer(port) {
       ownedCards: player.ownedCards
     });
 
+    savePlayerData(socket.playerId);
+  });
+
+  socket.on('evolveCard', (data) => {
+    if (gameState.gamePhase !== 'lobby') return;
+
+    const player = gameState.players[socket.playerId];
+    if (!player) return;
+
+    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const result = evolveCard(player, instanceId);
+    if (!result.ok) {
+      socket.emit('cardEvolutionError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardEvolutionResult', {
+      ...result,
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
     savePlayerData(socket.playerId);
   });
 
@@ -1137,6 +1174,16 @@ if (typeof module !== 'undefined' && module.exports) {
     drawReplacementCard,
     CARD_DEFS,
     STARTING_DECK_IDS,
+    EVOLUTION_GRIND_REQUIRED,
+    EVOLUTION_TRANSFORMS,
+    createCardInstance,
+    createInventoryFromCardIds,
+    createInventoryFromOwnedCards,
+    normalizeInventory,
+    inventoryToOwnedCards,
+    normalizePlayerInventory,
+    getInventoryInstance,
+    evolveCard,
     checkWallCollision,
     buildWallColliders,
     rebuildWallColliders,

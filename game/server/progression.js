@@ -52,6 +52,43 @@ const CARD_DEFS = {
   flame_blade: { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', damage: 25, charges: 3 },
   battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, magicStoneCost: 50, damage: 40 },
   dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1 },
+  steel_broadsword: {
+    id: 'steel_broadsword',
+    name: 'Steel Broadsword',
+    type: 'weapon',
+    damage: 28,
+    charges: 6,
+    isEvolved: true,
+    specialEffect: 'knockback'
+  },
+  inferno_edge: {
+    id: 'inferno_edge',
+    name: 'Inferno Edge',
+    type: 'weapon',
+    damage: 40,
+    charges: 4,
+    isEvolved: true,
+    specialEffect: 'fire_trail'
+  },
+  guardian_familiar: {
+    id: 'guardian_familiar',
+    name: 'Guardian Familiar',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 65,
+    damage: 70,
+    isEvolved: true,
+    specialEffect: 'barrier_burst'
+  },
+  ancient_drake: {
+    id: 'ancient_drake',
+    name: 'Ancient Drake',
+    type: 'monster',
+    charges: 1,
+    minionHp: 90,
+    isEvolved: true,
+    specialEffect: 'bleed'
+  },
 };
 
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
@@ -65,6 +102,14 @@ const STARTING_DECK_IDS = [
   'battle_familiar',
   'flame_blade'
 ];
+
+const EVOLUTION_GRIND_REQUIRED = 10;
+const EVOLUTION_TRANSFORMS = {
+  iron_sword: 'steel_broadsword',
+  flame_blade: 'inferno_edge',
+  battle_familiar: 'guardian_familiar',
+  dungeon_drake: 'ancient_drake'
+};
 
 function createCardInstance(cardId, overrides = {}) {
   if (!CARD_DEFS[cardId]) return null;
@@ -193,6 +238,54 @@ function canAddCardInstanceToDeck(instanceId, deck, inventory) {
   const instance = getInventoryInstance(inventory, instanceId);
   if (!instance) return false;
   return !deck.includes(instance.instanceId);
+}
+
+function evolveCard(player, instanceId) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+  if (typeof instanceId !== 'string' || instanceId.length === 0) {
+    return { ok: false, reason: 'Missing instanceId' };
+  }
+
+  normalizePlayerInventory(player);
+
+  const instance = getInventoryInstance(player.inventory, instanceId);
+  if (!instance) {
+    return { ok: false, reason: `Unknown card instance: ${instanceId}` };
+  }
+
+  if ((instance.grind || 0) < EVOLUTION_GRIND_REQUIRED) {
+    return { ok: false, reason: `Card must be +${EVOLUTION_GRIND_REQUIRED} to evolve` };
+  }
+
+  const fromCardId = instance.cardId;
+  const toCardId = EVOLUTION_TRANSFORMS[fromCardId];
+  if (!toCardId || !CARD_DEFS[toCardId]) {
+    return { ok: false, reason: `No evolution available for ${fromCardId}` };
+  }
+
+  instance.cardId = toCardId;
+  instance.grind = 0;
+  instance.evolvedFrom = fromCardId;
+  instance.evolvedAt = Date.now();
+  instance.isEvolved = true;
+
+  player.ownedCards = inventoryToOwnedCards(player.inventory);
+
+  // Legacy decks are card-id based, so replace one matching base entry to keep
+  // deck validation compatible after the owned base-card count decreases.
+  if (Array.isArray(player.selectedDeck)) {
+    const deckIndex = player.selectedDeck.indexOf(fromCardId);
+    if (deckIndex !== -1) {
+      player.selectedDeck[deckIndex] = toCardId;
+    }
+  }
+
+  return {
+    ok: true,
+    instance: { ...instance },
+    fromCardId,
+    toCardId
+  };
 }
 
 function createPlayerProgress() {
@@ -454,6 +547,12 @@ function drawCardFromDeck(player) {
   };
   if (def.magicStoneCost != null) {
     card.magicStoneCost = def.magicStoneCost;
+  }
+  if (def.isEvolved) {
+    card.isEvolved = true;
+  }
+  if (def.specialEffect) {
+    card.specialEffect = def.specialEffect;
   }
   return card;
 }
@@ -734,6 +833,19 @@ module.exports = {
   getProvider,
   CARD_DEFS,
   STARTING_DECK_IDS,
+  EVOLUTION_GRIND_REQUIRED,
+  EVOLUTION_TRANSFORMS,
+  createCardInstance,
+  createInventoryFromCardIds,
+  createInventoryFromOwnedCards,
+  normalizeInventory,
+  inventoryToOwnedCards,
+  normalizeSelectedDeck,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
+  evolveCard,
   createPlayerProgress,
   extractPersistentData,
   persistenceKey,
@@ -748,16 +860,6 @@ module.exports = {
   grantCard,
   grantRunRewards,
   buildPlayerRewardSummary,
-  createCardInstance,
-  createInventoryFromCardIds,
-  createInventoryFromOwnedCards,
-  normalizeInventory,
-  inventoryToOwnedCards,
-  normalizeSelectedDeck,
-  normalizePlayerInventory,
-  getInventoryInstance,
-  cardIdForDeckEntry,
-  findAvailableInventoryInstance,
   validateDeck,
   canAddCardInstanceToDeck,
   canAddCardToDeck,

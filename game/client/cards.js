@@ -33,6 +33,48 @@ export const CARD_DEFS = {
     type: 'monster',
     charges: 1,
   },
+  steel_broadsword: {
+    id: 'steel_broadsword',
+    name: 'Steel Broadsword',
+    type: 'weapon',
+    charges: 6,
+    isEvolved: true,
+    specialEffect: 'knockback',
+  },
+  inferno_edge: {
+    id: 'inferno_edge',
+    name: 'Inferno Edge',
+    type: 'weapon',
+    charges: 4,
+    isEvolved: true,
+    specialEffect: 'fire_trail',
+  },
+  guardian_familiar: {
+    id: 'guardian_familiar',
+    name: 'Guardian Familiar',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 65,
+    damage: 70,
+    isEvolved: true,
+    specialEffect: 'barrier_burst',
+  },
+  ancient_drake: {
+    id: 'ancient_drake',
+    name: 'Ancient Drake',
+    type: 'monster',
+    charges: 1,
+    isEvolved: true,
+    specialEffect: 'bleed',
+  },
+};
+
+export const EVOLUTION_GRIND_REQUIRED = 10;
+export const EVOLUTION_TRANSFORMS = {
+  iron_sword: 'steel_broadsword',
+  flame_blade: 'inferno_edge',
+  battle_familiar: 'guardian_familiar',
+  dungeon_drake: 'ancient_drake',
 };
 
 // ── Starting Deck ──
