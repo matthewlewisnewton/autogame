@@ -317,7 +317,8 @@ function moveEntityToward(entity, target, maxDistance, options) {
     const clamped = clampToDungeon(proposedX, proposedZ);
     entity.x = clamped.x;
     entity.z = clamped.z;
-    return { moved: true, blocked: false, reached: false };
+    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
+    return { moved: true, blocked: false, reached: postDist <= stopDistance };
   }
 
   // Direct is blocked — try axis-separated movement (wall-slide)
@@ -336,12 +337,14 @@ function moveEntityToward(entity, target, maxDistance, options) {
     const clamped = clampToDungeon(xProposed, entity.z);
     entity.x = clamped.x;
     entity.z = clamped.z;
-    return { moved: true, blocked: true, reached: false };
+    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
+    return { moved: true, blocked: true, reached: postDist <= stopDistance };
   } else if (!zOnlyBlocked) {
     const clamped = clampToDungeon(entity.x, zProposed);
     entity.x = clamped.x;
     entity.z = clamped.z;
-    return { moved: true, blocked: true, reached: false };
+    const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
+    return { moved: true, blocked: true, reached: postDist <= stopDistance };
   }
 
   // Both axes blocked
