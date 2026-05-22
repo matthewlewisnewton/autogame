@@ -19,8 +19,8 @@ LOGS & PROBES — read every one:
 @__ARTIFACTS_DIR__/console.log
 @__ARTIFACTS_DIR__/server.log
 @__ARTIFACTS_DIR__/client.log
-@__ARTIFACTS_DIR__/local-checks.status.json, if present
-@__ARTIFACTS_DIR__/local-checks.log, if present
+@__ARTIFACTS_DIR__/local-checks.status.json
+@__ARTIFACTS_DIR__/local-checks.log
 
 If `metrics.json` has `capturePlanSource`, `capturePlanSummary`, `scenarios`,
 or `probes`, use those fields to understand whether the browser exercised the
@@ -35,7 +35,10 @@ YOUR JOB:
    sub-ticket.
 3. For EACH acceptance criterion, state PASS or FAIL with the specific visual
    or log evidence that justifies it.
-4. Call out genuine problems — crashes, blank/black screens, missing objects,
+4. When local-check artifacts are present, confirm `local-checks.status.json`
+   reports `rc: 0`. A nonzero local-check status is already a hard harness
+   failure and must not be accepted.
+5. Call out genuine problems — crashes, blank/black screens, missing objects,
    or errors caused by the GAME'S OWN code. But IGNORE benign environment and
    library noise — it is NOT a failure: THREE.js deprecation warnings,
    headless-Chromium WebGL "context lost/restored" messages, and Vite

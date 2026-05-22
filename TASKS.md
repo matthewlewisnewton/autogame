@@ -94,12 +94,12 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
 - [x] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
 - [x] [046-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/046-cleanup-audio-autoplay-resume-and-mute-persistence/)
-- [ ] [047-cleanup-monolithic-gameplay-and-server-split](tickets/047-cleanup-monolithic-gameplay-and-server-split/)
-- [ ] [048-cleanup-server-side-movement-and-collision-validation](tickets/048-cleanup-server-side-movement-and-collision-validation/)
+- [x] [047-cleanup-monolithic-gameplay-and-server-split](tickets/047-cleanup-monolithic-gameplay-and-server-split/)
+- [x] [048-cleanup-server-side-movement-and-collision-validation](tickets/048-cleanup-server-side-movement-and-collision-validation/)
 
 ## Backlog — Harness Cleanup
-- [ ] [103-cleanup-hard-gate-local-subtask-checks](tickets/103-cleanup-hard-gate-local-subtask-checks/)
-- [ ] [104-cleanup-deterministic-review-file-recovery](tickets/104-cleanup-deterministic-review-file-recovery/)
+- [x] [103-cleanup-hard-gate-local-subtask-checks](tickets/103-cleanup-hard-gate-local-subtask-checks/)
+- [x] [104-cleanup-deterministic-review-file-recovery](tickets/104-cleanup-deterministic-review-file-recovery/)
 - [ ] [105-cleanup-harness-port-ownership](tickets/105-cleanup-harness-port-ownership/)
 
 ## Backlog — Reference Game Loops

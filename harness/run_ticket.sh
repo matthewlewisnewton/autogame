@@ -134,47 +134,6 @@ review_ticket() {  # review_ticket <dir> [coverage_dir]
   recover_review_files "$reviewer_out" "$dir"
 }
 
-# Walk the three expected review output files. If review.md is already on
-# disk and non-empty, the agent wrote it correctly and no recovery is needed
-# (gaps.md/nits.md may legitimately be absent on PASS or on FAIL-with-no-nits).
-# Otherwise, try TWO recovery paths in order:
-#   1. PRIMARY: ask qwen to read the (trimmed) transcript and write each
-#      target file verbatim using its native file-write tools. Tolerates
-#      format variations a regex parser would miss.
-#   2. FALLBACK: deterministic awk extractor (extract_file_block) for any
-#      file still missing after qwen runs.
-# Never overwrites a non-empty file. Logs each recovery so the source of any
-# review content is visible in the loop log.
-recover_review_files() {  # recover_review_files <transcript> <dir>
-  local t="$1" d="$2" f path body
-  [ -f "$t" ] || return 0
-
-  # Skip recovery entirely if review.md is already populated — the agent
-  # wrote it, so any missing gaps.md / nits.md is intentional.
-  if [ -s "$d/review.md" ]; then
-    return 0
-  fi
-
-  log "[review-recover] review.md missing — invoking qwen extractor"
-  if qwen_extract_review_files "$t" "$d"; then
-    for f in review.md gaps.md nits.md; do
-      [ -s "$d/$f" ] && log "[review-recover qwen] $f present ($(wc -c < "$d/$f" | tr -d ' ') bytes)"
-    done
-  else
-    log "[review-recover] qwen extractor failed — falling through to awk fallback"
-  fi
-
-  for f in review.md gaps.md nits.md; do
-    path="$d/$f"
-    [ -s "$path" ] && continue
-    body="$(extract_file_block "$t" "$f")"
-    if [ -n "$body" ]; then
-      printf '%s\n' "$body" > "$path"
-      log "[review-recover awk] wrote $f from transcript ($(wc -c < "$path" | tr -d ' ') bytes)"
-    fi
-  done
-}
-
 # Archive a finished review and lock it (and its working dir) read-only so no
 # later agent round can rewrite the record of what a past review found.
 protect_review() {  # protect_review <label> <working_dir>

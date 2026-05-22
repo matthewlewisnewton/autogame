@@ -32,6 +32,10 @@ HANDOFF="$SUBDIR/handoff.md"
 # changes are checked from screenshots; code/non-visual ones from the diff+logs.
 QA_MODE="$(grep -ioE 'verification[: ]+[a-z]+' "$TICKET_FILE" 2>/dev/null | grep -ioE 'visual|code' | head -1 | tr 'A-Z' 'a-z')"
 [ -z "$QA_MODE" ] && QA_MODE="visual"
+TICKET_ALLOWS_HARNESS=0
+if grep -qE '(^|[^[:alnum:]_./-])harness/' "$TICKET_FILE" 2>/dev/null; then
+  TICKET_ALLOWS_HARNESS=1
+fi
 LABEL="$(basename "$(dirname "$(dirname "$SUBDIR")")")/$(basename "$SUBDIR")"
 : > "$SUBDIR/log.txt"
 exec > >(tee -a "$SUBDIR/log.txt") 2>&1
@@ -81,8 +85,10 @@ start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>; sets global P
   return 0
 }
 
-finish_pipeline_checks() { # finish_pipeline_checks <pid> <artifacts-dir>
+finish_pipeline_checks() { # finish_pipeline_checks <pid> <artifacts-dir>; returns the local-check rc
   local pid="${1:-}" artifacts_dir="$2" rc reason
+  PIPELINE_RC=0
+  PIPELINE_REASON="not_started"
   if [ -z "$pid" ] || [ "$pid" = "0" ]; then
     return 0
   fi
@@ -97,9 +103,29 @@ finish_pipeline_checks() { # finish_pipeline_checks <pid> <artifacts-dir>
     reason="$(cli_failure_reason "$rc" "$artifacts_dir/local-checks.log")"
     log "[pipeline] local verification finished non-zero (rc=$rc, reason=$reason)"
   fi
+  PIPELINE_RC="$rc"
+  PIPELINE_REASON="$reason"
   printf '{"rc":%s,"reason":%s}\n' "$rc" "$(json_string "$reason")" > "$artifacts_dir/local-checks.status.json"
   emit_progress_event "pipeline_check_finish" "{\"label\":$(json_string "$LABEL"),\"artifacts\":$(json_string "$artifacts_dir"),\"outfile\":$(json_string "$artifacts_dir/local-checks.log"),\"rc\":$rc,\"reason\":$(json_string "$reason")}"
-  return 0
+  return "$rc"
+}
+
+append_local_check_feedback() { # append_local_check_feedback <iter> <artifacts-dir> <rc> <reason>
+  local iter="$1" artifacts_dir="$2" rc="$3" reason="$4"
+  {
+    printf '\n## Local checks failed — iteration %d (%s)\n\n' "$iter" "$(date '+%F %T')"
+    printf 'The harness skipped model QA because deterministic local verification failed.\n'
+    printf 'Local checks are a hard gate: fix this before the next QA attempt can pass.\n\n'
+    printf -- '- Status: `%s/local-checks.status.json` (`rc=%s`, `reason=%s`)\n' "$artifacts_dir" "$rc" "$reason"
+    printf -- '- Log: `%s/local-checks.log`\n\n' "$artifacts_dir"
+    printf 'Tail of `local-checks.log`:\n\n```\n'
+    if [ -s "$artifacts_dir/local-checks.log" ]; then
+      tail -n 80 "$artifacts_dir/local-checks.log" 2>/dev/null
+    else
+      printf '[local-checks.log missing or empty]\n'
+    fi
+    printf '\n```\n'
+  } >> "$FEEDBACK"
 }
 
 log "=== sub-ticket: $LABEL — QA mode: $QA_MODE ==="
@@ -115,12 +141,19 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   mkdir -p "$ARTI"
   emit_progress_event "iteration_start" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"maxIterations\":$MAX_ITER,\"artifacts\":$(json_string "$ARTI")}"
 
-  # 1. CODER (qwen)
-  log "[qwen] implementing..."
+  # 1. CODER — qwen by default, or cursor-agent/$IMPL_MODEL when set (see lib.sh).
+  #    Outfile stays qwen.txt so existing log/progress consumers keep working;
+  #    run_impl tags _run_cli with impl/<model> for telemetry that needs the
+  #    real model name.
+  if [ -n "$IMPL_MODEL" ]; then
+    log "[impl] implementing via cursor-agent/$IMPL_MODEL..."
+  else
+    log "[qwen] implementing..."
+  fi
   CODER_PROMPT="$(render_prompt "$PROMPTS_DIR/implement.md" \
     TICKET_FILE "$TICKET_FILE" FEEDBACK_FILE "$FEEDBACK" HANDOFF_FILE "$HANDOFF")"
   handoff_before="$(stat -c %Y "$HANDOFF" 2>/dev/null || echo 0)"
-  run_qwen "$CODER_PROMPT" "$ARTI/qwen.txt"; coder_rc=$?
+  run_impl "$CODER_PROMPT" "$ARTI/qwen.txt"; coder_rc=$?
 
   # Guarantee a handoff note exists for the next session. If qwen ran out of
   # context / crashed before writing its own, the harness "moves it over" by
@@ -185,8 +218,23 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   #    (cloud + zero-cost). qwen self-review keeps the loop moving when both
   #    cloud tiers are out — same model as the writer, so accepted only as a
   #    third-tier fallback.
-  git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
+  if [ "$TICKET_ALLOWS_HARNESS" = "1" ]; then
+    git diff HEAD -- . ':!tickets' > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
+  else
+    git diff HEAD -- game/ > "$ARTI/changes.diff" 2>/dev/null || : > "$ARTI/changes.diff"
+  fi
   finish_pipeline_checks "$pipeline_pid" "$ARTI"
+  pipeline_rc=$?
+  if [ "$pipeline_rc" -ne 0 ]; then
+    log "[pipeline] local verification failed — skipping QA and feeding the failure back to qwen"
+    emit_progress_event "qa_verdict" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"verdict\":\"FAIL\",\"reason\":\"local_checks_failed\",\"qaFile\":$(json_string "$ARTI/local-checks.status.json")}"
+    if [ "$game_running" -eq 1 ]; then
+      stop_game
+      game_running=0
+    fi
+    append_local_check_feedback "$iter" "$ARTI" "$PIPELINE_RC" "$PIPELINE_REASON"
+    continue
+  fi
   if [ "$QA_MODE" = "code" ]; then
     log "[qa] code-review QA (non-visual sub-ticket)..."
     QA_PROMPT="$(render_prompt "$PROMPTS_DIR/qa-code.md" \
@@ -210,7 +258,13 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   #      reviewer; replaces the retired gemini CLI).
   #   4. claude (last resort, most expensive).
   # Each tier is accepted only if it produced a real verdict line.
-  if run_qwen "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+  #
+  # OVERRIDE: when QA_MODEL is set (see lib.sh), a cursor-agent reviewer is
+  # tried FIRST and the qwen-first chain becomes the fallback ladder behind it.
+  if [ -n "$QA_MODEL" ] && run_agent_model "$QA_MODEL" "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
+    log "[qa] verified by cursor-agent/$QA_MODEL ($QA_MODE) — QA_MODEL primary"
+    emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":$(json_string "cursor-agent/$QA_MODEL"),\"mode\":$(json_string "$QA_MODE")}"
+  elif run_qwen "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
     log "[qa] verified by qwen self-review ($QA_MODE)"
     emit_progress_event "qa_verified" "{\"label\":$(json_string "$LABEL"),\"iteration\":$iter,\"agent\":\"qwen-self\",\"mode\":$(json_string "$QA_MODE")}"
   elif run_agent "$QA_PROMPT" "$ARTI/qa.txt" && has_verdict "$ARTI/qa.txt"; then
@@ -255,9 +309,14 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
     # successful commit and trigger a false "could not commit verified
     # progress" escalation. commit_verified's own return code is the hard gate:
     # it stages the loop's files, commits, and asserts HEAD advanced.
-    if [ -n "$(git status --porcelain -- . ':!harness')" ]; then
+    if [ "$TICKET_ALLOWS_HARNESS" = "1" ]; then
+      dirty_scope="$(git status --porcelain -- . ':!tickets')"
+    else
+      dirty_scope="$(git status --porcelain -- . ':!harness')"
+    fi
+    if [ -n "$dirty_scope" ]; then
       log "[commit] qwen left changes uncommitted — harness committing remainder"
-      if ! commit_verified "$LABEL: sub-ticket verified (iter $iter)"; then
+      if ! COMMIT_INCLUDE_HARNESS="$TICKET_ALLOWS_HARNESS" commit_verified "$LABEL: sub-ticket verified (iter $iter)"; then
         log "=== ABORT $LABEL: could not commit verified progress — escalating ==="
         exit 2
       fi
