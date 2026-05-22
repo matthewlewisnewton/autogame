@@ -214,6 +214,13 @@ describe('CARD_DEFS', () => {
 			type: 'weapon',
 			specialEffect: 'shockwave',
 		});
+		expect(CARD_DEFS.resonance_edge).toMatchObject({
+			id: 'resonance_edge',
+			name: 'Resonance Edge',
+			type: 'weapon',
+			isEvolved: true,
+			specialEffect: 'shockwave',
+		});
 		expect(CARD_DEFS.mana_leach).toMatchObject({
 			id: 'mana_leach',
 			name: 'Mana Leach',
@@ -293,9 +300,10 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('infinite_disk')).toBe(true);
 		expect(weaponCardIds.has('echo_blade')).toBe(true);
 		expect(weaponCardIds.has('excalibur_photon')).toBe(true);
+		expect(weaponCardIds.has('resonance_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(9);
+		expect(weaponCardIds.size).toBe(10);
 	});
 
 	it('summonCardIds contains base, evolved, and synergistic summon card IDs', () => {
@@ -344,6 +352,7 @@ describe('card ID sets', () => {
 			'gravity_well',
 			'event_horizon',
 			'echo_blade',
+			'resonance_edge',
 			'mana_leach',
 			'dragons_breath',
 			'glacier_collapse',
