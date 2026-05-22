@@ -508,6 +508,20 @@ let soundEnabled = true;
 let audioCtx = null;
 
 /**
+ * Resume the AudioContext if it was suspended by the browser's autoplay policy.
+ * Safe to call multiple times — no-ops when context is already running or unavailable.
+ */
+function resumeAudioContext() {
+  try {
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+  } catch (e) {
+    // Silent — resume may fail in restricted environments
+  }
+}
+
+/**
  * Play a short oscillator-based sound effect via the Web Audio API.
  * Never throws — catches errors silently if AudioContext is unavailable or blocked.
  * @param {string} type - one of 'card', 'enemyHit', 'playerDamage', 'loot', 'victory', 'failure'
@@ -518,6 +532,8 @@ function playSound(type) {
   if (_soundLogEnabled) _playSoundCallLog.push(type);
   try {
     if (!soundEnabled) return;
+
+    resumeAudioContext();
 
     if (!audioCtx) {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -555,6 +571,11 @@ function playSound(type) {
     // Silent — AudioContext may be unavailable or blocked by the browser
   }
 }
+
+// Resume AudioContext on first user interaction (browser autoplay policy)
+function __resumeAudioCtxListener() { resumeAudioContext(); }
+document.addEventListener('click', __resumeAudioCtxListener, { once: true });
+document.addEventListener('keydown', __resumeAudioCtxListener, { once: true });
 
 // Three.js references (initialized by initScene)
 let scene, camera, renderer, clock;
@@ -2073,6 +2094,7 @@ window.__pickedUpLootIds = () => pickedUpLootIds; // test-only: access pickedUpL
 window.__enemiesMeshes = () => enemiesMeshes;     // test-only: access enemiesMeshes map
 window.applyWindupFlash = applyWindupFlash;       // test-only: expose for unit testing
 window.__useCardForTest = useCard;                // test-only: expose useCard for cooldown tests
+window.__resumeAudioContext = resumeAudioContext; // test-only: expose resumeAudioContext
 window.showAuthOverlay = showAuthOverlay;         // test-only: expose auth overlay functions
 window.hideAuthOverlay = hideAuthOverlay;
 window.showRegisterForm = showRegisterForm;
