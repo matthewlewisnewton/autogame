@@ -196,6 +196,19 @@ const CARD_DEFS = {
     taunt: true,
     specialEffect: 'taunt',
   },
+  undead_commander: {
+    id: 'undead_commander',
+    name: 'Undead Commander',
+    type: 'monster',
+    charges: 1,
+    minionHp: 180,
+    effect: 'undead_commander',
+    taunt: true,
+    summonSkeletonCount: 2,
+    summonSkeletonHp: 60,
+    isEvolved: true,
+    specialEffect: 'summon_skeletons',
+  },
   storm_eagle: {
     id: 'storm_eagle',
     name: 'Storm Eagle',
@@ -275,7 +288,8 @@ const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake'
+  dungeon_drake: 'ancient_drake',
+  skeleton_knight: 'undead_commander',
 };
 
 const CARD_SELL_VALUES = {
@@ -287,6 +301,7 @@ const CARD_SELL_VALUES = {
   inferno_edge: 18,
   guardian_familiar: 25,
   ancient_drake: 20,
+  undead_commander: 18,
   mana_prism: 10,
   harvesting_scythe: 6,
   sacrificial_altar: 14,
