@@ -53,7 +53,9 @@ import {
 	setTestProvider,
 	ENTITY_RADIUS,
 	isEntityPositionBlocked,
-	moveEntityToward
+	moveEntityToward,
+	MINION_FOLLOW_DISTANCE,
+	MINION_FOLLOW_SPEED
 } from '../index.js';
 
 // ── Helpers ──
@@ -758,6 +760,109 @@ describe('updateMinions()', () => {
 		// AI should resume — minion should attack enemy
 		updateMinions();
 		expect(gameState.enemies[0].hp).toBe(45);
+	});
+
+	// ── Minion owner-follow ──
+
+	it('minion follows a living owner when no enemy is nearby', () => {
+		addPlayer('p1', { id: 'p1', x: 10, z: 10, dead: false });
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		// No enemies
+
+		const distBefore = Math.hypot(10 - 0, 10 - 0);
+		updateMinions();
+
+		// Minion should have moved toward owner
+		const distAfter = Math.hypot(10 - gameState.minions[0].x, 10 - gameState.minions[0].z);
+		expect(distAfter).toBeLessThan(distBefore);
+	});
+
+	it('minion does not follow a dead owner', () => {
+		addPlayer('p1', { id: 'p1', x: 10, z: 10, dead: true });
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+
+		updateMinions();
+
+		expect(gameState.minions[0].x).toBe(0);
+		expect(gameState.minions[0].z).toBe(0);
+	});
+
+	it('minion does not follow a missing owner', () => {
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'nonexistent',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+
+		updateMinions();
+
+		expect(gameState.minions[0].x).toBe(0);
+		expect(gameState.minions[0].z).toBe(0);
+	});
+
+	it('minion stays put when within MINION_FOLLOW_DISTANCE of owner', () => {
+		addPlayer('p1', { id: 'p1', x: 1, z: 1, dead: false });
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		// Distance is sqrt(2) ≈ 1.41, which is < MINION_FOLLOW_DISTANCE (3)
+
+		updateMinions();
+
+		expect(gameState.minions[0].x).toBe(0);
+		expect(gameState.minions[0].z).toBe(0);
+	});
+
+	it('minion prioritizes enemy chase over owner follow', () => {
+		addPlayer('p1', { id: 'p1', x: -10, z: -10, dead: false });
+		gameState.minions.push({
+			id: 'm1',
+			ownerId: 'p1',
+			x: 0,
+			z: 0,
+			hp: 50,
+			ttl: 30
+		});
+		gameState.enemies.push({
+			id: 'e1',
+			x: ATTACK_RANGE + 1,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 0, z: 0 }
+		});
+
+		updateMinions();
+
+		// Minion should move toward enemy (positive x), not toward owner (negative x/z)
+		expect(gameState.minions[0].x).toBeGreaterThan(0);
+	});
+
+	it('MINION_FOLLOW_DISTANCE and MINION_FOLLOW_SPEED are defined and exported', () => {
+		expect(MINION_FOLLOW_DISTANCE).toBe(3);
+		expect(MINION_FOLLOW_SPEED).toBe(ENEMY_DEFS.grunt.chaseSpeed);
 	});
 });
 

@@ -392,6 +392,10 @@ const ENEMY_DEFS = {
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher' },
 };
 
+// Minion behavior constants
+const MINION_FOLLOW_DISTANCE = 3;
+const MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;
+
 const DEBUG_SCENARIOS = new Set([
   'summon-low-mana',
   'summon-ready',
@@ -1412,6 +1416,7 @@ function updateMinions() {
   const runTerminal = gameState.run && (gameState.run.status === 'victory' || gameState.run.status === 'failed');
 
   // AI: each living minion seeks nearest enemy, chases, and attacks
+  // If no enemy is nearby, follows its owner.
   // Skipped entirely when the run is terminal (victory or failed)
   if (!runTerminal) {
     for (const minion of gameState.minions) {
@@ -1434,18 +1439,23 @@ function updateMinions() {
         if (nearestDist <= ATTACK_RANGE) {
           nearestEnemy.hp -= 5;
         } else {
-          // Move toward enemy
-          const dx = nearestEnemy.x - minion.x;
-          const dz = nearestEnemy.z - minion.z;
-          const dist = Math.hypot(dx, dz);
-          if (dist > 0.1) {
-            const move = ENEMY_DEFS.grunt.chaseSpeed * dt;
-            minion.x += (dx / dist) * move;
-            minion.z += (dz / dist) * move;
-          }
+          // Move toward enemy using moveEntityToward (wall-aware)
+          moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
         }
+      } else {
+        // No enemy in range — follow owner
+        const owner = gameState.players[minion.ownerId];
+        if (owner && !owner.dead) {
+          const dx = owner.x - minion.x;
+          const dz = owner.z - minion.z;
+          const distToOwner = Math.hypot(dx, dz);
+          if (distToOwner > MINION_FOLLOW_DISTANCE) {
+            moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+          }
+          // Within follow distance — stay put
+        }
+        // Owner missing, disconnected, or dead — stay stationary
       }
-      // No enemy in range — minion remains stationary (does not wander)
     }
   }
 
@@ -2270,6 +2280,8 @@ if (typeof module !== 'undefined' && module.exports) {
     MAX_HP,
     VICTORY_REWARD_ROTATION,
     ENEMY_DEFS,
+    MINION_FOLLOW_DISTANCE,
+    MINION_FOLLOW_SPEED,
     // Persistence
     extractPersistentData,
     savePlayerData,
