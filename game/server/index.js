@@ -9,6 +9,8 @@ const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
   generateLayout,
+  roomsByRole,
+  randomRoomPositionByRole,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
