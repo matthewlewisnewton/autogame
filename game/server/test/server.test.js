@@ -38,6 +38,15 @@ import {
 	cardIdForDeckEntry,
 	validateDeck,
 	canAddCardToDeck,
+	canSellCardInstance,
+	sellCard,
+	offerCardTrade,
+	respondCardTrade,
+	getCardSellValue,
+	createCardInstance,
+	createInventoryFromOwnedCards,
+	normalizePlayerInventory,
+	getInventoryInstance,
 	createDrawDeckFromSelectedDeck,
 	stateSnapshot,
 	addMagicStones,
@@ -2426,6 +2435,122 @@ describe('canAddCardToDeck(cardId, deck, ownedCards)', () => {
 		const owned = { iron_sword: 3 };
 		const deck = ['iron_sword', 'iron_sword', 'iron_sword'];
 		expect(canAddCardToDeck('flame_blade', deck, owned)).toBe(false);
+	});
+});
+
+describe('card sell and trade economy', () => {
+	beforeEach(() => resetGameState());
+
+	function addPlayer(id, overrides = {}) {
+		const progress = createPlayerProgress();
+		gameState.players[id] = {
+			username: id,
+			selectedDeck: progress.inventory.map((instance) => instance.instanceId),
+			inventory: progress.inventory,
+			ownedCards: progress.ownedCards,
+			currency: 0,
+			...overrides
+		};
+		normalizePlayerInventory(gameState.players[id]);
+	}
+
+	it('getCardSellValue returns configured sell prices', () => {
+		expect(getCardSellValue('iron_sword')).toBe(5);
+		expect(getCardSellValue('flame_blade')).toBe(8);
+		expect(getCardSellValue('steel_broadsword')).toBe(15);
+	});
+
+	it('canSellCardInstance rejects selling deck-required copies', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 1, flame_blade: 1, battle_familiar: 1, dungeon_drake: 1 });
+		const player = {
+			inventory,
+			selectedDeck: inventory.map((instance) => instance.instanceId),
+			ownedCards: inventoryToOwnedCards(inventory)
+		};
+		const result = canSellCardInstance(player, 'iron_sword');
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/deck/i);
+	});
+
+	it('sellCard removes an extra copy and grants currency', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 3, flame_blade: 1, battle_familiar: 1, dungeon_drake: 1 });
+		const ironInstances = inventory.filter((instance) => instance.cardId === 'iron_sword');
+		const player = {
+			inventory,
+			selectedDeck: [
+				ironInstances[0].instanceId,
+				inventory.find((instance) => instance.cardId === 'flame_blade').instanceId,
+				inventory.find((instance) => instance.cardId === 'battle_familiar').instanceId,
+				inventory.find((instance) => instance.cardId === 'dungeon_drake').instanceId
+			],
+			ownedCards: inventoryToOwnedCards(inventory),
+			currency: 0
+		};
+
+		const result = sellCard(player, 'iron_sword');
+		expect(result.ok).toBe(true);
+		expect(player.ownedCards.iron_sword).toBe(2);
+		expect(player.currency).toBe(getCardSellValue('iron_sword'));
+		expect(validateDeck(player.selectedDeck, player.inventory).valid).toBe(true);
+	});
+
+	it('offerCardTrade and respondCardTrade swap one instance each', () => {
+		addPlayer('p1', { currency: 0 });
+		addPlayer('p2', { currency: 0 });
+
+		const p1 = gameState.players.p1;
+		const p2 = gameState.players.p2;
+		const p1Iron = p1.inventory.filter((instance) => instance.cardId === 'iron_sword');
+		const p2Flame = p2.inventory.filter((instance) => instance.cardId === 'flame_blade');
+		p1.selectedDeck = p1.inventory
+			.filter((instance) => instance.instanceId !== p1Iron[2].instanceId)
+			.map((instance) => instance.instanceId);
+		p2.selectedDeck = p2.inventory
+			.filter((instance) => instance.instanceId !== p2Flame[1].instanceId)
+			.map((instance) => instance.instanceId);
+
+		const offer = offerCardTrade(gameState.pendingTrades, 'p1', 'p2', 'iron_sword', 'flame_blade');
+		expect(offer.ok).toBe(true);
+
+		const p1IronBefore = p1.ownedCards.iron_sword;
+		const p1FlameBefore = p1.ownedCards.flame_blade || 0;
+		const p2IronBefore = p2.ownedCards.iron_sword || 0;
+		const p2FlameBefore = p2.ownedCards.flame_blade;
+
+		const accepted = respondCardTrade(gameState.pendingTrades, 'p2', offer.tradeId, true);
+		expect(accepted.ok).toBe(true);
+		expect(p1.ownedCards.iron_sword).toBe(p1IronBefore - 1);
+		expect(p1.ownedCards.flame_blade).toBe(p1FlameBefore + 1);
+		expect(p2.ownedCards.iron_sword).toBe(p2IronBefore + 1);
+		expect(p2.ownedCards.flame_blade).toBe(p2FlameBefore - 1);
+		expect(validateDeck(p1.selectedDeck, p1.inventory).valid).toBe(true);
+		expect(validateDeck(p2.selectedDeck, p2.inventory).valid).toBe(true);
+	});
+
+	it('respondCardTrade reject does not mutate inventories', () => {
+		addPlayer('p1');
+		addPlayer('p2');
+
+		const p1 = gameState.players.p1;
+		const p2 = gameState.players.p2;
+		const p1Iron = p1.inventory.filter((instance) => instance.cardId === 'iron_sword');
+		const p2Flame = p2.inventory.filter((instance) => instance.cardId === 'flame_blade');
+		p1.selectedDeck = p1.inventory
+			.filter((instance) => instance.instanceId !== p1Iron[2].instanceId)
+			.map((instance) => instance.instanceId);
+		p2.selectedDeck = p2.inventory
+			.filter((instance) => instance.instanceId !== p2Flame[1].instanceId)
+			.map((instance) => instance.instanceId);
+
+		const p1Snapshot = JSON.stringify(p1.inventory);
+		const p2Snapshot = JSON.stringify(p2.inventory);
+
+		const offer = offerCardTrade(gameState.pendingTrades, 'p1', 'p2', 'iron_sword', 'flame_blade');
+		const rejected = respondCardTrade(gameState.pendingTrades, 'p2', offer.tradeId, false);
+		expect(rejected.ok).toBe(true);
+		expect(rejected.accepted).toBe(false);
+		expect(JSON.stringify(p1.inventory)).toBe(p1Snapshot);
+		expect(JSON.stringify(p2.inventory)).toBe(p2Snapshot);
 	});
 });
 

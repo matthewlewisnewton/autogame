@@ -747,7 +747,8 @@ canvas {
 
 .deck-add-btn,
 .deck-remove-btn,
-.evolve-card-btn {
+.evolve-card-btn,
+.sell-card-btn {
   padding: 2px 10px;
   font-size: 13px;
   font-weight: 700;
@@ -785,6 +786,110 @@ canvas {
 
 .evolve-card-btn:disabled {
   display: none;
+}
+
+.sell-card-btn {
+  background-color: #eab308;
+  color: #111827;
+}
+
+.sell-card-btn:hover {
+  background-color: #facc15;
+}
+
+.sell-card-btn:disabled {
+  background-color: #4a5568;
+  color: #a0aec0;
+  cursor: not-allowed;
+}
+
+.owned-card-entry .card-sell-value {
+  font-size: 11px;
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+#card-economy-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #334155;
+}
+
+#card-economy-section h3 {
+  margin: 0 0 8px;
+  font-size: 14px;
+  color: #e2e8f0;
+}
+
+#lobby-currency-display {
+  font-size: 13px;
+  color: #fbbf24;
+  margin-bottom: 8px;
+}
+
+#card-trade-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-end;
+  margin-top: 8px;
+}
+
+#card-trade-form label {
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  color: #94a3b8;
+  gap: 2px;
+}
+
+#card-trade-form select {
+  min-width: 120px;
+  font-size: 12px;
+}
+
+#pending-trade-offer {
+  margin: 8px 0;
+  padding: 8px;
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 6px;
+}
+
+#pending-trade-offer p {
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+
+#accept-trade-btn,
+#reject-trade-btn,
+#offer-trade-btn {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+#accept-trade-btn {
+  background-color: #22c55e;
+  color: #fff;
+}
+
+#reject-trade-btn {
+  background-color: #64748b;
+  color: #fff;
+  margin-left: 6px;
+}
+
+#offer-trade-btn {
+  background-color: #3b82f6;
+  color: #fff;
+}
+
+#offer-trade-btn:disabled {
+  background-color: #4a5568;
+  color: #a0aec0;
+  cursor: not-allowed;
 }
 
 .deck-remove-btn {
