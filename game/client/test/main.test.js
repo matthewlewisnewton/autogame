@@ -2056,3 +2056,151 @@ describe('connect_error handler', () => {
 		expect(runSummary.style.display).toBe('none');
 	});
 });
+
+// ── Mute persistence via localStorage ──
+
+describe('Mute persistence (localStorage)', () => {
+	beforeEach(() => {
+		// Ensure required DOM elements exist
+		const requiredIds = [
+			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'mute-btn',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				if (id === 'mute-btn') el.textContent = '🔊';
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 4; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		// Clear localStorage so each test starts clean
+		try { localStorage.clear(); } catch (_) {}
+	});
+
+	afterEach(() => {
+		// Reset sound state to avoid test pollution
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+		try { localStorage.clear(); } catch (_) {}
+	});
+
+	it('loadSoundEnabled reads persisted false from localStorage', async () => {
+		await import('../main.js');
+
+		// Pre-seed localStorage with muted state
+		try { localStorage.setItem('autogame:soundEnabled', 'false'); } catch (_) {}
+
+		// loadSoundEnabled() reads from localStorage directly
+		expect(window.__loadSoundEnabled()).toBe(false);
+	});
+
+	it('loadSoundEnabled returns true when localStorage key is absent', async () => {
+		await import('../main.js');
+
+		// localStorage is cleared in beforeEach — key should be absent
+		expect(window.__loadSoundEnabled()).toBe(true);
+	});
+
+	it('loadSoundEnabled handles localStorage errors gracefully', async () => {
+		await import('../main.js');
+
+		// Mock localStorage.getItem to throw (private mode simulation)
+		const origGetItem = localStorage.getItem;
+		localStorage.getItem = () => { throw new Error('SecurityError'); };
+
+		try {
+			expect(window.__loadSoundEnabled()).toBe(true);
+		} finally {
+			localStorage.getItem = origGetItem;
+		}
+	});
+
+	it('toggling mute writes the new value to localStorage', async () => {
+		await import('../main.js');
+
+		// Reset to default unmuted state (no stored value)
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+		// __setSoundEnabled now also persists — remove that so we start clean
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
+
+		expect(window.__soundEnabled()).toBe(true);
+		expect(window.__getPersistedMute()).toBe(null);
+
+		// Click the mute button to toggle
+		const muteBtn = document.getElementById('mute-btn');
+		muteBtn.click();
+
+		expect(window.__soundEnabled()).toBe(false);
+		expect(window.__getPersistedMute()).toBe('false');
+	});
+
+	it('toggling mute again restores unmuted and persists', async () => {
+		await import('../main.js');
+
+		// Reset state
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+
+		// Toggle to muted
+		const muteBtn = document.getElementById('mute-btn');
+		muteBtn.click();
+		expect(window.__soundEnabled()).toBe(false);
+		expect(window.__getPersistedMute()).toBe('false');
+
+		// Toggle back to unmuted
+		muteBtn.click();
+		expect(window.__soundEnabled()).toBe(true);
+		expect(window.__getPersistedMute()).toBe('true');
+	});
+
+	it('updateMuteButton reflects the toggled state correctly', async () => {
+		await import('../main.js');
+
+		// Reset state
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
+		if (typeof window.__setSoundEnabled === 'function') {
+			window.__setSoundEnabled(true);
+		}
+
+		const muteBtn = document.getElementById('mute-btn');
+
+		// Mute
+		muteBtn.click();
+		expect(muteBtn.textContent).toBe('🔇');
+
+		// Unmute
+		muteBtn.click();
+		expect(muteBtn.textContent).toBe('🔊');
+	});
+
+	it('__getPersistedMute returns null when key is absent', async () => {
+		await import('../main.js');
+
+		expect(window.__getPersistedMute()).toBe(null);
+	});
+});

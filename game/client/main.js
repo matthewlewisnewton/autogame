@@ -504,7 +504,36 @@ let myOwnedCards = {};
 
 // ── Audio system ──
 
-let soundEnabled = true;
+const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
+
+/**
+ * Read the persisted sound preference from localStorage.
+ * Returns `true` (unmuted) if the key is absent or localStorage is unavailable.
+ */
+function loadSoundEnabled() {
+  try {
+    const val = localStorage.getItem(SOUND_ENABLED_KEY);
+    if (val === null) return true; // no stored preference — default to unmuted
+    return val === 'true';
+  } catch (_) {
+    return true; // localStorage blocked (e.g. private mode)
+  }
+}
+
+/**
+ * Persist the current sound preference to localStorage.
+ * No-ops if localStorage is unavailable.
+ * @param {boolean} value
+ */
+function saveSoundEnabled(value) {
+  try {
+    localStorage.setItem(SOUND_ENABLED_KEY, String(value));
+  } catch (_) {
+    // localStorage blocked — silent fail
+  }
+}
+
+let soundEnabled = loadSoundEnabled();
 let audioCtx = null;
 
 /**
@@ -1640,6 +1669,7 @@ function updateMuteButton() {
 document.addEventListener('click', (e) => {
   if (e.target && e.target.id === 'mute-btn') {
     soundEnabled = !soundEnabled;
+    saveSoundEnabled(soundEnabled);
     updateMuteButton();
   }
 });
@@ -2076,7 +2106,9 @@ window.markLootCollected = markLootCollected;
 window.playSound = playSound;
 window.__soundEnabled = () => soundEnabled;
 window.__updateMuteButton = updateMuteButton;
-window.__setSoundEnabled = (v) => { soundEnabled = v; updateMuteButton(); };
+window.__setSoundEnabled = (v) => { soundEnabled = v; saveSoundEnabled(v); updateMuteButton(); };
+window.__getPersistedMute = () => { try { return localStorage.getItem(SOUND_ENABLED_KEY); } catch (_) { return null; } };
+window.__loadSoundEnabled = loadSoundEnabled; // test-only: verify localStorage read on init
 window.activeEffects = () => activeEffects;
 window.__setScene = (s) => { window.___test_scene = s; scene = s; }; // test-only: override scene
 window.___test_scene = undefined;
