@@ -771,6 +771,37 @@ export function spawnHitSpark(position) {
 }
 
 /**
+ * Spawn a cyan lightning bolt projectile (Thunderbird ranged/chain feedback).
+ * @param {object} origin - { x, z }
+ * @param {object} direction - { x, z }
+ */
+export function spawnChainLightningEffect(origin, direction) {
+	const geometry = new THREE.SphereGeometry(0.25, 8, 8);
+	const material = new THREE.MeshStandardMaterial({
+		color: 0x38bdf8,
+		emissive: 0x0ea5e9,
+		emissiveIntensity: 1.0,
+		transparent: true,
+		opacity: 1.0,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 1.2, origin.z);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	const dir = direction || { x: 1, z: 0 };
+	const len = Math.hypot(dir.x, dir.z) || 1;
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		direction: { x: dir.x / len, z: dir.z / len },
+		createdAt: performance.now(),
+		duration: ATTACK_EFFECT_DURATION,
+		isChainLightning: true,
+	});
+}
+
+/**
  * Per-frame update for attack effects: move projectiles, expand/fade summon rings,
  * scale/fade sparks, dispose expired.
  */
@@ -1095,10 +1126,6 @@ export function animate(timestamp) {
 				const cardHit = lastCardHitTime[enemy.id];
 				const withinGrace = cardHit !== undefined && (performance.now() - cardHit) < CARD_HIT_GRACE_MS;
 				if (!withinGrace) {
-					flashMesh(enemiesMeshes[enemy.id], 0xff4444, 150);
-					spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
-
-					// Flash the nearest living minion
 					let nearestMinion = null;
 					let nearestMinionDist = Infinity;
 					for (const m of (gs.minions || [])) {
@@ -1108,8 +1135,29 @@ export function animate(timestamp) {
 							nearestMinion = m;
 						}
 					}
+					const fromThunderbird = nearestMinion && nearestMinion.type === 'thunderbird';
+					flashMesh(enemiesMeshes[enemy.id], fromThunderbird ? 0x38bdf8 : 0xff4444, 150);
+					if (fromThunderbird) {
+						const sparkDir = nearestMinion
+							? {
+								x: enemy.x - nearestMinion.x,
+								z: enemy.z - nearestMinion.z,
+							}
+							: { x: 1, z: 0 };
+						spawnChainLightningEffect(
+							{ x: nearestMinion.x, z: nearestMinion.z },
+							sparkDir
+						);
+					} else {
+						spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
+					}
+
 					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
-						flashMesh(minionsMeshes[nearestMinion.id], 0x88ff88, 200);
+						flashMesh(
+							minionsMeshes[nearestMinion.id],
+							fromThunderbird ? 0x7dd3fc : 0x88ff88,
+							200
+						);
 					}
 				}
 			}

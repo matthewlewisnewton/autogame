@@ -199,6 +199,15 @@ export const CARD_DEFS = {
     magicStoneCost: 40,
     specialEffect: 'ranged_strike',
   },
+  thunderbird: {
+    id: 'thunderbird',
+    name: 'Thunderbird',
+    type: 'monster',
+    charges: 1,
+    magicStoneCost: 40,
+    isEvolved: true,
+    specialEffect: 'chain_lightning',
+  },
   gravity_well: {
     id: 'gravity_well',
     name: 'Gravity Well',
@@ -247,6 +256,7 @@ export const EVOLUTION_TRANSFORMS = {
   frost_nova: 'glacier_collapse',
   healing_font: 'divine_grace',
   skeleton_knight: 'undead_commander',
+  storm_eagle: 'thunderbird',
 };
 
 export const CARD_SELL_VALUES = {
@@ -260,6 +270,7 @@ export const CARD_SELL_VALUES = {
   ancient_drake: 20,
   divine_grace: 18,
   undead_commander: 18,
+  thunderbird: 18,
   mana_prism: 10,
   harvesting_scythe: 6,
   sacrificial_altar: 14,
@@ -329,6 +340,7 @@ export const CARD_ACCENT_STYLE = {
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },
   undead_commander: { color: '#a1a1aa', icon: '☠' },
   storm_eagle: { color: '#93c5fd', icon: '🦅' },
+  thunderbird: { color: '#38bdf8', icon: '⚡' },
   gravity_well: { color: '#c084fc', icon: '◎' },
   echo_blade: { color: '#f472b6', icon: '〰' },
   mana_leach: { color: '#a855f7', icon: '◈' },
