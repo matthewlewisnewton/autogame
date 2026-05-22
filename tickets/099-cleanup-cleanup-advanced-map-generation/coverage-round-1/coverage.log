@@ -1,0 +1,22 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/dungeon.test.js (2 tests) 2ms
+ ✓ |client| client/test/main.test.js (91 tests) 344ms
+
+ Test Files  2 passed (2)
+      Tests  93 passed (93)
+   Start at  01:30:26
+   Duration  1.03s (transform 54ms, setup 33ms, collect 49ms, tests 345ms, environment 406ms, prepare 113ms)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|--------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s  
+--------------|---------|----------|---------|---------|--------------------
+All files     |   54.44 |       80 |   22.22 |   54.44 |                    
+ cards.js     |   83.58 |      100 |       0 |   83.58 | 42-52              
+ collision.js |    28.4 |      100 |       0 |    28.4 | 15-30,45-98        
+ delta.js     |   78.57 |      100 |       0 |   78.57 | 12-14              
+ hand.js      |   54.46 |    66.66 |      40 |   54.46 | 23-38,47-64,78-102 
+--------------|---------|----------|---------|---------|--------------------
