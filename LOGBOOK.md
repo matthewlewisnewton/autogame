@@ -1501,3 +1501,26 @@ No blocking gaps found.
 
 None. Both acceptance criteria are satisfied on a clean install under pnpm 11, and the captured game run starts and plays through dungeon smoke successfully.
 
+
+## v0.66 — Advanced Map Generation  (2026-05-22 01:09:10)
+
+- Enemies preferentially spawn in `combat` rooms, not in the start room: satisfied for normal gameplay. `spawnEnemies()` selects combat rooms when present and falls back to non-start rooms before any all-room fallback.
+- Loot or reward props preferentially spawn in `treasure` rooms: satisfied. Pre-spawned loot uses treasure rooms when one exists, with a non-start fallback.
+- The client renders room roles with subtle visual differences: satisfied. Start and treasure rooms use distinct floor materials, and treasure rooms get a small gold marker.
+- All generated rooms remain reachable from the start room: satisfied. Role metadata is assigned after passage generation and does not alter connectivity; tests verify BFS reachability.
+- Wall and passage collision remain correct after role metadata is added: satisfied. Role metadata does not change wall or passage geometry, and server/client colliders still derive from the same wall data.
+- The layout remains deterministic for a given seed: satisfied. Role assignment is deterministic from generated room/passsage topology, and tests cover same-seed equality.
+- Existing debug scenarios still place players/enemies in valid reachable positions: satisfied for this ticket. No new debug scenarios were added, and existing debug scenario setup continues to place players at the start room and nearby entities within the dungeon.
+
+## Runtime Health
+
+The captured run is healthy: `metrics.json` reports `"ok": true`, the server/client reached active gameplay, and `console.log` contains no `pageerror` or `[fatal]` lines from game code. The Vite `EPIPE` lines in `client.log` are benign socket-close noise under the ticket's runtime-health rules.
+
+## Design And Requirements Consistency
+
+The implementation stays aligned with the design goal of semi-procedural dungeons with readable room roles and does not regress the foundational requirements: the game renders a 3D scene, connects over WebSockets, shows multiplayer players, and preserves movement synchronization.
+
+## Remaining gaps
+
+No blocking gaps remain for the advanced map generation ticket. The coverage log does show one unrelated failing monster-card integration assertion; it is outside this ticket's changed map-generation paths, but should be handled separately.
+
