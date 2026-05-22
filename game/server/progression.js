@@ -10,7 +10,9 @@ const {
   MAX_MAGIC_STONES,
   SPAWN_PADDING,
   LOOT_SPAWN_CHANCE,
-  VICTORY_REWARD_ROTATION
+  VICTORY_REWARD_ROTATION,
+  ENEMY_CARD_DROPS,
+  MAX_CARD_CHOICES
 } = require('./config');
 const {
   mulberry32,
@@ -424,7 +426,92 @@ function startDungeonRun() {
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
     p.runRewards = null;
+    p.runCardDropIds = [];
+    p.pendingCardChoices = null;
+    p.claimedCardRewardId = null;
   }
+}
+
+function cardChoiceDescription(def) {
+  if (!def) return '';
+  if (def.specialEffect) return def.specialEffect.replace(/_/g, ' ');
+  if (def.type === 'weapon') return `${def.damage || 0} damage weapon`;
+  if (def.type === 'summon') return 'Summons an ally';
+  if (def.type === 'monster') return 'Spawns a minion';
+  return `${def.type} card`;
+}
+
+function getEnemyCardDrop(enemy) {
+  if (!enemy) return null;
+  if (typeof enemy.cardDrop === 'string' && CARD_DEFS[enemy.cardDrop]) {
+    return enemy.cardDrop;
+  }
+  if (!enemy.type) return null;
+  const cardId = ENEMY_CARD_DROPS[enemy.type];
+  return cardId && CARD_DEFS[cardId] ? cardId : null;
+}
+
+function recordEnemyCardDrop(enemy) {
+  const cardId = getEnemyCardDrop(enemy);
+  if (!cardId) return;
+
+  const playerId = enemy.lastDamagedBy;
+  const player = playerId ? _gameState.players[playerId] : null;
+  if (!player) return;
+
+  if (!Array.isArray(player.runCardDropIds)) {
+    player.runCardDropIds = [];
+  }
+  player.runCardDropIds.push(cardId);
+}
+
+function buildCardChoices(playerId) {
+  const player = _gameState.players[playerId];
+  if (!player || !Array.isArray(player.runCardDropIds)) return [];
+
+  const uniqueIds = [];
+  for (const cardId of player.runCardDropIds) {
+    if (!CARD_DEFS[cardId]) continue;
+    if (!uniqueIds.includes(cardId)) uniqueIds.push(cardId);
+    if (uniqueIds.length >= MAX_CARD_CHOICES) break;
+  }
+
+  return uniqueIds.map((cardId) => {
+    const def = CARD_DEFS[cardId];
+    return {
+      id: cardId,
+      name: def.name,
+      type: def.type,
+      description: cardChoiceDescription(def),
+    };
+  });
+}
+
+function claimCardReward(playerId, cardId) {
+  const player = _gameState.players[playerId];
+  if (!player || typeof cardId !== 'string') {
+    return { ok: false, reason: 'invalid' };
+  }
+  if (player.claimedCardRewardId) {
+    return { ok: false, reason: 'already_claimed' };
+  }
+
+  const choices = player.pendingCardChoices || [];
+  if (!choices.some((choice) => choice.id === cardId)) {
+    return { ok: false, reason: 'invalid_choice' };
+  }
+
+  if (!grantCard(player, cardId)) {
+    return { ok: false, reason: 'grant_failed' };
+  }
+
+  player.claimedCardRewardId = cardId;
+  return {
+    ok: true,
+    cardId,
+    ownedCards: player.ownedCards,
+    inventory: player.inventory,
+  };
 }
 
 function clampObjectiveProgress(run) {
@@ -452,7 +539,8 @@ function buildRunSummary(status) {
     hp: p.hp,
     dead: p.dead,
     currency: p.currency,
-    rewards: buildPlayerRewardSummary(id)
+    rewards: buildPlayerRewardSummary(id),
+    cardChoices: p.pendingCardChoices || [],
   }));
 
   return {
@@ -492,25 +580,33 @@ function grantRunRewards(playerId, summary) {
     const currencyBonus = (quest && quest.rewardCurrency) || 10;
     player.currency += currencyBonus;
 
-    if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
-    const idx = _gameState._victoryCounters[playerId] || 0;
-    const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
-    _gameState._victoryCounters[playerId] = idx + 1;
+    const cardChoices = buildCardChoices(playerId);
+    player.pendingCardChoices = cardChoices;
 
     const cards = [];
-    if (grantCard(player, cardId)) {
-      const cardDef = CARD_DEFS[cardId];
-      cards.push({ id: cardId, name: cardDef.name, count: 1 });
+    if (cardChoices.length === 0) {
+      if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
+      const idx = _gameState._victoryCounters[playerId] || 0;
+      const cardId = VICTORY_REWARD_ROTATION[idx % VICTORY_REWARD_ROTATION.length];
+      _gameState._victoryCounters[playerId] = idx + 1;
+
+      if (grantCard(player, cardId)) {
+        const cardDef = CARD_DEFS[cardId];
+        cards.push({ id: cardId, name: cardDef.name, count: 1 });
+      }
     }
 
     player.runRewards = {
       currency: currencyBonus + lootCurrency,
-      cards
+      cards,
+      cardChoices,
     };
   } else {
+    player.pendingCardChoices = [];
     player.runRewards = {
       currency: lootCurrency,
-      cards: []
+      cards: [],
+      cardChoices: [],
     };
   }
 }
@@ -731,8 +827,13 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
 }
 
 function removeDeadEnemies() {
+  const dying = _gameState.enemies.filter((e) => e.hp <= 0);
+  for (const enemy of dying) {
+    recordEnemyCardDrop(enemy);
+  }
+
   const before = _gameState.enemies.length;
-  _gameState.enemies = _gameState.enemies.filter(e => e.hp > 0);
+  _gameState.enemies = _gameState.enemies.filter((e) => e.hp > 0);
   const removed = before - _gameState.enemies.length;
   if (removed > 0) {
     recordEnemyDefeated(removed);
@@ -991,6 +1092,10 @@ module.exports = {
   clampObjectiveProgress,
   syncRunObjectiveToEnemies,
   recordEnemyDefeated,
+  getEnemyCardDrop,
+  recordEnemyCardDrop,
+  buildCardChoices,
+  claimCardReward,
   buildRunSummary,
   grantCard,
   grantRunRewards,

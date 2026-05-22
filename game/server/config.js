@@ -30,6 +30,18 @@ const VICTORY_REWARD_ROTATION = [
   'dungeon_drake',
 ];
 
+// Deterministic enemy-type → card drop mapping (Lost Kingdoms-style acquisition).
+const ENEMY_CARD_DROPS = {
+  goblin: 'iron_sword',
+  grunt: 'iron_sword',
+  skirmisher: 'flame_blade',
+  drake: 'dungeon_drake',
+  miniboss: 'dungeon_drake',
+  spawner: 'battle_familiar',
+};
+
+const MAX_CARD_CHOICES = 3;
+
 module.exports = {
   TICK_RATE,
   MOVE_SPEED,
@@ -54,5 +66,7 @@ module.exports = {
   LOOT_SPAWN_CHANCE,
   STALE_CLEANUP_INTERVAL_MS,
   PERIODIC_SAVE_INTERVAL_MS,
-  VICTORY_REWARD_ROTATION
+  VICTORY_REWARD_ROTATION,
+  ENEMY_CARD_DROPS,
+  MAX_CARD_CHOICES
 };

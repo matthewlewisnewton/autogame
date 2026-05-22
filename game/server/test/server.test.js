@@ -19,6 +19,10 @@ import {
 	createRunState,
 	startDungeonRun,
 	recordEnemyDefeated,
+	getEnemyCardDrop,
+	recordEnemyCardDrop,
+	buildCardChoices,
+	claimCardReward,
 	clampObjectiveProgress,
 	buildRunSummary,
 	checkRunTerminalState,
@@ -2166,6 +2170,116 @@ describe('run state', () => {
 		it('does nothing for unknown player', () => {
 			grantRunRewards('nonexistent', { status: 'victory' });
 			expect(gameState.players['nonexistent']).toBeUndefined();
+		});
+	});
+
+	// ── enemy card drops ──
+
+	describe('enemy card drops', () => {
+		beforeEach(() => resetState());
+
+		it('maps enemy types to deterministic card drops', () => {
+			expect(getEnemyCardDrop({ type: 'goblin' })).toBe('iron_sword');
+			expect(getEnemyCardDrop({ type: 'grunt' })).toBe('iron_sword');
+			expect(getEnemyCardDrop({ type: 'drake' })).toBe('dungeon_drake');
+			expect(getEnemyCardDrop({ type: 'miniboss' })).toBe('dungeon_drake');
+		});
+
+		it('prefers instance cardDrop override over type mapping', () => {
+			expect(getEnemyCardDrop({ type: 'grunt', cardDrop: 'flame_blade' })).toBe('flame_blade');
+		});
+
+		it('returns null when enemy has no type or cardDrop', () => {
+			expect(getEnemyCardDrop({})).toBeNull();
+			expect(getEnemyCardDrop({ type: 'unknown_type' })).toBeNull();
+		});
+
+		it('records card drops for the killing player and builds up to three choices', () => {
+			addPlayer('p1', { ownedCards: {} });
+			addPlayer('p2', { ownedCards: {} });
+			gameState.run = createRunState();
+
+			recordEnemyCardDrop({
+				type: 'grunt',
+				lastDamagedBy: 'p1',
+			});
+			recordEnemyCardDrop({
+				type: 'skirmisher',
+				lastDamagedBy: 'p1',
+			});
+			recordEnemyCardDrop({
+				type: 'miniboss',
+				lastDamagedBy: 'p1',
+			});
+			recordEnemyCardDrop({
+				type: 'spawner',
+				lastDamagedBy: 'p1',
+			});
+			recordEnemyCardDrop({
+				type: 'grunt',
+				lastDamagedBy: 'p2',
+			});
+
+			const p1Choices = buildCardChoices('p1');
+			expect(p1Choices).toHaveLength(3);
+			expect(p1Choices.map((choice) => choice.id)).toEqual([
+				'iron_sword',
+				'flame_blade',
+				'dungeon_drake',
+			]);
+			expect(p1Choices[0]).toEqual(expect.objectContaining({
+				id: 'iron_sword',
+				name: 'Iron Sword',
+				type: 'weapon',
+			}));
+
+			const p2Choices = buildCardChoices('p2');
+			expect(p2Choices).toEqual([
+				expect.objectContaining({ id: 'iron_sword' }),
+			]);
+		});
+
+		it('offers draft choices on victory when drops exist instead of auto-granting rotation cards', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			gameState.run = createRunState();
+			gameState.players.p1.runCardDropIds = ['dungeon_drake'];
+
+			grantRunRewards('p1', { status: 'victory' });
+
+			expect(gameState.players.p1.pendingCardChoices).toEqual([
+				expect.objectContaining({ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster' }),
+			]);
+			expect(gameState.players.p1.runRewards.cards).toEqual([]);
+			expect(gameState.players.p1.ownedCards.dungeon_drake).toBeUndefined();
+		});
+
+		it('claimCardReward grants exactly one copy and rejects duplicate claims', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			gameState.run = createRunState();
+			gameState.players.p1.pendingCardChoices = [
+				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', description: 'Spawns a minion' },
+			];
+
+			const first = claimCardReward('p1', 'dungeon_drake');
+			expect(first.ok).toBe(true);
+			expect(gameState.players.p1.ownedCards.dungeon_drake).toBe(1);
+
+			const second = claimCardReward('p1', 'dungeon_drake');
+			expect(second.ok).toBe(false);
+			expect(second.reason).toBe('already_claimed');
+			expect(gameState.players.p1.ownedCards.dungeon_drake).toBe(1);
+		});
+
+		it('claimCardReward rejects invalid choice ids', () => {
+			addPlayer('p1', { currency: 0, ownedCards: {} });
+			gameState.players.p1.pendingCardChoices = [
+				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', description: 'Spawns a minion' },
+			];
+
+			const result = claimCardReward('p1', 'flame_blade');
+			expect(result.ok).toBe(false);
+			expect(result.reason).toBe('invalid_choice');
+			expect(gameState.players.p1.ownedCards.flame_blade).toBeUndefined();
 		});
 	});
 

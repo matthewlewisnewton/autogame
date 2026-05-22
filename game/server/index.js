@@ -150,6 +150,10 @@ const {
   clampObjectiveProgress,
   syncRunObjectiveToEnemies,
   recordEnemyDefeated,
+  getEnemyCardDrop,
+  recordEnemyCardDrop,
+  buildCardChoices,
+  claimCardReward,
   buildRunSummary,
   grantCard,
   grantRunRewards,
@@ -763,6 +767,7 @@ function startServer(port) {
 
         // Hit — apply damage
         const hpBefore = enemy.hp;
+        enemy.lastDamagedBy = socket.playerId;
         enemy.hp -= damage;
         const killed = hpBefore > 0 && enemy.hp <= 0;
         const hitGain = cardDef.magicStoneOnHit || 0;
@@ -918,6 +923,7 @@ function startServer(port) {
       for (const enemy of gameState.enemies) {
         const dist = Math.hypot(enemy.x - originX, enemy.z - originZ);
         if (dist <= SUMMON_RADIUS) {
+          enemy.lastDamagedBy = socket.playerId;
           enemy.hp -= cardDef.damage || 0;
           hits.push({ enemyId: enemy.id, hp: enemy.hp });
         }
@@ -1057,6 +1063,23 @@ function startServer(port) {
     if (!gameState.run) return;
 
     returnPlayersToLobby();
+  });
+
+  socket.on('claimCardReward', (data) => {
+    const player = gameState.players[socket.playerId];
+    if (!player) return;
+    if (!gameState.run || gameState.run.status === 'playing') return;
+    if (!data || typeof data.cardId !== 'string') return;
+
+    const result = claimCardReward(socket.playerId, data.cardId);
+    if (!result.ok) return;
+
+    savePlayerData(socket.playerId);
+    socket.emit('cardRewardClaimed', {
+      cardId: result.cardId,
+      ownedCards: result.ownedCards,
+      inventory: result.inventory,
+    });
   });
 
   socket.on('deckAddCard', (data) => {
@@ -1318,6 +1341,10 @@ if (typeof module !== 'undefined' && module.exports) {
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
+    getEnemyCardDrop,
+    recordEnemyCardDrop,
+    buildCardChoices,
+    claimCardReward,
     removeDeadEnemies,
     cleanupAfterDamage,
     clampObjectiveProgress,

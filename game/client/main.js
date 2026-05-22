@@ -147,6 +147,9 @@ const summaryEnemiesEl = document.getElementById('summary-enemies');
 const summaryCurrencyEl = document.getElementById('summary-currency');
 const summaryRewardsCurrencyEl = document.getElementById('summary-rewards-currency');
 const summaryRewardsCardsEl = document.getElementById('summary-rewards-cards');
+const summaryCardChoicesEl = document.getElementById('summary-card-choices');
+const summaryCardChoicesListEl = document.getElementById('summary-card-choices-list');
+const summaryCardChoicesEmptyEl = document.getElementById('summary-card-choices-empty');
 const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 const cardSlots = document.querySelectorAll('.card-slot');
 
@@ -508,6 +511,8 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on('startGame', () => {
+		claimedCardRewardId = null;
+		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
 		uiEl.style.display = 'block';
 		cardHandEl.style.display = 'flex';
@@ -535,6 +540,14 @@ function bindSocketHandlers(s) {
 
 	s.on('runComplete', showRunSummary);
 	s.on('runFailed', showRunSummary);
+
+	s.on('cardRewardClaimed', (data) => {
+		if (!data || !data.cardId) return;
+		claimedCardRewardId = data.cardId;
+		if (data.ownedCards) myOwnedCards = data.ownedCards;
+		if (data.inventory) myInventory = data.inventory;
+		renderCardChoices(currentCardChoices);
+	});
 }
 
 // On page load: only connect if we have a stored token; otherwise show auth overlay.
@@ -561,6 +574,8 @@ let myInventory = null;
 let myOwnedCards = {};
 let availableQuests = [];
 let selectedQuestId = 'training_caverns';
+let currentCardChoices = [];
+let claimedCardRewardId = null;
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 
 function applyQuestBoardState(quests, questId) {
@@ -1140,6 +1155,47 @@ function formatDuration(ms) {
 	return `${seconds}s`;
 }
 
+function renderCardChoices(choices) {
+	if (!summaryCardChoicesListEl || !summaryCardChoicesEmptyEl) return;
+
+	currentCardChoices = Array.isArray(choices) ? choices : [];
+	summaryCardChoicesListEl.innerHTML = '';
+
+	if (currentCardChoices.length === 0) {
+		summaryCardChoicesEmptyEl.textContent = 'No card choices were found this run.';
+		summaryCardChoicesEmptyEl.style.display = 'block';
+		return;
+	}
+
+	summaryCardChoicesEmptyEl.style.display = 'none';
+
+	for (const choice of currentCardChoices) {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'card-choice-btn';
+		btn.dataset.cardId = choice.id;
+		btn.innerHTML = `
+			<span class="card-choice-name">${choice.name}</span>
+			<span class="card-choice-type">${choice.type}</span>
+			<span class="card-choice-description">${choice.description || ''}</span>
+		`;
+
+		if (claimedCardRewardId === choice.id) {
+			btn.classList.add('claimed');
+			btn.disabled = true;
+		} else if (claimedCardRewardId) {
+			btn.disabled = true;
+		} else {
+			btn.addEventListener('click', () => {
+				if (claimedCardRewardId) return;
+				socket.emit('claimCardReward', { cardId: choice.id });
+			});
+		}
+
+		summaryCardChoicesListEl.appendChild(btn);
+	}
+}
+
 function showRunSummary(data) {
 	if (!data) return;
 
@@ -1161,6 +1217,7 @@ function showRunSummary(data) {
 
 	const me = data.players && data.players.find((p) => p.id === myId);
 	const rewards = me && me.rewards;
+	const cardChoices = me && Array.isArray(me.cardChoices) ? me.cardChoices : [];
 
 	if (rewards) {
 		const currencyBonus = rewards.currency || 0;
@@ -1172,12 +1229,27 @@ function showRunSummary(data) {
 				return `${c.name}${count}`;
 			});
 			summaryRewardsCardsEl.textContent = cardLines.join('\n');
+		} else if (cardChoices.length > 0) {
+			summaryRewardsCardsEl.textContent = 'Choose one card reward below';
 		} else {
 			summaryRewardsCardsEl.textContent = 'No card rewards';
 		}
 	} else {
 		summaryRewardsCurrencyEl.textContent = '';
 		summaryRewardsCardsEl.textContent = '';
+	}
+
+	if (summaryCardChoicesEl) {
+		if (data.status === 'victory' && cardChoices.length > 0) {
+			summaryCardChoicesEl.style.display = 'block';
+			renderCardChoices(cardChoices);
+		} else if (data.status === 'victory') {
+			summaryCardChoicesEl.style.display = 'block';
+			renderCardChoices([]);
+		} else {
+			summaryCardChoicesEl.style.display = 'none';
+			renderCardChoices([]);
+		}
 	}
 
 	runSummaryOverlay.style.display = 'flex';
@@ -1245,6 +1317,10 @@ window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
 window.bindSocketHandlers = bindSocketHandlers;
 window.createSocket = createSocket;
+window.showRunSummary = showRunSummary;
+window.renderCardChoices = renderCardChoices;
+window.__claimedCardRewardId = () => claimedCardRewardId;
+window.__currentCardChoices = () => currentCardChoices;
 window.__connectionState = () => connectionState;
 window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const me = gameState && myId ? gameState.players[myId] : null;

@@ -534,6 +534,85 @@ canvas {
   white-space: pre-line;
 }
 
+#summary-card-choices {
+  width: 420px;
+  margin-top: 4px;
+  padding: 12px 16px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+#summary-card-choices-heading {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+#summary-card-choices-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+#summary-card-choices-empty {
+  font-size: 14px;
+  color: #94a3b8;
+}
+
+.card-choice-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  color: #e2e8f0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.card-choice-btn:hover:not(:disabled) {
+  border-color: #60a5fa;
+  background: rgba(30, 58, 138, 0.45);
+}
+
+.card-choice-btn.claimed {
+  border-color: #22c55e;
+  background: rgba(22, 101, 52, 0.35);
+}
+
+.card-choice-btn:disabled:not(.claimed) {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.card-choice-name {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.card-choice-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: #93c5fd;
+  text-transform: capitalize;
+}
+
+.card-choice-description {
+  font-size: 12px;
+  color: #cbd5e1;
+}
+
 #return-to-lobby-btn {
   margin-top: 12px;
   padding: 12px 32px;
