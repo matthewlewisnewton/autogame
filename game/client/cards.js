@@ -145,6 +145,14 @@ export const CARD_DEFS = {
     charges: 1,
     specialEffect: 'taunt',
   },
+  undead_commander: {
+    id: 'undead_commander',
+    name: 'Undead Commander',
+    type: 'monster',
+    charges: 1,
+    isEvolved: true,
+    specialEffect: 'summon_skeletons',
+  },
   storm_eagle: {
     id: 'storm_eagle',
     name: 'Storm Eagle',
@@ -196,6 +204,7 @@ export const EVOLUTION_TRANSFORMS = {
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
   dungeon_drake: 'ancient_drake',
+  skeleton_knight: 'undead_commander',
 };
 
 export const CARD_SELL_VALUES = {
@@ -207,6 +216,7 @@ export const CARD_SELL_VALUES = {
   inferno_edge: 18,
   guardian_familiar: 25,
   ancient_drake: 20,
+  undead_commander: 18,
   mana_prism: 10,
   harvesting_scythe: 6,
   sacrificial_altar: 14,
@@ -267,6 +277,7 @@ export const CARD_ACCENT_STYLE = {
   frost_nova: { color: '#67e8f9', icon: '❄' },
   healing_font: { color: '#86efac', icon: '♥' },
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },
+  undead_commander: { color: '#a1a1aa', icon: '☠' },
   storm_eagle: { color: '#93c5fd', icon: '🦅' },
   gravity_well: { color: '#c084fc', icon: '◎' },
   echo_blade: { color: '#f472b6', icon: '〰' },

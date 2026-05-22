@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(23);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -136,6 +136,14 @@ describe('CARD_DEFS', () => {
 			name: 'Skeleton Knight',
 			type: 'monster',
 		});
+		expect(CARD_DEFS.undead_commander).toMatchObject({
+			id: 'undead_commander',
+			name: 'Undead Commander',
+			type: 'monster',
+			isEvolved: true,
+			specialEffect: 'summon_skeletons',
+		});
+		expect(EVOLUTION_TRANSFORMS.skeleton_knight).toBe('undead_commander');
 		expect(CARD_DEFS.storm_eagle).toMatchObject({
 			id: 'storm_eagle',
 			name: 'Storm Eagle',
@@ -257,9 +265,10 @@ describe('card ID sets', () => {
 		expect(monsterCardIds.has('ancient_drake')).toBe(true);
 		expect(monsterCardIds.has('battery_automaton')).toBe(true);
 		expect(monsterCardIds.has('skeleton_knight')).toBe(true);
+		expect(monsterCardIds.has('undead_commander')).toBe(true);
 		expect(monsterCardIds.has('storm_eagle')).toBe(true);
 		expect(monsterCardIds.has('iron_sword')).toBe(false);
-		expect(monsterCardIds.size).toBe(5);
+		expect(monsterCardIds.size).toBe(6);
 	});
 
 	it('CARD_ACCENT_STYLE defines icon and color for each new pack card', () => {
@@ -269,6 +278,7 @@ describe('card ID sets', () => {
 			'frost_nova',
 			'healing_font',
 			'skeleton_knight',
+			'undead_commander',
 			'storm_eagle',
 			'gravity_well',
 			'echo_blade',
