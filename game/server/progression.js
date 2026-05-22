@@ -219,6 +219,20 @@ const CARD_DEFS = {
     pullStrength: 4,
     specialEffect: 'pull',
   },
+  event_horizon: {
+    id: 'event_horizon',
+    name: 'Event Horizon',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 45,
+    effect: 'event_horizon',
+    pullRadius: 12,
+    pullStrength: 6,
+    centerRadius: 2.5,
+    centerDamage: 30,
+    isEvolved: true,
+    specialEffect: 'crush',
+  },
   echo_blade: {
     id: 'echo_blade',
     name: 'Echo Blade',
@@ -275,7 +289,8 @@ const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake'
+  dungeon_drake: 'ancient_drake',
+  gravity_well: 'event_horizon',
 };
 
 const CARD_SELL_VALUES = {
