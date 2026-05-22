@@ -1185,6 +1185,26 @@ Python equivalent requires explicit work to support, and the surprise
 cost (mid-ticket value changes confusing the operator) outweighs the
 benefit.
 
+**Caveat — tunables-on-SIGHUP (v4.2 review feedback):** the `Tunables`
+instance is held by the `Roster` (a `Roster.tunables` field) but ALSO
+set as a process-global active reference via `config.tunables.set_active()`
+so that callers like `QwenAgent.available()` and `spawn()`'s
+`cli_retries` fallback can read it without plumbing it through every
+function signature. This means a SIGHUP reload that swaps `self.roster`
+in the Supervisor ALSO immediately swaps the process-global active
+tunables — so in-flight pipelines that hold their original roster
+reference will nevertheless pick up NEW retry policy / qwen_disabled
+state on their NEXT agent call. This is a deliberate trade: tunables
+go through one boundary (the singleton), roles go through another (the
+Roster reference). Operators changing `tunables.qwen_disabled` mid-flight
+SHOULD see qwen go offline on the next call — that's the whole point
+of the live-override flag. Operators changing `tunables.max_iter`
+mid-flight will likewise see the change on the next sub-ticket's
+iteration cap check. Pinning tunables to the in-flight roster would
+require threading the `Tunables` instance through every Agent / Step /
+Pipeline signature; not worth the complexity for the (already-rare)
+mid-ticket-tunable-edit case.
+
 ### 6.6 `roles.local.yaml` — field-level merge
 
 v1 said `roles.local.yaml` replaces a role entirely. v2 does field-level
@@ -1361,7 +1381,24 @@ def scope_audit(
     Rename across scopes is the trickiest case. Example: scope =
     {allow: ["game/**"]}, role renamed game/foo.js → harness/foo.js.
     The 'R' entry surfaces as one logical change with both paths
-    appearing; the audit restores both, so the rename is fully undone.
+    appearing; the audit restores BOTH paths atomically (old via
+    checkout from head_before, new via rm since it didn't exist there).
+
+    **Known limitation — UNSTAGED rename across scopes:** if the role
+    runs `mv` (not `git mv`) without committing, git diff surfaces only
+    `D old` (the deletion of the tracked file). The new path appears
+    only as `?? new` in `git status`. scope_audit sees these as two
+    independent changes: D in-scope (allowed; deletion of in-scope
+    file is permitted) + ?? out-of-scope (reverted via rm). Net result:
+    the in-scope file stays deleted. This matches bash behavior (bash
+    has no scope_audit at all and accepts both as-is) and is acceptable
+    for cutover because (a) implementer prompts don't ask for renames,
+    (b) the staged-rename path is correctly handled, (c) the next
+    iteration's diff against base_ref will show the missing file. A
+    future fix would invoke `git diff -M -B` with similarity-based
+    rename detection on the unstaged-but-tracked half, or check for
+    "newly-untracked file whose content matches a recently-deleted
+    in-scope file."
 
     Result:
       ScopeAuditResult(

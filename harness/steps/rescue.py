@@ -37,8 +37,19 @@ def rescue(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
         artifacts_dir=rescue_dir,
         telemetry=telemetry,
     )
-    commit_verified(workspace, f"{ticket_name}: claude rescue implementation pass",
-                    telemetry=telemetry)
+    # v4.2 hotfix: only commit when the role actually accepted a tier.
+    # Both impl-review rounds flagged that the pre-v4.2 unconditional
+    # commit_verified would land a spurious 'claude rescue implementation
+    # pass' commit on HEAD even when chain.accepted_by is None (tool
+    # failure / scope violation across all tiers). The caller in
+    # ticket() then bails out with rc=2 — but the commit's already in
+    # history. Gate on acceptance.
+    if chain.accepted_by is not None:
+        commit_verified(workspace,
+                        f"{ticket_name}: claude rescue implementation pass",
+                        telemetry=telemetry)
+    else:
+        log("[rescue] role chain exhausted without acceptance — skipping commit")
     return chain
 
 
