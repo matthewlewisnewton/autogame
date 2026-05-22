@@ -1,0 +1,21 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/main.test.js (91 tests) 344ms
+
+ Test Files  1 passed (1)
+      Tests  91 passed (91)
+   Start at  01:14:52
+   Duration  1.01s (transform 37ms, setup 16ms, collect 23ms, tests 344ms, environment 201ms, prepare 44ms)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|--------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s  
+--------------|---------|----------|---------|---------|--------------------
+All files     |   54.44 |       80 |   22.22 |   54.44 |                    
+ cards.js     |   83.58 |      100 |       0 |   83.58 | 42-52              
+ collision.js |    28.4 |      100 |       0 |    28.4 | 15-30,45-98        
+ delta.js     |   78.57 |      100 |       0 |   78.57 | 12-14              
+ hand.js      |   54.46 |    66.66 |      40 |   54.46 | 23-38,47-64,78-102 
+--------------|---------|----------|---------|---------|--------------------

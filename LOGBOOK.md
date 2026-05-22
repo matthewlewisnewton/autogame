@@ -1524,3 +1524,26 @@ The implementation stays aligned with the design goal of semi-procedural dungeon
 
 No blocking gaps remain for the advanced map generation ticket. The coverage log does show one unrelated failing monster-card integration assertion; it is outside this ticket's changed map-generation paths, but should be handled separately.
 
+
+## v0.67 — Cleanup nits from 023-advanced-map-generation  (2026-05-22 01:16:37)
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` / `debugScenario` URL flow. Existing debug paths remain gated to localhost hostnames and URL-only entry; normal gameplay in the capture reached `playing` without a debug shortcut. **No debug-scenario review required.**
+
+---
+
+## Sub-ticket integration
+
+Single sub-ticket `01-role-based-client-spawn` covers the full top-level ticket. No uncovered acceptance bullets or cross-sub-ticket gaps.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game starts and plays cleanly in the captured run.
+
+---
+
