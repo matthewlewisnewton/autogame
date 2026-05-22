@@ -186,6 +186,18 @@ const CARD_DEFS = {
     healAmount: 25,
     specialEffect: 'heal',
   },
+  divine_grace: {
+    id: 'divine_grace',
+    name: 'Divine Grace',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'divine_grace',
+    healAmount: 38,
+    magicStoneRestore: 10,
+    isEvolved: true,
+    specialEffect: 'heal_and_mana',
+  },
   skeleton_knight: {
     id: 'skeleton_knight',
     name: 'Skeleton Knight',
@@ -275,7 +287,8 @@ const EVOLUTION_TRANSFORMS = {
   iron_sword: 'steel_broadsword',
   flame_blade: 'inferno_edge',
   battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake'
+  dungeon_drake: 'ancient_drake',
+  healing_font: 'divine_grace',
 };
 
 const CARD_SELL_VALUES = {
@@ -287,6 +300,7 @@ const CARD_SELL_VALUES = {
   inferno_edge: 18,
   guardian_familiar: 25,
   ancient_drake: 20,
+  divine_grace: 18,
   mana_prism: 10,
   harvesting_scythe: 6,
   sacrificial_altar: 14,
