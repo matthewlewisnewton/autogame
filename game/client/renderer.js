@@ -741,6 +741,39 @@ export function spawnDivineGraceEffect(origin, radius) {
 }
 
 /**
+ * Spawn a full radial fire burst on the ground (Inferno Pillar).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnInfernoPillarEffect(origin, radius) {
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 48);
+	const material = new THREE.MeshStandardMaterial({
+		color: 0xef4444,
+		emissive: 0xdc2626,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.15, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		infernoBurst: true,
+	});
+}
+
+/**
  * Spawn an icosahedron spark at an enemy position (minion attack feedback).
  * @param {object} position - { x, y, z }
  */

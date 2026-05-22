@@ -80,6 +80,7 @@ import {
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
 	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
+	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
 	markLootCollected as rendererMarkLootCollected,
 	disposeMeshMap as rendererDisposeMeshMap,
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
@@ -523,6 +524,9 @@ function bindSocketHandlers(s) {
 			rendererSpawnChainLightningEffect(data.origin, { x: 1, z: 0 });
 			playSound('enemyHit');
 			rendererSpawnAttackEffect(origin, direction);
+		}
+		if (data.cardId === 'inferno_pillar' && data.radius !== undefined) {
+			rendererSpawnInfernoPillarEffect(origin, data.radius);
 		}
 		if (data.hpHealed > 0 && data.playerId === myId) {
 			playSound('loot');

@@ -369,6 +369,20 @@ const CARD_DEFS = {
     attackRange: 7,
     specialEffect: 'fire_dot',
   },
+  inferno_pillar: {
+    id: 'inferno_pillar',
+    name: 'Inferno Pillar',
+    type: 'summon',
+    charges: 1,
+    magicStoneCost: 40,
+    effect: 'inferno_pillar',
+    damage: 12,
+    dotTicks: 4,
+    dotIntervalMs: 500,
+    attackRange: 7,
+    isEvolved: true,
+    specialEffect: 'fire_dot',
+  },
 };
 
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
@@ -400,6 +414,7 @@ const EVOLUTION_TRANSFORMS = {
   gravity_well: 'event_horizon',
   echo_blade: 'resonance_edge',
   mana_leach: 'soul_drain',
+  dragons_breath: 'inferno_pillar',
 };
 
 const CARD_SELL_VALUES = {
@@ -424,6 +439,8 @@ const CARD_SELL_VALUES = {
   infinite_disk: 18,
   event_horizon: 22,
   soul_drain: 18,
+  dragons_breath: 14,
+  inferno_pillar: 22,
 };
 
 function getCardSellValue(cardId) {
