@@ -87,10 +87,6 @@ import {
 	getPickedUpLootIds,
 	getWindupFlashing,
 } from './renderer.js';
-import {
-	renderQuestBoard,
-} from './questBoard.js';
-
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -98,8 +94,6 @@ const questBoardEl = document.getElementById('quest-board');
 const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const lobbyEl = document.getElementById('lobby');
-const questBoardEl = document.getElementById('quest-board');
-const questErrorEl = document.getElementById('quest-error');
 const uiEl = document.getElementById('ui');
 const logoutBtn = document.getElementById('logout-btn');
 const cardHandEl = document.getElementById('card-hand');
@@ -186,8 +180,6 @@ const debugScenario = new URLSearchParams(window.location.search).get('debugScen
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let debugScenarioRequested = false;
 let debugScenarioResult = null;
-let availableQuests = [];
-let selectedQuestId = null;
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
 // ── Socket setup ──

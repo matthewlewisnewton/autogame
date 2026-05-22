@@ -2715,7 +2715,10 @@ describe('server hand management', () => {
 		const deckCardIds = player.selectedDeck
 			.map(entry => cardIdForDeckEntry(entry, player.inventory))
 			.sort();
-		expect([...handIds, ...player.deck.slice().sort()].sort()).toEqual(deckCardIds);
+		const remainingDeckIds = player.deck
+			.map(entry => cardIdForDeckEntry(entry, player.inventory))
+			.sort();
+		expect([...handIds, ...remainingDeckIds].sort()).toEqual(deckCardIds);
 	});
 });
 

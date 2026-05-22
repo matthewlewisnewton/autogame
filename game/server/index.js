@@ -783,6 +783,7 @@ function startServer(port) {
         const result = collectReturningProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
           magicStoneOnHit: cardDef.magicStoneOnHit,
           magicStoneOnKill: cardDef.magicStoneOnKill,
+          attackerId: socket.playerId,
         });
         hits = result.hits;
         magicStonesGained = result.magicStonesGained;
@@ -790,6 +791,7 @@ function startServer(port) {
         const result = collectConeHits(originX, originZ, dirX, dirZ, attackRange, attackConeAngle, damage, {
           magicStoneOnHit: cardDef.magicStoneOnHit,
           magicStoneOnKill: cardDef.magicStoneOnKill,
+          attackerId: socket.playerId,
         });
         hits = result.hits;
         magicStonesGained = result.magicStonesGained;
@@ -806,7 +808,8 @@ function startServer(port) {
             originX,
             originZ,
             cardDef.shockwaveRadius || SUMMON_RADIUS,
-            cardDef.shockwaveDamage || damage
+            cardDef.shockwaveDamage || damage,
+            { attackerId: socket.playerId }
           );
           shockwaveHits = shockwave.hits;
         }
@@ -1000,7 +1003,8 @@ function startServer(port) {
           dirZ,
           range,
           coneAngle,
-          cardDef.damage || 0
+          cardDef.damage || 0,
+          { attackerId: socket.playerId }
         );
         spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
         cleanupAfterDamage();
@@ -1063,6 +1067,7 @@ function startServer(port) {
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
+        attackerId: socket.playerId,
       });
       const hits = radial.hits;
       const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);

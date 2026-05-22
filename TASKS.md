@@ -100,28 +100,28 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 ## Backlog — Harness Cleanup
 - [x] [103-cleanup-hard-gate-local-subtask-checks](tickets/103-cleanup-hard-gate-local-subtask-checks/)
 - [x] [104-cleanup-deterministic-review-file-recovery](tickets/104-cleanup-deterministic-review-file-recovery/)
-- [ ] [105-cleanup-harness-port-ownership](tickets/105-cleanup-harness-port-ownership/)
+- [x] [105-cleanup-harness-port-ownership](tickets/105-cleanup-harness-port-ownership/)
 
 ## Backlog — Reference Game Loops
-- [ ] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
-- [ ] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
-- [ ] [042-enemy-card-drops](tickets/042-enemy-card-drops/)
-- [ ] [043-lobby-card-sell-and-trade](tickets/043-lobby-card-sell-and-trade/)
+- [x] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
+- [x] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
+- [x] [042-enemy-card-drops](tickets/042-enemy-card-drops/)
+- [x] [043-lobby-card-sell-and-trade](tickets/043-lobby-card-sell-and-trade/)
 
 ## Backlog — Visual Fidelity & Polish
-- [ ] [053-pso-vanguard-hud](tickets/053-pso-vanguard-hud/)
-- [ ] [054-grimoire-deck-viewer](tickets/054-grimoire-deck-viewer/)
+- [x] [053-pso-vanguard-hud](tickets/053-pso-vanguard-hud/)
+- [x] [054-grimoire-deck-viewer](tickets/054-grimoire-deck-viewer/)
 
 ## Backlog — Validation & Logic
 - [ ] [055-server-side-wall-collision-validation](tickets/055-server-side-wall-collision-validation/)
-- [ ] [056-server-side-card-hand-tracking](tickets/056-server-side-card-hand-tracking/)
+- [x] [056-server-side-card-hand-tracking](tickets/056-server-side-card-hand-tracking/)
 - [ ] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
 
 ## Backlog — Progression & Content
 - [x] [058-inventory-system-refactor](tickets/058-inventory-system-refactor/)
-- [ ] [059-lobby-photon-forge-ui](tickets/059-lobby-photon-forge-ui/)
-- [ ] [060-card-grinding-system](tickets/060-card-grinding-system/)
-- [ ] [061-new-card-pack](tickets/061-new-card-pack/)
+- [x] [059-lobby-photon-forge-ui](tickets/059-lobby-photon-forge-ui/)
+- [x] [060-card-grinding-system](tickets/060-card-grinding-system/)
+- [x] [061-new-card-pack](tickets/061-new-card-pack/)
 - [x] [062-card-evolution-system](tickets/062-card-evolution-system/)
 - [x] [079-synergistic-cards](tickets/079-synergistic-cards/)
 
