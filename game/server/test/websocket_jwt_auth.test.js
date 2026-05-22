@@ -110,7 +110,10 @@ function connectWithAuth(baseUrl, auth = {}) {
 }
 
 /**
- * Connect a client and wait for disconnect (for invalid token tests).
+ * Connect a client and wait for connect_error or disconnect (for invalid token tests).
+ * When JWT validation runs in io.use() middleware, a rejected connection fires
+ * connect_error on the client (not connect → disconnect). We listen for both
+ * to remain compatible with either implementation.
  */
 function connectExpectDisconnect(baseUrl, auth = {}) {
 	return new Promise((resolve, reject) => {
@@ -124,8 +127,14 @@ function connectExpectDisconnect(baseUrl, auth = {}) {
 
 		const timer = setTimeout(() => {
 			socket.disconnect();
-			reject(new Error('connectExpectDisconnect: timed out waiting for disconnect'));
+			reject(new Error('connectExpectDisconnect: timed out waiting for disconnect or connect_error'));
 		}, 10000);
+
+		socket.on('connect_error', (err) => {
+			clearTimeout(timer);
+			socket.disconnect();
+			resolve({ reason: 'connect_error', error: err.message });
+		});
 
 		socket.on('disconnect', (reason) => {
 			clearTimeout(timer);
@@ -167,10 +176,11 @@ describe('WebSocket JWT Authentication', () => {
 	});
 
 	it('disconnects socket on invalid/expired token', async () => {
-		const { reason } = await connectExpectDisconnect(baseUrl, { token: 'invalid-token-string' });
+		const { reason, error } = await connectExpectDisconnect(baseUrl, { token: 'invalid-token-string' });
 
-		// Socket.IO disconnect reason for server-initiated disconnect
-		expect(reason).toBeDefined();
+		// Middleware rejection triggers connect_error, not connect → disconnect
+		expect(reason).toBe('connect_error');
+		expect(error).toBe('Invalid or expired JWT');
 
 		// No player should have been created
 		const playerCount = Object.keys(gameState.players).length;
@@ -178,9 +188,10 @@ describe('WebSocket JWT Authentication', () => {
 	});
 
 	it('disconnects socket on malformed JWT', async () => {
-		const { reason } = await connectExpectDisconnect(baseUrl, { token: 'eyJhbGciOiJIUzI1NiJ9.badsignature' });
+		const { reason, error } = await connectExpectDisconnect(baseUrl, { token: 'eyJhbGciOiJIUzI1NiJ9.badsignature' });
 
-		expect(reason).toBeDefined();
+		expect(reason).toBe('connect_error');
+		expect(error).toBe('Invalid or expired JWT');
 		expect(Object.keys(gameState.players).length).toBe(0);
 	});
 
@@ -191,27 +202,54 @@ describe('WebSocket JWT Authentication', () => {
 			{ expiresIn: '-1h' }
 		);
 
-		const { reason } = await connectExpectDisconnect(baseUrl, { token: expiredToken });
+		const { reason, error } = await connectExpectDisconnect(baseUrl, { token: expiredToken });
 
-		expect(reason).toBeDefined();
+		expect(reason).toBe('connect_error');
+		expect(error).toBe('Invalid or expired JWT');
 		expect(Object.keys(gameState.players).length).toBe(0);
 	});
 
-	it('disconnects socket when no token is provided', async () => {
-		const { reason } = await connectExpectDisconnect(baseUrl, {});
+	it('rejects socket when no token is provided — via connect_error', async () => {
+		const { reason, error } = await connectExpectDisconnect(baseUrl, {});
 
-		// Socket.IO disconnect reason for server-initiated disconnect
-		expect(reason).toBeDefined();
+		// Middleware rejection triggers connect_error
+		expect(reason).toBe('connect_error');
+		expect(error).toBe('No JWT token');
 
 		// No player should have been created
 		expect(Object.keys(gameState.players).length).toBe(0);
 	});
 
-	it('disconnects socket when auth object is empty (no token key)', async () => {
-		const { reason } = await connectExpectDisconnect(baseUrl, { playerId: 'some-id' });
+	it('rejects socket when auth object is empty (no token key) — via connect_error', async () => {
+		const { reason, error } = await connectExpectDisconnect(baseUrl, { playerId: 'some-id' });
 
-		expect(reason).toBeDefined();
+		expect(reason).toBe('connect_error');
+		expect(error).toBe('No JWT token');
 		expect(Object.keys(gameState.players).length).toBe(0);
+	});
+
+	it('does NOT emit connect event for rejected tokens', async () => {
+		// When middleware rejects, the client should receive connect_error
+		// but NOT a connect event followed by disconnect.
+		const socket = ClientIO(baseUrl, {
+			transports: ['websocket'],
+			retry: false,
+			autoConnect: true,
+			timeout: 5000,
+			auth: { token: 'bad-token' }
+		});
+
+		let connectFired = false;
+		let connectErrorFired = false;
+
+		socket.on('connect', () => { connectFired = true; });
+		socket.on('connect_error', () => { connectErrorFired = true; });
+
+		await new Promise(r => setTimeout(r, 1500));
+		socket.disconnect();
+
+		expect(connectFired).toBe(false);
+		expect(connectErrorFired).toBe(true);
 	});
 
 	it('verifies token using server verifyToken helper', () => {

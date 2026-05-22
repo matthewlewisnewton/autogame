@@ -1408,6 +1408,9 @@ function stateSnapshot() {
 // Track whether Express routes have been mounted — prevents stacking
 // on repeated startServer() calls (tests call startServer in beforeEach).
 let _routesMounted = false;
+// Track whether Socket.IO middleware has been registered — prevents stacking
+// on repeated startServer() calls.
+let _middlewareRegistered = false;
 
 // ── Server startup (deferred so tests can import without starting HTTP) ──
 
@@ -1453,32 +1456,46 @@ function startServer(port) {
 
   // Remove previous connection handlers so repeated calls (in tests) don't stack
   io.removeAllListeners('connection');
+  // Clear Socket.IO middleware so repeated calls (in tests) don't stack.
+  // io.use() appends to an internal array with no public removal API,
+  // so we guard registration with _middlewareRegistered (like _routesMounted).
   // Clear any previously created intervals/timeouts (from prior test runs)
   clearAllTimers();
 
+  // ── JWT authentication middleware ──
+  // Runs before the 'connection' event. Calling next(new Error(...)) here
+  // triggers a connect_error on the client (not connect → disconnect), which
+  // the existing client connect_error handler already handles by clearing
+  // the stale token and re-showing the login overlay.
+  if (!_middlewareRegistered) {
+    io.use((socket, next) => {
+      const token = socket.handshake.auth && socket.handshake.auth.token;
+
+      if (!token) {
+        return next(new Error('No JWT token'));
+      }
+
+      const decoded = verifyToken(token);
+      if (!decoded) {
+        return next(new Error('Invalid or expired JWT'));
+      }
+
+      // Attach decoded claims so the connection handler can read them
+      socket.data.accountId = decoded.accountId;
+      socket.data.username = decoded.username;
+      next();
+    });
+    _middlewareRegistered = true;
+  }
+
   io.on('connection', (socket) => {
     // ── JWT authentication (required) ──
-    // Every WebSocket connection must present a valid JWT token.
-    // - Valid token  → use decoded.accountId as the stable player identity
-    // - Invalid/expired token → disconnect immediately
-    // - No token     → disconnect immediately (no anonymous fallback)
-    const token = socket.handshake.auth && socket.handshake.auth.token;
-
-    if (!token) {
-      console.log(`[auth] No JWT token — disconnecting socket ${socket.id}`);
-      socket.disconnect();
-      return;
-    }
-
-    const decoded = verifyToken(token);
-    if (!decoded) {
-      console.log(`[auth] Invalid or expired JWT — disconnecting socket ${socket.id}`);
-      socket.disconnect();
-      return;
-    }
-
-    const accountId = decoded.accountId;
-    const username = decoded.username;
+    // JWT validation is performed by the io.use() middleware above.
+    // Failed auth triggers a client-side connect_error (not connect → disconnect),
+    // which the client handler uses to clear stale tokens and re-show login.
+    // The connection handler trusts the middleware to have already validated.
+    const accountId = socket.data.accountId;
+    const username = socket.data.username;
 
     // ── Stable player identity ──
     // Authenticated connection — accountId is the stable identity
