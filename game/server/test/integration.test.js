@@ -136,6 +136,23 @@ function waitForEvent(socket, event, timeout = 3000) {
 	});
 }
 
+function waitForLobbyQuest(socket, questId, timeout = 3000) {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error(`Timed out waiting for lobby quest "${questId}"`)),
+			timeout,
+		);
+		const handler = (data) => {
+			if (data && data.selectedQuestId === questId) {
+				clearTimeout(timer);
+				socket.off('lobbyUpdate', handler);
+				resolve(data);
+			}
+		};
+		socket.on('lobbyUpdate', handler);
+	});
+}
+
 /**
  * Small helper to advance time (for things like heartbeat latency).
  */
@@ -1064,6 +1081,73 @@ describe('Socket Integration — Lobby / playerReady Flow', () => {
 		expect(update).toHaveProperty('players');
 		expect(update).toHaveProperty('gamePhase');
 		expect(Array.isArray(update.players)).toBe(true);
+	});
+});
+
+describe('Socket Integration — Quest Selection', () => {
+	let baseUrl, socket1, socket2;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket1 = (await connectClient(baseUrl)).socket;
+		socket2 = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket1 && socket1.connected) socket1.disconnect();
+		if (socket2 && socket2.connected) socket2.disconnect();
+		await closeServer();
+	});
+
+	it('defaults selected quest in game state and init payload', async () => {
+		expect(gameState.selectedQuestId).toBe('training_caverns');
+
+		const { socket: socket3, init } = await connectClient(baseUrl);
+		expect(init.state.selectedQuestId).toBe('training_caverns');
+		socket3.disconnect();
+	});
+
+	it('selects a valid quest and broadcasts to all clients', async () => {
+		const update1 = waitForLobbyQuest(socket1, 'crystal_rescue');
+		const update2 = waitForLobbyQuest(socket2, 'crystal_rescue');
+
+		socket1.emit('selectQuest', { questId: 'crystal_rescue' });
+
+		const [u1, u2] = await Promise.all([update1, update2]);
+		expect(u1.selectedQuestId).toBe('crystal_rescue');
+		expect(u2.selectedQuestId).toBe('crystal_rescue');
+		expect(Array.isArray(u1.quests)).toBe(true);
+		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue']);
+		expect(gameState.selectedQuestId).toBe('crystal_rescue');
+	});
+
+	it('rejects unknown quest ids without changing the selected quest', async () => {
+		socket1.emit('selectQuest', { questId: 'crystal_rescue' });
+		await waitForLobbyQuest(socket1, 'crystal_rescue');
+		expect(gameState.selectedQuestId).toBe('crystal_rescue');
+
+		const errorPromise = waitForEvent(socket1, 'questError');
+		socket1.emit('selectQuest', { questId: 'unknown_quest' });
+		const err = await errorPromise;
+
+		expect(err.reason).toContain('Unknown quest');
+		expect(gameState.selectedQuestId).toBe('crystal_rescue');
+	});
+
+	it('still launches a run after quest selection when all players ready', async () => {
+		socket1.emit('selectQuest', { questId: 'crystal_rescue' });
+		await waitForLobbyQuest(socket1, 'crystal_rescue');
+
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+
+		await Promise.all([startGame1, startGame2]);
+		expect(gameState.gamePhase).toBe('playing');
+		expect(gameState.run.questId).toBe('crystal_rescue');
+		expect(gameState.enemies.length).toBe(4);
 	});
 });
 

@@ -39,6 +39,8 @@ import {
 	addMagicStones,
 	restoreCardCharges,
 	restoreHandCharges,
+	QUEST_DEFS,
+	DEFAULT_QUEST_ID,
 	CARD_DEFS,
 	STARTING_DECK_IDS,
 	io as serverIo,
@@ -99,6 +101,29 @@ function firstRoomSpawn() {
 	const first = gameState.layout.rooms[0];
 	return { x: first.x, z: first.z };
 }
+
+// ── Quest definitions ──
+
+describe('QUEST_DEFS', () => {
+	it('exposes stable quest ids with required metadata', () => {
+		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['crystal_rescue', 'training_caverns']);
+
+		for (const quest of Object.values(QUEST_DEFS)) {
+			expect(quest.id).toBeTruthy();
+			expect(quest.name).toBeTruthy();
+			expect(quest.description).toBeTruthy();
+			expect(quest.objectiveType).toBeTruthy();
+			expect(typeof quest.rewardCurrency).toBe('number');
+			expect(typeof quest.enemyCount).toBe('number');
+		}
+	});
+
+	it('createGameState defaults to the canonical selected quest', () => {
+		const state = createGameState();
+		expect(state.selectedQuestId).toBe(DEFAULT_QUEST_ID);
+	});
+});
 
 // ── mulberry32 PRNG ──
 
@@ -1464,9 +1489,11 @@ describe('run state', () => {
 			expect(run).toHaveProperty('id');
 			expect(typeof run.id).toBe('string');
 			expect(run).toHaveProperty('status', 'playing');
+			expect(run).toHaveProperty('questId', DEFAULT_QUEST_ID);
+			expect(run).toHaveProperty('questName', QUEST_DEFS.training_caverns.name);
 			expect(run).toHaveProperty('objective');
 			expect(run.objective).toHaveProperty('type', 'defeat_enemies');
-			expect(run.objective).toHaveProperty('label', 'Defeat all enemies');
+			expect(run.objective.label).toContain(QUEST_DEFS.training_caverns.name);
 			expect(run.objective).toHaveProperty('totalEnemies', 3);
 			expect(run.objective).toHaveProperty('defeatedEnemies', 0);
 			expect(run).toHaveProperty('startedAt');
@@ -2544,6 +2571,13 @@ describe('spawnEnemies() mixed pack', () => {
 		expect(counts.grunt).toBe(1);
 		expect(counts.miniboss).toBe(1);
 		expect(counts.spawner).toBe(1);
+	});
+
+	it('spawns quest-specific enemy counts when selected quest changes', () => {
+		gameState.selectedQuestId = 'crystal_rescue';
+		gameState.enemies = [];
+		spawnEnemies();
+		expect(gameState.enemies.length).toBe(QUEST_DEFS.crystal_rescue.enemyCount);
 	});
 });
 

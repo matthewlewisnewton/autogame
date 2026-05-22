@@ -23,6 +23,7 @@ const {
   randomRoomPosition,
   randomWanderTarget
 } = require('./simulation');
+const { getQuest, getSelectedQuest } = require('./quests');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -396,12 +397,21 @@ function saveAllPlayers() {
 }
 
 function createRunState() {
+  const quest = getSelectedQuest(_gameState);
+  const objectiveLabel = quest.objectiveType === 'collect_items'
+    ? `${quest.name}: defeat ${quest.enemyCount} enemies (collect ${quest.itemCount} crystals — coming soon)`
+    : `${quest.name}: ${quest.description}`;
+
   return {
     id: crypto.randomUUID(),
     status: 'playing',
+    questId: quest.id,
+    questName: quest.name,
+    questDescription: quest.description,
+    rewardCurrency: quest.rewardCurrency,
     objective: {
       type: 'defeat_enemies',
-      label: 'Defeat all enemies',
+      label: objectiveLabel,
       totalEnemies: _gameState.enemies.length,
       defeatedEnemies: 0
     },
@@ -471,7 +481,10 @@ function grantRunRewards(playerId, summary) {
   const lootCurrency = player.currencyEarnedThisRun || 0;
 
   if (summary.status === 'victory') {
-    const currencyBonus = 10;
+    const quest = _gameState.run && _gameState.run.questId
+      ? getQuest(_gameState.run.questId)
+      : getSelectedQuest(_gameState);
+    const currencyBonus = (quest && quest.rewardCurrency) || 10;
     player.currency += currencyBonus;
 
     if (!_gameState._victoryCounters) _gameState._victoryCounters = {};
@@ -769,8 +782,15 @@ function spawnEnemies() {
   const combatRooms = roomsByRole(layout, 'combat');
   const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
 
-  const spawnTable = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
-  for (const type of spawnTable) {
+  const quest = getSelectedQuest(_gameState);
+  const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
+  const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
+  const typesToSpawn = [];
+  for (let i = 0; i < enemyCount; i++) {
+    typesToSpawn.push(spawnTypes[i % spawnTypes.length]);
+  }
+
+  for (const type of typesToSpawn) {
     let pos;
     if (combatRooms.length > 0) {
       pos = randomRoomPositionByRole(layout, 'combat', rng);
@@ -864,6 +884,7 @@ function stateSnapshot() {
     loot: _gameState.loot,
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
+    selectedQuestId: _gameState.selectedQuestId,
     run: _gameState.run,
     dungeonBounds: _gameState.dungeonBounds,
     layoutSeed: _gameState.layoutSeed,
