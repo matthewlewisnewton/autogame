@@ -171,6 +171,76 @@ class TestStopAtFirstAccepted:
         assert c.call_count == 0
 
 
+class TestReadOnlyRoleSkipsScopeAudit:
+    """Phase 5 regression: a role with empty `allow` (e.g. qa:* with
+    `deny:["**"]`) MUST NOT run scope_audit even when the underlying
+    agent is `writable=True`. scope_audit's `diff_since(HEAD)` returns
+    ALL uncommitted state, including the prior step's (typically the
+    implementer's) work. Running it on a read-only role silently reverts
+    the implementer's changes — every QA call would then see an empty
+    diff and FAIL. Discovered on ticket 055 cutover day."""
+
+    def test_qa_role_with_writable_agent_does_not_invoke_scope_audit(
+        self, tmp_path, monkeypatch
+    ):
+        monkeypatch.setattr("harness.roles.render_prompt", lambda p, **kw: "p")
+        called: dict[str, int] = {"scope_audit": 0, "snapshot_untracked": 0}
+
+        def _fake_audit(*args, **kwargs):
+            called["scope_audit"] += 1
+            from harness.git_helpers import ScopeAuditResult
+            return ScopeAuditResult()
+
+        def _fake_snap(*args, **kwargs):
+            called["snapshot_untracked"] += 1
+            return set()
+
+        monkeypatch.setattr("harness.roles.scope_audit", _fake_audit)
+        monkeypatch.setattr("harness.roles.snapshot_untracked", _fake_snap)
+
+        qa_agent = StubAgent(name="qwen-as-judge", writable=True,
+                              canned_result=_verdict_result("FAIL"))
+        role = _make_role("qa:code", qa_agent, [],
+                          acceptance=VerdictAccept())
+        # Read-only role: empty allow, deny everything.
+        role.scope = PathScope(allow=[], deny=["**"])
+
+        class _Ws:
+            root = "/repo"
+            def head(self): return "abcdef"
+
+        role.execute(workspace=_Ws(), prompt_vars={}, artifacts_dir=tmp_path)
+        assert called["scope_audit"] == 0, "scope_audit must not run for read-only roles"
+        assert called["snapshot_untracked"] == 0, "no point snapshotting when audit won't run"
+
+    def test_writable_role_still_audits(self, tmp_path, monkeypatch):
+        """The fix is targeted: roles with non-empty `allow` (e.g.
+        implementer with `allow:["game/**"]`) still get scope_audit."""
+        monkeypatch.setattr("harness.roles.render_prompt", lambda p, **kw: "p")
+        called: dict[str, int] = {"scope_audit": 0}
+
+        def _fake_audit(*args, **kwargs):
+            called["scope_audit"] += 1
+            from harness.git_helpers import ScopeAuditResult
+            return ScopeAuditResult()
+
+        monkeypatch.setattr("harness.roles.scope_audit", _fake_audit)
+        monkeypatch.setattr("harness.roles.snapshot_untracked",
+                             lambda *a, **kw: set())
+
+        impl_agent = StubAgent(name="qwen-impl", writable=True,
+                                canned_result=_ok_result())
+        role = _make_role("implementer", impl_agent, [])
+        role.scope = PathScope(allow=["game/**"], deny=["tickets/**"])
+
+        class _Ws:
+            root = "/repo"
+            def head(self): return "abcdef"
+
+        role.execute(workspace=_Ws(), prompt_vars={}, artifacts_dir=tmp_path)
+        assert called["scope_audit"] == 1
+
+
 class TestReviewRecoveryIntegratedInChain:
     def test_chat_mode_recovery_doesnt_promote(self, tmp_path, monkeypatch):
         """ReviewAccept's internal recovery should let a chat-mode-only

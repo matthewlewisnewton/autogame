@@ -97,6 +97,21 @@ class Role:
         if extra_safe_paths:
             safe_paths.extend(extra_safe_paths)
 
+        # A role with empty `allow` cannot legitimately produce ANY in-scope
+        # write (everything falls through to implicit-deny). Running
+        # scope_audit on such a role is not just wasteful — it's actively
+        # dangerous, because `diff_since(head_before)` returns ALL
+        # uncommitted state, including work left in the tree by the PRIOR
+        # step (typically the implementer). scope_audit would then revert
+        # the implementer's uncommitted code and the QA judge would see an
+        # empty diff and FAIL the iteration. Bug discovered Phase 5 cutover
+        # day on ticket 055 — every iter wrote correct code, every QA call
+        # silently wiped it. Per design doc §7.4: scope_audit is for
+        # *writable role* tiers only; a `deny:["**"]` role like qa:* is
+        # read-only by config and must skip the audit even when the agent
+        # implementation happens to be writable=True.
+        role_can_write = bool(self.scope.allow)
+
         tiers: list[TierResult] = []
         for agent in [self.primary, *self.fallbacks]:
             # Snapshot before write — only for writable agents (read-only
@@ -104,7 +119,8 @@ class Role:
             audit: Optional[ScopeAuditResult] = None
             head_before: Optional[str] = None
             untracked_before: set = set()
-            if getattr(agent, "writable", False):
+            should_audit = role_can_write and getattr(agent, "writable", False)
+            if should_audit:
                 try:
                     head_before = workspace.head()
                 except Exception:
@@ -113,7 +129,7 @@ class Role:
 
             result = agent.run(invocation, workspace, telemetry=telemetry)
 
-            if getattr(agent, "writable", False) and head_before is not None:
+            if should_audit and head_before is not None:
                 audit = scope_audit(workspace, head_before, untracked_before,
                                     self.scope, safe_paths=safe_paths)
                 if audit.had_violations:
