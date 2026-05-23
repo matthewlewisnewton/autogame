@@ -20,6 +20,7 @@ const {
   RESPAWN_DELAY_MS,
   COOLDOWN_MS
 } = require('./config');
+const { PASSAGE_WIDTH } = require('./dungeon');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -390,6 +391,58 @@ function computeDungeonBounds(layout) {
     minZ: minZ - BOUNDS_MARGIN,
     maxZ: maxZ + BOUNDS_MARGIN,
   };
+}
+
+/**
+ * Compute walkable AABBs from the dungeon layout.
+ * Returns an array of { minX, maxX, minZ, maxZ } — one per room and one per passage.
+ */
+function computeWalkableAABBs(layout) {
+  const aabbs = [];
+  if (!layout) return aabbs;
+
+  if (layout.rooms) {
+    for (const room of layout.rooms) {
+      const halfW = room.width / 2;
+      const halfD = room.depth / 2;
+      aabbs.push({
+        minX: room.x - halfW,
+        maxX: room.x + halfW,
+        minZ: room.z - halfD,
+        maxZ: room.z + halfD,
+      });
+    }
+  }
+
+  if (layout.passages) {
+    for (const p of layout.passages) {
+      const halfGap = PASSAGE_WIDTH / 2;
+      aabbs.push({
+        minX: Math.min(p.x1, p.x2) - halfGap,
+        maxX: Math.max(p.x1, p.x2) + halfGap,
+        minZ: Math.min(p.z1, p.z2) - halfGap,
+        maxZ: Math.max(p.z1, p.z2) + halfGap,
+      });
+    }
+  }
+
+  return aabbs;
+}
+
+/**
+ * Check if (x, z) is inside any walkable AABB.
+ * Returns false when walkableAABBs is unset or empty.
+ */
+function isInsideDungeon(x, z) {
+  const aabbs = _gameState && _gameState.walkableAABBs;
+  if (!aabbs || aabbs.length === 0) return false;
+
+  for (const a of aabbs) {
+    if (x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -1141,6 +1194,8 @@ module.exports = {
 
   // Dungeon position helpers
   computeDungeonBounds,
+  computeWalkableAABBs,
+  isInsideDungeon,
   firstRoomPosition,
   randomRoomPosition,
   clampToDungeon,

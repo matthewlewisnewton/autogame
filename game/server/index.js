@@ -92,6 +92,8 @@ module.exports._timeouts = _timeouts;
 // Import simulation module (after early exports to resolve circular dependency)
 const {
   computeDungeonBounds,
+  computeWalkableAABBs,
+  isInsideDungeon,
   firstRoomPosition,
   randomRoomPosition,
   clampToDungeon,
@@ -231,6 +233,7 @@ gameState.layout = generateLayout(layoutSeed);
 console.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);
 
 gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
+gameState.walkableAABBs = computeWalkableAABBs(gameState.layout);
 rebuildWallColliders();
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
@@ -256,6 +259,7 @@ function resetGameState() {
   gameState.layoutSeed = seed;
   gameState.layout = generateLayout(seed);
   gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
+  gameState.walkableAABBs = computeWalkableAABBs(gameState.layout);
   rebuildWallColliders();
   // Ensure run is cleared — it should not exist after a reset
   delete gameState.run;
@@ -1911,6 +1915,8 @@ if (typeof module !== 'undefined' && module.exports) {
     PLAYER_RADIUS,
     isEntityPositionBlocked,
     moveEntityToward,
+    computeWalkableAABBs,
+    isInsideDungeon,
     randomWanderTarget,
     // Server objects for integration tests
     app,
