@@ -32,9 +32,33 @@ VERIFY before you finish: start the server and client, load the client, and
 confirm it runs cleanly. Stop both processes again before you exit.
 
 RULES:
-- Edit only files under `game/`. Do NOT commit, branch, or otherwise change
-  git state — the harness commits for you; running read-only `git diff` /
-  `git log` to inspect progress is fine.
+- Default editable scope: files under `game/`. Do NOT commit, branch, or
+  otherwise change git state — the harness commits for you; running read-only
+  `git diff` / `git log` to inspect progress is fine.
+
+INFRA-ESCALATION MODE — if `__REVIEW_FB__` contains a `# Harness infra
+escalation` block, the round loop bailed out early because `capture_run`
+hit a HARNESS bug (e.g. `vite_eaddrinuse`, port held by a foreign process,
+servers did not start) — not a code defect. In that case:
+- You ARE permitted to edit files under `harness/**` to fix the infra bug.
+  The ticket's game code is presumed correct (the round loop did not
+  produce gaps before bailing out).
+- Read the `harness_failure` block in `__REVIEW_FB__` for the detected
+  signature, log tails, and port-holder PIDs/cmdlines.
+- Likely culprits to inspect first: `harness/steps/game.py` (the
+  `_HARNESS_GAME_PATTERNS` regex, `start_game`, `stop_game`,
+  `wait_port_free`), `harness/steps/capture_run.py`. Find the regression
+  by `git log -p -- harness/steps/game.py` if needed.
+- Apply a minimal, targeted fix to `harness/**`. Add a regression test
+  under `harness/tests/unit/` so the same signature can't return silently.
+  Run `python3 -m pytest harness/tests/` and confirm green.
+- After the fix, manually verify the dev servers actually bind: start
+  `node game/server/index.js` on :3000 and `npx vite --port 5173
+  --strictPort` in `game/client/`, hit both ports with `curl`, then stop
+  them. The harness will re-run `capture_run` after you finish.
+- Do NOT modify `game/**` in infra-escalation mode unless you have
+  evidence the game itself is also broken — the goal is to unblock the
+  harness, not to touch unrelated code.
 
 When done, briefly summarise what you fixed and explicitly state whether the
 game is runnable and whether anything still remains.

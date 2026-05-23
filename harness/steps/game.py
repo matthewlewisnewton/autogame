@@ -22,8 +22,8 @@ from harness.workspace.ports import PortAllocation
 
 
 _HARNESS_GAME_PATTERNS = (
-    re.compile(r"(^|\s)node\s+game/server/index(\.js)?($|\s)"),
-    re.compile(r"(^|\s)vite\s+--port\s+5173($|\s)"),
+    re.compile(r"\bnode\s+game/server/index(\.js)?(\s|$)"),
+    re.compile(r"\bvite\s+--port\s+5173(\s|$)"),
 )
 
 
@@ -141,8 +141,8 @@ def stop_game() -> None:
     for pid in _GAME_PIDS:
         _kill_pid(pid, signal_num=15)
     _GAME_PIDS.clear()
-    for pat in (r"(^|\s)node\s+game/server/index\.js($|\s)",
-                r"(^|\s)vite\s+--port\s+5173($|\s)"):
+    for pat in (r"(^|[^[:alnum:]_])node[[:space:]]+game/server/index\.js([[:space:]]|$)",
+                r"(^|[^[:alnum:]_])vite[[:space:]]+--port[[:space:]]+5173([[:space:]]|$)"):
         try:
             subprocess.run(["pkill", "-f", pat], stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, timeout=5)

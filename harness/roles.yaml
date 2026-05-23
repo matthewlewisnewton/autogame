@@ -152,7 +152,12 @@ roles:
     prompt_template: harness/prompts/rescue.md
     acceptance: { kind: ok_rc }
     usage_kind: rescue
-    scope: { allow: ["game/**"], deny: ["tickets/**"] }
+    # Rescue can edit `game/**` (the normal case — finish the ticket) AND
+    # `harness/**` (the infra-escalation case — capture_run detected a
+    # `harness_failure` block in metrics.json and the round loop bailed out
+    # early so rescue can patch the harness itself). The prompt at
+    # harness/prompts/rescue.md gates which mode applies.
+    scope: { allow: ["game/**", "harness/**"], deny: ["tickets/**"] }
 
   split:
     primary: claude
