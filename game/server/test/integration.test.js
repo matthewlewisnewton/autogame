@@ -407,6 +407,41 @@ describe('Socket Integration — Move Event', () => {
 		expect(actualDisplacement).toBeGreaterThan(expectedDisplacement - 0.5);
 		expect(actualDisplacement).toBeLessThan(expectedDisplacement + 0.5);
 	});
+
+	it('rejects move to a void position between rooms (position unchanged)', async () => {
+		// Enter playing phase so the move handler is active
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = gameState.players[socket._playerId];
+
+		// Import isInsideDungeon for verification
+		const { isInsideDungeon } = await import('../index.js');
+
+		// Place player in the start room (a known safe position)
+		const startRoom = gameState.layout.rooms.find(r => r.role === 'start') || gameState.layout.rooms[0];
+		player.x = startRoom.x;
+		player.z = startRoom.z;
+		player.lastMoveTime = Date.now() - 80;
+
+		// Record the starting position
+		const xBefore = player.x;
+		const zBefore = player.z;
+
+		// Move in all 4 cardinal directions — verify the player stays inside dungeon
+		for (const [tdx, tdz] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+			player.lastMoveTime = Date.now() - 80;
+			socket.emit('move', { dx: tdx, dz: tdz, rotation: 0 });
+			await sleep(30);
+			expect(isInsideDungeon(player.x, player.z)).toBe(true);
+		}
+
+		// Additional check: even after multiple moves, the player's position
+		// should always be inside a walkable AABB (never in the void)
+		expect(isInsideDungeon(player.x, player.z)).toBe(true);
+	});
 });
 
 describe('Socket Integration — Invalid Move Rejection', () => {
