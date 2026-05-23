@@ -8,6 +8,7 @@ Returns:
 """
 from __future__ import annotations
 
+import json
 import re
 import shutil
 from dataclasses import dataclass, field
@@ -72,6 +73,33 @@ class TicketContext:
     def subroot(self) -> Path: return self.tdir / "subtickets"
     @property
     def reviews_dir(self) -> Path: return self.tdir / ".reviews"
+
+
+def _read_harness_failure(metrics_path: Path) -> dict | None:
+    """Return the `harness_failure` block from metrics.json if present.
+    capture_run writes this block whenever wait_for_game timed out and the
+    dev servers themselves never came up (port leak, foreign holder, etc.).
+    A None return means the capture either succeeded or failed for some
+    reason other than harness infra — the round loop should proceed normally.
+    """
+    try:
+        return json.loads(metrics_path.read_text()).get("harness_failure")
+    except (OSError, json.JSONDecodeError):
+        return None
+
+
+def _carry_harness_failure_into_feedback(ctx: TicketContext, review_fb: Path,
+                                           round_n: int,
+                                           failure: dict) -> None:
+    with put_review_fb(review_fb) as f:
+        f.write(f"# Harness infra escalation — round {round_n} ({datetime.now():%F %T})\n\n")
+        f.write("`capture_run` could not start the dev servers and bailed out of\n")
+        f.write("the round loop. This is a HARNESS bug, NOT a code defect — the\n")
+        f.write("ticket implementation is presumed correct. Rescue should fix the\n")
+        f.write("infrastructure (edits under `harness/**` are allowed in this mode).\n\n")
+        f.write("## harness_failure block from metrics.json\n\n```json\n")
+        f.write(json.dumps(failure, indent=2))
+        f.write("\n```\n")
 
 
 def _carry_scope_conflict_into_feedback(ctx: TicketContext, review_fb: Path,
@@ -164,6 +192,22 @@ def _ticket_body(ctx: TicketContext) -> int:
         rdir = ctx.tdir / f"round-{round_n}"
         rdir.mkdir(parents=True, exist_ok=True)
         capture_run(rdir, game_url=ctx.tunables.game_url, ports=ctx.workspace.ports)
+        # Infra-escalation: capture_run writes a `harness_failure` block in
+        # metrics.json when the dev servers themselves could not start (vite
+        # EADDRINUSE, port held by foreign proc, etc.). That is a harness
+        # bug, not a code defect — running review + more rounds just burns
+        # cycles. Bail out of the round loop and jump straight to claude
+        # rescue, which is allowed to edit harness/** to fix the infra.
+        infra_failure = _read_harness_failure(rdir / "metrics.json")
+        if infra_failure is not None:
+            log(f"[escalate] harness infra failure ({','.join(infra_failure.get('detected', [])) or 'unknown'}) "
+                f"on round {round_n} — skipping review and remaining rounds, jumping to claude rescue")
+            emit_progress_event("harness_infra_escalation", {
+                "ticket": ctx.name, "round": round_n,
+                "detected": infra_failure.get("detected", []),
+            })
+            _carry_harness_failure_into_feedback(ctx, review_fb, round_n, infra_failure)
+            break
         coverage_dir = ctx.tdir / f"coverage-round-{round_n}" if ctx.tunables.pipeline.coverage_enabled else None
         if coverage_dir:
             coverage_run(ctx.workspace, base_ref, coverage_dir,

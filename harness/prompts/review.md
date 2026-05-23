@@ -38,6 +38,26 @@ proof. Ignore only benign environment noise: THREE.js deprecation warnings,
 headless-WebGL "context lost/restored" messages, and Vite `ws proxy` / `EPIPE`
 lines on socket close — none of those count as a broken game.
 
+HARNESS INFRASTRUCTURE FAILURE — STILL FAIL, BUT DON'T BLAME THE CODE. If
+`metrics.json` contains a `harness_failure` block, the dev servers themselves
+could not start (port leak, foreign holder on 5173, etc.) — this is a HARNESS
+bug, NOT a defect in the ticket's code. The verdict is STILL `VERDICT: FAIL`
+because we have no runnable proof, but you must steer the next round away
+from churning on code that is already correct:
+- Read `harness_failure.detected` (e.g. `vite_eaddrinuse`) and the log tails
+  to confirm the failure is infrastructure (no game code in the trace).
+- In the review, add a top-level `## Harness blockers` section quoting the
+  detected signature and a few lines of the relevant log tail. This tells
+  the harness operator exactly what infra to fix.
+- Still judge the code on its own merits (diff, changed files, unit tests,
+  coverage) and say whether it would have passed if the capture had worked.
+- In `__GAPS_OUT__`, write ONLY the infra blocker as the single gap, e.g.:
+  `1. Harness failed to start dev servers (vite_eaddrinuse on :5173). Files:
+  none — this is harness infra, not game code. Fix: re-run capture after the
+  harness operator clears the port leak; do NOT modify game/.` Omit any code
+  remediation, since further code edits will not change the outcome until
+  the infra is fixed.
+
 YOUR JOB:
 1. Independently judge whether the implementation FULLY and ROBUSTLY satisfies
    the top-level ticket's `## Acceptance Criteria`. Do not assume the
