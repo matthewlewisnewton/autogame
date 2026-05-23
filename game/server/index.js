@@ -723,6 +723,12 @@ function startServer(port) {
         return;
       }
 
+      // Void check: reject moves into the space between rooms
+      if (!isInsideDungeon(newX, newZ)) {
+        console.debug(`Rejected move from ${socket.id}: position (${newX.toFixed(2)}, ${newZ.toFixed(2)}) is outside walkable dungeon area`);
+        return;
+      }
+
       player.x = newX;
       player.y = 0.5;
       player.z = newZ;
