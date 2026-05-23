@@ -1058,7 +1058,6 @@ export function disposeAllLootMeshes() {
 export function animate(timestamp) {
 	requestAnimationFrame(animate);
 
-	clock.update(timestamp);
 	const delta = clampDelta(clock.getDelta());
 	updateMyPlayer(delta);
 
