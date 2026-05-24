@@ -157,7 +157,7 @@ def wait_for_game(ports: PortAllocation, timeout_s: int = 45) -> bool:
     while time.time() < deadline:
         if not up_client and _http_ok(f"http://localhost:{ports.vite}/"):
             up_client = True
-        if not up_server and _http_ok(f"http://localhost:{ports.game_server}/"):
+        if not up_server and _http_ok(f"http://localhost:{ports.game_server}/healthz"):
             up_server = True
         if up_client and up_server:
             return True

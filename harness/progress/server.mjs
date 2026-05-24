@@ -18,6 +18,7 @@ const progressDir = resolve(__dirname);
 const publicDir = join(progressDir, 'public');
 const eventLogPath = join(progressDir, 'events.ndjson');
 const port = Number(process.env.PORT || argValue('--port') || 8787);
+const host = process.env.PROGRESS_SERVER_HOST || '127.0.0.1';
 
 mkdirSync(progressDir, { recursive: true });
 
@@ -451,10 +452,19 @@ function replay(res) {
 }
 
 function safeRel(urlPath) {
-  const decoded = decodeURIComponent(urlPath.replace(/^\/artifacts\//, ''));
+  let decoded;
+  try {
+    decoded = decodeURIComponent(urlPath.replace(/^\/artifacts\//, ''));
+  } catch {
+    return { error: 'bad_request' };
+  }
   const abs = resolve(repoRoot, decoded);
   if (abs !== repoRoot && !abs.startsWith(repoRoot + sep)) return null;
-  return { abs, rel: relative(repoRoot, abs) };
+  const rel = relative(repoRoot, abs).replaceAll(sep, '/');
+  const parts = rel.split('/');
+  const allowed = parts.includes('artifacts') || rel.startsWith('harness/.smoketest/');
+  if (!allowed) return null;
+  return { abs, rel };
 }
 
 function walk(start, out = []) {
@@ -1113,6 +1123,11 @@ const server = createServer((req, res) => {
 
   if (url.pathname.startsWith('/artifacts/')) {
     const safe = safeRel(url.pathname);
+    if (safe?.error === 'bad_request') {
+      res.writeHead(400);
+      res.end('bad request');
+      return;
+    }
     if (!safe) {
       res.writeHead(403);
       res.end('forbidden');
@@ -1176,7 +1191,7 @@ scanFiles();
 scanGit();
 if (gpuPollInterval > 0) scanGpu();
 
-server.listen(port, () => {
+server.listen(port, host, () => {
   writeFileSync(eventLogPath, existsSync(eventLogPath) ? readFileSync(eventLogPath) : '');
-  console.log(`Autogame Live progress stream: http://localhost:${port}/live`);
+  console.log(`Autogame Live progress stream: http://${host}:${port}/live`);
 });
