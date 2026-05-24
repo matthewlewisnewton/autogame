@@ -111,10 +111,80 @@ describe('GET /api/me', () => {
 		expect(data.settings.soundEnabled).toBe(true);
 		expect(data.settings.showHitboxes).toBe(true);
 		expect(data.email).toBeNull();
+		expect(Array.isArray(data.identities)).toBe(true);
+		expect(data.identities[0].provider).toBe('username');
+		expect(data.identities[0].subject).toBe('alice');
 	});
 
 	it('returns 401 without token', async () => {
 		const res = await fetch(`${baseUrl}/api/me`);
+		expect(res.status).toBe(401);
+	});
+});
+
+describe('POST /api/me/identities/email', () => {
+	it('links an email identity to a username account and allows email login', async () => {
+		const token = await registerAndLogin('linker-acct', 'pw');
+
+		const link = await fetch(`${baseUrl}/api/me/identities/email`, {
+			method: 'POST',
+			headers: authHeaders(token),
+			body: JSON.stringify({ email: 'linker-acct@example.com', password: 'emailPw' })
+		});
+		expect(link.status).toBe(201);
+		const linkData = await link.json();
+		expect(linkData.email).toBe('linker-acct@example.com');
+		expect(linkData.identities.find(i => i.provider === 'email').subject).toBe('linker-acct@example.com');
+
+		// /api/me now reflects the linked identity
+		const me = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meData = await me.json();
+		expect(meData.identities.map(i => i.provider).sort()).toEqual(['email', 'username']);
+
+		// Email login now works for the same account
+		const loginRes = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ identifier: 'linker-acct@example.com', password: 'emailPw' })
+		});
+		expect(loginRes.status).toBe(200);
+	});
+
+	it('returns 409 when the email is already in use by another account', async () => {
+		const tokenA = await registerAndLogin('user-a', 'pw');
+		const tokenB = await registerAndLogin('user-b', 'pw');
+
+		const first = await fetch(`${baseUrl}/api/me/identities/email`, {
+			method: 'POST',
+			headers: authHeaders(tokenA),
+			body: JSON.stringify({ email: 'shared@example.com', password: 'pw' })
+		});
+		expect(first.status).toBe(201);
+
+		const conflict = await fetch(`${baseUrl}/api/me/identities/email`, {
+			method: 'POST',
+			headers: authHeaders(tokenB),
+			body: JSON.stringify({ email: 'shared@example.com', password: 'pw' })
+		});
+		expect(conflict.status).toBe(409);
+	});
+
+	it('returns 400 for malformed inputs', async () => {
+		const token = await registerAndLogin('badinput', 'pw');
+		const res = await fetch(`${baseUrl}/api/me/identities/email`, {
+			method: 'POST',
+			headers: authHeaders(token),
+			body: JSON.stringify({ email: 'not-an-email', password: 'pw' })
+		});
+		expect(res.status).toBe(400);
+	});
+
+	it('requires authentication', async () => {
+		const res = await fetch(`${baseUrl}/api/me/identities/email`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'unauth@example.com', password: 'pw' })
+		});
 		expect(res.status).toBe(401);
 	});
 });
