@@ -48,7 +48,8 @@ const {
   LOOT_SPAWN_CHANCE,
   STALE_CLEANUP_INTERVAL_MS,
   PERIODIC_SAVE_INTERVAL_MS,
-  VICTORY_REWARD_ROTATION
+  VICTORY_REWARD_ROTATION,
+  MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
 } = require('./config');
 
 const app = express();
@@ -69,6 +70,7 @@ function createGameState() {
     minions: [],
     loot: [],
     areaEffects: [],
+    enchantments: [],
     lobby: [],
     gamePhase: 'lobby',
     selectedQuestId: DEFAULT_QUEST_ID,
@@ -132,7 +134,11 @@ const {
   nearbySpawnPosition,
   setTerminalCheckCallback,
   setFindSocketCallback,
-  setSavePlayerCallback
+  setSavePlayerCallback,
+  updateEnchantments,
+  spawnGroundEnchantment,
+  armSelfEnchantment,
+  countGroundEnchantmentsForPlayer,
 } = require('./simulation');
 
 const progression = require('./progression');
@@ -367,18 +373,18 @@ function applyDebugScenario(socket, name) {
   player.y = 0.5;
   player.z = spawn.z;
   player.debugScenario = name;
-  player.pendingSummons.clear();
+  player.pendingSpells.clear();
   enterPlayingPhase();
 
   // Per-player initialization: when enterPlayingPhase() skipped because
   // gamePhase was already 'playing' (multi-client debug scenario), this
-  // player may not have a hand, deck, cooldowns, or pendingSummons.
+  // player may not have a hand, deck, cooldowns, or pendingSpells.
   if (gameState.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
     createDrawDeckFromSelectedDeck(player);
     initPlayerHand(player);
     player.slotCooldowns = [null, null, null, null];
-    if (!player.pendingSummons) {
-      player.pendingSummons = new Set();
+    if (!player.pendingSpells) {
+      player.pendingSpells = new Set();
     }
   }
 
@@ -391,10 +397,10 @@ function applyDebugScenario(socket, name) {
     player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
     // Guarantee at least one summon card in hand so integration tests are deterministic
-    if (!player.hand.some(c => c && c.type === 'summon')) {
-      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'summon');
+    if (!player.hand.some(c => c && c.type === 'spell')) {
+      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
       if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+        player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
       }
     }
   } else if (name === 'combat-damaged-player') {
@@ -427,10 +433,10 @@ function applyDebugScenario(socket, name) {
     // and visual capture can exercise monster-card behavior deterministically.
     player.hp = MAX_HP;
     player.magicStones = MAX_MAGIC_STONES;
-    if (!player.hand.some(c => c && c.type === 'monster')) {
-      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'monster');
+    if (!player.hand.some(c => c && c.type === 'creature')) {
+      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
       if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1, remainingCharges: 1 };
+        player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
         const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
         if (deckMonsterIndex !== -1) {
           player.deck.splice(deckMonsterIndex, 1);
@@ -606,7 +612,8 @@ function startServer(port) {
         currencyEarnedThisRun: progress.currencyEarnedThisRun,
         selectedDeck: defaultDeck,
         debugScenario: null,
-        pendingSummons: new Set(),
+        pendingSpells: new Set(),
+        activeEnchantment: null,
         slotCooldowns: [null, null, null, null]
       };
     }
@@ -643,8 +650,8 @@ function startServer(port) {
       }
       player.slotCooldowns = [null, null, null, null];
       player.magicStones = MAX_MAGIC_STONES;
-      if (!player.pendingSummons) {
-        player.pendingSummons = new Set();
+      if (!player.pendingSpells) {
+        player.pendingSpells = new Set();
       }
       // Reset combat state that can't be restored from persistence
       if (player.hp == null || player.hp <= 0) {
@@ -860,13 +867,13 @@ function startServer(port) {
       return;
     }
 
-    // ── Summon branch (radial AoE) ──
-    if (cardDef.type === 'summon') {
-      const summonKey = `${data.slotIndex}:${data.cardId}`;
+    // ── Spell branch (instant single-use effects) ──
+    if (cardDef.type === 'spell') {
+      const spellKey = `${data.slotIndex}:${data.cardId}`;
 
-      // Guard: reject duplicate activation while previous summon is still resolving
-      if (player.pendingSummons.has(summonKey)) {
-        socket.emit('cardError', { reason: 'Summon already resolving' });
+      // Guard: reject duplicate activation while previous spell is still resolving
+      if (player.pendingSpells.has(spellKey)) {
+        socket.emit('cardError', { reason: 'Spell already resolving' });
         return;
       }
 
@@ -878,44 +885,8 @@ function startServer(port) {
         return;
       }
 
-      if (cardDef.effect === 'sacrificial_altar') {
-        const sacrificeRadius = cardDef.sacrificeRadius || SUMMON_RADIUS;
-        const target = findSacrificeTarget(socket.playerId, originX, originZ, sacrificeRadius);
-        if (!target) {
-          socket.emit('cardError', { reason: 'No friendly summon to sacrifice' });
-          return;
-        }
-
-        player.pendingSummons.add(summonKey);
-        player.magicStones -= magicStoneCost;
-        gameState.minions.splice(target.index, 1);
-        const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
-        const restoredCharges = restoreHandCharges(player, cardDef.chargeRestore || 0, {
-          types: ['weapon'],
-          maxTargets: 1,
-          selection: 'random',
-        });
-
-        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
-        drawReplacementCard(player, data.slotIndex);
-
-        io.emit('stateUpdate', stateSnapshot());
-        io.emit('cardUsed', {
-          playerId: socket.playerId,
-          cardId: data.cardId,
-          slotIndex: data.slotIndex,
-          origin: { x: originX, z: originZ },
-          radius: sacrificeRadius,
-          sacrificedMinionId: target.minion.id,
-          magicStonesGained,
-          restoredCharges,
-        });
-
-        return;
-      }
-
       // Mark as pending before any side effects
-      player.pendingSummons.add(summonKey);
+      player.pendingSpells.add(spellKey);
 
       // Deduct cost
       player.magicStones -= magicStoneCost;
@@ -1134,7 +1105,156 @@ function startServer(port) {
         return;
       }
 
+      // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
+      const grind = handCard.grind || 0;
+      const spellDamage = scaledGrindStat(cardDef.damage || 0, grind);
+      const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, spellDamage, {
+        magicStoneOnHit: cardDef.magicStoneOnHit,
+        magicStoneOnKill: cardDef.magicStoneOnKill,
+        healOnHit: cardDef.healOnHit,
+        healOnKill: cardDef.healOnKill,
+        attackerId: socket.playerId,
+      });
+      const hits = radial.hits;
+      const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
+
+      cleanupAfterDamage();
+
+      player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+      drawReplacementCard(player, data.slotIndex);
+
+      io.emit('stateUpdate', stateSnapshot());
+      io.emit('cardUsed', {
+        playerId: socket.playerId,
+        cardId: data.cardId,
+        slotIndex: data.slotIndex,
+        specialEffect: cardDef.specialEffect,
+        origin: { x: originX, z: originZ },
+        radius: SUMMON_RADIUS,
+        hits,
+        magicStonesGained: appliedMagicStones,
+        hpHealed: radial.hpHealed || 0,
+      });
+
+      // Do NOT delete pendingSpells here — leave the entry so any duplicate
+      // useCard events arriving in the same event-loop turn are rejected.
+      // The per-tick clear() below will purge it on the next stateUpdate.
+
+      return;
+    }
+
+    // ── Enchantment branch (lingering ground/self effects) ──
+    if (cardDef.type === 'enchantment') {
+      const enchantKey = `${data.slotIndex}:${data.cardId}`;
+
+      if (player.pendingSpells.has(enchantKey)) {
+        socket.emit('cardError', { reason: 'Enchantment already resolving' });
+        return;
+      }
+
+      const magicStoneCost = cardDef.magicStoneCost || 0;
+      if (player.magicStones < magicStoneCost) {
+        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        return;
+      }
+
+      if (cardDef.effect === 'spike_trap') {
+        if (countGroundEnchantmentsForPlayer(socket.playerId) >= MAX_GROUND_ENCHANTMENTS_PER_PLAYER) {
+          socket.emit('cardError', { reason: 'Too many ground enchantments active' });
+          return;
+        }
+      }
+
+      if (cardDef.effect === 'mirror_ward' && player.activeEnchantment && player.activeEnchantment.armed) {
+        socket.emit('cardError', { reason: 'Enchantment already active' });
+        return;
+      }
+
+      player.pendingSpells.add(enchantKey);
+      player.magicStones -= magicStoneCost;
+      player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+      drawReplacementCard(player, data.slotIndex);
+
+      if (cardDef.effect === 'spike_trap') {
+        spawnGroundEnchantment(originX, originZ, cardDef, socket.playerId);
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          effect: cardDef.effect,
+          target: cardDef.target,
+          origin: { x: originX, z: originZ },
+          radius: cardDef.radius || 2.5,
+        });
+        return;
+      }
+
+      if (cardDef.effect === 'mirror_ward') {
+        armSelfEnchantment(player, cardDef);
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          effect: cardDef.effect,
+          target: cardDef.target,
+          origin: { x: originX, z: originZ },
+        });
+        return;
+      }
+
+      socket.emit('cardError', { reason: 'Unknown enchantment effect' });
+      return;
+    }
+
+    // ── Creature branch (spawn persistent ally or utility creature) ──
+    if (cardDef.type === 'creature') {
+      const magicStoneCost = cardDef.magicStoneCost || 0;
+      if (player.magicStones < magicStoneCost) {
+        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        return;
+      }
+
+      if (cardDef.effect === 'sacrificial_altar') {
+        const sacrificeRadius = cardDef.sacrificeRadius || SUMMON_RADIUS;
+        const target = findSacrificeTarget(socket.playerId, originX, originZ, sacrificeRadius);
+        if (!target) {
+          socket.emit('cardError', { reason: 'No friendly summon to sacrifice' });
+          return;
+        }
+
+        player.magicStones -= magicStoneCost;
+        gameState.minions.splice(target.index, 1);
+        const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
+        const restoredCharges = restoreHandCharges(player, cardDef.chargeRestore || 0, {
+          types: ['weapon'],
+          maxTargets: 1,
+          selection: 'random',
+        });
+
+        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        drawReplacementCard(player, data.slotIndex);
+
+        io.emit('stateUpdate', stateSnapshot());
+        io.emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          origin: { x: originX, z: originZ },
+          radius: sacrificeRadius,
+          sacrificedMinionId: target.minion.id,
+          magicStonesGained,
+          restoredCharges,
+        });
+
+        return;
+      }
+
       if (cardDef.effect === 'mana_prism') {
+        player.magicStones -= magicStoneCost;
         const prism = {
           id: crypto.randomUUID(),
           ownerId: socket.playerId,
@@ -1166,56 +1286,6 @@ function startServer(port) {
         return;
       }
 
-      // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
-      const grind = handCard.grind || 0;
-      const summonDamage = scaledGrindStat(cardDef.damage || 0, grind);
-      const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
-        magicStoneOnHit: cardDef.magicStoneOnHit,
-        magicStoneOnKill: cardDef.magicStoneOnKill,
-        healOnHit: cardDef.healOnHit,
-        healOnKill: cardDef.healOnKill,
-        attackerId: socket.playerId,
-      });
-      const hits = radial.hits;
-      const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
-
-      cleanupAfterDamage();
-
-      player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-
-      // Remove card from hand and draw replacement
-      drawReplacementCard(player, data.slotIndex);
-
-      // Broadcast updated hand to all clients
-      io.emit('stateUpdate', stateSnapshot());
-
-      // Broadcast result to all clients
-      io.emit('cardUsed', {
-        playerId: socket.playerId,
-        cardId: data.cardId,
-        slotIndex: data.slotIndex,
-        specialEffect: cardDef.specialEffect,
-        origin: { x: originX, z: originZ },
-        radius: SUMMON_RADIUS,
-        hits: hits,
-        magicStonesGained: appliedMagicStones,
-        hpHealed: radial.hpHealed || 0,
-      });
-
-      // Do NOT delete pendingSummons here — leave the entry so any duplicate
-      // useCard events arriving in the same event-loop turn are rejected.
-      // The per-tick clear() below will purge it on the next stateUpdate.
-
-      return;
-    }
-
-    // ── Monster branch (spawn persistent minion) ──
-    if (cardDef.type === 'monster') {
-      const magicStoneCost = cardDef.magicStoneCost || 0;
-      if (player.magicStones < magicStoneCost) {
-        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
-        return;
-      }
       player.magicStones -= magicStoneCost;
 
       const grind = handCard.grind || 0;
@@ -1825,6 +1895,9 @@ if (typeof module !== 'undefined' && module.exports) {
     isEnemyFrozen,
     updateEnemies,
     updateMinions,
+    updateEnchantments,
+    spawnGroundEnchantment,
+    armSelfEnchantment,
     spawnLoot,
     spawnEnemy,
     spawnEnemies,

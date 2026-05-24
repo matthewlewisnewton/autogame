@@ -8,7 +8,7 @@ import {
 	renderQuestBoard,
 } from './questBoard.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, weaponCardIds, summonCardIds, monsterCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import {
 	MAX_CARD_LEVEL,
 	getUpgradeCost,
@@ -162,8 +162,9 @@ const characterIdEl = document.getElementById('character-id');
 const playerLevelEl = document.getElementById('player-level');
 const deckCountEl = document.getElementById('deck-count');
 const deckWeaponCountEl = document.getElementById('deck-weapon-count');
-const deckSummonCountEl = document.getElementById('deck-summon-count');
-const deckMonsterCountEl = document.getElementById('deck-monster-count');
+const deckSpellCountEl = document.getElementById('deck-spell-count');
+const deckCreatureCountEl = document.getElementById('deck-creature-count');
+const deckEnchantmentCountEl = document.getElementById('deck-enchantment-count');
 const objectiveHudEl = document.getElementById('objective-hud');
 const runSummaryOverlay = document.getElementById('run-summary-overlay');
 const summaryStatusEl = document.getElementById('summary-status');
@@ -494,11 +495,23 @@ function bindSocketHandlers(s) {
 				}
 			}
 		}
+		if (data.cardId === 'spike_trap' && data.radius !== undefined) {
+			const origin = data.origin || { x: 0, z: 0 };
+			rendererSpawnSummonEffect(origin, data.radius, { color: 0xf87171, emissive: 0xef4444 });
+		}
+		if (data.cardId === 'mirror_ward' && data.target === 'self') {
+			const origin = data.origin || { x: 0, z: 0 };
+			rendererSpawnSummonEffect(origin, 2, { color: 0x5eead4, emissive: 0x2dd4bf });
+		}
+		if (data.enchantmentTriggered && data.radius !== undefined) {
+			const origin = data.origin || { x: 0, z: 0 };
+			rendererSpawnSummonEffect(origin, data.radius, { color: 0xfbbf24, emissive: 0xf59e0b });
+		}
 		if (data.cardId === 'divine_grace' && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
 			rendererSpawnDivineGraceEffect(origin, data.radius);
 			if (data.magicStonesGained > 0) playSound('loot');
-		} else if (summonCardIds.has(data.cardId) && data.radius !== undefined) {
+		} else if (spellCardIds.has(data.cardId) && data.radius !== undefined) {
 			const origin = data.origin || { x: 0, z: 0 };
 			const accent = CARD_ACCENT_STYLE[data.cardId];
 			const summonStyle = accent
@@ -843,8 +856,9 @@ function updateDeckStats(deck, handCards) {
 	const stats = computeDeckHudStats(deck, handCards);
 	if (deckCountEl) deckCountEl.textContent = stats.label;
 	if (deckWeaponCountEl) deckWeaponCountEl.textContent = String(stats.types.weapon);
-	if (deckSummonCountEl) deckSummonCountEl.textContent = String(stats.types.summon);
-	if (deckMonsterCountEl) deckMonsterCountEl.textContent = String(stats.types.monster);
+	if (deckSpellCountEl) deckSpellCountEl.textContent = String(stats.types.spell);
+	if (deckCreatureCountEl) deckCreatureCountEl.textContent = String(stats.types.creature);
+	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
 function updateVanguardPortrait() {
@@ -1531,13 +1545,13 @@ function useCard(slotIndex) {
 	lastUsedSlot = slotIndex;
 	socket.emit('useCard', { slotIndex, cardId: card.id });
 
-	if (monsterCardIds.has(card.id)) {
+	if (creatureCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
 		return;
 	}
 
-	if (summonCardIds.has(card.id)) {
+	if (spellCardIds.has(card.id) || enchantmentCardIds.has(card.id)) {
 		slotCooldowns[slotIndex] = true;
 		playActivationEffect(slotIndex);
 		return;
