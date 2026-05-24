@@ -18,7 +18,8 @@ const {
   SPAWN_PADDING,
   MAX_HP,
   RESPAWN_DELAY_MS,
-  COOLDOWN_MS
+  COOLDOWN_MS,
+  MAX_GROUND_ENCHANTMENTS_PER_PLAYER
 } = require('./config');
 const { PASSAGE_WIDTH } = require('./dungeon');
 
@@ -801,13 +802,154 @@ function findTauntMinionNear(enemyX, enemyZ, detectionRadius) {
   return nearestMinion;
 }
 
+// ── Enchantments (ground hazards + self buffs) ──
+
+function countGroundEnchantmentsForPlayer(ownerId) {
+  if (!_gameState.enchantments) return 0;
+  return _gameState.enchantments.filter(
+    (enc) => enc.ownerId === ownerId && enc.target === 'ground' && enc.armed
+  ).length;
+}
+
+function spawnGroundEnchantment(x, z, cardDef, ownerId) {
+  if (!_gameState.enchantments) _gameState.enchantments = [];
+  const now = Date.now();
+  _gameState.enchantments.push({
+    id: crypto.randomUUID(),
+    ownerId,
+    cardId: cardDef.id,
+    effect: cardDef.effect,
+    target: 'ground',
+    x,
+    z,
+    radius: cardDef.radius || 2.5,
+    damage: cardDef.damage || 35,
+    expiresAt: now + (cardDef.ttlMs || 30000),
+    armed: true,
+  });
+}
+
+function armSelfEnchantment(player, cardDef) {
+  const now = Date.now();
+  player.activeEnchantment = {
+    cardId: cardDef.id,
+    effect: cardDef.effect,
+    target: 'self',
+    damageScale: cardDef.damageScale ?? 0.5,
+    minReflectDamage: cardDef.minReflectDamage || 15,
+    reflectRange: cardDef.reflectRange || 8,
+    expiresAt: now + (cardDef.ttlMs || 20000),
+    armed: true,
+  };
+}
+
+function findEnemyById(enemyId) {
+  return _gameState.enemies.find((enemy) => enemy.id === enemyId && enemy.hp > 0) || null;
+}
+
+function triggerMirrorWard(playerId, damageTaken, attackerEnemyId) {
+  const player = _gameState.players[playerId];
+  if (!player || !player.activeEnchantment || !player.activeEnchantment.armed) return null;
+
+  const enc = player.activeEnchantment;
+  if (enc.effect !== 'mirror_ward') return null;
+
+  const now = Date.now();
+  if (now >= enc.expiresAt) {
+    player.activeEnchantment = null;
+    return null;
+  }
+
+  const reflectDamage = Math.max(
+    enc.minReflectDamage,
+    Math.round(damageTaken * enc.damageScale)
+  );
+  let hits = [];
+  let direction = { x: 1, z: 0 };
+
+  const attacker = attackerEnemyId ? findEnemyById(attackerEnemyId) : null;
+  if (attacker) {
+    const dx = attacker.x - player.x;
+    const dz = attacker.z - player.z;
+    const dist = Math.hypot(dx, dz) || 1;
+    direction = { x: dx / dist, z: dz / dist };
+    attacker.lastDamagedBy = playerId;
+    attacker.hp -= reflectDamage;
+    hits.push({ enemyId: attacker.id, damage: reflectDamage });
+  } else {
+    const radial = collectRadialHits(
+      player.x,
+      player.z,
+      enc.reflectRange,
+      reflectDamage,
+      { attackerId: playerId }
+    );
+    hits = radial.hits;
+    if (hits.length > 0) {
+      const firstHit = _gameState.enemies.find((enemy) => enemy.id === hits[0].enemyId);
+      if (firstHit) {
+        const dx = firstHit.x - player.x;
+        const dz = firstHit.z - player.z;
+        const dist = Math.hypot(dx, dz) || 1;
+        direction = { x: dx / dist, z: dz / dist };
+      }
+    }
+  }
+
+  player.activeEnchantment = null;
+  _progression().cleanupAfterDamage();
+
+  return { hits, direction, reflectDamage };
+}
+
+function updateEnchantments() {
+  if (!_gameState.enchantments) _gameState.enchantments = [];
+
+  const now = Date.now();
+  let triggered = false;
+
+  for (const enc of _gameState.enchantments) {
+    if (!enc.armed || now >= enc.expiresAt) continue;
+    if (enc.effect !== 'spike_trap') continue;
+
+    for (const enemy of _gameState.enemies) {
+      if (enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - enc.x, enemy.z - enc.z);
+      if (dist <= enc.radius) {
+        enemy.lastDamagedBy = enc.ownerId;
+        enemy.hp -= enc.damage;
+        enc.armed = false;
+        triggered = true;
+        break;
+      }
+    }
+  }
+
+  _gameState.enchantments = _gameState.enchantments.filter(
+    (enc) => enc.armed && now < enc.expiresAt
+  );
+
+  for (const player of Object.values(_gameState.players)) {
+    if (player.activeEnchantment && now >= player.activeEnchantment.expiresAt) {
+      player.activeEnchantment = null;
+    }
+  }
+
+  if (triggered) {
+    _progression().cleanupAfterDamage();
+  }
+}
+
 // ── Player Damage / Respawn ──
 
-function damagePlayer(playerId, amount) {
+function damagePlayer(playerId, amount, options = {}) {
   const player = _gameState.players[playerId];
-  if (!player) return;
+  if (!player) return null;
+
+  if (amount <= 0) return null;
 
   player.hp = Math.max(0, player.hp - amount);
+  const mirrorResult = triggerMirrorWard(playerId, amount, options.attackerEnemyId);
 
   if (player.hp <= 0 && !player.dead) {
     player.dead = true;
@@ -829,6 +971,8 @@ function damagePlayer(playerId, amount) {
     }, RESPAWN_DELAY_MS);
     _timeouts.push(respawnId);
   }
+
+  return mirrorResult;
 }
 
 // ── Enemy AI Tick ──
@@ -869,7 +1013,7 @@ function updateEnemies() {
 					const dist = Math.hypot(target.x - enemy.x, target.z - enemy.z);
 					if (dist <= ENEMY_ATTACK_RANGE) {
 						// Strike!
-						damagePlayer(enemy.windupTargetId, def.attackDamage);
+						damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
 						enemy.attackState = 'recovering';
 						enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
 						continue;
@@ -1120,6 +1264,9 @@ function updateMinions() {
   // Process lingering area effects (e.g. Dragon's Breath DoT)
   updateAreaEffects();
 
+  // Ground enchantments (Spike Trap, etc.)
+  updateEnchantments();
+
   // Cleanup dead enemies after minion attacks
   _progression().cleanupAfterDamage();
 
@@ -1139,7 +1286,7 @@ function regenMagicStones() {
     } else {
       p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
     }
-    p.pendingSummons.clear();
+    p.pendingSpells.clear();
   }
 }
 
@@ -1227,6 +1374,10 @@ module.exports = {
   spawnDragonsBreathEffect,
   spawnInfernoPillarEffect,
   updateAreaEffects,
+  updateEnchantments,
+  spawnGroundEnchantment,
+  armSelfEnchantment,
+  countGroundEnchantmentsForPlayer,
   isEnemyFrozen,
 
   // Magic stones

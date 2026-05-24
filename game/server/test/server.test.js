@@ -111,7 +111,7 @@ function addPlayer(id, overrides = {}) {
 		magicStones: MAX_MAGIC_STONES,
 		currency: 0,
 		debugScenario: null,
-		pendingSummons: new Set(),
+		pendingSpells: new Set(),
 		deck: [],
 		...overrides
 	};
@@ -1077,13 +1077,13 @@ describe('regenMagicStones (game tick)', () => {
 		expect(gameState.players['p1'].magicStones).toBe(0);
 	});
 
-	it('clears pendingSummons for each player', () => {
+	it('clears pendingSpells for each player', () => {
 		addPlayer('p1');
-		gameState.players['p1'].pendingSummons.add('0:iron_sword');
+		gameState.players['p1'].pendingSpells.add('0:iron_sword');
 
 		regenMagicStones();
 
-		expect(gameState.players['p1'].pendingSummons.size).toBe(0);
+		expect(gameState.players['p1'].pendingSpells.size).toBe(0);
 	});
 
 	it('regen rate constant is correct', () => {
@@ -1120,7 +1120,7 @@ describe('synergistic card helpers', () => {
 		addPlayer('p1', {
 			hand: [
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 1 },
-				{ id: 'chrono_trigger', type: 'summon', charges: 1, remainingCharges: 1 },
+				{ id: 'chrono_trigger', type: 'spell', charges: 1, remainingCharges: 1 },
 				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 1 },
 			],
 		});
@@ -1956,10 +1956,10 @@ describe('run state', () => {
 			expect(lobbyUpdateCalls.length).toBeGreaterThan(0);
 		});
 
-		it('clears pendingSummons for all players', () => {
+		it('clears pendingSpells for all players', () => {
 			addPlayer('p1');
-			gameState.players['p1'].pendingSummons.add('0:iron_sword');
-			gameState.players['p1'].pendingSummons.add('1:fireball');
+			gameState.players['p1'].pendingSpells.add('0:iron_sword');
+			gameState.players['p1'].pendingSpells.add('1:fireball');
 
 			const emitCalls = [];
 			const originalEmit = serverIo.emit;
@@ -1969,7 +1969,7 @@ describe('run state', () => {
 
 			serverIo.emit = originalEmit;
 
-			expect(gameState.players['p1'].pendingSummons.size).toBe(0);
+			expect(gameState.players['p1'].pendingSpells.size).toBe(0);
 		});
 	});
 
@@ -2261,7 +2261,7 @@ describe('run state', () => {
 			grantRunRewards('p1', { status: 'victory' });
 
 			expect(gameState.players.p1.pendingCardChoices).toEqual([
-				expect.objectContaining({ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster' }),
+				expect.objectContaining({ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature' }),
 			]);
 			expect(gameState.players.p1.runRewards.cards).toEqual([]);
 			expect(gameState.players.p1.ownedCards.dungeon_drake).toBeUndefined();
@@ -2271,7 +2271,7 @@ describe('run state', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
 			gameState.run = createRunState();
 			gameState.players.p1.pendingCardChoices = [
-				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', description: 'Spawns a minion' },
+				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', description: 'Spawns a battlefield ally' },
 			];
 
 			const first = claimCardReward('p1', 'dungeon_drake');
@@ -2287,7 +2287,7 @@ describe('run state', () => {
 		it('claimCardReward rejects invalid choice ids', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
 			gameState.players.p1.pendingCardChoices = [
-				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', description: 'Spawns a minion' },
+				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', description: 'Spawns a battlefield ally' },
 			];
 
 			const result = claimCardReward('p1', 'flame_blade');
@@ -2752,7 +2752,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			currencyEarnedThisRun: undefined,
 			selectedDeck: undefined,
 			inventory: undefined,
-			debugScenario: null
+			debugScenario: null,
+			activeEnchantment: null,
 		});
 	});
 
@@ -2791,11 +2792,11 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(snapshot._victoryCounters).toBeUndefined();
 	});
 
-	it('strips pendingSummons (Set) from player objects', () => {
+	it('strips pendingSpells (Set) from player objects', () => {
 		addPlayer('p1');
-		gameState.players['p1'].pendingSummons.add('0:iron_sword');
+		gameState.players['p1'].pendingSpells.add('0:iron_sword');
 		const snapshot = stateSnapshot();
-		expect(snapshot.players['p1'].pendingSummons).toBeUndefined();
+		expect(snapshot.players['p1'].pendingSpells).toBeUndefined();
 	});
 
 	it('strips lastActivity from player objects', () => {

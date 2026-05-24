@@ -99,7 +99,7 @@ describe('Undead Commander definitions', () => {
 		expect(EVOLUTION_TRANSFORMS.skeleton_knight).toBe('undead_commander');
 		expect(CARD_DEFS.undead_commander).toMatchObject({
 			id: 'undead_commander',
-			type: 'monster',
+			type: 'creature',
 			minionHp: 180,
 			taunt: true,
 			summonSkeletonCount: 2,
@@ -154,7 +154,7 @@ describe('Undead Commander gameplay', () => {
 		player.hand = [{
 			id: 'undead_commander',
 			name: 'Undead Commander',
-			type: 'monster',
+			type: 'creature',
 			charges: 1,
 			remainingCharges: 1,
 		}];
