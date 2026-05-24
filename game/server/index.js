@@ -342,10 +342,15 @@ function findSocketByPlayerId(playerId) {
 }
 
 function emitStateUpdate() {
+  let emittedToSocket = false;
   for (const socket of io.sockets.sockets.values()) {
-    if (socket.playerId) {
+    if (socket.playerId && typeof socket.emit === 'function') {
       socket.emit('stateUpdate', stateSnapshot(socket.playerId));
+      emittedToSocket = true;
     }
+  }
+  if (!emittedToSocket) {
+    io.emit('stateUpdate', stateSnapshot());
   }
 }
 
