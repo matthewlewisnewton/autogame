@@ -573,23 +573,23 @@ describe('Socket Integration — useCard Event', () => {
 			// Ensure a summon card is in hand — the random deal from summon-ready
 			// may not include battle_familiar (2 of 8 deck cards), so we
 			// manually place one if not present.
-			let summonSlot = player.hand.findIndex(c => c && c.type === 'summon');
+			let summonSlot = player.hand.findIndex(c => c && c.type === 'spell');
 			if (summonSlot < 0) {
 				const emptySlot = player.hand.findIndex(c => !c);
 				if (emptySlot >= 0) {
-					player.hand[emptySlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+					player.hand[emptySlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
 					summonSlot = emptySlot;
 				} else if (player.hand.length < 4) {
-					player.hand.push({ id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 });
+					player.hand.push({ id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 });
 					summonSlot = player.hand.length - 1;
 				} else {
-					player.hand[3] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+					player.hand[3] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
 					summonSlot = 3;
 				}
 			}
 			const summonCard = player.hand[summonSlot];
 			expect(summonCard).toBeDefined();
-			expect(summonCard.type).toBe('summon');
+			expect(summonCard.type).toBe('spell');
 
 			// Place enemies within SUMMON_RADIUS
 			gameState.enemies.push({
@@ -630,7 +630,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.magicStones = 10;
 
 			// Find the slot with a summon card in hand
-			const summonSlot = player.hand.findIndex(c => c && c.type === 'summon');
+			const summonSlot = player.hand.findIndex(c => c && c.type === 'spell');
 			expect(summonSlot).toBeGreaterThanOrEqual(0);
 			const summonCard = player.hand[summonSlot];
 
@@ -667,7 +667,7 @@ describe('Socket Integration — useCard Event', () => {
 		expect(playerKey).toBeDefined();
 		const playerData = initUpdate.players[playerKey];
 
-		const monsterSlot = playerData.hand.findIndex(c => c && c.type === 'monster');
+		const monsterSlot = playerData.hand.findIndex(c => c && c.type === 'creature');
 		expect(monsterSlot).toBeGreaterThanOrEqual(0);
 		const monsterCardId = playerData.hand[monsterSlot].id;
 		expect(monsterCardId).toBe('dungeon_drake');
@@ -729,7 +729,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.deck = [];
 			player.hand = [
 				{ id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 1 },
-				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
+				{ id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
 				{ id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 1 },
 			];
 
@@ -770,7 +770,7 @@ describe('Socket Integration — useCard Event', () => {
 			player.magicStones = 0;
 			player.deck = [];
 			player.hand = [
-				{ id: 'sacrificial_altar', name: 'Sacrificial Altar', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
+				{ id: 'sacrificial_altar', name: 'Sacrificial Altar', type: 'creature', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
 				{ id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 1 },
 			];
 			gameState.minions = [
@@ -793,8 +793,8 @@ describe('Socket Integration — useCard Event', () => {
 			player.magicStones = 50;
 			player.deck = [];
 			player.hand = [
-				{ id: 'mana_prism', name: 'Mana Prism', type: 'summon', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
-				{ id: 'battery_automaton', name: 'Battery Automaton', type: 'monster', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
+				{ id: 'mana_prism', name: 'Mana Prism', type: 'creature', charges: 1, remainingCharges: 1, magicStoneCost: 0 },
+				{ id: 'battery_automaton', name: 'Battery Automaton', type: 'creature', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
 			];
 
 			let cardUsedPromise = waitForEvent(socket, 'cardUsed');
@@ -3835,7 +3835,7 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 		const playerKey = Object.keys(snap.players).find(k => snap.players[k].debugScenario === 'monster-card');
 		expect(playerKey).toBeDefined();
 		const player = snap.players[playerKey];
-		const monsterSlot = player.hand.findIndex(c => c && c.type === 'monster');
+		const monsterSlot = player.hand.findIndex(c => c && c.type === 'creature');
 		expect(monsterSlot).toBeGreaterThanOrEqual(0);
 		expect(player.hand[monsterSlot].id).toBe('dungeon_drake');
 	});

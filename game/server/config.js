@@ -38,6 +38,8 @@ const VICTORY_REWARD_ROTATION = [
   'echo_blade',
   'mana_leach',
   'dragons_breath',
+  'spike_trap',
+  'mirror_ward',
 ];
 
 // Deterministic enemy-type → card drop mapping (Lost Kingdoms-style acquisition).
@@ -51,6 +53,7 @@ const ENEMY_CARD_DROPS = {
 };
 
 const MAX_CARD_CHOICES = 3;
+const MAX_GROUND_ENCHANTMENTS_PER_PLAYER = 3;
 
 module.exports = {
   TICK_RATE,
@@ -78,5 +81,6 @@ module.exports = {
   PERIODIC_SAVE_INTERVAL_MS,
   VICTORY_REWARD_ROTATION,
   ENEMY_CARD_DROPS,
-  MAX_CARD_CHOICES
+  MAX_CARD_CHOICES,
+  MAX_GROUND_ENCHANTMENTS_PER_PLAYER
 };
