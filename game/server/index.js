@@ -488,7 +488,9 @@ function startServer(port) {
   if (!_routesMounted) {
     app.use(express.json());
     const authRouter = require('./auth');
+    const accountRouter = require('./account');
     app.use('/api', authRouter);
+    app.use('/api', accountRouter);
     _routesMounted = true;
   }
 
@@ -504,6 +506,9 @@ function startServer(port) {
   // Default is FileProvider for durable persistence across restarts.
   // Set PERSISTENCE_BACKEND=memory to opt into the ephemeral in-memory provider.
   const dataPath = process.env.PERSISTENCE_PATH || path.resolve(__dirname, '..', 'data');
+  const { initSettingsPath } = require('./settings');
+  initSettingsPath(dataPath);
+
   if (process.env.PERSISTENCE_BACKEND === 'memory') {
     setTestProvider(new InMemoryProvider());
     console.log('[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)');

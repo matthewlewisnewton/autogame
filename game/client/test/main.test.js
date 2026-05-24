@@ -2595,47 +2595,37 @@ describe('Mute persistence (localStorage)', () => {
 		}
 	});
 
-	it('toggling mute writes the new value to localStorage', async () => {
+	it('toggling mute updates in-memory settings', async () => {
 		await import('../main.js');
 
-		// Reset to default unmuted state (no stored value)
-		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
 		if (typeof window.__setSoundEnabled === 'function') {
 			window.__setSoundEnabled(true);
 		}
-		// __setSoundEnabled now also persists — remove that so we start clean
-		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
 
 		expect(window.__soundEnabled()).toBe(true);
-		expect(window.__getPersistedMute()).toBe(null);
+		expect(window.__getSettings().soundEnabled).toBe(true);
 
-		// Click the mute button to toggle
 		const muteBtn = document.getElementById('mute-btn');
 		muteBtn.click();
 
 		expect(window.__soundEnabled()).toBe(false);
-		expect(window.__getPersistedMute()).toBe('false');
+		expect(window.__getSettings().soundEnabled).toBe(false);
 	});
 
-	it('toggling mute again restores unmuted and persists', async () => {
+	it('toggling mute again restores unmuted in settings', async () => {
 		await import('../main.js');
 
-		// Reset state
-		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
 		if (typeof window.__setSoundEnabled === 'function') {
 			window.__setSoundEnabled(true);
 		}
 
-		// Toggle to muted
 		const muteBtn = document.getElementById('mute-btn');
 		muteBtn.click();
 		expect(window.__soundEnabled()).toBe(false);
-		expect(window.__getPersistedMute()).toBe('false');
 
-		// Toggle back to unmuted
 		muteBtn.click();
 		expect(window.__soundEnabled()).toBe(true);
-		expect(window.__getPersistedMute()).toBe('true');
+		expect(window.__getSettings().soundEnabled).toBe(true);
 	});
 
 	it('updateMuteButton reflects the toggled state correctly', async () => {

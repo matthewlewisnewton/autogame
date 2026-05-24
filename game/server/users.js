@@ -10,6 +10,17 @@ let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data',
 
 const users = new Map();
 
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeEmail(email) {
+	if (email === null || email === undefined || email === '') return null;
+	return String(email).trim().toLowerCase();
+}
+
+function isValidUsername(username) {
+	return typeof username === 'string' && username.length >= 3 && username.length <= 32;
+}
+
 /**
  * Load existing user records from disk into the in-memory Map.
  * Silently ignores file-not-found errors (first run). Logs other errors.
@@ -100,6 +111,81 @@ function findUserByUsername(username) {
 }
 
 /**
+ * Find a user record by accountId.
+ * @param {string} accountId
+ * @returns {object|null}
+ */
+function findUserByAccountId(accountId) {
+	for (const record of users.values()) {
+		if (record.accountId === accountId) return record;
+	}
+	return null;
+}
+
+/**
+ * Find a user record by normalized email.
+ * @param {string} email - raw or normalized email
+ * @returns {object|null}
+ */
+function findUserByEmail(email) {
+	const normalized = normalizeEmail(email);
+	if (!normalized) return null;
+	for (const record of users.values()) {
+		if (record.email === normalized) return record;
+	}
+	return null;
+}
+
+/**
+ * Update profile fields for an account.
+ * @param {string} accountId
+ * @param {{ username?: string, email?: string|null }} fields
+ * @returns {{ ok: true, usernameChanged?: boolean } | { ok: false, reason: string }}
+ */
+function updateProfile(accountId, fields) {
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return { ok: false, reason: 'Account not found' };
+	}
+
+	let usernameChanged = false;
+	const oldUsername = user.username;
+
+	if (fields.username !== undefined) {
+		const newUsername = fields.username;
+		if (!isValidUsername(newUsername)) {
+			return { ok: false, reason: 'Username must be 3–32 characters' };
+		}
+		if (newUsername !== oldUsername) {
+			if (users.has(newUsername)) {
+				return { ok: false, reason: 'Username already taken' };
+			}
+			users.delete(oldUsername);
+			user.username = newUsername;
+			users.set(newUsername, user);
+			usernameChanged = true;
+		}
+	}
+
+	if (fields.email !== undefined) {
+		const normalized = normalizeEmail(fields.email);
+		if (normalized && !EMAIL_REGEX.test(normalized)) {
+			return { ok: false, reason: 'Invalid email format' };
+		}
+		if (normalized) {
+			const existing = findUserByEmail(normalized);
+			if (existing && existing.accountId !== accountId) {
+				return { ok: false, reason: 'Email already in use' };
+			}
+		}
+		user.email = normalized;
+	}
+
+	saveUsers();
+	return { ok: true, usernameChanged };
+}
+
+/**
  * Clear all users from the in-memory store (test-only).
  */
 function clearUsers() {
@@ -131,6 +217,10 @@ module.exports = {
 	comparePassword,
 	createUser,
 	findUserByUsername,
+	findUserByAccountId,
+	findUserByEmail,
+	updateProfile,
+	normalizeEmail,
 	clearUsers,
 	loadUsers,
 	saveUsers,

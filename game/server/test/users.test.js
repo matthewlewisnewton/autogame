@@ -7,6 +7,9 @@ import {
 	comparePassword,
 	createUser,
 	findUserByUsername,
+	findUserByAccountId,
+	findUserByEmail,
+	updateProfile,
 	clearUsers,
 	loadUsers,
 	saveUsers,
@@ -134,6 +137,44 @@ describe('findUserByUsername', () => {
 
 	it('returns null for an empty string', () => {
 		expect(findUserByUsername('')).toBeNull();
+	});
+});
+
+// ── findUserByAccountId / email / updateProfile ──
+
+describe('profile helpers', () => {
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-profile-${Date.now()}.json`);
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+	});
+
+	it('findUserByAccountId returns the user record', () => {
+		createUser('prof1', 'pass');
+		const user = findUserByUsername('prof1');
+		expect(findUserByAccountId(user.accountId).username).toBe('prof1');
+	});
+
+	it('updateProfile sets email and rejects duplicates', () => {
+		createUser('a', 'pass');
+		createUser('b', 'pass');
+		const a = findUserByUsername('a');
+		const b = findUserByUsername('b');
+
+		expect(updateProfile(a.accountId, { email: 'a@test.com' }).ok).toBe(true);
+		expect(updateProfile(b.accountId, { email: 'a@test.com' }).ok).toBe(false);
+
+		const renamed = updateProfile(a.accountId, { username: 'a_new' });
+		expect(renamed.ok).toBe(true);
+		expect(renamed.usernameChanged).toBe(true);
+		expect(findUserByUsername('a_new')).not.toBeNull();
+		expect(findUserByUsername('a')).toBeNull();
 	});
 });
 
