@@ -2375,6 +2375,17 @@ describe('connect_error handler', () => {
 		expect(window.__ioDisconnected()).toBe(true);
 	});
 
+	it('keeps the token and allows retry on transient connect_error', async () => {
+		await import('../main.js');
+		window.__clearIoDisconnected();
+
+		window.__triggerSocketEvent('connect_error', 'websocket error');
+
+		expect(localStorage.getItem('autogame_token')).toBe('test-fake-jwt-token');
+		expect(window.__ioDisconnected()).toBe(false);
+		expect(window.__connectionState()).toBe('reconnecting');
+	});
+
 	it('hides game UI elements (card hand, HUD)', async () => {
 		await import('../main.js');
 

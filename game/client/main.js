@@ -117,6 +117,31 @@ const showLoginLinkEl = document.getElementById('show-login-link');
 const showRegisterLinkEl = document.getElementById('show-register-link');
 
 const TOKEN_KEY = 'autogame_token';
+const AUTH_FETCH_TIMEOUT_MS = 8000;
+
+function isAuthConnectError(err) {
+	const message = typeof err === 'string'
+		? err
+		: (err && (err.message || err.data?.message || String(err))) || '';
+	return /(jwt|token|auth|unauthori[sz]ed|expired|forbidden)/i.test(message);
+}
+
+async function fetchJsonWithTimeout(url, options = {}, timeoutMs = AUTH_FETCH_TIMEOUT_MS) {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs);
+	try {
+		const res = await fetch(url, { ...options, signal: controller.signal });
+		let data = {};
+		try {
+			data = await res.json();
+		} catch (_) {
+			data = {};
+		}
+		return { res, data };
+	} finally {
+		clearTimeout(timer);
+	}
+}
 
 /** Show the auth overlay and hide the lobby. */
 function showAuthOverlay() {
@@ -228,7 +253,11 @@ function bindSocketHandlers(s) {
 		startHeartbeat();
 	});
 
-	s.on('connect_error', () => {
+	s.on('connect_error', (err) => {
+		if (!isAuthConnectError(err)) {
+			updateStatus('Connection issue — retrying...', 'reconnecting');
+			return;
+		}
 		try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
 		stopHeartbeat();
 		s.io.disconnect();
@@ -1627,12 +1656,11 @@ if (registerBtnEl) {
 		}
 
 		try {
-			const res = await fetch('/api/register', {
+			const { res, data } = await fetchJsonWithTimeout('/api/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ username, password }),
 			});
-			const data = await res.json();
 			if (res.ok) {
 				if (registerErrorEl) {
 					registerErrorEl.textContent = 'Account created — please login';
@@ -1664,12 +1692,11 @@ if (loginBtnEl) {
 		}
 
 		try {
-			const res = await fetch('/api/login', {
+			const { res, data } = await fetchJsonWithTimeout('/api/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify({ username, password }),
 			});
-			const data = await res.json();
 			if (res.ok && data.token) {
 				try { localStorage.setItem(TOKEN_KEY, data.token); } catch (_) {}
 				createSocket(data.token);
@@ -1952,6 +1979,7 @@ window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
 window.bindSocketHandlers = bindSocketHandlers;
 window.createSocket = createSocket;
+window.__isAuthConnectError = isAuthConnectError;
 window.showRunSummary = showRunSummary;
 window.renderCardChoices = renderCardChoices;
 window.__claimedCardRewardId = () => claimedCardRewardId;
