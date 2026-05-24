@@ -517,3 +517,146 @@ describe('legacy record migration', () => {
 		expect(user.createdAt).toBe(1);
 	});
 });
+
+// ── Persistence round-trips for the new identity model ─────────────────────
+
+describe('persistence round-trips', () => {
+	let tmpDir;
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'users-roundtrip-'));
+		tmpFile = path.join(tmpDir, 'users.json');
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	});
+
+	it('email-anchored account survives a simulated restart and is still email-loginable', async () => {
+		const created = createAccountWithEmail({ email: 'persist@example.com', password: 'pw' });
+		expect(created.ok).toBe(true);
+		const accountId = created.accountId;
+
+		clearUsers();
+		loadUsers();
+
+		const reloaded = findUserByEmail('persist@example.com');
+		expect(reloaded).not.toBeNull();
+		expect(reloaded.accountId).toBe(accountId);
+		expect(reloaded.identities[0].provider).toBe(IDENTITY_PROVIDERS.EMAIL);
+		expect(await verifyPasswordForIdentifier(reloaded, 'persist@example.com', 'pw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(reloaded, 'persist@example.com', 'wrong')).toBe(false);
+	});
+
+	it('linked email identity survives a simulated restart and both logins work', async () => {
+		createUser('linker-rt', 'username-pw');
+		const u = findUserByUsername('linker-rt');
+		expect((await linkEmailIdentity(u.accountId, 'linker-rt@example.com', 'email-pw')).ok).toBe(true);
+
+		clearUsers();
+		loadUsers();
+
+		const usernameLoaded = findUserByUsername('linker-rt');
+		const emailLoaded = findUserByEmail('linker-rt@example.com');
+		expect(usernameLoaded).not.toBeNull();
+		expect(emailLoaded).not.toBeNull();
+		expect(usernameLoaded.accountId).toBe(emailLoaded.accountId);
+		expect(usernameLoaded.identities).toHaveLength(2);
+
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt', 'username-pw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt@example.com', 'email-pw')).toBe(true);
+		// Wrong credentials still rejected for each identity
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt', 'email-pw')).toBe(false);
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt@example.com', 'username-pw')).toBe(false);
+	});
+
+	it('multiple writes preserve the atomic file (no leftover .tmp)', () => {
+		createUser('atomic-a', 'pw');
+		createAccountWithEmail({ email: 'atomic-b@example.com', password: 'pw' });
+		createUser('atomic-c', 'pw');
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		expect(fs.existsSync(tmpFile + '.tmp')).toBe(false);
+
+		const data = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(data).toHaveLength(3);
+		// Every persisted record has an identities[] with at least one identity
+		for (const rec of data) {
+			expect(Array.isArray(rec.identities)).toBe(true);
+			expect(rec.identities.length).toBeGreaterThanOrEqual(1);
+			// No top-level passwordHash leaks into the new shape
+			expect(rec.passwordHash).toBeUndefined();
+		}
+	});
+});
+
+// ── Corrupt file quarantine ────────────────────────────────────────────────
+
+describe('corrupt users.json quarantine', () => {
+	let tmpDir;
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'users-corrupt-'));
+		tmpFile = path.join(tmpDir, 'users.json');
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	});
+
+	it('renames a malformed JSON file aside so the next save does not clobber it', () => {
+		fs.writeFileSync(tmpFile, '{this is not valid json', 'utf-8');
+		setTestFilePath(tmpFile);
+
+		// The original file should no longer exist at its primary path —
+		// it has been quarantined.
+		expect(fs.existsSync(tmpFile)).toBe(false);
+		const entries = fs.readdirSync(tmpDir).filter(f => f.startsWith('users.json.corrupt-'));
+		expect(entries.length).toBe(1);
+		// The quarantined contents are preserved verbatim
+		const preserved = fs.readFileSync(path.join(tmpDir, entries[0]), 'utf-8');
+		expect(preserved).toBe('{this is not valid json');
+
+		// The store is empty (no records loaded), but the system is still
+		// functional — registrations now write a fresh file.
+		expect(findUserByUsername('anyone')).toBeNull();
+		const created = createUser('fresh-user', 'pw');
+		expect(created.ok).toBe(true);
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		const fresh = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(fresh).toHaveLength(1);
+		expect(fresh[0].username).toBe('fresh-user');
+	});
+
+	it('quarantines a non-array payload (e.g. accidental object)', () => {
+		fs.writeFileSync(tmpFile, JSON.stringify({ accidentally: 'an object' }), 'utf-8');
+		setTestFilePath(tmpFile);
+		expect(fs.existsSync(tmpFile)).toBe(false);
+		const entries = fs.readdirSync(tmpDir).filter(f => f.startsWith('users.json.corrupt-'));
+		expect(entries.length).toBe(1);
+	});
+
+	it('skips malformed entries inside an otherwise valid array without quarantining', () => {
+		const hash = hashPassword('pw');
+		const mixed = [
+			null,
+			{ /* missing accountId */ username: 'orphan', identities: [] },
+			{
+				accountId: 'good-1',
+				username: 'good-user',
+				identities: [{ provider: 'username', subject: 'good-user', passwordHash: hash }]
+			}
+		];
+		fs.writeFileSync(tmpFile, JSON.stringify(mixed), 'utf-8');
+		setTestFilePath(tmpFile);
+
+		// The file is NOT quarantined — only individual bad entries are dropped
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		expect(findUserByUsername('good-user')).not.toBeNull();
+		expect(findUserByUsername('orphan')).toBeNull();
+	});
+});
