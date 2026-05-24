@@ -58,11 +58,27 @@ function hashPassword(plainPassword) {
 }
 
 /**
+ * Async variant used by HTTP routes so password work does not block the
+ * Socket.IO game loop.
+ */
+function hashPasswordAsync(plainPassword) {
+	return bcrypt.hash(plainPassword, 10);
+}
+
+/**
  * Compare a plaintext password against a bcrypt hash.
  * Returns true if the password matches, false otherwise.
  */
 function comparePassword(plainPassword, hash) {
 	return bcrypt.compareSync(plainPassword, hash);
+}
+
+/**
+ * Async variant used by HTTP routes so login attempts cannot stall realtime
+ * socket traffic.
+ */
+function comparePasswordAsync(plainPassword, hash) {
+	return bcrypt.compare(plainPassword, hash);
 }
 
 /**
@@ -89,6 +105,32 @@ function createUser(username, plainPassword) {
 	users.set(username, record);
 	saveUsers();
 	return { ok: true };
+}
+
+/**
+ * Async create variant for HTTP registration. It checks for duplicate usernames
+ * both before and after hashing so concurrent requests do not overwrite records.
+ */
+async function createUserAsync(username, plainPassword) {
+	if (users.has(username)) {
+		return { ok: false, reason: 'Username already taken' };
+	}
+
+	const passwordHash = await hashPasswordAsync(plainPassword);
+	if (users.has(username)) {
+		return { ok: false, reason: 'Username already taken' };
+	}
+
+	const accountId = crypto.randomUUID();
+	const record = {
+		username,
+		passwordHash,
+		accountId
+	};
+
+	users.set(username, record);
+	saveUsers();
+	return { ok: true, accountId };
 }
 
 /**
@@ -128,8 +170,11 @@ function setTestFilePath(filePath) {
 
 module.exports = {
 	hashPassword,
+	hashPasswordAsync,
 	comparePassword,
+	comparePasswordAsync,
 	createUser,
+	createUserAsync,
 	findUserByUsername,
 	clearUsers,
 	loadUsers,

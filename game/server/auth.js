@@ -1,12 +1,36 @@
 // Auth routes — POST /register and POST /login
 const { Router } = require('express');
 const jwt = require('jsonwebtoken');
-const { createUser, findUserByUsername, comparePassword } = require('./users');
+const { createUserAsync, findUserByUsername, comparePasswordAsync } = require('./users');
 
 const router = Router();
 
 let JWT_SECRET = null;
 const JWT_EXPIRATION = '24h';
+const RATE_LIMIT_WINDOW_MS = Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS || 60000);
+const RATE_LIMIT_MAX_ATTEMPTS = Number(process.env.AUTH_RATE_LIMIT_MAX_ATTEMPTS || 10);
+const rateLimitBuckets = new Map();
+
+function rateLimitKey(req, action, username) {
+	const ip = req.ip || req.socket?.remoteAddress || 'unknown';
+	const normalizedUsername = typeof username === 'string' ? username.toLowerCase() : '';
+	return `${action}:${ip}:${normalizedUsername}`;
+}
+
+function isRateLimited(req, action, username) {
+	if (process.env.NODE_ENV === 'test' && process.env.AUTH_RATE_LIMIT_IN_TESTS !== '1') {
+		return false;
+	}
+	const now = Date.now();
+	const key = rateLimitKey(req, action, username);
+	const bucket = rateLimitBuckets.get(key);
+	if (!bucket || now - bucket.windowStart >= RATE_LIMIT_WINDOW_MS) {
+		rateLimitBuckets.set(key, { windowStart: now, attempts: 1 });
+		return false;
+	}
+	bucket.attempts += 1;
+	return bucket.attempts > RATE_LIMIT_MAX_ATTEMPTS;
+}
 
 /**
  * Initialize the JWT secret. Must be called before the server starts
@@ -67,7 +91,7 @@ function verifyToken(token) {
  * - 409 { error: 'Username taken' } when username already exists
  * - 400 { error: '...' } when inputs are invalid
  */
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
 	const { username, password } = req.body || {};
 
 	// Validate presence
@@ -89,14 +113,21 @@ router.post('/register', (req, res) => {
 		return res.status(400).json({ error: 'Password must not be empty' });
 	}
 
-	const result = createUser(username, password);
-	if (!result.ok) {
-		return res.status(409).json({ error: 'Username taken' });
+	if (isRateLimited(req, 'register', username)) {
+		return res.status(429).json({ error: 'Too many registration attempts. Please try again later.' });
 	}
 
-	// createUser succeeded — look up the accountId we just created
-	const user = findUserByUsername(username);
-	return res.status(201).json({ accountId: user.accountId });
+	try {
+		const result = await createUserAsync(username, password);
+		if (!result.ok) {
+			return res.status(409).json({ error: 'Username taken' });
+		}
+
+		return res.status(201).json({ accountId: result.accountId });
+	} catch (err) {
+		console.error('[auth] registration failed:', err.message);
+		return res.status(500).json({ error: 'Registration failed' });
+	}
 });
 
 /**
@@ -105,7 +136,7 @@ router.post('/register', (req, res) => {
  * - 200 { token } with JWT containing { accountId, username }
  * - 401 { error: 'Invalid credentials' } on wrong password or unknown username
  */
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
 	const { username, password } = req.body || {};
 
 	// Validate presence
@@ -118,12 +149,16 @@ router.post('/login', (req, res) => {
 		return res.status(400).json({ error: 'Username and password must be strings' });
 	}
 
+	if (isRateLimited(req, 'login', username)) {
+		return res.status(429).json({ error: 'Too many login attempts. Please try again later.' });
+	}
+
 	const user = findUserByUsername(username);
 	if (!user) {
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
 
-	const valid = comparePassword(password, user.passwordHash);
+	const valid = await comparePasswordAsync(password, user.passwordHash);
 	if (!valid) {
 		return res.status(401).json({ error: 'Invalid credentials' });
 	}
@@ -142,3 +177,4 @@ module.exports.initAuth = initAuth;
 module.exports.getJWTSecret = function getJWTSecret() { return JWT_SECRET; };
 module.exports.verifyToken = verifyToken;
 module.exports.resetAuthSecret = function resetAuthSecret() { JWT_SECRET = null; };
+module.exports._resetRateLimits = function _resetRateLimits() { rateLimitBuckets.clear(); };
