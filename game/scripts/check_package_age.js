@@ -4,6 +4,7 @@
 const https = require('https');
 const { execSync } = require('child_process');
 const path = require('path');
+const REQUEST_TIMEOUT_MS = Number(process.env.PACKAGE_AGE_REQUEST_TIMEOUT_MS || 10000);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -84,11 +85,11 @@ function getPnpmPackages(projectDir) {
  */
 function fetchJson(url) {
   return new Promise((resolve, reject) => {
-    https.get(url, (res) => {
+    const request = https.get(url, { timeout: REQUEST_TIMEOUT_MS }, (res) => {
       let data = '';
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         // Follow one level of redirect
-        https.get(res.headers.location, (res2) => {
+        const redirect = https.get(res.headers.location, { timeout: REQUEST_TIMEOUT_MS }, (res2) => {
           let data2 = '';
           res2.on('data', (chunk) => { data2 += chunk; });
           res2.on('end', () => {
@@ -96,7 +97,14 @@ function fetchJson(url) {
             catch (e) { reject(new Error(`Invalid JSON from redirect: ${e.message}`)); }
           });
           res2.on('error', reject);
-        }).on('error', reject);
+        });
+        redirect.on('timeout', () => redirect.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`)));
+        redirect.on('error', reject);
+        return;
+      }
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        res.resume();
+        reject(new Error(`HTTP ${res.statusCode}`));
         return;
       }
       res.on('data', (chunk) => { data += chunk; });
@@ -104,7 +112,9 @@ function fetchJson(url) {
         try { resolve(JSON.parse(data)); }
         catch (e) { reject(new Error(`Invalid JSON: ${e.message}`)); }
       });
-    }).on('error', reject);
+    });
+    request.on('timeout', () => request.destroy(new Error(`Request timed out after ${REQUEST_TIMEOUT_MS}ms`)));
+    request.on('error', reject);
   });
 }
 

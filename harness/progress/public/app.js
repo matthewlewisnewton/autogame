@@ -29,6 +29,11 @@ function artifactUrl(path) {
   return `/artifacts/${encodeURIComponent(path).replaceAll('%2F', '/')}`;
 }
 
+function liveGameUrl() {
+  const host = window.location.hostname || 'localhost';
+  return `${window.location.protocol}//${host}:5173/`;
+}
+
 function escapeHtml(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -501,11 +506,12 @@ function connect() {
 connect();
 refreshPersistedTotals();
 
-fetch('http://localhost:5173/', { mode: 'no-cors' })
+const previewUrl = liveGameUrl();
+fetch(previewUrl, { mode: 'no-cors' })
   .then(() => {
     if (!latestStage) {
-      stageBody.innerHTML = '<iframe src="http://localhost:5173/" title="Live game"></iframe>';
-      stageMeta.innerHTML = '<strong>Live playable build</strong><div>Showing localhost:5173 while the harness game server is up.</div>';
+      stageBody.innerHTML = `<iframe src="${escapeHtml(previewUrl)}" title="Live game"></iframe>`;
+      stageMeta.innerHTML = `<strong>Live playable build</strong><div>Showing ${escapeHtml(previewUrl)} while the harness game server is up.</div>`;
       artifactLink.removeAttribute('href');
       artifactLink.textContent = 'live';
     }

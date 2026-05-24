@@ -124,7 +124,7 @@ emit_progress_event() {  # emit_progress_event <type> [payload-json]
   fi
   printf '%s\n' "$line" >> "$dir/events.ndjson" 2>/dev/null || true
   if [ -n "${PROGRESS_SERVER_URL:-}" ]; then
-    curl -sS -X POST -H 'content-type: application/json' --data-binary "$line" "$PROGRESS_SERVER_URL/events" >/dev/null 2>&1 || true
+    curl --max-time 2 -sS -X POST -H 'content-type: application/json' --data-binary "$line" "$PROGRESS_SERVER_URL/events" >/dev/null 2>&1 || true
   fi
   return 0
 }
@@ -295,8 +295,8 @@ stop_game() {
 wait_for_game() {  # wait_for_game [timeout-seconds] ; 0 if both ports respond
   local deadline=$(( $(date +%s) + ${1:-45} )) up_c=0 up_s=0
   while [ "$(date +%s)" -lt "$deadline" ]; do
-    [ $up_c -eq 0 ] && curl -s -o /dev/null "http://localhost:5173/" && up_c=1
-    [ $up_s -eq 0 ] && curl -s -o /dev/null "http://localhost:3000/" && up_s=1
+    [ $up_c -eq 0 ] && curl --max-time 2 -s -o /dev/null "http://localhost:5173/" && up_c=1
+    [ $up_s -eq 0 ] && curl --max-time 2 -s -o /dev/null "http://localhost:3000/healthz" && up_s=1
     [ $up_c -eq 1 ] && [ $up_s -eq 1 ] && return 0
     sleep 1
   done
