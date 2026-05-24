@@ -217,6 +217,7 @@
         <div id="register-form">
           <h3>Create Account</h3>
           <input type="text" id="register-username" data-testid="register-username" placeholder="Username" autocomplete="username" />
+          <input type="email" id="register-email" data-testid="register-email" placeholder="Email (optional, enables email login)" autocomplete="email" />
           <input type="password" id="register-password" data-testid="register-password" placeholder="Password" autocomplete="new-password" />
           <button id="register-btn" data-testid="register-btn">Register</button>
           <span id="register-error"></span>
@@ -225,7 +226,7 @@
         <!-- Login form -->
         <div id="login-form" class="hidden">
           <h3>Login</h3>
-          <input type="text" id="login-username" data-testid="login-username" placeholder="Username" autocomplete="username" />
+          <input type="text" id="login-identifier" data-testid="login-identifier" placeholder="Username or email" autocomplete="username" />
           <input type="password" id="login-password" data-testid="login-password" placeholder="Password" autocomplete="current-password" />
           <button id="login-btn" data-testid="login-btn">Login</button>
           <span id="login-error"></span>
