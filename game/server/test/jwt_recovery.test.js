@@ -1,16 +1,19 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'module';
 import { io as ClientIO } from 'socket.io-client';
 import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
-	gameState,
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
 	getJWTSecret
 } from '../index.js';
 import { clearUsers } from '../users.js';
+
+const require = createRequire(import.meta.url);
+const { getSession, getSessionCount } = require('../lobbies.js');
 
 // ── Helpers ──
 
@@ -174,14 +177,14 @@ describe('JWT Recovery Integration', () => {
 		expect(connectFired).toBe(false);
 		expect(connectErrorFired).toBe(true);
 		expect(errorMessage).toBe('Invalid or expired JWT');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('no token triggers connect_error', async () => {
 		const { error } = await connectExpectError(baseUrl, {});
 
 		expect(error).toBe('No JWT token');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('valid token triggers connect and init', async () => {
@@ -190,9 +193,10 @@ describe('JWT Recovery Integration', () => {
 
 		const { socket, init } = await connectExpectInit(baseUrl, { token });
 
+		expect(init.inLobby).toBe(false);
 		expect(init.accountId).toBe(testAccountId);
 		expect(init.playerId).toBe(testAccountId);
-		expect(gameState.players[testAccountId]).toBeDefined();
+		expect(getSession(testAccountId)).toBeDefined();
 
 		socket.disconnect();
 	});
@@ -207,7 +211,7 @@ describe('JWT Recovery Integration', () => {
 		const { error } = await connectExpectError(baseUrl, { token: wrongToken });
 
 		expect(error).toBe('Invalid or expired JWT');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('expired token triggers connect_error', async () => {
@@ -220,7 +224,7 @@ describe('JWT Recovery Integration', () => {
 		const { error } = await connectExpectError(baseUrl, { token: expiredToken });
 
 		expect(error).toBe('Invalid or expired JWT');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('auth object with extra keys but no token triggers connect_error', async () => {
@@ -230,6 +234,6 @@ describe('JWT Recovery Integration', () => {
 		});
 
 		expect(error).toBe('No JWT token');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 });

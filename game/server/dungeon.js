@@ -12,7 +12,7 @@ function mulberry32(seed) {
 
 // ── Dungeon Layout Generator ──
 
-// Grid dimensions and spacing for room placement
+// Grid dimensions and spacing for room placement (default profile)
 const GRID_COLS = 4;
 const GRID_ROWS = 4;
 const CELL_SPACING = 20; // center-to-center distance between adjacent cells
@@ -20,32 +20,90 @@ const MIN_ROOM_SIZE = 12;
 const MAX_ROOM_SIZE_INCLUSIVE = 15;
 const PASSAGE_WIDTH = 4;
 
+const DEFAULT_LAYOUT_PROFILE = {
+  gridCols: GRID_COLS,
+  gridRows: GRID_ROWS,
+  cellSpacing: CELL_SPACING,
+  minRoomSize: MIN_ROOM_SIZE,
+  maxRoomSize: MAX_ROOM_SIZE_INCLUSIVE,
+  passageWidth: PASSAGE_WIDTH,
+  targetRoomFraction: 0.6,
+  minRooms: 4,
+  maxRooms: GRID_ROWS * GRID_COLS,
+  extraEdgeFraction: 0.3,
+};
+
+const LAYOUT_PROFILES = {
+  crowded: {
+    ...DEFAULT_LAYOUT_PROFILE,
+    targetRoomFraction: 0.65,
+    cellSpacing: 18,
+    minRoomSize: 12,
+    maxRoomSize: 14,
+    extraEdgeFraction: 0.35,
+  },
+  open: {
+    ...DEFAULT_LAYOUT_PROFILE,
+    targetRoomFraction: 0.35,
+    cellSpacing: 28,
+    minRoomSize: 18,
+    maxRoomSize: 24,
+    passageWidth: 6,
+    minRooms: 4,
+    maxRooms: 7,
+    extraEdgeFraction: 0.08,
+  },
+};
+
+function normalizeLayoutProfile(profile) {
+  if (typeof profile === 'string') {
+    return { ...DEFAULT_LAYOUT_PROFILE, ...(LAYOUT_PROFILES[profile] || LAYOUT_PROFILES.crowded) };
+  }
+  return { ...DEFAULT_LAYOUT_PROFILE, ...(profile || {}) };
+}
+
+function questLayoutSeed(questId) {
+  let hash = 0;
+  for (let i = 0; i < questId.length; i++) {
+    hash = (hash * 31 + questId.charCodeAt(i)) | 0;
+  }
+  return Math.abs(hash) || 1;
+}
+
 /**
  * Generate a deterministic dungeon layout from a numeric seed.
- * Returns { rooms: [...], passages: [...] }
+ * Returns { rooms: [...], passages: [...], passageWidth, profile }
  */
-function generateLayout(seed) {
+function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE) {
+  const opts = normalizeLayoutProfile(profile);
   const rng = mulberry32(seed);
+  const gridCols = opts.gridCols;
+  const gridRows = opts.gridRows;
+  const cellSpacing = opts.cellSpacing;
+  const minRoomSize = opts.minRoomSize;
+  const maxRoomSize = opts.maxRoomSize;
+  const passageWidth = opts.passageWidth;
+  const maxRooms = Math.min(opts.maxRooms, gridRows * gridCols);
+  const targetRooms = Math.max(
+    opts.minRooms,
+    Math.min(maxRooms, Math.floor(gridRows * gridCols * opts.targetRoomFraction))
+  );
 
   // Step 1 — place rooms by growth so every room is guaranteed connected
   // Start from a random seed cell, then repeatedly add a random unoccupied
   // neighbour of an existing room until we reach the target count.
   const grid = [];
-  for (let r = 0; r < GRID_ROWS; r++) {
-    grid[r] = new Array(GRID_COLS).fill(false);
+  for (let r = 0; r < gridRows; r++) {
+    grid[r] = new Array(gridCols).fill(false);
   }
   const cellPositions = []; // [{r, c, x, z}]
 
-  const startR = Math.floor(rng() * GRID_ROWS);
-  const startC = Math.floor(rng() * GRID_COLS);
-  const startZ = (startR - (GRID_ROWS - 1) / 2) * CELL_SPACING;
-  const startX = (startC - (GRID_COLS - 1) / 2) * CELL_SPACING;
+  const startR = Math.floor(rng() * gridRows);
+  const startC = Math.floor(rng() * gridCols);
+  const startZ = (startR - (gridRows - 1) / 2) * cellSpacing;
+  const startX = (startC - (gridCols - 1) / 2) * cellSpacing;
   grid[startR][startC] = true;
   cellPositions.push({ r: startR, c: startC, x: startX, z: startZ });
-
-  // Target: at least 4 rooms, up to grid capacity
-  const maxRooms = GRID_ROWS * GRID_COLS;
-  const targetRooms = Math.max(4, Math.min(maxRooms, Math.floor(GRID_ROWS * GRID_COLS * 0.6)));
 
   while (cellPositions.length < targetRooms) {
     // Build frontier: unoccupied neighbours of existing rooms
@@ -55,7 +113,7 @@ function generateLayout(seed) {
       for (const [dr, dc] of dirs) {
         const nr = cell.r + dr;
         const nc = cell.c + dc;
-        if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS && !grid[nr][nc]) {
+        if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols && !grid[nr][nc]) {
           frontier.push({ r: nr, c: nc });
         }
       }
@@ -66,8 +124,8 @@ function generateLayout(seed) {
     // Pick a random frontier cell and add it
     const pick = frontier[Math.floor(rng() * frontier.length)];
     grid[pick.r][pick.c] = true;
-    const px = (pick.c - (GRID_COLS - 1) / 2) * CELL_SPACING;
-    const pz = (pick.r - (GRID_ROWS - 1) / 2) * CELL_SPACING;
+    const px = (pick.c - (gridCols - 1) / 2) * cellSpacing;
+    const pz = (pick.r - (gridRows - 1) / 2) * cellSpacing;
     cellPositions.push({ r: pick.r, c: pick.c, x: px, z: pz });
   }
 
@@ -92,7 +150,7 @@ function generateLayout(seed) {
     for (const [dr, dc] of dirs) {
       const nr = cell.r + dr;
       const nc = cell.c + dc;
-      if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS && grid[nr][nc]) {
+      if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols && grid[nr][nc]) {
         const nIdx = cellPositions.findIndex(cp => cp.r === nr && cp.c === nc);
         if (nIdx >= 0 && !visited.has(nIdx)) {
           neighbors.push(nIdx);
@@ -118,7 +176,7 @@ function generateLayout(seed) {
     for (const [dr, dc] of dirs) {
       const nr = cell.r + dr;
       const nc = cell.c + dc;
-      if (nr >= 0 && nr < GRID_ROWS && nc >= 0 && nc < GRID_COLS && grid[nr][nc]) {
+      if (nr >= 0 && nr < gridRows && nc >= 0 && nc < gridCols && grid[nr][nc]) {
         const nIdx = cellPositions.findIndex(cp => cp.r === nr && cp.c === nc);
         const cIdx = cellPositions.indexOf(cell);
         if (nIdx >= 0 && cIdx < nIdx) { // avoid duplicates
@@ -135,7 +193,7 @@ function generateLayout(seed) {
     const j = Math.floor(rng() * (i + 1));
     [possibleExtra[i], possibleExtra[j]] = [possibleExtra[j], possibleExtra[i]];
   }
-  const extraCount = Math.min(Math.floor(possibleExtra.length * 0.3), possibleExtra.length);
+  const extraCount = Math.min(Math.floor(possibleExtra.length * opts.extraEdgeFraction), possibleExtra.length);
   for (let i = 0; i < extraCount; i++) {
     passages.push(possibleExtra[i]);
   }
@@ -154,13 +212,13 @@ function generateLayout(seed) {
 
   // Step 5 — build room objects with walls (gaps for passages)
   const rooms = cellPositions.map((cell, idx) => {
-    const width = MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE_INCLUSIVE - MIN_ROOM_SIZE + 1));
-    const depth = MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE_INCLUSIVE - MIN_ROOM_SIZE + 1));
+    const width = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+    const depth = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
     const halfW = width / 2;
     const halfD = depth / 2;
     const sides = passageSides[idx];
     const walls = [];
-    const gap = PASSAGE_WIDTH;
+    const gap = passageWidth;
 
     // North wall (z = cell.z - halfD), along x-axis
     if (!sides.has('up')) {
@@ -205,31 +263,31 @@ function generateLayout(seed) {
   const passageObjects = passages.map(p => {
     const from = cellPositions[p.from];
     const to = cellPositions[p.to];
-    const walls = [];
-    const halfGap = PASSAGE_WIDTH / 2;
     const fromRoom = rooms[p.from];
     const toRoom = rooms[p.to];
+    const halfGap = passageWidth / 2;
+
+    // Corridor length: the gap between the two connected rooms' edges.
+    // Passage side walls must only span this gap — full cell spacing intrudes into rooms and blocks doorways.
+    const corridorLength = (from.r === to.r)
+      ? cellSpacing - fromRoom.width / 2 - toRoom.width / 2
+      : cellSpacing - fromRoom.depth / 2 - toRoom.depth / 2;
+
+    const walls = [];
 
     // Horizontal passage (same row, different column)
     if (from.r === to.r) {
       const wallCentreX = (from.x + to.x) / 2;
-      walls.push({ x: wallCentreX, z: from.z - halfGap, length: CELL_SPACING, axis: 'x' });
-      walls.push({ x: wallCentreX, z: from.z + halfGap, length: CELL_SPACING, axis: 'x' });
+      walls.push({ x: wallCentreX, z: from.z - halfGap, length: corridorLength, axis: 'x' });
+      walls.push({ x: wallCentreX, z: from.z + halfGap, length: corridorLength, axis: 'x' });
     }
 
     // Vertical passage (same column, different row)
     if (from.c === to.c) {
       const wallCentreZ = (from.z + to.z) / 2;
-      walls.push({ x: from.x - halfGap, z: wallCentreZ, length: CELL_SPACING, axis: 'z' });
-      walls.push({ x: from.x + halfGap, z: wallCentreZ, length: CELL_SPACING, axis: 'z' });
+      walls.push({ x: from.x - halfGap, z: wallCentreZ, length: corridorLength, axis: 'z' });
+      walls.push({ x: from.x + halfGap, z: wallCentreZ, length: corridorLength, axis: 'z' });
     }
-
-    // Corridor length: the gap between the two connected rooms' edges
-    // This is used to trim passage-wall colliders so they don't intrude into room interiors
-    // Horizontal passages use room widths (along x), vertical passages use depths (along z)
-    const corridorLength = (from.r === to.r)
-      ? CELL_SPACING - fromRoom.width / 2 - toRoom.width / 2
-      : CELL_SPACING - fromRoom.depth / 2 - toRoom.depth / 2;
 
     return { x1: from.x, z1: from.z, x2: to.x, z2: to.z, walls, corridorLength };
   });
@@ -237,7 +295,17 @@ function generateLayout(seed) {
   // Assign role metadata to every room
   assignRoomRoles({ rooms, passages: passageObjects });
 
-  return { rooms, passages: passageObjects };
+  const profileName = typeof profile === 'string' && LAYOUT_PROFILES[profile]
+    ? profile
+    : 'default';
+
+  return {
+    rooms,
+    passages: passageObjects,
+    passageWidth,
+    cellSpacing,
+    profile: profileName,
+  };
 }
 
 // ── Room Role Assignment ──
@@ -389,6 +457,10 @@ module.exports = {
   assignRoomRoles,
   roomsByRole,
   randomRoomPositionByRole,
+  questLayoutSeed,
+  normalizeLayoutProfile,
+  DEFAULT_LAYOUT_PROFILE,
+  LAYOUT_PROFILES,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,

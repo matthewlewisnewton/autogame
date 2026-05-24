@@ -7,7 +7,6 @@ import {
 	weaponCardIds,
 	spellCardIds,
 	creatureCardIds,
-	enchantmentCardIds,
 	EVOLUTION_TRANSFORMS,
 } from '../cards.js';
 
@@ -15,13 +14,13 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(35);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(37);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
 		expect(CARD_DEFS.iron_sword).toMatchObject({
 			id: 'iron_sword',
-			name: 'Iron Sword',
+			name: 'Rust-Forged Saber',
 			type: 'weapon',
 			charges: 5,
 		});
@@ -30,16 +29,28 @@ describe('CARD_DEFS', () => {
 	it('contains flame_blade with correct type and charges', () => {
 		expect(CARD_DEFS.flame_blade).toMatchObject({
 			id: 'flame_blade',
-			name: 'Flame Blade',
+			name: 'Solar Edge',
 			type: 'weapon',
 			charges: 3,
 		});
 	});
 
+	it('contains magma_greatsword evolved weapon with fire trail', () => {
+		expect(CARD_DEFS.magma_greatsword).toMatchObject({
+			id: 'magma_greatsword',
+			name: 'Corebreaker Greatsword',
+			type: 'weapon',
+			charges: 4,
+			isEvolved: true,
+			specialEffect: 'fire_trail',
+		});
+		expect(EVOLUTION_TRANSFORMS.flame_blade).toBe('magma_greatsword');
+	});
+
 	it('contains battle_familiar with summon fields', () => {
 		expect(CARD_DEFS.battle_familiar).toMatchObject({
 			id: 'battle_familiar',
-			name: 'Battle Familiar',
+			name: 'Signal Familiar',
 			type: 'spell',
 			charges: 1,
 			magicStoneCost: 50,
@@ -50,7 +61,7 @@ describe('CARD_DEFS', () => {
 	it('contains dungeon_drake with correct type and charges', () => {
 		expect(CARD_DEFS.dungeon_drake).toMatchObject({
 			id: 'dungeon_drake',
-			name: 'Dungeon Drake',
+			name: 'Vault Wyrm',
 			type: 'creature',
 			charges: 1,
 		});
@@ -70,21 +81,21 @@ describe('CARD_DEFS', () => {
 		expect(CARD_DEFS.mana_prism).toMatchObject({
 			id: 'mana_prism',
 			name: 'Mana Prism',
-			type: 'creature',
+			type: 'spell',
 			charges: 1,
 			magicStoneCost: 0,
 			effect: 'mana_prism',
 		});
 		expect(CARD_DEFS.harvesting_scythe).toMatchObject({
 			id: 'harvesting_scythe',
-			name: 'Harvesting Scythe',
+			name: 'Ether Scythe',
 			type: 'weapon',
 			charges: 3,
 		});
 		expect(CARD_DEFS.sacrificial_altar).toMatchObject({
 			id: 'sacrificial_altar',
-			name: 'Sacrificial Altar',
-			type: 'creature',
+			name: 'Offering Terminal',
+			type: 'spell',
 			charges: 1,
 			magicStoneCost: 0,
 			effect: 'sacrificial_altar',
@@ -137,15 +148,24 @@ describe('CARD_DEFS', () => {
 			specialEffect: 'triple_returning_projectile',
 		});
 		expect(EVOLUTION_TRANSFORMS.photon_slicer).toBe('infinite_disk');
+		expect(CARD_DEFS.arcane_bolt).toMatchObject({
+			id: 'arcane_bolt',
+			name: 'Arcane Bolt',
+			type: 'weapon',
+			charges: 4,
+			attackRange: 10,
+			specialEffect: 'long_range',
+		});
+		expect(CARD_ACCENT_STYLE.arcane_bolt).toMatchObject({ color: '#a78bfa', icon: '⟡' });
 		expect(CARD_DEFS.frost_nova).toMatchObject({
 			id: 'frost_nova',
-			name: 'Frost Nova',
+			name: 'Cryo Burst',
 			type: 'spell',
 			effect: 'frost_nova',
 		});
 		expect(CARD_DEFS.glacier_collapse).toMatchObject({
 			id: 'glacier_collapse',
-			name: 'Glacier Collapse',
+			name: 'Glacier Rupture',
 			type: 'spell',
 			effect: 'glacier_collapse',
 			isEvolved: true,
@@ -154,13 +174,13 @@ describe('CARD_DEFS', () => {
 		expect(EVOLUTION_TRANSFORMS.frost_nova).toBe('glacier_collapse');
 		expect(CARD_DEFS.healing_font).toMatchObject({
 			id: 'healing_font',
-			name: 'Healing Font',
+			name: 'Restoration Beacon',
 			type: 'spell',
 			effect: 'healing_font',
 		});
 		expect(CARD_DEFS.divine_grace).toMatchObject({
 			id: 'divine_grace',
-			name: 'Divine Grace',
+			name: 'Sanctum Pulse',
 			type: 'spell',
 			effect: 'divine_grace',
 			healAmount: 38,
@@ -171,12 +191,12 @@ describe('CARD_DEFS', () => {
 		expect(EVOLUTION_TRANSFORMS.healing_font).toBe('divine_grace');
 		expect(CARD_DEFS.skeleton_knight).toMatchObject({
 			id: 'skeleton_knight',
-			name: 'Skeleton Knight',
+			name: 'Necroframe Knight',
 			type: 'creature',
 		});
 		expect(CARD_DEFS.undead_commander).toMatchObject({
 			id: 'undead_commander',
-			name: 'Undead Commander',
+			name: 'Legion Marshal',
 			type: 'creature',
 			isEvolved: true,
 			specialEffect: 'summon_skeletons',
@@ -184,7 +204,7 @@ describe('CARD_DEFS', () => {
 		expect(EVOLUTION_TRANSFORMS.skeleton_knight).toBe('undead_commander');
 		expect(CARD_DEFS.storm_eagle).toMatchObject({
 			id: 'storm_eagle',
-			name: 'Storm Eagle',
+			name: 'Stormwing Drone',
 			type: 'creature',
 		});
 		expect(CARD_DEFS.thunderbird).toMatchObject({
@@ -211,7 +231,7 @@ describe('CARD_DEFS', () => {
 		expect(EVOLUTION_TRANSFORMS.gravity_well).toBe('event_horizon');
 		expect(CARD_DEFS.echo_blade).toMatchObject({
 			id: 'echo_blade',
-			name: 'Echo Blade',
+			name: 'Phase Echo',
 			type: 'weapon',
 			specialEffect: 'shockwave',
 		});
@@ -224,7 +244,7 @@ describe('CARD_DEFS', () => {
 		});
 		expect(CARD_DEFS.mana_leach).toMatchObject({
 			id: 'mana_leach',
-			name: 'Mana Leach',
+			name: 'Ether Siphon',
 			type: 'spell',
 		});
 		expect(CARD_DEFS.soul_drain).toMatchObject({
@@ -241,13 +261,13 @@ describe('CARD_DEFS', () => {
 		});
 		expect(CARD_DEFS.dragons_breath).toMatchObject({
 			id: 'dragons_breath',
-			name: "Dragon's Breath",
+			name: "Wyrmflare",
 			type: 'spell',
 			effect: 'dragons_breath',
 		});
 		expect(CARD_DEFS.inferno_pillar).toMatchObject({
 			id: 'inferno_pillar',
-			name: 'Inferno Pillar',
+			name: 'Thermal Column',
 			type: 'spell',
 			effect: 'inferno_pillar',
 			isEvolved: true,
@@ -300,13 +320,6 @@ describe('CARD_TYPE_STYLE', () => {
 		expect(typeof CARD_TYPE_STYLE.creature.icon).toBe('string');
 	});
 
-	it('has an entry for enchantment with color and icon', () => {
-		expect(CARD_TYPE_STYLE.enchantment).toHaveProperty('color');
-		expect(CARD_TYPE_STYLE.enchantment).toHaveProperty('icon');
-		expect(typeof CARD_TYPE_STYLE.enchantment.color).toBe('string');
-		expect(typeof CARD_TYPE_STYLE.enchantment.icon).toBe('string');
-	});
-
 	it('each type has a distinct color', () => {
 		const colors = Object.values(CARD_TYPE_STYLE).map((s) => s.color);
 		expect(new Set(colors).size).toBe(colors.length);
@@ -320,24 +333,27 @@ describe('card ID sets', () => {
 		expect(weaponCardIds).toBeInstanceOf(Set);
 		expect(weaponCardIds.has('iron_sword')).toBe(true);
 		expect(weaponCardIds.has('flame_blade')).toBe(true);
-		expect(weaponCardIds.has('steel_broadsword')).toBe(true);
-		expect(weaponCardIds.has('inferno_edge')).toBe(true);
+		expect(weaponCardIds.has('steel_claymore')).toBe(true);
+		expect(weaponCardIds.has('magma_greatsword')).toBe(true);
 		expect(weaponCardIds.has('harvesting_scythe')).toBe(true);
 		expect(weaponCardIds.has('saber_of_light')).toBe(true);
 		expect(weaponCardIds.has('photon_slicer')).toBe(true);
+		expect(weaponCardIds.has('arcane_bolt')).toBe(true);
 		expect(weaponCardIds.has('infinite_disk')).toBe(true);
 		expect(weaponCardIds.has('echo_blade')).toBe(true);
 		expect(weaponCardIds.has('excalibur_photon')).toBe(true);
 		expect(weaponCardIds.has('resonance_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(11);
+		expect(weaponCardIds.size).toBe(15);
 	});
 
-	it('spellCardIds contains instant spell card IDs', () => {
+	it('spellCardIds contains base, evolved, and synergistic spell card IDs', () => {
 		expect(spellCardIds).toBeInstanceOf(Set);
 		expect(spellCardIds.has('battle_familiar')).toBe(true);
-		expect(spellCardIds.has('guardian_familiar')).toBe(true);
+		expect(spellCardIds.has('astral_guardian')).toBe(true);
+		expect(spellCardIds.has('mana_prism')).toBe(true);
+		expect(spellCardIds.has('sacrificial_altar')).toBe(true);
 		expect(spellCardIds.has('chrono_trigger')).toBe(true);
 		expect(spellCardIds.has('frost_nova')).toBe(true);
 		expect(spellCardIds.has('glacier_collapse')).toBe(true);
@@ -349,32 +365,21 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('soul_drain')).toBe(true);
 		expect(spellCardIds.has('dragons_breath')).toBe(true);
 		expect(spellCardIds.has('inferno_pillar')).toBe(true);
-		expect(spellCardIds.has('mana_prism')).toBe(false);
-		expect(spellCardIds.has('sacrificial_altar')).toBe(false);
 		expect(spellCardIds.has('iron_sword')).toBe(false);
-		expect(spellCardIds.size).toBe(13);
+		expect(spellCardIds.size).toBe(17);
 	});
 
-	it('creatureCardIds contains battlefield ally card IDs', () => {
+	it('creatureCardIds contains base, evolved, and synergistic creature card IDs', () => {
 		expect(creatureCardIds).toBeInstanceOf(Set);
 		expect(creatureCardIds.has('dungeon_drake')).toBe(true);
-		expect(creatureCardIds.has('ancient_drake')).toBe(true);
-		expect(creatureCardIds.has('mana_prism')).toBe(true);
-		expect(creatureCardIds.has('sacrificial_altar')).toBe(true);
+		expect(creatureCardIds.has('ancient_wyrm')).toBe(true);
 		expect(creatureCardIds.has('battery_automaton')).toBe(true);
 		expect(creatureCardIds.has('skeleton_knight')).toBe(true);
 		expect(creatureCardIds.has('undead_commander')).toBe(true);
 		expect(creatureCardIds.has('storm_eagle')).toBe(true);
 		expect(creatureCardIds.has('thunderbird')).toBe(true);
 		expect(creatureCardIds.has('iron_sword')).toBe(false);
-		expect(creatureCardIds.size).toBe(9);
-	});
-
-	it('enchantmentCardIds contains lingering enchantment card IDs', () => {
-		expect(enchantmentCardIds).toBeInstanceOf(Set);
-		expect(enchantmentCardIds.has('spike_trap')).toBe(true);
-		expect(enchantmentCardIds.has('mirror_ward')).toBe(true);
-		expect(enchantmentCardIds.size).toBe(2);
+		expect(creatureCardIds.size).toBe(7);
 	});
 
 	it('CARD_ACCENT_STYLE defines icon and color for each new pack card', () => {
@@ -410,7 +415,7 @@ describe('card ID sets', () => {
 		});
 	});
 
-	it('CARD_ACCENT_STYLE defines icon and color for Divine Grace', () => {
+	it('CARD_ACCENT_STYLE defines icon and color for Sanctum Pulse', () => {
 		expect(CARD_ACCENT_STYLE.divine_grace).toMatchObject({
 			color: '#fde68a',
 			icon: '✧',

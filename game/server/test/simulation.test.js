@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import {
   computeWalkableAABBs,
   isInsideDungeon,
+  tryPlayerMove,
   gameState,
   createGameState
 } from '../index.js';
@@ -196,5 +197,44 @@ describe('isInsideDungeon(x, z)', () => {
     expect(isInsideDungeon(6.001, 0)).toBe(false);
     expect(isInsideDungeon(0, -6.001)).toBe(false);
     expect(isInsideDungeon(0, 6.001)).toBe(false);
+  });
+});
+
+// ── tryPlayerMove ──
+
+describe('tryPlayerMove', () => {
+  beforeEach(() => {
+    resetGameStateLocal();
+    const layout = buildMockLayout();
+    gameState.layout = layout;
+    gameState.walkableAABBs = computeWalkableAABBs(layout);
+    // Wider than room AABBs so clampToDungeon cannot snap a void-bound move back inside walkable space.
+    gameState.dungeonBounds = { minX: -20, maxX: 40, minZ: -20, maxZ: 20 };
+  });
+
+  it('moves the player to the destination on a valid in-room move', () => {
+    const result = tryPlayerMove(0, 0, 1, 0, 2);
+    expect(result.moved).toBe(true);
+    expect(result.x).toBe(2);
+    expect(result.z).toBe(0);
+    expect(isInsideDungeon(result.x, result.z)).toBe(true);
+  });
+
+  it('slides along an axis when the direct move leaves walkable space', () => {
+    // Near room A's north edge (maxZ=6); diagonal northeast would exit at z=7.
+    const result = tryPlayerMove(0, 5, 1, 1, 2);
+    expect(result.moved).toBe(true);
+    expect(result.x).toBe(2);
+    expect(result.z).toBe(5);
+    expect(isInsideDungeon(result.x, result.z)).toBe(true);
+  });
+
+  it('rejects a move north from room center when direct and axis slides fail', () => {
+    // (0,1) from (0,0) heads perpendicular to the passage into non-walkable space north of room A.
+    const result = tryPlayerMove(0, 0, 0, 1, 100);
+    expect(result.moved).toBe(false);
+    expect(result.x).toBe(0);
+    expect(result.z).toBe(0);
+    expect(isInsideDungeon(result.x, result.z)).toBe(true);
   });
 });

@@ -102,6 +102,18 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [104-cleanup-deterministic-review-file-recovery](tickets/104-cleanup-deterministic-review-file-recovery/)
 - [x] [105-cleanup-harness-port-ownership](tickets/105-cleanup-harness-port-ownership/)
 
+## Backlog — Commit Review Followups (b28ec70..4c43bbe)
+- [x] [106-cleanup-arcane-bolt-test-fixtures](tickets/106-cleanup-arcane-bolt-test-fixtures/)
+- [x] [107-cleanup-magic-stone-drop-visibility](tickets/107-cleanup-magic-stone-drop-visibility/)
+- [x] [108-cleanup-lobby-smoke-tests-and-docs](tickets/108-cleanup-lobby-smoke-tests-and-docs/)
+- [x] [109-fix-multi-lobby-cross-lobby-leak-and-broken-tests](tickets/109-fix-multi-lobby-cross-lobby-leak-and-broken-tests/)
+- [x] [110-cleanup-multi-lobby-economy-nits](tickets/110-cleanup-multi-lobby-economy-nits/)
+- [x] [111-fix-evolved-card-integration-tests](tickets/111-fix-evolved-card-integration-tests/)
+- [x] [112-cleanup-trymove-test-coverage](tickets/112-cleanup-trymove-test-coverage/)
+- [x] [113-fix-knockback-walls-and-collision-regression](tickets/113-fix-knockback-walls-and-collision-regression/)
+- [x] [114-cleanup-dungeon-quest-commit-followups](tickets/114-cleanup-dungeon-quest-commit-followups/)
+- [x] [115-cleanup-weapon-facing-followups](tickets/115-cleanup-weapon-facing-followups/)
+
 ## Backlog — Reference Game Loops
 - [x] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
 - [x] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
@@ -113,9 +125,9 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [054-grimoire-deck-viewer](tickets/054-grimoire-deck-viewer/)
 
 ## Backlog — Validation & Logic
-- [ ] [055-server-side-wall-collision-validation](tickets/055-server-side-wall-collision-validation/)
+- [x] [055-server-side-wall-collision-validation](tickets/055-server-side-wall-collision-validation/)
 - [x] [056-server-side-card-hand-tracking](tickets/056-server-side-card-hand-tracking/)
-- [ ] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
+- [x] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
 
 ## Backlog — Progression & Content
 - [x] [058-inventory-system-refactor](tickets/058-inventory-system-refactor/)
@@ -127,10 +139,10 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 
 
 ## Backlog — Card Evolutions
-- [ ] [063-evo-steel-claymore](tickets/063-evo-steel-claymore/)
-- [ ] [064-evo-magma-greatsword](tickets/064-evo-magma-greatsword/)
-- [ ] [065-evo-astral-guardian](tickets/065-evo-astral-guardian/)
-- [ ] [066-evo-ancient-wyrm](tickets/066-evo-ancient-wyrm/)
+- [x] [063-evo-steel-claymore](tickets/063-evo-steel-claymore/)
+- [x] [064-evo-magma-greatsword](tickets/064-evo-magma-greatsword/)
+- [x] [065-evo-astral-guardian](tickets/065-evo-astral-guardian/)
+- [x] [066-evo-ancient-wyrm](tickets/066-evo-ancient-wyrm/)
 - [x] [067-evo-excalibur-photon](tickets/067-evo-excalibur-photon/)
 - [x] [068-evo-infinite-disk](tickets/068-evo-infinite-disk/)
 - [x] [069-evo-glacier-collapse](tickets/069-evo-glacier-collapse/)

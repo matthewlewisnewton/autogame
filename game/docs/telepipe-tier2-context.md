@@ -1,7 +1,7 @@
 # Telepipe Tier 2 — Feature Context Document
 
 **Last updated:** 2026-05-24  
-**Status:** Implemented on a side branch; **not present on current `main`**
+**Status:** Restored onto current `main`; automated game and focused harness QA pass. Manual two-browser resume QA still needs a fresh run.
 
 This document captures the full Telepipe Tier 2 feature as designed and built, what automated tests cover, what manual QA proved, what still fails, and how it interacts with the networking stack. Use it to resume work without re-deriving context from chat history.
 
@@ -18,7 +18,7 @@ Telepipe Tier 2 is a PSO-inspired **mid-run evac + suspend/resume** system:
 - When the **last active player** evacuates, the run is **suspended** with a full checkpoint.
 - On next **Deploy** (ready-up), the squad **resumes** the same dungeon layout, enemies, loot, hands, objective progress, and portal position.
 
-**Repo reality today:** The feature was implemented in commits `e7ebdb8` → `0674bc7` → `b993eae` and further integrated with networking on branch `backup/telepipe-local-main-20260524-1251`. Current `main` (`ed8c711`) does **not** contain Telepipe code — it was reset during a merge/rebase cycle. All implementation detail below refers to the backup branch unless noted.
+**Repo reality today:** The feature was implemented in commits `e7ebdb8` → `0674bc7` → `b993eae` and further integrated with networking on branch `backup/telepipe-local-main-20260524-1251`. It has now been merged forward onto clean `main` with generated logs/screenshots/app bundles excluded and card taxonomy reconciled to current `main` (`spell` / `creature` / `enchantment`).
 
 ---
 
@@ -33,7 +33,7 @@ Telepipe Tier 2 is a PSO-inspired **mid-run evac + suspend/resume** system:
 | Progress saved | Loot kept; quest incomplete | **Extended** — full checkpoint (enemies, loot, hands, objective, portal coords) |
 | Resume | Re-enter rolls new layout (PSO) | **Extended** — `restoreRunCheckpoint()` on ready-up |
 
-Card type: internally `type: 'summon'`, `effect: 'telepipe'`, `specialEffect: 'portal'`. Theme pass renamed UI strings (e.g. ready button **Deploy** / **Deploy!**).
+Card type: internally `type: 'spell'`, `effect: 'telepipe'`, `specialEffect: 'portal'`. Theme pass renamed UI strings (e.g. ready button **Deploy** / **Deploy!**).
 
 ---
 
@@ -312,24 +312,24 @@ Based on **unit/integration tests** and **best manual QA run** (`p1-run.log` on 
 
 ---
 
-## 10. What is NOT working ❌
+## 10. What still needs follow-up ❌
 
-### 10.1 Feature absent from current `main`
+### 10.1 Manual resume walkthrough remains the primary open item
 
-The entire Telepipe implementation was lost from `main` during branch reset (`46856a4` preserve commit). **No telepipe symbols exist on `ed8c711`.** Restoring the feature requires cherry-pick/merge from `backup/telepipe-local-main-20260524-1251` or commits `e7ebdb8`..`b993eae`.
+The code has been restored to `main` and the automated Telepipe unit/integration coverage passes. The remaining confidence gap is a fresh two-browser/manual walkthrough proving step 11: after full suspend, both players click Deploy and return to the same dungeon with portal/enemy state intact.
 
-### 10.2 Resume after suspend (step 11) — **primary blocker**
+### 10.2 Resume after suspend (step 11) — **manual QA blocker**
 
 **Symptom:** After full suspend, both players click Deploy; client never returns to `phase === 'playing'` within timeout.
 
-**Likely causes (multiple, may stack):**
+**Previously likely causes addressed in the restore:**
 
-1. **QA script bug:** `ensureReady()` checked button text `'Ready'` but theme uses `'Deploy'` → resume Deploy never clicked. Fix drafted in script, not verified end-to-end.
-2. **Client `startGame` resume path:** Missing `setGamePhase('playing')` when scene already initialized.
-3. **Duplicate `init` emit:** Reconnect/refresh resets client to lobby browser, losing suspended-run context.
-4. **Both players must ready:** Script may only ready P1; P2 bootstrap timing unreliable.
+1. **QA script bug:** `ensureReady()` now accepts **Deploy** / **Deploy!** as well as the old Ready copy.
+2. **Client `startGame` resume path:** the already-initialized scene path calls `setGamePhase('playing')` and hides Deploy.
+3. **Duplicate `init` emit:** connection flow now emits one final init after reconnect/lobby restoration.
+4. **Both players must ready:** server integration covers two-player suspend/resume; Playwright timing still needs a fresh run.
 
-**Server side likely OK:** `checkAllReady` + `restoreRunCheckpoint` + emit `startGame`/`stateUpdate` covered by unit/integration tests.
+**Server side is covered:** `checkAllReady` + `restoreRunCheckpoint` + emit `startGame`/`stateUpdate` pass unit/integration tests.
 
 ### 10.3 P2 parallel QA unreliable
 
@@ -386,16 +386,16 @@ Latest preserved report (`46856a4`) shows steps 9–10 **FAIL** despite screensh
 
 ---
 
-## 13. Fixes identified but NOT verified on backup branch
+## 13. Fixes restored and remaining verification
 
 | Fix | Files | Status |
 |-----|-------|--------|
-| Remove duplicate `init` emit; reconnect before init | `server/index.js` | Drafted in session, may not be on backup |
-| Client `init`: skip lobby browser when `inLobby` | `client/main.js` | Drafted |
-| `startGame` resume: `setGamePhase('playing')` | `client/main.js` | Drafted |
-| `playerReconnected` client handler | `client/main.js` | Drafted |
-| QA `ensureReady`: accept `Deploy` / `Deploy!` | `p1-telepipe-tier2-v2.mjs` | Drafted |
-| Coordination writes: `p1-portal-placed`, `p1-extracted` | P1 script | Drafted |
+| Remove duplicate `init` emit; reconnect before init | `server/index.js` | Restored; covered by integration selectors |
+| Client `init`: skip lobby browser when `inLobby` | `client/main.js` | Restored; covered by client tests |
+| `startGame` resume: `setGamePhase('playing')` | `client/main.js` | Restored; automated coverage passes, manual step 11 still pending |
+| `playerReconnected` client handler | `client/main.js` | Restored |
+| QA `ensureReady`: accept `Deploy` / `Deploy!` | `p1-telepipe-tier2-v2.mjs` | Restored; manual rerun pending |
+| Coordination writes: `p1-portal-placed`, `p1-extracted` | P1 script | Restored |
 | P2 wait on coordination before telepipe reject test | P2 script | Exists; timing still flaky |
 
 ---
@@ -451,12 +451,10 @@ node game/docs/walkthroughs/telepipe-tier2/p2-walkthrough-v2.mjs
 
 ## 15. Recommended next steps (prioritized)
 
-1. **Restore telepipe branch onto `main`** (merge or cherry-pick with conflict resolution against card-type/cardUsed refactors).
-2. **Apply resume fix bundle:** single init, reconnect ordering, `startGame` resume phase, Deploy-aware QA scripts.
-3. **Re-run P1 walkthrough** — target step 11 pass.
-4. **Run true two-browser P2** with matching lobby name + coordination signals.
-5. **Add integration test for resume over socket** (both players ready → receive `startGame` → `state.telepipe` present) to prevent step 11 regression without Playwright.
-6. **Document in `design.md`** once shipped (currently only in this context doc and walkthrough artifacts).
+1. **Re-run P1 walkthrough** — target step 11 pass on current `main`.
+2. **Run true two-browser P2** with matching lobby name + coordination signals.
+3. **Add integration test for resume over socket** (both players ready → receive `startGame` → `state.telepipe` present) to prevent step 11 regression without Playwright.
+4. **Document in `design.md`** once shipped (currently only in this context doc and walkthrough artifacts).
 
 ---
 

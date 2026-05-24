@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
-	gameState,
 	io as serverIo,
 	server as httpServer,
 	_intervals,
@@ -13,9 +12,11 @@ import {
 	setTestProvider,
 	savePlayerData,
 	getJWTSecret,
-	spawnLoot
+	spawnLoot,
+	runGameLoopTick,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
+import { connectClient, waitForEvent, lobbyStateForSocket, playerForSocket } from './helpers.js';
 
 // ── Helpers ──
 
@@ -59,45 +60,6 @@ async function startTestServer() {
 	});
 }
 
-function connectClient(baseUrl) {
-	const accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-	const token = createTestToken(accountId);
-
-	return new Promise((resolve, reject) => {
-		const socket = ClientIO(baseUrl, {
-			transports: ['websocket'],
-			retry: false,
-			autoConnect: true,
-			timeout: 5000,
-			auth: { token }
-		});
-
-		const timer = setTimeout(() => {
-			try { socket.disconnect(); } catch (_) {}
-			reject(new Error('connectClient: timed out'));
-		}, 10000);
-
-		socket.on('init', (data) => {
-			clearTimeout(timer);
-			socket._playerId = data.playerId || data.id;
-			resolve({ socket, init: data });
-		});
-		socket.on('connect_error', (e) => {
-			clearTimeout(timer);
-			reject(e);
-		});
-	});
-}
-
-function waitForEvent(socket, event, timeout = 3000) {
-	return new Promise((resolve, reject) => {
-		const timer = setTimeout(() => reject(new Error(`Timed out waiting for "${event}"`)), timeout);
-		socket.once(event, (data) => {
-			clearTimeout(timer);
-			resolve(data);
-		});
-	});
-}
 
 function sleep(ms) {
 	return new Promise(r => setTimeout(r, ms));
@@ -143,29 +105,55 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket._playerId];
+		const player = playerForSocket(socket);
 		const xBefore = player.x;
 
 		// Spy on the provider's savePlayer to verify savePlayerData is called
 		// (savePlayerData delegates to provider.savePlayer internally)
 		const savePlayerSpy = vi.spyOn(testProvider, 'savePlayer');
 
-		// Emit a move
+		// Emit a move and wait for the socket handler before integrating movement
 		socket.emit('move', { dx: 1, dz: 0, rotation: 0 });
-		await sleep(50);
+		await sleep(20);
+		runGameLoopTick();
 
 		// Position should have changed
 		expect(player.x).not.toBe(xBefore);
 
-		// savePlayer should have been called at least once (the move handler
-		// calls savePlayerData which delegates to provider.savePlayer)
+		// savePlayer should have been called at least once (batched once per tick)
 		expect(savePlayerSpy).toHaveBeenCalled();
 
 		// Verify the saved data reflects the new position
-		const savedKey = gameState.players[socket._playerId]?.accountId || socket._playerId;
+		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
 		const saved = testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.x).toBeCloseTo(player.x, 4);
+
+		savePlayerSpy.mockRestore();
+		socket.disconnect();
+	});
+
+	it('batches savePlayerData to at most once per tick across many move packets', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		clearAllTimers();
+		const savePlayerSpy = vi.spyOn(testProvider, 'savePlayer');
+
+		for (let i = 0; i < 10; i++) {
+			socket.emit('move', { dx: 1, dz: 0, rotation: 0 });
+		}
+		await sleep(20);
+
+		expect(savePlayerSpy).not.toHaveBeenCalled();
+
+		runGameLoopTick();
+
+		expect(savePlayerSpy).toHaveBeenCalledTimes(1);
 
 		savePlayerSpy.mockRestore();
 		socket.disconnect();
@@ -180,12 +168,13 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket._playerId];
+		const player = playerForSocket(socket);
 		const currencyBefore = player.currency;
 
 		// Place a loot item near the player
+		const state = lobbyStateForSocket(socket);
 		const lootValue = 15;
-		gameState.loot.push({
+		state.loot.push({
 			id: 'loot_save_test',
 			x: player.x,
 			z: player.z,
@@ -207,7 +196,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		expect(savePlayerSpy).toHaveBeenCalled();
 
 		// Verify the saved data reflects the new currency
-		const savedKey = gameState.players[socket._playerId]?.accountId || socket._playerId;
+		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
 		const saved = testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.currency).toBe(currencyBefore + lootValue);
@@ -219,7 +208,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 	it('deckAddCard handler calls savePlayerData after a card is added to the deck', async () => {
 		const { socket } = await connectClient(baseUrl);
 
-		const player = gameState.players[socket._playerId];
+		const player = playerForSocket(socket);
 		const deckBefore = [...player.selectedDeck];
 
 		// The starting deck is at DECK_MAX_SIZE (8), so remove a card first to make room
@@ -242,7 +231,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		expect(savePlayerSpy).toHaveBeenCalled();
 
 		// Verify the saved data reflects the updated deck
-		const savedKey = gameState.players[socket._playerId]?.accountId || socket._playerId;
+		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
 		const saved = testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.selectedDeck.length).toBe(deckBefore.length);
@@ -254,7 +243,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 	it('deckRemoveCard handler calls savePlayerData after a card is removed from the deck', async () => {
 		const { socket } = await connectClient(baseUrl);
 
-		const player = gameState.players[socket._playerId];
+		const player = playerForSocket(socket);
 		const deckBefore = [...player.selectedDeck];
 
 		// Spy on provider.savePlayer
@@ -272,7 +261,7 @@ describe('savePlayerData triggers on state-changing handlers', () => {
 		expect(savePlayerSpy).toHaveBeenCalled();
 
 		// Verify the saved data reflects the updated deck
-		const savedKey = gameState.players[socket._playerId]?.accountId || socket._playerId;
+		const savedKey = playerForSocket(socket)?.accountId || socket._playerId;
 		const saved = testProvider.loadPlayer(savedKey);
 		expect(saved).not.toBeNull();
 		expect(saved.selectedDeck.length).toBe(deckBefore.length - 1);

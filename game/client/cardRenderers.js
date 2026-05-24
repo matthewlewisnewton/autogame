@@ -182,6 +182,13 @@ function renderSelfEnchantment(data, ctx) {
 	ctx.spawnSummonEffect(originOf(data), 2, { color: 0x5eead4, emissive: 0x2dd4bf });
 }
 
+/**
+ * Telepipe portal placement: blue field ring marking the shared evac point.
+ */
+function renderTelepipe(data, ctx) {
+	ctx.spawnSummonEffect(originOf(data), data.radius || 2.5, { color: 0x22d3ee, emissive: 0x67e8f9 });
+}
+
 // ── Registry ────────────────────────────────────────────────────────────
 //
 // Override the per-type default for any card that needs a bespoke effect.
@@ -197,6 +204,7 @@ const CARD_RENDERERS = {
 	divine_grace: renderDivineGrace,
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
+	telepipe: renderTelepipe,
 
 	// Creatures
 	undead_commander: renderUndeadCommander,

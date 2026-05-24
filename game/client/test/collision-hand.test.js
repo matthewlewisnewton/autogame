@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { wallAABB, resolveWallCollision } from '../collision.js';
+import { wallAABB, resolveWallCollision, tryPlayerMove, isPositionBlocked, checkSweptCollision } from '../collision.js';
 import { drawCard, initHand, initHandFromDeck, resetHandState, canUseSlot, hand, deck, slotCooldowns } from '../hand.js';
 
 // ── wallAABB ──
@@ -134,6 +134,68 @@ describe('resolveWallCollision()', () => {
 
 		expect(result.x).toBeCloseTo(-0.5);
 		expect(result.z).toBeCloseTo(-0.5);
+	});
+});
+
+describe('tryPlayerMove()', () => {
+	const wall = { minX: 0, maxX: 2, minZ: -1, maxZ: 1 };
+	const colliders = [wall];
+	const walkable = [{ minX: -5, maxX: 5, minZ: -5, maxZ: 5 }];
+	const bounds = { minX: -5, maxX: 5, minZ: -5, maxZ: 5 };
+
+	it('slides along a wall when direct movement is blocked', () => {
+		const invSqrt2 = 1 / Math.SQRT2;
+		const distance = 0.5;
+		const result = tryPlayerMove(-0.5, 0, invSqrt2, invSqrt2, distance, colliders, walkable, bounds);
+		expect(result.moved).toBe(true);
+		expect(result.x).toBeCloseTo(-0.5);
+		expect(result.z).toBeCloseTo(invSqrt2 * distance);
+		expect(result.x).not.toBeCloseTo(-0.5 + invSqrt2 * distance);
+	});
+
+	it('stops at a wall when moving directly into it', () => {
+		const result = tryPlayerMove(-1.5, 0, 1, 0, 1, colliders, walkable, bounds);
+		expect(result.moved).toBe(true);
+		expect(result.x).toBeCloseTo(-0.5);
+		expect(result.z).toBe(0);
+	});
+
+	it('returns unchanged position when blocked at a wall edge', () => {
+		const result = tryPlayerMove(-0.5, 0, 1, 0, 1, colliders, walkable, bounds);
+		expect(result.moved).toBe(false);
+		expect(result.x).toBeCloseTo(-0.5);
+		expect(result.z).toBe(0);
+	});
+
+	it('depenetrates and stays put when already inside a wall and moving deeper into it', () => {
+		const result = tryPlayerMove(0.3, 0, 1, 0, 1, colliders, walkable, bounds);
+		expect(result.moved).toBe(false);
+		expect(result.x).toBeCloseTo(-0.5);
+		expect(result.z).toBe(0);
+	});
+});
+
+describe('isPositionBlocked()', () => {
+	it('detects overlap with a wall collider', () => {
+		const colliders = [{ minX: 0, maxX: 2, minZ: -1, maxZ: 1 }];
+		expect(isPositionBlocked(0.3, 0, colliders)).toBe(true);
+		expect(isPositionBlocked(-0.5, 0, colliders)).toBe(false);
+	});
+});
+
+describe('checkSweptCollision()', () => {
+	const collider = { minX: 1.5, maxX: 2.5, minZ: -0.5, maxZ: 0.5 };
+
+	it('allows endpoint touches when allowEndpointTouch is false', () => {
+		expect(checkSweptCollision(0, 0, 1, 0, [collider])).toBe(false);
+	});
+
+	it('allows endpoint touches when allowEndpointTouch is true', () => {
+		expect(checkSweptCollision(0, 0, 1, 0, [collider], { allowEndpointTouch: true })).toBe(false);
+	});
+
+	it('blocks movement that penetrates the expanded wall shell', () => {
+		expect(checkSweptCollision(0, 0, 1.01, 0, [collider], { allowEndpointTouch: true })).toBe(true);
 	});
 });
 

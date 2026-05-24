@@ -1,9 +1,11 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
 	CARD_DEFS,
+	DESPERATION_CARD_DEFS,
 	COOLDOWN_MS,
 	SUMMON_RADIUS,
 	ATTACK_RANGE,
+	PROJECTILE_HIT_WIDTH,
 	createGameState,
 	gameState,
 	addMagicStones,
@@ -14,12 +16,19 @@ import {
 	collectConeHits,
 	collectRadialHits,
 	collectReturningProjectileHits,
+	collectProjectileHits,
 	applyFreezeInRadius,
 	pullEnemiesToward,
+	applyKnockback,
 	applyEventHorizon,
 	spawnDragonsBreathEffect,
+	spawnFireTrailEffect,
 	spawnInfernoPillarEffect,
 	isEnemyFrozen,
+	rebuildWallColliders,
+	isEntityPositionBlocked,
+	ENTITY_RADIUS,
+	computeWalkableAABBs,
 } from '../index.js';
 
 function resetState() {
@@ -37,7 +46,7 @@ function addPlayer(id, overrides = {}) {
 		magicStones: 100,
 		hand: [],
 		deck: [],
-		pendingSpells: new Set(),
+		pendingSummons: new Set(),
 		slotCooldowns: [null, null, null, null],
 		...overrides,
 	};
@@ -55,10 +64,11 @@ describe('new card pack definitions', () => {
 		'echo_blade',
 		'mana_leach',
 		'dragons_breath',
+		'arcane_bolt',
 	];
 
-	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(35);
+	it('defines all eleven new cards with expected types', () => {
+		expect(Object.keys(CARD_DEFS)).toHaveLength(37);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -70,10 +80,9 @@ describe('new card pack definitions', () => {
 		expect(CARD_DEFS.gravity_well.type).toBe('spell');
 		expect(CARD_DEFS.mana_leach.type).toBe('spell');
 		expect(CARD_DEFS.dragons_breath.type).toBe('spell');
+		expect(CARD_DEFS.arcane_bolt.type).toBe('weapon');
 		expect(CARD_DEFS.skeleton_knight.type).toBe('creature');
 		expect(CARD_DEFS.storm_eagle.type).toBe('creature');
-		expect(CARD_DEFS.spike_trap.type).toBe('enchantment');
-		expect(CARD_DEFS.mirror_ward.type).toBe('enchantment');
 	});
 });
 
@@ -117,6 +126,63 @@ describe('new card combat helpers', () => {
 		expect(result.hits.some(h => h.pass === 2)).toBe(true);
 	});
 
+	it('Arcane Bolt projectile hits at long range and misses beyond range', () => {
+		const range = CARD_DEFS.arcane_bolt.attackRange;
+		const outOfRangeMargin = 2;
+		gameState.enemies = [
+			{ id: 'in-range-near', type: 'grunt', x: PROJECTILE_HIT_WIDTH, z: 0, hp: 30 },
+			{ id: 'in-range-far-edge', type: 'grunt', x: range, z: 0, hp: 30 },
+			{
+				id: 'out-of-range',
+				type: 'grunt',
+				x: range + PROJECTILE_HIT_WIDTH + outOfRangeMargin,
+				z: 0,
+				hp: 30,
+			},
+		];
+
+		const result = collectProjectileHits(0, 0, 1, 0, range, CARD_DEFS.arcane_bolt.damage, {
+			pierces: CARD_DEFS.arcane_bolt.projectile?.pierces === true,
+		});
+		expect(result.hits.some(h => h.enemyId === 'in-range-near')).toBe(true);
+		expect(result.hits.some(h => h.enemyId === 'in-range-far-edge')).toBe(true);
+		expect(result.hits.some(h => h.enemyId === 'out-of-range')).toBe(false);
+		expect(CARD_DEFS.arcane_bolt).toMatchObject({
+			type: 'weapon',
+			damage: 14,
+			charges: 4,
+			attackRange: 10,
+			effect: 'projectile',
+			specialEffect: 'long_range',
+			projectile: { pierces: true },
+		});
+	});
+
+	it('Arcane Bolt pierces multiple enemies along its path', () => {
+		const range = CARD_DEFS.arcane_bolt.attackRange;
+		gameState.enemies = [
+			{ id: 'first', type: 'grunt', x: 2, z: 0, hp: 30 },
+			{ id: 'second', type: 'grunt', x: 4, z: 0, hp: 30 },
+		];
+
+		const result = collectProjectileHits(0, 0, 1, 0, range, CARD_DEFS.arcane_bolt.damage, { pierces: true });
+		expect(result.hits.map((h) => h.enemyId)).toEqual(['first', 'second']);
+	});
+
+	it('Throw Rock stops after the first enemy hit', () => {
+		const throwRock = DESPERATION_CARD_DEFS.throw_rock;
+		const range = throwRock.attackRange;
+		gameState.enemies = [
+			{ id: 'first', type: 'grunt', x: 2, z: 0, hp: 30 },
+			{ id: 'second', type: 'grunt', x: 4, z: 0, hp: 30 },
+		];
+
+		const result = collectProjectileHits(0, 0, 1, 0, range, throwRock.damage);
+		expect(result.hits).toHaveLength(1);
+		expect(result.hits[0].enemyId).toBe('first');
+		expect(gameState.enemies.find((e) => e.id === 'second').hp).toBe(30);
+	});
+
 	it('Infinite Disk triple return passes hit enemies on each return split', () => {
 		gameState.enemies = [{ id: 'mid', type: 'grunt', x: 4, z: 0, hp: 100 }];
 
@@ -135,14 +201,14 @@ describe('new card combat helpers', () => {
 		});
 	});
 
-	it('Frost Nova freezes enemies in radius', () => {
+	it('Cryo Burst freezes enemies in radius', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 2, z: 0, hp: 40 }];
 		const hits = applyFreezeInRadius(0, 0, SUMMON_RADIUS, 2000, CARD_DEFS.frost_nova.damage);
 		expect(hits).toHaveLength(1);
 		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
 	});
 
-	it('Glacier Collapse deals bonus damage to already-frozen enemies', () => {
+	it('Glacier Rupture deals bonus damage to already-frozen enemies', () => {
 		const now = Date.now();
 		const def = CARD_DEFS.glacier_collapse;
 		gameState.enemies = [
@@ -164,14 +230,14 @@ describe('new card combat helpers', () => {
 		expect(hits[1].frozenShatter).toBeUndefined();
 	});
 
-	it('Healing Font restores player HP up to max', () => {
+	it('Restoration Beacon restores player HP up to max', () => {
 		addPlayer('p1', { hp: 60 });
 		const healed = healPlayer('p1', CARD_DEFS.healing_font.healAmount);
 		expect(healed).toBe(25);
 		expect(gameState.players.p1.hp).toBe(85);
 	});
 
-	it('Divine Grace heals 50% more than Healing Font and restores magic stones', () => {
+	it('Sanctum Pulse heals 50% more than Restoration Beacon and restores magic stones', () => {
 		expect(CARD_DEFS.divine_grace.healAmount).toBe(38);
 		expect(CARD_DEFS.divine_grace.magicStoneRestore).toBe(10);
 		addPlayer('p1', { hp: 60, magicStones: 0 });
@@ -181,6 +247,53 @@ describe('new card combat helpers', () => {
 		const gained = addMagicStones(gameState.players.p1, CARD_DEFS.divine_grace.magicStoneRestore);
 		expect(gained).toBe(10);
 		expect(gameState.players.p1.magicStones).toBe(10);
+	});
+
+	it('Steel Claymore knockback pushes hit enemies along attack direction', () => {
+		gameState.layout = {
+			rooms: [{ x: 0, z: 0, width: 20, depth: 20, walls: [] }],
+			passages: [],
+		};
+		gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+		gameState.walkableAABBs = computeWalkableAABBs(gameState.layout);
+		rebuildWallColliders();
+
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 }];
+		const beforeX = gameState.enemies[0].x;
+		const beforeZ = gameState.enemies[0].z;
+		const hits = [{ enemyId: 'e1', hp: 17 }];
+		const moved = applyKnockback(0, 0, 1, 0, hits, CARD_DEFS.steel_claymore.knockbackStrength);
+		expect(moved).toHaveLength(1);
+		expect(gameState.enemies[0].x).toBeGreaterThan(beforeX);
+		expect(gameState.enemies[0].z).toBe(beforeZ);
+		expect(gameState.enemies[0].x - beforeX).toBe(CARD_DEFS.steel_claymore.knockbackStrength);
+	});
+
+	it('Steel Claymore knockback stops at a wall instead of passing through', () => {
+		gameState.layout = {
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 12,
+				depth: 12,
+				walls: [{ axis: 'z', x: 3, z: 0, length: 10 }],
+			}],
+			passages: [],
+		};
+		gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+		gameState.walkableAABBs = computeWalkableAABBs(gameState.layout);
+		rebuildWallColliders();
+
+		const startX = 2.3;
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: startX, z: 0, hp: 40 }];
+		const strength = CARD_DEFS.steel_claymore.knockbackStrength;
+		const hits = [{ enemyId: 'e1', hp: 17 }];
+		applyKnockback(0, 0, 1, 0, hits, strength);
+
+		const enemy = gameState.enemies[0];
+		expect(isEntityPositionBlocked(enemy.x, enemy.z)).toBe(false);
+		expect(enemy.x + ENTITY_RADIUS).toBeLessThanOrEqual(2.8 + 1e-6);
+		expect(enemy.x - startX).toBeLessThan(strength);
 	});
 
 	it('Gravity Well pulls enemies toward the origin', () => {
@@ -208,7 +321,7 @@ describe('new card combat helpers', () => {
 		expect(gameState.enemies[0].hp).toBe(40);
 	});
 
-	it('Echo Blade shockwave hits radially on the configured combo count', () => {
+	it('Phase Echo shockwave hits radially on the configured combo count', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 4, z: 0, hp: 40 }];
 		const result = collectRadialHits(0, 0, CARD_DEFS.echo_blade.shockwaveRadius, CARD_DEFS.echo_blade.shockwaveDamage);
 		expect(result.hits).toHaveLength(1);
@@ -229,7 +342,7 @@ describe('new card combat helpers', () => {
 		});
 	});
 
-	it('Mana Leach radial hits grant magic stones per enemy hit', () => {
+	it('Ether Siphon radial hits grant magic stones per enemy hit', () => {
 		addPlayer('p1', { magicStones: 0 });
 		gameState.enemies = [
 			{ id: 'e1', type: 'grunt', x: 1, z: 0, hp: 40 },
@@ -264,7 +377,7 @@ describe('new card combat helpers', () => {
 		expect(gameState.players.p1.hp).toBe(58);
 	});
 
-	it("Dragon's Breath leaves a ticking cone area effect", () => {
+	it("Wyrmflare leaves a ticking cone area effect", () => {
 		addPlayer('p1');
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 4, z: 0, hp: 40 }];
 		spawnDragonsBreathEffect(0, 0, 1, 0, CARD_DEFS.dragons_breath, 'p1');
@@ -275,14 +388,28 @@ describe('new card combat helpers', () => {
 		expect(gameState.enemies[0].hp).toBeLessThan(hpBefore);
 	});
 
-	it('Inferno Pillar radial burst hits enemies behind the caster', () => {
+	it('Corebreaker Greatsword fire trail leaves a ticking cone area effect', () => {
+		addPlayer('p1');
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 4, z: 0, hp: 40 }];
+		spawnFireTrailEffect(0, 0, 1, 0, CARD_DEFS.magma_greatsword, 'p1');
+		expect(gameState.areaEffects).toHaveLength(1);
+		expect(gameState.areaEffects[0].type).toBe('fire_trail');
+		expect(gameState.areaEffects[0].damagePerTick).toBe(CARD_DEFS.magma_greatsword.trailDamagePerTick);
+		gameState.areaEffects[0].lastTickAt = Date.now() - CARD_DEFS.magma_greatsword.dotIntervalMs;
+		const hpBefore = gameState.enemies[0].hp;
+		updateMinions();
+		expect(gameState.enemies[0].hp).toBeLessThan(hpBefore);
+		expect(gameState.enemies[0].hp).toBe(hpBefore - CARD_DEFS.magma_greatsword.trailDamagePerTick);
+	});
+
+	it('Thermal Column radial burst hits enemies behind the caster', () => {
 		gameState.enemies = [{ id: 'e1', type: 'grunt', x: -3, z: 0, hp: 40 }];
 		const result = collectRadialHits(0, 0, CARD_DEFS.inferno_pillar.attackRange, CARD_DEFS.inferno_pillar.damage);
 		expect(result.hits).toHaveLength(1);
 		expect(gameState.enemies[0].hp).toBe(40 - CARD_DEFS.inferno_pillar.damage);
 	});
 
-	it('Inferno Pillar leaves a ticking radial area effect', () => {
+	it('Thermal Column leaves a ticking radial area effect', () => {
 		addPlayer('p1');
 		gameState.enemies = [
 			{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 },
@@ -297,7 +424,7 @@ describe('new card combat helpers', () => {
 		expect(gameState.enemies[1].hp).toBeLessThan(hpBefore[1]);
 	});
 
-	it('Skeleton Knight taunt draws enemy attacks toward the minion', () => {
+	it('Necroframe Knight taunt draws enemy attacks toward the minion', () => {
 		addPlayer('p1', { x: 10, z: 0 });
 		gameState.enemies = [{
 			id: 'e1',
@@ -325,7 +452,7 @@ describe('new card combat helpers', () => {
 		expect(gameState.minions[0].hp).toBeLessThan(120);
 	});
 
-	it('Storm Eagle minion damages enemies from range without closing to melee', () => {
+	it('Stormwing Drone minion damages enemies from range without closing to melee', () => {
 		addPlayer('p1', { x: 0, z: 0 });
 		gameState.enemies = [{
 			id: 'e1',

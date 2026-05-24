@@ -1,0 +1,10 @@
+{
+  "lobbyName": "Telepipe QA v3",
+  "p1Ready": true,
+  "p2Joined": true,
+  "p2Ready": false,
+  "step": "p1-extracted",
+  "runId": 2,
+  "p1PortalPlaced": true,
+  "p1Extracted": true
+}

@@ -2,13 +2,13 @@
 from __future__ import annotations
 
 import json
-import subprocess
 import threading
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
 from harness.config.tunables import PipelineTunables
+from harness.steps.vitest_cleanup import kill_vitest_for_cwd, run_vitest
 from harness.telemetry.logging import log
 from harness.telemetry.progress import emit_progress_event
 
@@ -17,6 +17,7 @@ from harness.telemetry.progress import emit_progress_event
 class PipelineHandle:
     thread: threading.Thread
     artifacts_dir: Path
+    check_cwd: Path
 
 
 def background_vitest(artifacts_dir: Path, tunables: PipelineTunables,
@@ -39,12 +40,12 @@ def background_vitest(artifacts_dir: Path, tunables: PipelineTunables,
             out.write(f"[pipeline] running server tests (timeout={tunables.server_timeout_s}s)...\n".encode())
             out.flush()
             try:
-                server_rc = subprocess.run(
-                    ["timeout", "-k", "30", str(tunables.server_timeout_s),
-                     "npx", "vitest", "run", "--project", "server"],
-                    cwd=tunables.check_cwd, stdin=subprocess.DEVNULL,
-                    stdout=out, stderr=subprocess.STDOUT,
-                ).returncode
+                server_rc = run_vitest(
+                    ["run", "--project", "server"],
+                    cwd=Path(tunables.check_cwd),
+                    timeout_s=tunables.server_timeout_s,
+                    stdout=out,
+                )
             except FileNotFoundError as e:
                 out.write(f"[pipeline] FAILED to spawn: {e}\n".encode())
                 _write_status(artifacts_dir, rc=127, reason="spawn_failed")
@@ -55,12 +56,12 @@ def background_vitest(artifacts_dir: Path, tunables: PipelineTunables,
                 return
             out.write(f"[pipeline] running client tests (timeout={tunables.client_timeout_s}s)...\n".encode())
             out.flush()
-            client_rc = subprocess.run(
-                ["timeout", "-k", "30", str(tunables.client_timeout_s),
-                 "npx", "vitest", "run", "--project", "client"],
-                cwd=tunables.check_cwd, stdin=subprocess.DEVNULL,
-                stdout=out, stderr=subprocess.STDOUT,
-            ).returncode
+            client_rc = run_vitest(
+                ["run", "--project", "client"],
+                cwd=Path(tunables.check_cwd),
+                timeout_s=tunables.client_timeout_s,
+                stdout=out,
+            )
             if client_rc != 0:
                 out.write(f"[pipeline] client tests failed (rc={client_rc})\n".encode())
                 _write_status(artifacts_dir, rc=client_rc, reason=f"client_rc_{client_rc}")
@@ -70,7 +71,8 @@ def background_vitest(artifacts_dir: Path, tunables: PipelineTunables,
 
     t = threading.Thread(target=_run, name=f"vitest-{label}", daemon=True)
     t.start()
-    return PipelineHandle(thread=t, artifacts_dir=artifacts_dir)
+    return PipelineHandle(thread=t, artifacts_dir=artifacts_dir,
+                          check_cwd=Path(tunables.check_cwd))
 
 
 def finish_background_vitest(handle: Optional[PipelineHandle],
@@ -91,6 +93,7 @@ def finish_background_vitest(handle: Optional[PipelineHandle],
         "outfile": str(handle.artifacts_dir / "local-checks.log"),
         "rc": rc, "reason": reason,
     })
+    kill_vitest_for_cwd(handle.check_cwd)
     return rc
 
 

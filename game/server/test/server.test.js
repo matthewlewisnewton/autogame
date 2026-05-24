@@ -13,6 +13,7 @@ import {
 	createGameState,
 	resetGameState,
 	gameState,
+	runGameLoopTick,
 	cleanupStalePlayers,
 	findSocketByPlayerId,
 	regenMagicStones,
@@ -21,6 +22,8 @@ import {
 	recordEnemyDefeated,
 	getEnemyCardDrop,
 	recordEnemyCardDrop,
+	getEnemyMagicStoneDrop,
+	removeDeadEnemies,
 	buildCardChoices,
 	claimCardReward,
 	clampObjectiveProgress,
@@ -28,6 +31,16 @@ import {
 	checkRunTerminalState,
 	resetTransientRunState,
 	returnPlayersToLobby,
+	checkAllReady,
+	captureRunCheckpoint,
+	restoreRunCheckpoint,
+		tryEnterTelepipe,
+		suspendRunToLobby,
+		abandonSuspendedRun,
+		isPlayerActive,
+		checkTelepipeProximity,
+		PORTAL_PLACEMENT_GRACE_MS,
+		PORTAL_RADIUS,
 	createPlayerProgress,
 	grantCard,
 	grantRunRewards,
@@ -44,6 +57,9 @@ import {
 	offerCardTrade,
 	respondCardTrade,
 	getCardSellValue,
+	getCardBuyValue,
+	buyShopCard,
+	pickShopOffer,
 	createCardInstance,
 	createInventoryFromOwnedCards,
 	normalizePlayerInventory,
@@ -52,6 +68,15 @@ import {
 	initPlayerHand,
 	drawCardFromDeck,
 	drawReplacementCard,
+	replaceConsumedCard,
+	drawCardFromDesperationDeck,
+	initDesperationDeck,
+	createEchoCard,
+	getCardDef,
+	DESPERATION_CARD_DEFS,
+	DESPERATION_DECK_TEMPLATE,
+	discardCardFromHand,
+	isPlayerOutOfCards,
 	validateUseCardHand,
 	stateSnapshot,
 	addMagicStones,
@@ -92,6 +117,8 @@ import {
 	MINION_FOLLOW_SPEED
 } from '../index.js';
 
+const { createLobby, resetAllLobbies } = require('../lobbies.js');
+
 // ── Helpers ──
 
 function resetState() {
@@ -111,7 +138,7 @@ function addPlayer(id, overrides = {}) {
 		magicStones: MAX_MAGIC_STONES,
 		currency: 0,
 		debugScenario: null,
-		pendingSpells: new Set(),
+		pendingSummons: new Set(),
 		deck: [],
 		...overrides
 	};
@@ -121,6 +148,60 @@ function firstRoomSpawn() {
 	const first = gameState.layout.rooms[0];
 	return { x: first.x, z: first.z };
 }
+
+describe('runGameLoopTick()', () => {
+	beforeEach(() => {
+		resetAllLobbies();
+		resetState();
+	});
+
+	afterEach(() => {
+		resetAllLobbies();
+		vi.restoreAllMocks();
+	});
+
+	function setupLobby(phase = 'lobby') {
+		const lobby = createLobby('host-1', 'Tick Test');
+		lobby.state.gamePhase = phase;
+		return lobby;
+	}
+
+	it('broadcasts state updates in the lobby without running combat simulation', () => {
+		const lobby = setupLobby('lobby');
+		const roomEmit = vi.fn();
+		vi.spyOn(serverIo, 'to').mockReturnValue({ emit: roomEmit });
+
+		expect(runGameLoopTick()).toBe(true);
+
+		expect(serverIo.to).toHaveBeenCalledWith(lobby.id);
+		expect(roomEmit).toHaveBeenCalledWith('stateUpdate', expect.objectContaining({
+			gamePhase: 'lobby',
+		}));
+	});
+
+	it('broadcasts state updates during active gameplay', () => {
+		const lobby = setupLobby('playing');
+		const roomEmit = vi.fn();
+		vi.spyOn(serverIo, 'to').mockReturnValue({ emit: roomEmit });
+
+		expect(runGameLoopTick()).toBe(true);
+
+		expect(serverIo.to).toHaveBeenCalledWith(lobby.id);
+		expect(roomEmit).toHaveBeenCalledWith('stateUpdate', expect.objectContaining({
+			gamePhase: 'playing',
+		}));
+	});
+
+	it('does not broadcast when no lobbies exist', () => {
+		const emitSpy = vi.spyOn(serverIo, 'emit').mockImplementation(() => true);
+		const toSpy = vi.spyOn(serverIo, 'to').mockReturnValue({ emit: vi.fn() });
+
+		expect(runGameLoopTick()).toBe(true);
+
+		expect(emitSpy).not.toHaveBeenCalled();
+		expect(toSpy).not.toHaveBeenCalled();
+	});
+});
 
 // ── Quest definitions ──
 
@@ -135,7 +216,12 @@ describe('QUEST_DEFS', () => {
 			expect(quest.description).toBeTruthy();
 			expect(quest.objectiveType).toBeTruthy();
 			expect(typeof quest.rewardCurrency).toBe('number');
-			expect(typeof quest.enemyCount).toBe('number');
+			if (quest.objectiveType === 'defeat_enemies') {
+				expect(typeof quest.enemyCount).toBe('number');
+			}
+			if (quest.objectiveType === 'collect_items') {
+				expect(typeof quest.itemCount).toBe('number');
+			}
 		}
 	});
 
@@ -488,6 +574,7 @@ describe('Enemy attack state machine', () => {
 
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 0, // at player position — within range
 			z: 0,
 			hp: 50,
@@ -503,6 +590,97 @@ describe('Enemy attack state machine', () => {
 		expect(gameState.players['p1'].hp).toBe(100 - ENEMY_DEFS.grunt.attackDamage);
 		expect(gameState.enemies[0].attackState).toBe('recovering');
 		expect(gameState.enemies[0].recoverUntil).toBeDefined();
+	});
+
+	it('skirmisher cone strike hits player in front', () => {
+		addPlayer('p1', { id: 'p1', x: 3, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'skirmisher',
+			x: 0,
+			z: 0,
+			hp: 20,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - ENEMY_DEFS.skirmisher.attackWindupMs - 100,
+			windupDirX: 1,
+			windupDirZ: 0,
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		updateEnemies();
+
+		expect(gameState.players['p1'].hp).toBe(100 - ENEMY_DEFS.skirmisher.attackDamage);
+	});
+
+	it('skirmisher cone strike misses player outside cone', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 3, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'skirmisher',
+			x: 0,
+			z: 0,
+			hp: 20,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - ENEMY_DEFS.skirmisher.attackWindupMs - 100,
+			windupDirX: 1,
+			windupDirZ: 0,
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		updateEnemies();
+
+		expect(gameState.players['p1'].hp).toBe(100);
+		expect(gameState.enemies[0].attackState).toBe('chasing');
+	});
+
+	it('grunt radial strike still hits player beside enemy', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 3, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: 0,
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - ENEMY_DEFS.grunt.attackWindupMs - 100,
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		updateEnemies();
+
+		expect(gameState.players['p1'].hp).toBe(100 - ENEMY_DEFS.grunt.attackDamage);
+	});
+
+	it('stores windup direction when entering windup', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 3, dead: false });
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'skirmisher',
+			x: 0,
+			z: 0,
+			hp: 20,
+			state: 'chasing',
+			attackState: 'chasing',
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		updateEnemies();
+
+		expect(gameState.enemies[0].attackState).toBe('windup');
+		expect(gameState.enemies[0].windupDirX).toBeCloseTo(0, 5);
+		expect(gameState.enemies[0].windupDirZ).toBeCloseTo(1, 5);
 	});
 
 	it('cancels attack when target leaves range', () => {
@@ -1062,7 +1240,7 @@ describe('regenMagicStones (game tick)', () => {
 	});
 
 	it('does not exceed cap when close to it', () => {
-		addPlayer('p1', { magicStones: MAX_MAGIC_STONES - 0.1 });
+		addPlayer('p1', { magicStones: MAX_MAGIC_STONES - 0.05 });
 
 		regenMagicStones();
 
@@ -1077,21 +1255,26 @@ describe('regenMagicStones (game tick)', () => {
 		expect(gameState.players['p1'].magicStones).toBe(0);
 	});
 
-	it('clears pendingSpells for each player', () => {
+	it('clears pendingSummons for each player', () => {
 		addPlayer('p1');
-		gameState.players['p1'].pendingSpells.add('0:iron_sword');
+		gameState.players['p1'].pendingSummons.add('0:iron_sword');
 
 		regenMagicStones();
 
-		expect(gameState.players['p1'].pendingSpells.size).toBe(0);
+		expect(gameState.players['p1'].pendingSummons.size).toBe(0);
 	});
 
 	it('regen rate constant is correct', () => {
-		expect(MAGIC_STONES_REGEN_PER_TICK).toBe(0.5);
+		expect(MAGIC_STONES_REGEN_PER_TICK).toBe(0.06);
 	});
 
 	it('max magic stones constant is correct', () => {
-		expect(MAX_MAGIC_STONES).toBe(100);
+		expect(MAX_MAGIC_STONES).toBe(90);
+	});
+
+	it('client MAX_MS matches server MAX_MAGIC_STONES via shared constants', async () => {
+		const { MAX_MS } = await import('../../client/config.js');
+		expect(MAX_MS).toBe(MAX_MAGIC_STONES);
 	});
 });
 
@@ -1101,7 +1284,7 @@ describe('synergistic card helpers', () => {
 	beforeEach(() => resetState());
 
 	it('addMagicStones caps at MAX_MAGIC_STONES and reports applied gain', () => {
-		addPlayer('p1', { magicStones: 95 });
+		addPlayer('p1', { magicStones: 85 });
 		const gained = addMagicStones(gameState.players['p1'], 25);
 
 		expect(gained).toBe(5);
@@ -1133,6 +1316,123 @@ describe('synergistic card helpers', () => {
 		]);
 		expect(gameState.players['p1'].hand[0].remainingCharges).toBe(3);
 		expect(gameState.players['p1'].hand[2].remainingCharges).toBe(3);
+	});
+});
+
+describe('enemy magic stone drops and discard', () => {
+	beforeEach(() => resetState());
+
+	it('getEnemyMagicStoneDrop returns type-specific values', () => {
+		expect(getEnemyMagicStoneDrop({ type: 'grunt' })).toBe(20);
+		expect(getEnemyMagicStoneDrop({ type: 'miniboss' })).toBe(50);
+		expect(getEnemyMagicStoneDrop({ type: 'unknown' })).toBe(15);
+	});
+
+	it('removeDeadEnemies spawns magic stone loot at the enemy position', () => {
+		gameState.enemies = [{
+			id: 'e1',
+			type: 'grunt',
+			x: 4,
+			z: -2,
+			hp: 0,
+			lastDamagedBy: 'p1',
+		}];
+		addPlayer('p1');
+
+		removeDeadEnemies();
+
+		expect(gameState.enemies).toHaveLength(0);
+		expect(gameState.loot).toHaveLength(1);
+		expect(gameState.loot[0]).toMatchObject({
+			kind: 'magic_stone',
+			value: 20,
+			x: 4,
+			z: -2,
+		});
+	});
+
+	it('discardCardFromHand empties a slot without drawing a replacement', () => {
+		addPlayer('p1', {
+			deck: ['flame_blade'],
+			hand: [
+				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
+				null,
+				null,
+				null,
+			],
+		});
+
+		const result = discardCardFromHand(gameState.players['p1'], 0, 'iron_sword');
+
+		expect(result.valid).toBe(true);
+		expect(gameState.players['p1'].hand[0]).toBeNull();
+		expect(gameState.players['p1'].deck).toEqual(['flame_blade']);
+	});
+
+	it('discardCardFromHand skips terminal resolution during a healthy run', () => {
+		gameState.enemies = [
+			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+		];
+		startDungeonRun();
+		addPlayer('p1', {
+			deck: ['flame_blade', 'arcane_bolt'],
+			hand: [
+				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
+				null,
+				null,
+				null,
+			],
+		});
+
+		const emitCalls = [];
+		const originalEmit = serverIo.emit;
+		serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+		discardCardFromHand(gameState.players['p1'], 0, 'iron_sword');
+
+		serverIo.emit = originalEmit;
+
+		expect(gameState.run.status).toBe('playing');
+		expect(emitCalls.filter((c) => c.event === 'runFailed')).toHaveLength(0);
+		expect(emitCalls.filter((c) => c.event === 'runComplete')).toHaveLength(0);
+		expect(emitCalls.filter((c) => c.event === 'stateUpdate')).toHaveLength(0);
+	});
+
+	it('discardCardFromHand resolves terminal failure when discard empties the squad', () => {
+		gameState.enemies = [
+			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+		];
+		startDungeonRun();
+		addPlayer('p1', {
+			deck: [],
+			desperationDeck: [],
+			inDesperation: false,
+			hand: [
+				{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 1, remainingCharges: 1 },
+			],
+		});
+
+		discardCardFromHand(gameState.players['p1'], 0, 'iron_sword');
+
+		expect(gameState.run.status).toBe('failed');
+	});
+
+	it('isPlayerOutOfCards treats all-null hand as empty', () => {
+		addPlayer('p1', {
+			hand: [null, null, null, null],
+			deck: [],
+		});
+
+		expect(isPlayerOutOfCards(gameState.players['p1'])).toBe(true);
+	});
+
+	it('isPlayerOutOfCards is false when deck still has cards despite empty hand slots', () => {
+		addPlayer('p1', {
+			hand: [null, null, null, null],
+			deck: ['iron_sword'],
+		});
+
+		expect(isPlayerOutOfCards(gameState.players['p1'])).toBe(false);
 	});
 });
 
@@ -1519,6 +1819,16 @@ describe('run state', () => {
 			expect(run).toHaveProperty('startedAt');
 			expect(typeof run.startedAt).toBe('number');
 		});
+
+		it('creates a collect-items objective for crystal rescue', () => {
+			gameState.selectedQuestId = 'crystal_rescue';
+			const run = createRunState();
+
+			expect(run.questId).toBe('crystal_rescue');
+			expect(run.objective.type).toBe('collect_items');
+			expect(run.objective.totalItems).toBe(QUEST_DEFS.crystal_rescue.itemCount);
+			expect(run.objective.collectedItems).toBe(0);
+		});
 	});
 
 	describe('recordEnemyDefeated(n)', () => {
@@ -1720,7 +2030,7 @@ describe('run state', () => {
 			];
 			startDungeonRun();
 			addPlayer('p1', { hp: 0, dead: true });
-			addPlayer('p2', { hp: 50, dead: false });
+			addPlayer('p2', { hp: 50, dead: false, hand: [{ id: 'iron_sword' }], deck: ['flame_blade'] });
 
 			checkRunTerminalState();
 
@@ -1809,6 +2119,65 @@ describe('run state', () => {
 			expect(emit.data.status).toBe('failed');
 			expect(emit.data.currencyCollected).toBe(5);
 		});
+
+		it('sets status to failed when all players are out of cards and objective is incomplete', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 80, dead: false, hand: [], deck: [] });
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('failed');
+		});
+
+		it('does not fail on deck depletion when at least one player still has cards', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { hp: 80, hand: [], deck: [] });
+			addPlayer('p2', { hp: 80, hand: [{ id: 'iron_sword' }], deck: ['flame_blade'] });
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('playing');
+		});
+
+		it('does not fail on deck depletion when the objective is already complete', () => {
+			gameState.enemies = [];
+			startDungeonRun();
+			recordEnemyDefeated(gameState.run.objective.totalEnemies);
+			addPlayer('p1', { hp: 80, hand: [], deck: [] });
+
+			checkRunTerminalState();
+
+			expect(gameState.run.status).toBe('victory');
+		});
+
+		it('drawReplacementCard draws desperation when the deck is empty', () => {
+			gameState.enemies = [
+				{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+			];
+			startDungeonRun();
+			const player = {
+				hp: 80,
+				dead: false,
+				hand: [{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 1, remainingCharges: 1 }],
+				deck: [],
+			};
+			initDesperationDeck(player);
+			gameState.players.p1 = player;
+
+			drawReplacementCard(player, 0);
+
+			expect(player.hand).toHaveLength(1);
+			expect(player.hand[0].isDesperation).toBe(true);
+			expect(DESPERATION_CARD_DEFS[player.hand[0].id]).toBeDefined();
+			expect(player.inDesperation).toBe(true);
+			expect(gameState.run.status).toBe('playing');
+		});
 	});
 
 	describe('resetTransientRunState()', () => {
@@ -1816,16 +2185,18 @@ describe('run state', () => {
 			resetState();
 		});
 
-		it('clears enemies, minions, and loot arrays', () => {
+		it('clears enemies, minions, loot, and telepipe', () => {
 			gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
 			gameState.minions.push({ id: 'm1', ownerId: 'p1', x: 0, z: 0, hp: 50, ttl: 30 });
 			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
+			gameState.telepipe = { x: 1, z: 2, placedBy: 'p1', placedAt: Date.now() };
 
 			resetTransientRunState();
 
 			expect(gameState.enemies.length).toBe(0);
 			expect(gameState.minions.length).toBe(0);
 			expect(gameState.loot.length).toBe(0);
+			expect(gameState.telepipe).toBeNull();
 		});
 
 		it('preserves players and gamePhase', () => {
@@ -1850,9 +2221,203 @@ describe('run state', () => {
 		});
 	});
 
-	describe('returnPlayersToLobby()', () => {
+	describe('telepipe suspend/resume', () => {
 		beforeEach(() => {
 			resetState();
+			gameState._lobbyId = 'test-lobby';
+			startDungeonRun();
+			gameState.gamePhase = 'playing';
+			addPlayer('p1', {
+				x: 5,
+				z: 5,
+				hand: [{ id: 'telepipe', name: 'Telepipe', type: 'spell', charges: 1, remainingCharges: 1 }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			addPlayer('p2', {
+				x: 10,
+				z: 10,
+				hand: [{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 1, remainingCharges: 1 }],
+				deck: [],
+				slotCooldowns: [null, null, null, null],
+				pendingSummons: new Set(),
+			});
+			gameState.telepipe = { x: 5, z: 5, placedBy: 'p1', placedAt: Date.now() };
+			gameState.enemies.push({
+				id: 'e1',
+				x: 12,
+				z: 12,
+				hp: 40,
+				maxHp: 40,
+				type: 'grunt',
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: 12, z: 12 },
+			});
+		});
+
+		it('captureRunCheckpoint and restoreRunCheckpoint preserve telepipe and enemies', () => {
+			gameState.suspendedCheckpoint = captureRunCheckpoint();
+			resetTransientRunState();
+			restoreRunCheckpoint();
+
+			expect(gameState.enemies).toHaveLength(1);
+			expect(gameState.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
+			expect(gameState.players.p1.hand[0].id).toBe('telepipe');
+		});
+
+		it('tryEnterTelepipe extracts one player while another remains active', () => {
+			const result = tryEnterTelepipe('p1');
+			expect(result.ok).toBe(true);
+			expect(gameState.players.p1.extracted).toBe(true);
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(isPlayerActive(gameState.players.p2)).toBe(true);
+		});
+
+		it('rejects telepipe entry when player is too far', () => {
+			gameState.players.p2.x = 100;
+			gameState.players.p2.z = 100;
+			const result = tryEnterTelepipe('p2');
+			expect(result.ok).toBe(false);
+			expect(result.reason).toBe('too_far');
+		});
+
+		it('suspendRunToLobby when all players have extracted', () => {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.run.status).toBe('suspended');
+			expect(gameState.suspendedCheckpoint.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
+			expect(stateSnapshot().suspendedRunSummary).toEqual(expect.objectContaining({
+				questName: expect.any(String),
+			}));
+		});
+
+		it('checkAllReady restores checkpoint instead of spawning a fresh run', () => {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			const portalX = gameState.suspendedCheckpoint.telepipe.x;
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.status).toBe('playing');
+			expect(gameState.telepipe.x).toBe(portalX);
+			expect(gameState.enemies).toHaveLength(1);
+			expect(gameState.suspendedCheckpoint).toBeUndefined();
+		});
+
+		it('abandonSuspendedRun clears checkpoint and run', () => {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			const result = abandonSuspendedRun();
+			expect(result.ok).toBe(true);
+			expect(gameState.suspendedCheckpoint).toBeUndefined();
+			expect(gameState.run).toBeUndefined();
+		});
+		it('checkAllReady injects telepipe for telepipe-ready debug scenario', () => {
+			resetState();
+			addPlayer('p1', {
+				ready: true,
+				debugScenario: 'telepipe-ready',
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.players.p1.hand.some((c) => c && c.id === 'telepipe')).toBe(true);
+			expect(gameState.players.p1.hp).toBe(100);
+		});
+
+		it('checkAllReady staggers spawn positions for multiple players', () => {
+			resetState();
+			addPlayer('p1', {
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+			addPlayer('p2', {
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.players.p1.x).not.toBe(gameState.players.p2.x);
+			expect(Math.hypot(
+				gameState.players.p1.x - gameState.players.p2.x,
+				gameState.players.p1.z - gameState.players.p2.z,
+			)).toBeGreaterThan(PORTAL_RADIUS);
+		});
+
+		it('portal proximity grace prevents immediate extraction after placement', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			startDungeonRun();
+			gameState.gamePhase = 'playing';
+			addPlayer('p1', { x: 5, z: 5, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
+			addPlayer('p2', { x: 10, z: 10, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
+			gameState.telepipe = { x: 5, z: 5, placedBy: 'p1', placedAt: Date.now() };
+
+			checkTelepipeProximity();
+			expect(gameState.players.p1.extracted).toBeUndefined();
+
+			gameState.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
+			checkTelepipeProximity();
+			expect(gameState.players.p1.extracted).toBe(true);
+			expect(gameState.gamePhase).toBe('playing');
+		});
+
+		it('single extract keeps dungeon running until all players leave', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			startDungeonRun();
+			gameState.gamePhase = 'playing';
+			addPlayer('p1', { x: 5, z: 5, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
+			addPlayer('p2', { x: 10, z: 10, hand: [], deck: [], slotCooldowns: [null, null, null, null], pendingSummons: new Set() });
+			gameState.telepipe = { x: 5, z: 5, placedBy: 'p1', placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1 };
+
+			expect(tryEnterTelepipe('p1').ok).toBe(true);
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.status).toBe('playing');
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(isPlayerActive(gameState.players.p2)).toBe(true);
+		});
+	});
+
+	describe('returnPlayersToLobby()', () => {
+		function mockRoomEmit() {
+			const emitCalls = [];
+			const originalTo = serverIo.to;
+			const originalEmit = serverIo.emit;
+			serverIo.to = () => ({
+				emit: (event, data) => emitCalls.push({ event, data }),
+			});
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			return {
+				emitCalls,
+				restore: () => {
+					serverIo.to = originalTo;
+					serverIo.emit = originalEmit;
+				},
+			};
+		}
+
+		beforeEach(() => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
 			vi.useFakeTimers();
 		});
 
@@ -1860,17 +2425,20 @@ describe('run state', () => {
 			vi.useRealTimers();
 		});
 
+		it('throws when called outside lobby context', () => {
+			delete gameState._lobbyId;
+			expect(() => returnPlayersToLobby()).toThrow('returnPlayersToLobby requires lobby context');
+		});
+
 		it('resets gamePhase to lobby', () => {
 			gameState.gamePhase = 'playing';
 			startDungeonRun();
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
 
 			expect(gameState.gamePhase).toBe('lobby');
 		});
@@ -1878,13 +2446,11 @@ describe('run state', () => {
 		it('clears gameState.run', () => {
 			startDungeonRun();
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
 
 			expect(gameState.run).toBeUndefined();
 		});
@@ -1894,29 +2460,42 @@ describe('run state', () => {
 			gameState.minions.push({ id: 'm1', ownerId: 'p1', x: 0, z: 0, hp: 50, ttl: 30 });
 			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
 
 			expect(gameState.enemies.length).toBe(0);
 			expect(gameState.minions.length).toBe(0);
 			expect(gameState.loot.length).toBe(0);
 		});
 
-		it('sets all players to ready: false and resets HP/position', () => {
-			addPlayer('p1', { x: 50, z: 50, hp: 30, ready: true, currency: 20 });
+		it('clears pending minion cardUsed queue', () => {
+			gameState._pendingMinionBreaths = [{
+				playerId: 'p1',
+				cardId: 'ancient_wyrm',
+				specialEffect: 'fire_breath',
+				hits: [],
+			}];
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
+
+			expect(gameState._pendingMinionBreaths).toHaveLength(0);
+		});
+
+		it('sets all players to ready: false and resets HP/position', () => {
+			addPlayer('p1', { x: 50, z: 50, hp: 30, ready: true, currency: 20 });
+
+			const { restore } = mockRoomEmit();
+
+			returnPlayersToLobby();
+
+			restore();
 
 			expect(gameState.players['p1'].ready).toBe(false);
 			expect(gameState.players['p1'].hp).toBe(100);
@@ -1925,17 +2504,15 @@ describe('run state', () => {
 			expect(gameState.players['p1'].currency).toBe(20);
 		});
 
-		it('emits stateUpdate to all clients', () => {
+		it('emits stateUpdate to lobby room', () => {
 			addPlayer('p1');
 			startDungeonRun();
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { emitCalls, restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
 
 			const stateUpdateCalls = emitCalls.filter(c => c.event === 'stateUpdate');
 			expect(stateUpdateCalls.length).toBeGreaterThan(0);
@@ -1944,32 +2521,28 @@ describe('run state', () => {
 		it('emits lobbyUpdate after stateUpdate', () => {
 			addPlayer('p1');
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { emitCalls, restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
 
 			const lobbyUpdateCalls = emitCalls.filter(c => c.event === 'lobbyUpdate');
 			expect(lobbyUpdateCalls.length).toBeGreaterThan(0);
 		});
 
-		it('clears pendingSpells for all players', () => {
+		it('clears pendingSummons for all players', () => {
 			addPlayer('p1');
-			gameState.players['p1'].pendingSpells.add('0:iron_sword');
-			gameState.players['p1'].pendingSpells.add('1:fireball');
+			gameState.players['p1'].pendingSummons.add('0:iron_sword');
+			gameState.players['p1'].pendingSummons.add('1:fireball');
 
-			const emitCalls = [];
-			const originalEmit = serverIo.emit;
-			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			const { restore } = mockRoomEmit();
 
 			returnPlayersToLobby();
 
-			serverIo.emit = originalEmit;
+			restore();
 
-			expect(gameState.players['p1'].pendingSpells.size).toBe(0);
+			expect(gameState.players['p1'].pendingSummons.size).toBe(0);
 		});
 	});
 
@@ -2243,7 +2816,7 @@ describe('run state', () => {
 			]);
 			expect(p1Choices[0]).toEqual(expect.objectContaining({
 				id: 'iron_sword',
-				name: 'Iron Sword',
+				name: 'Rust-Forged Saber',
 				type: 'weapon',
 			}));
 
@@ -2261,7 +2834,7 @@ describe('run state', () => {
 			grantRunRewards('p1', { status: 'victory' });
 
 			expect(gameState.players.p1.pendingCardChoices).toEqual([
-				expect.objectContaining({ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature' }),
+				expect.objectContaining({ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature' }),
 			]);
 			expect(gameState.players.p1.runRewards.cards).toEqual([]);
 			expect(gameState.players.p1.ownedCards.dungeon_drake).toBeUndefined();
@@ -2271,7 +2844,7 @@ describe('run state', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
 			gameState.run = createRunState();
 			gameState.players.p1.pendingCardChoices = [
-				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', description: 'Spawns a battlefield ally' },
+				{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', description: 'Spawns a minion' },
 			];
 
 			const first = claimCardReward('p1', 'dungeon_drake');
@@ -2287,7 +2860,7 @@ describe('run state', () => {
 		it('claimCardReward rejects invalid choice ids', () => {
 			addPlayer('p1', { currency: 0, ownedCards: {} });
 			gameState.players.p1.pendingCardChoices = [
-				{ id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', description: 'Spawns a battlefield ally' },
+				{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', description: 'Spawns a minion' },
 			];
 
 			const result = claimCardReward('p1', 'flame_blade');
@@ -2303,18 +2876,18 @@ describe('run state', () => {
 		beforeEach(() => resetState());
 
 		it('returns correct structure', () => {
-			addPlayer('p1', { runRewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Flame Blade', count: 1 }] } });
+			addPlayer('p1', { runRewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Solar Edge', count: 1 }] } });
 			const summary = buildPlayerRewardSummary('p1');
 			expect(summary.currency).toBe(10);
 			expect(Array.isArray(summary.cards)).toBe(true);
 		});
 
 		it('maps card ids to names via CARD_DEFS', () => {
-			addPlayer('p1', { runRewards: { currency: 0, cards: [{ id: 'iron_sword', name: 'Iron Sword', count: 1 }] } });
+			addPlayer('p1', { runRewards: { currency: 0, cards: [{ id: 'iron_sword', name: 'Rust-Forged Saber', count: 1 }] } });
 			const summary = buildPlayerRewardSummary('p1');
 			const cardEntry = summary.cards.find(c => c.id === 'iron_sword');
 			expect(cardEntry).toBeDefined();
-			expect(cardEntry.name).toBe('Iron Sword');
+			expect(cardEntry.name).toBe('Rust-Forged Saber');
 			expect(cardEntry.count).toBe(1);
 		});
 
@@ -2323,9 +2896,9 @@ describe('run state', () => {
 				runRewards: {
 					currency: 0,
 					cards: [
-						{ id: 'iron_sword', name: 'Iron Sword', count: 2 },
-						{ id: 'flame_blade', name: 'Flame Blade', count: 1 },
-						{ id: 'battle_familiar', name: 'Battle Familiar', count: 1 }
+						{ id: 'iron_sword', name: 'Rust-Forged Saber', count: 2 },
+						{ id: 'flame_blade', name: 'Solar Edge', count: 1 },
+						{ id: 'battle_familiar', name: 'Signal Familiar', count: 1 }
 					]
 				}
 			});
@@ -2462,7 +3035,71 @@ describe('card sell and trade economy', () => {
 	it('getCardSellValue returns configured sell prices', () => {
 		expect(getCardSellValue('iron_sword')).toBe(5);
 		expect(getCardSellValue('flame_blade')).toBe(8);
-		expect(getCardSellValue('steel_broadsword')).toBe(15);
+		expect(getCardSellValue('steel_claymore')).toBe(15);
+	});
+
+	it('getCardBuyValue is double the sell value', () => {
+		expect(getCardBuyValue('iron_sword')).toBe(10);
+		expect(getCardBuyValue('flame_blade')).toBe(16);
+	});
+
+	it('pickShopOffer returns a valid card from the shop pool', () => {
+		const offer = pickShopOffer(42);
+		expect(offer).toBeTruthy();
+		expect(offer.cardId).toBeTruthy();
+		expect(offer.price).toBe(getCardBuyValue(offer.cardId));
+		expect(offer.name).toBeTruthy();
+	});
+
+	it('buyShopCard grants a card and deducts gold', () => {
+		addPlayer('p1', { currency: 100 });
+		const player = gameState.players.p1;
+		const countBefore = player.ownedCards.iron_sword || 0;
+		const deckBefore = [...player.selectedDeck];
+		const offer = { cardId: 'iron_sword', price: getCardBuyValue('iron_sword') };
+
+		const result = buyShopCard(player, offer);
+		expect(result.ok).toBe(true);
+		expect(result.addedToDeck).toBe(true);
+		expect(player.ownedCards.iron_sword).toBe(countBefore + 1);
+		expect(player.currency).toBe(100 - offer.price);
+		expect(player.selectedDeck.length).toBe(deckBefore.length + 1);
+		expect(player.selectedDeck).toContain(result.instanceId);
+		expect(validateDeck(player.selectedDeck, player.inventory).valid).toBe(true);
+	});
+
+	it('buyShopCard adds to inventory only when the selected deck is full', () => {
+		addPlayer('p1', { currency: 500 });
+		const player = gameState.players.p1;
+		while (player.selectedDeck.length < DECK_MAX_SIZE) {
+			const extra = createCardInstance('iron_sword');
+			player.inventory.push(extra);
+			player.selectedDeck.push(extra.instanceId);
+		}
+		player.ownedCards = inventoryToOwnedCards(player.inventory);
+		expect(player.selectedDeck.length).toBe(DECK_MAX_SIZE);
+
+		const offer = { cardId: 'flame_blade', price: getCardBuyValue('flame_blade') };
+		const deckBefore = [...player.selectedDeck];
+		const flameBefore = player.ownedCards.flame_blade || 0;
+
+		const result = buyShopCard(player, offer);
+		expect(result.ok).toBe(true);
+		expect(result.addedToDeck).toBe(false);
+		expect(player.selectedDeck).toEqual(deckBefore);
+		expect(player.ownedCards.flame_blade).toBe(flameBefore + 1);
+	});
+
+	it('buyShopCard rejects insufficient gold', () => {
+		addPlayer('p1', { currency: 0 });
+		const player = gameState.players.p1;
+		const countBefore = player.ownedCards.iron_sword || 0;
+		const offer = { cardId: 'iron_sword', price: getCardBuyValue('iron_sword') };
+
+		const result = buyShopCard(player, offer);
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('insufficient_gold');
+		expect(player.ownedCards.iron_sword).toBe(countBefore);
 	});
 
 	it('canSellCardInstance rejects selling deck-required copies', () => {
@@ -2633,20 +3270,20 @@ describe('server hand management', () => {
 
 	it('drawCardFromDeck preserves evolved card metadata', () => {
 		const player = {
-			deck: ['inferno_edge'],
+			deck: ['magma_greatsword'],
 		};
 
 		const card = drawCardFromDeck(player);
 
 		expect(card).toEqual(expect.objectContaining({
-			id: 'inferno_edge',
+			id: 'magma_greatsword',
 			isEvolved: true,
 			specialEffect: 'fire_trail',
 		}));
 		expect(player.deck).toHaveLength(0);
 	});
 
-	it('drawReplacementCard replaces a slot or removes it when the deck is empty', () => {
+	it('drawReplacementCard replaces a slot with desperation when the deck is empty', () => {
 		const player = {
 			hand: [
 				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 0 },
@@ -2654,14 +3291,39 @@ describe('server hand management', () => {
 			],
 			deck: ['battle_familiar'],
 		};
+		initDesperationDeck(player);
 
 		drawReplacementCard(player, 0);
 		expect(player.hand[0].id).toBe('battle_familiar');
 		expect(player.deck).toHaveLength(0);
 
 		drawReplacementCard(player, 1);
-		expect(player.hand).toHaveLength(1);
-		expect(player.hand[0].id).toBe('battle_familiar');
+		expect(player.hand).toHaveLength(2);
+		expect(player.hand[1].isDesperation).toBe(true);
+		expect(player.inDesperation).toBe(true);
+		expect(player.desperationDeck).toHaveLength(DESPERATION_DECK_TEMPLATE.length - 1);
+	});
+
+	it('drawReplacementCard removes the slot when both decks are empty', () => {
+		const player = {
+			hand: [{ id: 'iron_sword', type: 'weapon', charges: 1, remainingCharges: 0 }],
+			deck: [],
+			desperationDeck: [],
+		};
+
+		drawReplacementCard(player, 0);
+
+		expect(player.hand).toHaveLength(0);
+	});
+
+	it('isPlayerOutOfCards is false when the desperation deck still has cards', () => {
+		addPlayer('p1', {
+			hand: [],
+			deck: [],
+			desperationDeck: ['rusty_shiv'],
+		});
+
+		expect(isPlayerOutOfCards(gameState.players['p1'])).toBe(false);
 	});
 
 	it('validateUseCardHand rejects cards not present in the authoritative hand', () => {
@@ -2696,6 +3358,54 @@ describe('server hand management', () => {
 			valid: false,
 			reason: 'No charges remaining',
 		});
+	});
+
+	it('isPlayerOutOfCards is false when a desperation card remains in hand', () => {
+		addPlayer('p1', {
+			hand: [{ id: 'rusty_shiv', type: 'weapon', charges: 1, remainingCharges: 1, isDesperation: true }],
+			deck: [],
+			inDesperation: true,
+		});
+
+		expect(isPlayerOutOfCards(gameState.players['p1'])).toBe(false);
+	});
+
+	it('createEchoCard builds a one-charge echo at half base damage', () => {
+		const echo = createEchoCard({ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', grind: 0 });
+		expect(echo).toEqual(expect.objectContaining({
+			id: 'iron_sword',
+			isEcho: true,
+			charges: 1,
+			remainingCharges: 1,
+			echoDamage: 7,
+			magicStoneCost: 0,
+		}));
+	});
+
+	it('createEchoCard preserves magicStoneCost for non-zero-cost cards', () => {
+		const echo = createEchoCard({ id: 'frost_nova', name: 'Cryo Burst', type: 'spell', grind: 0 });
+		expect(echo.magicStoneCost).toBe(CARD_DEFS.frost_nova.magicStoneCost);
+	});
+
+	it('replaceConsumedCard records exhausted real cards before drawing desperation', () => {
+		gameState.enemies = [
+			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+		];
+		startDungeonRun();
+		const player = {
+			hand: [{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 1, remainingCharges: 0 }],
+			deck: [],
+			exhaustedCards: [],
+		};
+		initDesperationDeck(player);
+		gameState.players.p1 = player;
+
+		replaceConsumedCard(player, 0, player.hand[0]);
+
+		expect(player.exhaustedCards).toEqual([
+			expect.objectContaining({ id: 'iron_sword' }),
+		]);
+		expect(player.hand[0].isDesperation).toBe(true);
 	});
 
 	it('initPlayerHand works with instance-based selected decks', () => {
@@ -2744,16 +3454,18 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			hand: undefined,
 			hp: 80,
 			dead: false,
+			extracted: false,
 			ready: false,
 			magicStones: 50,
 			currency: 10,
+			inDesperation: false,
+			desperationDeck: [],
 			ownedCards: undefined,
 			runRewards: undefined,
 			currencyEarnedThisRun: undefined,
 			selectedDeck: undefined,
 			inventory: undefined,
-			debugScenario: null,
-			activeEnchantment: null,
+			debugScenario: null
 		});
 	});
 
@@ -2792,11 +3504,11 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(snapshot._victoryCounters).toBeUndefined();
 	});
 
-	it('strips pendingSpells (Set) from player objects', () => {
+	it('strips pendingSummons (Set) from player objects', () => {
 		addPlayer('p1');
-		gameState.players['p1'].pendingSpells.add('0:iron_sword');
+		gameState.players['p1'].pendingSummons.add('0:iron_sword');
 		const snapshot = stateSnapshot();
-		expect(snapshot.players['p1'].pendingSpells).toBeUndefined();
+		expect(snapshot.players['p1'].pendingSummons).toBeUndefined();
 	});
 
 	it('strips lastActivity from player objects', () => {
@@ -2863,6 +3575,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.grunt.wanderSpeed).toBe(1.0);
 		expect(ENEMY_DEFS.grunt.attackDamage).toBe(10);
 		expect(ENEMY_DEFS.grunt.attackWindupMs).toBe(800);
+		expect(ENEMY_DEFS.grunt.attackStyle).toBe('radial');
 	});
 
 	it('skirmisher has correct stat values', () => {
@@ -2871,6 +3584,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.skirmisher.wanderSpeed).toBe(1.5);
 		expect(ENEMY_DEFS.skirmisher.attackDamage).toBe(6);
 		expect(ENEMY_DEFS.skirmisher.attackWindupMs).toBe(500);
+		expect(ENEMY_DEFS.skirmisher.attackStyle).toBe('cone');
 	});
 
 	it('miniboss has correct stat values', () => {
@@ -2879,6 +3593,8 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.miniboss.wanderSpeed).toBe(0.6);
 		expect(ENEMY_DEFS.miniboss.attackDamage).toBe(18);
 		expect(ENEMY_DEFS.miniboss.attackWindupMs).toBe(1200);
+		expect(ENEMY_DEFS.miniboss.attackStyle).toBe('cone');
+		expect(ENEMY_DEFS.miniboss.attackRange).toBe(5);
 	});
 
 	it('spawner has correct stat and spawning fields', () => {
@@ -2887,6 +3603,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.wanderSpeed).toBe(0.9);
 		expect(ENEMY_DEFS.spawner.attackDamage).toBe(8);
 		expect(ENEMY_DEFS.spawner.attackWindupMs).toBe(900);
+		expect(ENEMY_DEFS.spawner.attackStyle).toBe('radial');
 		expect(ENEMY_DEFS.spawner.spawnIntervalMs).toBe(4000);
 		expect(ENEMY_DEFS.spawner.spawnMaxAlive).toBe(3);
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
@@ -2940,11 +3657,13 @@ describe('spawnEnemies() mixed pack', () => {
 		expect(counts.spawner).toBe(1);
 	});
 
-	it('spawns quest-specific enemy counts when selected quest changes', () => {
+	it('spawns crystals instead of enemies for crystal rescue', () => {
 		gameState.selectedQuestId = 'crystal_rescue';
 		gameState.enemies = [];
+		gameState.loot = [];
 		spawnEnemies();
-		expect(gameState.enemies.length).toBe(QUEST_DEFS.crystal_rescue.enemyCount);
+		expect(gameState.enemies.length).toBe(0);
+		expect(gameState.loot.filter(l => l.kind === 'crystal').length).toBe(QUEST_DEFS.crystal_rescue.itemCount);
 	});
 });
 

@@ -6,9 +6,11 @@ const crypto = require('crypto');
 const {
   TICK_RATE,
   MOVE_SPEED,
+  INPUT_STALE_MS,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
   ENEMY_ATTACK_RECOVERY_MS,
+  ATTACK_CONE_ANGLE,
   MAX_MAGIC_STONES,
   MAGIC_STONES_REGEN_PER_TICK,
   SUMMON_RADIUS,
@@ -18,8 +20,7 @@ const {
   SPAWN_PADDING,
   MAX_HP,
   RESPAWN_DELAY_MS,
-  COOLDOWN_MS,
-  MAX_GROUND_ENCHANTMENTS_PER_PLAYER
+  COOLDOWN_MS
 } = require('./config');
 const { PASSAGE_WIDTH } = require('./dungeon');
 
@@ -70,7 +71,7 @@ function buildWallColliders(layout = _gameState && _gameState.layout) {
   }
   for (const passage of layout.passages) {
     for (const wall of passage.walls) {
-      colliders.push(wallAABB({ ...wall, length: passage.corridorLength }, PASSAGE_WALL_THICKNESS / 2));
+      colliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
     }
   }
 
@@ -115,12 +116,10 @@ function wallAABB(wall, halfThickness) {
  * Check if a proposed player position overlaps any wall collider.
  * Returns true if the position is inside a wall (collision), false otherwise.
  */
-function checkWallCollision(px, pz, colliders = getWallColliders()) {
-  const pr = PLAYER_RADIUS;
-
+function checkWallCollision(px, pz, colliders = getWallColliders(), radius = PLAYER_RADIUS) {
   for (const w of colliders) {
-    if (px + pr <= w.minX || px - pr >= w.maxX) continue;
-    if (pz + pr <= w.minZ || pz - pr >= w.maxZ) continue;
+    if (px + radius <= w.minX || px - radius >= w.maxX) continue;
+    if (pz + radius <= w.minZ || pz - radius >= w.maxZ) continue;
     return true; // overlap
   }
 
@@ -132,7 +131,7 @@ function checkWallCollision(px, pz, colliders = getWallColliders()) {
  * When the previous position is provided, push back to that side of the wall
  * so a client cannot tunnel through by landing inside the wall volume.
  */
-function resolveWallCollision(newX, newZ, colliders = getWallColliders(), fromX = newX, fromZ = newZ) {
+function resolveWallCollision(newX, newZ, colliders = getWallColliders(), fromX = newX, fromZ = newZ, radius = PLAYER_RADIUS) {
   let resolvedX = newX;
   let resolvedZ = newZ;
 
@@ -140,10 +139,10 @@ function resolveWallCollision(newX, newZ, colliders = getWallColliders(), fromX 
     let adjusted = false;
 
     for (const w of colliders) {
-      const pMinX = resolvedX - PLAYER_RADIUS;
-      const pMaxX = resolvedX + PLAYER_RADIUS;
-      const pMinZ = resolvedZ - PLAYER_RADIUS;
-      const pMaxZ = resolvedZ + PLAYER_RADIUS;
+      const pMinX = resolvedX - radius;
+      const pMaxX = resolvedX + radius;
+      const pMinZ = resolvedZ - radius;
+      const pMaxZ = resolvedZ + radius;
 
       if (pMaxX <= w.minX || pMinX >= w.maxX || pMaxZ <= w.minZ || pMinZ >= w.maxZ) continue;
 
@@ -151,19 +150,19 @@ function resolveWallCollision(newX, newZ, colliders = getWallColliders(), fromX 
       const overlapZ = Math.min(pMaxZ - w.minZ, w.maxZ - pMinZ);
 
       if (overlapX < overlapZ) {
-        if (fromX + PLAYER_RADIUS <= w.minX) {
-          resolvedX = w.minX - PLAYER_RADIUS;
-        } else if (fromX - PLAYER_RADIUS >= w.maxX) {
-          resolvedX = w.maxX + PLAYER_RADIUS;
+        if (fromX + radius <= w.minX) {
+          resolvedX = w.minX - radius;
+        } else if (fromX - radius >= w.maxX) {
+          resolvedX = w.maxX + radius;
         } else {
           const wallCX = (w.minX + w.maxX) / 2;
           resolvedX += resolvedX < wallCX ? -overlapX : overlapX;
         }
       } else {
-        if (fromZ + PLAYER_RADIUS <= w.minZ) {
-          resolvedZ = w.minZ - PLAYER_RADIUS;
-        } else if (fromZ - PLAYER_RADIUS >= w.maxZ) {
-          resolvedZ = w.maxZ + PLAYER_RADIUS;
+        if (fromZ + radius <= w.minZ) {
+          resolvedZ = w.minZ - radius;
+        } else if (fromZ - radius >= w.maxZ) {
+          resolvedZ = w.maxZ + radius;
         } else {
           const wallCZ = (w.minZ + w.maxZ) / 2;
           resolvedZ += resolvedZ < wallCZ ? -overlapZ : overlapZ;
@@ -185,10 +184,10 @@ function resolveWallCollision(newX, newZ, colliders = getWallColliders(), fromX 
  * Uses a slab-based segment-AABB intersection test.
  */
 function checkSweptCollision(fromX, fromZ, toX, toZ, colliders = getWallColliders(), options = {}) {
-  const pr = PLAYER_RADIUS;
+  const pr = options.radius != null ? options.radius : PLAYER_RADIUS;
 
   for (const w of colliders) {
-    // Expand AABB by player radius
+    // Expand AABB by entity radius
     const aabb = {
       minX: w.minX - pr,
       maxX: w.maxX + pr,
@@ -198,13 +197,132 @@ function checkSweptCollision(fromX, fromZ, toX, toZ, colliders = getWallCollider
 
     if (options.allowEndpointTouch) {
       const entryT = segmentAABBEntryT(fromX, fromZ, toX, toZ, aabb);
-      if (entryT != null && entryT < 1 - 1e-8) return true;
+      if (entryT == null) continue;
+      if (entryT <= 1e-8 && !checkWallCollision(fromX, fromZ, colliders, pr)) continue;
+      if (entryT < 1 - 1e-8) return true;
     } else if (segmentIntersectsAABB(fromX, fromZ, toX, toZ, aabb)) {
       return true;
     }
   }
 
   return false;
+}
+
+/**
+ * Move an entity using direct movement with axis-separated wall sliding.
+ * Shared by player movement and enemy knockback/pull resolution.
+ */
+function tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, radius) {
+  if (checkWallCollision(fromX, fromZ, colliders, radius)) {
+    const resolved = resolveWallCollision(fromX, fromZ, colliders, fromX, fromZ, radius);
+    fromX = resolved.x;
+    fromZ = resolved.z;
+  }
+
+  const moveX = dirX * distance;
+  const moveZ = dirZ * distance;
+  const sweptOptions = { allowEndpointTouch: true, radius };
+
+  function attempt(targetX, targetZ) {
+    const clamped = clampToDungeon(targetX, targetZ);
+    const resolved = resolveWallCollision(clamped.x, clamped.z, colliders, fromX, fromZ, radius);
+    if (!isInsideDungeon(resolved.x, resolved.z)) return null;
+    if (checkWallCollision(resolved.x, resolved.z, colliders, radius)) return null;
+    if (checkSweptCollision(fromX, fromZ, resolved.x, resolved.z, colliders, sweptOptions)) {
+      return null;
+    }
+    return resolved;
+  }
+
+  const direct = attempt(fromX + moveX, fromZ + moveZ);
+  if (direct) {
+    return {
+      x: direct.x,
+      z: direct.z,
+      moved: direct.x !== fromX || direct.z !== fromZ,
+    };
+  }
+
+  if (Math.abs(moveX) > 1e-8) {
+    const xSlide = attempt(fromX + moveX, fromZ);
+    if (xSlide && (Math.abs(xSlide.x - fromX) > 1e-8 || Math.abs(xSlide.z - fromZ) > 1e-8)) {
+      return { x: xSlide.x, z: xSlide.z, moved: true };
+    }
+  }
+
+  if (Math.abs(moveZ) > 1e-8) {
+    const zSlide = attempt(fromX, fromZ + moveZ);
+    if (zSlide && (Math.abs(zSlide.x - fromX) > 1e-8 || Math.abs(zSlide.z - fromZ) > 1e-8)) {
+      return { x: zSlide.x, z: zSlide.z, moved: true };
+    }
+  }
+
+  return { x: fromX, z: fromZ, moved: false };
+}
+
+function tryEntityDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders = getWallColliders()) {
+  return tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, ENTITY_RADIUS);
+}
+
+/**
+ * Move a player using direct movement with axis-separated wall sliding.
+ */
+function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, colliders = getWallColliders()) {
+  return tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, PLAYER_RADIUS);
+}
+
+/**
+ * Apply one tick of movement for all players with active input.
+ * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
+ */
+function applyPlayerMovement() {
+  if (!_gameState || _gameState.gamePhase !== 'playing') return;
+
+  const step = MOVE_SPEED / TICK_RATE;
+  const colliders = getWallColliders();
+  const now = Date.now();
+
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!player || player.dead || player.extracted) continue;
+    if (player.connected === false) continue;
+    if (!player.inputActive) continue;
+    if (now - (player.lastInputTime || 0) > INPUT_STALE_MS) {
+      player.inputActive = false;
+      continue;
+    }
+
+    const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+    if (mag < 1e-8) continue;
+
+    let dx = player.inputDx;
+    let dz = player.inputDz;
+    if (mag > 1) { dx /= mag; dz /= mag; }
+
+    const prevX = player.x;
+    const prevZ = player.z;
+    const result = tryPlayerMove(player.x, player.z, dx, dz, step, colliders);
+    player.x = result.x;
+    player.y = 0.5;
+    player.z = result.z;
+    if (Number.isFinite(player.inputRotation)) {
+      player.rotation = player.inputRotation;
+    }
+    player.lastMoveTime = now;
+    if (result.moved || player.x !== prevX || player.z !== prevZ) {
+      player.persistenceDirty = true;
+    }
+  }
+}
+
+/** Flush at most one persistence write per dirty player (called once per tick). */
+function flushDirtyPlayerSaves() {
+  if (!_gameState || !_savePlayerData) return;
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (player?.persistenceDirty) {
+      player.persistenceDirty = false;
+      _savePlayerData(playerId);
+    }
+  }
 }
 
 function segmentAABBEntryT(x1, z1, x2, z2, aabb) {
@@ -416,8 +534,8 @@ function computeWalkableAABBs(layout) {
   }
 
   if (layout.passages) {
+    const halfGap = (layout.passageWidth ?? PASSAGE_WIDTH) / 2;
     for (const p of layout.passages) {
-      const halfGap = PASSAGE_WIDTH / 2;
       aabbs.push({
         minX: Math.min(p.x1, p.x2) - halfGap,
         maxX: Math.max(p.x1, p.x2) + halfGap,
@@ -523,12 +641,57 @@ function randomWanderTarget() {
 // ── Enemy Type Definitions ──
 
 const ENEMY_DEFS = {
-	grunt:      { hp: 50,  chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800 },
-	skirmisher: { hp: 20,  chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6,  attackWindupMs: 500 },
-	miniboss:   { hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200 },
-	spawner:    { hp: 60,  chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8,  attackWindupMs: 900,
-		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher' },
+	grunt: {
+		hp: 50, chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800,
+		attackStyle: 'radial',
+	},
+	skirmisher: {
+		hp: 20, chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6, attackWindupMs: 500,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
+	},
+	miniboss: {
+		hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
+	},
+	spawner: {
+		hp: 60, chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8, attackWindupMs: 900,
+		attackStyle: 'radial',
+		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
+	},
 };
+
+function lockWindupDirection(enemy, target) {
+	const dx = target.x - enemy.x;
+	const dz = target.z - enemy.z;
+	const len = Math.hypot(dx, dz);
+	if (len > 0) {
+		enemy.windupDirX = dx / len;
+		enemy.windupDirZ = dz / len;
+	} else {
+		enemy.windupDirX = 1;
+		enemy.windupDirZ = 0;
+	}
+}
+
+function isPlayerInEnemyAttack(enemy, target, def) {
+	const range = def.attackRange ?? ENEMY_ATTACK_RANGE;
+	const dx = target.x - enemy.x;
+	const dz = target.z - enemy.z;
+	const dist = Math.hypot(dx, dz);
+	if (dist > range) return false;
+
+	if (def.attackStyle === 'cone') {
+		const coneAngle = def.attackConeAngle ?? ATTACK_CONE_ANGLE;
+		const dirX = enemy.windupDirX ?? 1;
+		const dirZ = enemy.windupDirZ ?? 0;
+		const tDirX = dist > 0 ? dx / dist : dirX;
+		const tDirZ = dist > 0 ? dz / dist : dirZ;
+		const dot = dirX * tDirX + dirZ * tDirZ;
+		return dot >= Math.cos(coneAngle / 2);
+	}
+
+	return true;
+}
 
 // Minion behavior constants
 const MINION_FOLLOW_DISTANCE = 3;
@@ -608,6 +771,44 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   return { hits, magicStonesGained, hpHealed };
 }
 
+function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const sampleCount = Math.max(4, Math.ceil(range * 2));
+  const hitEnemyIds = new Set();
+
+  for (let i = 0; i <= sampleCount; i++) {
+    const t = range * (i / sampleCount);
+    const px = originX + dirX * t;
+    const pz = originZ + dirZ * t;
+
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id)) continue;
+      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      if (dist > hitWidth) continue;
+
+      const hpBefore = enemy.hp;
+      if (attackerId) enemy.lastDamagedBy = attackerId;
+      enemy.hp -= damage;
+      const killed = hpBefore > 0 && enemy.hp <= 0;
+      const hitGain = magicStoneOnHit;
+      const killGain = killed ? magicStoneOnKill : 0;
+      magicStonesGained += hitGain + killGain;
+      hitEnemyIds.add(enemy.id);
+      hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
+      if (!options.pierces) {
+        return { hits, magicStonesGained };
+      }
+    }
+  }
+
+  return { hits, magicStonesGained };
+}
+
 function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
@@ -685,8 +886,24 @@ function pullEnemiesToward(originX, originZ, radius, strength) {
     if (dist <= 0.01 || dist > radius) continue;
 
     const pull = Math.min(strength, dist);
-    enemy.x += (dx / dist) * pull;
-    enemy.z += (dz / dist) * pull;
+    const result = tryEntityDisplacement(enemy.x, enemy.z, dx / dist, dz / dist, pull);
+    enemy.x = result.x;
+    enemy.z = result.z;
+    moved.push({ enemyId: enemy.id, x: enemy.x, z: enemy.z });
+  }
+  return moved;
+}
+
+function applyKnockback(originX, originZ, dirX, dirZ, hits, strength) {
+  const moved = [];
+  if (!Array.isArray(hits) || hits.length === 0 || strength <= 0) return moved;
+
+  const hitIds = new Set(hits.map((hit) => hit.enemyId));
+  for (const enemy of _gameState.enemies) {
+    if (!hitIds.has(enemy.id)) continue;
+    const result = tryEntityDisplacement(enemy.x, enemy.z, dirX, dirZ, strength);
+    enemy.x = result.x;
+    enemy.z = result.z;
     moved.push({ enemyId: enemy.id, x: enemy.x, z: enemy.z });
   }
   return moved;
@@ -703,6 +920,29 @@ function applyEventHorizon(originX, originZ, cardDef, attackerId) {
     { attackerId }
   );
   return { pulled, crushed: crush.hits };
+}
+
+function spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
+  if (!_gameState.areaEffects) _gameState.areaEffects = [];
+  const now = Date.now();
+  const ticks = cardDef.dotTicks || 4;
+  const intervalMs = cardDef.dotIntervalMs || 500;
+  _gameState.areaEffects.push({
+    id: crypto.randomUUID(),
+    type: 'fire_trail',
+    ownerId,
+    originX,
+    originZ,
+    dirX,
+    dirZ,
+    coneAngle: cardDef.attackConeAngle || ATTACK_CONE_ANGLE,
+    range: cardDef.attackRange || ATTACK_RANGE,
+    damagePerTick: cardDef.trailDamagePerTick || Math.round((cardDef.damage || 0) * 0.25),
+    ticksRemaining: ticks,
+    intervalMs,
+    lastTickAt: now,
+    expiresAt: now + ticks * intervalMs + 250,
+  });
 }
 
 function spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, ownerId) {
@@ -801,6 +1041,8 @@ function findTauntMinionNear(enemyX, enemyZ, detectionRadius) {
 
   return nearestMinion;
 }
+
+// ── Player Damage / Respawn ──
 
 // ── Enchantments (ground hazards + self buffs) ──
 
@@ -940,16 +1182,31 @@ function updateEnchantments() {
   }
 }
 
-// ── Player Damage / Respawn ──
-
 function damagePlayer(playerId, amount, options = {}) {
   const player = _gameState.players[playerId];
   if (!player) return null;
 
   if (amount <= 0) return null;
 
-  player.hp = Math.max(0, player.hp - amount);
-  const mirrorResult = triggerMirrorWard(playerId, amount, options.attackerEnemyId);
+  let remaining = amount;
+  const now = Date.now();
+  if (player.shieldExpiresAt && now > player.shieldExpiresAt) {
+    player.shieldHp = 0;
+    player.shieldExpiresAt = 0;
+  }
+  if (player.shieldHp > 0 && remaining > 0) {
+    const absorbed = Math.min(player.shieldHp, remaining);
+    player.shieldHp -= absorbed;
+    remaining -= absorbed;
+    if (player.shieldHp <= 0) {
+      player.shieldHp = 0;
+      player.shieldExpiresAt = 0;
+    }
+  }
+  if (remaining <= 0) return null;
+
+  player.hp = Math.max(0, player.hp - remaining);
+  const mirrorResult = triggerMirrorWard(playerId, remaining, options.attackerEnemyId);
 
   if (player.hp <= 0 && !player.dead) {
     player.dead = true;
@@ -981,7 +1238,7 @@ function updateEnemies() {
 	if (_gameState.run && (_gameState.run.status === 'victory' || _gameState.run.status === 'failed')) return;
 
 	const dt = 1 / TICK_RATE;
-	const players = Object.values(_gameState.players).filter(p => !p.dead);
+	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 
 	for (const enemy of _gameState.enemies) {
 		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
@@ -1010,8 +1267,7 @@ function updateEnemies() {
 				// Revalidate: find the target player and check range + alive
 				const target = _gameState.players[enemy.windupTargetId];
 				if (target && !target.dead) {
-					const dist = Math.hypot(target.x - enemy.x, target.z - enemy.z);
-					if (dist <= ENEMY_ATTACK_RANGE) {
+					if (isPlayerInEnemyAttack(enemy, target, def)) {
 						// Strike!
 						damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
 						enemy.attackState = 'recovering';
@@ -1081,10 +1337,11 @@ function updateEnemies() {
 
 			// If in chasing (not mid-windup/recover) and within attack range, start wind-up
 			if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
-				if (nearestDist <= ENEMY_ATTACK_RANGE) {
+				if (nearestDist <= (def.attackRange ?? ENEMY_ATTACK_RANGE)) {
 					enemy.attackState = 'windup';
 					enemy.windupTargetId = nearestPlayer.id;
 					enemy.windupStartTime = Date.now();
+					lockWindupDirection(enemy, nearestPlayer);
 					continue; // do not move during wind-up
 				}
 				enemy.attackState = 'chasing';
@@ -1184,6 +1441,35 @@ function updateMinions() {
         }
       }
 
+      if (minion.type === 'astral_guardian') {
+        const attackDamage = minion.attackDamage || 10;
+        const attackIntervalMs = minion.attackIntervalMs || Math.floor(1000 / TICK_RATE);
+        const lastAttackAt = minion.lastAttackAt || 0;
+
+        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+          if (nearestDist <= ATTACK_RANGE) {
+            if (now - lastAttackAt >= attackIntervalMs) {
+              nearestEnemy.lastDamagedBy = minion.ownerId;
+              nearestEnemy.hp -= attackDamage;
+              minion.lastAttackAt = now;
+            }
+          } else {
+            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
+          }
+        } else {
+          const owner = _gameState.players[minion.ownerId];
+          if (owner && !owner.dead) {
+            const dx = owner.x - minion.x;
+            const dz = owner.z - minion.z;
+            const distToOwner = Math.hypot(dx, dz);
+            if (distToOwner > MINION_FOLLOW_DISTANCE) {
+              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+            }
+          }
+        }
+        continue;
+      }
+
       if (minion.type === 'storm_eagle' || minion.type === 'thunderbird') {
         const attackRange = minion.attackRange || (minion.type === 'thunderbird' ? 11 : 7);
         const attackDamage = minion.attackDamage || (minion.type === 'thunderbird' ? 18 : 12);
@@ -1219,6 +1505,84 @@ function updateMinions() {
             }
           } else {
             moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.skirmisher.chaseSpeed * dt);
+          }
+        } else {
+          const owner = _gameState.players[minion.ownerId];
+          if (owner && !owner.dead) {
+            const dx = owner.x - minion.x;
+            const dz = owner.z - minion.z;
+            const distToOwner = Math.hypot(dx, dz);
+            if (distToOwner > MINION_FOLLOW_DISTANCE) {
+              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+            }
+          }
+        }
+        continue;
+      }
+
+      if (minion.type === 'ancient_wyrm') {
+        const breathInterval = minion.breathIntervalMs || 3000;
+        const breathRange = minion.breathRange || 8;
+        const breathDamage = minion.breathDamage || 15;
+        const breathConeAngle = minion.breathConeAngle || ATTACK_CONE_ANGLE;
+        const lastBreathAt = minion.lastBreathAt ?? 0;
+
+        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+          if (now - lastBreathAt >= breathInterval && nearestDist <= breathRange) {
+            const dist = nearestDist || 1;
+            const dirX = (nearestEnemy.x - minion.x) / dist;
+            const dirZ = (nearestEnemy.z - minion.z) / dist;
+            const { hits } = collectConeHits(
+              minion.x,
+              minion.z,
+              dirX,
+              dirZ,
+              breathRange,
+              breathConeAngle,
+              breathDamage,
+              { attackerId: minion.ownerId }
+            );
+            minion.lastBreathAt = now;
+            _gameState._pendingMinionBreaths.push({
+              playerId: minion.ownerId,
+              cardId: 'ancient_wyrm',
+              specialEffect: 'fire_breath',
+              origin: { x: minion.x, z: minion.z },
+              direction: { x: dirX, z: dirZ },
+              attackRange: breathRange,
+              attackConeAngle: breathConeAngle,
+              hits,
+              minionId: minion.id,
+            });
+          } else if (nearestDist <= ATTACK_RANGE) {
+            const dist = nearestDist || 1;
+            const dirX = (nearestEnemy.x - minion.x) / dist;
+            const dirZ = (nearestEnemy.z - minion.z) / dist;
+            const meleeDamage = 5;
+            const { hits } = collectConeHits(
+              minion.x,
+              minion.z,
+              dirX,
+              dirZ,
+              ATTACK_RANGE,
+              ATTACK_CONE_ANGLE,
+              meleeDamage,
+              { attackerId: minion.ownerId }
+            );
+            if (hits.length > 0) {
+              _gameState._pendingMinionBreaths.push({
+                playerId: minion.ownerId,
+                cardId: 'ancient_wyrm',
+                origin: { x: minion.x, z: minion.z },
+                direction: { x: dirX, z: dirZ },
+                attackRange: ATTACK_RANGE,
+                attackConeAngle: ATTACK_CONE_ANGLE,
+                hits,
+                minionId: minion.id,
+              });
+            }
+          } else {
+            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
           }
         } else {
           const owner = _gameState.players[minion.ownerId];
@@ -1286,7 +1650,7 @@ function regenMagicStones() {
     } else {
       p.magicStones = Math.min(MAX_MAGIC_STONES, p.magicStones + MAGIC_STONES_REGEN_PER_TICK);
     }
-    p.pendingSpells.clear();
+    if (p.pendingSummons) p.pendingSummons.clear();
   }
 }
 
@@ -1332,6 +1696,9 @@ module.exports = {
   checkWallCollision,
   resolveWallCollision,
   checkSweptCollision,
+  tryPlayerMove,
+  applyPlayerMovement,
+  flushDirtyPlayerSaves,
   segmentAABBEntryT,
   segmentIntersectsAABB,
   isEntityPositionBlocked,
@@ -1367,11 +1734,14 @@ module.exports = {
   // Card combat helpers
   collectConeHits,
   collectRadialHits,
+  collectProjectileHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
+  applyKnockback,
   applyEventHorizon,
   spawnDragonsBreathEffect,
+  spawnFireTrailEffect,
   spawnInfernoPillarEffect,
   updateAreaEffects,
   updateEnchantments,

@@ -4,24 +4,24 @@
 
 // ── Card Definitions ──
 // Keyed by card id. Each entry: { id, name, type, charges }
-//   type: "weapon" | "spell" | "creature" | "enchantment"
+//   type: "weapon" | "summon" | "monster"
 //   charges: uses remaining (multi-use weapons > 1, single-use = 1)
 export const CARD_DEFS = {
   iron_sword: {
     id: 'iron_sword',
-    name: 'Iron Sword',
+    name: 'Rust-Forged Saber',
     type: 'weapon',
     charges: 5,
   },
   flame_blade: {
     id: 'flame_blade',
-    name: 'Flame Blade',
+    name: 'Solar Edge',
     type: 'weapon',
     charges: 3,
   },
   battle_familiar: {
     id: 'battle_familiar',
-    name: 'Battle Familiar',
+    name: 'Signal Familiar',
     type: 'spell',
     charges: 1,
     magicStoneCost: 50,
@@ -29,62 +29,66 @@ export const CARD_DEFS = {
   },
   dungeon_drake: {
     id: 'dungeon_drake',
-    name: 'Dungeon Drake',
+    name: 'Vault Wyrm',
     type: 'creature',
     charges: 1,
   },
-  steel_broadsword: {
-    id: 'steel_broadsword',
-    name: 'Steel Broadsword',
+  steel_claymore: {
+    id: 'steel_claymore',
+    name: 'Alloy Greatblade',
     type: 'weapon',
     charges: 6,
+    attackRange: 7,
     isEvolved: true,
     specialEffect: 'knockback',
   },
-  inferno_edge: {
-    id: 'inferno_edge',
-    name: 'Inferno Edge',
+  magma_greatsword: {
+    id: 'magma_greatsword',
+    name: 'Corebreaker Greatsword',
     type: 'weapon',
     charges: 4,
     isEvolved: true,
     specialEffect: 'fire_trail',
   },
-  guardian_familiar: {
-    id: 'guardian_familiar',
-    name: 'Guardian Familiar',
+  astral_guardian: {
+    id: 'astral_guardian',
+    name: 'Astral Guardian',
     type: 'spell',
     charges: 1,
     magicStoneCost: 65,
-    damage: 70,
+    damage: 60,
     isEvolved: true,
-    specialEffect: 'barrier_burst',
+    specialEffect: 'astral_shield',
+    effect: 'astral_guardian',
   },
-  ancient_drake: {
-    id: 'ancient_drake',
-    name: 'Ancient Drake',
+  ancient_wyrm: {
+    id: 'ancient_wyrm',
+    name: 'Archive Wyrm',
     type: 'creature',
     charges: 1,
+    minionHp: 90,
     isEvolved: true,
-    specialEffect: 'bleed',
+    specialEffect: 'fire_breath',
+    effect: 'ancient_wyrm',
   },
   mana_prism: {
     id: 'mana_prism',
     name: 'Mana Prism',
-    type: 'creature',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'mana_prism',
   },
   harvesting_scythe: {
     id: 'harvesting_scythe',
-    name: 'Harvesting Scythe',
+    name: 'Ether Scythe',
     type: 'weapon',
     charges: 3,
   },
   sacrificial_altar: {
     id: 'sacrificial_altar',
-    name: 'Sacrificial Altar',
-    type: 'creature',
+    name: 'Offering Terminal',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'sacrificial_altar',
@@ -136,9 +140,17 @@ export const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'triple_returning_projectile',
   },
+  arcane_bolt: {
+    id: 'arcane_bolt',
+    name: 'Arcane Bolt',
+    type: 'weapon',
+    charges: 4,
+    attackRange: 10,
+    specialEffect: 'long_range',
+  },
   frost_nova: {
     id: 'frost_nova',
-    name: 'Frost Nova',
+    name: 'Cryo Burst',
     type: 'spell',
     charges: 1,
     magicStoneCost: 35,
@@ -147,7 +159,7 @@ export const CARD_DEFS = {
   },
   glacier_collapse: {
     id: 'glacier_collapse',
-    name: 'Glacier Collapse',
+    name: 'Glacier Rupture',
     type: 'spell',
     charges: 1,
     magicStoneCost: 35,
@@ -157,7 +169,7 @@ export const CARD_DEFS = {
   },
   healing_font: {
     id: 'healing_font',
-    name: 'Healing Font',
+    name: 'Restoration Beacon',
     type: 'spell',
     charges: 1,
     magicStoneCost: 0,
@@ -166,7 +178,7 @@ export const CARD_DEFS = {
   },
   divine_grace: {
     id: 'divine_grace',
-    name: 'Divine Grace',
+    name: 'Sanctum Pulse',
     type: 'spell',
     charges: 1,
     magicStoneCost: 0,
@@ -178,14 +190,14 @@ export const CARD_DEFS = {
   },
   skeleton_knight: {
     id: 'skeleton_knight',
-    name: 'Skeleton Knight',
+    name: 'Necroframe Knight',
     type: 'creature',
     charges: 1,
     specialEffect: 'taunt',
   },
   undead_commander: {
     id: 'undead_commander',
-    name: 'Undead Commander',
+    name: 'Legion Marshal',
     type: 'creature',
     charges: 1,
     isEvolved: true,
@@ -193,7 +205,7 @@ export const CARD_DEFS = {
   },
   storm_eagle: {
     id: 'storm_eagle',
-    name: 'Storm Eagle',
+    name: 'Stormwing Drone',
     type: 'creature',
     charges: 1,
     magicStoneCost: 40,
@@ -229,7 +241,7 @@ export const CARD_DEFS = {
   },
   echo_blade: {
     id: 'echo_blade',
-    name: 'Echo Blade',
+    name: 'Phase Echo',
     type: 'weapon',
     charges: 5,
     specialEffect: 'shockwave',
@@ -244,7 +256,7 @@ export const CARD_DEFS = {
   },
   mana_leach: {
     id: 'mana_leach',
-    name: 'Mana Leach',
+    name: 'Ether Siphon',
     type: 'spell',
     charges: 1,
     magicStoneCost: 30,
@@ -261,7 +273,7 @@ export const CARD_DEFS = {
   },
   dragons_breath: {
     id: 'dragons_breath',
-    name: "Dragon's Breath",
+    name: 'Wyrmflare',
     type: 'spell',
     charges: 1,
     magicStoneCost: 40,
@@ -270,13 +282,22 @@ export const CARD_DEFS = {
   },
   inferno_pillar: {
     id: 'inferno_pillar',
-    name: 'Inferno Pillar',
+    name: 'Thermal Column',
     type: 'spell',
     charges: 1,
     magicStoneCost: 40,
     effect: 'inferno_pillar',
     isEvolved: true,
     specialEffect: 'fire_dot',
+  },
+  telepipe: {
+    id: 'telepipe',
+    name: 'Telepipe',
+    type: 'spell',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'telepipe',
+    specialEffect: 'portal',
   },
   spike_trap: {
     id: 'spike_trap',
@@ -303,11 +324,24 @@ export const CARD_DEFS = {
 export const EVOLUTION_GRIND_REQUIRED = 10;
 export const GRIND_COST_BASE = 100;
 export const GRIND_STAT_SCALE = 0.05;
+/** Pre-0be7d29 evolved card ids mapped to their current names. */
+export const LEGACY_EVOLVED_CARD_IDS = {
+  steel_broadsword: 'steel_claymore',
+  inferno_edge: 'magma_greatsword',
+  guardian_familiar: 'astral_guardian',
+  ancient_drake: 'ancient_wyrm',
+};
+
+export function migrateCardId(cardId) {
+  if (!cardId || typeof cardId !== 'string') return cardId;
+  return LEGACY_EVOLVED_CARD_IDS[cardId] || cardId;
+}
+
 export const EVOLUTION_TRANSFORMS = {
-  iron_sword: 'steel_broadsword',
-  flame_blade: 'inferno_edge',
-  battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake',
+  iron_sword: 'steel_claymore',
+  flame_blade: 'magma_greatsword',
+  battle_familiar: 'astral_guardian',
+  dungeon_drake: 'ancient_wyrm',
   saber_of_light: 'excalibur_photon',
   photon_slicer: 'infinite_disk',
   frost_nova: 'glacier_collapse',
@@ -325,10 +359,10 @@ export const CARD_SELL_VALUES = {
   flame_blade: 8,
   battle_familiar: 12,
   dungeon_drake: 10,
-  steel_broadsword: 15,
-  inferno_edge: 18,
-  guardian_familiar: 25,
-  ancient_drake: 20,
+  steel_claymore: 15,
+  magma_greatsword: 18,
+  astral_guardian: 25,
+  ancient_wyrm: 20,
   divine_grace: 18,
   undead_commander: 18,
   thunderbird: 18,
@@ -340,12 +374,12 @@ export const CARD_SELL_VALUES = {
   saber_of_light: 8,
   excalibur_photon: 12,
   infinite_disk: 18,
+  arcane_bolt: 8,
   event_horizon: 22,
   soul_drain: 18,
   dragons_breath: 14,
   inferno_pillar: 22,
-  spike_trap: 14,
-  mirror_ward: 16,
+  telepipe: 18,
 };
 
 export function getCardSellValue(cardId) {
@@ -357,7 +391,6 @@ export function getCardSellValue(cardId) {
   if (def.isEvolved) return 15;
   if (def.type === 'spell') return 12;
   if (def.type === 'creature') return 10;
-  if (def.type === 'enchantment') return 14;
   return 5;
 }
 
@@ -398,10 +431,12 @@ export const CARD_TYPE_STYLE = {
 
 // Optional per-card accent overrides for the expanded pack.
 export const CARD_ACCENT_STYLE = {
+  steel_claymore: { color: '#94a3b8', icon: '🗡' },
   saber_of_light: { color: '#fef08a', icon: '☀' },
   excalibur_photon: { color: '#e879f9', icon: '⚡' },
   photon_slicer: { color: '#22d3ee', icon: '⟲' },
   infinite_disk: { color: '#a5f3fc', icon: '∞' },
+  arcane_bolt: { color: '#a78bfa', icon: '⟡' },
   frost_nova: { color: '#67e8f9', icon: '❄' },
   glacier_collapse: { color: '#38bdf8', icon: '🧊' },
   healing_font: { color: '#86efac', icon: '♥' },
@@ -417,10 +452,82 @@ export const CARD_ACCENT_STYLE = {
   mana_leach: { color: '#a855f7', icon: '◈' },
   soul_drain: { color: '#e879f9', icon: '☠' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },
+  magma_greatsword: { color: '#f97316', icon: '🗡' },
   inferno_pillar: { color: '#ef4444', icon: '🌋' },
+  astral_guardian: { color: '#818cf8', icon: '✧' },
+  ancient_wyrm: { color: '#9333ea', icon: '🔥' },
+  rusty_shiv: { color: '#78716c', icon: '🗡' },
+  desperate_lunge: { color: '#b91c1c', icon: '⚡' },
+  throw_rock: { color: '#78716c', icon: '🪨' },
+  memory_shard: { color: '#c084fc', icon: '◇' },
+  telepipe: { color: '#67e8f9', icon: '⬡' },
   spike_trap: { color: '#f87171', icon: '⚠' },
   mirror_ward: { color: '#5eead4', icon: '🪞' },
 };
+
+// Per-player desperation cards (not deck-buildable).
+export const DESPERATION_CARD_DEFS = {
+  rusty_shiv: {
+    id: 'rusty_shiv',
+    name: 'Emergency Shiv',
+    type: 'weapon',
+    charges: 1,
+  },
+  desperate_lunge: {
+    id: 'desperate_lunge',
+    name: 'Last Gasp',
+    type: 'weapon',
+    charges: 1,
+  },
+  throw_rock: {
+    id: 'throw_rock',
+    name: 'Debris Toss',
+    type: 'weapon',
+    charges: 1,
+  },
+  memory_shard: {
+    id: 'memory_shard',
+    name: 'Echo Shard',
+    type: 'spell',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'memory_shard',
+  },
+};
+
+export const DESPERATION_DECK_TEMPLATE = [
+  'rusty_shiv',
+  'throw_rock',
+  'throw_rock',
+  'throw_rock',
+  'desperate_lunge',
+  'desperate_lunge',
+  'memory_shard',
+];
+
+export function getCardDef(cardId) {
+  return CARD_DEFS[cardId] || DESPERATION_CARD_DEFS[cardId] || null;
+}
+
+export function buildDesperationHandCard(cardId) {
+  const def = DESPERATION_CARD_DEFS[cardId];
+  if (!def) return null;
+  const card = {
+    id: def.id,
+    name: def.name,
+    type: def.type,
+    charges: def.charges,
+    remainingCharges: def.charges,
+    isDesperation: true,
+  };
+  if (def.magicStoneCost != null) {
+    card.magicStoneCost = def.magicStoneCost;
+  }
+  if (def.effect) {
+    card.effect = def.effect;
+  }
+  return card;
+}
 
 // ── Card ID Sets by Type ──
 // Pre-computed Sets for O(1) membership checks in hot paths (e.g. cardUsed handler).
@@ -433,4 +540,8 @@ for (const def of Object.values(CARD_DEFS)) {
   if (def.type === 'spell') spellCardIds.add(def.id);
   if (def.type === 'creature') creatureCardIds.add(def.id);
   if (def.type === 'enchantment') enchantmentCardIds.add(def.id);
+}
+for (const def of Object.values(DESPERATION_CARD_DEFS)) {
+  if (def.type === 'weapon') weaponCardIds.add(def.id);
+  if (def.type === 'spell') spellCardIds.add(def.id);
 }

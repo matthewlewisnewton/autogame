@@ -7,6 +7,8 @@ import {
 	persistenceKey,
 	inventoryToOwnedCards,
 	cardIdForDeckEntry,
+	normalizeInventory,
+	normalizePlayerInventory,
 	gameState,
 	resetGameState,
 	provider as defaultProvider
@@ -636,5 +638,44 @@ describe('anonymous save/load round-trip by playerId', () => {
 		// Verify currency and ownedCards survive round-trip
 		expect(loaded.currency).toBe(15);
 		expect(loaded.ownedCards).toEqual({ iron_sword: 2 });
+	});
+
+	it('migrates legacy evolved card ids when loading saved inventory', () => {
+		const savedData = {
+			currency: 10,
+			ownedCards: {
+				steel_broadsword: 1,
+				inferno_edge: 1,
+				guardian_familiar: 1,
+				ancient_drake: 1,
+			},
+			inventory: [
+				{ instanceId: 'legacy-1', cardId: 'steel_broadsword', grind: 10, level: 1 },
+				{ instanceId: 'legacy-2', cardId: 'inferno_edge', grind: 10, level: 1 },
+				{ instanceId: 'legacy-3', cardId: 'guardian_familiar', grind: 10, level: 1 },
+				{ instanceId: 'legacy-4', cardId: 'ancient_drake', grind: 10, level: 1 },
+			],
+			selectedDeck: ['legacy-1', 'legacy-2', 'legacy-3', 'legacy-4'],
+		};
+
+		const player = {
+			inventory: normalizeInventory(savedData.inventory, savedData.ownedCards),
+			ownedCards: {},
+			selectedDeck: savedData.selectedDeck,
+		};
+		normalizePlayerInventory(player);
+
+		expect(player.inventory.map((entry) => entry.cardId)).toEqual([
+			'steel_claymore',
+			'magma_greatsword',
+			'astral_guardian',
+			'ancient_wyrm',
+		]);
+		expect(player.selectedDeck.map((entry) => cardIdForDeckEntry(entry, player.inventory))).toEqual([
+			'steel_claymore',
+			'magma_greatsword',
+			'astral_guardian',
+			'ancient_wyrm',
+		]);
 	});
 });

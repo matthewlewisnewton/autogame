@@ -66,7 +66,7 @@ describe('card grinding', () => {
 		const result = grindCard(player, instance.instanceId);
 
 		expect(result.ok).toBe(false);
-		expect(result.reason).toContain('Not enough gold');
+		expect(result.reason).toContain('Not enough meseta');
 		expect(instance.grind).toBe(0);
 		expect(player.currency).toBe(50);
 	});

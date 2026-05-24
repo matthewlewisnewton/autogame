@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'module';
 import { io as ClientIO } from 'socket.io-client';
 import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
-	gameState,
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
@@ -12,6 +12,9 @@ import {
 	getJWTSecret
 } from '../index.js';
 import { clearUsers } from '../users.js';
+
+const require = createRequire(import.meta.url);
+const { getSession, getSessionCount } = require('../lobbies.js');
 
 // ── Helpers ──
 
@@ -168,9 +171,9 @@ describe('WebSocket JWT Authentication', () => {
 		// The playerId should be the accountId (authenticated identity)
 		expect(init.playerId).toBe(testAccountId);
 
-		// The player should exist in gameState with accountId set
-		expect(gameState.players[testAccountId]).toBeDefined();
-		expect(gameState.players[testAccountId].accountId).toBe(testAccountId);
+		// Authenticated players are tracked in session state until they join a lobby
+		expect(getSession(testAccountId)).toBeDefined();
+		expect(getSession(testAccountId).accountId).toBe(testAccountId);
 
 		socket.disconnect();
 	});
@@ -183,8 +186,7 @@ describe('WebSocket JWT Authentication', () => {
 		expect(error).toBe('Invalid or expired JWT');
 
 		// No player should have been created
-		const playerCount = Object.keys(gameState.players).length;
-		expect(playerCount).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('disconnects socket on malformed JWT', async () => {
@@ -192,7 +194,7 @@ describe('WebSocket JWT Authentication', () => {
 
 		expect(reason).toBe('connect_error');
 		expect(error).toBe('Invalid or expired JWT');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('disconnects socket on expired JWT', async () => {
@@ -206,7 +208,7 @@ describe('WebSocket JWT Authentication', () => {
 
 		expect(reason).toBe('connect_error');
 		expect(error).toBe('Invalid or expired JWT');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('rejects socket when no token is provided — via connect_error', async () => {
@@ -217,7 +219,7 @@ describe('WebSocket JWT Authentication', () => {
 		expect(error).toBe('No JWT token');
 
 		// No player should have been created
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('rejects socket when auth object is empty (no token key) — via connect_error', async () => {
@@ -225,7 +227,7 @@ describe('WebSocket JWT Authentication', () => {
 
 		expect(reason).toBe('connect_error');
 		expect(error).toBe('No JWT token');
-		expect(Object.keys(gameState.players).length).toBe(0);
+		expect(getSessionCount()).toBe(0);
 	});
 
 	it('does NOT emit connect event for rejected tokens', async () => {

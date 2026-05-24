@@ -2,12 +2,19 @@
 // Manages the player's card hand, deck, and slot cooldowns.
 // Pure logic — rendering is delegated via an optional callback.
 
-import { CARD_DEFS, createStartingDeck } from './cards.js';
+import {
+	CARD_DEFS,
+	createStartingDeck,
+	DESPERATION_DECK_TEMPLATE,
+	buildDesperationHandCard,
+} from './cards.js';
 
 // ── Mutable state (exported so main.js can read/write in-place) ──
 export let hand = [];            // array of up to 4 card objects
 export let deck = [];            // remaining card id strings
+export let desperationDeck = []; // shuffled desperation draw pile
 export let slotCooldowns = [false, false, false, false];
+export let inDesperation = false;
 
 /**
  * Draw one card from the deck.
@@ -37,6 +44,42 @@ export function drawCard() {
 	return card;
 }
 
+export function drawDesperationCard() {
+	if (desperationDeck.length === 0) return null;
+	inDesperation = true;
+	const cardId = desperationDeck.pop();
+	return buildDesperationHandCard(cardId);
+}
+
+export function initDesperationDeckLocal() {
+	desperationDeck = DESPERATION_DECK_TEMPLATE.slice();
+	for (let i = desperationDeck.length - 1; i > 0; i--) {
+		const j = Math.floor(Math.random() * (i + 1));
+		[desperationDeck[i], desperationDeck[j]] = [desperationDeck[j], desperationDeck[i]];
+	}
+}
+
+export function drawReplacementCardLocal(slotIndex) {
+	const card = drawCard() || drawDesperationCard();
+	if (card) {
+		hand[slotIndex] = card;
+		return;
+	}
+	hand.splice(slotIndex, 1);
+}
+
+export function setDesperationDrawPile(cardIds) {
+	desperationDeck.length = 0;
+	if (!Array.isArray(cardIds)) return;
+	for (const id of cardIds) {
+		desperationDeck.push(id);
+	}
+}
+
+export function setInDesperation(value) {
+	inDesperation = !!value;
+}
+
 /**
  * Initialise the hand from a fresh starting deck.
  *
@@ -48,6 +91,8 @@ export function initHand(onRender) {
 	hand = [];
 	deck = [];
 	slotCooldowns = [false, false, false, false];
+	inDesperation = false;
+	initDesperationDeckLocal();
 
 	// Push all card IDs into deck (reversed so pop gives original order)
 	for (let i = deckIds.length - 1; i >= 0; i--) {
@@ -86,6 +131,8 @@ export function initHandFromDeck(serverDeckIds, onRender) {
 	hand = [];
 	deck = [];
 	slotCooldowns = [false, false, false, false];
+	inDesperation = false;
+	initDesperationDeckLocal();
 
 	// Push all card IDs into deck (reversed so pop gives original order)
 	for (let i = deckIds.length - 1; i >= 0; i--) {
@@ -136,5 +183,7 @@ export function setDrawPile(cardIds) {
 export function resetHandState() {
 	hand = [];
 	deck = [];
+	desperationDeck = [];
 	slotCooldowns = [false, false, false, false];
+	inDesperation = false;
 }

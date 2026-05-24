@@ -88,6 +88,11 @@ def _read_harness_failure(metrics_path: Path) -> dict | None:
         return None
 
 
+def should_escalate_harness_failure(infra_failure: dict | None) -> bool:
+    """True only when capture_run diagnosed a harness infra signature."""
+    return infra_failure is not None and bool(infra_failure.get("detected"))
+
+
 def _carry_harness_failure_into_feedback(ctx: TicketContext, review_fb: Path,
                                            round_n: int,
                                            failure: dict) -> None:
@@ -199,7 +204,7 @@ def _ticket_body(ctx: TicketContext) -> int:
         # cycles. Bail out of the round loop and jump straight to claude
         # rescue, which is allowed to edit harness/** to fix the infra.
         infra_failure = _read_harness_failure(rdir / "metrics.json")
-        if infra_failure is not None:
+        if should_escalate_harness_failure(infra_failure):
             log(f"[escalate] harness infra failure ({','.join(infra_failure.get('detected', [])) or 'unknown'}) "
                 f"on round {round_n} — skipping review and remaining rounds, jumping to claude rescue")
             emit_progress_event("harness_infra_escalation", {
