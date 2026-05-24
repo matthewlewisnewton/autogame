@@ -2376,12 +2376,13 @@ describe('connect_error handler', () => {
 	});
 
 	it('keeps the token and allows retry on transient connect_error', async () => {
+		localStorage.setItem('autogame_token', 'transient-token');
 		await import('../main.js');
 		window.__clearIoDisconnected();
 
 		window.__triggerSocketEvent('connect_error', 'websocket error');
 
-		expect(localStorage.getItem('autogame_token')).toBe('test-fake-jwt-token');
+		expect(localStorage.getItem('autogame_token')).toBe('transient-token');
 		expect(window.__ioDisconnected()).toBe(false);
 		expect(window.__connectionState()).toBe('reconnecting');
 	});
