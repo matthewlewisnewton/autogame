@@ -80,7 +80,7 @@ QWEN_OPENAI_LOGGING="${QWEN_OPENAI_LOGGING:-1}"
 QWEN_VISION_OPENAI_LOGGING="${QWEN_VISION_OPENAI_LOGGING:-0}"
 PIPELINE_LOCAL_CHECKS="${PIPELINE_LOCAL_CHECKS:-1}" # run deterministic checks while screenshots/server startup happen
 PIPELINE_CHECK_CWD="${PIPELINE_CHECK_CWD:-game}"
-PIPELINE_CHECK_COMMAND="${PIPELINE_CHECK_COMMAND:-pnpm test -- --coverage.enabled=false}"
+PIPELINE_CHECK_COMMAND="${PIPELINE_CHECK_COMMAND:-pnpm test:quick}"
 PIPELINE_SERVER_TIMEOUT="${PIPELINE_SERVER_TIMEOUT:-300}"
 PIPELINE_CLIENT_TIMEOUT="${PIPELINE_CLIENT_TIMEOUT:-120}"
 PIPELINE_CHECK_TIMEOUT="${PIPELINE_CHECK_TIMEOUT:-$((PIPELINE_SERVER_TIMEOUT + PIPELINE_CLIENT_TIMEOUT))}"
@@ -290,6 +290,21 @@ stop_game() {
   pkill -f '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])' 2>/dev/null
   pkill -f '(^|[[:space:]])vite[[:space:]]+--port[[:space:]]+5173($|[[:space:]])' 2>/dev/null
   sleep 1
+}
+
+# cleanup_vitest_workers [game-dir] — kill vitest pool workers left behind when
+# a parent run was SIGKILL'd (agent timeout, harness timeout -k, etc.).
+cleanup_vitest_workers() {  # cleanup_vitest_workers [game-dir]
+  local game_dir="${1:-$REPO_ROOT/game}" pid cwd killed=0
+  game_dir="$(cd "$game_dir" && pwd)"
+  while read -r pid; do
+    [ -n "$pid" ] || continue
+    cwd="$(lsof -a -d cwd -p "$pid" -Fn 2>/dev/null | sed -n 's/^n//p' | head -1 || true)"
+    if [ "$cwd" = "$game_dir" ]; then
+      kill -9 "$pid" 2>/dev/null && killed=$((killed + 1)) || true
+    fi
+  done < <(pgrep -f vitest 2>/dev/null || true)
+  [ "$killed" -gt 0 ] && log "[vitest] cleaned up $killed orphaned worker(s) in $game_dir"
 }
 
 wait_for_game() {  # wait_for_game [timeout-seconds] ; 0 if both ports respond

@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon } from '../dungeon.js';
+import { buildDungeon, buildWallColliders, buildPassageFloorSpec } from '../dungeon.js';
+import { generateLayout } from '../../server/dungeon.js';
 
 /** Minimal mock scene that `buildDungeon` only needs `.add()` on. */
 function mockScene() {
@@ -49,5 +50,34 @@ describe('buildDungeon() spawn position', () => {
 
 		expect(result.spawnPosition.x).toBe(5);
 		expect(result.spawnPosition.z).toBe(15);
+	});
+});
+
+describe('buildWallColliders()', () => {
+	it('uses passage wall.length for colliders so they match rendered geometry', () => {
+		const layout = {
+			rooms: [],
+			passages: [{
+				x1: 0, z1: 0, x2: 20, z2: 0,
+				corridorLength: 4,
+				walls: [{ x: 10, z: -2, length: 20, axis: 'x' }],
+			}],
+		};
+
+		const [collider] = buildWallColliders(layout);
+		expect(collider.maxX - collider.minX).toBeCloseTo(20 + 0.3);
+	});
+});
+
+describe('buildPassageFloorSpec()', () => {
+	it('spans only the corridor gap between room edges, not full center-to-center distance', () => {
+		const layout = generateLayout(42, 'crowded');
+		const passage = layout.passages.find(p => p.x1 !== p.x2);
+		expect(passage).toBeDefined();
+
+		const spec = buildPassageFloorSpec(passage, layout);
+		const centerDist = Math.hypot(passage.x2 - passage.x1, passage.z2 - passage.z1);
+		expect(spec.width).toBeCloseTo(passage.corridorLength, 5);
+		expect(spec.width).toBeLessThan(centerDist);
 	});
 });

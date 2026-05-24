@@ -1,0 +1,72 @@
+{
+  "gameTitle": "Void Grimoire",
+  "tagline": "Arcane contracts. Derelict sectors. Photon steel.",
+  "currency": {
+    "short": "Meseta",
+    "label": "Meseta"
+  },
+  "resource": {
+    "short": "MS",
+    "full": "Mystic Signal",
+    "insufficient": "Not enough Mystic Signal"
+  },
+  "cardTypes": {
+    "weapon": "Technique",
+    "summon": "Invocation",
+    "monster": "Bound Form"
+  },
+  "cardTypeIcons": {
+    "weapon": "⟡",
+    "summon": "◈",
+    "monster": "⬢"
+  },
+  "lobby": {
+    "registryTitle": "Guild Registry",
+    "registryStatus": "Choose a channel or open your own.",
+    "createChannel": "Open Channel",
+    "lobbyTitle": "Hunter Guild",
+    "contractTerminal": "Contract Terminal",
+    "loadoutBay": "Loadout Bay",
+    "tekkerBay": "Tekker Bay",
+    "ownedCards": "Codex",
+    "selectedDeck": "Active Loadout",
+    "deploy": "Deploy",
+    "deployReady": "Deploy!",
+    "returnToRegistry": "Return to Registry",
+    "standby": "Standby",
+    "deployReadyStatus": "Deploy-ready"
+  },
+  "run": {
+    "sortieComplete": "Sortie Complete",
+    "signalLost": "Signal Lost",
+    "hostilesPurged": "Hostiles purged",
+    "currencyCollected": "Meseta collected",
+    "mesetaEarned": "Meseta earned",
+    "resumeSortie": "Resume sortie",
+    "unknownSector": "unknown sector",
+    "awaitingExtract": "Awaiting squad extraction at conduit…",
+    "abandonSortie": "Abort Sortie",
+    "returnToGuild": "Return to Guild",
+    "chooseReward": "Select Arcane Uplink",
+    "noContracts": "No contracts posted"
+  },
+  "progression": {
+    "ascended": "Ascended",
+    "attune": "Attune",
+    "lastResort": "LAST RESORT"
+  },
+  "objectives": {
+    "prism": "prism",
+    "prisms": "prisms",
+    "hostile": "hostile",
+    "hostiles": "hostiles",
+    "recoverPrisms": "Recover {count} prisms",
+    "neutralizeHostiles": "Neutralize {count} hostiles",
+    "collectPrismsProgress": "{collected}/{total} prisms"
+  },
+  "cardDescriptions": {
+    "summonAlly": "Channels an invocation",
+    "spawnMinion": "Deploys a bound construct",
+    "damageWeapon": "{damage} output technique"
+  }
+}

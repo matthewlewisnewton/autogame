@@ -8,6 +8,8 @@ import {
   assignRoomRoles,
   roomsByRole,
   randomRoomPositionByRole,
+  questLayoutSeed,
+  LAYOUT_PROFILES,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
@@ -15,6 +17,52 @@ import {
   MAX_ROOM_SIZE_INCLUSIVE,
   PASSAGE_WIDTH
 } from '../dungeon.js';
+import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
+
+const PLAYER_RADIUS = 0.45;
+const WALK_STEP = 0.4;
+
+function isWalkable(x, z, aabbs, colliders) {
+  if (!aabbs.some(a => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ)) return false;
+  const pr = PLAYER_RADIUS;
+  for (const w of colliders) {
+    if (x + pr <= w.minX || x - pr >= w.maxX) continue;
+    if (z + pr <= w.minZ || z - pr >= w.maxZ) continue;
+    return false;
+  }
+  return true;
+}
+
+function countReachableRooms(layout, aabbs, colliders) {
+  const startRoom = layout.rooms.find(r => r.role === 'start') || layout.rooms[0];
+  const seen = new Set();
+  const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+  const queue = [{ x: startRoom.x, z: startRoom.z }];
+  seen.add(key(startRoom.x, startRoom.z));
+  const reachedRooms = new Set([`${startRoom.x},${startRoom.z}`]);
+  const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+  for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+    const { x, z } = queue[qi];
+    for (const room of layout.rooms) {
+      const hw = room.width / 2;
+      const hd = room.depth / 2;
+      if (x >= room.x - hw && x <= room.x + hw && z >= room.z - hd && z <= room.z + hd) {
+        reachedRooms.add(`${room.x},${room.z}`);
+      }
+    }
+    for (const [dx, dz] of dirs) {
+      const nx = x + dx;
+      const nz = z + dz;
+      const k = key(nx, nz);
+      if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+      seen.add(k);
+      queue.push({ x: nx, z: nz });
+    }
+  }
+
+  return reachedRooms.size;
+}
 
 // ── mulberry32 PRNG ──
 
@@ -755,5 +803,52 @@ describe('randomRoomPositionByRole(layout, role, rng)', () => {
     expect(pos.x).toBeLessThanOrEqual(treasure.x + halfW);
     expect(pos.z).toBeGreaterThanOrEqual(treasure.z - halfD);
     expect(pos.z).toBeLessThanOrEqual(treasure.z + halfD);
+  });
+});
+
+describe('layout traversability', () => {
+  it('passage side walls span only the corridor gap between rooms', () => {
+    const layout = generateLayout(42);
+    for (const passage of layout.passages) {
+      for (const wall of passage.walls) {
+        expect(wall.length).toBeCloseTo(passage.corridorLength, 5);
+      }
+    }
+  });
+
+  it('every room is reachable from the start room for many seeds', { timeout: 15000 }, () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      for (const profile of ['crowded', 'open']) {
+        const layout = generateLayout(seed, profile);
+        const colliders = buildWallColliders(layout);
+        const aabbs = computeWalkableAABBs(layout);
+        const reached = countReachableRooms(layout, aabbs, colliders);
+        expect(reached).toBe(layout.rooms.length);
+      }
+    }
+  });
+});
+
+describe('layout profiles', () => {
+  it('uses deterministic seeds per quest id', () => {
+    expect(questLayoutSeed('training_caverns')).toBe(questLayoutSeed('training_caverns'));
+    expect(questLayoutSeed('training_caverns')).not.toBe(questLayoutSeed('crystal_rescue'));
+  });
+
+  it('crowded layouts have more rooms than open layouts on average', () => {
+    let crowdedTotal = 0;
+    let openTotal = 0;
+    for (let seed = 1; seed <= 50; seed++) {
+      crowdedTotal += generateLayout(seed, 'crowded').rooms.length;
+      openTotal += generateLayout(seed, 'open').rooms.length;
+    }
+    expect(crowdedTotal / 50).toBeGreaterThan(openTotal / 50);
+  });
+
+  it('open layouts use wider passages and larger cell spacing', () => {
+    const open = generateLayout(42, 'open');
+    expect(open.passageWidth).toBe(LAYOUT_PROFILES.open.passageWidth);
+    expect(open.cellSpacing).toBe(LAYOUT_PROFILES.open.cellSpacing);
+    expect(open.profile).toBe('open');
   });
 });

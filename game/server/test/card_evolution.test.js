@@ -37,11 +37,11 @@ describe('card evolution', () => {
 		expect(result.toCardId).toBe(EVOLUTION_TRANSFORMS.iron_sword);
 		expect(result.instance.instanceId).toBe(instance.instanceId);
 		const evolvedInstance = player.inventory.find((card) => card.instanceId === instance.instanceId);
-		expect(evolvedInstance.cardId).toBe('steel_broadsword');
+		expect(evolvedInstance.cardId).toBe('steel_claymore');
 		expect(evolvedInstance.grind).toBe(0);
 		expect(evolvedInstance.evolvedFrom).toBe('iron_sword');
 		expect(evolvedInstance.isEvolved).toBe(true);
-		expect(player.ownedCards.steel_broadsword).toBe(1);
+		expect(player.ownedCards.steel_claymore).toBe(1);
 		expect(player.ownedCards.iron_sword).toBe(2);
 		expect(player.selectedDeck).toContain(instance.instanceId);
 	});
@@ -63,21 +63,21 @@ describe('card evolution', () => {
 	it('rejects cards without an evolution transform', () => {
 		const player = {
 			inventory: [
-				createCardInstance('steel_broadsword', {
+				createCardInstance('steel_claymore', {
 					instanceId: 'evolved-weapon',
 					grind: EVOLUTION_GRIND_REQUIRED,
 					isEvolved: true,
 				}),
 			],
-			ownedCards: { steel_broadsword: 1 },
-			selectedDeck: ['steel_broadsword'],
+			ownedCards: { steel_claymore: 1 },
+			selectedDeck: ['steel_claymore'],
 		};
 
 		const result = evolveCard(player, 'evolved-weapon');
 
 		expect(result.ok).toBe(false);
 		expect(result.reason).toContain('No evolution available');
-		expect(player.inventory[0].cardId).toBe('steel_broadsword');
+		expect(player.inventory[0].cardId).toBe('steel_claymore');
 	});
 
 	it('evolves Saber of Light +10 into Excalibur Photon', () => {
@@ -120,17 +120,17 @@ describe('card evolution', () => {
 		const savedInstance = persistent.inventory.find((card) => card.instanceId === instance.instanceId);
 		expect(savedInstance).toMatchObject({
 			instanceId: instance.instanceId,
-			cardId: 'guardian_familiar',
+			cardId: 'astral_guardian',
 			evolvedFrom: 'battle_familiar',
 			isEvolved: true,
 		});
-		expect(persistent.ownedCards.guardian_familiar).toBe(1);
+		expect(persistent.ownedCards.astral_guardian).toBe(1);
 
 		const snapshot = stateSnapshot();
 		expect(snapshot.players.p1.inventory).toEqual(player.inventory);
 	});
 
-	it('evolves Frost Nova +10 into Glacier Collapse', () => {
+	it('evolves Cryo Burst +10 into Glacier Rupture', () => {
 		const player = freshPlayer();
 		const instance = createCardInstance('frost_nova', { grind: EVOLUTION_GRIND_REQUIRED });
 		player.inventory.push(instance);
@@ -144,7 +144,7 @@ describe('card evolution', () => {
 		expect(player.inventory.find((c) => c.instanceId === instance.instanceId).cardId).toBe('glacier_collapse');
 	});
 
-	it('evolves Healing Font +10 into Divine Grace', () => {
+	it('evolves Restoration Beacon +10 into Sanctum Pulse', () => {
 		const player = {
 			inventory: [
 				createCardInstance('healing_font', {
@@ -165,7 +165,7 @@ describe('card evolution', () => {
 		expect(player.ownedCards.divine_grace).toBe(1);
 	});
 
-	it('evolves Storm Eagle +10 into Thunderbird', () => {
+	it('evolves Stormwing Drone +10 into Thunderbird', () => {
 		const player = {
 			inventory: [
 				createCardInstance('storm_eagle', {
@@ -190,7 +190,7 @@ describe('card evolution', () => {
 		});
 	});
 
-	it('evolves Echo Blade +10 into Resonance Edge', () => {
+	it('evolves Phase Echo +10 into Resonance Edge', () => {
 		const player = {
 			inventory: [
 				createCardInstance('echo_blade', {
@@ -212,7 +212,7 @@ describe('card evolution', () => {
 		expect(player.ownedCards.resonance_edge).toBe(1);
 	});
 
-	it('evolves Mana Leach +10 into Soul Drain', () => {
+	it('evolves Ether Siphon +10 into Soul Drain', () => {
 		const player = {
 			inventory: [
 				createCardInstance('mana_leach', {
@@ -238,7 +238,7 @@ describe('card evolution', () => {
 		});
 	});
 
-	it('evolves Dragon\'s Breath +10 into Inferno Pillar', () => {
+	it('evolves Dragon\'s Breath +10 into Thermal Column', () => {
 		const player = {
 			inventory: [
 				createCardInstance('dragons_breath', {

@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import shutil
-import subprocess
 from pathlib import Path
 
 from harness.config.tunables import PipelineTunables
+from harness.steps.vitest_cleanup import run_vitest
 from harness.telemetry.logging import log
 from harness.telemetry.progress import emit_progress_event
 
@@ -30,8 +30,7 @@ def coverage_run(workspace, base_ref: str, coverage_dir: Path,
         "ticket": ticket_name, "round": round_n, "baseline": base_ref,
     })
     args = [
-        "timeout", "-k", "15", str(tunables.coverage_timeout_s),
-        "npx", "vitest", "run", "--coverage",
+        "run", "--coverage",
     ]
     for inc in _DEFAULT_INCLUDES:
         args += ["--coverage.include", inc]
@@ -40,9 +39,11 @@ def coverage_run(workspace, base_ref: str, coverage_dir: Path,
     args += ["--changed", base_ref]
     with out_path.open("wb") as f:
         try:
-            subprocess.run(
-                args, cwd=tunables.check_cwd,
-                stdin=subprocess.DEVNULL, stdout=f, stderr=subprocess.STDOUT,
+            run_vitest(
+                args,
+                cwd=Path(tunables.check_cwd),
+                timeout_s=tunables.coverage_timeout_s,
+                stdout=f,
             )
         except FileNotFoundError as e:
             f.write(f"[coverage] failed to spawn: {e}\n".encode())

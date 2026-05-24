@@ -9,7 +9,9 @@ export default defineConfig({
 					include: [
 						'server/test/**/*.{test,spec}.{js,mjs}'
 					],
-					environment: 'node'
+					environment: 'node',
+					fileParallelism: false,
+					maxWorkers: 1,
 				}
 			},
 			{

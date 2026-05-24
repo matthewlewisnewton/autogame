@@ -2,7 +2,7 @@
 // Oscillator-based Web Audio synthesizer for sound effects.
 // Import SOUND_CONFIG from config.js; everything else is self-contained.
 
-import { SOUND_CONFIG } from './config.js';
+import { SOUND_CONFIG, MASTER_VOLUME } from './config.js';
 
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 
@@ -35,6 +35,27 @@ function saveSoundEnabled(value) {
 
 let soundEnabled = loadSoundEnabled();
 let audioCtx = null;
+let masterGain = null;
+
+function ensureAudioGraph() {
+	if (!audioCtx) {
+		const Ctx = window.AudioContext || window.webkitAudioContext;
+		audioCtx = Ctx ? new Ctx() : null;
+	}
+	if (!audioCtx) return null;
+
+	if (!masterGain && audioCtx.createGain) {
+		masterGain = audioCtx.createGain();
+		masterGain.gain.value = MASTER_VOLUME;
+		masterGain.connect(audioCtx.destination);
+	}
+
+	return audioCtx;
+}
+
+function getSoundDestination() {
+	return masterGain || audioCtx?.destination || null;
+}
 
 /**
  * Resume the AudioContext if it was suspended by the browser's autoplay policy.
@@ -64,6 +85,7 @@ function getAudioContext() {
  */
 function setAudioContext(ctx) {
 	audioCtx = ctx;
+	masterGain = null;
 }
 
 // ── Test-only tracking ──
@@ -73,6 +95,22 @@ const _playSoundCallLog = [];
 
 /** Enabled via window.__soundLogEnabled (set by test setup) */
 const _soundLogEnabled = typeof window !== 'undefined' && !!window.__soundLogEnabled;
+
+function connectOscillator(osc, config) {
+	const destination = getSoundDestination();
+	if (!destination) return;
+
+	const perSoundGain = config?.gain ?? 1;
+	if (perSoundGain === 1 || !audioCtx?.createGain) {
+		osc.connect(destination);
+		return;
+	}
+
+	const gainNode = audioCtx.createGain();
+	gainNode.gain.value = perSoundGain;
+	gainNode.connect(destination);
+	osc.connect(gainNode);
+}
 
 /**
  * Play a short oscillator-based sound effect via the Web Audio API.
@@ -85,12 +123,7 @@ function playSound(type) {
 		if (!soundEnabled) return;
 
 		resumeAudioContext();
-
-		if (!audioCtx) {
-			const Ctx = window.AudioContext || window.webkitAudioContext;
-			audioCtx = Ctx ? new Ctx() : null;
-		}
-		if (!audioCtx) return;
+		if (!ensureAudioGraph()) return;
 
 		const config = SOUND_CONFIG[type];
 		if (!config) return;
@@ -98,23 +131,21 @@ function playSound(type) {
 		const now = audioCtx.currentTime;
 
 		if (config.notes) {
-			// Multi-note sound (victory / failure)
 			let offset = 0;
 			for (const note of config.notes) {
 				const osc = audioCtx.createOscillator();
 				osc.type = 'sine';
 				osc.frequency.value = note.freq;
-				osc.connect(audioCtx.destination);
+				connectOscillator(osc, note);
 				osc.start(now + offset);
 				osc.stop(now + offset + note.duration);
 				offset += note.duration;
 			}
 		} else {
-			// Single-note sound
 			const osc = audioCtx.createOscillator();
 			osc.type = 'sine';
 			osc.frequency.value = config.freq;
-			osc.connect(audioCtx.destination);
+			connectOscillator(osc, config);
 			osc.start(now);
 			osc.stop(now + config.duration);
 		}

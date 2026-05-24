@@ -12,7 +12,14 @@ const {
   LOOT_SPAWN_CHANCE,
   VICTORY_REWARD_ROTATION,
   ENEMY_CARD_DROPS,
-  MAX_CARD_CHOICES
+  ENEMY_MS_DROPS,
+  MAX_CARD_CHOICES,
+  SHOP_CARD_POOL,
+  SHOP_PRICE_MULTIPLIER,
+  TICK_RATE,
+  PORTAL_RADIUS,
+  PORTAL_ENTER_COOLDOWN_MS,
+  PORTAL_PLACEMENT_GRACE_MS
 } = require('./config');
 const {
   mulberry32,
@@ -26,22 +33,53 @@ const {
   randomWanderTarget
 } = require('./simulation');
 const { getQuest, getSelectedQuest } = require('./quests');
+const { THEME } = require('./theme');
 
 let _gameState = null;
 let _getIo = () => null;
 let _broadcastLobbyUpdate = () => {};
-let _emitStateUpdate = null;
+let _rebuildWallColliders = () => {};
 let provider = null;
 
 function initProgression(deps) {
   _gameState = deps.gameState;
   if (deps.getIo) _getIo = deps.getIo;
   else if (deps.io) _getIo = () => deps.io;
-  if (deps.emitStateUpdate) _emitStateUpdate = deps.emitStateUpdate;
+}
+
+function getGameState() {
+  return _gameState;
+}
+
+function setGameState(gs) {
+  _gameState = gs;
+}
+
+function getIoTarget() {
+  const io = _getIo();
+  if (!io) return null;
+  const { getLobbyById, _lobbies } = require('./lobbies');
+  if (_gameState && _gameState._lobbyId && typeof io.to === 'function') {
+    if (getLobbyById(_gameState._lobbyId)) {
+      return io.to(_gameState._lobbyId);
+    }
+  }
+  if (_gameState && _lobbies) {
+    for (const lobby of _lobbies.values()) {
+      if (lobby.state === _gameState) {
+        return io.to(lobby.id);
+      }
+    }
+  }
+  return io;
 }
 
 function setBroadcastLobbyUpdate(fn) {
   _broadcastLobbyUpdate = fn;
+}
+
+function setRebuildWallColliders(fn) {
+  _rebuildWallColliders = fn;
 }
 
 function setTestProvider(p) {
@@ -54,51 +92,68 @@ function getProvider() {
 
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
 const CARD_DEFS = {
-  iron_sword: { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', damage: 15, charges: 5 },
-  flame_blade: { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', damage: 25, charges: 3 },
-  battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 40 },
-  dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1 },
-  steel_broadsword: {
-    id: 'steel_broadsword',
-    name: 'Steel Broadsword',
+  iron_sword: { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 15, charges: 5 },
+  flame_blade: { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', damage: 25, charges: 3 },
+  battle_familiar: { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 40 },
+  dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1 },
+  steel_claymore: {
+    id: 'steel_claymore',
+    name: 'Alloy Greatblade',
     type: 'weapon',
-    damage: 28,
+    damage: 23,
     charges: 6,
+    attackRange: 7,
+    knockbackStrength: 3,
     isEvolved: true,
     specialEffect: 'knockback'
   },
-  inferno_edge: {
-    id: 'inferno_edge',
-    name: 'Inferno Edge',
+  magma_greatsword: {
+    id: 'magma_greatsword',
+    name: 'Corebreaker Greatsword',
     type: 'weapon',
-    damage: 40,
+    damage: 38,
     charges: 4,
+    dotTicks: 4,
+    dotIntervalMs: 500,
+    trailDamagePerTick: 10,
     isEvolved: true,
     specialEffect: 'fire_trail'
   },
-  guardian_familiar: {
-    id: 'guardian_familiar',
-    name: 'Guardian Familiar',
+  astral_guardian: {
+    id: 'astral_guardian',
+    name: 'Astral Guardian',
     type: 'spell',
     charges: 1,
     magicStoneCost: 65,
-    damage: 70,
+    damage: 60,
     isEvolved: true,
-    specialEffect: 'barrier_burst'
+    specialEffect: 'astral_shield',
+    effect: 'astral_guardian',
+    shieldHp: 15,
+    shieldDurationMs: 8000,
+    minionHp: 60,
+    minionTtl: 30,
+    attackDamage: 10,
+    // One attack per sim tick at most (TICK_RATE Hz); sub-tick intervals cannot fire faster.
+    attackIntervalMs: Math.floor(1000 / TICK_RATE),
   },
-  ancient_drake: {
-    id: 'ancient_drake',
-    name: 'Ancient Drake',
+  ancient_wyrm: {
+    id: 'ancient_wyrm',
+    name: 'Archive Wyrm',
     type: 'creature',
     charges: 1,
     minionHp: 90,
     isEvolved: true,
-    specialEffect: 'bleed'
+    specialEffect: 'fire_breath',
+    effect: 'ancient_wyrm',
+    breathIntervalMs: 3000,
+    breathRange: 8,
+    breathDamage: 15,
   },
   mana_prism: {
     id: 'mana_prism',
     name: 'Mana Prism',
-    type: 'creature',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'mana_prism',
@@ -108,7 +163,7 @@ const CARD_DEFS = {
   },
   harvesting_scythe: {
     id: 'harvesting_scythe',
-    name: 'Harvesting Scythe',
+    name: 'Ether Scythe',
     type: 'weapon',
     damage: 8,
     charges: 3,
@@ -118,8 +173,8 @@ const CARD_DEFS = {
   },
   sacrificial_altar: {
     id: 'sacrificial_altar',
-    name: 'Sacrificial Altar',
-    type: 'creature',
+    name: 'Offering Terminal',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'sacrificial_altar',
@@ -190,9 +245,20 @@ const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'triple_returning_projectile',
   },
+  arcane_bolt: {
+    id: 'arcane_bolt',
+    name: 'Arcane Bolt',
+    type: 'weapon',
+    damage: 14,
+    charges: 4,
+    attackRange: 10,
+    effect: 'projectile',
+    specialEffect: 'long_range',
+    projectile: { pierces: true },
+  },
   frost_nova: {
     id: 'frost_nova',
-    name: 'Frost Nova',
+    name: 'Cryo Burst',
     type: 'spell',
     charges: 1,
     magicStoneCost: 35,
@@ -203,7 +269,7 @@ const CARD_DEFS = {
   },
   glacier_collapse: {
     id: 'glacier_collapse',
-    name: 'Glacier Collapse',
+    name: 'Glacier Rupture',
     type: 'spell',
     charges: 1,
     magicStoneCost: 35,
@@ -216,7 +282,7 @@ const CARD_DEFS = {
   },
   healing_font: {
     id: 'healing_font',
-    name: 'Healing Font',
+    name: 'Restoration Beacon',
     type: 'spell',
     charges: 1,
     magicStoneCost: 0,
@@ -226,7 +292,7 @@ const CARD_DEFS = {
   },
   divine_grace: {
     id: 'divine_grace',
-    name: 'Divine Grace',
+    name: 'Sanctum Pulse',
     type: 'spell',
     charges: 1,
     magicStoneCost: 0,
@@ -238,7 +304,7 @@ const CARD_DEFS = {
   },
   skeleton_knight: {
     id: 'skeleton_knight',
-    name: 'Skeleton Knight',
+    name: 'Necroframe Knight',
     type: 'creature',
     charges: 1,
     minionHp: 120,
@@ -248,7 +314,7 @@ const CARD_DEFS = {
   },
   undead_commander: {
     id: 'undead_commander',
-    name: 'Undead Commander',
+    name: 'Legion Marshal',
     type: 'creature',
     charges: 1,
     minionHp: 180,
@@ -261,7 +327,7 @@ const CARD_DEFS = {
   },
   storm_eagle: {
     id: 'storm_eagle',
-    name: 'Storm Eagle',
+    name: 'Stormwing Drone',
     type: 'creature',
     charges: 1,
     magicStoneCost: 40,
@@ -313,7 +379,7 @@ const CARD_DEFS = {
   },
   echo_blade: {
     id: 'echo_blade',
-    name: 'Echo Blade',
+    name: 'Phase Echo',
     type: 'weapon',
     damage: 14,
     charges: 5,
@@ -336,7 +402,7 @@ const CARD_DEFS = {
   },
   mana_leach: {
     id: 'mana_leach',
-    name: 'Mana Leach',
+    name: 'Ether Siphon',
     type: 'spell',
     charges: 1,
     magicStoneCost: 30,
@@ -359,7 +425,7 @@ const CARD_DEFS = {
   },
   dragons_breath: {
     id: 'dragons_breath',
-    name: "Dragon's Breath",
+    name: 'Wyrmflare',
     type: 'spell',
     charges: 1,
     magicStoneCost: 40,
@@ -373,7 +439,7 @@ const CARD_DEFS = {
   },
   inferno_pillar: {
     id: 'inferno_pillar',
-    name: 'Inferno Pillar',
+    name: 'Thermal Column',
     type: 'spell',
     charges: 1,
     magicStoneCost: 40,
@@ -385,6 +451,15 @@ const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'fire_dot',
   },
+  telepipe: {
+    id: 'telepipe',
+    name: 'Telepipe',
+    type: 'spell',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'telepipe',
+    specialEffect: 'portal',
+  },
   spike_trap: {
     id: 'spike_trap',
     name: 'Spike Trap',
@@ -393,8 +468,8 @@ const CARD_DEFS = {
     magicStoneCost: 25,
     effect: 'spike_trap',
     target: 'ground',
-    damage: 35,
     radius: 2.5,
+    damage: 35,
     ttlMs: 30000,
     specialEffect: 'proximity_hazard',
   },
@@ -429,11 +504,23 @@ const STARTING_DECK_IDS = [
 const EVOLUTION_GRIND_REQUIRED = 10;
 const GRIND_COST_BASE = 100;
 const GRIND_STAT_SCALE = 0.05;
+const LEGACY_EVOLVED_CARD_IDS = {
+  steel_broadsword: 'steel_claymore',
+  inferno_edge: 'magma_greatsword',
+  guardian_familiar: 'astral_guardian',
+  ancient_drake: 'ancient_wyrm',
+};
+
+function migrateCardId(cardId) {
+  if (!cardId || typeof cardId !== 'string') return cardId;
+  return LEGACY_EVOLVED_CARD_IDS[cardId] || cardId;
+}
+
 const EVOLUTION_TRANSFORMS = {
-  iron_sword: 'steel_broadsword',
-  flame_blade: 'inferno_edge',
-  battle_familiar: 'guardian_familiar',
-  dungeon_drake: 'ancient_drake',
+  iron_sword: 'steel_claymore',
+  flame_blade: 'magma_greatsword',
+  battle_familiar: 'astral_guardian',
+  dungeon_drake: 'ancient_wyrm',
   saber_of_light: 'excalibur_photon',
   photon_slicer: 'infinite_disk',
   frost_nova: 'glacier_collapse',
@@ -451,10 +538,10 @@ const CARD_SELL_VALUES = {
   flame_blade: 8,
   battle_familiar: 12,
   dungeon_drake: 10,
-  steel_broadsword: 15,
-  inferno_edge: 18,
-  guardian_familiar: 25,
-  ancient_drake: 20,
+  steel_claymore: 15,
+  magma_greatsword: 18,
+  astral_guardian: 25,
+  ancient_wyrm: 20,
   divine_grace: 18,
   undead_commander: 18,
   thunderbird: 18,
@@ -470,6 +557,7 @@ const CARD_SELL_VALUES = {
   soul_drain: 18,
   dragons_breath: 14,
   inferno_pillar: 22,
+  telepipe: 18,
 };
 
 function getCardSellValue(cardId) {
@@ -481,8 +569,115 @@ function getCardSellValue(cardId) {
   if (def.isEvolved) return 15;
   if (def.type === 'spell') return 12;
   if (def.type === 'creature') return 10;
-  if (def.type === 'enchantment') return 14;
   return 5;
+}
+
+function getCardBuyValue(cardId) {
+  return Math.max(1, getCardSellValue(cardId) * SHOP_PRICE_MULTIPLIER);
+}
+
+function pickShopOffer(seed) {
+  const pool = SHOP_CARD_POOL.filter((id) => CARD_DEFS[id]);
+  if (pool.length === 0) return null;
+  const rng = mulberry32(seed);
+  const cardId = pool[Math.floor(rng() * pool.length)];
+  const def = CARD_DEFS[cardId];
+  return {
+    cardId,
+    name: def.name,
+    price: getCardBuyValue(cardId),
+    type: def.type
+  };
+}
+
+function isValidShopOffer(offer) {
+  return !!(offer && typeof offer.cardId === 'string' && CARD_DEFS[offer.cardId]);
+}
+
+function refreshShopOffer() {
+  if (!_gameState) return null;
+  const seed = Math.floor(Math.random() * 2147483647);
+  let offer = pickShopOffer(seed);
+  if (!offer) {
+    const fallbackId = SHOP_CARD_POOL.find((id) => CARD_DEFS[id]);
+    if (!fallbackId) {
+      _gameState.shopOffer = null;
+      return null;
+    }
+    const def = CARD_DEFS[fallbackId];
+    offer = {
+      cardId: fallbackId,
+      name: def.name,
+      price: getCardBuyValue(fallbackId),
+      type: def.type
+    };
+  }
+  _gameState.shopOffer = offer;
+  return _gameState.shopOffer;
+}
+
+function ensureShopOffer() {
+  if (!_gameState) return null;
+  if (!isValidShopOffer(_gameState.shopOffer)) {
+    refreshShopOffer();
+  }
+  return _gameState.shopOffer;
+}
+
+function buyShopCard(player, shopOffer) {
+  if (!shopOffer || !shopOffer.cardId) {
+    return { ok: false, reason: 'no_offer' };
+  }
+  if (!CARD_DEFS[shopOffer.cardId]) {
+    return { ok: false, reason: 'invalid_offer' };
+  }
+  const price = Number.isFinite(shopOffer.price)
+    ? shopOffer.price
+    : getCardBuyValue(shopOffer.cardId);
+  if ((player.currency || 0) < price) {
+    return { ok: false, reason: 'insufficient_gold' };
+  }
+
+  normalizePlayerInventory(player);
+  if (!Array.isArray(player.selectedDeck)) {
+    player.selectedDeck = [];
+  }
+
+  const instance = createCardInstance(shopOffer.cardId);
+  if (!instance) {
+    return { ok: false, reason: 'grant_failed' };
+  }
+
+  player.inventory.push(instance);
+  player.ownedCards = inventoryToOwnedCards(player.inventory);
+
+  let addedToDeck = false;
+  if (canAddCardInstanceToDeck(instance.instanceId, player.selectedDeck, player.inventory)) {
+    player.selectedDeck.push(instance.instanceId);
+    addedToDeck = true;
+  }
+
+  player.currency -= price;
+
+  const deckCheck = validateDeck(player.selectedDeck, player.inventory);
+  if (!deckCheck.valid) {
+    player.currency += price;
+    if (addedToDeck) {
+      player.selectedDeck = player.selectedDeck.filter((entry) => entry !== instance.instanceId);
+    }
+    player.inventory = player.inventory.filter((entry) => entry.instanceId !== instance.instanceId);
+    player.ownedCards = inventoryToOwnedCards(player.inventory);
+    return { ok: false, reason: deckCheck.reason };
+  }
+
+  return {
+    ok: true,
+    price,
+    cardId: shopOffer.cardId,
+    instanceId: instance.instanceId,
+    addedToDeck,
+    currency: player.currency
+  };
 }
 
 const MAX_CARD_LEVEL = 10;
@@ -520,7 +715,8 @@ function createInventoryFromCardIds(cardIds) {
 
 function createInventoryFromOwnedCards(ownedCards = {}) {
   const inventory = [];
-  for (const [cardId, count] of Object.entries(ownedCards || {})) {
+  for (const [rawCardId, count] of Object.entries(ownedCards || {})) {
+    const cardId = migrateCardId(rawCardId);
     if (!CARD_DEFS[cardId]) continue;
     const copies = Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
     for (let i = 0; i < copies; i++) {
@@ -538,8 +734,9 @@ function normalizeInventory(inventory, ownedCards) {
   const usedIds = new Set();
   const normalized = [];
   for (const entry of inventory) {
-    if (!entry || typeof entry !== 'object' || !CARD_DEFS[entry.cardId]) continue;
-    let instance = createCardInstance(entry.cardId, entry);
+    const cardId = migrateCardId(entry?.cardId);
+    if (!entry || typeof entry !== 'object' || !CARD_DEFS[cardId]) continue;
+    let instance = createCardInstance(cardId, entry);
     if (!instance) continue;
     if (usedIds.has(instance.instanceId)) {
       instance = { ...instance, instanceId: crypto.randomUUID() };
@@ -567,7 +764,8 @@ function getInventoryInstance(inventory, instanceId) {
 function cardIdForDeckEntry(entry, inventory) {
   const instance = getInventoryInstance(inventory, entry);
   if (instance) return instance.cardId;
-  return CARD_DEFS[entry] ? entry : null;
+  const cardId = migrateCardId(entry);
+  return CARD_DEFS[cardId] ? cardId : null;
 }
 
 function normalizeSelectedDeck(selectedDeck, inventory) {
@@ -587,9 +785,10 @@ function normalizeSelectedDeck(selectedDeck, inventory) {
       continue;
     }
 
-    if (CARD_DEFS[entry]) {
+    const migratedEntry = migrateCardId(entry);
+    if (CARD_DEFS[migratedEntry]) {
       const available = inventory.find(instance =>
-        instance.cardId === entry && !usedInstanceIds.has(instance.instanceId)
+        instance.cardId === migratedEntry && !usedInstanceIds.has(instance.instanceId)
       );
       if (available) {
         usedInstanceIds.add(available.instanceId);
@@ -663,7 +862,7 @@ function grindCard(player, instanceId) {
   const cost = getGrindCost(currentGrind);
   const currency = player.currency || 0;
   if (currency < cost) {
-    return { ok: false, reason: `Not enough gold (need ${cost}, have ${currency})` };
+    return { ok: false, reason: `Not enough ${THEME.currency.short.toLowerCase()} (need ${cost}, have ${currency})` };
   }
 
   player.currency -= cost;
@@ -746,7 +945,7 @@ function upgradeCard(player, instanceId) {
   const cost = getUpgradeCost(currentLevel);
   const currency = player.currency || 0;
   if (currency < cost) {
-    return { ok: false, reason: `Insufficient GOLD (need ${cost}, have ${currency})` };
+    return { ok: false, reason: `Insufficient ${THEME.currency.short} (need ${cost}, have ${currency})` };
   }
 
   player.currency -= cost;
@@ -817,9 +1016,27 @@ function saveAllPlayers() {
 
 function createRunState() {
   const quest = getSelectedQuest(_gameState);
-  const objectiveLabel = quest.objectiveType === 'collect_items'
-    ? `${quest.name}: defeat ${quest.enemyCount} enemies (collect ${quest.itemCount} crystals — coming soon)`
-    : `${quest.name}: ${quest.description}`;
+
+  if (quest.objectiveType === 'collect_items') {
+    const totalItems = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
+    return {
+      id: crypto.randomUUID(),
+      status: 'playing',
+      questId: quest.id,
+      questName: quest.name,
+      questDescription: quest.description,
+      rewardCurrency: quest.rewardCurrency,
+      objective: {
+        type: 'collect_items',
+        label: `${quest.name}: recover ${totalItems} prisms`,
+        totalItems,
+        collectedItems: 0,
+      },
+      startedAt: Date.now()
+    };
+  }
+
+  const objectiveLabel = `${quest.name}: ${quest.description}`;
 
   return {
     id: crypto.randomUUID(),
@@ -849,13 +1066,61 @@ function startDungeonRun() {
   }
 }
 
+function applyTelepipeReadyHand(player) {
+  if (!player || !Array.isArray(player.hand)) return;
+  const def = CARD_DEFS.telepipe;
+  if (!def) return;
+
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+
+  const replaceSlot = player.hand.findIndex((c) => c);
+  if (replaceSlot < 0) return;
+
+  player.hand[replaceSlot] = {
+    id: 'telepipe',
+    name: def.name,
+    type: def.type,
+    charges: 1,
+    remainingCharges: 1,
+    magicStoneCost: def.magicStoneCost || 0,
+    effect: 'telepipe',
+  };
+}
+
+const RUN_SPAWN_OFFSETS = [
+  { x: 0, z: 0 },
+  { x: 3, z: 0 },
+  { x: -3, z: 0 },
+  { x: 0, z: 3 },
+];
+
+function assignRunSpawnPositions(players) {
+  const base = firstRoomPosition();
+  const list = Array.isArray(players) ? players : Object.values(players);
+  list.forEach((player, index) => {
+    if (!player) return;
+    const offset = RUN_SPAWN_OFFSETS[index % RUN_SPAWN_OFFSETS.length];
+    player.x = base.x + offset.x;
+    player.y = 0.5;
+    player.z = base.z + offset.z;
+  });
+}
+
+function isPortalEntryGraceActive() {
+  const telepipe = _gameState && _gameState.telepipe;
+  if (!telepipe || !telepipe.placedAt) return false;
+  return Date.now() - telepipe.placedAt < PORTAL_PLACEMENT_GRACE_MS;
+}
+
 function cardChoiceDescription(def) {
   if (!def) return '';
   if (def.specialEffect) return def.specialEffect.replace(/_/g, ' ');
-  if (def.type === 'weapon') return `${def.damage || 0} damage weapon`;
-  if (def.type === 'spell') return 'Instant spell effect';
-  if (def.type === 'creature') return 'Spawns a battlefield ally';
-  if (def.type === 'enchantment') return 'Lingering enchantment';
+  if (def.type === 'weapon') {
+    return THEME.cardDescriptions.damageWeapon.replace('{damage}', String(def.damage || 0));
+  }
+  if (def.type === 'spell') return THEME.cardDescriptions.summonAlly;
+  if (def.type === 'creature') return THEME.cardDescriptions.spawnMinion;
   return `${def.type} card`;
 }
 
@@ -881,6 +1146,27 @@ function recordEnemyCardDrop(enemy) {
     player.runCardDropIds = [];
   }
   player.runCardDropIds.push(cardId);
+}
+
+function getEnemyMagicStoneDrop(enemy) {
+  if (!enemy || !enemy.type) return 0;
+  return ENEMY_MS_DROPS[enemy.type] ?? 15;
+}
+
+function spawnMagicStoneDrop(enemy) {
+  const value = getEnemyMagicStoneDrop(enemy);
+  if (value <= 0) return;
+
+  const id = crypto.randomUUID();
+  _gameState.loot.push({
+    id,
+    x: enemy.x,
+    z: enemy.z,
+    value,
+    kind: 'magic_stone',
+    createdAt: Date.now(),
+  });
+  console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
 }
 
 function buildCardChoices(playerId) {
@@ -933,19 +1219,36 @@ function claimCardReward(playerId, cardId) {
 }
 
 function clampObjectiveProgress(run) {
+  if (run.objective.type === 'collect_items') {
+    run.objective.collectedItems = Math.min(run.objective.collectedItems, run.objective.totalItems);
+    return;
+  }
   run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
 }
 
 function syncRunObjectiveToEnemies() {
-  if (!_gameState.run) return;
+  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
   _gameState.run.objective.totalEnemies = _gameState.enemies.length;
   clampObjectiveProgress(_gameState.run);
 }
 
 function recordEnemyDefeated(count = 1) {
-  if (!_gameState.run) return;
+  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
   _gameState.run.objective.defeatedEnemies += count;
   clampObjectiveProgress(_gameState.run);
+}
+
+function recordCrystalCollected(count = 1) {
+  if (!_gameState.run || _gameState.run.objective.type !== 'collect_items') return;
+  _gameState.run.objective.collectedItems += count;
+  clampObjectiveProgress(_gameState.run);
+}
+
+function isRunObjectiveComplete(objective) {
+  if (objective.type === 'collect_items') {
+    return objective.collectedItems >= objective.totalItems;
+  }
+  return objective.defeatedEnemies >= objective.totalEnemies;
 }
 
 function buildRunSummary(status) {
@@ -1329,6 +1632,182 @@ function shuffleArray(arr) {
   return arr;
 }
 
+// Weak, per-player fallback cards when the run deck is exhausted.
+const DESPERATION_CARD_DEFS = {
+  rusty_shiv: {
+    id: 'rusty_shiv',
+    name: 'Emergency Shiv',
+    type: 'weapon',
+    damage: 4,
+    charges: 1,
+    attackRange: 3.5,
+    cooldownMs: 1000,
+    effect: 'rusty_shiv',
+    specialEffect: 'rusty_shiv',
+    isDesperation: true,
+  },
+  desperate_lunge: {
+    id: 'desperate_lunge',
+    name: 'Last Gasp',
+    type: 'weapon',
+    damage: 9,
+    selfDamage: 8,
+    charges: 1,
+    attackRange: 4,
+    cooldownMs: 1200,
+    isDesperation: true,
+  },
+  throw_rock: {
+    id: 'throw_rock',
+    name: 'Debris Toss',
+    type: 'weapon',
+    damage: 3,
+    charges: 1,
+    attackRange: 6,
+    cooldownMs: 700,
+    effect: 'throw_rock',
+    specialEffect: 'throw_rock',
+    isDesperation: true,
+  },
+  memory_shard: {
+    id: 'memory_shard',
+    name: 'Echo Shard',
+    type: 'spell',
+    charges: 1,
+    magicStoneCost: 0,
+    effect: 'memory_shard',
+    fallbackDamage: 3,
+    cooldownMs: 2000,
+    isDesperation: true,
+  },
+};
+
+const DESPERATION_DECK_TEMPLATE = [
+  'rusty_shiv',
+  'throw_rock',
+  'throw_rock',
+  'throw_rock',
+  'desperate_lunge',
+  'desperate_lunge',
+  'memory_shard',
+];
+
+const MAX_HAND_SLOTS = 4;
+
+function isDeckEmpty(player) {
+  return !player || !Array.isArray(player.deck) || player.deck.length === 0;
+}
+
+function isDesperationDeckEmpty(player) {
+  return !player || !Array.isArray(player.desperationDeck) || player.desperationDeck.length === 0;
+}
+
+function getCardDef(cardId) {
+  return CARD_DEFS[cardId] || DESPERATION_CARD_DEFS[cardId] || null;
+}
+
+function initDesperationDeck(player) {
+  player.desperationDeck = DESPERATION_DECK_TEMPLATE.slice();
+  shuffleArray(player.desperationDeck);
+}
+
+function resetPlayerDesperationState(player) {
+  if (!player) return;
+  player.inDesperation = false;
+  player.exhaustedCards = [];
+  initDesperationDeck(player);
+}
+
+function ensureDesperationMode(player) {
+  if (!player.inDesperation) {
+    player.inDesperation = true;
+  }
+}
+
+function buildDesperationHandCard(def) {
+  const card = {
+    id: def.id,
+    name: def.name,
+    type: def.type,
+    charges: def.charges,
+    remainingCharges: def.charges,
+    isDesperation: true,
+  };
+  if (def.magicStoneCost != null) {
+    card.magicStoneCost = def.magicStoneCost;
+  }
+  if (def.effect) {
+    card.effect = def.effect;
+  }
+  return card;
+}
+
+function drawCardFromDesperationDeck(player) {
+  if (isDesperationDeckEmpty(player)) return null;
+  ensureDesperationMode(player);
+  const cardId = player.desperationDeck.pop();
+  const def = DESPERATION_CARD_DEFS[cardId];
+  if (!def) return null;
+  return buildDesperationHandCard(def);
+}
+
+function recordExhaustedCard(player, card) {
+  if (!player || !card || card.isDesperation || card.isEcho) return;
+  if (!Array.isArray(player.exhaustedCards)) player.exhaustedCards = [];
+  player.exhaustedCards.push({
+    id: card.id,
+    name: card.name,
+    type: card.type,
+    grind: card.grind || 0,
+    instanceId: card.instanceId || null,
+  });
+}
+
+function createEchoCard(exhausted) {
+  const def = CARD_DEFS[exhausted.id];
+  if (!def) return null;
+
+  const echo = {
+    id: def.id,
+    name: `${def.name} (Echo)`,
+    type: def.type,
+    charges: 1,
+    remainingCharges: 1,
+    grind: exhausted.grind || 0,
+    isEcho: true,
+  };
+  if (exhausted.instanceId) {
+    echo.instanceId = exhausted.instanceId;
+  }
+  echo.magicStoneCost = def.magicStoneCost ?? 0;
+  if (def.isEvolved) {
+    echo.isEvolved = true;
+  }
+  if (def.specialEffect) {
+    echo.specialEffect = def.specialEffect;
+  }
+  if (def.effect) {
+    echo.effect = def.effect;
+  }
+  if (def.damage != null) {
+    echo.echoDamage = Math.max(1, Math.floor(def.damage * 0.5));
+  }
+  return echo;
+}
+
+function pickRandomExhaustedCard(player) {
+  const exhausted = Array.isArray(player.exhaustedCards) ? player.exhaustedCards : [];
+  if (exhausted.length === 0) return null;
+  return exhausted[Math.floor(Math.random() * exhausted.length)];
+}
+
+function replaceConsumedCard(player, slotIndex, consumedCard) {
+  if (consumedCard && !consumedCard.isDesperation && !consumedCard.isEcho) {
+    recordExhaustedCard(player, consumedCard);
+  }
+  drawReplacementCard(player, slotIndex);
+}
+
 function createDrawDeckFromSelectedDeck(player) {
   normalizePlayerInventory(player);
   const deck = player.selectedDeck.filter(entry => {
@@ -1383,8 +1862,9 @@ function drawCardFromDeck(player) {
 }
 
 function initPlayerHand(player) {
+  resetPlayerDesperationState(player);
   player.hand = [];
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < MAX_HAND_SLOTS; i++) {
     const card = drawCardFromDeck(player);
     if (card) {
       player.hand.push(card);
@@ -1393,13 +1873,21 @@ function initPlayerHand(player) {
   return player.hand;
 }
 
+function isPlayerOutOfCards(player) {
+  if (!player) return true;
+  const cardsInHand = Array.isArray(player.hand) ? player.hand.filter(Boolean).length : 0;
+  const handEmpty = cardsInHand === 0;
+  return handEmpty && isDeckEmpty(player) && isDesperationDeckEmpty(player);
+}
+
 function drawReplacementCard(player, slotIndex) {
-  const card = drawCardFromDeck(player);
+  const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
   if (card) {
     player.hand[slotIndex] = card;
   } else {
     player.hand.splice(slotIndex, 1);
   }
+  checkRunTerminalState();
 }
 
 function validateUseCardHand(player, slotIndex, cardId) {
@@ -1420,6 +1908,18 @@ function validateUseCardHand(player, slotIndex, cardId) {
   }
 
   return { valid: true, handCard };
+}
+
+function discardCardFromHand(player, slotIndex, cardId) {
+  const validation = validateUseCardHand(player, slotIndex, cardId);
+  if (!validation.valid) return validation;
+
+  while (player.hand.length <= slotIndex) {
+    player.hand.push(null);
+  }
+  player.hand[slotIndex] = null;
+  checkRunTerminalState();
+  return { valid: true };
 }
 
 function addMagicStones(player, amount) {
@@ -1507,6 +2007,7 @@ function removeDeadEnemies() {
   const dying = _gameState.enemies.filter((e) => e.hp <= 0);
   for (const enemy of dying) {
     recordEnemyCardDrop(enemy);
+    spawnMagicStoneDrop(enemy);
   }
 
   const before = _gameState.enemies.length;
@@ -1521,6 +2022,48 @@ function removeDeadEnemies() {
 function cleanupAfterDamage() {
   if (removeDeadEnemies() > 0) {
     checkRunTerminalState();
+  }
+}
+
+function spawnCrystals(layout, rng, count) {
+  const itemCount = Math.max(1, count | 0);
+  const treasureRooms = roomsByRole(layout, 'treasure');
+  const eligibleRooms = layout.rooms.filter(r => r.role !== 'start');
+  const roomPool = [];
+
+  if (treasureRooms.length > 0) {
+    roomPool.push(treasureRooms[0]);
+  }
+
+  const others = eligibleRooms.filter(r => !roomPool.includes(r));
+  for (let i = others.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [others[i], others[j]] = [others[j], others[i]];
+  }
+  roomPool.push(...others);
+
+  if (roomPool.length === 0 && layout.rooms.length > 0) {
+    roomPool.push(layout.rooms[0]);
+  }
+
+  for (let i = 0; i < itemCount; i++) {
+    const room = roomPool[i % roomPool.length];
+    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+    const pos = {
+      x: room.x + (rng() * 2 - 1) * halfW,
+      z: room.z + (rng() * 2 - 1) * halfD,
+    };
+    const id = crypto.randomUUID();
+    _gameState.loot.push({
+      id,
+      x: pos.x,
+      z: pos.z,
+      value: 0,
+      kind: 'crystal',
+      createdAt: Date.now(),
+    });
+    console.log(`[crystal] spawned id=${id} at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})`);
   }
 }
 
@@ -1561,11 +2104,17 @@ function spawnEnemies() {
   const layout = _gameState.layout;
   const seed = _gameState.layoutSeed || 42;
   const rng = mulberry32(seed + 1000);
+  const quest = getSelectedQuest(_gameState);
+
+  if (quest.objectiveType === 'collect_items') {
+    const crystalCount = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
+    spawnCrystals(layout, rng, crystalCount);
+    return;
+  }
 
   const combatRooms = roomsByRole(layout, 'combat');
   const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
 
-  const quest = getSelectedQuest(_gameState);
   const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
   const typesToSpawn = [];
@@ -1595,23 +2144,271 @@ function spawnEnemies() {
   spawnLoot(layout, rng);
 }
 
+function isPlayerActive(player) {
+  return !!(player && !player.dead && !player.extracted);
+}
+
+function hasActivePlayers() {
+  return Object.values(_gameState.players).some(isPlayerActive);
+}
+
+function capturePlayerCombatState(player) {
+  return {
+    x: player.x,
+    y: player.y,
+    z: player.z,
+    rotation: player.rotation,
+    hp: player.hp,
+    dead: player.dead,
+    magicStones: player.magicStones,
+    hand: Array.isArray(player.hand) ? player.hand.map((card) => (card ? { ...card } : null)) : [],
+    deck: Array.isArray(player.deck) ? [...player.deck] : [],
+    slotCooldowns: Array.isArray(player.slotCooldowns) ? [...player.slotCooldowns] : [null, null, null, null],
+    currencyEarnedThisRun: player.currencyEarnedThisRun || 0,
+    runCardDropIds: Array.isArray(player.runCardDropIds) ? [...player.runCardDropIds] : [],
+    inDesperation: !!player.inDesperation,
+    desperationDeck: Array.isArray(player.desperationDeck) ? [...player.desperationDeck] : [],
+    desperationCardsPlayed: player.desperationCardsPlayed || 0,
+    weaponComboCounts: player.weaponComboCounts ? { ...player.weaponComboCounts } : {},
+  };
+}
+
+function captureRunCheckpoint() {
+  const playerStates = {};
+  for (const [id, player] of Object.entries(_gameState.players)) {
+    playerStates[id] = capturePlayerCombatState(player);
+  }
+
+  return {
+    version: 1,
+    savedAt: Date.now(),
+    run: JSON.parse(JSON.stringify(_gameState.run)),
+    selectedQuestId: _gameState.selectedQuestId,
+    layoutSeed: _gameState.layoutSeed,
+    layout: JSON.parse(JSON.stringify(_gameState.layout)),
+    dungeonBounds: JSON.parse(JSON.stringify(_gameState.dungeonBounds)),
+    walkableAABBs: JSON.parse(JSON.stringify(_gameState.walkableAABBs || [])),
+    enemies: JSON.parse(JSON.stringify(_gameState.enemies)),
+    minions: JSON.parse(JSON.stringify(_gameState.minions)),
+    loot: JSON.parse(JSON.stringify(_gameState.loot)),
+    areaEffects: JSON.parse(JSON.stringify(_gameState.areaEffects)),
+    telepipe: _gameState.telepipe ? { ..._gameState.telepipe } : null,
+    playerStates,
+  };
+}
+
+function buildSuspendedRunSummary(checkpoint) {
+  if (!checkpoint || !checkpoint.run) return null;
+  return {
+    questId: checkpoint.run.questId,
+    questName: checkpoint.run.questName,
+    objective: { ...checkpoint.run.objective },
+  };
+}
+
+function clearSuspendedRunData() {
+  _gameState.telepipe = null;
+  delete _gameState.suspendedCheckpoint;
+}
+
+function restoreRunCheckpoint() {
+  const checkpoint = _gameState.suspendedCheckpoint;
+  if (!checkpoint) return false;
+
+  _gameState.run = JSON.parse(JSON.stringify(checkpoint.run));
+  _gameState.run.status = 'playing';
+  _gameState.selectedQuestId = checkpoint.selectedQuestId;
+  _gameState.layoutSeed = checkpoint.layoutSeed;
+  _gameState.layout = JSON.parse(JSON.stringify(checkpoint.layout));
+  _gameState.dungeonBounds = JSON.parse(JSON.stringify(checkpoint.dungeonBounds));
+  _gameState.walkableAABBs = JSON.parse(JSON.stringify(checkpoint.walkableAABBs || []));
+  _gameState.enemies = JSON.parse(JSON.stringify(checkpoint.enemies));
+  _gameState.minions = JSON.parse(JSON.stringify(checkpoint.minions));
+  _gameState.loot = JSON.parse(JSON.stringify(checkpoint.loot));
+  _gameState.areaEffects = JSON.parse(JSON.stringify(checkpoint.areaEffects));
+  _gameState.telepipe = checkpoint.telepipe ? { ...checkpoint.telepipe } : null;
+
+  for (const [id, saved] of Object.entries(checkpoint.playerStates || {})) {
+    const player = _gameState.players[id];
+    if (!player) continue;
+    Object.assign(player, saved);
+    player.extracted = false;
+    player.ready = false;
+    player.pendingSummons = new Set();
+    player.lastMoveTime = Date.now();
+    player.inputActive = false;
+    player.inputDx = 0;
+    player.inputDz = 0;
+  }
+
+  delete _gameState.suspendedCheckpoint;
+  _rebuildWallColliders();
+  console.log('[run] checkpoint restored');
+  return true;
+}
+
+function suspendRunToLobby() {
+  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+
+  _gameState.suspendedCheckpoint = captureRunCheckpoint();
+  console.log('[run] checkpoint captured');
+
+  _gameState.run.status = 'suspended';
+  resetTransientRunState();
+  _gameState.telepipe = null;
+  _gameState.gamePhase = 'lobby';
+
+  const spawn = firstRoomPosition();
+  for (const player of Object.values(_gameState.players)) {
+    player.ready = false;
+    player.extracted = false;
+    player.dead = false;
+    player.hp = MAX_HP;
+    player.x = spawn.x;
+    player.y = 0.5;
+    player.z = spawn.z;
+    player.lastMoveTime = Date.now();
+    player.pendingSummons = new Set();
+    player.slotCooldowns = [null, null, null, null];
+    player.hand = [];
+    player.deck = [];
+    player.inputActive = false;
+    player.inputDx = 0;
+    player.inputDz = 0;
+  }
+
+  refreshShopOffer();
+
+  const summary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
+  console.log(`[run] suspended: ${summary?.questName || _gameState.suspendedCheckpoint?.run?.questName || 'unknown'}`);
+  const io = getIoTarget();
+  if (io) {
+    io.emit('runSuspended', summary);
+    io.emit('stateUpdate', stateSnapshot());
+  }
+  _broadcastLobbyUpdate();
+}
+
+function maybeSuspendRun() {
+  if (!_gameState.run || _gameState.run.status !== 'playing') return;
+  if (hasActivePlayers()) return;
+  suspendRunToLobby();
+}
+
+function tryEnterTelepipe(playerId) {
+  if (!_gameState.run || _gameState.run.status !== 'playing') {
+    return { ok: false, reason: 'no_run' };
+  }
+  if (!_gameState.telepipe) {
+    return { ok: false, reason: 'no_portal' };
+  }
+
+  const player = _gameState.players[playerId];
+  if (!player || player.dead || player.extracted) {
+    return { ok: false, reason: 'invalid_player' };
+  }
+
+  const dist = Math.hypot(player.x - _gameState.telepipe.x, player.z - _gameState.telepipe.z);
+  if (dist > PORTAL_RADIUS) {
+    return { ok: false, reason: 'too_far' };
+  }
+
+  const now = Date.now();
+  if (player.lastTelepipeEnterAt && now - player.lastTelepipeEnterAt < PORTAL_ENTER_COOLDOWN_MS) {
+    return { ok: false, reason: 'cooldown' };
+  }
+  player.lastTelepipeEnterAt = now;
+
+  player.extracted = true;
+  player.inputActive = false;
+  player.inputDx = 0;
+  player.inputDz = 0;
+  savePlayerData(playerId);
+  console.log(`[telepipe] player ${playerId} extracted`);
+
+  const io = getIoTarget();
+  if (io) {
+    io.emit('playerExtracted', { playerId });
+    io.emit('stateUpdate', stateSnapshot());
+  }
+
+  maybeSuspendRun();
+  return { ok: true };
+}
+
+function checkTelepipeProximity() {
+  if (!_gameState.telepipe || !_gameState.run || _gameState.run.status !== 'playing') return;
+  if (isPortalEntryGraceActive()) return;
+
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!isPlayerActive(player)) continue;
+    const dist = Math.hypot(player.x - _gameState.telepipe.x, player.z - _gameState.telepipe.z);
+    if (dist <= PORTAL_RADIUS) {
+      tryEnterTelepipe(playerId);
+    }
+  }
+}
+
+function abandonSuspendedRun() {
+  if (!_gameState.suspendedCheckpoint) {
+    return { ok: false, reason: 'no_checkpoint' };
+  }
+
+  clearSuspendedRunData();
+  delete _gameState.run;
+  _gameState.gamePhase = 'lobby';
+
+  const spawn = firstRoomPosition();
+  for (const player of Object.values(_gameState.players)) {
+    player.ready = false;
+    player.extracted = false;
+    player.dead = false;
+    player.hp = MAX_HP;
+    player.x = spawn.x;
+    player.y = 0.5;
+    player.z = spawn.z;
+    player.hand = [];
+    player.deck = [];
+    player.slotCooldowns = [null, null, null, null];
+    player.pendingSummons = new Set();
+  }
+
+  refreshShopOffer();
+
+  const io = getIoTarget();
+  if (io) {
+    io.emit('stateUpdate', stateSnapshot());
+  }
+  _broadcastLobbyUpdate();
+  return { ok: true };
+}
+
 function checkRunTerminalState() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
   let status = null;
 
-  if (_gameState.run.objective.defeatedEnemies >= _gameState.run.objective.totalEnemies) {
+  if (isRunObjectiveComplete(_gameState.run.objective)) {
     status = 'victory';
   }
 
   if (!status) {
-    const activePlayers = Object.values(_gameState.players);
-    if (activePlayers.length > 0 && activePlayers.every(p => p.hp <= 0)) {
+    const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
+    if (inDungeon.length > 0 && inDungeon.every((p) => p.dead || p.hp <= 0)) {
+      status = 'failed';
+    }
+  }
+
+  if (!status) {
+    const inDungeon = Object.values(_gameState.players).filter((p) => p && !p.extracted);
+    if (inDungeon.length > 0 && inDungeon.every(isPlayerOutOfCards)) {
       status = 'failed';
     }
   }
 
   if (!status) return;
+
+  clearSuspendedRunData();
 
   _gameState.run.status = status;
 
@@ -1624,7 +2421,7 @@ function checkRunTerminalState() {
   }
 
   const summary = buildRunSummary(status);
-  const io = _getIo();
+  const io = getIoTarget();
   if (io) {
     io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);
   }
@@ -1635,35 +2432,34 @@ function resetTransientRunState() {
   _gameState.minions = [];
   _gameState.loot = [];
   _gameState.areaEffects = [];
-  _gameState.enchantments = [];
+  _gameState.telepipe = null;
 }
 
-function stateSnapshot(viewerPlayerId = null) {
+function stateSnapshot() {
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
-    const includePrivate = viewerPlayerId === null || viewerPlayerId === id;
     players[id] = {
       x: p.x,
       y: p.y,
       z: p.z,
       rotation: p.rotation,
       deck: p.deck,
+      desperationDeck: Array.isArray(p.desperationDeck) ? [...p.desperationDeck] : [],
+      hand: p.hand,
       hp: p.hp,
       dead: p.dead,
       ready: p.ready,
       magicStones: p.magicStones,
+      currency: p.currency,
+      inDesperation: !!p.inDesperation,
+      ownedCards: p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined),
+      runRewards: p.runRewards,
+      currencyEarnedThisRun: p.currencyEarnedThisRun,
+      selectedDeck: p.selectedDeck,
+      inventory: Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory,
+      debugScenario: p.debugScenario,
+      extracted: !!p.extracted,
     };
-    if (includePrivate) {
-      players[id].hand = p.hand;
-      players[id].currency = p.currency;
-      players[id].ownedCards = p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined);
-      players[id].runRewards = p.runRewards;
-      players[id].currencyEarnedThisRun = p.currencyEarnedThisRun;
-      players[id].selectedDeck = p.selectedDeck;
-      players[id].inventory = Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory;
-      players[id].debugScenario = p.debugScenario;
-      players[id].activeEnchantment = p.activeEnchantment || null;
-    }
   }
 
   return {
@@ -1671,22 +2467,29 @@ function stateSnapshot(viewerPlayerId = null) {
     enemies: _gameState.enemies,
     minions: _gameState.minions,
     loot: _gameState.loot,
-    enchantments: _gameState.enchantments || [],
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     selectedQuestId: _gameState.selectedQuestId,
     run: _gameState.run,
     dungeonBounds: _gameState.dungeonBounds,
     layoutSeed: _gameState.layoutSeed,
-    currency: _gameState.currency
+    currency: _gameState.currency,
+    shopOffer: ensureShopOffer(),
+    telepipe: _gameState.telepipe || null,
+    suspendedRunSummary: buildSuspendedRunSummary(_gameState.suspendedCheckpoint),
   };
 }
 
 function returnPlayersToLobby() {
+  if (!_gameState || !_gameState._lobbyId) {
+    throw new Error('returnPlayersToLobby requires lobby context');
+  }
+
   for (const playerId of Object.keys(_gameState.players)) {
     savePlayerData(playerId);
   }
 
+  clearSuspendedRunData();
   resetTransientRunState();
 
   _gameState.gamePhase = 'lobby';
@@ -1702,6 +2505,7 @@ function returnPlayersToLobby() {
 
     player.ready = false;
     player.dead = false;
+    player.extracted = false;
     player.hp = MAX_HP;
     player.x = spawn.x;
     player.y = 0.5;
@@ -1712,17 +2516,19 @@ function returnPlayersToLobby() {
     player.runRewards = preservedRunRewards;
     player.currencyEarnedThisRun = 0;
     player.lastMoveTime = Date.now();
-    player.pendingSpells.clear();
+    player.pendingSummons.clear();
     player.slotCooldowns = [null, null, null, null];
   }
 
-  if (_emitStateUpdate) {
-    _emitStateUpdate();
-  } else {
-    const io = _getIo();
-    if (io) {
-      io.emit('stateUpdate', stateSnapshot());
-    }
+  refreshShopOffer();
+
+  if (_gameState._pendingMinionBreaths?.length) {
+    _gameState._pendingMinionBreaths.length = 0;
+  }
+
+  const io = getIoTarget();
+  if (io) {
+    io.emit('stateUpdate', stateSnapshot());
   }
   _broadcastLobbyUpdate();
 }
@@ -1731,19 +2537,31 @@ function checkAllReady() {
   const all = Object.values(_gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
     _gameState.gamePhase = 'playing';
-    const spawn = firstRoomPosition();
+
+    if (_gameState.suspendedCheckpoint) {
+      restoreRunCheckpoint();
+      const io = getIoTarget();
+      if (io) {
+        io.emit('startGame');
+        io.emit('stateUpdate', stateSnapshot());
+      }
+      return;
+    }
+
+    assignRunSpawnPositions(all);
     for (const player of all) {
-      player.x = spawn.x;
-      player.y = 0.5;
-      player.z = spawn.z;
+      player.extracted = false;
       player.lastMoveTime = Date.now();
       createDrawDeckFromSelectedDeck(player);
       initPlayerHand(player);
+      if (player.debugScenario === 'telepipe-ready') {
+        applyTelepipeReadyHand(player);
+      }
       player.slotCooldowns = [null, null, null, null];
     }
     spawnEnemies();
     startDungeonRun();
-    const io = _getIo();
+    const io = getIoTarget();
     if (io) {
       io.emit('startGame');
     }
@@ -1752,10 +2570,23 @@ function checkAllReady() {
 
 module.exports = {
   initProgression,
+  setGameState,
+  getGameState,
   setBroadcastLobbyUpdate,
+  setRebuildWallColliders,
   setTestProvider,
   getProvider,
   CARD_DEFS,
+  DESPERATION_CARD_DEFS,
+  DESPERATION_DECK_TEMPLATE,
+  getCardDef,
+  initDesperationDeck,
+  drawCardFromDesperationDeck,
+  createEchoCard,
+  pickRandomExhaustedCard,
+  replaceConsumedCard,
+  recordExhaustedCard,
+  resetPlayerDesperationState,
   STARTING_DECK_IDS,
   EVOLUTION_GRIND_REQUIRED,
   GRIND_COST_BASE,
@@ -1763,6 +2594,11 @@ module.exports = {
   EVOLUTION_TRANSFORMS,
   CARD_SELL_VALUES,
   getCardSellValue,
+  getCardBuyValue,
+  pickShopOffer,
+  refreshShopOffer,
+  ensureShopOffer,
+  buyShopCard,
   canSellCardInstance,
   sellCard,
   cancelTradesForPlayer,
@@ -1800,6 +2636,8 @@ module.exports = {
   recordEnemyDefeated,
   getEnemyCardDrop,
   recordEnemyCardDrop,
+  getEnemyMagicStoneDrop,
+  spawnMagicStoneDrop,
   buildCardChoices,
   claimCardReward,
   buildRunSummary,
@@ -1813,6 +2651,8 @@ module.exports = {
   drawCardFromDeck,
   initPlayerHand,
   drawReplacementCard,
+  discardCardFromHand,
+  isPlayerOutOfCards,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
@@ -1821,10 +2661,25 @@ module.exports = {
   removeDeadEnemies,
   cleanupAfterDamage,
   spawnLoot,
+  spawnCrystals,
   spawnEnemies,
+  recordCrystalCollected,
+  isRunObjectiveComplete,
   checkRunTerminalState,
   resetTransientRunState,
   returnPlayersToLobby,
   checkAllReady,
-  stateSnapshot
+  applyTelepipeReadyHand,
+  stateSnapshot,
+  isPlayerActive,
+  hasActivePlayers,
+  captureRunCheckpoint,
+  restoreRunCheckpoint,
+  suspendRunToLobby,
+  maybeSuspendRun,
+  tryEnterTelepipe,
+  checkTelepipeProximity,
+  abandonSuspendedRun,
+  buildSuspendedRunSummary,
+  clearSuspendedRunData,
 };

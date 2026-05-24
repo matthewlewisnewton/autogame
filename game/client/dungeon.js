@@ -1,12 +1,21 @@
 import * as THREE from 'three';
-import { wallAABB, resolveWallCollision as resolveWallCollisionPure } from './collision.js';
-import { PASSAGE_WIDTH } from './config.js';
+import {
+	wallAABB,
+	resolveWallCollision as resolveWallCollisionPure,
+	checkSweptCollision as checkSweptCollisionPure,
+	isInsideDungeon as isInsideDungeonPure,
+	clampToDungeon as clampToDungeonPure,
+	tryPlayerMove as tryPlayerMovePure,
+	isPositionBlocked as isPositionBlockedPure,
+} from './collision.js';
+import { PASSAGE_WIDTH, BOUNDS_MARGIN } from './config.js';
 
 // ── Visual constants ──
 
 export const WALL_HEIGHT = 2.5;
 export const WALL_THICKNESS = 0.4;
 export const FLOOR_Y = 0.05; // slightly above background to avoid z-fighting
+export const GROUND_Y = -0.02; // background plane sits below room floor bottoms (y=0)
 export const PASSAGE_WALL_HEIGHT = 1.5;
 export const PASSAGE_WALL_THICKNESS = 0.3;
 
@@ -49,6 +58,61 @@ export function clearDungeon(scene, dungeonMeshes) {
 	dungeonMeshes.length = 0;
 }
 
+function findRoomAt(layout, x, z) {
+	return layout.rooms.find(r => r.x === x && r.z === z);
+}
+
+/**
+ * Passage floor geometry should cover only the corridor gap between room edges.
+ * Full center-to-center strips overlap room floors and z-fight at doorways.
+ */
+export function buildPassageFloorSpec(passage, layout) {
+	const passageWidth = layout.passageWidth ?? PASSAGE_WIDTH;
+	const corridorLength = passage.corridorLength;
+	const fromRoom = findRoomAt(layout, passage.x1, passage.z1);
+	const toRoom = findRoomAt(layout, passage.x2, passage.z2);
+
+	if (!fromRoom || !toRoom || !Number.isFinite(corridorLength) || corridorLength <= 0) {
+		const dx = passage.x2 - passage.x1;
+		const dz = passage.z2 - passage.z1;
+		const dist = Math.hypot(dx, dz);
+		return {
+			width: dist,
+			height: 0.1,
+			depth: passageWidth,
+			x: (passage.x1 + passage.x2) / 2,
+			z: (passage.z1 + passage.z2) / 2,
+			rotationY: Math.atan2(dz, dx),
+		};
+	}
+
+	if (passage.x1 !== passage.x2) {
+		const sign = Math.sign(passage.x2 - passage.x1) || 1;
+		const xStart = fromRoom.x + sign * (fromRoom.width / 2);
+		const xEnd = toRoom.x - sign * (toRoom.width / 2);
+		return {
+			width: corridorLength,
+			height: 0.1,
+			depth: passageWidth,
+			x: (xStart + xEnd) / 2,
+			z: passage.z1,
+			rotationY: 0,
+		};
+	}
+
+	const sign = Math.sign(passage.z2 - passage.z1) || 1;
+	const zStart = fromRoom.z + sign * (fromRoom.depth / 2);
+	const zEnd = toRoom.z - sign * (toRoom.depth / 2);
+	return {
+		width: passageWidth,
+		height: 0.1,
+		depth: corridorLength,
+		x: passage.x1,
+		z: (zStart + zEnd) / 2,
+		rotationY: 0,
+	};
+}
+
 /**
  * Build all dungeon geometry (rooms, passages, ground) from a server layout.
  *
@@ -67,7 +131,7 @@ export function buildDungeon(scene, layout) {
 	const groundGeo = new THREE.PlaneGeometry(200, 200);
 	const ground = new THREE.Mesh(groundGeo, groundMaterial);
 	ground.rotation.x = -Math.PI / 2;
-	ground.position.y = 0;
+	ground.position.y = GROUND_Y;
 	scene.add(ground);
 	meshes.push(ground);
 
@@ -122,17 +186,11 @@ export function buildDungeon(scene, layout) {
 
 	// ── Build passages ──
 	for (const passage of layout.passages) {
-		const dx = passage.x2 - passage.x1;
-		const dz = passage.z2 - passage.z1;
-		const dist = Math.hypot(dx, dz);
-
-		// Passage floor strip
-		const passageFloorGeo = new THREE.BoxGeometry(dist, 0.1, PASSAGE_WIDTH);
+		const floorSpec = buildPassageFloorSpec(passage, layout);
+		const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
 		const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
-		const midX = (passage.x1 + passage.x2) / 2;
-		const midZ = (passage.z1 + passage.z2) / 2;
-		passageFloor.position.set(midX, FLOOR_Y, midZ);
-		passageFloor.rotation.y = Math.atan2(dz, dx);
+		passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
+		passageFloor.rotation.y = floorSpec.rotationY;
 		scene.add(passageFloor);
 		meshes.push(passageFloor);
 
@@ -178,7 +236,7 @@ export function buildWallColliders(layout) {
 	}
 	for (const passage of layout.passages) {
 		for (const wall of passage.walls) {
-			colliders.push(wallAABB({ ...wall, length: passage.corridorLength }, PASSAGE_WALL_THICKNESS / 2));
+			colliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
 		}
 	}
 
@@ -186,13 +244,95 @@ export function buildWallColliders(layout) {
 }
 
 /**
- * Resolve a proposed player position against a list of wall AABB colliders.
- *
- * @param {number} newX
- * @param {number} newZ
- * @param {{ minX: number, maxX: number, minZ: number, maxZ: number }[]} collidersRef
- * @returns {{ x: number, z: number }}
+ * Compute dungeon AABB bounds from layout rooms.
+ * @param {object} layout
  */
-export function resolveWallCollision(newX, newZ, collidersRef) {
-	return resolveWallCollisionPure(newX, newZ, collidersRef);
+export function computeDungeonBounds(layout) {
+	let minX = Infinity;
+	let maxX = -Infinity;
+	let minZ = Infinity;
+	let maxZ = -Infinity;
+
+	if (!layout || !layout.rooms) {
+		return { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+	}
+
+	for (const room of layout.rooms) {
+		const halfW = room.width / 2;
+		const halfD = room.depth / 2;
+		minX = Math.min(minX, room.x - halfW);
+		maxX = Math.max(maxX, room.x + halfW);
+		minZ = Math.min(minZ, room.z - halfD);
+		maxZ = Math.max(maxZ, room.z + halfD);
+	}
+
+	return {
+		minX: minX - BOUNDS_MARGIN,
+		maxX: maxX + BOUNDS_MARGIN,
+		minZ: minZ - BOUNDS_MARGIN,
+		maxZ: maxZ + BOUNDS_MARGIN,
+	};
+}
+
+/**
+ * Compute walkable AABBs from the dungeon layout.
+ * @param {object} layout
+ */
+export function computeWalkableAABBs(layout) {
+	const aabbs = [];
+	if (!layout) return aabbs;
+
+	if (layout.rooms) {
+		for (const room of layout.rooms) {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			aabbs.push({
+				minX: room.x - halfW,
+				maxX: room.x + halfW,
+				minZ: room.z - halfD,
+				maxZ: room.z + halfD,
+			});
+		}
+	}
+
+	if (layout.passages) {
+		const halfGap = (layout.passageWidth ?? PASSAGE_WIDTH) / 2;
+		for (const p of layout.passages) {
+			aabbs.push({
+				minX: Math.min(p.x1, p.x2) - halfGap,
+				maxX: Math.max(p.x1, p.x2) + halfGap,
+				minZ: Math.min(p.z1, p.z2) - halfGap,
+				maxZ: Math.max(p.z1, p.z2) + halfGap,
+			});
+		}
+	}
+
+	return aabbs;
+}
+
+/**
+ * Resolve a proposed player position against a list of wall AABB colliders.
+ */
+export function resolveWallCollision(newX, newZ, collidersRef, fromX = newX, fromZ = newZ) {
+	return resolveWallCollisionPure(newX, newZ, collidersRef, fromX, fromZ);
+}
+
+export function checkSweptCollision(fromX, fromZ, toX, toZ, collidersRef, options = {}) {
+	return checkSweptCollisionPure(fromX, fromZ, toX, toZ, collidersRef, options);
+}
+
+export function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, collidersRef, walkableAABBsRef, bounds) {
+	return tryPlayerMovePure(fromX, fromZ, dirX, dirZ, distance, collidersRef, walkableAABBsRef, bounds);
+}
+
+export function isPositionBlocked(x, z, collidersRef) {
+	return isPositionBlockedPure(x, z, collidersRef);
+}
+
+export function isInsideDungeon(x, z, walkableAABBs) {
+	return isInsideDungeonPure(x, z, walkableAABBs);
+}
+
+export function clampToDungeon(x, z, bounds) {
+	return clampToDungeonPure(x, z, bounds);
 }

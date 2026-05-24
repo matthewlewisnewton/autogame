@@ -4,7 +4,6 @@ import jwt from 'jsonwebtoken';
 import {
 	startServer,
 	resetGameState,
-	gameState,
 	io as serverIo,
 	server as httpServer,
 	clearAllTimers,
@@ -17,6 +16,7 @@ import {
 	evolveCard,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
+import { connectClient, waitForEvent, lobbyStateForSocket, playerForSocket } from './helpers.js';
 
 function createTestToken(accountId, username) {
 	return jwt.sign(
@@ -61,40 +61,7 @@ async function closeServer() {
 	}
 }
 
-function connectClient(baseUrl) {
-	const accountId = `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-	const token = createTestToken(accountId);
-	return new Promise((resolve, reject) => {
-		const socket = ClientIO(baseUrl, {
-			transports: ['websocket'],
-			retry: false,
-			autoConnect: true,
-			timeout: 5000,
-			auth: { token },
-		});
-		const timer = setTimeout(() => {
-			try { socket.disconnect(); } catch (_) {}
-			reject(new Error('connectClient timed out waiting for init'));
-		}, 10000);
-		socket.on('init', (data) => {
-			clearTimeout(timer);
-			socket._playerId = data.playerId || data.id;
-			resolve({ socket });
-		});
-		socket.on('connect_error', (e) => {
-			clearTimeout(timer);
-			reject(e);
-		});
-	});
-}
-
-function waitForEvent(socket, event) {
-	return new Promise((resolve) => {
-		socket.once(event, resolve);
-	});
-}
-
-describe('Undead Commander definitions', () => {
+describe('Legion Marshal definitions', () => {
 	it('defines evolved stats and skeleton summon parameters', () => {
 		expect(EVOLUTION_TRANSFORMS.skeleton_knight).toBe('undead_commander');
 		expect(CARD_DEFS.undead_commander).toMatchObject({
@@ -109,7 +76,7 @@ describe('Undead Commander definitions', () => {
 		});
 	});
 
-	it('evolves Skeleton Knight at +10 grind', () => {
+	it('evolves Necroframe Knight at +10 grind', () => {
 		const player = {
 			inventory: [
 				createCardInstance('skeleton_knight', {
@@ -130,7 +97,7 @@ describe('Undead Commander definitions', () => {
 	});
 });
 
-describe('Undead Commander gameplay', () => {
+describe('Legion Marshal gameplay', () => {
 	let baseUrl, socket;
 
 	beforeEach(async () => {
@@ -149,11 +116,11 @@ describe('Undead Commander gameplay', () => {
 		await debugResultPromise;
 		await waitForEvent(socket, 'stateUpdate');
 
-		const player = gameState.players[socket._playerId];
+		const player = playerForSocket(socket);
 		player.deck = [];
 		player.hand = [{
 			id: 'undead_commander',
-			name: 'Undead Commander',
+			name: 'Legion Marshal',
 			type: 'creature',
 			charges: 1,
 			remainingCharges: 1,
@@ -163,7 +130,8 @@ describe('Undead Commander gameplay', () => {
 		socket.emit('useCard', { cardId: 'undead_commander', slotIndex: 0 });
 		const cardUsed = await cardUsedPromise;
 
-		const ownerMinions = gameState.minions.filter(m => m.ownerId === socket._playerId);
+		const state = lobbyStateForSocket(socket);
+		const ownerMinions = state.minions.filter(m => m.ownerId === socket._playerId);
 		expect(ownerMinions).toHaveLength(3);
 
 		const commander = ownerMinions.find(m => m.type === 'undead_commander');

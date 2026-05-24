@@ -1,6 +1,6 @@
 // Pure helpers for the PSO-inspired Vanguard HUD (testable without DOM).
 
-import { CARD_DEFS } from './cards.js';
+import { CARD_DEFS, getCardDef } from './cards.js';
 
 /** Map HP percentage to a CSS tier class for bar coloring. */
 export function getHpBarTier(pct) {
@@ -9,12 +9,26 @@ export function getHpBarTier(pct) {
 	return 'hp-low';
 }
 
+/** Map Magic Stone percentage to a CSS tier class for bar coloring. */
+export function getMsBarTier(pct) {
+	if (pct > 55) return 'ms-high';
+	if (pct > 25) return 'ms-mid';
+	return 'ms-low';
+}
+
+/** Resolve a card's Magic Stone cost from its instance or definition. */
+export function getCardMagicStoneCost(card) {
+	if (!card) return 0;
+	const cost = card.magicStoneCost ?? CARD_DEFS[card.id]?.magicStoneCost;
+	return cost != null && cost > 0 ? cost : 0;
+}
+
 /** Count draw-pile cards by type (weapon / spell / creature / enchantment). */
 export function countDeckTypes(deck) {
 	const counts = { weapon: 0, spell: 0, creature: 0, enchantment: 0 };
 	if (!Array.isArray(deck)) return counts;
 	for (const cardId of deck) {
-		const def = CARD_DEFS[cardId];
+		const def = getCardDef(cardId);
 		if (def && Object.prototype.hasOwnProperty.call(counts, def.type)) {
 			counts[def.type] += 1;
 		}
@@ -39,6 +53,29 @@ export function computeDeckHudStats(deck, handCards) {
 		drawCount,
 		total,
 		label: `Deck: ${drawCount}/${total}`,
+		types: countDeckTypes(drawPile),
+	};
+}
+
+/**
+ * HUD stats while drawing from the desperation deck.
+ *
+ * @param {string[]} desperationDeckIds
+ * @param {Array<object|null>|null|undefined} handCards
+ */
+export function computeDesperationHudStats(desperationDeckIds, handCards) {
+	const drawPile = Array.isArray(desperationDeckIds) ? desperationDeckIds : [];
+	const drawCount = drawPile.length;
+	const inHand = Array.isArray(handCards)
+		? handCards.filter((card) => card && card.isDesperation).length
+		: 0;
+
+	return {
+		drawCount,
+		total: drawCount + inHand,
+		label: drawCount > 0
+			? `Desperation: ${drawCount} left`
+			: (inHand > 0 ? 'Desperation: in hand' : 'No cards left'),
 		types: countDeckTypes(drawPile),
 	};
 }

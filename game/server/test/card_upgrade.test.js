@@ -50,7 +50,7 @@ describe('card upgrade', () => {
 		const result = upgradeCard(player, instance.instanceId);
 
 		expect(result.ok).toBe(false);
-		expect(result.reason).toContain('Insufficient GOLD');
+		expect(result.reason).toContain('Insufficient Meseta');
 		expect(player.currency).toBe(startingCurrency);
 		expect(instance.level).toBe(1);
 	});

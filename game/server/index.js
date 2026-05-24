@@ -4,10 +4,12 @@ const http = require('http');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { THEME } = require('./theme');
 const {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
   isValidQuestId,
+  getLayoutProfileForQuest,
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
@@ -15,6 +17,7 @@ const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
   generateLayout,
+  questLayoutSeed,
   roomsByRole,
   randomRoomPositionByRole,
   GRID_COLS,
@@ -36,7 +39,9 @@ const {
   SUMMON_RADIUS,
   ATTACK_RANGE,
   ATTACK_CONE_ANGLE,
+  PROJECTILE_HIT_WIDTH,
   STALE_THRESHOLD,
+  DISCONNECT_GRACE_MS,
   BOUNDS_MARGIN,
   COOLDOWN_MS,
   SPAWN_PADDING,
@@ -45,10 +50,13 @@ const {
   MAX_HP,
   RESPAWN_DELAY_MS,
   LOOT_LIFETIME_MS,
+  LOOT_PICKUP_RADIUS,
   LOOT_SPAWN_CHANCE,
   STALE_CLEANUP_INTERVAL_MS,
   PERIODIC_SAVE_INTERVAL_MS,
   VICTORY_REWARD_ROTATION,
+  PORTAL_RADIUS,
+  PORTAL_PLACEMENT_GRACE_MS,
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
 } = require('./config');
 
@@ -56,38 +64,11 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: socketCorsOrigin,
+    origin: "*", // Adjust later for production
     methods: ["GET", "POST"]
   }
 });
 server.setMaxListeners(0);
-
-function allowedSocketOrigins() {
-  const configured = process.env.SOCKET_CORS_ORIGINS || process.env.CORS_ORIGINS;
-  if (configured) {
-    return configured.split(',').map(origin => origin.trim()).filter(Boolean);
-  }
-  if (process.env.NODE_ENV === 'production') {
-    return [];
-  }
-  return [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000'
-  ];
-}
-
-function socketCorsOrigin(origin, callback) {
-  const allowed = allowedSocketOrigins();
-  if (!origin) return callback(null, true);
-  if (allowed.includes('*') || allowed.includes(origin)) return callback(null, true);
-  return callback(new Error('Socket origin not allowed'), false);
-}
-
-function listenHost() {
-  return process.env.SERVER_HOST || process.env.HOST || '127.0.0.1';
-}
 
 // Game state factory — used by tests to get a fresh state
 function createGameState() {
@@ -101,7 +82,12 @@ function createGameState() {
     lobby: [],
     gamePhase: 'lobby',
     selectedQuestId: DEFAULT_QUEST_ID,
-    pendingTrades: {}
+    pendingTrades: {},
+    shopOffer: null,
+    telepipe: null,
+    suspendedCheckpoint: null,
+    // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
+    _pendingMinionBreaths: [],
   };
 }
 
@@ -133,6 +119,9 @@ const {
   checkWallCollision,
   resolveWallCollision,
   checkSweptCollision,
+  tryPlayerMove,
+  applyPlayerMovement,
+  flushDirtyPlayerSaves,
   segmentAABBEntryT,
   segmentIntersectsAABB,
   isEntityPositionBlocked,
@@ -148,11 +137,14 @@ const {
   healPlayer,
   collectConeHits,
   collectRadialHits,
+  collectProjectileHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
+  applyKnockback,
   applyEventHorizon,
   spawnDragonsBreathEffect,
+  spawnFireTrailEffect,
   spawnInfernoPillarEffect,
   isEnemyFrozen,
   cleanupStalePlayers,
@@ -169,8 +161,17 @@ const {
 } = require('./simulation');
 
 const progression = require('./progression');
+const lobbies = require('./lobbies');
 const {
   CARD_DEFS,
+  getCardDef,
+  DESPERATION_CARD_DEFS,
+  DESPERATION_DECK_TEMPLATE,
+  drawCardFromDesperationDeck,
+  initDesperationDeck,
+  replaceConsumedCard,
+  pickRandomExhaustedCard,
+  createEchoCard,
   STARTING_DECK_IDS,
   EVOLUTION_GRIND_REQUIRED,
   EVOLUTION_TRANSFORMS,
@@ -192,6 +193,10 @@ const {
   findAvailableInventoryInstance,
   evolveCard,
   getCardSellValue,
+  getCardBuyValue,
+  ensureShopOffer,
+  buyShopCard,
+  pickShopOffer,
   canSellCardInstance,
   sellCard,
   cancelTradesForPlayer,
@@ -216,6 +221,8 @@ const {
   recordEnemyDefeated,
   getEnemyCardDrop,
   recordEnemyCardDrop,
+  getEnemyMagicStoneDrop,
+  spawnMagicStoneDrop,
   buildCardChoices,
   claimCardReward,
   buildRunSummary,
@@ -229,6 +236,8 @@ const {
   drawCardFromDeck,
   initPlayerHand,
   drawReplacementCard,
+  discardCardFromHand,
+  isPlayerOutOfCards,
   validateUseCardHand,
   addMagicStones,
   restoreCardCharges,
@@ -236,14 +245,56 @@ const {
   spawnEnemy,
   spawnEnemies,
   spawnLoot,
+  spawnCrystals,
+  recordCrystalCollected,
   removeDeadEnemies,
   cleanupAfterDamage,
   checkRunTerminalState,
   resetTransientRunState,
   returnPlayersToLobby,
   checkAllReady,
-  stateSnapshot
+  stateSnapshot,
+  checkTelepipeProximity,
+  abandonSuspendedRun,
+  captureRunCheckpoint,
+  restoreRunCheckpoint,
+  suspendRunToLobby,
+  maybeSuspendRun,
+  tryEnterTelepipe,
+  isPlayerActive,
+  hasActivePlayers,
+  buildSuspendedRunSummary,
+  clearSuspendedRunData,
+  setGameState: setProgressionGameState,
+  getGameState: getProgressionGameState,
+  setRebuildWallColliders: setProgressionRebuildWallColliders,
 } = progression;
+
+const _lobbyContextStack = [];
+
+function withLobbyContext(lobby, fn) {
+  if (!lobby || !lobby.state) return fn();
+  sim.setGameState(lobby.state, _timeouts);
+  setProgressionGameState(lobby.state);
+  _lobbyContextStack.push(lobby);
+  try {
+    return fn();
+  } finally {
+    _lobbyContextStack.pop();
+    const parentLobby = _lobbyContextStack[_lobbyContextStack.length - 1];
+    const restoreState = parentLobby ? parentLobby.state : gameState;
+    sim.setGameState(restoreState, _timeouts);
+    setProgressionGameState(restoreState);
+  }
+}
+
+function getLobbyForSocket(socket) {
+  return lobbies.getLobbyForPlayer(socket.playerId);
+}
+
+function broadcastLobbyList() {
+  io.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
+}
 
 // Throttle state for swept-collision rejection logging (per-socket)
 const SWEPT_COLLISION_LOG_THROTTLE_MS = 1000;
@@ -252,22 +303,30 @@ const sweptCollisionLogTimes = new Map();
 // Initialize simulation and progression modules with gameState and timeouts
 const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
-progression.initProgression({ gameState, getIo: () => io, emitStateUpdate });
+progression.initProgression({ gameState, getIo: () => io });
+progression.setRebuildWallColliders(() => rebuildWallColliders());
+ensureShopOffer();
 
 // Wire simulation callbacks (so simulation.js can call back into progression).
 setTerminalCheckCallback(checkRunTerminalState);
 setFindSocketCallback(findSocketByPlayerId);
 setSavePlayerCallback(savePlayerData);
 
-// Generate dungeon layout at startup
-const layoutSeed = Math.floor(Math.random() * 2147483647);
-gameState.layoutSeed = layoutSeed;
-gameState.layout = generateLayout(layoutSeed);
-console.log(`[server] Dungeon seed: ${layoutSeed}, rooms: ${gameState.layout.rooms.length}`);
+function applyLayoutForQuest(state, questId) {
+  const profile = getLayoutProfileForQuest(questId);
+  const seed = questLayoutSeed(questId);
+  state.layoutSeed = seed;
+  state.layout = generateLayout(seed, profile);
+  state.dungeonBounds = computeDungeonBounds(state.layout);
+  state.walkableAABBs = computeWalkableAABBs(state.layout);
+  // rebuildWallColliders reads module-level sim state — wrap even when callers are already
+  // inside withLobbyContext, because this helper is also invoked at startup/reset with bare state.
+  withLobbyContext({ state }, () => rebuildWallColliders());
+  console.log(`[server] Layout for quest "${questId}": seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
+}
 
-gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
-gameState.walkableAABBs = computeWalkableAABBs(gameState.layout);
-rebuildWallColliders();
+// Generate dungeon layout for the default quest at startup (legacy unit-test gameState)
+applyLayoutForQuest(gameState, gameState.selectedQuestId || DEFAULT_QUEST_ID);
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
 /**
@@ -280,24 +339,31 @@ function clearAllTimers() {
   _timeouts.length = 0;
 }
 
+function restartBackgroundTimers() {
+  if (_intervals.length > 0) return;
+  _intervals.push(setInterval(runGameLoopTick, 1000 / TICK_RATE));
+  _intervals.push(setInterval(cleanupStalePlayers, STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(evictDisconnectedPlayers, STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(saveAllPlayers, PERIODIC_SAVE_INTERVAL_MS));
+}
+
 /**
  * Reset gameState to a fresh state. Used by integration tests to isolate tests.
- * Regenerates dungeon layout with a new random seed.
+ * Regenerates dungeon layout using the quest-derived seed from applyLayoutForQuest.
  */
 function resetGameState() {
+  _lobbyContextStack.length = 0;
+  lobbies.resetAllLobbies();
   const fresh = createGameState();
+  const questId = fresh.selectedQuestId || DEFAULT_QUEST_ID;
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
-  const seed = Math.floor(Math.random() * 2147483647);
-  gameState.layoutSeed = seed;
-  gameState.layout = generateLayout(seed);
-  gameState.dungeonBounds = computeDungeonBounds(gameState.layout);
-  gameState.walkableAABBs = computeWalkableAABBs(gameState.layout);
-  rebuildWallColliders();
-  // Ensure run is cleared — it should not exist after a reset
+  applyLayoutForQuest(gameState, questId);
   delete gameState.run;
-  // Clear victory counters so reward card selection resets between tests
   delete gameState._victoryCounters;
+  sim.setGameState(gameState, _timeouts);
+  setProgressionGameState(gameState);
+  ensureShopOffer();
 }
 
 const DEBUG_SCENARIOS = new Set([
@@ -307,23 +373,50 @@ const DEBUG_SCENARIOS = new Set([
   'mixed-enemies',
   'spawner-active',
   'monster-card',
+  'run-failed',
+  'run-exhausted',
+  'telepipe-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
-function lobbyPlayerList() {
-  return Object.entries(gameState.players).map(([id, p]) => ({
+function lobbyPlayerList(state) {
+  return Object.entries(state.players).map(([id, p]) => ({
     id,
     ready: p.ready
   }));
 }
 
-// Helper: broadcast lobbyUpdate to all connected clients
-function broadcastLobbyUpdate() {
-  io.emit('lobbyUpdate', {
-    players: lobbyPlayerList(),
-    gamePhase: gameState.gamePhase,
-    ...buildQuestUpdatePayload(gameState)
+// Helper: broadcast lobbyUpdate to clients in a lobby room
+function broadcastLobbyUpdate(lobby) {
+  const activeState = getProgressionGameState();
+  if (!lobby && activeState && activeState._lobbyId) {
+    lobby = lobbies.getLobbyById(activeState._lobbyId);
+  }
+  if (!lobby) {
+    if (!activeState || Object.keys(activeState.players).length === 0) return;
+    withLobbyContext({ state: activeState }, () => {
+      ensureShopOffer();
+      io.emit('lobbyUpdate', {
+        players: lobbyPlayerList(activeState),
+        gamePhase: activeState.gamePhase,
+        shopOffer: activeState.shopOffer,
+        ...buildQuestUpdatePayload(activeState),
+      });
+    });
+    broadcastLobbyList();
+    return;
+  }
+  withLobbyContext(lobby, () => {
+    ensureShopOffer();
+    io.to(lobby.id).emit('lobbyUpdate', {
+      lobbyId: lobby.id,
+      players: lobbyPlayerList(lobby.state),
+      gamePhase: lobby.state.gamePhase,
+      shopOffer: lobby.state.shopOffer,
+      ...buildQuestUpdatePayload(lobby.state)
+    });
   });
+  broadcastLobbyList();
 }
 
 progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
@@ -332,13 +425,6 @@ progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 // Socket.IO keys sockets by socket.id (a random string), not by playerId,
 // so we must iterate and match on socket.playerId.
 function findSocketByPlayerId(playerId) {
-  const activeSocketId = gameState.players[playerId] && gameState.players[playerId].activeSocketId;
-  if (activeSocketId) {
-    const activeSocket = io.sockets.sockets.get(activeSocketId);
-    if (activeSocket && activeSocket.playerId === playerId) {
-      return activeSocket;
-    }
-  }
   for (const socket of io.sockets.sockets.values()) {
     if (socket.playerId === playerId) {
       return socket;
@@ -347,40 +433,38 @@ function findSocketByPlayerId(playerId) {
   return null;
 }
 
-function emitStateUpdate() {
-  let emittedToSocket = false;
-  for (const socket of io.sockets.sockets.values()) {
-    if (socket.playerId && typeof socket.emit === 'function') {
-      socket.emit('stateUpdate', stateSnapshot(socket.playerId));
-      emittedToSocket = true;
-    }
-  }
-  if (!emittedToSocket) {
-    io.emit('stateUpdate', stateSnapshot());
-  }
-}
-
 function isDebugScenarioAllowed(socket) {
   if (process.env.ALLOW_DEBUG_SCENARIOS === '1') return true;
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  return address === '::1' || address === '127.0.0.1' || address === '::ffff:127.0.0.1';
+  const origin = socket.handshake.headers.origin || '';
+  const host = socket.handshake.headers.host || '';
+  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');
+  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin);
+  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
+
+  return localAddress || localOrigin || localHost;
 }
 
-function ensureNearbyEnemy(x, z) {
-  const nearby = gameState.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);
+function ensureNearbyEnemy(state, x, z) {
+  const nearby = state.enemies.some(enemy => Math.hypot(enemy.x - x, enemy.z - z) < 6);
   if (nearby) return;
 
   const enemy = spawnEnemy(x + 3, z, 'grunt');
   enemy.wanderTarget = { x: x + 3, z };
 }
 
-function enterPlayingPhase() {
-  if (gameState.gamePhase !== 'playing') {
-    gameState.gamePhase = 'playing';
-    // Initialize draw decks and hands for all players (idempotent — safe to call from both checkAllReady and applyDebugScenario)
-    for (const player of Object.values(gameState.players)) {
+function emitCardError(socket, reason) {
+  console.log(`[cardError] player ${socket.playerId}: ${reason}`);
+  socket.emit('cardError', { reason });
+}
+
+function enterPlayingPhase(lobby) {
+  const state = lobby.state;
+  if (state.gamePhase !== 'playing') {
+    state.gamePhase = 'playing';
+    for (const player of Object.values(state.players)) {
       if (!player.hand || player.hand.length === 0) {
         createDrawDeckFromSelectedDeck(player);
         initPlayerHand(player);
@@ -388,116 +472,155 @@ function enterPlayingPhase() {
     }
     spawnEnemies();
     startDungeonRun();
-    io.emit('startGame');
+    io.to(lobby.id).emit('startGame');
+    broadcastLobbyList();
   }
 }
 
 function applyDebugScenario(socket, name) {
+  const lobby = getLobbyForSocket(socket);
+  if (!lobby) return { ok: false, reason: 'Not in a lobby' };
+  const state = lobby.state;
+
   if (!DEBUG_SCENARIOS.has(name)) {
     return { ok: false, reason: `Unknown debug scenario: ${name}` };
   }
 
-  const player = gameState.players[socket.playerId];
+  const player = state.players[socket.playerId];
   if (!player) return { ok: false, reason: 'No player for debug scenario' };
   const spawn = firstRoomPosition();
 
-  // Validate deck — same check the normal playerReady path uses
-  normalizePlayerInventory(player);
-  const result = validateDeck(player.selectedDeck, player.inventory);
-  if (!result.valid) return { ok: false, reason: result.reason };
+  return withLobbyContext(lobby, () => {
+    normalizePlayerInventory(player);
+    const result = validateDeck(player.selectedDeck, player.inventory);
+    if (!result.valid) return { ok: false, reason: result.reason };
 
-  player.ready = true;
-  player.dead = false;
-  player.firstMoveAfterSpawn = false;
-  player.lastMoveTime = Date.now();
-  player.x = spawn.x;
-  player.y = 0.5;
-  player.z = spawn.z;
-  player.debugScenario = name;
-  player.pendingSpells.clear();
-  enterPlayingPhase();
+    player.dead = false;
+    player.firstMoveAfterSpawn = false;
+    player.lastMoveTime = Date.now();
+    player.debugScenario = name;
+    player.pendingSummons.clear();
 
-  // Per-player initialization: when enterPlayingPhase() skipped because
-  // gamePhase was already 'playing' (multi-client debug scenario), this
-  // player may not have a hand, deck, cooldowns, or pendingSpells.
-  if (gameState.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
-    createDrawDeckFromSelectedDeck(player);
-    initPlayerHand(player);
-    player.slotCooldowns = [null, null, null, null];
-    if (!player.pendingSpells) {
-      player.pendingSpells = new Set();
+    if (name === 'telepipe-ready') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      return { ok: true, scenario: name };
     }
-  }
 
-  ensureNearbyEnemy(player.x, player.z);
+    player.ready = true;
+    player.x = spawn.x;
+    player.y = 0.5;
+    player.z = spawn.z;
+    enterPlayingPhase(lobby);
 
-  if (name === 'summon-low-mana') {
-    player.hp = MAX_HP;
-    player.magicStones = 0;
-  } else if (name === 'summon-ready') {
-    player.hp = MAX_HP;
-    player.magicStones = MAX_MAGIC_STONES;
-    // Guarantee at least one summon card in hand so integration tests are deterministic
-    if (!player.hand.some(c => c && c.type === 'spell')) {
-      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
-      if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+    if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+      createDrawDeckFromSelectedDeck(player);
+      initPlayerHand(player);
+      player.slotCooldowns = [null, null, null, null];
+      if (!player.pendingSummons) {
+        player.pendingSummons = new Set();
       }
     }
-  } else if (name === 'combat-damaged-player') {
-    player.hp = 25;
-    player.magicStones = MAX_MAGIC_STONES;
-  } else if (name === 'mixed-enemies') {
-    // Spawn one of each enemy type near the player for visual verification
-    player.hp = MAX_HP;
-    player.magicStones = MAX_MAGIC_STONES;
-    // Clear any existing enemies so we get a clean set
-    gameState.enemies = [];
-    spawnEnemy(player.x + 3, player.z, 'grunt');
-    spawnEnemy(player.x - 3, player.z, 'skirmisher');
-    spawnEnemy(player.x, player.z + 4, 'miniboss');
-    spawnEnemy(player.x, player.z - 4, 'spawner');
-    // Set wander targets so they don't all stack
-    for (const e of gameState.enemies) {
-      e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
-    }
-  } else if (name === 'spawner-active') {
-    // Spawn a spawner near the player with lastSpawnTime in the past so
-    // the first add appears on the very next updateEnemies() tick.
-    player.hp = MAX_HP;
-    player.magicStones = MAX_MAGIC_STONES;
-    gameState.enemies = [];
-    const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
-    spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
-  } else if (name === 'monster-card') {
-    // Guarantee at least one monster card in hand so integration tests
-    // and visual capture can exercise monster-card behavior deterministically.
-    player.hp = MAX_HP;
-    player.magicStones = MAX_MAGIC_STONES;
-    if (!player.hand.some(c => c && c.type === 'creature')) {
-      const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
-      if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
-        const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
-        if (deckMonsterIndex !== -1) {
-          player.deck.splice(deckMonsterIndex, 1);
+
+    ensureNearbyEnemy(state, player.x, player.z);
+
+    if (name === 'summon-low-mana') {
+      player.hp = MAX_HP;
+      player.magicStones = 0;
+    } else if (name === 'summon-ready') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!player.hand.some(c => c && c.type === 'spell')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
         }
       }
+    } else if (name === 'combat-damaged-player') {
+      player.hp = 25;
+      player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'mixed-enemies') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      spawnEnemy(player.x + 3, player.z, 'grunt');
+      spawnEnemy(player.x - 3, player.z, 'skirmisher');
+      spawnEnemy(player.x, player.z + 4, 'miniboss');
+      spawnEnemy(player.x, player.z - 4, 'spawner');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
+      }
+    } else if (name === 'spawner-active') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
+      spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
+    } else if (name === 'monster-card') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!player.hand.some(c => c && c.type === 'creature')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
+          const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
+          if (deckMonsterIndex !== -1) {
+            player.deck.splice(deckMonsterIndex, 1);
+          }
+        }
+      }
+    } else if (name === 'telepipe-ready') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const replaceSlot = player.hand.findIndex(c => c);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'telepipe',
+          name: 'Telepipe',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: 0,
+          effect: 'telepipe',
+        };
+      }
+    } else if (name === 'run-failed') {
+      for (const p of Object.values(state.players)) {
+        p.hp = 0;
+        p.dead = true;
+      }
+      state.minions = [];
+      checkRunTerminalState();
+    } else if (name === 'run-exhausted') {
+      for (const p of Object.values(state.players)) {
+        p.deck = [];
+        p.hand = [];
+        p.desperationDeck = [];
+      }
+      state.enemies = [{
+        id: 'e_remaining',
+        x: player.x + 5,
+        z: player.z,
+        hp: 50,
+        state: 'idle',
+        wanderTarget: { x: player.x + 5, z: player.z },
+      }];
+      state.run.objective.totalEnemies = 1;
+      state.run.objective.defeatedEnemies = 0;
+      checkRunTerminalState();
     }
-  }
 
-  // Scenario enemy mutations above can add to or replace the enemy list
-  // after enterPlayingPhase() / startDungeonRun() snapshot the count. Resync
-  // the run objective so totalEnemies reflects the final authoritative list.
-  syncRunObjectiveToEnemies();
+    syncRunObjectiveToEnemies();
 
-  broadcastLobbyUpdate();
-  emitStateUpdate();
-  return { ok: true, scenario: name };
+    broadcastLobbyUpdate(lobby);
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    return { ok: true, scenario: name };
+  });
 }
 
 function findSacrificeTarget(playerId, x, z, radius) {
-  return gameState.minions
+  const state = getProgressionGameState() || gameState;
+  return state.minions
     .map((minion, index) => ({ minion, index }))
     .filter(({ minion }) => {
       if (!minion || minion.ownerId !== playerId || minion.hp <= 0) return false;
@@ -517,7 +640,323 @@ let _routesMounted = false;
 // on repeated startServer() calls.
 let _middlewareRegistered = false;
 
+function withLobbyFromSocket(socket, fn) {
+  const lobby = getLobbyForSocket(socket);
+  if (!lobby) {
+    socket.emit('lobbyError', { reason: 'Not in a lobby' });
+    return;
+  }
+  return withLobbyContext(lobby, () => fn(lobby.state, lobby));
+}
+
+function buildPlayerRecord(playerId, accountId, username, savedData) {
+  const progress = createPlayerProgress();
+  const defaultDeck = progress.inventory.map(instance => instance.instanceId);
+  const spawn = firstRoomPosition();
+
+  const player = {
+    id: playerId,
+    accountId,
+    username,
+    x: spawn.x,
+    y: 0.5,
+    z: spawn.z,
+    rotation: 0,
+    deck: [],
+    hp: MAX_HP,
+    dead: false,
+    lastActivity: Date.now(),
+    lastMoveTime: Date.now(),
+    inputDx: 0,
+    inputDz: 0,
+    inputRotation: 0,
+    inputActive: false,
+    lastInputTime: 0,
+    lastInputSequence: 0,
+    connected: true,
+    disconnectedAt: null,
+    persistenceDirty: false,
+    ready: false,
+    magicStones: MAX_MAGIC_STONES,
+    currency: progress.currency,
+    inventory: progress.inventory,
+    ownedCards: progress.ownedCards,
+    runRewards: progress.runRewards,
+    currencyEarnedThisRun: progress.currencyEarnedThisRun,
+    selectedDeck: defaultDeck,
+    debugScenario: null,
+    pendingSummons: new Set(),
+    slotCooldowns: [null, null, null, null],
+    extracted: false,
+  };
+
+  if (savedData) {
+    player.currency = savedData.currency ?? player.currency;
+    if (savedData.inventory || savedData.ownedCards) {
+      player.inventory = normalizeInventory(savedData.inventory, savedData.ownedCards);
+      player.ownedCards = inventoryToOwnedCards(player.inventory);
+    }
+    player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
+      ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
+      : player.selectedDeck;
+    player.x = savedData.x ?? player.x;
+    player.y = savedData.y ?? player.y;
+    player.z = savedData.z ?? player.z;
+    player.rotation = savedData.rotation ?? player.rotation;
+  }
+
+  normalizePlayerInventory(player);
+  return player;
+}
+
+function loadSavedPlayerData(loadKey) {
+  try {
+    return getProvider() ? getProvider().loadPlayer(loadKey) : null;
+  } catch (err) {
+    console.error(`[persistence] loadPlayer failed for ${loadKey}:`, err.message);
+    return null;
+  }
+}
+
+function initializePlayerForActiveRun(player) {
+  if (!player.hand || player.hand.length === 0) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+  }
+  player.slotCooldowns = [null, null, null, null];
+  player.magicStones = MAX_MAGIC_STONES;
+  if (!player.pendingSummons) {
+    player.pendingSummons = new Set();
+  }
+  if (player.hp == null || player.hp <= 0) {
+    player.hp = MAX_HP;
+    player.dead = false;
+  }
+}
+
+function emitLobbyJoined(socket, lobby) {
+  const state = lobby.state;
+  const player = state.players[socket.playerId];
+  withLobbyContext(lobby, () => ensureShopOffer());
+
+  socket.emit('lobbyJoined', {
+    lobbyId: lobby.id,
+    lobbyName: lobby.name,
+    id: socket.playerId,
+    playerId: socket.playerId,
+    accountId: player.accountId,
+    username: player.username,
+    state,
+    layoutSeed: state.layoutSeed,
+    layout: state.layout,
+    selectedDeck: player.selectedDeck,
+    inventory: player.inventory,
+    ownedCards: player.ownedCards,
+    shopOffer: state.shopOffer,
+    ...buildQuestUpdatePayload(state),
+  });
+
+  broadcastLobbyUpdate(lobby);
+}
+
+function joinPlayerToLobby(socket, lobby) {
+  const playerId = socket.playerId;
+  const state = lobby.state;
+  const savedData = loadSavedPlayerData(playerId);
+
+  if (!state.players[playerId]) {
+    state.players[playerId] = buildPlayerRecord(
+      playerId,
+      socket.data.accountId,
+      socket.data.username,
+      savedData,
+    );
+  } else {
+    const player = state.players[playerId];
+    player.username = socket.data.username || player.username;
+    if (savedData) {
+      player.currency = savedData.currency ?? player.currency;
+      if (savedData.inventory || savedData.ownedCards) {
+        player.inventory = normalizeInventory(savedData.inventory, savedData.ownedCards);
+        player.ownedCards = inventoryToOwnedCards(player.inventory);
+      }
+      player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
+        ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
+        : player.selectedDeck;
+    }
+    normalizePlayerInventory(player);
+  }
+
+  if (state.gamePhase === 'playing') {
+    withLobbyContext(lobby, () => initializePlayerForActiveRun(state.players[playerId]));
+  }
+
+  lobbies.assignPlayerToLobby(playerId, lobby.id);
+  lobbies.removeSession(playerId);
+  socket.join(lobby.id);
+  emitLobbyJoined(socket, lobby);
+}
+
+function reconnectPlayerToLobby(socket, lobby) {
+  const playerId = socket.playerId;
+  const player = lobby.state.players[playerId];
+  if (!player) return false;
+
+  const oldSocket = findSocketByPlayerId(playerId);
+  if (oldSocket && oldSocket.id !== socket.id && oldSocket.connected) {
+    oldSocket.disconnect(true);
+  }
+
+  player.connected = true;
+  player.disconnectedAt = null;
+  player.lastInputSequence = 0;
+  player.inputActive = false;
+  player.inputDx = 0;
+  player.inputDz = 0;
+  player.lastActivity = Date.now();
+
+  lobbies.assignPlayerToLobby(playerId, lobby.id);
+  lobbies.removeSession(playerId);
+  socket.join(lobby.id);
+  emitLobbyJoined(socket, lobby);
+  io.to(lobby.id).emit('playerReconnected', playerId);
+  broadcastLobbyList();
+  return true;
+}
+
+function softDisconnectPlayerFromLobby(socket) {
+  const lobby = getLobbyForSocket(socket);
+  if (!lobby) return null;
+
+  const playerId = socket.playerId;
+  const player = lobby.state.players[playerId];
+  if (!player) return null;
+
+  savePlayerData(playerId);
+  cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+
+  player.connected = false;
+  player.disconnectedAt = Date.now();
+  player.inputActive = false;
+  player.inputDx = 0;
+  player.inputDz = 0;
+
+  withLobbyContext(lobby, () => {
+    if (lobby.state.gamePhase === 'playing') {
+      checkRunTerminalState();
+    } else {
+      broadcastLobbyUpdate(lobby);
+    }
+  });
+  broadcastLobbyList();
+  return { lobby, playerId };
+}
+
+function evictDisconnectedPlayers() {
+  const now = Date.now();
+  let evictedAny = false;
+
+  for (const lobby of lobbies._lobbies.values()) {
+    const toEvict = [];
+    for (const [playerId, player] of Object.entries(lobby.state.players)) {
+      if (player.connected !== false || !player.disconnectedAt) continue;
+      if (now - player.disconnectedAt < DISCONNECT_GRACE_MS) continue;
+      toEvict.push(playerId);
+    }
+
+    if (toEvict.length === 0) continue;
+
+    for (const playerId of toEvict) {
+      savePlayerData(playerId);
+      withLobbyContext(lobby, () => {
+        cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+      });
+      const result = lobbies.removePlayerFromLobby(playerId);
+      io.to(lobby.id).emit('playerDisconnected', playerId);
+      evictedAny = true;
+
+      if (result && !result.deleted) {
+        withLobbyContext(lobby, () => {
+          if (lobby.state.gamePhase === 'playing') {
+            checkRunTerminalState();
+          } else {
+            broadcastLobbyUpdate(lobby);
+          }
+        });
+      }
+    }
+  }
+
+  if (evictedAny) {
+    broadcastLobbyList();
+  }
+}
+
+function leaveLobbyForSocket(socket) {
+  const lobby = getLobbyForSocket(socket);
+  if (!lobby) return null;
+
+  const playerId = socket.playerId;
+  savePlayerData(playerId);
+  cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+  socket.leave(lobby.id);
+
+  const result = lobbies.removePlayerFromLobby(playerId);
+  io.to(lobby.id).emit('playerDisconnected', playerId);
+
+  if (result && !result.deleted) {
+    withLobbyContext(lobby, () => {
+      if (lobby.state.gamePhase === 'playing') {
+        checkRunTerminalState();
+      } else {
+        broadcastLobbyUpdate(lobby);
+      }
+    });
+  }
+
+  broadcastLobbyList();
+  return result;
+}
+
 // ── Server startup (deferred so tests can import without starting HTTP) ──
+
+function resolveAttackRotation(player, data) {
+	if (data && Number.isFinite(data.rotation)) {
+		return data.rotation;
+	}
+	return Number.isFinite(player.rotation) ? player.rotation : 0;
+}
+
+function runGameLoopTick() {
+  for (const lobby of lobbies._lobbies.values()) {
+    withLobbyContext(lobby, () => {
+      const state = lobby.state;
+      if (state.gamePhase === 'playing') {
+        applyPlayerMovement();
+        checkTelepipeProximity();
+        flushDirtyPlayerSaves();
+        updateEnemies();
+        updateMinions();
+
+        if (state._pendingMinionBreaths?.length) {
+          for (const event of state._pendingMinionBreaths) {
+            io.to(lobby.id).emit('cardUsed', event);
+          }
+          state._pendingMinionBreaths.length = 0;
+        }
+
+        regenMagicStones();
+
+        const now = Date.now();
+        state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
+      }
+
+      const snapshot = stateSnapshot();
+      io.to(lobby.id).emit('stateUpdate', snapshot);
+    });
+  }
+  return true;
+}
 
 function startServer(port) {
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
@@ -533,10 +972,7 @@ function startServer(port) {
   // route is registered a single time, even when tests call startServer()
   // repeatedly in beforeEach.
   if (!_routesMounted) {
-    app.get('/healthz', (_req, res) => {
-      res.status(200).json({ ok: true });
-    });
-    app.use(express.json({ limit: '32kb' }));
+    app.use(express.json());
     const authRouter = require('./auth');
     const accountRouter = require('./account');
     app.use('/api', authRouter);
@@ -559,7 +995,11 @@ function startServer(port) {
   const { initSettingsPath } = require('./settings');
   initSettingsPath(dataPath);
 
-  if (process.env.PERSISTENCE_BACKEND === 'memory') {
+  if (process.env.NODE_ENV === 'test') {
+    if (!getProvider()) {
+      setTestProvider(new InMemoryProvider());
+    }
+  } else if (process.env.PERSISTENCE_BACKEND === 'memory') {
     setTestProvider(new InMemoryProvider());
     console.log('[persistence] InMemoryProvider initialized (ephemeral — set PERSISTENCE_BACKEND=file for durable storage)');
   } else {
@@ -574,6 +1014,7 @@ function startServer(port) {
   // so we guard registration with _middlewareRegistered (like _routesMounted).
   // Clear any previously created intervals/timeouts (from prior test runs)
   clearAllTimers();
+  restartBackgroundTimers();
 
   // ── JWT authentication middleware ──
   // Runs before the 'connection' event. Calling next(new Error(...)) here
@@ -614,133 +1055,94 @@ function startServer(port) {
     // Authenticated connection — accountId is the stable identity
     const playerId = accountId;
 
-    // Map socket.id → stable playerId (for lookup in socket handlers)
     socket.playerId = playerId;
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    const spawn = firstRoomPosition();
+    const savedData = loadSavedPlayerData(accountId || playerId);
+    const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
+    lobbies.registerSession(playerId, {
+      playerId,
+      accountId,
+      username,
+      selectedDeck: sessionPlayer.selectedDeck,
+      inventory: sessionPlayer.inventory,
+      ownedCards: sessionPlayer.ownedCards,
+      currency: sessionPlayer.currency,
+    });
 
-    // ── Load persisted data (if any) ──
-    // Use accountId as the persistence key when authenticated; fall back to playerId.
-    let savedData = null;
-    const loadKey = accountId || playerId;
-    try {
-      savedData = getProvider() ? getProvider().loadPlayer(loadKey) : null;
-    } catch (err) {
-      console.error(`[persistence] loadPlayer failed for ${loadKey}:`, err.message);
-      savedData = null;
-    }
+    socket.on('listLobbies', () => {
+      socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
+    });
 
-    // Initialize player state on connection.
-    if (!gameState.players[playerId]) {
-      const progress = createPlayerProgress();
+    socket.on('createLobby', (data) => {
+      if (lobbies.getLobbyForPlayer(playerId)) {
+        socket.emit('lobbyError', { reason: 'Already in a lobby' });
+        return;
+      }
+      const lobby = lobbies.createLobby(playerId, data && data.name);
+      withLobbyContext(lobby, () => {
+        applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
+        ensureShopOffer();
+      });
+      joinPlayerToLobby(socket, lobby);
+    });
 
-      // Default selected deck: the full 8-card starting deck (STARTING_DECK_IDS),
-      // so players have a draw-deck reserve beyond the 4-card opening hand.
-      const defaultDeck = progress.inventory.map(instance => instance.instanceId);
+    socket.on('joinLobby', (data) => {
+      const existingLobby = lobbies.getLobbyForPlayer(playerId);
+      if (existingLobby) {
+        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+        const player = existingLobby.state.players[playerId];
+        if (player && player.connected === false && lobbyId === existingLobby.id) {
+          reconnectPlayerToLobby(socket, existingLobby);
+          return;
+        }
+        socket.emit('lobbyError', { reason: 'Already in a lobby' });
+        return;
+      }
+      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+      if (!lobbyId) {
+        socket.emit('lobbyError', { reason: 'Missing lobbyId' });
+        return;
+      }
+      const lobby = lobbies.getLobbyById(lobbyId);
+      if (!lobby) {
+        socket.emit('lobbyError', { reason: 'Lobby not found' });
+        return;
+      }
+      joinPlayerToLobby(socket, lobby);
+    });
 
-      gameState.players[playerId] = {
-        id: playerId,
-        accountId: accountId,
-        username: username,
-        x: spawn.x,
-        y: 0.5,
-        z: spawn.z,
-        rotation: 0,
-        deck: [],
-        hp: MAX_HP,
-        dead: false,
-        lastActivity: Date.now(),
-        lastMoveTime: Date.now(),
-        ready: false,
-        magicStones: MAX_MAGIC_STONES,
-        currency: progress.currency,
-        inventory: progress.inventory,
-        ownedCards: progress.ownedCards,
-        runRewards: progress.runRewards,
-        currencyEarnedThisRun: progress.currencyEarnedThisRun,
-        selectedDeck: defaultDeck,
-        debugScenario: null,
-        pendingSpells: new Set(),
-        activeEnchantment: null,
-        slotCooldowns: [null, null, null, null]
+    socket.on('leaveLobby', () => {
+      if (!lobbies.getLobbyForPlayer(playerId)) {
+        socket.emit('lobbyError', { reason: 'Not in a lobby' });
+        return;
+      }
+      leaveLobbyForSocket(socket);
+      const session = lobbies.getSession(playerId) || {
+        playerId,
+        accountId,
+        username,
+        selectedDeck: sessionPlayer.selectedDeck,
+        inventory: sessionPlayer.inventory,
+        ownedCards: sessionPlayer.ownedCards,
+        currency: sessionPlayer.currency,
       };
-    }
-
-    // ── Merge saved data into player state ──
-    const player = gameState.players[playerId];
-    if (savedData) {
-      player.currency = savedData.currency ?? player.currency;
-      if (savedData.inventory || savedData.ownedCards) {
-        player.inventory = normalizeInventory(savedData.inventory, savedData.ownedCards);
-        player.ownedCards = inventoryToOwnedCards(player.inventory);
-      }
-      player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
-        ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
-        : player.selectedDeck;
-      // Restore persisted location regardless of game phase (lobby or mid-run)
-      player.x = savedData.x ?? player.x;
-      player.y = savedData.y ?? player.y;
-      player.z = savedData.z ?? player.z;
-      player.rotation = savedData.rotation ?? player.rotation;
-    }
-    normalizePlayerInventory(player);
-    const previousSocketId = player.activeSocketId;
-    player.activeSocketId = socket.id;
-    player.lastActivity = Date.now();
-    if (previousSocketId && previousSocketId !== socket.id) {
-      const previousSocket = io.sockets.sockets.get(previousSocketId);
-      if (previousSocket && previousSocket.connected) {
-        previousSocket.disconnect(true);
-      }
-    }
-
-    // ── Initialize combat hand/deck on active-run reconnect ──
-    // When a player cold-reconnects during an active dungeon run, the server
-    // restores their location from persisted data but leaves hand/deck undefined.
-    // Fix: detect active run and initialize a fresh draw deck + hand from
-    // the player's restored selectedDeck. Also reset transient combat state
-    // (cooldowns, magic stones, HP, death flag) to sensible defaults.
-    if (gameState.gamePhase === 'playing') {
-      if (!player.hand || player.hand.length === 0) {
-        createDrawDeckFromSelectedDeck(player);
-        initPlayerHand(player);
-      }
-      player.slotCooldowns = [null, null, null, null];
-      player.magicStones = MAX_MAGIC_STONES;
-      if (!player.pendingSpells) {
-        player.pendingSpells = new Set();
-      }
-      // Reset combat state that can't be restored from persistence
-      if (player.hp == null || player.hp <= 0) {
-        player.hp = MAX_HP;
-        player.dead = false;
-      }
-    }
-
-  socket.emit('init', {
-    id: playerId,
-    playerId,
-    accountId,
-    username: player.username,
-    state: stateSnapshot(playerId),
-    layoutSeed: gameState.layoutSeed,
-    layout: gameState.layout,
-    selectedDeck: player.selectedDeck,
-    inventory: player.inventory,
-    ownedCards: player.ownedCards,
-    ...buildQuestUpdatePayload(gameState)
-  });
-
-  // Broadcast updated lobby on connect
-  broadcastLobbyUpdate();
+      lobbies.registerSession(playerId, session);
+      socket.emit('lobbyLeft', {
+        lobbies: lobbies.listLobbySummaries(),
+      });
+    });
 
   socket.on('move', (data) => {
-    if (gameState.gamePhase !== 'playing') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'playing') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
 
-    if (player && player.dead) return;
+    if (!player) return;
+    if (player.dead) return;
+    if (player.extracted) return;
+    if (player.connected === false) return;
 
     if (!data || typeof data !== 'object' || Array.isArray(data) ||
         !Number.isFinite(data.dx) || !Number.isFinite(data.dz) || !Number.isFinite(data.rotation)) {
@@ -748,79 +1150,55 @@ function startServer(port) {
       return;
     }
 
+    if (data.sequence !== undefined) {
+      if (!Number.isInteger(data.sequence) || data.sequence <= 0) {
+        console.warn(`Rejected move from ${socket.id}: invalid sequence`);
+        return;
+      }
+      const lastSeq = player.lastInputSequence || 0;
+      if (data.sequence <= lastSeq) {
+        return;
+      }
+      player.lastInputSequence = data.sequence;
+    }
+
     // Normalize input vector to unit length (defensive against oversized dx/dz)
     const mag = Math.hypot(data.dx, data.dz);
     if (mag > 1) { data.dx /= mag; data.dz /= mag; }
 
     if (player) {
-      const now = Date.now();
-      let elapsed = (now - (player.lastMoveTime || now)) / 1000;
-
-      // Cap elapsed to prevent teleport via large time delta
-      const maxElapsed = MAX_ELAPSED_MS / 1000;
-      const cappedElapsed = Math.min(elapsed, maxElapsed);
-
-      // Integrate position from input intent
-      let moveX = data.dx * MOVE_SPEED * cappedElapsed;
-      let moveZ = data.dz * MOVE_SPEED * cappedElapsed;
-
-      let newX = player.x + moveX;
-      let newZ = player.z + moveZ;
-
-      // Bounds clamping
-      const clamped = clampToDungeon(newX, newZ);
-      newX = clamped.x;
-      newZ = clamped.z;
-
-      const wallColliders = getWallColliders();
-      const resolved = resolveWallCollision(newX, newZ, wallColliders, player.x, player.z);
-      newX = resolved.x;
-      newZ = resolved.z;
-
-      // Swept collision check: reject moves that pass through a wall instead
-      // of stopping at the resolved edge of it.
-      if (checkSweptCollision(player.x, player.z, newX, newZ, wallColliders, { allowEndpointTouch: true })) {
-        const lastLogged = sweptCollisionLogTimes.get(socket.id) || 0;
-        if (Date.now() - lastLogged >= SWEPT_COLLISION_LOG_THROTTLE_MS) {
-          console.debug(`Rejected move from ${socket.id}: swept collision from (${player.x.toFixed(2)}, ${player.z.toFixed(2)}) to (${newX.toFixed(2)}, ${newZ.toFixed(2)})`);
-          sweptCollisionLogTimes.set(socket.id, Date.now());
-        }
-        return;
+      player.inputDx = data.dx;
+      player.inputDz = data.dz;
+      if (Number.isFinite(data.rotation)) {
+        player.inputRotation = data.rotation;
+        player.rotation = data.rotation;
       }
-
-      // Void check: reject moves into the space between rooms
-      if (!isInsideDungeon(newX, newZ)) {
-        console.debug(`Rejected move from ${socket.id}: position (${newX.toFixed(2)}, ${newZ.toFixed(2)}) is outside walkable dungeon area`);
-        return;
-      }
-
-      player.x = newX;
-      player.y = 0.5;
-      player.z = newZ;
-      player.rotation = data.rotation;
-      player.lastMoveTime = now;
-      player.lastActivity = now;
-
-      savePlayerData(socket.playerId);
+      player.inputActive = mag > 1e-8;
+      player.lastInputTime = Date.now();
+      player.lastActivity = Date.now();
+      // Batched once per tick via flushDirtyPlayerSaves after applyPlayerMovement.
+      player.persistenceDirty = true;
     }
+    });
   });
 
   socket.on('useCard', (data) => {
-    if (gameState.gamePhase !== 'playing') return;
-    if (!gameState.run || gameState.run.status !== 'playing') return;
+    withLobbyFromSocket(socket, (state, lobby) => {
+    if (state.gamePhase !== 'playing') return;
+    if (!state.run || state.run.status !== 'playing') return;
 
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
     // (1) Look up card definition
-    const cardDef = CARD_DEFS[data.cardId];
+    const cardDef = getCardDef(data.cardId);
     if (!cardDef) {
       socket.emit('cardError', { reason: 'Unknown card' });
       return;
     }
 
     // (2) Get player
-    const player = gameState.players[socket.playerId];
-    if (!player || player.dead) return;
+    const player = state.players[socket.playerId];
+    if (!player || player.dead || player.extracted) return;
 
     // (3) Authoritative hand validation: slot must hold the requested card
     const handValidation = validateUseCardHand(player, data.slotIndex, data.cardId);
@@ -844,11 +1222,14 @@ function startServer(port) {
     if (cardDef.type === 'weapon') {
       handCard.remainingCharges -= 1;
 
-      const rotation = player.rotation;
+      const rotation = resolveAttackRotation(player, data);
+      player.rotation = rotation;
       const attackRange = cardDef.attackRange || ATTACK_RANGE;
       const attackConeAngle = cardDef.attackConeAngle || ATTACK_CONE_ANGLE;
       const grind = handCard.grind || 0;
-      const damage = scaledGrindStat(cardDef.damage || 0, grind);
+      const damage = handCard.echoDamage != null
+        ? handCard.echoDamage
+        : scaledGrindStat(cardDef.damage || 0, grind);
       const dirX = Math.cos(rotation);
       const dirZ = Math.sin(rotation);
       const cooldownMs = cardDef.cooldownMs || COOLDOWN_MS;
@@ -859,7 +1240,14 @@ function startServer(port) {
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
-        if (cardDef.effect === 'returning_projectile' || cardDef.effect === 'triple_returning_projectile') {
+        if (cardDef.effect === 'throw_rock' || cardDef.effect === 'projectile') {
+          swingResult = collectProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+            pierces: cardDef.projectile?.pierces === true,
+          });
+        } else if (cardDef.effect === 'returning_projectile' || cardDef.effect === 'triple_returning_projectile') {
           const returnPasses = cardDef.returnPasses
             || (cardDef.effect === 'triple_returning_projectile' ? 3 : 1);
           swingResult = collectReturningProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
@@ -881,6 +1269,18 @@ function startServer(port) {
         magicStonesGained += swingResult.magicStonesGained;
       }
 
+      let knockbackMoved = [];
+      if (cardDef.specialEffect === 'knockback' || data.cardId === 'steel_claymore') {
+        knockbackMoved = applyKnockback(
+          originX,
+          originZ,
+          dirX,
+          dirZ,
+          hits,
+          cardDef.knockbackStrength || 3
+        );
+      }
+
       let shockwaveHits = [];
       if (cardDef.shockwaveEvery) {
         if (!player.weaponComboCounts) player.weaponComboCounts = {};
@@ -899,39 +1299,58 @@ function startServer(port) {
         }
       }
 
+      if (cardDef.specialEffect === 'fire_trail') {
+        spawnFireTrailEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
+      }
+
+      if (cardDef.selfDamage) {
+        damagePlayer(socket.playerId, cardDef.selfDamage);
+      }
+
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
       cleanupAfterDamage();
 
       player.slotCooldowns[data.slotIndex] = now + cooldownMs;
 
       if (handCard.remainingCharges <= 0) {
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
       }
 
-      emitStateUpdate();
-      io.emit('cardUsed', {
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit('cardUsed', {
         playerId: socket.playerId,
         cardId: data.cardId,
         specialEffect: cardDef.specialEffect,
+        effect: cardDef.effect,
         origin: { x: originX, z: originZ },
         direction: { x: dirX, z: dirZ },
+        attackRange,
+        attackConeAngle,
+        projectileHitWidth: PROJECTILE_HIT_WIDTH,
+        returnPasses: cardDef.returnPasses
+          || (cardDef.effect === 'triple_returning_projectile' ? 3 : undefined),
         hits,
         shockwaveHits,
+        knockbackMoved,
         magicStonesGained: appliedMagicStones,
         swingCount: swingsPerUse,
         comboCount: player.weaponComboCounts ? player.weaponComboCounts[data.cardId] : undefined,
+        ...(cardDef.specialEffect === 'fire_trail' ? {
+          dotTicks: cardDef.dotTicks || 4,
+          dotIntervalMs: cardDef.dotIntervalMs || 500,
+        } : {}),
       });
 
       return;
     }
 
-    // ── Spell branch (instant single-use effects) ──
+    // ── Summon branch (radial AoE) ──
     if (cardDef.type === 'spell') {
-      const spellKey = `${data.slotIndex}:${data.cardId}`;
+      const summonKey = `${data.slotIndex}:${data.cardId}`;
 
-      // Guard: reject duplicate activation while previous spell is still resolving
-      if (player.pendingSpells.has(spellKey)) {
-        socket.emit('cardError', { reason: 'Spell already resolving' });
+      // Guard: reject duplicate activation while previous summon is still resolving
+      if (player.pendingSummons.has(summonKey)) {
+        socket.emit('cardError', { reason: 'Summon already resolving' });
         return;
       }
 
@@ -939,12 +1358,123 @@ function startServer(port) {
 
       // Validate Magic Stones
       if (player.magicStones < magicStoneCost) {
-        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        socket.emit('cardError', { reason: THEME.resource.insufficient });
+        return;
+      }
+
+      if (cardDef.effect === 'telepipe') {
+        if (state.telepipe) {
+          emitCardError(socket, 'Telepipe already active');
+          return;
+        }
+
+        state.telepipe = {
+          x: originX,
+          z: originZ,
+          placedBy: socket.playerId,
+          placedAt: now,
+        };
+        console.log(`[telepipe] placed at (${originX.toFixed(1)}, ${originZ.toFixed(1)}) by ${socket.playerId}`);
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: 'portal',
+          effect: 'telepipe',
+          origin: { x: originX, z: originZ },
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'memory_shard') {
+        player.pendingSummons.add(summonKey);
+        player.magicStones -= magicStoneCost;
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+
+        const exhausted = pickRandomExhaustedCard(player);
+        const echo = exhausted ? createEchoCard(exhausted) : null;
+        if (echo) {
+          player.hand[data.slotIndex] = echo;
+        } else {
+          const fallbackDamage = cardDef.fallbackDamage || 3;
+          const radial = collectRadialHits(
+            originX,
+            originZ,
+            SUMMON_RADIUS,
+            fallbackDamage,
+            { attackerId: socket.playerId }
+          );
+          cleanupAfterDamage();
+          replaceConsumedCard(player, data.slotIndex, handCard);
+          io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+          io.to(lobby.id).emit('cardUsed', {
+            playerId: socket.playerId,
+            cardId: data.cardId,
+            slotIndex: data.slotIndex,
+            specialEffect: 'memory_shard_fizzle',
+            origin: { x: originX, z: originZ },
+            radius: SUMMON_RADIUS,
+            hits: radial.hits,
+          });
+          return;
+        }
+
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: 'memory_shard',
+          origin: { x: originX, z: originZ },
+          echoCardId: echo.id,
+        });
+        return;
+      }
+
+      if (cardDef.effect === 'sacrificial_altar') {
+        const sacrificeRadius = cardDef.sacrificeRadius || SUMMON_RADIUS;
+        const target = findSacrificeTarget(socket.playerId, originX, originZ, sacrificeRadius);
+        if (!target) {
+          socket.emit('cardError', { reason: 'No friendly summon to sacrifice' });
+          return;
+        }
+
+        player.pendingSummons.add(summonKey);
+        player.magicStones -= magicStoneCost;
+        state.minions.splice(target.index, 1);
+        const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
+        const restoredCharges = restoreHandCharges(player, cardDef.chargeRestore || 0, {
+          types: ['weapon'],
+          maxTargets: 1,
+          selection: 'random',
+        });
+
+        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          origin: { x: originX, z: originZ },
+          radius: sacrificeRadius,
+          sacrificedMinionId: target.minion.id,
+          magicStonesGained,
+          restoredCharges,
+        });
+
         return;
       }
 
       // Mark as pending before any side effects
-      player.pendingSpells.add(spellKey);
+      player.pendingSummons.add(summonKey);
 
       // Deduct cost
       player.magicStones -= magicStoneCost;
@@ -955,10 +1485,10 @@ function startServer(port) {
         });
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -982,10 +1512,10 @@ function startServer(port) {
         cleanupAfterDamage();
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1003,10 +1533,10 @@ function startServer(port) {
         const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1024,10 +1554,10 @@ function startServer(port) {
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1046,10 +1576,10 @@ function startServer(port) {
         const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1073,10 +1603,10 @@ function startServer(port) {
         cleanupAfterDamage();
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1093,7 +1623,8 @@ function startServer(port) {
       }
 
       if (cardDef.effect === 'dragons_breath') {
-        const rotation = player.rotation;
+        const rotation = resolveAttackRotation(player, data);
+        player.rotation = rotation;
         const dirX = Math.cos(rotation);
         const dirZ = Math.sin(rotation);
         const range = cardDef.attackRange || 7;
@@ -1112,10 +1643,10 @@ function startServer(port) {
         cleanupAfterDamage();
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1144,10 +1675,10 @@ function startServer(port) {
         cleanupAfterDamage();
 
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-        drawReplacementCard(player, data.slotIndex);
+        replaceConsumedCard(player, data.slotIndex, handCard);
 
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1163,10 +1694,106 @@ function startServer(port) {
         return;
       }
 
+      if (cardDef.effect === 'mana_prism') {
+        const prism = {
+          id: crypto.randomUUID(),
+          ownerId: socket.playerId,
+          type: 'mana_prism',
+          x: originX,
+          z: originZ,
+          hp: 1,
+          maxHp: 1,
+          ttl: cardDef.durationSeconds || 12,
+          createdAt: now,
+          lastPulseAt: now,
+          pulseIntervalMs: cardDef.pulseIntervalMs || 2000,
+          magicStonePulse: cardDef.magicStonePulse || 10,
+        };
+        state.minions.push(prism);
+
+        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          origin: { x: originX, z: originZ },
+          radius: 1,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
+        const grind = handCard.grind || 0;
+        const summonDamage = handCard.echoDamage != null
+          ? handCard.echoDamage
+          : scaledGrindStat(cardDef.damage || 0, grind);
+        const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
+          magicStoneOnHit: cardDef.magicStoneOnHit,
+          magicStoneOnKill: cardDef.magicStoneOnKill,
+          healOnHit: cardDef.healOnHit,
+          healOnKill: cardDef.healOnKill,
+          attackerId: socket.playerId,
+        });
+        const hits = radial.hits;
+        const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
+
+        const shieldHp = cardDef.shieldHp || 15;
+        const shieldDurationMs = cardDef.shieldDurationMs || 8000;
+        player.shieldHp = shieldHp;
+        player.shieldExpiresAt = now + shieldDurationMs;
+
+        const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind);
+        const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
+        const minion = {
+          id: crypto.randomUUID(),
+          ownerId: socket.playerId,
+          type: 'astral_guardian',
+          x: originX,
+          z: originZ,
+          hp: minionHp,
+          maxHp: minionHp,
+          specialEffect: cardDef.specialEffect,
+          ttl: minionTtl,
+          createdAt: now,
+          attackDamage: cardDef.attackDamage || 10,
+          attackIntervalMs: cardDef.attackIntervalMs || Math.floor(1000 / TICK_RATE),
+          lastAttackAt: 0,
+        };
+        state.minions.push(minion);
+
+        cleanupAfterDamage();
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius: SUMMON_RADIUS,
+          hits,
+          magicStonesGained: appliedMagicStones,
+          hpHealed: radial.hpHealed || 0,
+          shieldGranted: shieldHp,
+          minionId: minion.id,
+        });
+
+        return;
+      }
+
       // Radial AoE: apply damage to every enemy within SUMMON_RADIUS
       const grind = handCard.grind || 0;
-      const spellDamage = scaledGrindStat(cardDef.damage || 0, grind);
-      const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, spellDamage, {
+      const summonDamage = handCard.echoDamage != null
+        ? handCard.echoDamage
+        : scaledGrindStat(cardDef.damage || 0, grind);
+      const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
         healOnHit: cardDef.healOnHit,
@@ -1179,22 +1806,27 @@ function startServer(port) {
       cleanupAfterDamage();
 
       player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-      drawReplacementCard(player, data.slotIndex);
 
-      emitStateUpdate();
-      io.emit('cardUsed', {
+      // Remove card from hand and draw replacement
+      replaceConsumedCard(player, data.slotIndex, handCard);
+
+      // Broadcast updated hand to all clients
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+
+      // Broadcast result to all clients
+      io.to(lobby.id).emit('cardUsed', {
         playerId: socket.playerId,
         cardId: data.cardId,
         slotIndex: data.slotIndex,
         specialEffect: cardDef.specialEffect,
         origin: { x: originX, z: originZ },
         radius: SUMMON_RADIUS,
-        hits,
+        hits: hits,
         magicStonesGained: appliedMagicStones,
         hpHealed: radial.hpHealed || 0,
       });
 
-      // Do NOT delete pendingSpells here — leave the entry so any duplicate
+      // Do NOT delete pendingSummons here — leave the entry so any duplicate
       // useCard events arriving in the same event-loop turn are rejected.
       // The per-tick clear() below will purge it on the next stateUpdate.
 
@@ -1205,14 +1837,14 @@ function startServer(port) {
     if (cardDef.type === 'enchantment') {
       const enchantKey = `${data.slotIndex}:${data.cardId}`;
 
-      if (player.pendingSpells.has(enchantKey)) {
+      if (player.pendingSummons.has(enchantKey)) {
         socket.emit('cardError', { reason: 'Enchantment already resolving' });
         return;
       }
 
       const magicStoneCost = cardDef.magicStoneCost || 0;
       if (player.magicStones < magicStoneCost) {
-        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        socket.emit('cardError', { reason: THEME.resource.insufficient });
         return;
       }
 
@@ -1228,15 +1860,15 @@ function startServer(port) {
         return;
       }
 
-      player.pendingSpells.add(enchantKey);
+      player.pendingSummons.add(enchantKey);
       player.magicStones -= magicStoneCost;
       player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
-      drawReplacementCard(player, data.slotIndex);
+      replaceConsumedCard(player, data.slotIndex, handCard);
 
       if (cardDef.effect === 'spike_trap') {
         spawnGroundEnchantment(originX, originZ, cardDef, socket.playerId);
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1251,8 +1883,8 @@ function startServer(port) {
 
       if (cardDef.effect === 'mirror_ward') {
         armSelfEnchantment(player, cardDef);
-        emitStateUpdate();
-        io.emit('cardUsed', {
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
           slotIndex: data.slotIndex,
@@ -1268,82 +1900,13 @@ function startServer(port) {
       return;
     }
 
-    // ── Creature branch (spawn persistent ally or utility creature) ──
+    // ── Monster branch (spawn persistent minion) ──
     if (cardDef.type === 'creature') {
       const magicStoneCost = cardDef.magicStoneCost || 0;
       if (player.magicStones < magicStoneCost) {
-        socket.emit('cardError', { reason: 'Not enough Magic Stones' });
+        socket.emit('cardError', { reason: THEME.resource.insufficient });
         return;
       }
-
-      if (cardDef.effect === 'sacrificial_altar') {
-        const sacrificeRadius = cardDef.sacrificeRadius || SUMMON_RADIUS;
-        const target = findSacrificeTarget(socket.playerId, originX, originZ, sacrificeRadius);
-        if (!target) {
-          socket.emit('cardError', { reason: 'No friendly summon to sacrifice' });
-          return;
-        }
-
-        player.magicStones -= magicStoneCost;
-        gameState.minions.splice(target.index, 1);
-        const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
-        const restoredCharges = restoreHandCharges(player, cardDef.chargeRestore || 0, {
-          types: ['weapon'],
-          maxTargets: 1,
-          selection: 'random',
-        });
-
-        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
-        drawReplacementCard(player, data.slotIndex);
-
-        emitStateUpdate();
-        io.emit('cardUsed', {
-          playerId: socket.playerId,
-          cardId: data.cardId,
-          slotIndex: data.slotIndex,
-          origin: { x: originX, z: originZ },
-          radius: sacrificeRadius,
-          sacrificedMinionId: target.minion.id,
-          magicStonesGained,
-          restoredCharges,
-        });
-
-        return;
-      }
-
-      if (cardDef.effect === 'mana_prism') {
-        player.magicStones -= magicStoneCost;
-        const prism = {
-          id: crypto.randomUUID(),
-          ownerId: socket.playerId,
-          type: 'mana_prism',
-          x: originX,
-          z: originZ,
-          hp: 1,
-          maxHp: 1,
-          ttl: cardDef.durationSeconds || 12,
-          createdAt: now,
-          lastPulseAt: now,
-          pulseIntervalMs: cardDef.pulseIntervalMs || 2000,
-          magicStonePulse: cardDef.magicStonePulse || 10,
-        };
-        gameState.minions.push(prism);
-
-        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
-        drawReplacementCard(player, data.slotIndex);
-
-        emitStateUpdate();
-        io.emit('cardUsed', {
-          playerId: socket.playerId,
-          cardId: data.cardId,
-          slotIndex: data.slotIndex,
-          origin: { x: originX, z: originZ },
-          radius: 1,
-        });
-
-        return;
-      }
-
       player.magicStones -= magicStoneCost;
 
       const grind = handCard.grind || 0;
@@ -1377,7 +1940,15 @@ function startServer(port) {
         minion.chargePulseIntervalMs = cardDef.chargePulseIntervalMs || 6000;
         minion.chargeRestore = cardDef.chargeRestore || 1;
       }
-      gameState.minions.push(minion);
+      if (cardDef.effect === 'ancient_wyrm') {
+        const breathIntervalMs = cardDef.breathIntervalMs || 3000;
+        minion.lastBreathAt = now - breathIntervalMs;
+        minion.breathIntervalMs = breathIntervalMs;
+        minion.breathRange = cardDef.breathRange || 8;
+        minion.breathDamage = cardDef.breathDamage || 15;
+        minion.breathConeAngle = cardDef.breathConeAngle || ATTACK_CONE_ANGLE;
+      }
+      state.minions.push(minion);
 
       const summonedMinions = [];
       if (cardDef.effect === 'undead_commander') {
@@ -1402,7 +1973,7 @@ function startServer(port) {
             ttl: minionTtl,
             createdAt: now,
           };
-          gameState.minions.push(skeleton);
+          state.minions.push(skeleton);
           summonedMinions.push({
             id: skeleton.id,
             x: skeleton.x,
@@ -1415,12 +1986,12 @@ function startServer(port) {
       player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
 
       // Remove card from hand and draw replacement
-      drawReplacementCard(player, data.slotIndex);
+      replaceConsumedCard(player, data.slotIndex, handCard);
 
       // Broadcast updated hand to all clients
-      emitStateUpdate();
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
 
-      io.emit('cardUsed', {
+      io.to(lobby.id).emit('cardUsed', {
         playerId: socket.playerId,
         cardId: data.cardId,
         slotIndex: data.slotIndex,
@@ -1432,10 +2003,36 @@ function startServer(port) {
 
       return;
     }
+    });
+  });
+
+  socket.on('discardCard', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
+    if (state.gamePhase !== 'playing') return;
+    if (!state.run || state.run.status !== 'playing') return;
+    if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
+
+    const player = state.players[socket.playerId];
+    if (!player || player.dead) return;
+
+    const result = discardCardFromHand(player, data.slotIndex, data.cardId);
+    if (!result.valid) {
+      socket.emit('cardError', { reason: result.reason });
+      return;
+    }
+
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    });
   });
 
   socket.on('selectQuest', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state, lobby) => {
+    if (state.gamePhase !== 'lobby') return;
+
+    if (state.suspendedCheckpoint) {
+      socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
+      return;
+    }
 
     const questId = data && typeof data.questId === 'string' ? data.questId : null;
     if (!questId) {
@@ -1448,52 +2045,70 @@ function startServer(port) {
       return;
     }
 
-    gameState.selectedQuestId = questId;
-    const payload = buildQuestUpdatePayload(gameState);
-    io.emit('questUpdate', payload);
-    broadcastLobbyUpdate();
+    state.selectedQuestId = questId;
+    applyLayoutForQuest(state, questId);
+    const payload = {
+      ...buildQuestUpdatePayload(state),
+      layoutSeed: state.layoutSeed,
+      layout: state.layout,
+    };
+    io.to(lobby.id).emit('questUpdate', payload);
+    broadcastLobbyUpdate(lobby);
+    });
   });
 
   socket.on('playerReady', (ready) => {
-    const player = gameState.players[socket.playerId];
+    withLobbyFromSocket(socket, (state, lobby) => {
+    const player = state.players[socket.playerId];
     if (!player) return;
 
     if (ready) {
-      // Validate deck before accepting ready
       normalizePlayerInventory(player);
       const result = validateDeck(player.selectedDeck, player.inventory);
       if (!result.valid) {
         player.ready = false;
         socket.emit('deckError', { reason: result.reason });
-        broadcastLobbyUpdate();
+        broadcastLobbyUpdate(lobby);
         return;
       }
     }
 
     player.ready = !!ready;
-    broadcastLobbyUpdate();
-    if (gameState.gamePhase === 'lobby') {
+    broadcastLobbyUpdate(lobby);
+    if (state.gamePhase === 'lobby') {
       checkAllReady();
     }
+    });
   });
 
   socket.on('returnToLobby', () => {
-    // Guard: reject if the current run is still active
-    if (gameState.run && gameState.run.status === 'playing') {
+    withLobbyFromSocket(socket, (state) => {
+    if (state.run && state.run.status === 'playing') {
       socket.emit('runError', { reason: 'Run still in progress' });
       return;
     }
 
-    // No-op when there's no run (lobby phase); proceed normally when terminal
-    if (!gameState.run) return;
+    if (!state.run) return;
 
     returnPlayersToLobby();
+    });
+  });
+
+  socket.on('abandonRun', () => {
+    withLobbyFromSocket(socket, (state) => {
+      if (!state.suspendedCheckpoint) {
+        socket.emit('runError', { reason: 'No suspended expedition' });
+        return;
+      }
+      abandonSuspendedRun();
+    });
   });
 
   socket.on('claimCardReward', (data) => {
-    const player = gameState.players[socket.playerId];
+    withLobbyFromSocket(socket, (state) => {
+    const player = state.players[socket.playerId];
     if (!player) return;
-    if (!gameState.run || gameState.run.status === 'playing') return;
+    if (!state.run || state.run.status === 'playing') return;
     if (!data || typeof data.cardId !== 'string') return;
 
     const result = claimCardReward(socket.playerId, data.cardId);
@@ -1505,13 +2120,14 @@ function startServer(port) {
       ownedCards: result.ownedCards,
       inventory: result.inventory,
     });
+    });
   });
 
   socket.on('deckAddCard', (data) => {
-    // Guard: only allowed in lobby phase
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
     normalizePlayerInventory(player);
 
@@ -1566,13 +2182,14 @@ function startServer(port) {
     });
 
     savePlayerData(socket.playerId);
+    });
   });
 
   socket.on('deckRemoveCard', (data) => {
-    // Guard: only allowed in lobby phase
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
     normalizePlayerInventory(player);
 
@@ -1611,12 +2228,14 @@ function startServer(port) {
     });
 
     savePlayerData(socket.playerId);
+    });
   });
 
   socket.on('evolveCard', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
 
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -1638,12 +2257,14 @@ function startServer(port) {
       ownedCards: player.ownedCards
     });
     savePlayerData(socket.playerId);
+    });
   });
 
   socket.on('sellCard', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
 
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -1672,12 +2293,37 @@ function startServer(port) {
       selectedDeck: player.selectedDeck
     });
     savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('buyShopCard', () => {
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
+
+    const player = state.players[socket.playerId];
+    if (!player) return;
+
+    const result = buyShopCard(player, state.shopOffer);
+    if (!result.ok) {
+      socket.emit('deckError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardInventoryUpdate', {
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency,
+      selectedDeck: player.selectedDeck
+    });
+    savePlayerData(socket.playerId);
+    });
   });
 
   socket.on('upgradeCard', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
 
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -1694,12 +2340,14 @@ function startServer(port) {
       ownedCards: player.ownedCards
     });
     savePlayerData(socket.playerId);
+    });
   });
 
   socket.on('grindCard', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
 
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -1723,12 +2371,14 @@ function startServer(port) {
       currency: player.currency
     });
     savePlayerData(socket.playerId);
+    });
   });
 
   socket.on('offerCardTrade', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player || !data) return;
 
     const targetPlayerId = typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
@@ -1740,7 +2390,7 @@ function startServer(port) {
     }
 
     const result = offerCardTrade(
-      gameState.pendingTrades,
+      state.pendingTrades,
       socket.playerId,
       targetPlayerId,
       offeredCardId,
@@ -1769,12 +2419,14 @@ function startServer(port) {
         requestedCardId
       });
     }
+    });
   });
 
   socket.on('respondCardTrade', (data) => {
-    if (gameState.gamePhase !== 'lobby') return;
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player || !data) return;
 
     const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
@@ -1784,9 +2436,9 @@ function startServer(port) {
       return;
     }
 
-    const trade = gameState.pendingTrades[tradeId];
+    const trade = state.pendingTrades[tradeId];
     const offererId = trade ? trade.fromPlayerId : null;
-    const result = respondCardTrade(gameState.pendingTrades, socket.playerId, tradeId, accepted);
+    const result = respondCardTrade(state.pendingTrades, socket.playerId, tradeId, accepted);
     if (!result.ok) {
       socket.emit('deckError', { reason: result.reason });
       return;
@@ -1805,8 +2457,8 @@ function startServer(port) {
       return;
     }
 
-    const offerer = gameState.players[result.offererId];
-    const responder = gameState.players[result.responderId];
+    const offerer = state.players[result.offererId];
+    const responder = state.players[result.responderId];
     const inventoryPayload = (p) => ({
       inventory: p.inventory,
       ownedCards: p.ownedCards,
@@ -1828,6 +2480,7 @@ function startServer(port) {
 
     savePlayerData(result.offererId);
     savePlayerData(result.responderId);
+    });
   });
 
   socket.on('debugScenario', (data) => {
@@ -1846,93 +2499,103 @@ function startServer(port) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
       return;
     }
-    if (gameState.players[socket.playerId]) {
-      gameState.players[socket.playerId].lastActivity = Date.now();
+    const lobby = getLobbyForSocket(socket);
+    if (lobby && lobby.state.players[socket.playerId]) {
+      lobby.state.players[socket.playerId].lastActivity = Date.now();
     }
     socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
   });
 
   socket.on('lootPickup', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
 
-    const player = gameState.players[socket.playerId];
+    const player = state.players[socket.playerId];
     if (!player) return;
-    if (player.dead) return; // dead players cannot collect loot
+    if (player.dead || player.extracted) return;
 
-    const lootIdx = gameState.loot.findIndex(l => l.id === data.lootId);
-    if (lootIdx === -1) return; // already removed — ignore duplicate
+    const lootIdx = state.loot.findIndex(l => l.id === data.lootId);
+    if (lootIdx === -1) return;
 
-    const loot = gameState.loot[lootIdx];
+    const loot = state.loot[lootIdx];
     const dist = Math.hypot(player.x - loot.x, player.z - loot.z);
 
-    if (dist > 3) return; // anti-cheat: too far
+    if (dist > LOOT_PICKUP_RADIUS) return;
 
-    player.currency += loot.value;
-    player.currencyEarnedThisRun += loot.value;
-    gameState.loot.splice(lootIdx, 1);
+    const isCrystal = loot.kind === 'crystal';
+    const isMagicStone = loot.kind === 'magic_stone';
+    if (isMagicStone) {
+      addMagicStones(player, loot.value);
+    } else if (isCrystal) {
+      recordCrystalCollected(1);
+    } else {
+      player.currency += loot.value;
+      player.currencyEarnedThisRun += loot.value;
+    }
+    state.loot.splice(lootIdx, 1);
 
-    console.log(`[loot] picked up id=${loot.id} value=${loot.value} by ${socket.id} (currency=${player.currency})`);
+    const lootLabel = isCrystal ? ' (crystal)' : isMagicStone ? ' (magic stone)' : '';
+    console.log(`[loot] picked up id=${loot.id}${lootLabel} value=${loot.value} by ${socket.id} (currency=${player.currency}, ms=${player.magicStones})`);
 
     savePlayerData(socket.playerId);
+
+    if (isCrystal) {
+      checkRunTerminalState();
+    }
+    });
   });
 
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     sweptCollisionLogTimes.delete(socket.id);
-    const player = gameState.players[socket.playerId];
-    if (player && player.activeSocketId && player.activeSocketId !== socket.id) {
-      console.log(`Ignoring stale disconnect for playerId=${socket.playerId}, socket=${socket.id}`);
+
+    if (!socket.playerId) return;
+
+    savePlayerData(socket.playerId);
+
+    const lobby = lobbies.getLobbyForPlayer(socket.playerId);
+    if (lobby && lobby.state.players[socket.playerId]) {
+      softDisconnectPlayerFromLobby(socket);
       return;
     }
-    // Persist player data before removing from game state
-    if (socket.playerId) {
-      savePlayerData(socket.playerId);
-      cancelTradesForPlayer(gameState.pendingTrades, socket.playerId);
-    }
-    delete gameState.players[socket.playerId];
-    gameState.minions = gameState.minions.filter(m => m.ownerId !== socket.playerId);
-    io.emit('playerDisconnected', socket.playerId);
 
-    if (Object.keys(gameState.players).length === 0) {
-      // Last player left — reset the session regardless of run state
-      returnPlayersToLobby();
-    } else if (gameState.gamePhase === 'playing') {
-      checkRunTerminalState();
-    } else if (gameState.gamePhase === 'lobby') {
-      // Non-last player disconnects during lobby — broadcast updated player list
-      broadcastLobbyUpdate();
-    }
+    lobbies.removeSession(socket.playerId);
   });
+
+  const resumeLobby = lobbies.getLobbyForPlayer(playerId);
+  if (resumeLobby && resumeLobby.state.players[playerId]) {
+    const player = resumeLobby.state.players[playerId];
+    const oldSocket = findSocketByPlayerId(playerId);
+    const hasLiveSocket = oldSocket && oldSocket.id !== socket.id && oldSocket.connected;
+    if (player.connected === false || hasLiveSocket) {
+      if (hasLiveSocket) {
+        oldSocket.disconnect(true);
+      }
+      reconnectPlayerToLobby(socket, resumeLobby);
+    }
+  }
+
+  socket.emit('init', {
+    id: playerId,
+    playerId,
+    accountId,
+    username,
+    inLobby: !!lobbies.getLobbyForPlayer(playerId),
+    selectedDeck: sessionPlayer.selectedDeck,
+    inventory: sessionPlayer.inventory,
+    ownedCards: sessionPlayer.ownedCards,
+    lobbies: lobbies.listLobbySummaries(),
+  });
+
+  broadcastLobbyList();
 });
 
 // Server Game Loop
-const gameLoopId = setInterval(() => {
-  updateEnemies();
-  updateMinions();
-
-  // Regenerate Magic Stones and clear pending summons for each player
-  regenMagicStones();
-
-  // Remove expired loot (older than 120 seconds)
-  const now = Date.now();
-  gameState.loot = gameState.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
-
-  emitStateUpdate();
-}, 1000 / TICK_RATE);
-_intervals.push(gameLoopId);
-
-// Periodic stale player cleanup (every 5 seconds)
-const staleCleanupId = setInterval(cleanupStalePlayers, STALE_CLEANUP_INTERVAL_MS);
-_intervals.push(staleCleanupId);
-
-// Periodic auto-save (every 30 seconds)
-const periodicSaveId = setInterval(saveAllPlayers, PERIODIC_SAVE_INTERVAL_MS);
-_intervals.push(periodicSaveId);
+restartBackgroundTimers();
 
 const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
-const host = listenHost();
-server.listen(listenPort, host, () => {
-  console.log(`Server listening on ${host}:${listenPort}`);
+server.listen(listenPort, () => {
+  console.log(`Server listening on port ${listenPort}`);
 });
 }
 
@@ -1948,20 +2611,23 @@ if (typeof module !== 'undefined' && module.exports) {
     generateLayout,
     damagePlayer,
     healPlayer,
+    updateEnchantments,
+    spawnGroundEnchantment,
+    armSelfEnchantment,
     collectConeHits,
     collectRadialHits,
+    collectProjectileHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,
+    applyKnockback,
     applyEventHorizon,
     spawnDragonsBreathEffect,
+    spawnFireTrailEffect,
     spawnInfernoPillarEffect,
     isEnemyFrozen,
     updateEnemies,
     updateMinions,
-    updateEnchantments,
-    spawnGroundEnchantment,
-    armSelfEnchantment,
     spawnLoot,
     spawnEnemy,
     spawnEnemies,
@@ -1969,8 +2635,12 @@ if (typeof module !== 'undefined' && module.exports) {
     createGameState,
     resetGameState,
     gameState,
+    setGameState: setProgressionGameState,
     startServer,
+    runGameLoopTick,
     cleanupStalePlayers,
+    evictDisconnectedPlayers,
+    reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,
     createRunState,
@@ -1978,6 +2648,8 @@ if (typeof module !== 'undefined' && module.exports) {
     recordEnemyDefeated,
     getEnemyCardDrop,
     recordEnemyCardDrop,
+    getEnemyMagicStoneDrop,
+    spawnMagicStoneDrop,
     buildCardChoices,
     claimCardReward,
     removeDeadEnemies,
@@ -2008,6 +2680,15 @@ if (typeof module !== 'undefined' && module.exports) {
     drawCardFromDeck,
     initPlayerHand,
     drawReplacementCard,
+    replaceConsumedCard,
+    drawCardFromDesperationDeck,
+    initDesperationDeck,
+    createEchoCard,
+    getCardDef,
+    DESPERATION_CARD_DEFS,
+    DESPERATION_DECK_TEMPLATE,
+    discardCardFromHand,
+    isPlayerOutOfCards,
     validateUseCardHand,
     addMagicStones,
     restoreCardCharges,
@@ -2035,6 +2716,10 @@ if (typeof module !== 'undefined' && module.exports) {
     getInventoryInstance,
     evolveCard,
     getCardSellValue,
+    getCardBuyValue,
+    ensureShopOffer,
+    buyShopCard,
+    pickShopOffer,
     canSellCardInstance,
     sellCard,
     cancelTradesForPlayer,
@@ -2060,6 +2745,7 @@ if (typeof module !== 'undefined' && module.exports) {
     moveEntityToward,
     computeWalkableAABBs,
     isInsideDungeon,
+    tryPlayerMove,
     randomWanderTarget,
     // Server objects for integration tests
     app,
@@ -2071,12 +2757,14 @@ if (typeof module !== 'undefined' && module.exports) {
     clearAllTimers,
     // Constants needed by tests
     STALE_THRESHOLD,
+    DISCONNECT_GRACE_MS,
     MAX_MAGIC_STONES,
     MAGIC_STONES_REGEN_PER_TICK,
     DETECTION_RADIUS,
     ATTACK_RANGE,
     SUMMON_RADIUS,
     COOLDOWN_MS,
+    PROJECTILE_HIT_WIDTH,
     TICK_RATE,
     ENEMY_ATTACK_RANGE,
     ENEMY_ATTACK_RECOVERY_MS,
@@ -2104,6 +2792,20 @@ if (typeof module !== 'undefined' && module.exports) {
     QUEST_DEFS,
     DEFAULT_QUEST_ID,
     isValidQuestId,
-    buildQuestUpdatePayload
+    buildQuestUpdatePayload,
+    checkAllReady,
+    captureRunCheckpoint,
+    restoreRunCheckpoint,
+    suspendRunToLobby,
+    maybeSuspendRun,
+    tryEnterTelepipe,
+    checkTelepipeProximity,
+    abandonSuspendedRun,
+    isPlayerActive,
+    hasActivePlayers,
+    buildSuspendedRunSummary,
+    clearSuspendedRunData,
+    PORTAL_RADIUS,
+    PORTAL_PLACEMENT_GRACE_MS,
   };
 }

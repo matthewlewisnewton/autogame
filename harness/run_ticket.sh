@@ -406,8 +406,8 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
     emit_progress_event "coverage_start" "{\"ticket\":$(json_string "$NAME"),\"round\":$round,\"baseline\":$(json_string "$BASE_REF")}"
     (
       cd "$PIPELINE_CHECK_CWD" || exit 127
-      timeout -k 15 "$PIPELINE_COVERAGE_TIMEOUT" npx vitest run \
-        --coverage \
+      python3 "$HARNESS_DIR/scripts/run_vitest.py" --timeout "$PIPELINE_COVERAGE_TIMEOUT" -- \
+        run --coverage \
         --coverage.include 'server/index.js' \
         --coverage.include 'client/cards.js' \
         --coverage.include 'client/collision.js' \
@@ -420,6 +420,7 @@ for (( round=1; round<=TICKET_MAX_ROUNDS; round++ )); do
         --changed "$BASE_REF"
     ) </dev/null > "$COVERAGE_DIR/coverage.log" 2>&1
     coverage_rc=$?
+    cleanup_vitest_workers "$PIPELINE_CHECK_CWD"
     if [ $coverage_rc -ne 0 ]; then
       log "[coverage] coverage run finished non-zero (rc=$coverage_rc) — not blocking review"
     else

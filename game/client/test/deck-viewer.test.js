@@ -4,6 +4,7 @@ import {
 	computeRunDeckTotal,
 	deckIdsForDisplay,
 	formatDeckCountLabel,
+	formatDesperationDeckCountLabel,
 	getDeckStackLayerCount,
 	resolveDeckCardId,
 } from '../deck-viewer.js';
@@ -12,12 +13,20 @@ import { deck, resetHandState, setDrawPile } from '../hand.js';
 describe('resolveDeckCardId()', () => {
 	it('returns known card ids', () => {
 		expect(resolveDeckCardId('iron_sword')).toBe('iron_sword');
-		expect(resolveDeckCardId('steel_broadsword')).toBe('steel_broadsword');
+		expect(resolveDeckCardId('steel_claymore')).toBe('steel_claymore');
+		expect(resolveDeckCardId('rusty_shiv')).toBe('rusty_shiv');
 	});
 
 	it('returns null for unknown entries', () => {
 		expect(resolveDeckCardId('nonexistent_card')).toBeNull();
 		expect(resolveDeckCardId(null)).toBeNull();
+	});
+
+	it('maps legacy evolved card ids from pre-rename saves', () => {
+		expect(resolveDeckCardId('steel_broadsword')).toBe('steel_claymore');
+		expect(resolveDeckCardId('inferno_edge')).toBe('magma_greatsword');
+		expect(resolveDeckCardId('guardian_familiar')).toBe('astral_guardian');
+		expect(resolveDeckCardId('ancient_drake')).toBe('ancient_wyrm');
 	});
 });
 
@@ -25,14 +34,30 @@ describe('buildDeckMiniEntries()', () => {
 	it('maps deck ids to icon/name/type styling metadata', () => {
 		const entries = buildDeckMiniEntries(['iron_sword', 'battle_familiar', 'dungeon_drake']);
 		expect(entries).toHaveLength(3);
-		expect(entries[0]).toMatchObject({ cardId: 'iron_sword', name: 'Iron Sword', icon: '⚔' });
+		expect(entries[0]).toMatchObject({ cardId: 'iron_sword', name: 'Rust-Forged Saber', icon: '⚔' });
 		expect(entries[1]).toMatchObject({ cardId: 'battle_familiar', icon: '✦' });
 		expect(entries[2]).toMatchObject({ cardId: 'dungeon_drake', icon: '🐉' });
 	});
 
 	it('marks evolved cards', () => {
-		const entries = buildDeckMiniEntries(['steel_broadsword']);
+		const entries = buildDeckMiniEntries(['steel_claymore']);
 		expect(entries[0].isEvolved).toBe(true);
+	});
+
+	it('marks desperation cards and uses accent icons', () => {
+		const entries = buildDeckMiniEntries(['rusty_shiv', 'throw_rock']);
+		expect(entries).toHaveLength(2);
+		expect(entries[0]).toMatchObject({
+			cardId: 'rusty_shiv',
+			name: 'Emergency Shiv',
+			icon: '🗡',
+			isDesperation: true,
+		});
+		expect(entries[1]).toMatchObject({
+			cardId: 'throw_rock',
+			icon: '🪨',
+			isDesperation: true,
+		});
 	});
 });
 
@@ -51,6 +76,13 @@ describe('getDeckStackLayerCount()', () => {
 describe('formatDeckCountLabel()', () => {
 	it('formats draw pile count against run total', () => {
 		expect(formatDeckCountLabel(4, 8)).toBe('Deck: 4/8');
+	});
+});
+
+describe('formatDesperationDeckCountLabel()', () => {
+	it('formats remaining desperation cards', () => {
+		expect(formatDesperationDeckCountLabel(1)).toBe('Desperation deck — 1 card left');
+		expect(formatDesperationDeckCountLabel(3)).toBe('Desperation deck — 3 cards left');
 	});
 });
 

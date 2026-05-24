@@ -8,38 +8,37 @@ import {
 const SAMPLE_QUESTS = [
 	{
 		id: 'training_caverns',
-		name: 'Training Caverns',
-		description: 'Clear a small dungeon of hostile creatures.',
+		name: 'Initiate Vault',
+		description: 'Purge hostiles from the derelict annex sector.',
 		objectiveType: 'defeat_enemies',
 		enemyCount: 5,
 		rewardCurrency: 10,
 	},
 	{
 		id: 'crystal_rescue',
-		name: 'Crystal Rescue',
-		description: 'Recover lost crystals from a guarded room.',
+		name: 'Prism Salvage',
+		description: 'Recover resonance prisms from the collapsed lattice.',
 		objectiveType: 'collect_items',
 		itemCount: 3,
-		enemyCount: 4,
 		rewardCurrency: 12,
 	},
 ];
 
 describe('formatObjectiveSummary()', () => {
 	it('summarizes defeat-enemies quests', () => {
-		expect(formatObjectiveSummary(SAMPLE_QUESTS[0])).toBe('Defeat 5 enemies');
+		expect(formatObjectiveSummary(SAMPLE_QUESTS[0])).toBe('Neutralize 5 hostiles');
 	});
 
 	it('summarizes collect-items quests as metadata-only', () => {
 		expect(formatObjectiveSummary(SAMPLE_QUESTS[1])).toBe(
-			'Collect 3 crystals (defeat 4 enemies for now)',
+			'Recover 3 prisms',
 		);
 	});
 });
 
 describe('formatRewardSummary()', () => {
 	it('formats quest reward currency', () => {
-		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 gold');
+		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 meseta');
 	});
 });
 
@@ -57,9 +56,9 @@ describe('renderQuestBoard()', () => {
 		const cards = container.querySelectorAll('.quest-card');
 		expect(cards.length).toBe(2);
 		expect(cards[1].classList.contains('selected')).toBe(true);
-		expect(cards[1].querySelector('.quest-name').textContent).toBe('Crystal Rescue');
-		expect(cards[1].querySelector('.quest-objective').textContent).toContain('Collect 3 crystals');
-		expect(cards[1].querySelector('.quest-reward').textContent).toBe('Reward: 12 gold');
+		expect(cards[1].querySelector('.quest-name').textContent).toBe('Prism Salvage');
+		expect(cards[1].querySelector('.quest-objective').textContent).toContain('Recover 3 prisms');
+		expect(cards[1].querySelector('.quest-reward').textContent).toBe('Reward: 12 meseta');
 	});
 
 	it('invokes onSelectQuest when a card is clicked', () => {
@@ -70,5 +69,16 @@ describe('renderQuestBoard()', () => {
 
 		container.querySelector('[data-quest-id="crystal_rescue"]').click();
 		expect(selected).toEqual(['crystal_rescue']);
+	});
+
+	it('updates selection without rebuilding cards when only selectedQuestId changes', () => {
+		renderQuestBoard(container, SAMPLE_QUESTS, 'training_caverns');
+		const firstCard = container.querySelector('[data-quest-id="training_caverns"]');
+
+		renderQuestBoard(container, SAMPLE_QUESTS, 'crystal_rescue');
+
+		expect(container.querySelector('[data-quest-id="training_caverns"]')).toBe(firstCard);
+		expect(firstCard.classList.contains('selected')).toBe(false);
+		expect(container.querySelector('[data-quest-id="crystal_rescue"]').classList.contains('selected')).toBe(true);
 	});
 });

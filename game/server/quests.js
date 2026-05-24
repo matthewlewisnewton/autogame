@@ -1,20 +1,21 @@
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
-    name: 'Training Caverns',
-    description: 'Clear a small dungeon of hostile creatures.',
+    name: 'Initiate Vault',
+    description: 'Purge hostiles from the derelict annex sector.',
     objectiveType: 'defeat_enemies',
     enemyCount: 5,
-    rewardCurrency: 10
+    rewardCurrency: 10,
+    layoutProfile: 'crowded',
   },
   crystal_rescue: {
     id: 'crystal_rescue',
-    name: 'Crystal Rescue',
-    description: 'Recover lost crystals from a guarded room.',
+    name: 'Prism Salvage',
+    description: 'Recover resonance prisms from the collapsed lattice.',
     objectiveType: 'collect_items',
     itemCount: 3,
-    enemyCount: 4,
-    rewardCurrency: 12
+    rewardCurrency: 12,
+    layoutProfile: 'open',
   }
 };
 
@@ -49,6 +50,11 @@ function buildQuestUpdatePayload(gameState) {
   };
 }
 
+function getLayoutProfileForQuest(questId) {
+  const quest = getQuest(questId);
+  return (quest && quest.layoutProfile) || QUEST_DEFS.training_caverns.layoutProfile;
+}
+
 module.exports = {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
@@ -57,5 +63,6 @@ module.exports = {
   getDefaultQuestId,
   listQuests,
   getSelectedQuest,
+  getLayoutProfileForQuest,
   buildQuestUpdatePayload
 };

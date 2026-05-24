@@ -60,11 +60,13 @@ start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>; sets global P
   # Split into server + client projects with independent timeouts so the
   # slow integration tests don't steal budget from fast client unit tests.
   (
+    trap 'cleanup_vitest_workers "$PIPELINE_CHECK_CWD"' EXIT
     cd "$PIPELINE_CHECK_CWD" || exit 127
     printf '[pipeline] cwd=%s\n' "$(pwd)"
 
     printf '[pipeline] running server tests (timeout=%ds)...\n' "$PIPELINE_SERVER_TIMEOUT"
-    timeout -k 30 "$PIPELINE_SERVER_TIMEOUT" npx vitest run --project server
+    python3 "$HARNESS_DIR/scripts/run_vitest.py" --timeout "$PIPELINE_SERVER_TIMEOUT" -- \
+      run --project server
     server_rc=$?
     if [ $server_rc -ne 0 ]; then
       printf '[pipeline] server tests failed (rc=%d)\n' "$server_rc"
@@ -72,7 +74,8 @@ start_pipeline_checks() { # start_pipeline_checks <artifacts-dir>; sets global P
     fi
 
     printf '[pipeline] running client tests (timeout=%ds)...\n' "$PIPELINE_CLIENT_TIMEOUT"
-    timeout -k 30 "$PIPELINE_CLIENT_TIMEOUT" npx vitest run --project client
+    python3 "$HARNESS_DIR/scripts/run_vitest.py" --timeout "$PIPELINE_CLIENT_TIMEOUT" -- \
+      run --project client
     client_rc=$?
     if [ $client_rc -ne 0 ]; then
       printf '[pipeline] client tests failed (rc=%d)\n' "$client_rc"
@@ -105,6 +108,7 @@ finish_pipeline_checks() { # finish_pipeline_checks <pid> <artifacts-dir>; retur
   fi
   PIPELINE_RC="$rc"
   PIPELINE_REASON="$reason"
+  cleanup_vitest_workers "$PIPELINE_CHECK_CWD"
   printf '{"rc":%s,"reason":%s}\n' "$rc" "$(json_string "$reason")" > "$artifacts_dir/local-checks.status.json"
   emit_progress_event "pipeline_check_finish" "{\"label\":$(json_string "$LABEL"),\"artifacts\":$(json_string "$artifacts_dir"),\"outfile\":$(json_string "$artifacts_dir/local-checks.log"),\"rc\":$rc,\"reason\":$(json_string "$reason")}"
   return "$rc"

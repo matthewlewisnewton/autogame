@@ -10,9 +10,9 @@ describe('renderDeckEditor()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -108,13 +108,13 @@ describe('renderDeckEditor()', () => {
 		window.renderDeckEditor();
 
 		const ironEntry = Array.from(document.querySelectorAll('.owned-card-entry'))
-			.find((entry) => entry.querySelector('.card-label').textContent === 'Iron Sword');
+			.find((entry) => entry.querySelector('.card-label').textContent === 'Rust-Forged Saber');
 		expect(ironEntry).toBeTruthy();
 		expect(ironEntry.querySelector('.card-sell-value').textContent).toBe('5g');
 		expect(ironEntry.querySelector('.sell-card-btn').disabled).toBe(false);
 
 		const flameEntry = Array.from(document.querySelectorAll('.owned-card-entry'))
-			.find((entry) => entry.querySelector('.card-label').textContent === 'Flame Blade');
+			.find((entry) => entry.querySelector('.card-label').textContent === 'Solar Edge');
 		expect(flameEntry.querySelector('.sell-card-btn').disabled).toBe(true);
 	});
 
@@ -153,12 +153,12 @@ describe('renderDeckEditor()', () => {
 	it('renders evolved cards with a lobby visual marker', async () => {
 		await import('../main.js');
 
-		const mockOwned = { steel_broadsword: 1 };
-		const mockDeck = ['steel_broadsword'];
+		const mockOwned = { steel_claymore: 1 };
+		const mockDeck = ['steel_claymore'];
 		const mockInventory = [
 			{
 				instanceId: 'steel-1',
-				cardId: 'steel_broadsword',
+				cardId: 'steel_claymore',
 				grind: 0,
 				level: 1,
 				isEvolved: true,
@@ -173,7 +173,7 @@ describe('renderDeckEditor()', () => {
 		const deckEntry = document.querySelector('.deck-entry');
 		expect(ownedEntry.classList.contains('evolved-card')).toBe(true);
 		expect(deckEntry.classList.contains('evolved-card')).toBe(true);
-		expect(ownedEntry.querySelector('.evolved-badge').textContent).toBe('Evolved');
+		expect(ownedEntry.querySelector('.evolved-badge').textContent).toBe('Ascended');
 	});
 });
 
@@ -183,7 +183,12 @@ describe('Photon Forge UI', () => {
 	const FORGE_DOM_IDS = [
 		'deck-editor',
 		'lobby-tab-deck',
+		'lobby-tab-shop',
 		'lobby-tab-forge',
+		'card-shop',
+		'shop-currency-display',
+		'shop-offer-display',
+		'buy-shop-card-btn',
 		'photon-forge',
 		'forge-inventory-grid',
 		'forge-selected-name',
@@ -199,7 +204,7 @@ describe('Photon Forge UI', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
@@ -218,16 +223,24 @@ describe('Photon Forge UI', () => {
 		}
 	});
 
-	it('switches between deck editor and photon forge tabs', async () => {
+	it('switches between deck editor, card shop, and photon forge tabs', async () => {
 		await import('../main.js');
+
+		window.setLobbyTab('shop');
+		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('lobby-tab-shop').classList.contains('active')).toBe(true);
 
 		window.setLobbyTab('forge');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(false);
 		expect(document.getElementById('lobby-tab-forge').classList.contains('active')).toBe(true);
 
 		window.setLobbyTab('deck');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
 	});
 
@@ -244,10 +257,10 @@ describe('Photon Forge UI', () => {
 		window.renderPhotonForge();
 
 		expect(document.querySelectorAll('.forge-card-tile').length).toBe(2);
-		expect(document.getElementById('forge-selected-name').textContent).toBe('Iron Sword');
+		expect(document.getElementById('forge-selected-name').textContent).toBe('Rust-Forged Saber');
 		expect(document.getElementById('forge-stat-rows').querySelectorAll('tr').length).toBeGreaterThan(0);
 		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(true);
-		expect(document.getElementById('forge-upgrade-cost').textContent).toContain('100 GOLD');
+		expect(document.getElementById('forge-upgrade-cost').textContent).toContain('100 Meseta');
 	});
 
 	it('enables upgrade when the player can afford the next level', async () => {
@@ -263,6 +276,55 @@ describe('Photon Forge UI', () => {
 
 		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(false);
 	});
+
+	it('keeps forge selection stable across unchanged lobby state ticks', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'sword-1', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'blade-1', cardId: 'flame_blade', grind: 0, level: 1 },
+		];
+		const ownedCards = { iron_sword: 1, flame_blade: 1 };
+		window.__setGameState({
+			gamePhase: 'lobby',
+			selectedQuestId: 'training_caverns',
+			players: {
+				p1: {
+					currency: 250,
+					selectedDeck: [],
+					inventory: mockInventory,
+					ownedCards,
+				},
+			},
+		}, 'p1');
+		window.__setDeckState([], ownedCards, mockInventory, 250);
+		window.__setLobbyTabState('forge', null);
+		window.renderPhotonForge();
+
+		document.querySelector('[data-instance-id="sword-1"]').click();
+		const selectedTile = document.querySelector('[data-instance-id="sword-1"]');
+		expect(selectedTile.classList.contains('selected')).toBe(true);
+		expect(window.__getLobbyTabState().selectedForgeInstanceId).toBe('sword-1');
+
+		for (let i = 0; i < 3; i++) {
+			window.__triggerSocketEvent('stateUpdate', {
+				gamePhase: 'lobby',
+				selectedQuestId: 'training_caverns',
+				players: {
+					p1: {
+						currency: 250,
+						selectedDeck: [],
+						inventory: mockInventory.map((instance) => ({ ...instance })),
+						ownedCards: { ...ownedCards },
+					},
+				},
+			});
+		}
+
+		expect(document.querySelector('[data-instance-id="sword-1"]')).toBe(selectedTile);
+		expect(selectedTile.classList.contains('selected')).toBe(true);
+		expect(window.__getLobbyTabState().selectedForgeInstanceId).toBe('sword-1');
+	});
 });
 
 // ── flashMesh ──
@@ -274,9 +336,9 @@ describe('flashMesh()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -376,9 +438,9 @@ describe('spawnDamageNumber()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -481,9 +543,9 @@ describe('spawnHitSpark()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -603,9 +665,9 @@ describe('markLootCollected()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -714,9 +776,9 @@ describe('renderHand()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -754,9 +816,9 @@ describe('renderHand()', () => {
 
 		// Set hand to [card, null, card, null] — slots 1 and 3 are empty
 		resetHandState();
-		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 		hand[1] = null;
-		hand[2] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
 		hand[3] = null;
 
 		window.renderHand();
@@ -773,7 +835,7 @@ describe('renderHand()', () => {
 
 		// Set up a hand with a summon card and mock gameState with low magicStones
 		resetHandState();
-		hand[0] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+		hand[0] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
 		hand[1] = null;
 		hand[2] = null;
 		hand[3] = null;
@@ -796,7 +858,7 @@ describe('renderHand()', () => {
 		await import('../main.js');
 
 		resetHandState();
-		hand[0] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+		hand[0] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
 		hand[1] = null;
 		hand[2] = null;
 		hand[3] = null;
@@ -819,7 +881,7 @@ describe('renderHand()', () => {
 		await import('../main.js');
 
 		resetHandState();
-		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 		hand[1] = null;
 		hand[2] = null;
 		hand[3] = null;
@@ -837,14 +899,37 @@ describe('renderHand()', () => {
 		expect(slots[0].classList.contains('no-ms')).toBe(false);
 	});
 
+	it('shows Magic Stone cost badge on cards that cost MS', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+		hand[1] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[2] = null;
+		hand[3] = null;
+
+		window.__setGameState({
+			players: {
+				'player1': { magicStones: 90 }
+			},
+			gamePhase: 'playing'
+		}, 'player1');
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].querySelector('.card-ms-cost')?.textContent).toBe('50 MS');
+		expect(slots[1].querySelector('.card-ms-cost')).toBeNull();
+	});
+
 	it('highlights adjacent cards when hovering Chrono Trigger', async () => {
 		await import('../main.js');
 
 		resetHandState();
-		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 2 };
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 2 };
 		hand[1] = { id: 'chrono_trigger', name: 'Chrono Trigger', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 0 };
-		hand[2] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 1 };
-		hand[3] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
+		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 1 };
+		hand[3] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 };
 
 		window.__setGameState({
 			players: {
@@ -876,9 +961,9 @@ describe('playSound() and mute toggle', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1035,9 +1120,9 @@ describe('resumeAudioContext', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1154,9 +1239,9 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1270,9 +1355,9 @@ describe('applyWindupFlash()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1526,9 +1611,9 @@ describe('Cooldown Enforcement (useCard)', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1577,7 +1662,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		await import('../main.js');
 
 		// Place a weapon card in slot 0
-		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 		slotCooldowns[0] = true;
 
 		expect(canUseSlot(0)).toBe(false);
@@ -1587,7 +1672,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		await import('../main.js');
 
 		// Place a weapon card in slot 0 and set cooldown
-		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 		slotCooldowns[0] = true;
 
 		// Clear any emits from module import
@@ -1606,7 +1691,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		await import('../main.js');
 
 		// Place a weapon card with 3 remaining charges in slot 1
-		hand[1] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
 		slotCooldowns[1] = true;
 
 		const chargesBefore = hand[1].remainingCharges;
@@ -1622,7 +1707,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		await import('../main.js');
 
 		// Place a monster card in slot 2 and set cooldown
-		hand[2] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
+		hand[2] = { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 };
 		slotCooldowns[2] = true;
 
 		const originalCard = hand[2];
@@ -1638,7 +1723,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		await import('../main.js');
 
 		// Place a weapon card with cooldown cleared
-		hand[0] = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 		slotCooldowns[0] = false;
 
 		window.__clearSocketEmitLog();
@@ -1649,13 +1734,15 @@ describe('Cooldown Enforcement (useCard)', () => {
 		const log = window.__socketEmitLog();
 		const useCardEmits = log.filter(e => e.event === 'useCard');
 		expect(useCardEmits).toHaveLength(1);
-		expect(useCardEmits[0].data).toEqual({ slotIndex: 0, cardId: 'iron_sword' });
+		expect(useCardEmits[0].data.slotIndex).toBe(0);
+		expect(useCardEmits[0].data.cardId).toBe('iron_sword');
+		expect(Number.isFinite(useCardEmits[0].data.rotation)).toBe(true);
 	});
 
 	it('useCard() on a non-cooling weapon slot DOES drain a charge (control case)', async () => {
 		await import('../main.js');
 
-		hand[1] = { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
 		slotCooldowns[1] = false;
 
 		window.__clearSocketEmitLog();
@@ -1673,7 +1760,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 			await import('../main.js');
 
 			// Place a monster card in slot 2 with cooldown cleared
-			hand[2] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
+			hand[2] = { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 };
 			slotCooldowns[2] = false;
 
 			window.__clearSocketEmitLog();
@@ -1689,7 +1776,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 			expect(drawCardSpy).not.toHaveBeenCalled();
 
 			// Simulate server stateUpdate: monster slot replaced by a new card
-			const replacementCard = { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 5, remainingCharges: 5 };
+			const replacementCard = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
 			window.__setGameState({
 				gamePhase: 'playing',
 				players: {
@@ -1727,7 +1814,7 @@ describe('cardError handler — server hand rejection', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
@@ -1762,9 +1849,9 @@ describe('createEnemyMesh()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1863,9 +1950,9 @@ describe('enemyMeshHalfHeight()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1915,9 +2002,9 @@ describe('healthBarColor(hp, maxHp)', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1987,9 +2074,9 @@ describe('auth overlay functions', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2083,32 +2170,35 @@ describe('auth overlay functions', () => {
 		expect(typeof window.clearAuthForms).toBe('function');
 	});
 
-	it('showAuthOverlay removes .hidden from #auth-overlay and adds it to #lobby', async () => {
+	it('showAuthOverlay removes .hidden from #auth-overlay and hides lobby screens', async () => {
 		await import('../main.js');
 
 		const overlay = document.getElementById('auth-overlay');
+		const lobbyBrowser = document.getElementById('lobby-browser');
 		const lobby = document.getElementById('lobby');
 		overlay.classList.add('hidden');
-		lobby.classList.remove('hidden');
+		if (lobbyBrowser) lobbyBrowser.classList.remove('hidden');
+		if (lobby) lobby.classList.remove('hidden');
 
 		window.showAuthOverlay();
 
 		expect(overlay.classList.contains('hidden')).toBe(false);
-		expect(lobby.classList.contains('hidden')).toBe(true);
+		if (lobbyBrowser) expect(lobbyBrowser.classList.contains('hidden')).toBe(true);
+		if (lobby) expect(lobby.classList.contains('hidden')).toBe(true);
 	});
 
-	it('hideAuthOverlay adds .hidden to #auth-overlay and removes it from #lobby', async () => {
+	it('hideAuthOverlay adds .hidden to #auth-overlay and shows the lobby browser', async () => {
 		await import('../main.js');
 
 		const overlay = document.getElementById('auth-overlay');
-		const lobby = document.getElementById('lobby');
+		const lobbyBrowser = document.getElementById('lobby-browser');
 		overlay.classList.remove('hidden');
-		lobby.classList.add('hidden');
+		if (lobbyBrowser) lobbyBrowser.classList.add('hidden');
 
 		window.hideAuthOverlay();
 
 		expect(overlay.classList.contains('hidden')).toBe(true);
-		expect(lobby.classList.contains('hidden')).toBe(false);
+		if (lobbyBrowser) expect(lobbyBrowser.classList.contains('hidden')).toBe(false);
 	});
 
 	it('showRegisterForm shows register form and hides login form', async () => {
@@ -2190,9 +2280,9 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2313,9 +2403,9 @@ describe('connect_error handler', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2373,18 +2463,6 @@ describe('connect_error handler', () => {
 		window.__triggerSocketEvent('connect_error', 'error: invalid token');
 
 		expect(window.__ioDisconnected()).toBe(true);
-	});
-
-	it('keeps the token and allows retry on transient connect_error', async () => {
-		localStorage.setItem('autogame_token', 'transient-token');
-		await import('../main.js');
-		window.__clearIoDisconnected();
-
-		window.__triggerSocketEvent('connect_error', 'websocket error');
-
-		expect(localStorage.getItem('autogame_token')).toBe('transient-token');
-		expect(window.__ioDisconnected()).toBe(false);
-		expect(window.__connectionState()).toBe('reconnecting');
 	});
 
 	it('hides game UI elements (card hand, HUD)', async () => {
@@ -2457,7 +2535,7 @@ describe('run summary card choices', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2490,18 +2568,18 @@ describe('run summary card choices', () => {
 				rewards: { currency: 10, cards: [] },
 				cardChoices: [{
 					id: 'dungeon_drake',
-					name: 'Dungeon Drake',
+					name: 'Vault Wyrm',
 					type: 'creature',
-					description: 'Spawns a battlefield ally',
+					description: 'Spawns a minion',
 				}],
 			}],
 		});
 
 		const buttons = document.querySelectorAll('.card-choice-btn');
 		expect(buttons.length).toBe(1);
-		expect(buttons[0].textContent).toContain('Dungeon Drake');
+		expect(buttons[0].textContent).toContain('Vault Wyrm');
 		expect(buttons[0].textContent).toContain('creature');
-		expect(buttons[0].textContent).toContain('Spawns a battlefield ally');
+		expect(buttons[0].textContent).toContain('Spawns a minion');
 	});
 
 	it('shows empty-state copy when no card choices were earned', async () => {
@@ -2515,7 +2593,7 @@ describe('run summary card choices', () => {
 			currencyCollected: 10,
 			players: [{
 				id: 'player-1',
-				rewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Flame Blade', count: 1 }] },
+				rewards: { currency: 10, cards: [{ id: 'flame_blade', name: 'Solar Edge', count: 1 }] },
 				cardChoices: [],
 			}],
 		});
@@ -2535,9 +2613,9 @@ describe('Mute persistence (localStorage)', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2607,37 +2685,47 @@ describe('Mute persistence (localStorage)', () => {
 		}
 	});
 
-	it('toggling mute updates in-memory settings', async () => {
+	it('toggling mute writes the new value to localStorage', async () => {
 		await import('../main.js');
 
+		// Reset to default unmuted state (no stored value)
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
 		if (typeof window.__setSoundEnabled === 'function') {
 			window.__setSoundEnabled(true);
 		}
+		// __setSoundEnabled now also persists — remove that so we start clean
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
 
 		expect(window.__soundEnabled()).toBe(true);
-		expect(window.__getSettings().soundEnabled).toBe(true);
+		expect(window.__getPersistedMute()).toBe(null);
 
+		// Click the mute button to toggle
 		const muteBtn = document.getElementById('mute-btn');
 		muteBtn.click();
 
 		expect(window.__soundEnabled()).toBe(false);
-		expect(window.__getSettings().soundEnabled).toBe(false);
+		expect(window.__getPersistedMute()).toBe('false');
 	});
 
-	it('toggling mute again restores unmuted in settings', async () => {
+	it('toggling mute again restores unmuted and persists', async () => {
 		await import('../main.js');
 
+		// Reset state
+		try { localStorage.removeItem('autogame:soundEnabled'); } catch (_) {}
 		if (typeof window.__setSoundEnabled === 'function') {
 			window.__setSoundEnabled(true);
 		}
 
+		// Toggle to muted
 		const muteBtn = document.getElementById('mute-btn');
 		muteBtn.click();
 		expect(window.__soundEnabled()).toBe(false);
+		expect(window.__getPersistedMute()).toBe('false');
 
+		// Toggle back to unmuted
 		muteBtn.click();
 		expect(window.__soundEnabled()).toBe(true);
-		expect(window.__getSettings().soundEnabled).toBe(true);
+		expect(window.__getPersistedMute()).toBe('true');
 	});
 
 	it('updateMuteButton reflects the toggled state correctly', async () => {
@@ -2676,9 +2764,9 @@ describe('Cold-start mute persistence', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',

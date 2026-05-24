@@ -109,6 +109,17 @@ class TestTicketPipelineDetectsAndEscalates:
         from harness.pipelines.ticket import _read_harness_failure
         assert _read_harness_failure(tmp_path / "nope.json") is None
 
+    def test_should_escalate_only_when_infra_detected(self):
+        from harness.pipelines.ticket import should_escalate_harness_failure
+
+        assert should_escalate_harness_failure({"detected": ["vite_eaddrinuse"]})
+        assert not should_escalate_harness_failure({
+            "detected": [],
+            "client_log_tail": "<missing>",
+            "server_log_tail": "<missing>",
+        })
+        assert not should_escalate_harness_failure(None)
+
     def test_carry_harness_failure_into_feedback_writes_escalation_block(self, tmp_path):
         from harness.pipelines.ticket import (
             TicketContext, _carry_harness_failure_into_feedback,
