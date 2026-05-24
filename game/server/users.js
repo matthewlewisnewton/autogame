@@ -161,34 +161,80 @@ function migrateRecord(raw) {
 
 // ── Disk I/O ───────────────────────────────────────────────────────────────
 
-function loadUsers() {
+/**
+ * Rename a corrupt or unreadable users file aside so the next write does not
+ * silently overwrite (and thereby permanently lose) the original bytes. The
+ * operator can inspect / recover from the `.corrupt-<timestamp>` file out of
+ * band.
+ */
+function quarantineCorruptFile(reason) {
 	try {
-		const raw = fs.readFileSync(usersFilePath, 'utf-8');
-		const rawRecords = JSON.parse(raw);
-		const migrated = [];
-		let migrationsApplied = 0;
-		for (const r of rawRecords) {
-			const before = JSON.stringify(r);
-			const m = migrateRecord(r);
-			migrated.push(m);
-			if (JSON.stringify(m) !== before) migrationsApplied++;
-		}
-		rebuildIndexes(migrated);
-		console.log(`[users] Loaded ${byAccountId.size} user record(s) from ${usersFilePath}` +
-			(migrationsApplied ? ` (migrated ${migrationsApplied} legacy record(s))` : ''));
-		// Persist migrated form so subsequent reads avoid the migration step.
-		if (migrationsApplied > 0) {
-			try { saveUsers(); } catch (err) { console.error('[users] Failed to persist migrated records:', err.message); }
-		}
+		const ts = new Date().toISOString().replace(/[:.]/g, '-');
+		const dest = `${usersFilePath}.corrupt-${ts}`;
+		fs.renameSync(usersFilePath, dest);
+		console.error(`[users] ${reason} — quarantined to ${dest}. ` +
+			`Starting with empty user store. Restore from the quarantined file if needed.`);
+	} catch (renameErr) {
+		console.error(`[users] ${reason} — additionally failed to quarantine ` +
+			`(${renameErr.message}). Refusing to load to avoid data loss.`);
+	}
+}
+
+function loadUsers() {
+	let raw;
+	try {
+		raw = fs.readFileSync(usersFilePath, 'utf-8');
 	} catch (err) {
 		if (err.code === 'ENOENT') {
 			console.log(`[users] No existing user file at ${usersFilePath} — starting fresh`);
 		} else {
-			console.error(`[users] Failed to load users from ${usersFilePath}:`, err.message);
+			console.error(`[users] Failed to read users from ${usersFilePath}:`, err.message);
+		}
+		return;
+	}
+
+	let parsed;
+	try {
+		parsed = JSON.parse(raw);
+	} catch (err) {
+		quarantineCorruptFile(`Failed to parse ${usersFilePath}: ${err.message}`);
+		return;
+	}
+
+	if (!Array.isArray(parsed)) {
+		quarantineCorruptFile(`Expected an array of user records in ${usersFilePath} but found ${typeof parsed}`);
+		return;
+	}
+
+	const migrated = [];
+	let migrationsApplied = 0;
+	for (const r of parsed) {
+		if (!r || typeof r !== 'object' || !r.accountId) {
+			// Skip clearly malformed entries instead of crashing the load,
+			// but emit a warning so it gets noticed.
+			console.warn('[users] Skipping malformed user record (missing accountId):', r);
+			continue;
+		}
+		const before = JSON.stringify(r);
+		const m = migrateRecord(r);
+		migrated.push(m);
+		if (JSON.stringify(m) !== before) migrationsApplied++;
+	}
+	rebuildIndexes(migrated);
+	console.log(`[users] Loaded ${byAccountId.size} user record(s) from ${usersFilePath}` +
+		(migrationsApplied ? ` (migrated ${migrationsApplied} legacy record(s))` : ''));
+	if (migrationsApplied > 0) {
+		try { saveUsers(); } catch (err) {
+			console.error('[users] Failed to persist migrated records:', err.message);
 		}
 	}
 }
 
+/**
+ * Atomically persist the in-memory user store to disk. Uses the
+ * write-tmp + rename pattern so a crash mid-write leaves the previous file
+ * intact rather than a half-written one.
+ */
 function saveUsers() {
 	const records = Array.from(byAccountId.values());
 	const json = JSON.stringify(records, null, 2);
