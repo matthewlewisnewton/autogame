@@ -30,12 +30,14 @@ const { getQuest, getSelectedQuest } = require('./quests');
 let _gameState = null;
 let _getIo = () => null;
 let _broadcastLobbyUpdate = () => {};
+let _emitStateUpdate = null;
 let provider = null;
 
 function initProgression(deps) {
   _gameState = deps.gameState;
   if (deps.getIo) _getIo = deps.getIo;
   else if (deps.io) _getIo = () => deps.io;
+  if (deps.emitStateUpdate) _emitStateUpdate = deps.emitStateUpdate;
 }
 
 function setBroadcastLobbyUpdate(fn) {
@@ -1606,28 +1608,31 @@ function resetTransientRunState() {
   _gameState.areaEffects = [];
 }
 
-function stateSnapshot() {
+function stateSnapshot(viewerPlayerId = null) {
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
+    const includePrivate = viewerPlayerId === null || viewerPlayerId === id;
     players[id] = {
       x: p.x,
       y: p.y,
       z: p.z,
       rotation: p.rotation,
       deck: p.deck,
-      hand: p.hand,
       hp: p.hp,
       dead: p.dead,
       ready: p.ready,
       magicStones: p.magicStones,
-      currency: p.currency,
-      ownedCards: p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined),
-      runRewards: p.runRewards,
-      currencyEarnedThisRun: p.currencyEarnedThisRun,
-      selectedDeck: p.selectedDeck,
-      inventory: Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory,
-      debugScenario: p.debugScenario
     };
+    if (includePrivate) {
+      players[id].hand = p.hand;
+      players[id].currency = p.currency;
+      players[id].ownedCards = p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined);
+      players[id].runRewards = p.runRewards;
+      players[id].currencyEarnedThisRun = p.currencyEarnedThisRun;
+      players[id].selectedDeck = p.selectedDeck;
+      players[id].inventory = Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory;
+      players[id].debugScenario = p.debugScenario;
+    }
   }
 
   return {
@@ -1679,9 +1684,13 @@ function returnPlayersToLobby() {
     player.slotCooldowns = [null, null, null, null];
   }
 
-  const io = _getIo();
-  if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+  if (_emitStateUpdate) {
+    _emitStateUpdate();
+  } else {
+    const io = _getIo();
+    if (io) {
+      io.emit('stateUpdate', stateSnapshot());
+    }
   }
   _broadcastLobbyUpdate();
 }

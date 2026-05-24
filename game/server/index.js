@@ -55,11 +55,38 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: "*", // Adjust later for production
+    origin: socketCorsOrigin,
     methods: ["GET", "POST"]
   }
 });
 server.setMaxListeners(0);
+
+function allowedSocketOrigins() {
+  const configured = process.env.SOCKET_CORS_ORIGINS || process.env.CORS_ORIGINS;
+  if (configured) {
+    return configured.split(',').map(origin => origin.trim()).filter(Boolean);
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return [];
+  }
+  return [
+    'http://localhost:5173',
+    'http://127.0.0.1:5173',
+    'http://localhost:3000',
+    'http://127.0.0.1:3000'
+  ];
+}
+
+function socketCorsOrigin(origin, callback) {
+  const allowed = allowedSocketOrigins();
+  if (!origin) return callback(null, true);
+  if (allowed.includes('*') || allowed.includes(origin)) return callback(null, true);
+  return callback(new Error('Socket origin not allowed'), false);
+}
+
+function listenHost() {
+  return process.env.SERVER_HOST || process.env.HOST || '127.0.0.1';
+}
 
 // Game state factory — used by tests to get a fresh state
 function createGameState() {
@@ -219,7 +246,7 @@ const sweptCollisionLogTimes = new Map();
 // Initialize simulation and progression modules with gameState and timeouts
 const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
-progression.initProgression({ gameState, getIo: () => io });
+progression.initProgression({ gameState, getIo: () => io, emitStateUpdate });
 
 // Wire simulation callbacks (so simulation.js can call back into progression).
 setTerminalCheckCallback(checkRunTerminalState);
@@ -299,6 +326,13 @@ progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 // Socket.IO keys sockets by socket.id (a random string), not by playerId,
 // so we must iterate and match on socket.playerId.
 function findSocketByPlayerId(playerId) {
+  const activeSocketId = gameState.players[playerId] && gameState.players[playerId].activeSocketId;
+  if (activeSocketId) {
+    const activeSocket = io.sockets.sockets.get(activeSocketId);
+    if (activeSocket && activeSocket.playerId === playerId) {
+      return activeSocket;
+    }
+  }
   for (const socket of io.sockets.sockets.values()) {
     if (socket.playerId === playerId) {
       return socket;
@@ -307,18 +341,20 @@ function findSocketByPlayerId(playerId) {
   return null;
 }
 
+function emitStateUpdate() {
+  for (const socket of io.sockets.sockets.values()) {
+    if (socket.playerId) {
+      socket.emit('stateUpdate', stateSnapshot(socket.playerId));
+    }
+  }
+}
+
 function isDebugScenarioAllowed(socket) {
   if (process.env.ALLOW_DEBUG_SCENARIOS === '1') return true;
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  const origin = socket.handshake.headers.origin || '';
-  const host = socket.handshake.headers.host || '';
-  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');
-  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin);
-  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
-
-  return localAddress || localOrigin || localHost;
+  return address === '::1' || address === '127.0.0.1' || address === '::ffff:127.0.0.1';
 }
 
 function ensureNearbyEnemy(x, z) {
@@ -445,7 +481,7 @@ function applyDebugScenario(socket, name) {
   syncRunObjectiveToEnemies();
 
   broadcastLobbyUpdate();
-  io.emit('stateUpdate', stateSnapshot());
+  emitStateUpdate();
   return { ok: true, scenario: name };
 }
 
@@ -486,7 +522,10 @@ function startServer(port) {
   // route is registered a single time, even when tests call startServer()
   // repeatedly in beforeEach.
   if (!_routesMounted) {
-    app.use(express.json());
+    app.get('/healthz', (_req, res) => {
+      res.status(200).json({ ok: true });
+    });
+    app.use(express.json({ limit: '32kb' }));
     const authRouter = require('./auth');
     app.use('/api', authRouter);
     _routesMounted = true;
@@ -629,6 +668,15 @@ function startServer(port) {
       player.rotation = savedData.rotation ?? player.rotation;
     }
     normalizePlayerInventory(player);
+    const previousSocketId = player.activeSocketId;
+    player.activeSocketId = socket.id;
+    player.lastActivity = Date.now();
+    if (previousSocketId && previousSocketId !== socket.id) {
+      const previousSocket = io.sockets.sockets.get(previousSocketId);
+      if (previousSocket && previousSocket.connected) {
+        previousSocket.disconnect(true);
+      }
+    }
 
     // ── Initialize combat hand/deck on active-run reconnect ──
     // When a player cold-reconnects during an active dungeon run, the server
@@ -658,7 +706,7 @@ function startServer(port) {
     playerId,
     accountId,
     username: player.username,
-    state: gameState,
+    state: stateSnapshot(playerId),
     layoutSeed: gameState.layoutSeed,
     layout: gameState.layout,
     selectedDeck: player.selectedDeck,
@@ -843,7 +891,7 @@ function startServer(port) {
         drawReplacementCard(player, data.slotIndex);
       }
 
-      io.emit('stateUpdate', stateSnapshot());
+      emitStateUpdate();
       io.emit('cardUsed', {
         playerId: socket.playerId,
         cardId: data.cardId,
@@ -899,7 +947,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -928,7 +976,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -955,7 +1003,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -976,7 +1024,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -997,7 +1045,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1019,7 +1067,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1046,7 +1094,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1085,7 +1133,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1117,7 +1165,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1154,7 +1202,7 @@ function startServer(port) {
         player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
         drawReplacementCard(player, data.slotIndex);
 
-        io.emit('stateUpdate', stateSnapshot());
+        emitStateUpdate();
         io.emit('cardUsed', {
           playerId: socket.playerId,
           cardId: data.cardId,
@@ -1187,7 +1235,7 @@ function startServer(port) {
       drawReplacementCard(player, data.slotIndex);
 
       // Broadcast updated hand to all clients
-      io.emit('stateUpdate', stateSnapshot());
+      emitStateUpdate();
 
       // Broadcast result to all clients
       io.emit('cardUsed', {
@@ -1290,7 +1338,7 @@ function startServer(port) {
       drawReplacementCard(player, data.slotIndex);
 
       // Broadcast updated hand to all clients
-      io.emit('stateUpdate', stateSnapshot());
+      emitStateUpdate();
 
       io.emit('cardUsed', {
         playerId: socket.playerId,
@@ -1751,6 +1799,11 @@ function startServer(port) {
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
     sweptCollisionLogTimes.delete(socket.id);
+    const player = gameState.players[socket.playerId];
+    if (player && player.activeSocketId && player.activeSocketId !== socket.id) {
+      console.log(`Ignoring stale disconnect for playerId=${socket.playerId}, socket=${socket.id}`);
+      return;
+    }
     // Persist player data before removing from game state
     if (socket.playerId) {
       savePlayerData(socket.playerId);
@@ -1784,7 +1837,7 @@ const gameLoopId = setInterval(() => {
   const now = Date.now();
   gameState.loot = gameState.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
 
-  io.emit('stateUpdate', stateSnapshot());
+  emitStateUpdate();
 }, 1000 / TICK_RATE);
 _intervals.push(gameLoopId);
 
@@ -1797,8 +1850,9 @@ const periodicSaveId = setInterval(saveAllPlayers, PERIODIC_SAVE_INTERVAL_MS);
 _intervals.push(periodicSaveId);
 
 const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
-server.listen(listenPort, () => {
-  console.log(`Server listening on port ${listenPort}`);
+const host = listenHost();
+server.listen(listenPort, host, () => {
+  console.log(`Server listening on ${host}:${listenPort}`);
 });
 }
 

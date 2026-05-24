@@ -244,6 +244,27 @@ describe('Socket Integration — Connection Flow', () => {
 		expect(player.x).toBe(spawn.x);
 		expect(player.z).toBe(spawn.z);
 	});
+
+	it('keeps the active player when an older socket for the same account disconnects', async () => {
+		const accountId = `duplicate-${Date.now()}`;
+		if (socket && socket.connected) socket.disconnect();
+
+		const first = await connectClient(baseUrl, accountId);
+		const second = await connectClient(baseUrl, accountId);
+		await sleep(50);
+
+		expect(gameState.players[accountId]).toBeDefined();
+		expect(gameState.players[accountId].activeSocketId).toBe(second.socket.id);
+		first.socket.disconnect();
+		await sleep(50);
+
+		expect(gameState.players[accountId]).toBeDefined();
+		expect(gameState.players[accountId].activeSocketId).toBe(second.socket.id);
+
+		second.socket.disconnect();
+		await sleep(50);
+		expect(gameState.players[accountId]).toBeUndefined();
+	});
 });
 
 describe('Socket Integration — Move Event', () => {
