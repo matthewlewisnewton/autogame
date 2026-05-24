@@ -9,6 +9,15 @@ This game is a 3D multiplayer action-RPG that combines elements from *Phantasy S
 3. **Dungeon**: When all squad members are ready, players zone into a modularly generated level where they navigate rooms, defeat AI enemies, and complete objectives.
 4. **Loot & Economy**: Enemies drop currency and new cards. Back in the lobby, players can trade or sell their loot to customize their combat decks.
 
+## Run Suspend / Resume
+Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon without losing the current run state.
+
+- A player can place one shared Telepipe portal per run. The card is consumed, costs 0 Magic Stones, and creates a fixed portal at the caster's position.
+- Each player enters the portal individually. Extracted players return to the lobby overlay, cannot use dungeon actions, and are ignored by combat simulation while remaining squadmates continue playing.
+- The run only suspends when no active players remain in the dungeon. At that point the server captures a checkpoint with the run, layout, enemies, minions, loot, hands, objective progress, and portal position.
+- When the squad Deploys again from the suspended lobby, the checkpoint is restored instead of generating a fresh layout, and the dungeon resumes with the preserved portal/enemy/loot state.
+- Players can abandon a suspended run from the lobby, which clears the checkpoint and returns the squad to normal lobby flow.
+
 ## Combat Mechanics
 Instead of standard weapons, players equip a deck of up to 12 cards. At any time, they hold a "hand" of up to 4 cards, each mapped to an input button.
 

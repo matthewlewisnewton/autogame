@@ -37,7 +37,7 @@ Card type: internally `type: 'spell'`, `effect: 'telepipe'`, `specialEffect: 'po
 
 ---
 
-## 3. Where the code lives (backup branch)
+## 3. Where the code lives
 
 ### Git references
 
@@ -50,8 +50,9 @@ Card type: internally `type: 'spell'`, `effect: 'telepipe'`, `specialEffect: 'po
 
 **Branch to restore from:** `backup/telepipe-local-main-20260524-1251`  
 **Preserve commit:** `46856a4` (walkthrough report snapshot before main reset)
+**Current landed commits:** `5a95b08` documents recovery context; `f9668ea` ports the restored implementation onto clean `main` without the generated app bundle/log/screenshot artifacts from the backup history.
 
-### Key files (when feature is present)
+### Key files
 
 | Area | Path | Role |
 |------|------|------|
@@ -185,7 +186,7 @@ Helper: `setDeployButtonVisible(visible)`.
 
 ## 6. Networking stack (co-developed)
 
-Telepipe QA exposed reconnect/session bugs. These were implemented **alongside** telepipe on the backup branch:
+Telepipe QA exposed reconnect/session bugs. These are now restored on `main` alongside the Telepipe implementation:
 
 ### 6.1 Soft disconnect
 
@@ -204,7 +205,7 @@ On socket `disconnect` while in a lobby:
 - Server rejects stale/duplicate via `lastInputSequence`.
 - Rejects moves from `connected === false`, dead, or extracted players.
 
-### 6.4 Init emit bug (identified, fix drafted)
+### 6.4 Init emit bug (fixed)
 
 **Problem:** Connection handler emitted `socket.emit('init')` **twice**:
 1. Early emit with `inLobby: false` → client always showed lobby browser.
@@ -212,18 +213,20 @@ On socket `disconnect` while in a lobby:
 
 **Symptom:** Page refresh mid-suspended-run dropped session to lobby browser; resume Deploy flow broken.
 
-**Fix (drafted, not on current main):**
-- Remove early init.
-- Run `reconnectPlayerToLobby()` **before** single final init.
-- Client init handler: `if (data.inLobby) return` so reconnect path isn't wiped.
+**Fix on current `main`:**
+- Connection flow emits one final `init` after reconnect/lobby restoration.
+- `reconnectPlayerToLobby()` runs before the final init payload.
+- Client init handler exits early when `data.inLobby` is true so reconnect path isn't wiped.
 
-### 6.5 Resume + `startGame` client bug (identified, fix drafted)
+### 6.5 Resume + `startGame` client bug (fixed)
 
 When resuming with scene already initialized, `startGame` handler disposed enemy meshes but **did not** call `setGamePhase('playing')` or `setDeployButtonVisible(false)`. Player stayed visually in lobby while server thought run was active.
 
+Current `main` calls both in the already-initialized resume path.
+
 ---
 
-## 7. Automated test coverage (backup branch)
+## 7. Automated test coverage
 
 ### 7.1 Unit tests (`server.test.js` → `telepipe suspend/resume`)
 
@@ -251,7 +254,7 @@ When resuming with scene already initialized, `startGame` handler disposed enemy
 | Disconnect grace / reconnect (multiple) | Soft disconnect does not destroy suspended run |
 | Stale move sequence rejection | Networking hardening |
 
-**Last known status:** 16+ telepipe/networking unit tests pass; integration subset passes when run without coverage OOM (full suite ~980+ tests on backup branch).
+**Last known status on current `main`:** full game quick suite passes (39 files, 1048 tests), focused Telepipe server unit tests pass (11 tests), Telepipe/networking integration selectors pass (20 tests), and focused harness unit tests pass (14 tests).
 
 ---
 
@@ -289,7 +292,7 @@ P2 script waits on coordination signals before attempting second telepipe (expec
 
 ## 9. What is working ✅
 
-Based on **unit/integration tests** and **best manual QA run** (`p1-run.log` on backup branch):
+Based on **current automated tests** and **best preserved manual QA run** (`p1-run.log` on backup branch):
 
 | Capability | Evidence |
 |------------|----------|
@@ -335,7 +338,7 @@ The code has been restored to `main` and the automated Telepipe unit/integration
 
 | Issue | Detail |
 |-------|--------|
-| Coordination desync | P2 script polls wrong lobby name (`v2` vs `v3`) |
+| Coordination desync | Fixed in scripts: P1 and P2 both use `Telepipe QA v3`; rerun still pending |
 | Early fatal timeout | P2 fails at dungeon wait (step 5) in some runs |
 | Socket hook timing | `cardError` / `playerExtracted` not captured when hook installs late |
 | Bootstrap vs external P2 | P1 bootstrap P2 behaves differently from true two-browser |
@@ -370,7 +373,7 @@ Latest preserved report (`46856a4`) shows steps 9–10 **FAIL** despite screensh
 
 ---
 
-## 12. Fixes already landed (on backup branch)
+## 12. Fixes already landed
 
 | Issue | Fix |
 |-------|-----|
@@ -400,22 +403,9 @@ Latest preserved report (`46856a4`) shows steps 9–10 **FAIL** despite screensh
 
 ---
 
-## 14. How to restore and continue
+## 14. How to verify and continue
 
-### 14.1 Restore code
-
-```bash
-# Option A: checkout backup branch
-git checkout backup/telepipe-local-main-20260524-1251
-
-# Option B: cherry-pick onto main
-git checkout main
-git cherry-pick e7ebdb8 0674bc7  # resolve conflicts with current main carefully
-```
-
-Expect conflicts with post-telepipe main changes (card type renames PR #2, cardUsed refactor PR #4, enchantments, etc.).
-
-### 14.2 Verify automated tests
+### 14.1 Verify automated tests
 
 ```bash
 cd game
@@ -425,7 +415,14 @@ node scripts/run-vitest.mjs run --config vitest.config.js \
   server/test/integration.test.js -t "Telepipe|disconnect|reconnect|sequence"
 ```
 
-### 14.3 Manual QA
+For the full game quick suite:
+
+```bash
+cd game
+pnpm run test:quick
+```
+
+### 14.2 Manual QA
 
 ```bash
 # Terminal 1: server
@@ -453,14 +450,14 @@ node game/docs/walkthroughs/telepipe-tier2/p2-walkthrough-v2.mjs
 
 1. **Re-run P1 walkthrough** — target step 11 pass on current `main`.
 2. **Run true two-browser P2** with matching lobby name + coordination signals.
-3. **Add integration test for resume over socket** (both players ready → receive `startGame` → `state.telepipe` present) to prevent step 11 regression without Playwright.
-4. **Document in `design.md`** once shipped (currently only in this context doc and walkthrough artifacts).
+3. **Use browser QA to verify portal VFX persistence and extracted-player action blocking.**
+4. **Expand manual reconnect coverage:** reconnect mid-run while one player is extracted, reconnect during suspended state, two tabs on one account.
 
 ---
 
 ## 16. Related design docs
 
-- `game/docs/design.md` — lobby as main ship; no telepipe section yet on current main
+- `game/docs/design.md` — includes the shipped Telepipe suspend/resume lifecycle
 - `game/docs/requirements.md` — general run lifecycle
 - Walkthrough artifacts: `backup/telepipe-local-main-20260524-1251:game/docs/walkthroughs/telepipe-tier2/`
 
