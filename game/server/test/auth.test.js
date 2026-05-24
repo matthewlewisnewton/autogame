@@ -308,6 +308,147 @@ describe('POST /api/login', () => {
 	});
 });
 
+// ── Email registration & login ───────────────────────────────────────────
+
+describe('POST /api/register — email identity', () => {
+	it('creates an account from { email, password } and returns 201 with username', async () => {
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'frank@example.com', password: 'secret' })
+		});
+		expect(res.status).toBe(201);
+		const data = await res.json();
+		expect(data.accountId).toBeDefined();
+		expect(typeof data.username).toBe('string');
+		expect(data.username.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it('honors an explicit username when provided alongside an email', async () => {
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'gina@example.com', password: 'secret', username: 'gina-display' })
+		});
+		expect(res.status).toBe(201);
+		const data = await res.json();
+		expect(data.username).toBe('gina-display');
+	});
+
+	it('rejects malformed emails with 400', async () => {
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'not-an-email', password: 'secret' })
+		});
+		expect(res.status).toBe(400);
+		const data = await res.json();
+		expect(data.error).toMatch(/email/i);
+	});
+
+	it('returns 409 when the email is already in use', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'dup@example.com', password: 'p1' })
+		});
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'DUP@example.com', password: 'p2' })
+		});
+		expect(res.status).toBe(409);
+	});
+
+	it('returns 400 when neither username nor email is provided', async () => {
+		const res = await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ password: 'secret' })
+		});
+		expect(res.status).toBe(400);
+	});
+});
+
+describe('POST /api/login — identifier (email or username)', () => {
+	it('logs in using { email, password }', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'hank@example.com', password: 'pw' })
+		});
+
+		const res = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'hank@example.com', password: 'pw' })
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.token).toBeDefined();
+
+		const decoded = jwt.verify(data.token, getJWTSecret());
+		expect(decoded.accountId).toBeDefined();
+		expect(typeof decoded.username).toBe('string');
+	});
+
+	it('logs in using the unified identifier field with an email', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'ivy@example.com', password: 'pw' })
+		});
+
+		const res = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ identifier: 'Ivy@Example.com', password: 'pw' })
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.token).toBeDefined();
+	});
+
+	it('logs in using the unified identifier field with a username', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ username: 'jules', password: 'pw' })
+		});
+
+		const res = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ identifier: 'jules', password: 'pw' })
+		});
+		expect(res.status).toBe(200);
+	});
+
+	it('returns 401 for an unknown email', async () => {
+		const res = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'ghost@example.com', password: 'pw' })
+		});
+		expect(res.status).toBe(401);
+	});
+
+	it('returns 401 with wrong password against an email identity', async () => {
+		await fetch(`${baseUrl}/api/register`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'kara@example.com', password: 'correct' })
+		});
+
+		const res = await fetch(`${baseUrl}/api/login`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({ email: 'kara@example.com', password: 'wrong' })
+		});
+		expect(res.status).toBe(401);
+	});
+});
+
 // ── initAuth() dev fallback ──
 
 describe('initAuth() dev fallback', () => {

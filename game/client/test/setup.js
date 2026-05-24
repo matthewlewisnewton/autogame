@@ -72,6 +72,9 @@ if (typeof document !== 'undefined') {
 		const regUser = document.createElement('input');
 		regUser.type = 'text';
 		regUser.id = 'register-username';
+		const regEmail = document.createElement('input');
+		regEmail.type = 'email';
+		regEmail.id = 'register-email';
 		const regPass = document.createElement('input');
 		regPass.type = 'password';
 		regPass.id = 'register-password';
@@ -80,6 +83,7 @@ if (typeof document !== 'undefined') {
 		const regError = document.createElement('span');
 		regError.id = 'register-error';
 		registerForm.appendChild(regUser);
+		registerForm.appendChild(regEmail);
 		registerForm.appendChild(regPass);
 		registerForm.appendChild(regBtn);
 		registerForm.appendChild(regError);
@@ -87,9 +91,9 @@ if (typeof document !== 'undefined') {
 		const loginForm = document.createElement('div');
 		loginForm.id = 'login-form';
 		loginForm.classList.add('hidden');
-		const logUser = document.createElement('input');
-		logUser.type = 'text';
-		logUser.id = 'login-username';
+		const logIdentifier = document.createElement('input');
+		logIdentifier.type = 'text';
+		logIdentifier.id = 'login-identifier';
 		const logPass = document.createElement('input');
 		logPass.type = 'password';
 		logPass.id = 'login-password';
@@ -97,7 +101,7 @@ if (typeof document !== 'undefined') {
 		logBtn.id = 'login-btn';
 		const logError = document.createElement('span');
 		logError.id = 'login-error';
-		loginForm.appendChild(logUser);
+		loginForm.appendChild(logIdentifier);
 		loginForm.appendChild(logPass);
 		loginForm.appendChild(logBtn);
 		loginForm.appendChild(logError);

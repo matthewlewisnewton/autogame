@@ -2116,6 +2116,9 @@ describe('auth overlay functions', () => {
 			const regUser = document.createElement('input');
 			regUser.type = 'text';
 			regUser.id = 'register-username';
+			const regEmail = document.createElement('input');
+			regEmail.type = 'email';
+			regEmail.id = 'register-email';
 			const regPass = document.createElement('input');
 			regPass.type = 'password';
 			regPass.id = 'register-password';
@@ -2124,6 +2127,7 @@ describe('auth overlay functions', () => {
 			const regError = document.createElement('span');
 			regError.id = 'register-error';
 			registerForm.appendChild(regUser);
+			registerForm.appendChild(regEmail);
 			registerForm.appendChild(regPass);
 			registerForm.appendChild(regBtn);
 			registerForm.appendChild(regError);
@@ -2131,9 +2135,9 @@ describe('auth overlay functions', () => {
 			const loginForm = document.createElement('div');
 			loginForm.id = 'login-form';
 			loginForm.classList.add('hidden');
-			const logUser = document.createElement('input');
-			logUser.type = 'text';
-			logUser.id = 'login-username';
+			const logIdentifier = document.createElement('input');
+			logIdentifier.type = 'text';
+			logIdentifier.id = 'login-identifier';
 			const logPass = document.createElement('input');
 			logPass.type = 'password';
 			logPass.id = 'login-password';
@@ -2141,7 +2145,7 @@ describe('auth overlay functions', () => {
 			logBtn.id = 'login-btn';
 			const logError = document.createElement('span');
 			logError.id = 'login-error';
-			loginForm.appendChild(logUser);
+			loginForm.appendChild(logIdentifier);
 			loginForm.appendChild(logPass);
 			loginForm.appendChild(logBtn);
 			loginForm.appendChild(logError);
@@ -2255,8 +2259,9 @@ describe('auth overlay functions', () => {
 		await import('../main.js');
 
 		document.getElementById('register-username').value = 'testuser';
+		document.getElementById('register-email').value = 'test@example.com';
 		document.getElementById('register-password').value = 'secret';
-		document.getElementById('login-username').value = 'other';
+		document.getElementById('login-identifier').value = 'other@example.com';
 		document.getElementById('login-password').value = 'pass';
 		document.getElementById('register-error').textContent = 'err1';
 		document.getElementById('login-error').textContent = 'err2';
@@ -2264,8 +2269,9 @@ describe('auth overlay functions', () => {
 		window.clearAuthForms();
 
 		expect(document.getElementById('register-username').value).toBe('');
+		expect(document.getElementById('register-email').value).toBe('');
 		expect(document.getElementById('register-password').value).toBe('');
-		expect(document.getElementById('login-username').value).toBe('');
+		expect(document.getElementById('login-identifier').value).toBe('');
 		expect(document.getElementById('login-password').value).toBe('');
 		expect(document.getElementById('register-error').textContent).toBe('');
 		expect(document.getElementById('login-error').textContent).toBe('');
@@ -2412,8 +2418,8 @@ describe('connect_error handler', () => {
 			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'auth-overlay', 'auth-modal',
-			'register-form', 'register-username', 'register-password', 'register-btn', 'register-error',
-			'login-form', 'login-username', 'login-password', 'login-btn', 'login-error',
+			'register-form', 'register-username', 'register-email', 'register-password', 'register-btn', 'register-error',
+			'login-form', 'login-identifier', 'login-password', 'login-btn', 'login-error',
 			'show-login-link', 'show-register-link',
 			'logout-btn',
 		];
@@ -2774,8 +2780,8 @@ describe('Cold-start mute persistence', () => {
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
 			'mute-btn',
 			'auth-overlay', 'auth-modal', 'register-form', 'login-form',
-			'register-username', 'register-password', 'register-btn', 'register-error',
-			'login-username', 'login-password', 'login-btn', 'login-error',
+			'register-username', 'register-email', 'register-password', 'register-btn', 'register-error',
+			'login-identifier', 'login-password', 'login-btn', 'login-error',
 			'show-login-link', 'show-register-link', 'logout-btn',
 		];
 		// Remove any existing elements from previous imports so we get a clean DOM

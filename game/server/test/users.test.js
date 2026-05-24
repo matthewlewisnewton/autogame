@@ -6,15 +6,23 @@ import {
 	hashPassword,
 	comparePassword,
 	createUser,
+	createAccountWithEmail,
+	createAccountWithEmailAsync,
+	linkEmailIdentity,
 	findUserByUsername,
 	findUserByAccountId,
 	findUserByEmail,
+	findUserByIdentifier,
+	verifyPasswordForIdentifier,
 	updateProfile,
 	clearUsers,
 	loadUsers,
 	saveUsers,
 	getUsersFilePath,
-	setTestFilePath
+	setTestFilePath,
+	IDENTITY_PROVIDERS,
+	isValidEmail,
+	looksLikeEmail
 } from '../users.js';
 
 // ── hashPassword ──
@@ -68,18 +76,24 @@ describe('createUser', () => {
 		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
 	});
 
-	it('creates a user and returns { ok: true }', () => {
+	it('creates a user and returns { ok: true, accountId }', () => {
 		const result = createUser('alice', 'password123');
-		expect(result).toEqual({ ok: true });
+		expect(result.ok).toBe(true);
+		expect(typeof result.accountId).toBe('string');
 	});
 
-	it('stores a user record with username, passwordHash, and accountId', () => {
+	it('stores a user record with username, identity-bound passwordHash, and accountId', () => {
 		createUser('bob', 'bobpass');
 		const user = findUserByUsername('bob');
 		expect(user).not.toBeNull();
 		expect(user.username).toBe('bob');
-		expect(typeof user.passwordHash).toBe('string');
-		expect(user.passwordHash).toMatch(/^\$2[aby]?\$\d+\$.{53}$/);
+		expect(Array.isArray(user.identities)).toBe(true);
+		expect(user.identities).toHaveLength(1);
+		const identity = user.identities[0];
+		expect(identity.provider).toBe('username');
+		expect(identity.subject).toBe('bob');
+		expect(typeof identity.passwordHash).toBe('string');
+		expect(identity.passwordHash).toMatch(/^\$2[aby]?\$\d+\$.{53}$/);
 		expect(typeof user.accountId).toBe('string');
 		// accountId should be a valid UUID v4 format
 		expect(user.accountId).toMatch(
@@ -90,7 +104,7 @@ describe('createUser', () => {
 	it('verifies the stored password hash with comparePassword', () => {
 		createUser('carol', 'carolpass');
 		const user = findUserByUsername('carol');
-		expect(comparePassword('carolpass', user.passwordHash)).toBe(true);
+		expect(comparePassword('carolpass', user.identities[0].passwordHash)).toBe(true);
 	});
 
 	it('rejects duplicate usernames', () => {
@@ -162,19 +176,19 @@ describe('profile helpers', () => {
 	});
 
 	it('updateProfile sets email and rejects duplicates', () => {
-		createUser('a', 'pass');
-		createUser('b', 'pass');
-		const a = findUserByUsername('a');
-		const b = findUserByUsername('b');
+		createUser('aaa', 'pass');
+		createUser('bbb', 'pass');
+		const a = findUserByUsername('aaa');
+		const b = findUserByUsername('bbb');
 
 		expect(updateProfile(a.accountId, { email: 'a@test.com' }).ok).toBe(true);
 		expect(updateProfile(b.accountId, { email: 'a@test.com' }).ok).toBe(false);
 
-		const renamed = updateProfile(a.accountId, { username: 'a_new' });
+		const renamed = updateProfile(a.accountId, { username: 'aaa_new' });
 		expect(renamed.ok).toBe(true);
 		expect(renamed.usernameChanged).toBe(true);
-		expect(findUserByUsername('a_new')).not.toBeNull();
-		expect(findUserByUsername('a')).toBeNull();
+		expect(findUserByUsername('aaa_new')).not.toBeNull();
+		expect(findUserByUsername('aaa')).toBeNull();
 	});
 });
 
@@ -207,7 +221,9 @@ describe('file-backed persistence', () => {
 		expect(data).toHaveLength(1);
 		expect(data[0].username).toBe('alice');
 		expect(data[0].accountId).toBeDefined();
-		expect(data[0].passwordHash).toBeDefined();
+		expect(Array.isArray(data[0].identities)).toBe(true);
+		expect(data[0].identities[0].provider).toBe('username');
+		expect(data[0].identities[0].passwordHash).toBeDefined();
 	});
 
 	it('loads existing users from file on loadUsers call', () => {
@@ -273,5 +289,374 @@ describe('file-backed persistence', () => {
 
 	it('getUsersFilePath returns the configured path', () => {
 		expect(getUsersFilePath()).toBe(tmpFile);
+	});
+});
+
+// ── Email-based identities ─────────────────────────────────────────────────
+
+describe('email identities', () => {
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-email-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+	});
+
+	it('createAccountWithEmail registers an email identity', () => {
+		const result = createAccountWithEmail({ email: 'Alice@Example.com', password: 'secret' });
+		expect(result.ok).toBe(true);
+		expect(result.accountId).toBeDefined();
+		expect(result.username).toBeDefined();
+
+		const user = findUserByEmail('alice@example.com');
+		expect(user).not.toBeNull();
+		expect(user.email).toBe('alice@example.com');
+		expect(user.identities).toHaveLength(1);
+		expect(user.identities[0].provider).toBe(IDENTITY_PROVIDERS.EMAIL);
+		expect(user.identities[0].subject).toBe('alice@example.com');
+	});
+
+	it('createAccountWithEmail derives a username from the email when none is supplied', () => {
+		const result = createAccountWithEmail({ email: 'derived.user@example.com', password: 'pw' });
+		expect(result.ok).toBe(true);
+		expect(result.username).toContain('derived');
+		expect(findUserByUsername(result.username)).not.toBeNull();
+	});
+
+	it('createAccountWithEmail accepts an explicit username', () => {
+		const result = createAccountWithEmail({ email: 'choice@example.com', password: 'pw', username: 'chosen' });
+		expect(result.ok).toBe(true);
+		expect(result.username).toBe('chosen');
+		expect(findUserByUsername('chosen').email).toBe('choice@example.com');
+	});
+
+	it('createAccountWithEmail rejects malformed emails', () => {
+		expect(createAccountWithEmail({ email: 'not-an-email', password: 'pw' }).ok).toBe(false);
+		expect(createAccountWithEmail({ email: '', password: 'pw' }).ok).toBe(false);
+	});
+
+	it('createAccountWithEmail rejects duplicate emails (case-insensitive)', () => {
+		const a = createAccountWithEmail({ email: 'dup@example.com', password: 'pw' });
+		expect(a.ok).toBe(true);
+		const b = createAccountWithEmail({ email: 'DUP@example.com', password: 'pw2' });
+		expect(b.ok).toBe(false);
+		expect(b.reason).toMatch(/already in use/i);
+	});
+
+	it('createAccountWithEmail rejects username collisions with username-only accounts', () => {
+		createUser('taken', 'pw');
+		const result = createAccountWithEmail({ email: 'taken@example.com', password: 'pw', username: 'taken' });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/Username/);
+	});
+
+	it('createAccountWithEmailAsync mirrors the sync helper', async () => {
+		const result = await createAccountWithEmailAsync({ email: 'async@example.com', password: 'pw' });
+		expect(result.ok).toBe(true);
+		const user = findUserByEmail('async@example.com');
+		expect(user).not.toBeNull();
+		expect(user.identities[0].provider).toBe(IDENTITY_PROVIDERS.EMAIL);
+	});
+
+	it('findUserByIdentifier dispatches by @-detection', () => {
+		createUser('bob', 'pw');
+		createAccountWithEmail({ email: 'carol@example.com', password: 'pw' });
+
+		expect(findUserByIdentifier('bob').username).toBe('bob');
+		expect(findUserByIdentifier('carol@example.com').email).toBe('carol@example.com');
+		expect(findUserByIdentifier('Carol@Example.com').email).toBe('carol@example.com');
+		expect(findUserByIdentifier('unknown')).toBeNull();
+	});
+
+	it('verifyPasswordForIdentifier checks the right identity', async () => {
+		createUser('ronda', 'usernamePw');
+		createAccountWithEmail({ email: 'multi@example.com', password: 'emailPw' });
+
+		const rondaUser = findUserByUsername('ronda');
+		expect(await verifyPasswordForIdentifier(rondaUser, 'ronda', 'usernamePw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(rondaUser, 'ronda', 'wrong')).toBe(false);
+
+		const multiUser = findUserByEmail('multi@example.com');
+		expect(await verifyPasswordForIdentifier(multiUser, 'multi@example.com', 'emailPw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(multiUser, 'multi@example.com', 'wrong')).toBe(false);
+	});
+
+	it('linkEmailIdentity attaches an email login to an existing username account', async () => {
+		createUser('linker', 'usernamePw');
+		const user = findUserByUsername('linker');
+
+		const result = await linkEmailIdentity(user.accountId, 'linker@example.com', 'emailPw');
+		expect(result.ok).toBe(true);
+
+		const refreshed = findUserByAccountId(user.accountId);
+		expect(refreshed.identities).toHaveLength(2);
+		expect(refreshed.email).toBe('linker@example.com');
+		expect(findUserByEmail('linker@example.com').accountId).toBe(user.accountId);
+
+		// User can now authenticate via either identifier
+		expect(await verifyPasswordForIdentifier(refreshed, 'linker', 'usernamePw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(refreshed, 'linker@example.com', 'emailPw')).toBe(true);
+	});
+
+	it('linkEmailIdentity rejects emails already used by another account', async () => {
+		createUser('owner-a', 'pw');
+		createAccountWithEmail({ email: 'shared@example.com', password: 'pw' });
+		const a = findUserByUsername('owner-a');
+		const result = await linkEmailIdentity(a.accountId, 'shared@example.com', 'pw');
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/already in use/i);
+	});
+
+	it('linkEmailIdentity rejects duplicate email identities on the same account', async () => {
+		createUser('linker2', 'pw');
+		const u = findUserByUsername('linker2');
+		expect((await linkEmailIdentity(u.accountId, 'l2@example.com', 'pw')).ok).toBe(true);
+		const repeat = await linkEmailIdentity(u.accountId, 'l2@example.com', 'pw');
+		expect(repeat.ok).toBe(false);
+	});
+
+	it('linkEmailIdentity rejects unknown account ids', async () => {
+		const result = await linkEmailIdentity('non-existent-account', 'x@example.com', 'pw');
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/not found/i);
+	});
+
+	it('updateProfile updates the username identity subject so future logins still resolve', async () => {
+		createUser('renamer', 'pw');
+		const user = findUserByUsername('renamer');
+		const renamed = updateProfile(user.accountId, { username: 'renamed' });
+		expect(renamed.ok).toBe(true);
+		expect(renamed.usernameChanged).toBe(true);
+
+		const updated = findUserByUsername('renamed');
+		expect(updated).not.toBeNull();
+		expect(updated.identities.find(i => i.provider === IDENTITY_PROVIDERS.USERNAME).subject).toBe('renamed');
+		expect(await verifyPasswordForIdentifier(updated, 'renamed', 'pw')).toBe(true);
+	});
+
+	it('looksLikeEmail / isValidEmail behave as expected', () => {
+		expect(looksLikeEmail('a@b')).toBe(true);
+		expect(looksLikeEmail('user')).toBe(false);
+		expect(isValidEmail('alice@example.com')).toBe(true);
+		expect(isValidEmail('not-email')).toBe(false);
+		expect(isValidEmail('')).toBe(false);
+	});
+});
+
+// ── Legacy record migration ────────────────────────────────────────────────
+
+describe('legacy record migration', () => {
+	let tmpDir;
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'users-migrate-'));
+		tmpFile = path.join(tmpDir, 'users.json');
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
+		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	});
+
+	it('reads legacy { username, passwordHash, accountId, email } records and migrates to identities[]', async () => {
+		const hash = hashPassword('pw');
+		const legacy = [{
+			accountId: 'legacy-id-1',
+			username: 'legacy-user',
+			passwordHash: hash,
+			email: 'legacy@example.com'
+		}];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy, null, 2), 'utf-8');
+
+		setTestFilePath(tmpFile);
+
+		const user = findUserByUsername('legacy-user');
+		expect(user).not.toBeNull();
+		expect(Array.isArray(user.identities)).toBe(true);
+		expect(user.identities).toHaveLength(1);
+		expect(user.identities[0].provider).toBe(IDENTITY_PROVIDERS.USERNAME);
+		expect(user.identities[0].passwordHash).toBe(hash);
+		// Legacy email is preserved as contact email but NOT as a credential.
+		expect(user.email).toBe('legacy@example.com');
+		expect(user.identities.find(i => i.provider === IDENTITY_PROVIDERS.EMAIL)).toBeUndefined();
+
+		// The migrated form is persisted (no passwordHash field at top level).
+		const disk = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(disk[0].passwordHash).toBeUndefined();
+		expect(disk[0].identities).toBeDefined();
+
+		// Username login still works against the migrated identity.
+		expect(await verifyPasswordForIdentifier(user, 'legacy-user', 'pw')).toBe(true);
+	});
+
+	it('preserves existing identity records on load without re-migrating', () => {
+		const hash = hashPassword('pw');
+		const modern = [{
+			accountId: 'modern-1',
+			username: 'modern-user',
+			email: 'modern@example.com',
+			identities: [
+				{ provider: 'username', subject: 'modern-user', passwordHash: hash, createdAt: 1 }
+			],
+			createdAt: 1
+		}];
+		fs.writeFileSync(tmpFile, JSON.stringify(modern, null, 2), 'utf-8');
+		setTestFilePath(tmpFile);
+
+		const user = findUserByUsername('modern-user');
+		expect(user).not.toBeNull();
+		expect(user.identities).toHaveLength(1);
+		expect(user.createdAt).toBe(1);
+	});
+});
+
+// ── Persistence round-trips for the new identity model ─────────────────────
+
+describe('persistence round-trips', () => {
+	let tmpDir;
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'users-roundtrip-'));
+		tmpFile = path.join(tmpDir, 'users.json');
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	});
+
+	it('email-anchored account survives a simulated restart and is still email-loginable', async () => {
+		const created = createAccountWithEmail({ email: 'persist@example.com', password: 'pw' });
+		expect(created.ok).toBe(true);
+		const accountId = created.accountId;
+
+		clearUsers();
+		loadUsers();
+
+		const reloaded = findUserByEmail('persist@example.com');
+		expect(reloaded).not.toBeNull();
+		expect(reloaded.accountId).toBe(accountId);
+		expect(reloaded.identities[0].provider).toBe(IDENTITY_PROVIDERS.EMAIL);
+		expect(await verifyPasswordForIdentifier(reloaded, 'persist@example.com', 'pw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(reloaded, 'persist@example.com', 'wrong')).toBe(false);
+	});
+
+	it('linked email identity survives a simulated restart and both logins work', async () => {
+		createUser('linker-rt', 'username-pw');
+		const u = findUserByUsername('linker-rt');
+		expect((await linkEmailIdentity(u.accountId, 'linker-rt@example.com', 'email-pw')).ok).toBe(true);
+
+		clearUsers();
+		loadUsers();
+
+		const usernameLoaded = findUserByUsername('linker-rt');
+		const emailLoaded = findUserByEmail('linker-rt@example.com');
+		expect(usernameLoaded).not.toBeNull();
+		expect(emailLoaded).not.toBeNull();
+		expect(usernameLoaded.accountId).toBe(emailLoaded.accountId);
+		expect(usernameLoaded.identities).toHaveLength(2);
+
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt', 'username-pw')).toBe(true);
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt@example.com', 'email-pw')).toBe(true);
+		// Wrong credentials still rejected for each identity
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt', 'email-pw')).toBe(false);
+		expect(await verifyPasswordForIdentifier(usernameLoaded, 'linker-rt@example.com', 'username-pw')).toBe(false);
+	});
+
+	it('multiple writes preserve the atomic file (no leftover .tmp)', () => {
+		createUser('atomic-a', 'pw');
+		createAccountWithEmail({ email: 'atomic-b@example.com', password: 'pw' });
+		createUser('atomic-c', 'pw');
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		expect(fs.existsSync(tmpFile + '.tmp')).toBe(false);
+
+		const data = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(data).toHaveLength(3);
+		// Every persisted record has an identities[] with at least one identity
+		for (const rec of data) {
+			expect(Array.isArray(rec.identities)).toBe(true);
+			expect(rec.identities.length).toBeGreaterThanOrEqual(1);
+			// No top-level passwordHash leaks into the new shape
+			expect(rec.passwordHash).toBeUndefined();
+		}
+	});
+});
+
+// ── Corrupt file quarantine ────────────────────────────────────────────────
+
+describe('corrupt users.json quarantine', () => {
+	let tmpDir;
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'users-corrupt-'));
+		tmpFile = path.join(tmpDir, 'users.json');
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	});
+
+	it('renames a malformed JSON file aside so the next save does not clobber it', () => {
+		fs.writeFileSync(tmpFile, '{this is not valid json', 'utf-8');
+		setTestFilePath(tmpFile);
+
+		// The original file should no longer exist at its primary path —
+		// it has been quarantined.
+		expect(fs.existsSync(tmpFile)).toBe(false);
+		const entries = fs.readdirSync(tmpDir).filter(f => f.startsWith('users.json.corrupt-'));
+		expect(entries.length).toBe(1);
+		// The quarantined contents are preserved verbatim
+		const preserved = fs.readFileSync(path.join(tmpDir, entries[0]), 'utf-8');
+		expect(preserved).toBe('{this is not valid json');
+
+		// The store is empty (no records loaded), but the system is still
+		// functional — registrations now write a fresh file.
+		expect(findUserByUsername('anyone')).toBeNull();
+		const created = createUser('fresh-user', 'pw');
+		expect(created.ok).toBe(true);
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		const fresh = JSON.parse(fs.readFileSync(tmpFile, 'utf-8'));
+		expect(fresh).toHaveLength(1);
+		expect(fresh[0].username).toBe('fresh-user');
+	});
+
+	it('quarantines a non-array payload (e.g. accidental object)', () => {
+		fs.writeFileSync(tmpFile, JSON.stringify({ accidentally: 'an object' }), 'utf-8');
+		setTestFilePath(tmpFile);
+		expect(fs.existsSync(tmpFile)).toBe(false);
+		const entries = fs.readdirSync(tmpDir).filter(f => f.startsWith('users.json.corrupt-'));
+		expect(entries.length).toBe(1);
+	});
+
+	it('skips malformed entries inside an otherwise valid array without quarantining', () => {
+		const hash = hashPassword('pw');
+		const mixed = [
+			null,
+			{ /* missing accountId */ username: 'orphan', identities: [] },
+			{
+				accountId: 'good-1',
+				username: 'good-user',
+				identities: [{ provider: 'username', subject: 'good-user', passwordHash: hash }]
+			}
+		];
+		fs.writeFileSync(tmpFile, JSON.stringify(mixed), 'utf-8');
+		setTestFilePath(tmpFile);
+
+		// The file is NOT quarantined — only individual bad entries are dropped
+		expect(fs.existsSync(tmpFile)).toBe(true);
+		expect(findUserByUsername('good-user')).not.toBeNull();
+		expect(findUserByUsername('orphan')).toBeNull();
 	});
 });

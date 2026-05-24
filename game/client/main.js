@@ -1979,23 +1979,32 @@ if (showRegisterLinkEl) {
 if (registerBtnEl) {
 	registerBtnEl.addEventListener('click', async () => {
 		const usernameInput = document.getElementById('register-username');
+		const emailInput = document.getElementById('register-email');
 		const passwordInput = document.getElementById('register-password');
 		if (!usernameInput || !passwordInput) return;
 
 		const username = usernameInput.value.trim();
+		const email = emailInput ? emailInput.value.trim() : '';
 		const password = passwordInput.value;
-		if (registerErrorEl) registerErrorEl.textContent = '';
+		if (registerErrorEl) {
+			registerErrorEl.textContent = '';
+			registerErrorEl.style.color = '';
+		}
 
-		if (!username || !password) {
-			if (registerErrorEl) registerErrorEl.textContent = 'Username and password are required';
+		if (!password || (!username && !email)) {
+			if (registerErrorEl) registerErrorEl.textContent = 'Password plus username or email is required';
 			return;
 		}
+
+		const payload = { password };
+		if (username) payload.username = username;
+		if (email) payload.email = email;
 
 		try {
 			const res = await fetch('/api/register', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username, password }),
+				body: JSON.stringify(payload),
 			});
 			const data = await res.json();
 			if (res.ok) {
@@ -2015,16 +2024,20 @@ if (registerBtnEl) {
 
 if (loginBtnEl) {
 	loginBtnEl.addEventListener('click', async () => {
-		const usernameInput = document.getElementById('login-username');
+		// Accept the new unified identifier input, with a fallback to the
+		// legacy `login-username` id so older saved sessions / e2e harness
+		// fixtures keep working.
+		const identifierInput = document.getElementById('login-identifier')
+			|| document.getElementById('login-username');
 		const passwordInput = document.getElementById('login-password');
-		if (!usernameInput || !passwordInput) return;
+		if (!identifierInput || !passwordInput) return;
 
-		const username = usernameInput.value.trim();
+		const identifier = identifierInput.value.trim();
 		const password = passwordInput.value;
 		if (loginErrorEl) loginErrorEl.textContent = '';
 
-		if (!username || !password) {
-			if (loginErrorEl) loginErrorEl.textContent = 'Username and password are required';
+		if (!identifier || !password) {
+			if (loginErrorEl) loginErrorEl.textContent = 'Username or email and password are required';
 			return;
 		}
 
@@ -2032,7 +2045,7 @@ if (loginBtnEl) {
 			const res = await fetch('/api/login', {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ username, password }),
+				body: JSON.stringify({ identifier, password }),
 			});
 			const data = await res.json();
 			if (res.ok && data.token) {
