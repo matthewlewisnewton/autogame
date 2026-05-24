@@ -27,14 +27,29 @@ import {
 	playSound,
 	isSoundEnabled,
 	setSoundEnabled,
+	loadSoundEnabled,
 	resumeAudioContext,
 	getAudioContext,
 	setAudioContext,
-	loadSoundEnabled,
-	saveSoundEnabled,
 	_soundLogEnabled,
 	_playSoundCallLog,
 } from './audio.js';
+import {
+	loadAccountSettings,
+	getSettings,
+	patchSettings,
+	patchProfile,
+	setAuthToken,
+	onSettingsChange,
+} from './settings.js';
+import {
+	initInput,
+	pollInput,
+	getConnectedGamepads,
+	getActionLabels,
+	getDefaultGamepadButtonIndex,
+	ACTIONS,
+} from './input.js';
 import {
 	DECK_MIN_SIZE,
 	DECK_MAX_SIZE,
@@ -117,6 +132,7 @@ const showLoginLinkEl = document.getElementById('show-login-link');
 const showRegisterLinkEl = document.getElementById('show-register-link');
 
 const TOKEN_KEY = 'autogame_token';
+let accountProfile = null;
 
 /** Show the auth overlay and hide the lobby. */
 function showAuthOverlay() {
@@ -199,10 +215,23 @@ let socket = null;
 /** Create (or recreate) the Socket.IO connection with a JWT auth token. */
 function createSocket(token) {
 	if (socket) socket.disconnect();
+	setAuthToken(token);
+	loadAccountSettings(token).then((profile) => {
+		accountProfile = profile;
+		syncSettingsFormFromState(profile);
+	}).catch(() => {});
 	socket = io({ auth: { token } });
 	setSocketRef(socket);
 	bindSocketHandlers(socket);
 }
+
+initInput({
+	onUseSlot: (slot) => useCard(slot),
+	onToggleDeck: () => {
+		if (gameState && gameState.gamePhase === 'playing') toggleDeckViewer();
+	},
+	canUseGameActions: () => gameState && gameState.gamePhase === 'playing',
+});
 
 /** Bind all Socket.IO event listeners to the given socket instance. */
 function bindSocketHandlers(s) {
@@ -1560,20 +1589,6 @@ function useCard(slotIndex) {
 	playActivationEffect(slotIndex);
 }
 
-// Keyboard: keys 1-4 map to hand slots 0-3; V toggles draw pile viewer
-window.addEventListener('keydown', (e) => {
-	const slotMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
-	if (e.key in slotMap) {
-		if (e.repeat) return;
-		useCard(slotMap[e.key]);
-		return;
-	}
-	if ((e.key === 'v' || e.key === 'V') && gameState && gameState.gamePhase === 'playing') {
-		if (e.repeat) return;
-		toggleDeckViewer();
-	}
-});
-
 // Click: delegate on #card-hand, read data-slot-index from .card-slot target
 cardHandEl.addEventListener('click', (e) => {
 	const slot = e.target.closest('.card-slot');
@@ -1751,6 +1766,188 @@ readyBtn.addEventListener('click', () => {
 	readyBtn.textContent = isReady ? 'Ready!' : 'Ready';
 });
 
+// ── Settings UI ──
+
+const settingsOverlayEl = document.getElementById('settings-overlay');
+const settingsCloseBtn = document.getElementById('settings-close-btn');
+const settingsBtn = document.getElementById('settings-btn');
+const settingsSoundEl = document.getElementById('settings-sound');
+const settingsParticlesEl = document.getElementById('settings-particles');
+const settingsHitboxesEl = document.getElementById('settings-hitboxes');
+const settingsUsernameEl = document.getElementById('settings-username');
+const settingsEmailEl = document.getElementById('settings-email');
+const settingsProfileErrorEl = document.getElementById('settings-profile-error');
+const settingsSaveProfileBtn = document.getElementById('settings-save-profile');
+const gamepadStatusEl = document.getElementById('gamepad-status');
+const gamepadBindingsListEl = document.getElementById('gamepad-bindings-list');
+
+let rebindAction = null;
+let rebindListener = null;
+
+function openSettingsOverlay() {
+	if (!settingsOverlayEl) return;
+	settingsOverlayEl.classList.remove('hidden');
+	syncSettingsFormFromState(accountProfile);
+	renderGamepadBindingsList();
+	updateGamepadStatus();
+}
+
+function closeSettingsOverlay() {
+	if (!settingsOverlayEl) return;
+	settingsOverlayEl.classList.add('hidden');
+	cancelRebind();
+}
+
+function syncSettingsFormFromState(profile) {
+	const s = getSettings();
+	if (settingsSoundEl) settingsSoundEl.checked = s.soundEnabled !== false;
+	if (settingsParticlesEl) settingsParticlesEl.checked = s.particlesEnabled !== false;
+	if (settingsHitboxesEl) settingsHitboxesEl.checked = s.showHitboxes !== false;
+	if (profile) {
+		if (settingsUsernameEl) settingsUsernameEl.value = profile.username || '';
+		if (settingsEmailEl) settingsEmailEl.value = profile.email || '';
+	}
+}
+
+function updateGamepadStatus() {
+	if (!gamepadStatusEl) return;
+	const pads = getConnectedGamepads();
+	gamepadStatusEl.textContent = pads.length > 0
+		? `Gamepad: ${pads[0].id || 'connected'}`
+		: 'Gamepad: not connected';
+}
+
+function formatBindingLabel(action) {
+	const cfg = getSettings().gamepad?.bindings?.[action];
+	if (cfg && cfg.type === 'button') return `Button ${cfg.index}`;
+	const def = getDefaultGamepadButtonIndex(action);
+	return def !== undefined ? `Button ${def} (default)` : '—';
+}
+
+function renderGamepadBindingsList() {
+	if (!gamepadBindingsListEl) return;
+	gamepadBindingsListEl.innerHTML = '';
+	const labels = getActionLabels();
+	for (const action of Object.keys(ACTIONS)) {
+		if (action.startsWith('move')) continue;
+		const row = document.createElement('div');
+		row.className = 'binding-row';
+		if (rebindAction === action) row.classList.add('listening');
+		const label = document.createElement('span');
+		label.textContent = `${labels[action] || action}: ${formatBindingLabel(action)}`;
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'binding-rebind-btn';
+		btn.textContent = rebindAction === action ? 'Press button…' : 'Rebind';
+		btn.addEventListener('click', () => startRebind(action, row));
+		row.appendChild(label);
+		row.appendChild(btn);
+		gamepadBindingsListEl.appendChild(row);
+	}
+}
+
+function cancelRebind() {
+	rebindAction = null;
+	if (rebindListener) {
+		window.removeEventListener('gamepadconnected', rebindListener);
+		rebindListener = null;
+	}
+}
+
+function startRebind(action, row) {
+	cancelRebind();
+	rebindAction = action;
+	if (row) row.classList.add('listening');
+	renderGamepadBindingsList();
+
+	const pollRebind = () => {
+		if (rebindAction !== action) return;
+		const pads = getConnectedGamepads();
+		if (pads.length === 0) {
+			requestAnimationFrame(pollRebind);
+			return;
+		}
+		const gp = pads[0];
+		for (let i = 0; i < gp.buttons.length; i++) {
+			const btn = gp.buttons[i];
+			if (btn && (btn.pressed || btn.value > 0.5)) {
+				const bindings = { ...(getSettings().gamepad?.bindings || {}), [action]: { type: 'button', index: i } };
+				patchSettings({ gamepad: { bindings } });
+				cancelRebind();
+				renderGamepadBindingsList();
+				return;
+			}
+		}
+		requestAnimationFrame(pollRebind);
+	};
+	requestAnimationFrame(pollRebind);
+}
+
+if (settingsBtn) {
+	settingsBtn.addEventListener('click', openSettingsOverlay);
+}
+if (settingsCloseBtn) {
+	settingsCloseBtn.addEventListener('click', closeSettingsOverlay);
+}
+if (settingsOverlayEl) {
+	settingsOverlayEl.addEventListener('click', (e) => {
+		if (e.target === settingsOverlayEl) closeSettingsOverlay();
+	});
+}
+
+if (settingsSoundEl) {
+	settingsSoundEl.addEventListener('change', () => {
+		patchSettings({ soundEnabled: settingsSoundEl.checked });
+		updateMuteButton();
+	});
+}
+if (settingsParticlesEl) {
+	settingsParticlesEl.addEventListener('change', () => {
+		patchSettings({ particlesEnabled: settingsParticlesEl.checked });
+	});
+}
+if (settingsHitboxesEl) {
+	settingsHitboxesEl.addEventListener('change', () => {
+		patchSettings({ showHitboxes: settingsHitboxesEl.checked });
+	});
+}
+
+if (settingsSaveProfileBtn) {
+	settingsSaveProfileBtn.addEventListener('click', async () => {
+		if (settingsProfileErrorEl) settingsProfileErrorEl.textContent = '';
+		const username = settingsUsernameEl ? settingsUsernameEl.value.trim() : undefined;
+		const emailRaw = settingsEmailEl ? settingsEmailEl.value.trim() : '';
+		const result = await patchProfile({
+			username: username || undefined,
+			email: emailRaw === '' ? null : emailRaw,
+		});
+		if (result.error) {
+			if (settingsProfileErrorEl) settingsProfileErrorEl.textContent = result.error;
+			return;
+		}
+		if (result.token && socket) {
+			createSocket(result.token);
+		} else if (result.username && statusEl) {
+			statusEl.textContent = `Logged in as ${result.username}`;
+		}
+	});
+}
+
+onSettingsChange(() => {
+	updateMuteButton();
+	if (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden')) {
+		syncSettingsFormFromState();
+		renderGamepadBindingsList();
+	}
+});
+
+window.addEventListener('gamepadconnected', () => {
+	updateGamepadStatus();
+	if (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden')) {
+		renderGamepadBindingsList();
+	}
+});
+
 // ── Mute toggle ──
 
 function updateMuteButton() {
@@ -1760,7 +1957,7 @@ function updateMuteButton() {
 
 document.addEventListener('click', (e) => {
 	if (e.target && e.target.id === 'mute-btn') {
-		setSoundEnabled(!isSoundEnabled());
+		patchSettings({ soundEnabled: !isSoundEnabled() });
 		updateMuteButton();
 	}
 });
@@ -1909,6 +2106,8 @@ window.__updateMuteButton = updateMuteButton;
 window.__setSoundEnabled = (v) => { setSoundEnabled(v); updateMuteButton(); };
 window.__getPersistedMute = () => { try { return localStorage.getItem('autogame:soundEnabled'); } catch (_) { return null; } };
 window.__loadSoundEnabled = loadSoundEnabled;
+window.__getSettings = () => getSettings();
+window.__pollInputForTest = pollInput;
 window.activeEffects = () => getActiveEffects();
 window.__setScene = (s) => { window.___test_scene = s; };
 window.___test_scene = undefined;

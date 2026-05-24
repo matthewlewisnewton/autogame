@@ -43,9 +43,13 @@ import {
 	MAX_ELAPSED_MS,
 	CAMERA_OFFSET as CAMERA_OFFSET_CONFIG,
 	ENEMY_ATTACK_RANGE,
+	ATTACK_RANGE,
+	ATTACK_CONE_ANGLE,
 	MAX_HP,
 	MAX_MS,
 } from './config.js';
+import { getMovementDirection, pollInput } from './input.js';
+import { onSettingsChange } from './settings.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -72,9 +76,17 @@ let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
 
-// ── Input state ──
-const keys = { w: false, a: false, s: false, d: false };
-let inputListenersAdded = false;
+// ── Settings-driven visuals ──
+let particlesEnabled = true;
+let showHitboxes = true;
+let debugHitboxGroup = null;
+const debugEnemyRings = {};
+
+onSettingsChange((s) => {
+	particlesEnabled = s.particlesEnabled !== false;
+	showHitboxes = s.showHitboxes !== false;
+	syncDebugHitboxGroup();
+});
 
 // ── Loot state ──
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
@@ -326,17 +338,6 @@ export function initScene(layout, spawnPos) {
 	myX = spawnPosition.x;
 	myZ = spawnPosition.z;
 
-	// Input tracking
-	if (!inputListenersAdded) {
-		window.addEventListener('keydown', (e) => {
-			if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true;
-		});
-		window.addEventListener('keyup', (e) => {
-			if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
-		});
-		inputListenersAdded = true;
-	}
-
 	// Frame timer & render loop
 	clock = new THREE.Clock();
 	requestAnimationFrame(animate);
@@ -377,17 +378,7 @@ export function updateMyPlayer(delta) {
 	const me = gameStateRef && gameStateRef.players[myIdRef];
 	if (me && me.dead) return;
 
-	// Compute movement direction from active keys, normalize to unit vector
-	let dirX = 0, dirZ = 0;
-	if (keys.w) dirZ -= 1;
-	if (keys.s) dirZ += 1;
-	if (keys.a) dirX -= 1;
-	if (keys.d) dirX += 1;
-	const mag = Math.hypot(dirX, dirZ);
-	if (mag > 0) {
-		dirX /= mag;
-		dirZ /= mag;
-	}
+	const { dx: dirX, dz: dirZ, mag } = getMovementDirection();
 
 	if (mag > 0) {
 		// Cap delta to prevent over-correction after input stalls
@@ -648,6 +639,7 @@ export function applyWindupFlash(enemyId, isWindup) {
  * @param {object} direction - { x, z }
  */
 export function spawnAttackEffect(origin, direction, style = {}) {
+	if (!particlesEnabled) return;
 	const geometry = new THREE.SphereGeometry(0.3, 8, 8);
 	const material = new THREE.MeshStandardMaterial({
 		color: style.color ?? 0xffdd44,
@@ -677,6 +669,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
  * @param {number} [colorHex] - optional accent color (0xRRGGBB)
  */
 export function spawnSummonEffect(origin, radius, styleOrColor = {}) {
+	if (!particlesEnabled) return;
 	const style = typeof styleOrColor === 'number'
 		? { color: styleOrColor, emissive: styleOrColor }
 		: styleOrColor;
@@ -714,6 +707,7 @@ export function spawnSummonEffect(origin, radius, styleOrColor = {}) {
  * @param {number} radius
  */
 export function spawnDivineGraceEffect(origin, radius) {
+	if (!particlesEnabled) return;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
 		color: 0xfde68a,
@@ -746,6 +740,7 @@ export function spawnDivineGraceEffect(origin, radius) {
  * @param {number} radius
  */
 export function spawnInfernoPillarEffect(origin, radius) {
+	if (!particlesEnabled) return;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 48);
 	const material = new THREE.MeshStandardMaterial({
 		color: 0xef4444,
@@ -778,6 +773,7 @@ export function spawnInfernoPillarEffect(origin, radius) {
  * @param {object} position - { x, y, z }
  */
 export function spawnHitSpark(position) {
+	if (!particlesEnabled) return;
 	// Use test-scene override if available (set via window.__setScene in tests)
 	const targetScene = window.___test_scene || scene;
 	if (!targetScene) return;
@@ -813,6 +809,7 @@ export function spawnHitSpark(position) {
  * @param {object} direction - { x, z }
  */
 export function spawnChainLightningEffect(origin, direction) {
+	if (!particlesEnabled) return;
 	const geometry = new THREE.SphereGeometry(0.25, 8, 8);
 	const material = new THREE.MeshStandardMaterial({
 		color: 0x38bdf8,
@@ -1047,6 +1044,126 @@ export function disposeAllLootMeshes() {
 	disposeMeshMap(lootMeshes, scene, true);
 }
 
+// ── Debug hitbox overlays ──
+
+function ensureDebugHitboxGroup() {
+	if (!scene) return null;
+	if (!debugHitboxGroup) {
+		debugHitboxGroup = new THREE.Group();
+		debugHitboxGroup.name = 'debugHitboxes';
+		scene.add(debugHitboxGroup);
+	}
+	return debugHitboxGroup;
+}
+
+function syncDebugHitboxGroup() {
+	if (!scene) return;
+	if (!showHitboxes) {
+		if (debugHitboxGroup) debugHitboxGroup.visible = false;
+		return;
+	}
+	const group = ensureDebugHitboxGroup();
+	if (group) group.visible = true;
+}
+
+function clearDebugEnemyRings() {
+	if (!debugHitboxGroup) return;
+	for (const id of Object.keys(debugEnemyRings)) {
+		debugHitboxGroup.remove(debugEnemyRings[id]);
+		debugEnemyRings[id].geometry.dispose();
+		debugEnemyRings[id].material.dispose();
+		delete debugEnemyRings[id];
+	}
+}
+
+function updateDebugHitboxes(gs, myId) {
+	if (!showHitboxes || !scene) {
+		syncDebugHitboxGroup();
+		return;
+	}
+	const group = ensureDebugHitboxGroup();
+	group.visible = true;
+
+	// Remove stale enemy rings
+	const activeEnemyIds = new Set((gs.enemies || []).map((e) => e.id));
+	for (const id of Object.keys(debugEnemyRings)) {
+		if (!activeEnemyIds.has(id)) {
+			group.remove(debugEnemyRings[id]);
+			debugEnemyRings[id].geometry.dispose();
+			debugEnemyRings[id].material.dispose();
+			delete debugEnemyRings[id];
+		}
+	}
+
+	for (const enemy of gs.enemies || []) {
+		if (!debugEnemyRings[enemy.id]) {
+			const geo = new THREE.RingGeometry(ENEMY_ATTACK_RANGE * 0.85, ENEMY_ATTACK_RANGE, 32);
+			const mat = new THREE.MeshBasicMaterial({
+				color: 0x22d3ee,
+				transparent: true,
+				opacity: 0.35,
+				side: THREE.DoubleSide,
+				depthWrite: false
+			});
+			const ring = new THREE.Mesh(geo, mat);
+			ring.rotation.x = -Math.PI / 2;
+			debugEnemyRings[enemy.id] = ring;
+			group.add(ring);
+		}
+		const ring = debugEnemyRings[enemy.id];
+		ring.position.set(enemy.x, 0.12, enemy.z);
+	}
+
+	if (myId != null && gs.players[myId] && !group.getObjectByName('playerDebugRing')) {
+		const playerRingGeo = new THREE.RingGeometry(0.4, 0.55, 24);
+		const playerRingMat = new THREE.MeshBasicMaterial({
+			color: 0x4ade80,
+			transparent: true,
+			opacity: 0.5,
+			side: THREE.DoubleSide,
+			depthWrite: false
+		});
+		const playerRing = new THREE.Mesh(playerRingGeo, playerRingMat);
+		playerRing.name = 'playerDebugRing';
+		playerRing.rotation.x = -Math.PI / 2;
+		group.add(playerRing);
+
+		const conePoints = [];
+		const segments = 16;
+		const halfAngle = ATTACK_CONE_ANGLE / 2;
+		conePoints.push(new THREE.Vector3(0, 0.15, 0));
+		for (let i = 0; i <= segments; i++) {
+			const t = -halfAngle + (ATTACK_CONE_ANGLE * i) / segments;
+			conePoints.push(new THREE.Vector3(
+				Math.cos(t) * ATTACK_RANGE,
+				0.15,
+				Math.sin(t) * ATTACK_RANGE
+			));
+		}
+		conePoints.push(new THREE.Vector3(0, 0.15, 0));
+		const coneGeo = new THREE.BufferGeometry().setFromPoints(conePoints);
+		const coneLine = new THREE.Line(
+			coneGeo,
+			new THREE.LineBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.7 })
+		);
+		coneLine.name = 'playerDebugCone';
+		group.add(coneLine);
+	}
+
+	const playerRingMesh = group.getObjectByName('playerDebugRing');
+	const playerCone = group.getObjectByName('playerDebugCone');
+	if (playerRingMesh && playerCone) {
+		playerRingMesh.position.set(myX, 0.15, myZ);
+		playerCone.position.set(myX, 0.15, myZ);
+		playerCone.rotation.set(0, -playerRotation + Math.PI / 2, 0);
+	}
+}
+
+export function setDebugHitboxesVisible(visible) {
+	showHitboxes = visible;
+	syncDebugHitboxGroup();
+}
+
 // ── Animate loop ──
 
 /**
@@ -1057,6 +1174,8 @@ export function disposeAllLootMeshes() {
  */
 export function animate(timestamp) {
 	requestAnimationFrame(animate);
+
+	pollInput();
 
 	const delta = clampDelta(clock.getDelta());
 	updateMyPlayer(delta);
@@ -1273,6 +1392,7 @@ export function animate(timestamp) {
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();
+		updateDebugHitboxes(gs, myId);
 	}
 
 	// Animate loot coins (outside gameState guard)

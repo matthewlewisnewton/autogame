@@ -132,6 +132,14 @@ function isSoundEnabled() {
 }
 
 /**
+ * Set sound from server-backed settings (no localStorage write).
+ * @param {boolean} value
+ */
+function setSoundEnabledFromSettings(value) {
+	soundEnabled = !!value;
+}
+
+/**
  * Set the sound-enabled state and persist to localStorage.
  * @param {boolean} value
  */
@@ -152,6 +160,7 @@ export {
 	playSound,
 	isSoundEnabled,
 	setSoundEnabled,
+	setSoundEnabledFromSettings,
 	resumeAudioContext,
 	getAudioContext,
 	setAudioContext,

@@ -14,6 +14,7 @@
       <h1>Multiplayer Game</h1>
       <p id="status">Connecting...</p>
       <button id="logout-btn" class="hidden">Logout</button>
+      <button id="settings-btn" title="Settings" aria-label="Settings">⚙</button>
       <button id="mute-btn">🔊</button>
       <div id="vanguard-hud">
         <div id="vanguard-portrait">
@@ -165,6 +166,48 @@
         <div id="summary-card-choices-empty" style="display:none;">No card choices were found this run.</div>
       </div>
       <button id="return-to-lobby-btn">Return to Lobby</button>
+    </div>
+    <div id="settings-overlay" class="hidden">
+      <div id="settings-modal">
+        <h2>Settings</h2>
+        <button type="button" id="settings-close-btn" class="settings-close">×</button>
+        <section class="settings-section">
+          <h3>Audio</h3>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-sound" checked />
+            Sound effects
+          </label>
+        </section>
+        <section class="settings-section">
+          <h3>Display</h3>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-particles" checked />
+            Particle effects
+          </label>
+          <label class="settings-toggle">
+            <input type="checkbox" id="settings-hitboxes" checked />
+            Show hitboxes
+          </label>
+        </section>
+        <section class="settings-section">
+          <h3>Controls</h3>
+          <p id="gamepad-status" class="settings-hint">Gamepad: checking…</p>
+          <div id="gamepad-bindings-list"></div>
+        </section>
+        <section class="settings-section">
+          <h3>Account</h3>
+          <label class="settings-field">
+            Username
+            <input type="text" id="settings-username" autocomplete="username" maxlength="32" />
+          </label>
+          <label class="settings-field">
+            Email
+            <input type="email" id="settings-email" autocomplete="email" placeholder="Optional" />
+          </label>
+          <button type="button" id="settings-save-profile">Save account</button>
+          <span id="settings-profile-error" class="settings-error"></span>
+        </section>
+      </div>
     </div>
     <div id="auth-overlay" class="hidden">
       <div id="auth-modal">
