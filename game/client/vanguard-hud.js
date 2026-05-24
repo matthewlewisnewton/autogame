@@ -9,9 +9,9 @@ export function getHpBarTier(pct) {
 	return 'hp-low';
 }
 
-/** Count draw-pile cards by type (weapon / summon / monster). */
+/** Count draw-pile cards by type (weapon / spell / creature / enchantment). */
 export function countDeckTypes(deck) {
-	const counts = { weapon: 0, summon: 0, monster: 0 };
+	const counts = { weapon: 0, spell: 0, creature: 0, enchantment: 0 };
 	if (!Array.isArray(deck)) return counts;
 	for (const cardId of deck) {
 		const def = CARD_DEFS[cardId];

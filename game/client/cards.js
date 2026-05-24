@@ -4,7 +4,7 @@
 
 // ── Card Definitions ──
 // Keyed by card id. Each entry: { id, name, type, charges }
-//   type: "weapon" | "summon" | "monster"
+//   type: "weapon" | "spell" | "creature" | "enchantment"
 //   charges: uses remaining (multi-use weapons > 1, single-use = 1)
 export const CARD_DEFS = {
   iron_sword: {
@@ -22,7 +22,7 @@ export const CARD_DEFS = {
   battle_familiar: {
     id: 'battle_familiar',
     name: 'Battle Familiar',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 50,
     damage: 40,
@@ -30,7 +30,7 @@ export const CARD_DEFS = {
   dungeon_drake: {
     id: 'dungeon_drake',
     name: 'Dungeon Drake',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
   },
   steel_broadsword: {
@@ -52,7 +52,7 @@ export const CARD_DEFS = {
   guardian_familiar: {
     id: 'guardian_familiar',
     name: 'Guardian Familiar',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 65,
     damage: 70,
@@ -62,7 +62,7 @@ export const CARD_DEFS = {
   ancient_drake: {
     id: 'ancient_drake',
     name: 'Ancient Drake',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     isEvolved: true,
     specialEffect: 'bleed',
@@ -70,7 +70,7 @@ export const CARD_DEFS = {
   mana_prism: {
     id: 'mana_prism',
     name: 'Mana Prism',
-    type: 'summon',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 0,
     effect: 'mana_prism',
@@ -84,7 +84,7 @@ export const CARD_DEFS = {
   sacrificial_altar: {
     id: 'sacrificial_altar',
     name: 'Sacrificial Altar',
-    type: 'summon',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 0,
     effect: 'sacrificial_altar',
@@ -92,7 +92,7 @@ export const CARD_DEFS = {
   battery_automaton: {
     id: 'battery_automaton',
     name: 'Battery Automaton',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 50,
     effect: 'battery_automaton',
@@ -100,7 +100,7 @@ export const CARD_DEFS = {
   chrono_trigger: {
     id: 'chrono_trigger',
     name: 'Chrono Trigger',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'chrono_trigger',
@@ -139,7 +139,7 @@ export const CARD_DEFS = {
   frost_nova: {
     id: 'frost_nova',
     name: 'Frost Nova',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 35,
     effect: 'frost_nova',
@@ -148,7 +148,7 @@ export const CARD_DEFS = {
   glacier_collapse: {
     id: 'glacier_collapse',
     name: 'Glacier Collapse',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 35,
     effect: 'glacier_collapse',
@@ -158,7 +158,7 @@ export const CARD_DEFS = {
   healing_font: {
     id: 'healing_font',
     name: 'Healing Font',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'healing_font',
@@ -167,7 +167,7 @@ export const CARD_DEFS = {
   divine_grace: {
     id: 'divine_grace',
     name: 'Divine Grace',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'divine_grace',
@@ -179,14 +179,14 @@ export const CARD_DEFS = {
   skeleton_knight: {
     id: 'skeleton_knight',
     name: 'Skeleton Knight',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     specialEffect: 'taunt',
   },
   undead_commander: {
     id: 'undead_commander',
     name: 'Undead Commander',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     isEvolved: true,
     specialEffect: 'summon_skeletons',
@@ -194,7 +194,7 @@ export const CARD_DEFS = {
   storm_eagle: {
     id: 'storm_eagle',
     name: 'Storm Eagle',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 40,
     specialEffect: 'ranged_strike',
@@ -202,7 +202,7 @@ export const CARD_DEFS = {
   thunderbird: {
     id: 'thunderbird',
     name: 'Thunderbird',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 40,
     isEvolved: true,
@@ -211,7 +211,7 @@ export const CARD_DEFS = {
   gravity_well: {
     id: 'gravity_well',
     name: 'Gravity Well',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 45,
     effect: 'gravity_well',
@@ -220,7 +220,7 @@ export const CARD_DEFS = {
   event_horizon: {
     id: 'event_horizon',
     name: 'Event Horizon',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 45,
     effect: 'event_horizon',
@@ -245,7 +245,7 @@ export const CARD_DEFS = {
   mana_leach: {
     id: 'mana_leach',
     name: 'Mana Leach',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 30,
     specialEffect: 'mana_drain',
@@ -253,7 +253,7 @@ export const CARD_DEFS = {
   soul_drain: {
     id: 'soul_drain',
     name: 'Soul Drain',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 30,
     isEvolved: true,
@@ -262,7 +262,7 @@ export const CARD_DEFS = {
   dragons_breath: {
     id: 'dragons_breath',
     name: "Dragon's Breath",
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 40,
     effect: 'dragons_breath',
@@ -271,12 +271,32 @@ export const CARD_DEFS = {
   inferno_pillar: {
     id: 'inferno_pillar',
     name: 'Inferno Pillar',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 40,
     effect: 'inferno_pillar',
     isEvolved: true,
     specialEffect: 'fire_dot',
+  },
+  spike_trap: {
+    id: 'spike_trap',
+    name: 'Spike Trap',
+    type: 'enchantment',
+    charges: 1,
+    magicStoneCost: 25,
+    effect: 'spike_trap',
+    target: 'ground',
+    specialEffect: 'proximity_hazard',
+  },
+  mirror_ward: {
+    id: 'mirror_ward',
+    name: 'Mirror Ward',
+    type: 'enchantment',
+    charges: 1,
+    magicStoneCost: 30,
+    effect: 'mirror_ward',
+    target: 'self',
+    specialEffect: 'damage_reflect',
   },
 };
 
@@ -324,6 +344,8 @@ export const CARD_SELL_VALUES = {
   soul_drain: 18,
   dragons_breath: 14,
   inferno_pillar: 22,
+  spike_trap: 14,
+  mirror_ward: 16,
 };
 
 export function getCardSellValue(cardId) {
@@ -333,8 +355,9 @@ export function getCardSellValue(cardId) {
   const def = CARD_DEFS[cardId];
   if (!def) return 0;
   if (def.isEvolved) return 15;
-  if (def.type === 'summon') return 12;
-  if (def.type === 'monster') return 10;
+  if (def.type === 'spell') return 12;
+  if (def.type === 'creature') return 10;
+  if (def.type === 'enchantment') return 14;
   return 5;
 }
 
@@ -368,8 +391,9 @@ export function createStartingDeck() {
 // Maps card type to a distinct CSS color and a short icon/label for UI rendering.
 export const CARD_TYPE_STYLE = {
   weapon: { color: '#60a5fa', icon: '⚔' },
-  summon: { color: '#f59e0b', icon: '✦' },
-  monster: { color: '#a78bfa', icon: '🐉' },
+  spell: { color: '#f59e0b', icon: '✦' },
+  creature: { color: '#a78bfa', icon: '🐉' },
+  enchantment: { color: '#2dd4bf', icon: '✨' },
 };
 
 // Optional per-card accent overrides for the expanded pack.
@@ -394,15 +418,19 @@ export const CARD_ACCENT_STYLE = {
   soul_drain: { color: '#e879f9', icon: '☠' },
   dragons_breath: { color: '#fb923c', icon: '🔥' },
   inferno_pillar: { color: '#ef4444', icon: '🌋' },
+  spike_trap: { color: '#f87171', icon: '⚠' },
+  mirror_ward: { color: '#5eead4', icon: '🪞' },
 };
 
 // ── Card ID Sets by Type ──
 // Pre-computed Sets for O(1) membership checks in hot paths (e.g. cardUsed handler).
 export const weaponCardIds = new Set();
-export const summonCardIds = new Set();
-export const monsterCardIds = new Set();
+export const spellCardIds = new Set();
+export const creatureCardIds = new Set();
+export const enchantmentCardIds = new Set();
 for (const def of Object.values(CARD_DEFS)) {
   if (def.type === 'weapon') weaponCardIds.add(def.id);
-  if (def.type === 'summon') summonCardIds.add(def.id);
-  if (def.type === 'monster') monsterCardIds.add(def.id);
+  if (def.type === 'spell') spellCardIds.add(def.id);
+  if (def.type === 'creature') creatureCardIds.add(def.id);
+  if (def.type === 'enchantment') enchantmentCardIds.add(def.id);
 }

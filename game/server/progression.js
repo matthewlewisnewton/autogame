@@ -56,8 +56,8 @@ function getProvider() {
 const CARD_DEFS = {
   iron_sword: { id: 'iron_sword', name: 'Iron Sword', type: 'weapon', damage: 15, charges: 5 },
   flame_blade: { id: 'flame_blade', name: 'Flame Blade', type: 'weapon', damage: 25, charges: 3 },
-  battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'summon', charges: 1, magicStoneCost: 50, damage: 40 },
-  dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'monster', charges: 1 },
+  battle_familiar: { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 40 },
+  dungeon_drake: { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1 },
   steel_broadsword: {
     id: 'steel_broadsword',
     name: 'Steel Broadsword',
@@ -79,7 +79,7 @@ const CARD_DEFS = {
   guardian_familiar: {
     id: 'guardian_familiar',
     name: 'Guardian Familiar',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 65,
     damage: 70,
@@ -89,7 +89,7 @@ const CARD_DEFS = {
   ancient_drake: {
     id: 'ancient_drake',
     name: 'Ancient Drake',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     minionHp: 90,
     isEvolved: true,
@@ -98,7 +98,7 @@ const CARD_DEFS = {
   mana_prism: {
     id: 'mana_prism',
     name: 'Mana Prism',
-    type: 'summon',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 0,
     effect: 'mana_prism',
@@ -119,7 +119,7 @@ const CARD_DEFS = {
   sacrificial_altar: {
     id: 'sacrificial_altar',
     name: 'Sacrificial Altar',
-    type: 'summon',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 0,
     effect: 'sacrificial_altar',
@@ -130,7 +130,7 @@ const CARD_DEFS = {
   battery_automaton: {
     id: 'battery_automaton',
     name: 'Battery Automaton',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 50,
     effect: 'battery_automaton',
@@ -142,7 +142,7 @@ const CARD_DEFS = {
   chrono_trigger: {
     id: 'chrono_trigger',
     name: 'Chrono Trigger',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'chrono_trigger',
@@ -193,7 +193,7 @@ const CARD_DEFS = {
   frost_nova: {
     id: 'frost_nova',
     name: 'Frost Nova',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 35,
     effect: 'frost_nova',
@@ -204,7 +204,7 @@ const CARD_DEFS = {
   glacier_collapse: {
     id: 'glacier_collapse',
     name: 'Glacier Collapse',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 35,
     effect: 'glacier_collapse',
@@ -217,7 +217,7 @@ const CARD_DEFS = {
   healing_font: {
     id: 'healing_font',
     name: 'Healing Font',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'healing_font',
@@ -227,7 +227,7 @@ const CARD_DEFS = {
   divine_grace: {
     id: 'divine_grace',
     name: 'Divine Grace',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 0,
     effect: 'divine_grace',
@@ -239,7 +239,7 @@ const CARD_DEFS = {
   skeleton_knight: {
     id: 'skeleton_knight',
     name: 'Skeleton Knight',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     minionHp: 120,
     effect: 'skeleton_knight',
@@ -249,7 +249,7 @@ const CARD_DEFS = {
   undead_commander: {
     id: 'undead_commander',
     name: 'Undead Commander',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     minionHp: 180,
     effect: 'undead_commander',
@@ -262,7 +262,7 @@ const CARD_DEFS = {
   storm_eagle: {
     id: 'storm_eagle',
     name: 'Storm Eagle',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 40,
     effect: 'storm_eagle',
@@ -274,7 +274,7 @@ const CARD_DEFS = {
   thunderbird: {
     id: 'thunderbird',
     name: 'Thunderbird',
-    type: 'monster',
+    type: 'creature',
     charges: 1,
     magicStoneCost: 40,
     effect: 'thunderbird',
@@ -289,7 +289,7 @@ const CARD_DEFS = {
   gravity_well: {
     id: 'gravity_well',
     name: 'Gravity Well',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 45,
     effect: 'gravity_well',
@@ -300,7 +300,7 @@ const CARD_DEFS = {
   event_horizon: {
     id: 'event_horizon',
     name: 'Event Horizon',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 45,
     effect: 'event_horizon',
@@ -337,7 +337,7 @@ const CARD_DEFS = {
   mana_leach: {
     id: 'mana_leach',
     name: 'Mana Leach',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 30,
     damage: 25,
@@ -347,7 +347,7 @@ const CARD_DEFS = {
   soul_drain: {
     id: 'soul_drain',
     name: 'Soul Drain',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 30,
     damage: 38,
@@ -360,7 +360,7 @@ const CARD_DEFS = {
   dragons_breath: {
     id: 'dragons_breath',
     name: "Dragon's Breath",
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 40,
     effect: 'dragons_breath',
@@ -374,7 +374,7 @@ const CARD_DEFS = {
   inferno_pillar: {
     id: 'inferno_pillar',
     name: 'Inferno Pillar',
-    type: 'summon',
+    type: 'spell',
     charges: 1,
     magicStoneCost: 40,
     effect: 'inferno_pillar',
@@ -384,6 +384,33 @@ const CARD_DEFS = {
     attackRange: 7,
     isEvolved: true,
     specialEffect: 'fire_dot',
+  },
+  spike_trap: {
+    id: 'spike_trap',
+    name: 'Spike Trap',
+    type: 'enchantment',
+    charges: 1,
+    magicStoneCost: 25,
+    effect: 'spike_trap',
+    target: 'ground',
+    damage: 35,
+    radius: 2.5,
+    ttlMs: 30000,
+    specialEffect: 'proximity_hazard',
+  },
+  mirror_ward: {
+    id: 'mirror_ward',
+    name: 'Mirror Ward',
+    type: 'enchantment',
+    charges: 1,
+    magicStoneCost: 30,
+    effect: 'mirror_ward',
+    target: 'self',
+    damageScale: 0.5,
+    minReflectDamage: 15,
+    reflectRange: 8,
+    ttlMs: 20000,
+    specialEffect: 'damage_reflect',
   },
 };
 
@@ -452,8 +479,9 @@ function getCardSellValue(cardId) {
   const def = CARD_DEFS[cardId];
   if (!def) return 0;
   if (def.isEvolved) return 15;
-  if (def.type === 'summon') return 12;
-  if (def.type === 'monster') return 10;
+  if (def.type === 'spell') return 12;
+  if (def.type === 'creature') return 10;
+  if (def.type === 'enchantment') return 14;
   return 5;
 }
 
@@ -825,8 +853,9 @@ function cardChoiceDescription(def) {
   if (!def) return '';
   if (def.specialEffect) return def.specialEffect.replace(/_/g, ' ');
   if (def.type === 'weapon') return `${def.damage || 0} damage weapon`;
-  if (def.type === 'summon') return 'Summons an ally';
-  if (def.type === 'monster') return 'Spawns a minion';
+  if (def.type === 'spell') return 'Instant spell effect';
+  if (def.type === 'creature') return 'Spawns a battlefield ally';
+  if (def.type === 'enchantment') return 'Lingering enchantment';
   return `${def.type} card`;
 }
 
@@ -1606,6 +1635,7 @@ function resetTransientRunState() {
   _gameState.minions = [];
   _gameState.loot = [];
   _gameState.areaEffects = [];
+  _gameState.enchantments = [];
 }
 
 function stateSnapshot(viewerPlayerId = null) {
@@ -1632,6 +1662,7 @@ function stateSnapshot(viewerPlayerId = null) {
       players[id].selectedDeck = p.selectedDeck;
       players[id].inventory = Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory;
       players[id].debugScenario = p.debugScenario;
+      players[id].activeEnchantment = p.activeEnchantment || null;
     }
   }
 
@@ -1640,6 +1671,7 @@ function stateSnapshot(viewerPlayerId = null) {
     enemies: _gameState.enemies,
     minions: _gameState.minions,
     loot: _gameState.loot,
+    enchantments: _gameState.enchantments || [],
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     selectedQuestId: _gameState.selectedQuestId,
@@ -1680,7 +1712,7 @@ function returnPlayersToLobby() {
     player.runRewards = preservedRunRewards;
     player.currencyEarnedThisRun = 0;
     player.lastMoveTime = Date.now();
-    player.pendingSummons.clear();
+    player.pendingSpells.clear();
     player.slotCooldowns = [null, null, null, null];
   }
 

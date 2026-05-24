@@ -25,7 +25,7 @@ describe('getHpBarTier()', () => {
 });
 
 describe('countDeckTypes()', () => {
-	it('counts weapon, summon, and monster cards in the draw pile', () => {
+	it('counts weapon, spell, creature, and enchantment cards in the draw pile', () => {
 		const deck = [
 			'iron_sword',
 			'flame_blade',
@@ -33,12 +33,12 @@ describe('countDeckTypes()', () => {
 			'dungeon_drake',
 			'iron_sword',
 		];
-		expect(countDeckTypes(deck)).toEqual({ weapon: 3, summon: 1, monster: 1 });
+		expect(countDeckTypes(deck)).toEqual({ weapon: 3, spell: 1, creature: 1, enchantment: 0 });
 	});
 
 	it('returns zero counts for missing or invalid input', () => {
-		expect(countDeckTypes(null)).toEqual({ weapon: 0, summon: 0, monster: 0 });
-		expect(countDeckTypes([])).toEqual({ weapon: 0, summon: 0, monster: 0 });
+		expect(countDeckTypes(null)).toEqual({ weapon: 0, spell: 0, creature: 0, enchantment: 0 });
+		expect(countDeckTypes([])).toEqual({ weapon: 0, spell: 0, creature: 0, enchantment: 0 });
 	});
 });
 
@@ -48,7 +48,7 @@ describe('computeDeckHudStats()', () => {
 		const hand = [
 			{ id: 'iron_sword', type: 'weapon' },
 			null,
-			{ id: 'dungeon_drake', type: 'monster' },
+			{ id: 'dungeon_drake', type: 'creature' },
 			null,
 		];
 
@@ -56,7 +56,7 @@ describe('computeDeckHudStats()', () => {
 			drawCount: 3,
 			total: 5,
 			label: 'Deck: 3/5',
-			types: { weapon: 2, summon: 1, monster: 0 },
+			types: { weapon: 2, spell: 1, creature: 0, enchantment: 0 },
 		});
 	});
 
@@ -65,7 +65,7 @@ describe('computeDeckHudStats()', () => {
 			drawCount: 0,
 			total: 0,
 			label: 'Deck: 0/0',
-			types: { weapon: 0, summon: 0, monster: 0 },
+			types: { weapon: 0, spell: 0, creature: 0, enchantment: 0 },
 		});
 	});
 });

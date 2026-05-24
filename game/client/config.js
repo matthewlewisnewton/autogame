@@ -15,6 +15,12 @@ export const DECK_MAX_SIZE = 12;
 /** Attack range in world units — matches server constant for attack range / warning circle radius */
 export const ENEMY_ATTACK_RANGE = 4;
 
+/** Player weapon attack range — matches server ATTACK_RANGE */
+export const ATTACK_RANGE = 5;
+
+/** Player weapon attack cone angle (radians) — matches server ATTACK_CONE_ANGLE */
+export const ATTACK_CONE_ANGLE = Math.PI / 2;
+
 /** Maximum player HP */
 export const MAX_HP = 100;
 
