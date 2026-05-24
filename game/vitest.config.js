@@ -35,6 +35,7 @@ export default defineConfig({
 				'server/progression.js',
 				'server/simulation.js',
 				'client/cards.js',
+				'client/cardRenderers.js',
 				'client/collision.js',
 				'client/hand.js',
 				'client/delta.js'

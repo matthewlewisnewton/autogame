@@ -8,7 +8,7 @@ import {
 	renderQuestBoard,
 } from './questBoard.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import {
 	MAX_CARD_LEVEL,
 	getUpgradeCost,
@@ -16,6 +16,7 @@ import {
 	getForgeStatPreview,
 } from './cardUpgrades.js';
 import { drawCard, initHand as initHandFromModule, hand, deck, slotCooldowns, canUseSlot, setDrawPile } from './hand.js';
+import { renderCardUsed } from './cardRenderers.js';
 import {
 	buildDeckMiniEntries,
 	computeRunDeckTotal,
@@ -258,6 +259,22 @@ initInput({
 	},
 	canUseGameActions: () => gameState && gameState.gamePhase === 'playing',
 });
+
+// Context bundle handed to per-card renderers — declared once so the
+// cardUsed handler does not re-allocate it on every event. `myId` is read
+// via a getter so renderers always see the current local player.
+const cardRenderCtx = {
+	spawnAttackEffect: rendererSpawnAttackEffect,
+	spawnSummonEffect: rendererSpawnSummonEffect,
+	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
+	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
+	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
+	flashMesh: rendererFlashMesh,
+	enemyMeshes: () => getMeshMaps().enemiesMeshes,
+	playSound,
+	scheduleAfter: (ms, fn) => setTimeout(fn, ms),
+	get myId() { return myId; },
+};
 
 /** Bind all Socket.IO event listeners to the given socket instance. */
 function bindSocketHandlers(s) {
@@ -524,109 +541,7 @@ function bindSocketHandlers(s) {
 
 	s.on('cardUsed', (data) => {
 		if (!data || !getScene()) return;
-		playSound('card');
-		const origin = data.origin || { x: 0, z: 0 };
-		const direction = data.direction || { x: 1, z: 0 };
-		if (weaponCardIds.has(data.cardId)) {
-			const origin = data.origin || { x: 0, z: 0 };
-			const direction = data.direction || { x: 1, z: 0 };
-			if (data.specialEffect === 'triple_returning_projectile' || data.cardId === 'infinite_disk') {
-				const perpX = -direction.z;
-				const perpZ = direction.x;
-				const offsets = [-0.6, 0, 0.6];
-				for (const offset of offsets) {
-					rendererSpawnAttackEffect(
-						{ x: origin.x + perpX * offset, z: origin.z + perpZ * offset },
-						direction,
-						{ color: 0xa5f3fc, emissive: 0x22d3ee },
-					);
-				}
-			} else {
-				const swingCount = data.swingCount || 1;
-				for (let swing = 0; swing < swingCount; swing++) {
-					const delayMs = data.specialEffect === 'photon_barrage' ? swing * 80 : 0;
-					if (delayMs > 0) {
-						setTimeout(() => rendererSpawnAttackEffect(origin, direction), delayMs);
-					} else {
-						rendererSpawnAttackEffect(origin, direction);
-					}
-				}
-			}
-		}
-		if (data.cardId === 'spike_trap' && data.radius !== undefined) {
-			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnSummonEffect(origin, data.radius, { color: 0xf87171, emissive: 0xef4444 });
-		}
-		if (data.cardId === 'mirror_ward' && data.target === 'self') {
-			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnSummonEffect(origin, 2, { color: 0x5eead4, emissive: 0x2dd4bf });
-		}
-		if (data.enchantmentTriggered && data.radius !== undefined) {
-			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnSummonEffect(origin, data.radius, { color: 0xfbbf24, emissive: 0xf59e0b });
-		}
-		if (data.cardId === 'divine_grace' && data.radius !== undefined) {
-			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnDivineGraceEffect(origin, data.radius);
-			if (data.magicStonesGained > 0) playSound('loot');
-		} else if (spellCardIds.has(data.cardId) && data.radius !== undefined) {
-			const origin = data.origin || { x: 0, z: 0 };
-			const accent = CARD_ACCENT_STYLE[data.cardId];
-			const summonStyle = accent
-				? { color: parseInt(accent.color.slice(1), 16), emissive: parseInt(accent.color.slice(1), 16) }
-				: {};
-			if (data.cardId === 'glacier_collapse') {
-				rendererSpawnSummonEffect(origin, data.radius, { color: 0x38bdf8, emissive: 0x0ea5e9 });
-			} else {
-				rendererSpawnSummonEffect(origin, data.radius, summonStyle);
-			}
-			if (data.cardId === 'event_horizon' && data.centerRadius) {
-				rendererSpawnSummonEffect(origin, data.centerRadius, summonStyle);
-			}
-		}
-		if (data.cardId === 'undead_commander') {
-			const origin = data.origin || { x: 0, z: 0 };
-			rendererSpawnSummonEffect(origin, 2);
-			for (const spawn of (data.summonedMinions || [])) {
-				rendererSpawnSummonEffect({ x: spawn.x, z: spawn.z }, 1.2);
-			}
-		}
-		if (data.specialEffect === 'chain_lightning' && data.origin) {
-			rendererSpawnChainLightningEffect(data.origin, { x: 1, z: 0 });
-			playSound('enemyHit');
-			rendererSpawnAttackEffect(origin, direction);
-		}
-		if (data.cardId === 'inferno_pillar' && data.radius !== undefined) {
-			rendererSpawnInfernoPillarEffect(origin, data.radius);
-		}
-		if (data.hpHealed > 0 && data.playerId === myId) {
-			playSound('loot');
-		}
-		const accent = CARD_ACCENT_STYLE[data.cardId];
-		const accentHex = accent && accent.color
-			? parseInt(accent.color.slice(1), 16)
-			: undefined;
-		if (data.shockwaveHits && data.shockwaveHits.length > 0) {
-			rendererSpawnSummonEffect(origin, 6, accentHex);
-			playSound('enemyHit');
-		}
-		const maps = getMeshMaps();
-		const allHits = [
-			...(data.hits || []),
-			...(data.shockwaveHits || []),
-		];
-		if (allHits.length > 0) {
-			if (!data.shockwaveHits || data.shockwaveHits.length === 0) {
-				playSound('enemyHit');
-			}
-			for (const hit of allHits) {
-				const mesh = maps.enemiesMeshes[hit.enemyId];
-				if (mesh) {
-					const flashColor = hit.frozenShatter ? 0x7dd3fc : (accentHex ?? 0xffffff);
-					rendererFlashMesh(mesh, flashColor, hit.frozenShatter ? 350 : 200);
-				}
-			}
-		}
+		renderCardUsed(data, cardRenderCtx);
 	});
 
 	s.on('cardError', (data) => {
