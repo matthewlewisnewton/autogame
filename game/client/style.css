@@ -74,6 +74,30 @@ h1 {
   background: rgba(30, 41, 59, 0.9);
 }
 
+#settings-btn {
+  position: absolute;
+  top: 12px;
+  right: 68px;
+  width: 40px;
+  height: 40px;
+  font-size: 20px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.75);
+  color: white;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 12;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s ease;
+}
+
+#settings-btn:hover {
+  background: rgba(30, 41, 59, 0.9);
+}
+
 canvas {
   display: block;
 }
@@ -1314,6 +1338,131 @@ canvas {
 }
 
 /* ── Auth Overlay ── */
+
+#settings-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2, 6, 23, 0.75);
+  z-index: 250;
+  pointer-events: auto;
+}
+
+#settings-overlay.hidden {
+  display: none;
+}
+
+#settings-modal {
+  position: relative;
+  width: min(480px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+  padding: 24px 28px;
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.98);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #e2e8f0;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
+}
+
+#settings-modal h2 {
+  margin-bottom: 16px;
+  font-size: 22px;
+}
+
+.settings-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  background: rgba(51, 65, 85, 0.8);
+  color: #e2e8f0;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.settings-section {
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.15);
+}
+
+.settings-section h3 {
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin-bottom: 10px;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #94a3b8;
+}
+
+.settings-field input {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(30, 41, 59, 0.9);
+  color: #f8fafc;
+  font-size: 14px;
+}
+
+.settings-hint {
+  font-size: 13px;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+.settings-error {
+  display: block;
+  color: #f87171;
+  font-size: 13px;
+  margin-top: 6px;
+}
+
+#settings-save-profile,
+.binding-rebind-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(59, 130, 246, 0.35);
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.binding-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+
+.binding-row.listening {
+  color: #facc15;
+}
 
 #auth-overlay {
   position: fixed;
