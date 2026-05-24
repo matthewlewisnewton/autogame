@@ -37,7 +37,7 @@ function addPlayer(id, overrides = {}) {
 		magicStones: 100,
 		hand: [],
 		deck: [],
-		pendingSummons: new Set(),
+		pendingSpells: new Set(),
 		slotCooldowns: [null, null, null, null],
 		...overrides,
 	};
@@ -58,20 +58,22 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all ten new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(24);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(35);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
 		expect(CARD_DEFS.saber_of_light.type).toBe('weapon');
 		expect(CARD_DEFS.photon_slicer.type).toBe('weapon');
 		expect(CARD_DEFS.echo_blade.type).toBe('weapon');
-		expect(CARD_DEFS.frost_nova.type).toBe('summon');
-		expect(CARD_DEFS.healing_font.type).toBe('summon');
-		expect(CARD_DEFS.gravity_well.type).toBe('summon');
-		expect(CARD_DEFS.mana_leach.type).toBe('summon');
-		expect(CARD_DEFS.dragons_breath.type).toBe('summon');
-		expect(CARD_DEFS.skeleton_knight.type).toBe('monster');
-		expect(CARD_DEFS.storm_eagle.type).toBe('monster');
+		expect(CARD_DEFS.frost_nova.type).toBe('spell');
+		expect(CARD_DEFS.healing_font.type).toBe('spell');
+		expect(CARD_DEFS.gravity_well.type).toBe('spell');
+		expect(CARD_DEFS.mana_leach.type).toBe('spell');
+		expect(CARD_DEFS.dragons_breath.type).toBe('spell');
+		expect(CARD_DEFS.skeleton_knight.type).toBe('creature');
+		expect(CARD_DEFS.storm_eagle.type).toBe('creature');
+		expect(CARD_DEFS.spike_trap.type).toBe('enchantment');
+		expect(CARD_DEFS.mirror_ward.type).toBe('enchantment');
 	});
 });
 
