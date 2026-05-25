@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "packageManager": "pnpm@10.33.3",
   "scripts": {
     "check:deps": "node scripts/check_package_age.js",
     "dev": "concurrently \"pnpm -C server run dev\" \"pnpm -C client run dev\"",
     "install:all": "pnpm install",
-    "test": "vitest run --coverage --config vitest.config.js"
+    "test": "vitest run --coverage --config vitest.config.js",
+    "test:smoke:lobby-dropin": "node scripts/test-lobby-dropin.mjs"
   },
   "keywords": [],
   "author": "",

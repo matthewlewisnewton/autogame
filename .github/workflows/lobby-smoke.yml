@@ -1,0 +1,69 @@
+name: Lobby smoke test
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'game/**'
+      - '.github/workflows/lobby-smoke.yml'
+  pull_request:
+    paths:
+      - 'game/**'
+      - '.github/workflows/lobby-smoke.yml'
+
+jobs:
+  lobby-dropin-smoke:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: game
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          package_json_file: game/package.json
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Start server
+        env:
+          PERSISTENCE_BACKEND: memory
+        run: |
+          pnpm -C server exec node index.js &
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:3000/api/register -X POST \
+              -H 'Content-Type: application/json' \
+              -d '{"username":"healthcheck","password":"password123"}' >/dev/null 2>&1; then
+              echo "Server ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server failed to start"
+          exit 1
+
+      - name: Run lobby drop-in smoke test
+        run: pnpm run test:smoke:lobby-dropin
