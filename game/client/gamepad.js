@@ -1,4 +1,4 @@
-import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY } from './config.js';
+import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
 
 /** Face buttons A/B/X/Y → hand slots 0–3 */
 const CARD_BUTTONS = [0, 1, 2, 3];
@@ -114,12 +114,12 @@ export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
 }
 
 /**
- * Poll face-button presses (edge-triggered) and deck-toggle.
- * @returns {{ slots: number[], toggleDeck: boolean }}
+ * Poll face-button presses (edge-triggered), deck-toggle, and lock-on.
+ * @returns {{ slots: number[], toggleDeck: boolean, lockOn: boolean }}
  */
 export function pollGamepadButtons() {
 	const pad = getActiveGamepad();
-	const result = { slots: [], toggleDeck: false };
+	const result = { slots: [], toggleDeck: false, lockOn: false };
 	if (!pad) {
 		prevButtons = [];
 		return result;
@@ -136,6 +136,10 @@ export function pollGamepadButtons() {
 	const togglePressed = buttons[DECK_TOGGLE_BUTTON]?.pressed ?? false;
 	const toggleWas = prevButtons[DECK_TOGGLE_BUTTON] ?? false;
 	if (togglePressed && !toggleWas) result.toggleDeck = true;
+
+	const lockPressed = buttons[LOCK_ON_GAMEPAD_BUTTON]?.pressed ?? false;
+	const lockWas = prevButtons[LOCK_ON_GAMEPAD_BUTTON] ?? false;
+	if (lockPressed && !lockWas) result.lockOn = true;
 
 	prevButtons = Array.from({ length: buttons.length }, (_, i) => buttons[i]?.pressed ?? false);
 	return result;

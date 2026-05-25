@@ -68,6 +68,16 @@ import {
 	mergeMovementVectors,
 } from './gamepad.js';
 import { playSound } from './audio.js';
+import {
+	isLockOnActive,
+	getLockedEnemyId,
+	clearLockOn,
+	handleLockOnPress,
+	updateLockOn,
+	targetRelativeDirection,
+	getDirectionToTarget,
+} from './lockOn.js';
+import { getLockOnRepeatAction } from './settings.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -76,6 +86,7 @@ const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
+const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 const lootMeshes = {};
@@ -97,6 +108,8 @@ let dungeonMeshes = []; // meshes created by buildDungeon()
 let cameraYaw = 0;
 let isCameraDragging = false;
 let cameraListenersAdded = false;
+/** Unit direction toward locked target on XZ plane, when lock-on is active. */
+let lockOnToTarget = null;
 
 // ── Shared state references (set by main.js) ──
 let gameStateRef = null; // reference to gameState object set by main.js
@@ -219,7 +232,39 @@ function getCameraForwardDirection() {
 	return cameraRelativeDirection(0, 1);
 }
 
+function applyLockOnPress() {
+	if (currentGamePhase !== 'playing') return;
+	const gs = gameStateRef;
+	if (!gs?.enemies) return;
+
+	const result = handleLockOnPress(
+		gs.enemies,
+		myX,
+		myZ,
+		getLockOnRepeatAction(),
+		playerRotation,
+	);
+
+	if (result.cameraYaw != null) {
+		cameraYaw = result.cameraYaw;
+	}
+
+	if (result.action === 'locked' && result.enemy) {
+		lockOnToTarget = getDirectionToTarget(myX, myZ, result.enemy);
+		playerRotation = Math.atan2(lockOnToTarget.z, lockOnToTarget.x);
+		lastEmittedRotation = playerRotation;
+	} else {
+		lockOnToTarget = null;
+	}
+}
+
 function updatePlayerFacing() {
+	if (isLockOnActive() && lockOnToTarget) {
+		playerRotation = Math.atan2(lockOnToTarget.z, lockOnToTarget.x);
+		syncFacingToServer();
+		return;
+	}
+
 	const movement = getMovementInput();
 	const facing = movement
 		? cameraRelativeDirection(movement.x, movement.z)
@@ -230,7 +275,7 @@ function updatePlayerFacing() {
 
 function syncFacingToServer() {
 	if (!socketRef || !myIdRef) return;
-	if (getMovementInput()) {
+	if (getMovementInput() && !isLockOnActive()) {
 		lastEmittedRotation = playerRotation;
 		return;
 	}
@@ -281,7 +326,7 @@ export function setSocketRef(s) {
 
 /**
  * Register a callback for gamepad card/deck actions each frame.
- * @param {(actions: { slots: number[], toggleDeck: boolean }) => void} handler
+ * @param {(actions: { slots: number[], toggleDeck: boolean, lockOn: boolean }) => void} handler
  */
 export function setGamepadInputHandler(handler) {
 	gamepadInputHandler = handler;
@@ -399,6 +444,10 @@ export function getPlayerRotation() {
  * @returns {{ x: number, z: number }}
  */
 export function getPlayerFacingDirection() {
+	if (isLockOnActive() && lockOnToTarget) {
+		return { x: lockOnToTarget.x, z: lockOnToTarget.z };
+	}
+
 	const movement = getMovementInput();
 	return movement
 		? cameraRelativeDirection(movement.x, movement.z)
@@ -625,6 +674,12 @@ export function initScene(layout, spawnPos) {
 	if (!inputListenersAdded) {
 		window.addEventListener('keydown', (e) => {
 			if (isTypingTarget(e.target)) return;
+			if (e.key.toLowerCase() === 'z') {
+				if (e.repeat || currentGamePhase !== 'playing') return;
+				e.preventDefault();
+				applyLockOnPress();
+				return;
+			}
 			if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true;
 		});
 		window.addEventListener('keyup', (e) => {
@@ -646,7 +701,7 @@ export function initScene(layout, spawnPos) {
 			e.preventDefault();
 		});
 		window.addEventListener('mousemove', (e) => {
-			if (!isCameraDragging) return;
+			if (!isCameraDragging || isLockOnActive()) return;
 			cameraYaw -= e.movementX * CAMERA_YAW_SENSITIVITY;
 		});
 		window.addEventListener('mouseup', (e) => {
@@ -727,16 +782,49 @@ export function updateMyPlayer(delta) {
 
 	// Block movement when dead
 	const me = gameStateRef && gameStateRef.players[myIdRef];
-	if (me && me.dead) return;
+	if (me && me.dead) {
+		clearLockOn();
+		lockOnToTarget = null;
+		return;
+	}
 
-	cameraYaw += pollGamepadLook(delta);
+	const lockState = updateLockOn(
+		gameStateRef?.enemies,
+		myX,
+		myZ,
+		delta,
+		cameraYaw,
+	);
+
+	if (lockState.locked) {
+		playerRotation = lockState.playerRotation;
+		cameraYaw = lockState.cameraYaw;
+		lockOnToTarget = lockState.toTarget;
+	} else {
+		lockOnToTarget = null;
+		cameraYaw += pollGamepadLook(delta);
+	}
 
 	const movement = getMovementInput();
 
 	if (movement) {
 		moveAccumulator += delta;
 		moveEmitAccumulator += delta;
-		const { x: dirX, z: dirZ } = cameraRelativeDirection(movement.x, movement.z);
+		let dirX;
+		let dirZ;
+		if (lockState.locked && lockOnToTarget) {
+			const dir = targetRelativeDirection(movement.x, movement.z, lockOnToTarget);
+			const mag = Math.hypot(dir.x, dir.z);
+			dirX = mag > 0 ? dir.x / mag : 0;
+			dirZ = mag > 0 ? dir.z / mag : 0;
+		} else {
+			const dir = cameraRelativeDirection(movement.x, movement.z);
+			dirX = dir.x;
+			dirZ = dir.z;
+		}
+		const moveRotation = lockState.locked
+			? playerRotation
+			: Math.atan2(dirZ, dirX);
 
 		while (moveAccumulator >= TICK_DT) {
 			prevSimX = simX;
@@ -756,7 +844,7 @@ export function updateMyPlayer(delta) {
 			socketRef.emit('move', {
 				dx: dirX,
 				dz: dirZ,
-				rotation: Math.atan2(dirZ, dirX),
+				rotation: moveRotation,
 				sequence: moveSequence,
 			});
 		}
@@ -1004,6 +1092,34 @@ export function applyWindupFlash(enemyId, isWindup) {
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
 // Ground overlays must sit above that surface or they clip inside the floor mesh.
 const GROUND_OVERLAY_Y = FLOOR_Y + 0.07;
+
+function createLockOnRing() {
+	const geo = new THREE.RingGeometry(0.55, 0.75, 24);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0xfbbf24,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+function syncLockOnRing(enemyId, enemyX, enemyZ) {
+	const lockedId = getLockedEnemyId();
+	if (lockedId === enemyId) {
+		if (!enemyLockOnRings[enemyId]) {
+			enemyLockOnRings[enemyId] = createLockOnRing();
+			scene.add(enemyLockOnRings[enemyId]);
+		}
+		enemyLockOnRings[enemyId].position.set(enemyX, GROUND_OVERLAY_Y + 0.02, enemyZ);
+		enemyLockOnRings[enemyId].visible = true;
+	} else if (enemyLockOnRings[enemyId]) {
+		enemyLockOnRings[enemyId].visible = false;
+	}
+}
 
 const HITBOX_FILL_OPACITY = 0.32;
 const HITBOX_EDGE_OPACITY = 0.72;
@@ -2028,8 +2144,12 @@ export function animate(timestamp) {
 	const delta = clampDelta(clock.getDelta());
 	updateMyPlayer(delta);
 
+	const gamepadActions = pollGamepadButtons();
 	if (gamepadInputHandler) {
-		gamepadInputHandler(pollGamepadButtons());
+		gamepadInputHandler(gamepadActions);
+	}
+	if (currentGamePhase === 'playing' && gamepadActions.lockOn) {
+		applyLockOnPress();
 	}
 
 	const gs = gameStateRef;
@@ -2093,6 +2213,12 @@ export function animate(timestamp) {
 				moveAccumulator = 0;
 				playerRotation = 0;
 				lastEmittedRotation = null;
+				clearLockOn();
+				lockOnToTarget = null;
+			}
+			if (isDead) {
+				clearLockOn();
+				lockOnToTarget = null;
 			}
 			wasDead = isDead;
 
@@ -2134,6 +2260,7 @@ export function animate(timestamp) {
 				enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
 			}
 			updateHealthBarMesh(enemy.id, enemy);
+			syncLockOnRing(enemy.id, enemy.x, enemy.z);
 
 			// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
 			if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
@@ -2217,6 +2344,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemiesMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
+		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];
