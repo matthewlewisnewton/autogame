@@ -1107,6 +1107,23 @@ function assignRunSpawnPositions(players) {
   });
 }
 
+function repositionPlayersAwayFromPortal(players) {
+  const telepipe = _gameState && _gameState.telepipe;
+  if (!telepipe) return;
+
+  const list = Array.isArray(players) ? players.filter(Boolean) : Object.values(players).filter(Boolean);
+  list.forEach((player, index) => {
+    if (!isPlayerActive(player)) return;
+    const dist = Math.hypot(player.x - telepipe.x, player.z - telepipe.z);
+    if (dist > PORTAL_RADIUS) return;
+    // Skip the (0,0) offset so resumed players are not left inside the portal radius.
+    const offset = RUN_SPAWN_OFFSETS[(index + 1) % RUN_SPAWN_OFFSETS.length];
+    player.x = telepipe.x + offset.x;
+    player.y = player.y ?? 0.5;
+    player.z = telepipe.z + offset.z;
+  });
+}
+
 function isPortalEntryGraceActive() {
   const telepipe = _gameState && _gameState.telepipe;
   if (!telepipe || !telepipe.placedAt) return false;
@@ -2239,7 +2256,13 @@ function restoreRunCheckpoint() {
     player.inputActive = false;
     player.inputDx = 0;
     player.inputDz = 0;
+    delete player.lastTelepipeEnterAt;
   }
+
+  if (_gameState.telepipe) {
+    _gameState.telepipe.placedAt = Date.now();
+  }
+  repositionPlayersAwayFromPortal(_gameState.players);
 
   delete _gameState.suspendedCheckpoint;
   _rebuildWallColliders();

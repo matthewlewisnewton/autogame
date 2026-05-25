@@ -2316,6 +2316,36 @@ describe('run state', () => {
 			expect(gameState.suspendedCheckpoint).toBeUndefined();
 		});
 
+		it('resume does not instantly re-extract players restored at the portal', () => {
+			tryEnterTelepipe('p1');
+			gameState.players.p2.x = 5;
+			gameState.players.p2.z = 5;
+			tryEnterTelepipe('p2');
+
+			gameState.players.p1.ready = true;
+			gameState.players.p2.ready = true;
+			checkAllReady();
+
+			expect(gameState.players.p1.extracted).toBe(false);
+			expect(gameState.players.p2.extracted).toBe(false);
+			expect(Math.hypot(
+				gameState.players.p1.x - gameState.telepipe.x,
+				gameState.players.p1.z - gameState.telepipe.z,
+			)).toBeGreaterThan(PORTAL_RADIUS);
+			expect(Math.hypot(
+				gameState.players.p2.x - gameState.telepipe.x,
+				gameState.players.p2.z - gameState.telepipe.z,
+			)).toBeGreaterThan(PORTAL_RADIUS);
+
+			gameState.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
+			checkTelepipeProximity();
+
+			expect(gameState.players.p1.extracted).toBe(false);
+			expect(gameState.players.p2.extracted).toBe(false);
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.status).toBe('playing');
+		});
+
 		it('abandonSuspendedRun clears checkpoint and run', () => {
 			tryEnterTelepipe('p1');
 			gameState.players.p2.x = 5;
