@@ -33,6 +33,7 @@ describe('settings persistence', () => {
 		expect(defaults.showHitboxes).toBe(true);
 		expect(defaults.gamepad.moveStick).toBe('left');
 		expect(defaults.gamepad.deadzone).toBe(0.15);
+		expect(defaults.lockOnRepeatAction).toBe('unlock');
 	});
 
 	it('getSettings returns defaults when file missing', () => {

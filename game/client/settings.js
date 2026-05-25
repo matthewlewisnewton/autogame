@@ -5,7 +5,7 @@ import { setSoundEnabledFromSettings } from './audio.js';
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
 
-/** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, gamepad: { bindings: object, moveStick: string, deadzone: number } }} AccountSettings */
+/** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', gamepad: { bindings: object, moveStick: string, deadzone: number } }} AccountSettings */
 
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
@@ -19,6 +19,7 @@ export function getDefaultSettings() {
 		soundEnabled: true,
 		particlesEnabled: true,
 		showHitboxes: true,
+		lockOnRepeatAction: 'unlock',
 		gamepad: {
 			bindings: {},
 			moveStick: 'left',
@@ -178,4 +179,11 @@ export function areHitboxesVisible() {
 
 export function getGamepadConfig() {
 	return cachedSettings.gamepad || getDefaultSettings().gamepad;
+}
+
+/** @returns {'unlock' | 'cycle' | 'reacquire'} */
+export function getLockOnRepeatAction() {
+	const action = cachedSettings.lockOnRepeatAction;
+	if (action === 'cycle' || action === 'reacquire') return action;
+	return 'unlock';
 }

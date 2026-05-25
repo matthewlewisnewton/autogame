@@ -15,6 +15,7 @@
       <p id="status">Connecting...</p>
       <button id="logout-btn" class="hidden">Logout</button>
       <button id="mute-btn">🔊</button>
+      <button id="settings-btn" type="button" title="Settings">⚙</button>
       <div id="vanguard-hud">
         <div id="vanguard-portrait">
           <div id="character-frame">
@@ -188,6 +189,24 @@
         <div id="summary-card-choices-empty" style="display:none;">No card choices were found this run.</div>
       </div>
       <button id="return-to-lobby-btn">Return to Guild</button>
+    </div>
+    <div id="settings-overlay" class="hidden">
+      <div id="settings-modal">
+        <button type="button" class="settings-close" id="settings-close-btn" aria-label="Close settings">&times;</button>
+        <h2>Settings</h2>
+        <div class="settings-section">
+          <h3>Controls</h3>
+          <label class="settings-field" for="lock-on-repeat-select">
+            Lock-on repeat press
+            <select id="lock-on-repeat-select">
+              <option value="unlock">Unlock (Dark Souls)</option>
+              <option value="cycle">Cycle target (OoT / PSO)</option>
+              <option value="reacquire">Re-acquire nearest</option>
+            </select>
+          </label>
+          <p class="settings-hint">Press Z or gamepad L trigger to lock onto the nearest enemy.</p>
+        </div>
+      </div>
     </div>
     <div id="auth-overlay" class="hidden">
       <div id="auth-modal">

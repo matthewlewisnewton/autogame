@@ -14,6 +14,7 @@ function getDefaultSettings() {
 		soundEnabled: true,
 		particlesEnabled: true,
 		showHitboxes: true,
+		lockOnRepeatAction: 'unlock',
 		gamepad: {
 			bindings: {},
 			moveStick: 'left',

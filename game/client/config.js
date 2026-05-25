@@ -101,6 +101,18 @@ export const GAMEPAD_DEADZONE = 0.15;
 /** Gamepad right-stick camera turn speed at full deflection (rad/s) */
 export const GAMEPAD_LOOK_SENSITIVITY = 2.5;
 
+/** Lock-on acquisition range — matches server DETECTION_RADIUS */
+export const LOCK_ON_RANGE = 8;
+
+/** Auto-unlock when target exceeds this distance */
+export const LOCK_ON_BREAK_RANGE = 10;
+
+/** Camera yaw smoothing speed while locked on (rad/s) */
+export const LOCK_ON_CAMERA_LERP = 8;
+
+/** Default gamepad button index for lock-on (L trigger) */
+export const LOCK_ON_GAMEPAD_BUTTON = 6;
+
 // ── Movement ──
 
 /** Player movement speed (units/s) — matches server constant exactly */

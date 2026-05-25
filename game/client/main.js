@@ -63,6 +63,11 @@ import {
 	MAX_MS,
 } from './config.js';
 import {
+	patchSettings,
+	getLockOnRepeatAction,
+	onSettingsChange,
+} from './settings.js';
+import {
 	computeDeckHudStats,
 	computeDesperationHudStats,
 	formatCharacterId,
@@ -143,6 +148,10 @@ const deckStackEl = document.getElementById('deck-stack');
 const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
 const deckViewerGridEl = document.getElementById('deck-viewer-grid');
 const deckViewerCountEl = document.getElementById('deck-viewer-count');
+const settingsOverlayEl = document.getElementById('settings-overlay');
+const settingsBtnEl = document.getElementById('settings-btn');
+const settingsCloseBtnEl = document.getElementById('settings-close-btn');
+const lockOnRepeatSelectEl = document.getElementById('lock-on-repeat-select');
 
 // ── Auth overlay elements ──
 const authOverlayEl = document.getElementById('auth-overlay');
@@ -1926,7 +1935,7 @@ window.addEventListener('keydown', (e) => {
 	}
 });
 
-setGamepadInputHandler(({ slots, toggleDeck }) => {
+setGamepadInputHandler(({ slots, toggleDeck, lockOn: _lockOn }) => {
 	if (!gameState || gameState.gamePhase !== 'playing') return;
 	for (const slot of slots) useCard(slot);
 	if (toggleDeck) toggleDeckViewer();
@@ -2131,6 +2140,43 @@ document.addEventListener('click', (e) => {
 });
 
 updateMuteButton();
+
+// ── Settings overlay ──
+
+function syncSettingsForm() {
+	if (lockOnRepeatSelectEl) {
+		lockOnRepeatSelectEl.value = getLockOnRepeatAction();
+	}
+}
+
+function openSettingsOverlay() {
+	syncSettingsForm();
+	if (settingsOverlayEl) settingsOverlayEl.classList.remove('hidden');
+}
+
+function closeSettingsOverlay() {
+	if (settingsOverlayEl) settingsOverlayEl.classList.add('hidden');
+}
+
+if (settingsBtnEl) {
+	settingsBtnEl.addEventListener('click', openSettingsOverlay);
+}
+if (settingsCloseBtnEl) {
+	settingsCloseBtnEl.addEventListener('click', closeSettingsOverlay);
+}
+if (settingsOverlayEl) {
+	settingsOverlayEl.addEventListener('click', (e) => {
+		if (e.target === settingsOverlayEl) closeSettingsOverlay();
+	});
+}
+if (lockOnRepeatSelectEl) {
+	lockOnRepeatSelectEl.addEventListener('change', () => {
+		patchSettings({ lockOnRepeatAction: lockOnRepeatSelectEl.value });
+	});
+}
+
+onSettingsChange(syncSettingsForm);
+syncSettingsForm();
 
 // ── Run Summary Overlay ──
 
