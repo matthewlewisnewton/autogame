@@ -35,7 +35,16 @@ harness/progress/events.ndjson
 harness/progress/gpu-uptime.json
 harness/progress/token-totals.json
 harness/progress/.tunnel-credentials
+
+# Agent / local scratch paths — machine-local, not repo content.
+memory/
+scratch/
+temp_artifacts/
+lobby.png/
+
 tickets/**/artifacts/
+tickets/**/qwen-openai-logs/
+tickets/**/coverage-round-*/
 tickets/**/review-round-*/
 tickets/**/.reviews/
 tickets/**/rescue/
