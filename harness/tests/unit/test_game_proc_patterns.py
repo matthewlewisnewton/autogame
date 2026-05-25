@@ -11,7 +11,14 @@ each hit EADDRINUSE.
 """
 from __future__ import annotations
 
-from harness.steps.game import _is_harness_game_proc
+import sys
+from unittest.mock import MagicMock, patch
+
+from harness.steps.game import (
+    _is_harness_game_proc,
+    _pid_cmdline,
+    _port_holders,
+)
 
 
 class TestIsHarnessGameProc:
@@ -37,3 +44,54 @@ class TestIsHarnessGameProc:
 
     def test_port_prefix_not_matched(self):
         assert not _is_harness_game_proc("vite --port 51735")
+
+
+class TestPortHolders:
+    @patch("harness.steps.game._pid_cmdline", return_value="node game/server/index.js")
+    @patch("harness.steps.game.subprocess.run")
+    def test_darwin_uses_lsof(self, mock_run: MagicMock, _mock_cmdline: MagicMock) -> None:
+        mock_run.return_value.stdout = "4242\n"
+        with patch.object(sys, "platform", "darwin"):
+            assert _port_holders(3000) == [(4242, "node game/server/index.js")]
+        mock_run.assert_called_once_with(
+            ["lsof", "-nP", "-iTCP:3000", "-sTCP:LISTEN", "-t"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+    @patch("harness.steps.game._pid_cmdline", return_value="vite --port 5173 --strictPort")
+    @patch("harness.steps.game.subprocess.run")
+    def test_linux_uses_ss(self, mock_run: MagicMock, _mock_cmdline: MagicMock) -> None:
+        mock_run.return_value.stdout = "LISTEN 0 128 *:5173 users:((\"node\",pid=5150,fd=21))"
+        with patch.object(sys, "platform", "linux"):
+            assert _port_holders(5173) == [(5150, "vite --port 5173 --strictPort")]
+        mock_run.assert_called_once_with(
+            ["ss", "-tlnp", "sport = :5173"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+
+class TestPidCmdline:
+    @patch("harness.steps.game.subprocess.run")
+    def test_darwin_uses_ps(self, mock_run: MagicMock) -> None:
+        mock_run.return_value.returncode = 0
+        mock_run.return_value.stdout = "node game/server/index.js"
+        with patch.object(sys, "platform", "darwin"):
+            assert _pid_cmdline(4242) == "node game/server/index.js"
+        mock_run.assert_called_once_with(
+            ["ps", "-p", "4242", "-o", "args="],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+
+    @patch("builtins.open", create=True)
+    def test_linux_reads_proc(self, mock_open: MagicMock) -> None:
+        mock_open.return_value.__enter__.return_value.read.return_value = (
+            b"node\x00game/server/index.js"
+        )
+        with patch.object(sys, "platform", "linux"):
+            assert _pid_cmdline(4242) == "node game/server/index.js"

@@ -10,6 +10,7 @@ import os
 import re
 import socket
 import subprocess
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -31,6 +32,15 @@ _GAME_PIDS: list[int] = []
 
 
 def _port_holders(port: int) -> list[tuple[int, str]]:
+    if sys.platform == "darwin":
+        return _port_holders_darwin(port)
+    if sys.platform.startswith("linux"):
+        return _port_holders_linux(port)
+    holders = _port_holders_darwin(port)
+    return holders or _port_holders_linux(port)
+
+
+def _port_holders_linux(port: int) -> list[tuple[int, str]]:
     try:
         result = subprocess.run(
             ["ss", "-tlnp", f"sport = :{port}"],
@@ -39,19 +49,70 @@ def _port_holders(port: int) -> list[tuple[int, str]]:
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return []
     pids: list[tuple[int, str]] = []
+    seen: set[int] = set()
     for line in result.stdout.splitlines():
-        for m in re.finditer(r'pid=(\d+)', line):
+        for m in re.finditer(r"pid=(\d+)", line):
             pid = int(m.group(1))
+            if pid in seen:
+                continue
+            seen.add(pid)
             pids.append((pid, _pid_cmdline(pid)))
     return pids
 
 
+def _port_holders_darwin(port: int) -> list[tuple[int, str]]:
+    try:
+        result = subprocess.run(
+            ["lsof", "-nP", f"-iTCP:{port}", "-sTCP:LISTEN", "-t"],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return []
+    pids: list[tuple[int, str]] = []
+    seen: set[int] = set()
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            pid = int(line)
+        except ValueError:
+            continue
+        if pid in seen:
+            continue
+        seen.add(pid)
+        pids.append((pid, _pid_cmdline(pid)))
+    return pids
+
+
 def _pid_cmdline(pid: int) -> str:
+    if sys.platform == "darwin":
+        return _pid_cmdline_darwin(pid)
+    if sys.platform.startswith("linux"):
+        return _pid_cmdline_linux(pid)
+    cmdline = _pid_cmdline_darwin(pid)
+    return cmdline or _pid_cmdline_linux(pid)
+
+
+def _pid_cmdline_linux(pid: int) -> str:
     try:
         with open(f"/proc/{pid}/cmdline", "rb") as f:
             return f.read().replace(b"\0", b" ").decode("utf-8", errors="replace").strip()
     except OSError:
         return ""
+
+
+def _pid_cmdline_darwin(pid: int) -> str:
+    try:
+        result = subprocess.run(
+            ["ps", "-p", str(pid), "-o", "args="],
+            capture_output=True, text=True, timeout=5,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return ""
+    if result.returncode != 0:
+        return ""
+    return result.stdout.strip()
 
 
 def _is_harness_game_proc(cmdline: str) -> bool:
