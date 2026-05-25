@@ -27,7 +27,9 @@ import {
 	tryEnterTelepipe,
 	captureRunCheckpoint,
 	restoreRunCheckpoint,
+	checkTelepipeProximity,
 	PORTAL_RADIUS,
+	PORTAL_PLACEMENT_GRACE_MS,
 	isEntityPositionBlocked,
 	ENTITY_RADIUS,
 	PLAYER_RADIUS,
@@ -5098,6 +5100,16 @@ describe('Telepipe suspend and resume', () => {
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().telepipe).toEqual(expect.objectContaining({ x: portalX, z: portalZ }));
 		expect(testGameState().enemies.some((e) => e.id === 'e-telepipe-test')).toBe(true);
+		expect(testGameState().players[p1Id].extracted).toBe(false);
+		expect(testGameState().players[p2Id].extracted).toBe(false);
+
+		const afterResume = testGameState();
+		afterResume.telepipe.placedAt = Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1;
+		checkTelepipeProximity();
+
+		expect(testGameState().gamePhase).toBe('playing');
+		expect(testGameState().players[p1Id].extracted).toBe(false);
+		expect(testGameState().players[p2Id].extracted).toBe(false);
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
