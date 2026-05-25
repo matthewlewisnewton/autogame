@@ -50,14 +50,13 @@ jobs:
 
       - name: Start server
         env:
+          NODE_ENV: test
           PERSISTENCE_BACKEND: memory
         run: |
           pnpm -C server exec node index.js &
           for i in $(seq 1 30); do
-            if curl -sf http://localhost:3000/api/register -X POST \
-              -H 'Content-Type: application/json' \
-              -d '{"username":"healthcheck","password":"password123"}' >/dev/null 2>&1; then
-              echo "Server ready"
+            if curl -sf http://localhost:3000/healthz >/dev/null 2>&1; then
+              echo "Server ready (healthz)"
               exit 0
             fi
             sleep 1
