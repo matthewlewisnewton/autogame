@@ -260,7 +260,7 @@ describe('Photon Forge UI', () => {
 		expect(document.getElementById('forge-selected-name').textContent).toBe('Rust-Forged Saber');
 		expect(document.getElementById('forge-stat-rows').querySelectorAll('tr').length).toBeGreaterThan(0);
 		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(true);
-		expect(document.getElementById('forge-upgrade-cost').textContent).toContain('100 Meseta');
+		expect(document.getElementById('forge-upgrade-cost').textContent).toContain('100 Money');
 	});
 
 	it('enables upgrade when the player can afford the next level', async () => {
@@ -2130,6 +2130,7 @@ describe('healthBarColor(hp, maxHp)', () => {
 
 describe('auth overlay functions', () => {
 	beforeEach(() => {
+		vi.resetModules();
 		// Create all required DOM elements that main.js queries at module load time
 		const requiredIds = [
 			'status', 'vanguard-hud', 'character-id', 'player-level',
@@ -2213,13 +2214,49 @@ describe('auth overlay functions', () => {
 			document.body.appendChild(overlay);
 		}
 
-		// Create logout button if missing
-		if (!document.getElementById('logout-btn')) {
-			const logoutBtn = document.createElement('button');
-			logoutBtn.id = 'logout-btn';
-			logoutBtn.classList.add('hidden');
-			document.body.appendChild(logoutBtn);
+		// Create app toolbar if missing
+		if (!document.getElementById('app-toolbar')) {
+			const toolbar = document.createElement('div');
+			toolbar.id = 'app-toolbar';
+			toolbar.classList.add('hidden');
+			for (const id of ['logout-btn', 'settings-btn', 'mute-btn']) {
+				const btn = document.createElement('button');
+				btn.id = id;
+				if (id === 'mute-btn') btn.textContent = '🔊';
+				if (id === 'settings-btn') btn.title = 'Settings';
+				toolbar.appendChild(btn);
+			}
+			document.body.appendChild(toolbar);
 		}
+
+		for (const id of ['lobby-browser-settings-btn', 'lobby-settings-btn']) {
+			if (!document.getElementById(id)) {
+				const btn = document.createElement('button');
+				btn.id = id;
+				btn.textContent = 'Settings';
+				document.body.appendChild(btn);
+			}
+		}
+
+		if (!document.getElementById('settings-overlay')) {
+			const overlay = document.createElement('div');
+			overlay.id = 'settings-overlay';
+			overlay.classList.add('hidden');
+			const modal = document.createElement('div');
+			modal.id = 'settings-modal';
+			const closeBtn = document.createElement('button');
+			closeBtn.id = 'settings-close-btn';
+			const select = document.createElement('select');
+			select.id = 'lock-on-repeat-select';
+			modal.appendChild(closeBtn);
+			modal.appendChild(select);
+			overlay.appendChild(modal);
+			document.body.appendChild(overlay);
+		}
+	});
+
+	afterEach(() => {
+		vi.resetModules();
 	});
 
 	it('exposes auth overlay functions on window', async () => {
@@ -2237,15 +2274,18 @@ describe('auth overlay functions', () => {
 		const overlay = document.getElementById('auth-overlay');
 		const lobbyBrowser = document.getElementById('lobby-browser');
 		const lobby = document.getElementById('lobby');
+		const toolbar = document.getElementById('app-toolbar');
 		overlay.classList.add('hidden');
 		if (lobbyBrowser) lobbyBrowser.classList.remove('hidden');
 		if (lobby) lobby.classList.remove('hidden');
+		if (toolbar) toolbar.classList.remove('hidden');
 
 		window.showAuthOverlay();
 
 		expect(overlay.classList.contains('hidden')).toBe(false);
 		if (lobbyBrowser) expect(lobbyBrowser.classList.contains('hidden')).toBe(true);
 		if (lobby) expect(lobby.classList.contains('hidden')).toBe(true);
+		if (toolbar) expect(toolbar.classList.contains('hidden')).toBe(true);
 	});
 
 	it('hideAuthOverlay adds .hidden to #auth-overlay and shows the lobby browser', async () => {
@@ -2253,13 +2293,32 @@ describe('auth overlay functions', () => {
 
 		const overlay = document.getElementById('auth-overlay');
 		const lobbyBrowser = document.getElementById('lobby-browser');
+		const toolbar = document.getElementById('app-toolbar');
 		overlay.classList.remove('hidden');
 		if (lobbyBrowser) lobbyBrowser.classList.add('hidden');
+		if (toolbar) toolbar.classList.add('hidden');
 
 		window.hideAuthOverlay();
 
 		expect(overlay.classList.contains('hidden')).toBe(true);
 		if (lobbyBrowser) expect(lobbyBrowser.classList.contains('hidden')).toBe(false);
+		if (toolbar) expect(toolbar.classList.contains('hidden')).toBe(false);
+	});
+
+	it('lobby settings buttons open the settings overlay', async () => {
+		await import('../main.js');
+
+		const settingsOverlay = document.getElementById('settings-overlay');
+		settingsOverlay.classList.add('hidden');
+
+		document.getElementById('lobby-browser-settings-btn')?.click();
+		expect(settingsOverlay.classList.contains('hidden')).toBe(false);
+
+		window.closeSettingsOverlay();
+		expect(settingsOverlay.classList.contains('hidden')).toBe(true);
+
+		document.getElementById('lobby-settings-btn')?.click();
+		expect(settingsOverlay.classList.contains('hidden')).toBe(false);
 	});
 
 	it('showRegisterForm shows register form and hides login form', async () => {

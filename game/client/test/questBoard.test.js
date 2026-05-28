@@ -38,7 +38,7 @@ describe('formatObjectiveSummary()', () => {
 
 describe('formatRewardSummary()', () => {
 	it('formats quest reward currency', () => {
-		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 meseta');
+		expect(formatRewardSummary(SAMPLE_QUESTS[0])).toBe('Reward: 10 money');
 	});
 });
 
@@ -58,7 +58,7 @@ describe('renderQuestBoard()', () => {
 		expect(cards[1].classList.contains('selected')).toBe(true);
 		expect(cards[1].querySelector('.quest-name').textContent).toBe('Prism Salvage');
 		expect(cards[1].querySelector('.quest-objective').textContent).toContain('Recover 3 prisms');
-		expect(cards[1].querySelector('.quest-reward').textContent).toBe('Reward: 12 meseta');
+		expect(cards[1].querySelector('.quest-reward').textContent).toBe('Reward: 12 money');
 	});
 
 	it('invokes onSelectQuest when a card is clicked', () => {

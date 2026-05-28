@@ -10,12 +10,14 @@
     <link rel="stylesheet" href="./style.css">
   </head>
   <body>
+    <div id="app-toolbar" class="hidden">
+      <button id="logout-btn">Logout</button>
+      <button id="settings-btn" type="button" title="Settings">⚙</button>
+      <button id="mute-btn">🔊</button>
+    </div>
     <div id="ui">
       <h1>Multiplayer Game</h1>
       <p id="status">Connecting...</p>
-      <button id="logout-btn" class="hidden">Logout</button>
-      <button id="mute-btn">🔊</button>
-      <button id="settings-btn" type="button" title="Settings">⚙</button>
       <div id="vanguard-hud">
         <div id="vanguard-portrait">
           <div id="character-frame">
@@ -52,7 +54,7 @@
           </div>
         </div>
       </div>
-      <div id="currency-display">Meseta 0</div>
+      <div id="currency-display">Money 0</div>
       <div id="objective-hud"></div>
     </div>
     <div id="card-hand">
@@ -79,12 +81,16 @@
         <input id="create-lobby-name" type="text" placeholder="Lobby name (optional)" maxlength="48" />
         <button id="create-lobby-btn" type="button">Open Channel</button>
         <button id="refresh-lobbies-btn" type="button">Refresh</button>
+        <button id="lobby-browser-settings-btn" type="button" class="lobby-settings-btn">Settings</button>
       </div>
       <div id="lobby-browser-error" style="display:none;"></div>
       <ul id="lobby-list"></ul>
     </div>
     <div id="lobby" class="hidden">
-      <h2>Hunter Guild</h2>
+      <div class="lobby-header">
+        <h2>Hunter Guild</h2>
+        <button id="lobby-settings-btn" type="button" class="lobby-settings-btn">Settings</button>
+      </div>
       <div id="lobby-player-list-wrapper">
         <h3>Players</h3>
         <ul id="lobby-player-list">
@@ -115,7 +121,7 @@
         <div id="deck-error" style="display:none;"></div>
         <div id="card-economy-section">
           <h3>Card Economy</h3>
-          <div id="lobby-currency-display">Meseta: 0</div>
+          <div id="lobby-currency-display">Money: 0</div>
           <div id="pending-trade-offer" style="display:none;">
             <p id="pending-trade-text"></p>
             <button id="accept-trade-btn" type="button">Accept Trade</button>
@@ -141,7 +147,7 @@
       <div id="card-shop" class="hidden">
         <div id="card-shop-layout">
           <h3>Today's Offer</h3>
-          <div id="shop-currency-display">Meseta: 0</div>
+          <div id="shop-currency-display">Money: 0</div>
           <div id="shop-offer-display" class="shop-empty">Loading offer...</div>
           <button id="buy-shop-card-btn" type="button" disabled>Buy</button>
         </div>
@@ -165,7 +171,7 @@
               </thead>
               <tbody id="forge-stat-rows"></tbody>
             </table>
-            <div id="forge-upgrade-cost">Cost: — Meseta</div>
+            <div id="forge-upgrade-cost">Cost: — Money</div>
             <button id="forge-upgrade-btn" type="button" disabled>Upgrade</button>
             <div id="forge-error" style="display:none;"></div>
           </div>
@@ -181,7 +187,7 @@
       <div id="summary-quest"></div>
       <div id="summary-duration">0s</div>
       <div id="summary-enemies">Hostiles purged: 0</div>
-      <div id="summary-currency">Meseta collected: 0</div>
+      <div id="summary-currency">Money collected: 0</div>
       <div id="summary-rewards">
         <div id="summary-rewards-currency"></div>
         <div id="summary-rewards-cards"></div>

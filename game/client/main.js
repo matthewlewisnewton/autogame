@@ -14,7 +14,7 @@ import {
 	formatCurrencyPrice,
 	formatUpgradeCostEmpty,
 	formatUpgradeCost,
-	formatMesetaEarned,
+	formatMoneyEarned,
 	formatAttuneCost,
 	getCardTypeLabel,
 } from './theme.js';
@@ -140,6 +140,7 @@ const createLobbyBtnEl = document.getElementById('create-lobby-btn');
 const refreshLobbiesBtnEl = document.getElementById('refresh-lobbies-btn');
 const leaveLobbyBtnEl = document.getElementById('leave-lobby-btn');
 const uiEl = document.getElementById('ui');
+const appToolbarEl = document.getElementById('app-toolbar');
 const logoutBtn = document.getElementById('logout-btn');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
@@ -149,6 +150,8 @@ const deckViewerCountEl = document.getElementById('deck-viewer-count');
 const settingsOverlayEl = document.getElementById('settings-overlay');
 const settingsBtnEl = document.getElementById('settings-btn');
 const settingsCloseBtnEl = document.getElementById('settings-close-btn');
+const lobbyBrowserSettingsBtnEl = document.getElementById('lobby-browser-settings-btn');
+const lobbySettingsBtnEl = document.getElementById('lobby-settings-btn');
 const lockOnRepeatSelectEl = document.getElementById('lock-on-repeat-select');
 
 // ── Auth overlay elements ──
@@ -169,12 +172,22 @@ function showAuthOverlay() {
 	if (authOverlayEl) authOverlayEl.classList.remove('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	hideAppToolbar();
 }
 
 /** Hide the auth overlay and show the lobby browser. */
 function hideAuthOverlay() {
 	if (authOverlayEl) authOverlayEl.classList.add('hidden');
+	showAppToolbar();
 	showLobbyBrowser();
+}
+
+function showAppToolbar() {
+	if (appToolbarEl) appToolbarEl.classList.remove('hidden');
+}
+
+function hideAppToolbar() {
+	if (appToolbarEl) appToolbarEl.classList.add('hidden');
 }
 
 function showLobbyBrowser() {
@@ -317,7 +330,7 @@ function applyLobbyJoinedData(data) {
 	if (data.accountId) {
 		const username = data.username || data.accountId;
 		if (statusEl) statusEl.textContent = `Logged in as ${username}${data.lobbyName ? ` · ${data.lobbyName}` : ''}`;
-		if (logoutBtn) logoutBtn.classList.remove('hidden');
+		showAppToolbar();
 	}
 
 	showGameLobby();
@@ -534,7 +547,7 @@ function bindSocketHandlers(s) {
 		if (data.accountId) {
 			const username = data.username || data.accountId;
 			if (statusEl) statusEl.textContent = `Logged in as ${username}`;
-			if (logoutBtn) logoutBtn.classList.remove('hidden');
+			showAppToolbar();
 		}
 
 		// Reconnect path: lobbyJoined already restored lobby/run UI.
@@ -2098,7 +2111,7 @@ if (logoutBtn) {
 		if (socket) socket.disconnect();
 
 		myId = null;
-		if (logoutBtn) logoutBtn.classList.add('hidden');
+		hideAppToolbar();
 		if (uiEl) uiEl.style.display = 'none';
 		if (cardHandEl) cardHandEl.style.display = 'none';
 		setDeckStackVisible(false);
@@ -2194,6 +2207,12 @@ function closeSettingsOverlay() {
 
 if (settingsBtnEl) {
 	settingsBtnEl.addEventListener('click', openSettingsOverlay);
+}
+if (lobbyBrowserSettingsBtnEl) {
+	lobbyBrowserSettingsBtnEl.addEventListener('click', openSettingsOverlay);
+}
+if (lobbySettingsBtnEl) {
+	lobbySettingsBtnEl.addEventListener('click', openSettingsOverlay);
 }
 if (settingsCloseBtnEl) {
 	settingsCloseBtnEl.addEventListener('click', closeSettingsOverlay);
@@ -2296,7 +2315,7 @@ function showRunSummary(data) {
 
 	if (rewards) {
 		const currencyBonus = rewards.currency || 0;
-		summaryRewardsCurrencyEl.textContent = formatMesetaEarned(currencyBonus);
+		summaryRewardsCurrencyEl.textContent = formatMoneyEarned(currencyBonus);
 
 		if (rewards.cards && rewards.cards.length > 0) {
 			const cardLines = rewards.cards.map((c) => {
@@ -2428,6 +2447,8 @@ window.__getAudioCtx = () => getAudioContext();
 window.showAuthOverlay = showAuthOverlay;
 window.hideAuthOverlay = hideAuthOverlay;
 window.showLobbyBrowser = showLobbyBrowser;
+window.openSettingsOverlay = openSettingsOverlay;
+window.closeSettingsOverlay = closeSettingsOverlay;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;

@@ -48,12 +48,24 @@ h1 {
 #status.disconnected { color: #f87171; }
 #status.reconnecting { color: #facc15; }
 
+#app-toolbar {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 110;
+  pointer-events: auto;
+}
+
+#app-toolbar.hidden {
+  display: none;
+}
+
 /* ── Mute Toggle ── */
 
 #mute-btn {
-  position: absolute;
-  top: 12px;
-  right: 20px;
   width: 40px;
   height: 40px;
   font-size: 20px;
@@ -62,8 +74,6 @@ h1 {
   background: rgba(15, 23, 42, 0.75);
   color: white;
   cursor: pointer;
-  pointer-events: auto;
-  z-index: 12;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -75,9 +85,6 @@ h1 {
 }
 
 #settings-btn {
-  position: absolute;
-  top: 12px;
-  right: 68px;
   width: 40px;
   height: 40px;
   font-size: 20px;
@@ -86,8 +93,6 @@ h1 {
   background: rgba(15, 23, 42, 0.75);
   color: white;
   cursor: pointer;
-  pointer-events: auto;
-  z-index: 12;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -312,6 +317,30 @@ canvas {
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+  justify-content: center;
+}
+
+.lobby-settings-btn {
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(30, 41, 59, 0.9);
+  color: #e2e8f0;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.lobby-settings-btn:hover {
+  background: rgba(51, 65, 85, 0.95);
+}
+
+.lobby-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
   justify-content: center;
 }
 
@@ -1654,9 +1683,6 @@ canvas {
 /* ── Logout Button ── */
 
 #logout-btn {
-  position: absolute;
-  top: 12px;
-  right: 60px;
   padding: 6px 14px;
   font-size: 13px;
   font-weight: 600;
@@ -1665,8 +1691,6 @@ canvas {
   background: rgba(15, 23, 42, 0.75);
   color: white;
   cursor: pointer;
-  pointer-events: auto;
-  z-index: 12;
   transition: background 0.2s ease;
 }
 

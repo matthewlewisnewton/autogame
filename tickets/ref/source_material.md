@@ -78,5 +78,5 @@ Search these terms on Google Images:
 
 - **Section ID**: Character name determines drop tables. Encourages trading between players.
 - **Tekker**: Unidentified "???" items must be appraised at the shop before use.
-- **Bank**: Stores items and currency (Meseta) between runs.
+- **Bank**: Stores items and currency (money) between runs.
 - **Trading**: Direct player-to-player trade with item inspection.
