@@ -132,6 +132,28 @@ describe('renderDeckEditor()', () => {
 		expect(readyBtn.classList.contains('deck-invalid')).toBe(true);
 	});
 
+	it('groups duplicate loadout cards on one row with a count badge', async () => {
+		await import('../main.js');
+
+		const mockOwned = { iron_sword: 3, flame_blade: 1 };
+		const mockDeck = ['iron_sword', 'iron_sword', 'flame_blade', 'iron_sword'];
+
+		window.__setDeckState(mockDeck, mockOwned);
+		window.renderDeckEditor();
+
+		const deckEntries = document.querySelectorAll('.deck-entry');
+		expect(deckEntries.length).toBe(2);
+
+		const ironRow = Array.from(deckEntries).find(
+			(entry) => entry.querySelector('.card-label').textContent === 'Rust-Forged Saber',
+		);
+		expect(ironRow.querySelector('.deck-entry-count').textContent).toBe('×3');
+
+		const labels = Array.from(deckEntries).map((e) => e.querySelector('.card-label').textContent);
+		expect(labels[0]).toBe('Rust-Forged Saber');
+		expect(labels[1]).toBe('Solar Edge');
+	});
+
 	it('hides deck error on render', async () => {
 		await import('../main.js');
 

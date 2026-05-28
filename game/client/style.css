@@ -1409,10 +1409,12 @@ canvas {
   text-align: left;
 }
 
-.owned-card-entry .card-count {
+.owned-card-entry .card-count,
+.deck-entry .deck-entry-count {
   font-size: 12px;
   color: #94a3b8;
   flex-shrink: 0;
+  font-weight: 600;
 }
 
 .deck-add-btn,
