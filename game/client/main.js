@@ -20,6 +20,7 @@ import {
 } from './theme.js';
 import { io } from 'socket.io-client';
 import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
+import { buildLoadoutDeckDisplay } from './deck-loadout.js';
 import {
 	MAX_CARD_LEVEL,
 	getUpgradeCost,
@@ -1585,15 +1586,18 @@ function renderDeckEditor() {
 	}
 
 	selectedDeckListEl.innerHTML = '';
-	for (let i = 0; i < mySelectedDeck.length; i++) {
-		const entryId = mySelectedDeck[i];
-		const cardId = cardIdForDeckEntry(entryId);
-		const def = CARD_DEFS[cardId];
-		if (!def) continue;
+	const loadoutRows = buildLoadoutDeckDisplay(mySelectedDeck, cardIdForDeckEntry);
+	for (const row of loadoutRows) {
+		const { cardId, def, entryIds, count } = row;
 		const style = CARD_ACCENT_STYLE[cardId] || CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
-		const deckInstance = getDeckInventory().find((card) => card.instanceId === entryId);
+		const inventory = getDeckInventory();
+		const maxGrind = entryIds.reduce((max, entryId) => {
+			const instance = inventory.find((card) => card.instanceId === entryId);
+			return Math.max(max, instance?.grind || 0);
+		}, 0);
+		const grindBadge = maxGrind > 0 ? `<span class="grind-badge">+${maxGrind}</span>` : '';
 		const evolvedBadge = def.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
-		const grindBadge = grindBadgeForInstance(deckInstance);
+		const countBadge = count > 1 ? `<span class="deck-entry-count">×${count}</span>` : '';
 
 		const entry = document.createElement('div');
 		entry.className = `deck-entry${def.isEvolved ? ' evolved-card' : ''}`;
@@ -1602,11 +1606,13 @@ function renderDeckEditor() {
       <span class="card-label">${def.name}</span>
       ${evolvedBadge}
       ${grindBadge}
+      ${countBadge}
       <button class="deck-remove-btn">✕</button>
     `;
 		const removeBtn = entry.querySelector('.deck-remove-btn');
 		removeBtn.addEventListener('click', () => {
-			const instance = getDeckInventory().find((card) => card.instanceId === entryId);
+			const entryId = entryIds[entryIds.length - 1];
+			const instance = inventory.find((card) => card.instanceId === entryId);
 			socket.emit('deckRemoveCard', instance ? { instanceId: entryId, cardId } : { cardId });
 		});
 		selectedDeckListEl.appendChild(entry);
