@@ -34,6 +34,7 @@ export const MAX_HP = 100;
 
 /** Maximum player Magic Stones — synced via shared/constants.json */
 export const MAX_MS = sharedConstants.MAX_MAGIC_STONES;
+export const STARTING_MS = sharedConstants.STARTING_MAGIC_STONES;
 
 /** Walk-over pickup radius — slightly below server LOOT_PICKUP_RADIUS so the
  *  client emits lootPickup only when the player is clearly in range server-side
@@ -115,6 +116,9 @@ export const LOCK_ON_MIN_BEARING_DIST = 0.85;
 
 /** Maximum camera yaw turn speed while locked on (rad/s) */
 export const LOCK_ON_MAX_YAW_SPEED = 5;
+
+/** Seconds to ease the camera back after a locked target dies */
+export const LOCK_ON_DEATH_RELEASE_DURATION = 1.25;
 
 /** Default gamepad button index for lock-on (L trigger / LT) */
 export const LOCK_ON_GAMEPAD_BUTTON = 6;

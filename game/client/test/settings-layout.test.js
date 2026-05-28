@@ -71,5 +71,7 @@ describe('settings layout in index.html', () => {
 		expect(doc.getElementById('gamepad-deadzone-slider')).not.toBeNull();
 		expect(doc.getElementById('gamepad-move-stick-select')).not.toBeNull();
 		expect(doc.getElementById('calibration-button-grid')).not.toBeNull();
+		expect(doc.getElementById('calibration-debug-log')).not.toBeNull();
+		expect(doc.getElementById('calibration-debug-copy-btn')).not.toBeNull();
 	});
 });

@@ -10,6 +10,9 @@ import {
 	formatGamepadDeviceInfo,
 	EIGHTBITDO_VENDOR_ID,
 	EIGHTBITDO_64_PRODUCT_ID,
+	EIGHTBITDO_64_BT_PRODUCT_ID,
+	is8BitDo64BluetoothGamepad,
+	get8BitDo64VerticalCAxisIndex,
 } from '../gamepad-detect.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
 
@@ -55,6 +58,11 @@ describe('is8BitDoGamepad()', () => {
 	it('detects the 8BitDo 64 controller', () => {
 		expect(is8BitDo64Gamepad({ id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)' })).toBe(true);
 		expect(is8BitDo64Gamepad({ id: '2dc8-1930-8BitDo 64' })).toBe(true);
+		expect(is8BitDo64Gamepad({ id: '8BitDo 64 Bluetooth Controller (Vendor: 2dc8 Product: 3019)' })).toBe(true);
+		expect(EIGHTBITDO_64_BT_PRODUCT_ID).toBe(0x3019);
+		expect(is8BitDo64BluetoothGamepad({ id: '8BitDo 64 Bluetooth Controller (Vendor: 2dc8 Product: 3019)' })).toBe(true);
+		expect(get8BitDo64VerticalCAxisIndex({ id: '8BitDo 64 Bluetooth Controller (Vendor: 2dc8 Product: 3019)' })).toBe(5);
+		expect(get8BitDo64VerticalCAxisIndex({ id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)' })).toBeNull();
 	});
 });
 

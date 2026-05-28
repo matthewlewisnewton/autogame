@@ -11,13 +11,14 @@ export function loadoutTypeRank(type) {
 }
 
 /**
- * Group selected deck entries by card id (one row per card type in the loadout).
+ * Group selected deck entries by card id and attune level (one row per type + grind).
  *
  * @param {string[]} selectedDeck
  * @param {(entryId: string) => string|null} cardIdForEntry
- * @returns {Array<{ cardId: string, def: object, entryIds: string[], count: number }>}
+ * @param {(entryId: string) => number} [grindForEntry]
+ * @returns {Array<{ cardId: string, def: object, entryIds: string[], count: number, grind: number }>}
  */
-export function groupLoadoutDeckEntries(selectedDeck, cardIdForEntry) {
+export function groupLoadoutDeckEntries(selectedDeck, cardIdForEntry, grindForEntry = () => 0) {
 	if (!Array.isArray(selectedDeck)) return [];
 
 	const groups = new Map();
@@ -28,20 +29,26 @@ export function groupLoadoutDeckEntries(selectedDeck, cardIdForEntry) {
 		const def = cardId ? getCardDef(cardId) : null;
 		if (!def) continue;
 
-		if (!groups.has(cardId)) {
-			groups.set(cardId, { cardId, def, entryIds: [] });
-			order.push(cardId);
+		const grind = Number.isFinite(grindForEntry(entryId))
+			? Math.max(0, Math.floor(grindForEntry(entryId)))
+			: 0;
+		const groupKey = `${cardId}\0${grind}`;
+
+		if (!groups.has(groupKey)) {
+			groups.set(groupKey, { cardId, def, entryIds: [], grind });
+			order.push(groupKey);
 		}
-		groups.get(cardId).entryIds.push(entryId);
+		groups.get(groupKey).entryIds.push(entryId);
 	}
 
-	return order.map((cardId) => {
-		const group = groups.get(cardId);
+	return order.map((groupKey) => {
+		const group = groups.get(groupKey);
 		return {
-			cardId,
+			cardId: group.cardId,
 			def: group.def,
 			entryIds: group.entryIds,
 			count: group.entryIds.length,
+			grind: group.grind,
 		};
 	});
 }
@@ -65,7 +72,8 @@ export function sortLoadoutDeckGroups(groups) {
  *
  * @param {string[]} selectedDeck
  * @param {(entryId: string) => string|null} cardIdForEntry
+ * @param {(entryId: string) => number} [grindForEntry]
  */
-export function buildLoadoutDeckDisplay(selectedDeck, cardIdForEntry) {
-	return sortLoadoutDeckGroups(groupLoadoutDeckEntries(selectedDeck, cardIdForEntry));
+export function buildLoadoutDeckDisplay(selectedDeck, cardIdForEntry, grindForEntry) {
+	return sortLoadoutDeckGroups(groupLoadoutDeckEntries(selectedDeck, cardIdForEntry, grindForEntry));
 }

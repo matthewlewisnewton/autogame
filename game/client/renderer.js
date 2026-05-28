@@ -71,13 +71,20 @@ import { pollInput } from './input.js';
 import { playSound } from './audio.js';
 import {
 	isLockOnActive,
+	findEnemyById,
 	getLockedEnemyId,
 	clearLockOn,
+	clearLockOnCameraRelease,
+	clearAllLockOnState,
+	isLockOnCameraReleasing,
+	updateLockOnCameraRelease,
 	handleLockOnPress,
 	updateLockOn,
+	targetRelativeDirection,
 	getDirectionToTarget,
 	resetLockOnCameraTracking,
 	normalizeAngle,
+	cameraYawFromToTarget,
 } from './lockOn.js';
 import { getLockOnRepeatAction, getGamepadConfig } from './settings.js';
 
@@ -88,6 +95,7 @@ const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
+const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
@@ -112,6 +120,8 @@ let isCameraDragging = false;
 let cameraListenersAdded = false;
 /** Unit direction toward locked target on XZ plane, when lock-on is active. */
 let lockOnToTarget = null;
+/** Look-at point while easing out of lock-on after target death. */
+let lockOnReleaseLookAt = null;
 
 // ── Shared state references (set by main.js) ──
 let gameStateRef = null; // reference to gameState object set by main.js
@@ -139,8 +149,8 @@ const ROTATION_SYNC_EPS = 0.02;
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
 const lootMaterial = new THREE.MeshStandardMaterial({
 	color: 0xffd700,
-	emissive: 0xffa500,
-	emissiveIntensity: 0.4,
+	emissive: 0xeab308,
+	emissiveIntensity: 0.45,
 	roughness: 0.3,
 	metalness: 0.8,
 });
@@ -155,13 +165,15 @@ const crystalMaterial = new THREE.MeshStandardMaterial({
 const magicStoneGeometry = new THREE.OctahedronGeometry(0.5, 0);
 const magicStoneRingGeometry = new THREE.RingGeometry(0.4, 0.7, 24);
 const magicStoneMaterial = new THREE.MeshStandardMaterial({
-	color: 0xfbbf24,
-	emissive: 0xf59e0b,
+	color: 0xa78bfa,
+	emissive: 0x7c3aed,
 	emissiveIntensity: 1.1,
 	roughness: 0.15,
 	metalness: 0.85,
 });
-const collectingLoot = {}; // lootId → { mesh, value, createdAt }
+const LOOT_FLOAT_COLOR_MONEY = '#ffd700';
+const LOOT_FLOAT_COLOR_MAGIC_STONE = '#a78bfa';
+const collectingLoot = {}; // lootId → { mesh, value, kind, createdAt }
 const previousLootValues = {}; // lootId → { value, kind }
 
 // ── Damage number tracking ──
@@ -169,7 +181,16 @@ const damageNumbers = []; // { element, createdAt, position3d, duration }
 
 // ── Card hit tracking ──
 const lastCardHitTime = {}; // enemyId → performance.now() of last card hit
+
+/** Record cardUsed hits so minion-damage fallbacks skip duplicate VFX. */
+export function markCardHitEnemies(hits) {
+	const now = performance.now();
+	for (const hit of hits || []) {
+		if (hit?.enemyId) lastCardHitTime[hit.enemyId] = now;
+	}
+}
 const previousEnemyHp = {}; // enemyId → hp from previous frame
+const previousMinionHp = {}; // minionId → hp from previous frame
 const previousPlayerHp = {}; // playerId → hp from previous frame
 const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 
@@ -191,6 +212,66 @@ const ENEMY_ATTACK_VISUAL = {
 	miniboss:   { style: 'cone', coneAngle: Math.PI / 2, range: 5, color: 0xaa44ff, emissive: 0x8800cc },
 	spawner:    { style: 'radial' },
 };
+
+/** Minion mesh presets keyed by minion.type */
+const MINION_VISUAL = {
+	ancient_wyrm: {
+		shape: 'cylinder',
+		radius: 0.6,
+		height: 1.5,
+		color: 0x9333ea,
+		emissive: 0xef4444,
+		emissiveIntensity: 0.35,
+		scale: 1.5,
+	},
+	null_crawler: {
+		shape: 'octahedron',
+		radius: 0.35,
+		color: 0x22d3ee,
+		emissive: 0x06b6d4,
+		emissiveIntensity: 0.55,
+	},
+	bulkhead_mauler: {
+		shape: 'box',
+		width: 0.9,
+		height: 1.2,
+		depth: 0.9,
+		color: 0x78716c,
+		emissive: 0xf59e0b,
+		emissiveIntensity: 0.25,
+	},
+};
+
+function createMinionMesh(minionType) {
+	const visual = MINION_VISUAL[minionType] || {
+		shape: 'cylinder',
+		radius: 0.4,
+		height: 1,
+		color: 0x22c55e,
+		emissive: 0x000000,
+		emissiveIntensity: 0,
+	};
+
+	let geometry;
+	if (visual.shape === 'octahedron') {
+		geometry = new THREE.OctahedronGeometry(visual.radius, 0);
+	} else if (visual.shape === 'box') {
+		geometry = new THREE.BoxGeometry(visual.width, visual.height, visual.depth);
+	} else {
+		geometry = new THREE.CylinderGeometry(visual.radius, visual.radius, visual.height, 8);
+	}
+
+	const material = new THREE.MeshStandardMaterial({
+		color: visual.color,
+		emissive: visual.emissive,
+		emissiveIntensity: visual.emissiveIntensity,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	if (visual.scale) {
+		mesh.scale.setScalar(visual.scale);
+	}
+	return mesh;
+}
 
 function isTypingTarget(target) {
 	return target instanceof HTMLInputElement ||
@@ -257,13 +338,14 @@ function applyLockOnPress() {
 	);
 
 	if (result.action === 'locked' && result.enemy) {
+		clearLockOnCameraRelease();
+		lockOnReleaseLookAt = null;
 		resetLockOnCameraTracking();
-		lockOnToTarget = getDirectionToTarget(simX, simZ, result.enemy);
-		playerRotation = Math.atan2(lockOnToTarget.z, lockOnToTarget.x);
+		const toTarget = getDirectionToTarget(simX, simZ, result.enemy);
+		lockOnToTarget = toTarget;
+		playerRotation = Math.atan2(toTarget.z, toTarget.x);
 		lastEmittedRotation = playerRotation;
-		if (result.cameraYaw != null) {
-			cameraYaw = normalizeAngle(result.cameraYaw);
-		}
+		cameraYaw = normalizeAngle(cameraYawFromToTarget(toTarget));
 	} else {
 		lockOnToTarget = null;
 		if (result.cameraYaw != null) {
@@ -309,13 +391,31 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
 	const targetY = playerY + CAMERA_HEIGHT;
 	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
+
+	if (lockOnReleaseLookAt) {
+		const target = new THREE.Vector3(targetX, targetY, targetZ);
+		camera.position.lerp(target, 4.0 * delta);
+		camera.lookAt(
+			lockOnReleaseLookAt.lookAtX,
+			lockOnReleaseLookAt.lookAtY,
+			lockOnReleaseLookAt.lookAtZ,
+		);
+		return;
+	}
+
 	if (isLockOnActive()) {
 		camera.position.set(targetX, targetY, targetZ);
 	} else {
 		const target = new THREE.Vector3(targetX, targetY, targetZ);
 		camera.position.lerp(target, 5.0 * delta);
 	}
-	camera.lookAt(playerX, playerY, playerZ);
+
+	const lockedEnemy = findEnemyById(gameStateRef?.enemies, getLockedEnemyId());
+	if (lockedEnemy) {
+		camera.lookAt(lockedEnemy.x, playerY + 0.5, lockedEnemy.z);
+	} else {
+		camera.lookAt(playerX, playerY, playerZ);
+	}
 }
 
 // ── Public API ──
@@ -390,6 +490,7 @@ export function getMeshMaps() {
 		enemiesMeshes,
 		enemyHealthBars,
 		telegraphMeshes,
+		minionTelegraphMeshes,
 		minionsMeshes,
 		lootMeshes,
 	};
@@ -556,7 +657,7 @@ function createLootMesh(item) {
 		const ring = new THREE.Mesh(
 			magicStoneRingGeometry,
 			new THREE.MeshBasicMaterial({
-				color: 0xf59e0b,
+				color: 0x8b5cf6,
 				transparent: true,
 				opacity: 0.45,
 				side: THREE.DoubleSide,
@@ -804,8 +905,9 @@ export function updateMyPlayer(delta) {
 	// Block movement when dead
 	const me = gameStateRef && gameStateRef.players[myIdRef];
 	if (me && me.dead) {
-		clearLockOn();
+		clearAllLockOnState();
 		lockOnToTarget = null;
+		lockOnReleaseLookAt = null;
 		return;
 	}
 
@@ -821,8 +923,23 @@ export function updateMyPlayer(delta) {
 		playerRotation = lockState.playerRotation;
 		cameraYaw = lockState.cameraYaw;
 		lockOnToTarget = lockState.toTarget;
+		lockOnReleaseLookAt = null;
+	} else if (isLockOnCameraReleasing()) {
+		lockOnToTarget = null;
+		const release = updateLockOnCameraRelease(delta, simX, 0.5, simZ);
+		if (release) {
+			cameraYaw = release.cameraYaw;
+			lockOnReleaseLookAt = {
+				lookAtX: release.lookAtX,
+				lookAtY: release.lookAtY,
+				lookAtZ: release.lookAtZ,
+			};
+		} else {
+			lockOnReleaseLookAt = null;
+		}
 	} else {
 		lockOnToTarget = null;
+		lockOnReleaseLookAt = null;
 		cameraYaw += pollGamepadLook(delta, getGamepadRuntimeOptions().deadzone);
 	}
 
@@ -831,9 +948,12 @@ export function updateMyPlayer(delta) {
 	if (movement) {
 		moveAccumulator += delta;
 		moveEmitAccumulator += delta;
-		// Camera-relative movement even while locked — stick/keys match the view.
-		// Character facing and attacks still track the locked target separately.
-		const dir = cameraRelativeDirection(movement.x, movement.z);
+		// Target-relative while locked: stick up/down closes or opens distance,
+		// left/right strafes. Uses live bearing so frozen close-range camera
+		// aim does not swap or zero out forward/back input.
+		const dir = lockState.locked && lockState.liveToTarget
+			? targetRelativeDirection(movement.x, movement.z, lockState.liveToTarget)
+			: cameraRelativeDirection(movement.x, movement.z);
 		const dirX = dir.x;
 		const dirZ = dir.z;
 		const moveRotation = lockState.locked
@@ -920,14 +1040,15 @@ export function flashMesh(mesh, color, durationMs) {
  * @param {number} amount - amount to display
  * @param {string} color - CSS color string
  * @param {boolean} positive - if true, show as "+N" instead of "-N"
+ * @param {string} [suffix] - optional text after the number (e.g. " MS")
  */
-export function spawnDamageNumber(x, y, z, amount, color, positive) {
+export function spawnDamageNumber(x, y, z, amount, color, positive, suffix = '') {
 	if (!document.body) return;
 
-	const rounded = Math.abs(Math.round(amount));
+	const rounded = Math.abs(Math.round(Number(amount) || 0));
 	const prefix = positive ? '+' : '-';
 	const el = document.createElement('div');
-	el.textContent = `${prefix}${rounded}`;
+	el.textContent = `${prefix}${rounded}${suffix}`;
 	el.style.cssText = `
 		position: fixed;
 		left: 0;
@@ -1061,6 +1182,18 @@ export function createHealthBarMesh(enemyId, x, z, type) {
 	mesh.position.set(x, halfHeight + 0.5, z);
 	scene.add(mesh);
 	return mesh;
+}
+
+function enemyIsDamaged(enemy) {
+	const maxHp = enemy.maxHp || enemy.hp;
+	return enemy.hp < maxHp;
+}
+
+function ensureEnemyHealthBar(enemyId, enemy) {
+	if (!enemyIsDamaged(enemy)) return;
+	if (!enemyHealthBars[enemyId]) {
+		enemyHealthBars[enemyId] = createHealthBarMesh(enemyId, enemy.x, enemy.z, enemy.type);
+	}
 }
 
 /**
@@ -1243,12 +1376,12 @@ function getEnemyWindupDirection(enemy, targetPlayer) {
 	return { x: 1, z: 0 };
 }
 
-function createEnemyAttackTelegraph(enemy, targetPlayer) {
+function createEnemyAttackTelegraph(enemy, targetEntity) {
 	const visual = ENEMY_ATTACK_VISUAL[enemy.type] || ENEMY_ATTACK_VISUAL.grunt;
 	const range = visual.range ?? ENEMY_ATTACK_RANGE;
 
 	if (visual.style === 'cone') {
-		const direction = getEnemyWindupDirection(enemy, targetPlayer);
+		const direction = getEnemyWindupDirection(enemy, targetEntity);
 		const group = createConeHitboxGroup(
 			direction,
 			range,
@@ -1260,19 +1393,27 @@ function createEnemyAttackTelegraph(enemy, targetPlayer) {
 	}
 
 	const mesh = createEnemyRadialTelegraph(range);
-	const tx = targetPlayer ? targetPlayer.x : enemy.x;
-	const tz = targetPlayer ? targetPlayer.z : enemy.z;
+	const tx = targetEntity ? targetEntity.x : enemy.x;
+	const tz = targetEntity ? targetEntity.z : enemy.z;
 	mesh.position.set(tx, GROUND_OVERLAY_Y, tz);
 	return mesh;
 }
 
-function updateEnemyAttackTelegraph(enemy, telegraph, targetPlayer) {
+function updateEnemyAttackTelegraph(enemy, telegraph, targetEntity) {
 	const visual = ENEMY_ATTACK_VISUAL[enemy.type] || ENEMY_ATTACK_VISUAL.grunt;
 	if (visual.style === 'cone') {
 		telegraph.position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
-	} else if (targetPlayer) {
-		telegraph.position.set(targetPlayer.x, GROUND_OVERLAY_Y, targetPlayer.z);
+	} else if (targetEntity) {
+		telegraph.position.set(targetEntity.x, GROUND_OVERLAY_Y, targetEntity.z);
 	}
+}
+
+function resolveEnemyWindupTarget(enemy, gameState) {
+	if (!enemy?.windupTargetId) return null;
+	if (enemy.windupTargetType === 'minion') {
+		return gameState?.minions?.find((minion) => minion.id === enemy.windupTargetId) || null;
+	}
+	return gameState?.players?.[enemy.windupTargetId] || null;
 }
 
 function updateEnemyHitboxPulse(delta) {
@@ -1389,6 +1530,67 @@ function createProjectileHitboxGroup(direction, range, hitWidth, style) {
 	group.add(head);
 
 	return { group, head };
+}
+
+function createBeamTelegraphGroup(direction, range, hitWidth, style) {
+	const group = new THREE.Group();
+	const color = style.color ?? 0x22d3ee;
+	const emissive = style.emissive ?? 0x06b6d4;
+	const lineOpacity = style.opacity ?? 0.55;
+
+	const perpX = -direction.z * hitWidth;
+	const perpZ = direction.x * hitWidth;
+	const endX = direction.x * range;
+	const endZ = direction.z * range;
+	const outlinePoints = [
+		new THREE.Vector3(perpX, 0, perpZ),
+		new THREE.Vector3(endX + perpX, 0, endZ + perpZ),
+		new THREE.Vector3(-perpX, 0, -perpZ),
+		new THREE.Vector3(endX - perpX, 0, endZ - perpZ),
+	];
+	const outlineGeo = new THREE.BufferGeometry().setFromPoints(outlinePoints);
+	const outline = new THREE.LineSegments(
+		outlineGeo,
+		new THREE.LineBasicMaterial({ color: emissive, transparent: true, opacity: lineOpacity }),
+	);
+	group.add(outline);
+
+	const centerLinePoints = [
+		new THREE.Vector3(0, 0, 0),
+		new THREE.Vector3(endX, 0, endZ),
+	];
+	const centerLineGeo = new THREE.BufferGeometry().setFromPoints(centerLinePoints);
+	const centerLine = new THREE.Line(
+		centerLineGeo,
+		new THREE.LineBasicMaterial({ color, transparent: true, opacity: lineOpacity * 0.85 }),
+	);
+	group.add(centerLine);
+
+	return group;
+}
+
+function getMinionWindupDirection(minion) {
+	if (minion.windupDirX != null && minion.windupDirZ != null) {
+		return { x: minion.windupDirX, z: minion.windupDirZ };
+	}
+	return { x: 1, z: 0 };
+}
+
+function createNullCrawlerTelegraph(minion) {
+	const direction = getMinionWindupDirection(minion);
+	const range = minion.attackRange ?? 14;
+	const hitWidth = minion.projectileHitWidth ?? 0.8;
+	const group = createBeamTelegraphGroup(direction, range, hitWidth, {
+		color: 0x22d3ee,
+		emissive: 0x06b6d4,
+		opacity: 0.55,
+	});
+	group.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
+	return group;
+}
+
+function updateNullCrawlerTelegraph(minion, telegraph) {
+	telegraph.position.set(minion.x, GROUND_OVERLAY_Y, minion.z);
 }
 
 function createRustyShivStabGroup(direction, range, style) {
@@ -1983,9 +2185,10 @@ export function markLootCollected(lootId, value, kind = 'currency') {
 		px,
 		1.0,
 		pz,
-		isMagicStone ? `+${value} MS` : value,
-		isMagicStone ? '#fbbf24' : '#ffd700',
+		value,
+		isMagicStone ? LOOT_FLOAT_COLOR_MAGIC_STONE : LOOT_FLOAT_COLOR_MONEY,
 		true,
+		isMagicStone ? ' MS' : '',
 	);
 }
 
@@ -2229,12 +2432,14 @@ export function animate(timestamp) {
 				moveAccumulator = 0;
 				playerRotation = 0;
 				lastEmittedRotation = null;
-				clearLockOn();
+				clearAllLockOnState();
 				lockOnToTarget = null;
+				lockOnReleaseLookAt = null;
 			}
 			if (isDead) {
-				clearLockOn();
+				clearAllLockOnState();
 				lockOnToTarget = null;
+				lockOnReleaseLookAt = null;
 			}
 			wasDead = isDead;
 
@@ -2264,18 +2469,21 @@ export function animate(timestamp) {
 				scene.add(mesh);
 				enemiesMeshes[enemy.id] = mesh;
 
-				enemyHealthBars[enemy.id] = createHealthBarMesh(enemy.id, enemy.x, enemy.z, enemy.type);
 				enemyHitboxMeshes[enemy.id] = createEnemyHitboxGroup(ENTITY_RADIUS);
 				scene.add(enemyHitboxMeshes[enemy.id]);
 			}
 			const halfHeight = enemyMeshHalfHeight(enemy.type);
 			enemiesMeshes[enemy.id].position.set(enemy.x, halfHeight, enemy.z);
 
-			enemyHealthBars[enemy.id].position.set(enemy.x, halfHeight + 0.5, enemy.z);
+			ensureEnemyHealthBar(enemy.id, enemy);
+			const healthBar = enemyHealthBars[enemy.id];
+			if (healthBar) {
+				healthBar.position.set(enemy.x, halfHeight + 0.5, enemy.z);
+				updateHealthBarMesh(enemy.id, enemy);
+			}
 			if (enemyHitboxMeshes[enemy.id]) {
 				enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
 			}
-			updateHealthBarMesh(enemy.id, enemy);
 			syncLockOnRing(enemy.id, enemy.x, enemy.z);
 
 			// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
@@ -2294,7 +2502,16 @@ export function animate(timestamp) {
 					}
 					const fromThunderbird = nearestMinion && nearestMinion.type === 'thunderbird';
 					const fromAncientWyrm = nearestMinion && nearestMinion.type === 'ancient_wyrm';
-					flashMesh(enemiesMeshes[enemy.id], fromThunderbird ? 0x38bdf8 : (fromAncientWyrm ? 0xfb923c : 0xff4444), 150);
+					const fromNullCrawler = nearestMinion && nearestMinion.type === 'null_crawler';
+					const fromBulkheadMauler = nearestMinion && nearestMinion.type === 'bulkhead_mauler';
+					flashMesh(
+						enemiesMeshes[enemy.id],
+						fromThunderbird ? 0x38bdf8
+							: (fromAncientWyrm ? 0xfb923c
+								: (fromNullCrawler ? 0x22d3ee
+									: (fromBulkheadMauler ? 0xf59e0b : 0xff4444))),
+						150
+					);
 					if (fromThunderbird) {
 						const sparkDir = nearestMinion
 							? {
@@ -2323,6 +2540,42 @@ export function animate(timestamp) {
 								emissive: 0x9333ea,
 							}
 						);
+					} else if (fromNullCrawler) {
+						const beamDir = nearestMinion
+							? {
+								x: enemy.x - nearestMinion.x,
+								z: enemy.z - nearestMinion.z,
+							}
+							: { x: 1, z: 0 };
+						spawnAttackEffect(
+							{ x: nearestMinion.x, z: nearestMinion.z },
+							beamDir,
+							{
+								effect: 'returning_projectile',
+								returnPasses: 0,
+								range: nearestMinion.attackRange ?? 14,
+								projectileHitWidth: nearestMinion.projectileHitWidth ?? 0.8,
+								color: 0x22d3ee,
+								emissive: 0x06b6d4,
+							}
+						);
+					} else if (fromBulkheadMauler) {
+						const sweepDir = nearestMinion
+							? {
+								x: enemy.x - nearestMinion.x,
+								z: enemy.z - nearestMinion.z,
+							}
+							: { x: 1, z: 0 };
+						spawnAttackEffect(
+							{ x: nearestMinion.x, z: nearestMinion.z },
+							sweepDir,
+							{
+								range: 4,
+								coneAngle: (Math.PI * 2) / 3,
+								color: 0x78716c,
+								emissive: 0xf59e0b,
+							}
+						);
 					} else {
 						spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
 					}
@@ -2330,7 +2583,10 @@ export function animate(timestamp) {
 					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
 						flashMesh(
 							minionsMeshes[nearestMinion.id],
-							fromThunderbird ? 0x7dd3fc : (fromAncientWyrm ? 0xfb923c : 0x88ff88),
+							fromThunderbird ? 0x7dd3fc
+								: (fromAncientWyrm ? 0xfb923c
+									: (fromNullCrawler ? 0x67e8f9
+										: (fromBulkheadMauler ? 0xfbbf24 : 0x88ff88))),
 							200
 						);
 					}
@@ -2342,13 +2598,13 @@ export function animate(timestamp) {
 			if (enemy.attackState === 'windup') {
 				applyWindupFlash(enemy.id, true);
 
-				const targetPlayer = enemy.windupTargetId ? gs.players[enemy.windupTargetId] : null;
+				const windupTarget = resolveEnemyWindupTarget(enemy, gs);
 				if (!telegraphMeshes[enemy.id]) {
-					const telegraph = createEnemyAttackTelegraph(enemy, targetPlayer);
+					const telegraph = createEnemyAttackTelegraph(enemy, windupTarget);
 					scene.add(telegraph);
 					telegraphMeshes[enemy.id] = telegraph;
 				} else {
-					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], targetPlayer);
+					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget);
 				}
 			} else {
 				disposeOne(telegraphMeshes, enemy.id, scene);
@@ -2383,26 +2639,51 @@ export function animate(timestamp) {
 
 		for (const minion of (gs.minions || [])) {
 			if (!minionsMeshes[minion.id]) {
-				const isWyrm = minion.type === 'ancient_wyrm';
-				const radius = isWyrm ? 0.6 : 0.4;
-				const height = isWyrm ? 1.5 : 1;
-				const geo = new THREE.CylinderGeometry(radius, radius, height, 8);
-				const mat = new THREE.MeshStandardMaterial({
-					color: isWyrm ? 0x9333ea : 0x22c55e,
-					emissive: isWyrm ? 0xef4444 : 0x000000,
-					emissiveIntensity: isWyrm ? 0.35 : 0,
-				});
-				const mesh = new THREE.Mesh(geo, mat);
-				if (isWyrm) {
-					mesh.scale.set(1.5, 1.5, 1.5);
-				}
+				const mesh = createMinionMesh(minion.type);
 				scene.add(mesh);
 				minionsMeshes[minion.id] = mesh;
 			}
 			minionsMeshes[minion.id].position.set(minion.x, 0.5, minion.z);
+
+			if (minion.type === 'null_crawler' && minion.attackState === 'windup') {
+				if (!minionTelegraphMeshes[minion.id]) {
+					const telegraph = createNullCrawlerTelegraph(minion);
+					scene.add(telegraph);
+					minionTelegraphMeshes[minion.id] = telegraph;
+				} else {
+					updateNullCrawlerTelegraph(minion, minionTelegraphMeshes[minion.id]);
+				}
+				const mesh = minionsMeshes[minion.id];
+				if (mesh?.material?.emissive) {
+					mesh.material.emissive.setHex(0x67e8f9);
+					mesh.material.emissiveIntensity = 1.0;
+				}
+			} else {
+				disposeOne(minionTelegraphMeshes, minion.id, scene);
+				if (minion.type === 'null_crawler') {
+					const mesh = minionsMeshes[minion.id];
+					if (mesh?.material?.emissive) {
+						mesh.material.emissive.setHex(0x06b6d4);
+						mesh.material.emissiveIntensity = 0.55;
+					}
+				}
+			}
+
+			if (previousMinionHp[minion.id] !== undefined && minion.hp < previousMinionHp[minion.id]) {
+				const damageAmount = previousMinionHp[minion.id] - minion.hp;
+				flashMesh(minionsMeshes[minion.id], 0xff4444, 150);
+				spawnDamageNumber(minion.x, 1.2, minion.z, damageAmount, '#ff4444');
+			}
+			previousMinionHp[minion.id] = minion.hp;
 		}
 
 		disposeStaleMeshes(minionsMeshes, currentMinionIds, scene);
+		disposeStaleMeshes(minionTelegraphMeshes, currentMinionIds, scene);
+		for (const id of Object.keys(previousMinionHp)) {
+			if (!currentMinionIds.has(id)) {
+				delete previousMinionHp[id];
+			}
+		}
 
 		// ── Loot mesh sync ──
 		syncLootMeshes();

@@ -12,6 +12,19 @@ body, html {
   background-color: #0f172a;
 }
 
+:root {
+  --hand-card-w: 102px;
+  --hand-card-h: 148px;
+  --hand-card-gap-x: 14px;
+  --hand-row-gap-y: 16px;
+  --hand-row-shift-x: 48px;
+  --hand-n64-step-y: 96px;
+  --hand-n64-pair-x: 72px;
+  --hand-n64-corner: 20px;
+  --hand-n64-drift: 28px;
+  --hand-n64-b-extra: 36px;
+}
+
 #ui {
   position: absolute;
   top: 0;
@@ -115,7 +128,7 @@ canvas {
   left: 50%;
   transform: translateX(-50%);
   display: none;
-  gap: 6px;
+  gap: 8px;
   padding: 12px 88px 12px 12px;
   pointer-events: none;
   z-index: 10;
@@ -123,6 +136,8 @@ canvas {
   flex-wrap: nowrap;
   max-width: 100vw;
   box-sizing: border-box;
+  width: auto;
+  height: auto;
 }
 
 #card-hand.has-desperation::before {
@@ -130,6 +145,7 @@ canvas {
   position: absolute;
   top: -2px;
   left: 50%;
+  right: auto;
   transform: translateX(-50%);
   padding: 2px 10px;
   border-radius: 999px;
@@ -143,11 +159,32 @@ canvas {
   pointer-events: none;
 }
 
+#card-hand.layout-8bitdo-64 {
+  bottom: 16px;
+  right: 16px;
+  left: auto;
+  transform: none;
+  width: calc(var(--hand-n64-corner) + var(--hand-n64-pair-x) + var(--hand-n64-b-extra) + var(--hand-card-w));
+  height: calc(3 * var(--hand-n64-step-y) + var(--hand-card-h));
+  padding: 0;
+  gap: 0;
+}
+
+#card-hand.layout-8bitdo-64.has-desperation::before {
+  left: auto;
+  right: 0;
+  transform: none;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot.empty {
+  display: none;
+}
+
 .card-slot {
   position: relative;
-  width: 76px;
-  height: 112px;
-  border-radius: 8px;
+  width: var(--hand-card-w, 102px);
+  height: var(--hand-card-h, 148px);
+  border-radius: 10px;
   background: rgba(15, 23, 42, 0.75);
   border: 2px solid var(--slot-color, rgba(148, 163, 184, 0.3));
   pointer-events: auto;
@@ -155,11 +192,88 @@ canvas {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  padding: 6px;
+  gap: 8px;
+  padding: 8px;
   box-sizing: border-box;
+  overflow: hidden;
   transition: border-color 0.2s ease, opacity 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   user-select: none;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot {
+  position: absolute;
+}
+
+/* N64 fan (bottom-right anchor):
+        [C↑]
+   [C←]     [C→]
+ [B]   [C↓]
+     [A]
+   B is lower and left of C←; each row steps up toward the corner. */
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="0"] {
+  bottom: 0;
+  right: 0;
+  z-index: 10;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="3"] {
+  bottom: var(--hand-n64-step-y);
+  right: var(--hand-n64-corner);
+  z-index: 22;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="1"] {
+  bottom: var(--hand-n64-step-y);
+  right: calc(var(--hand-n64-corner) + var(--hand-n64-pair-x) + var(--hand-n64-b-extra));
+  z-index: 21;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="5"] {
+  bottom: calc(2 * var(--hand-n64-step-y));
+  right: calc(var(--hand-n64-corner) + var(--hand-n64-drift));
+  z-index: 32;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="4"] {
+  bottom: calc(2 * var(--hand-n64-step-y));
+  right: calc(var(--hand-n64-corner) + var(--hand-n64-drift) + var(--hand-n64-pair-x));
+  z-index: 31;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="2"] {
+  bottom: calc(3 * var(--hand-n64-step-y));
+  right: calc(var(--hand-n64-corner) + 2 * var(--hand-n64-drift));
+  z-index: 40;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot .card-ms-cost {
+  top: 4px;
+  left: 4px;
+  right: auto;
+}
+
+.card-charge-meter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(var(--charge-pct, 100) * 1%);
+  background: color-mix(in srgb, var(--slot-color, #60a5fa) 32%, transparent);
+  transition: height 0.85s ease;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.card-slot-content {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
 }
 
 /* ── Activation flash ── */
@@ -203,7 +317,7 @@ canvas {
 }
 
 .card-slot .card-icon {
-  font-size: 28px;
+  font-size: 36px;
   line-height: 1;
 }
 
@@ -219,7 +333,39 @@ canvas {
   line-height: 1.2;
   letter-spacing: 0;
   pointer-events: none;
-  z-index: 1;
+  z-index: 2;
+}
+
+.card-input-hint:has(.c-button-mark) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 16px;
+  padding: 2px 3px;
+}
+
+.c-button-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  line-height: 0;
+}
+
+.c-button-mark__svg {
+  display: block;
+}
+
+.c-button-mark__shape {
+  fill: #facc15;
+  stroke: #ca8a04;
+  stroke-width: 0.75;
+  stroke-linejoin: round;
+}
+
+.calibration-c-button-mark .c-button-mark__shape {
+  fill: #fde047;
+  stroke: #eab308;
 }
 
 .input-hints-gamepad .card-input-hint {
@@ -238,7 +384,7 @@ canvas {
 }
 
 .card-slot .card-name {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   color: #e2e8f0;
   text-align: center;
@@ -247,7 +393,7 @@ canvas {
 }
 
 .card-slot .card-charges {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
   color: #94a3b8;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
@@ -278,9 +424,9 @@ canvas {
   font-size: 8px;
   font-weight: 800;
   letter-spacing: 0.2px;
-  color: #fef3c7;
-  background: rgba(180, 83, 9, 0.85);
-  border: 1px solid rgba(251, 191, 36, 0.55);
+  color: #ede9fe;
+  background: rgba(91, 33, 182, 0.85);
+  border: 1px solid rgba(167, 139, 250, 0.55);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
   line-height: 1.2;
 }
@@ -709,7 +855,7 @@ canvas {
 }
 
 #player-level {
-  color: #fbbf24;
+  color: #ffd700;
 }
 
 #vanguard-bars {
@@ -922,7 +1068,7 @@ canvas {
   transform: translateX(-50%);
   font-size: 13px;
   font-weight: 700;
-  color: #fbbf24;
+  color: #ffd700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   pointer-events: none;
   z-index: 11;
@@ -998,7 +1144,7 @@ canvas {
 #summary-rewards-currency {
   font-size: 16px;
   font-weight: 700;
-  color: #fbbf24;
+  color: #ffd700;
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
 }
 
@@ -1367,7 +1513,7 @@ canvas {
 #deck-size-display {
   font-size: 13px;
   font-weight: 600;
-  color: #fbbf24;
+  color: #ffd700;
   text-transform: none;
   letter-spacing: 0;
 }
@@ -1510,7 +1656,7 @@ canvas {
 
 .owned-card-entry .card-sell-value {
   font-size: 11px;
-  color: #fbbf24;
+  color: #ffd700;
   flex-shrink: 0;
 }
 
@@ -1544,7 +1690,7 @@ canvas {
 
 #lobby-currency-display {
   font-size: 13px;
-  color: #fbbf24;
+  color: #ffd700;
   margin-bottom: 8px;
 }
 
@@ -1568,7 +1714,7 @@ canvas {
 
 #shop-currency-display {
   font-size: 13px;
-  color: #fbbf24;
+  color: #ffd700;
   margin-bottom: 12px;
 }
 
@@ -1598,7 +1744,7 @@ canvas {
 }
 
 .shop-offer-price {
-  color: #fbbf24;
+  color: #ffd700;
   font-weight: 600;
   margin-left: auto;
 }
@@ -2060,11 +2206,68 @@ canvas {
 
 .calibration-c-button {
   border-style: dashed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
 }
 
 .calibration-trigger-axes {
   margin-top: 4px;
   font-size: 11px;
+}
+
+.calibration-debug-panel {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.calibration-debug-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.calibration-debug-header .settings-hint {
+  margin: 0;
+  flex: 1 1 220px;
+}
+
+.calibration-debug-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.calibration-debug-actions button {
+  padding: 4px 10px;
+  font-size: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  border-radius: 4px;
+  background: rgba(30, 41, 59, 0.8);
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.calibration-debug-actions button:hover {
+  background: rgba(51, 65, 85, 0.95);
+}
+
+.calibration-debug-log {
+  width: 100%;
+  box-sizing: border-box;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.35;
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(15, 23, 42, 0.65);
+  color: #cbd5e1;
+  resize: vertical;
 }
 
 .gamepad-status[data-eightbitdo64="true"] {
@@ -2194,11 +2397,16 @@ canvas {
   position: fixed;
   bottom: 20px;
   right: 20px;
-  width: 52px;
-  height: 72px;
+  width: 58px;
+  height: 80px;
   pointer-events: auto;
   cursor: pointer;
   z-index: 11;
+}
+
+#deck-stack.deck-stack-n64-hand {
+  bottom: calc(16px + var(--hand-card-h) + 3 * var(--hand-n64-step-y) + 12px);
+  right: 16px;
 }
 
 #deck-stack.hidden {
@@ -2209,8 +2417,8 @@ canvas {
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 52px;
-  height: 72px;
+  width: 58px;
+  height: 80px;
   border-radius: 6px;
   background: linear-gradient(145deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
   border: 2px solid rgba(148, 163, 184, 0.45);

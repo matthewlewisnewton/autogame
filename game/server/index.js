@@ -35,6 +35,7 @@ const {
   ENEMY_ATTACK_RANGE,
   ENEMY_ATTACK_RECOVERY_MS,
   MAX_MAGIC_STONES,
+  STARTING_MAGIC_STONES,
   MAGIC_STONES_REGEN_PER_TICK,
   SUMMON_RADIUS,
   ATTACK_RANGE,
@@ -135,6 +136,7 @@ const {
   updateEnemies,
   updateMinions,
   damagePlayer,
+  damageMinion,
   healPlayer,
   collectConeHits,
   collectRadialHits,
@@ -228,7 +230,9 @@ const {
   getEnemyCardDrop,
   recordEnemyCardDrop,
   getEnemyMagicStoneDrop,
+  getEnemyCurrencyDrop,
   spawnMagicStoneDrop,
+  spawnCurrencyDrop,
   buildCardChoices,
   claimCardReward,
   buildRunSummary,
@@ -600,7 +604,8 @@ function applyDebugScenario(socket, name) {
         id: 'e_remaining',
         x: player.x + 5,
         z: player.z,
-        hp: 50,
+        hp: ENEMY_DEFS.grunt.hp,
+        maxHp: ENEMY_DEFS.grunt.hp,
         state: 'idle',
         wanderTarget: { x: player.x + 5, z: player.z },
       }];
@@ -677,7 +682,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     activeSocketId: null,
     persistenceDirty: false,
     ready: false,
-    magicStones: MAX_MAGIC_STONES,
+    magicStones: STARTING_MAGIC_STONES,
     currency: progress.currency,
     inventory: progress.inventory,
     ownedCards: progress.ownedCards,
@@ -725,7 +730,7 @@ function initializePlayerForActiveRun(player) {
     initPlayerHand(player);
   }
   player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-  player.magicStones = MAX_MAGIC_STONES;
+  player.magicStones = STARTING_MAGIC_STONES;
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
   }
@@ -1746,6 +1751,7 @@ function startServer(port) {
           hp: 1,
           maxHp: 1,
           ttl: cardDef.durationSeconds || 12,
+          maxTtl: cardDef.durationSeconds || 12,
           createdAt: now,
           lastPulseAt: now,
           pulseIntervalMs: cardDef.pulseIntervalMs || 2000,
@@ -1800,6 +1806,7 @@ function startServer(port) {
           maxHp: minionHp,
           specialEffect: cardDef.specialEffect,
           ttl: minionTtl,
+          maxTtl: minionTtl,
           createdAt: now,
           attackDamage: cardDef.attackDamage || 10,
           attackIntervalMs: cardDef.attackIntervalMs || Math.floor(1000 / TICK_RATE),
@@ -1964,6 +1971,7 @@ function startServer(port) {
         maxHp: minionHp,
         specialEffect: cardDef.specialEffect,
         ttl: minionTtl,
+        maxTtl: minionTtl,
         createdAt: now
       };
       if (cardDef.taunt) {
@@ -1981,6 +1989,20 @@ function startServer(port) {
         minion.lastChargePulseAt = now;
         minion.chargePulseIntervalMs = cardDef.chargePulseIntervalMs || 6000;
         minion.chargeRestore = cardDef.chargeRestore || 1;
+      }
+      if (cardDef.effect === 'null_crawler') {
+        const attackIntervalMs = cardDef.attackIntervalMs || 2000;
+        minion.attackRange = cardDef.attackRange || 14;
+        minion.attackDamage = cardDef.attackDamage || 22;
+        minion.attackIntervalMs = attackIntervalMs;
+        minion.attackWindupMs = cardDef.attackWindupMs || 1000;
+        minion.projectileHitWidth = cardDef.projectileHitWidth || 0.8;
+        minion.lastAttackAt = now - attackIntervalMs;
+      }
+      if (cardDef.effect === 'bulkhead_mauler') {
+        minion.attackRange = cardDef.attackRange || 4;
+        minion.attackConeAngle = cardDef.attackConeAngle || ((Math.PI * 2) / 3);
+        minion.attackDamage = cardDef.attackDamage || 9;
       }
       if (cardDef.effect === 'ancient_wyrm') {
         const breathIntervalMs = cardDef.breathIntervalMs || 3000;
@@ -2013,6 +2035,7 @@ function startServer(port) {
             hp: skeletonHp,
             maxHp: skeletonHp,
             ttl: minionTtl,
+            maxTtl: minionTtl,
             createdAt: now,
           };
           state.minions.push(skeleton);
@@ -2623,6 +2646,7 @@ if (typeof module !== 'undefined' && module.exports) {
     mulberry32,
     generateLayout,
     damagePlayer,
+    damageMinion,
     healPlayer,
     updateEnchantments,
     spawnGroundEnchantment,
@@ -2662,7 +2686,9 @@ if (typeof module !== 'undefined' && module.exports) {
     getEnemyCardDrop,
     recordEnemyCardDrop,
     getEnemyMagicStoneDrop,
+    getEnemyCurrencyDrop,
     spawnMagicStoneDrop,
+    spawnCurrencyDrop,
     buildCardChoices,
     claimCardReward,
     removeDeadEnemies,
@@ -2777,6 +2803,7 @@ if (typeof module !== 'undefined' && module.exports) {
     STALE_THRESHOLD,
     DISCONNECT_GRACE_MS,
     MAX_MAGIC_STONES,
+    STARTING_MAGIC_STONES,
     MAGIC_STONES_REGEN_PER_TICK,
     DETECTION_RADIUS,
     ATTACK_RANGE,

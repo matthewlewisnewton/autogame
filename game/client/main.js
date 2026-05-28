@@ -45,6 +45,7 @@ import {
 	initInput,
 	ACTIONS,
 	getHandSlotInputHints,
+	is8BitDo64HandHintsActive,
 } from './input.js';
 import {
 	DECK_MIN_SIZE,
@@ -115,6 +116,7 @@ import {
 	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
 	spawnFireTrailEffect as rendererSpawnFireTrailEffect,
 	markLootCollected as rendererMarkLootCollected,
+	markCardHitEnemies as rendererMarkCardHitEnemies,
 	disposeMeshMap as rendererDisposeMeshMap,
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
 	disposeOne as rendererDisposeOne,
@@ -153,6 +155,27 @@ const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
+
+function applyCardHandLayout() {
+	if (!cardHandEl) return null;
+	const n64Layout = is8BitDo64HandHintsActive();
+	const displayMode = n64Layout ? 'block' : 'flex';
+	cardHandEl.classList.toggle('layout-8bitdo-64', n64Layout);
+	if (deckStackEl) deckStackEl.classList.toggle('deck-stack-n64-hand', n64Layout);
+	if (cardHandEl.style.display !== 'none') {
+		cardHandEl.style.display = displayMode;
+	}
+	return displayMode;
+}
+
+function showCardHand() {
+	if (!cardHandEl) return;
+	cardHandEl.style.display = applyCardHandLayout();
+}
+
+function hideCardHand() {
+	if (cardHandEl) cardHandEl.style.display = 'none';
+}
 const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
 const deckViewerGridEl = document.getElementById('deck-viewer-grid');
 const deckViewerCountEl = document.getElementById('deck-viewer-count');
@@ -176,6 +199,9 @@ const calibrationTriggerAxesEl = document.getElementById('calibration-trigger-ax
 const calibrationRightDotEl = document.getElementById('calibration-right-dot');
 const calibrationRightValuesEl = document.getElementById('calibration-right-values');
 const calibrationButtonGridEl = document.getElementById('calibration-button-grid');
+const calibrationDebugLogEl = document.getElementById('calibration-debug-log');
+const calibrationDebugCopyBtnEl = document.getElementById('calibration-debug-copy-btn');
+const calibrationDebugClearBtnEl = document.getElementById('calibration-debug-clear-btn');
 
 // ── Auth overlay elements ──
 const authOverlayEl = document.getElementById('auth-overlay');
@@ -225,7 +251,7 @@ function showLobbyBrowser() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
 	if (uiEl) uiEl.style.display = 'none';
-	if (cardHandEl) cardHandEl.style.display = 'none';
+	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
 }
 
@@ -267,7 +293,7 @@ function renderSuspendedRunBanner(state) {
 function showExtractedLobbyOverlay() {
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (uiEl) uiEl.style.display = 'none';
-	if (cardHandEl) cardHandEl.style.display = 'none';
+	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
 	showGameLobby();
 	setDeployButtonVisible(false);
@@ -386,7 +412,7 @@ function applyLobbyJoinedData(data) {
 		if (isSceneInitialized()) return;
 		lobbyEl.classList.add('hidden');
 		uiEl.style.display = 'block';
-		cardHandEl.style.display = 'flex';
+		showCardHand();
 		setDeckStackVisible(true);
 		initHand();
 		rendererInitScene(currentLayout, getSpawnPosition());
@@ -511,6 +537,7 @@ const cardRenderCtx = {
 	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
 	flashMesh: rendererFlashMesh,
+	markCardHitEnemies: rendererMarkCardHitEnemies,
 	enemyMeshes: () => getMeshMaps().enemiesMeshes,
 	playSound,
 	scheduleAfter: (ms, fn) => setTimeout(fn, ms),
@@ -550,7 +577,7 @@ function bindSocketHandlers(s) {
 			setAuthToken(null);
 			s.io.disconnect();
 			if (uiEl) uiEl.style.display = 'none';
-			if (cardHandEl) cardHandEl.style.display = 'none';
+			if (cardHandEl) hideCardHand();
 			setDeckStackVisible(false);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
 			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
@@ -640,7 +667,7 @@ function bindSocketHandlers(s) {
 		} else if (state.gamePhase === 'lobby') {
 			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 			if (uiEl) uiEl.style.display = 'none';
-			if (cardHandEl) cardHandEl.style.display = 'none';
+			if (cardHandEl) hideCardHand();
 			setDeckStackVisible(false);
 			showGameLobby();
 			setDeployButtonVisible(true);
@@ -659,7 +686,7 @@ function bindSocketHandlers(s) {
 		// Entering gameplay: ensure HUD is visible (unless extracted mid-run)
 		if (state.gamePhase === 'playing' && !isExtracted) {
 			if (uiEl) uiEl.style.display = 'block';
-			if (cardHandEl) cardHandEl.style.display = 'flex';
+			showCardHand();
 			setDeckStackVisible(true);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
 			setDeployButtonVisible(false);
@@ -927,7 +954,7 @@ function bindSocketHandlers(s) {
 		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
 		uiEl.style.display = 'block';
-		cardHandEl.style.display = 'flex';
+		showCardHand();
 		setDeckStackVisible(true);
 		updateObjectiveHud();
 		if (!isSceneInitialized()) {
@@ -949,6 +976,7 @@ function bindSocketHandlers(s) {
 		rendererDisposeMeshMap(maps.enemiesMeshes, sc);
 		rendererDisposeMeshMap(maps.enemyHealthBars, sc);
 		rendererDisposeMeshMap(maps.telegraphMeshes, sc);
+		rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 		rendererDisposeMeshMap(maps.minionsMeshes, sc);
 		rendererDisposeAllLootMeshes();
 	});
@@ -966,7 +994,7 @@ function bindSocketHandlers(s) {
 		}
 		if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 		if (uiEl) uiEl.style.display = 'none';
-		if (cardHandEl) cardHandEl.style.display = 'none';
+		if (cardHandEl) hideCardHand();
 		setDeckStackVisible(false);
 		showGameLobby();
 		setDeployButtonVisible(true);
@@ -1211,6 +1239,55 @@ function formatCardChargesDisplay(card) {
 	return `${card.remainingCharges}/${card.charges}`;
 }
 
+/** Remaining uses as 0–100 for the charge meter background. */
+export function getCardChargePercent(card) {
+	if (!card) return 0;
+	if (card.activeMinionId) {
+		const minion = gameState?.minions?.find((m) => m.id === card.activeMinionId);
+		const maxTtl = card.burnMaxTtl || minion?.ttl || 1;
+		const remaining = minion ? Math.max(0, minion.ttl) : 0;
+		return Math.max(0, Math.min(100, (remaining / maxTtl) * 100));
+	}
+	if (!card.charges || card.charges <= 0) return 100;
+	return Math.max(0, Math.min(100, (card.remainingCharges / card.charges) * 100));
+}
+
+function ensureCardSlotStructure(slot) {
+	let meter = slot.querySelector('.card-charge-meter');
+	if (!meter) {
+		meter = document.createElement('span');
+		meter.className = 'card-charge-meter';
+		meter.setAttribute('aria-hidden', 'true');
+		slot.prepend(meter);
+	}
+	let content = slot.querySelector('.card-slot-content');
+	if (!content) {
+		content = document.createElement('div');
+		content.className = 'card-slot-content';
+		slot.appendChild(content);
+	}
+	for (const child of [...slot.children]) {
+		if (child !== meter && child !== content && !child.classList.contains('card-input-hint')) {
+			child.remove();
+		}
+	}
+	return { meter, content };
+}
+
+function setCardSlotHint(slot, hintLabel, hintMarkup) {
+	const hints = slot.querySelectorAll(':scope > .card-input-hint');
+	let hintEl = hints[0];
+	for (let i = 1; i < hints.length; i++) hints[i].remove();
+	if (!hintEl) {
+		hintEl = document.createElement('span');
+		hintEl.className = 'card-input-hint';
+		const content = slot.querySelector('.card-slot-content');
+		slot.insertBefore(hintEl, content);
+	}
+	hintEl.setAttribute('aria-label', hintLabel);
+	hintEl.innerHTML = hintMarkup;
+}
+
 function renderHand() {
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
@@ -1224,17 +1301,22 @@ function renderHand() {
 		cardHandEl.classList.toggle('show-input-hints', true);
 		cardHandEl.classList.toggle('input-hints-gamepad', inputHints.mode === 'gamepad');
 		cardHandEl.classList.toggle('input-hints-keyboard', inputHints.mode === 'keyboard');
+		if (cardHandEl.style.display !== 'none') applyCardHandLayout();
 	}
 	for (let i = 0; i < MAX_HAND_SLOTS; i++) {
 		const slot = getCardSlotEl(i);
 		if (!slot) continue;
 		const card = hand[i];
-		const hintLabel = inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`;
-		const hintBadge = `<span class="card-input-hint" aria-label="${hintLabel}">${inputHints.hints[i]}</span>`;
+		const hintLabel = inputHints.hintLabels?.[i]
+			?? (inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`);
+		const { meter, content } = ensureCardSlotStructure(slot);
 
 		if (card) {
+			setCardSlotHint(slot, hintLabel, inputHints.hints[i]);
+			meter.hidden = false;
 			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
+			slot.style.setProperty('--charge-pct', String(getCardChargePercent(card)));
 			const evolvedBadge = card.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
 			const grindBadge = (card.grind || 0) > 0 ? `<span class="grind-badge">+${card.grind}</span>` : '';
 			const effectText = (!card.isDesperation && card.specialEffect)
@@ -1248,8 +1330,7 @@ function renderHand() {
 				? '<span class="desperation-ribbon">Desperate</span>'
 				: '';
 			const echoBadge = card.isEcho ? '<span class="echo-badge">Echo</span>' : '';
-			slot.innerHTML = `
-				${hintBadge}
+			content.innerHTML = `
 				${desperationRibbon}
 				<span class="card-icon">${style.icon}</span>
 				<span class="card-name">${card.name}</span>
@@ -1278,8 +1359,11 @@ function renderHand() {
 				slot.classList.remove('no-ms');
 			}
 		} else {
+			slot.querySelectorAll(':scope > .card-input-hint').forEach((el) => el.remove());
 			slot.style.removeProperty('--slot-color');
-			slot.innerHTML = `${hintBadge}<span class="card-name">&mdash;</span>`;
+			slot.style.removeProperty('--charge-pct');
+			meter.hidden = true;
+			content.innerHTML = '<span class="card-name">&mdash;</span>';
 			slot.classList.add('empty');
 			slot.classList.remove('evolved-card');
 			slot.classList.remove('no-ms');
@@ -1532,6 +1616,11 @@ function grindBadgeForInstance(instance) {
 	return `<span class="grind-badge">+${instance.grind}</span>`;
 }
 
+function grindForDeckEntry(entryId) {
+	const instance = getDeckInventory().find((card) => card.instanceId === entryId);
+	return instance?.grind || 0;
+}
+
 function renderDeckEditor() {
 	ownedCardsListEl.innerHTML = '';
 	const ownedCounts = getDeckOwnedCounts();
@@ -1576,16 +1665,12 @@ function renderDeckEditor() {
 	}
 
 	selectedDeckListEl.innerHTML = '';
-	const loadoutRows = buildLoadoutDeckDisplay(mySelectedDeck, cardIdForDeckEntry);
+	const loadoutRows = buildLoadoutDeckDisplay(mySelectedDeck, cardIdForDeckEntry, grindForDeckEntry);
 	for (const row of loadoutRows) {
-		const { cardId, def, entryIds, count } = row;
+		const { cardId, def, entryIds, count, grind } = row;
 		const style = CARD_ACCENT_STYLE[cardId] || CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
 		const inventory = getDeckInventory();
-		const maxGrind = entryIds.reduce((max, entryId) => {
-			const instance = inventory.find((card) => card.instanceId === entryId);
-			return Math.max(max, instance?.grind || 0);
-		}, 0);
-		const grindBadge = maxGrind > 0 ? `<span class="grind-badge">+${maxGrind}</span>` : '';
+		const grindBadge = grind > 0 ? `<span class="grind-badge">+${grind}</span>` : '';
 		const evolvedBadge = def.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
 		const countBadge = count > 1 ? `<span class="deck-entry-count">×${count}</span>` : '';
 
@@ -2189,7 +2274,7 @@ function performLogout() {
 	myId = null;
 	hideAppToolbar();
 	if (uiEl) uiEl.style.display = 'none';
-	if (cardHandEl) cardHandEl.style.display = 'none';
+	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
 	if (lobbyEl) lobbyEl.classList.add('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
@@ -2401,6 +2486,9 @@ initControllerCalibration({
 	rightDotEl: calibrationRightDotEl,
 	rightValuesEl: calibrationRightValuesEl,
 	buttonGridEl: calibrationButtonGridEl,
+	debugLogEl: calibrationDebugLogEl,
+	debugCopyBtnEl: calibrationDebugCopyBtnEl,
+	debugClearBtnEl: calibrationDebugClearBtnEl,
 });
 
 window.addEventListener('gamepadconnected', (event) => {

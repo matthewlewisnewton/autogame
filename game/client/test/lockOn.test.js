@@ -14,8 +14,14 @@ import {
 	normalizeAngle,
 	isLockOnActive,
 	clearLockOn,
+	clearAllLockOnState,
+	clearLockOnCameraRelease,
+	isLockOnActive,
+	isLockOnCameraReleasing,
+	updateLockOnCameraRelease,
 	getLockedEnemyId,
 } from '../lockOn.js';
+import { LOCK_ON_DEATH_RELEASE_DURATION } from '../config.js';
 
 const enemies = [
 	{ id: 'a', x: 3, z: 0, hp: 50 },
@@ -63,14 +69,17 @@ describe('targetRelativeDirection', () => {
 
 	it('maps strafe input perpendicular to the target', () => {
 		const toTarget = { x: 1, z: 0 };
-		const dir = targetRelativeDirection(-1, 0, toTarget);
-		expect(dir.x).toBeCloseTo(0, 5);
-		expect(dir.z).toBeCloseTo(1, 5);
+		const left = targetRelativeDirection(-1, 0, toTarget);
+		expect(left.x).toBeCloseTo(0, 5);
+		expect(left.z).toBeCloseTo(-1, 5);
+		const right = targetRelativeDirection(1, 0, toTarget);
+		expect(right.x).toBeCloseTo(0, 5);
+		expect(right.z).toBeCloseTo(1, 5);
 	});
 });
 
 describe('handleLockOnPress', () => {
-	beforeEach(() => clearLockOn());
+	beforeEach(() => clearAllLockOnState());
 
 	it('locks onto the nearest enemy', () => {
 		const result = handleLockOnPress(enemies, 0, 0, 'unlock', 0);
@@ -118,7 +127,7 @@ describe('handleLockOnPress', () => {
 });
 
 describe('updateLockOn', () => {
-	beforeEach(() => clearLockOn());
+	beforeEach(() => clearAllLockOnState());
 
 	it('tracks target facing and camera yaw while locked', () => {
 		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
@@ -128,12 +137,41 @@ describe('updateLockOn', () => {
 		expect(state.toTarget.x).toBeCloseTo(1, 5);
 	});
 
-	it('auto-unlocks when target dies', () => {
+	it('auto-unlocks when target dies and starts a camera release', () => {
 		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
+		updateLockOn(enemies, 0, 0, 0.1, 0);
 		const dead = [{ id: 'a', x: 3, z: 0, hp: 0 }];
 		const state = updateLockOn(dead, 0, 0, 0.1, 0);
 		expect(state.locked).toBe(false);
-		expect(isLockOnActive()).toBe(false);
+		expect(state.releasing).toBe(true);
+		expect(isLockOnCameraReleasing()).toBe(true);
+	});
+
+	it('eases camera out after target death', () => {
+		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
+		updateLockOn(enemies, 0, 0, 0.1, 0);
+		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, 0, 0.1, 0);
+		expect(isLockOnCameraReleasing()).toBe(true);
+
+		const mid = updateLockOnCameraRelease(
+			LOCK_ON_DEATH_RELEASE_DURATION * 0.5,
+			0,
+			0.5,
+			0,
+		);
+		expect(mid).not.toBeNull();
+		expect(mid.done).toBe(false);
+		expect(mid.lookAtX).toBeCloseTo(0.75, 2);
+		expect(Math.abs(shortestAngleDelta(0, mid.cameraYaw))).toBeGreaterThan(0.01);
+
+		const end = updateLockOnCameraRelease(
+			LOCK_ON_DEATH_RELEASE_DURATION * 0.5,
+			0,
+			0.5,
+			0,
+		);
+		expect(end?.done).toBe(true);
+		expect(isLockOnCameraReleasing()).toBe(false);
 	});
 
 	it('auto-unlocks when target exceeds break range', () => {
@@ -141,6 +179,36 @@ describe('updateLockOn', () => {
 		const far = [{ id: 'a', x: 15, z: 0, hp: 50 }];
 		const state = updateLockOn(far, 0, 0, 0.1, 0);
 		expect(state.locked).toBe(false);
+	});
+
+	it('keeps live movement bearing when close-range camera aim is frozen', () => {
+		handleLockOnPress(
+			[{ id: 'a', x: 3, z: 0, hp: 50 }],
+			0,
+			0,
+			'unlock',
+			0,
+		);
+		updateLockOn(
+			[{ id: 'a', x: 3, z: 0, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			0,
+		);
+		const close = updateLockOn(
+			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			0,
+		);
+		expect(close.locked).toBe(true);
+		expect(Math.hypot(close.liveToTarget.x, close.liveToTarget.z)).toBeCloseTo(1, 5);
+		expect(close.liveToTarget.x).toBeCloseTo(0.97, 2);
+		expect(close.liveToTarget.z).toBeCloseTo(0.24, 2);
+		const forward = targetRelativeDirection(0, 1, close.liveToTarget);
+		expect(forward.x).toBeGreaterThan(0.9);
 	});
 });
 
@@ -160,7 +228,7 @@ describe('unwrapAngle', () => {
 });
 
 describe('updateLockOn camera tracking', () => {
-	beforeEach(() => clearLockOn());
+	beforeEach(() => clearAllLockOnState());
 
 	it('does not spin when bearing crosses the atan2 branch cut', () => {
 		handleLockOnPress(
@@ -195,7 +263,7 @@ describe('updateLockOn camera tracking', () => {
 		}
 	});
 
-	it('holds stable bearing when hugging the target', () => {
+	it('holds stable player bearing when hugging the target', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
@@ -223,6 +291,53 @@ describe('updateLockOn camera tracking', () => {
 			close.toTarget.x - Math.cos(0),
 			close.toTarget.z - Math.sin(0),
 		)).toBeLessThan(0.01);
+	});
+
+	it('tracks camera yaw from live bearing while hugging the target', () => {
+		handleLockOnPress(
+			[{ id: 'a', x: 3, z: 0, hp: 50 }],
+			0,
+			0,
+			'unlock',
+			0,
+		);
+		updateLockOn(
+			[{ id: 'a', x: 3, z: 0, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			0,
+		);
+		const hug = updateLockOn(
+			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			0,
+		);
+		const firstOrbit = updateLockOn(
+			[{ id: 'a', x: 0, z: 0.2, hp: 50 }],
+			0.2,
+			0,
+			1 / 60,
+			hug.cameraYaw,
+		);
+		expect(firstOrbit.locked).toBe(true);
+		expect(Math.abs(shortestAngleDelta(hug.cameraYaw, firstOrbit.cameraYaw))).toBeGreaterThan(0.01);
+
+		let yaw = hug.cameraYaw;
+		const targetYaw = cameraYawFromToTarget(firstOrbit.liveToTarget);
+		for (let i = 0; i < 60; i++) {
+			const state = updateLockOn(
+				[{ id: 'a', x: 0, z: 0.2, hp: 50 }],
+				0.2,
+				0,
+				1 / 60,
+				yaw,
+			);
+			yaw = state.cameraYaw;
+		}
+		expect(Math.abs(shortestAngleDelta(yaw, targetYaw))).toBeLessThan(0.15);
 	});
 
 	it('limits per-frame yaw change during a tight orbit', () => {

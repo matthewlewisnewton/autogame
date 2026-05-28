@@ -284,6 +284,16 @@
           </div>
           <p id="calibration-trigger-axes" class="settings-hint calibration-trigger-axes" hidden></p>
           <div id="calibration-button-grid" class="calibration-button-grid" aria-label="Controller button test"></div>
+          <div class="calibration-debug-panel">
+            <div class="calibration-debug-header">
+              <p class="settings-hint">Press buttons and sticks — copy the log below and paste it when reporting mapping issues.</p>
+              <div class="calibration-debug-actions">
+                <button type="button" id="calibration-debug-copy-btn">Copy log</button>
+                <button type="button" id="calibration-debug-clear-btn">Clear</button>
+              </div>
+            </div>
+            <textarea id="calibration-debug-log" class="calibration-debug-log" readonly rows="7" spellcheck="false" placeholder="GPDBG events appear here when you press buttons or move sticks…"></textarea>
+          </div>
         </div>
       </div>
     </div>

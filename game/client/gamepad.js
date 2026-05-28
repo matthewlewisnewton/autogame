@@ -1,6 +1,7 @@
 import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
+import { isLockOnActive, isLockOnCameraReleasing } from './lockOn.js';
 import { getGamepadConfig } from './settings.js';
-import { resolveGamepadProfile, read8BitDo64CStickHorizontal, getPrimaryGamepad } from './gamepad-profiles.js';
+import { resolveGamepadProfile, read8BitDo64CStickHorizontal, getPrimaryGamepad, isProfileLockOnPressed } from './gamepad-profiles.js';
 
 let prevButtons = [];
 let listenersAdded = false;
@@ -102,6 +103,7 @@ export function pollGamepadMovement(deadzone = GAMEPAD_DEADZONE, moveStick = 'le
  * @returns {number}
  */
 export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
+	if (isLockOnActive() || isLockOnCameraReleasing()) return 0;
 	const pad = getActiveGamepad();
 	if (!pad || delta <= 0) return 0;
 	const cfg = getGamepadConfig();
@@ -133,11 +135,14 @@ export function pollGamepadButtons() {
 	const lockButton = profile.lockOnButton ?? LOCK_ON_GAMEPAD_BUTTON;
 	const buttons = pad.buttons;
 
-	const lockPressed = buttons[lockButton]?.pressed ?? false;
+	const lockPressed = isProfileLockOnPressed(pad, profile);
 	const lockWas = prevButtons[lockButton] ?? false;
 	if (lockPressed && !lockWas) result.lockOn = true;
 
-	prevButtons = Array.from({ length: buttons.length }, (_, i) => buttons[i]?.pressed ?? false);
+	prevButtons = Array.from({ length: buttons.length }, (_, i) => {
+		if (i === lockButton) return lockPressed;
+		return buttons[i]?.pressed ?? false;
+	});
 	return result;
 }
 

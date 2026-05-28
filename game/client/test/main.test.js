@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { resetHandState, canUseSlot, hand, slotCooldowns } from '../hand.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const styleCss = fs.readFileSync(path.join(__dirname, '..', 'style.css'), 'utf8');
 
 // ── renderDeckEditor ──
 
@@ -150,10 +156,16 @@ describe('renderDeckEditor()', () => {
 	it('groups duplicate loadout cards on one row with a count badge', async () => {
 		await import('../main.js');
 
+		const mockInventory = [
+			{ instanceId: 'iron-1', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'iron-2', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'iron-3', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'flame-1', cardId: 'flame_blade', grind: 0, level: 1 },
+		];
 		const mockOwned = { iron_sword: 3, flame_blade: 1 };
-		const mockDeck = ['iron_sword', 'iron_sword', 'flame_blade', 'iron_sword'];
+		const mockDeck = ['iron-1', 'iron-2', 'flame-1', 'iron-3'];
 
-		window.__setDeckState(mockDeck, mockOwned);
+		window.__setDeckState(mockDeck, mockOwned, mockInventory);
 		window.renderDeckEditor();
 
 		const deckEntries = document.querySelectorAll('.deck-entry');
@@ -167,6 +179,27 @@ describe('renderDeckEditor()', () => {
 		const labels = Array.from(deckEntries).map((e) => e.querySelector('.card-label').textContent);
 		expect(labels[0]).toBe('Rust-Forged Saber');
 		expect(labels[1]).toBe('Solar Edge');
+	});
+
+	it('shows separate loadout rows for the same card at different attune levels', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'iron-1', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'iron-2', cardId: 'iron_sword', grind: 5, level: 1 },
+			{ instanceId: 'iron-3', cardId: 'iron_sword', grind: 5, level: 1 },
+		];
+		const mockDeck = ['iron-1', 'iron-2', 'iron-3'];
+
+		window.__setDeckState(mockDeck, { iron_sword: 3 }, mockInventory);
+		window.renderDeckEditor();
+
+		const ironRows = Array.from(document.querySelectorAll('.deck-entry'))
+			.filter((entry) => entry.querySelector('.card-label').textContent === 'Rust-Forged Saber');
+		expect(ironRows).toHaveLength(2);
+		expect(ironRows.find((row) => row.querySelector('.grind-badge')?.textContent === '+5')
+			.querySelector('.deck-entry-count').textContent).toBe('×2');
+		expect(ironRows.find((row) => !row.querySelector('.grind-badge'))).toBeTruthy();
 	});
 
 	it('hides deck error on render', async () => {
@@ -1021,6 +1054,110 @@ describe('renderHand()', () => {
 		slots[1].dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
 		expect(slots[0].classList.contains('synergy-adjacent')).toBe(false);
 		expect(slots[2].classList.contains('synergy-adjacent')).toBe(false);
+	});
+
+	it('renders a charge meter height matching remaining uses', async () => {
+		const { getCardChargePercent } = await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 2 };
+		hand[1] = null;
+		hand[2] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
+		hand[3] = null;
+
+		window.renderHand();
+
+		const slots = document.querySelectorAll('.card-slot');
+		expect(slots[0].querySelector('.card-charge-meter')).not.toBeNull();
+		expect(slots[0].style.getPropertyValue('--charge-pct')).toBe('40');
+		expect(getCardChargePercent(hand[0])).toBe(40);
+		expect(slots[2].style.getPropertyValue('--charge-pct')).toBe('100');
+		expect(slots[1].querySelector('.card-charge-meter')?.hidden).toBe(true);
+	});
+
+	it('uses creature burn TTL for the charge meter while a minion is active', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		const burningCard = {
+			id: 'dungeon_drake',
+			name: 'Vault Wyrm',
+			type: 'creature',
+			charges: 1,
+			remainingCharges: 0,
+			activeMinionId: 'minion-1',
+			burnMaxTtl: 30,
+		};
+		hand[2] = burningCard;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 18, hp: 50 }],
+			players: { player1: { magicStones: 0 } },
+		}, 'player1');
+
+		window.renderHand();
+
+		const slot = document.querySelector('.card-slot[data-slot-index="2"]');
+		expect(slot.style.getPropertyValue('--charge-pct')).toBe('60');
+	});
+
+	it('lays out hand slots in a staggered N64 controller fan for 8BitDo 64 only', () => {
+		expect(styleCss).toContain('#card-hand.layout-8bitdo-64');
+		expect(styleCss).toContain('--hand-n64-step-y');
+		expect(styleCss).toContain('#card-hand.layout-8bitdo-64 .card-slot.empty');
+
+		const slotRule = (index) => {
+			const match = styleCss.match(new RegExp(
+				`#card-hand\\.layout-8bitdo-64 \\.card-slot\\[data-slot-index="${index}"\\][^{]*\\{([^}]+)\\}`,
+				's',
+			));
+			expect(match, `slot ${index} N64 layout rule`).not.toBeNull();
+			return match[1];
+		};
+
+		expect(slotRule('0')).toContain('bottom: 0');
+		expect(slotRule('1')).toContain('var(--hand-n64-step-y)');
+		expect(slotRule('3')).toContain('var(--hand-n64-step-y)');
+		expect(slotRule('4')).toContain('calc(2 * var(--hand-n64-step-y))');
+		expect(slotRule('5')).toContain('calc(2 * var(--hand-n64-step-y))');
+		expect(slotRule('2')).toContain('calc(3 * var(--hand-n64-step-y))');
+		expect(slotRule('1')).toContain('var(--hand-n64-b-extra)');
+		expect(slotRule('4')).toContain('var(--hand-n64-drift)');
+		expect(slotRule('1')).toContain('var(--hand-n64-step-y)');
+		expect(slotRule('4')).toContain('calc(2 * var(--hand-n64-step-y))');
+	});
+
+	it('renders exactly one input hint badge per card slot', async () => {
+		await import('../main.js');
+
+		resetHandState();
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+		hand[1] = null;
+
+		window.renderHand();
+		window.renderHand();
+
+		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
+		expect(slot.querySelectorAll(':scope > .card-input-hint')).toHaveLength(1);
+		expect(slot.querySelector('.card-slot-content .card-input-hint')).toBeNull();
+	});
+
+	it('toggles layout-8bitdo-64 on the card hand when the N64 profile is active', async () => {
+		const { patchSettings } = await import('../settings.js');
+		await import('../main.js');
+
+		const cardHand = document.getElementById('card-hand');
+		cardHand.style.display = 'flex';
+
+		patchSettings({ gamepad: { profile: 'standard' } });
+		window.renderHand();
+		expect(cardHand.classList.contains('layout-8bitdo-64')).toBe(false);
+
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		window.renderHand();
+		expect(cardHand.classList.contains('layout-8bitdo-64')).toBe(true);
+		expect(cardHand.style.display).toBe('block');
 	});
 });
 

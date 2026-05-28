@@ -165,6 +165,52 @@ function renderChainLightning(data, ctx) {
 }
 
 /**
+ * Vault Wyrm / Archive Wyrm minion attacks: ground cone matching server
+ * collectConeHits geometry (melee swipe or fire breath).
+ */
+function renderWyrmAttack(data, ctx) {
+	if (!data.origin) return;
+	const isFireBreath = data.specialEffect === 'fire_breath';
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		range: data.attackRange,
+		coneAngle: data.attackConeAngle,
+		color: isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e),
+		emissive: isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a,
+	});
+}
+
+/**
+ * Phase Stalker: narrow cyan beam corridor along the projectile path.
+ */
+function renderPhaseBeam(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		effect: 'returning_projectile',
+		returnPasses: 0,
+		range: data.attackRange,
+		projectileHitWidth: data.hitWidth ?? 0.8,
+		color: accentHex ?? 0x22d3ee,
+		emissive: 0x06b6d4,
+	});
+}
+
+/**
+ * Bulkhead Mauler: short wide shockwave cone in front of the construct.
+ */
+function renderShockwaveSweep(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		range: data.attackRange,
+		coneAngle: data.attackConeAngle,
+		color: accentHex ?? 0x78716c,
+		emissive: 0xf59e0b,
+	});
+}
+
+/**
  * Spike Trap (and any ground-targeted enchantment): show the trap radius
  * with a hostile-red AoE preview at the placement point.
  */
@@ -209,6 +255,10 @@ const CARD_RENDERERS = {
 	// Creatures
 	undead_commander: renderUndeadCommander,
 	thunderbird: renderChainLightning,
+	dungeon_drake: renderWyrmAttack,
+	ancient_wyrm: renderWyrmAttack,
+	null_crawler: renderPhaseBeam,
+	bulkhead_mauler: renderShockwaveSweep,
 
 	// Enchantments
 	spike_trap: renderGroundEnchantment,
@@ -263,6 +313,10 @@ function applyHitFlashes(data, ctx, accentHex) {
 	if (allHits === 0) return;
 
 	if (shockwaveHits.length === 0) ctx.playSound('enemyHit');
+
+	if (ctx.markCardHitEnemies) {
+		ctx.markCardHitEnemies([...directHits, ...shockwaveHits]);
+	}
 
 	const meshes = ctx.enemyMeshes ? ctx.enemyMeshes() : {};
 	for (const hit of [...directHits, ...shockwaveHits]) {

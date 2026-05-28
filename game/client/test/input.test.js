@@ -227,14 +227,48 @@ describe('input.js', () => {
 		expect(onUseSlot).toHaveBeenCalledWith(4);
 	});
 
+	it('8BitDo 64 profile maps C-up and C-down to hand slots 3 and 4', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onUseSlot = vi.fn();
+		initInput({
+			onUseSlot,
+			canUseGameActions: () => true,
+		});
+
+		const upButtons = Array(14).fill({ pressed: false, value: 0 });
+		upButtons[2] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			buttons: upButtons,
+			axes: [0, 0, 0, 0.5, 0.5],
+		});
+		pollInput();
+		expect(onUseSlot).toHaveBeenCalledWith(2);
+
+		onUseSlot.mockClear();
+		const downButtons = Array(14).fill({ pressed: false, value: 0 });
+		downButtons[3] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			buttons: downButtons,
+			axes: [0, 0, 0, 0.5, 0.5],
+		});
+		pollInput();
+		expect(onUseSlot).toHaveBeenCalledWith(3);
+	});
+
 	it('exposes 8BitDo 64 hand slot button hints when that profile is selected', () => {
 		patchSettings({ gamepad: { profile: '8bitdo-64' } });
 		expect(is8BitDo64HandHintsActive()).toBe(true);
-		expect(getHandSlotInputHints()).toEqual({
-			mode: 'gamepad',
-			hints: ['A', 'B', 'C↑', 'C↓', 'C←', 'C→'],
-		});
-		expect(getHandSlotGamepadHints()).toEqual(['A', 'B', 'C↑', 'C↓', 'C←', 'C→']);
+		const result = getHandSlotInputHints();
+		expect(result.mode).toBe('gamepad');
+		expect(result.hints.slice(0, 2)).toEqual(['A', 'B']);
+		expect(result.hintLabels).toEqual(['A', 'B', 'C up', 'C down', 'C left', 'C right']);
+		expect(result.hints[2]).toContain('c-button-mark');
+		expect(result.hints[3]).toContain('rotate(180 6 6)');
+		expect(result.hints[4]).toContain('rotate(-90 6 6)');
+		expect(result.hints[5]).toContain('rotate(90 6 6)');
+		expect(getHandSlotGamepadHints()?.slice(0, 2)).toEqual(['A', 'B']);
 	});
 
 	it('exposes standard gamepad face button hints when that profile is selected', () => {
@@ -242,6 +276,7 @@ describe('input.js', () => {
 		expect(getHandSlotInputHints()).toEqual({
 			mode: 'gamepad',
 			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+			hintLabels: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
 		});
 	});
 
@@ -260,6 +295,7 @@ describe('input.js', () => {
 		expect(getHandSlotInputHints()).toEqual({
 			mode: 'gamepad',
 			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+			hintLabels: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
 		});
 	});
 
