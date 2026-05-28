@@ -23,10 +23,11 @@
     "enchantment": "✨"
   },
   "lobby": {
-    "registryTitle": "Guild Registry",
+    "registryTitle": "Lobby Registry",
     "registryStatus": "Choose a channel or open your own.",
     "createChannel": "Open Channel",
-    "lobbyTitle": "Hunter Guild",
+    "lobbyTitle": "Lobby Connection",
+    "medicTitle": "Lobby Medic",
     "contractTerminal": "Contract Terminal",
     "loadoutBay": "Loadout Bay",
     "cardShop": "Card Shop",
@@ -48,7 +49,7 @@
     "unknownSector": "unknown sector",
     "awaitingExtract": "Awaiting squad extraction at conduit…",
     "abandonSortie": "Abort Sortie",
-    "returnToGuild": "Return to Guild",
+    "returnToGuild": "Return to Lobby",
     "chooseReward": "Select Arcane Uplink (card reward)",
     "noContracts": "No contracts posted"
   },
