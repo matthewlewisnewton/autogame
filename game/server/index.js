@@ -208,6 +208,7 @@ const {
   getCardSellValue,
   getCardBuyValue,
   ensureShopOffer,
+  healAtMedic,
   buyShopCard,
   pickShopOffer,
   canSellCardInstance,
@@ -262,6 +263,8 @@ const {
   checkRunTerminalState,
   resetTransientRunState,
   returnPlayersToLobby,
+  giveUpRun,
+  previewReturnRewards,
   checkAllReady,
   stateSnapshot,
   checkTelepipeProximity,
@@ -391,6 +394,7 @@ const DEBUG_SCENARIOS = new Set([
   'mixed-enemies',
   'spawner-active',
   'monster-card',
+  'minion-combat',
   'run-failed',
   'run-exhausted',
   'telepipe-ready',
@@ -577,6 +581,47 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'monster-card') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
+      if (!player.hand.some(c => c && c.type === 'creature')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
+          const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
+          if (deckMonsterIndex !== -1) {
+            player.deck.splice(deckMonsterIndex, 1);
+          }
+        }
+      }
+    } else if (name === 'minion-combat') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const anchorX = player.x;
+      const anchorZ = player.z;
+      // Keep the player out of aggro range while a pre-spawned minion brawls nearby.
+      player.x = anchorX - DETECTION_RADIUS - 1;
+      state.enemies = [];
+      const enemy = spawnEnemy(anchorX + 2, anchorZ, 'grunt');
+      enemy.hp = 500;
+      enemy.maxHp = 500;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.attackState = 'idle';
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'dungeon_drake',
+        x: anchorX + 1,
+        z: anchorZ,
+        hp: 50,
+        maxHp: 50,
+        maxTtl: 30,
+        ttl: 30,
+        breathRange: 4,
+        breathConeAngle: Math.PI / 4,
+        breathDamage: 3,
+        breathDurationMs: 2000,
+        breathTickMs: 500,
+        breathIntervalMs: 2500,
+        lastBreathAt: 0,
+      }];
       if (!player.hand.some(c => c && c.type === 'creature')) {
         const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
         if (replaceSlot >= 0) {
@@ -2004,13 +2049,25 @@ function startServer(port) {
         minion.attackConeAngle = cardDef.attackConeAngle || ((Math.PI * 2) / 3);
         minion.attackDamage = cardDef.attackDamage || 9;
       }
+      if (data.cardId === 'dungeon_drake') {
+        const breathIntervalMs = cardDef.breathIntervalMs || 2500;
+        minion.breathIntervalMs = breathIntervalMs;
+        minion.breathRange = cardDef.breathRange || 4;
+        minion.breathConeAngle = cardDef.breathConeAngle || (Math.PI / 4);
+        minion.breathDurationMs = cardDef.breathDurationMs || 2000;
+        minion.breathTickMs = cardDef.breathTickMs || 500;
+        minion.breathDamage = cardDef.attackDamage || 3;
+        minion.lastBreathAt = now - breathIntervalMs;
+      }
       if (cardDef.effect === 'ancient_wyrm') {
         const breathIntervalMs = cardDef.breathIntervalMs || 3000;
         minion.lastBreathAt = now - breathIntervalMs;
         minion.breathIntervalMs = breathIntervalMs;
         minion.breathRange = cardDef.breathRange || 8;
-        minion.breathDamage = cardDef.breathDamage || 15;
-        minion.breathConeAngle = cardDef.breathConeAngle || ATTACK_CONE_ANGLE;
+        minion.breathDamage = cardDef.breathDamage || 4;
+        minion.breathConeAngle = cardDef.breathConeAngle || (Math.PI / 3);
+        minion.breathDurationMs = cardDef.breathDurationMs || 2500;
+        minion.breathTickMs = cardDef.breathTickMs || 500;
       }
       state.minions.push(minion);
 
@@ -2154,6 +2211,26 @@ function startServer(port) {
     if (!state.run) return;
 
     returnPlayersToLobby();
+    });
+  });
+
+  socket.on('giveUp', () => {
+    withLobbyFromSocket(socket, (state) => {
+      try {
+        if (state.gamePhase !== 'playing' || !state.run || state.run.status === 'suspended') {
+          socket.emit('runError', { reason: 'No active run' });
+          return;
+        }
+        const result = giveUpRun();
+        if (!result.ok) {
+          socket.emit('runError', { reason: result.reason || 'Cannot give up' });
+          return;
+        }
+        socket.emit('runAbandoned');
+      } catch (err) {
+        console.error('[giveUp] failed:', err);
+        socket.emit('runError', { reason: 'Give up failed' });
+      }
     });
   });
 
@@ -2379,6 +2456,29 @@ function startServer(port) {
       selectedDeck: player.selectedDeck
     });
     savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('medicHeal', () => {
+    withLobbyFromSocket(socket, (state) => {
+      if (state.gamePhase !== 'lobby') {
+        socket.emit('medicError', { reason: 'not_in_lobby' });
+        return;
+      }
+
+      const result = healAtMedic(socket.playerId);
+      if (!result.ok) {
+        socket.emit('medicError', { reason: result.reason });
+        return;
+      }
+
+      const player = state.players[socket.playerId];
+      socket.emit('medicHealed', {
+        hp: result.hp,
+        currency: player.currency,
+        cost: result.cost,
+      });
+      io.to(state._lobbyId).emit('stateUpdate', stateSnapshot());
     });
   });
 
@@ -2698,6 +2798,8 @@ if (typeof module !== 'undefined' && module.exports) {
     checkRunTerminalState,
     resetTransientRunState,
     returnPlayersToLobby,
+    giveUpRun,
+    previewReturnRewards,
     createPlayerProgress,
     grantCard,
     grantRunRewards,
@@ -2767,7 +2869,8 @@ if (typeof module !== 'undefined' && module.exports) {
     getCardSellValue,
     getCardBuyValue,
     ensureShopOffer,
-    buyShopCard,
+    healAtMedic,
+  buyShopCard,
     pickShopOffer,
     canSellCardInstance,
     sellCard,

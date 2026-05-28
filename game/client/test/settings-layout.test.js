@@ -20,12 +20,31 @@ describe('settings layout in index.html', () => {
 		expect(toolbar).not.toBeNull();
 		expect(ui).not.toBeNull();
 		expect(toolbar.querySelector('#account-btn')).not.toBeNull();
+		expect(toolbar.querySelector('#level-settings-btn')).not.toBeNull();
 		expect(toolbar.querySelector('#settings-btn')).not.toBeNull();
 		expect(toolbar.querySelector('#mute-btn')).not.toBeNull();
 		expect(toolbar.querySelector('#logout-btn')).toBeNull();
 		expect(ui.querySelector('#account-btn')).toBeNull();
 		expect(ui.querySelector('#settings-btn')).toBeNull();
 		expect(ui.querySelector('#mute-btn')).toBeNull();
+	});
+
+	it('includes level settings overlay with give up control', () => {
+		const doc = parseIndex();
+		const overlay = doc.getElementById('level-settings-overlay');
+		const btn = doc.getElementById('level-settings-btn');
+
+		expect(overlay).not.toBeNull();
+		expect(overlay.querySelector('#give-up-btn')).not.toBeNull();
+		expect(overlay.querySelector('#level-loot-earned')).not.toBeNull();
+		expect(overlay.querySelector('#level-return-currency')).not.toBeNull();
+		expect(overlay.querySelector('#level-return-cards')).not.toBeNull();
+		expect(overlay.querySelector('#level-give-up-cost')).not.toBeNull();
+		expect(overlay.querySelector('#level-settings-error')).not.toBeNull();
+		expect(doc.getElementById('lobby-tab-medic')).not.toBeNull();
+		expect(doc.getElementById('guild-medic')).not.toBeNull();
+		expect(doc.getElementById('medic-heal-btn')).not.toBeNull();
+		expect(btn?.classList.contains('hidden')).toBe(true);
 	});
 
 	it('keeps logout on the account page instead of the toolbar', () => {

@@ -170,6 +170,8 @@ function renderChainLightning(data, ctx) {
  */
 function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
+	if (data.breathPhase === 'tick') return;
+
 	const isFireBreath = data.specialEffect === 'fire_breath';
 	const accentHex = getAccentHex(data.cardId);
 	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
@@ -177,6 +179,7 @@ function renderWyrmAttack(data, ctx) {
 		coneAngle: data.attackConeAngle,
 		color: isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e),
 		emissive: isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a,
+		duration: data.breathDurationMs,
 	});
 }
 

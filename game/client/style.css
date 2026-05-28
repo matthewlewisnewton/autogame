@@ -18,11 +18,24 @@ body, html {
   --hand-card-gap-x: 14px;
   --hand-row-gap-y: 16px;
   --hand-row-shift-x: 48px;
-  --hand-n64-step-y: 96px;
-  --hand-n64-pair-x: 72px;
-  --hand-n64-corner: 20px;
-  --hand-n64-drift: 28px;
-  --hand-n64-b-extra: 36px;
+  --hand-n64-col-w: var(--hand-n64-card-w);
+  --hand-n64-col-gap: 6px;
+  --hand-n64-row-h: 72px;
+  --hand-n64-card-w: 96px;
+  --hand-n64-card-h: 140px;
+  --hand-n64-stack-gap: 12px;
+  --hand-n64-bottom-pad: 44px;
+  --hand-n64-lift-a: var(--hand-n64-bottom-pad);
+  --hand-n64-lift-b: calc(var(--hand-n64-bottom-pad) + 24px);
+  --hand-n64-lift-cdown: calc(var(--hand-n64-bottom-pad) + 40px);
+  --hand-n64-lift-cleft: calc(
+    var(--hand-n64-bottom-pad) + var(--hand-n64-card-h) - var(--hand-n64-row-h) + var(--hand-n64-stack-gap)
+  );
+  --hand-n64-lift-cup: calc(
+    var(--hand-n64-lift-cdown) + var(--hand-n64-card-h) - var(--hand-n64-row-h) + var(--hand-n64-stack-gap)
+  );
+  --hand-n64-lift-cright: var(--hand-n64-lift-cleft);
+  --hand-n64-grid-h: calc(var(--hand-n64-row-h) + var(--hand-n64-card-h) + var(--hand-n64-lift-cup));
 }
 
 #ui {
@@ -98,10 +111,13 @@ h1 {
 }
 
 #account-btn,
+#level-settings-btn,
 #settings-btn {
   width: 40px;
   height: 40px;
   font-size: 20px;
+  font-family: 'Exo 2', sans-serif;
+  font-weight: 700;
   border: 1px solid rgba(148, 163, 184, 0.3);
   border-radius: 6px;
   background: rgba(15, 23, 42, 0.75);
@@ -114,8 +130,14 @@ h1 {
 }
 
 #account-btn:hover,
+#level-settings-btn:hover,
 #settings-btn:hover {
   background: rgba(30, 41, 59, 0.9);
+}
+
+#level-settings-btn {
+  font-size: 13px;
+  letter-spacing: 0.02em;
 }
 
 canvas {
@@ -161,13 +183,19 @@ canvas {
 
 #card-hand.layout-8bitdo-64 {
   bottom: 16px;
-  right: 16px;
+  right: calc(16px + 58px + 10px);
   left: auto;
   transform: none;
-  width: calc(var(--hand-n64-corner) + var(--hand-n64-pair-x) + var(--hand-n64-b-extra) + var(--hand-card-w));
-  height: calc(3 * var(--hand-n64-step-y) + var(--hand-card-h));
+  display: grid;
+  grid-template-columns: repeat(4, var(--hand-n64-col-w));
+  grid-template-rows: repeat(2, var(--hand-n64-row-h));
+  column-gap: var(--hand-n64-col-gap);
+  width: calc(4 * var(--hand-n64-col-w) + 3 * var(--hand-n64-col-gap));
+  height: var(--hand-n64-grid-h);
   padding: 0;
   gap: 0;
+  overflow: visible;
+  align-content: end;
 }
 
 #card-hand.layout-8bitdo-64.has-desperation::before {
@@ -177,7 +205,16 @@ canvas {
 }
 
 #card-hand.layout-8bitdo-64 .card-slot.empty {
-  display: none;
+  display: flex;
+  background: rgba(15, 23, 42, 0.32);
+  border: 2px dashed rgba(100, 116, 139, 0.28);
+  opacity: 0.5;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot.empty .card-input-hint {
+  opacity: 0.65;
 }
 
 .card-slot {
@@ -201,49 +238,65 @@ canvas {
 }
 
 #card-hand.layout-8bitdo-64 .card-slot {
-  position: absolute;
+  width: var(--hand-n64-card-w);
+  height: var(--hand-n64-card-h);
+  align-self: end;
+  justify-self: start;
+  isolation: isolate;
 }
 
-/* N64 fan (bottom-right anchor):
-        [C↑]
-   [C←]     [C→]
- [B]   [C↓]
-     [A]
-   B is lower and left of C←; each row steps up toward the corner. */
+#card-hand.layout-8bitdo-64 .card-slot:not(.empty) {
+  background: rgba(15, 23, 42, 0.96);
+}
+
+/* Col1: B | Col2: C←/A | Col3: C↑/C↓ | Col4: C→ — two ascending diagonals via bottom lift */
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="1"] {
+  grid-column: 1;
+  grid-row: 1 / -1;
+  margin-bottom: var(--hand-n64-lift-b);
+  z-index: 30;
+}
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="4"] {
+  grid-column: 2;
+  grid-row: 1;
+  margin-bottom: var(--hand-n64-lift-cleft);
+  z-index: 20;
+}
 #card-hand.layout-8bitdo-64 .card-slot[data-slot-index="0"] {
-  bottom: 0;
-  right: 0;
+  grid-column: 2;
+  grid-row: 2;
+  margin-bottom: var(--hand-n64-lift-a);
   z-index: 10;
 }
-
-#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="3"] {
-  bottom: var(--hand-n64-step-y);
-  right: var(--hand-n64-corner);
-  z-index: 22;
-}
-
-#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="1"] {
-  bottom: var(--hand-n64-step-y);
-  right: calc(var(--hand-n64-corner) + var(--hand-n64-pair-x) + var(--hand-n64-b-extra));
-  z-index: 21;
-}
-
-#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="5"] {
-  bottom: calc(2 * var(--hand-n64-step-y));
-  right: calc(var(--hand-n64-corner) + var(--hand-n64-drift));
-  z-index: 32;
-}
-
-#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="4"] {
-  bottom: calc(2 * var(--hand-n64-step-y));
-  right: calc(var(--hand-n64-corner) + var(--hand-n64-drift) + var(--hand-n64-pair-x));
-  z-index: 31;
-}
-
 #card-hand.layout-8bitdo-64 .card-slot[data-slot-index="2"] {
-  bottom: calc(3 * var(--hand-n64-step-y));
-  right: calc(var(--hand-n64-corner) + 2 * var(--hand-n64-drift));
-  z-index: 40;
+  grid-column: 3;
+  grid-row: 1;
+  margin-bottom: var(--hand-n64-lift-cup);
+  z-index: 25;
+}
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="3"] {
+  grid-column: 3;
+  grid-row: 2;
+  margin-bottom: var(--hand-n64-lift-cdown);
+  z-index: 15;
+}
+#card-hand.layout-8bitdo-64 .card-slot[data-slot-index="5"] {
+  grid-column: 4;
+  grid-row: 1;
+  margin-bottom: var(--hand-n64-lift-cright);
+  z-index: 20;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot .card-icon {
+  font-size: 32px;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot .card-name {
+  font-size: 12px;
+}
+
+#card-hand.layout-8bitdo-64 .card-slot .card-charges {
+  font-size: 10px;
 }
 
 #card-hand.layout-8bitdo-64 .card-slot .card-ms-cost {
@@ -1261,6 +1314,70 @@ canvas {
 
 /* ── Lobby tabs ── */
 
+/* Guild lobby is z-index 100; keep the Vanguard HP readout above it. */
+body[data-phase="lobby"] #ui {
+  z-index: 110;
+}
+
+body[data-phase="lobby"] #vanguard-hud {
+  z-index: 111;
+}
+
+body[data-phase="lobby"] #ms-bar-container,
+body[data-phase="lobby"] #deck-stats-panel,
+body[data-phase="lobby"] #objective-hud,
+body[data-phase="lobby"] #currency-display {
+  display: none;
+}
+
+#guild-medic {
+  width: min(420px, 100%);
+}
+
+#guild-medic-layout {
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+#guild-medic-layout h3 {
+  margin-bottom: 12px;
+  font-size: 18px;
+}
+
+.medic-hp-line {
+  margin: 0 0 8px;
+  font-size: 16px;
+  color: #e2e8f0;
+}
+
+#medic-heal-btn {
+  margin-top: 12px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  border: 1px solid rgba(74, 222, 128, 0.45);
+  background: rgba(20, 83, 45, 0.45);
+  color: #bbf7d0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#medic-heal-btn:hover:not(:disabled) {
+  background: rgba(22, 101, 52, 0.65);
+}
+
+#medic-heal-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#medic-error {
+  margin-top: 10px;
+  color: #f87171;
+  font-size: 13px;
+}
+
 #lobby-tabs {
   position: relative;
   z-index: 1;
@@ -1884,7 +2001,8 @@ canvas {
 /* ── Account + Settings overlays ── */
 
 #settings-overlay,
-#account-overlay {
+#account-overlay,
+#level-settings-overlay {
   position: fixed;
   inset: 0;
   display: flex;
@@ -1896,12 +2014,14 @@ canvas {
 }
 
 #settings-overlay.hidden,
-#account-overlay.hidden {
+#account-overlay.hidden,
+#level-settings-overlay.hidden {
   display: none;
 }
 
 #settings-modal,
-#account-modal {
+#account-modal,
+#level-settings-modal {
   position: relative;
   width: min(560px, 92vw);
   max-height: 85vh;
@@ -1914,12 +2034,14 @@ canvas {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
-#account-modal {
+#account-modal,
+#level-settings-modal {
   width: min(420px, 92vw);
 }
 
 #settings-modal h2,
-#account-modal h2 {
+#account-modal h2,
+#level-settings-modal h2 {
   margin-bottom: 16px;
   font-size: 22px;
 }
@@ -2029,6 +2151,40 @@ canvas {
 }
 
 .account-logout-btn:hover {
+  background: rgba(185, 28, 28, 0.55);
+}
+
+.level-reward-line {
+  margin: 0 0 8px;
+  font-size: 15px;
+  color: #e2e8f0;
+}
+
+.level-settings-rewards h3 {
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  margin: 12px 0 6px;
+}
+
+.level-settings-rewards h3:first-child {
+  margin-top: 0;
+}
+
+.give-up-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.give-up-btn:hover {
   background: rgba(185, 28, 28, 0.55);
 }
 
@@ -2395,18 +2551,13 @@ canvas {
 
 #deck-stack {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 16px;
+  right: 16px;
   width: 58px;
   height: 80px;
   pointer-events: auto;
   cursor: pointer;
   z-index: 11;
-}
-
-#deck-stack.deck-stack-n64-hand {
-  bottom: calc(16px + var(--hand-card-h) + 3 * var(--hand-n64-step-y) + 12px);
-  right: 16px;
 }
 
 #deck-stack.hidden {

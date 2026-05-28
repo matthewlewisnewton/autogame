@@ -2015,6 +2015,33 @@ describe('Run terminal state — integration', () => {
 		expect(summary).toHaveProperty('players');
 	});
 
+	it('giveUp returns to lobby, strips run loot, and preserves HP', async () => {
+		const startGame1 = waitForEvent(socket1, 'startGame');
+		const startGame2 = waitForEvent(socket2, 'startGame');
+		socket1.emit('playerReady', true);
+		socket2.emit('playerReady', true);
+		await Promise.all([startGame1, startGame2]);
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const playerId = socket1._playerId;
+		testGameState().players[playerId].hp = 47;
+		testGameState().players[playerId].currency = 80;
+		testGameState().players[playerId].currencyEarnedThisRun = 15;
+
+		const abandonedPromise = waitForEvent(socket1, 'runAbandoned');
+		const statePromise = waitForEvent(socket1, 'stateUpdate');
+		socket1.emit('giveUp');
+		await abandonedPromise;
+		const stateUpdate = await statePromise;
+
+		expect(testGameState().gamePhase).toBe('lobby');
+		expect(stateUpdate.gamePhase).toBe('lobby');
+		expect(testGameState().run).toBeUndefined();
+		expect(testGameState().players[playerId].hp).toBe(47);
+		expect(testGameState().players[playerId].currency).toBe(65);
+		expect(testGameState().players[playerId].currencyEarnedThisRun).toBe(0);
+	});
+
 	it('returnToLobby resets gamePhase, clears run, empties enemies/minions/loot, and sets players to ready: false', async () => {
 		// Both players ready up to start a game
 		const startGame1 = waitForEvent(socket1, 'startGame');

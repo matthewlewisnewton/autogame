@@ -10,7 +10,6 @@ import {
 	evolveCard,
 	updateMinions,
 } from '../index.js';
-import { ATTACK_CONE_ANGLE, ATTACK_RANGE } from '../config.js';
 import {
 	connectAndJoinLobby,
 	startTestServer,
@@ -42,6 +41,8 @@ describe('Ancient Wyrm definitions', () => {
 			isEvolved: true,
 			specialEffect: 'fire_breath',
 			effect: 'ancient_wyrm',
+			breathDurationMs: 2500,
+			breathTickMs: 500,
 		});
 	});
 
@@ -108,12 +109,12 @@ describe('Ancient Wyrm gameplay', () => {
 	});
 });
 
-describe('Ancient Wyrm fire breath', () => {
+describe('Wyrm channeled breath', () => {
 	beforeEach(() => {
 		resetState();
 	});
 
-	it('Vault Wyrm melee routes through collectConeHits and queues cardUsed payload', () => {
+	it('Vault Wyrm opens a short cone breath that ticks once immediately', () => {
 		gameState.enemies.push({
 			id: 'e1',
 			x: 2,
@@ -130,21 +131,67 @@ describe('Ancient Wyrm fire breath', () => {
 			z: 0,
 			hp: 20,
 			ttl: 30,
+			breathRange: 4,
+			breathConeAngle: Math.PI / 4,
+			breathDamage: 3,
+			breathDurationMs: 2000,
+			breathTickMs: 500,
+			breathIntervalMs: 2500,
+			lastBreathAt: 0,
 		});
 
 		updateMinions();
 
-		expect(gameState.enemies[0].hp).toBe(45);
+		expect(gameState.enemies[0].hp).toBe(47);
+		expect(gameState.minions[0].breathState).toBe('breathing');
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
 			cardId: 'dungeon_drake',
-			attackRange: ATTACK_RANGE,
-			attackConeAngle: ATTACK_CONE_ANGLE,
-			hits: [{ enemyId: 'e1', hp: 45 }],
+			attackRange: 4,
+			attackConeAngle: Math.PI / 4,
+			breathPhase: 'start',
+			breathDurationMs: 2000,
+			hits: [{ enemyId: 'e1', hp: 47 }],
 		});
 	});
 
-	it('damages enemies in a forward cone every ~3s', () => {
+	it('does not hit again until the next breath tick window', () => {
+		const now = Date.now();
+		gameState.enemies.push({
+			id: 'e1',
+			x: 2,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'drake-1',
+			ownerId: 'p1',
+			type: 'dungeon_drake',
+			x: 0,
+			z: 0,
+			hp: 20,
+			ttl: 30,
+			breathState: 'breathing',
+			breathStartedAt: now,
+			breathDirX: 1,
+			breathDirZ: 0,
+			lastBreathTickAt: now,
+			breathRange: 4,
+			breathConeAngle: Math.PI / 4,
+			breathDamage: 3,
+			breathDurationMs: 2000,
+			breathTickMs: 500,
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(50);
+		expect(gameState._pendingMinionBreaths).toHaveLength(0);
+	});
+
+	it('Archive Wyrm channels fire breath instead of spamming melee swipes', () => {
 		const now = Date.now();
 		gameState.minions.push({
 			id: 'wyrm-1',
@@ -158,7 +205,9 @@ describe('Ancient Wyrm fire breath', () => {
 			breathIntervalMs: 3000,
 			breathRange: 8,
 			breathDamage: CARD_DEFS.ancient_wyrm.breathDamage,
-			breathConeAngle: ATTACK_CONE_ANGLE,
+			breathConeAngle: CARD_DEFS.ancient_wyrm.breathConeAngle,
+			breathDurationMs: 2500,
+			breathTickMs: 500,
 		});
 		gameState.enemies.push({
 			id: 'e1',
@@ -172,16 +221,17 @@ describe('Ancient Wyrm fire breath', () => {
 		updateMinions();
 
 		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
-		expect(gameState.minions[0].lastBreathAt).toBeGreaterThanOrEqual(now);
+		expect(gameState.minions[0].breathState).toBe('breathing');
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
 			cardId: 'ancient_wyrm',
 			specialEffect: 'fire_breath',
+			breathPhase: 'start',
 			hits: [{ enemyId: 'e1', hp: 50 - CARD_DEFS.ancient_wyrm.breathDamage }],
 		});
 	});
 
-	it('melee swipe routes through collectConeHits and queues cardUsed payload', () => {
+	it('waits out breath cooldown instead of melee swiping between channels', () => {
 		gameState.enemies.push({
 			id: 'e1',
 			x: 2,
@@ -200,16 +250,15 @@ describe('Ancient Wyrm fire breath', () => {
 			ttl: 30,
 			lastBreathAt: Date.now(),
 			breathIntervalMs: 3000,
+			breathRange: 8,
+			breathDamage: 4,
+			breathDurationMs: 2500,
+			breathTickMs: 500,
 		});
 
 		updateMinions();
 
-		expect(gameState.enemies[0].hp).toBe(45);
-		expect(gameState._pendingMinionBreaths).toHaveLength(1);
-		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
-			cardId: 'ancient_wyrm',
-			hits: [{ enemyId: 'e1', hp: 45 }],
-		});
-		expect(gameState._pendingMinionBreaths[0].specialEffect).toBeUndefined();
+		expect(gameState.enemies[0].hp).toBe(50);
+		expect(gameState._pendingMinionBreaths).toHaveLength(0);
 	});
 });

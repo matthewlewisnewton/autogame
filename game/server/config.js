@@ -1,5 +1,5 @@
 // Server configuration constants
-const { MAX_MAGIC_STONES: SHARED_MAX_MAGIC_STONES, STARTING_MAGIC_STONES: SHARED_STARTING_MAGIC_STONES } = require('../shared/constants.json');
+const { MAX_MAGIC_STONES: SHARED_MAX_MAGIC_STONES, STARTING_MAGIC_STONES: SHARED_STARTING_MAGIC_STONES, HAND_SLOT_FILL_ORDER: SHARED_HAND_SLOT_FILL_ORDER } = require('../shared/constants.json');
 
 const TICK_RATE = 20; // times per second
 const MOVE_SPEED = 12; // units per second — maximum player movement speed (matches client terminal velocity)
@@ -23,6 +23,7 @@ const SPAWN_PADDING = 2;
 const DECK_MIN_SIZE = 4;
 const DECK_MAX_SIZE = 24;
 const MAX_HP = 100;
+const MEDIC_HEAL_COST = 10;
 const RESPAWN_DELAY_MS = 3000;
 const LOOT_LIFETIME_MS = 120000;
 // Slightly wider than the client walk-over radius (3.25) so pickups succeed after
@@ -92,6 +93,7 @@ const MAX_GROUND_ENCHANTMENTS_PER_PLAYER = 3;
 
 const MAX_HAND_SLOTS = 6;
 const OPENING_HAND_SIZE = 4;
+const HAND_SLOT_FILL_ORDER = SHARED_HAND_SLOT_FILL_ORDER;
 const PASSIVE_DRAW_INTERVAL_MS = Number(process.env.PASSIVE_DRAW_INTERVAL_MS) || 5000;
 
 module.exports = {
@@ -117,6 +119,7 @@ module.exports = {
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
   MAX_HP,
+  MEDIC_HEAL_COST,
   RESPAWN_DELAY_MS,
   LOOT_LIFETIME_MS,
   LOOT_PICKUP_RADIUS,
@@ -140,5 +143,6 @@ module.exports = {
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
   MAX_HAND_SLOTS,
   OPENING_HAND_SIZE,
+  HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
 };

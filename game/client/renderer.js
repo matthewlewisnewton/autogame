@@ -82,7 +82,7 @@ import {
 	updateLockOn,
 	targetRelativeDirection,
 	getDirectionToTarget,
-	resetLockOnCameraTracking,
+	resetLockOnTracking,
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
@@ -340,7 +340,7 @@ function applyLockOnPress() {
 	if (result.action === 'locked' && result.enemy) {
 		clearLockOnCameraRelease();
 		lockOnReleaseLookAt = null;
-		resetLockOnCameraTracking();
+		resetLockOnTracking();
 		const toTarget = getDirectionToTarget(simX, simZ, result.enemy);
 		lockOnToTarget = toTarget;
 		playerRotation = Math.atan2(toTarget.z, toTarget.x);
@@ -356,7 +356,6 @@ function applyLockOnPress() {
 
 function updatePlayerFacing() {
 	if (isLockOnActive() && lockOnToTarget) {
-		playerRotation = Math.atan2(lockOnToTarget.z, lockOnToTarget.x);
 		syncFacingToServer();
 		return;
 	}
@@ -917,12 +916,13 @@ export function updateMyPlayer(delta) {
 		simZ,
 		delta,
 		cameraYaw,
+		playerRotation,
 	);
 
 	if (lockState.locked) {
 		playerRotation = lockState.playerRotation;
 		cameraYaw = lockState.cameraYaw;
-		lockOnToTarget = lockState.toTarget;
+		lockOnToTarget = lockState.liveToTarget ?? lockState.toTarget;
 		lockOnReleaseLookAt = null;
 	} else if (isLockOnCameraReleasing()) {
 		lockOnToTarget = null;
@@ -1746,7 +1746,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		coneAngle,
 		isWeaponCone: true,
 		createdAt: performance.now(),
-		duration: ATTACK_EFFECT_DURATION,
+		duration: style.duration ?? ATTACK_EFFECT_DURATION,
 	});
 }
 
