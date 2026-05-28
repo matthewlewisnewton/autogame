@@ -155,6 +155,23 @@ describe('input.js', () => {
 		expect(onUseSlot).not.toHaveBeenCalled();
 	});
 
+	it('does not fire held buttons when gameplay actions first become enabled', () => {
+		const onUseSlot = vi.fn();
+		let actionsEnabled = false;
+		initInput({
+			onUseSlot,
+			canUseGameActions: () => actionsEnabled,
+		});
+		const buttons = Array(10).fill({ pressed: false, value: 0 });
+		buttons[0] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		pollInput();
+		actionsEnabled = true;
+		pollInput();
+		expect(onUseSlot).not.toHaveBeenCalled();
+	});
+
 	it('modifier bindings only fire while R trigger is held', () => {
 		patchSettings({
 			gamepad: { modifierButton: 7 },

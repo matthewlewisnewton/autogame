@@ -204,7 +204,7 @@ function isButtonPressed(gp, index) {
 export function pollInput() {
 	const gp = getPrimaryGamepad();
 	if (!gp) return;
-	if (callbacks.canUseGameActions && !callbacks.canUseGameActions()) return;
+	const actionsEnabled = !callbacks.canUseGameActions || callbacks.canUseGameActions();
 
 	const padKey = gp.index;
 	if (!prevGamepadButtons.has(padKey)) {
@@ -219,7 +219,7 @@ export function pollInput() {
 		const pressed = isBindingActive(gp, binding);
 		const wasPressed = !!prev[action];
 		prev[action] = pressed;
-		if (pressed && !wasPressed) {
+		if (actionsEnabled && pressed && !wasPressed) {
 			if (action === 'toggleDeckViewer') {
 				callbacks.onToggleDeck?.();
 			} else {
