@@ -838,17 +838,18 @@ describe('Socket Integration — useCard Event', () => {
 			if (summonSlot < 0) {
 				const emptySlot = player.hand.findIndex(c => !c);
 				if (emptySlot >= 0) {
-					player.hand[emptySlot] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+					player.hand[emptySlot] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
 					summonSlot = emptySlot;
 				} else {
 					const replaceSlot = player.hand.findIndex((c, index) => c && index !== 0) ;
-					player.hand[replaceSlot >= 0 ? replaceSlot : 5] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+					player.hand[replaceSlot >= 0 ? replaceSlot : 5] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
 					summonSlot = replaceSlot >= 0 ? replaceSlot : 5;
 				}
 			}
 			const summonCard = player.hand[summonSlot];
 			expect(summonCard).toBeDefined();
 			expect(summonCard.type).toBe('spell');
+			player.magicStones = summonCard.magicStoneCost || 0;
 
 			// Place enemies within SUMMON_RADIUS
 			testGameState().enemies.push({
@@ -1139,7 +1140,7 @@ describe('Socket Integration — useCard Event', () => {
 			const used = await cardUsedPromise;
 
 			expect(used.sacrificedMinionId).toBe('old-minion');
-			expect(player.magicStones).toBe(90);
+			expect(player.magicStones).toBe(MAX_MAGIC_STONES);
 			expect(testGameState().minions.map(m => m.id)).toEqual(['new-minion']);
 			expect(player.hand.find(c => c && c.id === 'iron_sword').remainingCharges).toBe(3);
 		});
@@ -2693,15 +2694,14 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 		const playerA = testGameState().players[socket1._playerId];
 		const deckBefore = [...playerA.selectedDeck];
 
-		// Remove dungeon_drake (only 1 copy in default deck)
-		const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
-		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
-		const update = await deckUpdatePromise;
+		// Remove both dungeon_drake copies from the default deck
+		for (let i = 0; i < 2; i++) {
+			const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
+			socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
+			await deckUpdatePromise;
+		}
 
-		expect(update.selectedDeck.length).toBe(deckBefore.length - 1);
-		expect(selectedDeckCardIds(playerA, update.selectedDeck)).not.toContain('dungeon_drake');
-
-		expect(playerA.selectedDeck.length).toBe(deckBefore.length - 1);
+		expect(playerA.selectedDeck.length).toBe(deckBefore.length - 2);
 		expect(selectedDeckCardIds(playerA)).not.toContain('dungeon_drake');
 	});
 
@@ -2784,17 +2784,17 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 
 		// Deck must be unchanged
 		const playerA = testGameState().players[socket1._playerId];
-		expect(playerA.selectedDeck.length).toBe(8); // default deck size
+		expect(playerA.selectedDeck.length).toBe(12); // default deck size
 	});
 
 	it('removing card not in deck emits deckError', async () => {
-		// dungeon_drake is in the default deck, so remove it first
 		const playerA = testGameState().players[socket1._playerId];
-		const deckBefore = [...playerA.selectedDeck];
 
-		// Remove dungeon_drake from deck
-		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
-		await sleep(100);
+		// Remove both dungeon_drake copies from deck
+		for (let i = 0; i < 2; i++) {
+			socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
+			await sleep(100);
+		}
 
 		// Now try to remove it again — should fail
 		const deckErrorPromise = waitForEvent(socket1, 'deckError');
@@ -2807,34 +2807,38 @@ describe('Deck edit handlers — deckAddCard / deckRemoveCard', () => {
 
 	it('adding too many copies of a card emits deckError', async () => {
 		const playerA = testGameState().players[socket1._playerId];
-		// Default deck already contains all 3 owned iron_swords — adding another should fail
+		// Default deck already contains all 4 owned iron_swords — adding another should fail
 		const deckErrorPromise = waitForEvent(socket1, 'deckError');
 		socket1.emit('deckAddCard', { cardId: 'iron_sword' });
 		const err = await deckErrorPromise;
 
 		expect(err.reason).toContain('No extra copies');
 
-		// Count iron_swords in deck — should be exactly 3 (unchanged)
+		// Count iron_swords in deck — should be exactly 4 (unchanged)
 		const ironCount = selectedDeckCardIds(playerA).filter(id => id === 'iron_sword').length;
-		expect(ironCount).toBe(3);
+		expect(ironCount).toBe(4);
 	});
 
 	it('two players can edit decks independently without affecting each other', async () => {
 		const deckA = [...testGameState().players[socket1._playerId].selectedDeck];
 		const deckB = [...testGameState().players[socket2._playerId].selectedDeck];
 
-		// Player A removes dungeon_drake (only 1 copy in default deck)
+		// Player A removes both dungeon_drake copies from the default deck
+		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
+		await sleep(100);
 		socket1.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
 		await sleep(100);
 
-		// Player B removes dungeon_drake (only 1 copy in default deck)
+		// Player B removes both dungeon_drake copies from the default deck
 		const deckUpdateB = waitForEvent(socket2, 'deckUpdate');
 		socket2.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
 		await deckUpdateB;
+		socket2.emit('deckRemoveCard', { cardId: 'dungeon_drake' });
+		await sleep(100);
 
 		// Verify independence
-		expect(testGameState().players[socket1._playerId].selectedDeck.length).toBe(deckA.length - 1);
-		expect(testGameState().players[socket2._playerId].selectedDeck.length).toBe(deckB.length - 1);
+		expect(testGameState().players[socket1._playerId].selectedDeck.length).toBe(deckA.length - 2);
+		expect(testGameState().players[socket2._playerId].selectedDeck.length).toBe(deckB.length - 2);
 		expect(selectedDeckCardIds(testGameState().players[socket1._playerId])).not.toContain('dungeon_drake'); // A removed it
 		expect(selectedDeckCardIds(testGameState().players[socket2._playerId])).not.toContain('dungeon_drake'); // B removed it
 	});
@@ -3064,7 +3068,7 @@ describe('Lobby card sell and trade', () => {
 		socket1.emit('sellCard', { cardId: 'iron_sword' });
 		await updatePromise;
 
-		expect(player.ownedCards.iron_sword).toBe(2);
+		expect(player.ownedCards.iron_sword).toBe(3);
 		expect(player.currency).toBeGreaterThan(currencyBefore);
 		expect(player.selectedDeck).toEqual(deckBefore);
 		expect(validateDeck(player.selectedDeck, player.inventory).valid).toBe(true);
@@ -3073,7 +3077,7 @@ describe('Lobby card sell and trade', () => {
 	it('rejects selling a card that is required by the selected deck', async () => {
 		const player = testGameState().players[socket1._playerId];
 		const flames = player.inventory.filter((instance) => instance.cardId === 'flame_blade');
-		expect(flames.length).toBe(2);
+		expect(flames.length).toBe(3);
 		for (const instance of flames) {
 			expect(player.selectedDeck).toContain(instance.instanceId);
 		}
@@ -3083,7 +3087,7 @@ describe('Lobby card sell and trade', () => {
 		const err = await errorPromise;
 
 		expect(err.reason).toMatch(/deck/i);
-		expect(player.ownedCards.flame_blade).toBe(2);
+		expect(player.ownedCards.flame_blade).toBe(3);
 	});
 
 	it('lobbyUpdate includes a shop offer with cardId and price', async () => {
@@ -3202,48 +3206,6 @@ describe('Lobby card sell and trade', () => {
 	});
 });
 
-describe('Card upgrade handler', () => {
-	let baseUrl, socket;
-
-	beforeEach(async () => {
-		baseUrl = await startTestServer();
-		socket = (await connectClient(baseUrl)).socket;
-	});
-
-	afterEach(async () => {
-		if (socket && socket.connected) socket.disconnect();
-		await closeServer();
-	});
-
-	it('upgrades an inventory instance through the socket event', async () => {
-		const player = testGameState().players[socket._playerId];
-		player.currency = 500;
-		const instance = player.inventory.find((card) => card.cardId === 'iron_sword');
-
-		const upgradePromise = waitForEvent(socket, 'cardUpgradeResult');
-		socket.emit('upgradeCard', { instanceId: instance.instanceId });
-		const result = await upgradePromise;
-
-		expect(result.ok).toBe(true);
-		expect(result.newLevel).toBe(2);
-		expect(result.currency).toBe(400);
-		expect(result.inventory.find((card) => card.instanceId === instance.instanceId).level).toBe(2);
-	});
-
-	it('rejects socket upgrade when GOLD is insufficient', async () => {
-		const player = testGameState().players[socket._playerId];
-		player.currency = 0;
-		const instance = player.inventory.find((card) => card.cardId === 'iron_sword');
-
-		const errorPromise = waitForEvent(socket, 'cardUpgradeError');
-		socket.emit('upgradeCard', { instanceId: instance.instanceId });
-		const error = await errorPromise;
-
-		expect(error.reason).toContain('Insufficient Money');
-		expect(instance.level).toBe(1);
-	});
-});
-
 describe('Card grinding handler', () => {
 	let baseUrl, socket;
 
@@ -3315,7 +3277,7 @@ describe('Card grinding handler', () => {
 		const cardUsed = await cardUsedPromise;
 
 		expect(cardUsed.hits).toHaveLength(1);
-		expect(cardUsed.hits[0].hp).toBe(100 - Math.round(15 * 1.25));
+		expect(cardUsed.hits[0].hp).toBe(100 - Math.round(17 * 1.25));
 	});
 });
 
@@ -3960,13 +3922,13 @@ describe('killing miniboss via weapon card (integration)', () => {
 		testGameState().minions = [];
 
 		// Reduce miniboss HP so it's killable in a small number of hits regardless
-		// of which weapon card (iron_sword=15 or flame_blade=25) is dealt into hand.
-		// 40 HP → 3 hits with iron_sword (15×3=45) or 2 hits with flame_blade (25×2=50).
+		// of which weapon card (iron_sword=17 or flame_blade=28) is dealt into hand.
+		// 40 HP → 3 hits with iron_sword (17×3=51) or 2 hits with flame_blade (28×2=56).
 		miniboss.hp = 40;
 
 		// Each hit requires COOLDOWN_MS (800ms) + tick time.
 		// Worst case: 3 hits × 900ms = 2.7s. Use 10s timeout for safety.
-		const hitsNeeded = Math.ceil(miniboss.hp / 15); // worst case: iron_sword (15 dmg)
+		const hitsNeeded = Math.ceil(miniboss.hp / 17); // worst case: iron_sword (17 dmg)
 
 		for (let i = 0; i < hitsNeeded; i++) {
 			// Reposition miniboss right before each hit to minimize game-loop movement
@@ -4830,7 +4792,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		if (weaponSlot < 0) {
 			restoredPlayer.hand[0] = {
 				id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon',
-				charges: 5, remainingCharges: 5, damage: 15
+				charges: 5, remainingCharges: 5, damage: 17
 			};
 		}
 

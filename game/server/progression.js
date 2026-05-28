@@ -95,15 +95,15 @@ function getProvider() {
 
 // Server-side card definitions (mirrors game/client/cards.js, weapon entries include damage)
 const CARD_DEFS = {
-  iron_sword: { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 15, charges: 5 },
-  flame_blade: { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', damage: 25, charges: 3 },
-  battle_familiar: { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 40 },
-  dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, minionTtl: 30 },
+  iron_sword: { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 17, charges: 5 },
+  flame_blade: { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', damage: 28, charges: 3 },
+  battle_familiar: { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 44 },
+  dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, minionTtl: 30, attackDamage: 11 },
   steel_claymore: {
     id: 'steel_claymore',
     name: 'Alloy Greatblade',
     type: 'weapon',
-    damage: 23,
+    damage: 25,
     charges: 6,
     attackRange: 7,
     knockbackStrength: 3,
@@ -114,11 +114,11 @@ const CARD_DEFS = {
     id: 'magma_greatsword',
     name: 'Corebreaker Greatsword',
     type: 'weapon',
-    damage: 38,
+    damage: 42,
     charges: 4,
     dotTicks: 4,
     dotIntervalMs: 500,
-    trailDamagePerTick: 10,
+    trailDamagePerTick: 11,
     isEvolved: true,
     specialEffect: 'fire_trail'
   },
@@ -128,7 +128,7 @@ const CARD_DEFS = {
     type: 'spell',
     charges: 1,
     magicStoneCost: 65,
-    damage: 60,
+    damage: 66,
     isEvolved: true,
     specialEffect: 'astral_shield',
     effect: 'astral_guardian',
@@ -136,7 +136,7 @@ const CARD_DEFS = {
     shieldDurationMs: 8000,
     minionHp: 60,
     minionTtl: 30,
-    attackDamage: 10,
+    attackDamage: 11,
     // One attack per sim tick at most (TICK_RATE Hz); sub-tick intervals cannot fire faster.
     attackIntervalMs: Math.floor(1000 / TICK_RATE),
   },
@@ -151,7 +151,7 @@ const CARD_DEFS = {
     effect: 'ancient_wyrm',
     breathIntervalMs: 3000,
     breathRange: 8,
-    breathDamage: 15,
+    breathDamage: 17,
   },
   mana_prism: {
     id: 'mana_prism',
@@ -168,7 +168,7 @@ const CARD_DEFS = {
     id: 'harvesting_scythe',
     name: 'Ether Scythe',
     type: 'weapon',
-    damage: 8,
+    damage: 9,
     charges: 3,
     attackConeAngle: Math.PI,
     magicStoneOnHit: 5,
@@ -219,7 +219,7 @@ const CARD_DEFS = {
     id: 'saber_of_light',
     name: 'Saber of Light',
     type: 'weapon',
-    damage: 8,
+    damage: 9,
     charges: 6,
     cooldownMs: 400,
     specialEffect: 'swift_slash',
@@ -228,7 +228,7 @@ const CARD_DEFS = {
     id: 'excalibur_photon',
     name: 'Excalibur Photon',
     type: 'weapon',
-    damage: 12,
+    damage: 14,
     charges: 6,
     cooldownMs: 200,
     isEvolved: true,
@@ -239,7 +239,7 @@ const CARD_DEFS = {
     id: 'photon_slicer',
     name: 'Photon Slicer',
     type: 'weapon',
-    damage: 12,
+    damage: 13,
     charges: 4,
     attackRange: 8,
     effect: 'returning_projectile',
@@ -249,7 +249,7 @@ const CARD_DEFS = {
     id: 'infinite_disk',
     name: 'Infinite Disk',
     type: 'weapon',
-    damage: 18,
+    damage: 20,
     charges: 4,
     attackRange: 8,
     effect: 'triple_returning_projectile',
@@ -261,7 +261,7 @@ const CARD_DEFS = {
     id: 'arcane_bolt',
     name: 'Arcane Bolt',
     type: 'weapon',
-    damage: 14,
+    damage: 15,
     charges: 4,
     attackRange: 10,
     effect: 'projectile',
@@ -275,7 +275,7 @@ const CARD_DEFS = {
     charges: 1,
     magicStoneCost: 35,
     effect: 'frost_nova',
-    damage: 10,
+    damage: 11,
     freezeDurationMs: 2500,
     specialEffect: 'freeze',
   },
@@ -286,9 +286,9 @@ const CARD_DEFS = {
     charges: 1,
     magicStoneCost: 35,
     effect: 'glacier_collapse',
-    damage: 15,
+    damage: 17,
     freezeDurationMs: 2500,
-    frozenBonusDamage: 40,
+    frozenBonusDamage: 44,
     isEvolved: true,
     specialEffect: 'shatter',
   },
@@ -346,7 +346,7 @@ const CARD_DEFS = {
     effect: 'storm_eagle',
     minionHp: 45,
     attackRange: 7,
-    attackDamage: 12,
+    attackDamage: 13,
     specialEffect: 'ranged_strike',
   },
   thunderbird: {
@@ -358,7 +358,7 @@ const CARD_DEFS = {
     effect: 'thunderbird',
     minionHp: 68,
     attackRange: 11,
-    attackDamage: 18,
+    attackDamage: 20,
     chainRadius: 5,
     maxChainTargets: 2,
     isEvolved: true,
@@ -385,7 +385,7 @@ const CARD_DEFS = {
     pullRadius: 12,
     pullStrength: 6,
     centerRadius: 2.5,
-    centerDamage: 30,
+    centerDamage: 33,
     isEvolved: true,
     specialEffect: 'crush',
   },
@@ -393,10 +393,10 @@ const CARD_DEFS = {
     id: 'echo_blade',
     name: 'Phase Echo',
     type: 'weapon',
-    damage: 14,
+    damage: 15,
     charges: 5,
     shockwaveEvery: 3,
-    shockwaveDamage: 20,
+    shockwaveDamage: 22,
     shockwaveRadius: 6,
     specialEffect: 'shockwave',
   },
@@ -404,10 +404,10 @@ const CARD_DEFS = {
     id: 'resonance_edge',
     name: 'Resonance Edge',
     type: 'weapon',
-    damage: 21,
+    damage: 23,
     charges: 5,
     shockwaveEvery: 2,
-    shockwaveDamage: 30,
+    shockwaveDamage: 33,
     shockwaveRadius: 6,
     isEvolved: true,
     specialEffect: 'shockwave',
@@ -418,7 +418,7 @@ const CARD_DEFS = {
     type: 'spell',
     charges: 1,
     magicStoneCost: 30,
-    damage: 25,
+    damage: 28,
     magicStoneOnHit: 8,
     specialEffect: 'mana_drain',
   },
@@ -428,7 +428,7 @@ const CARD_DEFS = {
     type: 'spell',
     charges: 1,
     magicStoneCost: 30,
-    damage: 38,
+    damage: 42,
     magicStoneOnHit: 12,
     healOnHit: 4,
     healOnKill: 8,
@@ -442,7 +442,7 @@ const CARD_DEFS = {
     charges: 1,
     magicStoneCost: 40,
     effect: 'dragons_breath',
-    damage: 8,
+    damage: 9,
     dotTicks: 4,
     dotIntervalMs: 500,
     attackConeAngle: Math.PI / 3,
@@ -456,7 +456,7 @@ const CARD_DEFS = {
     charges: 1,
     magicStoneCost: 40,
     effect: 'inferno_pillar',
-    damage: 12,
+    damage: 13,
     dotTicks: 4,
     dotIntervalMs: 500,
     attackRange: 7,
@@ -481,7 +481,7 @@ const CARD_DEFS = {
     effect: 'spike_trap',
     target: 'ground',
     radius: 2.5,
-    damage: 35,
+    damage: 39,
     ttlMs: 30000,
     specialEffect: 'proximity_hazard',
   },
@@ -494,7 +494,7 @@ const CARD_DEFS = {
     effect: 'mirror_ward',
     target: 'self',
     damageScale: 0.5,
-    minReflectDamage: 15,
+    minReflectDamage: 17,
     reflectRange: 8,
     ttlMs: 20000,
     specialEffect: 'damage_reflect',
@@ -509,8 +509,12 @@ const STARTING_DECK_IDS = [
   'dungeon_drake',
   'iron_sword',
   'iron_sword',
+  'iron_sword',
   'battle_familiar',
-  'flame_blade'
+  'battle_familiar',
+  'flame_blade',
+  'flame_blade',
+  'dungeon_drake',
 ];
 
 const EVOLUTION_GRIND_REQUIRED = 10;
@@ -692,23 +696,9 @@ function buyShopCard(player, shopOffer) {
   };
 }
 
-const MAX_CARD_LEVEL = 10;
-const UPGRADE_COST_BASE = 100;
-
-function getUpgradeCost(level) {
-  const currentLevel = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
-  return UPGRADE_COST_BASE * currentLevel;
-}
-
-function getLevelStatMultiplier(level) {
-  const lv = Number.isFinite(level) ? Math.max(1, Math.floor(level)) : 1;
-  return 1 + (lv - 1) * 0.1;
-}
-
 function createCardInstance(cardId, overrides = {}) {
   if (!CARD_DEFS[cardId]) return null;
   const grind = Number.isFinite(overrides.grind) ? overrides.grind : 0;
-  const level = Number.isFinite(overrides.level) ? overrides.level : 1;
   const instanceId = typeof overrides.instanceId === 'string' && overrides.instanceId.length > 0
     ? overrides.instanceId
     : crypto.randomUUID();
@@ -717,7 +707,6 @@ function createCardInstance(cardId, overrides = {}) {
     instanceId,
     cardId,
     grind,
-    level
   };
 }
 
@@ -933,43 +922,6 @@ function evolveCard(player, instanceId) {
     instance: { ...instance },
     fromCardId,
     toCardId
-  };
-}
-
-function upgradeCard(player, instanceId) {
-  if (!player) return { ok: false, reason: 'Player not found' };
-  if (typeof instanceId !== 'string' || instanceId.length === 0) {
-    return { ok: false, reason: 'Missing instanceId' };
-  }
-
-  normalizePlayerInventory(player);
-
-  const instance = getInventoryInstance(player.inventory, instanceId);
-  if (!instance) {
-    return { ok: false, reason: `Unknown card instance: ${instanceId}` };
-  }
-
-  const currentLevel = instance.level || 1;
-  if (currentLevel >= MAX_CARD_LEVEL) {
-    return { ok: false, reason: `Card is already at max level (${MAX_CARD_LEVEL})` };
-  }
-
-  const cost = getUpgradeCost(currentLevel);
-  const currency = player.currency || 0;
-  if (currency < cost) {
-    return { ok: false, reason: `Insufficient ${THEME.currency.short} (need ${cost}, have ${currency})` };
-  }
-
-  player.currency -= cost;
-  instance.level = currentLevel + 1;
-
-  return {
-    ok: true,
-    instance: { ...instance },
-    previousLevel: currentLevel,
-    newLevel: instance.level,
-    cost,
-    currency: player.currency
   };
 }
 
@@ -1679,8 +1631,8 @@ const DESPERATION_CARD_DEFS = {
     id: 'desperate_lunge',
     name: 'Last Gasp',
     type: 'weapon',
-    damage: 9,
-    selfDamage: 8,
+    damage: 10,
+    selfDamage: 9,
     charges: 1,
     attackRange: 4,
     cooldownMs: 1200,
@@ -2808,11 +2760,6 @@ module.exports = {
   cardIdForDeckEntry,
   findAvailableInventoryInstance,
   evolveCard,
-  upgradeCard,
-  getUpgradeCost,
-  getLevelStatMultiplier,
-  MAX_CARD_LEVEL,
-  UPGRADE_COST_BASE,
   createPlayerProgress,
   extractPersistentData,
   persistenceKey,

@@ -213,11 +213,6 @@ const {
   cancelTradesForPlayer,
   offerCardTrade,
   respondCardTrade,
-  upgradeCard,
-  getUpgradeCost,
-  getLevelStatMultiplier,
-  MAX_CARD_LEVEL,
-  UPGRADE_COST_BASE,
   createPlayerProgress,
   extractPersistentData,
   persistenceKey,
@@ -552,7 +547,7 @@ function applyDebugScenario(socket, name) {
       if (!player.hand.some(c => c && c.type === 'spell')) {
         const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
         if (replaceSlot >= 0) {
-          player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+          player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
         }
       }
     } else if (name === 'combat-damaged-player') {
@@ -2364,30 +2359,6 @@ function startServer(port) {
     });
   });
 
-  socket.on('upgradeCard', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
-    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
-    const result = upgradeCard(player, instanceId);
-    if (!result.ok) {
-      socket.emit('cardUpgradeError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardUpgradeResult', {
-      ...result,
-      selectedDeck: player.selectedDeck,
-      inventory: player.inventory,
-      ownedCards: player.ownedCards
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
   socket.on('grindCard', (data) => {
     withLobbyFromSocket(socket, (state) => {
     if (state.gamePhase !== 'lobby') return;
@@ -2777,11 +2748,6 @@ if (typeof module !== 'undefined' && module.exports) {
     cancelTradesForPlayer,
     offerCardTrade,
     respondCardTrade,
-    upgradeCard,
-    getUpgradeCost,
-    getLevelStatMultiplier,
-    MAX_CARD_LEVEL,
-    UPGRADE_COST_BASE,
     checkWallCollision,
     buildWallColliders,
     rebuildWallColliders,

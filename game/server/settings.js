@@ -18,7 +18,8 @@ function getDefaultSettings() {
 		gamepad: {
 			bindings: {},
 			moveStick: 'left',
-			deadzone: 0.15
+			deadzone: 0.15,
+			profile: 'auto',
 		}
 	};
 }

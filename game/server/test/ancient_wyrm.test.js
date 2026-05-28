@@ -126,7 +126,7 @@ describe('Ancient Wyrm fire breath', () => {
 			lastBreathAt: now - 3100,
 			breathIntervalMs: 3000,
 			breathRange: 8,
-			breathDamage: 15,
+			breathDamage: CARD_DEFS.ancient_wyrm.breathDamage,
 			breathConeAngle: ATTACK_CONE_ANGLE,
 		});
 		gameState.enemies.push({
@@ -140,13 +140,13 @@ describe('Ancient Wyrm fire breath', () => {
 
 		updateMinions();
 
-		expect(gameState.enemies[0].hp).toBe(35);
+		expect(gameState.enemies[0].hp).toBe(50 - CARD_DEFS.ancient_wyrm.breathDamage);
 		expect(gameState.minions[0].lastBreathAt).toBeGreaterThanOrEqual(now);
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
 			cardId: 'ancient_wyrm',
 			specialEffect: 'fire_breath',
-			hits: [{ enemyId: 'e1', hp: 35 }],
+			hits: [{ enemyId: 'e1', hp: 50 - CARD_DEFS.ancient_wyrm.breathDamage }],
 		});
 	});
 

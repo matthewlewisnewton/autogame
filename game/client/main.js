@@ -12,21 +12,13 @@ import {
 	formatCurrencyHud,
 	formatCurrencyLabel,
 	formatCurrencyPrice,
-	formatUpgradeCostEmpty,
-	formatUpgradeCost,
 	formatMoneyEarned,
 	formatAttuneCost,
 	getCardTypeLabel,
 } from './theme.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import { buildLoadoutDeckDisplay } from './deck-loadout.js';
-import {
-	MAX_CARD_LEVEL,
-	getUpgradeCost,
-	canAffordUpgrade,
-	getForgeStatPreview,
-} from './cardUpgrades.js';
 import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS } from './hand.js';
 import { renderCardUsed } from './cardRenderers.js';
 import {
@@ -52,6 +44,7 @@ import {
 import {
 	initInput,
 	ACTIONS,
+	getHandSlotInputHints,
 } from './input.js';
 import {
 	DECK_MIN_SIZE,
@@ -65,7 +58,16 @@ import {
 	onSettingsChange,
 	loadAccountSettings,
 	setAuthToken,
+	patchProfile,
+	getAccountProfile,
 } from './settings.js';
+import {
+	initControllerCalibration,
+	startControllerCalibration,
+	stopControllerCalibration,
+	syncControllerCalibrationForm,
+	onGamepadConnectChange,
+} from './controller-calibration.js';
 import {
 	computeDeckHudStats,
 	computeDesperationHudStats,
@@ -142,7 +144,13 @@ const refreshLobbiesBtnEl = document.getElementById('refresh-lobbies-btn');
 const leaveLobbyBtnEl = document.getElementById('leave-lobby-btn');
 const uiEl = document.getElementById('ui');
 const appToolbarEl = document.getElementById('app-toolbar');
-const logoutBtn = document.getElementById('logout-btn');
+const accountBtnEl = document.getElementById('account-btn');
+const accountOverlayEl = document.getElementById('account-overlay');
+const accountCloseBtnEl = document.getElementById('account-close-btn');
+const accountUsernameInputEl = document.getElementById('account-username-input');
+const accountSaveBtnEl = document.getElementById('account-save-btn');
+const accountLogoutBtnEl = document.getElementById('account-logout-btn');
+const accountErrorEl = document.getElementById('account-error');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
@@ -151,9 +159,23 @@ const deckViewerCountEl = document.getElementById('deck-viewer-count');
 const settingsOverlayEl = document.getElementById('settings-overlay');
 const settingsBtnEl = document.getElementById('settings-btn');
 const settingsCloseBtnEl = document.getElementById('settings-close-btn');
-const lobbyBrowserSettingsBtnEl = document.getElementById('lobby-browser-settings-btn');
-const lobbySettingsBtnEl = document.getElementById('lobby-settings-btn');
 const lockOnRepeatSelectEl = document.getElementById('lock-on-repeat-select');
+const gamepadStatusEl = document.getElementById('gamepad-status');
+const gamepadDeviceIdEl = document.getElementById('gamepad-device-id');
+const gamepadActivationHintEl = document.getElementById('gamepad-activation-hint');
+const gamepadProfileSelectEl = document.getElementById('gamepad-profile-select');
+const gamepadProfileHintEl = document.getElementById('gamepad-profile-hint');
+const gamepadDeadzoneSliderEl = document.getElementById('gamepad-deadzone-slider');
+const gamepadDeadzoneValueEl = document.getElementById('gamepad-deadzone-value');
+const gamepadMoveStickSelectEl = document.getElementById('gamepad-move-stick-select');
+const calibrationLeftDotEl = document.getElementById('calibration-left-dot');
+const calibrationLeftValuesEl = document.getElementById('calibration-left-values');
+const calibrationSecondaryStickLabelEl = document.getElementById('calibration-secondary-stick-label');
+const calibrationSecondaryStickPanelEl = document.getElementById('calibration-secondary-stick-panel');
+const calibrationTriggerAxesEl = document.getElementById('calibration-trigger-axes');
+const calibrationRightDotEl = document.getElementById('calibration-right-dot');
+const calibrationRightValuesEl = document.getElementById('calibration-right-values');
+const calibrationButtonGridEl = document.getElementById('calibration-button-grid');
 
 // ── Auth overlay elements ──
 const authOverlayEl = document.getElementById('auth-overlay');
@@ -167,6 +189,14 @@ const showLoginLinkEl = document.getElementById('show-login-link');
 const showRegisterLinkEl = document.getElementById('show-register-link');
 
 const TOKEN_KEY = 'autogame_token';
+let currentLobbyName = '';
+
+function setLoggedInStatus(username, lobbyName) {
+	if (!statusEl || !username) return;
+	currentLobbyName = lobbyName || currentLobbyName || '';
+	const suffix = currentLobbyName ? ` · ${currentLobbyName}` : '';
+	statusEl.textContent = `Logged in as ${username}${suffix}`;
+}
 
 /** Show the auth overlay and hide lobby screens. */
 function showAuthOverlay() {
@@ -330,7 +360,7 @@ function applyLobbyJoinedData(data) {
 
 	if (data.accountId) {
 		const username = data.username || data.accountId;
-		if (statusEl) statusEl.textContent = `Logged in as ${username}${data.lobbyName ? ` · ${data.lobbyName}` : ''}`;
+		setLoggedInStatus(username, data.lobbyName);
 		showAppToolbar();
 	}
 
@@ -547,7 +577,7 @@ function bindSocketHandlers(s) {
 
 		if (data.accountId) {
 			const username = data.username || data.accountId;
-			if (statusEl) statusEl.textContent = `Logged in as ${username}`;
+			setLoggedInStatus(username);
 			showAppToolbar();
 		}
 
@@ -617,6 +647,7 @@ function bindSocketHandlers(s) {
 			if (enteringLobby || collectionChanged) {
 				renderDeckEditor();
 				if (activeLobbyTab === 'forge') renderPhotonForge();
+				if (activeLobbyTab === 'shop') renderCardShop();
 			}
 			if (enteringLobby || (state.selectedQuestId && state.selectedQuestId !== selectedQuestId)) {
 				applyQuestBoardState(null, state.selectedQuestId);
@@ -778,11 +809,13 @@ function bindSocketHandlers(s) {
 		}
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') renderPhotonForge();
+		if (activeLobbyTab === 'shop') renderCardShop();
 	});
 
 	s.on('deckError', (data) => {
 		if (!data || !data.reason) return;
-		showDeckError(data.reason);
+		if (activeLobbyTab === 'shop') showShopError(data.reason);
+		else showDeckError(data.reason);
 	});
 
 	s.on('cardEvolutionResult', (data) => {
@@ -791,29 +824,6 @@ function bindSocketHandlers(s) {
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		renderDeckEditor();
-	});
-
-	s.on('cardUpgradeResult', (data) => {
-		if (!data) return;
-		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
-		if (Array.isArray(data.inventory)) myInventory = data.inventory;
-		if (data.ownedCards) myOwnedCards = data.ownedCards;
-		if (gameState && myId && gameState.players[myId] && Number.isFinite(data.currency)) {
-			gameState.players[myId].currency = data.currency;
-			const currencyEl = document.getElementById('currency-display');
-			if (currencyEl) currencyEl.textContent = formatCurrencyHud(data.currency);
-			_lastCurrency = data.currency;
-		}
-		renderDeckEditor();
-		if (activeLobbyTab === 'forge') {
-			renderPhotonForge();
-			playForgeUpgradeAnimation(data.instance && data.instance.instanceId);
-		}
-	});
-
-	s.on('cardUpgradeError', (data) => {
-		if (!data || !data.reason) return;
-		showForgeError(data.reason);
 	});
 
 	s.on('cardEvolutionError', (data) => {
@@ -834,6 +844,7 @@ function bindSocketHandlers(s) {
 		if (Number.isFinite(data.currency)) myCurrency = data.currency;
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') renderPhotonForge();
+		if (activeLobbyTab === 'shop') renderCardShop();
 	});
 
 	s.on('cardGrindResult', (data) => {
@@ -847,12 +858,16 @@ function bindSocketHandlers(s) {
 			if (currencyEl) currencyEl.textContent = formatCurrencyHud(myCurrency);
 		}
 		renderDeckEditor();
-		if (activeLobbyTab === 'forge') renderPhotonForge();
+		if (activeLobbyTab === 'forge') {
+			renderPhotonForge();
+			playForgeAttuneAnimation(data.instance && data.instance.instanceId);
+		}
 	});
 
 	s.on('cardGrindError', (data) => {
 		if (!data || !data.reason) return;
-		showDeckError(data.reason);
+		if (activeLobbyTab === 'forge') showForgeError(data.reason);
+		else showDeckError(data.reason);
 	});
 
 	s.on('tradeOffer', (data) => {
@@ -1203,13 +1218,19 @@ function renderHand() {
 
 	clearAdjacentCardHighlights();
 	const handHasDesperation = hand.some((card) => card && card.isDesperation);
+	const inputHints = getHandSlotInputHints();
 	if (cardHandEl) {
 		cardHandEl.classList.toggle('has-desperation', handHasDesperation);
+		cardHandEl.classList.toggle('show-input-hints', true);
+		cardHandEl.classList.toggle('input-hints-gamepad', inputHints.mode === 'gamepad');
+		cardHandEl.classList.toggle('input-hints-keyboard', inputHints.mode === 'keyboard');
 	}
 	for (let i = 0; i < MAX_HAND_SLOTS; i++) {
 		const slot = getCardSlotEl(i);
 		if (!slot) continue;
 		const card = hand[i];
+		const hintLabel = inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`;
+		const hintBadge = `<span class="card-input-hint" aria-label="${hintLabel}">${inputHints.hints[i]}</span>`;
 
 		if (card) {
 			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
@@ -1228,6 +1249,7 @@ function renderHand() {
 				: '';
 			const echoBadge = card.isEcho ? '<span class="echo-badge">Echo</span>' : '';
 			slot.innerHTML = `
+				${hintBadge}
 				${desperationRibbon}
 				<span class="card-icon">${style.icon}</span>
 				<span class="card-name">${card.name}</span>
@@ -1257,7 +1279,7 @@ function renderHand() {
 			}
 		} else {
 			slot.style.removeProperty('--slot-color');
-			slot.innerHTML = '<span class="card-name">&mdash;</span>';
+			slot.innerHTML = `${hintBadge}<span class="card-name">&mdash;</span>`;
 			slot.classList.add('empty');
 			slot.classList.remove('evolved-card');
 			slot.classList.remove('no-ms');
@@ -1461,8 +1483,6 @@ const forgeInventoryGridEl = document.getElementById('forge-inventory-grid');
 const forgeSelectedNameEl = document.getElementById('forge-selected-name');
 const forgeSelectedMetaEl = document.getElementById('forge-selected-meta');
 const forgeStatRowsEl = document.getElementById('forge-stat-rows');
-const forgeUpgradeCostEl = document.getElementById('forge-upgrade-cost');
-const forgeUpgradeBtn = document.getElementById('forge-upgrade-btn');
 const forgeErrorEl = document.getElementById('forge-error');
 
 let activeLobbyTab = 'deck';
@@ -1507,14 +1527,6 @@ function findEvolvableInstance(cardId) {
 	) || null;
 }
 
-function findGrindableInstance(cardId) {
-	return getDeckInventory().find((instance) =>
-		instance &&
-		instance.cardId === cardId &&
-		(instance.grind || 0) < EVOLUTION_GRIND_REQUIRED
-	) || null;
-}
-
 function grindBadgeForInstance(instance) {
 	if (!instance || !(instance.grind > 0)) return '';
 	return `<span class="grind-badge">+${instance.grind}</span>`;
@@ -1533,18 +1545,11 @@ function renderDeckEditor() {
 			? !!availableInstance && mySelectedDeck.length < DECK_MAX_SIZE
 			: inDeckCount < count && mySelectedDeck.length < DECK_MAX_SIZE;
 		const evolvableInstance = findEvolvableInstance(cardId);
-		const grindableInstance = findGrindableInstance(cardId);
-		const grindCost = grindableInstance ? getGrindCost(grindableInstance.grind || 0) : 0;
-		const canGrind = !!grindableInstance && myCurrency >= grindCost;
 		const maxGrind = getDeckInventory()
 			.filter((instance) => instance.cardId === cardId)
 			.reduce((max, instance) => Math.max(max, instance.grind || 0), 0);
 		const grindBadge = maxGrind > 0 ? `<span class="grind-badge">+${maxGrind}</span>` : '';
 		const evolvedBadge = def.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
-
-		const sellableInstance = findAvailableInventoryInstance(cardId);
-		const sellValue = getCardSellValue(cardId);
-		const canSell = !!sellableInstance;
 
 		const entry = document.createElement('div');
 		entry.className = `owned-card-entry${def.isEvolved ? ' evolved-card' : ''}`;
@@ -1554,24 +1559,9 @@ function renderDeckEditor() {
       ${evolvedBadge}
       ${grindBadge}
       <span class="card-count">${count}</span>
-      <span class="card-sell-value">${sellValue}g</span>
-      <button class="sell-card-btn" ${canSell ? '' : 'disabled'}>Sell</button>
-      <button class="grind-card-btn" ${canGrind ? '' : 'disabled'}>${canGrind ? formatAttuneCost(grindCost) : THEME.progression.attune}</button>
       <button class="evolve-card-btn" ${evolvableInstance ? '' : 'disabled'}>Evolve</button>
       <button class="deck-add-btn" ${canAdd ? '' : 'disabled'}>+${inDeckCount > 0 ? ` (${inDeckCount})` : ''}</button>
     `;
-		const sellBtn = entry.querySelector('.sell-card-btn');
-		sellBtn.addEventListener('click', () => {
-			const instance = findAvailableInventoryInstance(cardId);
-			if (instance) {
-				socket.emit('sellCard', { instanceId: instance.instanceId, cardId });
-			}
-		});
-		const grindBtn = entry.querySelector('.grind-card-btn');
-		grindBtn.addEventListener('click', () => {
-			const instance = findGrindableInstance(cardId);
-			if (instance) socket.emit('grindCard', { instanceId: instance.instanceId });
-		});
 		const evolveBtn = entry.querySelector('.evolve-card-btn');
 		evolveBtn.addEventListener('click', () => {
 			const instance = findEvolvableInstance(cardId);
@@ -1737,6 +1727,13 @@ function showDeckError(message) {
 	deckErrorEl.style.display = 'block';
 }
 
+function showShopError(message) {
+	const shopErrorEl = document.getElementById('shop-error');
+	if (!shopErrorEl) return;
+	shopErrorEl.textContent = message;
+	shopErrorEl.style.display = 'block';
+}
+
 function getMyCurrency() {
 	if (gameState && myId && gameState.players[myId]) {
 		return gameState.players[myId].currency || 0;
@@ -1770,14 +1767,66 @@ function setLobbyTab(tab) {
 	if (activeLobbyTab === 'economy') renderCardEconomy();
 }
 
+function renderCardShopSellList() {
+	const sellListEl = document.getElementById('shop-sell-list');
+	if (!sellListEl) return;
+
+	sellListEl.innerHTML = '';
+	const ownedCounts = getDeckOwnedCounts();
+	const entries = Object.entries(ownedCounts);
+	if (entries.length === 0) {
+		const hint = document.createElement('p');
+		hint.className = 'shop-empty-hint';
+		hint.textContent = 'No cards to sell.';
+		sellListEl.appendChild(hint);
+		return;
+	}
+
+	for (const [cardId, count] of entries) {
+		const def = CARD_DEFS[cardId];
+		if (!def) continue;
+		const style = CARD_ACCENT_STYLE[cardId] || CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
+		const sellableInstance = findAvailableInventoryInstance(cardId);
+		const sellValue = getCardSellValue(cardId);
+		const canSell = !!sellableInstance;
+		const evolvedBadge = def.isEvolved ? `<span class="evolved-badge">${THEME.progression.ascended}</span>` : '';
+
+		const entry = document.createElement('div');
+		entry.className = `owned-card-entry${def.isEvolved ? ' evolved-card' : ''}`;
+		entry.innerHTML = `
+      <span class="card-icon">${style.icon}</span>
+      <span class="card-label">${def.name}</span>
+      ${evolvedBadge}
+      <span class="card-count">${count}</span>
+      <span class="card-sell-value">${sellValue}g</span>
+      <button class="sell-card-btn" ${canSell ? '' : 'disabled'}>Sell</button>
+    `;
+		const sellBtn = entry.querySelector('.sell-card-btn');
+		sellBtn.addEventListener('click', () => {
+			const instance = findAvailableInventoryInstance(cardId);
+			if (instance) {
+				socket.emit('sellCard', { instanceId: instance.instanceId, cardId });
+			}
+		});
+		sellListEl.appendChild(entry);
+	}
+}
+
 function renderCardShop() {
 	const currencyEl = document.getElementById('shop-currency-display');
 	const offerEl = document.getElementById('shop-offer-display');
 	const buyBtn = document.getElementById('buy-shop-card-btn');
-	if (!offerEl) return;
+	const shopErrorEl = document.getElementById('shop-error');
 
 	const currency = getMyCurrency();
 	if (currencyEl) currencyEl.textContent = formatCurrencyLabel(currency);
+	renderCardShopSellList();
+	if (shopErrorEl) {
+		shopErrorEl.style.display = 'none';
+		shopErrorEl.textContent = '';
+	}
+
+	if (!offerEl) return;
 
 	const offer = gameState && gameState.shopOffer;
 	if (!offer || !offer.cardId) {
@@ -1799,7 +1848,7 @@ function showForgeError(message) {
 	errorEl.style.display = message ? 'block' : 'none';
 }
 
-function playForgeUpgradeAnimation(instanceId) {
+function playForgeAttuneAnimation(instanceId) {
 	const grid = document.getElementById('forge-inventory-grid');
 	if (!grid || !instanceId) return;
 	const tile = grid.querySelector(`[data-instance-id="${instanceId}"]`);
@@ -1824,7 +1873,8 @@ function renderPhotonForge() {
 		const def = CARD_DEFS[instance.cardId];
 		if (!def) continue;
 		const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
-		const level = instance.level || 1;
+		const grind = instance.grind || 0;
+		const grindBadge = grind > 0 ? `<span class="forge-grind-badge">+${grind}</span>` : '';
 		const tile = document.createElement('button');
 		tile.type = 'button';
 		tile.className = `forge-card-tile${instance.instanceId === selectedForgeInstanceId ? ' selected' : ''}${def.isEvolved ? ' evolved-card' : ''}`;
@@ -1832,7 +1882,7 @@ function renderPhotonForge() {
 		tile.innerHTML = `
       <span class="card-icon">${style.icon}</span>
       <span class="card-label">${def.name}</span>
-      <span class="forge-level-badge">Lv ${level}</span>
+      ${grindBadge}
     `;
 		tile.addEventListener('click', () => {
 			selectedForgeInstanceId = instance.instanceId;
@@ -1848,35 +1898,34 @@ function renderPhotonForge() {
 	const selectedNameEl = document.getElementById('forge-selected-name');
 	const selectedMetaEl = document.getElementById('forge-selected-meta');
 	const statRowsEl = document.getElementById('forge-stat-rows');
-	const upgradeCostEl = document.getElementById('forge-upgrade-cost');
-	const upgradeBtn = document.getElementById('forge-upgrade-btn');
+	const attuneCostEl = document.getElementById('forge-attune-cost');
+	const attuneBtn = document.getElementById('forge-attune-btn');
 
 	if (!selected) {
 		if (selectedNameEl) selectedNameEl.textContent = 'Select a card';
-		if (selectedMetaEl) selectedMetaEl.textContent = 'Choose an inventory card to preview upgrades.';
+		if (selectedMetaEl) selectedMetaEl.textContent = 'Choose an inventory card to preview attune bonuses.';
 		if (statRowsEl) statRowsEl.innerHTML = '';
-		if (upgradeCostEl) upgradeCostEl.textContent = formatUpgradeCostEmpty();
-		if (upgradeBtn) upgradeBtn.disabled = true;
+		if (attuneCostEl) attuneCostEl.textContent = 'Attune: — Money';
+		if (attuneBtn) {
+			attuneBtn.disabled = true;
+			attuneBtn.textContent = THEME.progression.attune;
+		}
 		showForgeError('');
 		return;
 	}
 
 	const def = CARD_DEFS[selected.cardId];
-	const level = selected.level || 1;
 	const currency = getMyCurrency();
-	const atMaxLevel = level >= MAX_CARD_LEVEL;
-	const cost = atMaxLevel ? 0 : getUpgradeCost(level);
-	const canUpgrade = !atMaxLevel && canAffordUpgrade(currency, level);
+	const grind = selected.grind || 0;
 
 	if (selectedNameEl) selectedNameEl.textContent = def ? def.name : selected.cardId;
 	if (selectedMetaEl) {
-		const grind = selected.grind || 0;
 		selectedMetaEl.textContent = `Instance ${selected.instanceId.slice(0, 8)} · Attune +${grind}`;
 	}
 
 	if (statRowsEl) {
 		statRowsEl.innerHTML = '';
-		const rows = getForgeStatPreview(def, level);
+		const rows = getForgeAttunePreview(def, grind);
 		for (const row of rows) {
 			const tr = document.createElement('tr');
 			tr.innerHTML = `<td>${row.label}</td><td>${row.current}</td><td>${row.next}</td>`;
@@ -1884,14 +1933,19 @@ function renderPhotonForge() {
 		}
 	}
 
-	if (upgradeCostEl) {
-		upgradeCostEl.textContent = atMaxLevel
-			? `Max level (${MAX_CARD_LEVEL}) reached`
-			: formatUpgradeCost(cost, currency);
+	const atMaxGrind = grind >= EVOLUTION_GRIND_REQUIRED;
+	const attuneCost = atMaxGrind ? 0 : getGrindCost(grind);
+	const canAttune = !atMaxGrind && currency >= attuneCost;
+	if (attuneCostEl) {
+		attuneCostEl.textContent = atMaxGrind
+			? `Attune max (+${EVOLUTION_GRIND_REQUIRED}) reached`
+			: `Attune: ${formatCurrencyPrice(attuneCost)}`;
 	}
-	if (upgradeBtn) {
-		upgradeBtn.disabled = !canUpgrade;
-		upgradeBtn.textContent = atMaxLevel ? 'Max Level' : 'Upgrade';
+	if (attuneBtn) {
+		attuneBtn.disabled = !canAttune;
+		attuneBtn.textContent = atMaxGrind
+			? THEME.progression.attune
+			: (canAttune ? formatAttuneCost(attuneCost) : THEME.progression.attune);
 	}
 	showForgeError('');
 }
@@ -1908,10 +1962,10 @@ if (document.getElementById('lobby-tab-shop')) {
 if (document.getElementById('lobby-tab-economy')) {
 	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
 }
-if (document.getElementById('forge-upgrade-btn')) {
-	document.getElementById('forge-upgrade-btn').addEventListener('click', () => {
+if (document.getElementById('forge-attune-btn')) {
+	document.getElementById('forge-attune-btn').addEventListener('click', () => {
 		if (!selectedForgeInstanceId) return;
-		socket.emit('upgradeCard', { instanceId: selectedForgeInstanceId });
+		socket.emit('grindCard', { instanceId: selectedForgeInstanceId });
 	});
 }
 
@@ -2125,22 +2179,100 @@ if (loginBtnEl) {
 	});
 }
 
-if (logoutBtn) {
-	logoutBtn.addEventListener('click', () => {
-		try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
-		setAuthToken(null);
-		if (socket) socket.disconnect();
+function performLogout() {
+	closeAccountOverlay();
+	try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+	setAuthToken(null);
+	currentLobbyName = '';
+	if (socket) socket.disconnect();
 
-		myId = null;
-		hideAppToolbar();
-		if (uiEl) uiEl.style.display = 'none';
-		if (cardHandEl) cardHandEl.style.display = 'none';
-		setDeckStackVisible(false);
-		if (lobbyEl) lobbyEl.classList.add('hidden');
-		updateStatus('Disconnected', 'disconnected');
-		showAuthOverlay();
-		showRegisterForm();
-		clearAuthForms();
+	myId = null;
+	hideAppToolbar();
+	if (uiEl) uiEl.style.display = 'none';
+	if (cardHandEl) cardHandEl.style.display = 'none';
+	setDeckStackVisible(false);
+	if (lobbyEl) lobbyEl.classList.add('hidden');
+	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	updateStatus('Disconnected', 'disconnected');
+	showAuthOverlay();
+	showRegisterForm();
+	clearAuthForms();
+}
+
+if (accountLogoutBtnEl) {
+	accountLogoutBtnEl.addEventListener('click', performLogout);
+}
+
+function showAccountError(message) {
+	if (!accountErrorEl) return;
+	if (message) {
+		accountErrorEl.textContent = message;
+		accountErrorEl.hidden = false;
+	} else {
+		accountErrorEl.textContent = '';
+		accountErrorEl.hidden = true;
+	}
+}
+
+function syncAccountForm() {
+	const profile = getAccountProfile();
+	if (accountUsernameInputEl) {
+		accountUsernameInputEl.value = profile.username || '';
+	}
+	showAccountError('');
+}
+
+function openAccountOverlay() {
+	syncAccountForm();
+	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
+}
+
+function closeAccountOverlay() {
+	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
+	showAccountError('');
+}
+
+if (accountBtnEl) {
+	accountBtnEl.addEventListener('click', openAccountOverlay);
+}
+if (accountCloseBtnEl) {
+	accountCloseBtnEl.addEventListener('click', closeAccountOverlay);
+}
+if (accountOverlayEl) {
+	accountOverlayEl.addEventListener('click', (e) => {
+		if (e.target === accountOverlayEl) closeAccountOverlay();
+	});
+}
+if (accountSaveBtnEl) {
+	accountSaveBtnEl.addEventListener('click', async () => {
+		const username = accountUsernameInputEl?.value?.trim();
+		if (!username) {
+			showAccountError('Enter a display name');
+			return;
+		}
+		const current = getAccountProfile().username;
+		if (username === current) {
+			showAccountError('');
+			closeAccountOverlay();
+			return;
+		}
+
+		accountSaveBtnEl.disabled = true;
+		const result = await patchProfile({ username });
+		accountSaveBtnEl.disabled = false;
+
+		if (result.error) {
+			showAccountError(result.error);
+			return;
+		}
+
+		showAccountError('');
+		setLoggedInStatus(result.username);
+		if (result.token) {
+			try { localStorage.setItem(TOKEN_KEY, result.token); } catch (_) {}
+			createSocket(result.token);
+		}
+		closeAccountOverlay();
 	});
 }
 
@@ -2215,25 +2347,22 @@ function syncSettingsForm() {
 	if (lockOnRepeatSelectEl) {
 		lockOnRepeatSelectEl.value = getLockOnRepeatAction();
 	}
+	syncControllerCalibrationForm();
 }
 
 function openSettingsOverlay() {
 	syncSettingsForm();
 	if (settingsOverlayEl) settingsOverlayEl.classList.remove('hidden');
+	startControllerCalibration();
 }
 
 function closeSettingsOverlay() {
+	stopControllerCalibration();
 	if (settingsOverlayEl) settingsOverlayEl.classList.add('hidden');
 }
 
 if (settingsBtnEl) {
 	settingsBtnEl.addEventListener('click', openSettingsOverlay);
-}
-if (lobbyBrowserSettingsBtnEl) {
-	lobbyBrowserSettingsBtnEl.addEventListener('click', openSettingsOverlay);
-}
-if (lobbySettingsBtnEl) {
-	lobbySettingsBtnEl.addEventListener('click', openSettingsOverlay);
 }
 if (settingsCloseBtnEl) {
 	settingsCloseBtnEl.addEventListener('click', closeSettingsOverlay);
@@ -2249,8 +2378,39 @@ if (lockOnRepeatSelectEl) {
 	});
 }
 
-onSettingsChange(syncSettingsForm);
+onSettingsChange(() => {
+	syncSettingsForm();
+	renderHand();
+});
 syncSettingsForm();
+
+initControllerCalibration({
+	statusEl: gamepadStatusEl,
+	deviceIdEl: gamepadDeviceIdEl,
+	activationHintEl: gamepadActivationHintEl,
+	profileSelectEl: gamepadProfileSelectEl,
+	profileHintEl: gamepadProfileHintEl,
+	deadzoneSliderEl: gamepadDeadzoneSliderEl,
+	deadzoneValueEl: gamepadDeadzoneValueEl,
+	moveStickSelectEl: gamepadMoveStickSelectEl,
+	leftDotEl: calibrationLeftDotEl,
+	leftValuesEl: calibrationLeftValuesEl,
+	secondaryStickPanelEl: calibrationSecondaryStickPanelEl,
+	secondaryStickLabelEl: calibrationSecondaryStickLabelEl,
+	triggerAxesEl: calibrationTriggerAxesEl,
+	rightDotEl: calibrationRightDotEl,
+	rightValuesEl: calibrationRightValuesEl,
+	buttonGridEl: calibrationButtonGridEl,
+});
+
+window.addEventListener('gamepadconnected', (event) => {
+	onGamepadConnectChange(event.gamepad);
+	renderHand();
+});
+window.addEventListener('gamepaddisconnected', () => {
+	onGamepadConnectChange(null);
+	renderHand();
+});
 
 // On page load: only connect if we have a stored token; otherwise show auth overlay.
 if (storedToken) {
@@ -2406,6 +2566,7 @@ window.initScene = rendererInitScene;
 window.refillSlot = refillSlot;
 window.renderHand = renderHand;
 window.renderDeckEditor = renderDeckEditor;
+window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.setLobbyTab = setLobbyTab;
 window.__setLobbyTabState = (tab, instanceId) => {
@@ -2470,6 +2631,9 @@ window.hideAuthOverlay = hideAuthOverlay;
 window.showLobbyBrowser = showLobbyBrowser;
 window.openSettingsOverlay = openSettingsOverlay;
 window.closeSettingsOverlay = closeSettingsOverlay;
+window.openAccountOverlay = openAccountOverlay;
+window.closeAccountOverlay = closeAccountOverlay;
+window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;

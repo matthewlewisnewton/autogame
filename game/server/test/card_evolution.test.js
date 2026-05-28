@@ -42,7 +42,7 @@ describe('card evolution', () => {
 		expect(evolvedInstance.evolvedFrom).toBe('iron_sword');
 		expect(evolvedInstance.isEvolved).toBe(true);
 		expect(player.ownedCards.steel_claymore).toBe(1);
-		expect(player.ownedCards.iron_sword).toBe(2);
+		expect(player.ownedCards.iron_sword).toBe(3);
 		expect(player.selectedDeck).toContain(instance.instanceId);
 	});
 
@@ -57,7 +57,7 @@ describe('card evolution', () => {
 		expect(result.reason).toContain('+10');
 		expect(instance.cardId).toBe('flame_blade');
 		expect(instance.grind).toBe(EVOLUTION_GRIND_REQUIRED - 1);
-		expect(player.ownedCards.flame_blade).toBe(2);
+		expect(player.ownedCards.flame_blade).toBe(3);
 	});
 
 	it('rejects cards without an evolution transform', () => {
@@ -101,7 +101,7 @@ describe('card evolution', () => {
 		expect(player.inventory[0].evolvedFrom).toBe('saber_of_light');
 		expect(player.ownedCards.excalibur_photon).toBe(1);
 		expect(CARD_DEFS.excalibur_photon).toMatchObject({
-			damage: 12,
+			damage: 14,
 			charges: 6,
 			cooldownMs: 200,
 			swingsPerUse: 2,
@@ -185,7 +185,7 @@ describe('card evolution', () => {
 		expect(CARD_DEFS.thunderbird).toMatchObject({
 			minionHp: 68,
 			attackRange: 11,
-			attackDamage: 18,
+			attackDamage: 20,
 			specialEffect: 'chain_lightning',
 		});
 	});
@@ -231,7 +231,7 @@ describe('card evolution', () => {
 		expect(result.toCardId).toBe('soul_drain');
 		expect(player.inventory[0].cardId).toBe('soul_drain');
 		expect(CARD_DEFS.soul_drain).toMatchObject({
-			damage: 38,
+			damage: 42,
 			magicStoneOnHit: 12,
 			healOnHit: 4,
 			healOnKill: 8,
@@ -255,7 +255,7 @@ describe('card evolution', () => {
 		expect(result.ok).toBe(true);
 		expect(result.toCardId).toBe('inferno_pillar');
 		expect(player.inventory[0].cardId).toBe('inferno_pillar');
-		expect(CARD_DEFS.inferno_pillar.damage).toBe(12);
+		expect(CARD_DEFS.inferno_pillar.damage).toBe(13);
 	});
 
 	it('defines every evolved card referenced by the transform table', () => {

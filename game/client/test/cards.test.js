@@ -54,7 +54,7 @@ describe('CARD_DEFS', () => {
 			type: 'spell',
 			charges: 1,
 			magicStoneCost: 50,
-			damage: 40,
+			damage: 44,
 		});
 	});
 
@@ -279,16 +279,16 @@ describe('CARD_DEFS', () => {
 // ── createStartingDeck ──
 
 describe('createStartingDeck()', () => {
-	it('returns exactly 8 card IDs', () => {
-		expect(createStartingDeck()).toHaveLength(8);
+	it('returns exactly 12 card IDs', () => {
+		expect(createStartingDeck()).toHaveLength(12);
 	});
 
 	it('has the expected composition', () => {
 		const deck = createStartingDeck();
-		expect(deck.filter((id) => id === 'iron_sword').length).toBe(3);
-		expect(deck.filter((id) => id === 'flame_blade').length).toBe(2);
-		expect(deck.filter((id) => id === 'battle_familiar').length).toBe(2);
-		expect(deck.filter((id) => id === 'dungeon_drake').length).toBe(1);
+		expect(deck.filter((id) => id === 'iron_sword').length).toBe(4);
+		expect(deck.filter((id) => id === 'flame_blade').length).toBe(3);
+		expect(deck.filter((id) => id === 'battle_familiar').length).toBe(3);
+		expect(deck.filter((id) => id === 'dungeon_drake').length).toBe(2);
 	});
 
 	it('is deterministic (same output every call)', () => {

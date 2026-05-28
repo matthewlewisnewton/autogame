@@ -27,7 +27,7 @@ describe('Astral Guardian definitions', () => {
 		expect(CARD_DEFS.astral_guardian).toMatchObject({
 			id: 'astral_guardian',
 			type: 'spell',
-			damage: 60,
+			damage: 66,
 			magicStoneCost: 65,
 			isEvolved: true,
 			specialEffect: 'astral_shield',
@@ -136,8 +136,9 @@ describe('Astral Guardian gameplay', () => {
 			charges: 1,
 			remainingCharges: 1,
 			magicStoneCost: 65,
-			damage: 60,
+			damage: 66,
 		}];
+		player.magicStones = 65;
 
 		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
 		socket.emit('useCard', { cardId: 'astral_guardian', slotIndex: 0 });
@@ -154,7 +155,7 @@ describe('Astral Guardian gameplay', () => {
 			type: 'astral_guardian',
 			hp: 60,
 			maxHp: 60,
-			attackDamage: 10,
+			attackDamage: 11,
 			attackIntervalMs: Math.floor(1000 / TICK_RATE),
 		});
 		expect(cardUsed.minionId).toBe(ownerMinions[0].id);
@@ -175,7 +176,7 @@ describe('Astral Guardian gameplay', () => {
 			hp: 60,
 			maxHp: 60,
 			ttl: 30,
-			attackDamage: 10,
+			attackDamage: 11,
 			attackIntervalMs: Math.floor(1000 / TICK_RATE),
 			lastAttackAt: 0,
 		});
@@ -186,7 +187,7 @@ describe('Astral Guardian gameplay', () => {
 
 		const hpBefore = enemy.hp;
 		updateMinions();
-		expect(enemy.hp).toBe(hpBefore - 10);
+		expect(enemy.hp).toBe(hpBefore - 11);
 
 		const defaultMinion = {
 			id: 'default-1',

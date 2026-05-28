@@ -10,7 +10,7 @@ import sharedConstants from '../shared/constants.json' with { type: 'json' };
 export const DECK_MIN_SIZE = 4;
 
 /** Maximum number of cards allowed in a deck */
-export const DECK_MAX_SIZE = 12;
+export const DECK_MAX_SIZE = 24;
 
 // ── Combat ──
 
@@ -109,6 +109,12 @@ export const LOCK_ON_BREAK_RANGE = 10;
 
 /** Camera yaw smoothing speed while locked on (rad/s) */
 export const LOCK_ON_CAMERA_LERP = 8;
+
+/** Below this distance, hold the last stable bearing instead of recomputing */
+export const LOCK_ON_MIN_BEARING_DIST = 0.85;
+
+/** Maximum camera yaw turn speed while locked on (rad/s) */
+export const LOCK_ON_MAX_YAW_SPEED = 5;
 
 /** Default gamepad button index for lock-on (L trigger / LT) */
 export const LOCK_ON_GAMEPAD_BUTTON = 6;

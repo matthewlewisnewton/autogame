@@ -1,4 +1,6 @@
 import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
+import { getGamepadConfig } from './settings.js';
+import { resolveGamepadProfile, read8BitDo64CStickHorizontal, getPrimaryGamepad } from './gamepad-profiles.js';
 
 let prevButtons = [];
 let listenersAdded = false;
@@ -73,12 +75,8 @@ export function mergeMovementVectors(a, b) {
  * @returns {Gamepad | null}
  */
 export function getActiveGamepad() {
-	if (typeof navigator === 'undefined' || !navigator.getGamepads) return null;
-	const pads = navigator.getGamepads();
-	for (const pad of pads) {
-		if (pad?.connected) return pad;
-	}
-	return null;
+	const cfg = getGamepadConfig();
+	return getPrimaryGamepad(cfg.profile ?? 'auto');
 }
 
 /**
@@ -86,10 +84,13 @@ export function getActiveGamepad() {
  * @param {number} [deadzone]
  * @returns {{ x: number, z: number } | null}
  */
-export function pollGamepadMovement(deadzone = GAMEPAD_DEADZONE) {
+export function pollGamepadMovement(deadzone = GAMEPAD_DEADZONE, moveStick = 'left') {
 	const pad = getActiveGamepad();
 	if (!pad) return null;
-	const stick = readStickMovement(pad.axes[0] ?? 0, pad.axes[1] ?? 0, deadzone);
+	const useRight = moveStick === 'right';
+	const stickX = useRight ? (pad.axes[2] ?? 0) : (pad.axes[0] ?? 0);
+	const stickY = useRight ? (pad.axes[3] ?? 0) : (pad.axes[1] ?? 0);
+	const stick = readStickMovement(stickX, stickY, deadzone);
 	const dpad = readDpadMovement(pad);
 	return mergeMovementVectors(stick, dpad);
 }
@@ -103,7 +104,14 @@ export function pollGamepadMovement(deadzone = GAMEPAD_DEADZONE) {
 export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
 	const pad = getActiveGamepad();
 	if (!pad || delta <= 0) return 0;
-	const lookX = applyDeadzone(pad.axes[2] ?? 0, deadzone);
+	const cfg = getGamepadConfig();
+	const profile = resolveGamepadProfile(pad, cfg.profile ?? 'auto');
+	let lookX = 0;
+	if (profile.lookSource === 'cStick') {
+		lookX = read8BitDo64CStickHorizontal(pad, deadzone);
+	} else {
+		lookX = applyDeadzone(pad.axes[2] ?? 0, deadzone);
+	}
 	return -lookX * GAMEPAD_LOOK_SENSITIVITY * delta;
 }
 
@@ -120,10 +128,13 @@ export function pollGamepadButtons() {
 		return result;
 	}
 
+	const cfg = getGamepadConfig();
+	const profile = resolveGamepadProfile(pad, cfg.profile ?? 'auto');
+	const lockButton = profile.lockOnButton ?? LOCK_ON_GAMEPAD_BUTTON;
 	const buttons = pad.buttons;
 
-	const lockPressed = buttons[LOCK_ON_GAMEPAD_BUTTON]?.pressed ?? false;
-	const lockWas = prevButtons[LOCK_ON_GAMEPAD_BUTTON] ?? false;
+	const lockPressed = buttons[lockButton]?.pressed ?? false;
+	const lockWas = prevButtons[lockButton] ?? false;
 	if (lockPressed && !lockWas) result.lockOn = true;
 
 	prevButtons = Array.from({ length: buttons.length }, (_, i) => buttons[i]?.pressed ?? false);
@@ -148,6 +159,6 @@ export function initGamepadListeners() {
 }
 
 /** Whether any connected gamepad is currently providing movement input. */
-export function isGamepadMoving(deadzone = GAMEPAD_DEADZONE) {
-	return pollGamepadMovement(deadzone) != null;
+export function isGamepadMoving(deadzone = GAMEPAD_DEADZONE, moveStick = 'left') {
+	return pollGamepadMovement(deadzone, moveStick) != null;
 }

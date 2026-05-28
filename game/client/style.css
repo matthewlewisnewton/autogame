@@ -84,6 +84,7 @@ h1 {
   background: rgba(30, 41, 59, 0.9);
 }
 
+#account-btn,
 #settings-btn {
   width: 40px;
   height: 40px;
@@ -99,6 +100,7 @@ h1 {
   transition: background 0.2s ease;
 }
 
+#account-btn:hover,
 #settings-btn:hover {
   background: rgba(30, 41, 59, 0.9);
 }
@@ -203,6 +205,36 @@ canvas {
 .card-slot .card-icon {
   font-size: 28px;
   line-height: 1;
+}
+
+.card-input-hint {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1.2;
+  letter-spacing: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.input-hints-gamepad .card-input-hint {
+  color: #fef3c7;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(250, 204, 21, 0.5);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+}
+
+.input-hints-keyboard .card-input-hint {
+  color: #e2e8f0;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
+  font-variant-numeric: tabular-nums;
 }
 
 .card-slot .card-name {
@@ -318,22 +350,6 @@ canvas {
   gap: 12px;
   align-items: center;
   justify-content: center;
-}
-
-.lobby-settings-btn {
-  padding: 10px 16px;
-  border-radius: 6px;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  background: rgba(30, 41, 59, 0.9);
-  color: #e2e8f0;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-.lobby-settings-btn:hover {
-  background: rgba(51, 65, 85, 0.95);
 }
 
 .lobby-header {
@@ -1228,9 +1244,9 @@ canvas {
   line-height: 1.2;
 }
 
-.forge-card-tile .forge-level-badge {
+.forge-card-tile .forge-grind-badge {
   font-size: 11px;
-  color: #fbbf24;
+  color: #c4b5fd;
   font-weight: 700;
 }
 
@@ -1267,20 +1283,21 @@ canvas {
   font-weight: 600;
 }
 
-#forge-upgrade-cost {
+#forge-attune-cost {
   font-size: 14px;
   font-weight: 700;
-  color: #fbbf24;
-  margin-bottom: 10px;
+  color: #c4b5fd;
+  margin: 12px 0 8px;
 }
 
-#forge-upgrade-btn {
+#forge-attune-btn {
   width: 100%;
   padding: 10px 16px;
+  margin-bottom: 16px;
   border: none;
   border-radius: 6px;
-  background: linear-gradient(135deg, #38bdf8, #6366f1);
-  color: #0f172a;
+  background: linear-gradient(135deg, #6366f1, #8b5cf6);
+  color: #fff;
   font-size: 14px;
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -1288,11 +1305,11 @@ canvas {
   transition: opacity 0.15s, transform 0.15s;
 }
 
-#forge-upgrade-btn:hover:not(:disabled) {
+#forge-attune-btn:hover:not(:disabled) {
   transform: translateY(-1px);
 }
 
-#forge-upgrade-btn:disabled {
+#forge-attune-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
@@ -1587,12 +1604,42 @@ canvas {
 }
 
 #buy-shop-card-btn {
+  margin-bottom: 16px;
   font-size: 12px;
 }
 
 #buy-shop-card-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+#card-shop-sell-section {
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+#card-shop-sell-section h3 {
+  margin: 0 0 10px;
+}
+
+#shop-sell-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.shop-empty-hint {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  font-style: italic;
+}
+
+#shop-error {
+  margin-top: 8px;
+  color: #f87171;
+  font-size: 13px;
 }
 
 #card-trade-form {
@@ -1688,27 +1735,10 @@ canvas {
   cursor: not-allowed;
 }
 
-/* ── Logout Button ── */
+/* ── Account + Settings overlays ── */
 
-#logout-btn {
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  border: 1px solid rgba(148, 163, 184, 0.3);
-  border-radius: 6px;
-  background: rgba(15, 23, 42, 0.75);
-  color: white;
-  cursor: pointer;
-  transition: background 0.2s ease;
-}
-
-#logout-btn:hover {
-  background: rgba(220, 38, 38, 0.7);
-}
-
-/* ── Auth Overlay ── */
-
-#settings-overlay {
+#settings-overlay,
+#account-overlay {
   position: fixed;
   inset: 0;
   display: flex;
@@ -1719,13 +1749,15 @@ canvas {
   pointer-events: auto;
 }
 
-#settings-overlay.hidden {
+#settings-overlay.hidden,
+#account-overlay.hidden {
   display: none;
 }
 
-#settings-modal {
+#settings-modal,
+#account-modal {
   position: relative;
-  width: min(480px, 92vw);
+  width: min(560px, 92vw);
   max-height: 85vh;
   overflow-y: auto;
   padding: 24px 28px;
@@ -1736,7 +1768,12 @@ canvas {
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
 }
 
-#settings-modal h2 {
+#account-modal {
+  width: min(420px, 92vw);
+}
+
+#settings-modal h2,
+#account-modal h2 {
   margin-bottom: 16px;
   font-size: 22px;
 }
@@ -1802,6 +1839,53 @@ canvas {
   margin-bottom: 8px;
 }
 
+.account-error {
+  color: #f87171;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.account-error[hidden] {
+  display: none;
+}
+
+#account-save-btn {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: rgba(59, 130, 246, 0.35);
+  color: #f8fafc;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+#account-save-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.account-actions {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.account-logout-btn {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+  color: #fecaca;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.account-logout-btn:hover {
+  background: rgba(185, 28, 28, 0.55);
+}
+
 .settings-error {
   display: block;
   color: #f87171;
@@ -1831,6 +1915,160 @@ canvas {
 
 .binding-row.listening {
   color: #facc15;
+}
+
+.gamepad-status {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: #94a3b8;
+}
+
+.gamepad-status[data-connected="true"] {
+  color: #86efac;
+}
+
+.gamepad-status[data-connected="true"][data-eightbitdo="true"] {
+  color: #67e8f9;
+}
+
+.calibration-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.calibration-slider-row input[type="range"] {
+  flex: 1;
+}
+
+.calibration-value {
+  min-width: 3.2em;
+  font-variant-numeric: tabular-nums;
+  color: #e2e8f0;
+}
+
+.calibration-live {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 12px 0;
+}
+
+#calibration-secondary-stick-panel[hidden] {
+  display: none;
+}
+
+.calibration-live:has(#calibration-secondary-stick-panel[hidden]) {
+  grid-template-columns: minmax(0, 280px);
+}
+
+.stick-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.stick-label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #94a3b8;
+}
+
+.stick-visual {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background:
+    linear-gradient(rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(148, 163, 184, 0.15) 1px, transparent 1px),
+    rgba(15, 23, 42, 0.85);
+  background-size: 100% 100%, 100% 100%, auto;
+}
+
+.stick-visual::before,
+.stick-visual::after {
+  content: "";
+  position: absolute;
+  background: rgba(148, 163, 184, 0.25);
+}
+
+.stick-visual::before {
+  top: 50%;
+  left: 8%;
+  right: 8%;
+  height: 1px;
+  transform: translateY(-50%);
+}
+
+.stick-visual::after {
+  left: 50%;
+  top: 8%;
+  bottom: 8%;
+  width: 1px;
+  transform: translateX(-50%);
+}
+
+.stick-dot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #38bdf8;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.55);
+  transform: translate(-50%, -50%);
+  transition: transform 40ms linear;
+}
+
+.stick-values {
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: #94a3b8;
+}
+
+.calibration-button-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calibration-button {
+  padding: 8px 6px;
+  border-radius: 6px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(30, 41, 59, 0.75);
+  text-align: center;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.calibration-button.pressed {
+  border-color: rgba(56, 189, 248, 0.8);
+  background: rgba(14, 116, 144, 0.45);
+  color: #e0f2fe;
+}
+
+.calibration-button-label {
+  display: block;
+  line-height: 1.2;
+}
+
+.calibration-c-button {
+  border-style: dashed;
+}
+
+.calibration-trigger-axes {
+  margin-top: 4px;
+  font-size: 11px;
+}
+
+.gamepad-status[data-eightbitdo64="true"] {
+  color: #a5f3fc;
 }
 
 #auth-overlay {

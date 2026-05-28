@@ -1,12 +1,18 @@
 // Unified keyboard + gamepad input with remappable gamepad bindings.
 //
 // Gamepad hand palettes (keyboard uses direct keys 1–6 only, no modifier layer):
-//   Primary:    face buttons / bumpers → slots 1–6 (current max hand)
-//   Secondary:  hold R trigger (RT), then face buttons → slots 7–8 when hand size grows
-//   Lock-on:    L trigger (LT) — handled in gamepad.js, not here
+//   Primary:    face buttons / C-buttons → slots 1–6 (profile-dependent)
+//   Secondary:  hold modifier (RT on standard, L on 8BitDo 64) → extended slots
+//   Lock-on:    LT (standard) or Z (8BitDo 64) — handled in gamepad.js
 
 import { getGamepadConfig } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
+import {
+	resolveGamepadProfile,
+	isBindingActive,
+	STANDARD_PROFILE,
+	getPrimaryGamepad as getProfilePrimaryGamepad,
+} from './gamepad-profiles.js';
 
 export const ACTIONS = {
 	moveUp: 'moveUp',
@@ -45,6 +51,8 @@ const DEFAULT_GAMEPAD_BUTTONS = {
 	useSlot5: 5,
 	toggleDeckViewer: 8
 };
+
+const POLLABLE_ACTIONS = Object.keys(DEFAULT_GAMEPAD_BUTTONS);
 
 const keyState = {
 	moveUp: false,
@@ -103,47 +111,48 @@ function onKeyUp(e) {
 	}
 }
 
-function isHandModifierHeld(gp) {
+function getPrimaryGamepad() {
 	const cfg = getGamepadConfig();
-	const index = Number.isInteger(cfg.modifierButton) ? cfg.modifierButton : HAND_MODIFIER_GAMEPAD_BUTTON;
-	return isButtonPressed(gp, index);
+	return getProfilePrimaryGamepad(cfg.profile ?? 'auto');
+}
+
+function getActiveProfile(gamepad) {
+	const cfg = getGamepadConfig();
+	return resolveGamepadProfile(gamepad, cfg.profile ?? 'auto');
+}
+
+function getModifierButtonIndex(gamepad) {
+	const cfg = getGamepadConfig();
+	if (Number.isInteger(cfg.modifierButton)) return cfg.modifierButton;
+	return getActiveProfile(gamepad).modifierButton ?? HAND_MODIFIER_GAMEPAD_BUTTON;
+}
+
+function isHandModifierHeld(gp) {
+	return isButtonPressed(gp, getModifierButtonIndex(gp));
 }
 
 function bindingMatchesModifier(binding, modifierHeld) {
-	if (!binding || binding.type !== 'button') return false;
+	if (!binding) return false;
 	const wantsModifier = binding.modifier === true;
 	return wantsModifier ? modifierHeld : !modifierHeld;
 }
 
-function getBindingButtonIndex(action) {
+function getBindingForAction(action, gamepad) {
 	const cfg = getGamepadConfig();
 	const custom = cfg.bindings && cfg.bindings[action];
-	if (custom && custom.type === 'button' && typeof custom.index === 'number') {
+	if (custom && (custom.type === 'button' || custom.type === 'axis' || custom.type === 'cButton')) {
 		return custom;
 	}
-	if (DEFAULT_GAMEPAD_BUTTONS[action] !== undefined) {
-		return { type: 'button', index: DEFAULT_GAMEPAD_BUTTONS[action], modifier: false };
-	}
-	return null;
-}
-
-/**
- * @returns {Gamepad[]}
- */
-export function getConnectedGamepads() {
-	if (!navigator.getGamepads) return [];
-	return Array.from(navigator.getGamepads()).filter(Boolean);
-}
-
-function getPrimaryGamepad() {
-	const pads = getConnectedGamepads();
-	return pads[0] || null;
+	const profile = getActiveProfile(gamepad);
+	return profile.bindings[action] ?? null;
 }
 
 function readMoveStick(gp) {
 	const cfg = getGamepadConfig();
+	const profile = getActiveProfile(gp);
 	const deadzone = cfg.deadzone ?? 0.15;
-	const useRight = cfg.moveStick === 'right';
+	const moveStick = cfg.moveStick ?? profile.moveStick ?? 'left';
+	const useRight = moveStick === 'right';
 	const x = useRight ? gp.axes[2] : gp.axes[0];
 	const z = useRight ? gp.axes[3] : gp.axes[1];
 	const mag = Math.hypot(x, z);
@@ -204,11 +213,10 @@ export function pollInput() {
 	const prev = prevGamepadButtons.get(padKey);
 	const modifierHeld = isHandModifierHeld(gp);
 
-	for (const action of Object.keys(DEFAULT_GAMEPAD_BUTTONS)) {
-		const binding = getBindingButtonIndex(action);
+	for (const action of POLLABLE_ACTIONS) {
+		const binding = getBindingForAction(action, gp);
 		if (!binding || !bindingMatchesModifier(binding, modifierHeld)) continue;
-		const index = binding.index;
-		const pressed = isButtonPressed(gp, index);
+		const pressed = isBindingActive(gp, binding);
 		const wasPressed = !!prev[action];
 		prev[action] = pressed;
 		if (pressed && !wasPressed) {
@@ -240,11 +248,120 @@ export function getActionLabels() {
 }
 
 export function getDefaultGamepadButtonIndex(action) {
-	const binding = DEFAULT_GAMEPAD_BUTTONS[action];
-	return binding === undefined ? undefined : binding;
+	const binding = STANDARD_PROFILE.bindings[action];
+	if (!binding || binding.type !== 'button') return undefined;
+	return binding.index;
+}
+
+const STANDARD_BUTTON_HINTS = {
+	0: 'A',
+	1: 'B',
+	2: 'X',
+	3: 'Y',
+	4: 'LB',
+	5: 'RB',
+};
+
+const EIGHTBITDO_64_SLOT_HINTS = {
+	useSlot0: 'A',
+	useSlot1: 'B',
+	useSlot2: 'C↑',
+	useSlot3: 'C↓',
+	useSlot4: 'C←',
+	useSlot5: 'C→',
+};
+
+const KEYBOARD_SLOT_HINTS = ['1', '2', '3', '4', '5', '6'];
+
+/**
+ * @param {import('./gamepad-profiles.js').GamepadBinding | null | undefined} binding
+ * @param {number} slotIndex
+ * @returns {string}
+ */
+function describeStandardHandSlotBindingHint(binding, slotIndex) {
+	if (binding?.type === 'button' && STANDARD_BUTTON_HINTS[binding.index]) {
+		return STANDARD_BUTTON_HINTS[binding.index];
+	}
+	if (binding?.type === 'button') return `Btn ${binding.index}`;
+	return KEYBOARD_SLOT_HINTS[slotIndex] ?? String(slotIndex + 1);
+}
+
+/**
+ * @param {import('./gamepad-profiles.js').GamepadBinding | null | undefined} binding
+ * @param {number} slotIndex
+ * @returns {string}
+ */
+function describe8BitDo64HandSlotBindingHint(binding, slotIndex) {
+	if (binding?.type === 'cButton') {
+		const labels = { up: 'C↑', down: 'C↓', left: 'C←', right: 'C→' };
+		return labels[binding.direction] ?? 'C';
+	}
+	if (binding?.type === 'button' && binding.index === 0) return 'A';
+	if (binding?.type === 'button' && binding.index === 1) return 'B';
+	if (binding?.type === 'button') return `Btn ${binding.index}`;
+	return EIGHTBITDO_64_SLOT_HINTS[`useSlot${slotIndex}`] ?? String(slotIndex + 1);
+}
+
+/** @returns {boolean} */
+function isGamepadInputHintsActive() {
+	const cfg = getGamepadConfig();
+	const profileId = cfg.profile ?? 'auto';
+	if (profileId === 'standard' || profileId === '8bitdo-64') return true;
+	if (profileId === 'auto') return !!getPrimaryGamepad();
+	return false;
+}
+
+/** True when the active gamepad profile is the 8BitDo 64 layout. */
+export function is8BitDo64HandHintsActive() {
+	const cfg = getGamepadConfig();
+	const profileId = cfg.profile ?? 'auto';
+	if (profileId === '8bitdo-64') return true;
+	if (profileId === 'auto') {
+		const gp = getPrimaryGamepad();
+		return gp ? getActiveProfile(gp).id === '8bitdo-64' : false;
+	}
+	return false;
+}
+
+/**
+ * Input hint badges for each hand slot.
+ * @returns {{ mode: 'keyboard' | 'gamepad', hints: string[] }}
+ */
+export function getHandSlotInputHints() {
+	if (!isGamepadInputHintsActive()) {
+		return { mode: 'keyboard', hints: [...KEYBOARD_SLOT_HINTS] };
+	}
+
+	const gp = getPrimaryGamepad();
+	const profile = getActiveProfile(gp);
+	const hints = [];
+
+	for (let i = 0; i < 6; i++) {
+		const action = `useSlot${i}`;
+		const binding = getBindingForAction(action, gp);
+		if (profile.id === '8bitdo-64') {
+			hints.push(
+				EIGHTBITDO_64_SLOT_HINTS[action]
+				?? describe8BitDo64HandSlotBindingHint(binding, i),
+			);
+		} else {
+			hints.push(describeStandardHandSlotBindingHint(binding, i));
+		}
+	}
+
+	return { mode: 'gamepad', hints };
+}
+
+/** @deprecated Use getHandSlotInputHints() */
+export function getHandSlotGamepadHints() {
+	const result = getHandSlotInputHints();
+	if (result.mode !== 'gamepad' || !is8BitDo64HandHintsActive()) return null;
+	return result.hints;
 }
 
 export function getHandModifierGamepadButton() {
+	const gp = getPrimaryGamepad();
+	if (gp) return getModifierButtonIndex(gp);
 	const cfg = getGamepadConfig();
 	return Number.isInteger(cfg.modifierButton) ? cfg.modifierButton : HAND_MODIFIER_GAMEPAD_BUTTON;
 }
@@ -254,3 +371,6 @@ export function resetInputState() {
 	for (const k of Object.keys(keyState)) keyState[k] = false;
 	prevGamepadButtons.clear();
 }
+
+/** @returns {Gamepad | null} */
+export { getPrimaryGamepad };

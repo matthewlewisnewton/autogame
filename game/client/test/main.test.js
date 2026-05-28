@@ -77,7 +77,7 @@ describe('renderDeckEditor()', () => {
 
 		// Check deck size display
 		const deckSize = document.getElementById('deck-size-display').textContent;
-		expect(deckSize).toBe('4/12');
+		expect(deckSize).toBe('4/24');
 
 		// Check ready button is NOT disabled (deck >= DECK_MIN_SIZE of 4)
 		const readyBtn = document.getElementById('ready-btn');
@@ -85,8 +85,20 @@ describe('renderDeckEditor()', () => {
 		expect(readyBtn.classList.contains('deck-invalid')).toBe(false);
 	});
 
-	it('renders sell value and sell buttons for sellable owned cards', async () => {
+	it('renders sell value and sell buttons for sellable owned cards in the card shop', async () => {
 		await import('../main.js');
+
+		if (!document.getElementById('shop-sell-list')) {
+			const sellList = document.createElement('div');
+			sellList.id = 'shop-sell-list';
+			document.body.appendChild(sellList);
+		}
+		if (!document.getElementById('shop-error')) {
+			const shopError = document.createElement('div');
+			shopError.id = 'shop-error';
+			shopError.style.display = 'none';
+			document.body.appendChild(shopError);
+		}
 
 		const mockInventory = [
 			{ instanceId: 'iron-1', cardId: 'iron_sword', grind: 0, level: 1 },
@@ -105,17 +117,20 @@ describe('renderDeckEditor()', () => {
 		const mockDeck = ['iron-1', 'flame-1', 'fam-1', 'drake-1'];
 
 		window.__setDeckState(mockDeck, mockOwned, mockInventory);
-		window.renderDeckEditor();
+		window.renderCardShop();
 
-		const ironEntry = Array.from(document.querySelectorAll('.owned-card-entry'))
+		const ironEntry = Array.from(document.querySelectorAll('#shop-sell-list .owned-card-entry'))
 			.find((entry) => entry.querySelector('.card-label').textContent === 'Rust-Forged Saber');
 		expect(ironEntry).toBeTruthy();
 		expect(ironEntry.querySelector('.card-sell-value').textContent).toBe('5g');
 		expect(ironEntry.querySelector('.sell-card-btn').disabled).toBe(false);
 
-		const flameEntry = Array.from(document.querySelectorAll('.owned-card-entry'))
+		const flameEntry = Array.from(document.querySelectorAll('#shop-sell-list .owned-card-entry'))
 			.find((entry) => entry.querySelector('.card-label').textContent === 'Solar Edge');
 		expect(flameEntry.querySelector('.sell-card-btn').disabled).toBe(true);
+
+		window.renderDeckEditor();
+		expect(document.querySelector('#owned-cards-list .sell-card-btn')).toBeNull();
 	});
 
 	it('disables ready button when deck is too small', async () => {
@@ -214,13 +229,15 @@ describe('Photon Forge UI', () => {
 		'shop-currency-display',
 		'shop-offer-display',
 		'buy-shop-card-btn',
+		'shop-sell-list',
+		'shop-error',
 		'photon-forge',
 		'forge-inventory-grid',
 		'forge-selected-name',
 		'forge-selected-meta',
 		'forge-stat-rows',
-		'forge-upgrade-cost',
-		'forge-upgrade-btn',
+		'forge-attune-cost',
+		'forge-attune-btn',
 		'forge-error',
 	];
 
@@ -242,7 +259,7 @@ describe('Photon Forge UI', () => {
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
-				if (id === 'forge-upgrade-btn') el.disabled = true;
+				if (id === 'forge-attune-btn') el.disabled = true;
 				document.body.appendChild(el);
 			}
 		}
@@ -279,7 +296,7 @@ describe('Photon Forge UI', () => {
 		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
 	});
 
-	it('renders inventory tiles and disables upgrade when GOLD is insufficient', async () => {
+	it('renders inventory tiles and disables attune when money is insufficient', async () => {
 		await import('../main.js');
 
 		const mockInventory = [
@@ -294,11 +311,11 @@ describe('Photon Forge UI', () => {
 		expect(document.querySelectorAll('.forge-card-tile').length).toBe(2);
 		expect(document.getElementById('forge-selected-name').textContent).toBe('Rust-Forged Saber');
 		expect(document.getElementById('forge-stat-rows').querySelectorAll('tr').length).toBeGreaterThan(0);
-		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(true);
-		expect(document.getElementById('forge-upgrade-cost').textContent).toContain('100 Money');
+		expect(document.getElementById('forge-attune-btn').disabled).toBe(true);
+		expect(document.getElementById('forge-attune-cost').textContent).toContain('100');
 	});
 
-	it('enables upgrade when the player can afford the next level', async () => {
+	it('enables attune when the player can afford the next grind level', async () => {
 		await import('../main.js');
 
 		const mockInventory = [
@@ -309,7 +326,27 @@ describe('Photon Forge UI', () => {
 		window.__setLobbyTabState('forge', 'sword-1');
 		window.renderPhotonForge();
 
-		expect(document.getElementById('forge-upgrade-btn').disabled).toBe(false);
+		expect(document.getElementById('forge-attune-btn').disabled).toBe(false);
+	});
+
+	it('renders attune controls in photon forge and not in loadout bay', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'sword-1', cardId: 'iron_sword', grind: 0, level: 1 },
+			{ instanceId: 'sword-2', cardId: 'iron_sword', grind: 0, level: 1 },
+		];
+		window.__setDeckState(['sword-1'], { iron_sword: 2 }, mockInventory, 250);
+		window.__setGameState({ players: { p1: { currency: 250 } } }, 'p1');
+		window.__setLobbyTabState('forge', 'sword-2');
+		window.renderPhotonForge();
+
+		expect(document.getElementById('forge-attune-cost').textContent).toContain('100');
+		expect(document.getElementById('forge-attune-btn').disabled).toBe(false);
+		expect(document.getElementById('forge-attune-btn').textContent).toContain('Attune (100m)');
+
+		window.renderDeckEditor();
+		expect(document.querySelector('#owned-cards-list .grind-card-btn')).toBeNull();
 	});
 
 	it('keeps forge selection stable across unchanged lobby state ticks', async () => {
@@ -2254,23 +2291,41 @@ describe('auth overlay functions', () => {
 			const toolbar = document.createElement('div');
 			toolbar.id = 'app-toolbar';
 			toolbar.classList.add('hidden');
-			for (const id of ['logout-btn', 'settings-btn', 'mute-btn']) {
+			for (const id of ['account-btn', 'settings-btn', 'mute-btn']) {
 				const btn = document.createElement('button');
 				btn.id = id;
 				if (id === 'mute-btn') btn.textContent = '🔊';
 				if (id === 'settings-btn') btn.title = 'Settings';
+				if (id === 'account-btn') btn.title = 'Account';
 				toolbar.appendChild(btn);
 			}
 			document.body.appendChild(toolbar);
 		}
 
 		for (const id of ['lobby-browser-settings-btn', 'lobby-settings-btn']) {
-			if (!document.getElementById(id)) {
+			document.getElementById(id)?.remove();
+		}
+
+		if (!document.getElementById('account-overlay')) {
+			const overlay = document.createElement('div');
+			overlay.id = 'account-overlay';
+			overlay.classList.add('hidden');
+			const modal = document.createElement('div');
+			modal.id = 'account-modal';
+			for (const id of ['account-close-btn', 'account-save-btn', 'account-logout-btn']) {
 				const btn = document.createElement('button');
 				btn.id = id;
-				btn.textContent = 'Settings';
-				document.body.appendChild(btn);
+				modal.appendChild(btn);
 			}
+			const usernameInput = document.createElement('input');
+			usernameInput.id = 'account-username-input';
+			modal.appendChild(usernameInput);
+			const error = document.createElement('p');
+			error.id = 'account-error';
+			error.hidden = true;
+			modal.appendChild(error);
+			overlay.appendChild(modal);
+			document.body.appendChild(overlay);
 		}
 
 		if (!document.getElementById('settings-overlay')) {
@@ -2340,20 +2395,30 @@ describe('auth overlay functions', () => {
 		if (toolbar) expect(toolbar.classList.contains('hidden')).toBe(false);
 	});
 
-	it('lobby settings buttons open the settings overlay', async () => {
+	it('toolbar account button opens the account overlay', async () => {
+		await import('../main.js');
+
+		const accountOverlay = document.getElementById('account-overlay');
+		accountOverlay.classList.add('hidden');
+
+		document.getElementById('account-btn')?.click();
+		expect(accountOverlay.classList.contains('hidden')).toBe(false);
+
+		window.closeAccountOverlay();
+		expect(accountOverlay.classList.contains('hidden')).toBe(true);
+	});
+
+	it('toolbar settings button opens the settings overlay', async () => {
 		await import('../main.js');
 
 		const settingsOverlay = document.getElementById('settings-overlay');
 		settingsOverlay.classList.add('hidden');
 
-		document.getElementById('lobby-browser-settings-btn')?.click();
+		document.getElementById('settings-btn')?.click();
 		expect(settingsOverlay.classList.contains('hidden')).toBe(false);
 
 		window.closeSettingsOverlay();
 		expect(settingsOverlay.classList.contains('hidden')).toBe(true);
-
-		document.getElementById('lobby-settings-btn')?.click();
-		expect(settingsOverlay.classList.contains('hidden')).toBe(false);
 	});
 
 	it('showRegisterForm shows register form and hides login form', async () => {
@@ -2570,15 +2635,19 @@ describe('connect_error handler', () => {
 			'register-form', 'register-username', 'register-password', 'register-btn', 'register-error',
 			'login-form', 'login-username', 'login-password', 'login-btn', 'login-error',
 			'show-login-link', 'show-register-link',
-			'logout-btn',
+			'account-btn', 'account-overlay', 'account-close-btn', 'account-username-input',
+			'account-save-btn', 'account-logout-btn', 'account-error',
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
 				const el = (id === 'register-btn' || id === 'login-btn' || id === 'ready-btn' ||
-					id === 'return-to-lobby-btn' || id === 'logout-btn' ||
+					id === 'return-to-lobby-btn' || id === 'account-btn' ||
+					id === 'account-save-btn' || id === 'account-logout-btn' ||
 					id === 'show-login-link' || id === 'show-register-link')
 					? document.createElement('button')
-					: (id === 'show-login-link' || id === 'show-register-link' ? document.createElement('a') : document.createElement('div'));
+					: (id === 'account-username-input'
+						? document.createElement('input')
+						: (id === 'show-login-link' || id === 'show-register-link' ? document.createElement('a') : document.createElement('div')));
 				el.id = id;
 				document.body.appendChild(el);
 			}
@@ -2931,7 +3000,9 @@ describe('Cold-start mute persistence', () => {
 			'auth-overlay', 'auth-modal', 'register-form', 'login-form',
 			'register-username', 'register-password', 'register-btn', 'register-error',
 			'login-username', 'login-password', 'login-btn', 'login-error',
-			'show-login-link', 'show-register-link', 'logout-btn',
+			'show-login-link', 'show-register-link',
+			'account-btn', 'account-overlay', 'account-close-btn', 'account-username-input',
+			'account-save-btn', 'account-logout-btn', 'account-error',
 		];
 		// Remove any existing elements from previous imports so we get a clean DOM
 		requiredIds.forEach(id => {
@@ -2941,9 +3012,10 @@ describe('Cold-start mute persistence', () => {
 		for (const id of requiredIds) {
 			const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' ||
 				id === 'mute-btn' || id === 'register-btn' || id === 'login-btn' ||
-				id === 'logout-btn' || id === 'show-login-link' || id === 'show-register-link')
+				id === 'account-btn' || id === 'account-save-btn' || id === 'account-logout-btn' ||
+				id === 'show-login-link' || id === 'show-register-link')
 				? document.createElement('button')
-				: (id.startsWith('register-') || id.startsWith('login-'))
+				: (id === 'account-username-input' || id.startsWith('register-') || id.startsWith('login-'))
 					? document.createElement('input')
 					: document.createElement('div');
 			el.id = id;

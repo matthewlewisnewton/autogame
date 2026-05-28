@@ -19,36 +19,37 @@ describe('settings layout in index.html', () => {
 
 		expect(toolbar).not.toBeNull();
 		expect(ui).not.toBeNull();
-		expect(toolbar.querySelector('#logout-btn')).not.toBeNull();
+		expect(toolbar.querySelector('#account-btn')).not.toBeNull();
 		expect(toolbar.querySelector('#settings-btn')).not.toBeNull();
 		expect(toolbar.querySelector('#mute-btn')).not.toBeNull();
+		expect(toolbar.querySelector('#logout-btn')).toBeNull();
+		expect(ui.querySelector('#account-btn')).toBeNull();
 		expect(ui.querySelector('#settings-btn')).toBeNull();
-		expect(ui.querySelector('#logout-btn')).toBeNull();
 		expect(ui.querySelector('#mute-btn')).toBeNull();
 	});
 
-	it('adds a Settings button to the lobby browser actions row', () => {
+	it('keeps logout on the account page instead of the toolbar', () => {
 		const doc = parseIndex();
-		const actions = doc.getElementById('lobby-browser-actions');
-		const settingsBtn = doc.getElementById('lobby-browser-settings-btn');
+		const toolbar = doc.getElementById('app-toolbar');
+		const accountOverlay = doc.getElementById('account-overlay');
 
-		expect(actions).not.toBeNull();
-		expect(settingsBtn).not.toBeNull();
-		expect(settingsBtn.classList.contains('lobby-settings-btn')).toBe(true);
-		expect(actions.contains(settingsBtn)).toBe(true);
+		expect(toolbar?.querySelector('#logout-btn')).toBeNull();
+		expect(accountOverlay).not.toBeNull();
+		expect(accountOverlay?.querySelector('#account-username-input')).not.toBeNull();
+		expect(accountOverlay?.querySelector('#account-save-btn')).not.toBeNull();
+		expect(accountOverlay?.querySelector('#account-logout-btn')).not.toBeNull();
 	});
 
-	it('adds a Settings button to the lobby header beside the guild title', () => {
+	it('keeps settings in the app toolbar only (no duplicate lobby buttons)', () => {
 		const doc = parseIndex();
-		const lobby = doc.getElementById('lobby');
-		const header = lobby?.querySelector('.lobby-header');
-		const settingsBtn = doc.getElementById('lobby-settings-btn');
+		const toolbar = doc.getElementById('app-toolbar');
+		const lobbyBrowserActions = doc.getElementById('lobby-browser-actions');
+		const lobbyHeader = doc.getElementById('lobby')?.querySelector('.lobby-header');
 
-		expect(header).not.toBeNull();
-		expect(header.querySelector('h2')?.textContent).toBe('Hunter Guild');
-		expect(settingsBtn).not.toBeNull();
-		expect(settingsBtn.classList.contains('lobby-settings-btn')).toBe(true);
-		expect(header.contains(settingsBtn)).toBe(true);
+		expect(doc.querySelectorAll('#settings-btn')).toHaveLength(1);
+		expect(toolbar?.querySelector('#settings-btn')).not.toBeNull();
+		expect(lobbyBrowserActions?.querySelector('#lobby-browser-settings-btn')).toBeNull();
+		expect(lobbyHeader?.querySelector('#lobby-settings-btn')).toBeNull();
 	});
 
 	it('keeps the shared settings overlay available for all entry points', () => {
@@ -58,5 +59,17 @@ describe('settings layout in index.html', () => {
 		expect(overlay).not.toBeNull();
 		expect(overlay.querySelector('#settings-modal')).not.toBeNull();
 		expect(overlay.querySelector('#lock-on-repeat-select')).not.toBeNull();
+	});
+
+	it('includes controller calibration controls in the settings overlay', () => {
+		const doc = parseIndex();
+		const section = doc.getElementById('controller-calibration-section');
+
+		expect(section).not.toBeNull();
+		expect(doc.getElementById('gamepad-status')).not.toBeNull();
+		expect(doc.getElementById('gamepad-profile-select')).not.toBeNull();
+		expect(doc.getElementById('gamepad-deadzone-slider')).not.toBeNull();
+		expect(doc.getElementById('gamepad-move-stick-select')).not.toBeNull();
+		expect(doc.getElementById('calibration-button-grid')).not.toBeNull();
 	});
 });

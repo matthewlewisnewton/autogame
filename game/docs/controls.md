@@ -5,7 +5,7 @@
 - **W / A / S / D** — move relative to the camera facing direction.
 - **Gamepad left stick** or **D-pad** — move relative to the camera. Partial stick deflection moves at reduced speed (analog walk).
 
-While lock-on is active, movement becomes **target-relative**: W moves toward the locked enemy, S moves away, and A/D strafe around them.
+While lock-on is active, movement stays **camera-relative** (stick/keys match what you see on screen). Your character still faces the locked target so attacks go toward them.
 
 ## Camera (orbit)
 
@@ -20,7 +20,7 @@ Manual camera control is disabled while lock-on is active; the camera tracks beh
 
 ## Lock-On (Z-Targeting)
 
-Press **Z** or the **gamepad L trigger** to lock onto the nearest enemy within range.
+Press **Z** or the **gamepad L trigger** (standard) / **Z button** (8BitDo 64) to lock onto the nearest enemy within range.
 
 - While locked, your character always faces the target so attacks go toward them.
 - The camera reorients behind you and follows as you and the target move.
@@ -36,3 +36,20 @@ Configure what happens when you press Z again while already locked in **Settings
 ## Combat
 
 Card slots and deck controls are unchanged from keyboard/gamepad bindings documented in the client UI.
+
+### 8BitDo 64 (N64 profile)
+
+When an **8BitDo 64** is connected, Settings → Controller profile can stay on **Auto-detect** (recommended) or be set to **8BitDo 64 (N64)**. The profile maps:
+
+| N64 control | Game action |
+|-------------|-------------|
+| **A** | Hand slot 1 |
+| **B** | Hand slot 2 |
+| **C↑ / C↓ / C← / C→** | Hand slots 3–6 |
+| **Z** | Lock-on (Z-targeting) |
+| **C← / C→** (horizontal) | Camera orbit |
+| **Joystick** | Move |
+| **D-pad** | Move |
+| **Select (−)** | Toggle deck viewer |
+| **L** | Modifier for extended hand slots |
+| **Start (+)** | — |

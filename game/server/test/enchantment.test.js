@@ -49,7 +49,7 @@ describe('enchantment cards', () => {
 		updateEnchantments();
 
 		expect(gameState.enchantments).toHaveLength(0);
-		expect(gameState.enemies[0].hp).toBe(15);
+		expect(gameState.enemies[0].hp).toBe(11);
 	});
 
 	it('spike_trap expires after ttl when untriggered', () => {

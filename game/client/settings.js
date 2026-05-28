@@ -5,10 +5,11 @@ import { setSoundEnabledFromSettings } from './audio.js';
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
 
-/** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', gamepad: { bindings: object, moveStick: string, deadzone: number } }} AccountSettings */
+/** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
 
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
+let cachedProfile = { username: '', email: null };
 let authToken = null;
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
@@ -24,6 +25,7 @@ export function getDefaultSettings() {
 			bindings: {},
 			moveStick: 'left',
 			deadzone: 0.15,
+			profile: 'auto',
 			/** R trigger (RT) — secondary hand palette modifier; see HAND_MODIFIER_GAMEPAD_BUTTON */
 			modifierButton: 7,
 		}
@@ -32,6 +34,10 @@ export function getDefaultSettings() {
 
 export function getSettings() {
 	return cachedSettings;
+}
+
+export function getAccountProfile() {
+	return cachedProfile;
 }
 
 export function getAuthToken() {
@@ -86,6 +92,10 @@ export async function loadAccountSettings(token) {
 		throw new Error('Failed to load account settings');
 	}
 	const data = await res.json();
+	cachedProfile = {
+		username: data.username || '',
+		email: data.email || null,
+	};
 	cachedSettings = deepMerge(getDefaultSettings(), data.settings || {});
 	await migrateLocalStorageMute();
 	applySettings();
@@ -164,6 +174,10 @@ export async function patchProfile(fields) {
 		authToken = data.token;
 		try { localStorage.setItem('autogame_token', data.token); } catch (_) {}
 	}
+	cachedProfile = {
+		username: data.username || cachedProfile.username,
+		email: data.email ?? cachedProfile.email,
+	};
 	return data;
 }
 
@@ -181,6 +195,12 @@ export function areHitboxesVisible() {
 
 export function getGamepadConfig() {
 	return cachedSettings.gamepad || getDefaultSettings().gamepad;
+}
+
+export function getGamepadProfileSetting() {
+	const profile = cachedSettings.gamepad?.profile;
+	if (profile === 'standard' || profile === '8bitdo-64') return profile;
+	return 'auto';
 }
 
 /** @returns {'unlock' | 'cycle' | 'reacquire'} */

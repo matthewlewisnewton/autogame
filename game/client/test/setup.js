@@ -108,11 +108,20 @@ if (typeof document !== 'undefined') {
 		document.body.appendChild(overlay);
 
 		// Logout button
-		if (!document.getElementById('logout-btn')) {
+		if (!document.getElementById('account-btn')) {
+			const accountBtn = document.createElement('button');
+			accountBtn.id = 'account-btn';
+			accountBtn.classList.add('hidden');
+			document.body.appendChild(accountBtn);
+		}
+		if (!document.getElementById('account-overlay')) {
+			const overlay = document.createElement('div');
+			overlay.id = 'account-overlay';
+			overlay.classList.add('hidden');
 			const logoutBtn = document.createElement('button');
-			logoutBtn.id = 'logout-btn';
-			logoutBtn.classList.add('hidden');
-			document.body.appendChild(logoutBtn);
+			logoutBtn.id = 'account-logout-btn';
+			overlay.appendChild(logoutBtn);
+			document.body.appendChild(overlay);
 		}
 	}
 	ensureAuthElements();
