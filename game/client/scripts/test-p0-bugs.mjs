@@ -9,7 +9,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'p0-verification');
+const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'p0-bugs');
 const PHASE = process.env.PHASE || 'before'; // 'before' | 'after'
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
