@@ -47,7 +47,7 @@ describe('damageMinion()', () => {
 		damageMinion(minion, 10);
 
 		expect(minion.hp).toBe(40);
-		expect(minion.ttl).toBeCloseTo(24);
+		expect(minion.ttl).toBeCloseTo(28.5);
 	});
 
 	it('can expire a minion through duration burn alone', () => {
@@ -133,7 +133,7 @@ describe('enemy attacks on summons', () => {
 		updateEnemies();
 
 		expect(gameState.minions[0].hp).toBe(50 - ENEMY_DEFS.grunt.attackDamage);
-		expect(gameState.minions[0].ttl).toBeCloseTo(30 - (ENEMY_DEFS.grunt.attackDamage * 30 / 50));
+		expect(gameState.minions[0].ttl).toBeCloseTo(30 - (ENEMY_DEFS.grunt.attackDamage * 30 / 50) * 0.25);
 	});
 
 	it('prefers a closer summon over a farther player when choosing targets', () => {

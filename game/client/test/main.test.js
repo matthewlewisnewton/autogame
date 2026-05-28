@@ -1102,30 +1102,13 @@ describe('renderHand()', () => {
 		expect(slot.style.getPropertyValue('--charge-pct')).toBe('60');
 	});
 
-	it('lays out hand slots in a staggered N64 controller fan for 8BitDo 64 only', () => {
-		expect(styleCss).toContain('#card-hand.layout-8bitdo-64');
-		expect(styleCss).toContain('--hand-n64-step-y');
-		expect(styleCss).toContain('#card-hand.layout-8bitdo-64 .card-slot.empty');
-
-		const slotRule = (index) => {
-			const match = styleCss.match(new RegExp(
-				`#card-hand\\.layout-8bitdo-64 \\.card-slot\\[data-slot-index="${index}"\\][^{]*\\{([^}]+)\\}`,
-				's',
-			));
-			expect(match, `slot ${index} N64 layout rule`).not.toBeNull();
-			return match[1];
-		};
-
-		expect(slotRule('0')).toContain('bottom: 0');
-		expect(slotRule('1')).toContain('var(--hand-n64-step-y)');
-		expect(slotRule('3')).toContain('var(--hand-n64-step-y)');
-		expect(slotRule('4')).toContain('calc(2 * var(--hand-n64-step-y))');
-		expect(slotRule('5')).toContain('calc(2 * var(--hand-n64-step-y))');
-		expect(slotRule('2')).toContain('calc(3 * var(--hand-n64-step-y))');
-		expect(slotRule('1')).toContain('var(--hand-n64-b-extra)');
-		expect(slotRule('4')).toContain('var(--hand-n64-drift)');
-		expect(slotRule('1')).toContain('var(--hand-n64-step-y)');
-		expect(slotRule('4')).toContain('calc(2 * var(--hand-n64-step-y))');
+	it('lays out hand slots on an N64 controller grid for 8BitDo 64 only', () => {
+		expect(styleCss).toContain('repeat(4, var(--hand-n64-col-w))');
+		expect(styleCss).toContain('grid-column: 1');
+		expect(styleCss).toContain('grid-column: 2');
+		expect(styleCss).toContain('grid-column: 3');
+		expect(styleCss).toContain('grid-column: 4');
+		expect(styleCss).toContain('--hand-n64-row-h');
 	});
 
 	it('renders exactly one input hint badge per card slot', async () => {
@@ -1140,6 +1123,7 @@ describe('renderHand()', () => {
 
 		const slot = document.querySelector('.card-slot[data-slot-index="0"]');
 		expect(slot.querySelectorAll(':scope > .card-input-hint')).toHaveLength(1);
+		expect(slot.children.length).toBe(3);
 		expect(slot.querySelector('.card-slot-content .card-input-hint')).toBeNull();
 	});
 
@@ -1148,16 +1132,34 @@ describe('renderHand()', () => {
 		await import('../main.js');
 
 		const cardHand = document.getElementById('card-hand');
-		cardHand.style.display = 'flex';
 
 		patchSettings({ gamepad: { profile: 'standard' } });
+		window.__resetHandLayoutLock();
+		window.showCardHand();
 		window.renderHand();
 		expect(cardHand.classList.contains('layout-8bitdo-64')).toBe(false);
 
 		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		window.__resetHandLayoutLock();
+		window.showCardHand();
 		window.renderHand();
 		expect(cardHand.classList.contains('layout-8bitdo-64')).toBe(true);
-		expect(cardHand.style.display).toBe('block');
+		expect(cardHand.style.display).toBe('grid');
+	});
+
+	it('shows N64 slot placeholders with input hints when slots are empty', async () => {
+		const { patchSettings } = await import('../settings.js');
+		await import('../main.js');
+
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		window.__resetHandLayoutLock();
+		resetHandState();
+		window.showCardHand();
+
+		const emptySlot = document.querySelector('.card-slot[data-slot-index="4"]');
+		expect(emptySlot.classList.contains('empty')).toBe(true);
+		expect(getComputedStyle(emptySlot).display).not.toBe('none');
+		expect(emptySlot.querySelector(':scope > .card-input-hint')?.innerHTML).toContain('c-button-mark');
 	});
 });
 

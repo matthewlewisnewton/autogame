@@ -7,6 +7,7 @@ const {
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
   MAX_HP,
+  MEDIC_HEAL_COST,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
   SPAWN_PADDING,
@@ -28,6 +29,7 @@ const {
   PORTAL_PLACEMENT_GRACE_MS,
   MAX_HAND_SLOTS,
   OPENING_HAND_SIZE,
+  HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
 } = require('./config');
 const {
@@ -104,7 +106,19 @@ const CARD_DEFS = {
   iron_sword: { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 17, charges: 5 },
   flame_blade: { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', damage: 28, charges: 3 },
   battle_familiar: { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 44 },
-  dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, minionTtl: 30, attackDamage: 11 },
+  dungeon_drake: {
+    id: 'dungeon_drake',
+    name: 'Vault Wyrm',
+    type: 'creature',
+    charges: 1,
+    minionTtl: 30,
+    attackDamage: 3,
+    breathRange: 4,
+    breathConeAngle: Math.PI / 4,
+    breathDurationMs: 2000,
+    breathTickMs: 500,
+    breathIntervalMs: 2500,
+  },
   null_crawler: {
     id: 'null_crawler',
     name: 'Phase Stalker',
@@ -186,7 +200,10 @@ const CARD_DEFS = {
     effect: 'ancient_wyrm',
     breathIntervalMs: 3000,
     breathRange: 8,
-    breathDamage: 17,
+    breathConeAngle: Math.PI / 3,
+    breathDurationMs: 2500,
+    breathTickMs: 500,
+    breathDamage: 4,
   },
   mana_prism: {
     id: 'mana_prism',
@@ -675,6 +692,34 @@ function ensureShopOffer() {
     refreshShopOffer();
   }
   return _gameState.shopOffer;
+}
+
+function healAtMedic(playerId) {
+  if (!_gameState || _gameState.gamePhase !== 'lobby') {
+    return { ok: false, reason: 'not_in_lobby' };
+  }
+
+  const player = _gameState.players[playerId];
+  if (!player) {
+    return { ok: false, reason: 'invalid_player' };
+  }
+
+  const hp = Number.isFinite(player.hp) ? player.hp : MAX_HP;
+  if (hp >= MAX_HP && !player.dead) {
+    return { ok: false, reason: 'already_full' };
+  }
+
+  const cost = MEDIC_HEAL_COST;
+  if ((player.currency || 0) < cost) {
+    return { ok: false, reason: 'insufficient_gold' };
+  }
+
+  player.currency -= cost;
+  player.hp = MAX_HP;
+  player.dead = false;
+  savePlayerData(playerId);
+
+  return { ok: true, hp: player.hp, currency: player.currency, cost };
 }
 
 function buyShopCard(player, shopOffer) {
@@ -1383,6 +1428,69 @@ function buildPlayerRewardSummary(playerId) {
   return player.runRewards;
 }
 
+/** Non-mutating preview of rewards if the player returns to guild with the current run state. */
+function previewReturnRewards(playerId) {
+  const player = _gameState.players[playerId];
+  if (!player || !_gameState.run || _gameState.gamePhase !== 'playing' || !_gameState.run.objective) {
+    return null;
+  }
+
+  const run = _gameState.run;
+  const lootCurrency = player.currencyEarnedThisRun || 0;
+  const objectiveComplete = isRunObjectiveComplete(run.objective);
+  const quest = run.questId ? getQuest(run.questId) : getSelectedQuest(_gameState);
+  const questBonus = (quest && quest.rewardCurrency) || run.rewardCurrency || 10;
+
+  const base = {
+    lootCurrency,
+    objectiveComplete,
+    runStatus: run.status,
+    questBonus,
+    giveUpForfeitsCurrency: lootCurrency,
+  };
+
+  if (player.runRewards) {
+    const rewards = player.runRewards;
+    return {
+      ...base,
+      granted: true,
+      currency: rewards.currency || 0,
+      cards: (rewards.cards || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+        count: c.count > 1 ? c.count : 1,
+      })),
+      cardChoices: (rewards.cardChoices || []).map((c) => ({
+        id: c.id,
+        name: c.name,
+      })),
+    };
+  }
+
+  if (objectiveComplete) {
+    const cardChoices = buildCardChoices(playerId);
+    const cards = [];
+    if (cardChoices.length === 0) {
+      cards.push({ id: null, name: 'Bonus card' });
+    }
+    return {
+      ...base,
+      granted: false,
+      currency: questBonus + lootCurrency,
+      cards,
+      cardChoices: cardChoices.map((c) => ({ id: c.id, name: c.name })),
+    };
+  }
+
+  return {
+    ...base,
+    granted: false,
+    currency: lootCurrency,
+    cards: [],
+    cardChoices: [],
+  };
+}
+
 function validateDeck(deck, ownedOrInventory) {
   if (deck.length < DECK_MIN_SIZE) {
     return { valid: false, reason: `Deck must have at least ${DECK_MIN_SIZE} cards` };
@@ -1755,8 +1863,8 @@ function countFilledHandSlots(player) {
 
 function findFirstEmptyHandSlot(player) {
   ensureHandSlots(player);
-  for (let i = 0; i < MAX_HAND_SLOTS; i++) {
-    if (!player.hand[i]) return i;
+  for (const slotIndex of HAND_SLOT_FILL_ORDER) {
+    if (!player.hand[slotIndex]) return slotIndex;
   }
   return -1;
 }
@@ -2027,9 +2135,10 @@ function initPlayerHand(player) {
   player.hand = new Array(MAX_HAND_SLOTS).fill(null);
   player.nextDrawAt = null;
   for (let i = 0; i < OPENING_HAND_SIZE; i++) {
+    const slotIndex = HAND_SLOT_FILL_ORDER[i];
     const card = drawCardFromDeck(player);
     if (card) {
-      player.hand[i] = card;
+      player.hand[slotIndex] = card;
     } else {
       break;
     }
@@ -2458,7 +2567,6 @@ function suspendRunToLobby() {
     player.ready = false;
     player.extracted = false;
     player.dead = false;
-    player.hp = MAX_HP;
     player.x = spawn.x;
     player.y = 0.5;
     player.z = spawn.z;
@@ -2557,8 +2665,7 @@ function abandonSuspendedRun() {
   for (const player of Object.values(_gameState.players)) {
     player.ready = false;
     player.extracted = false;
-    player.dead = false;
-    player.hp = MAX_HP;
+    player.dead = player.hp <= 0;
     player.x = spawn.x;
     player.y = 0.5;
     player.z = spawn.z;
@@ -2655,6 +2762,7 @@ function stateSnapshot() {
       inventory: Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory,
       debugScenario: p.debugScenario,
       extracted: !!p.extracted,
+      returnRewardsPreview: previewReturnRewards(id),
     };
   }
 
@@ -2700,9 +2808,8 @@ function returnPlayersToLobby() {
     const preservedRunRewards = player.runRewards;
 
     player.ready = false;
-    player.dead = false;
+    player.dead = player.hp <= 0;
     player.extracted = false;
-    player.hp = MAX_HP;
     player.x = spawn.x;
     player.y = 0.5;
     player.z = spawn.z;
@@ -2727,6 +2834,69 @@ function returnPlayersToLobby() {
     io.emit('stateUpdate', stateSnapshot());
   }
   _broadcastLobbyUpdate();
+}
+
+function giveUpRun() {
+  if (!_gameState || !_gameState._lobbyId) {
+    throw new Error('giveUpRun requires lobby context');
+  }
+  if (_gameState.gamePhase !== 'playing' || !_gameState.run || _gameState.run.status === 'suspended') {
+    return { ok: false, reason: 'no_active_run' };
+  }
+
+  clearSuspendedRunData();
+  resetTransientRunState();
+
+  _gameState.gamePhase = 'lobby';
+  delete _gameState.run;
+
+  const spawn = firstRoomPosition();
+  for (const playerId of Object.keys(_gameState.players)) {
+    const player = _gameState.players[playerId];
+    const earned = player.currencyEarnedThisRun || 0;
+    if (earned > 0) {
+      player.currency = Math.max(0, (player.currency || 0) - earned);
+    }
+
+    player.ready = false;
+    player.extracted = false;
+    player.dead = player.hp <= 0;
+    player.x = spawn.x;
+    player.y = 0.5;
+    player.z = spawn.z;
+    player.currencyEarnedThisRun = 0;
+    player.runRewards = null;
+    player.hand = [];
+    player.deck = [];
+    resetPlayerDesperationState(player);
+    player.lastMoveTime = Date.now();
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    } else {
+      player.pendingSummons.clear();
+    }
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    player.inputActive = false;
+    player.inputDx = 0;
+    player.inputDz = 0;
+  }
+
+  for (const playerId of Object.keys(_gameState.players)) {
+    savePlayerData(playerId);
+  }
+
+  refreshShopOffer();
+
+  if (_gameState._pendingMinionBreaths?.length) {
+    _gameState._pendingMinionBreaths.length = 0;
+  }
+
+  const io = getIoTarget();
+  if (io) {
+    io.emit('stateUpdate', stateSnapshot());
+  }
+  _broadcastLobbyUpdate();
+  return { ok: true };
 }
 
 function checkAllReady() {
@@ -2805,6 +2975,7 @@ module.exports = {
   pickShopOffer,
   refreshShopOffer,
   ensureShopOffer,
+  healAtMedic,
   buyShopCard,
   canSellCardInstance,
   sellCard,
@@ -2873,6 +3044,7 @@ module.exports = {
   checkRunTerminalState,
   resetTransientRunState,
   returnPlayersToLobby,
+  giveUpRun,
   checkAllReady,
   applyTelepipeReadyHand,
   stateSnapshot,
@@ -2887,4 +3059,5 @@ module.exports = {
   abandonSuspendedRun,
   buildSuspendedRunSummary,
   clearSuspendedRunData,
+  previewReturnRewards,
 };

@@ -330,13 +330,13 @@ describe('initHandFromDeck()', () => {
 		expect(deck[0]).toBe('iron_sword');
 	});
 
-	it('deals cards in server deck order (first 4 become the hand)', () => {
+	it('deals cards in N64 slot order (B, A, C←, C↓, …)', () => {
 		const serverDeck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake', 'iron_sword'];
 		initHandFromDeck(serverDeck, null);
 
-		expect(hand[0].id).toBe('iron_sword');
-		expect(hand[1].id).toBe('flame_blade');
-		expect(hand[2].id).toBe('battle_familiar');
+		expect(hand[1].id).toBe('iron_sword');
+		expect(hand[0].id).toBe('flame_blade');
+		expect(hand[4].id).toBe('battle_familiar');
 		expect(hand[3].id).toBe('dungeon_drake');
 	});
 
@@ -429,7 +429,7 @@ describe('canUseSlot()', () => {
 		initHand();
 
 		for (let i = 0; i < 6; i++) {
-			expect(canUseSlot(i)).toBe(i < 4);
+			expect(canUseSlot(i)).toBe(Boolean(hand[i]));
 		}
 	});
 

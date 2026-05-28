@@ -12,6 +12,7 @@
   <body>
     <div id="app-toolbar" class="hidden">
       <button id="account-btn" type="button" title="Account">👤</button>
+      <button id="level-settings-btn" type="button" class="hidden" title="Level settings">Lv</button>
       <button id="mute-btn">🔊</button>
       <button id="settings-btn" type="button" title="Settings">⚙</button>
     </div>
@@ -75,7 +76,7 @@
       </div>
     </div>
     <div id="lobby-browser" class="hidden">
-      <h2>Guild Registry</h2>
+      <h2 id="lobby-registry-title">Lobby Registry</h2>
       <p id="lobby-browser-status">Choose a channel or open your own.</p>
       <div id="lobby-browser-actions">
         <input id="create-lobby-name" type="text" placeholder="Lobby name (optional)" maxlength="48" />
@@ -87,7 +88,7 @@
     </div>
     <div id="lobby" class="hidden">
       <div class="lobby-header">
-        <h2>Hunter Guild</h2>
+        <h2 id="lobby-title">Lobby Connection</h2>
       </div>
       <div id="lobby-player-list-wrapper">
         <h3>Players</h3>
@@ -105,6 +106,7 @@
         <button id="lobby-tab-shop" class="lobby-tab" type="button">Card Shop</button>
         <button id="lobby-tab-forge" class="lobby-tab" type="button">Photon Forge</button>
         <button id="lobby-tab-economy" class="lobby-tab" type="button">Card Economy</button>
+        <button id="lobby-tab-medic" class="lobby-tab" type="button">Medic</button>
       </div>
       <div id="deck-editor">
         <div id="deck-editor-top">
@@ -157,6 +159,15 @@
           </div>
         </div>
       </div>
+      <div id="guild-medic" class="hidden">
+        <div id="guild-medic-layout">
+          <h3 id="medic-title">Lobby Medic</h3>
+          <p id="medic-hp-display" class="medic-hp-line">Health: —</p>
+          <p id="medic-cost-display" class="settings-hint">Full restore: 10 money</p>
+          <button id="medic-heal-btn" type="button">Heal to full (10 money)</button>
+          <div id="medic-error" style="display:none;"></div>
+        </div>
+      </div>
       <div id="card-economy" class="hidden">
         <div id="card-economy-layout">
           <h3>Card Economy</h3>
@@ -203,7 +214,24 @@
         <div id="summary-card-choices-list"></div>
         <div id="summary-card-choices-empty" style="display:none;">No card choices were found this run.</div>
       </div>
-      <button id="return-to-lobby-btn">Return to Guild</button>
+      <button id="return-to-lobby-btn">Return to Lobby</button>
+    </div>
+    <div id="level-settings-overlay" class="hidden">
+      <div id="level-settings-modal">
+        <button type="button" class="settings-close" id="level-settings-close-btn" aria-label="Close level settings">&times;</button>
+        <h2>Level</h2>
+        <div class="settings-section level-settings-rewards">
+          <h3>Run earnings</h3>
+          <p id="level-loot-earned" class="level-reward-line">Money this run: —</p>
+          <h3>If you return to lobby</h3>
+          <p id="level-return-currency" class="level-reward-line">—</p>
+          <p id="level-return-cards" class="settings-hint"></p>
+          <h3>If you give up</h3>
+          <p id="level-give-up-cost" class="settings-hint">You keep injuries but forfeit money collected this run.</p>
+          <p id="level-settings-error" class="settings-error" hidden></p>
+          <button type="button" id="give-up-btn" class="give-up-btn">Give up</button>
+        </div>
+      </div>
     </div>
     <div id="account-overlay" class="hidden">
       <div id="account-modal">

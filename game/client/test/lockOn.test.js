@@ -131,7 +131,7 @@ describe('updateLockOn', () => {
 
 	it('tracks target facing and camera yaw while locked', () => {
 		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		const state = updateLockOn(enemies, 0, 0, 0.1, 0);
+		const state = updateLockOn(enemies, 0, 0, 0.1, 0, 0);
 		expect(state.locked).toBe(true);
 		expect(state.playerRotation).toBeCloseTo(0, 5);
 		expect(state.toTarget.x).toBeCloseTo(1, 5);
@@ -139,9 +139,9 @@ describe('updateLockOn', () => {
 
 	it('auto-unlocks when target dies and starts a camera release', () => {
 		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		updateLockOn(enemies, 0, 0, 0.1, 0);
+		updateLockOn(enemies, 0, 0, 0.1, 0, 0);
 		const dead = [{ id: 'a', x: 3, z: 0, hp: 0 }];
-		const state = updateLockOn(dead, 0, 0, 0.1, 0);
+		const state = updateLockOn(dead, 0, 0, 0.1, 0, 0);
 		expect(state.locked).toBe(false);
 		expect(state.releasing).toBe(true);
 		expect(isLockOnCameraReleasing()).toBe(true);
@@ -149,8 +149,8 @@ describe('updateLockOn', () => {
 
 	it('eases camera out after target death', () => {
 		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
-		updateLockOn(enemies, 0, 0, 0.1, 0);
-		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, 0, 0.1, 0);
+		updateLockOn(enemies, 0, 0, 0.1, 0, 0);
+		updateLockOn([{ id: 'a', x: 3, z: 0, hp: 0 }], 0, 0, 0.1, 0, 0);
 		expect(isLockOnCameraReleasing()).toBe(true);
 
 		const mid = updateLockOnCameraRelease(
@@ -177,7 +177,7 @@ describe('updateLockOn', () => {
 	it('auto-unlocks when target exceeds break range', () => {
 		handleLockOnPress(enemies, 0, 0, 'unlock', 0);
 		const far = [{ id: 'a', x: 15, z: 0, hp: 50 }];
-		const state = updateLockOn(far, 0, 0, 0.1, 0);
+		const state = updateLockOn(far, 0, 0, 0.1, 0, 0);
 		expect(state.locked).toBe(false);
 	});
 
@@ -195,12 +195,14 @@ describe('updateLockOn', () => {
 			0,
 			1 / 60,
 			0,
+			0,
 		);
 		const close = updateLockOn(
 			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
 			0,
 			0,
 			1 / 60,
+			0,
 			0,
 		);
 		expect(close.locked).toBe(true);
@@ -239,14 +241,17 @@ describe('updateLockOn camera tracking', () => {
 			0,
 		);
 		let yaw = 0;
+		let rot = 0;
 		const first = updateLockOn(
 			[{ id: 'a', x: -3, z: 0.001, hp: 50 }],
 			0,
 			0,
 			1 / 60,
 			yaw,
+			rot,
 		);
 		yaw = first.cameraYaw;
+		rot = first.playerRotation;
 		for (let i = 0; i < 30; i++) {
 			const z = i < 15 ? 0.001 : -0.001;
 			const state = updateLockOn(
@@ -255,15 +260,17 @@ describe('updateLockOn camera tracking', () => {
 				0,
 				1 / 60,
 				yaw,
+				rot,
 			);
 			expect(state.locked).toBe(true);
 			const step = Math.abs(shortestAngleDelta(yaw, state.cameraYaw));
 			expect(step).toBeLessThan(0.25);
 			yaw = state.cameraYaw;
+			rot = state.playerRotation;
 		}
 	});
 
-	it('holds stable player bearing when hugging the target', () => {
+	it('tracks live player bearing when hugging the target', () => {
 		handleLockOnPress(
 			[{ id: 'a', x: 3, z: 0, hp: 50 }],
 			0,
@@ -277,6 +284,7 @@ describe('updateLockOn camera tracking', () => {
 			0,
 			1 / 60,
 			0,
+			0,
 		);
 		const close = updateLockOn(
 			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
@@ -284,13 +292,13 @@ describe('updateLockOn camera tracking', () => {
 			0,
 			1 / 60,
 			0,
+			0,
 		);
 		expect(close.locked).toBe(true);
-		expect(Math.hypot(close.toTarget.x, close.toTarget.z)).toBeCloseTo(1, 5);
-		expect(Math.hypot(
-			close.toTarget.x - Math.cos(0),
-			close.toTarget.z - Math.sin(0),
-		)).toBeLessThan(0.01);
+		expect(close.toTarget.x).toBeCloseTo(close.liveToTarget.x, 5);
+		expect(close.toTarget.z).toBeCloseTo(close.liveToTarget.z, 5);
+		const desiredFacing = Math.atan2(close.liveToTarget.z, close.liveToTarget.x);
+		expect(Math.abs(shortestAngleDelta(close.playerRotation, desiredFacing))).toBeLessThan(0.15);
 	});
 
 	it('tracks camera yaw from live bearing while hugging the target', () => {
@@ -307,12 +315,14 @@ describe('updateLockOn camera tracking', () => {
 			0,
 			1 / 60,
 			0,
+			0,
 		);
 		const hug = updateLockOn(
 			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
 			0,
 			0,
 			1 / 60,
+			0,
 			0,
 		);
 		const firstOrbit = updateLockOn(
@@ -321,11 +331,13 @@ describe('updateLockOn camera tracking', () => {
 			0,
 			1 / 60,
 			hug.cameraYaw,
+			hug.playerRotation,
 		);
 		expect(firstOrbit.locked).toBe(true);
 		expect(Math.abs(shortestAngleDelta(hug.cameraYaw, firstOrbit.cameraYaw))).toBeGreaterThan(0.01);
 
 		let yaw = hug.cameraYaw;
+		let rot = hug.playerRotation;
 		const targetYaw = cameraYawFromToTarget(firstOrbit.liveToTarget);
 		for (let i = 0; i < 60; i++) {
 			const state = updateLockOn(
@@ -334,8 +346,10 @@ describe('updateLockOn camera tracking', () => {
 				0,
 				1 / 60,
 				yaw,
+				rot,
 			);
 			yaw = state.cameraYaw;
+			rot = state.playerRotation;
 		}
 		expect(Math.abs(shortestAngleDelta(yaw, targetYaw))).toBeLessThan(0.15);
 	});
@@ -351,15 +365,19 @@ describe('updateLockOn camera tracking', () => {
 		let px = 2;
 		let pz = 0;
 		let yaw = 0;
+		let rot = 0;
 		const first = updateLockOn(
 			[{ id: 'a', x: 0, z: 0, hp: 50 }],
 			2,
 			0,
 			1 / 60,
 			yaw,
+			rot,
 		);
 		yaw = first.cameraYaw;
+		rot = first.playerRotation;
 		let maxStep = 0;
+		let maxFacingStep = 0;
 		for (let i = 1; i < 120; i++) {
 			const angle = (i / 120) * Math.PI * 2;
 			px = Math.cos(angle) * 1.2;
@@ -370,11 +388,20 @@ describe('updateLockOn camera tracking', () => {
 				pz,
 				1 / 60,
 				yaw,
+				rot,
 			);
 			maxStep = Math.max(maxStep, Math.abs(shortestAngleDelta(yaw, state.cameraYaw)));
+			maxFacingStep = Math.max(
+				maxFacingStep,
+				Math.abs(shortestAngleDelta(rot, state.playerRotation)),
+			);
+			const desiredFacing = Math.atan2(state.liveToTarget.z, state.liveToTarget.x);
+			expect(Math.abs(shortestAngleDelta(state.playerRotation, desiredFacing))).toBeLessThan(0.35);
 			yaw = state.cameraYaw;
+			rot = state.playerRotation;
 		}
 		expect(maxStep).toBeLessThan(0.2);
+		expect(maxFacingStep).toBeLessThan(0.2);
 	});
 });
 

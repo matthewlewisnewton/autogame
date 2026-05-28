@@ -5,6 +5,7 @@ import {
 	LOCK_ON_BREAK_RANGE,
 	LOCK_ON_MIN_BEARING_DIST,
 	LOCK_ON_MAX_YAW_SPEED,
+	LOCK_ON_MAX_FACING_SPEED,
 	LOCK_ON_DEATH_RELEASE_DURATION,
 } from './config.js';
 
@@ -13,6 +14,8 @@ import {
 let lockedEnemyId = null;
 /** Continuous camera yaw while locked — avoids π-boundary spins. */
 let lockOnCameraYawUnwrapped = null;
+/** Continuous player facing while locked — smooth strafe without snap/spin. */
+let lockOnPlayerRotationUnwrapped = null;
 /** Previous raw camera yaw sample for incremental tracking. */
 let lastRawCameraYaw = null;
 /** Last stable aim when the target is too close for reliable bearing. */
@@ -201,6 +204,7 @@ export function getLockedEnemyId() {
 export function clearLockOn() {
 	lockedEnemyId = null;
 	lockOnCameraYawUnwrapped = null;
+	lockOnPlayerRotationUnwrapped = null;
 	lastRawCameraYaw = null;
 	lastStableAim = null;
 	lastLockedEnemyPosition = null;
@@ -269,8 +273,27 @@ export function updateLockOnCameraRelease(delta, playerX, playerY, playerZ) {
 function lockOnto(enemyId) {
 	lockedEnemyId = enemyId;
 	lockOnCameraYawUnwrapped = null;
+	lockOnPlayerRotationUnwrapped = null;
 	lastRawCameraYaw = null;
 	lastStableAim = null;
+}
+
+function advanceLockOnPlayerRotation(currentPlayerRotation, liveToTarget, delta) {
+	const desired = Math.atan2(liveToTarget.z, liveToTarget.x);
+	if (lockOnPlayerRotationUnwrapped === null) {
+		lockOnPlayerRotationUnwrapped = currentPlayerRotation
+			+ shortestAngleDelta(currentPlayerRotation, desired);
+		return normalizeAngle(lockOnPlayerRotationUnwrapped);
+	}
+
+	const bearingDelta = shortestAngleDelta(
+		normalizeAngle(lockOnPlayerRotationUnwrapped),
+		desired,
+	);
+	const maxStep = LOCK_ON_MAX_FACING_SPEED * delta;
+	const cappedDelta = Math.max(-maxStep, Math.min(maxStep, bearingDelta));
+	lockOnPlayerRotationUnwrapped += cappedDelta;
+	return normalizeAngle(lockOnPlayerRotationUnwrapped);
 }
 
 function advanceLockOnCameraYaw(currentCameraYaw, rawCameraYaw, delta) {
@@ -343,9 +366,10 @@ export function handleLockOnPress(enemies, playerX, playerZ, repeatAction, playe
  * @param {number} playerZ
  * @param {number} delta
  * @param {number} currentCameraYaw
+ * @param {number} currentPlayerRotation
  * @returns {{ locked: boolean, playerRotation?: number, cameraYaw?: number, toTarget?: { x: number, z: number }, targetCameraYaw?: number } | null}
  */
-export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw) {
+export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw, currentPlayerRotation) {
 	if (!lockedEnemyId) return { locked: false };
 
 	const enemy = findEnemyById(enemies, lockedEnemyId);
@@ -372,21 +396,11 @@ export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw)
 			z: (enemy.z - playerZ) / dist,
 		};
 
-	let playerRotation;
-	let toTarget = liveToTarget;
-	if (dist <= LOCK_ON_MIN_BEARING_DIST && lastStableAim) {
-		playerRotation = lastStableAim.playerRotation;
-		toTarget = lastStableAim.toTarget;
-	} else {
-		playerRotation = Math.atan2(liveToTarget.z, liveToTarget.x);
-		if (dist >= LOCK_ON_MIN_BEARING_DIST) {
-			lastStableAim = {
-				playerRotation,
-				toTarget: liveToTarget,
-				cameraYaw: cameraYawFromToTarget(liveToTarget),
-			};
-		}
-	}
+	const playerRotation = advanceLockOnPlayerRotation(
+		currentPlayerRotation,
+		liveToTarget,
+		delta,
+	);
 
 	const rawCameraYaw = cameraYawFromToTarget(liveToTarget);
 	const cameraYaw = advanceLockOnCameraYaw(currentCameraYaw, rawCameraYaw, delta);
@@ -399,7 +413,7 @@ export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw)
 		playerRotation,
 		cameraYaw,
 		targetCameraYaw: lockOnCameraYawUnwrapped,
-		toTarget,
+		toTarget: liveToTarget,
 		liveToTarget,
 	};
 }
@@ -407,4 +421,13 @@ export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw)
 export function resetLockOnCameraTracking() {
 	lockOnCameraYawUnwrapped = null;
 	lastRawCameraYaw = null;
+}
+
+export function resetLockOnPlayerRotationTracking() {
+	lockOnPlayerRotationUnwrapped = null;
+}
+
+export function resetLockOnTracking() {
+	resetLockOnCameraTracking();
+	resetLockOnPlayerRotationTracking();
 }

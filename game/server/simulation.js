@@ -887,6 +887,107 @@ function lockMinionWindupDirection(minion, target) {
   }
 }
 
+function lockMinionBreathDirection(minion, target) {
+  lockMinionWindupDirection(minion, target);
+  minion.breathDirX = minion.windupDirX;
+  minion.breathDirZ = minion.windupDirZ;
+  delete minion.windupDirX;
+  delete minion.windupDirZ;
+}
+
+function queueWyrmBreathCardUsed(minion, cardId, options) {
+  _gameState._pendingMinionBreaths.push({
+    playerId: minion.ownerId,
+    cardId,
+    specialEffect: options.specialEffect,
+    origin: { x: minion.x, z: minion.z },
+    direction: { x: minion.breathDirX, z: minion.breathDirZ },
+    attackRange: options.breathRange,
+    attackConeAngle: options.breathConeAngle,
+    hits: options.hits,
+    minionId: minion.id,
+    breathPhase: options.breathPhase,
+    breathDurationMs: options.breathDurationMs,
+  });
+}
+
+function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
+  const dirX = minion.breathDirX ?? 1;
+  const dirZ = minion.breathDirZ ?? 0;
+  const { hits } = collectConeHits(
+    minion.x,
+    minion.z,
+    dirX,
+    dirZ,
+    config.breathRange,
+    config.breathConeAngle,
+    config.breathDamage,
+    { attackerId: minion.ownerId }
+  );
+  queueWyrmBreathCardUsed(minion, cardId, {
+    specialEffect: config.specialEffect,
+    breathRange: config.breathRange,
+    breathConeAngle: config.breathConeAngle,
+    hits,
+    breathPhase,
+    breathDurationMs: config.breathDurationMs,
+  });
+}
+
+function updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, config) {
+  const now = Date.now();
+  const cardId = config.cardId;
+
+  if (minion.breathState === 'breathing') {
+    const elapsed = now - (minion.breathStartedAt || now);
+    if (elapsed >= config.breathDurationMs) {
+      minion.breathState = 'idle';
+      minion.lastBreathAt = now;
+      delete minion.breathStartedAt;
+      delete minion.breathDirX;
+      delete minion.breathDirZ;
+      delete minion.lastBreathTickAt;
+      return;
+    }
+
+    const lastTick = minion.lastBreathTickAt ?? 0;
+    if (now - lastTick >= config.breathTickMs) {
+      const breathPhase = lastTick === 0 ? 'start' : 'tick';
+      applyWyrmBreathTick(minion, cardId, config, breathPhase);
+      minion.lastBreathTickAt = now;
+    }
+    return;
+  }
+
+  if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+    const lastBreathAt = minion.lastBreathAt ?? 0;
+    if (nearestDist <= config.breathRange && now - lastBreathAt >= config.breathIntervalMs) {
+      lockMinionBreathDirection(minion, nearestEnemy);
+      minion.breathState = 'breathing';
+      minion.breathStartedAt = now;
+      minion.lastBreathTickAt = 0;
+      applyWyrmBreathTick(minion, cardId, config, 'start');
+      minion.lastBreathTickAt = now;
+      return;
+    }
+
+    if (nearestDist > config.breathRange) {
+      moveEntityToward(minion, nearestEnemy, config.chaseSpeed * dt);
+    }
+    return;
+  }
+
+  const owner = _gameState.players[minion.ownerId];
+  if (owner && !owner.dead) {
+    const dx = owner.x - minion.x;
+    const dz = owner.z - minion.z;
+    const distToOwner = Math.hypot(dx, dz);
+    if (distToOwner > MINION_FOLLOW_DISTANCE) {
+      moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+    }
+  }
+}
+
 function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
@@ -1133,7 +1234,8 @@ function damageMinion(minion, amount) {
   const maxHp = minion.maxHp || Math.max(minion.hp, 1);
   const maxTtl = minion.maxTtl || minion.ttl || 1;
   minion.hp = Math.max(0, minion.hp - amount);
-  minion.ttl = Math.max(0, minion.ttl - (amount * maxTtl / maxHp));
+  const ttlBurn = (amount * maxTtl / maxHp) * 0.25;
+  minion.ttl = Math.max(0, minion.ttl - ttlBurn);
 }
 
 // ── Player Damage / Respawn ──
@@ -1745,127 +1847,19 @@ function updateMinions() {
         continue;
       }
 
-      if (minion.type === 'dungeon_drake') {
-        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
-          if (nearestDist <= ATTACK_RANGE) {
-            const dist = nearestDist || 1;
-            const dirX = (nearestEnemy.x - minion.x) / dist;
-            const dirZ = (nearestEnemy.z - minion.z) / dist;
-            const attackDamage = 5;
-            const { hits } = collectConeHits(
-              minion.x,
-              minion.z,
-              dirX,
-              dirZ,
-              ATTACK_RANGE,
-              ATTACK_CONE_ANGLE,
-              attackDamage,
-              { attackerId: minion.ownerId }
-            );
-            if (hits.length > 0) {
-              _gameState._pendingMinionBreaths.push({
-                playerId: minion.ownerId,
-                cardId: 'dungeon_drake',
-                origin: { x: minion.x, z: minion.z },
-                direction: { x: dirX, z: dirZ },
-                attackRange: ATTACK_RANGE,
-                attackConeAngle: ATTACK_CONE_ANGLE,
-                hits,
-                minionId: minion.id,
-              });
-            }
-          } else {
-            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
-          }
-        } else {
-          const owner = _gameState.players[minion.ownerId];
-          if (owner && !owner.dead) {
-            const dx = owner.x - minion.x;
-            const dz = owner.z - minion.z;
-            const distToOwner = Math.hypot(dx, dz);
-            if (distToOwner > MINION_FOLLOW_DISTANCE) {
-              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
-            }
-          }
-        }
-        continue;
-      }
-
-      if (minion.type === 'ancient_wyrm') {
-        const breathInterval = minion.breathIntervalMs || 3000;
-        const breathRange = minion.breathRange || 8;
-        const breathDamage = minion.breathDamage || 15;
-        const breathConeAngle = minion.breathConeAngle || ATTACK_CONE_ANGLE;
-        const lastBreathAt = minion.lastBreathAt ?? 0;
-
-        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
-          if (now - lastBreathAt >= breathInterval && nearestDist <= breathRange) {
-            const dist = nearestDist || 1;
-            const dirX = (nearestEnemy.x - minion.x) / dist;
-            const dirZ = (nearestEnemy.z - minion.z) / dist;
-            const { hits } = collectConeHits(
-              minion.x,
-              minion.z,
-              dirX,
-              dirZ,
-              breathRange,
-              breathConeAngle,
-              breathDamage,
-              { attackerId: minion.ownerId }
-            );
-            minion.lastBreathAt = now;
-            _gameState._pendingMinionBreaths.push({
-              playerId: minion.ownerId,
-              cardId: 'ancient_wyrm',
-              specialEffect: 'fire_breath',
-              origin: { x: minion.x, z: minion.z },
-              direction: { x: dirX, z: dirZ },
-              attackRange: breathRange,
-              attackConeAngle: breathConeAngle,
-              hits,
-              minionId: minion.id,
-            });
-          } else if (nearestDist <= ATTACK_RANGE) {
-            const dist = nearestDist || 1;
-            const dirX = (nearestEnemy.x - minion.x) / dist;
-            const dirZ = (nearestEnemy.z - minion.z) / dist;
-            const meleeDamage = 5;
-            const { hits } = collectConeHits(
-              minion.x,
-              minion.z,
-              dirX,
-              dirZ,
-              ATTACK_RANGE,
-              ATTACK_CONE_ANGLE,
-              meleeDamage,
-              { attackerId: minion.ownerId }
-            );
-            if (hits.length > 0) {
-              _gameState._pendingMinionBreaths.push({
-                playerId: minion.ownerId,
-                cardId: 'ancient_wyrm',
-                origin: { x: minion.x, z: minion.z },
-                direction: { x: dirX, z: dirZ },
-                attackRange: ATTACK_RANGE,
-                attackConeAngle: ATTACK_CONE_ANGLE,
-                hits,
-                minionId: minion.id,
-              });
-            }
-          } else {
-            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
-          }
-        } else {
-          const owner = _gameState.players[minion.ownerId];
-          if (owner && !owner.dead) {
-            const dx = owner.x - minion.x;
-            const dz = owner.z - minion.z;
-            const distToOwner = Math.hypot(dx, dz);
-            if (distToOwner > MINION_FOLLOW_DISTANCE) {
-              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
-            }
-          }
-        }
+      if (minion.type === 'dungeon_drake' || minion.type === 'ancient_wyrm') {
+        const isAncient = minion.type === 'ancient_wyrm';
+        updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, {
+          cardId: isAncient ? 'ancient_wyrm' : 'dungeon_drake',
+          specialEffect: isAncient ? 'fire_breath' : undefined,
+          breathRange: minion.breathRange ?? (isAncient ? 8 : 4),
+          breathConeAngle: minion.breathConeAngle ?? (isAncient ? (Math.PI / 3) : (Math.PI / 4)),
+          breathDamage: minion.breathDamage ?? (isAncient ? 4 : 3),
+          breathDurationMs: minion.breathDurationMs ?? (isAncient ? 2500 : 2000),
+          breathTickMs: minion.breathTickMs ?? 500,
+          breathIntervalMs: minion.breathIntervalMs ?? (isAncient ? 3000 : 2500),
+          chaseSpeed: ENEMY_DEFS.grunt.chaseSpeed,
+        });
         continue;
       }
 

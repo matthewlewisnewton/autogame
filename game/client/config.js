@@ -32,6 +32,9 @@ export const PROJECTILE_HIT_WIDTH = 1.2;
 /** Maximum player HP */
 export const MAX_HP = 100;
 
+/** Guild medic full-heal cost */
+export const MEDIC_HEAL_COST = 10;
+
 /** Maximum player Magic Stones — synced via shared/constants.json */
 export const MAX_MS = sharedConstants.MAX_MAGIC_STONES;
 export const STARTING_MS = sharedConstants.STARTING_MAGIC_STONES;
@@ -117,6 +120,9 @@ export const LOCK_ON_MIN_BEARING_DIST = 0.85;
 /** Maximum camera yaw turn speed while locked on (rad/s) */
 export const LOCK_ON_MAX_YAW_SPEED = 5;
 
+/** Maximum player facing turn speed while locked on (rad/s) */
+export const LOCK_ON_MAX_FACING_SPEED = 10;
+
 /** Seconds to ease the camera back after a locked target dies */
 export const LOCK_ON_DEATH_RELEASE_DURATION = 1.25;
 
@@ -169,6 +175,9 @@ export const MAX_HAND_SLOTS = 6;
 
 /** Cards dealt at run start — matches server OPENING_HAND_SIZE */
 export const OPENING_HAND_SIZE = 4;
+
+/** Slot fill priority: B, A, C←, C↓, C↑, C→ — matches server */
+export const HAND_SLOT_FILL_ORDER = sharedConstants.HAND_SLOT_FILL_ORDER;
 
 /** Passive draw interval (display only; server is authoritative) */
 export const PASSIVE_DRAW_INTERVAL_MS = 5000;

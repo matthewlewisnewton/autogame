@@ -32,6 +32,9 @@ import {
 	checkRunTerminalState,
 	resetTransientRunState,
 	returnPlayersToLobby,
+	giveUpRun,
+	previewReturnRewards,
+	healAtMedic,
 	checkAllReady,
 	captureRunCheckpoint,
 	restoreRunCheckpoint,
@@ -2584,7 +2587,7 @@ describe('run state', () => {
 			expect(gameState._pendingMinionBreaths).toHaveLength(0);
 		});
 
-		it('sets all players to ready: false and resets HP/position', () => {
+		it('sets all players to ready: false and preserves HP/position', () => {
 			addPlayer('p1', { x: 50, z: 50, hp: 30, ready: true, currency: 20 });
 
 			const { restore } = mockRoomEmit();
@@ -2594,7 +2597,7 @@ describe('run state', () => {
 			restore();
 
 			expect(gameState.players['p1'].ready).toBe(false);
-			expect(gameState.players['p1'].hp).toBe(100);
+			expect(gameState.players['p1'].hp).toBe(30);
 			expect(gameState.players['p1'].dead).toBe(false);
 			// Currency should be preserved
 			expect(gameState.players['p1'].currency).toBe(20);
@@ -2639,6 +2642,138 @@ describe('run state', () => {
 			restore();
 
 			expect(gameState.players['p1'].pendingSummons.size).toBe(0);
+		});
+	});
+
+	describe('healAtMedic()', () => {
+		beforeEach(() => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			gameState.gamePhase = 'lobby';
+		});
+
+		it('heals to full and charges 10 currency', () => {
+			addPlayer('p1', { hp: 40, currency: 25 });
+			const result = healAtMedic('p1');
+			expect(result).toEqual({ ok: true, hp: 100, currency: 15, cost: 10 });
+			expect(gameState.players.p1.hp).toBe(100);
+		});
+
+		it('rejects when already at full health', () => {
+			addPlayer('p1', { hp: 100, currency: 25 });
+			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'already_full' });
+		});
+
+		it('rejects when player cannot afford the heal', () => {
+			addPlayer('p1', { hp: 40, currency: 5 });
+			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'insufficient_gold' });
+		});
+	});
+
+	describe('previewReturnRewards()', () => {
+		beforeEach(() => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+		});
+
+		it('returns null when not in a run', () => {
+			addPlayer('p1');
+			expect(previewReturnRewards('p1')).toBeNull();
+		});
+
+		it('previews victory payout when the objective is complete', () => {
+			addPlayer('p1');
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+			gameState.players.p1.currencyEarnedThisRun = 12;
+			gameState.run.objective.defeatedEnemies = gameState.run.objective.totalEnemies;
+
+			const preview = previewReturnRewards('p1');
+			expect(preview.lootCurrency).toBe(12);
+			expect(preview.objectiveComplete).toBe(true);
+			expect(preview.currency).toBe(22);
+		});
+
+		it('uses granted runRewards when already awarded', () => {
+			addPlayer('p1', { currencyEarnedThisRun: 5 });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+			grantRunRewards('p1', { status: 'victory' });
+
+			const preview = previewReturnRewards('p1');
+			expect(preview.granted).toBe(true);
+			expect(preview.currency).toBe(gameState.players.p1.runRewards.currency);
+		});
+	});
+
+	describe('giveUpRun()', () => {
+		function mockRoomEmit() {
+			const emitCalls = [];
+			const originalTo = serverIo.to;
+			const originalEmit = serverIo.emit;
+			serverIo.to = () => ({
+				emit: (event, data) => emitCalls.push({ event, data }),
+			});
+			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+			return {
+				emitCalls,
+				restore: () => {
+					serverIo.to = originalTo;
+					serverIo.emit = originalEmit;
+				},
+			};
+		}
+
+		beforeEach(() => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			vi.useFakeTimers();
+		});
+
+		afterEach(() => {
+			vi.useRealTimers();
+		});
+
+		it('returns no_active_run when not playing', () => {
+			expect(giveUpRun()).toEqual({ ok: false, reason: 'no_active_run' });
+		});
+
+		it('allows give up after objective complete (run status victory)', () => {
+			addPlayer('p1', { hp: 55 });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+			gameState.run.status = 'victory';
+
+			const { restore } = mockRoomEmit();
+			const result = giveUpRun();
+			restore();
+
+			expect(result).toEqual({ ok: true });
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.players['p1'].hp).toBe(55);
+		});
+
+		it('returns to lobby, strips run loot, and preserves HP damage', () => {
+			addPlayer('p1', { x: 50, z: 50, hp: 42, ready: true, currency: 100 });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+			gameState.players['p1'].currencyEarnedThisRun = 25;
+			gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
+			gameState.loot.push({ id: 'l1', x: 0, z: 0, value: 10, createdAt: Date.now() });
+
+			const { restore } = mockRoomEmit();
+			const result = giveUpRun();
+			restore();
+
+			expect(result).toEqual({ ok: true });
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.run).toBeUndefined();
+			expect(gameState.enemies.length).toBe(0);
+			expect(gameState.loot.length).toBe(0);
+			expect(gameState.players['p1'].hp).toBe(42);
+			expect(gameState.players['p1'].currency).toBe(75);
+			expect(gameState.players['p1'].currencyEarnedThisRun).toBe(0);
+			expect(gameState.players['p1'].ready).toBe(false);
 		});
 	});
 
@@ -3350,7 +3485,7 @@ describe('createDrawDeckFromSelectedDeck(player)', () => {
 });
 
 describe('server hand management', () => {
-	it('initPlayerHand deals opening hand into 6 fixed slots', () => {
+	it('initPlayerHand deals opening hand into N64 slot order', () => {
 		const player = {
 			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			deck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
@@ -3361,6 +3496,10 @@ describe('server hand management', () => {
 		expect(hand).toHaveLength(6);
 		expect(hand.filter(Boolean)).toHaveLength(4);
 		expect(player.deck).toHaveLength(0);
+		expect(hand[1].id).toBe('dungeon_drake');
+		expect(hand[0].id).toBe('battle_familiar');
+		expect(hand[4].id).toBe('flame_blade');
+		expect(hand[3].id).toBe('iron_sword');
 		expect(hand.filter(Boolean).every(card => card && card.id && card.remainingCharges === card.charges)).toBe(true);
 		expect(player.nextDrawAt).toBeTypeOf('number');
 	});
@@ -3606,7 +3745,7 @@ describe('server hand management', () => {
 
 		gameState.gamePhase = 'playing';
 		processPassiveDraws(player.nextDrawAt);
-		expect(player.hand[0].isDesperation).toBe(true);
+		expect(player.hand[1].isDesperation).toBe(true);
 	});
 
 	it('exhaustHandSlot leaves a null slot without immediate draw', () => {
@@ -3638,7 +3777,7 @@ describe('server hand management', () => {
 		expect(player.hand[0]).toBeNull();
 
 		processPassiveDraws(player.nextDrawAt);
-		expect(player.hand[0].id).toBe('flame_blade');
+		expect(player.hand[1].id).toBe('flame_blade');
 		expect(player.deck).toEqual(['iron_sword']);
 	});
 
@@ -3771,7 +3910,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			currencyEarnedThisRun: undefined,
 			selectedDeck: undefined,
 			inventory: undefined,
-			debugScenario: null
+			debugScenario: null,
+			returnRewardsPreview: null,
 		});
 	});
 

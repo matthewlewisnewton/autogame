@@ -52,6 +52,7 @@ import {
 	DECK_MAX_SIZE,
 	MAX_HP,
 	MAX_MS,
+	MEDIC_HEAL_COST,
 } from './config.js';
 import {
 	patchSettings,
@@ -147,6 +148,15 @@ const leaveLobbyBtnEl = document.getElementById('leave-lobby-btn');
 const uiEl = document.getElementById('ui');
 const appToolbarEl = document.getElementById('app-toolbar');
 const accountBtnEl = document.getElementById('account-btn');
+const levelSettingsBtnEl = document.getElementById('level-settings-btn');
+const levelSettingsOverlayEl = document.getElementById('level-settings-overlay');
+const levelSettingsCloseBtnEl = document.getElementById('level-settings-close-btn');
+const levelSettingsErrorEl = document.getElementById('level-settings-error');
+const levelLootEarnedEl = document.getElementById('level-loot-earned');
+const levelReturnCurrencyEl = document.getElementById('level-return-currency');
+const levelReturnCardsEl = document.getElementById('level-return-cards');
+const levelGiveUpCostEl = document.getElementById('level-give-up-cost');
+const giveUpBtnEl = document.getElementById('give-up-btn');
 const accountOverlayEl = document.getElementById('account-overlay');
 const accountCloseBtnEl = document.getElementById('account-close-btn');
 const accountUsernameInputEl = document.getElementById('account-username-input');
@@ -155,13 +165,23 @@ const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
+/** @type {'n64' | 'default' | null} */
+let handLayoutMode = null;
+
+function resolveHandLayoutMode() {
+	if (handLayoutMode) return handLayoutMode;
+	return is8BitDo64HandHintsActive() ? 'n64' : 'default';
+}
+
+function resetHandLayoutLock() {
+	handLayoutMode = null;
+}
 
 function applyCardHandLayout() {
 	if (!cardHandEl) return null;
-	const n64Layout = is8BitDo64HandHintsActive();
-	const displayMode = n64Layout ? 'block' : 'flex';
+	const n64Layout = resolveHandLayoutMode() === 'n64';
+	const displayMode = n64Layout ? 'grid' : 'flex';
 	cardHandEl.classList.toggle('layout-8bitdo-64', n64Layout);
-	if (deckStackEl) deckStackEl.classList.toggle('deck-stack-n64-hand', n64Layout);
 	if (cardHandEl.style.display !== 'none') {
 		cardHandEl.style.display = displayMode;
 	}
@@ -170,11 +190,16 @@ function applyCardHandLayout() {
 
 function showCardHand() {
 	if (!cardHandEl) return;
+	if (!handLayoutMode) {
+		handLayoutMode = is8BitDo64HandHintsActive() ? 'n64' : 'default';
+	}
 	cardHandEl.style.display = applyCardHandLayout();
+	renderHand();
 }
 
 function hideCardHand() {
 	if (cardHandEl) cardHandEl.style.display = 'none';
+	resetHandLayoutLock();
 }
 const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
 const deckViewerGridEl = document.getElementById('deck-viewer-grid');
@@ -247,17 +272,165 @@ function hideAppToolbar() {
 	if (appToolbarEl) appToolbarEl.classList.add('hidden');
 }
 
+function updateLevelSettingsBtnVisibility() {
+	if (!levelSettingsBtnEl) return;
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	// Stay visible for the whole in-dungeon phase (including after objective complete, before extract).
+	const inDungeon = gameState?.gamePhase === 'playing'
+		&& !!gameState?.run
+		&& gameState.run.status !== 'suspended'
+		&& !(me && me.extracted);
+	levelSettingsBtnEl.classList.toggle('hidden', !inDungeon);
+}
+
+function applyLobbyThemeLabels() {
+	const registryTitleEl = document.getElementById('lobby-registry-title');
+	const lobbyTitleEl = document.getElementById('lobby-title');
+	const medicTitleEl = document.getElementById('medic-title');
+	if (registryTitleEl) registryTitleEl.textContent = THEME.lobby.registryTitle;
+	if (lobbyTitleEl) lobbyTitleEl.textContent = THEME.lobby.lobbyTitle;
+	if (medicTitleEl) medicTitleEl.textContent = THEME.lobby.medicTitle;
+	const returnBtn = document.getElementById('return-to-lobby-btn');
+	if (returnBtn) returnBtn.textContent = THEME.run.returnToGuild;
+}
+
+applyLobbyThemeLabels();
+
 function showLobbyBrowser() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
+	applyLobbyThemeLabels();
 }
 
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	applyLobbyThemeLabels();
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	syncVanguardHud(me, 'lobby');
+}
+
+function showLevelSettingsError(message) {
+	if (!levelSettingsErrorEl) return;
+	if (message) {
+		levelSettingsErrorEl.textContent = message;
+		levelSettingsErrorEl.hidden = false;
+	} else {
+		levelSettingsErrorEl.textContent = '';
+		levelSettingsErrorEl.hidden = true;
+	}
+}
+
+function isLevelSettingsOpen() {
+	return !!(levelSettingsOverlayEl && !levelSettingsOverlayEl.classList.contains('hidden'));
+}
+
+function formatLevelRewardCards(preview) {
+	const lines = [];
+	for (const card of preview.cards || []) {
+		if (!card || !card.name) continue;
+		const count = card.count > 1 ? ` ×${card.count}` : '';
+		lines.push(`${card.name}${count}`);
+	}
+	for (const choice of preview.cardChoices || []) {
+		if (!choice || !choice.name) continue;
+		lines.push(choice.name);
+	}
+	return lines;
+}
+
+function syncLevelSettingsRewards() {
+	if (!levelLootEarnedEl || !levelReturnCurrencyEl || !levelReturnCardsEl || !levelGiveUpCostEl) {
+		return;
+	}
+
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	const preview = me?.returnRewardsPreview;
+
+	if (!me || !gameState?.run || !preview) {
+		levelLootEarnedEl.textContent = 'Money this run: —';
+		levelReturnCurrencyEl.textContent = '—';
+		levelReturnCardsEl.textContent = '';
+		levelGiveUpCostEl.textContent = 'You keep injuries but forfeit money collected this run.';
+		return;
+	}
+
+	const loot = preview.lootCurrency || 0;
+	levelLootEarnedEl.textContent = loot > 0
+		? `Money this run: ${formatCurrencyHud(loot)}`
+		: 'Money this run: none collected yet';
+
+	if (preview.objectiveComplete) {
+		const total = preview.currency || 0;
+		const bonus = Math.max(0, total - loot);
+		if (preview.granted) {
+			levelReturnCurrencyEl.textContent = `Total payout: ${formatCurrencyHud(total)}`
+				+ (bonus > 0 ? ` (includes ${formatCurrencyHud(bonus)} contract bonus)` : '');
+		} else {
+			levelReturnCurrencyEl.textContent = `Total payout: ${formatCurrencyHud(total)}`
+				+ (bonus > 0 ? ` (${formatCurrencyHud(loot)} collected + ${formatCurrencyHud(bonus)} contract bonus)` : '');
+		}
+	} else {
+		const bonus = preview.questBonus || 0;
+		levelReturnCurrencyEl.textContent = loot > 0
+			? `${formatCurrencyHud(loot)} collected now · ${formatCurrencyHud(bonus)} contract bonus when objectives are complete`
+			: `Complete the contract to earn ${formatCurrencyHud(bonus)} (+ any money you collect)`;
+	}
+
+	const cardLines = formatLevelRewardCards(preview);
+	if (cardLines.length > 0) {
+		const label = (preview.cardChoices && preview.cardChoices.length > 0)
+			? 'Card rewards: '
+			: 'Cards: ';
+		levelReturnCardsEl.textContent = label + cardLines.join(', ');
+	} else if (preview.objectiveComplete) {
+		levelReturnCardsEl.textContent = 'No card drops this run';
+	} else {
+		levelReturnCardsEl.textContent = '';
+	}
+
+	if (loot > 0) {
+		levelGiveUpCostEl.textContent = `Forfeit ${formatCurrencyHud(loot)} collected this run. Injuries remain.`;
+	} else {
+		levelGiveUpCostEl.textContent = 'You keep injuries; no money collected this run to forfeit.';
+	}
+}
+
+/** Switch UI from in-dungeon play back to the guild lobby. */
+function returnToGuildLobby(state, { refreshCollection = false } = {}) {
+	closeLevelSettingsOverlay();
+	showLevelSettingsError('');
+	if (giveUpBtnEl) giveUpBtnEl.disabled = false;
+	updateLevelSettingsBtnVisibility();
+
+	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
+	if (cardHandEl) hideCardHand();
+	setDeckStackVisible(false);
+	showGameLobby();
+	setDeployButtonVisible(true);
+	setGamePhase('lobby');
+
+	const me = myId && state?.players ? state.players[myId] : null;
+	syncVanguardHud(me, 'lobby');
+
+	if (state) {
+		if (refreshCollection) {
+			const me = myId && state.players ? state.players[myId] : null;
+			if (syncLocalCollectionState(me)) {
+				renderDeckEditor();
+				if (activeLobbyTab === 'forge') renderPhotonForge();
+				if (activeLobbyTab === 'shop') renderCardShop();
+				if (activeLobbyTab === 'medic') renderGuildMedic();
+			}
+		}
+		if (state.selectedQuestId && state.selectedQuestId !== selectedQuestId) {
+			applyQuestBoardState(null, state.selectedQuestId);
+		}
+		renderSuspendedRunBanner(state);
+	}
 }
 
 function setDeployButtonVisible(visible) {
@@ -292,7 +465,6 @@ function renderSuspendedRunBanner(state) {
 
 function showExtractedLobbyOverlay() {
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
-	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
 	showGameLobby();
@@ -302,6 +474,8 @@ function showExtractedLobbyOverlay() {
 		suspendedRunBannerEl.classList.remove('hidden');
 	}
 	if (abandonRunBtn) abandonRunBtn.classList.add('hidden');
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	syncVanguardHud(me, 'lobby');
 }
 
 function showLobbyBrowserError(message) {
@@ -655,6 +829,8 @@ function bindSocketHandlers(s) {
 		gameState = state;
 		setGameStateRef(state);
 		if (gameState && currentLayout) gameState.layout = currentLayout;
+		updateLevelSettingsBtnVisibility();
+		if (isLevelSettingsOpen()) syncLevelSettingsRewards();
 
 		const me = myId && gameState.players ? gameState.players[myId] : null;
 		const collectionChanged = syncLocalCollectionState(me);
@@ -665,27 +841,13 @@ function bindSocketHandlers(s) {
 		if (isExtracted && state.gamePhase === 'playing') {
 			showExtractedLobbyOverlay();
 		} else if (state.gamePhase === 'lobby') {
-			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
-			if (uiEl) uiEl.style.display = 'none';
-			if (cardHandEl) hideCardHand();
-			setDeckStackVisible(false);
-			showGameLobby();
-			setDeployButtonVisible(true);
-			if (enteringLobby || collectionChanged) {
-				renderDeckEditor();
-				if (activeLobbyTab === 'forge') renderPhotonForge();
-				if (activeLobbyTab === 'shop') renderCardShop();
-			}
-			if (enteringLobby || (state.selectedQuestId && state.selectedQuestId !== selectedQuestId)) {
-				applyQuestBoardState(null, state.selectedQuestId);
-			}
-			setGamePhase('lobby');
-			renderSuspendedRunBanner(state);
+			returnToGuildLobby(state, { refreshCollection: enteringLobby || collectionChanged });
+		} else if (me) {
+			syncVanguardHud(me, state.gamePhase);
 		}
 
 		// Entering gameplay: ensure HUD is visible (unless extracted mid-run)
 		if (state.gamePhase === 'playing' && !isExtracted) {
-			if (uiEl) uiEl.style.display = 'block';
 			showCardHand();
 			setDeckStackVisible(true);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
@@ -696,12 +858,16 @@ function bindSocketHandlers(s) {
 			}
 		}
 
-		// Update Vanguard HUD (HP, MS, deck stats, portrait)
-		if (me && state.gamePhase === 'playing') {
-			updateHpBar(me.hp);
-			updateMsBar(me.magicStones);
-			updateDeckStats(me.deck, me.hand);
-			updateVanguardPortrait();
+		// Update Vanguard HUD (HP always; MS/deck/portrait in-run only)
+		if (me) {
+			if (state.gamePhase === 'lobby') {
+				syncVanguardHud(me, 'lobby');
+			} else if (state.gamePhase === 'playing') {
+				updateHpBar(me.hp);
+				updateMsBar(me.magicStones);
+				updateDeckStats(me.deck, me.hand);
+				updateVanguardPortrait();
+			}
 		}
 
 		// Update currency HUD
@@ -845,6 +1011,32 @@ function bindSocketHandlers(s) {
 		else showDeckError(data.reason);
 	});
 
+	s.on('medicHealed', (data) => {
+		if (gameState && myId && gameState.players[myId] && data) {
+			gameState.players[myId].hp = data.hp;
+			gameState.players[myId].currency = data.currency;
+			gameState.players[myId].dead = false;
+		}
+		if (Number.isFinite(data?.currency)) {
+			myCurrency = data.currency;
+			_lastCurrency = data.currency;
+		}
+		renderGuildMedic();
+		const me = gameState && myId ? gameState.players[myId] : null;
+		syncVanguardHud(me, 'lobby');
+	});
+
+	s.on('medicError', (data) => {
+		const reason = data && data.reason ? data.reason : 'unknown';
+		const messages = {
+			insufficient_gold: `Not enough money (need ${MEDIC_HEAL_COST})`,
+			already_full: 'Already at full health',
+			not_in_lobby: 'Medic is only available at the lobby connection',
+			invalid_player: 'Could not find your hunter',
+		};
+		showMedicError(messages[reason] || `Heal failed: ${reason}`);
+	});
+
 	s.on('cardEvolutionResult', (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
@@ -961,6 +1153,7 @@ function bindSocketHandlers(s) {
 			initHand();
 			rendererInitScene(currentLayout, getSpawnPosition());
 			setGamePhase('playing');
+			updateLevelSettingsBtnVisibility();
 			return;
 		}
 		initHand();
@@ -970,6 +1163,7 @@ function bindSocketHandlers(s) {
 		setWasDead(false);
 		setDeployButtonVisible(false);
 		setGamePhase('playing');
+		updateLevelSettingsBtnVisibility();
 
 		const sc = getScene();
 		const maps = getMeshMaps();
@@ -984,6 +1178,26 @@ function bindSocketHandlers(s) {
 	s.on('runComplete', showRunSummary);
 	s.on('runFailed', showRunSummary);
 
+	s.on('runError', (data) => {
+		const reason = (data && data.reason) ? data.reason : 'Run action failed';
+		console.warn(`[run] ${reason}`);
+		showLevelSettingsError(reason);
+		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
+	});
+
+	s.on('runAbandoned', () => {
+		if (gameState) {
+			gameState.gamePhase = 'lobby';
+			delete gameState.run;
+		}
+		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
+		returnToGuildLobby(gameState, { refreshCollection: true });
+	});
+
+	if (giveUpBtnEl) {
+		giveUpBtnEl.onclick = () => requestGiveUp(s);
+	}
+
 	s.on('runSuspended', (summary) => {
 		if (summary && summary.questName) {
 			console.log(`[run] suspended: ${summary.questName}`);
@@ -992,14 +1206,7 @@ function bindSocketHandlers(s) {
 			gameState.suspendedRunSummary = summary;
 			gameState.gamePhase = 'lobby';
 		}
-		if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
-		if (uiEl) uiEl.style.display = 'none';
-		if (cardHandEl) hideCardHand();
-		setDeckStackVisible(false);
-		showGameLobby();
-		setDeployButtonVisible(true);
-		setGamePhase('lobby');
-		renderSuspendedRunBanner({ gamePhase: 'lobby', suspendedRunSummary: summary });
+		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary });
 	});
 
 	s.on('playerExtracted', (data) => {
@@ -1145,6 +1352,25 @@ function updateHpBar(hp) {
 	if (hpLabel) hpLabel.textContent = 'HP';
 }
 
+/** Keep the top-left HP readout visible in lobby and in-run. */
+function syncVanguardHud(me, phase) {
+	const gamePhase = phase || (gameState && gameState.gamePhase) || 'lobby';
+	document.body.dataset.phase = gamePhase;
+	if (gamePhase === 'lobby' || gamePhase === 'playing') {
+		if (uiEl) uiEl.style.display = 'block';
+	}
+	if (!me) {
+		if (gamePhase === 'lobby') updateHpBar(MAX_HP);
+		return;
+	}
+	updateHpBar(me.hp ?? MAX_HP);
+	if (gamePhase === 'playing') {
+		updateMsBar(me.magicStones ?? 0);
+		updateDeckStats(me.deck, me.hand);
+		updateVanguardPortrait();
+	}
+}
+
 function updateMsBar(ms) {
 	const clamped = Math.max(0, Math.min(MAX_MS, ms));
 	const pct = (clamped / MAX_MS) * 100;
@@ -1252,38 +1478,30 @@ export function getCardChargePercent(card) {
 	return Math.max(0, Math.min(100, (card.remainingCharges / card.charges) * 100));
 }
 
-function ensureCardSlotStructure(slot) {
-	let meter = slot.querySelector('.card-charge-meter');
-	if (!meter) {
-		meter = document.createElement('span');
-		meter.className = 'card-charge-meter';
-		meter.setAttribute('aria-hidden', 'true');
-		slot.prepend(meter);
-	}
-	let content = slot.querySelector('.card-slot-content');
-	if (!content) {
-		content = document.createElement('div');
-		content.className = 'card-slot-content';
-		slot.appendChild(content);
-	}
-	for (const child of [...slot.children]) {
-		if (child !== meter && child !== content && !child.classList.contains('card-input-hint')) {
-			child.remove();
-		}
-	}
-	return { meter, content };
+function buildCardSlotElements(slot) {
+	slot.replaceChildren();
+	const meter = document.createElement('span');
+	meter.className = 'card-charge-meter';
+	meter.setAttribute('aria-hidden', 'true');
+	const hint = document.createElement('span');
+	hint.className = 'card-input-hint';
+	const content = document.createElement('div');
+	content.className = 'card-slot-content';
+	slot.append(meter, hint, content);
+	return { meter, hint, content };
 }
 
-function setCardSlotHint(slot, hintLabel, hintMarkup) {
-	const hints = slot.querySelectorAll(':scope > .card-input-hint');
-	let hintEl = hints[0];
-	for (let i = 1; i < hints.length; i++) hints[i].remove();
-	if (!hintEl) {
-		hintEl = document.createElement('span');
-		hintEl.className = 'card-input-hint';
-		const content = slot.querySelector('.card-slot-content');
-		slot.insertBefore(hintEl, content);
+function getCardSlotParts(slot) {
+	const meter = slot.querySelector(':scope > .card-charge-meter');
+	const hint = slot.querySelector(':scope > .card-input-hint');
+	const content = slot.querySelector(':scope > .card-slot-content');
+	if (meter && hint && content && slot.children.length === 3) {
+		return { meter, hint, content };
 	}
+	return buildCardSlotElements(slot);
+}
+
+function setCardSlotHint(hintEl, hintLabel, hintMarkup) {
 	hintEl.setAttribute('aria-label', hintLabel);
 	hintEl.innerHTML = hintMarkup;
 }
@@ -1301,7 +1519,6 @@ function renderHand() {
 		cardHandEl.classList.toggle('show-input-hints', true);
 		cardHandEl.classList.toggle('input-hints-gamepad', inputHints.mode === 'gamepad');
 		cardHandEl.classList.toggle('input-hints-keyboard', inputHints.mode === 'keyboard');
-		if (cardHandEl.style.display !== 'none') applyCardHandLayout();
 	}
 	for (let i = 0; i < MAX_HAND_SLOTS; i++) {
 		const slot = getCardSlotEl(i);
@@ -1309,10 +1526,10 @@ function renderHand() {
 		const card = hand[i];
 		const hintLabel = inputHints.hintLabels?.[i]
 			?? (inputHints.mode === 'keyboard' ? `Key ${inputHints.hints[i]}` : `Gamepad ${inputHints.hints[i]}`);
-		const { meter, content } = ensureCardSlotStructure(slot);
+		const { meter, hint, content } = getCardSlotParts(slot);
 
 		if (card) {
-			setCardSlotHint(slot, hintLabel, inputHints.hints[i]);
+			setCardSlotHint(hint, hintLabel, inputHints.hints[i]);
 			meter.hidden = false;
 			const style = CARD_ACCENT_STYLE[card.id] || CARD_TYPE_STYLE[card.type] || CARD_TYPE_STYLE.weapon;
 			slot.style.setProperty('--slot-color', style.color);
@@ -1359,11 +1576,17 @@ function renderHand() {
 				slot.classList.remove('no-ms');
 			}
 		} else {
-			slot.querySelectorAll(':scope > .card-input-hint').forEach((el) => el.remove());
 			slot.style.removeProperty('--slot-color');
 			slot.style.removeProperty('--charge-pct');
 			meter.hidden = true;
-			content.innerHTML = '<span class="card-name">&mdash;</span>';
+			const n64Layout = resolveHandLayoutMode() === 'n64';
+			if (n64Layout) {
+				setCardSlotHint(hint, hintLabel, inputHints.hints[i]);
+			} else {
+				hint.textContent = '';
+				hint.removeAttribute('aria-label');
+			}
+			content.replaceChildren();
 			slot.classList.add('empty');
 			slot.classList.remove('evolved-card');
 			slot.classList.remove('no-ms');
@@ -1826,30 +2049,73 @@ function getMyCurrency() {
 	return 0;
 }
 
+function showMedicError(message) {
+	const medicErrorEl = document.getElementById('medic-error');
+	if (!medicErrorEl) return;
+	medicErrorEl.textContent = message;
+	medicErrorEl.style.display = message ? 'block' : 'none';
+}
+
+function renderGuildMedic() {
+	const hpDisplayEl = document.getElementById('medic-hp-display');
+	const costDisplayEl = document.getElementById('medic-cost-display');
+	const healBtnEl = document.getElementById('medic-heal-btn');
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+
+	if (!me) {
+		if (hpDisplayEl) hpDisplayEl.textContent = 'Health: —';
+		if (healBtnEl) healBtnEl.disabled = true;
+		return;
+	}
+
+	const hp = Math.max(0, Math.min(MAX_HP, me.hp ?? MAX_HP));
+	const currency = me.currency || 0;
+	const atFull = hp >= MAX_HP && !me.dead;
+
+	if (hpDisplayEl) hpDisplayEl.textContent = `Health: ${hp}/${MAX_HP}`;
+	if (costDisplayEl) {
+		costDisplayEl.textContent = atFull
+			? 'You are already at full health.'
+			: `Full restore: ${formatCurrencyPrice(MEDIC_HEAL_COST)}`;
+	}
+	if (healBtnEl) {
+		healBtnEl.disabled = atFull || currency < MEDIC_HEAL_COST;
+		healBtnEl.textContent = `Heal to full (${MEDIC_HEAL_COST} money)`;
+	}
+	showMedicError('');
+	syncVanguardHud(me, 'lobby');
+}
+
 function setLobbyTab(tab) {
 	activeLobbyTab = tab === 'forge' ? 'forge'
 		: tab === 'shop' ? 'shop'
 			: tab === 'economy' ? 'economy'
-				: 'deck';
+				: tab === 'medic' ? 'medic'
+					: 'deck';
 	const deckEditor = document.getElementById('deck-editor');
 	const photonForge = document.getElementById('photon-forge');
 	const cardShop = document.getElementById('card-shop');
 	const cardEconomy = document.getElementById('card-economy');
+	const guildMedic = document.getElementById('guild-medic');
 	const deckTabBtn = document.getElementById('lobby-tab-deck');
 	const forgeTabBtn = document.getElementById('lobby-tab-forge');
 	const shopTabBtn = document.getElementById('lobby-tab-shop');
 	const economyTabBtn = document.getElementById('lobby-tab-economy');
+	const medicTabBtn = document.getElementById('lobby-tab-medic');
 	if (deckEditor) deckEditor.classList.toggle('hidden', activeLobbyTab !== 'deck');
 	if (photonForge) photonForge.classList.toggle('hidden', activeLobbyTab !== 'forge');
 	if (cardShop) cardShop.classList.toggle('hidden', activeLobbyTab !== 'shop');
 	if (cardEconomy) cardEconomy.classList.toggle('hidden', activeLobbyTab !== 'economy');
+	if (guildMedic) guildMedic.classList.toggle('hidden', activeLobbyTab !== 'medic');
 	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
 	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
 	if (shopTabBtn) shopTabBtn.classList.toggle('active', activeLobbyTab === 'shop');
 	if (economyTabBtn) economyTabBtn.classList.toggle('active', activeLobbyTab === 'economy');
+	if (medicTabBtn) medicTabBtn.classList.toggle('active', activeLobbyTab === 'medic');
 	if (activeLobbyTab === 'forge') renderPhotonForge();
 	if (activeLobbyTab === 'shop') renderCardShop();
 	if (activeLobbyTab === 'economy') renderCardEconomy();
+	if (activeLobbyTab === 'medic') renderGuildMedic();
 }
 
 function renderCardShopSellList() {
@@ -2044,8 +2310,21 @@ if (document.getElementById('lobby-tab-forge')) {
 if (document.getElementById('lobby-tab-shop')) {
 	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
 }
-if (document.getElementById('lobby-tab-economy')) {
+	if (document.getElementById('lobby-tab-economy')) {
 	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
+}
+if (document.getElementById('lobby-tab-medic')) {
+	document.getElementById('lobby-tab-medic').addEventListener('click', () => setLobbyTab('medic'));
+}
+const medicHealBtnEl = document.getElementById('medic-heal-btn');
+if (medicHealBtnEl) {
+	medicHealBtnEl.addEventListener('click', () => {
+		if (!socket || !socket.connected) {
+			showMedicError('Not connected to server');
+			return;
+		}
+		socket.emit('medicHeal');
+	});
 }
 if (document.getElementById('forge-attune-btn')) {
 	document.getElementById('forge-attune-btn').addEventListener('click', () => {
@@ -2317,6 +2596,41 @@ function closeAccountOverlay() {
 	showAccountError('');
 }
 
+function openLevelSettingsOverlay() {
+	showLevelSettingsError('');
+	syncLevelSettingsRewards();
+	if (levelSettingsOverlayEl) levelSettingsOverlayEl.classList.remove('hidden');
+}
+
+function closeLevelSettingsOverlay() {
+	if (levelSettingsOverlayEl) levelSettingsOverlayEl.classList.add('hidden');
+}
+
+if (levelSettingsBtnEl) {
+	levelSettingsBtnEl.addEventListener('click', openLevelSettingsOverlay);
+}
+if (levelSettingsCloseBtnEl) {
+	levelSettingsCloseBtnEl.addEventListener('click', closeLevelSettingsOverlay);
+}
+if (levelSettingsOverlayEl) {
+	levelSettingsOverlayEl.addEventListener('click', (e) => {
+		if (e.target === levelSettingsOverlayEl) closeLevelSettingsOverlay();
+	});
+}
+function requestGiveUp(activeSocket) {
+	if (!activeSocket || !activeSocket.connected) {
+		showLevelSettingsError('Not connected to server');
+		return;
+	}
+	if (!gameState || gameState.gamePhase !== 'playing' || !gameState.run || gameState.run.status === 'suspended') {
+		showLevelSettingsError('No active expedition');
+		return;
+	}
+	showLevelSettingsError('');
+	if (giveUpBtnEl) giveUpBtnEl.disabled = true;
+	activeSocket.emit('giveUp');
+}
+
 if (accountBtnEl) {
 	accountBtnEl.addEventListener('click', openAccountOverlay);
 }
@@ -2465,6 +2779,8 @@ if (lockOnRepeatSelectEl) {
 
 onSettingsChange(() => {
 	syncSettingsForm();
+	resetHandLayoutLock();
+	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
 });
 syncSettingsForm();
@@ -2493,10 +2809,14 @@ initControllerCalibration({
 
 window.addEventListener('gamepadconnected', (event) => {
 	onGamepadConnectChange(event.gamepad);
+	resetHandLayoutLock();
+	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
 });
 window.addEventListener('gamepaddisconnected', () => {
 	onGamepadConnectChange(null);
+	resetHandLayoutLock();
+	if (cardHandEl && cardHandEl.style.display !== 'none') showCardHand();
 	renderHand();
 });
 
@@ -2653,6 +2973,8 @@ if (leaveLobbyBtnEl) {
 window.initScene = rendererInitScene;
 window.refillSlot = refillSlot;
 window.renderHand = renderHand;
+window.showCardHand = showCardHand;
+window.__resetHandLayoutLock = resetHandLayoutLock;
 window.renderDeckEditor = renderDeckEditor;
 window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
@@ -2720,6 +3042,9 @@ window.showLobbyBrowser = showLobbyBrowser;
 window.openSettingsOverlay = openSettingsOverlay;
 window.closeSettingsOverlay = closeSettingsOverlay;
 window.openAccountOverlay = openAccountOverlay;
+window.openLevelSettingsOverlay = openLevelSettingsOverlay;
+window.closeLevelSettingsOverlay = closeLevelSettingsOverlay;
+window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
@@ -2769,6 +3094,11 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		} : null,
 		players: gameState ? Object.keys(gameState.players).length : 0,
 		enemies: gameState ? gameState.enemies.length : 0,
+		enemyHp: gameState ? gameState.enemies.map((enemy) => ({
+			id: enemy.id,
+			hp: enemy.hp,
+			maxHp: enemy.maxHp,
+		})) : [],
 		minions: gameState && gameState.minions ? gameState.minions.map((m) => ({
 			id: m.id,
 			type: m.type,

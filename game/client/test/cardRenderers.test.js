@@ -400,24 +400,40 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(methodsCalled(ctx)).toEqual(['playSound']);
 	});
 
-	it('Vault Wyrm minion melee renders a forward cone hitbox', () => {
+	it('Vault Wyrm minion breath renders a forward cone hitbox on breath start', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'dungeon_drake',
 			origin: { x: 1, z: 2 },
 			direction: { x: 0, z: 1 },
-			attackRange: 5,
-			attackConeAngle: Math.PI / 2,
-			hits: [{ enemyId: 'e1', hp: 45 }],
+			attackRange: 4,
+			attackConeAngle: Math.PI / 4,
+			breathPhase: 'start',
+			breathDurationMs: 2000,
+			hits: [{ enemyId: 'e1', hp: 47 }],
 		}, ctx);
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
 		expect(attacks[0][2]).toEqual({ x: 0, z: 1 });
-		expect(attacks[0][3]).toMatchObject({ range: 5, coneAngle: Math.PI / 2 });
+		expect(attacks[0][3]).toMatchObject({ range: 4, coneAngle: Math.PI / 4, duration: 2000 });
 	});
 
-	it('Archive Wyrm fire breath renders a wider cone hitbox', () => {
+	it('Vault Wyrm breath ticks skip duplicate cone visuals', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			attackRange: 4,
+			attackConeAngle: Math.PI / 4,
+			breathPhase: 'tick',
+			hits: [{ enemyId: 'e1', hp: 44 }],
+		}, ctx);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(0);
+	});
+
+	it('Archive Wyrm fire breath renders a channeled cone hitbox', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
 			cardId: 'ancient_wyrm',
@@ -425,16 +441,19 @@ describe('renderCardUsed() — creature dispatch', () => {
 			origin: { x: 0, z: 0 },
 			direction: { x: 1, z: 0 },
 			attackRange: 8,
-			attackConeAngle: Math.PI / 2,
-			hits: [{ enemyId: 'e1', hp: 33 }],
+			attackConeAngle: Math.PI / 3,
+			breathPhase: 'start',
+			breathDurationMs: 2500,
+			hits: [{ enemyId: 'e1', hp: 46 }],
 		}, ctx);
 		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
 		expect(attacks).toHaveLength(1);
 		expect(attacks[0][3]).toMatchObject({
 			range: 8,
-			coneAngle: Math.PI / 2,
+			coneAngle: Math.PI / 3,
 			color: 0xef4444,
 			emissive: 0x9333ea,
+			duration: 2500,
 		});
 	});
 

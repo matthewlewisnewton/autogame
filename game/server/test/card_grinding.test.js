@@ -93,7 +93,7 @@ describe('card grinding', () => {
 		const hand = initPlayerHand(player);
 
 		expect(player.deck).toEqual([]);
-		expect(hand[0]).toMatchObject({
+		expect(hand[1]).toMatchObject({
 			id: 'iron_sword',
 			grind: 5,
 			instanceId: instance.instanceId,

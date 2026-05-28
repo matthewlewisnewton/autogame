@@ -8,7 +8,7 @@ import {
 	DESPERATION_DECK_TEMPLATE,
 	buildDesperationHandCard,
 } from './cards.js';
-import { MAX_HAND_SLOTS, OPENING_HAND_SIZE } from './config.js';
+import { MAX_HAND_SLOTS, OPENING_HAND_SIZE, HAND_SLOT_FILL_ORDER } from './config.js';
 
 // ── Mutable state (exported so main.js can read/write in-place) ──
 export let hand = [];
@@ -96,8 +96,9 @@ export function initHand(onRender) {
 	}
 
 	for (let i = 0; i < OPENING_HAND_SIZE; i++) {
+		const slotIndex = HAND_SLOT_FILL_ORDER[i];
 		const card = drawCard();
-		if (card) hand[i] = card;
+		if (card) hand[slotIndex] = card;
 	}
 
 	if (typeof onRender === 'function') onRender();
@@ -130,8 +131,9 @@ export function initHandFromDeck(serverDeckIds, onRender) {
 	}
 
 	for (let i = 0; i < OPENING_HAND_SIZE; i++) {
+		const slotIndex = HAND_SLOT_FILL_ORDER[i];
 		const card = drawCard();
-		if (card) hand[i] = card;
+		if (card) hand[slotIndex] = card;
 	}
 
 	if (typeof onRender === 'function') onRender();
