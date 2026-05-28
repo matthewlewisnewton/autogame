@@ -19,7 +19,7 @@ describe('loadoutTypeRank', () => {
 });
 
 describe('groupLoadoutDeckEntries', () => {
-	it('merges duplicate card ids into one group with count', () => {
+	it('merges duplicate card ids at the same attune level into one group with count', () => {
 		const groups = groupLoadoutDeckEntries(
 			['iron_sword', 'iron_sword', 'flame_blade'],
 			cardIdForEntry,
@@ -27,7 +27,23 @@ describe('groupLoadoutDeckEntries', () => {
 		expect(groups).toHaveLength(2);
 		const iron = groups.find((g) => g.cardId === 'iron_sword');
 		expect(iron.count).toBe(2);
+		expect(iron.grind).toBe(0);
 		expect(iron.entryIds).toEqual(['iron_sword', 'iron_sword']);
+	});
+
+	it('keeps separate rows for the same card id at different attune levels', () => {
+		const grindForEntry = (entryId) => ({ 'iron-a': 0, 'iron-b': 5, 'iron-c': 5 }[entryId] ?? 0);
+		const groups = groupLoadoutDeckEntries(
+			['iron-a', 'iron-b', 'iron-c'],
+			(entryId) => 'iron_sword',
+			grindForEntry,
+		);
+		expect(groups).toHaveLength(2);
+		const plusZero = groups.find((g) => g.grind === 0);
+		const plusFive = groups.find((g) => g.grind === 5);
+		expect(plusZero.count).toBe(1);
+		expect(plusFive.count).toBe(2);
+		expect(plusFive.entryIds).toEqual(['iron-b', 'iron-c']);
 	});
 });
 

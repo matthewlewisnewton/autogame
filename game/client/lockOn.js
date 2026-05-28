@@ -5,6 +5,7 @@ import {
 	LOCK_ON_BREAK_RANGE,
 	LOCK_ON_MIN_BEARING_DIST,
 	LOCK_ON_MAX_YAW_SPEED,
+	LOCK_ON_DEATH_RELEASE_DURATION,
 } from './config.js';
 
 /** @typedef {'unlock' | 'cycle' | 'reacquire'} LockOnRepeatAction */
@@ -16,6 +17,20 @@ let lockOnCameraYawUnwrapped = null;
 let lastRawCameraYaw = null;
 /** Last stable aim when the target is too close for reliable bearing. */
 let lastStableAim = null;
+/** Last known locked enemy position for death-release camera. */
+let lastLockedEnemyPosition = null;
+/** Last player rotation while locked — used when the target dies. */
+let lastLockedPlayerRotation = 0;
+
+/** @type {{
+ *   elapsed: number,
+ *   duration: number,
+ *   lookAtX: number,
+ *   lookAtZ: number,
+ *   startCameraYaw: number,
+ *   targetCameraYaw: number,
+ * } | null} */
+let lockOnCameraRelease = null;
 
 /**
  * @param {number} angle
@@ -160,8 +175,9 @@ export function cameraYawBehindTarget(playerX, playerZ, enemyX, enemyZ) {
  * @returns {{ x: number, z: number }}
  */
 export function targetRelativeDirection(inputX, inputZ, toTarget) {
-	const rightX = toTarget.z;
-	const rightZ = -toTarget.x;
+	// Right = up × forward in XZ (Y-up): (-toTarget.z, toTarget.x)
+	const rightX = -toTarget.z;
+	const rightZ = toTarget.x;
 	return {
 		x: rightX * inputX + toTarget.x * inputZ,
 		z: rightZ * inputX + toTarget.z * inputZ,
@@ -187,6 +203,67 @@ export function clearLockOn() {
 	lockOnCameraYawUnwrapped = null;
 	lastRawCameraYaw = null;
 	lastStableAim = null;
+	lastLockedEnemyPosition = null;
+	lastLockedPlayerRotation = 0;
+}
+
+export function clearLockOnCameraRelease() {
+	lockOnCameraRelease = null;
+}
+
+export function clearAllLockOnState() {
+	clearLockOn();
+	clearLockOnCameraRelease();
+}
+
+export function isLockOnCameraReleasing() {
+	return lockOnCameraRelease != null;
+}
+
+function startLockOnDeathRelease(enemyX, enemyZ, playerRotation, cameraYaw) {
+	lockOnCameraRelease = {
+		elapsed: 0,
+		duration: LOCK_ON_DEATH_RELEASE_DURATION,
+		lookAtX: enemyX,
+		lookAtZ: enemyZ,
+		startCameraYaw: cameraYaw,
+		targetCameraYaw: cameraYawBehindFacing(playerRotation),
+	};
+}
+
+/**
+ * Advance the post-death camera release blend.
+ * @param {number} delta
+ * @param {number} playerX
+ * @param {number} playerY
+ * @param {number} playerZ
+ * @returns {{ done: boolean, cameraYaw: number, lookAtX: number, lookAtY: number, lookAtZ: number } | null}
+ */
+export function updateLockOnCameraRelease(delta, playerX, playerY, playerZ) {
+	if (!lockOnCameraRelease) return null;
+
+	lockOnCameraRelease.elapsed += delta;
+	const release = lockOnCameraRelease;
+	const t = Math.min(1, release.elapsed / release.duration);
+	const eased = 1 - (1 - t) * (1 - t);
+	const lookAtY = playerY + 0.5;
+	const cameraYaw = normalizeAngle(
+		release.startCameraYaw
+		+ shortestAngleDelta(release.startCameraYaw, release.targetCameraYaw) * eased,
+	);
+	const frame = {
+		done: t >= 1,
+		cameraYaw,
+		lookAtX: release.lookAtX + (playerX - release.lookAtX) * eased,
+		lookAtY,
+		lookAtZ: release.lookAtZ + (playerZ - release.lookAtZ) * eased,
+	};
+
+	if (frame.done) {
+		lockOnCameraRelease = null;
+	}
+
+	return frame;
 }
 
 function lockOnto(enemyId) {
@@ -203,11 +280,11 @@ function advanceLockOnCameraYaw(currentCameraYaw, rawCameraYaw, delta) {
 		return normalizeAngle(lockOnCameraYawUnwrapped);
 	}
 
-	const rawDelta = shortestAngleDelta(lastRawCameraYaw, rawCameraYaw);
-	lastRawCameraYaw = rawCameraYaw;
+	const bearingDelta = shortestAngleDelta(normalizeAngle(lockOnCameraYawUnwrapped), rawCameraYaw);
 	const maxStep = LOCK_ON_MAX_YAW_SPEED * delta;
-	const cappedDelta = Math.max(-maxStep, Math.min(maxStep, rawDelta));
+	const cappedDelta = Math.max(-maxStep, Math.min(maxStep, bearingDelta));
 	lockOnCameraYawUnwrapped += cappedDelta;
+	lastRawCameraYaw = rawCameraYaw;
 	return normalizeAngle(lockOnCameraYawUnwrapped);
 }
 
@@ -273,8 +350,13 @@ export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw)
 
 	const enemy = findEnemyById(enemies, lockedEnemyId);
 	if (!enemy) {
+		const deathPos = lastLockedEnemyPosition;
+		const deathRotation = lastLockedPlayerRotation;
 		clearLockOn();
-		return { locked: false };
+		if (deathPos) {
+			startLockOnDeathRelease(deathPos.x, deathPos.z, deathRotation, currentCameraYaw);
+		}
+		return { locked: false, releasing: isLockOnCameraReleasing() };
 	}
 
 	const dist = Math.hypot(enemy.x - playerX, enemy.z - playerZ);
@@ -283,15 +365,42 @@ export function updateLockOn(enemies, playerX, playerZ, delta, currentCameraYaw)
 		return { locked: false };
 	}
 
-	const aim = cameraYawBehindTarget(playerX, playerZ, enemy.x, enemy.z);
-	const cameraYaw = advanceLockOnCameraYaw(currentCameraYaw, aim.cameraYaw, delta);
+	const liveToTarget = dist <= 1e-8
+		? (lastStableAim?.toTarget ?? { x: 1, z: 0 })
+		: {
+			x: (enemy.x - playerX) / dist,
+			z: (enemy.z - playerZ) / dist,
+		};
+
+	let playerRotation;
+	let toTarget = liveToTarget;
+	if (dist <= LOCK_ON_MIN_BEARING_DIST && lastStableAim) {
+		playerRotation = lastStableAim.playerRotation;
+		toTarget = lastStableAim.toTarget;
+	} else {
+		playerRotation = Math.atan2(liveToTarget.z, liveToTarget.x);
+		if (dist >= LOCK_ON_MIN_BEARING_DIST) {
+			lastStableAim = {
+				playerRotation,
+				toTarget: liveToTarget,
+				cameraYaw: cameraYawFromToTarget(liveToTarget),
+			};
+		}
+	}
+
+	const rawCameraYaw = cameraYawFromToTarget(liveToTarget);
+	const cameraYaw = advanceLockOnCameraYaw(currentCameraYaw, rawCameraYaw, delta);
+
+	lastLockedEnemyPosition = { x: enemy.x, z: enemy.z };
+	lastLockedPlayerRotation = playerRotation;
 
 	return {
 		locked: true,
-		playerRotation: aim.playerRotation,
+		playerRotation,
 		cameraYaw,
 		targetCameraYaw: lockOnCameraYawUnwrapped,
-		toTarget: aim.toTarget,
+		toTarget,
+		liveToTarget,
 	};
 }
 

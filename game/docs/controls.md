@@ -5,7 +5,7 @@
 - **W / A / S / D** — move relative to the camera facing direction.
 - **Gamepad left stick** or **D-pad** — move relative to the camera. Partial stick deflection moves at reduced speed (analog walk).
 
-While lock-on is active, movement stays **camera-relative** (stick/keys match what you see on screen). Your character still faces the locked target so attacks go toward them.
+While lock-on is active, movement becomes **target-relative**: stick/keys forward and back move toward or away from the locked enemy, and left/right strafe around them. Your character still faces the locked target so attacks go toward them.
 
 ## Camera (orbit)
 
@@ -16,7 +16,7 @@ The camera orbits around your character so you can look around while moving.
 
 Movement and attacks use the camera facing direction, not the character mesh orientation alone. When you stop moving, your character turns to face the camera forward direction.
 
-Manual camera control is disabled while lock-on is active; the camera tracks behind you as you face the target.
+Manual camera control is disabled while lock-on is active; the camera stays behind you, turns to keep the locked enemy in view, and looks at the target.
 
 ## Lock-On (Z-Targeting)
 
@@ -46,7 +46,8 @@ When an **8BitDo 64** is connected, Settings → Controller profile can stay on 
 | **A** | Hand slot 1 |
 | **B** | Hand slot 2 |
 | **C↑ / C↓ / C← / C→** | Hand slots 3–6 |
-| **Z** | Lock-on (Z-targeting) |
+| **Z** (left bottom trigger, btn 8) | Lock-on (Z-targeting) |
+| **R** (right bottom trigger, btn 9) | — (reserved; not a C-button) |
 | **C← / C→** (horizontal) | Camera orbit |
 | **Joystick** | Move |
 | **D-pad** | Move |

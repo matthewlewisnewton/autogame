@@ -61,7 +61,17 @@ describe('resolveRenderers()', () => {
 	});
 
 	it('returns an empty list for creature/enchantment cards without an override', () => {
-		expect(resolveRenderers('dungeon_drake')).toEqual([]);
+		expect(resolveRenderers('battery_automaton')).toEqual([]);
+	});
+
+	it('returns wyrm attack renderer for Vault Wyrm and Archive Wyrm', () => {
+		expect(resolveRenderers('dungeon_drake')).toHaveLength(1);
+		expect(resolveRenderers('ancient_wyrm')).toHaveLength(1);
+	});
+
+	it('returns bespoke attack renderers for Phase Stalker and Bulkhead Mauler', () => {
+		expect(resolveRenderers('null_crawler')).toHaveLength(1);
+		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
 	});
 
 	it('returns an empty list for unknown card ids', () => {
@@ -382,12 +392,93 @@ describe('renderCardUsed() — creature dispatch', () => {
 	it('does not render any extra visuals for vanilla creature spawns', () => {
 		const ctx = makeCtx();
 		renderCardUsed({
-			cardId: 'dungeon_drake',
+			cardId: 'battle_familiar',
 			origin: { x: 0, z: 0 },
 			hits: [],
 		}, ctx);
 		// Only the card sound — no summon ring, no attack flash.
 		expect(methodsCalled(ctx)).toEqual(['playSound']);
+	});
+
+	it('Vault Wyrm minion melee renders a forward cone hitbox', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'dungeon_drake',
+			origin: { x: 1, z: 2 },
+			direction: { x: 0, z: 1 },
+			attackRange: 5,
+			attackConeAngle: Math.PI / 2,
+			hits: [{ enemyId: 'e1', hp: 45 }],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][1]).toEqual({ x: 1, z: 2 });
+		expect(attacks[0][2]).toEqual({ x: 0, z: 1 });
+		expect(attacks[0][3]).toMatchObject({ range: 5, coneAngle: Math.PI / 2 });
+	});
+
+	it('Archive Wyrm fire breath renders a wider cone hitbox', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'ancient_wyrm',
+			specialEffect: 'fire_breath',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 8,
+			attackConeAngle: Math.PI / 2,
+			hits: [{ enemyId: 'e1', hp: 33 }],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][3]).toMatchObject({
+			range: 8,
+			coneAngle: Math.PI / 2,
+			color: 0xef4444,
+			emissive: 0x9333ea,
+		});
+	});
+
+	it('Phase Stalker beam renders a narrow projectile corridor', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'null_crawler',
+			specialEffect: 'phase_beam',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 14,
+			hitWidth: 0.8,
+			hits: [{ enemyId: 'e1', hp: 34 }],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][3]).toMatchObject({
+			effect: 'returning_projectile',
+			returnPasses: 0,
+			range: 14,
+			projectileHitWidth: 0.8,
+			color: 0x22d3ee,
+		});
+	});
+
+	it('Bulkhead Mauler shockwave renders a short wide cone', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'bulkhead_mauler',
+			specialEffect: 'shockwave_sweep',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			attackRange: 4,
+			attackConeAngle: (Math.PI * 2) / 3,
+			hits: [{ enemyId: 'e1', hp: 41 }],
+		}, ctx);
+		const attacks = ctx._calls.filter((c) => c[0] === 'spawnAttackEffect');
+		expect(attacks).toHaveLength(1);
+		expect(attacks[0][3]).toMatchObject({
+			range: 4,
+			coneAngle: (Math.PI * 2) / 3,
+			color: 0x78716c,
+			emissive: 0xf59e0b,
+		});
 	});
 
 	it('undead_commander renders a caster ring and one ring per spawned skeleton', () => {

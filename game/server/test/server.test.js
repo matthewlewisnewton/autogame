@@ -23,6 +23,7 @@ import {
 	getEnemyCardDrop,
 	recordEnemyCardDrop,
 	getEnemyMagicStoneDrop,
+	getEnemyCurrencyDrop,
 	removeDeadEnemies,
 	buildCardChoices,
 	claimCardReward,
@@ -99,6 +100,7 @@ import {
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
+	STARTING_MAGIC_STONES,
 	MAGIC_STONES_REGEN_PER_TICK,
 	DETECTION_RADIUS,
 	ATTACK_RANGE,
@@ -877,7 +879,8 @@ describe('updateMinions()', () => {
 		expect(gameState.minions[0].ttl).toBeCloseTo(10 - 1 / TICK_RATE, 4);
 	});
 
-	it('removes dead enemies (loot is pre-spawned at run start, not on death)', () => {
+	it('removes dead enemies and spawns magic stone and currency loot on death', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
 		gameState.minions.push({
 			id: 'm1',
 			ownerId: 'p1',
@@ -888,6 +891,7 @@ describe('updateMinions()', () => {
 		});
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 0,
 			z: 0,
 			hp: 3, // minion deals 5 damage, so enemy dies
@@ -898,8 +902,15 @@ describe('updateMinions()', () => {
 		updateMinions();
 
 		expect(gameState.enemies.length).toBe(0);
-		// Loot is no longer death-dropped; it is pre-spawned by spawnLoot() at run start.
-		expect(gameState.loot.length).toBe(0);
+		expect(gameState.loot).toHaveLength(2);
+		expect(gameState.loot.find((l) => l.kind === 'magic_stone')).toMatchObject({
+			value: 20,
+			kind: 'magic_stone',
+		});
+		expect(gameState.loot.find((l) => l.kind === 'currency')).toMatchObject({
+			value: 8,
+			kind: 'currency',
+		});
 
 		vi.restoreAllMocks();
 	});
@@ -1248,7 +1259,7 @@ describe('regenMagicStones (game tick)', () => {
 	});
 
 	it('does not exceed cap when close to it', () => {
-		addPlayer('p1', { magicStones: MAX_MAGIC_STONES - 0.05 });
+		addPlayer('p1', { magicStones: MAX_MAGIC_STONES - 0.004 });
 
 		regenMagicStones();
 
@@ -1273,11 +1284,15 @@ describe('regenMagicStones (game tick)', () => {
 	});
 
 	it('regen rate constant is correct', () => {
-		expect(MAGIC_STONES_REGEN_PER_TICK).toBe(0.06);
+		expect(MAGIC_STONES_REGEN_PER_TICK).toBe(0.005);
 	});
 
 	it('max magic stones constant is correct', () => {
-		expect(MAX_MAGIC_STONES).toBe(49);
+		expect(MAX_MAGIC_STONES).toBe(99);
+	});
+
+	it('STARTING_MAGIC_STONES is 49', () => {
+		expect(STARTING_MAGIC_STONES).toBe(49);
 	});
 
 	it('client MAX_MS matches server MAX_MAGIC_STONES via shared constants', async () => {
@@ -1336,7 +1351,40 @@ describe('enemy magic stone drops and discard', () => {
 		expect(getEnemyMagicStoneDrop({ type: 'unknown' })).toBe(15);
 	});
 
-	it('removeDeadEnemies spawns magic stone loot at the enemy position', () => {
+	it('getEnemyCurrencyDrop returns a random percentage of the magic stone drop', () => {
+		const randomSpy = vi.spyOn(Math, 'random');
+
+		randomSpy.mockReturnValue(0);
+		expect(getEnemyCurrencyDrop({ type: 'grunt' })).toBe(8);
+
+		randomSpy.mockReturnValue(1);
+		expect(getEnemyCurrencyDrop({ type: 'grunt' })).toBe(20);
+
+		randomSpy.mockReturnValue(0.5);
+		expect(getEnemyCurrencyDrop({ type: 'miniboss' })).toBe(35);
+
+		randomSpy.mockRestore();
+	});
+
+	it('removeDeadEnemies skips currency loot when the drop chance fails', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0.99);
+		gameState.enemies = [{
+			id: 'e1',
+			type: 'grunt',
+			x: 4,
+			z: -2,
+			hp: 0,
+		}];
+
+		removeDeadEnemies();
+
+		expect(gameState.loot).toHaveLength(1);
+		expect(gameState.loot[0].kind).toBe('magic_stone');
+		vi.restoreAllMocks();
+	});
+
+	it('removeDeadEnemies spawns magic stone and currency loot at the enemy position', () => {
+		vi.spyOn(Math, 'random').mockReturnValue(0);
 		gameState.enemies = [{
 			id: 'e1',
 			type: 'grunt',
@@ -1350,13 +1398,21 @@ describe('enemy magic stone drops and discard', () => {
 		removeDeadEnemies();
 
 		expect(gameState.enemies).toHaveLength(0);
-		expect(gameState.loot).toHaveLength(1);
-		expect(gameState.loot[0]).toMatchObject({
+		expect(gameState.loot).toHaveLength(2);
+		expect(gameState.loot.find((l) => l.kind === 'magic_stone')).toMatchObject({
 			kind: 'magic_stone',
 			value: 20,
-			x: 4,
-			z: -2,
+			x: 3.4,
+			z: -1.5,
 		});
+		expect(gameState.loot.find((l) => l.kind === 'currency')).toMatchObject({
+			kind: 'currency',
+			value: 8,
+			x: 4.6,
+			z: -2.5,
+		});
+
+		vi.restoreAllMocks();
 	});
 
 	it('discardCardFromHand empties a slot without drawing a replacement', () => {
@@ -3820,7 +3876,7 @@ describe('ENEMY_DEFS', () => {
 	});
 
 	it('grunt has correct stat values', () => {
-		expect(ENEMY_DEFS.grunt.hp).toBe(50);
+		expect(ENEMY_DEFS.grunt.hp).toBe(100);
 		expect(ENEMY_DEFS.grunt.chaseSpeed).toBe(2.5);
 		expect(ENEMY_DEFS.grunt.wanderSpeed).toBe(1.0);
 		expect(ENEMY_DEFS.grunt.attackDamage).toBe(10);
@@ -3829,7 +3885,7 @@ describe('ENEMY_DEFS', () => {
 	});
 
 	it('skirmisher has correct stat values', () => {
-		expect(ENEMY_DEFS.skirmisher.hp).toBe(20);
+		expect(ENEMY_DEFS.skirmisher.hp).toBe(40);
 		expect(ENEMY_DEFS.skirmisher.chaseSpeed).toBe(4.5);
 		expect(ENEMY_DEFS.skirmisher.wanderSpeed).toBe(1.5);
 		expect(ENEMY_DEFS.skirmisher.attackDamage).toBe(6);
@@ -3838,7 +3894,7 @@ describe('ENEMY_DEFS', () => {
 	});
 
 	it('miniboss has correct stat values', () => {
-		expect(ENEMY_DEFS.miniboss.hp).toBe(150);
+		expect(ENEMY_DEFS.miniboss.hp).toBe(300);
 		expect(ENEMY_DEFS.miniboss.chaseSpeed).toBe(1.2);
 		expect(ENEMY_DEFS.miniboss.wanderSpeed).toBe(0.6);
 		expect(ENEMY_DEFS.miniboss.attackDamage).toBe(18);
@@ -3848,7 +3904,7 @@ describe('ENEMY_DEFS', () => {
 	});
 
 	it('spawner has correct stat and spawning fields', () => {
-		expect(ENEMY_DEFS.spawner.hp).toBe(60);
+		expect(ENEMY_DEFS.spawner.hp).toBe(120);
 		expect(ENEMY_DEFS.spawner.chaseSpeed).toBe(1.8);
 		expect(ENEMY_DEFS.spawner.wanderSpeed).toBe(0.9);
 		expect(ENEMY_DEFS.spawner.attackDamage).toBe(8);

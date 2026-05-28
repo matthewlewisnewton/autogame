@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { io as ClientIO } from 'socket.io-client';
 import jwt from 'jsonwebtoken';
 import {
@@ -42,7 +42,7 @@ import {
 	processPassiveDraws,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, TICK_RATE } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
 
 // ── Helpers ──
 
@@ -3790,7 +3790,8 @@ describe('magic stone drops — any player can pick up', () => {
 		expect(p1.magicStones).toBe(p1MsBefore);
 	});
 
-	it('enemy death spawns a magic_stone loot entry any player can reach', async () => {
+	it('enemy death spawns magic_stone and currency loot entries any player can reach', async () => {
+		const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0);
 		const debug1 = waitForEvent(socket1, 'debugScenarioResult');
 		socket1.emit('debugScenario', { name: 'mixed-enemies' });
 		await debug1;
@@ -3805,7 +3806,9 @@ describe('magic stone drops — any player can pick up', () => {
 		cleanupAfterDamage();
 
 		const msLoot = state.loot.filter((l) => l.kind === 'magic_stone');
+		const moneyLoot = state.loot.filter((l) => l.kind === 'currency');
 		expect(msLoot.length).toBeGreaterThan(0);
+		expect(moneyLoot.length).toBeGreaterThan(0);
 
 		const p2 = state.players[socket2._playerId];
 		p2.magicStones = 10;
@@ -3818,6 +3821,18 @@ describe('magic stone drops — any player can pick up', () => {
 
 		expect(p2.magicStones).toBe(10 + drop.value);
 		expect(state.loot.find((l) => l.id === drop.id)).toBeUndefined();
+
+		const moneyDrop = moneyLoot[0];
+		const currencyBefore = p2.currency;
+		p2.x = moneyDrop.x;
+		p2.z = moneyDrop.z;
+
+		socket2.emit('lootPickup', { lootId: moneyDrop.id });
+		await sleep(10);
+
+		expect(p2.currency).toBe(currencyBefore + moneyDrop.value);
+		expect(state.loot.find((l) => l.id === moneyDrop.id)).toBeUndefined();
+		randomSpy.mockRestore();
 	});
 });
 
@@ -4879,7 +4894,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		const restoredPlayer = testGameState().players[player2Id];
 		expect(restoredPlayer.slotCooldowns).toEqual(new Array(MAX_HAND_SLOTS).fill(null));
-		expect(restoredPlayer.magicStones).toBe(MAX_MAGIC_STONES);
+		expect(restoredPlayer.magicStones).toBe(STARTING_MAGIC_STONES);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();

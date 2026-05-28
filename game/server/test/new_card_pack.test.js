@@ -68,7 +68,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all eleven new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(38);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(40);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}
@@ -450,6 +450,7 @@ describe('new card combat helpers', () => {
 
 		updateEnemies();
 		expect(gameState.minions[0].hp).toBeLessThan(120);
+		expect(gameState.minions[0].ttl).toBeLessThan(30);
 	});
 
 	it('Stormwing Drone minion damages enemies from range without closing to melee', () => {

@@ -1,12 +1,20 @@
 import {
 	is8BitDo64Gamepad,
+	is8BitDo64BluetoothGamepad,
+	get8BitDo64VerticalCAxisIndex,
 	is8BitDoGamepad,
 	getConnectedGamepads,
 } from './gamepad-detect.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
 
 /** Re-export for convenience. */
-export { EIGHTBITDO_64_PRODUCT_ID, is8BitDo64Gamepad } from './gamepad-detect.js';
+export {
+	EIGHTBITDO_64_PRODUCT_ID,
+	EIGHTBITDO_64_BT_PRODUCT_ID,
+	is8BitDo64Gamepad,
+	is8BitDo64BluetoothGamepad,
+	get8BitDo64VerticalCAxisIndex,
+} from './gamepad-detect.js';
 
 /** @typedef {'auto' | 'standard' | '8bitdo-64'} GamepadProfileId */
 
@@ -30,20 +38,40 @@ export { EIGHTBITDO_64_PRODUCT_ID, is8BitDo64Gamepad } from './gamepad-detect.js
 /** Browser axis indices used for L/R analog triggers on some 8BitDo 64 firmware (not the C cluster). */
 export const EIGHTBITDO_64_TRIGGER_AXIS_INDICES = [2, 3];
 
+/** Z trigger (SDL lefttrigger:b8) — lock-on only, not a C-button. */
+export const EIGHTBITDO_64_LOCK_ON_BUTTON = 8;
+
+/** R trigger (SDL righttrigger:b9) — not a C-button. */
+export const EIGHTBITDO_64_RIGHT_TRIGGER_BUTTON = 9;
+
 /** Z and R bottom triggers on the 8BitDo 64 (SDL lefttrigger:b8, righttrigger:b9). */
-export const EIGHTBITDO_64_TRIGGER_BUTTON_INDICES = [8, 9];
+export const EIGHTBITDO_64_TRIGGER_BUTTON_INDICES = [
+	EIGHTBITDO_64_LOCK_ON_BUTTON,
+	EIGHTBITDO_64_RIGHT_TRIGGER_BUTTON,
+];
 
 /**
  * Discrete C-button indices in browser raw HID.
- * C↑/C↓ are commonly btn 2/3; SDL N64 axis-as-buttons use -rightx:b4 (C←), +rightx:b9 (C→).
+ * C↑/C↓ are btn 2/3; C←/C→ are btn 4/5; axis 2 is the C-cluster horizontal.
  * @type {Record<'up' | 'down' | 'left' | 'right', number[]>}
  */
 export const EIGHTBITDO_64_C_DISCRETE_BUTTONS = {
 	up: [2],
 	down: [3],
 	left: [4],
-	right: [5, 9],
+	right: [5],
 };
+
+/** @deprecated Use EIGHTBITDO_64_C_DISCRETE_BUTTONS. */
+export const EIGHTBITDO_64_C_BUTTON_DIRECTIONS = {
+	2: 'up',
+	3: 'down',
+	4: 'left',
+	5: 'right',
+};
+
+/** Browser C-buttons often report low analog button values — use a lower cutoff. */
+export const EIGHTBITDO_64_C_BUTTON_THRESHOLD = 0.2;
 
 /**
  * The 8BitDo 64 exposes four digital C-buttons — not a separate analog C stick on axes 4/5.
@@ -80,10 +108,19 @@ export function get8BitDo64CAxisPairs(gamepad) {
  * @param {number} index
  * @returns {boolean}
  */
-export function isGamepadButtonActive(gamepad, index) {
+export function isGamepadButtonActive(gamepad, index, threshold = 0.5) {
 	if (!gamepad?.buttons?.[index]) return false;
 	const btn = gamepad.buttons[index];
-	return btn.pressed || btn.value > 0.5;
+	return btn.pressed || btn.value > threshold;
+}
+
+/**
+ * @param {Gamepad | null | undefined} gamepad
+ * @param {number} index
+ * @returns {boolean}
+ */
+export function is8BitDo64DiscreteCButtonActive(gamepad, index) {
+	return isGamepadButtonActive(gamepad, index, EIGHTBITDO_64_C_BUTTON_THRESHOLD);
 }
 
 /**
@@ -116,21 +153,17 @@ function mergeCButtonState(target, source) {
 }
 
 /**
- * Read analog C directions from axes 2/3 when horizontal/vertical motion is clearly intentional.
- * Skips horizontal reads when vertical axis dominates (avoids ghost left/right on C↑/C↓).
+ * Read horizontal C from axis 2 (SDL Mac/Linux rightx:a2).
+ * Axis 3 often carries L-trigger rest in the browser — do not use it for C↑/C↓.
  * @param {number} axisX
  * @param {number} axisY
  * @param {number} threshold
- * @param {{ up?: boolean, down?: boolean }} [discrete]
  * @returns {Record<'up' | 'down' | 'left' | 'right', boolean>}
  */
-function read8BitDo64CAxisDirections(axisX, axisY, threshold, discrete = {}) {
+function read8BitDo64CAxisDirections(axisX, axisY, threshold) {
 	const result = { up: false, down: false, left: false, right: false };
 	const x = Number.isFinite(axisX) ? axisX : 0;
 	const y = Number.isFinite(axisY) ? axisY : 0;
-
-	if (!discrete.up && y <= -threshold) result.up = true;
-	if (!discrete.down && y >= threshold) result.down = true;
 
 	if (Math.abs(x) >= threshold && Math.abs(x) >= Math.abs(y)) {
 		if (x <= -threshold) result.left = true;
@@ -141,23 +174,39 @@ function read8BitDo64CAxisDirections(axisX, axisY, threshold, discrete = {}) {
 }
 
 /**
+ * Bluetooth 8BitDo 64 maps C↑/C↓ to a dedicated vertical axis (browser axis 5).
+ * @param {number} axisY
+ * @param {number} threshold
+ * @returns {Record<'up' | 'down' | 'left' | 'right', boolean>}
+ */
+function read8BitDo64VerticalCAxisDirections(axisY, threshold) {
+	const y = Number.isFinite(axisY) ? axisY : 0;
+	const result = { up: false, down: false, left: false, right: false };
+	if (y <= -threshold) result.up = true;
+	else if (y >= threshold) result.down = true;
+	return result;
+}
+
+function read8BitDo64DiscreteCButtons(gamepad) {
+	const state = { up: false, down: false, left: false, right: false };
+	for (const [direction, indices] of Object.entries(EIGHTBITDO_64_C_DISCRETE_BUTTONS)) {
+		for (const index of indices) {
+			if (is8BitDo64DiscreteCButtonActive(gamepad, index)) {
+				state[direction] = true;
+			}
+		}
+	}
+	return state;
+}
+
+/**
  * Read 8BitDo 64 C-buttons from discrete browser buttons and/or axes 2/3 (SDL C cluster).
  * @param {Gamepad} gamepad
  * @param {number} [threshold]
  * @returns {Record<'up' | 'down' | 'left' | 'right', boolean>}
  */
 export function read8BitDo64CButtonState(gamepad, threshold = 0.3) {
-	const state = { up: false, down: false, left: false, right: false };
-	const discrete = { up: false, down: false, left: false, right: false };
-
-	for (const [direction, indices] of Object.entries(EIGHTBITDO_64_C_DISCRETE_BUTTONS)) {
-		for (const index of indices) {
-			if (isGamepadButtonActive(gamepad, index)) {
-				state[direction] = true;
-				discrete[direction] = true;
-			}
-		}
-	}
+	const state = read8BitDo64DiscreteCButtons(gamepad);
 
 	if (gamepad.axes.length >= 4) {
 		mergeCButtonState(
@@ -166,8 +215,15 @@ export function read8BitDo64CButtonState(gamepad, threshold = 0.3) {
 				gamepad.axes[2] ?? 0,
 				gamepad.axes[3] ?? 0,
 				threshold,
-				discrete,
 			),
+		);
+	}
+
+	const verticalAxis = get8BitDo64VerticalCAxisIndex(gamepad);
+	if (verticalAxis != null && gamepad.axes.length > verticalAxis) {
+		mergeCButtonState(
+			state,
+			read8BitDo64VerticalCAxisDirections(gamepad.axes[verticalAxis] ?? 0, threshold),
 		);
 	}
 
@@ -232,17 +288,17 @@ export const EIGHTBITDO_64_PROFILE = {
 	name: '8BitDo 64',
 	description: 'N64 layout from SDL GameControllerDB: A, B, C↑↓←→, Z, L, R, Select, Start',
 	matchGamepad: is8BitDo64Gamepad,
-	lockOnButton: 8,
+	lockOnButton: EIGHTBITDO_64_LOCK_ON_BUTTON,
 	modifierButton: 6,
 	moveStick: 'left',
 	lookSource: 'cStick',
 	bindings: {
 		useSlot0: { type: 'button', index: 0 },
 		useSlot1: { type: 'button', index: 1 },
-		useSlot2: { type: 'cButton', direction: 'up', threshold: 0.3 },
-		useSlot3: { type: 'cButton', direction: 'down', threshold: 0.3 },
-		useSlot4: { type: 'cButton', direction: 'left', threshold: 0.3 },
-		useSlot5: { type: 'cButton', direction: 'right', threshold: 0.3 },
+		useSlot2: { type: 'cButton', direction: 'up', threshold: 0.2 },
+		useSlot3: { type: 'cButton', direction: 'down', threshold: 0.2 },
+		useSlot4: { type: 'cButton', direction: 'left', threshold: 0.2 },
+		useSlot5: { type: 'cButton', direction: 'right', threshold: 0.2 },
 		toggleDeckViewer: { type: 'button', index: 10 },
 	},
 	buttonLabels: [
@@ -251,11 +307,11 @@ export const EIGHTBITDO_64_PROFILE = {
 		{ index: 2, label: 'C↑ (btn 2)' },
 		{ index: 3, label: 'C↓ (btn 3)' },
 		{ index: 4, label: 'C← (btn 4)' },
-		{ index: 5, label: 'C→ (btn 5, fallback)' },
+		{ index: 5, label: 'C→ (btn 5)' },
 		{ index: 6, label: 'L' },
 		{ index: 7, label: 'R' },
-		{ index: 8, label: 'Z (lock-on)' },
-		{ index: 9, label: 'C→ / R analog (btn 9)' },
+		{ index: 8, label: 'Z (left Z / lock-on)' },
+		{ index: 9, label: 'R (right Z trigger)' },
 		{ index: 10, label: 'Select (−)' },
 		{ index: 11, label: 'Start (+)' },
 		{ index: 12, label: 'Home' },
@@ -350,7 +406,7 @@ export function isBindingActive(gamepad, binding) {
 		return is8BitDo64CButtonActive(
 			gamepad,
 			binding.direction,
-			binding.threshold ?? 0.35,
+			binding.threshold ?? EIGHTBITDO_64_C_BUTTON_THRESHOLD,
 		);
 	}
 	const threshold = binding.threshold ?? 0.5;
@@ -380,6 +436,21 @@ export function readProfileCStick(gamepad, profile) {
 }
 
 /**
+ * Whether the profile lock-on button is held (supports analog trigger values).
+ * @param {Gamepad} gamepad
+ * @param {GamepadProfile} profile
+ * @returns {boolean}
+ */
+export function isProfileLockOnPressed(gamepad, profile) {
+	if (!gamepad?.buttons) return false;
+	const lockButton = profile.lockOnButton ?? LOCK_ON_GAMEPAD_BUTTON;
+	const threshold = profile.id === '8bitdo-64'
+		? EIGHTBITDO_64_C_BUTTON_THRESHOLD
+		: 0.5;
+	return isGamepadButtonActive(gamepad, lockButton, threshold);
+}
+
+/**
  * Horizontal C-axis for camera look on the 8BitDo 64 profile.
  * @param {Gamepad} gamepad
  * @param {number} [deadzone]
@@ -391,9 +462,7 @@ export function read8BitDo64CStickHorizontal(gamepad, deadzone = 0.15) {
 		const y = gamepad.axes[3] ?? 0;
 		if (Math.abs(x) >= deadzone && Math.abs(x) >= Math.abs(y)) return x;
 	}
-	const c = read8BitDo64CButtonState(gamepad, deadzone);
-	if (c.left && !c.right) return -1;
-	if (c.right && !c.left) return 1;
+	// Digital C-buttons are card bindings — never map them to camera look.
 	return 0;
 }
 

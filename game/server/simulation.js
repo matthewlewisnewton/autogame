@@ -642,19 +642,19 @@ function randomWanderTarget() {
 
 const ENEMY_DEFS = {
 	grunt: {
-		hp: 50, chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800,
+		hp: 100, chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800,
 		attackStyle: 'radial',
 	},
 	skirmisher: {
-		hp: 20, chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6, attackWindupMs: 500,
+		hp: 40, chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6, attackWindupMs: 500,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
 	},
 	miniboss: {
-		hp: 150, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
+		hp: 300, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
 	},
 	spawner: {
-		hp: 60, chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8, attackWindupMs: 900,
+		hp: 120, chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8, attackWindupMs: 900,
 		attackStyle: 'radial',
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
 	},
@@ -673,7 +673,7 @@ function lockWindupDirection(enemy, target) {
 	}
 }
 
-function isPlayerInEnemyAttack(enemy, target, def) {
+function isEntityInEnemyAttack(enemy, target, def) {
 	const range = def.attackRange ?? ENEMY_ATTACK_RANGE;
 	const dx = target.x - enemy.x;
 	const dz = target.z - enemy.z;
@@ -691,6 +691,21 @@ function isPlayerInEnemyAttack(enemy, target, def) {
 	}
 
 	return true;
+}
+
+function isPlayerInEnemyAttack(enemy, target, def) {
+	return isEntityInEnemyAttack(enemy, target, def);
+}
+
+function resolveWindupTarget(enemy) {
+	const targetType = enemy.windupTargetType || 'player';
+	if (targetType === 'minion') {
+		return _gameState.minions.find(
+			(minion) => minion.id === enemy.windupTargetId && minion.hp > 0
+		) || null;
+	}
+	const player = _gameState.players[enemy.windupTargetId];
+	return player && !player.dead ? player : null;
 }
 
 // Minion behavior constants
@@ -807,6 +822,69 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
   }
 
   return { hits, magicStonesGained };
+}
+
+function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
+  const hits = [];
+  const attackerId = options.attackerId;
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const excludeMinionId = options.excludeMinionId;
+  const sampleCount = Math.max(4, Math.ceil(range * 2));
+  const hitEnemyIds = new Set();
+  const hitMinionIds = new Set();
+  const hitPlayerIds = new Set();
+
+  for (let i = 0; i <= sampleCount; i++) {
+    const t = range * (i / sampleCount);
+    const px = originX + dirX * t;
+    const pz = originZ + dirZ * t;
+
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id)) continue;
+      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      if (dist > hitWidth) continue;
+
+      if (attackerId) enemy.lastDamagedBy = attackerId;
+      enemy.hp -= damage;
+      hitEnemyIds.add(enemy.id);
+      hits.push({ enemyId: enemy.id, hp: enemy.hp });
+    }
+
+    for (const ally of _gameState.minions) {
+      if (ally.id === excludeMinionId || hitMinionIds.has(ally.id) || ally.hp <= 0) continue;
+      const dist = Math.hypot(ally.x - px, ally.z - pz);
+      if (dist > hitWidth) continue;
+
+      damageMinion(ally, damage);
+      hitMinionIds.add(ally.id);
+      hits.push({ minionId: ally.id, hp: ally.hp });
+    }
+
+    for (const [playerId, player] of Object.entries(_gameState.players)) {
+      if (hitPlayerIds.has(playerId) || player.dead) continue;
+      const dist = Math.hypot(player.x - px, player.z - pz);
+      if (dist > hitWidth) continue;
+
+      damagePlayer(playerId, damage, { attackerId });
+      hitPlayerIds.add(playerId);
+      hits.push({ playerId, hp: player.hp });
+    }
+  }
+
+  return { hits };
+}
+
+function lockMinionWindupDirection(minion, target) {
+  const dx = target.x - minion.x;
+  const dz = target.z - minion.z;
+  const len = Math.hypot(dx, dz);
+  if (len > 0) {
+    minion.windupDirX = dx / len;
+    minion.windupDirZ = dz / len;
+  } else {
+    minion.windupDirX = 1;
+    minion.windupDirZ = 0;
+  }
 }
 
 function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
@@ -1026,12 +1104,14 @@ function updateAreaEffects() {
   _progression().cleanupAfterDamage();
 }
 
-function findTauntMinionNear(enemyX, enemyZ, detectionRadius) {
+function findNearestMinionNear(enemyX, enemyZ, detectionRadius, options = {}) {
+  const tauntOnly = options.tauntOnly === true;
   let nearestDist = Infinity;
   let nearestMinion = null;
 
   for (const minion of _gameState.minions) {
-    if (!minion.taunt || minion.hp <= 0) continue;
+    if (minion.hp <= 0) continue;
+    if (tauntOnly && !minion.taunt) continue;
     const dist = Math.hypot(minion.x - enemyX, minion.z - enemyZ);
     if (dist <= detectionRadius && dist < nearestDist) {
       nearestDist = dist;
@@ -1039,7 +1119,21 @@ function findTauntMinionNear(enemyX, enemyZ, detectionRadius) {
     }
   }
 
-  return nearestMinion;
+  if (!nearestMinion) return null;
+  return { minion: nearestMinion, dist: nearestDist };
+}
+
+function findTauntMinionNear(enemyX, enemyZ, detectionRadius) {
+  const result = findNearestMinionNear(enemyX, enemyZ, detectionRadius, { tauntOnly: true });
+  return result ? result.minion : null;
+}
+
+function damageMinion(minion, amount) {
+  if (!minion || amount <= 0 || minion.hp <= 0) return;
+  const maxHp = minion.maxHp || Math.max(minion.hp, 1);
+  const maxTtl = minion.maxTtl || minion.ttl || 1;
+  minion.hp = Math.max(0, minion.hp - amount);
+  minion.ttl = Math.max(0, minion.ttl - (amount * maxTtl / maxHp));
 }
 
 // ── Player Damage / Respawn ──
@@ -1264,16 +1358,16 @@ function updateEnemies() {
 		if (enemy.attackState === 'windup') {
 			const elapsed = Date.now() - enemy.windupStartTime;
 			if (elapsed >= def.attackWindupMs) {
-				// Revalidate: find the target player and check range + alive
-				const target = _gameState.players[enemy.windupTargetId];
-				if (target && !target.dead) {
-					if (isPlayerInEnemyAttack(enemy, target, def)) {
-						// Strike!
+				const target = resolveWindupTarget(enemy);
+				if (target && isEntityInEnemyAttack(enemy, target, def)) {
+					if (enemy.windupTargetType === 'minion') {
+						damageMinion(target, def.attackDamage);
+					} else {
 						damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
-						enemy.attackState = 'recovering';
-						enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
-						continue;
 					}
+					enemy.attackState = 'recovering';
+					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					continue;
 				}
 				// Target out of range or dead — cancel attack, return to chasing
 				enemy.attackState = 'chasing';
@@ -1312,48 +1406,59 @@ function updateEnemies() {
 			enemy.state = 'chasing';
 			const dist = Math.hypot(tauntMinion.x - enemy.x, tauntMinion.z - enemy.z);
 			if (dist <= ENEMY_ATTACK_RANGE) {
-				tauntMinion.hp -= def.attackDamage;
+				damageMinion(tauntMinion, def.attackDamage);
 			} else {
 				moveEntityToward(enemy, tauntMinion, def.chaseSpeed * dt);
 			}
 			continue;
 		}
 
+		let nearestTarget = null;
+		let nearestTargetType = null;
 		let nearestDist = Infinity;
-		let nearestPlayer = null;
+
+		const nearestMinion = findNearestMinionNear(enemy.x, enemy.z, DETECTION_RADIUS);
+		if (nearestMinion && nearestMinion.dist < nearestDist) {
+			nearestTarget = nearestMinion.minion;
+			nearestTargetType = 'minion';
+			nearestDist = nearestMinion.dist;
+		}
+
 		for (const player of players) {
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
-			if (dist < nearestDist) {
+			if (dist < DETECTION_RADIUS && dist < nearestDist) {
 				nearestDist = dist;
-				nearestPlayer = player;
+				nearestTarget = player;
+				nearestTargetType = 'player';
 			}
 		}
 
-		// ── Chasing: move toward player, transition to windup in range ──
-		if (nearestPlayer && nearestDist < DETECTION_RADIUS) {
+		// ── Chasing: move toward target, transition to windup in range ──
+		if (nearestTarget && nearestDist < DETECTION_RADIUS) {
 			enemy.state = 'chasing';
 
 			// If in chasing (not mid-windup/recover) and within attack range, start wind-up
 			if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
 				if (nearestDist <= (def.attackRange ?? ENEMY_ATTACK_RANGE)) {
 					enemy.attackState = 'windup';
-					enemy.windupTargetId = nearestPlayer.id;
+					enemy.windupTargetType = nearestTargetType;
+					enemy.windupTargetId = nearestTarget.id;
 					enemy.windupStartTime = Date.now();
-					lockWindupDirection(enemy, nearestPlayer);
+					lockWindupDirection(enemy, nearestTarget);
 					continue; // do not move during wind-up
 				}
 				enemy.attackState = 'chasing';
 			}
 
-			const chaseResult = moveEntityToward(enemy, nearestPlayer, def.chaseSpeed * dt);
+			const chaseResult = moveEntityToward(enemy, nearestTarget, def.chaseSpeed * dt);
 			// If blocked while chasing, enemy stops at wall edge (wall-slide handles sliding)
 			void chaseResult;
 			continue;
 		}
 
-		// ── No player in detection range — revert to idle and wander ──
+		// ── No target in detection range — revert to idle and wander ──
 		enemy.state = 'idle';
 		enemy.attackState = 'idle';
 		const wdx = enemy.wanderTarget.x - enemy.x;
@@ -1505,6 +1610,172 @@ function updateMinions() {
             }
           } else {
             moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.skirmisher.chaseSpeed * dt);
+          }
+        } else {
+          const owner = _gameState.players[minion.ownerId];
+          if (owner && !owner.dead) {
+            const dx = owner.x - minion.x;
+            const dz = owner.z - minion.z;
+            const distToOwner = Math.hypot(dx, dz);
+            if (distToOwner > MINION_FOLLOW_DISTANCE) {
+              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+            }
+          }
+        }
+        continue;
+      }
+
+      if (minion.type === 'null_crawler') {
+        const attackRange = minion.attackRange || 14;
+        const attackDamage = minion.attackDamage || 22;
+        const attackIntervalMs = minion.attackIntervalMs || 2000;
+        const attackWindupMs = minion.attackWindupMs || 1000;
+        const projectileHitWidth = minion.projectileHitWidth || 0.8;
+        const lastAttackAt = minion.lastAttackAt ?? 0;
+
+        if (minion.attackState === 'windup') {
+          const elapsed = now - (minion.windupStartTime || 0);
+          if (elapsed >= attackWindupMs) {
+            const dirX = minion.windupDirX ?? 1;
+            const dirZ = minion.windupDirZ ?? 0;
+            const { hits } = collectPhaseBeamHits(
+              minion.x,
+              minion.z,
+              dirX,
+              dirZ,
+              attackRange,
+              attackDamage,
+              {
+                attackerId: minion.ownerId,
+                hitWidth: projectileHitWidth,
+                excludeMinionId: minion.id,
+              }
+            );
+            minion.lastAttackAt = now;
+            minion.attackState = 'idle';
+            delete minion.windupStartTime;
+            delete minion.windupDirX;
+            delete minion.windupDirZ;
+            _gameState._pendingMinionBreaths.push({
+              playerId: minion.ownerId,
+              cardId: 'null_crawler',
+              specialEffect: 'phase_beam',
+              origin: { x: minion.x, z: minion.z },
+              direction: { x: dirX, z: dirZ },
+              attackRange,
+              hitWidth: projectileHitWidth,
+              hits,
+              minionId: minion.id,
+            });
+          }
+          continue;
+        }
+
+        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+          if (nearestDist <= attackRange) {
+            if (now - lastAttackAt >= attackIntervalMs) {
+              minion.attackState = 'windup';
+              minion.windupStartTime = now;
+              lockMinionWindupDirection(minion, nearestEnemy);
+            }
+          } else {
+            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.skirmisher.chaseSpeed * dt);
+          }
+        } else {
+          const owner = _gameState.players[minion.ownerId];
+          if (owner && !owner.dead) {
+            const dx = owner.x - minion.x;
+            const dz = owner.z - minion.z;
+            const distToOwner = Math.hypot(dx, dz);
+            if (distToOwner > MINION_FOLLOW_DISTANCE) {
+              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+            }
+          }
+        }
+        continue;
+      }
+
+      if (minion.type === 'bulkhead_mauler') {
+        const attackRange = minion.attackRange || 4;
+        const attackConeAngle = minion.attackConeAngle || ((Math.PI * 2) / 3);
+        const attackDamage = minion.attackDamage || 9;
+
+        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+          if (nearestDist <= attackRange) {
+            const dist = nearestDist || 1;
+            const dirX = (nearestEnemy.x - minion.x) / dist;
+            const dirZ = (nearestEnemy.z - minion.z) / dist;
+            const { hits } = collectConeHits(
+              minion.x,
+              minion.z,
+              dirX,
+              dirZ,
+              attackRange,
+              attackConeAngle,
+              attackDamage,
+              { attackerId: minion.ownerId }
+            );
+            if (hits.length > 0) {
+              _gameState._pendingMinionBreaths.push({
+                playerId: minion.ownerId,
+                cardId: 'bulkhead_mauler',
+                specialEffect: 'shockwave_sweep',
+                origin: { x: minion.x, z: minion.z },
+                direction: { x: dirX, z: dirZ },
+                attackRange,
+                attackConeAngle,
+                hits,
+                minionId: minion.id,
+              });
+            }
+          } else {
+            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * 0.75 * dt);
+          }
+        } else {
+          const owner = _gameState.players[minion.ownerId];
+          if (owner && !owner.dead) {
+            const dx = owner.x - minion.x;
+            const dz = owner.z - minion.z;
+            const distToOwner = Math.hypot(dx, dz);
+            if (distToOwner > MINION_FOLLOW_DISTANCE) {
+              moveEntityToward(minion, owner, MINION_FOLLOW_SPEED * dt, { stopDistance: MINION_FOLLOW_DISTANCE });
+            }
+          }
+        }
+        continue;
+      }
+
+      if (minion.type === 'dungeon_drake') {
+        if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
+          if (nearestDist <= ATTACK_RANGE) {
+            const dist = nearestDist || 1;
+            const dirX = (nearestEnemy.x - minion.x) / dist;
+            const dirZ = (nearestEnemy.z - minion.z) / dist;
+            const attackDamage = 5;
+            const { hits } = collectConeHits(
+              minion.x,
+              minion.z,
+              dirX,
+              dirZ,
+              ATTACK_RANGE,
+              ATTACK_CONE_ANGLE,
+              attackDamage,
+              { attackerId: minion.ownerId }
+            );
+            if (hits.length > 0) {
+              _gameState._pendingMinionBreaths.push({
+                playerId: minion.ownerId,
+                cardId: 'dungeon_drake',
+                origin: { x: minion.x, z: minion.z },
+                direction: { x: dirX, z: dirZ },
+                attackRange: ATTACK_RANGE,
+                attackConeAngle: ATTACK_CONE_ANGLE,
+                hits,
+                minionId: minion.id,
+              });
+            }
+          } else {
+            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
           }
         } else {
           const owner = _gameState.players[minion.ownerId];
@@ -1742,12 +2013,14 @@ module.exports = {
 
   // Player damage / heal
   damagePlayer,
+  damageMinion,
   healPlayer,
 
   // Card combat helpers
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectPhaseBeamHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,

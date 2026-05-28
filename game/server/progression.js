@@ -8,11 +8,17 @@ const {
   DECK_MAX_SIZE,
   MAX_HP,
   MAX_MAGIC_STONES,
+  STARTING_MAGIC_STONES,
   SPAWN_PADDING,
   LOOT_SPAWN_CHANCE,
   VICTORY_REWARD_ROTATION,
   ENEMY_CARD_DROPS,
   ENEMY_MS_DROPS,
+  ENEMY_CURRENCY_DROP_CHANCE,
+  ENEMY_CURRENCY_DROP_PCT_MIN,
+  ENEMY_CURRENCY_DROP_PCT_MAX,
+  LOOT_DROP_OFFSET_MS,
+  LOOT_DROP_OFFSET_CURRENCY,
   MAX_CARD_CHOICES,
   SHOP_CARD_POOL,
   SHOP_PRICE_MULTIPLIER,
@@ -99,6 +105,35 @@ const CARD_DEFS = {
   flame_blade: { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', damage: 28, charges: 3 },
   battle_familiar: { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 44 },
   dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, minionTtl: 30, attackDamage: 11 },
+  null_crawler: {
+    id: 'null_crawler',
+    name: 'Phase Stalker',
+    type: 'creature',
+    charges: 1,
+    magicStoneCost: 35,
+    effect: 'null_crawler',
+    minionHp: 55,
+    minionTtl: 30,
+    attackRange: 14,
+    attackDamage: 22,
+    attackIntervalMs: 2000,
+    attackWindupMs: 1000,
+    projectileHitWidth: 0.8,
+    specialEffect: 'phase_beam',
+  },
+  bulkhead_mauler: {
+    id: 'bulkhead_mauler',
+    name: 'Bulkhead Mauler',
+    type: 'creature',
+    charges: 1,
+    effect: 'bulkhead_mauler',
+    minionHp: 100,
+    minionTtl: 30,
+    attackRange: 4,
+    attackConeAngle: (Math.PI * 2) / 3,
+    attackDamage: 9,
+    specialEffect: 'shockwave_sweep',
+  },
   steel_claymore: {
     id: 'steel_claymore',
     name: 'Alloy Greatblade',
@@ -554,6 +589,8 @@ const CARD_SELL_VALUES = {
   flame_blade: 8,
   battle_familiar: 12,
   dungeon_drake: 10,
+  null_crawler: 12,
+  bulkhead_mauler: 10,
   steel_claymore: 15,
   magma_greatsword: 18,
   astral_guardian: 25,
@@ -1134,6 +1171,15 @@ function getEnemyMagicStoneDrop(enemy) {
   return ENEMY_MS_DROPS[enemy.type] ?? 15;
 }
 
+function getEnemyCurrencyDrop(enemy) {
+  if (!enemy || !enemy.type) return 0;
+  const msDrop = getEnemyMagicStoneDrop(enemy);
+  if (msDrop <= 0) return 0;
+  const pctRange = (ENEMY_CURRENCY_DROP_PCT_MAX - ENEMY_CURRENCY_DROP_PCT_MIN) / 100;
+  const pct = (ENEMY_CURRENCY_DROP_PCT_MIN / 100) + Math.random() * pctRange;
+  return Math.max(1, Math.floor(msDrop * pct));
+}
+
 function spawnMagicStoneDrop(enemy) {
   const value = getEnemyMagicStoneDrop(enemy);
   if (value <= 0) return;
@@ -1141,13 +1187,31 @@ function spawnMagicStoneDrop(enemy) {
   const id = crypto.randomUUID();
   _gameState.loot.push({
     id,
-    x: enemy.x,
-    z: enemy.z,
+    x: enemy.x + LOOT_DROP_OFFSET_MS.x,
+    z: enemy.z + LOOT_DROP_OFFSET_MS.z,
     value,
     kind: 'magic_stone',
     createdAt: Date.now(),
   });
   console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+}
+
+function spawnCurrencyDrop(enemy) {
+  if (Math.random() >= ENEMY_CURRENCY_DROP_CHANCE) return;
+
+  const value = getEnemyCurrencyDrop(enemy);
+  if (value <= 0) return;
+
+  const id = crypto.randomUUID();
+  _gameState.loot.push({
+    id,
+    x: enemy.x + LOOT_DROP_OFFSET_CURRENCY.x,
+    z: enemy.z + LOOT_DROP_OFFSET_CURRENCY.z,
+    value,
+    kind: 'currency',
+    createdAt: Date.now(),
+  });
+  console.log(`[loot] currency drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
 }
 
 function buildCardChoices(playerId) {
@@ -2131,6 +2195,7 @@ function removeDeadEnemies() {
   for (const enemy of dying) {
     recordEnemyCardDrop(enemy);
     spawnMagicStoneDrop(enemy);
+    spawnCurrencyDrop(enemy);
   }
 
   const before = _gameState.enemies.length;
@@ -2689,6 +2754,7 @@ function checkAllReady() {
         applyTelepipeReadyHand(player);
       }
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      player.magicStones = STARTING_MAGIC_STONES;
     }
     spawnEnemies();
     startDungeonRun();
@@ -2773,7 +2839,9 @@ module.exports = {
   getEnemyCardDrop,
   recordEnemyCardDrop,
   getEnemyMagicStoneDrop,
+  getEnemyCurrencyDrop,
   spawnMagicStoneDrop,
+  spawnCurrencyDrop,
   buildCardChoices,
   claimCardReward,
   buildRunSummary,

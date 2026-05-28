@@ -47,6 +47,29 @@ describe('renderer loot helpers', () => {
 		expect(getPickedUpLootIds()).toEqual(new Set(['ms_nearby']));
 	});
 
+	it('markLootCollected shows "+N MS" for magic stone pickups', async () => {
+		const {
+			initScene,
+			setGameStateRef,
+			syncLootMeshes,
+			markLootCollected,
+		} = await import('../renderer.js');
+
+		initScene(null, { x: 0, z: 0 });
+		setGameStateRef({
+			loot: [{ id: 'ms_drop', x: 1, z: 1, value: 5, kind: 'magic_stone' }],
+		});
+		syncLootMeshes();
+
+		markLootCollected('ms_drop', 5, 'magic_stone');
+
+		const floating = Array.from(document.body.querySelectorAll('div')).find(
+			(el) => el.style.position === 'fixed' && el.textContent.includes('MS'),
+		);
+		expect(floating?.textContent).toBe('+5 MS');
+		expect(floating?.style.color).toBe('rgb(167, 139, 250)');
+	});
+
 	it('markLootCollected plays loot SFX only for magic stone pickups', async () => {
 		const audio = await import('../audio.js');
 		const playSpy = vi.spyOn(audio, 'playSound');

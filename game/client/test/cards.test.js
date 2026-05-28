@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(38);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(40);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -378,8 +378,10 @@ describe('card ID sets', () => {
 		expect(creatureCardIds.has('undead_commander')).toBe(true);
 		expect(creatureCardIds.has('storm_eagle')).toBe(true);
 		expect(creatureCardIds.has('thunderbird')).toBe(true);
+		expect(creatureCardIds.has('null_crawler')).toBe(true);
+		expect(creatureCardIds.has('bulkhead_mauler')).toBe(true);
 		expect(creatureCardIds.has('iron_sword')).toBe(false);
-		expect(creatureCardIds.size).toBe(7);
+		expect(creatureCardIds.size).toBe(9);
 	});
 
 	it('CARD_ACCENT_STYLE defines icon and color for each new pack card', () => {

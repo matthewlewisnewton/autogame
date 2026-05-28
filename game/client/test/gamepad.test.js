@@ -8,6 +8,7 @@ import {
 	resetGamepadState,
 } from '../gamepad.js';
 import { GAMEPAD_DEADZONE, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
+import { installGamepadMock, uninstallGamepadMock, mockGamepad, clearMockGamepads } from './gamepad-mock.js';
 
 describe('applyDeadzone()', () => {
 	it('returns zero inside the deadzone', () => {
@@ -95,6 +96,17 @@ describe('pollGamepadButtons()', () => {
 		}];
 		expect(pollGamepadButtons().lockOn).toBe(true);
 		expect(pollGamepadButtons().lockOn).toBe(false);
+	});
+
+	it('fires 8BitDo Z lock-on from low analog trigger values', () => {
+		installGamepadMock();
+		clearMockGamepads();
+		const buttons = Array(12).fill({ pressed: false, value: 0 });
+		buttons[8] = { pressed: false, value: 0.25 };
+		mockGamepad(0, { id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)', axes: [0, 0, 0, 0], buttons });
+		expect(pollGamepadButtons().lockOn).toBe(true);
+		expect(pollGamepadButtons().lockOn).toBe(false);
+		uninstallGamepadMock();
 	});
 });
 

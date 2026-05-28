@@ -1,5 +1,5 @@
 // Server configuration constants
-const { MAX_MAGIC_STONES: SHARED_MAX_MAGIC_STONES } = require('../shared/constants.json');
+const { MAX_MAGIC_STONES: SHARED_MAX_MAGIC_STONES, STARTING_MAGIC_STONES: SHARED_STARTING_MAGIC_STONES } = require('../shared/constants.json');
 
 const TICK_RATE = 20; // times per second
 const MOVE_SPEED = 12; // units per second — maximum player movement speed (matches client terminal velocity)
@@ -9,7 +9,8 @@ const DETECTION_RADIUS = 8; // units
 const ENEMY_ATTACK_RANGE = 4; // units — must be this close to strike
 const ENEMY_ATTACK_RECOVERY_MS = 1200; // cooldown after attack (hit or cancel)
 const MAX_MAGIC_STONES = SHARED_MAX_MAGIC_STONES;
-const MAGIC_STONES_REGEN_PER_TICK = 0.06;
+const STARTING_MAGIC_STONES = SHARED_STARTING_MAGIC_STONES;
+const MAGIC_STONES_REGEN_PER_TICK = 0.005;
 const SUMMON_RADIUS = 10; // units — radial AoE
 const ATTACK_RANGE = 5; // units — max distance to hit
 const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
@@ -42,6 +43,8 @@ const VICTORY_REWARD_ROTATION = [
   'healing_font',
   'skeleton_knight',
   'storm_eagle',
+  'null_crawler',
+  'bulkhead_mauler',
   'gravity_well',
   'echo_blade',
   'mana_leach',
@@ -68,6 +71,16 @@ const ENEMY_MS_DROPS = {
   spawner: 25,
 };
 
+// Money pickups dropped alongside magic stones at enemy death positions.
+// Roll against ENEMY_CURRENCY_DROP_CHANCE; on success, amount is a random %
+// of that enemy's magic stone drop (inclusive range).
+const ENEMY_CURRENCY_DROP_CHANCE = 0.5;
+const ENEMY_CURRENCY_DROP_PCT_MIN = 40;
+const ENEMY_CURRENCY_DROP_PCT_MAX = 100;
+
+const LOOT_DROP_OFFSET_MS = { x: -0.6, z: 0.5 };
+const LOOT_DROP_OFFSET_CURRENCY = { x: 0.6, z: -0.5 };
+
 const MAX_CARD_CHOICES = 3;
 
 const SHOP_CARD_POOL = [...VICTORY_REWARD_ROTATION, 'telepipe'];
@@ -90,6 +103,7 @@ module.exports = {
   ENEMY_ATTACK_RANGE,
   ENEMY_ATTACK_RECOVERY_MS,
   MAX_MAGIC_STONES,
+  STARTING_MAGIC_STONES,
   MAGIC_STONES_REGEN_PER_TICK,
   SUMMON_RADIUS,
   ATTACK_RANGE,
@@ -112,6 +126,11 @@ module.exports = {
   VICTORY_REWARD_ROTATION,
   ENEMY_CARD_DROPS,
   ENEMY_MS_DROPS,
+  ENEMY_CURRENCY_DROP_CHANCE,
+  ENEMY_CURRENCY_DROP_PCT_MIN,
+  ENEMY_CURRENCY_DROP_PCT_MAX,
+  LOOT_DROP_OFFSET_MS,
+  LOOT_DROP_OFFSET_CURRENCY,
   MAX_CARD_CHOICES,
   SHOP_CARD_POOL,
   SHOP_PRICE_MULTIPLIER,

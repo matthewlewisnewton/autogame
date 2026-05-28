@@ -10,7 +10,7 @@ import {
 	evolveCard,
 	updateMinions,
 } from '../index.js';
-import { ATTACK_CONE_ANGLE } from '../config.js';
+import { ATTACK_CONE_ANGLE, ATTACK_RANGE } from '../config.js';
 import {
 	connectAndJoinLobby,
 	startTestServer,
@@ -111,6 +111,37 @@ describe('Ancient Wyrm gameplay', () => {
 describe('Ancient Wyrm fire breath', () => {
 	beforeEach(() => {
 		resetState();
+	});
+
+	it('Vault Wyrm melee routes through collectConeHits and queues cardUsed payload', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 2,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'drake-1',
+			ownerId: 'p1',
+			type: 'dungeon_drake',
+			x: 0,
+			z: 0,
+			hp: 20,
+			ttl: 30,
+		});
+
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(45);
+		expect(gameState._pendingMinionBreaths).toHaveLength(1);
+		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
+			cardId: 'dungeon_drake',
+			attackRange: ATTACK_RANGE,
+			attackConeAngle: ATTACK_CONE_ANGLE,
+			hits: [{ enemyId: 'e1', hp: 45 }],
+		});
 	});
 
 	it('damages enemies in a forward cone every ~3s', () => {

@@ -7,6 +7,7 @@
 
 import { getGamepadConfig } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
+import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.js';
 import {
 	resolveGamepadProfile,
 	isBindingActive,
@@ -265,10 +266,19 @@ const STANDARD_BUTTON_HINTS = {
 const EIGHTBITDO_64_SLOT_HINTS = {
 	useSlot0: 'A',
 	useSlot1: 'B',
-	useSlot2: 'C↑',
-	useSlot3: 'C↓',
-	useSlot4: 'C←',
-	useSlot5: 'C→',
+	useSlot2: renderCButtonMark('up'),
+	useSlot3: renderCButtonMark('down'),
+	useSlot4: renderCButtonMark('left'),
+	useSlot5: renderCButtonMark('right'),
+};
+
+const EIGHTBITDO_64_SLOT_HINT_LABELS = {
+	useSlot0: 'A',
+	useSlot1: 'B',
+	useSlot2: getCButtonAccessibleLabel('up'),
+	useSlot3: getCButtonAccessibleLabel('down'),
+	useSlot4: getCButtonAccessibleLabel('left'),
+	useSlot5: getCButtonAccessibleLabel('right'),
 };
 
 const KEYBOARD_SLOT_HINTS = ['1', '2', '3', '4', '5', '6'];
@@ -293,13 +303,22 @@ function describeStandardHandSlotBindingHint(binding, slotIndex) {
  */
 function describe8BitDo64HandSlotBindingHint(binding, slotIndex) {
 	if (binding?.type === 'cButton') {
-		const labels = { up: 'C↑', down: 'C↓', left: 'C←', right: 'C→' };
-		return labels[binding.direction] ?? 'C';
+		return renderCButtonMark(binding.direction);
 	}
 	if (binding?.type === 'button' && binding.index === 0) return 'A';
 	if (binding?.type === 'button' && binding.index === 1) return 'B';
 	if (binding?.type === 'button') return `Btn ${binding.index}`;
 	return EIGHTBITDO_64_SLOT_HINTS[`useSlot${slotIndex}`] ?? String(slotIndex + 1);
+}
+
+function describe8BitDo64HandSlotBindingHintLabel(binding, slotIndex) {
+	if (binding?.type === 'cButton') {
+		return getCButtonAccessibleLabel(binding.direction);
+	}
+	if (binding?.type === 'button' && binding.index === 0) return 'A';
+	if (binding?.type === 'button' && binding.index === 1) return 'B';
+	if (binding?.type === 'button') return `Button ${binding.index}`;
+	return EIGHTBITDO_64_SLOT_HINT_LABELS[`useSlot${slotIndex}`] ?? String(slotIndex + 1);
 }
 
 /** @returns {boolean} */
@@ -325,7 +344,7 @@ export function is8BitDo64HandHintsActive() {
 
 /**
  * Input hint badges for each hand slot.
- * @returns {{ mode: 'keyboard' | 'gamepad', hints: string[] }}
+ * @returns {{ mode: 'keyboard' | 'gamepad', hints: string[], hintLabels?: string[] }}
  */
 export function getHandSlotInputHints() {
 	if (!isGamepadInputHintsActive()) {
@@ -335,6 +354,7 @@ export function getHandSlotInputHints() {
 	const gp = getPrimaryGamepad();
 	const profile = getActiveProfile(gp);
 	const hints = [];
+	const hintLabels = [];
 
 	for (let i = 0; i < 6; i++) {
 		const action = `useSlot${i}`;
@@ -344,12 +364,17 @@ export function getHandSlotInputHints() {
 				EIGHTBITDO_64_SLOT_HINTS[action]
 				?? describe8BitDo64HandSlotBindingHint(binding, i),
 			);
+			hintLabels.push(
+				EIGHTBITDO_64_SLOT_HINT_LABELS[action]
+				?? describe8BitDo64HandSlotBindingHintLabel(binding, i),
+			);
 		} else {
 			hints.push(describeStandardHandSlotBindingHint(binding, i));
+			hintLabels.push(hints[hints.length - 1]);
 		}
 	}
 
-	return { mode: 'gamepad', hints };
+	return { mode: 'gamepad', hints, hintLabels };
 }
 
 /** @deprecated Use getHandSlotInputHints() */

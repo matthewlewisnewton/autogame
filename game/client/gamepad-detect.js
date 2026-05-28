@@ -13,8 +13,16 @@
 /** USB vendor ID for 8BitDo controllers (decimal 11720). */
 export const EIGHTBITDO_VENDOR_ID = 0x2dc8;
 
-/** USB product id for the 8BitDo 64 Bluetooth controller (SDL GameControllerDB 0x1930). */
+/** USB product id for the 8BitDo 64 (SDL GameControllerDB 0x1930). */
 export const EIGHTBITDO_64_PRODUCT_ID = 0x1930;
+
+/** Bluetooth product id for the 8BitDo 64 (browser reports 0x3019). */
+export const EIGHTBITDO_64_BT_PRODUCT_ID = 0x3019;
+
+const EIGHTBITDO_64_PRODUCT_IDS = new Set([
+	EIGHTBITDO_64_PRODUCT_ID,
+	EIGHTBITDO_64_BT_PRODUCT_ID,
+]);
 
 const EIGHTBITDO_NAME_PATTERN = /8[\s-]?bit[\s-]?do/i;
 const EIGHTBITDO_64_NAME_PATTERN = /8[\s-]?bit[\s-]?do\s*64|64\s*(bluetooth\s*)?controller/i;
@@ -81,7 +89,29 @@ export function is8BitDo64Gamepad(gamepad) {
 	if (!gamepad?.id) return false;
 	if (EIGHTBITDO_64_NAME_PATTERN.test(gamepad.id)) return true;
 	const parsed = parseGamepadId(gamepad.id);
-	return parsed?.vendorId === EIGHTBITDO_VENDOR_ID && parsed?.productId === EIGHTBITDO_64_PRODUCT_ID;
+	return parsed?.vendorId === EIGHTBITDO_VENDOR_ID
+		&& parsed?.productId != null
+		&& EIGHTBITDO_64_PRODUCT_IDS.has(parsed.productId);
+}
+
+/**
+ * Bluetooth 8BitDo 64 — C↑/C↓ map to axis 5 instead of discrete buttons 2/3.
+ * @param {Gamepad | null | undefined} gamepad
+ * @returns {boolean}
+ */
+export function is8BitDo64BluetoothGamepad(gamepad) {
+	if (!gamepad?.id) return false;
+	const parsed = parseGamepadId(gamepad.id);
+	if (parsed?.productId === EIGHTBITDO_64_BT_PRODUCT_ID) return true;
+	return /product:\s*3019/i.test(gamepad.id);
+}
+
+/**
+ * @param {Gamepad | null | undefined} gamepad
+ * @returns {number | null}
+ */
+export function get8BitDo64VerticalCAxisIndex(gamepad) {
+	return is8BitDo64BluetoothGamepad(gamepad) ? 5 : null;
 }
 
 /**
