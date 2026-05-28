@@ -1625,10 +1625,14 @@ function renderDeckEditor() {
 	deckErrorEl.style.display = 'none';
 	deckErrorEl.textContent = '';
 
+}
+
+function renderCardEconomy() {
 	if (lobbyCurrencyDisplayEl) {
 		lobbyCurrencyDisplayEl.textContent = formatCurrencyLabel(myCurrency);
 	}
 	renderTradeForm();
+	renderTradeOffer();
 }
 
 function renderTradeOffer() {
@@ -1735,21 +1739,29 @@ function getMyCurrency() {
 }
 
 function setLobbyTab(tab) {
-	activeLobbyTab = tab === 'forge' ? 'forge' : tab === 'shop' ? 'shop' : 'deck';
+	activeLobbyTab = tab === 'forge' ? 'forge'
+		: tab === 'shop' ? 'shop'
+			: tab === 'economy' ? 'economy'
+				: 'deck';
 	const deckEditor = document.getElementById('deck-editor');
 	const photonForge = document.getElementById('photon-forge');
 	const cardShop = document.getElementById('card-shop');
+	const cardEconomy = document.getElementById('card-economy');
 	const deckTabBtn = document.getElementById('lobby-tab-deck');
 	const forgeTabBtn = document.getElementById('lobby-tab-forge');
 	const shopTabBtn = document.getElementById('lobby-tab-shop');
+	const economyTabBtn = document.getElementById('lobby-tab-economy');
 	if (deckEditor) deckEditor.classList.toggle('hidden', activeLobbyTab !== 'deck');
 	if (photonForge) photonForge.classList.toggle('hidden', activeLobbyTab !== 'forge');
 	if (cardShop) cardShop.classList.toggle('hidden', activeLobbyTab !== 'shop');
+	if (cardEconomy) cardEconomy.classList.toggle('hidden', activeLobbyTab !== 'economy');
 	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
 	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
 	if (shopTabBtn) shopTabBtn.classList.toggle('active', activeLobbyTab === 'shop');
+	if (economyTabBtn) economyTabBtn.classList.toggle('active', activeLobbyTab === 'economy');
 	if (activeLobbyTab === 'forge') renderPhotonForge();
 	if (activeLobbyTab === 'shop') renderCardShop();
+	if (activeLobbyTab === 'economy') renderCardEconomy();
 }
 
 function renderCardShop() {
@@ -1886,6 +1898,9 @@ if (document.getElementById('lobby-tab-forge')) {
 }
 if (document.getElementById('lobby-tab-shop')) {
 	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
+}
+if (document.getElementById('lobby-tab-economy')) {
+	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
 }
 if (document.getElementById('forge-upgrade-btn')) {
 	document.getElementById('forge-upgrade-btn').addEventListener('click', () => {

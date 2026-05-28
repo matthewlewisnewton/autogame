@@ -185,7 +185,10 @@ describe('Photon Forge UI', () => {
 		'lobby-tab-deck',
 		'lobby-tab-shop',
 		'lobby-tab-forge',
+		'lobby-tab-economy',
 		'card-shop',
+		'card-economy',
+		'lobby-currency-display',
 		'shop-currency-display',
 		'shop-offer-display',
 		'buy-shop-card-btn',
@@ -223,25 +226,35 @@ describe('Photon Forge UI', () => {
 		}
 	});
 
-	it('switches between deck editor, card shop, and photon forge tabs', async () => {
+	it('switches between deck editor, card shop, photon forge, and card economy tabs', async () => {
 		await import('../main.js');
 
 		window.setLobbyTab('shop');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(false);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('lobby-tab-shop').classList.contains('active')).toBe(true);
 
 		window.setLobbyTab('forge');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('lobby-tab-forge').classList.contains('active')).toBe(true);
+
+		window.setLobbyTab('economy');
+		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('lobby-tab-economy').classList.contains('active')).toBe(true);
 
 		window.setLobbyTab('deck');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(false);
 		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
 	});
 
 	it('renders inventory tiles and disables upgrade when GOLD is insufficient', async () => {
