@@ -14,14 +14,6 @@ export function formatCurrencyPrice(price) {
 	return `${price} ${THEME.currency.short.toLowerCase()}`;
 }
 
-export function formatUpgradeCostEmpty() {
-	return `Cost: — ${THEME.currency.short}`;
-}
-
-export function formatUpgradeCost(cost, currency) {
-	return `Cost: ${cost} ${THEME.currency.short} (you have ${currency})`;
-}
-
 export function formatMoneyEarned(amount) {
 	return `+${amount} ${THEME.currency.short.toLowerCase()} earned`;
 }

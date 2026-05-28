@@ -1228,7 +1228,7 @@ describe('regenMagicStones (game tick)', () => {
 	beforeEach(() => resetState());
 
 	it('regenerates MAGIC_STONES_REGEN_PER_TICK per call', () => {
-		addPlayer('p1', { magicStones: 50 });
+		addPlayer('p1', { magicStones: 30 });
 		const before = gameState.players['p1'].magicStones;
 
 		regenMagicStones();
@@ -1256,7 +1256,7 @@ describe('regenMagicStones (game tick)', () => {
 	});
 
 	it('keeps magicStones at 0 for summon-low-mana debug scenario', () => {
-		addPlayer('p1', { magicStones: 50, debugScenario: 'summon-low-mana' });
+		addPlayer('p1', { magicStones: 30, debugScenario: 'summon-low-mana' });
 
 		regenMagicStones();
 
@@ -1277,7 +1277,7 @@ describe('regenMagicStones (game tick)', () => {
 	});
 
 	it('max magic stones constant is correct', () => {
-		expect(MAX_MAGIC_STONES).toBe(90);
+		expect(MAX_MAGIC_STONES).toBe(49);
 	});
 
 	it('client MAX_MS matches server MAX_MAGIC_STONES via shared constants', async () => {
@@ -1292,7 +1292,7 @@ describe('synergistic card helpers', () => {
 	beforeEach(() => resetState());
 
 	it('addMagicStones caps at MAX_MAGIC_STONES and reports applied gain', () => {
-		addPlayer('p1', { magicStones: 85 });
+		addPlayer('p1', { magicStones: MAX_MAGIC_STONES - 5 });
 		const gained = addMagicStones(gameState.players['p1'], 25);
 
 		expect(gained).toBe(5);
@@ -2600,10 +2600,10 @@ describe('run state', () => {
 		it('populates ownedCards with starting deck card ids at correct frequency counts', () => {
 			const progress = createPlayerProgress();
 			expect(progress.ownedCards).toEqual({
-				iron_sword: 3,
-				flame_blade: 2,
-				battle_familiar: 2,
-				dungeon_drake: 1
+				iron_sword: 4,
+				flame_blade: 3,
+				battle_familiar: 3,
+				dungeon_drake: 2
 			});
 		});
 
@@ -2614,7 +2614,7 @@ describe('run state', () => {
 
 		it('each owned card count matches expected frequency', () => {
 			const progress = createPlayerProgress();
-			const expected = { iron_sword: 3, flame_blade: 2, battle_familiar: 2, dungeon_drake: 1 };
+			const expected = { iron_sword: 4, flame_blade: 3, battle_familiar: 3, dungeon_drake: 2 };
 			for (const [cardId, count] of Object.entries(progress.ownedCards)) {
 				expect(count).toBe(expected[cardId]);
 			}
@@ -2630,7 +2630,6 @@ describe('run state', () => {
 					instanceId: expect.any(String),
 					cardId: expect.any(String),
 					grind: 0,
-					level: 1
 				}));
 				expect(CARD_DEFS[instance.cardId]).toBeDefined();
 			}
@@ -2640,9 +2639,9 @@ describe('run state', () => {
 			const a = createPlayerProgress();
 			const b = createPlayerProgress();
 			a.ownedCards.iron_sword = 99;
-			expect(b.ownedCards.iron_sword).toBe(3);
-			a.inventory[0].level = 99;
-			expect(b.inventory[0].level).toBe(1);
+			expect(b.ownedCards.iron_sword).toBe(4);
+			a.inventory[0].grind = 99;
+			expect(b.inventory[0].grind).toBe(0);
 		});
 	});
 
@@ -2989,7 +2988,7 @@ describe('validateDeck(deck, ownedCards)', () => {
 
 	it('returns invalid when deck is too large', () => {
 		const owned = { iron_sword: 20, flame_blade: 20 };
-		const deck = Array(13).fill('iron_sword');
+		const deck = Array(25).fill('iron_sword');
 		const result = validateDeck(deck, owned);
 		expect(result.valid).toBe(false);
 		expect(result.reason).toContain('at most');
@@ -3011,8 +3010,8 @@ describe('validateDeck(deck, ownedCards)', () => {
 	});
 
 	it('accepts deck at exactly DECK_MAX_SIZE', () => {
-		const owned = { iron_sword: 12 };
-		const deck = Array(12).fill('iron_sword');
+		const owned = { iron_sword: 24 };
+		const deck = Array(24).fill('iron_sword');
 		const result = validateDeck(deck, owned);
 		expect(result).toEqual({ valid: true });
 	});
@@ -3038,14 +3037,14 @@ describe('canAddCardToDeck(cardId, deck, ownedCards)', () => {
 	});
 
 	it('returns false when deck is already at DECK_MAX_SIZE', () => {
-		const owned = { iron_sword: 12, flame_blade: 5 };
-		const deck = Array(12).fill('iron_sword');
+		const owned = { iron_sword: 24, flame_blade: 5 };
+		const deck = Array(24).fill('iron_sword');
 		expect(canAddCardToDeck('flame_blade', deck, owned)).toBe(false);
 	});
 
 	it('returns true when deck is at DECK_MAX_SIZE - 1 and card is available', () => {
-		const owned = { iron_sword: 10, flame_blade: 3 };
-		const deck = Array(11).fill('iron_sword');
+		const owned = { iron_sword: 20, flame_blade: 3 };
+		const deck = Array(23).fill('iron_sword');
 		expect(canAddCardToDeck('flame_blade', deck, owned)).toBe(true);
 	});
 
@@ -3241,8 +3240,8 @@ describe('deck constants', () => {
 		expect(DECK_MIN_SIZE).toBe(4);
 	});
 
-	it('DECK_MAX_SIZE is 12', () => {
-		expect(DECK_MAX_SIZE).toBe(12);
+	it('DECK_MAX_SIZE is 24', () => {
+		expect(DECK_MAX_SIZE).toBe(24);
 	});
 });
 
@@ -3518,7 +3517,7 @@ describe('server hand management', () => {
 			isEcho: true,
 			charges: 1,
 			remainingCharges: 1,
-			echoDamage: 7,
+			echoDamage: 8,
 			magicStoneCost: 0,
 		}));
 	});

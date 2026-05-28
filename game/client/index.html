@@ -11,9 +11,9 @@
   </head>
   <body>
     <div id="app-toolbar" class="hidden">
-      <button id="logout-btn">Logout</button>
-      <button id="settings-btn" type="button" title="Settings">⚙</button>
+      <button id="account-btn" type="button" title="Account">👤</button>
       <button id="mute-btn">🔊</button>
+      <button id="settings-btn" type="button" title="Settings">⚙</button>
     </div>
     <div id="ui">
       <h1>Multiplayer Game</h1>
@@ -81,7 +81,6 @@
         <input id="create-lobby-name" type="text" placeholder="Lobby name (optional)" maxlength="48" />
         <button id="create-lobby-btn" type="button">Open Channel</button>
         <button id="refresh-lobbies-btn" type="button">Refresh</button>
-        <button id="lobby-browser-settings-btn" type="button" class="lobby-settings-btn">Settings</button>
       </div>
       <div id="lobby-browser-error" style="display:none;"></div>
       <ul id="lobby-list"></ul>
@@ -89,7 +88,6 @@
     <div id="lobby" class="hidden">
       <div class="lobby-header">
         <h2>Hunter Guild</h2>
-        <button id="lobby-settings-btn" type="button" class="lobby-settings-btn">Settings</button>
       </div>
       <div id="lobby-player-list-wrapper">
         <h3>Players</h3>
@@ -127,6 +125,11 @@
           <div id="shop-currency-display">Money: 0</div>
           <div id="shop-offer-display" class="shop-empty">Loading offer...</div>
           <button id="buy-shop-card-btn" type="button" disabled>Buy</button>
+          <div id="card-shop-sell-section">
+            <h3>Sell Cards</h3>
+            <div id="shop-sell-list"></div>
+          </div>
+          <div id="shop-error" style="display:none;"></div>
         </div>
       </div>
       <div id="photon-forge" class="hidden">
@@ -138,18 +141,18 @@
           <div id="forge-detail-section">
             <h3 id="forge-selected-name">Select a card</h3>
             <div id="forge-selected-meta"></div>
+            <div id="forge-attune-cost">Attune: — Money</div>
+            <button id="forge-attune-btn" type="button" disabled>Attune</button>
             <table id="forge-stat-preview">
               <thead>
                 <tr>
                   <th>Stat</th>
                   <th>Current</th>
-                  <th>Upgraded</th>
+                  <th>After Attune</th>
                 </tr>
               </thead>
               <tbody id="forge-stat-rows"></tbody>
             </table>
-            <div id="forge-upgrade-cost">Cost: — Money</div>
-            <button id="forge-upgrade-btn" type="button" disabled>Upgrade</button>
             <div id="forge-error" style="display:none;"></div>
           </div>
         </div>
@@ -202,6 +205,23 @@
       </div>
       <button id="return-to-lobby-btn">Return to Guild</button>
     </div>
+    <div id="account-overlay" class="hidden">
+      <div id="account-modal">
+        <button type="button" class="settings-close" id="account-close-btn" aria-label="Close account">&times;</button>
+        <h2>Account</h2>
+        <div class="settings-section">
+          <label class="settings-field" for="account-username-input">
+            Display name
+            <input type="text" id="account-username-input" autocomplete="username" maxlength="32" />
+          </label>
+          <p id="account-error" class="account-error" hidden></p>
+          <button type="button" id="account-save-btn">Save name</button>
+        </div>
+        <div class="settings-section account-actions">
+          <button type="button" id="account-logout-btn" class="account-logout-btn">Log out</button>
+        </div>
+      </div>
+    </div>
     <div id="settings-overlay" class="hidden">
       <div id="settings-modal">
         <button type="button" class="settings-close" id="settings-close-btn" aria-label="Close settings">&times;</button>
@@ -217,6 +237,53 @@
             </select>
           </label>
           <p class="settings-hint">Press Z or gamepad L trigger to lock onto the nearest enemy.</p>
+        </div>
+        <div class="settings-section" id="controller-calibration-section">
+          <h3>Controller Calibration</h3>
+          <p id="gamepad-status" class="gamepad-status" data-connected="false" data-eightbitdo="false">No controller detected</p>
+          <p id="gamepad-device-id" class="settings-hint">Connect a USB or Bluetooth gamepad, then press any button so the browser can see it.</p>
+          <p id="gamepad-activation-hint" class="settings-hint">Press any button on your controller to activate it in the browser.</p>
+          <label class="settings-field" for="gamepad-profile-select">
+            Controller profile
+            <select id="gamepad-profile-select">
+              <option value="auto">Auto-detect</option>
+              <option value="standard">Standard gamepad</option>
+              <option value="8bitdo-64">8BitDo 64 (N64)</option>
+            </select>
+          </label>
+          <p id="gamepad-profile-hint" class="settings-hint">Standard gamepad (auto)</p>
+          <label class="settings-field" for="gamepad-deadzone-slider">
+            Stick deadzone
+            <div class="calibration-slider-row">
+              <input type="range" id="gamepad-deadzone-slider" min="0" max="0.4" step="0.01" value="0.15" />
+              <span id="gamepad-deadzone-value" class="calibration-value">0.15</span>
+            </div>
+          </label>
+          <label class="settings-field" for="gamepad-move-stick-select">
+            Movement stick
+            <select id="gamepad-move-stick-select">
+              <option value="left">Left stick</option>
+              <option value="right">Right stick</option>
+            </select>
+          </label>
+          <div class="calibration-live">
+            <div class="stick-panel">
+              <div class="stick-label">Left stick</div>
+              <div class="stick-visual" id="calibration-left-stick">
+                <div class="stick-dot" id="calibration-left-dot"></div>
+              </div>
+              <div class="stick-values" id="calibration-left-values">0.00, 0.00</div>
+            </div>
+            <div class="stick-panel" id="calibration-secondary-stick-panel">
+              <div class="stick-label" id="calibration-secondary-stick-label">Right stick</div>
+              <div class="stick-visual" id="calibration-right-stick">
+                <div class="stick-dot" id="calibration-right-dot"></div>
+              </div>
+              <div class="stick-values" id="calibration-right-values">0.00, 0.00</div>
+            </div>
+          </div>
+          <p id="calibration-trigger-axes" class="settings-hint calibration-trigger-axes" hidden></p>
+          <div id="calibration-button-grid" class="calibration-button-grid" aria-label="Controller button test"></div>
         </div>
       </div>
     </div>

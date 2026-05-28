@@ -273,9 +273,9 @@ describe('initHand()', () => {
 		expect(hand.filter(Boolean)).toHaveLength(4);
 	});
 
-	it('leaves the remaining 4 cards in the deck', () => {
+	it('leaves the remaining 8 cards in the deck', () => {
 		initHand();
-		expect(deck).toHaveLength(4);
+		expect(deck).toHaveLength(8);
 	});
 
 	it('each filled hand card has remainingCharges equal to its def max', () => {
@@ -285,9 +285,9 @@ describe('initHand()', () => {
 		}
 	});
 
-	it('filled hand + deck together account for all 8 starting cards', () => {
+	it('filled hand + deck together account for all 12 starting cards', () => {
 		initHand();
-		expect(hand.filter(Boolean).length + deck.length).toBe(8);
+		expect(hand.filter(Boolean).length + deck.length).toBe(12);
 	});
 
 	it('resets slotCooldowns to all false', () => {
@@ -344,21 +344,21 @@ describe('initHandFromDeck()', () => {
 		initHandFromDeck(null, null);
 
 		expect(hand.filter(Boolean)).toHaveLength(4);
-		expect(hand.filter(Boolean).length + deck.length).toBe(8);
+		expect(hand.filter(Boolean).length + deck.length).toBe(12);
 	});
 
 	it('falls back to createStartingDeck() when serverDeck is undefined', () => {
 		initHandFromDeck(undefined, null);
 
 		expect(hand.filter(Boolean)).toHaveLength(4);
-		expect(hand.filter(Boolean).length + deck.length).toBe(8);
+		expect(hand.filter(Boolean).length + deck.length).toBe(12);
 	});
 
 	it('falls back to createStartingDeck() when serverDeck is an empty array', () => {
 		initHandFromDeck([], null);
 
 		expect(hand.filter(Boolean)).toHaveLength(4);
-		expect(hand.filter(Boolean).length + deck.length).toBe(8);
+		expect(hand.filter(Boolean).length + deck.length).toBe(12);
 	});
 
 	it('resets slotCooldowns to all false', () => {

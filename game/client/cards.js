@@ -25,7 +25,7 @@ export const CARD_DEFS = {
     type: 'spell',
     charges: 1,
     magicStoneCost: 50,
-    damage: 40,
+    damage: 44,
   },
   dungeon_drake: {
     id: 'dungeon_drake',
@@ -56,7 +56,7 @@ export const CARD_DEFS = {
     type: 'spell',
     charges: 1,
     magicStoneCost: 65,
-    damage: 60,
+    damage: 66,
     isEvolved: true,
     specialEffect: 'astral_shield',
     effect: 'astral_guardian',
@@ -412,6 +412,48 @@ export function getStatMultiplier(grind) {
   return 1.0 + (level * GRIND_STAT_SCALE);
 }
 
+export function scaledGrindStat(baseValue, grind) {
+  if (!Number.isFinite(baseValue)) return baseValue;
+  return Math.round(baseValue * getStatMultiplier(grind));
+}
+
+export function getForgeAttunePreview(cardDef, grind) {
+  if (!cardDef) return [];
+
+  const currentGrind = Number.isFinite(grind) ? Math.max(0, Math.floor(grind)) : 0;
+  const atMaxGrind = currentGrind >= EVOLUTION_GRIND_REQUIRED;
+  const nextGrind = atMaxGrind ? currentGrind : currentGrind + 1;
+  const rows = [{
+    label: 'Attune',
+    current: `+${currentGrind}`,
+    next: atMaxGrind ? `+${EVOLUTION_GRIND_REQUIRED}` : `+${nextGrind}`,
+  }];
+
+  if (cardDef.damage != null) {
+    rows.push({
+      label: 'Damage',
+      current: String(scaledGrindStat(cardDef.damage, currentGrind)),
+      next: String(scaledGrindStat(cardDef.damage, nextGrind)),
+    });
+  } else if (cardDef.type === 'weapon') {
+    rows.push({
+      label: 'Power',
+      current: `${Math.round(getStatMultiplier(currentGrind) * 100)}%`,
+      next: `${Math.round(getStatMultiplier(nextGrind) * 100)}%`,
+    });
+  }
+
+  if (cardDef.minionHp != null) {
+    rows.push({
+      label: 'Minion HP',
+      current: String(scaledGrindStat(cardDef.minionHp, currentGrind)),
+      next: String(scaledGrindStat(cardDef.minionHp, nextGrind)),
+    });
+  }
+
+  return rows;
+}
+
 // ── Starting Deck ──
 // Returns an array of card id strings. First 4 become the initial hand;
 // the rest are available for draws during play.
@@ -423,8 +465,12 @@ export function createStartingDeck() {
     'dungeon_drake',
     'iron_sword',
     'iron_sword',
+    'iron_sword',
+    'battle_familiar',
     'battle_familiar',
     'flame_blade',
+    'flame_blade',
+    'dungeon_drake',
   ];
 }
 

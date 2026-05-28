@@ -149,7 +149,7 @@ describe('new card combat helpers', () => {
 		expect(result.hits.some(h => h.enemyId === 'out-of-range')).toBe(false);
 		expect(CARD_DEFS.arcane_bolt).toMatchObject({
 			type: 'weapon',
-			damage: 14,
+			damage: 15,
 			charges: 4,
 			attackRange: 10,
 			effect: 'projectile',
@@ -193,7 +193,7 @@ describe('new card combat helpers', () => {
 		expect(returnHits.length).toBe(3);
 		expect(returnHits.every((h) => h.enemyId === 'mid')).toBe(true);
 		expect(CARD_DEFS.infinite_disk).toMatchObject({
-			damage: 18,
+			damage: 20,
 			charges: 4,
 			effect: 'triple_returning_projectile',
 			returnPasses: 3,
@@ -334,9 +334,9 @@ describe('new card combat helpers', () => {
 		const result = collectRadialHits(0, 0, def.shockwaveRadius, def.shockwaveDamage);
 		expect(result.hits).toHaveLength(1);
 		expect(def).toMatchObject({
-			damage: 21,
+			damage: 23,
 			shockwaveEvery: 2,
-			shockwaveDamage: 30,
+			shockwaveDamage: 33,
 			isEvolved: true,
 			specialEffect: 'shockwave',
 		});
@@ -370,11 +370,11 @@ describe('new card combat helpers', () => {
 			attackerId: 'p1',
 		});
 		addMagicStones(gameState.players.p1, result.magicStonesGained);
-		expect(def.damage).toBe(38);
+		expect(def.damage).toBe(42);
 		expect(def.magicStoneOnHit).toBe(12);
 		expect(result.magicStonesGained).toBe(24);
-		expect(result.hpHealed).toBe(8);
-		expect(gameState.players.p1.hp).toBe(58);
+		expect(result.hpHealed).toBe(24);
+		expect(gameState.players.p1.hp).toBe(74);
 	});
 
 	it("Wyrmflare leaves a ticking cone area effect", () => {
@@ -472,7 +472,7 @@ describe('new card combat helpers', () => {
 			z: 0,
 			hp: 45,
 			attackRange: 7,
-			attackDamage: 12,
+			attackDamage: 13,
 			ttl: 30,
 		}];
 		gameState.run = { status: 'playing' };
@@ -523,7 +523,7 @@ describe('new card combat helpers', () => {
 			z: 0,
 			hp: 68,
 			attackRange: 11,
-			attackDamage: 18,
+			attackDamage: 20,
 			chainRadius: 5,
 			maxChainTargets: 2,
 			ttl: 30,

@@ -8,7 +8,7 @@ let originalGetGamepads = null;
 
 /**
  * @param {number} index
- * @param {{ buttons?: Array<{ pressed?: boolean, value?: number }>, axes?: number[] }} spec
+ * @param {{ buttons?: Array<{ pressed?: boolean, value?: number }>, axes?: number[], id?: string }} spec
  */
 export function mockGamepad(index, spec = {}) {
 	const buttons = (spec.buttons || []).map((b) => ({
@@ -19,7 +19,7 @@ export function mockGamepad(index, spec = {}) {
 	mockPads.set(index, {
 		index,
 		connected: true,
-		id: `Mock Gamepad ${index}`,
+		id: spec.id ?? `Mock Gamepad ${index}`,
 		mapping: 'standard',
 		buttons,
 		axes,

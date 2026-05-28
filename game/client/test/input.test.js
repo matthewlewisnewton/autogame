@@ -6,16 +6,23 @@ import {
 	resetInputState,
 	getActionLabels,
 	getDefaultGamepadButtonIndex,
+	getHandSlotInputHints,
+	getHandSlotGamepadHints,
+	is8BitDo64HandHintsActive,
 	ACTIONS
 } from '../input.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
-import { patchSettings } from '../settings.js';
+import { patchSettings, getDefaultSettings, getSettings } from '../settings.js';
 
 describe('input.js', () => {
 	beforeEach(() => {
 		resetInputState();
 		installGamepadMock();
 		clearMockGamepads();
+		patchSettings(getDefaultSettings());
+		const settings = getSettings();
+		settings.gamepad.bindings = {};
+		settings.gamepad.profile = 'auto';
 	});
 
 	afterEach(() => {
@@ -182,5 +189,66 @@ describe('input.js', () => {
 		});
 		expect(getDefaultGamepadButtonIndex(ACTIONS.useSlot4)).toBe(4);
 		expect(getDefaultGamepadButtonIndex(ACTIONS.useSlot5)).toBe(5);
+	});
+
+	it('8BitDo 64 profile maps C-left to hand slot 5 via discrete button', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onUseSlot = vi.fn();
+		initInput({
+			onUseSlot,
+			canUseGameActions: () => true,
+		});
+
+		const buttons = Array(14).fill({ pressed: false, value: 0 });
+		buttons[4] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			buttons,
+			axes: [0, 0, 0, 0],
+		});
+		pollInput();
+		expect(onUseSlot).toHaveBeenCalledWith(4);
+	});
+
+	it('exposes 8BitDo 64 hand slot button hints when that profile is selected', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		expect(is8BitDo64HandHintsActive()).toBe(true);
+		expect(getHandSlotInputHints()).toEqual({
+			mode: 'gamepad',
+			hints: ['A', 'B', 'C↑', 'C↓', 'C←', 'C→'],
+		});
+		expect(getHandSlotGamepadHints()).toEqual(['A', 'B', 'C↑', 'C↓', 'C←', 'C→']);
+	});
+
+	it('exposes standard gamepad face button hints when that profile is selected', () => {
+		patchSettings({ gamepad: { profile: 'standard' } });
+		expect(getHandSlotInputHints()).toEqual({
+			mode: 'gamepad',
+			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+		});
+	});
+
+	it('uses keyboard number hints when auto profile has no connected gamepad', () => {
+		patchSettings({ gamepad: { profile: 'auto' } });
+		expect(getHandSlotInputHints()).toEqual({
+			mode: 'keyboard',
+			hints: ['1', '2', '3', '4', '5', '6'],
+		});
+		expect(getHandSlotGamepadHints()).toBeNull();
+	});
+
+	it('uses gamepad hints in auto profile when a controller is connected', () => {
+		patchSettings({ gamepad: { profile: 'auto' } });
+		mockGamepad(0, { id: 'Xbox 360 Controller (XInput)', buttons: [], axes: [0, 0, 0, 0] });
+		expect(getHandSlotInputHints()).toEqual({
+			mode: 'gamepad',
+			hints: ['A', 'B', 'X', 'Y', 'LB', 'RB'],
+		});
+	});
+
+	it('hides legacy gamepad-only hints for the standard profile', () => {
+		patchSettings({ gamepad: { profile: 'standard' } });
+		expect(is8BitDo64HandHintsActive()).toBe(false);
+		expect(getHandSlotGamepadHints()).toBeNull();
 	});
 });

@@ -5,10 +5,13 @@ import {
 	getDirectionToTarget,
 	cameraYawBehindFacing,
 	cameraYawBehindTarget,
+	cameraYawFromToTarget,
 	targetRelativeDirection,
 	handleLockOnPress,
 	updateLockOn,
 	shortestAngleDelta,
+	unwrapAngle,
+	normalizeAngle,
 	isLockOnActive,
 	clearLockOn,
 	getLockedEnemyId,
@@ -147,11 +150,124 @@ describe('shortestAngleDelta', () => {
 	});
 });
 
+describe('unwrapAngle', () => {
+	it('keeps continuity when raw angle jumps across pi', () => {
+		const first = Math.PI - 0.05;
+		const second = -Math.PI + 0.05;
+		const unwrapped = unwrapAngle(first, second);
+		expect(unwrapped).toBeCloseTo(first + 0.1, 5);
+	});
+});
+
+describe('updateLockOn camera tracking', () => {
+	beforeEach(() => clearLockOn());
+
+	it('does not spin when bearing crosses the atan2 branch cut', () => {
+		handleLockOnPress(
+			[{ id: 'a', x: -3, z: 0.001, hp: 50 }],
+			0,
+			0,
+			'unlock',
+			0,
+		);
+		let yaw = 0;
+		const first = updateLockOn(
+			[{ id: 'a', x: -3, z: 0.001, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			yaw,
+		);
+		yaw = first.cameraYaw;
+		for (let i = 0; i < 30; i++) {
+			const z = i < 15 ? 0.001 : -0.001;
+			const state = updateLockOn(
+				[{ id: 'a', x: -3, z, hp: 50 }],
+				0,
+				0,
+				1 / 60,
+				yaw,
+			);
+			expect(state.locked).toBe(true);
+			const step = Math.abs(shortestAngleDelta(yaw, state.cameraYaw));
+			expect(step).toBeLessThan(0.25);
+			yaw = state.cameraYaw;
+		}
+	});
+
+	it('holds stable bearing when hugging the target', () => {
+		handleLockOnPress(
+			[{ id: 'a', x: 3, z: 0, hp: 50 }],
+			0,
+			0,
+			'unlock',
+			0,
+		);
+		updateLockOn(
+			[{ id: 'a', x: 3, z: 0, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			0,
+		);
+		const close = updateLockOn(
+			[{ id: 'a', x: 0.2, z: 0.05, hp: 50 }],
+			0,
+			0,
+			1 / 60,
+			0,
+		);
+		expect(close.locked).toBe(true);
+		expect(Math.hypot(close.toTarget.x, close.toTarget.z)).toBeCloseTo(1, 5);
+		expect(Math.hypot(
+			close.toTarget.x - Math.cos(0),
+			close.toTarget.z - Math.sin(0),
+		)).toBeLessThan(0.01);
+	});
+
+	it('limits per-frame yaw change during a tight orbit', () => {
+		handleLockOnPress(
+			[{ id: 'a', x: 2, z: 0, hp: 50 }],
+			0,
+			0,
+			'unlock',
+			0,
+		);
+		let px = 2;
+		let pz = 0;
+		let yaw = 0;
+		const first = updateLockOn(
+			[{ id: 'a', x: 0, z: 0, hp: 50 }],
+			2,
+			0,
+			1 / 60,
+			yaw,
+		);
+		yaw = first.cameraYaw;
+		let maxStep = 0;
+		for (let i = 1; i < 120; i++) {
+			const angle = (i / 120) * Math.PI * 2;
+			px = Math.cos(angle) * 1.2;
+			pz = Math.sin(angle) * 1.2;
+			const state = updateLockOn(
+				[{ id: 'a', x: 0, z: 0, hp: 50 }],
+				px,
+				pz,
+				1 / 60,
+				yaw,
+			);
+			maxStep = Math.max(maxStep, Math.abs(shortestAngleDelta(yaw, state.cameraYaw)));
+			yaw = state.cameraYaw;
+		}
+		expect(maxStep).toBeLessThan(0.2);
+	});
+});
+
 describe('cameraYawBehindTarget', () => {
 	it('aligns player and camera toward the enemy', () => {
 		const aim = cameraYawBehindTarget(0, 0, 0, 5);
 		expect(aim.playerRotation).toBeCloseTo(Math.atan2(1, 0), 5);
-		expect(aim.cameraYaw).toBeCloseTo(cameraYawBehindFacing(aim.playerRotation), 5);
+		expect(aim.cameraYaw).toBeCloseTo(cameraYawFromToTarget(aim.toTarget), 5);
 	});
 });
 

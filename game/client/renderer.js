@@ -75,10 +75,11 @@ import {
 	clearLockOn,
 	handleLockOnPress,
 	updateLockOn,
-	targetRelativeDirection,
 	getDirectionToTarget,
+	resetLockOnCameraTracking,
+	normalizeAngle,
 } from './lockOn.js';
-import { getLockOnRepeatAction } from './settings.js';
+import { getLockOnRepeatAction, getGamepadConfig } from './settings.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -225,8 +226,17 @@ function getKeyboardMovement() {
 	return { x: inputX / mag, z: inputZ / mag };
 }
 
+function getGamepadRuntimeOptions() {
+	const gpCfg = getGamepadConfig();
+	return {
+		deadzone: typeof gpCfg.deadzone === 'number' ? gpCfg.deadzone : undefined,
+		moveStick: gpCfg.moveStick === 'right' ? 'right' : 'left',
+	};
+}
+
 function getMovementInput() {
-	return mergeMovementVectors(getKeyboardMovement(), pollGamepadMovement());
+	const { deadzone, moveStick } = getGamepadRuntimeOptions();
+	return mergeMovementVectors(getKeyboardMovement(), pollGamepadMovement(deadzone, moveStick));
 }
 
 function getCameraForwardDirection() {
@@ -240,22 +250,25 @@ function applyLockOnPress() {
 
 	const result = handleLockOnPress(
 		gs.enemies,
-		myX,
-		myZ,
+		simX,
+		simZ,
 		getLockOnRepeatAction(),
 		playerRotation,
 	);
 
-	if (result.cameraYaw != null) {
-		cameraYaw = result.cameraYaw;
-	}
-
 	if (result.action === 'locked' && result.enemy) {
-		lockOnToTarget = getDirectionToTarget(myX, myZ, result.enemy);
+		resetLockOnCameraTracking();
+		lockOnToTarget = getDirectionToTarget(simX, simZ, result.enemy);
 		playerRotation = Math.atan2(lockOnToTarget.z, lockOnToTarget.x);
 		lastEmittedRotation = playerRotation;
+		if (result.cameraYaw != null) {
+			cameraYaw = normalizeAngle(result.cameraYaw);
+		}
 	} else {
 		lockOnToTarget = null;
+		if (result.cameraYaw != null) {
+			cameraYaw = normalizeAngle(result.cameraYaw);
+		}
 	}
 }
 
@@ -276,7 +289,9 @@ function updatePlayerFacing() {
 
 function syncFacingToServer() {
 	if (!socketRef || !myIdRef) return;
-	if (getMovementInput() && !isLockOnActive()) {
+	// While moving, rotation is included in movement packets. Rotation-only
+	// packets would zero inputDx/inputDz on the server and fight prediction.
+	if (getMovementInput()) {
 		lastEmittedRotation = playerRotation;
 		return;
 	}
@@ -294,8 +309,12 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
 	const targetY = playerY + CAMERA_HEIGHT;
 	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
-	const target = new THREE.Vector3(targetX, targetY, targetZ);
-	camera.position.lerp(target, 5.0 * delta);
+	if (isLockOnActive()) {
+		camera.position.set(targetX, targetY, targetZ);
+	} else {
+		const target = new THREE.Vector3(targetX, targetY, targetZ);
+		camera.position.lerp(target, 5.0 * delta);
+	}
 	camera.lookAt(playerX, playerY, playerZ);
 }
 
@@ -428,7 +447,8 @@ export function setPlayerPosition(x, z) {
  * @returns {boolean}
  */
 export function isPlayerMoving() {
-	return keys.w || keys.a || keys.s || keys.d || isGamepadMoving();
+	const { deadzone, moveStick } = getGamepadRuntimeOptions();
+	return keys.w || keys.a || keys.s || keys.d || isGamepadMoving(deadzone, moveStick);
 }
 
 /**
@@ -791,8 +811,8 @@ export function updateMyPlayer(delta) {
 
 	const lockState = updateLockOn(
 		gameStateRef?.enemies,
-		myX,
-		myZ,
+		simX,
+		simZ,
 		delta,
 		cameraYaw,
 	);
@@ -803,7 +823,7 @@ export function updateMyPlayer(delta) {
 		lockOnToTarget = lockState.toTarget;
 	} else {
 		lockOnToTarget = null;
-		cameraYaw += pollGamepadLook(delta);
+		cameraYaw += pollGamepadLook(delta, getGamepadRuntimeOptions().deadzone);
 	}
 
 	const movement = getMovementInput();
@@ -811,18 +831,11 @@ export function updateMyPlayer(delta) {
 	if (movement) {
 		moveAccumulator += delta;
 		moveEmitAccumulator += delta;
-		let dirX;
-		let dirZ;
-		if (lockState.locked && lockOnToTarget) {
-			const dir = targetRelativeDirection(movement.x, movement.z, lockOnToTarget);
-			const mag = Math.hypot(dir.x, dir.z);
-			dirX = mag > 0 ? dir.x / mag : 0;
-			dirZ = mag > 0 ? dir.z / mag : 0;
-		} else {
-			const dir = cameraRelativeDirection(movement.x, movement.z);
-			dirX = dir.x;
-			dirZ = dir.z;
-		}
+		// Camera-relative movement even while locked — stick/keys match the view.
+		// Character facing and attacks still track the locked target separately.
+		const dir = cameraRelativeDirection(movement.x, movement.z);
+		const dirX = dir.x;
+		const dirZ = dir.z;
 		const moveRotation = lockState.locked
 			? playerRotation
 			: Math.atan2(dirZ, dirX);
@@ -842,6 +855,7 @@ export function updateMyPlayer(delta) {
 		while (moveEmitAccumulator >= TICK_DT && socketRef) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
+			lastEmittedRotation = moveRotation;
 			socketRef.emit('move', {
 				dx: dirX,
 				dz: dirZ,
