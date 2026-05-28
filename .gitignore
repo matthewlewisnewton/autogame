@@ -62,6 +62,9 @@ tickets/**/.passed
 game/docs/walkthroughs/**/*.log
 game/docs/walkthroughs/**/*.png
 game/docs/walkthroughs/**/*-results.json
+# Legacy Playwright output dirs (superseded by walkthroughs/ above)
+game/docs/creature-burndown-verification/
+game/docs/p0-verification/
 game/client/scripts/*-results.json
 
 # Python build artifacts. egg-info lands at repo root (not harness/) because

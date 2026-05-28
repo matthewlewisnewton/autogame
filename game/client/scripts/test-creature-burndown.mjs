@@ -14,7 +14,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'creature-burndown-verification');
+const OUT_DIR = path.join(__dirname, '..', '..', 'docs', 'walkthroughs', 'creature-burndown');
 
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3000';
