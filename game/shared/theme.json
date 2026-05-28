@@ -2,8 +2,8 @@
   "gameTitle": "Void Grimoire",
   "tagline": "Arcane contracts. Derelict sectors. Photon steel.",
   "currency": {
-    "short": "Meseta",
-    "label": "Meseta"
+    "short": "Money",
+    "label": "Money"
   },
   "resource": {
     "short": "MS",
@@ -42,8 +42,8 @@
     "sortieComplete": "Sortie Complete",
     "signalLost": "Signal Lost",
     "hostilesPurged": "Hostiles purged",
-    "currencyCollected": "Meseta collected",
-    "mesetaEarned": "Meseta earned",
+    "currencyCollected": "Money collected",
+    "moneyEarned": "Money earned",
     "resumeSortie": "Resume sortie",
     "unknownSector": "unknown sector",
     "awaitingExtract": "Awaiting squad extraction at conduit…",

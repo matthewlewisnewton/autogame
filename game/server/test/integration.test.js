@@ -3239,7 +3239,7 @@ describe('Card upgrade handler', () => {
 		socket.emit('upgradeCard', { instanceId: instance.instanceId });
 		const error = await errorPromise;
 
-		expect(error.reason).toContain('Insufficient Meseta');
+		expect(error.reason).toContain('Insufficient Money');
 		expect(instance.level).toBe(1);
 	});
 });
@@ -3282,7 +3282,7 @@ describe('Card grinding handler', () => {
 		socket.emit('grindCard', { instanceId: instance.instanceId });
 		const error = await errorPromise;
 
-		expect(error.reason).toContain('Not enough meseta');
+		expect(error.reason).toContain('Not enough money');
 		expect(instance.grind).toBe(0);
 	});
 

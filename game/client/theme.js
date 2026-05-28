@@ -22,7 +22,7 @@ export function formatUpgradeCost(cost, currency) {
 	return `Cost: ${cost} ${THEME.currency.short} (you have ${currency})`;
 }
 
-export function formatMesetaEarned(amount) {
+export function formatMoneyEarned(amount) {
 	return `+${amount} ${THEME.currency.short.toLowerCase()} earned`;
 }
 
