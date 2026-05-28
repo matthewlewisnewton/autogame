@@ -67,6 +67,7 @@ import {
 	isGamepadMoving,
 	mergeMovementVectors,
 } from './gamepad.js';
+import { pollInput } from './input.js';
 import { playSound } from './audio.js';
 import {
 	isLockOnActive,
@@ -2144,6 +2145,7 @@ export function animate(timestamp) {
 	const delta = clampDelta(clock.getDelta());
 	updateMyPlayer(delta);
 
+	pollInput();
 	const gamepadActions = pollGamepadButtons();
 	if (gamepadInputHandler) {
 		gamepadInputHandler(gamepadActions);

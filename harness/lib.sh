@@ -132,28 +132,48 @@ emit_progress_event() {  # emit_progress_event <type> [payload-json]
 # --- Logging ---
 log() { echo "[$(date '+%F %T')] $*"; }
 
+# --- Portable helpers (Linux + macOS) ---
+file_mtime() {  # file_mtime <path> — epoch seconds, 0 on failure
+  local path="$1"
+  local ts
+  ts="$(stat -c %Y "$path" 2>/dev/null)" && { printf '%s\n' "$ts"; return 0; }
+  ts="$(stat -f %m "$path" 2>/dev/null)" && { printf '%s\n' "$ts"; return 0; }
+  printf '0\n'
+}
+
 # --- Game process control ---
 GAME_PIDS=()
 # port_in_use <port> — returns 0 if any TCP socket (LISTEN, TIME-WAIT, etc.)
-# occupies the port.  Uses `ss` which sees kernel-held sockets that `fuser`
-# misses after a process is killed.
+# occupies the port.
 port_in_use() {  # port_in_use <port>
-  ss -tlnp "sport = :$1" 2>/dev/null | grep -qv '^State'
+  if command -v ss >/dev/null 2>&1 && [ "$(uname -s)" = "Linux" ]; then
+    ss -tlnp "sport = :$1" 2>/dev/null | grep -qv '^State'
+    return
+  fi
+  lsof -nP -iTCP:"$1" -sTCP:LISTEN >/dev/null 2>&1
 }
 
 # pids_on_port <port> — prints unique PIDs listening on the port (one per line).
 pids_on_port() {  # pids_on_port <port>
-  ss -tlnp "sport = :$1" 2>/dev/null \
-    | grep -oE 'pid=[0-9]+' \
-    | sed 's/pid=//' \
-    | sort -u
+  local port="$1" pid
+  if command -v ss >/dev/null 2>&1 && [ "$(uname -s)" = "Linux" ]; then
+    ss -tlnp "sport = :$port" 2>/dev/null \
+      | grep -oE 'pid=[0-9]+' \
+      | sed 's/pid=//' \
+      | sort -u
+    return
+  fi
+  lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null | sort -u
 }
 
 # pid_cmdline <pid> — prints the process command line (empty on failure).
 pid_cmdline() {  # pid_cmdline <pid>
   local pid="$1"
-  [ -r "/proc/$pid/cmdline" ] || return 1
-  tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | sed 's/ $//'
+  if [ -r "/proc/$pid/cmdline" ]; then
+    tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null | sed 's/ $//'
+    return 0
+  fi
+  ps -p "$pid" -o command= 2>/dev/null | sed 's/^ *//'
 }
 
 # cmdline_is_harness_game <cmdline> <port> — true when cmdline matches a
@@ -993,10 +1013,6 @@ run_qwen_vision() {  # run_qwen_vision <prompt> <outfile> <artifacts-dir>
     a+=(--openai-logging --openai-logging-dir "$artifacts_dir/qwen-openai-logs")
   fi
   _run_cli qwen-vision "$out" "$QWEN_VISION_TIMEOUT" "$prompt" "${a[@]}"
-}
-run_gemini() {  # run_gemini <prompt> <outfile>
-  local a=(gemini -y --skip-trust); [ -n "$GEMINI_MODEL" ] && a+=(-m "$GEMINI_MODEL"); a+=(-p "$1")
-  _run_cli gemini "$2" "$GEMINI_TIMEOUT" "$1" "${a[@]}"
 }
 run_agent() {  # run_agent <prompt> <outfile> — cursor-agent, QA fallback
   run_agent_model "${AGENT_MODEL:-composer-2.5-fast}" "$1" "$2"

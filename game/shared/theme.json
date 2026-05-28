@@ -12,13 +12,15 @@
   },
   "cardTypes": {
     "weapon": "Technique",
-    "summon": "Invocation",
-    "monster": "Bound Form"
+    "spell": "Invocation",
+    "creature": "Bound Form",
+    "enchantment": "Arcana"
   },
   "cardTypeIcons": {
     "weapon": "⟡",
-    "summon": "◈",
-    "monster": "⬢"
+    "spell": "✦",
+    "creature": "🐉",
+    "enchantment": "✨"
   },
   "lobby": {
     "registryTitle": "Guild Registry",

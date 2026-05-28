@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(37);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(38);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -345,7 +345,7 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('resonance_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(15);
+		expect(weaponCardIds.size).toBe(16);
 	});
 
 	it('spellCardIds contains base, evolved, and synergistic spell card IDs', () => {

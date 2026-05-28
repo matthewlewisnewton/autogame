@@ -68,7 +68,7 @@ describe('new card pack definitions', () => {
 	];
 
 	it('defines all eleven new cards with expected types', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(37);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(38);
 		for (const cardId of newCardIds) {
 			expect(CARD_DEFS[cardId]).toBeDefined();
 		}

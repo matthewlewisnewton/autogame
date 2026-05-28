@@ -1,11 +1,5 @@
 import { GAMEPAD_DEADZONE, GAMEPAD_LOOK_SENSITIVITY, LOCK_ON_GAMEPAD_BUTTON } from './config.js';
 
-/** Face buttons A/B/X/Y → hand slots 0–3 */
-const CARD_BUTTONS = [0, 1, 2, 3];
-
-/** Select / Back → deck viewer toggle */
-const DECK_TOGGLE_BUTTON = 8;
-
 let prevButtons = [];
 let listenersAdded = false;
 
@@ -114,28 +108,19 @@ export function pollGamepadLook(delta, deadzone = GAMEPAD_DEADZONE) {
 }
 
 /**
- * Poll face-button presses (edge-triggered), deck-toggle, and lock-on.
- * @returns {{ slots: number[], toggleDeck: boolean, lockOn: boolean }}
+ * Poll lock-on button presses (edge-triggered). Card slots and deck toggle
+ * are handled by input.js pollInput() with remappable bindings.
+ * @returns {{ lockOn: boolean }}
  */
 export function pollGamepadButtons() {
 	const pad = getActiveGamepad();
-	const result = { slots: [], toggleDeck: false, lockOn: false };
+	const result = { lockOn: false };
 	if (!pad) {
 		prevButtons = [];
 		return result;
 	}
 
 	const buttons = pad.buttons;
-	for (let i = 0; i < CARD_BUTTONS.length; i++) {
-		const idx = CARD_BUTTONS[i];
-		const pressed = buttons[idx]?.pressed ?? false;
-		const wasPressed = prevButtons[idx] ?? false;
-		if (pressed && !wasPressed) result.slots.push(i);
-	}
-
-	const togglePressed = buttons[DECK_TOGGLE_BUTTON]?.pressed ?? false;
-	const toggleWas = prevButtons[DECK_TOGGLE_BUTTON] ?? false;
-	if (togglePressed && !toggleWas) result.toggleDeck = true;
 
 	const lockPressed = buttons[LOCK_ON_GAMEPAD_BUTTON]?.pressed ?? false;
 	const lockWas = prevButtons[LOCK_ON_GAMEPAD_BUTTON] ?? false;

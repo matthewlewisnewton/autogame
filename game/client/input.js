@@ -1,6 +1,12 @@
 // Unified keyboard + gamepad input with remappable gamepad bindings.
+//
+// Gamepad hand palettes (keyboard uses direct keys 1–6 only, no modifier layer):
+//   Primary:    face buttons / bumpers → slots 1–6 (current max hand)
+//   Secondary:  hold R trigger (RT), then face buttons → slots 7–8 when hand size grows
+//   Lock-on:    L trigger (LT) — handled in gamepad.js, not here
 
 import { getGamepadConfig } from './settings.js';
+import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
 
 export const ACTIONS = {
 	moveUp: 'moveUp',
@@ -11,6 +17,8 @@ export const ACTIONS = {
 	useSlot1: 'useSlot1',
 	useSlot2: 'useSlot2',
 	useSlot3: 'useSlot3',
+	useSlot4: 'useSlot4',
+	useSlot5: 'useSlot5',
 	toggleDeckViewer: 'toggleDeckViewer'
 };
 
@@ -23,6 +31,8 @@ const DEFAULT_KEYBOARD = {
 	useSlot1: ['2'],
 	useSlot2: ['3'],
 	useSlot3: ['4'],
+	useSlot4: ['5'],
+	useSlot5: ['6'],
 	toggleDeckViewer: ['v']
 };
 
@@ -31,6 +41,8 @@ const DEFAULT_GAMEPAD_BUTTONS = {
 	useSlot1: 1,
 	useSlot2: 2,
 	useSlot3: 3,
+	useSlot4: 4,
+	useSlot5: 5,
 	toggleDeckViewer: 8
 };
 
@@ -91,14 +103,26 @@ function onKeyUp(e) {
 	}
 }
 
+function isHandModifierHeld(gp) {
+	const cfg = getGamepadConfig();
+	const index = Number.isInteger(cfg.modifierButton) ? cfg.modifierButton : HAND_MODIFIER_GAMEPAD_BUTTON;
+	return isButtonPressed(gp, index);
+}
+
+function bindingMatchesModifier(binding, modifierHeld) {
+	if (!binding || binding.type !== 'button') return false;
+	const wantsModifier = binding.modifier === true;
+	return wantsModifier ? modifierHeld : !modifierHeld;
+}
+
 function getBindingButtonIndex(action) {
 	const cfg = getGamepadConfig();
 	const custom = cfg.bindings && cfg.bindings[action];
 	if (custom && custom.type === 'button' && typeof custom.index === 'number') {
-		return custom.index;
+		return custom;
 	}
 	if (DEFAULT_GAMEPAD_BUTTONS[action] !== undefined) {
-		return DEFAULT_GAMEPAD_BUTTONS[action];
+		return { type: 'button', index: DEFAULT_GAMEPAD_BUTTONS[action], modifier: false };
 	}
 	return null;
 }
@@ -178,10 +202,12 @@ export function pollInput() {
 		prevGamepadButtons.set(padKey, {});
 	}
 	const prev = prevGamepadButtons.get(padKey);
+	const modifierHeld = isHandModifierHeld(gp);
 
 	for (const action of Object.keys(DEFAULT_GAMEPAD_BUTTONS)) {
-		const index = getBindingButtonIndex(action);
-		if (index === null) continue;
+		const binding = getBindingButtonIndex(action);
+		if (!binding || !bindingMatchesModifier(binding, modifierHeld)) continue;
+		const index = binding.index;
 		const pressed = isButtonPressed(gp, index);
 		const wasPressed = !!prev[action];
 		prev[action] = pressed;
@@ -207,12 +233,20 @@ export function getActionLabels() {
 		useSlot1: 'Hand slot 2',
 		useSlot2: 'Hand slot 3',
 		useSlot3: 'Hand slot 4',
-		toggleDeckViewer: 'Toggle deck viewer'
+		useSlot4: 'Hand slot 5',
+		useSlot5: 'Hand slot 6',
+		toggleDeckViewer: 'Toggle deck viewer',
 	};
 }
 
 export function getDefaultGamepadButtonIndex(action) {
-	return DEFAULT_GAMEPAD_BUTTONS[action];
+	const binding = DEFAULT_GAMEPAD_BUTTONS[action];
+	return binding === undefined ? undefined : binding;
+}
+
+export function getHandModifierGamepadButton() {
+	const cfg = getGamepadConfig();
+	return Number.isInteger(cfg.modifierButton) ? cfg.modifierButton : HAND_MODIFIER_GAMEPAD_BUTTON;
 }
 
 /** Test-only: reset key state */

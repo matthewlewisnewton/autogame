@@ -267,9 +267,10 @@ describe('initHand()', () => {
 		resetHandState();
 	});
 
-	it('builds a 4-card hand', () => {
+	it('builds a 6-slot hand with 4 opening cards', () => {
 		initHand();
-		expect(hand).toHaveLength(4);
+		expect(hand).toHaveLength(6);
+		expect(hand.filter(Boolean)).toHaveLength(4);
 	});
 
 	it('leaves the remaining 4 cards in the deck', () => {
@@ -277,16 +278,16 @@ describe('initHand()', () => {
 		expect(deck).toHaveLength(4);
 	});
 
-	it('each hand card has remainingCharges equal to its def max', () => {
+	it('each filled hand card has remainingCharges equal to its def max', () => {
 		initHand();
-		for (const card of hand) {
+		for (const card of hand.filter(Boolean)) {
 			expect(card.remainingCharges).toBe(card.charges);
 		}
 	});
 
-	it('hand + deck together account for all 8 starting cards', () => {
+	it('filled hand + deck together account for all 8 starting cards', () => {
 		initHand();
-		expect(hand.length + deck.length).toBe(8);
+		expect(hand.filter(Boolean).length + deck.length).toBe(8);
 	});
 
 	it('resets slotCooldowns to all false', () => {
@@ -294,10 +295,8 @@ describe('initHand()', () => {
 		slotCooldowns[0] = true;
 		slotCooldowns[2] = true;
 		initHand();
-		expect(slotCooldowns[0]).toBe(false);
-		expect(slotCooldowns[1]).toBe(false);
-		expect(slotCooldowns[2]).toBe(false);
-		expect(slotCooldowns[3]).toBe(false);
+		expect(slotCooldowns.every((value) => value === false)).toBe(true);
+		expect(slotCooldowns).toHaveLength(6);
 	});
 
 	it('invokes the onRender callback if provided', () => {
@@ -321,11 +320,12 @@ describe('initHandFromDeck()', () => {
 		resetHandState();
 	});
 
-	it('produces a hand of 4 cards and a remaining deck from a known server deck', () => {
+	it('produces a 6-slot hand with 4 cards and a remaining deck from a known server deck', () => {
 		const serverDeck = ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake', 'iron_sword'];
 		initHandFromDeck(serverDeck, null);
 
-		expect(hand).toHaveLength(4);
+		expect(hand).toHaveLength(6);
+		expect(hand.filter(Boolean)).toHaveLength(4);
 		expect(deck).toHaveLength(1);
 		expect(deck[0]).toBe('iron_sword');
 	});
@@ -343,22 +343,22 @@ describe('initHandFromDeck()', () => {
 	it('falls back to createStartingDeck() when serverDeck is null', () => {
 		initHandFromDeck(null, null);
 
-		expect(hand).toHaveLength(4);
-		expect(hand.length + deck.length).toBe(8);
+		expect(hand.filter(Boolean)).toHaveLength(4);
+		expect(hand.filter(Boolean).length + deck.length).toBe(8);
 	});
 
 	it('falls back to createStartingDeck() when serverDeck is undefined', () => {
 		initHandFromDeck(undefined, null);
 
-		expect(hand).toHaveLength(4);
-		expect(hand.length + deck.length).toBe(8);
+		expect(hand.filter(Boolean)).toHaveLength(4);
+		expect(hand.filter(Boolean).length + deck.length).toBe(8);
 	});
 
 	it('falls back to createStartingDeck() when serverDeck is an empty array', () => {
 		initHandFromDeck([], null);
 
-		expect(hand).toHaveLength(4);
-		expect(hand.length + deck.length).toBe(8);
+		expect(hand.filter(Boolean)).toHaveLength(4);
+		expect(hand.filter(Boolean).length + deck.length).toBe(8);
 	});
 
 	it('resets slotCooldowns to all false', () => {
@@ -366,7 +366,7 @@ describe('initHandFromDeck()', () => {
 		slotCooldowns[2] = true;
 		initHandFromDeck(['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'], null);
 
-		expect(slotCooldowns).toEqual([false, false, false, false]);
+		expect(slotCooldowns).toEqual([false, false, false, false, false, false]);
 	});
 
 	it('invokes the onRender callback if provided', () => {
@@ -379,7 +379,8 @@ describe('initHandFromDeck()', () => {
 	it('handles a deck with fewer than 4 cards gracefully', () => {
 		initHandFromDeck(['iron_sword', 'flame_blade'], null);
 
-		expect(hand).toHaveLength(2);
+		expect(hand).toHaveLength(6);
+		expect(hand.filter(Boolean)).toHaveLength(2);
 		expect(deck).toHaveLength(0);
 	});
 });
@@ -391,9 +392,9 @@ describe('canUseSlot()', () => {
 		resetHandState();
 	});
 
-	it('returns false for slot indices outside 0–3', () => {
+	it('returns false for slot indices outside 0–5', () => {
 		expect(canUseSlot(-1)).toBe(false);
-		expect(canUseSlot(4)).toBe(false);
+		expect(canUseSlot(6)).toBe(false);
 		expect(canUseSlot(100)).toBe(false);
 	});
 
@@ -410,7 +411,7 @@ describe('canUseSlot()', () => {
 	it('returns false when slot is in cooldown', () => {
 		deck.push('iron_sword');
 		const card = drawCard();
-		if (card) hand.push(card);
+		if (card) hand[0] = card;
 		slotCooldowns[0] = true;
 
 		expect(canUseSlot(0)).toBe(false);
@@ -419,18 +420,17 @@ describe('canUseSlot()', () => {
 	it('returns true when slot is in-range, has a card, and not cooling down', () => {
 		deck.push('iron_sword');
 		const card = drawCard();
-		if (card) hand.push(card);
+		if (card) hand[0] = card;
 
 		expect(canUseSlot(0)).toBe(true);
 	});
 
-	it('returns true for all four valid slots after initHand', () => {
+	it('returns true for all six valid slots after initHand', () => {
 		initHand();
 
-		expect(canUseSlot(0)).toBe(true);
-		expect(canUseSlot(1)).toBe(true);
-		expect(canUseSlot(2)).toBe(true);
-		expect(canUseSlot(3)).toBe(true);
+		for (let i = 0; i < 6; i++) {
+			expect(canUseSlot(i)).toBe(i < 4);
+		}
 	});
 
 	it('is pure — calling it does not mutate hand or slotCooldowns', () => {

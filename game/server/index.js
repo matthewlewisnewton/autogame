@@ -58,6 +58,7 @@ const {
   PORTAL_RADIUS,
   PORTAL_PLACEMENT_GRACE_MS,
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
+  MAX_HAND_SLOTS,
 } = require('./config');
 
 const app = express();
@@ -170,6 +171,16 @@ const {
   drawCardFromDesperationDeck,
   initDesperationDeck,
   replaceConsumedCard,
+  exhaustHandSlot,
+  discardHandSlot,
+  drawCardIntoHand,
+  ensurePassiveDrawScheduled,
+  processPassiveDraws,
+  canDrawIntoHand,
+  countFilledHandSlots,
+  validateDiscardHand,
+  beginCreatureBurnDown,
+  releaseBurningCreatureCard,
   pickRandomExhaustedCard,
   createEchoCard,
   STARTING_DECK_IDS,
@@ -296,10 +307,6 @@ function broadcastLobbyList() {
   io.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
 }
 
-// Throttle state for swept-collision rejection logging (per-socket)
-const SWEPT_COLLISION_LOG_THROTTLE_MS = 1000;
-const sweptCollisionLogTimes = new Map();
-
 // Initialize simulation and progression modules with gameState and timeouts
 const sim = require('./simulation');
 sim.setGameState(gameState, _timeouts);
@@ -342,9 +349,21 @@ function clearAllTimers() {
 function restartBackgroundTimers() {
   if (_intervals.length > 0) return;
   _intervals.push(setInterval(runGameLoopTick, 1000 / TICK_RATE));
-  _intervals.push(setInterval(cleanupStalePlayers, STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(cleanupStalePlayersInAllLobbies, STALE_CLEANUP_INTERVAL_MS));
   _intervals.push(setInterval(evictDisconnectedPlayers, STALE_CLEANUP_INTERVAL_MS));
-  _intervals.push(setInterval(saveAllPlayers, PERIODIC_SAVE_INTERVAL_MS));
+  _intervals.push(setInterval(saveAllPlayersInAllLobbies, PERIODIC_SAVE_INTERVAL_MS));
+}
+
+function cleanupStalePlayersInAllLobbies() {
+  for (const lobby of lobbies._lobbies.values()) {
+    withLobbyContext(lobby, () => cleanupStalePlayers());
+  }
+}
+
+function saveAllPlayersInAllLobbies() {
+  for (const lobby of lobbies._lobbies.values()) {
+    withLobbyContext(lobby, () => saveAllPlayers());
+  }
 }
 
 /**
@@ -516,7 +535,7 @@ function applyDebugScenario(socket, name) {
     if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
       createDrawDeckFromSelectedDeck(player);
       initPlayerHand(player);
-      player.slotCooldowns = [null, null, null, null];
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       if (!player.pendingSummons) {
         player.pendingSummons = new Set();
       }
@@ -568,21 +587,6 @@ function applyDebugScenario(socket, name) {
             player.deck.splice(deckMonsterIndex, 1);
           }
         }
-      }
-    } else if (name === 'telepipe-ready') {
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const replaceSlot = player.hand.findIndex(c => c);
-      if (replaceSlot >= 0) {
-        player.hand[replaceSlot] = {
-          id: 'telepipe',
-          name: 'Telepipe',
-          type: 'spell',
-          charges: 1,
-          remainingCharges: 1,
-          magicStoneCost: 0,
-          effect: 'telepipe',
-        };
       }
     } else if (name === 'run-failed') {
       for (const p of Object.values(state.players)) {
@@ -675,6 +679,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     lastInputSequence: 0,
     connected: true,
     disconnectedAt: null,
+    activeSocketId: null,
     persistenceDirty: false,
     ready: false,
     magicStones: MAX_MAGIC_STONES,
@@ -686,7 +691,8 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     selectedDeck: defaultDeck,
     debugScenario: null,
     pendingSummons: new Set(),
-    slotCooldowns: [null, null, null, null],
+    slotCooldowns: [null, null, null, null, null, null],
+    nextDrawAt: null,
     extracted: false,
   };
 
@@ -723,7 +729,7 @@ function initializePlayerForActiveRun(player) {
     createDrawDeckFromSelectedDeck(player);
     initPlayerHand(player);
   }
-  player.slotCooldowns = [null, null, null, null];
+  player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
   player.magicStones = MAX_MAGIC_STONES;
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
@@ -791,6 +797,11 @@ function joinPlayerToLobby(socket, lobby) {
     withLobbyContext(lobby, () => initializePlayerForActiveRun(state.players[playerId]));
   }
 
+  const player = state.players[playerId];
+  player.activeSocketId = socket.id;
+  player.connected = true;
+  player.disconnectedAt = null;
+
   lobbies.assignPlayerToLobby(playerId, lobby.id);
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
@@ -802,11 +813,7 @@ function reconnectPlayerToLobby(socket, lobby) {
   const player = lobby.state.players[playerId];
   if (!player) return false;
 
-  const oldSocket = findSocketByPlayerId(playerId);
-  if (oldSocket && oldSocket.id !== socket.id && oldSocket.connected) {
-    oldSocket.disconnect(true);
-  }
-
+  player.activeSocketId = socket.id;
   player.connected = true;
   player.disconnectedAt = null;
   player.lastInputSequence = 0;
@@ -814,6 +821,11 @@ function reconnectPlayerToLobby(socket, lobby) {
   player.inputDx = 0;
   player.inputDz = 0;
   player.lastActivity = Date.now();
+
+  const oldSocket = findSocketByPlayerId(playerId);
+  if (oldSocket && oldSocket.id !== socket.id && oldSocket.connected) {
+    oldSocket.disconnect(true);
+  }
 
   lobbies.assignPlayerToLobby(playerId, lobby.id);
   lobbies.removeSession(playerId);
@@ -832,16 +844,20 @@ function softDisconnectPlayerFromLobby(socket) {
   const player = lobby.state.players[playerId];
   if (!player) return null;
 
-  savePlayerData(playerId);
-  cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
-
-  player.connected = false;
-  player.disconnectedAt = Date.now();
-  player.inputActive = false;
-  player.inputDx = 0;
-  player.inputDz = 0;
+  if (player.activeSocketId && player.activeSocketId !== socket.id) {
+    return null;
+  }
 
   withLobbyContext(lobby, () => {
+    savePlayerData(playerId);
+    cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+
+    player.connected = false;
+    player.disconnectedAt = Date.now();
+    player.inputActive = false;
+    player.inputDx = 0;
+    player.inputDz = 0;
+
     if (lobby.state.gamePhase === 'playing') {
       checkRunTerminalState();
     } else {
@@ -867,8 +883,8 @@ function evictDisconnectedPlayers() {
     if (toEvict.length === 0) continue;
 
     for (const playerId of toEvict) {
-      savePlayerData(playerId);
       withLobbyContext(lobby, () => {
+        savePlayerData(playerId);
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
@@ -897,8 +913,10 @@ function leaveLobbyForSocket(socket) {
   if (!lobby) return null;
 
   const playerId = socket.playerId;
-  savePlayerData(playerId);
-  cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+  withLobbyContext(lobby, () => {
+    savePlayerData(playerId);
+    cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+  });
   socket.leave(lobby.id);
 
   const result = lobbies.removePlayerFromLobby(playerId);
@@ -938,6 +956,9 @@ function runGameLoopTick() {
         updateEnemies();
         updateMinions();
 
+        const now = Date.now();
+        processPassiveDraws(now);
+
         if (state._pendingMinionBreaths?.length) {
           for (const event of state._pendingMinionBreaths) {
             io.to(lobby.id).emit('cardUsed', event);
@@ -947,7 +968,6 @@ function runGameLoopTick() {
 
         regenMagicStones();
 
-        const now = Date.now();
         state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
       }
 
@@ -1220,6 +1240,32 @@ function startServer(port) {
 
     // ── Weapon branch (forward cone attack) ──
     if (cardDef.type === 'weapon') {
+      if (cardDef.effect === 'draw_card') {
+        if (!canDrawIntoHand(player)) {
+          socket.emit('cardError', { reason: 'Hand full' });
+          return;
+        }
+
+        handCard.remainingCharges -= 1;
+        drawCardIntoHand(player);
+        ensurePassiveDrawScheduled(player);
+
+        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+
+        if (handCard.remainingCharges <= 0) {
+          exhaustHandSlot(player, data.slotIndex, handCard);
+        }
+
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        io.to(lobby.id).emit('cardUsed', {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          effect: 'draw_card',
+        });
+        return;
+      }
+
       handCard.remainingCharges -= 1;
 
       const rotation = resolveAttackRotation(player, data);
@@ -1447,6 +1493,7 @@ function startServer(port) {
 
         player.pendingSummons.add(summonKey);
         player.magicStones -= magicStoneCost;
+        releaseBurningCreatureCard(player, target.minion);
         state.minions.splice(target.index, 1);
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneGain || 0);
         const restoredCharges = restoreHandCharges(player, cardDef.chargeRestore || 0, {
@@ -1982,11 +2029,9 @@ function startServer(port) {
         }
       }
 
-      // Set slot cooldown
+      // Set slot cooldown and keep the card in hand while the minion is active.
       player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
-
-      // Remove card from hand and draw replacement
-      replaceConsumedCard(player, data.slotIndex, handCard);
+      beginCreatureBurnDown(player, data.slotIndex, handCard, minion);
 
       // Broadcast updated hand to all clients
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -2547,11 +2592,8 @@ function startServer(port) {
 
   socket.on('disconnect', () => {
     console.log(`Player disconnected: ${socket.id}`);
-    sweptCollisionLogTimes.delete(socket.id);
 
     if (!socket.playerId) return;
-
-    savePlayerData(socket.playerId);
 
     const lobby = lobbies.getLobbyForPlayer(socket.playerId);
     if (lobby && lobby.state.players[socket.playerId]) {
@@ -2681,6 +2723,16 @@ if (typeof module !== 'undefined' && module.exports) {
     initPlayerHand,
     drawReplacementCard,
     replaceConsumedCard,
+    exhaustHandSlot,
+    discardHandSlot,
+    drawCardIntoHand,
+    ensurePassiveDrawScheduled,
+    processPassiveDraws,
+    canDrawIntoHand,
+    countFilledHandSlots,
+    validateDiscardHand,
+    beginCreatureBurnDown,
+    releaseBurningCreatureCard,
     drawCardFromDesperationDeck,
     initDesperationDeck,
     createEchoCard,

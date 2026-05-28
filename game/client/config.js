@@ -110,8 +110,13 @@ export const LOCK_ON_BREAK_RANGE = 10;
 /** Camera yaw smoothing speed while locked on (rad/s) */
 export const LOCK_ON_CAMERA_LERP = 8;
 
-/** Default gamepad button index for lock-on (L trigger) */
+/** Default gamepad button index for lock-on (L trigger / LT) */
 export const LOCK_ON_GAMEPAD_BUTTON = 6;
+
+/** Gamepad button index for the secondary hand palette modifier (R trigger / RT).
+ *  When held, face buttons can map to additional hand slots (PSO-style) without
+ *  a keyboard modifier layer. Only used once MAX_HAND_SLOTS exceeds six. */
+export const HAND_MODIFIER_GAMEPAD_BUTTON = 7;
 
 // ── Movement ──
 
@@ -146,3 +151,14 @@ export const SOUND_CONFIG = {
 	victory:        { notes: [{ freq: 500, duration: 0.15, gain: 0.3 }, { freq: 700, duration: 0.15, gain: 0.3 }] },
 	failure:        { notes: [{ freq: 400, duration: 0.2, gain: 0.3 }, { freq: 250, duration: 0.2, gain: 0.3 }] },
 };
+
+// ── Hand ──
+
+/** Fixed playable hand slots — matches server MAX_HAND_SLOTS */
+export const MAX_HAND_SLOTS = 6;
+
+/** Cards dealt at run start — matches server OPENING_HAND_SIZE */
+export const OPENING_HAND_SIZE = 4;
+
+/** Passive draw interval (display only; server is authoritative) */
+export const PASSIVE_DRAW_INTERVAL_MS = 5000;

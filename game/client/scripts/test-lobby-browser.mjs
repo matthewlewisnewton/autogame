@@ -82,15 +82,24 @@ async function main() {
     const lobby = document.getElementById('lobby');
     return lobby && !lobby.classList.contains('hidden');
   }, { timeout: 10000 });
+  const createdLobbyName = await page1.evaluate(() => {
+    const el = document.querySelector('#lobby .lobby-name, #lobby h2 + p, #lobby');
+    return 'Browser Test Lobby';
+  });
   console.log('✓ Player 1 created lobby');
 
-  await page2.waitForFunction(() => {
-    const items = document.querySelectorAll('.join-lobby-btn');
-    return items.length > 0;
-  }, { timeout: 10000 });
-  await page2.evaluate(() => {
-    document.querySelector('.join-lobby-btn')?.click();
-  });
+  await page2.evaluate(() => document.getElementById('refresh-lobbies-btn')?.click());
+  await page2.waitForFunction((lobbyName) => {
+    const items = [...document.querySelectorAll('.lobby-list-item')];
+    return items.some((li) =>
+      li.textContent.includes(lobbyName)
+      && li.querySelector('.join-lobby-btn[data-join-mode="join"]'));
+  }, createdLobbyName, { timeout: 15000 });
+  await page2.evaluate((lobbyName) => {
+    const items = [...document.querySelectorAll('.lobby-list-item')];
+    const item = items.find((li) => li.textContent.includes(lobbyName));
+    item?.querySelector('.join-lobby-btn[data-join-mode="join"]')?.click();
+  }, createdLobbyName);
   await page2.waitForFunction(() => {
     const lobby = document.getElementById('lobby');
     return lobby && !lobby.classList.contains('hidden');

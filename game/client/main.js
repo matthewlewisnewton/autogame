@@ -26,7 +26,7 @@ import {
 	canAffordUpgrade,
 	getForgeStatPreview,
 } from './cardUpgrades.js';
-import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, drawReplacementCardLocal } from './hand.js';
+import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS } from './hand.js';
 import { renderCardUsed } from './cardRenderers.js';
 import {
 	buildDeckMiniEntries,
@@ -50,10 +50,6 @@ import {
 } from './audio.js';
 import {
 	initInput,
-	pollInput,
-	getConnectedGamepads,
-	getActionLabels,
-	getDefaultGamepadButtonIndex,
 	ACTIONS,
 } from './input.js';
 import {
@@ -66,6 +62,8 @@ import {
 	patchSettings,
 	getLockOnRepeatAction,
 	onSettingsChange,
+	loadAccountSettings,
+	setAuthToken,
 } from './settings.js';
 import {
 	computeDeckHudStats,
@@ -389,8 +387,9 @@ const characterIdEl = document.getElementById('character-id');
 const playerLevelEl = document.getElementById('player-level');
 const deckCountEl = document.getElementById('deck-count');
 const deckWeaponCountEl = document.getElementById('deck-weapon-count');
-const deckSummonCountEl = document.getElementById('deck-summon-count');
-const deckMonsterCountEl = document.getElementById('deck-monster-count');
+const deckSpellCountEl = document.getElementById('deck-spell-count');
+const deckCreatureCountEl = document.getElementById('deck-creature-count');
+const deckEnchantmentCountEl = document.getElementById('deck-enchantment-count');
 const deckStatsPanelEl = document.getElementById('deck-stats-panel');
 const deckViewerPanelEl = document.getElementById('deck-viewer-panel');
 const objectiveHudEl = document.getElementById('objective-hud');
@@ -407,6 +406,12 @@ const summaryCardChoicesListEl = document.getElementById('summary-card-choices-l
 const summaryCardChoicesEmptyEl = document.getElementById('summary-card-choices-empty');
 const returnToLobbyBtn = document.getElementById('return-to-lobby-btn');
 const cardSlots = document.querySelectorAll('.card-slot');
+
+function getCardSlotEl(slotIndex) {
+	return document.querySelector(`.card-slot[data-slot-index="${slotIndex}"]`)
+		|| cardSlots[slotIndex]
+		|| null;
+}
 
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
@@ -431,6 +436,17 @@ function createSocket(token) {
 	socket = io({ auth: { token } });
 	setSocketRef(socket);
 	bindSocketHandlers(socket);
+}
+
+async function restoreSession(token) {
+	try {
+		await loadAccountSettings(token);
+	} catch (_) {
+		setAuthToken(token);
+	}
+	syncSettingsForm();
+	createSocket(token);
+	hideAuthOverlay();
 }
 
 initInput({
@@ -481,19 +497,26 @@ function bindSocketHandlers(s) {
 		startHeartbeat();
 	});
 
-	s.on('connect_error', () => {
-		try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+	s.on('connect_error', (err) => {
+		const msg = err?.message || String(err || '');
+		const isAuthError = /jwt|token|unauthorized|authentication/i.test(msg);
 		stopHeartbeat();
-		s.io.disconnect();
-		if (uiEl) uiEl.style.display = 'none';
-		if (cardHandEl) cardHandEl.style.display = 'none';
-		setDeckStackVisible(false);
-		if (lobbyEl) lobbyEl.classList.add('hidden');
-		if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
-		if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
-		showAuthOverlay();
-		showLoginForm();
-		updateStatus('Session expired — please log in again', 'disconnected');
+		if (isAuthError) {
+			try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+			setAuthToken(null);
+			s.io.disconnect();
+			if (uiEl) uiEl.style.display = 'none';
+			if (cardHandEl) cardHandEl.style.display = 'none';
+			setDeckStackVisible(false);
+			if (lobbyEl) lobbyEl.classList.add('hidden');
+			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
+			showAuthOverlay();
+			showLoginForm();
+			updateStatus('Session expired — please log in again', 'disconnected');
+		} else {
+			updateStatus('Connection failed — retrying...', 'reconnecting');
+		}
 	});
 
 	s.on('init', (data) => {
@@ -723,7 +746,7 @@ function bindSocketHandlers(s) {
 		console.log(`[cardError] ${data.reason}`);
 		showCardErrorToast(data.reason);
 		if (data.reason === THEME.resource.insufficient && lastUsedSlot >= 0) {
-			const slot = cardSlots[lastUsedSlot];
+			const slot = getCardSlotEl(lastUsedSlot);
 			if (slot) slot.classList.add('no-ms');
 		}
 		lastUsedSlot = -1;
@@ -961,15 +984,6 @@ let deckViewerOpen = false;
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 let _lastMagicStones = undefined; // tracks previous MS for spend/gain flash
 
-// On page load: only connect if we have a stored token; otherwise show auth overlay.
-if (storedToken) {
-	createSocket(storedToken);
-	hideAuthOverlay();
-} else {
-	showAuthOverlay();
-	showRegisterForm();
-}
-
 function sameCollectionValue(a, b) {
 	try {
 		return JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
@@ -1030,6 +1044,19 @@ function requestDebugScenario() {
 	debugScenarioRequested = true;
 	socket.emit('debugScenario', { name: debugScenario });
 }
+
+/** Test / Playwright hook: apply a debug scenario on demand. */
+window.__requestDebugScenarioForTest = (name) => new Promise((resolve) => {
+	if (!socket) {
+		resolve({ ok: false, reason: 'no socket' });
+		return;
+	}
+	socket.once('debugScenarioResult', (data) => {
+		debugScenarioResult = data || null;
+		resolve(data || { ok: false, reason: 'empty debugScenarioResult' });
+	});
+	socket.emit('debugScenario', { name });
+});
 
 function startHeartbeat() {
 	if (heartbeatTimer) return;
@@ -1101,8 +1128,9 @@ function updateDeckStats(deckPile, handCards) {
 		deckStatsPanelEl.classList.toggle('desperation-mode', showingDesperation);
 	}
 	if (deckWeaponCountEl) deckWeaponCountEl.textContent = String(stats.types.weapon);
-	if (deckSummonCountEl) deckSummonCountEl.textContent = String(stats.types.summon);
-	if (deckMonsterCountEl) deckMonsterCountEl.textContent = String(stats.types.monster);
+	if (deckSpellCountEl) deckSpellCountEl.textContent = String(stats.types.spell);
+	if (deckCreatureCountEl) deckCreatureCountEl.textContent = String(stats.types.creature);
+	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
 function updateVanguardPortrait() {
@@ -1137,11 +1165,21 @@ function updateAdjacentCardHighlights(sourceIndex) {
 	if (!def || !def.adjacentChargeRestore) return;
 
 	for (const adjacentIndex of [sourceIndex - 1, sourceIndex + 1]) {
-		if (adjacentIndex < 0 || adjacentIndex > 3) continue;
+		if (adjacentIndex < 0 || adjacentIndex >= MAX_HAND_SLOTS) continue;
 		if (!hand[adjacentIndex]) continue;
-		const slot = cardSlots[adjacentIndex];
+		const slot = getCardSlotEl(adjacentIndex);
 		if (slot) slot.classList.add('synergy-adjacent');
 	}
+}
+
+function formatCardChargesDisplay(card) {
+	if (card.activeMinionId) {
+		const minion = gameState?.minions?.find((m) => m.id === card.activeMinionId);
+		const maxTtl = card.burnMaxTtl || minion?.ttl || 1;
+		const remaining = minion ? Math.max(0, minion.ttl) : 0;
+		return `${Math.ceil(remaining)}s/${Math.ceil(maxTtl)}s`;
+	}
+	return `${card.remainingCharges}/${card.charges}`;
 }
 
 function renderHand() {
@@ -1154,8 +1192,9 @@ function renderHand() {
 	if (cardHandEl) {
 		cardHandEl.classList.toggle('has-desperation', handHasDesperation);
 	}
-	for (let i = 0; i < 4; i++) {
-		const slot = cardSlots[i];
+	for (let i = 0; i < MAX_HAND_SLOTS; i++) {
+		const slot = getCardSlotEl(i);
+		if (!slot) continue;
 		const card = hand[i];
 
 		if (card) {
@@ -1183,14 +1222,17 @@ function renderHand() {
 				${grindBadge}
 				${effectText}
 				${msCostBadge}
-				<span class="card-charges">${card.remainingCharges}/${card.charges}</span>
+				<span class="card-charges">${formatCardChargesDisplay(card)}</span>
 			`;
 			slot.classList.remove('empty');
 			slot.classList.toggle('evolved-card', !!card.isEvolved);
 			slot.classList.toggle('desperation-card', !!card.isDesperation);
 			slot.classList.toggle('echo-card', !!card.isEcho);
+			slot.classList.toggle('creature-burning', !!card.activeMinionId);
 			slot.dataset.cardType = card.type;
-			slot.title = card.isDesperation
+			slot.title = card.activeMinionId
+				? 'Summoned creature active — card burns down until it expires'
+				: card.isDesperation
 				? 'Last-resort card — drawn when your deck runs out'
 				: 'Right-click to discard';
 
@@ -1207,6 +1249,7 @@ function renderHand() {
 			slot.classList.remove('no-ms');
 			slot.classList.remove('desperation-card');
 			slot.classList.remove('echo-card');
+			slot.classList.remove('creature-burning');
 			delete slot.dataset.cardType;
 			slot.removeAttribute('title');
 		}
@@ -1337,11 +1380,13 @@ function hideDeckViewer() {
 	if (deckViewerOverlayEl) deckViewerOverlayEl.classList.add('hidden');
 }
 
-for (let i = 0; i < cardSlots.length; i++) {
-	cardSlots[i].addEventListener('mouseenter', () => updateAdjacentCardHighlights(i));
-	cardSlots[i].addEventListener('mouseleave', clearAdjacentCardHighlights);
-	cardSlots[i].addEventListener('focus', () => updateAdjacentCardHighlights(i));
-	cardSlots[i].addEventListener('blur', clearAdjacentCardHighlights);
+for (let i = 0; i < MAX_HAND_SLOTS; i++) {
+	const slot = getCardSlotEl(i);
+	if (!slot) continue;
+	slot.addEventListener('mouseenter', () => updateAdjacentCardHighlights(i));
+	slot.addEventListener('mouseleave', clearAdjacentCardHighlights);
+	slot.addEventListener('focus', () => updateAdjacentCardHighlights(i));
+	slot.addEventListener('blur', clearAdjacentCardHighlights);
 }
 
 function initHand() {
@@ -1351,7 +1396,7 @@ function initHand() {
 	const serverHand = serverPlayer ? serverPlayer.hand : null;
 
 	if (Array.isArray(serverHand) && serverHand.length > 0) {
-		for (let i = 0; i < 4; i++) {
+		for (let i = 0; i < MAX_HAND_SLOTS; i++) {
 			hand[i] = serverHand[i] ? { ...serverHand[i] } : null;
 		}
 		syncDrawPileFromServer();
@@ -1367,7 +1412,7 @@ function initHand() {
 }
 
 function refillSlot(index) {
-	if (index < 0 || index > 3) return null;
+	if (index < 0 || index >= MAX_HAND_SLOTS) return null;
 	if (hand[index] != null) return hand[index];
 
 	const card = drawCard();
@@ -1839,7 +1884,7 @@ if (document.getElementById('forge-upgrade-btn')) {
 // ── Card input handling ──
 
 function playActivationEffect(slotIndex) {
-	const slot = cardSlots[slotIndex];
+	const slot = getCardSlotEl(slotIndex);
 	if (!slot) return;
 
 	slot.classList.add('activating');
@@ -1855,13 +1900,19 @@ function playActivationEffect(slotIndex) {
 }
 
 function useCard(slotIndex) {
-	if (slotIndex < 0 || slotIndex > 3) return;
+	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return;
 	const card = hand[slotIndex];
 	if (!card) return;
 
 	if (!canUseSlot(slotIndex)) return;
+	if (card.activeMinionId) return;
 
 	const cardDef = getCardDef(card.id) || {};
+	if (cardDef.effect === 'draw_card' && !canDrawIntoHandLocal()) {
+		lastUsedSlot = slotIndex;
+		showCardErrorToast('Hand full');
+		return;
+	}
 	const playerMs = (gameState && myId && gameState.players[myId])
 		? gameState.players[myId].magicStones
 		: 0;
@@ -1869,7 +1920,7 @@ function useCard(slotIndex) {
 	if (cardCost != null && cardCost > 0 && playerMs < cardCost) {
 		lastUsedSlot = slotIndex;
 		showCardErrorToast(THEME.resource.insufficient);
-		const slot = cardSlots[slotIndex];
+		const slot = getCardSlotEl(slotIndex);
 		if (slot) slot.classList.add('no-ms');
 		return;
 	}
@@ -1894,51 +1945,34 @@ function useCard(slotIndex) {
 		return;
 	}
 
-	card.remainingCharges -= 1;
-
-	if (card.remainingCharges <= 0) {
-		hand[slotIndex] = null;
-		drawReplacementCardLocal(slotIndex);
+	if (cardDef.effect === 'draw_card') {
+		slotCooldowns[slotIndex] = true;
+		playActivationEffect(slotIndex);
+		return;
 	}
-
-	renderHand();
-	updateDeckVisuals();
 
 	slotCooldowns[slotIndex] = true;
 	playActivationEffect(slotIndex);
 }
 
 function discardCard(slotIndex) {
-	if (slotIndex < 0 || slotIndex > 3) return;
+	if (slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) return;
 	if (!gameState || gameState.gamePhase !== 'playing') return;
 
 	const card = hand[slotIndex];
 	if (!card) return;
-
-	socket.emit('discardCard', { slotIndex, cardId: card.id });
-	hand[slotIndex] = null;
-	renderHand();
-	updateDeckVisuals();
-}
-
-// Keyboard: keys 1-4 map to hand slots 0-3; V toggles draw pile viewer
-window.addEventListener('keydown', (e) => {
-	const slotMap = { '1': 0, '2': 1, '3': 2, '4': 3 };
-	if (e.key in slotMap) {
-		if (e.repeat) return;
-		useCard(slotMap[e.key]);
+	if (card.activeMinionId) {
+		showCardErrorToast('Creature still active');
 		return;
 	}
-	if ((e.key === 'v' || e.key === 'V') && gameState && gameState.gamePhase === 'playing') {
-		if (e.repeat) return;
-		toggleDeckViewer();
-	}
-});
 
-setGamepadInputHandler(({ slots, toggleDeck, lockOn: _lockOn }) => {
-	if (!gameState || gameState.gamePhase !== 'playing') return;
-	for (const slot of slots) useCard(slot);
-	if (toggleDeck) toggleDeckViewer();
+	socket.emit('discardCard', { slotIndex, cardId: card.id });
+}
+
+// Keyboard input is handled by initInput() above; gamepad via setGamepadInputHandler below.
+
+setGamepadInputHandler(({ lockOn: _lockOn }) => {
+	// Card slots and deck toggle are handled by input.js pollInput().
 });
 
 // Click: delegate on #card-hand, read data-slot-index from .card-slot target
@@ -2046,8 +2080,7 @@ if (loginBtnEl) {
 			const data = await res.json();
 			if (res.ok && data.token) {
 				try { localStorage.setItem(TOKEN_KEY, data.token); } catch (_) {}
-				createSocket(data.token);
-				hideAuthOverlay();
+				await restoreSession(data.token);
 				clearAuthForms();
 			} else {
 				if (loginErrorEl) loginErrorEl.textContent = data.error || 'Login failed';
@@ -2061,6 +2094,7 @@ if (loginBtnEl) {
 if (logoutBtn) {
 	logoutBtn.addEventListener('click', () => {
 		try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
+		setAuthToken(null);
 		if (socket) socket.disconnect();
 
 		myId = null;
@@ -2177,6 +2211,14 @@ if (lockOnRepeatSelectEl) {
 
 onSettingsChange(syncSettingsForm);
 syncSettingsForm();
+
+// On page load: only connect if we have a stored token; otherwise show auth overlay.
+if (storedToken) {
+	restoreSession(storedToken);
+} else {
+	showAuthOverlay();
+	showRegisterForm();
+}
 
 // ── Run Summary Overlay ──
 
@@ -2442,19 +2484,23 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			x: m.x,
 			z: m.z,
 		})) : [],
-		hand: hand.map((card) =>
-			card
-				? {
-					id: card.id,
-					name: card.name,
-					type: card.type,
-					remainingCharges: card.remainingCharges,
-					charges: card.charges,
-					isEvolved: !!card.isEvolved,
-					specialEffect: card.specialEffect,
-				}
-				: null,
-		),
+		hand: hand.map((card, slotIndex) => {
+			if (!card) return null;
+			const slotEl = getCardSlotEl(slotIndex);
+			return {
+				id: card.id,
+				name: card.name,
+				type: card.type,
+				remainingCharges: card.remainingCharges,
+				charges: card.charges,
+				activeMinionId: card.activeMinionId || null,
+				burnMaxTtl: card.burnMaxTtl ?? null,
+				burnLabel: slotEl?.querySelector('.card-charges')?.textContent || null,
+				creatureBurning: !!slotEl?.classList.contains('creature-burning'),
+				isEvolved: !!card.isEvolved,
+				specialEffect: card.specialEffect,
+			};
+		}),
 	};
 };
 
