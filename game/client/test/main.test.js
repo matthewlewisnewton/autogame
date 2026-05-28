@@ -10,7 +10,7 @@ describe('renderDeckEditor()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -37,7 +37,7 @@ describe('renderDeckEditor()', () => {
 		// Create card slots inside #card-hand
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -336,7 +336,7 @@ describe('flashMesh()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -356,7 +356,7 @@ describe('flashMesh()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -438,7 +438,7 @@ describe('spawnDamageNumber()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -458,7 +458,7 @@ describe('spawnDamageNumber()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -543,7 +543,7 @@ describe('spawnHitSpark()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -563,7 +563,7 @@ describe('spawnHitSpark()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -665,7 +665,7 @@ describe('markLootCollected()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -685,7 +685,7 @@ describe('markLootCollected()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -776,7 +776,7 @@ describe('renderHand()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -797,7 +797,7 @@ describe('renderHand()', () => {
 		// Create card slots inside #card-hand
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -961,7 +961,7 @@ describe('playSound() and mute toggle', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -983,7 +983,7 @@ describe('playSound() and mute toggle', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -1120,7 +1120,7 @@ describe('resumeAudioContext', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1142,7 +1142,7 @@ describe('resumeAudioContext', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -1239,7 +1239,7 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1261,7 +1261,7 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -1355,7 +1355,7 @@ describe('applyWindupFlash()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1375,7 +1375,7 @@ describe('applyWindupFlash()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -1611,7 +1611,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1631,7 +1631,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -1739,7 +1739,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		expect(Number.isFinite(useCardEmits[0].data.rotation)).toBe(true);
 	});
 
-	it('useCard() on a non-cooling weapon slot DOES drain a charge (control case)', async () => {
+	it('useCard() on a non-cooling weapon slot emits without optimistic charge drain', async () => {
 		await import('../main.js');
 
 		hand[1] = { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 };
@@ -1749,39 +1749,45 @@ describe('Cooldown Enforcement (useCard)', () => {
 
 		window.__useCardForTest(1);
 
-		expect(hand[1].remainingCharges).toBe(2);
+		expect(hand[1].remainingCharges).toBe(3);
+		const log = window.__socketEmitLog();
+		expect(log.filter(e => e.event === 'useCard')).toHaveLength(1);
 	});
 
-	it('playing a monster card: server stateUpdate replaces hand slot and drawCard() is never called', async () => {
+	it('playing a creature card: server stateUpdate keeps the card burning until the minion expires', async () => {
 		const handModule = await import('../hand.js');
 		const drawCardSpy = vi.spyOn(handModule, 'drawCard').mockReturnValue(null);
 
 		try {
 			await import('../main.js');
 
-			// Place a monster card in slot 2 with cooldown cleared
 			hand[2] = { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 };
 			slotCooldowns[2] = false;
 
 			window.__clearSocketEmitLog();
-
-			// Call useCard on the monster slot — should emit + set cooldown, then return
 			window.__useCardForTest(2);
 
-			// Verify: socket emitted useCard, cooldown set, drawCard NOT called
 			const log = window.__socketEmitLog();
 			const useCardEmits = log.filter(e => e.event === 'useCard');
 			expect(useCardEmits).toHaveLength(1);
 			expect(slotCooldowns[2]).toBe(true);
 			expect(drawCardSpy).not.toHaveBeenCalled();
 
-			// Simulate server stateUpdate: monster slot replaced by a new card
-			const replacementCard = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+			const burningCard = {
+				id: 'dungeon_drake',
+				name: 'Vault Wyrm',
+				type: 'creature',
+				charges: 1,
+				remainingCharges: 0,
+				activeMinionId: 'minion-1',
+				burnMaxTtl: 30,
+			};
 			window.__setGameState({
 				gamePhase: 'playing',
+				minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 18, hp: 50 }],
 				players: {
-					'player1': {
-						hand: [null, null, replacementCard, null],
+					player1: {
+						hand: [null, null, burningCard, null],
 						currency: 0,
 					},
 				},
@@ -1789,22 +1795,77 @@ describe('Cooldown Enforcement (useCard)', () => {
 
 			window.__triggerSocketEvent('stateUpdate', {
 				gamePhase: 'playing',
+				minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 18, hp: 50 }],
 				players: {
-					'player1': {
+					player1: {
+						hand: [null, null, burningCard, null],
+						currency: 0,
+					},
+				},
+			});
+
+			expect(drawCardSpy).not.toHaveBeenCalled();
+			expect(hand[2]).toEqual(burningCard);
+			expect(document.querySelector('.card-slot[data-slot-index="2"] .card-charges').textContent).toBe('18s/30s');
+			expect(document.querySelector('.card-slot[data-slot-index="2"]').classList.contains('creature-burning')).toBe(true);
+
+			const replacementCard = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 };
+			window.__triggerSocketEvent('stateUpdate', {
+				gamePhase: 'playing',
+				minions: [],
+				players: {
+					player1: {
+						hand: [null, null, null, null],
+						currency: 0,
+					},
+				},
+			});
+
+			expect(hand[2]).toBeNull();
+			expect(drawCardSpy).not.toHaveBeenCalled();
+
+			window.__triggerSocketEvent('stateUpdate', {
+				gamePhase: 'playing',
+				minions: [],
+				players: {
+					player1: {
 						hand: [null, null, replacementCard, null],
 						currency: 0,
 					},
 				},
 			});
 
-			// Assert drawCard was never invoked — server is authoritative
-			expect(drawCardSpy).not.toHaveBeenCalled();
-
-			// Assert hand[2] matches the server-provided replacement card
 			expect(hand[2]).toEqual(replacementCard);
 		} finally {
 			drawCardSpy.mockRestore();
 		}
+	});
+
+	it('useCard() does not emit while a creature card is burning down', async () => {
+		await import('../main.js');
+
+		hand[2] = {
+			id: 'dungeon_drake',
+			name: 'Vault Wyrm',
+			type: 'creature',
+			charges: 1,
+			remainingCharges: 0,
+			activeMinionId: 'minion-1',
+			burnMaxTtl: 30,
+		};
+		slotCooldowns[2] = false;
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			minions: [{ id: 'minion-1', ownerId: 'player1', ttl: 12, hp: 50 }],
+			players: { player1: { hand: hand.slice(), currency: 0 } },
+		}, 'player1');
+
+		window.__clearSocketEmitLog();
+		window.__useCardForTest(2);
+
+		const useCardEmits = window.__socketEmitLog().filter(e => e.event === 'useCard');
+		expect(useCardEmits).toHaveLength(0);
 	});
 });
 
@@ -1849,7 +1910,7 @@ describe('createEnemyMesh()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1869,7 +1930,7 @@ describe('createEnemyMesh()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -1950,7 +2011,7 @@ describe('enemyMeshHalfHeight()', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -1968,7 +2029,7 @@ describe('enemyMeshHalfHeight()', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -2002,7 +2063,7 @@ describe('healthBarColor(hp, maxHp)', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2020,7 +2081,7 @@ describe('healthBarColor(hp, maxHp)', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -2074,7 +2135,7 @@ describe('auth overlay functions', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2094,7 +2155,7 @@ describe('auth overlay functions', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -2280,7 +2341,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2300,7 +2361,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -2403,7 +2464,7 @@ describe('connect_error handler', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2430,7 +2491,7 @@ describe('connect_error handler', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -2613,7 +2674,7 @@ describe('Mute persistence (localStorage)', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2635,7 +2696,7 @@ describe('Mute persistence (localStorage)', () => {
 		}
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);
@@ -2764,7 +2825,7 @@ describe('Cold-start mute persistence', () => {
 			'status', 'vanguard-hud', 'character-id', 'player-level',
 			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
-			'deck-count', 'deck-weapon-count', 'deck-summon-count', 'deck-monster-count',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
 			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
@@ -2797,7 +2858,7 @@ describe('Cold-start mute persistence', () => {
 		// Create card slots inside #card-hand
 		const cardHand = document.getElementById('card-hand');
 		if (cardHand) {
-			for (let i = 0; i < 4; i++) {
+			for (let i = 0; i < 6; i++) {
 				const slot = document.createElement('div');
 				slot.className = 'card-slot';
 				slot.dataset.slotIndex = String(i);

@@ -85,6 +85,14 @@ export const CARD_DEFS = {
     type: 'weapon',
     charges: 3,
   },
+  deck_sifter: {
+    id: 'deck_sifter',
+    name: 'Deck Sifter',
+    type: 'weapon',
+    charges: 3,
+    effect: 'draw_card',
+    magicStoneCost: 0,
+  },
   sacrificial_altar: {
     id: 'sacrificial_altar',
     name: 'Offering Terminal',

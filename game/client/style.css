@@ -108,11 +108,14 @@ canvas {
   left: 50%;
   transform: translateX(-50%);
   display: none;
-  gap: 8px;
+  gap: 6px;
   padding: 12px 88px 12px 12px;
   pointer-events: none;
   z-index: 10;
   flex-direction: row;
+  flex-wrap: nowrap;
+  max-width: 100vw;
+  box-sizing: border-box;
 }
 
 #card-hand.has-desperation::before {
@@ -211,6 +214,22 @@ canvas {
   font-weight: 600;
   color: #94a3b8;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.card-slot.creature-burning {
+  border-color: #c4b5fd;
+  box-shadow: 0 0 18px rgba(167, 139, 250, 0.55);
+  animation: creature-burn-pulse 1.5s ease-in-out infinite;
+}
+
+.card-slot.creature-burning .card-charges {
+  color: #fcd34d;
+  font-weight: 800;
+}
+
+@keyframes creature-burn-pulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(167, 139, 250, 0.45); }
+  50% { box-shadow: 0 0 22px rgba(251, 191, 36, 0.65); }
 }
 
 .card-slot .card-ms-cost {

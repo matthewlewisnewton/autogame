@@ -69,6 +69,14 @@ import {
 	drawCardFromDeck,
 	drawReplacementCard,
 	replaceConsumedCard,
+	exhaustHandSlot,
+	drawCardIntoHand,
+	processPassiveDraws,
+	canDrawIntoHand,
+	countFilledHandSlots,
+	validateDiscardHand,
+	beginCreatureBurnDown,
+	releaseBurningCreatureCard,
 	drawCardFromDesperationDeck,
 	initDesperationDeck,
 	createEchoCard,
@@ -1359,6 +1367,8 @@ describe('enemy magic stone drops and discard', () => {
 				null,
 				null,
 				null,
+				null,
+				null,
 			],
 		});
 
@@ -1367,6 +1377,7 @@ describe('enemy magic stone drops and discard', () => {
 		expect(result.valid).toBe(true);
 		expect(gameState.players['p1'].hand[0]).toBeNull();
 		expect(gameState.players['p1'].deck).toEqual(['flame_blade']);
+		expect(gameState.players['p1'].nextDrawAt).toBeTypeOf('number');
 	});
 
 	it('discardCardFromHand skips terminal resolution during a healthy run', () => {
@@ -1419,7 +1430,7 @@ describe('enemy magic stone drops and discard', () => {
 
 	it('isPlayerOutOfCards treats all-null hand as empty', () => {
 		addPlayer('p1', {
-			hand: [null, null, null, null],
+			hand: [null, null, null, null, null, null],
 			deck: [],
 		});
 
@@ -1428,7 +1439,7 @@ describe('enemy magic stone drops and discard', () => {
 
 	it('isPlayerOutOfCards is false when deck still has cards despite empty hand slots', () => {
 		addPlayer('p1', {
-			hand: [null, null, null, null],
+			hand: [null, null, null, null, null, null],
 			deck: ['iron_sword'],
 		});
 
@@ -2172,7 +2183,6 @@ describe('run state', () => {
 
 			drawReplacementCard(player, 0);
 
-			expect(player.hand).toHaveLength(1);
 			expect(player.hand[0].isDesperation).toBe(true);
 			expect(DESPERATION_CARD_DEFS[player.hand[0].id]).toBeDefined();
 			expect(player.inDesperation).toBe(true);
@@ -3285,7 +3295,7 @@ describe('createDrawDeckFromSelectedDeck(player)', () => {
 });
 
 describe('server hand management', () => {
-	it('initPlayerHand deals up to 4 cards from the player deck', () => {
+	it('initPlayerHand deals opening hand into 6 fixed slots', () => {
 		const player = {
 			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
 			deck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
@@ -3293,9 +3303,11 @@ describe('server hand management', () => {
 
 		const hand = initPlayerHand(player);
 
-		expect(hand).toHaveLength(4);
+		expect(hand).toHaveLength(6);
+		expect(hand.filter(Boolean)).toHaveLength(4);
 		expect(player.deck).toHaveLength(0);
-		expect(hand.every(card => card && card.id && card.remainingCharges === card.charges)).toBe(true);
+		expect(hand.filter(Boolean).every(card => card && card.id && card.remainingCharges === card.charges)).toBe(true);
+		expect(player.nextDrawAt).toBeTypeOf('number');
 	});
 
 	it('drawCardFromDeck preserves evolved card metadata', () => {
@@ -3328,13 +3340,12 @@ describe('server hand management', () => {
 		expect(player.deck).toHaveLength(0);
 
 		drawReplacementCard(player, 1);
-		expect(player.hand).toHaveLength(2);
 		expect(player.hand[1].isDesperation).toBe(true);
 		expect(player.inDesperation).toBe(true);
 		expect(player.desperationDeck).toHaveLength(DESPERATION_DECK_TEMPLATE.length - 1);
 	});
 
-	it('drawReplacementCard removes the slot when both decks are empty', () => {
+	it('drawReplacementCard nulls the slot when both decks are empty', () => {
 		const player = {
 			hand: [{ id: 'iron_sword', type: 'weapon', charges: 1, remainingCharges: 0 }],
 			deck: [],
@@ -3343,7 +3354,7 @@ describe('server hand management', () => {
 
 		drawReplacementCard(player, 0);
 
-		expect(player.hand).toHaveLength(0);
+		expect(player.hand[0]).toBeNull();
 	});
 
 	it('isPlayerOutOfCards is false when the desperation deck still has cards', () => {
@@ -3390,6 +3401,106 @@ describe('server hand management', () => {
 		});
 	});
 
+	it('validateUseCardHand rejects creature cards while their minion is active', () => {
+		const player = {
+			hand: [{
+				id: 'dungeon_drake',
+				type: 'creature',
+				charges: 1,
+				remainingCharges: 0,
+				activeMinionId: 'minion-1',
+				burnMaxTtl: 30,
+			}],
+		};
+
+		expect(validateUseCardHand(player, 0, 'dungeon_drake')).toEqual({
+			valid: false,
+			reason: 'Creature still active',
+		});
+	});
+
+	it('beginCreatureBurnDown links the hand card to the spawned minion', () => {
+		const player = {
+			hand: [{ id: 'dungeon_drake', type: 'creature', charges: 1, remainingCharges: 1 }],
+			deck: ['iron_sword'],
+			exhaustedCards: [],
+		};
+		const minion = {
+			id: 'minion-1',
+			ownerId: 'p1',
+			ttl: 30,
+		};
+
+		beginCreatureBurnDown(player, 0, player.hand[0], minion);
+
+		expect(player.hand[0].activeMinionId).toBe('minion-1');
+		expect(player.hand[0].burnMaxTtl).toBe(30);
+		expect(player.hand[0].remainingCharges).toBe(0);
+		expect(minion.sourceSlotIndex).toBe(0);
+		expect(minion.sourceCardId).toBe('dungeon_drake');
+		expect(player.deck).toEqual(['iron_sword']);
+	});
+
+	it('releaseBurningCreatureCard exhausts the slot and schedules passive draw', () => {
+		addPlayer('p1', {
+			hand: [{
+				id: 'dungeon_drake',
+				type: 'creature',
+				charges: 1,
+				remainingCharges: 0,
+				activeMinionId: 'minion-1',
+				burnMaxTtl: 30,
+			}],
+			deck: ['iron_sword'],
+			exhaustedCards: [],
+		});
+		const minion = {
+			id: 'minion-1',
+			ownerId: 'p1',
+			sourceSlotIndex: 0,
+			sourceCardId: 'dungeon_drake',
+			ttl: 0,
+			hp: 0,
+		};
+
+		expect(releaseBurningCreatureCard(gameState.players.p1, minion)).toBe(true);
+		expect(gameState.players.p1.hand[0]).toBeNull();
+		expect(gameState.players.p1.exhaustedCards.some((card) => card.id === 'dungeon_drake')).toBe(true);
+		expect(gameState.players.p1.nextDrawAt).toBeTypeOf('number');
+		expect(gameState.players.p1.deck).toEqual(['iron_sword']);
+	});
+
+	it('updateMinions releases a burning creature card when the minion dies', () => {
+		addPlayer('p1', {
+			hand: [{
+				id: 'dungeon_drake',
+				type: 'creature',
+				charges: 1,
+				remainingCharges: 0,
+				activeMinionId: 'minion-1',
+				burnMaxTtl: 30,
+			}],
+			deck: ['iron_sword'],
+			exhaustedCards: [],
+		});
+		gameState.minions.push({
+			id: 'minion-1',
+			ownerId: 'p1',
+			sourceSlotIndex: 0,
+			sourceCardId: 'dungeon_drake',
+			x: 0,
+			z: 0,
+			hp: 0,
+			ttl: 30,
+		});
+
+		updateMinions();
+
+		expect(gameState.minions.length).toBe(0);
+		expect(gameState.players.p1.hand[0]).toBeNull();
+		expect(gameState.players.p1.nextDrawAt).toBeTypeOf('number');
+	});
+
 	it('isPlayerOutOfCards is false when a desperation card remains in hand', () => {
 		addPlayer('p1', {
 			hand: [{ id: 'rusty_shiv', type: 'weapon', charges: 1, remainingCharges: 1, isDesperation: true }],
@@ -3417,7 +3528,7 @@ describe('server hand management', () => {
 		expect(echo.magicStoneCost).toBe(CARD_DEFS.frost_nova.magicStoneCost);
 	});
 
-	it('replaceConsumedCard records exhausted real cards before drawing desperation', () => {
+	it('replaceConsumedCard records exhausted real cards and schedules passive draw', () => {
 		gameState.enemies = [
 			{ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
 		];
@@ -3435,7 +3546,115 @@ describe('server hand management', () => {
 		expect(player.exhaustedCards).toEqual([
 			expect.objectContaining({ id: 'iron_sword' }),
 		]);
+		expect(player.hand[0]).toBeNull();
+		expect(player.nextDrawAt).toBeTypeOf('number');
+
+		gameState.gamePhase = 'playing';
+		processPassiveDraws(player.nextDrawAt);
 		expect(player.hand[0].isDesperation).toBe(true);
+	});
+
+	it('exhaustHandSlot leaves a null slot without immediate draw', () => {
+		const player = {
+			hand: [{ id: 'iron_sword', type: 'weapon', charges: 1, remainingCharges: 0 }],
+			deck: ['flame_blade'],
+			exhaustedCards: [],
+		};
+
+		exhaustHandSlot(player, 0, player.hand[0]);
+
+		expect(player.hand[0]).toBeNull();
+		expect(player.deck).toEqual(['flame_blade']);
+		expect(player.nextDrawAt).toBeTypeOf('number');
+	});
+
+	it('processPassiveDraws draws one card after the interval', () => {
+		gameState.gamePhase = 'playing';
+		const player = {
+			dead: false,
+			extracted: false,
+			hand: [null, null, null, null, null, null],
+			deck: ['iron_sword', 'flame_blade'],
+			nextDrawAt: Date.now() + 500,
+		};
+		gameState.players.p1 = player;
+
+		processPassiveDraws(player.nextDrawAt - 1);
+		expect(player.hand[0]).toBeNull();
+
+		processPassiveDraws(player.nextDrawAt);
+		expect(player.hand[0].id).toBe('flame_blade');
+		expect(player.deck).toEqual(['iron_sword']);
+	});
+
+	it('discardCardFromHand schedules passive draw without recording exhaust', () => {
+		const player = {
+			hand: [
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
+				null,
+				null,
+				null,
+				null,
+				null,
+			],
+			deck: ['flame_blade'],
+			exhaustedCards: [],
+		};
+
+		const result = discardCardFromHand(player, 0, 'iron_sword');
+
+		expect(result.valid).toBe(true);
+		expect(player.hand[0]).toBeNull();
+		expect(player.exhaustedCards).toEqual([]);
+		expect(player.nextDrawAt).toBeTypeOf('number');
+	});
+
+	it('validateDiscardHand rejects burning creature cards', () => {
+		const player = {
+			hand: [{
+				id: 'dungeon_drake',
+				type: 'creature',
+				charges: 1,
+				remainingCharges: 0,
+				activeMinionId: 'minion-1',
+			}],
+		};
+
+		expect(validateDiscardHand(player, 0, 'dungeon_drake')).toEqual({
+			valid: false,
+			reason: 'Creature still active',
+		});
+	});
+
+	it('deck_sifter draws immediately when hand has room and rejects at full hand', () => {
+		gameState.gamePhase = 'playing';
+		const player = {
+			dead: false,
+			extracted: false,
+			hand: [
+				{ id: 'deck_sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
+				{ id: 'iron_sword', type: 'weapon', charges: 5, remainingCharges: 5 },
+				{ id: 'flame_blade', type: 'weapon', charges: 3, remainingCharges: 3 },
+				{ id: 'battle_familiar', type: 'spell', charges: 1, remainingCharges: 1 },
+				{ id: 'dungeon_drake', type: 'creature', charges: 1, remainingCharges: 1 },
+				{ id: 'harvesting_scythe', type: 'weapon', charges: 3, remainingCharges: 3 },
+			],
+			deck: ['chrono_trigger'],
+			nextDrawAt: null,
+		};
+		gameState.players.p1 = player;
+
+		expect(canDrawIntoHand(player)).toBe(false);
+
+		player.hand[5] = null;
+		expect(canDrawIntoHand(player)).toBe(true);
+
+		const sifter = player.hand[0];
+		sifter.remainingCharges -= 1;
+		const drawn = drawCardIntoHand(player);
+		expect(drawn.id).toBe('chrono_trigger');
+		expect(player.hand[5].id).toBe('chrono_trigger');
+		expect(sifter.remainingCharges).toBe(2);
 	});
 
 	it('initPlayerHand works with instance-based selected decks', () => {
@@ -3450,8 +3669,9 @@ describe('server hand management', () => {
 		createDrawDeckFromSelectedDeck(player);
 		initPlayerHand(player);
 
-		expect(player.hand).toHaveLength(4);
-		const handIds = player.hand.map(card => card.id).sort();
+		expect(player.hand).toHaveLength(6);
+		expect(player.hand.filter(Boolean)).toHaveLength(4);
+		const handIds = player.hand.filter(Boolean).map(card => card.id).sort();
 		const deckCardIds = player.selectedDeck
 			.map(entry => cardIdForDeckEntry(entry, player.inventory))
 			.sort();
@@ -3489,6 +3709,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			magicStones: 50,
 			currency: 10,
 			inDesperation: false,
+			nextDrawAt: null,
 			desperationDeck: [],
 			ownedCards: undefined,
 			runRewards: undefined,

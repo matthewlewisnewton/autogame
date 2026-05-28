@@ -1638,7 +1638,20 @@ function updateMinions() {
   for (const minion of _gameState.minions) {
     minion.ttl -= dt;
   }
-  _gameState.minions = _gameState.minions.filter(m => m.ttl > 0 && m.hp > 0);
+
+  const survivingMinions = [];
+  const progression = _progression();
+  for (const minion of _gameState.minions) {
+    if (minion.ttl > 0 && minion.hp > 0) {
+      survivingMinions.push(minion);
+      continue;
+    }
+    const owner = _gameState.players[minion.ownerId];
+    if (owner) {
+      progression.releaseBurningCreatureCard(owner, minion);
+    }
+  }
+  _gameState.minions = survivingMinions;
 }
 
 // ── Magic Stone Regen ──

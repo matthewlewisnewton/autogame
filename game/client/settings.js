@@ -23,7 +23,9 @@ export function getDefaultSettings() {
 		gamepad: {
 			bindings: {},
 			moveStick: 'left',
-			deadzone: 0.15
+			deadzone: 0.15,
+			/** R trigger (RT) — secondary hand palette modifier; see HAND_MODIFIER_GAMEPAD_BUTTON */
+			modifierButton: 7,
 		}
 	};
 }

@@ -19,7 +19,10 @@ const {
   TICK_RATE,
   PORTAL_RADIUS,
   PORTAL_ENTER_COOLDOWN_MS,
-  PORTAL_PLACEMENT_GRACE_MS
+  PORTAL_PLACEMENT_GRACE_MS,
+  MAX_HAND_SLOTS,
+  OPENING_HAND_SIZE,
+  PASSIVE_DRAW_INTERVAL_MS,
 } = require('./config');
 const {
   mulberry32,
@@ -95,7 +98,7 @@ const CARD_DEFS = {
   iron_sword: { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 15, charges: 5 },
   flame_blade: { id: 'flame_blade', name: 'Solar Edge', type: 'weapon', damage: 25, charges: 3 },
   battle_familiar: { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, magicStoneCost: 50, damage: 40 },
-  dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1 },
+  dungeon_drake: { id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, minionTtl: 30 },
   steel_claymore: {
     id: 'steel_claymore',
     name: 'Alloy Greatblade',
@@ -170,6 +173,15 @@ const CARD_DEFS = {
     attackConeAngle: Math.PI,
     magicStoneOnHit: 5,
     magicStoneOnKill: 15,
+  },
+  deck_sifter: {
+    id: 'deck_sifter',
+    name: 'Deck Sifter',
+    type: 'weapon',
+    charges: 3,
+    effect: 'draw_card',
+    magicStoneCost: 0,
+    drawsOnUse: 1,
   },
   sacrificial_altar: {
     id: 'sacrificial_altar',
@@ -1709,7 +1721,99 @@ const DESPERATION_DECK_TEMPLATE = [
   'memory_shard',
 ];
 
-const MAX_HAND_SLOTS = 4;
+function ensureHandSlots(player) {
+  if (!player) return;
+  if (!Array.isArray(player.hand)) player.hand = [];
+  while (player.hand.length < MAX_HAND_SLOTS) {
+    player.hand.push(null);
+  }
+  if (player.hand.length > MAX_HAND_SLOTS) {
+    player.hand.length = MAX_HAND_SLOTS;
+  }
+}
+
+function countFilledHandSlots(player) {
+  if (!player || !Array.isArray(player.hand)) return 0;
+  return player.hand.filter(Boolean).length;
+}
+
+function findFirstEmptyHandSlot(player) {
+  ensureHandSlots(player);
+  for (let i = 0; i < MAX_HAND_SLOTS; i++) {
+    if (!player.hand[i]) return i;
+  }
+  return -1;
+}
+
+function canDrawIntoHand(player) {
+  return countFilledHandSlots(player) < MAX_HAND_SLOTS
+    && (!isDeckEmpty(player) || !isDesperationDeckEmpty(player));
+}
+
+function ensurePassiveDrawScheduled(player) {
+  if (!player) return;
+  if (!canDrawIntoHand(player)) {
+    player.nextDrawAt = null;
+    return;
+  }
+  if (player.nextDrawAt == null) {
+    player.nextDrawAt = Date.now() + PASSIVE_DRAW_INTERVAL_MS;
+  }
+}
+
+function drawCardIntoHand(player) {
+  ensureHandSlots(player);
+  const slotIndex = findFirstEmptyHandSlot(player);
+  if (slotIndex < 0) return null;
+  const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
+  if (!card) {
+    checkRunTerminalState();
+    return null;
+  }
+  player.hand[slotIndex] = card;
+  checkRunTerminalState();
+  return card;
+}
+
+function exhaustHandSlot(player, slotIndex, consumedCard) {
+  ensureHandSlots(player);
+  if (consumedCard && !consumedCard.isDesperation && !consumedCard.isEcho) {
+    recordExhaustedCard(player, consumedCard);
+  }
+  player.hand[slotIndex] = null;
+  ensurePassiveDrawScheduled(player);
+  checkRunTerminalState();
+}
+
+function discardHandSlot(player, slotIndex) {
+  ensureHandSlots(player);
+  player.hand[slotIndex] = null;
+  ensurePassiveDrawScheduled(player);
+  checkRunTerminalState();
+}
+
+function processPassiveDraws(now) {
+  if (!_gameState || _gameState.gamePhase !== 'playing') return;
+  for (const player of Object.values(_gameState.players)) {
+    if (!isPlayerActive(player)) continue;
+    if (!canDrawIntoHand(player)) {
+      player.nextDrawAt = null;
+      continue;
+    }
+    if (player.nextDrawAt == null) {
+      ensurePassiveDrawScheduled(player);
+      continue;
+    }
+    if (now >= player.nextDrawAt) {
+      const drew = drawCardIntoHand(player);
+      if (drew && canDrawIntoHand(player)) {
+        player.nextDrawAt = now + PASSIVE_DRAW_INTERVAL_MS;
+      } else {
+        player.nextDrawAt = null;
+      }
+    }
+  }
+}
 
 function isDeckEmpty(player) {
   return !player || !Array.isArray(player.deck) || player.deck.length === 0;
@@ -1819,10 +1923,34 @@ function pickRandomExhaustedCard(player) {
 }
 
 function replaceConsumedCard(player, slotIndex, consumedCard) {
-  if (consumedCard && !consumedCard.isDesperation && !consumedCard.isEcho) {
-    recordExhaustedCard(player, consumedCard);
-  }
-  drawReplacementCard(player, slotIndex);
+  exhaustHandSlot(player, slotIndex, consumedCard);
+}
+
+function beginCreatureBurnDown(player, slotIndex, handCard, minion) {
+  handCard.activeMinionId = minion.id;
+  handCard.burnMaxTtl = minion.ttl;
+  handCard.remainingCharges = 0;
+  minion.sourceSlotIndex = slotIndex;
+  minion.sourceCardId = handCard.id;
+}
+
+function findBurningHandCardForMinion(player, minion) {
+  if (!player || !Array.isArray(player.hand) || !minion) return null;
+  const slotIndex = Number.isInteger(minion.sourceSlotIndex) ? minion.sourceSlotIndex : -1;
+  if (slotIndex < 0 || slotIndex >= player.hand.length) return null;
+  const card = player.hand[slotIndex];
+  if (!card || card.activeMinionId !== minion.id) return null;
+  return { slotIndex, card };
+}
+
+function releaseBurningCreatureCard(player, minion) {
+  const match = findBurningHandCardForMinion(player, minion);
+  if (!match) return false;
+  const { slotIndex, card } = match;
+  delete card.activeMinionId;
+  delete card.burnMaxTtl;
+  replaceConsumedCard(player, slotIndex, card);
+  return true;
 }
 
 function createDrawDeckFromSelectedDeck(player) {
@@ -1880,13 +2008,17 @@ function drawCardFromDeck(player) {
 
 function initPlayerHand(player) {
   resetPlayerDesperationState(player);
-  player.hand = [];
-  for (let i = 0; i < MAX_HAND_SLOTS; i++) {
+  player.hand = new Array(MAX_HAND_SLOTS).fill(null);
+  player.nextDrawAt = null;
+  for (let i = 0; i < OPENING_HAND_SIZE; i++) {
     const card = drawCardFromDeck(player);
     if (card) {
-      player.hand.push(card);
+      player.hand[i] = card;
+    } else {
+      break;
     }
   }
+  ensurePassiveDrawScheduled(player);
   return player.hand;
 }
 
@@ -1898,17 +2030,18 @@ function isPlayerOutOfCards(player) {
 }
 
 function drawReplacementCard(player, slotIndex) {
+  ensureHandSlots(player);
   const card = drawCardFromDeck(player) || drawCardFromDesperationDeck(player);
   if (card) {
     player.hand[slotIndex] = card;
   } else {
-    player.hand.splice(slotIndex, 1);
+    player.hand[slotIndex] = null;
   }
   checkRunTerminalState();
 }
 
 function validateUseCardHand(player, slotIndex, cardId) {
-  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex > 3) {
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) {
     return { valid: false, reason: 'Invalid slot' };
   }
   if (!player || !Array.isArray(player.hand)) {
@@ -1920,6 +2053,10 @@ function validateUseCardHand(player, slotIndex, cardId) {
     return { valid: false, reason: 'Card not in hand' };
   }
 
+  if (handCard.activeMinionId) {
+    return { valid: false, reason: 'Creature still active' };
+  }
+
   if (Number.isFinite(handCard.remainingCharges) && handCard.remainingCharges <= 0) {
     return { valid: false, reason: 'No charges remaining' };
   }
@@ -1927,15 +2064,31 @@ function validateUseCardHand(player, slotIndex, cardId) {
   return { valid: true, handCard };
 }
 
+function validateDiscardHand(player, slotIndex, cardId) {
+  if (!Number.isInteger(slotIndex) || slotIndex < 0 || slotIndex >= MAX_HAND_SLOTS) {
+    return { valid: false, reason: 'Invalid slot' };
+  }
+  if (!player || !Array.isArray(player.hand)) {
+    return { valid: false, reason: 'Card not in hand' };
+  }
+
+  const handCard = player.hand[slotIndex];
+  if (!handCard || handCard.id !== cardId) {
+    return { valid: false, reason: 'Card not in hand' };
+  }
+
+  if (handCard.activeMinionId) {
+    return { valid: false, reason: 'Creature still active' };
+  }
+
+  return { valid: true, handCard };
+}
+
 function discardCardFromHand(player, slotIndex, cardId) {
-  const validation = validateUseCardHand(player, slotIndex, cardId);
+  const validation = validateDiscardHand(player, slotIndex, cardId);
   if (!validation.valid) return validation;
 
-  while (player.hand.length <= slotIndex) {
-    player.hand.push(null);
-  }
-  player.hand[slotIndex] = null;
-  checkRunTerminalState();
+  discardHandSlot(player, slotIndex);
   return { valid: true };
 }
 
@@ -1968,6 +2121,7 @@ function restoreHandCharges(player, amount, options = {}) {
     .map((slotIndex) => ({ slotIndex, card: player.hand[slotIndex] }))
     .filter(({ card }) => {
       if (!card) return false;
+      if (card.activeMinionId) return false;
       if (allowedTypes && !allowedTypes.has(card.type)) return false;
       return Number.isFinite(card.remainingCharges) && Number.isFinite(card.charges) && card.remainingCharges < card.charges;
     });
@@ -2180,7 +2334,8 @@ function capturePlayerCombatState(player) {
     magicStones: player.magicStones,
     hand: Array.isArray(player.hand) ? player.hand.map((card) => (card ? { ...card } : null)) : [],
     deck: Array.isArray(player.deck) ? [...player.deck] : [],
-    slotCooldowns: Array.isArray(player.slotCooldowns) ? [...player.slotCooldowns] : [null, null, null, null],
+    slotCooldowns: Array.isArray(player.slotCooldowns) ? [...player.slotCooldowns] : new Array(MAX_HAND_SLOTS).fill(null),
+    nextDrawAt: player.nextDrawAt ?? null,
     currencyEarnedThisRun: player.currencyEarnedThisRun || 0,
     runCardDropIds: Array.isArray(player.runCardDropIds) ? [...player.runCardDropIds] : [],
     inDesperation: !!player.inDesperation,
@@ -2292,7 +2447,7 @@ function suspendRunToLobby() {
     player.z = spawn.z;
     player.lastMoveTime = Date.now();
     player.pendingSummons = new Set();
-    player.slotCooldowns = [null, null, null, null];
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     player.hand = [];
     player.deck = [];
     player.inputActive = false;
@@ -2392,7 +2547,7 @@ function abandonSuspendedRun() {
     player.z = spawn.z;
     player.hand = [];
     player.deck = [];
-    player.slotCooldowns = [null, null, null, null];
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     player.pendingSummons = new Set();
   }
 
@@ -2475,6 +2630,7 @@ function stateSnapshot() {
       magicStones: p.magicStones,
       currency: p.currency,
       inDesperation: !!p.inDesperation,
+      nextDrawAt: p.nextDrawAt ?? null,
       ownedCards: p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined),
       runRewards: p.runRewards,
       currencyEarnedThisRun: p.currencyEarnedThisRun,
@@ -2540,7 +2696,7 @@ function returnPlayersToLobby() {
     player.currencyEarnedThisRun = 0;
     player.lastMoveTime = Date.now();
     player.pendingSummons.clear();
-    player.slotCooldowns = [null, null, null, null];
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
   }
 
   refreshShopOffer();
@@ -2580,7 +2736,7 @@ function checkAllReady() {
       if (player.debugScenario === 'telepipe-ready') {
         applyTelepipeReadyHand(player);
       }
-      player.slotCooldowns = [null, null, null, null];
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     }
     spawnEnemies();
     startDungeonRun();
@@ -2608,6 +2764,16 @@ module.exports = {
   createEchoCard,
   pickRandomExhaustedCard,
   replaceConsumedCard,
+  exhaustHandSlot,
+  discardHandSlot,
+  drawCardIntoHand,
+  ensurePassiveDrawScheduled,
+  processPassiveDraws,
+  canDrawIntoHand,
+  countFilledHandSlots,
+  beginCreatureBurnDown,
+  releaseBurningCreatureCard,
+  findBurningHandCardForMinion,
   recordExhaustedCard,
   resetPlayerDesperationState,
   STARTING_DECK_IDS,
@@ -2675,6 +2841,7 @@ module.exports = {
   initPlayerHand,
   drawReplacementCard,
   discardCardFromHand,
+  validateDiscardHand,
   isPlayerOutOfCards,
   validateUseCardHand,
   addMagicStones,

@@ -156,14 +156,14 @@ for (( iter=1; iter<=MAX_ITER; iter++ )); do
   fi
   CODER_PROMPT="$(render_prompt "$PROMPTS_DIR/implement.md" \
     TICKET_FILE "$TICKET_FILE" FEEDBACK_FILE "$FEEDBACK" HANDOFF_FILE "$HANDOFF")"
-  handoff_before="$(stat -c %Y "$HANDOFF" 2>/dev/null || echo 0)"
+  handoff_before="$(file_mtime "$HANDOFF")"
   run_impl "$CODER_PROMPT" "$ARTI/qwen.txt"; coder_rc=$?
 
   # Guarantee a handoff note exists for the next session. If qwen ran out of
   # context / crashed before writing its own, the harness "moves it over" by
   # synthesizing one from the attempt log — context continuity is the harness's
   # job, not something we rely on qwen's in-session compaction to preserve.
-  if [ "$(stat -c %Y "$HANDOFF" 2>/dev/null || echo 0)" = "$handoff_before" ]; then
+  if [ "$(file_mtime "$HANDOFF")" = "$handoff_before" ]; then
     log "[handoff] no handoff left by qwen — harness synthesizing one"
     coder_reason="$(cli_failure_reason "$coder_rc" "$ARTI/qwen.txt")"
     {

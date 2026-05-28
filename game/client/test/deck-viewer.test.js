@@ -139,7 +139,7 @@ describe('renderDeckViewer() / renderDeckStack()', () => {
 		}
 
 		const cardHand = document.getElementById('card-hand');
-		for (let i = 0; i < 4; i++) {
+		for (let i = 0; i < 6; i++) {
 			const slot = document.createElement('div');
 			slot.className = 'card-slot';
 			slot.dataset.slotIndex = String(i);

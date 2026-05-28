@@ -39,9 +39,10 @@ import {
 	evictDisconnectedPlayers,
 	DISCONNECT_GRACE_MS,
 	runGameLoopTick,
+	processPassiveDraws,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, TICK_RATE } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, TICK_RATE } from '../config.js';
 
 // ── Helpers ──
 
@@ -839,12 +840,10 @@ describe('Socket Integration — useCard Event', () => {
 				if (emptySlot >= 0) {
 					player.hand[emptySlot] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
 					summonSlot = emptySlot;
-				} else if (player.hand.length < 4) {
-					player.hand.push({ id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 });
-					summonSlot = player.hand.length - 1;
 				} else {
-					player.hand[3] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
-					summonSlot = 3;
+					const replaceSlot = player.hand.findIndex((c, index) => c && index !== 0) ;
+					player.hand[replaceSlot >= 0 ? replaceSlot : 5] = { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 40 };
+					summonSlot = replaceSlot >= 0 ? replaceSlot : 5;
 				}
 			}
 			const summonCard = player.hand[summonSlot];
@@ -936,11 +935,11 @@ describe('Socket Integration — useCard Event', () => {
 	}
 
 	describe('Monster card', () => {
-		it('uses monster card: minion spawned, stateUpdate broadcast, hand slot replaced', async () => {
+		it('uses monster card: minion spawned, card stays in hand until minion expires', async () => {
 			const { playerKey, monsterSlot, monsterCardId, handSizeBefore } = await setupMonsterCard(socket);
 			const minionCountBefore = testGameState().minions.length;
+			const deckBefore = [...testGameState().players[playerKey].deck];
 
-			// Capture the stateUpdate broadcast after useCard
 			const stateUpdatePromise = new Promise((resolve) => {
 				socket.once('stateUpdate', resolve);
 			});
@@ -948,36 +947,73 @@ describe('Socket Integration — useCard Event', () => {
 			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
 			const updatedSnapshot = await stateUpdatePromise;
 
-			// — Minion spawned in testGameState().minions —
 			expect(testGameState().minions.length).toBe(minionCountBefore + 1);
 			const newMinion = testGameState().minions[testGameState().minions.length - 1];
 			expect(newMinion.ownerId).toBe(socket._playerId);
 			expect(newMinion.hp).toBe(50);
 			expect(newMinion.ttl).toBeGreaterThan(29);
 			expect(newMinion.ttl).toBeLessThanOrEqual(30);
+			expect(newMinion.sourceSlotIndex).toBe(monsterSlot);
+			expect(newMinion.sourceCardId).toBe(monsterCardId);
 
-			// — stateUpdate broadcast includes the new minion —
 			expect(updatedSnapshot.minions).toBeDefined();
 			expect(updatedSnapshot.minions.length).toBe(minionCountBefore + 1);
-			const broadcastMinion = updatedSnapshot.minions[updatedSnapshot.minions.length - 1];
-			expect(broadcastMinion.ownerId).toBe(socket._playerId);
-			expect(broadcastMinion.hp).toBe(50);
 
-			// — Hand slot replaced (or shrunk if deck exhausted) —
 			const updatedPlayer = updatedSnapshot.players[playerKey];
 			expect(updatedPlayer).toBeDefined();
-			if (updatedPlayer.hand.length === handSizeBefore) {
-				const slotCard = updatedPlayer.hand[monsterSlot];
-				expect(slotCard).toBeDefined();
-				// Fresh draw from deck — may repeat the same card id if deck has duplicates
-				expect(slotCard.remainingCharges).toBe(slotCard.charges);
-			} else {
-				expect(updatedPlayer.hand.length).toBe(handSizeBefore - 1);
-			}
+			expect(updatedPlayer.hand.length).toBe(handSizeBefore);
+			const burningCard = updatedPlayer.hand[monsterSlot];
+			expect(burningCard).toBeDefined();
+			expect(burningCard.id).toBe(monsterCardId);
+			expect(burningCard.activeMinionId).toBe(newMinion.id);
+			expect(burningCard.burnMaxTtl).toBeCloseTo(newMinion.ttl, 1);
+			expect(updatedPlayer.deck.length).toBe(deckBefore.length);
+
+			const state = testGameState();
+			const liveMinion = state.minions.find((m) => m.id === newMinion.id);
+			expect(liveMinion).toBeDefined();
+			liveMinion.ttl = 0.01;
+			liveMinion.hp = 0;
+
+			const sim = require('../simulation');
+			const progression = require('../progression');
+			sim.setGameState(state, _timeouts);
+			progression.setGameState(state);
+			updateMinions();
+
+			expect(state.minions.some((m) => m.id === newMinion.id)).toBe(false);
+			const playerAfterExpiry = state.players[playerKey];
+			expect(playerAfterExpiry.hand[monsterSlot]).toBeNull();
+			expect(playerAfterExpiry.deck.length).toBe(deckBefore.length);
+			expect(playerAfterExpiry.nextDrawAt).toBeTypeOf('number');
+
+			processPassiveDraws(playerAfterExpiry.nextDrawAt);
+			const slotCard = playerAfterExpiry.hand[monsterSlot];
+			expect(slotCard).toBeTruthy();
+			expect(slotCard.id).not.toBe(monsterCardId);
+			expect(slotCard.activeMinionId).toBeUndefined();
+			expect(playerAfterExpiry.deck.length).toBe(deckBefore.length - 1);
+		});
+
+		it('rejects re-playing a creature card while its minion is active', async () => {
+			const { playerKey, monsterSlot, monsterCardId } = await setupMonsterCard(socket);
+
+			await waitForEvent(socket, 'stateUpdate');
+			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
+			await waitForEvent(socket, 'stateUpdate');
+
+			const player = testGameState().players[playerKey];
+			player.slotCooldowns[monsterSlot] = 0;
+
+			const cardErrorPromise = waitForEvent(socket, 'cardError');
+			socket.emit('useCard', { cardId: monsterCardId, slotIndex: monsterSlot });
+			const cardError = await cardErrorPromise;
+
+			expect(cardError.reason).toBe('Creature still active');
 		});
 	});
 
-	it('discardCard empties a slot without drawing a replacement', async () => {
+	it('discardCard empties a slot and schedules passive draw', async () => {
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'summon-ready' });
 		await debugResultPromise;
@@ -996,6 +1032,7 @@ describe('Socket Integration — useCard Event', () => {
 		const updated = snapshot.players[socket._playerId];
 		expect(updated.hand[discardSlot]).toBeNull();
 		expect(updated.deck).toEqual(deckBefore);
+		expect(updated.nextDrawAt).toBeTypeOf('number');
 	});
 
 	describe('Synergistic cards', () => {
@@ -1007,7 +1044,43 @@ describe('Socket Integration — useCard Event', () => {
 			return testGameState().players[socket._playerId];
 		}
 
-		it('Chrono Trigger restores charges to adjacent hand cards', async () => {
+		it('discardCard frees a slot and draw weapon succeeds at full hand', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		player.deck = ['iron_sword', 'flame_blade', 'battle_familiar'];
+		player.hand = [
+			{ id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5 },
+			{ id: 'flame_blade', name: 'Solar Edge', type: 'weapon', charges: 3, remainingCharges: 3 },
+			{ id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50 },
+			{ id: 'dungeon_drake', name: 'Vault Wyrm', type: 'creature', charges: 1, remainingCharges: 1 },
+			{ id: 'deck_sifter', name: 'Deck Sifter', type: 'weapon', charges: 3, remainingCharges: 3, effect: 'draw_card' },
+			{ id: 'harvesting_scythe', name: 'Ether Scythe', type: 'weapon', charges: 3, remainingCharges: 3 },
+		];
+
+		const cardErrorPromise = waitForEvent(socket, 'cardError');
+		socket.emit('useCard', { cardId: 'deck_sifter', slotIndex: 4 });
+		const cardError = await cardErrorPromise;
+		expect(cardError.reason).toBe('Hand full');
+
+		const discardUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('discardCard', { slotIndex: 0, cardId: 'iron_sword' });
+		await discardUpdatePromise;
+
+		const deckBeforeDraw = player.deck.length;
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('useCard', { cardId: 'deck_sifter', slotIndex: 4 });
+		await stateUpdatePromise;
+
+		expect(player.hand[0]).toBeTruthy();
+		expect(player.deck.length).toBe(deckBeforeDraw - 1);
+		expect(player.hand[4].remainingCharges).toBe(2);
+	});
+
+	it('Chrono Trigger restores charges to adjacent hand cards', async () => {
 			const player = await enterScenario();
 			player.deck = [];
 			player.hand = [
@@ -1191,7 +1264,7 @@ describe('Server hand authority — useCard validation', () => {
 		expect(err.reason).toBe('Card not in hand');
 	});
 
-	it('server decrements charges and redraws when a weapon exhausts', async () => {
+	it('server decrements charges and leaves an empty slot when a weapon exhausts', async () => {
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'summon-ready' });
 		await debugResultPromise;
@@ -1220,9 +1293,9 @@ describe('Server hand authority — useCard validation', () => {
 		await cardUsedPromise;
 		await stateUpdatePromise;
 
-		expect(player.hand[weaponSlot]).toBeTruthy();
-		expect(player.hand[weaponSlot].remainingCharges).toBe(player.hand[weaponSlot].charges);
-		expect(player.deck.length).toBe(deckSizeBefore - 1);
+		expect(player.hand[weaponSlot]).toBeNull();
+		expect(player.deck.length).toBe(deckSizeBefore);
+		expect(player.nextDrawAt).toBeTypeOf('number');
 	});
 });
 
@@ -4691,12 +4764,13 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const restoredPlayer = testGameState().players[player2Id];
 		expect(restoredPlayer.hand).toBeDefined();
 		expect(restoredPlayer.hand.length).toBeGreaterThan(0);
-		expect(restoredPlayer.hand.length).toBeLessThanOrEqual(4);
+		expect(restoredPlayer.hand.length).toBeLessThanOrEqual(6);
+		expect(restoredPlayer.hand.filter(Boolean).length).toBeLessThanOrEqual(4);
 		expect(restoredPlayer.deck).toBeDefined();
 		expect(Array.isArray(restoredPlayer.deck)).toBe(true);
 
-		// Verify each hand card has the expected shape
-		for (const card of restoredPlayer.hand) {
+		// Verify each filled hand card has the expected shape
+		for (const card of restoredPlayer.hand.filter(Boolean)) {
 			expect(card).toHaveProperty('id');
 			expect(card).toHaveProperty('name');
 			expect(card).toHaveProperty('type');
@@ -4827,7 +4901,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		// --- Set stale cooldowns and low magic stones ---
 		const player2Id = c2.socket._playerId;
 		const player2 = testGameState().players[player2Id];
-		player2.slotCooldowns = [Date.now() + 99999, Date.now() + 99999, Date.now() + 99999, Date.now() + 99999];
+		player2.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(Date.now() + 99999);
 		player2.magicStones = 0;
 
 		savePlayerInPrimaryLobby(player2Id);
@@ -4842,8 +4916,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
 
 		const restoredPlayer = testGameState().players[player2Id];
-		expect(restoredPlayer.slotCooldowns).toEqual([null, null, null, null]);
-		expect(restoredPlayer.magicStones).toBe(90); // MAX_MAGIC_STONES
+		expect(restoredPlayer.slotCooldowns).toEqual(new Array(MAX_HAND_SLOTS).fill(null));
+		expect(restoredPlayer.magicStones).toBe(MAX_MAGIC_STONES);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();
@@ -4904,7 +4978,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		const player2Id = c2.socket._playerId;
 		const player2 = testGameState().players[player2Id];
-		const handBefore = player2.hand.map(c => c.id);
+		const handBefore = player2.hand.filter(Boolean).map(c => c.id);
 
 		// Simulate warm reconnect: manually call the reconnect path
 		// by keeping the player in memory but simulating the connection handler

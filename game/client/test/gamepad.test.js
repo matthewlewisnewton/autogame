@@ -7,7 +7,7 @@ import {
 	pollGamepadButtons,
 	resetGamepadState,
 } from '../gamepad.js';
-import { GAMEPAD_DEADZONE } from '../config.js';
+import { GAMEPAD_DEADZONE, LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
 
 describe('applyDeadzone()', () => {
 	it('returns zero inside the deadzone', () => {
@@ -87,28 +87,14 @@ describe('pollGamepadButtons()', () => {
 		resetGamepadState();
 	});
 
-	it('fires card slots only on button press edges', () => {
-		const makePad = (pressed) => ({
-			connected: true,
-			buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: i === 0 && pressed })),
-			axes: [0, 0, 0, 0],
-		});
-
-		navigator.getGamepads = () => [makePad(true)];
-		expect(pollGamepadButtons().slots).toEqual([0]);
-
-		expect(pollGamepadButtons().slots).toEqual([]);
-		navigator.getGamepads = () => [null];
-	});
-
-	it('maps Select to deck toggle on press edge', () => {
+	it('fires lock-on only on button press edge', () => {
 		navigator.getGamepads = () => [{
 			connected: true,
-			buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: i === 8 })),
+			buttons: Array.from({ length: 16 }, (_, i) => ({ pressed: i === LOCK_ON_GAMEPAD_BUTTON })),
 			axes: [0, 0, 0, 0],
 		}];
-		expect(pollGamepadButtons().toggleDeck).toBe(true);
-		expect(pollGamepadButtons().toggleDeck).toBe(false);
+		expect(pollGamepadButtons().lockOn).toBe(true);
+		expect(pollGamepadButtons().lockOn).toBe(false);
 	});
 });
 

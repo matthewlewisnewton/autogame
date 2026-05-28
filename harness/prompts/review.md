@@ -66,7 +66,7 @@ YOUR JOB:
    foundation in `game/docs/requirements.md`.
 3. Check code quality: no obvious bugs, no dead/broken code, no console errors.
 4. DEBUG SCENARIOS — if this ticket added or changed any development debug
-   scenario (a `?scenario=NAME` URL shortcut that jumps into a specific game
+   scenario (a `?debugScenario=NAME` URL shortcut that jumps into a specific game
    state), verify ALL of:
    - It is gated behind a clearly debug/dev path — normal gameplay must not
      touch it. The URL parameter must be the ONLY entry point.
