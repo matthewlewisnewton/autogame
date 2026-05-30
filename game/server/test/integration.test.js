@@ -974,6 +974,7 @@ describe('Socket Integration — useCard Event', () => {
 			const state = testGameState();
 			const liveMinion = state.minions.find((m) => m.id === newMinion.id);
 			expect(liveMinion).toBeDefined();
+			const exhaustedBefore = (state.players[playerKey].exhaustedCards || []).length;
 			liveMinion.ttl = 0.01;
 			liveMinion.hp = 0;
 
@@ -988,12 +989,16 @@ describe('Socket Integration — useCard Event', () => {
 			expect(playerAfterExpiry.hand[monsterSlot]).toBeNull();
 			expect(playerAfterExpiry.deck.length).toBe(deckBefore.length);
 			expect(playerAfterExpiry.nextDrawAt).toBeTypeOf('number');
+			expect(playerAfterExpiry.exhaustedCards.length).toBe(exhaustedBefore + 1);
+			expect(playerAfterExpiry.exhaustedCards.some((card) => card.id === monsterCardId)).toBe(true);
 
 			processPassiveDraws(playerAfterExpiry.nextDrawAt);
 			const slotCard = playerAfterExpiry.hand[monsterSlot];
 			expect(slotCard).toBeTruthy();
-			expect(slotCard.id).not.toBe(monsterCardId);
+			// Draw pile can contain duplicate card ids; assert fresh draw semantics, not identity.
 			expect(slotCard.activeMinionId).toBeUndefined();
+			expect(slotCard.burnMaxTtl).toBeUndefined();
+			expect(slotCard.remainingCharges).toBe(slotCard.charges);
 			expect(playerAfterExpiry.deck.length).toBe(deckBefore.length - 1);
 		});
 
