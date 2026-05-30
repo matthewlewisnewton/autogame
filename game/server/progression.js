@@ -8,6 +8,7 @@ const {
   DECK_MAX_SIZE,
   MAX_HP,
   MEDIC_HEAL_COST,
+  LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
   SPAWN_PADDING,
@@ -113,7 +114,8 @@ const CARD_DEFS = {
     charges: 1,
     minionTtl: 30,
     attackDamage: 3,
-    breathRange: 4,
+    breathRange: 6,
+    breathHoldDistance: 3.5,
     breathConeAngle: Math.PI / 4,
     breathDurationMs: 2000,
     breathTickMs: 500,
@@ -199,7 +201,8 @@ const CARD_DEFS = {
     specialEffect: 'fire_breath',
     effect: 'ancient_wyrm',
     breathIntervalMs: 3000,
-    breathRange: 8,
+    breathRange: 10,
+    breathHoldDistance: 5.5,
     breathConeAngle: Math.PI / 3,
     breathDurationMs: 2500,
     breathTickMs: 500,
@@ -694,6 +697,16 @@ function ensureShopOffer() {
   return _gameState.shopOffer;
 }
 
+/** Restore minimal HP when returning to the lobby ship after death or wipe. */
+function revivePlayerInLobby(player) {
+  if (!player) return;
+  const hp = Number.isFinite(player.hp) ? player.hp : 0;
+  if (player.dead || hp <= 0) {
+    player.hp = LOBBY_REVIVE_HP;
+    player.dead = false;
+  }
+}
+
 function healAtMedic(playerId) {
   if (!_gameState || _gameState.gamePhase !== 'lobby') {
     return { ok: false, reason: 'not_in_lobby' };
@@ -922,6 +935,21 @@ function getStatMultiplier(grind) {
 function scaledGrindStat(baseValue, grind) {
   if (!Number.isFinite(baseValue)) return baseValue;
   return Math.round(baseValue * getStatMultiplier(grind));
+}
+
+function applyWyrmMinionBreathStats(minion, cardDef, grind, now) {
+  const breathIntervalMs = cardDef.breathIntervalMs ?? 2500;
+  minion.breathIntervalMs = breathIntervalMs;
+  minion.lastBreathAt = now - breathIntervalMs;
+  const baseRange = cardDef.breathRange ?? 6;
+  const baseHold = cardDef.breathHoldDistance ?? Math.max(2.5, baseRange * 0.58);
+  minion.breathRange = scaledGrindStat(baseRange, grind);
+  minion.breathHoldDistance = scaledGrindStat(baseHold, grind);
+  minion.breathConeAngle = cardDef.breathConeAngle ?? (Math.PI / 4);
+  minion.breathDurationMs = cardDef.breathDurationMs ?? 2000;
+  minion.breathTickMs = cardDef.breathTickMs ?? 500;
+  const baseDamage = cardDef.breathDamage ?? cardDef.attackDamage ?? 3;
+  minion.breathDamage = scaledGrindStat(baseDamage, grind);
 }
 
 function grindCard(player, instanceId) {
@@ -2364,6 +2392,66 @@ function spawnCrystals(layout, rng, count) {
   }
 }
 
+function randomPositionInRoom(room, rng) {
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  return {
+    x: room.x + (rng() * 2 - 1) * halfW,
+    z: room.z + (rng() * 2 - 1) * halfD,
+  };
+}
+
+function nearestCombatRoom(layout) {
+  const startRoom = layout.rooms.find(r => r.role === 'start') || layout.rooms[0];
+  const combatRooms = roomsByRole(layout, 'combat');
+  if (!startRoom || combatRooms.length === 0) return null;
+
+  let nearest = combatRooms[0];
+  let nearestDist = Infinity;
+  for (const room of combatRooms) {
+    const dist = Math.hypot(room.x - startRoom.x, room.z - startRoom.z);
+    if (dist < nearestDist) {
+      nearestDist = dist;
+      nearest = room;
+    }
+  }
+  return nearest;
+}
+
+function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
+  if (preferNearestCombat) {
+    const nearest = nearestCombatRoom(layout);
+    if (nearest) return randomPositionInRoom(nearest, rng);
+  }
+
+  const combatRooms = roomsByRole(layout, 'combat');
+  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
+
+  if (combatRooms.length > 0) {
+    return randomRoomPositionByRole(layout, 'combat', rng);
+  }
+  if (nonStartRooms.length > 0) {
+    const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
+    return randomPositionInRoom(room, rng);
+  }
+  return randomRoomPosition();
+}
+
+function spawnCombatEnemies(layout, rng, quest) {
+  const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
+  const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
+  const preferNearest = quest.objectiveType === 'collect_items';
+  const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+
+  for (let i = 0; i < enemyCount; i++) {
+    const type = spawnTypes[i % spawnTypes.length];
+    const useNearest = preferNearest && i < nearbyCount;
+    const pos = pickEnemySpawnPosition(layout, rng, useNearest);
+    const enemy = spawnEnemy(pos.x, pos.z, type);
+    enemy.wanderTarget = randomWanderTarget();
+  }
+}
+
 function spawnLoot(layout, rng) {
   if (Math.random() >= LOOT_SPAWN_CHANCE) return;
 
@@ -2406,38 +2494,9 @@ function spawnEnemies() {
   if (quest.objectiveType === 'collect_items') {
     const crystalCount = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
     spawnCrystals(layout, rng, crystalCount);
-    return;
   }
 
-  const combatRooms = roomsByRole(layout, 'combat');
-  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
-
-  const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
-  const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
-  const typesToSpawn = [];
-  for (let i = 0; i < enemyCount; i++) {
-    typesToSpawn.push(spawnTypes[i % spawnTypes.length]);
-  }
-
-  for (const type of typesToSpawn) {
-    let pos;
-    if (combatRooms.length > 0) {
-      pos = randomRoomPositionByRole(layout, 'combat', rng);
-    } else if (nonStartRooms.length > 0) {
-      const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
-      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-      pos = {
-        x: room.x + (rng() * 2 - 1) * halfW,
-        z: room.z + (rng() * 2 - 1) * halfD,
-      };
-    } else {
-      pos = randomRoomPosition();
-    }
-    const enemy = spawnEnemy(pos.x, pos.z, type);
-    enemy.wanderTarget = randomWanderTarget();
-  }
-
+  spawnCombatEnemies(layout, rng, quest);
   spawnLoot(layout, rng);
 }
 
@@ -2523,6 +2582,13 @@ function restoreRunCheckpoint() {
   _gameState.enemies = JSON.parse(JSON.stringify(checkpoint.enemies));
   _gameState.minions = JSON.parse(JSON.stringify(checkpoint.minions));
   _gameState.loot = JSON.parse(JSON.stringify(checkpoint.loot));
+
+  const quest = getSelectedQuest(_gameState);
+  if (_gameState.enemies.length === 0 && Number.isFinite(quest.enemyCount) && quest.enemyCount > 0) {
+    const rng = mulberry32((_gameState.layoutSeed || 42) + 1000);
+    spawnCombatEnemies(_gameState.layout, rng, quest);
+    console.log(`[run] restored run had no enemies — spawned ${quest.enemyCount} for ${quest.id}`);
+  }
   _gameState.areaEffects = JSON.parse(JSON.stringify(checkpoint.areaEffects));
   _gameState.telepipe = checkpoint.telepipe ? { ...checkpoint.telepipe } : null;
 
@@ -2663,9 +2729,9 @@ function abandonSuspendedRun() {
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
+    revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
-    player.dead = player.hp <= 0;
     player.x = spawn.x;
     player.y = 0.5;
     player.z = spawn.z;
@@ -2676,6 +2742,10 @@ function abandonSuspendedRun() {
   }
 
   refreshShopOffer();
+
+  for (const playerId of Object.keys(_gameState.players)) {
+    savePlayerData(playerId);
+  }
 
   const io = getIoTarget();
   if (io) {
@@ -2789,10 +2859,6 @@ function returnPlayersToLobby() {
     throw new Error('returnPlayersToLobby requires lobby context');
   }
 
-  for (const playerId of Object.keys(_gameState.players)) {
-    savePlayerData(playerId);
-  }
-
   clearSuspendedRunData();
   resetTransientRunState();
 
@@ -2807,8 +2873,8 @@ function returnPlayersToLobby() {
     const preservedOwnedCards = player.ownedCards || inventoryToOwnedCards(player.inventory);
     const preservedRunRewards = player.runRewards;
 
+    revivePlayerInLobby(player);
     player.ready = false;
-    player.dead = player.hp <= 0;
     player.extracted = false;
     player.x = spawn.x;
     player.y = 0.5;
@@ -2827,6 +2893,10 @@ function returnPlayersToLobby() {
 
   if (_gameState._pendingMinionBreaths?.length) {
     _gameState._pendingMinionBreaths.length = 0;
+  }
+
+  for (const playerId of Object.keys(_gameState.players)) {
+    savePlayerData(playerId);
   }
 
   const io = getIoTarget();
@@ -2858,9 +2928,9 @@ function giveUpRun() {
       player.currency = Math.max(0, (player.currency || 0) - earned);
     }
 
+    revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
-    player.dead = player.hp <= 0;
     player.x = spawn.x;
     player.y = 0.5;
     player.z = spawn.z;
@@ -2931,6 +3001,7 @@ function checkAllReady() {
     const io = getIoTarget();
     if (io) {
       io.emit('startGame');
+      io.emit('stateUpdate', stateSnapshot());
     }
   }
 }
@@ -2975,6 +3046,7 @@ module.exports = {
   pickShopOffer,
   refreshShopOffer,
   ensureShopOffer,
+  revivePlayerInLobby,
   healAtMedic,
   buyShopCard,
   canSellCardInstance,
@@ -2985,6 +3057,7 @@ module.exports = {
   getGrindCost,
   getStatMultiplier,
   scaledGrindStat,
+  applyWyrmMinionBreathStats,
   grindCard,
   createCardInstance,
   createInventoryFromCardIds,
@@ -3046,6 +3119,7 @@ module.exports = {
   returnPlayersToLobby,
   giveUpRun,
   checkAllReady,
+  assignRunSpawnPositions,
   applyTelepipeReadyHand,
   stateSnapshot,
   isPlayerActive,

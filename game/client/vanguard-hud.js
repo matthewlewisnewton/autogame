@@ -23,12 +23,26 @@ export function getCardMagicStoneCost(card) {
 	return cost != null && cost > 0 ? cost : 0;
 }
 
+/** Resolve a draw-pile entry (card id or inventory instance id) to a card id. */
+export function resolveDeckEntryCardId(entry, inventory) {
+	if (typeof entry !== 'string' || entry.length === 0) return null;
+	if (getCardDef(entry)) return entry;
+
+	if (Array.isArray(inventory)) {
+		const instance = inventory.find((item) => item && item.instanceId === entry);
+		if (instance && instance.cardId) return instance.cardId;
+	}
+
+	return null;
+}
+
 /** Count draw-pile cards by type (weapon / spell / creature / enchantment). */
-export function countDeckTypes(deck) {
+export function countDeckTypes(deck, inventory) {
 	const counts = { weapon: 0, spell: 0, creature: 0, enchantment: 0 };
 	if (!Array.isArray(deck)) return counts;
-	for (const cardId of deck) {
-		const def = getCardDef(cardId);
+	for (const entry of deck) {
+		const cardId = resolveDeckEntryCardId(entry, inventory);
+		const def = cardId ? getCardDef(cardId) : null;
 		if (def && Object.prototype.hasOwnProperty.call(counts, def.type)) {
 			counts[def.type] += 1;
 		}
@@ -40,8 +54,9 @@ export function countDeckTypes(deck) {
  * Build deck HUD stats from the server draw pile and cards still in hand.
  * @param {string[]|null|undefined} deck - remaining draw pile (server `player.deck`)
  * @param {Array<object|null>|null|undefined} handCards - cards currently in hand slots
+ * @param {Array<object>|null|undefined} inventory - player inventory for instance-id deck entries
  */
-export function computeDeckHudStats(deck, handCards) {
+export function computeDeckHudStats(deck, handCards, inventory) {
 	const drawPile = Array.isArray(deck) ? deck : [];
 	const inHand = Array.isArray(handCards)
 		? handCards.filter(Boolean).length
@@ -53,7 +68,7 @@ export function computeDeckHudStats(deck, handCards) {
 		drawCount,
 		total,
 		label: `Deck: ${drawCount}/${total}`,
-		types: countDeckTypes(drawPile),
+		types: countDeckTypes(drawPile, inventory),
 	};
 }
 

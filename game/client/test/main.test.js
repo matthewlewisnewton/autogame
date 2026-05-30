@@ -735,7 +735,7 @@ describe('spawnHitSpark()', () => {
 		const spark = effects[effects.length - 1];
 
 		expect(spark.mesh.material.opacity).toBe(1.0);
-		expect(spark.mesh.material.emissiveIntensity).toBe(1.2);
+		expect(spark.mesh.material.emissiveIntensity).toBe(1.4);
 	});
 
 	it('auto-cleans spark from activeEffects after duration via updateAttackEffects', async () => {

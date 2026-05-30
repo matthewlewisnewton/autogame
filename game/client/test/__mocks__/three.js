@@ -25,7 +25,7 @@ function stubClass(name) {
 				Object.assign(this, args[0]);
 			}
 			// Geometry constructors — store parameters so tests can inspect them
-			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'BufferGeometry'];
+			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CircleGeometry', 'EdgesGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'BufferGeometry'];
 			if (geoNames.includes(name)) {
 				this.parameters = {};
 				if (name === 'ConeGeometry') {
@@ -36,6 +36,10 @@ function stubClass(name) {
 					this.parameters = { radius: args[0], widthSegments: args[1], heightSegments: args[2] };
 				} else if (name === 'RingGeometry') {
 					this.parameters = { innerRadius: args[0], outerRadius: args[1], thetaSegments: args[2], thetaStart: args[3], thetaLength: args[4] };
+				} else if (name === 'CircleGeometry') {
+					this.parameters = { radius: args[0], segments: args[1], thetaStart: args[2], thetaLength: args[3] };
+				} else if (name === 'EdgesGeometry') {
+					this.parameters = { geometry: args[0] };
 				} else if (name === 'CylinderGeometry') {
 					this.parameters = { radiusTop: args[0], radiusBottom: args[1], height: args[2], radialSegments: args[3] };
 				} else if (name === 'PlaneGeometry') {
@@ -67,7 +71,18 @@ function stubClass(name) {
 			return this;
 		},
 	};
-	C.prototype.rotation = { x: 0, y: 0, z: 0, set: function() {} };
+	C.prototype.rotation = {
+		x: 0, y: 0, z: 0,
+		set: function() {},
+		copy: function(other) {
+			if (other) {
+				this.x = other.x;
+				this.y = other.y;
+				this.z = other.z;
+			}
+			return this;
+		},
+	};
 	C.prototype.scale = { setScalar: function() {} };
 	C.prototype.material = {
 		color: { setHex: function() {} },
@@ -131,6 +146,8 @@ export const THREE = {
 	BoxGeometry: stubClass('BoxGeometry'),
 	SphereGeometry: stubClass('SphereGeometry'),
 	RingGeometry: stubClass('RingGeometry'),
+	CircleGeometry: stubClass('CircleGeometry'),
+	EdgesGeometry: stubClass('EdgesGeometry'),
 	CylinderGeometry: stubClass('CylinderGeometry'),
 	ConeGeometry: stubClass('ConeGeometry'),
 	PlaneGeometry: stubClass('PlaneGeometry'),
@@ -183,6 +200,8 @@ export const WebGLRenderer = THREE.WebGLRenderer;
 export const BoxGeometry = THREE.BoxGeometry;
 export const SphereGeometry = THREE.SphereGeometry;
 export const RingGeometry = THREE.RingGeometry;
+export const CircleGeometry = THREE.CircleGeometry;
+export const EdgesGeometry = THREE.EdgesGeometry;
 export const CylinderGeometry = THREE.CylinderGeometry;
 export const ConeGeometry = THREE.ConeGeometry;
 export const PlaneGeometry = THREE.PlaneGeometry;

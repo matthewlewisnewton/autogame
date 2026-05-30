@@ -24,6 +24,7 @@ const DECK_MIN_SIZE = 4;
 const DECK_MAX_SIZE = 24;
 const MAX_HP = 100;
 const MEDIC_HEAL_COST = 10;
+const LOBBY_REVIVE_HP = 10;
 const RESPAWN_DELAY_MS = 3000;
 const LOOT_LIFETIME_MS = 120000;
 // Slightly wider than the client walk-over radius (3.25) so pickups succeed after
@@ -120,6 +121,7 @@ module.exports = {
   DECK_MAX_SIZE,
   MAX_HP,
   MEDIC_HEAL_COST,
+  LOBBY_REVIVE_HP,
   RESPAWN_DELAY_MS,
   LOOT_LIFETIME_MS,
   LOOT_PICKUP_RADIUS,

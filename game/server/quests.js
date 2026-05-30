@@ -14,6 +14,7 @@ const QUEST_DEFS = {
     description: 'Recover resonance prisms from the collapsed lattice.',
     objectiveType: 'collect_items',
     itemCount: 3,
+    enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
   }

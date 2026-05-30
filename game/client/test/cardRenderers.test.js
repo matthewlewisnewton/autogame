@@ -20,6 +20,7 @@ function makeCtx(overrides = {}) {
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
 		flashMesh: record('flashMesh'),
+		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
 		playSound: record('playSound'),
 		scheduleAfter: (ms, fn) => {
@@ -419,8 +420,12 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(attacks[0][3]).toMatchObject({ range: 4, coneAngle: Math.PI / 4, duration: 2000 });
 	});
 
-	it('Vault Wyrm breath ticks skip duplicate cone visuals', () => {
-		const ctx = makeCtx();
+	it('Vault Wyrm breath ticks skip duplicate cone visuals but still emit hit particles', () => {
+		const ctx = makeCtx({
+			enemyMeshes: () => ({
+				e1: { position: { x: 2, y: 0.5, z: 3 } },
+			}),
+		});
 		renderCardUsed({
 			cardId: 'dungeon_drake',
 			origin: { x: 1, z: 2 },
@@ -431,6 +436,7 @@ describe('renderCardUsed() — creature dispatch', () => {
 			hits: [{ enemyId: 'e1', hp: 44 }],
 		}, ctx);
 		expect(ctx._calls.filter((c) => c[0] === 'spawnAttackEffect')).toHaveLength(0);
+		expect(ctx._calls.filter((c) => c[0] === 'spawnHitSpark')).toHaveLength(1);
 	});
 
 	it('Archive Wyrm fire breath renders a channeled cone hitbox', () => {

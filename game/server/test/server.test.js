@@ -234,6 +234,9 @@ describe('QUEST_DEFS', () => {
 			}
 			if (quest.objectiveType === 'collect_items') {
 				expect(typeof quest.itemCount).toBe('number');
+				if (quest.enemyCount !== undefined) {
+					expect(typeof quest.enemyCount).toBe('number');
+				}
 			}
 		}
 	});
@@ -2542,6 +2545,17 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
+		it('revives dead players to LOBBY_REVIVE_HP when returning to lobby', () => {
+			addPlayer('p1', { hp: 0, dead: true });
+
+			const { restore } = mockRoomEmit();
+			returnPlayersToLobby();
+			restore();
+
+			expect(gameState.players.p1.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(gameState.players.p1.dead).toBe(false);
+		});
+
 		it('clears gameState.run', () => {
 			startDungeonRun();
 
@@ -4103,13 +4117,29 @@ describe('spawnEnemies() mixed pack', () => {
 		expect(counts.spawner).toBe(1);
 	});
 
-	it('spawns crystals instead of enemies for crystal rescue', () => {
+	it('spawns crystals and combat enemies for crystal rescue', () => {
 		gameState.selectedQuestId = 'crystal_rescue';
 		gameState.enemies = [];
 		gameState.loot = [];
 		spawnEnemies();
-		expect(gameState.enemies.length).toBe(0);
+		expect(gameState.enemies.length).toBe(QUEST_DEFS.crystal_rescue.enemyCount);
 		expect(gameState.loot.filter(l => l.kind === 'crystal').length).toBe(QUEST_DEFS.crystal_rescue.itemCount);
+	});
+
+	it('places crystal rescue enemies near the start room', () => {
+		gameState.selectedQuestId = 'crystal_rescue';
+		gameState.enemies = [];
+		gameState.loot = [];
+		spawnEnemies();
+		const start = gameState.layout.rooms.find(r => r.role === 'start');
+		const nearestCombat = gameState.layout.rooms
+			.filter(r => r.role === 'combat')
+			.sort((a, b) => Math.hypot(a.x - start.x, a.z - start.z) - Math.hypot(b.x - start.x, b.z - start.z))[0];
+		const nearbyThreshold = Math.hypot(nearestCombat.x - start.x, nearestCombat.z - start.z) + 12;
+		const nearbyEnemies = gameState.enemies.filter(
+			e => Math.hypot(e.x - start.x, e.z - start.z) <= nearbyThreshold
+		);
+		expect(nearbyEnemies.length).toBeGreaterThanOrEqual(2);
 	});
 });
 
