@@ -193,6 +193,7 @@ const {
   getGrindCost,
   getStatMultiplier,
   scaledGrindStat,
+  applyWyrmMinionBreathStats,
   grindCard,
   createCardInstance,
   createInventoryFromCardIds,
@@ -208,6 +209,7 @@ const {
   getCardSellValue,
   getCardBuyValue,
   ensureShopOffer,
+  revivePlayerInLobby,
   healAtMedic,
   buyShopCard,
   pickShopOffer,
@@ -266,6 +268,7 @@ const {
   giveUpRun,
   previewReturnRewards,
   checkAllReady,
+  assignRunSpawnPositions,
   stateSnapshot,
   checkTelepipeProximity,
   abandonSuspendedRun,
@@ -482,6 +485,19 @@ function emitCardError(socket, reason) {
   socket.emit('cardError', { reason });
 }
 
+const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
+  'mixed-enemies',
+  'spawner-active',
+  'minion-combat',
+  'run-exhausted',
+]);
+
+function shouldSkipDefaultEnemySpawn(state) {
+  return Object.values(state.players).some(
+    (p) => p && p.debugScenario && DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN.has(p.debugScenario)
+  );
+}
+
 function enterPlayingPhase(lobby) {
   const state = lobby.state;
   if (state.gamePhase !== 'playing') {
@@ -492,7 +508,9 @@ function enterPlayingPhase(lobby) {
         initPlayerHand(player);
       }
     }
-    spawnEnemies();
+    if (!shouldSkipDefaultEnemySpawn(state)) {
+      spawnEnemies();
+    }
     startDungeonRun();
     io.to(lobby.id).emit('startGame');
     broadcastLobbyList();
@@ -614,7 +632,8 @@ function applyDebugScenario(socket, name) {
         maxHp: 50,
         maxTtl: 30,
         ttl: 30,
-        breathRange: 4,
+        breathRange: 6,
+        breathHoldDistance: 3.5,
         breathConeAngle: Math.PI / 4,
         breathDamage: 3,
         breathDurationMs: 2000,
@@ -836,6 +855,10 @@ function joinPlayerToLobby(socket, lobby) {
         : player.selectedDeck;
     }
     normalizePlayerInventory(player);
+  }
+
+  if (state.gamePhase === 'lobby') {
+    revivePlayerInLobby(state.players[playerId]);
   }
 
   if (state.gamePhase === 'playing') {
@@ -2049,25 +2072,8 @@ function startServer(port) {
         minion.attackConeAngle = cardDef.attackConeAngle || ((Math.PI * 2) / 3);
         minion.attackDamage = cardDef.attackDamage || 9;
       }
-      if (data.cardId === 'dungeon_drake') {
-        const breathIntervalMs = cardDef.breathIntervalMs || 2500;
-        minion.breathIntervalMs = breathIntervalMs;
-        minion.breathRange = cardDef.breathRange || 4;
-        minion.breathConeAngle = cardDef.breathConeAngle || (Math.PI / 4);
-        minion.breathDurationMs = cardDef.breathDurationMs || 2000;
-        minion.breathTickMs = cardDef.breathTickMs || 500;
-        minion.breathDamage = cardDef.attackDamage || 3;
-        minion.lastBreathAt = now - breathIntervalMs;
-      }
-      if (cardDef.effect === 'ancient_wyrm') {
-        const breathIntervalMs = cardDef.breathIntervalMs || 3000;
-        minion.lastBreathAt = now - breathIntervalMs;
-        minion.breathIntervalMs = breathIntervalMs;
-        minion.breathRange = cardDef.breathRange || 8;
-        minion.breathDamage = cardDef.breathDamage || 4;
-        minion.breathConeAngle = cardDef.breathConeAngle || (Math.PI / 3);
-        minion.breathDurationMs = cardDef.breathDurationMs || 2500;
-        minion.breathTickMs = cardDef.breathTickMs || 500;
+      if (data.cardId === 'dungeon_drake' || cardDef.effect === 'ancient_wyrm') {
+        applyWyrmMinionBreathStats(minion, cardDef, grind, now);
       }
       state.minions.push(minion);
 
@@ -2167,12 +2173,14 @@ function startServer(port) {
 
     state.selectedQuestId = questId;
     applyLayoutForQuest(state, questId);
+    assignRunSpawnPositions(Object.values(state.players));
     const payload = {
       ...buildQuestUpdatePayload(state),
       layoutSeed: state.layoutSeed,
       layout: state.layout,
     };
     io.to(lobby.id).emit('questUpdate', payload);
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     broadcastLobbyUpdate(lobby);
     });
   });
@@ -2857,6 +2865,7 @@ if (typeof module !== 'undefined' && module.exports) {
     getGrindCost,
     getStatMultiplier,
     scaledGrindStat,
+    applyWyrmMinionBreathStats,
     grindCard,
     createCardInstance,
     createInventoryFromCardIds,

@@ -170,17 +170,35 @@ function renderChainLightning(data, ctx) {
  */
 function renderWyrmAttack(data, ctx) {
 	if (!data.origin) return;
-	if (data.breathPhase === 'tick') return;
 
 	const isFireBreath = data.specialEffect === 'fire_breath';
 	const accentHex = getAccentHex(data.cardId);
-	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
-		range: data.attackRange,
-		coneAngle: data.attackConeAngle,
-		color: isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e),
-		emissive: isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a,
-		duration: data.breathDurationMs,
-	});
+	const color = isFireBreath ? 0xef4444 : (accentHex ?? 0x22c55e);
+	const emissive = isFireBreath ? (accentHex ?? 0x9333ea) : 0x16a34a;
+
+	if (data.breathPhase !== 'tick') {
+		ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+			range: data.attackRange,
+			coneAngle: data.attackConeAngle,
+			color,
+			emissive,
+			duration: data.breathDurationMs,
+			fillOpacity: isFireBreath ? 0.38 : 0.48,
+			edgeOpacity: isFireBreath ? 0.72 : 0.85,
+		});
+	}
+
+	if (!data.hits?.length || !ctx.spawnHitSpark || !ctx.enemyMeshes) return;
+
+	const meshes = ctx.enemyMeshes();
+	for (const hit of data.hits) {
+		const mesh = meshes[hit.enemyId];
+		if (!mesh) continue;
+		ctx.spawnHitSpark(
+			{ x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z },
+			{ color, emissive, count: 5, spread: 0.55 },
+		);
+	}
 }
 
 /**

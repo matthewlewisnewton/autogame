@@ -961,7 +961,12 @@ function updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, config) {
 
   if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
     const lastBreathAt = minion.lastBreathAt ?? 0;
-    if (nearestDist <= config.breathRange && now - lastBreathAt >= config.breathIntervalMs) {
+    const holdDistance = config.breathHoldDistance ?? Math.max(2.5, config.breathRange * 0.6);
+    const canBreath = nearestDist <= config.breathRange
+      && nearestDist >= holdDistance * 0.85
+      && now - lastBreathAt >= config.breathIntervalMs;
+
+    if (canBreath) {
       lockMinionBreathDirection(minion, nearestEnemy);
       minion.breathState = 'breathing';
       minion.breathStartedAt = now;
@@ -971,8 +976,15 @@ function updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, config) {
       return;
     }
 
+    if (nearestDist < holdDistance) {
+      const retreatX = minion.x - (nearestEnemy.x - minion.x);
+      const retreatZ = minion.z - (nearestEnemy.z - minion.z);
+      moveEntityToward(minion, { x: retreatX, z: retreatZ }, config.chaseSpeed * dt);
+      return;
+    }
+
     if (nearestDist > config.breathRange) {
-      moveEntityToward(minion, nearestEnemy, config.chaseSpeed * dt);
+      moveEntityToward(minion, nearestEnemy, config.chaseSpeed * dt, { stopDistance: holdDistance });
     }
     return;
   }
@@ -1852,7 +1864,8 @@ function updateMinions() {
         updateWyrmMinionAI(minion, nearestEnemy, nearestDist, dt, {
           cardId: isAncient ? 'ancient_wyrm' : 'dungeon_drake',
           specialEffect: isAncient ? 'fire_breath' : undefined,
-          breathRange: minion.breathRange ?? (isAncient ? 8 : 4),
+          breathRange: minion.breathRange ?? (isAncient ? 10 : 6),
+          breathHoldDistance: minion.breathHoldDistance ?? Math.max(2.5, (minion.breathRange ?? (isAncient ? 10 : 6)) * 0.58),
           breathConeAngle: minion.breathConeAngle ?? (isAncient ? (Math.PI / 3) : (Math.PI / 4)),
           breathDamage: minion.breathDamage ?? (isAncient ? 4 : 3),
           breathDurationMs: minion.breathDurationMs ?? (isAncient ? 2500 : 2000),

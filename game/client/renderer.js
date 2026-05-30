@@ -86,7 +86,7 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
-import { getLockOnRepeatAction, getGamepadConfig } from './settings.js';
+import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled } from './settings.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -1442,44 +1442,33 @@ function createConeHitboxGroup(direction, range, coneAngle, style) {
 	const group = new THREE.Group();
 	const color = style.color ?? 0xffdd44;
 	const emissive = style.emissive ?? 0xffaa00;
-	const fillMat = makeHitboxMaterial(color, emissive, HITBOX_FILL_OPACITY);
-	const edgeMat = makeHitboxMaterial(color, emissive, HITBOX_EDGE_OPACITY);
+	const fillOpacity = style.fillOpacity ?? HITBOX_FILL_OPACITY;
+	const edgeOpacity = style.edgeOpacity ?? HITBOX_EDGE_OPACITY;
+	const fillMat = makeHitboxMaterial(color, emissive, fillOpacity);
 
+	// Bake facing into the wedge; CircleGeometry angles match server collectConeHits (atan2 z,x).
+	const thetaStart = dirAngle - coneAngle / 2;
 	const fill = new THREE.Mesh(
-		new THREE.RingGeometry(0.05, range, 48, dirAngle - coneAngle / 2, coneAngle),
+		new THREE.CircleGeometry(range, 32, thetaStart, coneAngle),
 		fillMat,
 	);
 	fill.rotation.x = -Math.PI / 2;
-	fill.userData.hitboxOpacity = HITBOX_FILL_OPACITY;
+	fill.position.y = 0.004;
+	fill.userData.hitboxOpacity = fillOpacity;
 	group.add(fill);
 
-	const edgeWidth = Math.min(0.12, range * 0.04);
-	const edge = new THREE.Mesh(
-		new THREE.RingGeometry(
-			Math.max(0.05, range - edgeWidth),
-			range,
-			48,
-			dirAngle - coneAngle / 2,
-			coneAngle,
-		),
-		edgeMat,
-	);
-	edge.rotation.x = -Math.PI / 2;
-	edge.userData.hitboxOpacity = HITBOX_EDGE_OPACITY;
-	group.add(edge);
-
-	const boundaryPoints = [
-		new THREE.Vector3(0, 0, 0),
-		new THREE.Vector3(Math.cos(dirAngle - coneAngle / 2) * range, 0, Math.sin(dirAngle - coneAngle / 2) * range),
-		new THREE.Vector3(0, 0, 0),
-		new THREE.Vector3(Math.cos(dirAngle + coneAngle / 2) * range, 0, Math.sin(dirAngle + coneAngle / 2) * range),
-	];
-	const boundaryGeo = new THREE.BufferGeometry().setFromPoints(boundaryPoints);
 	const boundary = new THREE.LineSegments(
-		boundaryGeo,
-		new THREE.LineBasicMaterial({ color, transparent: true, opacity: HITBOX_EDGE_OPACITY }),
+		new THREE.EdgesGeometry(fill.geometry),
+		new THREE.LineBasicMaterial({
+			color,
+			transparent: true,
+			opacity: edgeOpacity,
+			depthWrite: false,
+		}),
 	);
-	boundary.userData.hitboxOpacity = HITBOX_EDGE_OPACITY;
+	boundary.rotation.copy(fill.rotation);
+	boundary.position.y = 0.008;
+	boundary.userData.hitboxOpacity = edgeOpacity;
 	group.add(boundary);
 
 	return group;
@@ -1643,6 +1632,12 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 	const effect = style.effect ?? 'cone';
 	const color = style.color ?? 0xffdd44;
 	const emissive = style.emissive ?? 0xffaa00;
+	const coneStyle = {
+		color,
+		emissive,
+		fillOpacity: style.fillOpacity,
+		edgeOpacity: style.edgeOpacity,
+	};
 
 	if (effect === 'throw_rock') {
 		const geometry = new THREE.DodecahedronGeometry(0.24, 0);
@@ -1734,7 +1729,7 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 	}
 
 	// Forward cone wedge on the ground — exact server collectConeHits footprint
-	const group = createConeHitboxGroup(direction, range, coneAngle, { color, emissive });
+	const group = createConeHitboxGroup(direction, range, coneAngle, coneStyle);
 	group.position.set(origin.x, GROUND_OVERLAY_Y, origin.z);
 	targetScene.add(group);
 
@@ -1883,35 +1878,47 @@ export function spawnInfernoPillarEffect(origin, radius) {
 /**
  * Spawn an icosahedron spark at an enemy position (minion attack feedback).
  * @param {object} position - { x, y, z }
+ * @param {object} [style]
  */
-export function spawnHitSpark(position) {
+export function spawnHitSpark(position, style = {}) {
+	if (!areParticlesEnabled()) return;
 	// Use test-scene override if available (set via window.__setScene in tests)
 	const targetScene = window.___test_scene || scene;
 	if (!targetScene) return;
 
-	const geometry = new THREE.IcosahedronGeometry
-		? new THREE.IcosahedronGeometry(0.15, 0)
-		: new THREE.SphereGeometry(0.15, 6, 6);
-	const material = new THREE.MeshStandardMaterial({
-		color: 0xffee44,
-		emissive: 0xffaa00,
-		emissiveIntensity: 1.2,
-		transparent: true,
-		opacity: 1.0,
-	});
-	const mesh = new THREE.Mesh(geometry, material);
-	mesh.position.set(position.x, position.y || 1.0, position.z);
-	targetScene.add(mesh);
+	const color = style.color ?? 0xffee44;
+	const emissive = style.emissive ?? 0xffaa00;
+	const count = style.count ?? 1;
+	const spread = style.spread ?? 0;
 
-	activeEffects.push({
-		mesh,
-		_scene: targetScene,
-		origin: { x: position.x, y: position.y || 1.0, z: position.z },
-		direction: null,
-		isHitSpark: true,
-		createdAt: performance.now(),
-		duration: HIT_SPARK_DURATION,
-	});
+	for (let i = 0; i < count; i += 1) {
+		const geometry = new THREE.IcosahedronGeometry
+			? new THREE.IcosahedronGeometry(0.12, 0)
+			: new THREE.SphereGeometry(0.12, 6, 6);
+		const material = new THREE.MeshStandardMaterial({
+			color,
+			emissive,
+			emissiveIntensity: 1.4,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		const ox = position.x + (Math.random() - 0.5) * spread;
+		const oy = (position.y || 1.0) + (Math.random() - 0.5) * spread * 0.4;
+		const oz = position.z + (Math.random() - 0.5) * spread;
+		mesh.position.set(ox, oy, oz);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			_scene: targetScene,
+			origin: { x: ox, y: oy, z: oz },
+			direction: null,
+			isHitSpark: true,
+			createdAt: performance.now(),
+			duration: style.duration ?? HIT_SPARK_DURATION,
+		});
+	}
 }
 
 /**

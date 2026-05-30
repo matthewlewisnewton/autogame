@@ -9,6 +9,8 @@ import {
 	createCardInstance,
 	evolveCard,
 	updateMinions,
+	applyWyrmMinionBreathStats,
+	scaledGrindStat,
 } from '../index.js';
 import {
 	connectAndJoinLobby,
@@ -44,6 +46,20 @@ describe('Ancient Wyrm definitions', () => {
 			breathDurationMs: 2500,
 			breathTickMs: 500,
 		});
+	});
+
+	it('scales breath range and hold distance with grind for both wyrms', () => {
+		const now = Date.now();
+		const vault = {};
+		applyWyrmMinionBreathStats(vault, CARD_DEFS.dungeon_drake, 5, now);
+		expect(vault.breathRange).toBe(scaledGrindStat(6, 5));
+		expect(vault.breathHoldDistance).toBe(scaledGrindStat(3.5, 5));
+
+		const archive = {};
+		applyWyrmMinionBreathStats(archive, CARD_DEFS.ancient_wyrm, 3, now);
+		expect(archive.breathRange).toBe(scaledGrindStat(10, 3));
+		expect(archive.breathHoldDistance).toBe(scaledGrindStat(5.5, 3));
+		expect(archive.breathDamage).toBe(scaledGrindStat(4, 3));
 	});
 
 	it('evolves Vault Wyrm at +10 grind', () => {
@@ -117,11 +133,11 @@ describe('Wyrm channeled breath', () => {
 	it('Vault Wyrm opens a short cone breath that ticks once immediately', () => {
 		gameState.enemies.push({
 			id: 'e1',
-			x: 2,
+			x: 4,
 			z: 0,
 			hp: 50,
 			state: 'idle',
-			wanderTarget: { x: 2, z: 0 },
+			wanderTarget: { x: 4, z: 0 },
 		});
 		gameState.minions.push({
 			id: 'drake-1',
@@ -131,7 +147,8 @@ describe('Wyrm channeled breath', () => {
 			z: 0,
 			hp: 20,
 			ttl: 30,
-			breathRange: 4,
+			breathRange: 6,
+			breathHoldDistance: 3.5,
 			breathConeAngle: Math.PI / 4,
 			breathDamage: 3,
 			breathDurationMs: 2000,
@@ -147,12 +164,43 @@ describe('Wyrm channeled breath', () => {
 		expect(gameState._pendingMinionBreaths).toHaveLength(1);
 		expect(gameState._pendingMinionBreaths[0]).toMatchObject({
 			cardId: 'dungeon_drake',
-			attackRange: 4,
+			attackRange: 6,
 			attackConeAngle: Math.PI / 4,
 			breathPhase: 'start',
 			breathDurationMs: 2000,
 			hits: [{ enemyId: 'e1', hp: 47 }],
 		});
+	});
+
+	it('backs away when an enemy closes inside the preferred breath distance', () => {
+		gameState.enemies.push({
+			id: 'e1',
+			x: 2,
+			z: 0,
+			hp: 50,
+			state: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		});
+		gameState.minions.push({
+			id: 'drake-1',
+			ownerId: 'p1',
+			type: 'dungeon_drake',
+			x: 0,
+			z: 0,
+			hp: 20,
+			ttl: 30,
+			breathRange: 6,
+			breathHoldDistance: 3.5,
+			breathIntervalMs: 2500,
+			lastBreathAt: 0,
+		});
+
+		const startX = gameState.minions[0].x;
+		updateMinions();
+
+		expect(gameState.enemies[0].hp).toBe(50);
+		expect(gameState.minions[0].breathState).toBeUndefined();
+		expect(gameState.minions[0].x).toBeLessThan(startX);
 	});
 
 	it('does not hit again until the next breath tick window', () => {
@@ -178,7 +226,8 @@ describe('Wyrm channeled breath', () => {
 			breathDirX: 1,
 			breathDirZ: 0,
 			lastBreathTickAt: now,
-			breathRange: 4,
+			breathRange: 6,
+			breathHoldDistance: 3.5,
 			breathConeAngle: Math.PI / 4,
 			breathDamage: 3,
 			breathDurationMs: 2000,
@@ -203,7 +252,8 @@ describe('Wyrm channeled breath', () => {
 			ttl: 30,
 			lastBreathAt: now - 3100,
 			breathIntervalMs: 3000,
-			breathRange: 8,
+			breathRange: 10,
+			breathHoldDistance: 5.5,
 			breathDamage: CARD_DEFS.ancient_wyrm.breathDamage,
 			breathConeAngle: CARD_DEFS.ancient_wyrm.breathConeAngle,
 			breathDurationMs: 2500,
@@ -211,11 +261,11 @@ describe('Wyrm channeled breath', () => {
 		});
 		gameState.enemies.push({
 			id: 'e1',
-			x: 4,
+			x: 6,
 			z: 0,
 			hp: 50,
 			state: 'idle',
-			wanderTarget: { x: 4, z: 0 },
+			wanderTarget: { x: 6, z: 0 },
 		});
 
 		updateMinions();
@@ -250,7 +300,8 @@ describe('Wyrm channeled breath', () => {
 			ttl: 30,
 			lastBreathAt: Date.now(),
 			breathIntervalMs: 3000,
-			breathRange: 8,
+			breathRange: 10,
+			breathHoldDistance: 5.5,
 			breathDamage: 4,
 			breathDurationMs: 2500,
 			breathTickMs: 500,

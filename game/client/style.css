@@ -61,12 +61,20 @@ h1 {
   display: none;
 }
 
-#status {
+#hud-meta {
   position: absolute;
   top: 106px;
   left: 14px;
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  flex-wrap: wrap;
+  max-width: min(420px, calc(100% - 28px));
+}
+
+#status {
   font-size: 14px;
-  margin-top: 0;
+  margin: 0;
   color: #94a3b8;
 }
 
@@ -1112,19 +1120,21 @@ canvas {
   color: #a78bfa;
 }
 
-/* ── Currency Display ── */
+/* ── Currency Display (HUD meta row) ── */
 
 #currency-display {
-  position: absolute;
-  top: 16px;
-  left: 50%;
-  transform: translateX(-50%);
+  font-family: 'Roboto Mono', monospace;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   color: #ffd700;
-  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
-  pointer-events: none;
-  z-index: 11;
+  text-shadow: 0 0 8px rgba(255, 215, 0, 0.45);
+  white-space: nowrap;
+}
+
+#currency-display.currency-flash {
+  color: #fff7cc;
+  transform: scale(1.08);
+  transition: color 0.4s, transform 0.4s;
 }
 
 /* ── Objective HUD ── */
@@ -1325,8 +1335,7 @@ body[data-phase="lobby"] #vanguard-hud {
 
 body[data-phase="lobby"] #ms-bar-container,
 body[data-phase="lobby"] #deck-stats-panel,
-body[data-phase="lobby"] #objective-hud,
-body[data-phase="lobby"] #currency-display {
+body[data-phase="lobby"] #objective-hud {
   display: none;
 }
 

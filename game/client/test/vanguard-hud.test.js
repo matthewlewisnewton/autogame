@@ -8,6 +8,7 @@ import {
 	computeDesperationHudStats,
 	formatCharacterId,
 	formatPlayerLevel,
+	resolveDeckEntryCardId,
 } from '../vanguard-hud.js';
 
 describe('getMsBarTier()', () => {
@@ -53,6 +54,20 @@ describe('getHpBarTier()', () => {
 	});
 });
 
+describe('resolveDeckEntryCardId()', () => {
+	it('returns card ids directly and resolves inventory instance ids', () => {
+		const inventory = [
+			{ instanceId: 'inst-1', cardId: 'iron_sword' },
+			{ instanceId: 'inst-2', cardId: 'battle_familiar' },
+		];
+
+		expect(resolveDeckEntryCardId('flame_blade', inventory)).toBe('flame_blade');
+		expect(resolveDeckEntryCardId('inst-1', inventory)).toBe('iron_sword');
+		expect(resolveDeckEntryCardId('inst-2', inventory)).toBe('battle_familiar');
+		expect(resolveDeckEntryCardId('missing', inventory)).toBeNull();
+	});
+});
+
 describe('countDeckTypes()', () => {
 	it('counts weapon, spell, creature, and enchantment cards in the draw pile', () => {
 		const deck = [
@@ -63,6 +78,23 @@ describe('countDeckTypes()', () => {
 			'iron_sword',
 		];
 		expect(countDeckTypes(deck)).toEqual({ weapon: 3, spell: 1, creature: 1, enchantment: 0 });
+	});
+
+	it('resolves inventory instance ids in the draw pile', () => {
+		const inventory = [
+			{ instanceId: 'inst-1', cardId: 'iron_sword' },
+			{ instanceId: 'inst-2', cardId: 'flame_blade' },
+			{ instanceId: 'inst-3', cardId: 'battle_familiar' },
+			{ instanceId: 'inst-4', cardId: 'dungeon_drake' },
+		];
+		const deck = ['inst-1', 'inst-2', 'inst-3', 'inst-4', 'inst-1'];
+
+		expect(countDeckTypes(deck, inventory)).toEqual({
+			weapon: 3,
+			spell: 1,
+			creature: 1,
+			enchantment: 0,
+		});
 	});
 
 	it('returns zero counts for missing or invalid input', () => {
@@ -85,6 +117,23 @@ describe('computeDeckHudStats()', () => {
 			drawCount: 3,
 			total: 5,
 			label: 'Deck: 3/5',
+			types: { weapon: 2, spell: 1, creature: 0, enchantment: 0 },
+		});
+	});
+
+	it('resolves inventory instance ids when counting draw pile types', () => {
+		const inventory = [
+			{ instanceId: 'inst-1', cardId: 'iron_sword' },
+			{ instanceId: 'inst-2', cardId: 'flame_blade' },
+			{ instanceId: 'inst-3', cardId: 'battle_familiar' },
+		];
+		const deck = ['inst-1', 'inst-2', 'inst-3'];
+		const hand = [{ id: 'dungeon_drake', type: 'creature' }];
+
+		expect(computeDeckHudStats(deck, hand, inventory)).toEqual({
+			drawCount: 3,
+			total: 4,
+			label: 'Deck: 3/4',
 			types: { weapon: 2, spell: 1, creature: 0, enchantment: 0 },
 		});
 	});

@@ -83,6 +83,7 @@ import {
 // ── Renderer module imports ──
 import {
 	initScene as rendererInitScene,
+	rebuildDungeonLayout,
 	setGameStateRef,
 	setMyId as rendererSetMyId,
 	setSocketRef,
@@ -569,12 +570,19 @@ function applyLobbyJoinedData(data) {
 	const receivedSeed = data.layoutSeed;
 
 	if (isSceneInitialized() && receivedSeed !== undefined) {
-		if (receivedSeed !== currentLayoutSeed) {
-			console.warn(`[layout] Seed changed from ${currentLayoutSeed} to ${receivedSeed}; keeping existing geometry`);
+		if (receivedSeed !== currentLayoutSeed && currentLayout) {
+			currentLayoutSeed = receivedSeed;
+			rebuildDungeonLayout(currentLayout);
+		} else {
 			currentLayoutSeed = receivedSeed;
 		}
-		const spawnPos = getSpawnPosition();
-		setPlayerPosition(spawnPos.x, spawnPos.z);
+		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
+		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
+			setPlayerPosition(me.x, me.z);
+		} else {
+			const spawnPos = getSpawnPosition();
+			setPlayerPosition(spawnPos.x, spawnPos.z);
+		}
 		requestDebugScenario();
 		return;
 	}
@@ -623,6 +631,7 @@ function clearAuthForms() {
 const hpBarFill = document.getElementById('hp-bar-fill');
 const hpText = document.getElementById('hp-text');
 const hpLabel = document.getElementById('hp-label');
+const currencyDisplayEl = document.getElementById('currency-display');
 const msBarFill = document.getElementById('ms-bar-fill');
 const msText = document.getElementById('ms-text');
 const msLabel = document.getElementById('ms-label');
@@ -712,6 +721,7 @@ const cardRenderCtx = {
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
 	flashMesh: rendererFlashMesh,
 	markCardHitEnemies: rendererMarkCardHitEnemies,
+	spawnHitSpark: rendererSpawnHitSpark,
 	enemyMeshes: () => getMeshMaps().enemiesMeshes,
 	playSound,
 	scheduleAfter: (ms, fn) => setTimeout(fn, ms),
@@ -865,33 +875,14 @@ function bindSocketHandlers(s) {
 			} else if (state.gamePhase === 'playing') {
 				updateHpBar(me.hp);
 				updateMsBar(me.magicStones);
-				updateDeckStats(me.deck, me.hand);
+				updateDeckStats(me.deck, me.hand, me.inventory);
 				updateVanguardPortrait();
 			}
 		}
 
-		// Update currency HUD
+		// Update currency HUD (visible in lobby and during runs)
 		if (me) {
-			const currencyEl = document.getElementById('currency-display');
-			if (currencyEl) {
-				const newCurrency = me.currency;
-				const oldCurrency = _lastCurrency;
-				_lastCurrency = newCurrency;
-				currencyEl.textContent = formatCurrencyHud(newCurrency);
-
-				// Flash the currency display when it increases
-				if (oldCurrency !== undefined && newCurrency > oldCurrency) {
-					currencyEl.style.transition = 'none';
-					currencyEl.style.color = '#ffd700';
-					currencyEl.style.transform = 'scale(1.2)';
-					requestAnimationFrame(() => {
-						currencyEl.style.transition = 'color 0.4s, transform 0.4s';
-						currencyEl.style.color = '';
-						currencyEl.style.transform = 'scale(1)';
-					});
-					playSound('loot');
-				}
-			}
+			updateCurrencyHud(me.currency, { flashOnIncrease: state.gamePhase === 'playing' });
 		}
 
 		// Update objective HUD
@@ -997,8 +988,7 @@ function bindSocketHandlers(s) {
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		if (Number.isFinite(data.currency)) {
 			myCurrency = data.currency;
-			const currencyEl = document.getElementById('currency-display');
-			if (currencyEl) currencyEl.textContent = formatCurrencyHud(myCurrency);
+			updateCurrencyHud(myCurrency);
 		}
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') renderPhotonForge();
@@ -1060,7 +1050,10 @@ function bindSocketHandlers(s) {
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
-		if (Number.isFinite(data.currency)) myCurrency = data.currency;
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			updateCurrencyHud(myCurrency);
+		}
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') renderPhotonForge();
 		if (activeLobbyTab === 'shop') renderCardShop();
@@ -1073,8 +1066,7 @@ function bindSocketHandlers(s) {
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
 		if (Number.isFinite(data.currency)) {
 			myCurrency = data.currency;
-			const currencyEl = document.getElementById('currency-display');
-			if (currencyEl) currencyEl.textContent = formatCurrencyHud(myCurrency);
+			updateCurrencyHud(myCurrency);
 		}
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') {
@@ -1131,9 +1123,11 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on('questUpdate', (data) => {
-		if (data && (data.quests || data.selectedQuestId)) {
+		if (!data) return;
+		if (data.quests || data.selectedQuestId) {
 			applyQuestBoardState(data.quests, data.selectedQuestId);
 		}
+		applyQuestLayoutFromServer(data);
 	});
 
 	s.on('questError', (data) => {
@@ -1151,13 +1145,13 @@ function bindSocketHandlers(s) {
 		updateObjectiveHud();
 		if (!isSceneInitialized()) {
 			initHand();
-			rendererInitScene(currentLayout, getSpawnPosition());
+			rendererInitScene(currentLayout, resolveRunSpawnPosition());
 			setGamePhase('playing');
 			updateLevelSettingsBtnVisibility();
 			return;
 		}
 		initHand();
-		const spawnPos = getSpawnPosition();
+		const spawnPos = resolveRunSpawnPosition();
 		setPlayerPosition(spawnPos.x, spawnPos.z);
 		setPlayerRotation(0);
 		setWasDead(false);
@@ -1165,14 +1159,23 @@ function bindSocketHandlers(s) {
 		setGamePhase('playing');
 		updateLevelSettingsBtnVisibility();
 
-		const sc = getScene();
-		const maps = getMeshMaps();
-		rendererDisposeMeshMap(maps.enemiesMeshes, sc);
-		rendererDisposeMeshMap(maps.enemyHealthBars, sc);
-		rendererDisposeMeshMap(maps.telegraphMeshes, sc);
-		rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
-		rendererDisposeMeshMap(maps.minionsMeshes, sc);
-		rendererDisposeAllLootMeshes();
+		// Only clear entity meshes when we lack fresh server state; otherwise the animate
+		// loop will reconcile from gameState on the next stateUpdate.
+		const hasWorldEntities = gameState && (
+			(Array.isArray(gameState.enemies) && gameState.enemies.length > 0) ||
+			(Array.isArray(gameState.minions) && gameState.minions.length > 0) ||
+			(Array.isArray(gameState.loot) && gameState.loot.length > 0)
+		);
+		if (!hasWorldEntities) {
+			const sc = getScene();
+			const maps = getMeshMaps();
+			rendererDisposeMeshMap(maps.enemiesMeshes, sc);
+			rendererDisposeMeshMap(maps.enemyHealthBars, sc);
+			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
+			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
+			rendererDisposeMeshMap(maps.minionsMeshes, sc);
+			rendererDisposeAllLootMeshes();
+		}
 	});
 
 	s.on('runComplete', showRunSummary);
@@ -1286,6 +1289,38 @@ function applyQuestBoardState(quests, questId) {
 	renderQuestBoardState();
 }
 
+/** Prefer authoritative server spawn coordinates when starting or resuming a run. */
+function resolveRunSpawnPosition() {
+	const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
+	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
+		return { x: me.x, z: me.z };
+	}
+	return getSpawnPosition();
+}
+
+/** Apply quest layout from server and rebuild dungeon geometry when the quest changes. */
+function applyQuestLayoutFromServer(data) {
+	if (!data || !data.layout) return;
+
+	currentLayout = data.layout;
+	if (gameState) gameState.layout = currentLayout;
+	if (data.layoutSeed !== undefined) {
+		currentLayoutSeed = data.layoutSeed;
+	}
+
+	if (isSceneInitialized()) {
+		rebuildDungeonLayout(currentLayout);
+	}
+
+	const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
+	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
+		setPlayerPosition(me.x, me.z);
+	} else {
+		const spawn = getSpawnPosition();
+		setPlayerPosition(spawn.x, spawn.z);
+	}
+}
+
 function renderQuestBoardState() {
 	renderQuestBoard(questBoardEl, availableQuests, selectedQuestId, (questId) => {
 		if (!socket) return;
@@ -1361,13 +1396,32 @@ function syncVanguardHud(me, phase) {
 	}
 	if (!me) {
 		if (gamePhase === 'lobby') updateHpBar(MAX_HP);
+		updateCurrencyHud(myCurrency);
 		return;
 	}
 	updateHpBar(me.hp ?? MAX_HP);
+	updateCurrencyHud(me.currency ?? myCurrency);
 	if (gamePhase === 'playing') {
 		updateMsBar(me.magicStones ?? 0);
-		updateDeckStats(me.deck, me.hand);
+		updateDeckStats(me.deck, me.hand, me.inventory);
 		updateVanguardPortrait();
+	}
+}
+
+function updateCurrencyHud(amount, { flashOnIncrease = false } = {}) {
+	if (!currencyDisplayEl) return;
+	const newCurrency = Number.isFinite(amount) ? amount : 0;
+	const oldCurrency = _lastCurrency;
+	_lastCurrency = newCurrency;
+	myCurrency = newCurrency;
+	currencyDisplayEl.textContent = formatCurrencyHud(newCurrency);
+
+	if (flashOnIncrease && oldCurrency !== undefined && newCurrency > oldCurrency) {
+		currencyDisplayEl.classList.remove('currency-flash');
+		void currencyDisplayEl.offsetWidth;
+		currencyDisplayEl.classList.add('currency-flash');
+		setTimeout(() => currencyDisplayEl.classList.remove('currency-flash'), 450);
+		playSound('loot');
 	}
 }
 
@@ -1397,12 +1451,13 @@ function updateMsBar(ms) {
 	_lastMagicStones = clamped;
 }
 
-function updateDeckStats(deckPile, handCards) {
+function updateDeckStats(deckPile, handCards, inventory) {
 	const pile = deckPile || [];
+	const deckInventory = Array.isArray(inventory) ? inventory : getDeckInventory();
 	const showingDesperation = pile.length === 0 && inDesperation;
 	const stats = showingDesperation
 		? computeDesperationHudStats(desperationDeck, handCards)
-		: computeDeckHudStats(pile, handCards);
+		: computeDeckHudStats(pile, handCards, deckInventory);
 	if (deckCountEl) {
 		deckCountEl.textContent = stats.label;
 		deckCountEl.classList.toggle('desperation-mode', showingDesperation);
@@ -1624,7 +1679,7 @@ function syncDrawPileFromServer() {
 		setInDesperation(serverPlayer.inDesperation);
 	}
 	updateRunDeckTotal();
-	updateDeckStats(deck, hand);
+	updateDeckStats(deck, hand, serverPlayer?.inventory);
 	updateDeckVisuals();
 }
 
@@ -1932,6 +1987,7 @@ function renderDeckEditor() {
 }
 
 function renderCardEconomy() {
+	updateCurrencyHud(myCurrency);
 	if (lobbyCurrencyDisplayEl) {
 		lobbyCurrencyDisplayEl.textContent = formatCurrencyLabel(myCurrency);
 	}
@@ -3019,7 +3075,10 @@ window.__setDeckState = (deck, owned, inventory, currency) => {
 	mySelectedDeck = deck || mySelectedDeck;
 	myOwnedCards = owned || myOwnedCards;
 	if (inventory !== undefined) myInventory = inventory;
-	if (Number.isFinite(currency)) myCurrency = currency;
+	if (Number.isFinite(currency)) {
+		myCurrency = currency;
+		updateCurrencyHud(myCurrency);
+	}
 };
 window.renderQuestBoardState = renderQuestBoardState;
 window.__setQuestBoardState = (quests, questId) => applyQuestBoardState(quests, questId);
@@ -3083,7 +3142,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',
 		msText: msText ? msText.textContent : '',
-		currencyText: document.getElementById('currency-display') ? document.getElementById('currency-display').textContent : '',
+		currencyText: currencyDisplayEl ? currencyDisplayEl.textContent : '',
 		player: me ? {
 			hp: me.hp,
 			magicStones: me.magicStones,
