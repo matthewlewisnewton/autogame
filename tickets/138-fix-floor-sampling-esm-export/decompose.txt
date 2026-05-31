@@ -1,0 +1,15 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Good — the only references to `floorSampling.mjs` are in the new sub-ticket description and the top-level ticket's rejected option (1). No live code imports it.
+
+Here's the final sub-ticket list:
+
+```
+tickets/138-fix-floor-sampling-esm-export/subtickets/01-create-esm-reexport/ticket.md     (committed, no .passed)
+tickets/138-fix-floor-sampling-esm-export/subtickets/01-fix-esm-reexport-interop/ticket.md (committed, no .passed)
+tickets/138-fix-floor-sampling-esm-export/subtickets/02-add-client-import-test/ticket.md   (committed, no .passed)
+tickets/138-fix-floor-sampling-esm-export/subtickets/03-remove-stale-mjs-artifact/ticket.md (NEW — just created)
+```
+
+**Summary:** The existing 3 sub-tickets are well-scoped, use `Verification: code`, and their code is already committed with all 1233 tests passing. They failed earlier due to harness infra issues (port collision / process classification bug), not sub-ticket scoping. I've left them untouched per the rules.
+
+The **new sub-ticket 03** removes the orphaned `game/shared/floorSampling.mjs` artifact left behind by a round-2 experiment.

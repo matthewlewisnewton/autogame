@@ -1,7 +1,10 @@
-// ESM version of floorSampling for Vite/ESM browser consumers.
-// Mirrors the logic in floorSampling.js (CJS) so the client bundle
-// never executes `module.exports` in the browser.
-// Keep in sync with floorSampling.js — they are the same pure function.
+// ── Floor Height Sampling (shared single source of truth) ──
+// Pure ESM module — no platform-specific dependencies. This is the ONE
+// implementation; the CJS server consumes it via `floorSampling.js`
+// (require-of-ESM bridge) and the Vite/ESM client via `floorSampling.esm.js`
+// (re-export bridge). Keeping the source in `.mjs` makes it unambiguously ESM
+// so Vite can statically extract the named exports, while Node ≥22.12 lets the
+// CJS server `require()` it without forking the logic.
 
 export const DEFAULT_FLOOR_Y = 0.5;
 

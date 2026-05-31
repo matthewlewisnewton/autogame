@@ -1,0 +1,28 @@
+## Review complete
+
+Full write-up: [`tickets/138-fix-floor-sampling-esm-export/round-1/review.md`](file:///home/matt/workspace/autogame/tickets/138-fix-floor-sampling-esm-export/round-1/review.md)  
+Remediation: [`tickets/138-fix-floor-sampling-esm-export/round-1/gaps.md`](file:///home/matt/workspace/autogame/tickets/138-fix-floor-sampling-esm-export/round-1/gaps.md)  
+No `nits.md` (nothing worth a backlog ticket).
+
+**VERDICT: FAIL**
+
+### Why it fails
+
+1. **No runnable harness proof** — `metrics.json` has `"ok": false` (`servers did not start`); ports 5173/3000 were already held. No `console.log` or screenshots.
+
+2. **Code still breaks in Vite dev** — Independent Playwright on `pnpm dev` (port 5178) hits:
+   ```
+   SyntaxError: ... floorSampling.js does not provide an export named 'default'
+   ```
+   from `import mod from './floorSampling.js'` in `floorSampling.esm.js`. The original `DEFAULT_FLOOR_Y` named-export error is gone, but the client still does not boot under dev.
+
+### What does work
+
+- Recommended option (3): ESM sibling + `collision.js` import swap; server `require` unchanged.
+- `pnpm --filter client test` (421) and `pnpm --filter server test` (812) pass, including the new ESM regression test.
+- `vite build` + `vite preview` load with no pageerrors.
+- `sampleFloorY` behaviour and server dungeon tests unchanged.
+
+### Next round
+
+Fix CJS→ESM interop in `floorSampling.esm.js`, verify `pnpm dev` + Playwright (no pageerrors, auth overlay, playing phase), then re-run harness capture after clearing stale port holders.
