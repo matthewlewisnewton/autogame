@@ -352,3 +352,84 @@ class TestGameSmokeOkBrowserPageerror:
         (tmp_path / "metrics.json").write_text(json.dumps({"ok": False}))
         from harness.steps.confirm_broken import game_smoke_ok
         assert game_smoke_ok(tmp_path) is False
+
+
+class TestBrowserPageerrorClassification:
+    """Regression tests for the pageerror classification path added in
+    ticket 139-harness-misclassifies-pageerror.  These end-to-end tests
+    exercise capture_run with mocked dependencies to ensure the three
+    failure branches produce the correct metrics.json structure."""
+
+    def _make_ports(self):
+        return PortAllocation(game_server=3000, vite=5173)
+
+    def test_clean_servers_pageerrors_no_harness_failure(self, tmp_artifacts, monkeypatch):
+        """Clean servers + non-empty pageerrors → no harness_failure,
+        failure_kind == 'browser_pageerror'."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_artifacts / "client.log").write_text("vite ready\n")
+        (tmp_artifacts / "server.log").write_text("Server listening\n")
+        (tmp_artifacts / "pageerrors.json").write_text(json.dumps([
+            {"message": "Uncaught ReferenceError: x is not defined",
+             "sourceURL": "http://localhost:5173/main.js"}
+        ]))
+        ports = self._make_ports()
+        ok = cr_mod.capture_run(tmp_artifacts, game_url="http://localhost:5173",
+                                 ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_artifacts / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "browser_pageerror"
+        assert "harness_failure" not in metrics
+        assert "pageerrors" in metrics
+        assert len(metrics["pageerrors"]) == 1
+
+    def test_eaddrinuse_harness_failure_signatures(self, tmp_artifacts, monkeypatch):
+        """Servers EADDRINUSE → harness_failure with detected signatures."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_artifacts / "client.log").write_text(
+            "error when starting dev server:\n"
+            "Error: Port 5173 is already in use\n"
+        )
+        (tmp_artifacts / "server.log").write_text("Server listening on port 3000\n")
+        ports = self._make_ports()
+        ok = cr_mod.capture_run(tmp_artifacts, game_url="http://localhost:5173",
+                                 ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_artifacts / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert "harness_failure" in metrics
+        assert "vite_eaddrinuse" in metrics["harness_failure"]["detected"]
+        # No code-type failure_kind when infra failure is detected
+        assert metrics.get("failure_kind") != "browser_pageerror"
+        assert metrics.get("failure_kind") != "capture_failed"
+
+    def test_clean_servers_empty_pageerrors_harness_failure(
+        self, tmp_artifacts, monkeypatch
+    ):
+        """Clean servers + empty pageerrors + capture failure →
+        harness_failure with empty detected (for human investigation)."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_artifacts / "client.log").write_text("vite ready\n")
+        (tmp_artifacts / "server.log").write_text("Server listening\n")
+        # No pageerrors.json — capture fails with nothing to explain it
+        ports = self._make_ports()
+        ok = cr_mod.capture_run(tmp_artifacts, game_url="http://localhost:5173",
+                                 ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_artifacts / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert "harness_failure" in metrics
+        assert metrics["harness_failure"]["detected"] == []
+        assert metrics["failure_kind"] == "capture_failed"
