@@ -1,0 +1,17 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/shared-floor-sampling.test.js (4 tests) 1ms
+
+ Test Files  1 passed (1)
+      Tests  4 passed (4)
+   Start at  07:03:10
+   Duration  810ms (transform 11ms, setup 17ms, collect 3ms, tests 1ms, environment 183ms, prepare 47ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------

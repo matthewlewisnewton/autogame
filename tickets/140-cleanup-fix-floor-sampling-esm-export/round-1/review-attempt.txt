@@ -1,0 +1,18 @@
+## Review complete
+
+Wrote **`tickets/140-cleanup-fix-floor-sampling-esm-export/round-1/review.md`** and **`nits.md`**. No **`gaps.md`** (PASS only).
+
+### Runtime
+- `metrics.json`: `"ok": true` — gameplay captured (lobby → playing, movement probes)
+- No `pageerror` / `[fatal]`; no harness_failure
+- Benign noise only (capture retry timeout, 409, THREE.Clock, Vite EPIPE)
+
+### Acceptance criteria
+1. **Deduplicate sources** — `floorSampling.esm.js` is canonical; `floorSampling.js` loads it via read/eval with no duplicate body; server `require` and client ESM import unchanged; 1233 tests pass.
+2. **Flat-room test** — Uses `(0, 0)` at room center with updated comment.
+
+### Nits (non-blocking)
+- Stale “keep in sync” comments in `floorSampling.esm.js`
+- Document eval-bridge limitations in `floorSampling.js`
+
+**VERDICT: PASS** (last line of `review.md`)
