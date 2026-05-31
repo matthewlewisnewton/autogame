@@ -1,0 +1,40 @@
+{
+  "summary": "Verify the client boots successfully without module load errors and reaches the playing phase.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-auth-overlay",
+      "description": "Verify the auth overlay is visible and the page is not blank (confirms module load success)."
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-gameplay",
+      "description": "Verify the game has successfully transitioned to the gameplay scene."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify that window.__AUTOGAME_HARNESS_STATE__().phase is 'playing'."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

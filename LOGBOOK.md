@@ -1688,3 +1688,26 @@ None. All acceptance criteria are met; runtime capture is healthy; no blocking i
 
 ---
 
+
+## v0.74 — Fix: floorSampling.js named exports unavailable to client (ESM/CJS mismatch)  (2026-05-31 06:38:55)
+
+---
+
+## Round-2 capture quality (informational, non-blocking)
+
+- `capturePlanSource: "fallback-after-error"` — first Gemini-guided step timed out; fallback full-flow recipe succeeded.
+- `metrics.json` `screenshots[]` does not list `01-auth-overlay.png` even though that file exists on disk; auth visibility is inferred from successful lobby→playing progression, not a dedicated metrics entry.
+- `coverage.log` reports 0% on changed files (harness runs vitest without matching changed-file filter in this round); not a functional gap.
+
+---
+
+## Remaining gaps
+
+**None (blocking).** Runtime proof and all acceptance criteria are satisfied.
+
+---
+
+## Nits (non-blocking)
+
+See `round-2/nits.md` for backlog items (CJS/ESM deduplication, flat-room test coordinates).
+
