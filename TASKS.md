@@ -49,6 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [142-cleanup-sloped-floor-layout-and-geometry](tickets/142-cleanup-sloped-floor-layout-and-geometry/)
 - [x] [141-cleanup-cleanup-fix-floor-sampling-esm-export](tickets/141-cleanup-cleanup-fix-floor-sampling-esm-export/)
 - [x] [140-cleanup-fix-floor-sampling-esm-export](tickets/140-cleanup-fix-floor-sampling-esm-export/)
 - [x] [102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence/)
@@ -118,7 +119,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 
 ## Backlog — Sloped Floors
 - [x] [138-fix-floor-sampling-esm-export](tickets/138-fix-floor-sampling-esm-export/)
-- [ ] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
+- [x] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
 - [ ] [139-harness-misclassifies-pageerror](tickets/139-harness-misclassifies-pageerror/)
 
 ## Backlog — Reference Game Loops

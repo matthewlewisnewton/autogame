@@ -1,0 +1,46 @@
+{
+  "summary": "Verifies that sloped floor geometry is correctly rendered in the client and that the layout schema includes the necessary elevation metadata (like floorCorners or floorPlane).",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-dungeon-slopes",
+      "description": "Observe the dungeon floor for visible ramps or inclined planes. Ensure there is no z-fighting between sloped and flat sections."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Query window.game.layout to verify rooms or passages contain floorCorners or floorPlane metadata. Also check for the presence of the sampleFloorY helper."
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "w",
+      "durationMs": 2000
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-slope-transition",
+      "description": "Verify the visual transition between flat and sloped floor segments from a different angle."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+
