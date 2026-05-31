@@ -59,6 +59,11 @@ export function isUniformFloor(room) {
  * Build a sloped floor mesh for a room with non-uniform floorCorners.
  * Determines the dominant slope axis (Z or X) by comparing edge averages,
  * then returns a rotated BoxGeometry mesh positioned at the average height.
+ *
+ * The rotated BoxGeometry is a visual approximation of the bilinear surface
+ * defined by `sampleFloorY()`. Minor gaps may appear at room edges for
+ * non-axis-aligned corner patterns (e.g. diagonal ramps). This is intentional —
+ * a four-corner BufferGeometry match is deferred to a future art pass.
  */
 export function buildSlopedFloor(room, floorMat) {
 	const fc = room.floorCorners;
