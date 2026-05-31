@@ -115,8 +115,8 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [115-cleanup-weapon-facing-followups](tickets/115-cleanup-weapon-facing-followups/)
 
 ## Backlog — Sloped Floors
-- [ ] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
 - [ ] [138-fix-floor-sampling-esm-export](tickets/138-fix-floor-sampling-esm-export/)
+- [ ] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
 - [ ] [139-harness-misclassifies-pageerror](tickets/139-harness-misclassifies-pageerror/)
 
 ## Backlog — Reference Game Loops
