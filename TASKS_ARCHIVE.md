@@ -1,0 +1,157 @@
+# Completed Tickets (archived from TASKS.md)
+
+Historical record of finished top-level tickets. The active queue lives in TASKS.md.
+Recover full context via `git log`, version tags, and the `tickets/<name>/` directories.
+
+## Backlog — Server Foundation
+- [x] [001-server-heartbeat](tickets/001-server-heartbeat/)
+- [x] [002-input-validation](tickets/002-input-validation/)
+- [x] [005-vite-socket-proxy](tickets/005-vite-socket-proxy/)
+
+## Backlog — Client Foundation
+- [x] [003-move-delta-time](tickets/003-move-delta-time/)
+- [x] [004-client-reconnect-ui](tickets/004-client-reconnect-ui/)
+- [x] [007-camera-follow](tickets/007-camera-follow/)
+
+## Backlog — Lobby & HUD
+- [x] [006-card-deck-ui](tickets/006-card-deck-ui/)
+- [x] [008-lobby-screen](tickets/008-lobby-screen/)
+
+## Backlog — Combat
+- [x] [009-player-health-system](tickets/009-player-health-system/)
+- [x] [010-enemy-entities-ai](tickets/010-enemy-entities-ai/)
+- [x] [011-card-hand-system](tickets/011-card-hand-system/)
+- [x] [012-weapon-card-attacks](tickets/012-weapon-card-attacks/)
+- [x] [013-summon-cards](tickets/013-summon-cards/)
+- [x] [014-monster-summon-cards](tickets/014-monster-summon-cards/)
+- [x] [077-enemy-types-skirmisher-miniboss](tickets/077-enemy-types-skirmisher-miniboss/)
+- [x] [078-enemy-type-spawner](tickets/078-enemy-type-spawner/)
+
+## Backlog — World & Economy
+- [x] [016-loot-and-currency](tickets/016-loot-and-currency/)
+
+## Backlog — Testing
+- [x] [017-test-coverage](tickets/017-test-coverage/)
+
+## Backlog — Playability
+- [x] [025-dungeon-run-objectives](tickets/025-dungeon-run-objectives/)
+- [x] [027-run-summary-return-to-lobby](tickets/027-run-summary-return-to-lobby/)
+- [x] [026-card-rewards-deckbuilding](tickets/026-card-rewards-deckbuilding/)
+- [x] [028-lobby-deck-editor](tickets/028-lobby-deck-editor/)
+- [x] [029-combat-feedback-readability](tickets/029-combat-feedback-readability/)
+- [x] [015-dungeon-room-generation](tickets/015-dungeon-room-generation/)
+- [x] [037-fix-return-to-lobby-active-run-guard](tickets/037-fix-return-to-lobby-active-run-guard/)
+- [x] [038-fix-card-cooldown-enforcement](tickets/038-fix-card-cooldown-enforcement/)
+- [x] [030-encounter-telegraphs-audio](tickets/030-encounter-telegraphs-audio/)
+- [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
+
+## Backlog — Housekeeping & Planning
+- [x] [141-cleanup-cleanup-fix-floor-sampling-esm-export](tickets/141-cleanup-cleanup-fix-floor-sampling-esm-export/)
+- [x] [140-cleanup-fix-floor-sampling-esm-export](tickets/140-cleanup-fix-floor-sampling-esm-export/)
+- [x] [102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence/)
+- [x] [101-cleanup-cleanup-entity-ai-improvements](tickets/101-cleanup-cleanup-entity-ai-improvements/)
+- [x] [100-cleanup-entity-ai-improvements](tickets/100-cleanup-entity-ai-improvements/)
+- [x] [099-cleanup-cleanup-advanced-map-generation](tickets/099-cleanup-cleanup-advanced-map-generation/)
+- [x] [098-cleanup-advanced-map-generation](tickets/098-cleanup-advanced-map-generation/)
+- [x] [097-cleanup-user-accounts](tickets/097-cleanup-user-accounts/)
+- [x] [096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/096-cleanup-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
+- [x] [095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/095-cleanup-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
+- [x] [094-cleanup-cleanup-cleanup-cleanup-audit-client-server](tickets/094-cleanup-cleanup-cleanup-cleanup-audit-client-server/)
+- [x] [093-cleanup-cleanup-cleanup-audit-client-server](tickets/093-cleanup-cleanup-cleanup-audit-client-server/)
+- [x] [092-cleanup-cleanup-audit-client-server](tickets/092-cleanup-cleanup-audit-client-server/)
+- [x] [091-cleanup-audit-client-server](tickets/091-cleanup-audit-client-server/)
+- [x] [090-cleanup-cleanup-cleanup-codebase-cleanup](tickets/090-cleanup-cleanup-cleanup-codebase-cleanup/)
+- [x] [089-cleanup-cleanup-codebase-cleanup](tickets/089-cleanup-cleanup-codebase-cleanup/)
+- [x] [088-cleanup-codebase-cleanup](tickets/088-cleanup-codebase-cleanup/)
+- [x] [087-cleanup-cleanup-pnpm-and-security](tickets/087-cleanup-cleanup-pnpm-and-security/)
+- [x] [086-cleanup-pnpm-and-security](tickets/086-cleanup-pnpm-and-security/)
+- [x] [085-cleanup-cleanup-enemy-types-skirmisher-miniboss](tickets/085-cleanup-cleanup-enemy-types-skirmisher-miniboss/)
+- [x] [084-cleanup-cleanup-cleanup-enemy-type-spawner](tickets/084-cleanup-cleanup-cleanup-enemy-type-spawner/)
+- [x] [083-cleanup-cleanup-enemy-type-spawner](tickets/083-cleanup-cleanup-enemy-type-spawner/)
+- [x] [082-cleanup-reset-state-on-last-disconnect](tickets/082-cleanup-reset-state-on-last-disconnect/)
+- [x] [081-cleanup-enemy-type-spawner](tickets/081-cleanup-enemy-type-spawner/)
+- [x] [080-cleanup-enemy-types-skirmisher-miniboss](tickets/080-cleanup-enemy-types-skirmisher-miniboss/)
+- [x] [052-cleanup-cleanup-loot-and-currency](tickets/052-cleanup-cleanup-loot-and-currency/)
+- [x] [051-cleanup-cleanup-public-state-and-shared-data-nits](tickets/051-cleanup-cleanup-public-state-and-shared-data-nits/)
+- [x] [050-cleanup-cleanup-cleanup-encounter-telegraphs-audio](tickets/050-cleanup-cleanup-cleanup-encounter-telegraphs-audio/)
+- [x] [049-cleanup-cleanup-encounter-telegraphs-audio](tickets/049-cleanup-cleanup-encounter-telegraphs-audio/)
+- [x] [045-cleanup-dungeon-room-generation](tickets/045-cleanup-dungeon-room-generation/)
+- [x] [044-cleanup-encounter-telegraphs-audio](tickets/044-cleanup-encounter-telegraphs-audio/)
+- [x] [039-cleanup-public-state-and-shared-data-nits](tickets/039-cleanup-public-state-and-shared-data-nits/)
+- [x] [036-cleanup-combat-feedback-readability](tickets/036-cleanup-combat-feedback-readability/)
+- [x] [035-cleanup-lobby-deck-editor](tickets/035-cleanup-lobby-deck-editor/)
+- [x] [034-cleanup-card-rewards-deckbuilding](tickets/034-cleanup-card-rewards-deckbuilding/)
+- [x] [033-cleanup-run-summary-return-to-lobby](tickets/033-cleanup-run-summary-return-to-lobby/)
+- [x] [032-cleanup-dungeon-run-objectives](tickets/032-cleanup-dungeon-run-objectives/)
+- [x] [031-cleanup-test-coverage](tickets/031-cleanup-test-coverage/)
+- [x] [023-cleanup-loot-and-currency](tickets/023-cleanup-loot-and-currency/)
+- [x] [018-pnpm-and-security](tickets/018-pnpm-and-security/)
+- [x] [019-codebase-cleanup](tickets/019-codebase-cleanup/)
+- [x] [020-audit-client-server](tickets/020-audit-client-server/)
+- [x] [021-persistence](tickets/021-persistence/)
+- [x] [022-user-accounts](tickets/022-user-accounts/)
+- [x] [023-advanced-map-generation](tickets/023-advanced-map-generation/)
+- [x] [024-entity-ai-improvements](tickets/024-entity-ai-improvements/)
+- [x] [046-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/046-cleanup-audio-autoplay-resume-and-mute-persistence/)
+- [x] [047-cleanup-monolithic-gameplay-and-server-split](tickets/047-cleanup-monolithic-gameplay-and-server-split/)
+- [x] [048-cleanup-server-side-movement-and-collision-validation](tickets/048-cleanup-server-side-movement-and-collision-validation/)
+
+## Backlog — Harness Cleanup
+- [x] [103-cleanup-hard-gate-local-subtask-checks](tickets/103-cleanup-hard-gate-local-subtask-checks/)
+- [x] [104-cleanup-deterministic-review-file-recovery](tickets/104-cleanup-deterministic-review-file-recovery/)
+- [x] [105-cleanup-harness-port-ownership](tickets/105-cleanup-harness-port-ownership/)
+
+## Backlog — Commit Review Followups (b28ec70..4c43bbe)
+- [x] [106-cleanup-arcane-bolt-test-fixtures](tickets/106-cleanup-arcane-bolt-test-fixtures/)
+- [x] [107-cleanup-magic-stone-drop-visibility](tickets/107-cleanup-magic-stone-drop-visibility/)
+- [x] [108-cleanup-lobby-smoke-tests-and-docs](tickets/108-cleanup-lobby-smoke-tests-and-docs/)
+- [x] [109-fix-multi-lobby-cross-lobby-leak-and-broken-tests](tickets/109-fix-multi-lobby-cross-lobby-leak-and-broken-tests/)
+- [x] [110-cleanup-multi-lobby-economy-nits](tickets/110-cleanup-multi-lobby-economy-nits/)
+- [x] [111-fix-evolved-card-integration-tests](tickets/111-fix-evolved-card-integration-tests/)
+- [x] [112-cleanup-trymove-test-coverage](tickets/112-cleanup-trymove-test-coverage/)
+- [x] [113-fix-knockback-walls-and-collision-regression](tickets/113-fix-knockback-walls-and-collision-regression/)
+- [x] [114-cleanup-dungeon-quest-commit-followups](tickets/114-cleanup-dungeon-quest-commit-followups/)
+- [x] [115-cleanup-weapon-facing-followups](tickets/115-cleanup-weapon-facing-followups/)
+
+## Backlog — Sloped Floors
+- [x] [138-fix-floor-sampling-esm-export](tickets/138-fix-floor-sampling-esm-export/)
+- [x] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
+
+## Backlog — Reference Game Loops
+- [x] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
+- [x] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
+- [x] [042-enemy-card-drops](tickets/042-enemy-card-drops/)
+- [x] [043-lobby-card-sell-and-trade](tickets/043-lobby-card-sell-and-trade/)
+
+## Backlog — Visual Fidelity & Polish
+- [x] [053-pso-vanguard-hud](tickets/053-pso-vanguard-hud/)
+- [x] [054-grimoire-deck-viewer](tickets/054-grimoire-deck-viewer/)
+
+## Backlog — Validation & Logic
+- [x] [055-server-side-wall-collision-validation](tickets/055-server-side-wall-collision-validation/)
+- [x] [056-server-side-card-hand-tracking](tickets/056-server-side-card-hand-tracking/)
+- [x] [057-deck-depletion-fail-condition](tickets/057-deck-depletion-fail-condition/)
+
+## Backlog — Progression & Content
+- [x] [058-inventory-system-refactor](tickets/058-inventory-system-refactor/)
+- [x] [059-lobby-photon-forge-ui](tickets/059-lobby-photon-forge-ui/)
+- [x] [060-card-grinding-system](tickets/060-card-grinding-system/)
+- [x] [061-new-card-pack](tickets/061-new-card-pack/)
+- [x] [062-card-evolution-system](tickets/062-card-evolution-system/)
+- [x] [079-synergistic-cards](tickets/079-synergistic-cards/)
+
+## Backlog — Card Evolutions
+- [x] [063-evo-steel-claymore](tickets/063-evo-steel-claymore/)
+- [x] [064-evo-magma-greatsword](tickets/064-evo-magma-greatsword/)
+- [x] [065-evo-astral-guardian](tickets/065-evo-astral-guardian/)
+- [x] [066-evo-ancient-wyrm](tickets/066-evo-ancient-wyrm/)
+- [x] [067-evo-excalibur-photon](tickets/067-evo-excalibur-photon/)
+- [x] [068-evo-infinite-disk](tickets/068-evo-infinite-disk/)
+- [x] [069-evo-glacier-collapse](tickets/069-evo-glacier-collapse/)
+- [x] [070-evo-divine-grace](tickets/070-evo-divine-grace/)
+- [x] [071-evo-undead-commander](tickets/071-evo-undead-commander/)
+- [x] [072-evo-thunderbird](tickets/072-evo-thunderbird/)
+- [x] [073-evo-event-horizon](tickets/073-evo-event-horizon/)
+- [x] [074-evo-resonance-edge](tickets/074-evo-resonance-edge/)
+- [x] [075-evo-soul-drain](tickets/075-evo-soul-drain/)
+- [x] [076-evo-inferno-pillar](tickets/076-evo-inferno-pillar/)
