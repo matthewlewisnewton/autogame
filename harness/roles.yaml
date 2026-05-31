@@ -143,22 +143,6 @@ roles:
       allow: ["tickets/**"]
       deny:  ["game/**", "harness/**"]
 
-  # Recovery
-  rescue:
-    primary: claude
-    fallbacks: []
-    timeout_s: 1800
-    out_file: "rescue.txt"
-    prompt_template: harness/prompts/rescue.md
-    acceptance: { kind: ok_rc }
-    usage_kind: rescue
-    # Rescue can edit `game/**` (the normal case — finish the ticket) AND
-    # `harness/**` (the infra-escalation case — capture_run detected a
-    # `harness_failure` block in metrics.json and the round loop bailed out
-    # early so rescue can patch the harness itself). The prompt at
-    # harness/prompts/rescue.md gates which mode applies.
-    scope: { allow: ["game/**", "harness/**"], deny: ["tickets/**"] }
-
   split:
     primary: claude
     fallbacks: []
@@ -169,15 +153,19 @@ roles:
     usage_kind: split
     scope: { allow: ["tickets/**"], deny: ["game/**"] }
 
-  # Supervisor: repair (escalation path on rc=2)
+  # Recovery — one claude path for BOTH the in-ticket rescue (rounds
+  # exhausted: finish the ticket + close gaps) and the supervisor-level
+  # harness repair (rc=2 tool/harness failure: fix the harness so the loop
+  # can proceed). Scope spans game/** + harness/** so the same role serves
+  # both; the prompt at harness/prompts/repair.md gates which mode applies.
+  # run_repair() commits on acceptance (include_harness=True) so a harness
+  # fix persists, and the supervisor re-execs afterward to load it.
   repair:
     primary: claude
     fallbacks: []
-    timeout_s: 900
-    out_file: "diagnosis.txt"
-    prompt_template: harness/prompts/diagnose.md
+    timeout_s: 1800
+    out_file: "repair.txt"
+    prompt_template: harness/prompts/repair.md
     acceptance: { kind: ok_rc }
     usage_kind: repair
-    scope:
-      allow: ["harness/**"]
-      deny:  ["game/**", "tickets/**"]
+    scope: { allow: ["game/**", "harness/**"], deny: ["tickets/**"] }

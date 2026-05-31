@@ -22,7 +22,7 @@ from harness.steps.coverage import copy_coverage_into_artifacts, coverage_run
 from harness.steps.decompose import decompose, list_subticket_dirs
 from harness.steps.finalize import FinalizeResult, finalize
 from harness.steps.protect_review import protect_review, verify_reviews
-from harness.steps.rescue import rescue
+from harness.steps.repair import run_repair
 from harness.steps.review import recover_review_files
 from harness.steps.split import split
 from harness.telemetry.logging import log, tee_pipeline_log
@@ -287,14 +287,31 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
                     f.write("\n".join(tail) + "\n")
         append_review_pointer(review_fb, review_out)
 
-    # CLAUDE RESCUE — last resort after rounds exhausted
+    # CLAUDE RECOVERY — last resort after rounds exhausted (unified repair path,
+    # mode="ticket": finish the ticket + close gaps).
     log(f"########## {ctx.name} — {ctx.tunables.ticket_max_rounds} rounds exhausted; starting claude rescue ##########")
-    rescue_role = ctx.roster.role("rescue")
-    rescue_chain = rescue(rescue_role, workspace=ctx.workspace,
-                           ticket_name=ctx.name, ticket_file=ctx.ticket_file,
-                           review_fb=review_fb, base_ref=base_ref,
-                           max_rounds=ctx.tunables.ticket_max_rounds,
-                           rescue_dir=ctx.tdir / "rescue", telemetry=ctx.telemetry)
+    rescue_dir = ctx.tdir / "rescue"
+    rescue_dir.mkdir(parents=True, exist_ok=True)
+    emit_progress_event("rescue_start",
+                        {"ticket": ctx.name, "maxRounds": ctx.tunables.ticket_max_rounds})
+    try:
+        (rescue_dir / "ticket.diff").write_text(
+            ctx.workspace.run_git("diff", f"{base_ref}..HEAD") + "\n")
+    except Exception:
+        (rescue_dir / "ticket.diff").write_text("")
+    rescue_chain = run_repair(
+        ctx.roster.role("repair"), workspace=ctx.workspace, mode="ticket",
+        prompt_vars={
+            "MODE": "ticket",
+            "TICKET_FILE": str(ctx.ticket_file),
+            "REVIEW_FB": str(review_fb),
+            "BASE_REF": base_ref,
+            "ROUNDS": str(ctx.tunables.ticket_max_rounds),
+            "LOOPLOG": "",
+        },
+        artifacts_dir=rescue_dir,
+        commit_msg=f"{ctx.name}: claude rescue implementation pass",
+        telemetry=ctx.telemetry)
     if rescue_chain.accepted_by is None:
         log("[tool-failure] claude rescue unavailable — escalating")
         return PipelineResult.ESCALATE

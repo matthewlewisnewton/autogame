@@ -1,7 +1,9 @@
 """Supervisor — outermost watchdog. Ports supervisor.sh per design doc §8.4."""
 from __future__ import annotations
 
+import os
 import signal
+import sys
 import time
 from pathlib import Path
 from typing import Optional
@@ -9,22 +11,32 @@ from typing import Optional
 from harness.pipelines.backlog import BacklogContext, backlog
 from harness.pipelines.result import PipelineResult
 from harness.roles import Roster
-from harness.steps.repair import repair_pass
+from harness.steps.repair import run_repair
 from harness.telemetry import progress_server
 from harness.telemetry.logging import log
 from harness.telemetry.usage import TelemetrySink
 from harness.workspace.repo import Repo
 
 
+_REEXEC_ENV = "HARNESS_REEXEC_COUNT"
+
+
 class Supervisor:
     def __init__(self, *, workspace: Repo,
                  roles_path: Path = Path("harness/roles.yaml"),
                  local_roles_path: Optional[Path] = Path("harness/roles.local.yaml"),
-                 max_escalations: int = 3, suplog: Path = Path("LOOPLOG.txt")):
+                 max_escalations: int = 3, max_reexecs: int = 3,
+                 suplog: Path = Path("LOOPLOG.txt")):
         self.workspace = workspace
         self.roles_path = roles_path
         self.local_roles_path = local_roles_path if local_roles_path and local_roles_path.exists() else None
         self.max_escalations = max_escalations
+        # A harness repair edits Python modules already imported into THIS
+        # process; they only take effect after a fresh interpreter. So after a
+        # committed harness repair the supervisor re-execs itself. _REEXEC_ENV
+        # bounds consecutive re-execs (reset when a ticket completes) so a
+        # repair that never actually fixes anything can't thrash forever.
+        self.max_reexecs = max_reexecs
         self.suplog = suplog
         self.escalations = 0
         self.roster: Optional[Roster] = None
@@ -63,6 +75,21 @@ class Supervisor:
         import os as _os
         _os.kill(_os.getpid(), signal.SIGTERM)
 
+    def _reexec_to_load_repair(self) -> None:
+        """Replace this process with a fresh `python -m harness supervisor` so a
+        just-committed harness repair (Python modules already imported here)
+        actually loads. Bounded by max_reexecs via _REEXEC_ENV so a repair that
+        never fixes anything can't thrash. The progress server keeps running;
+        the new process's start_if_needed() is idempotent and reattaches."""
+        count = int(os.environ.get(_REEXEC_ENV, "0")) + 1
+        if count > self.max_reexecs:
+            log(f"######## supervisor: {self.max_reexecs} consecutive harness re-execs "
+                f"without progress — STOPPING, needs a human ########")
+            raise SystemExit(int(PipelineResult.ESCALATE))
+        os.environ[_REEXEC_ENV] = str(count)
+        log(f">>> re-exec {count}/{self.max_reexecs}: reloading harness to apply committed repair")
+        os.execv(sys.executable, [sys.executable, "-m", "harness", "supervisor"])
+
     def run(self) -> int:
         self.roster = Roster.load(self.roles_path, self.local_roles_path)
         progress_server.start_if_needed()
@@ -80,12 +107,15 @@ class Supervisor:
             tags_after = self._count_v0_tags()
             log(f">>> backlog run exited rc={rc} (completed tickets: {tags_before} -> {tags_after})")
 
-            # Escalation-decay (supervisor.sh:38-44).
+            # Escalation-decay (supervisor.sh:38-44). Progress also clears the
+            # re-exec budget — a repair that unblocked real work earns a reset.
             completed = tags_after - tags_before
-            if completed > 0 and self.escalations > 0:
-                prev = self.escalations
-                self.escalations = max(0, self.escalations - completed)
-                log(f">>> {completed} ticket(s) completed — escalation strikes {prev} -> {self.escalations}")
+            if completed > 0:
+                if self.escalations > 0:
+                    prev = self.escalations
+                    self.escalations = max(0, self.escalations - completed)
+                    log(f">>> {completed} ticket(s) completed — escalation strikes {prev} -> {self.escalations}")
+                os.environ[_REEXEC_ENV] = "0"
 
             if rc == PipelineResult.PASS:
                 log("######## supervisor: backlog complete — all tickets done ########")
@@ -97,13 +127,23 @@ class Supervisor:
             if self.escalations > self.max_escalations:
                 log(f"######## supervisor: {self.max_escalations} escalations exhausted — STOPPING, needs a human ########")
                 return PipelineResult.ESCALATE
-            log(f">>> ESCALATION {self.escalations}/{self.max_escalations}: asking claude to diagnose & repair")
-            diag_dir = Path(self.workspace.root) / "harness"
-            repair_pass(self.roster.role("repair"),
-                         workspace=self.workspace, suplog=self.suplog,
-                         escalation=self.escalations, artifacts_dir=diag_dir,
-                         telemetry=self.telemetry)
-            log(">>> diagnosis complete — restarting loop")
+            log(f">>> ESCALATION {self.escalations}/{self.max_escalations}: claude repairing the harness")
+            chain = run_repair(
+                self.roster.role("repair"), workspace=self.workspace,
+                mode="harness",
+                prompt_vars={
+                    "MODE": "harness", "LOOPLOG": str(self.suplog),
+                    "TICKET_FILE": "", "REVIEW_FB": "", "BASE_REF": "", "ROUNDS": "",
+                },
+                artifacts_dir=Path(self.workspace.root) / "harness" / "repair",
+                commit_msg=f"harness: claude repair pass (escalation {self.escalations})",
+                telemetry=self.telemetry)
+            log(">>> repair complete — restarting loop")
+            if chain.accepted_by is not None:
+                # The committed fix lives in modules already imported here;
+                # re-exec a fresh interpreter so it actually loads. Does not
+                # return on success.
+                self._reexec_to_load_repair()
             time.sleep(5)
 
 
