@@ -7,6 +7,8 @@ import {
 	clampToDungeon as clampToDungeonPure,
 	tryPlayerMove as tryPlayerMovePure,
 	isPositionBlocked as isPositionBlockedPure,
+	sampleFloorY,
+	DEFAULT_FLOOR_Y,
 } from './collision.js';
 import { PASSAGE_WIDTH, BOUNDS_MARGIN } from './config.js';
 
@@ -240,8 +242,9 @@ export function buildDungeon(scene, layout) {
 				wallZ = wall.z;
 			}
 
+			const wallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
 			const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
-			wallMesh.position.set(wallX, WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}
