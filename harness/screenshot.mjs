@@ -169,9 +169,101 @@ function validateRecipe(input) {
     return clean;
   });
 
-  return {
+  const recipe = {
     summary: typeof input.summary === 'string' ? input.summary.slice(0, 500) : '',
     steps,
+  };
+
+  return ensureAuthLobbyPrefix(recipe);
+}
+
+/**
+ * Build the standard auth/lobby prefix steps for both players.
+ * Player A: connect → register → login → createLobby
+ * Player B: connect → register → login → joinLobby
+ * Used to auto-inject missing setup when a recipe uses emitScenario/waitForGame.
+ */
+function buildStandardAuthLobbyPrefix() {
+  return [
+    { action: 'connectPlayer', player: 'A' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'createLobby', player: 'A', name: 'Test' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'connectPlayer', player: 'B' },
+    { action: 'wait', player: 'B', ms: 1000 },
+    { action: 'registerUser', player: 'B', username: 'playerB', password: 'test123' },
+    { action: 'loginUser', player: 'B', username: 'playerB', password: 'test123' },
+    { action: 'wait', player: 'B', ms: 1000 },
+    { action: 'joinLobby', player: 'B' },
+  ];
+}
+
+/**
+ * Check that all steps before `index` for a given `player` include the required
+ * auth/lobby sequence: registerUser → loginUser → createLobby (A) or joinLobby (B).
+ * Returns true if the full sequence is present in correct order.
+ */
+function hasAuthLobbyBefore(steps, index, player) {
+  // State machine: 0=need registerUser, 1=need loginUser, 2=need createLobby/joinLobby
+  let state = 0;
+  for (let i = 0; i < index; i++) {
+    const s = steps[i];
+    // Steps without explicit player default to 'A' at execution time
+    if ((s.player || 'A') !== player) continue;
+    if (state === 0 && s.action === 'registerUser') state = 1;
+    else if (state === 1 && s.action === 'loginUser') state = 2;
+    else if (state === 2 && (s.action === 'createLobby' || s.action === 'joinLobby')) return true;
+  }
+  return false;
+}
+
+/**
+ * Detect recipes that use emitScenario or waitForGame without a preceding
+ * auth/lobby setup, and auto-inject the standard prefix.
+ * Logs when injection occurs so the capture output documents the fix.
+ */
+function ensureAuthLobbyPrefix(recipe) {
+  const { steps } = recipe;
+
+  // Find the first emitScenario or waitForGame
+  let gameActionIndex = -1;
+  for (let i = 0; i < steps.length; i++) {
+    if (steps[i].action === 'emitScenario' || steps[i].action === 'waitForGame') {
+      gameActionIndex = i;
+      break;
+    }
+  }
+
+  // No game-action requiring setup — nothing to fix
+  if (gameActionIndex === -1) return recipe;
+
+  // Collect all players referenced in the recipe (default to 'A' if unspecified)
+  const players = new Set();
+  for (const s of steps) {
+    players.add(s.player || 'A');
+  }
+
+  // Check each player has auth/lobby before the game action
+  let needsPrefix = false;
+  for (const player of players) {
+    if (!hasAuthLobbyBefore(steps, gameActionIndex, player)) {
+      needsPrefix = true;
+      break;
+    }
+  }
+
+  if (!needsPrefix) return recipe;
+
+  // Auto-inject the standard auth/lobby prefix
+  const prefix = buildStandardAuthLobbyPrefix();
+  console.log(`[validateRecipe] auto-injected auth/lobby prefix for emitScenario (first game action at step ${gameActionIndex + 1})`);
+
+  return {
+    summary: recipe.summary,
+    steps: [...prefix, ...steps],
   };
 }
 
