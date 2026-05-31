@@ -1,0 +1,10 @@
+# Decomposition of 141-cleanup-cleanup-fix-floor-sampling-esm-export
+
+Two comment-only nits from the 140 review, each independently verifiable.
+
+| # | Sub-ticket | Scope |
+|---|---|---|
+| 01 | `01-fix-esm-header-comments` | Fix stale header in `floorSampling.esm.js` |
+| 02 | `02-document-cjs-bridge-constraints` | Add bridge constraint comment to `floorSampling.js` + one-line note in `design.md` |
+
+Both are `code` verification — no visual impact.

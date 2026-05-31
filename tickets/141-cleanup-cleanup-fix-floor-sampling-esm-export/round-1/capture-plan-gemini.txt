@@ -1,0 +1,40 @@
+{
+  "summary": "Smoke test to ensure the game loads and enters gameplay after comment-only updates to floorSampling utility files, verifying the CJS/ESM bridge remains functional.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-lobby",
+      "description": "Verify the lobby loads without errors."
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-gameplay",
+      "description": "Verify gameplay initializes, ensuring the floorSampling CJS/ESM bridge is intact and the server/client haven't crashed."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify game state is active and the player entity is correctly positioned on the floor."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

@@ -1,0 +1,11 @@
+## Review complete
+
+Wrote the full assessment to [`tickets/141-cleanup-cleanup-fix-floor-sampling-esm-export/round-1/review.md`](/home/matt/workspace/autogame/tickets/141-cleanup-cleanup-fix-floor-sampling-esm-export/round-1/review.md).
+
+**Runtime:** `metrics.json` has `"ok": true`. No `pageerror` or `[fatal]` in `console.log`. Capture shows normal gameplay (playing phase, canvas, movement, enemies). Benign noise only (409 on auth, one capture timeout then recovery, THREE.Clock / Vite EPIPE).
+
+**Acceptance criteria:** Both met — ESM header documents canonical ownership and CJS load direction; `floorSampling.js` documents bridge constraints; `design.md` Floor Geometry points maintainers at the canonical `.esm.js` file.
+
+**Scope:** Two commits, comment/docs only (`floorSampling.esm.js`, `floorSampling.js`, `design.md`). Tests pass (1233 quick + round-1 coverage).
+
+**Verdict:** `VERDICT: PASS` — no `gaps.md` or `nits.md` (nothing blocking, no follow-up nits worth filing).
