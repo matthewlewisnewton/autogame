@@ -8,7 +8,9 @@ import {
   assignRoomRoles,
   roomsByRole,
   randomRoomPositionByRole,
+  sampleFloorY,
   questLayoutSeed,
+  DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
   GRID_COLS,
   GRID_ROWS,
@@ -980,5 +982,87 @@ describe('floorCorners on rooms', () => {
       if (heights.size > 1) { hasSlope = true; break; }
     }
     expect(hasSlope).toBe(true);
+  });
+});
+
+// ── sampleFloorY ──
+
+describe('sampleFloorY(layout, x, z)', () => {
+  it('returns DEFAULT_FLOOR_Y for any position inside a flat room', () => {
+    const layout = generateLayout(1);
+    const room = layout.rooms[0];
+    // Room center
+    expect(sampleFloorY(layout, room.x, room.z)).toBe(DEFAULT_FLOOR_Y);
+    // Arbitrary interior point
+    expect(sampleFloorY(layout, room.x + 3, room.z - 2)).toBe(DEFAULT_FLOOR_Y);
+    // Edge of room (still inside bounds)
+    expect(sampleFloorY(layout, room.x - room.width / 2, room.z)).toBe(DEFAULT_FLOOR_Y);
+  });
+
+  it('returns correct interpolated values at corners of a sloped room', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    // Find a sloped room
+    const sloped = layout.rooms.find(r => r.floorCorners.ySE !== r.floorCorners.yNW);
+    expect(sloped).toBeDefined();
+
+    const halfW = sloped.width / 2;
+    const halfD = sloped.depth / 2;
+
+    // NW corner: x = room.x - halfW, z = room.z - halfD  → u=0, v=0
+    expect(sampleFloorY(layout, sloped.x - halfW, sloped.z - halfD)).toBeCloseTo(sloped.floorCorners.yNW, 5);
+    // NE corner: x = room.x + halfW, z = room.z - halfD  → u=1, v=0
+    expect(sampleFloorY(layout, sloped.x + halfW, sloped.z - halfD)).toBeCloseTo(sloped.floorCorners.yNE, 5);
+    // SE corner: x = room.x + halfW, z = room.z + halfD  → u=1, v=1
+    expect(sampleFloorY(layout, sloped.x + halfW, sloped.z + halfD)).toBeCloseTo(sloped.floorCorners.ySE, 5);
+    // SW corner: x = room.x - halfW, z = room.z + halfD  → u=0, v=1
+    expect(sampleFloorY(layout, sloped.x - halfW, sloped.z + halfD)).toBeCloseTo(sloped.floorCorners.ySW, 5);
+  });
+
+  it('returns correct interpolated value at center of a sloped room', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    const sloped = layout.rooms.find(r => r.floorCorners.ySE !== r.floorCorners.yNW);
+    expect(sloped).toBeDefined();
+
+    // Center: u=0.5, v=0.5 → average of all four corners
+    const center = sampleFloorY(layout, sloped.x, sloped.z);
+    const expected =
+      (sloped.floorCorners.yNW +
+        sloped.floorCorners.yNE +
+        sloped.floorCorners.ySE +
+        sloped.floorCorners.ySW) /
+      4;
+    expect(center).toBeCloseTo(expected, 5);
+  });
+
+  it('returns null for positions outside all rooms', () => {
+    const layout = generateLayout(42);
+    // Far outside any room (rooms are within ~80 units of origin)
+    expect(sampleFloorY(layout, 999, 999)).toBeNull();
+    expect(sampleFloorY(layout, -999, -999)).toBeNull();
+    // Between rooms (pick a spot midway between two non-adjacent rooms)
+    const r0 = layout.rooms[0];
+    const r1 = layout.rooms[layout.rooms.length - 1];
+    const midX = (r0.x + r1.x) / 2;
+    const midZ = (r0.z + r1.z) / 2;
+    // This may or may not be inside a room, but at least one extreme should be null
+    expect(sampleFloorY(layout, midX + 100, midZ + 100)).toBeNull();
+  });
+
+  it('returns DEFAULT_FLOOR_Y for room lacking floorCorners', () => {
+    const layout = generateLayout(42);
+    // Manually remove floorCorners from a room to test fallback
+    const room = layout.rooms[0];
+    const saved = room.floorCorners;
+    delete room.floorCorners;
+    expect(sampleFloorY(layout, room.x, room.z)).toBe(DEFAULT_FLOOR_Y);
+    // Restore
+    room.floorCorners = saved;
+  });
+
+  it('is deterministic: same layout produces same result', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    const a = sampleFloorY(layout, 10, 10);
+    const b = sampleFloorY(layout, 10, 10);
+    expect(a).toBe(b);
   });
 });
