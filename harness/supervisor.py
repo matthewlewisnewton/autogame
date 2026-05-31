@@ -5,6 +5,7 @@ import os
 import signal
 import sys
 import time
+import traceback
 from pathlib import Path
 from typing import Optional
 
@@ -100,10 +101,20 @@ class Supervisor:
         while True:
             tags_before = self._count_v0_tags()
             log(">>> launching backlog run")
-            rc = backlog(BacklogContext(
-                workspace=self.workspace, roster=self.roster,
-                tunables=self.roster.tunables, telemetry=self.telemetry,
-            ))
+            try:
+                rc = backlog(BacklogContext(
+                    workspace=self.workspace, roster=self.roster,
+                    tunables=self.roster.tunables, telemetry=self.telemetry,
+                ))
+            except Exception:
+                # An unhandled exception in the pipeline used to kill the whole
+                # supervisor (observed 2026-05-31: a PermissionError in the
+                # coverage step crashed the process, no escalation). Treat a
+                # crash like any other harness failure — escalate to claude
+                # repair (+ re-exec) instead of dying.
+                log(">>> backlog run CRASHED with an unhandled exception:")
+                log(traceback.format_exc())
+                rc = PipelineResult.ESCALATE
             tags_after = self._count_v0_tags()
             log(f">>> backlog run exited rc={rc} (completed tickets: {tags_before} -> {tags_after})")
 
