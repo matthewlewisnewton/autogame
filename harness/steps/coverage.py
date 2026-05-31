@@ -54,7 +54,21 @@ def copy_coverage_into_artifacts(coverage_dir: Path, artifacts_dir: Path) -> Non
     """Per gpt R3: review.md prompt expects coverage.log in ARTIFACTS_DIR."""
     src = Path(coverage_dir) / "coverage.log"
     if src.exists():
-        shutil.copy2(src, Path(artifacts_dir) / "coverage.log")
+        dst = Path(artifacts_dir) / "coverage.log"
+        # On a round re-run the destination round-N dir was chmod'd a-w by a
+        # previous protect_review, so an existing coverage.log is read-only and
+        # copy2 fails with PermissionError (crashed the supervisor 2026-05-31).
+        # Clear the flag before overwriting — same gotcha fixed in game.py /
+        # screenshot.py.
+        try:
+            dst.chmod(0o644)
+        except (FileNotFoundError, PermissionError, OSError):
+            pass
+        try:
+            dst.unlink()
+        except (FileNotFoundError, PermissionError, OSError):
+            pass
+        shutil.copy2(src, dst)
 
 
 __all__ = ["copy_coverage_into_artifacts", "coverage_run"]
