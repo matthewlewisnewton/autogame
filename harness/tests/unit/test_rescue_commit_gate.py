@@ -122,3 +122,51 @@ class TestRescueCommitGate:
             capture_output=True, text=True,
         ).stdout.strip()
         assert "claude rescue implementation pass" in last_msg
+
+    def test_infra_rescue_includes_harness_in_commit(self, tmp_path, monkeypatch):
+        # Ticket 116 infra escalation (2026-05-30): rescue patched
+        # harness/steps/game.py to fix vite_eaddrinuse but the default
+        # commit_verified(include_harness=False) silently dropped it on the
+        # floor. The fix on rescue.py is to pass include_harness=True so the
+        # harness paths the rescue's scope already allows actually land.
+        monkeypatch.setattr("harness.roles.render_prompt", lambda p, **kw: "p")
+        repo = _make_repo(tmp_path)
+        (repo.root / "harness" / "steps").mkdir(parents=True)
+        (repo.root / "harness" / "steps" / "game.py").write_text("# initial\n")
+        subprocess.run(["git", "add", "."], cwd=str(repo.root), check=True)
+        subprocess.run(["git", "commit", "-q", "-m", "init harness"], cwd=str(repo.root), check=True)
+        head_before = repo.head()
+
+        class HarnessFixAgent(StubAgent):
+            def run(self, invocation, workspace, *, telemetry):
+                (workspace.root / "harness" / "steps" / "game.py").write_text(
+                    "# rescue patched the regex\n"
+                )
+                return super().run(invocation, workspace, telemetry=telemetry)
+
+        # Use the real rescue scope (allow harness/** too).
+        role = Role(
+            name="rescue",
+            primary=HarnessFixAgent(name="stub-infra", canned_result=_ok()),
+            fallbacks=[], timeout_s=10.0, prompt_template=Path("/dev/null"),
+            acceptance=OkRcAccept(), out_file="rescue.txt",
+            usage_kind=UsageKind.RESCUE,
+            scope=PathScope(allow=["game/**", "harness/**"], deny=["tickets/**"]),
+        )
+
+        chain = rescue(role, workspace=repo, ticket_name="042-foo",
+                        ticket_file=repo.root / "ticket.md",
+                        review_fb=repo.root / "review-feedback.md",
+                        base_ref=head_before, max_rounds=10,
+                        rescue_dir=tmp_path / "rescue")
+        assert chain.accepted_by is not None
+        assert repo.head() != head_before, "infra rescue should commit"
+        # The harness/ edit must be present in the new commit (the bug we're
+        # guarding against).
+        files_in_commit = subprocess.run(
+            ["git", "show", "--name-only", "--pretty=", "HEAD"],
+            cwd=str(repo.root), capture_output=True, text=True,
+        ).stdout.split()
+        assert "harness/steps/game.py" in files_in_commit, (
+            f"infra rescue commit must include harness/ paths; got {files_in_commit}"
+        )
