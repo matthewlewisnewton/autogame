@@ -139,3 +139,216 @@ class TestTicketPipelineDetectsAndEscalates:
         # The rescue prompt keys off this exact header (see
         # harness/prompts/rescue.md INFRA-ESCALATION MODE clause).
         assert "# Harness infra escalation" in body
+
+
+class TestReadPageerrors:
+    """Verify _read_pageerrors reads from pageerrors.json or metrics.json."""
+
+    def test_reads_from_pageerrors_json(self, tmp_path):
+        errors = [{"message": "Uncaught ReferenceError: foo is not defined"}]
+        (tmp_path / "pageerrors.json").write_text(json.dumps(errors))
+        result = cr_mod._read_pageerrors(tmp_path)
+        assert result == errors
+
+    def test_reads_from_metrics_json_pageerrors(self, tmp_path):
+        errors = [{"message": "TypeError: cannot read properties"}]
+        (tmp_path / "metrics.json").write_text(json.dumps({
+            "ok": False, "pageerrors": errors
+        }))
+        result = cr_mod._read_pageerrors(tmp_path)
+        assert result == errors
+
+    def test_pageerrors_json_takes_precedence(self, tmp_path):
+        pe_errors = [{"message": "from pageerrors.json"}]
+        m_errors = [{"message": "from metrics.json"}]
+        (tmp_path / "pageerrors.json").write_text(json.dumps(pe_errors))
+        (tmp_path / "metrics.json").write_text(json.dumps({"pageerrors": m_errors}))
+        result = cr_mod._read_pageerrors(tmp_path)
+        assert result == pe_errors
+
+    def test_returns_empty_when_no_files(self, tmp_path):
+        assert cr_mod._read_pageerrors(tmp_path) == []
+
+    def test_returns_empty_when_invalid_json(self, tmp_path):
+        (tmp_path / "pageerrors.json").write_text("not json")
+        assert cr_mod._read_pageerrors(tmp_path) == []
+
+    def test_returns_empty_when_not_a_list(self, tmp_path):
+        (tmp_path / "pageerrors.json").write_text(json.dumps({"key": "value"}))
+        assert cr_mod._read_pageerrors(tmp_path) == []
+
+
+class TestClassifyCaptureFailure:
+    """Verify _classify_capture_failure returns the correct failure kind."""
+
+    def _make_ports(self):
+        return PortAllocation(game_server=3000, vite=5173)
+
+    def test_infra_signature_returns_harness_failure(self, tmp_path, monkeypatch):
+        """When EADDRINUSE is detected, return harness_failure."""
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("Port 5173 is already in use\n")
+        (tmp_path / "server.log").write_text("Server listening\n")
+        result = cr_mod._classify_capture_failure(tmp_path, self._make_ports())
+        assert result["ok"] is False
+        assert "harness_failure" in result
+        assert "vite_eaddrinuse" in result["harness_failure"]["detected"]
+        assert "failure_kind" not in result
+
+    def test_pageerrors_no_infra_returns_browser_pageerror(self, tmp_path, monkeypatch):
+        """When no infra issue but pageerrors exist, return browser_pageerror."""
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("vite ready\n")
+        (tmp_path / "server.log").write_text("Server listening\n")
+        (tmp_path / "pageerrors.json").write_text(json.dumps([
+            {"message": "Uncaught ReferenceError: x is not defined",
+             "sourceURL": "http://localhost:5173/main.js", "line": 42, "column": 3}
+        ]))
+        result = cr_mod._classify_capture_failure(tmp_path, self._make_ports())
+        assert result["ok"] is False
+        assert result["failure_kind"] == "browser_pageerror"
+        assert "pageerrors" in result
+        assert len(result["pageerrors"]) == 1
+        assert "harness_failure" not in result
+
+    def test_no_infra_no_pageerrors_returns_capture_failed(self, tmp_path, monkeypatch):
+        """When no infra issue and no pageerrors, return capture_failed."""
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("vite ready\n")
+        (tmp_path / "server.log").write_text("Server listening\n")
+        result = cr_mod._classify_capture_failure(tmp_path, self._make_ports())
+        assert result["ok"] is False
+        assert result["failure_kind"] == "capture_failed"
+        assert "harness_failure" in result
+
+    def test_infra_takes_precedence_over_pageerrors(self, tmp_path, monkeypatch):
+        """When both infra signatures AND pageerrors exist, infra wins."""
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("EADDRINUSE\n")
+        (tmp_path / "server.log").write_text("\n")
+        (tmp_path / "pageerrors.json").write_text(json.dumps([
+            {"message": "some error"}
+        ]))
+        result = cr_mod._classify_capture_failure(tmp_path, self._make_ports())
+        assert result["ok"] is False
+        assert "harness_failure" in result
+        assert "failure_kind" not in result
+
+
+class TestCaptureRunClassification:
+    """End-to-end: capture_run classifies failures correctly."""
+
+    def test_servers_up_capture_fail_with_pageerrors(self, tmp_path, monkeypatch):
+        """Servers start, capture fails, pageerrors present → browser_pageerror."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("vite ready\n")
+        (tmp_path / "server.log").write_text("Server listening\n")
+        (tmp_path / "pageerrors.json").write_text(json.dumps([
+            {"message": "Uncaught Error: module load failed"}
+        ]))
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "browser_pageerror"
+        assert "harness_failure" not in metrics
+        assert "pageerrors" in metrics
+
+    def test_servers_up_capture_fail_no_pageerrors(self, tmp_path, monkeypatch):
+        """Servers start, capture fails, no pageerrors → capture_failed."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("vite ready\n")
+        (tmp_path / "server.log").write_text("Server listening\n")
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "capture_failed"
+
+    def test_servers_down_with_infra_signature(self, tmp_path, monkeypatch):
+        """Servers don't start, EADDRINUSE detected → harness_failure."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("Port 5173 is already in use\n")
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert "harness_failure" in metrics
+        assert "vite_eaddrinuse" in metrics["harness_failure"]["detected"]
+
+    def test_servers_down_no_infra_no_pageerrors(self, tmp_path, monkeypatch):
+        """Servers don't start, no infra sig, no pageerrors → capture_failed."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("some random log\n")
+        (tmp_path / "server.log").write_text("another log\n")
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "capture_failed"
+
+
+class TestGameSmokeOkBrowserPageerror:
+    """Verify game_smoke_ok handles browser_pageerror correctly."""
+
+    def test_browser_pageerror_returns_true(self, tmp_path):
+        """browser_pageerror is a code defect, game is still runnable."""
+        (tmp_path / "metrics.json").write_text(json.dumps({
+            "ok": False,
+            "failure_kind": "browser_pageerror",
+            "pageerrors": [{"message": "Uncaught Error"}],
+        }))
+        from harness.steps.confirm_broken import game_smoke_ok
+        assert game_smoke_ok(tmp_path) is True
+
+    def test_capture_failed_returns_false(self, tmp_path):
+        """capture_failed means game didn't render properly."""
+        (tmp_path / "metrics.json").write_text(json.dumps({
+            "ok": False,
+            "failure_kind": "capture_failed",
+            "harness_failure": {"detected": []},
+        }))
+        from harness.steps.confirm_broken import game_smoke_ok
+        assert game_smoke_ok(tmp_path) is False
+
+    def test_harness_failure_returns_false(self, tmp_path):
+        """harness_failure means infra problem, game didn't start."""
+        (tmp_path / "metrics.json").write_text(json.dumps({
+            "ok": False,
+            "error": "servers did not start",
+            "harness_failure": {"detected": ["vite_eaddrinuse"]},
+        }))
+        from harness.steps.confirm_broken import game_smoke_ok
+        assert game_smoke_ok(tmp_path) is False
+
+    def test_ok_true_still_returns_true(self, tmp_path):
+        """Normal success case is unchanged."""
+        (tmp_path / "metrics.json").write_text(json.dumps({
+            "ok": True, "screenshots": []
+        }))
+        from harness.steps.confirm_broken import game_smoke_ok
+        assert game_smoke_ok(tmp_path) is True
+
+    def test_no_failure_kind_returns_false(self, tmp_path):
+        """ok:false with no failure_kind → pre-existing format, treat as broken."""
+        (tmp_path / "metrics.json").write_text(json.dumps({"ok": False}))
+        from harness.steps.confirm_broken import game_smoke_ok
+        assert game_smoke_ok(tmp_path) is False
