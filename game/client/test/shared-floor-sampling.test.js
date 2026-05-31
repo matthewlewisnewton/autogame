@@ -12,8 +12,8 @@ describe('ESM floorSampling re-export', () => {
 
 	it('returns DEFAULT_FLOOR_Y at the centre of a flat room', () => {
 		const layout = { rooms: [{ x: 0, z: 0, width: 10, depth: 10 }] };
-		// (5, 5) is inside the room; flat room defaults all corners to DEFAULT_FLOOR_Y
-		expect(sampleFloorY(layout, 5, 5)).toBe(0.5);
+		// (0, 0) is the room center; flat room defaults all corners to DEFAULT_FLOOR_Y
+		expect(sampleFloorY(layout, 0, 0)).toBe(0.5);
 	});
 
 	it('bilinearly interpolates a sloped room centre', () => {
