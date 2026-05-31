@@ -590,9 +590,14 @@ async function executeRecipe(browser, recipe) {
       await waitForGameplay(page, step.timeoutMs || 12000);
     } else if (step.action === 'emitScenario') {
       const scenarioName = step.scenario;
-      await page.evaluate((name) => window.__requestDebugScenarioForTest(name), scenarioName);
+      const result = await page.evaluate((name, timeoutMs) => {
+        return window.__requestDebugScenarioForTest(name, timeoutMs)
+          .then((r) => ({ ok: r.ok === true, ...(r || {}) }))
+          .catch((e) => ({ ok: false, error: e.message }));
+      }, scenarioName, step.timeoutMs || 10000);
       scenarios.add(scenarioName);
-      await page.waitForTimeout(1500);
+      if (!result.ok) console.warn(`[emitScenario] ${scenarioName} failed: ${result.error || result.reason || 'unknown'}`);
+      await page.waitForTimeout(500); // brief settle after layout rebuild
     } else if (step.action === 'move') {
       const key = step.key || 'w';
       await page.bringToFront();

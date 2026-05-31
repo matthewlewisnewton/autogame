@@ -1345,15 +1345,23 @@ function requestDebugScenario() {
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
-window.__requestDebugScenarioForTest = (name) => new Promise((resolve) => {
+window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve) => {
 	if (!socket) {
 		resolve({ ok: false, reason: 'no socket' });
 		return;
 	}
-	socket.once('debugScenarioResult', (data) => {
+	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
+	const timer = setTimeout(() => {
+		socket.off('debugScenarioResult', onResult);
+		resolve({ ok: false, reason: 'timeout waiting for debugScenarioResult' });
+	}, timeout);
+	function onResult(data) {
+		clearTimeout(timer);
+		socket.off('debugScenarioResult', onResult);
 		debugScenarioResult = data || null;
 		resolve(data || { ok: false, reason: 'empty debugScenarioResult' });
-	});
+	}
+	socket.once('debugScenarioResult', onResult);
 	socket.emit('debugScenario', { name });
 });
 
