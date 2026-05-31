@@ -1,10 +1,7 @@
 """ticket() — port of run_ticket.sh per design doc §8.2.
 
-Returns:
-   0 = ticket complete
-   1 = ticket genuinely incomplete
-   2 = harness/tool failure (escalate)
-   3 = ticket split — backlog re-scans
+Returns a PipelineResult: PASS (complete), INCOMPLETE (genuinely unsolved),
+ESCALATE (harness/tool failure), or SPLIT (restructured — backlog re-scans).
 """
 from __future__ import annotations
 
@@ -16,6 +13,7 @@ from datetime import datetime
 from pathlib import Path
 
 from harness.config.tunables import Tunables, get_tunables
+from harness.pipelines.result import PipelineResult
 from harness.pipelines.subtask import SubtaskContext, subtask
 from harness.roles import Roster
 from harness.steps.append_review import append_review_pointer, put_review_fb
@@ -116,7 +114,7 @@ def _carry_scope_conflict_into_feedback(ctx: TicketContext, review_fb: Path,
                 "ticket with the relevant sub-tickets restructured.\n")
 
 
-def ticket(ctx: TicketContext) -> int:
+def ticket(ctx: TicketContext) -> PipelineResult:
     """Ticket loop. Wraps body in tee_pipeline_log → tdir/log.txt (claude
     impl-review blocker fix)."""
     log_path = ctx.tdir / "log.txt"
@@ -126,7 +124,7 @@ def ticket(ctx: TicketContext) -> int:
         return _ticket_body(ctx)
 
 
-def _ticket_body(ctx: TicketContext) -> int:
+def _ticket_body(ctx: TicketContext) -> PipelineResult:
     base_ref = ctx.workspace.head()
     review_fb = ctx.tdir / "review-feedback.md"
     decomp_role = ctx.roster.role("decomposer")
@@ -167,14 +165,14 @@ def _ticket_body(ctx: TicketContext) -> int:
                 label=f"{ctx.name}/{sub.name}", tunables=ctx.tunables,
                 telemetry=ctx.telemetry,
             ))
-            if sub_rc == 0:
+            if sub_rc == PipelineResult.PASS:
                 continue
-            if sub_rc == 1:
+            if sub_rc == PipelineResult.INCOMPLETE:
                 failed_subs.append(sub.name)
                 continue
-            if sub_rc == 2:
-                return 2
-            if sub_rc == 3:
+            if sub_rc == PipelineResult.ESCALATE:
+                return PipelineResult.ESCALATE
+            if sub_rc == PipelineResult.SPLIT:
                 log(f"[scope-conflict] sub {sub.name} flagged — re-decomposing next round")
                 rescope_round = True
                 break
@@ -242,7 +240,7 @@ def _ticket_body(ctx: TicketContext) -> int:
         )
         if review_chain.accepted_by is None:
             log("[review] all tiers exhausted without a usable review — escalating")
-            return 2
+            return PipelineResult.ESCALATE
         if not (rdir / "review.md").exists():
             recover_review_files(review_chain.final.stdout, rdir)
 
@@ -265,9 +263,9 @@ def _ticket_body(ctx: TicketContext) -> int:
             )
             if finalize_result == FinalizeResult.SUCCESS:
                 emit_progress_event("ticket_complete", {"ticket": ctx.name, "round": round_n})
-                return 0
+                return PipelineResult.PASS
             if finalize_result == FinalizeResult.COMMIT_FAILED:
-                return 2
+                return PipelineResult.ESCALATE
             log("[finalize] review passed but game broken — continuing into next round")
 
         emit_progress_event("review_verdict", {
@@ -299,7 +297,7 @@ def _ticket_body(ctx: TicketContext) -> int:
                            rescue_dir=ctx.tdir / "rescue", telemetry=ctx.telemetry)
     if rescue_chain.accepted_by is None:
         log("[tool-failure] claude rescue unavailable — escalating")
-        return 2
+        return PipelineResult.ESCALATE
     verify_reviews(ctx.reviews_dir, ctx.tdir)
 
     # RE-REVIEW after rescue
@@ -335,9 +333,9 @@ def _ticket_body(ctx: TicketContext) -> int:
             telemetry=ctx.telemetry,
         )
         if finalize_result == FinalizeResult.SUCCESS:
-            return 0
+            return PipelineResult.PASS
         if finalize_result == FinalizeResult.COMMIT_FAILED:
-            return 2
+            return PipelineResult.ESCALATE
         # GAME_BROKEN: bash falls through to split here; we do the same.
 
     # SPLIT
@@ -348,9 +346,9 @@ def _ticket_body(ctx: TicketContext) -> int:
               ticket_dir=ctx.tdir, split_dir=ctx.tdir / "split",
               telemetry=ctx.telemetry):
         log(f"########## {ctx.name} SPLIT — smaller tickets queued; backlog will pick them up ##########")
-        return 3
+        return PipelineResult.SPLIT
     log(f"########## {ctx.name} could not be split — left open for a fresh attempt ##########")
-    return 1
+    return PipelineResult.INCOMPLETE
 
 
 __all__ = ["TicketContext", "ticket"]

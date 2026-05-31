@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 from harness.pipelines.backlog import BacklogContext, backlog
+from harness.pipelines.result import PipelineResult
 from harness.roles import Roster
 from harness.steps.repair import repair_pass
 from harness.telemetry import progress_server
@@ -86,17 +87,16 @@ class Supervisor:
                 self.escalations = max(0, self.escalations - completed)
                 log(f">>> {completed} ticket(s) completed — escalation strikes {prev} -> {self.escalations}")
 
-            if rc == 0:
+            if rc == PipelineResult.PASS:
                 log("######## supervisor: backlog complete — all tickets done ########")
-                return 0
-            if rc == 1:
-                log("######## supervisor: some tickets genuinely incomplete — stopping for human review ########")
-                return 1
+                return PipelineResult.PASS
 
+            # backlog() only ever yields PASS or ESCALATE; any non-PASS means
+            # the harness itself failed and needs claude/human repair.
             self.escalations += 1
             if self.escalations > self.max_escalations:
                 log(f"######## supervisor: {self.max_escalations} escalations exhausted — STOPPING, needs a human ########")
-                return 2
+                return PipelineResult.ESCALATE
             log(f">>> ESCALATION {self.escalations}/{self.max_escalations}: asking claude to diagnose & repair")
             diag_dir = Path(self.workspace.root) / "harness"
             repair_pass(self.roster.role("repair"),
