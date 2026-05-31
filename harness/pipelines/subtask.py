@@ -1,10 +1,7 @@
 """subtask() — port of run_subtask.sh per design doc §8.1.
 
-Returns:
-   0 = passed (committed)
-   1 = failed after MAX_ITER
-   2 = tool failure (escalate)
-   3 = SCOPE-CONFLICT sentinel
+Returns a PipelineResult: PASS (committed), INCOMPLETE (failed after MAX_ITER),
+ESCALATE (tool failure), or SPLIT (SCOPE-CONFLICT sentinel).
 """
 from __future__ import annotations
 
@@ -14,8 +11,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
-from harness.agents.base import FailureReason
 from harness.config.tunables import Tunables, get_tunables
+from harness.pipelines.result import PipelineResult
 from harness.roles import Roster
 from harness.steps.commit import commit_with_role
 from harness.steps.feedback import accumulate_feedback
@@ -73,7 +70,7 @@ class SubtaskContext:
     def handoff(self) -> Path: return self.subdir / "handoff.md"
 
 
-def subtask(ctx: SubtaskContext) -> int:
+def subtask(ctx: SubtaskContext) -> PipelineResult:
     """Inner loop. Wraps the body in tee_pipeline_log so all stdout/stderr
     AND log() lines land in ctx.subdir/log.txt — the same shape as
     bash's `exec > >(tee -a "$SUBDIR/log.txt") 2>&1` (claude impl-review
@@ -86,7 +83,7 @@ def subtask(ctx: SubtaskContext) -> int:
         return _subtask_body(ctx)
 
 
-def _subtask_body(ctx: SubtaskContext) -> int:
+def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
     qa_mode = _detect_qa_mode(ctx.ticket_file)
     ticket_allows_harness = _detect_ticket_allows_harness(ctx.ticket_file)
     log(f"=== sub-ticket: {ctx.label} — QA mode: {qa_mode} ===")
@@ -123,19 +120,18 @@ def _subtask_body(ctx: SubtaskContext) -> int:
                        attempt=iteration, coder_result=coder_result, coder_out=coder_out)
 
         if scope_conflict_sentinel_in(ctx.handoff):
-            log("[scope-conflict] implementer flagged unfixable-in-scope ACs — exiting 3")
-            return 3
+            log("[scope-conflict] implementer flagged unfixable-in-scope ACs — re-decomposing")
+            return PipelineResult.SPLIT
 
         if not coder_result.ok:
-            # A SCOPE_VIOLATION means the agent ran fine but wrote files outside
-            # its allowed scope (scope_audit already reverted them). That is NOT a
-            # tool outage — counting it toward coder_toolfail wrongly aborts the
-            # whole backlog with rc=2, and a structurally-impossible sub-ticket can
-            # then kill the supervisor via repeated escalation. Treat it as a
-            # recoverable per-iteration failure: feed the reverted paths back and
-            # retry; max_iter exhaustion returns rc=1 (re-decompose) not rc=2.
-            if getattr(coder_result, "reason", None) == FailureReason.SCOPE_VIOLATION:
-                log(f"[scope-violation] {ctx.label}: out-of-scope writes reverted — "
+            # Only genuine tool failures (timeout, empty output, nonzero exit,
+            # etc.) count toward escalation. A non-tool failure — SCOPE_VIOLATION:
+            # the agent ran fine but its out-of-scope writes were reverted — is a
+            # content problem to retry, not an outage. Counting it would wrongly
+            # halt the whole backlog and could kill the supervisor on a
+            # structurally-impossible sub-ticket.
+            if not coder_result.reason.is_tool_failure:
+                log(f"[retry] {ctx.label}: {coder_result.reason.value} — output rejected, "
                     f"not a tool failure; accumulating feedback and retrying")
                 accumulate_feedback(
                     ctx.feedback, iteration=iteration,
@@ -146,7 +142,7 @@ def _subtask_body(ctx: SubtaskContext) -> int:
             log(f"[tool-failure] implementer call failed ({coder_toolfail} consecutive)")
             if coder_toolfail >= 2:
                 log(f"=== ABORT {ctx.label}: coder tool repeatedly unavailable — escalating ===")
-                return 2
+                return PipelineResult.ESCALATE
             continue
         coder_toolfail = 0
 
@@ -197,7 +193,7 @@ def _subtask_body(ctx: SubtaskContext) -> int:
                        telemetry=ctx.telemetry)
         if qa_chain.accepted_by is None:
             log("[tool-failure] all QA tiers exhausted with no verdict — escalating")
-            return 2
+            return PipelineResult.ESCALATE
         emit_progress_event("qa_verified", {
             "label": ctx.label, "iteration": iteration,
             "agent": qa_chain.accepted_by.name, "mode": qa_mode,
@@ -220,11 +216,11 @@ def _subtask_body(ctx: SubtaskContext) -> int:
                                      artifacts_dir=arti,
                                      include_harness=ticket_allows_harness,
                                      telemetry=ctx.telemetry):
-                return 2
+                return PipelineResult.ESCALATE
             (ctx.subdir / ".passed").write_text("")
             log(f"=== sub-ticket PASSED: {ctx.label} ===")
             emit_progress_event("subtask_passed", {"label": ctx.label, "iteration": iteration})
-            return 0
+            return PipelineResult.PASS
 
         log("[qa] FAIL — accumulating feedback")
         if qa_mode == "visual" and ctx.tunables.vision.feedback_on_fail:
@@ -241,7 +237,7 @@ def _subtask_body(ctx: SubtaskContext) -> int:
 
     log(f"=== sub-ticket FAILED after {ctx.tunables.max_iter} iterations: {ctx.label} ===")
     revert_game_changes(ctx.workspace)
-    return 1
+    return PipelineResult.INCOMPLETE
 
 
 __all__ = ["SubtaskContext", "subtask"]

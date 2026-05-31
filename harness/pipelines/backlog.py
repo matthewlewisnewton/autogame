@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Optional
 
 from harness.config.tunables import Tunables, get_tunables
+from harness.pipelines.result import PipelineResult
 from harness.pipelines.ticket import TicketContext, ticket
 from harness.roles import Roster
 from harness.telemetry.logging import log, tee_pipeline_log
@@ -34,7 +35,7 @@ class BacklogContext:
     retry_sleep_s: int = 30
 
 
-def backlog(ctx: BacklogContext) -> int:
+def backlog(ctx: BacklogContext) -> PipelineResult:
     """Backlog loop. Appends all output to LOOPLOG.txt at the repo root
     — matches bash supervisor.sh's `2>&1 | tee -a LOOPLOG.txt`. Each
     ticket() call has its own log.txt as well; LOOPLOG is the
@@ -44,30 +45,32 @@ def backlog(ctx: BacklogContext) -> int:
         return _backlog_body(ctx)
 
 
-def _backlog_body(ctx: BacklogContext) -> int:
-    """Returns 0 = all tickets complete, 2 = tool failure."""
+def _backlog_body(ctx: BacklogContext) -> PipelineResult:
+    """Returns PASS when the queue is drained, ESCALATE on a tool failure.
+    INCOMPLETE and SPLIT are handled in-loop (retry / re-scan) and never
+    propagate out."""
     completed = 0
     while True:
         name = next_open_ticket(ctx.workspace)
         if not name:
             log(f"=== backlog finished — {completed} ticket(s) completed; no unchecked tickets remain ===")
-            return 0
+            return PipelineResult.PASS
         log(f">>> ticket: {name}")
         tdir = Path(ctx.workspace.root) / "tickets" / name
         rc = ticket(TicketContext(
             workspace=ctx.workspace, roster=ctx.roster, name=name, tdir=tdir,
             tunables=ctx.tunables, telemetry=ctx.telemetry,
         ))
-        if rc == 0:
+        if rc == PipelineResult.PASS:
             completed += 1
             log(f">>> COMPLETE: {name}")
-        elif rc == 2:
+        elif rc == PipelineResult.ESCALATE:
             log(f">>> HARNESS/TOOL FAILURE on: {name} — stopping backlog for escalation")
             log(f"=== summary: {completed} ticket(s) completed before the tool failure ===")
-            return 2
-        elif rc == 3:
+            return PipelineResult.ESCALATE
+        elif rc == PipelineResult.SPLIT:
             log(f">>> SPLIT: {name} restructured into smaller tickets — re-scanning backlog")
-        else:
+        else:  # INCOMPLETE
             log(f">>> INCOMPLETE: {name} — retrying; the backlog will not advance past an unsolved ticket")
             time.sleep(ctx.retry_sleep_s)
 

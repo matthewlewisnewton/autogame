@@ -43,9 +43,23 @@ class FailureReason(str, Enum):
     KILLED_AFTER_TIMEOUT  = "killed_after_timeout"
     TERMINATED_BY_SIGNAL  = "terminated_by_signal"
     EXIT_NONZERO          = "exit_nonzero"
-    # Applied by scope_audit() — see §7.4 / §6.2. Treated as a tool-failure
-    # by the Role fallback chain.
+    # Applied by scope_audit() — see §7.4 / §6.2. The agent ran fine; its
+    # output was reverted for writing out of scope. NOT a tool failure (see
+    # is_tool_failure) — a content rejection the pipeline retries.
     SCOPE_VIOLATION       = "scope_violation"
+
+    @property
+    def is_tool_failure(self) -> bool:
+        """Single source of truth for the escalate-vs-retry decision.
+
+        True  → the agent's tool/runtime failed to produce a usable result
+                (timeout, empty output, nonzero exit, signal, quota). Pipelines
+                count these toward tool-failure / escalation.
+        False → OK, or SCOPE_VIOLATION: the agent ran fine but its output was
+                rejected/reverted. That is a content problem to retry, not an
+                outage — escalating on it can wrongly halt the whole backlog.
+        """
+        return self not in (FailureReason.OK, FailureReason.SCOPE_VIOLATION)
 
 
 @dataclass(frozen=True)
