@@ -1,0 +1,26 @@
+## Review complete
+
+Holistic review written to [`tickets/116-sloped-floor-layout-and-geometry/round-1/review.md`](tickets/116-sloped-floor-layout-and-geometry/round-1/review.md).
+
+### Runtime gate
+- `metrics.json`: `"ok": true` — gameplay reached `playing` with canvas and movement
+- No `pageerror` / `[fatal]` in `console.log` (only a harness capture timeout on first attempt, then success)
+- No harness infrastructure failure
+
+### Acceptance criteria
+All seven criteria are satisfied in the current tree (commits `2453fab`–`6f0c78d`, plus later floor-sampling cleanups at HEAD):
+
+- `floorCorners` schema + `{ slopes: true }` generation with deterministic seed-42 tests  
+- Shared `sampleFloorY` in `game/shared/floorSampling.esm.js`  
+- Client sloped rendering via `buildSlopedFloor()`  
+- Legacy flat layouts preserved  
+- Tests on client and server  
+- `design.md` floor-geometry note  
+- No `move` / `player.y` changes (deferred to 117)
+
+`sloped-dungeon` debug scenario is properly gated; normal deploy already uses `{ slopes: true }` via `applyLayoutForQuest()`.
+
+### Verdict
+**VERDICT: PASS** (last line of `review.md`)
+
+No `gaps.md` (FAIL-only). Non-blocking follow-ups are in [`round-1/nits.md`](tickets/116-sloped-floor-layout-and-geometry/round-1/nits.md) (schema doc detail, wall Y on ramps, ramp-focused capture, box vs bilinear mesh).

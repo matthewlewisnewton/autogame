@@ -1,0 +1,13 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+All 6 sub-tickets for ticket **116-sloped-floor-layout-and-geometry** already exist and have `.passed` markers. The commits are all in git history:
+
+| # | Sub-ticket | Status | Commit |
+|---|-----------|--------|--------|
+| 01 | layout-schema-slope-generation | ✅ passed | `2453fab` |
+| 02 | sample-floor-y-helper | ✅ passed | `6df757a` |
+| 03 | render-sloped-floors | ✅ passed | `bfb0dbb` |
+| 04 | design-doc-slope-note | ✅ passed | `94d25cd` |
+| 05 | share-sample-floor-y-with-client | ✅ passed | `8598df9` |
+| 06 | enable-slopes-in-normal-layout | ✅ passed | `6f0c78d` |
+
+**No new sub-tickets needed.** The top-level ticket is fully delivered — layout schema, `sampleFloorY` shared helper, Three.js slope rendering, design doc note, client sharing, and normal-layout wiring are all committed and verified.

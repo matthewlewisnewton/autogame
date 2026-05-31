@@ -1757,3 +1757,26 @@ None. All acceptance criteria are satisfied; the captured run proves the game st
 
 ---
 
+
+## v0.77 — Sloped Floor Layout and Geometry  (2026-05-31 07:23:02)
+
+1. Runtime health passes,
+2. `{ slopes: true }` is on the live quest path,
+3. Unit tests assert sloped mesh rotation from real `generateLayout(42, …, { slopes: true })`,
+
+the implementation satisfies the ticket’s **Verification: code** bar and the spirit of manual ramp confirmation, though a dedicated ramp screenshot would strengthen future harness rounds (nit only).
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are met in the working tree; the game starts and plays cleanly in capture.
+
+---
+
+## Nits (non-blocking)
+
+See `round-1/nits.md` for backlog items: explicit `floorCorners` schema in docs, wall Y alignment on sloped rooms, harness ramp capture, rotated-box vs. bilinear mesh fidelity.
+
+---
+
