@@ -32,6 +32,7 @@ from harness.config.tunables import Tunables, set_active as set_active_tunables
 from harness.git_helpers import PathScope, ScopeAuditResult, scope_audit, snapshot_untracked
 from harness.prompts.acceptance import AcceptanceCriterion, build_from_yaml
 from harness.prompts.renderer import render_prompt
+from harness.telemetry.logging import log
 
 if TYPE_CHECKING:
     pass  # forward refs are resolved lazily — workspace + telemetry stay Any-ish
@@ -137,6 +138,13 @@ class Role:
                     # dataclasses.replace (NOT result._replace which is
                     # NamedTuple-only). The scope_audit() call already
                     # reverted the files in-line per §7.4.
+                    # Log the reverted paths so future tool-failures aren't
+                    # opaque (pre-fix, "implementer call failed" gave no
+                    # hint which files tripped the scope).
+                    log(
+                        f"[scope_audit] {self.name}/{agent.name} reverted "
+                        f"out-of-scope: {audit.out_of_scope}"
+                    )
                     result = dataclasses.replace(result, reason=FailureReason.SCOPE_VIOLATION,
                                                  rc=2)
                     tiers.append(TierResult(
