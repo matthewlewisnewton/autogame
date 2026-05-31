@@ -108,7 +108,7 @@ def _classify_capture_failure(dir: Path, ports: PortAllocation) -> dict:
         return {
             "ok": False,
             "failure_kind": "capture_failed",
-            "harness_failure": diagnosis,
+            "capture_diagnosis": diagnosis,
         }
 
 

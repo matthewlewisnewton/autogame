@@ -219,7 +219,8 @@ class TestClassifyCaptureFailure:
         result = cr_mod._classify_capture_failure(tmp_path, self._make_ports())
         assert result["ok"] is False
         assert result["failure_kind"] == "capture_failed"
-        assert "harness_failure" in result
+        assert "capture_diagnosis" in result
+        assert "harness_failure" not in result
 
     def test_infra_takes_precedence_over_pageerrors(self, tmp_path, monkeypatch):
         """When both infra signatures AND pageerrors exist, infra wins."""
@@ -274,6 +275,8 @@ class TestCaptureRunClassification:
         metrics = json.loads((tmp_path / "metrics.json").read_text())
         assert metrics["ok"] is False
         assert metrics["failure_kind"] == "capture_failed"
+        assert "capture_diagnosis" in metrics
+        assert "harness_failure" not in metrics
 
     def test_servers_down_with_infra_signature(self, tmp_path, monkeypatch):
         """Servers don't start, EADDRINUSE detected → harness_failure."""
@@ -304,6 +307,8 @@ class TestCaptureRunClassification:
         metrics = json.loads((tmp_path / "metrics.json").read_text())
         assert metrics["ok"] is False
         assert metrics["failure_kind"] == "capture_failed"
+        assert "capture_diagnosis" in metrics
+        assert "harness_failure" not in metrics
 
 
 class TestGameSmokeOkBrowserPageerror:
@@ -324,7 +329,7 @@ class TestGameSmokeOkBrowserPageerror:
         (tmp_path / "metrics.json").write_text(json.dumps({
             "ok": False,
             "failure_kind": "capture_failed",
-            "harness_failure": {"detected": []},
+            "capture_diagnosis": {"detected": []},
         }))
         from harness.steps.confirm_broken import game_smoke_ok
         assert game_smoke_ok(tmp_path) is False
@@ -411,11 +416,11 @@ class TestBrowserPageerrorClassification:
         assert metrics.get("failure_kind") != "browser_pageerror"
         assert metrics.get("failure_kind") != "capture_failed"
 
-    def test_clean_servers_empty_pageerrors_harness_failure(
+    def test_clean_servers_empty_pageerrors_capture_diagnosis(
         self, tmp_artifacts, monkeypatch
     ):
         """Clean servers + empty pageerrors + capture failure →
-        harness_failure with empty detected (for human investigation)."""
+        capture_diagnosis with empty detected (for human investigation)."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
         monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
@@ -430,8 +435,9 @@ class TestBrowserPageerrorClassification:
         assert ok is False
         metrics = json.loads((tmp_artifacts / "metrics.json").read_text())
         assert metrics["ok"] is False
-        assert "harness_failure" in metrics
-        assert metrics["harness_failure"]["detected"] == []
+        assert "capture_diagnosis" in metrics
+        assert metrics["capture_diagnosis"]["detected"] == []
+        assert "harness_failure" not in metrics
         assert metrics["failure_kind"] == "capture_failed"
 
 
