@@ -43,6 +43,8 @@ const ACTIONS = new Set([
   'connectPlayer',
   'registerUser',
   'loginUser',
+  'createLobby',
+  'joinLobby',
   'readyAll',
   'waitForGame',
   'move',
@@ -158,6 +160,8 @@ function validateRecipe(input) {
     if (typeof step.cardType === 'string' && /^[a-z]+$/.test(step.cardType)) clean.cardType = step.cardType;
     if (typeof step.username === 'string' && step.username.length >= 1 && step.username.length <= 64) clean.username = step.username;
     if (typeof step.password === 'string' && step.password.length >= 1 && step.password.length <= 64) clean.password = step.password;
+    // createLobby uses step.name as the lobby name (distinct from screenshot naming)
+    if (step.action === 'createLobby' && typeof step.name === 'string' && step.name.length >= 1 && step.name.length <= 40 && /^[a-zA-Z0-9 ]+$/.test(step.name)) clean.lobbyName = step.name;
     return clean;
   });
 
@@ -169,27 +173,30 @@ function validateRecipe(input) {
 
 function fallbackRecipe() {
   return {
-    summary: 'Deterministic full-flow smoke capture: auth, lobby, second player, ready transition, movement.',
+    summary: 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.',
     steps: [
       { action: 'connectPlayer', player: 'A' },
       { action: 'wait', player: 'A', ms: 1000 },
       { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
       { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
       { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'screenshot', player: 'A', name: '01-initial', description: 'Initial load with one player in the lobby.' },
+      { action: 'createLobby', player: 'A', name: 'Test' },
+      { action: 'wait', player: 'A', ms: 1000 },
       { action: 'connectPlayer', player: 'B' },
       { action: 'wait', player: 'B', ms: 1000 },
       { action: 'registerUser', player: 'B', username: 'playerB', password: 'test123' },
       { action: 'loginUser', player: 'B', username: 'playerB', password: 'test123' },
+      { action: 'wait', player: 'B', ms: 1000 },
+      { action: 'joinLobby', player: 'B' },
       { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'screenshot', player: 'A', name: '02-two-players', description: 'Two connected players visible in the lobby.' },
+      { action: 'screenshot', player: 'A', name: '01-initial', description: 'Both players in squad lobby.' },
       { action: 'readyAll' },
       { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
       { action: 'probe', player: 'A', description: 'After readying all players and entering gameplay.' },
       { action: 'move', player: 'A', key: 'w', durationMs: 1500 },
-      { action: 'screenshot', player: 'A', name: '03-after-w', description: 'Gameplay after holding W.' },
+      { action: 'screenshot', player: 'A', name: '02-after-w', description: 'Gameplay after holding W.' },
       { action: 'move', player: 'A', key: 'd', durationMs: 1500 },
-      { action: 'screenshot', player: 'A', name: '04-after-d', description: 'Gameplay after holding D.' },
+      { action: 'screenshot', player: 'A', name: '03-after-d', description: 'Gameplay after holding D.' },
     ],
   };
 }
@@ -418,6 +425,55 @@ async function executeRecipe(browser, recipe) {
         return false;
       }, null, { timeout: step.timeoutMs || 10000 }).catch(() => {});
       await page.waitForTimeout(500);
+      continue;
+    }
+
+    if (step.action === 'createLobby') {
+      const page = getPage(player);
+      const lobbyName = step.lobbyName || 'Test';
+
+      // Ensure lobby browser is visible
+      const lobbyBrowser = page.locator('#lobby-browser');
+      if (!(await lobbyBrowser.isVisible().catch(() => false))) {
+        console.warn(`[createLobby] #lobby-browser not visible for player ${player}`);
+      }
+
+      // Fill lobby name and click create
+      await page.locator('#create-lobby-name').fill(lobbyName);
+      await page.locator('#create-lobby-btn').click();
+      await page.waitForTimeout(500);
+
+      // Wait for squad UI (#lobby) to become visible
+      await page.waitForFunction(() => {
+        const lobby = document.querySelector('#lobby');
+        return lobby && !lobby.classList.contains('hidden');
+      }, null, { timeout: step.timeoutMs || 10000 }).catch((e) => {
+        console.warn(`[createLobby] timeout waiting for #lobby visibility: ${e.message}`);
+      });
+      continue;
+    }
+
+    if (step.action === 'joinLobby') {
+      const page = getPage(player);
+
+      // Ensure lobby browser is visible and find a join button
+      const joinBtn = page.locator('#lobby-list .join-lobby-btn').first();
+      if (!(await joinBtn.isVisible().catch(() => false))) {
+        console.warn(`[joinLobby] no .join-lobby-btn found for player ${player} — continuing`);
+        await page.waitForTimeout(step.ms || 500);
+        continue;
+      }
+
+      await joinBtn.click();
+      await page.waitForTimeout(500);
+
+      // Wait for squad UI (#lobby) to become visible
+      await page.waitForFunction(() => {
+        const lobby = document.querySelector('#lobby');
+        return lobby && !lobby.classList.contains('hidden');
+      }, null, { timeout: step.timeoutMs || 10000 }).catch((e) => {
+        console.warn(`[joinLobby] timeout waiting for #lobby visibility: ${e.message}`);
+      });
       continue;
     }
 
