@@ -229,6 +229,70 @@ class TestSubtaskScopeConflictExit:
         assert qa_agent.call_count == 0
 
 
+class TestSubtaskHarnessScope:
+    """Regression: a sub-ticket whose ticket.md targets `harness/` must let
+    the implementer edit harness files. The implementer role is scoped
+    `allow:["game/**"]`, so without threading the harness-allow signal into
+    scope_audit's safe-list every harness edit is reverted, the iteration
+    produces an empty diff, and the harness misreads it as a repeated coder
+    tool failure → exit 2 (the floor-sampling-esm-export/04 abort)."""
+
+    def _agent_touching_game_and_harness(self, name, workspace) -> StubAgent:
+        a = StubAgent(name=name, writable=True)
+        orig_run = a.run
+
+        def run(invocation, ws, *, telemetry):
+            (workspace.root / "game" / "added.txt").write_text("by stub\n")
+            (workspace.root / "harness").mkdir(exist_ok=True)
+            (workspace.root / "harness" / "screenshot.mjs").write_text("// edited\n")
+            return orig_run(invocation, ws, telemetry=telemetry)
+        a.run = run  # type: ignore[assignment]
+        a.canned_results = [_ok("implementer wrote files")]
+        return a
+
+    def _roster(self, impl):
+        qa_agent = StubAgent(name="qa", writable=False,
+                             canned_stdouts=[_qa_pass_text()],
+                             canned_results=[_ok(_qa_pass_text())])
+        committer = StubAgent(name="committer", writable=True, canned_results=[_ok()])
+        # Mirror production implementer scope: game-only, tickets denied.
+        return _StubRoster({
+            "implementer": _make_role("implementer", impl,
+                                       usage_kind=UsageKind.IMPLEMENTER, writable=True,
+                                       scope_allow=["game/**"], scope_deny=["tickets/**"]),
+            "qa:code": _make_role("qa:code", qa_agent,
+                                   acceptance=VerdictAccept(), out_file="qa.txt"),
+            "committer": _make_role("committer", committer, usage_kind=UsageKind.COMMITTER),
+        })
+
+    def test_harness_edit_survives_when_ticket_targets_harness(self, workspace, subdir):
+        (subdir / "ticket.md").write_text(
+            "# Add lobby actions\n\nEdit `harness/screenshot.mjs`.\n\n## Verification: code\n"
+        )
+        impl = self._agent_touching_game_and_harness("impl", workspace)
+        ctx = SubtaskContext(workspace=workspace, roster=self._roster(impl), subdir=subdir,
+                             label="047-test/01-thing",
+                             tunables=_make_tunables(max_iter=2, local_checks=False))
+        (subdir / "handoff.md").write_text("(initial)\n")
+        rc = subtask(ctx)
+        assert rc == 0
+        # The harness edit must NOT have been reverted by scope_audit.
+        assert (workspace.root / "harness" / "screenshot.mjs").read_text() == "// edited\n"
+        assert impl.call_count == 1  # no scope-violation retries
+
+    def test_harness_edit_reverted_when_ticket_silent_on_harness(self, workspace, subdir):
+        # ticket.md (from the subdir fixture) never mentions harness/ → the
+        # protective scope still reverts the stray harness edit → tool failure.
+        impl = self._agent_touching_game_and_harness("impl", workspace)
+        ctx = SubtaskContext(workspace=workspace, roster=self._roster(impl), subdir=subdir,
+                             label="047-test/01-thing",
+                             tunables=_make_tunables(max_iter=2, local_checks=False))
+        (subdir / "handoff.md").write_text("(initial)\n")
+        rc = subtask(ctx)
+        assert rc == 2  # scope violation each iter → coder repeatedly unavailable
+        assert not (workspace.root / "harness" / "screenshot.mjs").exists()
+
+
 class TestSubtaskQAFail:
     def test_qa_fail_iter_1_pass_iter_2(self, workspace, subdir):
         impl = _agent_that_modifies_game("impl", workspace)

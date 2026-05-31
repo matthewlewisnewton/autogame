@@ -108,7 +108,8 @@ def _subtask_body(ctx: SubtaskContext) -> int:
         handoff_hash_before = sha256_of(ctx.handoff)
         chain = implement(impl_role, workspace=ctx.workspace,
                           ticket_file=ctx.ticket_file, feedback=ctx.feedback,
-                          handoff=ctx.handoff, artifacts_dir=arti, telemetry=ctx.telemetry)
+                          handoff=ctx.handoff, artifacts_dir=arti,
+                          allow_harness=ticket_allows_harness, telemetry=ctx.telemetry)
         coder_result = chain.final
         coder_out = arti / impl_role.out_file
         ensure_handoff(ctx.handoff, before_hash=handoff_hash_before,
