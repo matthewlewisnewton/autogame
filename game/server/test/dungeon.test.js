@@ -852,3 +852,133 @@ describe('layout profiles', () => {
     expect(open.profile).toBe('open');
   });
 });
+
+// ── Sloped floor corners ──
+
+describe('floorCorners on rooms', () => {
+  it('every room in a flat layout has floorCorners with all four corners at 0.5', () => {
+    const layout = generateLayout(42);
+    for (const room of layout.rooms) {
+      expect(room.floorCorners).toBeDefined();
+      expect(room.floorCorners.yNW).toBe(0.5);
+      expect(room.floorCorners.yNE).toBe(0.5);
+      expect(room.floorCorners.ySE).toBe(0.5);
+      expect(room.floorCorners.ySW).toBe(0.5);
+    }
+  });
+
+  it('flat layouts produced without slopes option are identical to default-call layouts', () => {
+    const a = generateLayout(42);
+    const b = generateLayout(42, undefined, {});
+    expect(a).toEqual(b);
+  });
+
+  it('sloped layout has at least one room with differing corner heights', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    let hasSlope = false;
+    for (const room of layout.rooms) {
+      const { yNW, yNE, ySE, ySW } = room.floorCorners;
+      const heights = new Set([yNW, yNE, ySE, ySW]);
+      if (heights.size > 1) {
+        hasSlope = true;
+        break;
+      }
+    }
+    expect(hasSlope).toBe(true);
+  });
+
+  it('sloped rooms have a southward ramp (north low, south high)', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    for (const room of layout.rooms) {
+      const { yNW, yNE, ySE, ySW } = room.floorCorners;
+      if (ySE !== yNW) {
+        // This is a sloped room
+        expect(yNW).toBe(0.5);
+        expect(yNE).toBe(0.5);
+        expect(ySE).toBe(2.0);
+        expect(ySW).toBe(2.0);
+      }
+    }
+  });
+
+  it('start room (index 0) remains flat even with slopes enabled', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    const startRoom = layout.rooms[0];
+    expect(startRoom.floorCorners.yNW).toBe(0.5);
+    expect(startRoom.floorCorners.yNE).toBe(0.5);
+    expect(startRoom.floorCorners.ySE).toBe(0.5);
+    expect(startRoom.floorCorners.ySW).toBe(0.5);
+  });
+
+  it('sloped layout is deterministic: same seed produces identical output', () => {
+    const a = generateLayout(42, undefined, { slopes: true });
+    const b = generateLayout(42, undefined, { slopes: true });
+    expect(a).toEqual(b);
+  });
+
+  it('sloped layout determinism across multiple seeds', () => {
+    for (let seed = 1; seed <= 10; seed++) {
+      const a = generateLayout(seed, undefined, { slopes: true });
+      const b = generateLayout(seed, undefined, { slopes: true });
+      expect(a).toEqual(b);
+    }
+  });
+
+  it('different seeds produce different sloped layouts', () => {
+    const a = generateLayout(1, undefined, { slopes: true });
+    const b = generateLayout(2, undefined, { slopes: true });
+    // Compare floorCorners specifically
+    let differs = false;
+    for (let i = 0; i < Math.min(a.rooms.length, b.rooms.length); i++) {
+      if (JSON.stringify(a.rooms[i].floorCorners) !== JSON.stringify(b.rooms[i].floorCorners)) {
+        differs = true;
+        break;
+      }
+    }
+    expect(differs).toBe(true);
+  });
+
+  it('layouts without slopes flag have no regression vs layouts with slopes: false', () => {
+    const noFlag = generateLayout(42);
+    const explicitFalse = generateLayout(42, undefined, { slopes: false });
+    expect(noFlag).toEqual(explicitFalse);
+  });
+
+  it('sloped layout preserves all existing room fields (x, z, width, depth, walls, role)', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    for (const room of layout.rooms) {
+      expect(typeof room.x).toBe('number');
+      expect(typeof room.z).toBe('number');
+      expect(typeof room.width).toBe('number');
+      expect(typeof room.depth).toBe('number');
+      expect(Array.isArray(room.walls)).toBe(true);
+      expect(['start', 'combat', 'treasure']).toContain(room.role);
+    }
+  });
+
+  it('sloped layout has 1-2 ramp rooms (never 0, never more than 2)', () => {
+    const layout = generateLayout(42, undefined, { slopes: true });
+    let rampCount = 0;
+    for (const room of layout.rooms) {
+      const { yNW, ySE } = room.floorCorners;
+      if (ySE !== yNW) rampCount++;
+    }
+    expect(rampCount).toBeGreaterThanOrEqual(1);
+    expect(rampCount).toBeLessThanOrEqual(2);
+  });
+
+  it('sloped layout with crowded profile also produces ramps', () => {
+    const layout = generateLayout(42, 'crowded', { slopes: true });
+    let hasSlope = false;
+    for (const room of layout.rooms) {
+      const heights = new Set([
+        room.floorCorners.yNW,
+        room.floorCorners.yNE,
+        room.floorCorners.ySE,
+        room.floorCorners.ySW,
+      ]);
+      if (heights.size > 1) { hasSlope = true; break; }
+    }
+    expect(hasSlope).toBe(true);
+  });
+});
