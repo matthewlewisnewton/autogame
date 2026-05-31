@@ -1,7 +1,6 @@
-// ESM version of floorSampling for Vite/ESM browser consumers.
-// Mirrors the logic in floorSampling.js (CJS) so the client bundle
-// never executes `module.exports` in the browser.
-// Keep in sync with floorSampling.js — they are the same pure function.
+// Canonical implementation of floorSampling (single source of truth).
+// The CJS wrapper (floorSampling.js) loads this file at require time
+// via `fs.readFileSync` + `new Function` — do not duplicate logic there.
 
 export const DEFAULT_FLOOR_Y = 0.5;
 
