@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { wallAABB, resolveWallCollision, tryPlayerMove, isPositionBlocked, checkSweptCollision } from '../collision.js';
+import { wallAABB, resolveWallCollision, tryPlayerMove, isPositionBlocked, checkSweptCollision, sampleFloorY, DEFAULT_FLOOR_Y } from '../collision.js';
 import { drawCard, initHand, initHandFromDeck, resetHandState, canUseSlot, hand, deck, slotCooldowns } from '../hand.js';
 
 // ── wallAABB ──
@@ -443,5 +443,79 @@ describe('canUseSlot()', () => {
 
 		expect(hand).toEqual(handBefore);
 		expect(slotCooldowns).toEqual(cooldownsBefore);
+	});
+});
+
+// ── sampleFloorY ──
+
+describe('sampleFloorY(layout, x, z)', () => {
+	it('returns DEFAULT_FLOOR_Y for any position inside a flat room', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, walls: [], floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 } },
+			],
+		};
+		// Room center
+		expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+		// Arbitrary interior point
+		expect(sampleFloorY(layout, 2, -3)).toBe(DEFAULT_FLOOR_Y);
+		// Edge of room (still inside bounds)
+		expect(sampleFloorY(layout, -5, 0)).toBe(DEFAULT_FLOOR_Y);
+	});
+
+	it('returns correct interpolated values at corners of a sloped room', () => {
+		const sloped = { x: 0, z: 0, width: 12, depth: 12, floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 } };
+		const layout = { rooms: [sloped] };
+		const halfW = sloped.width / 2;
+		const halfD = sloped.depth / 2;
+
+		// NW corner: u=0, v=0
+		expect(sampleFloorY(layout, -halfW, -halfD)).toBeCloseTo(0.5, 5);
+		// NE corner: u=1, v=0
+		expect(sampleFloorY(layout, halfW, -halfD)).toBeCloseTo(0.5, 5);
+		// SE corner: u=1, v=1
+		expect(sampleFloorY(layout, halfW, halfD)).toBeCloseTo(2.0, 5);
+		// SW corner: u=0, v=1
+		expect(sampleFloorY(layout, -halfW, halfD)).toBeCloseTo(2.0, 5);
+	});
+
+	it('returns correct interpolated value at center of a sloped room', () => {
+		const sloped = { x: 0, z: 0, width: 12, depth: 12, floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 } };
+		const layout = { rooms: [sloped] };
+
+		// Center: u=0.5, v=0.5 → average of all four corners
+		const center = sampleFloorY(layout, 0, 0);
+		const expected = (0.5 + 0.5 + 2.0 + 2.0) / 4; // 1.25
+		expect(center).toBeCloseTo(expected, 5);
+	});
+
+	it('returns null for positions outside all rooms', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, walls: [] },
+			],
+		};
+		expect(sampleFloorY(layout, 999, 999)).toBeNull();
+		expect(sampleFloorY(layout, -999, -999)).toBeNull();
+	});
+
+	it('returns DEFAULT_FLOOR_Y for room lacking floorCorners', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, walls: [] }, // no floorCorners
+			],
+		};
+		expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+	});
+
+	it('is deterministic: same layout produces same result', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 12, depth: 12, floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 } },
+			],
+		};
+		const a = sampleFloorY(layout, 3, 4);
+		const b = sampleFloorY(layout, 3, 4);
+		expect(a).toBe(b);
 	});
 });
