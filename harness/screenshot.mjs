@@ -548,18 +548,39 @@ async function executeRecipe(browser, recipe) {
       const page = getPage(player);
       const lobbyName = step.lobbyName || 'Test';
 
-      // Ensure lobby browser is visible
-      const lobbyBrowser = page.locator('#lobby-browser');
-      if (!(await lobbyBrowser.isVisible().catch(() => false))) {
-        console.warn(`[createLobby] #lobby-browser not visible for player ${player}`);
+      // 1. Check if already in a squad lobby (#lobby visible) — skip if so
+      const alreadyInSquad = await page.evaluate(() => {
+        const lobby = document.querySelector('#lobby');
+        return lobby && !lobby.classList.contains('hidden');
+      }).catch(() => false);
+      if (alreadyInSquad) {
+        console.log(`[createLobby] #lobby already visible for player ${player} — skipping`);
+        continue;
       }
 
-      // Fill lobby name and click create
-      await page.locator('#create-lobby-name').fill(lobbyName);
-      await page.locator('#create-lobby-btn').click();
+      // 2. If #lobby-browser is not visible, wait for it (post-login delay)
+      const lobbyBrowser = page.locator('#lobby-browser');
+      if (!(await lobbyBrowser.isVisible().catch(() => false))) {
+        console.warn(`[createLobby] #lobby-browser not visible for player ${player}, waiting...`);
+        await page.waitForFunction(() => {
+          const el = document.querySelector('#lobby-browser');
+          return el && !el.classList.contains('hidden') && window.getComputedStyle(el).display !== 'none';
+        }, null, { timeout: step.timeoutMs || 5000 }).catch((e) => {
+          console.warn(`[createLobby] timeout waiting for #lobby-browser to appear: ${e.message}`);
+        });
+      }
+
+      // 3. Fill lobby name and click create (attempt even if #lobby-browser still hidden)
+      try {
+        await page.locator('#create-lobby-name').fill(lobbyName);
+        await page.locator('#create-lobby-btn').click();
+      } catch (e) {
+        console.warn(`[createLobby] failed to fill/create lobby form: ${e.message}`);
+        continue;
+      }
       await page.waitForTimeout(500);
 
-      // Wait for squad UI (#lobby) to become visible
+      // 4. Wait for squad UI (#lobby) to become visible
       await page.waitForFunction(() => {
         const lobby = document.querySelector('#lobby');
         return lobby && !lobby.classList.contains('hidden');
