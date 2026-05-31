@@ -9,6 +9,9 @@ This game is a 3D multiplayer action-RPG that combines elements from *Phantasy S
 3. **Dungeon**: When all squad members are ready, players zone into a modularly generated level where they navigate rooms, defeat AI enemies, and complete objectives.
 4. **Loot & Economy**: Enemies drop currency and new cards. Back in the lobby, players can trade or sell their loot to customize their combat decks.
 
+### Floor Geometry
+Dungeon rooms and passages may have sloped floors (ramps) with varying elevation across their vertices. The walkable surface height at any `(x, z)` coordinate is determined by `sampleFloorY()`, which interpolates across the room's floor corner positions. Player movement on slopes — adjusting `player.y` to follow the floor surface — is implemented in ticket 117.
+
 ## Run Suspend / Resume
 Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon without losing the current run state.
 
