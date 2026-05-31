@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
+from harness.agents.base import FailureReason
 from harness.config.tunables import Tunables, get_tunables
 from harness.roles import Roster
 from harness.steps.commit import commit_with_role
@@ -106,10 +107,16 @@ def _subtask_body(ctx: SubtaskContext) -> int:
 
         # 1. IMPLEMENT
         handoff_hash_before = sha256_of(ctx.handoff)
+        # Capture/rerun sub-tickets legitimately produce deliverables in the
+        # parent ticket's round-* artifact dir; allow the implementer to write
+        # there so scope_audit doesn't revert them (review.md/gaps.md/nits.md
+        # stay protected via protect_review's chmod + verify_reviews restore).
+        round_glob = f"tickets/{ctx.label.split('/')[0]}/round-*"
         chain = implement(impl_role, workspace=ctx.workspace,
                           ticket_file=ctx.ticket_file, feedback=ctx.feedback,
                           handoff=ctx.handoff, artifacts_dir=arti,
-                          allow_harness=ticket_allows_harness, telemetry=ctx.telemetry)
+                          allow_harness=ticket_allows_harness,
+                          extra_safe_paths=[round_glob], telemetry=ctx.telemetry)
         coder_result = chain.final
         coder_out = arti / impl_role.out_file
         ensure_handoff(ctx.handoff, before_hash=handoff_hash_before,
@@ -120,6 +127,21 @@ def _subtask_body(ctx: SubtaskContext) -> int:
             return 3
 
         if not coder_result.ok:
+            # A SCOPE_VIOLATION means the agent ran fine but wrote files outside
+            # its allowed scope (scope_audit already reverted them). That is NOT a
+            # tool outage — counting it toward coder_toolfail wrongly aborts the
+            # whole backlog with rc=2, and a structurally-impossible sub-ticket can
+            # then kill the supervisor via repeated escalation. Treat it as a
+            # recoverable per-iteration failure: feed the reverted paths back and
+            # retry; max_iter exhaustion returns rc=1 (re-decompose) not rc=2.
+            if getattr(coder_result, "reason", None) == FailureReason.SCOPE_VIOLATION:
+                log(f"[scope-violation] {ctx.label}: out-of-scope writes reverted — "
+                    f"not a tool failure; accumulating feedback and retrying")
+                accumulate_feedback(
+                    ctx.feedback, iteration=iteration,
+                    qa_text="Your out-of-scope file writes were reverted by scope_audit. "
+                            "Only modify files within your allowed scope.")
+                continue
             coder_toolfail += 1
             log(f"[tool-failure] implementer call failed ({coder_toolfail} consecutive)")
             if coder_toolfail >= 2:
