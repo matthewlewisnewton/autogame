@@ -328,7 +328,7 @@ function applyLayoutForQuest(state, questId) {
   const profile = getLayoutProfileForQuest(questId);
   const seed = questLayoutSeed(questId);
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile);
+  state.layout = generateLayout(seed, profile, { slopes: true });
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already

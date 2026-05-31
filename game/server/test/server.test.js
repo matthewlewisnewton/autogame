@@ -341,6 +341,31 @@ describe('generateLayout(seed)', () => {
 		}
 		expect(differs).toBe(true);
 	});
+
+	it('produces sloped rooms when slopes option is enabled (applyLayoutForQuest path)', () => {
+		// applyLayoutForQuest calls generateLayout(seed, profile, { slopes: true });
+		// Verify the layout it produces has at least one room with non-uniform floorCorners.
+		const layout = generateLayout(42, undefined, { slopes: true });
+		const hasSlopedRoom = layout.rooms.some(room => {
+			const fc = room.floorCorners;
+			if (!fc) return false;
+			const heights = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];
+			return heights.some(h => h !== heights[0]);
+		});
+		expect(hasSlopedRoom).toBe(true);
+	});
+
+	it('gameState.layout (set by applyLayoutForQuest) contains sloped rooms', () => {
+		// gameState.layout is initialized at module load by applyLayoutForQuest,
+		// which now passes { slopes: true }. Verify the live state reflects this.
+		const hasSlopedRoom = gameState.layout.rooms.some(room => {
+			const fc = room.floorCorners;
+			if (!fc) return false;
+			const heights = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];
+			return heights.some(h => h !== heights[0]);
+		});
+		expect(hasSlopedRoom).toBe(true);
+	});
 });
 
 // ── damagePlayer ──
