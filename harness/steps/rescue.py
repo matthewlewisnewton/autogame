@@ -45,8 +45,18 @@ def rescue(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
     # ticket() then bails out with rc=2 — but the commit's already in
     # history. Gate on acceptance.
     if chain.accepted_by is not None:
+        # include_harness=True because the rescue role's scope explicitly
+        # allows `harness/**` writes (infra-escalation mode — see roles.yaml
+        # rescue.scope). The default commit_verified excludes harness, so a
+        # successful infra-mode rescue would leave its harness fix
+        # uncommitted-but-active in the working tree and lose it on the next
+        # clean checkout (observed 2026-05-30 ticket 116 — rescue patched
+        # harness/steps/game.py to fix vite_eaddrinuse and the commit dropped
+        # the fix on the floor). Game-only rescues stage harmlessly via "."
+        # since no harness paths changed.
         commit_verified(workspace,
                         f"{ticket_name}: claude rescue implementation pass",
+                        include_harness=True,
                         telemetry=telemetry)
     else:
         log("[rescue] role chain exhausted without acceptance — skipping commit")
