@@ -2,6 +2,13 @@
 // Thin wrapper that loads the canonical ESM source at require time.
 // The ESM file (floorSampling.esm.js) is the single source of truth;
 // this file must never contain a duplicated function body.
+//
+// ESM eval-bridge constraints:
+//   Supported in floorSampling.esm.js — plain `export function …`,
+//   `export const`, `export let`, `export var`.
+//   Unsupported — top-level `import` statements or other non-trivial ESM
+//   syntax (e.g. dynamic imports, `export * from`). Adding them will
+//   break the server `require()` unless this bridge is updated.
 
 const fs = require('fs');
 const path = require('path');
