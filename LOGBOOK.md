@@ -1711,3 +1711,26 @@ None. All acceptance criteria are met; runtime capture is healthy; no blocking i
 
 See `round-2/nits.md` for backlog items (CJS/ESM deduplication, flat-room test coordinates).
 
+
+## v0.75 — Cleanup nits from 138-fix-floor-sampling-esm-export  (2026-05-31 07:04:16)
+
+**Non-blocking observations (see `nits.md`)**
+
+- `floorSampling.esm.js` header still says “Mirrors the logic in floorSampling.js” / “Keep in sync” — outdated after deduplication.
+- CJS bridge uses string rewrite + `new Function`; fragile if the ESM file later adds top-level `import`/`export` beyond the two regex patterns (acceptable for current pure-function module, worth documenting).
+
+---
+
+## Tests & coverage
+
+- Round-1 `coverage.log`: vitest ran changed-path coverage; `shared-floor-sampling.test.js` 4/4 pass. Wrapper `floorSampling.js` not directly unit-tested (executed indirectly via server `dungeon.test.js`).
+- Independent `pnpm test:quick`: 48 files, 1233 tests, all pass.
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are satisfied; runtime capture confirms the game runs.
+
+---
+

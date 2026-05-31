@@ -1,0 +1,63 @@
+{
+  "summary": "Verifies that player physics and floor sampling remain functional after deduplicating the floor sampling logic and aligning regression tests.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-lobby",
+      "description": "Initial lobby screen before starting the game."
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-gameplay-start",
+      "description": "Player spawned in the dungeon. Verify they are correctly positioned on the floor."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Check initial player Y position and movement state to ensure floor sampling is active."
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "w",
+      "durationMs": 1000
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "d",
+      "durationMs": 1000
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify player Y position after movement. Confirm the player has not fallen through the floor or jittered excessively."
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "03-gameplay-moved",
+      "description": "Player position after moving around the room."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

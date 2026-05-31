@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created two sub-tickets:
+
+- `/home/matt/workspace/autogame/tickets/140-cleanup-fix-floor-sampling-esm-export/subtickets/01-deduplicate-floorsampling-sources/ticket.md` — unify CJS/ESM floorSampling into a single source of truth (ESM canonical, CJS thin wrapper)
+- `/home/matt/workspace/autogame/tickets/140-cleanup-fix-floor-sampling-esm-export/subtickets/02-align-flat-room-test-coordinates/ticket.md` — change flat-room test sample point from `(5,5)` to `(0,0)` to match room center
