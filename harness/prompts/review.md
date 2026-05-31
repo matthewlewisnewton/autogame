@@ -28,8 +28,12 @@ capture of the game running with this ticket applied. The game is BROKEN — and
 the ticket is an automatic `VERDICT: FAIL` — if ANY of these hold:
 - `metrics.json` is missing, or contains `"ok": false`, or reports that the
   servers did not start;
+- `metrics.json` contains a non-empty `pageerrors` array, or
+  `failure_kind` is `"browser_pageerror"`;
 - `console.log` contains an uncaught page error or a fatal error (lines tagged
   `pageerror` or `[fatal]`) coming from the game's own code.
+Check `pageerrors` **before** checking `harness_failure` — browser page errors
+are code defects, not infrastructure blockers (see next section).
 A game that does not start or load cleanly FAILS regardless of how complete or
 correct the code looks — code that reads well but does not run is still broken.
 A non-running game is the #1 blocking gap: list it first in `__GAPS_OUT__`.
@@ -38,12 +42,37 @@ proof. Ignore only benign environment noise: THREE.js deprecation warnings,
 headless-WebGL "context lost/restored" messages, and Vite `ws proxy` / `EPIPE`
 lines on socket close — none of those count as a broken game.
 
-HARNESS INFRASTRUCTURE FAILURE — STILL FAIL, BUT DON'T BLAME THE CODE. If
-`metrics.json` contains a `harness_failure` block, the dev servers themselves
-could not start (port leak, foreign holder on 5173, etc.) — this is a HARNESS
-bug, NOT a defect in the ticket's code. The verdict is STILL `VERDICT: FAIL`
-because we have no runnable proof, but you must steer the next round away
-from churning on code that is already correct:
+BROWSER PAGE ERRORS — CODE DEFECT, NOT INFRA. If `metrics.json` contains a
+non-empty `pageerrors` array (or `failure_kind` equals `"browser_pageerror"`),
+this is a **code defect** in the game's JavaScript — not a harness
+infrastructure failure. Each entry in `pageerrors` has `message`, `sourceURL`,
+`line`, and optionally `column` and `stack`. These are uncaught exceptions from
+module loading, network errors, or runtime crashes in the browser.
+
+When `pageerrors` is non-empty:
+1. The verdict is `VERDICT: FAIL` (same as any blocking gap).
+2. Write a **code-fix** gap in `__GAPS_OUT__` — NOT an infra blocker. Quote the
+   page error message, sourceURL, and line number so the next coder can locate
+   and fix the defect.
+3. Example gap format:
+   `1. Browser pageerror at module load: "The requested module '..' does not
+   provide an export named 'DEFAULT_FLOOR_Y'". Files: game/shared/floorSampling.js,
+   game/client/collision.js. Fix: ensure the export exists and is named correctly.`
+
+If multiple page errors are present, list the most critical (module load
+failures, uncaught exceptions in core game logic) as separate gaps. Do not
+attribute these to harness infrastructure — they are bugs in the game code that
+need a code fix.
+
+HARNESS INFRASTRUCTURE FAILURE — STILL FAIL, BUT DON'T BLAME THE CODE. This
+section applies ONLY when `metrics.json` contains a `harness_failure` block AND
+`pageerrors` is empty or absent. If `pageerrors` is non-empty, follow the
+BROWSER PAGE ERRORS section above instead. When `metrics.json` contains a
+`harness_failure` block, the dev servers themselves could not start (port leak,
+foreign holder on 5173, etc.) — this is a HARNESS bug, NOT a defect in the
+ticket's code. The verdict is STILL `VERDICT: FAIL` because we have no runnable
+proof, but you must steer the next round away from churning on code that is
+already correct:
 - Read `harness_failure.detected` (e.g. `vite_eaddrinuse`) and the log tails
   to confirm the failure is infrastructure (no game code in the trace).
 - In the review, add a top-level `## Harness blockers` section quoting the
