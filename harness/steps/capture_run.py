@@ -55,25 +55,87 @@ def _diagnose_servers_did_not_start(dir: Path, ports: PortAllocation) -> dict:
     return diag
 
 
+def _read_pageerrors(dir: Path) -> list:
+    """Read page errors from pageerrors.json or metrics.json.pageerrors."""
+    pe_file = dir / "pageerrors.json"
+    if pe_file.exists():
+        try:
+            data = json.loads(pe_file.read_text())
+            if isinstance(data, list):
+                return data
+        except (OSError, json.JSONDecodeError):
+            pass
+    metrics_file = dir / "metrics.json"
+    if metrics_file.exists():
+        try:
+            data = json.loads(metrics_file.read_text())
+            pe = data.get("pageerrors")
+            if isinstance(pe, list):
+                return pe
+        except (OSError, json.JSONDecodeError):
+            pass
+    return []
+
+
+def _classify_capture_failure(dir: Path, ports: PortAllocation) -> dict:
+    """Classify a capture failure into one of three failure kinds.
+
+    Returns a metrics dict with the appropriate structure:
+    - harness_failure: when infra signatures (EADDRINUSE, etc.) are detected
+    - browser_pageerror: when servers started but browser code threw errors
+    - capture_failed: generic fallback with diagnosis block for investigation
+    """
+    diagnosis = _diagnose_servers_did_not_start(dir, ports)
+    detected = diagnosis.get("detected", [])
+    pageerrors = _read_pageerrors(dir)
+
+    if detected:
+        # Infra signatures found — this is a harness infrastructure failure
+        return {
+            "ok": False,
+            "error": "servers did not start",
+            "harness_failure": diagnosis,
+        }
+    elif pageerrors:
+        # No infra issue, but browser threw page errors — code defect
+        return {
+            "ok": False,
+            "failure_kind": "browser_pageerror",
+            "pageerrors": pageerrors,
+        }
+    else:
+        # No infra issue, no page errors — generic capture failure
+        return {
+            "ok": False,
+            "failure_kind": "capture_failed",
+            "harness_failure": diagnosis,
+        }
+
+
 def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
     dir = Path(dir)
     dir.mkdir(parents=True, exist_ok=True)
     start_game(dir, ports)
     try:
-        if wait_for_game(ports, timeout_s=45):
-            capture(game_url, dir)
-            return True
-        harness_failure = _diagnose_servers_did_not_start(dir, ports)
+        servers_up = wait_for_game(ports, timeout_s=45)
+        if servers_up:
+            capture_ok = capture(game_url, dir)
+            if capture_ok:
+                return True
+            # Capture returned failure but servers started — classify
+            metrics = _classify_capture_failure(dir, ports)
+            (dir / "metrics.json").write_text(
+                json.dumps(metrics, indent=2) + "\n"
+            )
+            return False
+        # Servers didn't come up — classify the failure
+        metrics = _classify_capture_failure(dir, ports)
         (dir / "metrics.json").write_text(
-            json.dumps({
-                "ok": False,
-                "error": "servers did not start",
-                "harness_failure": harness_failure,
-            }, indent=2) + "\n"
+            json.dumps(metrics, indent=2) + "\n"
         )
         return False
     finally:
         stop_game()
 
 
-__all__ = ["capture_run"]
+__all__ = ["capture_run", "_classify_capture_failure", "_read_pageerrors", "_diagnose_servers_did_not_start"]

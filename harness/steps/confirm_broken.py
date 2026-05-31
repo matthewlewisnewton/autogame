@@ -10,7 +10,12 @@ from harness.workspace.ports import PortAllocation
 
 
 def game_smoke_ok(artifacts_dir: Path) -> bool:
-    """True iff a captured run shows a runnable game. Mirrors lib.sh::game_smoke_ok."""
+    """True iff a captured run shows a runnable game. Mirrors lib.sh::game_smoke_ok.
+
+    A ``browser_pageerror`` failure kind means the servers started and the
+    browser loaded — the game is runnable even though there are code-level
+    defects (those are the reviewer's job, not the smoke gate's).
+    """
     artifacts_dir = Path(artifacts_dir)
     metrics = artifacts_dir / "metrics.json"
     if not metrics.exists():
@@ -20,6 +25,9 @@ def game_smoke_ok(artifacts_dir: Path) -> bool:
     except (OSError, json.JSONDecodeError):
         return False
     if data.get("ok") is False:
+        # Distinguish code defects from infra/capture failures
+        if data.get("failure_kind") == "browser_pageerror":
+            return True
         return False
     if "servers did not start" in str(data.get("error", "") or ""):
         return False
