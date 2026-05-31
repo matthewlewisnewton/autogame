@@ -187,7 +187,13 @@ cmdline_is_harness_game() {  # cmdline_is_harness_game <cmdline> <port>
       printf '%s\n' "$cmdline" | grep -qE '(^|[[:space:]])vite[[:space:]]+--port[[:space:]]+5173($|[[:space:]])|vite.*--port.*5173'
       ;;
     3000)
-      printf '%s\n' "$cmdline" | grep -qE '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])|node.*game/server/index'
+      # Match both the repo-root form (`node game/server/index.js`) AND a
+      # leftover from a run launched with cwd=game/, which shows up as the
+      # relative `node server/index.js` (no `game/` prefix). Hard-requiring
+      # `game/server/index` made wait_port_free refuse to kill that leftover,
+      # so the new server died EADDRINUSE on :3000. Optional leading path fixes
+      # both forms. Mirrors steps/game.py:_HARNESS_GAME_PATTERNS.
+      printf '%s\n' "$cmdline" | grep -qE '(^|[[:space:]]|/)node[[:space:]]+([^[:space:]]*/)?server/index\.js($|[[:space:]])'
       ;;
     *)
       return 1
@@ -228,8 +234,7 @@ cleanup_port() {  # cleanup_port <port>
       pkill -9 -f 'vite.*--port.*5173' 2>/dev/null || true
       ;;
     3000)
-      pkill -9 -f '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])' 2>/dev/null || true
-      pkill -9 -f 'node.*game/server/index' 2>/dev/null || true
+      pkill -9 -f '(^|[[:space:]]|/)node[[:space:]]+([^[:space:]]*/)?server/index\.js($|[[:space:]])' 2>/dev/null || true
       ;;
   esac
   while IFS= read -r pid; do
@@ -307,7 +312,7 @@ stop_game() {
   GAME_PIDS=()
   # Keep cleanup patterns anchored to real process command lines. Agent prompts
   # mention these commands verbatim, so broad pkill -f patterns can kill Qwen.
-  pkill -f '(^|[[:space:]])node[[:space:]]+game/server/index\.js($|[[:space:]])' 2>/dev/null
+  pkill -f '(^|[[:space:]]|/)node[[:space:]]+([^[:space:]]*/)?server/index\.js($|[[:space:]])' 2>/dev/null
   pkill -f '(^|[[:space:]])vite[[:space:]]+--port[[:space:]]+5173($|[[:space:]])' 2>/dev/null
   sleep 1
 }

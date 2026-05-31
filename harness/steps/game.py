@@ -28,8 +28,15 @@ from harness.workspace.ports import PortAllocation
 # straight to the script (`.../vite/bin/vite.js --port 5173 --strictPort`).
 # The vite pattern therefore tolerates an optional `.js` suffix and arbitrary
 # args between the binary name and `--port 5173`.
+# The server cmdline is `node game/server/index.js` when start_game launches
+# it from the repo root, but a leftover holder from a run that used cwd=game/
+# shows up as the relative `node server/index.js` (no `game/` prefix). The
+# original pattern hard-required `game/server/index`, so it failed to recognise
+# that leftover as a harness proc — wait_port_free then refused to kill it and
+# the new server died with EADDRINUSE on :3000. Make the leading path (incl.
+# the `game/` segment) optional so both forms match.
 _HARNESS_GAME_PATTERNS = (
-    re.compile(r"\bnode\s+\S*game/server/index(\.js)?(\s|$)"),
+    re.compile(r"\bnode\s+\S*\bserver/index(\.js)?(\s|$)"),
     re.compile(r"\bvite(\.js)?\b[^\n]*?--port\s+5173(\s|$)"),
 )
 
@@ -226,7 +233,7 @@ def stop_game() -> None:
     for pid in _GAME_PIDS:
         _kill_proc_group(pid, signal_num=15)
     _GAME_PIDS.clear()
-    for pat in (r"node[[:space:]]+[^[:space:]]*game/server/index\.js([[:space:]]|$)",
+    for pat in (r"node[[:space:]]+[^[:space:]]*server/index\.js([[:space:]]|$)",
                 r"vite(\.js)?[[:space:]].*--port[[:space:]]+5173([[:space:]]|$)"):
         try:
             subprocess.run(["pkill", "-f", pat], stdout=subprocess.DEVNULL,
@@ -242,7 +249,16 @@ def wait_for_game(ports: PortAllocation, timeout_s: int = 45) -> bool:
     while time.time() < deadline:
         if not up_client and _http_ok(f"http://localhost:{ports.vite}/"):
             up_client = True
-        if not up_server and _http_ok(f"http://localhost:{ports.game_server}/healthz"):
+        # The server "up" signal is "it answers HTTP at all", not a 2xx on a
+        # specific route. The game server used to expose `/healthz` (returning
+        # 200), but commit f9668ea removed that route, so `/healthz` now 404s
+        # even when the server is fully booted ("Server listening on port
+        # 3000"). The old 2xx-only check therefore never saw the server as up
+        # and wait_for_game timed out, escalating a perfectly healthy run as an
+        # infra failure. Any HTTP response (including a 404) proves the port is
+        # bound and Express is serving requests, so treat that as up and stay
+        # robust to the route coming and going in game code.
+        if not up_server and _http_responding(f"http://localhost:{ports.game_server}/healthz"):
             up_server = True
         if up_client and up_server:
             return True
@@ -255,6 +271,20 @@ def _http_ok(url: str) -> bool:
         with urllib.request.urlopen(url, timeout=1) as resp:
             return 200 <= resp.status < 400
     except (urllib.error.URLError, urllib.error.HTTPError, OSError):
+        return False
+
+
+def _http_responding(url: str) -> bool:
+    """True if the server returns ANY HTTP response — even a 404. A response
+    means the port is bound and the app is serving requests (it's up). Only a
+    connection-level failure (URLError/OSError without an HTTP response, e.g.
+    connection refused) counts as not-up."""
+    try:
+        with urllib.request.urlopen(url, timeout=1) as resp:
+            return resp.status is not None
+    except urllib.error.HTTPError:
+        return True
+    except (urllib.error.URLError, OSError):
         return False
 
 
