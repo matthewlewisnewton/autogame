@@ -12,9 +12,17 @@ committed).
 Runtime evidence from the game running with the change applied:
 @__ARTIFACTS_DIR__/server.log
 @__ARTIFACTS_DIR__/console.log
+@__ARTIFACTS_DIR__/pageerrors.json (if present)
 @__ARTIFACTS_DIR__/metrics.json
 @__ARTIFACTS_DIR__/local-checks.status.json
 @__ARTIFACTS_DIR__/local-checks.log
+
+**Browser page errors — hard fail.** Before judging acceptance criteria, check
+`console.log` for lines tagged `[pageerror]` (grep for `pageerror`), `pageerrors.json`
+(if present) for a non-empty array, and `metrics.json.pageerrors`. Any uncaught
+error from the game's own code is a hard `VERDICT: FAIL` — the game does not
+load. Ignore only benign noise: THREE.js deprecation warnings, headless-WebGL
+"context lost/restored", Vite `ws proxy` / `EPIPE`.
 
 The sub-ticket being verified:
 @__TICKET_FILE__
