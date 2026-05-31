@@ -268,32 +268,52 @@ function ensureAuthLobbyPrefix(recipe) {
 }
 
 function fallbackRecipe() {
+  const baseSteps = [
+    { action: 'connectPlayer', player: 'A' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'createLobby', player: 'A', name: 'Test' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'connectPlayer', player: 'B' },
+    { action: 'wait', player: 'B', ms: 1000 },
+    { action: 'registerUser', player: 'B', username: 'playerB', password: 'test123' },
+    { action: 'loginUser', player: 'B', username: 'playerB', password: 'test123' },
+    { action: 'wait', player: 'B', ms: 1000 },
+    { action: 'joinLobby', player: 'B' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'screenshot', player: 'A', name: '01-initial', description: 'Both players in squad lobby.' },
+    { action: 'readyAll' },
+    { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
+    { action: 'probe', player: 'A', description: 'After readying all players and entering gameplay.' },
+    { action: 'move', player: 'A', key: 'w', durationMs: 1500 },
+    { action: 'screenshot', player: 'A', name: '02-after-w', description: 'Gameplay after holding W.' },
+    { action: 'move', player: 'A', key: 'd', durationMs: 1500 },
+    { action: 'screenshot', player: 'A', name: '03-after-d', description: 'Gameplay after holding D.' },
+  ];
+
+  // Option C: detect slope/ramp tickets and append a sloped-dungeon capture.
+  // This runs AFTER the base fallback steps execute — the existing pages are
+  // still alive and in gameplay, so we can emitScenario on player A.
+  const ticket = inferTicketFile() ? readText(inferTicketFile(), 8000) : '';
+  const isSlopeTicket = /slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
+                        /sloped|142/.test(outDirAbs);
+
+  const steps = isSlopeTicket
+    ? [
+        ...baseSteps,
+        { action: 'emitScenario', player: 'A', scenario: 'sloped-dungeon' },
+        { action: 'wait', player: 'A', ms: 1500 },
+        { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
+      ]
+    : baseSteps;
+
   return {
-    summary: 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.',
-    steps: [
-      { action: 'connectPlayer', player: 'A' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
-      { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'createLobby', player: 'A', name: 'Test' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'connectPlayer', player: 'B' },
-      { action: 'wait', player: 'B', ms: 1000 },
-      { action: 'registerUser', player: 'B', username: 'playerB', password: 'test123' },
-      { action: 'loginUser', player: 'B', username: 'playerB', password: 'test123' },
-      { action: 'wait', player: 'B', ms: 1000 },
-      { action: 'joinLobby', player: 'B' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'screenshot', player: 'A', name: '01-initial', description: 'Both players in squad lobby.' },
-      { action: 'readyAll' },
-      { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
-      { action: 'probe', player: 'A', description: 'After readying all players and entering gameplay.' },
-      { action: 'move', player: 'A', key: 'w', durationMs: 1500 },
-      { action: 'screenshot', player: 'A', name: '02-after-w', description: 'Gameplay after holding W.' },
-      { action: 'move', player: 'A', key: 'd', durationMs: 1500 },
-      { action: 'screenshot', player: 'A', name: '03-after-d', description: 'Gameplay after holding D.' },
-    ],
+    summary: isSlopeTicket
+      ? 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.'
+      : 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.',
+    steps,
   };
 }
 
