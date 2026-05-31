@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+I created **2 new sub-tickets** to close the 2 open gaps from review-feedback.md:
+
+```
+/home/matt/workspace/autogame/tickets/139-harness-misclassifies-pageerror/subtickets/06-ensure-metrics-on-exception/ticket.md
+/home/matt/workspace/autogame/tickets/139-harness-misclassifies-pageerror/subtickets/07-rename-capture-diagnosis/ticket.md
+```
+
+**06-ensure-metrics-on-exception** — Gap 1: Wrap capture+classification in try/except so `metrics.json` is always written even on unexpected exceptions; also set `CAPTURE_PLAN_AGENT=fallback` in the capture env to avoid the blocking Gemini step that caused the 120s timeout.
+
+**07-rename-capture-diagnosis** — Gap 2: On the `capture_failed` branch (empty `detected`, empty `pageerrors`), rename `harness_failure` → `capture_diagnosis` to comply with the AC that empty `detected` MUST NOT produce a `harness_failure` block. Updates 3 affected unit tests.

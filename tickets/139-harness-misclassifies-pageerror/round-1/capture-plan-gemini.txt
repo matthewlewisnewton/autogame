@@ -1,0 +1,4 @@
+
+
+STDERR/ERROR:
+spawnSync gemini ETIMEDOUT

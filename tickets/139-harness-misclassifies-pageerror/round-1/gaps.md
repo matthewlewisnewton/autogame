@@ -1,0 +1,5 @@
+1. Round-1 capture produced no metrics.json or console.log (Playwright capture timed out after 120s; capture-plan gemini ETIMEDOUT). Servers started cleanly per client.log/server.log but there is no captured run proof.
+   Files: none in game/ — harness capture for tickets/139-harness-misclassifies-pageerror/round-1. Fix: re-run top-level capture after resolving the capture timeout (e.g. fix or bypass blocking Gemini capture-plan step, or increase screenshot timeout); confirm round-1 gets metrics.json with ok true or a classified failure_kind. Do not modify game/ for this gap.
+
+2. capture_failed still emits harness_failure when detected is empty, violating top-level AC ("empty detected MUST NOT produce harness_failure").
+   Files: harness/steps/capture_run.py, harness/tests/unit/test_capture_run_diagnostics.py (update tests). Fix: on capture_failed with empty detected and no pageerrors, write failure_kind capture_failed and a non-harness_failure diagnostic block (e.g. capture_diagnosis with log tails/port_holders); reserve harness_failure for non-empty detected only; adjust tests that expect harness_failure with detected [].
