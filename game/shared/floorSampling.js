@@ -1,52 +1,26 @@
-// ── Floor Height Sampling (shared) ──
-// Pure function — no platform-specific dependencies.
-// Imported by both client (ESM re-export) and server (CJS require).
+// ── floorSampling CJS wrapper ──
+// Thin wrapper that loads the canonical ESM source at require time.
+// The ESM file (floorSampling.esm.js) is the single source of truth;
+// this file must never contain a duplicated function body.
 
-const DEFAULT_FLOOR_Y = 0.5;
+const fs = require('fs');
+const path = require('path');
 
-/**
- * Return the walkable surface Y height at world (x, z) using bilinear
- * interpolation of the containing room's floorCorners.
- *
- * Corner ordering:
- *   NW = (−width/2, −depth/2),  NE = (+width/2, −depth/2)
- *   SE = (+width/2, +depth/2),  SW = (−width/2, +depth/2)
- *
- * @param {object} layout - dungeon layout from generateLayout()
- * @param {number} x - world X coordinate
- * @param {number} z - world Z coordinate
- * @returns {number|null} interpolated Y height, or null if outside all rooms
- */
-function sampleFloorY(layout, x, z) {
-	for (const room of layout.rooms) {
-		const halfW = room.width / 2;
-		const halfD = room.depth / 2;
-		if (
-			x >= room.x - halfW &&
-			x <= room.x + halfW &&
-			z >= room.z - halfD &&
-			z <= room.z + halfD
-		) {
-			// Normalized local coordinates [0, 1]
-			const u = (x - (room.x - halfW)) / room.width;
-			const v = (z - (room.z - halfD)) / room.depth;
+const esmPath = path.resolve(__dirname, 'floorSampling.esm.js');
+let source = fs.readFileSync(esmPath, 'utf8');
 
-			const fc = room.floorCorners;
-			const yNW = fc ? fc.yNW : DEFAULT_FLOOR_Y;
-			const yNE = fc ? fc.yNE : DEFAULT_FLOOR_Y;
-			const ySE = fc ? fc.ySE : DEFAULT_FLOOR_Y;
-			const ySW = fc ? fc.ySW : DEFAULT_FLOOR_Y;
+// Strip ESM export keywords so the source is valid eval-able JS:
+//   export function foo(...) → function foo(...)
+//   export const X = ...     → const X = ...
+source = source.replace(/^export function /gm, 'function ');
+source = source.replace(/^export (const|let|var) /gm, '$1 ');
 
-			// Bilinear interpolation
-			return (
-				(1 - u) * (1 - v) * yNW +
-				u * (1 - v) * yNE +
-				u * v * ySE +
-				(1 - u) * v * ySW
-			);
-		}
-	}
-	return null;
-}
+// Wrap in a strict-mode Function so const/function bindings are captured
+// reliably regardless of eval scoping rules in Node.js modules.
+const mod = (new Function(
+	'"use strict";\n' +
+	source + '\n' +
+	'return { sampleFloorY, DEFAULT_FLOOR_Y };'
+))();
 
-module.exports = { sampleFloorY, DEFAULT_FLOOR_Y };
+module.exports = mod;
