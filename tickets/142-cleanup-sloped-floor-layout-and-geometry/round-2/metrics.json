@@ -1,0 +1,20 @@
+{
+  "url": "http://localhost:5173",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/autogame/tickets/142-cleanup-sloped-floor-layout-and-geometry/ticket.md",
+  "capturePlanSource": "fallback-after-error",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [
+    {
+      "source": "gemini",
+      "ok": true,
+      "status": 0,
+      "error": "YOLO mode is enabled. All tool calls will be automatically approved.\nYOLO mode is enabled. All tool calls will be automatically approved.\nRipgrep is not available. Falling back to GrepTool.\n"
+    }
+  ],
+  "capturePlanSummary": "Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.",
+  "scenarios": [],
+  "screenshots": [],
+  "probes": [],
+  "error": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for locator('#create-lobby-name')\u001b[22m\n\u001b[2m    - locator resolved to <input type=\"text\" maxlength=\"48\" id=\"create-lobby-name\" placeholder=\"Lobby name (optional)\"/>\u001b[22m\n\u001b[2m    - fill(\"Test\")\u001b[22m\n\u001b[2m  - attempting fill action\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m    - waiting 20ms\u001b[22m\n\u001b[2m    2 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m      - element is not visible\u001b[22m\n\u001b[2m    - retrying fill action\u001b[22m\n\u001b[2m      - waiting 100ms\u001b[22m\n\u001b[2m    52 × waiting for element to be visible, enabled and editable\u001b[22m\n\u001b[2m       - element is not visible\u001b[22m\n\u001b[2m     - retrying fill action\u001b[22m\n\u001b[2m       - waiting 500ms\u001b[22m\n"
+}

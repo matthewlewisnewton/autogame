@@ -1,0 +1,25 @@
+
+ RUN  v3.2.4 /home/matt/workspace/autogame/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/deck-viewer.test.js (15 tests) 87ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+ ✓ |client| client/test/main.test.js (127 tests) 670ms
+
+ Test Files  2 passed (2)
+      Tests  142 passed (142)
+   Start at  10:19:41
+   Duration  1.86s (transform 75ms, setup 42ms, collect 53ms, tests 756ms, environment 387ms, prepare 79ms)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |    69.2 |    62.85 |   29.03 |    69.2 |                        
+ cards.js     |      91 |    62.96 |   66.66 |      91 | ...471,480-494,588-605 
+ collision.js |   20.81 |      100 |       0 |   20.81 | ...208,214-222,228-233 
+ delta.js     |   78.57 |      100 |       0 |   78.57 | 12-14                  
+ hand.js      |   46.25 |     62.5 |   23.07 |   46.25 | ...140,156-157,160-163 
+--------------|---------|----------|---------|---------|------------------------

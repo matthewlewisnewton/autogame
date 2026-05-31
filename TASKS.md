@@ -9,7 +9,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 
 ## Backlog — Sloped Floors
-- [ ] [142-cleanup-sloped-floor-layout-and-geometry](tickets/142-cleanup-sloped-floor-layout-and-geometry/)
+- [x] [142-cleanup-sloped-floor-layout-and-geometry](tickets/142-cleanup-sloped-floor-layout-and-geometry/)
 - [ ] [139-harness-misclassifies-pageerror](tickets/139-harness-misclassifies-pageerror/)
 - [ ] [117-sloped-movement-server-and-client](tickets/117-sloped-movement-server-and-client/)
 
@@ -38,3 +38,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
 - [ ] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
 - [ ] [137-world-sunken-canyon-stage](tickets/137-world-sunken-canyon-stage/)
+- [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
