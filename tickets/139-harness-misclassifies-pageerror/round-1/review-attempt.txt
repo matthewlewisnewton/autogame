@@ -1,0 +1,21 @@
+## Verdict: **FAIL**
+
+Round-1 has no `metrics.json` or `console.log` — only a 120s Playwright timeout and `spawnSync gemini ETIMEDOUT` in `capture-plan-gemini.txt`. Dev servers did start (`client.log` / `server.log` look healthy), but there is no captured run proof, so the ticket fails the mandatory runtime check.
+
+### Blocking gaps (in `round-1/gaps.md`)
+
+1. **Incomplete capture** — re-run after fixing the harness timeout (Gemini plan / screenshot duration); not a `game/` issue.
+2. **AC mismatch in code** — `capture_failed` still writes `harness_failure` with `detected: []`, which the top-level ticket forbids and can mislead reviewers again.
+
+### What looks good in code
+
+- Page errors collected in `screenshot.mjs` (`pageerrors.json`, `[pageerror]` console lines).
+- `browser_pageerror` vs infra classification when page errors exist.
+- Review and QA prompts updated to check page errors first.
+- **31/31** unit tests pass.
+
+### Nits (in `round-1/nits.md`)
+
+Stale docstring, pageerrors-on-exit-0 edge case, and missing metrics after timeout.
+
+Full write-up: [`tickets/139-harness-misclassifies-pageerror/round-1/review.md`](file:///home/matt/workspace/autogame/tickets/139-harness-misclassifies-pageerror/round-1/review.md)

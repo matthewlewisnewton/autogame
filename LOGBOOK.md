@@ -1803,3 +1803,26 @@ See `nits.md`: passage wall base height on corridors.
 
 Round-1 capture provides runnable proof (`ok: true`, sloped/ramp screenshot descriptions, `sloped-dungeon` scenario applied cleanly). Game changes document schema, align room walls to `sampleFloorY()`, and document the box mesh approximation. Verdict: pass.
 
+
+## v0.79 — Fix: harness misclassifies game pageerror as `harness_failure` infra issue  (2026-05-31 16:36:57)
+
+
+## Design / game regression
+
+**N/A / PASS.** No `game/` changes. Round-2 capture exercised standard lobby-to-dungeon flow with empty `pageerrors`. Consistent with `game/docs/design.md`; no debug scenarios added or modified.
+
+## Code quality
+
+- Three-way classification (`harness_failure` / `browser_pageerror` / `capture_failed`) is clear, well-tested, and preserves infra-over-pageerror precedence.
+- Sub-ticket 06 adds exception handling so `capture_run` always writes classified `metrics.json` on unexpected failures (`failure_kind: "capture_exception"`).
+- `confirm_broken.game_smoke_ok()` correctly treats `browser_pageerror` as "servers up" for smoke gating while review/QA still hard-fail on page errors.
+- Infra signature detection unchanged from baseline (`vite_eaddrinuse`, `server_eaddrinuse`); existing EADDRINUSE rescue path preserved.
+
+## Debug scenarios
+
+Not applicable — no new or changed `?debugScenario=` shortcuts in this ticket.
+
+## Remaining gaps
+
+None. Round-2 capture provides runnable proof; all acceptance criteria are met in the current codebase.
+

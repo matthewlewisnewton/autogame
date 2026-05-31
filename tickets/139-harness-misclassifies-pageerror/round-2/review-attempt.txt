@@ -1,0 +1,18 @@
+## Review complete
+
+**Verdict: PASS**
+
+Round-2 capture shows a healthy run (`metrics.json` `"ok": true`, empty `pageerrors`, clean `console.log`). Lobby → gameplay flow completed with probes confirming `phase: "playing"`, canvas, and combat state.
+
+All six acceptance criteria are met in the live codebase:
+
+1. **`harness_failure` only with non-empty `detected`** — fixed via `capture_diagnosis` on the `capture_failed` path (round-1 gap resolved)
+2. **Structured page errors** in `console.log` and `pageerrors.json`
+3. **`failure_kind: "browser_pageerror"`** when servers start but page errors occur
+4. **Review prompt** checks pageerrors before harness_failure
+5. **QA prompt** hard-fails on browser pageerrors
+6. **34 regression tests pass**
+
+No `gaps.md` written (PASS). Edge-case nits logged to `round-2/nits.md` (stale docstring, pageerrors-on-success path, unclassified confirm run).
+
+Full assessment: [`tickets/139-harness-misclassifies-pageerror/round-2/review.md`](tickets/139-harness-misclassifies-pageerror/round-2/review.md)

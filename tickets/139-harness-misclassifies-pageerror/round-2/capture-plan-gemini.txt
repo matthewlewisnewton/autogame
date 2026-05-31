@@ -1,0 +1,18 @@
+{
+  "summary": "Verify that the harness can still successfully capture a standard lobby-to-game flow and that normal operation is not regressed by the pageerror classification changes.",
+  "steps": [
+    { "action": "connectPlayer", "player": "A" },
+    { "action": "screenshot", "player": "A", "name": "01-lobby", "description": "Lobby screen should be visible and functional." },
+    { "action": "readyAll" },
+    { "action": "waitForGame", "player": "A" },
+    { "action": "screenshot", "player": "A", "name": "02-gameplay", "description": "Gameplay should be reached successfully." },
+    { "action": "probe", "player": "A", "description": "Collect baseline game state to ensure no silent errors occurred during the transition." }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+
