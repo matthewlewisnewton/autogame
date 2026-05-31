@@ -12,7 +12,8 @@ if TYPE_CHECKING:
 
 def implement(role: "Role", *, workspace, ticket_file: Path, feedback: Path,
               handoff: Path, artifacts_dir: Path, telemetry=None,
-              allow_harness: bool = False) -> "ChainResult":
+              allow_harness: bool = False,
+              extra_safe_paths: "list[str] | None" = None) -> "ChainResult":
     """Run the implementer role.
 
     Adds handoff.md to extra_safe_paths so the agent's write to handoff
@@ -38,6 +39,8 @@ def implement(role: "Role", *, workspace, ticket_file: Path, feedback: Path,
         extra_safe = []
     if allow_harness:
         extra_safe.append("harness/**")
+    if extra_safe_paths:
+        extra_safe.extend(p for p in extra_safe_paths if p not in extra_safe)
     return role.execute(
         workspace=workspace,
         prompt_vars={

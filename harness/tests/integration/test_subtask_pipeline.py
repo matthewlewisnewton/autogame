@@ -282,15 +282,21 @@ class TestSubtaskHarnessScope:
 
     def test_harness_edit_reverted_when_ticket_silent_on_harness(self, workspace, subdir):
         # ticket.md (from the subdir fixture) never mentions harness/ → the
-        # protective scope still reverts the stray harness edit → tool failure.
+        # protective scope still reverts the stray harness edit. A scope
+        # violation is NOT a tool outage: it must not abort the backlog with
+        # rc=2 (which would escalate and ultimately kill the supervisor on a
+        # structurally-impossible sub-ticket). It fails soft — each iteration
+        # accumulates feedback and retries; max_iter exhaustion returns rc=1.
         impl = self._agent_touching_game_and_harness("impl", workspace)
         ctx = SubtaskContext(workspace=workspace, roster=self._roster(impl), subdir=subdir,
                              label="047-test/01-thing",
                              tunables=_make_tunables(max_iter=2, local_checks=False))
         (subdir / "handoff.md").write_text("(initial)\n")
         rc = subtask(ctx)
-        assert rc == 2  # scope violation each iter → coder repeatedly unavailable
+        assert rc == 1  # recoverable task failure → re-decompose, NOT rc=2 halt
         assert not (workspace.root / "harness" / "screenshot.mjs").exists()
+        # scope-violation feedback was recorded for the retry.
+        assert "out-of-scope" in (subdir / "feedback.md").read_text().lower()
 
 
 class TestSubtaskQAFail:
