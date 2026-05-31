@@ -32,6 +32,7 @@ Available development scenarios:
 - mixed-enemies: start in gameplay with one of each enemy type (grunt, skirmisher, miniboss, spawner) spawned near the player.
 - spawner-active: start in gameplay with a spawner enemy ready to spawn its first add on the next tick.
 - monster-card: start in gameplay with full Magic Stones and a monster card (Dungeon Drake) guaranteed in hand.
+- sloped-dungeon: regenerate the dungeon layout with slopes enabled for visual verification of ramp geometry.
 
 Use a debug scenario only when the ticket needs a hard-to-reach state. Prefer
 the normal lobby-to-game flow for tickets about onboarding, lobby readiness,
