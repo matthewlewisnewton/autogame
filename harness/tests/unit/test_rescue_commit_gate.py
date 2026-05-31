@@ -1,11 +1,9 @@
-"""Regression test for the Phase 4.2 rescue commit-gate fix.
+"""Regression test for the rescue/repair commit-gate.
 
-Both impl-review reviewers flagged that the pre-v4.2 rescue.py called
-commit_verified() unconditionally — so a tool-failed or scope-violated
-rescue tier would still land a 'claude rescue implementation pass'
-commit on HEAD before the caller bailed out with rc=2.
-
-The fix gates the commit on chain.accepted_by is not None.
+The unified run_repair() (formerly rescue.py) must call commit_verified() ONLY
+when a tier actually accepts — a tool-failed or scope-violated chain must not
+land a spurious 'claude rescue implementation pass' commit on HEAD before the
+caller escalates. include_harness=True so a successful harness fix persists.
 """
 from __future__ import annotations
 
@@ -23,9 +21,25 @@ from harness.agents.base import (
 from harness.git_helpers import PathScope
 from harness.prompts.acceptance import OkRcAccept
 from harness.roles import Role
-from harness.steps.rescue import rescue
+from harness.steps.repair import run_repair
 from harness.workspace.ports import PortAllocation
 from harness.workspace.repo import Repo
+
+
+def _run_repair(role, repo, artifacts_dir, *, base_ref=None):
+    """Invoke the unified run_repair in ticket mode (the former rescue path)."""
+    return run_repair(
+        role, workspace=repo, mode="ticket",
+        prompt_vars={
+            "MODE": "ticket",
+            "TICKET_FILE": str(repo.root / "ticket.md"),
+            "REVIEW_FB": str(repo.root / "review-feedback.md"),
+            "BASE_REF": base_ref or repo.head(),
+            "ROUNDS": "10", "LOOPLOG": "",
+        },
+        artifacts_dir=artifacts_dir,
+        commit_msg="042-foo: claude rescue implementation pass",
+    )
 
 
 def _make_repo(tmp_path: Path) -> Repo:
@@ -87,11 +101,7 @@ class TestRescueCommitGate:
         # dirty workspace).
         (repo.root / "game" / "scratch.js").write_text("// leftover from earlier round\n")
 
-        chain = rescue(role, workspace=repo, ticket_name="042-foo",
-                        ticket_file=repo.root / "ticket.md",
-                        review_fb=repo.root / "review-feedback.md",
-                        base_ref=head_before, max_rounds=10,
-                        rescue_dir=tmp_path / "rescue")
+        chain = _run_repair(role, repo, tmp_path / "rescue", base_ref=head_before)
         assert chain.accepted_by is None
         # HEAD must NOT have advanced — the gate held.
         assert repo.head() == head_before, "rescue should NOT have committed; chain failed"
@@ -108,11 +118,7 @@ class TestRescueCommitGate:
                 return super().run(invocation, workspace, telemetry=telemetry)
         role = _rescue_role(WritingAgent(name="stub-write", canned_result=_ok()))
 
-        chain = rescue(role, workspace=repo, ticket_name="042-foo",
-                        ticket_file=repo.root / "ticket.md",
-                        review_fb=repo.root / "review-feedback.md",
-                        base_ref=head_before, max_rounds=10,
-                        rescue_dir=tmp_path / "rescue")
+        chain = _run_repair(role, repo, tmp_path / "rescue", base_ref=head_before)
         assert chain.accepted_by is not None
         # HEAD advanced (the rescue commit landed).
         assert repo.head() != head_before, "successful rescue should have committed"
@@ -154,11 +160,7 @@ class TestRescueCommitGate:
             scope=PathScope(allow=["game/**", "harness/**"], deny=["tickets/**"]),
         )
 
-        chain = rescue(role, workspace=repo, ticket_name="042-foo",
-                        ticket_file=repo.root / "ticket.md",
-                        review_fb=repo.root / "review-feedback.md",
-                        base_ref=head_before, max_rounds=10,
-                        rescue_dir=tmp_path / "rescue")
+        chain = _run_repair(role, repo, tmp_path / "rescue", base_ref=head_before)
         assert chain.accepted_by is not None
         assert repo.head() != head_before, "infra rescue should commit"
         # The harness/ edit must be present in the new commit (the bug we're
