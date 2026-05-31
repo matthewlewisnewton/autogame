@@ -245,6 +245,21 @@ def _run_with_timeout(
         t_term.cancel()
         t_kill.cancel()
         fout.close()
+        # Reap the whole process group, even on a "clean" exit. qwen-code
+        # (Node) forks sub-agents that can outlive the parent; if we don't
+        # kill them here they continue to hold our stdout fd, keep writing
+        # to the workspace, and pollute the NEXT iteration's scope_audit
+        # with edits the next implementer never made (observed 2026-05-30:
+        # iter-1 qwen exited rc=1 at minute 14 but its skill-extractor
+        # children kept editing harness/ + TASKS.md for another 45 min,
+        # causing iter-2 to be reverted + downgraded to SCOPE_VIOLATION).
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+            # Brief grace, then SIGKILL anything that didn't honour TERM.
+            time.sleep(0.5)
+            os.killpg(proc.pid, signal.SIGKILL)
+        except (ProcessLookupError, PermissionError, OSError):
+            pass
 
     ended_at = time.time()
     rc = proc.returncode if proc.returncode is not None else -1

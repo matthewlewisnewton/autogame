@@ -114,6 +114,9 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [114-cleanup-dungeon-quest-commit-followups](tickets/114-cleanup-dungeon-quest-commit-followups/)
 - [x] [115-cleanup-weapon-facing-followups](tickets/115-cleanup-weapon-facing-followups/)
 
+## Backlog — Sloped Floors
+- [ ] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
+
 ## Backlog — Reference Game Loops
 - [x] [040-lobby-quest-board](tickets/040-lobby-quest-board/)
 - [x] [041-quest-scoped-party-runs](tickets/041-quest-scoped-party-runs/)
