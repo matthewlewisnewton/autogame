@@ -1,0 +1,25 @@
+{
+  "ok": false,
+  "error": "servers did not start",
+  "harness_failure": {
+    "detected": [
+      "vite_eaddrinuse"
+    ],
+    "client_log_tail": "\n  VITE v8.0.13  ready in 81 ms\n\n  \u279c  Local:   http://localhost:5173/\n  \u279c  Network: use --host to expose",
+    "server_log_tail": "[server] Layout for quest \"training_caverns\": seed=1335602341, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/autogame/game/data\nnode:events:496\n      throw er; // Unhandled 'error' event\n      ^\n\nError: listen EADDRINUSE: address already in use :::3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (/home/matt/workspace/autogame/game/server/index.js:2760:8)\n    at Object.<anonymous> (/home/matt/workspace/autogame/game/server/index.js:2767:3)\n    at Module._compile (node:internal/modules/cjs/loader:1688:14)\n    at Object..js (node:internal/modules/cjs/loader:1820:10)\n    at Module.load (node:internal/modules/cjs/loader:1423:32)\n    at Function._load (node:internal/modules/cjs/loader:1246:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\nEmitted 'error' event on Server instance at:\n    at emitErrorNT (node:net:1976:8)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {\n  code: 'EADDRINUSE',\n  errno: -98,\n  syscall: 'listen',\n  address: '::',\n  port: 3000\n}\n\nNode.js v22.18.0",
+    "port_holders": {
+      "5173": [
+        {
+          "pid": 334778,
+          "cmdline": "node /home/matt/workspace/autogame/game/client/node_modules/.bin/../vite/bin/vite.js --port 5173 --strictPort"
+        }
+      ],
+      "3000": [
+        {
+          "pid": 321311,
+          "cmdline": "node server/index.js"
+        }
+      ]
+    }
+  }
+}
