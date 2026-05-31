@@ -19,6 +19,7 @@ const CELL_SPACING = 20; // center-to-center distance between adjacent cells
 const MIN_ROOM_SIZE = 12;
 const MAX_ROOM_SIZE_INCLUSIVE = 15;
 const PASSAGE_WIDTH = 4;
+const DEFAULT_FLOOR_Y = 0.5;
 
 const DEFAULT_LAYOUT_PROFILE = {
   gridCols: GRID_COLS,
@@ -73,8 +74,12 @@ function questLayoutSeed(questId) {
 /**
  * Generate a deterministic dungeon layout from a numeric seed.
  * Returns { rooms: [...], passages: [...], passageWidth, profile }
+ *
+ * @param {number} seed - PRNG seed for deterministic generation
+ * @param {string|object} [profile=DEFAULT_LAYOUT_PROFILE] - Layout profile name or object
+ * @param {object} [options={}] - Optional flags: { slopes: boolean }
  */
-function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE) {
+function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   const opts = normalizeLayoutProfile(profile);
   const rng = mulberry32(seed);
   const gridCols = opts.gridCols;
@@ -256,8 +261,40 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE) {
       walls.push({ x: cell.x + halfW, z: cell.z + gap / 2 + segLen / 2, length: segLen, axis: 'z' });
     }
 
-    return { x: cell.x, z: cell.z, width, depth, walls };
+    return {
+      x: cell.x,
+      z: cell.z,
+      width,
+      depth,
+      walls,
+      floorCorners: {
+        yNW: DEFAULT_FLOOR_Y,
+        yNE: DEFAULT_FLOOR_Y,
+        ySE: DEFAULT_FLOOR_Y,
+        ySW: DEFAULT_FLOOR_Y,
+      },
+    };
   });
+
+  // Step 5b — apply slope ramps when slopes option is enabled
+  if (options.slopes) {
+    // Pick 1-2 rooms to become ramps (RNG-driven, deterministic per seed).
+    // Skip the start room (index 0) so the spawn area stays flat.
+    const candidates = rooms.map((r, i) => i).filter(i => i > 0);
+    const numRamps = Math.min(1 + Math.floor(rng() * 2), candidates.length);
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    for (let i = 0; i < numRamps; i++) {
+      const room = rooms[candidates[i]];
+      // Southward ramp: north edge stays flat, south edge rises to 2.0
+      room.floorCorners.yNW = DEFAULT_FLOOR_Y;
+      room.floorCorners.yNE = DEFAULT_FLOOR_Y;
+      room.floorCorners.ySE = 2.0;
+      room.floorCorners.ySW = 2.0;
+    }
+  }
 
   // Step 6 — build passage objects with boundary walls
   const passageObjects = passages.map(p => {
@@ -460,6 +497,7 @@ module.exports = {
   questLayoutSeed,
   normalizeLayoutProfile,
   DEFAULT_LAYOUT_PROFILE,
+  DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
   GRID_COLS,
   GRID_ROWS,
