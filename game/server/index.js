@@ -401,6 +401,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-failed',
   'run-exhausted',
   'telepipe-ready',
+  'sloped-dungeon',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -676,6 +677,24 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
+    } else if (name === 'sloped-dungeon') {
+      // Regenerate the dungeon layout with slopes enabled for visual verification.
+      // Uses the same seed as the current quest for determinism.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || questLayoutSeed(state.selectedQuestId || DEFAULT_QUEST_ID);
+      const profile = getLayoutProfileForQuest(state.selectedQuestId || DEFAULT_QUEST_ID);
+      state.layout = generateLayout(seed, profile, { slopes: true });
+      state.layoutSeed = seed;
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      withLobbyContext({ state }, () => rebuildWallColliders());
+      // Send updated layout to all clients in the lobby
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     }
 
     syncRunObjectiveToEnemies();
