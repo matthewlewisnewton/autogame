@@ -4,6 +4,30 @@ function stubClass(name) {
 	class C {
 		constructor(...args) {
 			Object.defineProperty(this, '_name', { value: name });
+			// Per-instance position and rotation (not shared on prototype)
+			this.position = {
+				x: 0, y: 0, z: 0,
+				set: function(x, y, z) { this.x = x; this.y = y; this.z = z; },
+				clone: function() { return { x: this.x, y: this.y, z: this.z }; },
+				lerp: function(target, t) {
+					this.x = this.x + (target.x - this.x) * t;
+					this.y = this.y + (target.y - this.y) * t;
+					this.z = this.z + (target.z - this.z) * t;
+					return this;
+				},
+			};
+			this.rotation = {
+				x: 0, y: 0, z: 0,
+				set: function() {},
+				copy: function(other) {
+					if (other) {
+						this.x = other.x;
+						this.y = other.y;
+						this.z = other.z;
+					}
+					return this;
+				},
+			};
 			// Mesh constructor: (geometry, material) — store both
 			if (name === 'Mesh' && args.length >= 2) {
 				this.geometry = args[0];
@@ -60,29 +84,6 @@ function stubClass(name) {
 			}
 		}
 	}
-	C.prototype.position = {
-		x: 0, y: 0, z: 0,
-		set: function(x, y, z) { this.x = x; this.y = y; this.z = z; },
-		clone: function() { return { x: this.x, y: this.y, z: this.z }; },
-		lerp: function(target, t) {
-			this.x = this.x + (target.x - this.x) * t;
-			this.y = this.y + (target.y - this.y) * t;
-			this.z = this.z + (target.z - this.z) * t;
-			return this;
-		},
-	};
-	C.prototype.rotation = {
-		x: 0, y: 0, z: 0,
-		set: function() {},
-		copy: function(other) {
-			if (other) {
-				this.x = other.x;
-				this.y = other.y;
-				this.z = other.z;
-			}
-			return this;
-		},
-	};
 	C.prototype.scale = { setScalar: function() {} };
 	C.prototype.material = {
 		color: { setHex: function() {} },

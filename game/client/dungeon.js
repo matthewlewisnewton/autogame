@@ -43,6 +43,63 @@ const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 });
 
 /**
+ * Check whether a room's floorCorners are uniform (flat floor).
+ * Returns true if floorCorners is absent or all four values are equal.
+ */
+export function isUniformFloor(room) {
+	const fc = room.floorCorners;
+	if (!fc) return true;
+	const v = fc.yNW;
+	return fc.yNE === v && fc.ySE === v && fc.ySW === v;
+}
+
+/**
+ * Build a sloped floor mesh for a room with non-uniform floorCorners.
+ * Determines the dominant slope axis (Z or X) by comparing edge averages,
+ * then returns a rotated BoxGeometry mesh positioned at the average height.
+ */
+export function buildSlopedFloor(room, floorMat) {
+	const fc = room.floorCorners;
+	const yNW = fc.yNW;
+	const yNE = fc.yNE;
+	const ySE = fc.ySE;
+	const ySW = fc.ySW;
+
+	// Edge averages to determine dominant slope axis
+	const zSlopeDelta = Math.abs((ySW + ySE) / 2 - (yNW + yNE) / 2);
+	const xSlopeDelta = Math.abs((yNE + ySE) / 2 - (yNW + ySW) / 2);
+
+	let geo;
+	let mesh;
+
+	if (zSlopeDelta >= xSlopeDelta) {
+		// Z-slope: ramp along Z axis
+		const yDelta = (ySW + ySE) / 2 - (yNW + yNE) / 2;
+		const slopeLen = Math.hypot(room.depth, yDelta);
+		const angle = Math.atan2(yDelta, room.depth);
+		const avgY = (Math.min(yNW, yNE, ySE, ySW) + Math.max(yNW, yNE, ySE, ySW)) / 2;
+
+		geo = new THREE.BoxGeometry(room.width, 0.1, slopeLen);
+		mesh = new THREE.Mesh(geo, floorMat);
+		mesh.position.set(room.x, avgY, room.z);
+		mesh.rotation.x = angle;
+	} else {
+		// X-slope: ramp along X axis
+		const yDelta = (yNE + ySE) / 2 - (yNW + ySW) / 2;
+		const slopeLen = Math.hypot(room.width, yDelta);
+		const angle = Math.atan2(yDelta, room.width);
+		const avgY = (Math.min(yNW, yNE, ySE, ySW) + Math.max(yNW, yNE, ySE, ySW)) / 2;
+
+		geo = new THREE.BoxGeometry(slopeLen, 0.1, room.depth);
+		mesh = new THREE.Mesh(geo, floorMat);
+		mesh.position.set(room.x, avgY, room.z);
+		mesh.rotation.z = -angle;
+	}
+
+	return { mesh, geometry: geo };
+}
+
+/**
  * Remove all dungeon meshes from the scene and dispose geometries.
  * Shared materials are NOT disposed (they are reused across builds).
  *
@@ -146,10 +203,16 @@ export function buildDungeon(scene, layout) {
 		// Pick floor material based on room role (graceful fallback to default)
 		const floorMat = roleFloorMaterials[room.role] || floorMaterial;
 
-		// Room floor tile (raised slightly)
-		const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
-		const floorMesh = new THREE.Mesh(floorGeo, floorMat);
-		floorMesh.position.set(room.x, FLOOR_Y, room.z);
+		// Room floor: flat (legacy or uniform corners) or sloped
+		let floorMesh;
+		if (isUniformFloor(room)) {
+			const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
+			floorMesh = new THREE.Mesh(floorGeo, floorMat);
+			floorMesh.position.set(room.x, FLOOR_Y, room.z);
+		} else {
+			const { mesh } = buildSlopedFloor(room, floorMat);
+			floorMesh = mesh;
+		}
 		scene.add(floorMesh);
 		meshes.push(floorMesh);
 
