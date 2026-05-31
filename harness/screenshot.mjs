@@ -26,6 +26,7 @@ const outDirAbs = resolve(outDir);
 mkdirSync(outDirAbs, { recursive: true });
 
 const logs = [];
+const pageerrors = [];
 const screenshots = [];
 const probes = [];
 const scenarios = new Set();
@@ -61,7 +62,36 @@ function wire(page, tag) {
     const t = m.text();
     if (!NOISE.test(t)) logs.push(`[${tag}:${m.type()}] ${t}`);
   });
-  page.on('pageerror', (e) => logs.push(`[${tag}:pageerror] ${e.message}`));
+  page.on('pageerror', (e) => {
+    logs.push(`[${tag}:pageerror] ${e.message}`);
+    let sourceURL = undefined;
+    let line = undefined;
+    let column = undefined;
+    if (e.stack) {
+      // Try "(file:line:col)" format first (Chrome/Playwright)
+      let m = e.stack.match(/\((.+):(\d+):(\d+)\)/);
+      if (m) {
+        sourceURL = m[1];
+        line = parseInt(m[2], 10);
+        column = parseInt(m[3], 10);
+      } else {
+        // Try "at file:line:col" format
+        m = e.stack.match(/at\s+([^@]+):(\d+):(\d+)/);
+        if (m) {
+          sourceURL = m[1].trim();
+          line = parseInt(m[2], 10);
+          column = parseInt(m[3], 10);
+        }
+      }
+    }
+    pageerrors.push({
+      message: e.message,
+      sourceURL,
+      line,
+      column,
+      stack: e.stack || '',
+    });
+  });
 }
 
 function clampInt(value, fallback, min, max) {
@@ -771,7 +801,9 @@ try {
   metrics.scenarios = Array.from(scenarios);
   metrics.screenshots = screenshots;
   metrics.probes = probes;
+  metrics.pageerrors = pageerrors.slice(0, 10);
   writeFileSync(join(outDirAbs, 'console.log'), logs.join('\n') + '\n');
+  writeFileSync(join(outDirAbs, 'pageerrors.json'), JSON.stringify(pageerrors, null, 2) + '\n');
   writeFileSync(join(outDirAbs, 'metrics.json'), JSON.stringify(metrics, null, 2));
   emitProgressEvent('capture_metrics', {
     artifacts: relative(repoRoot, outDirAbs),
