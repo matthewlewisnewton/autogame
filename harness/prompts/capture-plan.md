@@ -18,6 +18,9 @@ The harness will validate and execute only these actions:
   - urlPath: optional local path beginning with "/"
 - readyAll: click the ready button on every connected player.
 - waitForGame: wait until gameplay is visible. Optional player, timeoutMs.
+- emitScenario: trigger a debug scenario on an already-connected player after gameplay
+  has started. This is required for dungeon-state scenarios (e.g. sloped-dungeon) that
+  need an active game session. Fields: player, scenario.
 - move: hold one WASD key. Required-ish fields: player, key, durationMs.
 - pressCard: press key 1-4 for a card slot. Fields: player, slot, cardType (optional — card type name to resolve slot dynamically), ms.
 - clickSlot: click a card slot. Fields: player, slot, ms.
@@ -37,6 +40,13 @@ Available development scenarios:
 Use a debug scenario only when the ticket needs a hard-to-reach state. Prefer
 the normal lobby-to-game flow for tickets about onboarding, lobby readiness,
 multiplayer setup, or integration between screens.
+
+Important — dungeon-state scenarios (e.g. sloped-dungeon): these require an
+authenticated player in an active game session. Do NOT use connectPlayer with
+a scenario query parameter. Instead, follow the full flow:
+  1. connectPlayer → registerUser → loginUser → createLobby → readyAll → waitForGame
+  2. emitScenario (player: "A", scenario: "sloped-dungeon")
+  3. screenshot + probe to capture the regenerated dungeon layout.
 
 Constraints:
 - Use at most 12 steps.

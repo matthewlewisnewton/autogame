@@ -47,6 +47,7 @@ const ACTIONS = new Set([
   'joinLobby',
   'readyAll',
   'waitForGame',
+  'emitScenario',
   'move',
   'pressCard',
   'clickSlot',
@@ -144,6 +145,9 @@ function validateRecipe(input) {
   const steps = input.steps.map((step, i) => {
     if (!step || typeof step !== 'object') throw new Error(`step ${i + 1} must be an object`);
     if (!ACTIONS.has(step.action)) throw new Error(`step ${i + 1} has unsupported action: ${step.action}`);
+    if (step.action === 'emitScenario' && !(typeof step.scenario === 'string' && SCENARIO_RE.test(step.scenario))) {
+      throw new Error(`step ${i + 1} action emitScenario requires a valid scenario field`);
+    }
     const clean = { action: step.action };
     if (typeof step.player === 'string' && PLAYER_RE.test(step.player)) clean.player = step.player;
     if (typeof step.description === 'string') clean.description = step.description.slice(0, 200);
@@ -492,6 +496,11 @@ async function executeRecipe(browser, recipe) {
 
     if (step.action === 'waitForGame') {
       await waitForGameplay(page, step.timeoutMs || 12000);
+    } else if (step.action === 'emitScenario') {
+      const scenarioName = step.scenario;
+      await page.evaluate((name) => window.__requestDebugScenarioForTest(name), scenarioName);
+      scenarios.add(scenarioName);
+      await page.waitForTimeout(1500);
     } else if (step.action === 'move') {
       const key = step.key || 'w';
       await page.bringToFront();
