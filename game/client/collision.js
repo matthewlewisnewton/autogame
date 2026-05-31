@@ -6,7 +6,7 @@ const PLAYER_RADIUS = 0.5;
 
 // ── Floor Height Sampling (re-exported from shared module) ──
 
-import { sampleFloorY as _sampleFloorY, DEFAULT_FLOOR_Y as _DEFAULT_FLOOR_Y } from '../shared/floorSampling.js';
+import { sampleFloorY as _sampleFloorY, DEFAULT_FLOOR_Y as _DEFAULT_FLOOR_Y } from '../shared/floorSampling.esm.js';
 
 export { _sampleFloorY as sampleFloorY, _DEFAULT_FLOOR_Y as DEFAULT_FLOOR_Y };
 
