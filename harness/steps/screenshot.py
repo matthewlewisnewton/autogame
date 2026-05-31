@@ -1,6 +1,7 @@
 """Screenshot capture step — invokes harness/screenshot.mjs as a subprocess."""
 from __future__ import annotations
 
+import os
 import subprocess
 from pathlib import Path
 
@@ -31,6 +32,7 @@ def capture(game_url: str, artifacts_dir: Path, *, timeout_s: int = 120) -> bool
                 ["node", str(script), game_url, str(artifacts_dir)],
                 stdin=subprocess.DEVNULL, stdout=out, stderr=subprocess.STDOUT,
                 timeout=timeout_s,
+                env={**os.environ, "CAPTURE_PLAN_AGENT": "fallback"},
             )
         return result.returncode == 0
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:

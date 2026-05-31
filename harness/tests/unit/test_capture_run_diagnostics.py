@@ -433,3 +433,50 @@ class TestBrowserPageerrorClassification:
         assert "harness_failure" in metrics
         assert metrics["harness_failure"]["detected"] == []
         assert metrics["failure_kind"] == "capture_failed"
+
+
+class TestExceptionDuringCaptureWritesMetrics:
+    """Regression: when capture() or _classify_capture_failure() raises an
+    unexpected exception, capture_run must still write metrics.json with
+    failure_kind == 'capture_exception' instead of silently returning False."""
+
+    def test_exception_during_capture_writes_metrics(self, tmp_path, monkeypatch):
+        """Mock capture to raise RuntimeError → metrics.json is written."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: (_ for _ in ()).throw(RuntimeError("boom")))
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "capture_exception"
+        assert "boom" in metrics["error"]
+
+    def test_exception_during_classification_writes_metrics(self, tmp_path, monkeypatch):
+        """Mock _classify_capture_failure to raise → metrics.json is written."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
+        monkeypatch.setattr(cr_mod, "_classify_capture_failure",
+                            lambda d, p: (_ for _ in ()).throw(ValueError("classify error")))
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "capture_exception"
+        assert "classify error" in metrics["error"]
+
+    def test_stop_game_called_on_exception(self, tmp_path, monkeypatch):
+        """Ensure stop_game is called even when an exception occurs."""
+        stop_called = []
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: stop_called.append(True))
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: (_ for _ in ()).throw(RuntimeError("fail")))
+        ports = PortAllocation(game_server=3000, vite=5173)
+        cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert stop_called == [True]

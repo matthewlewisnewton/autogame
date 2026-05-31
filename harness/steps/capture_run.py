@@ -134,6 +134,18 @@ def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
             json.dumps(metrics, indent=2) + "\n"
         )
         return False
+    except Exception as e:
+        # Unexpected exception — still write metrics.json so the pipeline
+        # has a classified result instead of a missing file.
+        metrics = {
+            "ok": False,
+            "failure_kind": "capture_exception",
+            "error": str(e),
+        }
+        (dir / "metrics.json").write_text(
+            json.dumps(metrics, indent=2) + "\n"
+        )
+        return False
     finally:
         stop_game()
 
