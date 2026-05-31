@@ -20,7 +20,15 @@ def protect_review(*, label: str, working_dir: Path, archive_dir: Path) -> None:
     for name in _PROTECTED_NAMES:
         src = working_dir / name
         if src.exists():
-            shutil.copy2(src, archive_dest / name)
+            # If a previous protect_review already wrote this archive
+            # path, the file is a-w and shutil.copy2 fails with
+            # PermissionError. Restore u+w (or remove) before overwrite.
+            dst = archive_dest / name
+            try:
+                dst.chmod(0o644)
+            except (FileNotFoundError, PermissionError, OSError):
+                pass
+            shutil.copy2(src, dst)
     chmod_a_minus_w_recursive(archive_dest)
     chmod_a_minus_w_recursive(working_dir)
 

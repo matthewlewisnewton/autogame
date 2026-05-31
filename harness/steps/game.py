@@ -186,6 +186,20 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
     cleanup only kills harness-owned holders by default."""
     logdir = Path(logdir)
     logdir.mkdir(parents=True, exist_ok=True)
+    # protect_review chmods round-N artifact dirs a-w after a previous
+    # round commits, so a fresh round reusing the same logdir crashes here
+    # with PermissionError on (logdir/'server.log').open('wb'). Delete any
+    # stale logs (transient, harness-only artifacts) before re-opening.
+    for name in ("server.log", "client.log"):
+        p = logdir / name
+        try:
+            p.chmod(0o644)
+        except (FileNotFoundError, PermissionError, OSError):
+            pass
+        try:
+            p.unlink()
+        except (FileNotFoundError, PermissionError, OSError):
+            pass
     emit_progress_event("game_start", {"logdir": str(logdir)})
 
     for port in (ports.vite, ports.game_server):
