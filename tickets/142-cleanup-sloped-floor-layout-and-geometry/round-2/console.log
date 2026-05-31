@@ -1,0 +1,31 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[B:debug] [vite] connecting...
+[B:debug] [vite] connected.
+[A:log] [initScene] Initializing Three.js scene...
+[B:log] [initScene] Initializing Three.js scene...
+[capture:error] Too many arguments. If you need to pass more than 1 argument to the function wrap them in an object.
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:error] Failed to load resource: the server responded with a status of 409 (Conflict)
+[A:log] [initScene] Initializing Three.js scene...
+[A:log] [network] player reconnected
+[capture:fallback-error] locator.fill: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#create-lobby-name')[22m
+[2m    - locator resolved to <input type="text" maxlength="48" id="create-lobby-name" placeholder="Lobby name (optional)"/>[22m
+[2m    - fill("Test")[22m
+[2m  - attempting fill action[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m      - waiting 100ms[22m
+[2m    52 × waiting for element to be visible, enabled and editable[22m
+[2m       - element is not visible[22m
+[2m     - retrying fill action[22m
+[2m       - waiting 500ms[22m
+

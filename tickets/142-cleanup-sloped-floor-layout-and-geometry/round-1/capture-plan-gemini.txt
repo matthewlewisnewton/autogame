@@ -1,0 +1,56 @@
+{
+  "summary": "Verified sloped room generation, wall height alignment with inclined floors, and ramp geometry consistency using the sloped-dungeon debug scenario.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "emitScenario",
+      "player": "A",
+      "scenario": "sloped-dungeon"
+    },
+    {
+      "action": "wait",
+      "player": "A",
+      "ms": 1500
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify room state includes floorCorners and check wall mesh Y-positions relative to floor sample points."
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-sloped-room-overview",
+      "description": "A sloped room is in frame. Verify that wall segments are positioned correctly at their base relative to the ramped floor, avoiding floating or clipping."
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "w",
+      "durationMs": 800
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-ramp-geometry-detail",
+      "description": "Close-up of a floor ramp. Check for visual gaps at room edges and ensure the floor mesh matches the sloped collision surface."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

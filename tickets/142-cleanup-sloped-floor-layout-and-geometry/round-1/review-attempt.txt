@@ -1,0 +1,29 @@
+## Verdict: **PASS**
+
+Round-1 was re-captured successfully after the earlier FAIL (generic fallback smoke). Current artifacts show a healthy run:
+
+| Gate | Result |
+|------|--------|
+| `metrics.json` `"ok": true` | Yes |
+| `harness_failure` | None |
+| `console.log` `pageerror` / `[fatal]` | None |
+| Ramp AC | Two screenshots describe a sloped room / ramp; `scenarios: ["sloped-dungeon"]` |
+
+**Acceptance criteria (all met):**
+
+1. **`floorCorners` in `design.md`** — documented with NW/NE/SE/SW labels.
+2. **Wall Y on slopes** — `sampleFloorY()` at wall centers + unit test in `dungeon.test.js`.
+3. **Harness ramp capture** — file-based plan with `emitScenario` → `sloped-dungeon`; metrics list ramp-focused screenshot descriptions.
+4. **Box approximation** — documented in `buildSlopedFloor` JSDoc.
+
+**Tests:** 1234 passed on `pnpm test:quick`.
+
+**Debug scenario:** `sloped-dungeon` (from 116, harness-wired in 142) is dev-gated; normal play already uses `{ slopes: true }`; no invariant bypass.
+
+Written:
+
+- `/home/matt/workspace/autogame/tickets/142-cleanup-sloped-floor-layout-and-geometry/round-1/review.md` (ends with `VERDICT: PASS`)
+- `/home/matt/workspace/autogame/tickets/142-cleanup-sloped-floor-layout-and-geometry/round-1/nits.md` (passage walls still flat — non-blocking)
+- Removed stale `gaps.md` from the prior FAIL review
+
+**Note:** PNG files are not present under `round-1/` on disk (only metadata in `metrics.json` / `screenshot.log`). That did not block pass; descriptions and probes confirm the sloped capture path ran.

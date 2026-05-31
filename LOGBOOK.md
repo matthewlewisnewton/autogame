@@ -1780,3 +1780,26 @@ See `round-1/nits.md` for backlog items: explicit `floorCorners` schema in docs,
 
 ---
 
+
+## v0.78 — Cleanup nits from 116-sloped-floor-layout-and-geometry  (2026-05-31 14:26:33)
+
+| 02 wall Y on slopes + test | Done |
+| 03–14 harness capture plumbing | Done; round-1 capture satisfies ramp screenshot AC |
+| Game code on main at HEAD | Includes all four game sub-tickets |
+
+---
+
+## Remaining gaps
+
+None blocking. All five top-level acceptance criteria are met in code, tests, and round-1 capture artifacts.
+
+### Nits (non-blocking)
+
+See `nits.md`: passage wall base height on corridors.
+
+---
+
+## Summary
+
+Round-1 capture provides runnable proof (`ok: true`, sloped/ramp screenshot descriptions, `sloped-dungeon` scenario applied cleanly). Game changes document schema, align room walls to `sampleFloorY()`, and document the box mesh approximation. Verdict: pass.
+

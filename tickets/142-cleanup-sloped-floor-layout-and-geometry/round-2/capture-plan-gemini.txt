@@ -1,0 +1,56 @@
+{
+  "summary": "Verify sloped floor geometry and wall grounding by triggering the sloped-dungeon scenario in an active session.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "emitScenario",
+      "player": "A",
+      "scenario": "sloped-dungeon"
+    },
+    {
+      "action": "wait",
+      "player": "A",
+      "ms": 2000
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-sloped-dungeon-start",
+      "description": "Initial view after sloped-dungeon regeneration. A sloped room or ramp should be visible in the layout."
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "w",
+      "durationMs": 1200
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-ramp-alignment",
+      "description": "A sloped room/ramp is in frame. Verify walls are grounded to the incline and there are no gaps in the floor mesh vs bilinear sampling."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Collecting floorCorners data and room entity wall positions to verify mathematical grounding and mesh approximation."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

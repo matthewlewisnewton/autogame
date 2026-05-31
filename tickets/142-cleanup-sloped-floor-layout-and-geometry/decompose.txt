@@ -1,0 +1,15 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+All 4 original nits from the top-level ticket are fully resolved, and all 12 existing sub-tickets have `.passed` markers:
+
+| Original Nit | Sub-ticket(s) | Status |
+|---|---|---|
+| Document floorCorners schema | `01-document-floorcorners-schema` | ✅ PASSED |
+| Wall meshes ignore sloped floor height | `02-fix-wall-y-on-slopes` | ✅ PASSED |
+| Harness ramp-focused capture | `03`, `05`–`10`, `14` | ✅ PASSED |
+| Sloped floor mesh box approximation | `04-document-box-approximation` | ✅ PASSED |
+
+Verification sub-tickets (`06`, `12`, `14`) also passed. The round-3 capture produced valid sloped-dungeon screenshots with `"ok": true`.
+
+**No new sub-tickets are needed.** The top-level ticket `142-cleanup-sloped-floor-layout-and-geometry` is fully delivered — all 4 nits are cleaned up, all sub-tickets have passed QA.
+
+I did not create any new sub-ticket folders.
