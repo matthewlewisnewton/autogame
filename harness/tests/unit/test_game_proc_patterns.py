@@ -27,6 +27,20 @@ class TestIsHarnessGameProc:
                    "node_modules/.bin/vite --port 5173 --strictPort")
         assert _is_harness_game_proc(cmdline)
 
+    def test_vite_via_npx_resolved_to_script(self):
+        # Ticket 116 infra escalation (2026-05-30): newer node/npm resolve the
+        # vite bin to the script itself, so the cmdline ends in `vite.js`, not
+        # `.bin/vite`. The `\bvite\s+--port` regex missed the `.js` suffix and
+        # wait_port_free refused to kill the stale holder -> vite_eaddrinuse.
+        cmdline = ("node /home/matt/workspace/autogame/game/client/"
+                   "node_modules/.bin/../vite/bin/vite.js --port 5173 --strictPort")
+        assert _is_harness_game_proc(cmdline)
+
+    def test_game_server_absolute_path(self):
+        assert _is_harness_game_proc(
+            "node /home/matt/workspace/autogame/game/server/index.js"
+        )
+
     def test_vite_bare(self):
         assert _is_harness_game_proc("vite --port 5173 --strictPort")
 

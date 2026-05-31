@@ -22,9 +22,15 @@ from harness.telemetry.progress import emit_progress_event
 from harness.workspace.ports import PortAllocation
 
 
+# Match the game server and the vite dev server by their real cmdlines.
+# `npx vite` does not stay `vite` on disk: depending on the npm/node version
+# it resolves either to the `.bin/vite` shim (`.../.bin/vite --port 5173`) or
+# straight to the script (`.../vite/bin/vite.js --port 5173 --strictPort`).
+# The vite pattern therefore tolerates an optional `.js` suffix and arbitrary
+# args between the binary name and `--port 5173`.
 _HARNESS_GAME_PATTERNS = (
-    re.compile(r"\bnode\s+game/server/index(\.js)?(\s|$)"),
-    re.compile(r"\bvite\s+--port\s+5173(\s|$)"),
+    re.compile(r"\bnode\s+\S*game/server/index(\.js)?(\s|$)"),
+    re.compile(r"\bvite(\.js)?\b[^\n]*?--port\s+5173(\s|$)"),
 )
 
 
@@ -153,6 +159,21 @@ def _kill_pid(pid: int, signal_num: int = 9) -> None:
         pass
 
 
+def _kill_proc_group(pid: int, signal_num: int = 15) -> None:
+    """Kill the whole process group led by ``pid``.
+
+    start_game launches each server with ``start_new_session=True``, so the
+    tracked pid is its group leader. Signalling only the leader leaks children
+    (notably ``npx``'s ``vite.js`` child, which does not get the forwarded
+    signal and keeps holding the port). Fall back to a plain pid kill if the
+    group lookup fails.
+    """
+    try:
+        os.killpg(os.getpgid(pid), signal_num)
+    except (ProcessLookupError, PermissionError, OSError):
+        _kill_pid(pid, signal_num)
+
+
 def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3) -> None:
     """Launch dev servers (server + vite). Per ticket 105 the pre-launch
     cleanup only kills harness-owned holders by default."""
@@ -189,7 +210,10 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
             text = ""
         if "EADDRINUSE" in text or "already in use" in text:
             log(f"[warn] Vite EADDRINUSE on attempt {attempt} — retrying after cleanup")
-            _kill_pid(client_proc.pid)
+            # Kill the whole npx/sh/vite.js group, not just the leader: signalling
+            # only the npx leader leaks the vite.js child, which keeps holding the
+            # port and re-triggers EADDRINUSE on the next attempt.
+            _kill_proc_group(client_proc.pid, signal_num=9)
             _GAME_PIDS.pop()
             wait_port_free(ports.vite, timeout_s=10)
             continue
@@ -200,10 +224,10 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
 def stop_game() -> None:
     emit_progress_event("game_stop", {})
     for pid in _GAME_PIDS:
-        _kill_pid(pid, signal_num=15)
+        _kill_proc_group(pid, signal_num=15)
     _GAME_PIDS.clear()
-    for pat in (r"(^|[^[:alnum:]_])node[[:space:]]+game/server/index\.js([[:space:]]|$)",
-                r"(^|[^[:alnum:]_])vite[[:space:]]+--port[[:space:]]+5173([[:space:]]|$)"):
+    for pat in (r"node[[:space:]]+[^[:space:]]*game/server/index\.js([[:space:]]|$)",
+                r"vite(\.js)?[[:space:]].*--port[[:space:]]+5173([[:space:]]|$)"):
         try:
             subprocess.run(["pkill", "-f", pat], stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, timeout=5)
