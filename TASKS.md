@@ -49,6 +49,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [058-reset-state-on-last-disconnect](tickets/058-reset-state-on-last-disconnect/)
 
 ## Backlog — Housekeeping & Planning
+- [ ] [140-cleanup-fix-floor-sampling-esm-export](tickets/140-cleanup-fix-floor-sampling-esm-export/)
 - [x] [102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence](tickets/102-cleanup-cleanup-audio-autoplay-resume-and-mute-persistence/)
 - [x] [101-cleanup-cleanup-entity-ai-improvements](tickets/101-cleanup-cleanup-entity-ai-improvements/)
 - [x] [100-cleanup-entity-ai-improvements](tickets/100-cleanup-entity-ai-improvements/)
@@ -115,7 +116,7 @@ medium: gpt-5.5-medium-fast, hard: gpt-5.5-extra-high). Each ticket must declare
 - [x] [115-cleanup-weapon-facing-followups](tickets/115-cleanup-weapon-facing-followups/)
 
 ## Backlog — Sloped Floors
-- [ ] [138-fix-floor-sampling-esm-export](tickets/138-fix-floor-sampling-esm-export/)
+- [x] [138-fix-floor-sampling-esm-export](tickets/138-fix-floor-sampling-esm-export/)
 - [ ] [116-sloped-floor-layout-and-geometry](tickets/116-sloped-floor-layout-and-geometry/)
 - [ ] [139-harness-misclassifies-pageerror](tickets/139-harness-misclassifies-pageerror/)
 

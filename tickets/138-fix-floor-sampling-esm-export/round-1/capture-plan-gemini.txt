@@ -1,0 +1,20 @@
+{
+  "summary": "Verify that the client boots without ESM SyntaxErrors and can transition from lobby to gameplay, ensuring the shared floorSampling module is correctly imported.",
+  "steps": [
+    { "action": "connectPlayer", "player": "A" },
+    { "action": "wait", "player": "A", "ms": 3000 },
+    { "action": "screenshot", "player": "A", "name": "01-lobby-boot", "description": "Check if the lobby screen or auth overlay is visible, confirming no boot-blocking SyntaxError." },
+    { "action": "probe", "player": "A", "description": "Inspect window.__AUTOGAME_HARNESS_STATE__ and verify the absence of 'does not provide an export named' console errors." },
+    { "action": "readyAll" },
+    { "action": "waitForGame", "player": "A" },
+    { "action": "screenshot", "player": "A", "name": "02-gameplay-active", "description": "Confirm the game transitions to the playing phase successfully after login." },
+    { "action": "probe", "player": "A", "description": "Verify phase is 'playing' and sampling logic is active in the client state." }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

@@ -1,0 +1,11 @@
+## Review complete
+
+Full write-up: [`tickets/138-fix-floor-sampling-esm-export/round-2/review.md`](tickets/138-fix-floor-sampling-esm-export/round-2/review.md)
+
+**Runtime gate:** `metrics.json` has `"ok": true`; no `pageerror` / `[fatal]` in `console.log`; probes show `phase === 'playing'` with canvas, enemies, and movement. The original `DEFAULT_FLOOR_Y` named-export `SyntaxError` is gone.
+
+**Implementation:** Approach (3) from the ticket — `floorSampling.esm.js` for the client, unchanged CJS `require` on the server, `collision.js` import path updated, `shared-floor-sampling.test.js` added. Client/server vitest and `pnpm --filter client build` all pass on review.
+
+**Verdict:** `VERDICT: PASS` (last line of `review.md`)
+
+No `gaps.md` (FAIL-only). Non-blocking follow-ups are in [`round-2/nits.md`](tickets/138-fix-floor-sampling-esm-export/round-2/nits.md) (CJS/ESM dedup, flat-room test coordinates).

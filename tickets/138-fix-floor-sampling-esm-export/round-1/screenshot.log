@@ -1,0 +1,31 @@
+{
+  "url": "http://localhost:5173",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/autogame/tickets/138-fix-floor-sampling-esm-export/ticket.md",
+  "capturePlanSource": "fallback-after-error",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [
+    {
+      "source": "gemini",
+      "ok": true,
+      "status": 0,
+      "error": "YOLO mode is enabled. All tool calls will be automatically approved.\nYOLO mode is enabled. All tool calls will be automatically approved.\nRipgrep is not available. Falling back to GrepTool.\n"
+    }
+  ],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby, second player, ready transition, movement.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Initial load with one player in the lobby."
+    },
+    {
+      "file": "02-two-players.png",
+      "player": "A",
+      "description": "Two connected players visible in the lobby."
+    }
+  ],
+  "probes": [],
+  "error": "page.waitForFunction: Timeout 12000ms exceeded."
+}
