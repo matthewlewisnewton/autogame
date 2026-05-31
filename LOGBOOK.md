@@ -1734,3 +1734,26 @@ None. Both acceptance criteria are satisfied; runtime capture confirms the game 
 
 ---
 
+
+## v0.76 — Cleanup nits from 140-cleanup-fix-floor-sampling-esm-export  (2026-05-31 07:19:11)
+
+---
+
+## Debug scenarios
+
+Not applicable (documentation-only ticket).
+
+---
+
+## Sub-ticket integration
+
+Both sub-tickets (`01-fix-esm-header-comments`, `02-document-cjs-bridge-constraints`) map cleanly to the two acceptance sections above with no gaps between them.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied; the captured run proves the game starts and plays; tests pass.
+
+---
+
