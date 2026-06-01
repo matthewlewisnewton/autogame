@@ -1347,7 +1347,10 @@ export function createEnemyMesh(type) {
 	if (def.emissiveIntensity != null) matProps.emissiveIntensity = def.emissiveIntensity;
 
 	const mat = new THREE.MeshStandardMaterial(matProps);
-	return new THREE.Mesh(geo, mat);
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh._origEmissive = def.emissive != null ? def.emissive : 0x000000;
+	mesh._origEmissiveIntensity = def.emissiveIntensity != null ? def.emissiveIntensity : 0;
+	return mesh;
 }
 
 // ── Enemy health bar helpers ──
@@ -1430,6 +1433,31 @@ export function applyWindupFlash(enemyId, isWindup) {
 			mesh.material.emissiveIntensity = 0;
 			windupFlashing.delete(enemyId);
 		}
+	}
+}
+
+// ── Reveal highlight (Flare Beacon) ──
+
+const REVEAL_GLOW_COLOR = 0xffaa00;
+const REVEAL_GLOW_INTENSITY = 1.0;
+
+/**
+ * Apply or remove the amber emissive glow on a revealed enemy mesh.
+ * Reveal glow takes priority over windup flash and damage flash.
+ * @param {string} enemyId
+ * @param {object} enemy - { revealedUntil }
+ */
+export function applyRevealHighlight(enemyId, enemy) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+
+	if (enemy.revealedUntil && Date.now() < enemy.revealedUntil) {
+		mesh.material.emissive.set(REVEAL_GLOW_COLOR);
+		mesh.material.emissiveIntensity = REVEAL_GLOW_INTENSITY;
+	} else {
+		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
+		mesh.material.emissiveIntensity =
+			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
 	}
 }
 
@@ -2848,6 +2876,9 @@ export function animate(timestamp) {
 				disposeOne(telegraphMeshes, enemy.id, scene);
 				applyWindupFlash(enemy.id, false);
 			}
+
+			// ── Reveal highlight (Flare Beacon) ──
+			applyRevealHighlight(enemy.id, enemy);
 		}
 
 		// Clean up removed enemies

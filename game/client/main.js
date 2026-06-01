@@ -114,6 +114,7 @@ import {
 	createHealthBarMesh as rendererCreateHealthBarMesh,
 	updateHealthBarMesh as rendererUpdateHealthBarMesh,
 	applyWindupFlash as rendererApplyWindupFlash,
+	applyRevealHighlight as rendererApplyRevealHighlight,
 	spawnAttackEffect as rendererSpawnAttackEffect,
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
@@ -3401,6 +3402,7 @@ window.__windupFlashing = () => getWindupFlashing();
 window.__pickedUpLootIds = () => getPickedUpLootIds();
 window.__enemiesMeshes = () => getMeshMaps().enemiesMeshes;
 window.applyWindupFlash = rendererApplyWindupFlash;
+window.applyRevealHighlight = rendererApplyRevealHighlight;
 window.__useCardForTest = useCard;
 window.__discardCardForTest = discardCard;
 window.__resumeAudioContext = resumeAudioContext;

@@ -411,6 +411,7 @@ const DEBUG_SCENARIOS = new Set([
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
+  'flare-beacon-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -767,6 +768,16 @@ function applyDebugScenario(socket, name) {
       player.magicStones = 5;
       player.equippedKeyItemId = 'guard_block';
       player.keyItemCooldownUntil = 0;
+    } else if (name === 'flare-beacon-ready') {
+      // Put player with flare_beacon equipped and nearby enemies to test reveal VFX.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'flare_beacon';
+      player.keyItemCooldownUntil = 0;
+      // Ensure a few enemies are nearby to reveal
+      ensureNearbyEnemy(state, player.x, player.z);
+      spawnEnemy(player.x + 5, player.z + 3, 'skirmisher');
+      spawnEnemy(player.x - 4, player.z - 2, 'grunt');
     }
 
     syncRunObjectiveToEnemies();
