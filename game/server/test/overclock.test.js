@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
 	startTestServer,
 	closeServer,
@@ -7,7 +7,21 @@ import {
 	playerForSocket,
 	testGameState,
 } from './helpers.js';
-import { COOLDOWN_MS } from '../index.js';
+import {
+	COOLDOWN_MS,
+	checkRunTerminalState,
+	returnPlayersToLobby,
+	giveUpRun,
+	checkAllReady,
+	recordEnemyDefeated,
+	startDungeonRun,
+	resetTransientRunState,
+	gameState,
+	createGameState,
+	setTestProvider,
+	io as serverIo,
+	MAX_MAGIC_STONES,
+} from '../index.js';
 
 function sleep(ms) {
 	return new Promise(r => setTimeout(r, ms));
@@ -255,5 +269,87 @@ describe('Overclock key item', () => {
 		const playerInUpdate = stateUpdate.players[playerId];
 		expect(playerInUpdate).toBeDefined();
 		expect(playerInUpdate.overclockChargesRemaining).toBe(2);
+	});
+});
+
+// ── Unit tests: Overclock run-end lifecycle ──
+
+function resetState() {
+	Object.assign(gameState, createGameState());
+}
+
+function addPlayer(id, overrides = {}) {
+	gameState.players[id] = {
+		x: 0, y: 0.5, z: 0, rotation: 0, hp: 100, dead: false,
+		lastActivity: Date.now(), ready: false, magicStones: MAX_MAGIC_STONES,
+		currency: 0, debugScenario: null, pendingSummons: new Set(),
+		deck: [], overclockChargesRemaining: 0, ...overrides,
+	};
+}
+
+function mockIoEmit() {
+	const emitCalls = [];
+	const origTo = serverIo.to;
+	const origEmit = serverIo.emit;
+	const mockEmit = (event, data) => emitCalls.push({ event, data });
+	serverIo.to = () => ({ emit: mockEmit });
+	serverIo.emit = mockEmit;
+	return { emitCalls, restore: () => { serverIo.to = origTo; serverIo.emit = origEmit; } };
+}
+
+describe('Overclock run-end lifecycle', () => {
+	beforeEach(() => {
+		resetState();
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
+	it('checkRunTerminalState clears overclockChargesRemaining on victory', () => {
+		startDungeonRun();
+		addPlayer('p1', { overclockChargesRemaining: 2 });
+		gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
+		recordEnemyDefeated(1);
+		checkRunTerminalState();
+		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
+	});
+
+	it('checkRunTerminalState clears overclockChargesRemaining on failure', () => {
+		startDungeonRun();
+		addPlayer('p1', { hp: 0, dead: true, overclockChargesRemaining: 2 });
+		checkRunTerminalState();
+		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
+	});
+
+	it('returnPlayersToLobby clears overclockChargesRemaining', () => {
+		gameState._lobbyId = 'test-lobby';
+		startDungeonRun();
+		addPlayer('p1', { overclockChargesRemaining: 2 });
+		const { restore } = mockIoEmit();
+		returnPlayersToLobby();
+		restore();
+		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
+	});
+
+	it('giveUpRun clears overclockChargesRemaining', () => {
+		gameState._lobbyId = 'test-lobby';
+		gameState.gamePhase = 'playing';
+		startDungeonRun();
+		addPlayer('p1', { overclockChargesRemaining: 2 });
+		const { restore } = mockIoEmit();
+		giveUpRun();
+		restore();
+		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
+	});
+
+	it('checkAllReady clears overclockChargesRemaining on fresh run', () => {
+		gameState._lobbyId = 'test-lobby';
+		addPlayer('p1', { ready: true, overclockChargesRemaining: 2, selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'] });
+		const { restore } = mockIoEmit();
+		checkAllReady();
+		restore();
+		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);
 	});
 });
