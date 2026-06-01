@@ -1,0 +1,5 @@
+VERDICT: FAIL
+
+I wrote the review to `tickets/124-key-item-guard-block/round-1/review.md` and the standalone remediation gap to `tickets/124-key-item-guard-block/round-1/gaps.md`.
+
+Runtime capture was healthy, but the ticket fails because Guard Block uses the wrong facing-axis convention for both damage reduction and shield VFX, so normal gameplay facing can fail to block frontal hits. No nits file was created.
