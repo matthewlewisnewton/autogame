@@ -2163,6 +2163,8 @@ describe('createEnemyMesh()', () => {
 		expect(mesh.geometry.parameters.radius).toBe(0.5);
 		expect(mesh.geometry.parameters.height).toBe(1);
 		expect(mesh.material.color.getHex()).toBe(0xdc2626);
+		expect(mesh._origEmissive).toBe(0x000000);
+		expect(mesh._origEmissiveIntensity).toBe(0);
 	});
 
 	it('creates an orange cone for skirmisher type', async () => {
@@ -2184,6 +2186,8 @@ describe('createEnemyMesh()', () => {
 		expect(mesh.material.color.getHex()).toBe(0x00ccaa);
 		expect(mesh.material.emissive.getHex()).toBe(0x00ccaa);
 		expect(mesh.material.emissiveIntensity).toBe(0.4);
+		expect(mesh._origEmissive).toBe(0x00ccaa);
+		expect(mesh._origEmissiveIntensity).toBe(0.4);
 	});
 
 	it('creates a purple cone for miniboss type', async () => {
@@ -2194,6 +2198,8 @@ describe('createEnemyMesh()', () => {
 		expect(mesh.geometry.parameters.radius).toBe(0.8);
 		expect(mesh.geometry.parameters.height).toBe(1.8);
 		expect(mesh.material.color.getHex()).toBe(0x8800cc);
+		expect(mesh._origEmissive).toBe(0x000000);
+		expect(mesh._origEmissiveIntensity).toBe(0);
 	});
 
 	it('defaults to grunt mesh for unknown types', async () => {
@@ -3433,5 +3439,175 @@ describe('Key Items equip UI', () => {
 
 		expect(errorEl.style.display).toBe('block');
 		expect(errorEl.textContent).toBe('Key items can only be equipped in the lobby');
+	});
+});
+
+// ── applyRevealHighlight ──
+
+describe('applyRevealHighlight()', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	afterEach(() => {
+		if (typeof window.__enemiesMeshes === 'function') {
+			const meshes = window.__enemiesMeshes();
+			for (const id of ['e1', 'e2', 'e3', 'e4', 'e5']) {
+				delete meshes[id];
+			}
+		}
+	});
+
+	function createMockMesh(origEmissive, origEmissiveIntensity) {
+		return {
+			_origEmissive: origEmissive != null ? origEmissive : 0x000000,
+			_origEmissiveIntensity: origEmissiveIntensity != null ? origEmissiveIntensity : 0,
+			material: {
+				emissive: {
+					_value: 0x000000,
+					set: function(c) { this._value = c; },
+					get: function() { return this._value; },
+				},
+				emissiveIntensity: 0,
+			},
+		};
+	}
+
+	it('is exposed on window and is a function', async () => {
+		await import('../main.js');
+		expect(typeof window.applyRevealHighlight).toBe('function');
+	});
+
+	it('sets amber emissive glow when revealedUntil is in the future', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['e1'] = mockMesh;
+
+		const future = Date.now() + 5000;
+		window.applyRevealHighlight('e1', { revealedUntil: future });
+
+		expect(mockMesh.material.emissive._value).toBe(0xffaa00);
+		expect(mockMesh.material.emissiveIntensity).toBe(1.0);
+
+		delete meshes['e1'];
+	});
+
+	it('restores original emissive when revealedUntil is absent', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['e2'] = mockMesh;
+
+		window.applyRevealHighlight('e2', {});
+
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+		expect(mockMesh.material.emissiveIntensity).toBe(0);
+
+		delete meshes['e2'];
+	});
+
+	it('restores original emissive when revealedUntil is 0', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['e3'] = mockMesh;
+
+		window.applyRevealHighlight('e3', { revealedUntil: 0 });
+
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+		expect(mockMesh.material.emissiveIntensity).toBe(0);
+
+		delete meshes['e3'];
+	});
+
+	it('restores original emissive when revealedUntil is in the past', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh();
+		const meshes = window.__enemiesMeshes();
+		meshes['e4'] = mockMesh;
+
+		const past = Date.now() - 5000;
+		window.applyRevealHighlight('e4', { revealedUntil: past });
+
+		expect(mockMesh.material.emissive._value).toBe(0x000000);
+		expect(mockMesh.material.emissiveIntensity).toBe(0);
+
+		delete meshes['e4'];
+	});
+
+	it('restores spawner original emissive (non-zero) when reveal expires', async () => {
+		await import('../main.js');
+
+		const mockMesh = createMockMesh(0x00ccaa, 0.4);
+		const meshes = window.__enemiesMeshes();
+		meshes['e5'] = mockMesh;
+
+		// First apply reveal
+		const future = Date.now() + 5000;
+		window.applyRevealHighlight('e5', { revealedUntil: future });
+		expect(mockMesh.material.emissive._value).toBe(0xffaa00);
+
+		// Then expire reveal
+		window.applyRevealHighlight('e5', {});
+		expect(mockMesh.material.emissive._value).toBe(0x00ccaa);
+		expect(mockMesh.material.emissiveIntensity).toBe(0.4);
+
+		delete meshes['e5'];
+	});
+
+	it('does nothing when mesh is missing', async () => {
+		await import('../main.js');
+
+		expect(() => {
+			window.applyRevealHighlight('nonexistent', { revealedUntil: Date.now() + 5000 });
+		}).not.toThrow();
+	});
+
+	it('does nothing when mesh has no material', async () => {
+		await import('../main.js');
+
+		const meshes = window.__enemiesMeshes();
+		meshes['e1'] = {};
+
+		expect(() => {
+			window.applyRevealHighlight('e1', { revealedUntil: Date.now() + 5000 });
+		}).not.toThrow();
+
+		delete meshes['e1'];
 	});
 });
