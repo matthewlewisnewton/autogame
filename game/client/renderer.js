@@ -29,6 +29,7 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y } from './collision.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -2422,7 +2423,9 @@ export function animate(timestamp) {
 		}
 
 		if (myId != null && playersMeshes[myId]) {
-			playersMeshes[myId].position.set(myX, 0.5, myZ);
+			const layout = gs && gs.layout;
+			const floorY = layout ? (sampleFloorY(layout, myX, myZ) ?? DEFAULT_FLOOR_Y) : DEFAULT_FLOOR_Y;
+			playersMeshes[myId].position.set(myX, floorY, myZ);
 			playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
 
 			const me = gs.players[myId];
