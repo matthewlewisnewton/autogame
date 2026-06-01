@@ -1895,3 +1895,26 @@ No new `?debugScenario=` added for this ticket. Existing debug path remains loca
 
 None blocking. Runtime is clean and all acceptance criteria are met for ticket 119 scope.
 
+
+## v0.83 — Key Item Lobby Equip UI  (2026-05-31 22:47:26)
+
+
+- Aligns with lobby tab pattern (`deck-editor`, medic, forge) in `index.html` / `setLobbyTab` / `main.js`.
+- No new debug scenarios; normal equip path uses server-validated `equipKeyItem` in lobby phase only.
+- `game/docs/requirements.md` foundation unchanged (3D render, sockets, multiplayer, movement).
+- `game/docs/controls.md` key-item use binding is separate from this lobby equip UI (ticket 119 territory).
+
+## Code quality
+
+- Focused diff (~540 lines) across server init, HTML, CSS, `renderKeyItemList`, socket handlers, tests.
+- No dead module (`key-item-loadout.js` optional path — logic kept in `main.js` per existing lobby style).
+- Handlers mirror medic/shop error patterns.
+
+## Remaining gaps
+
+None blocking. Runtime is clean and acceptance criteria are satisfied in the working tree.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-ups: extend lobby tab integration test to Key Items, and improve harness capture of the Key Items panel.
+

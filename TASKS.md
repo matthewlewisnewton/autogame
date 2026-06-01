@@ -16,7 +16,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 ## Backlog — Key Items (Foundation)
 - [x] [118-key-item-data-and-persistence](tickets/118-key-item-data-and-persistence/)
 - [x] [119-key-item-input-bindings-and-settings](tickets/119-key-item-input-bindings-and-settings/)
-- [ ] [120-key-item-lobby-equip-ui](tickets/120-key-item-lobby-equip-ui/)
+- [x] [120-key-item-lobby-equip-ui](tickets/120-key-item-lobby-equip-ui/)
 
 ## Backlog — Key Items (Abilities)
 - [ ] [121-key-item-dodge-roll](tickets/121-key-item-dodge-roll/)
@@ -43,3 +43,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [145-cleanup-sloped-movement-server-and-client](tickets/145-cleanup-sloped-movement-server-and-client/)
 - [ ] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
 - [ ] [147-cleanup-key-item-input-bindings-and-settings](tickets/147-cleanup-key-item-input-bindings-and-settings/)
+- [ ] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)

@@ -1,0 +1,12 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Created **4 sub-tickets** (deleted 3 previously failed ones that were mis-scoped — they assumed `KEY_ITEM_DEFS` was already in the server's `init` emit, but it wasn't):
+
+```
+tickets/120-key-item-lobby-equip-ui/subtickets/
+├── 01-server-init-key-item-defs/ticket.md      — Add KEY_ITEM_DEFS to server init emit + capture on client
+├── 02-html-key-items-tab-panel/ticket.md        — HTML tab button, panel structure, CSS styles
+├── 03-js-key-items-render-and-equip/ticket.md   — setLobbyTab wiring, renderKeyItemList(), socket handlers
+└── 04-tests-key-items-equip-ui/ticket.md        — Unit tests for rendering, selection, socket emits
+```
+
+All 4 use `Verification: code` — they involve handler existence, socket wiring, logic, and structure that goes beyond a single happy-path screenshot.
