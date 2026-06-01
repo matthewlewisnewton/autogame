@@ -199,12 +199,12 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
         # metrics.json when the dev servers themselves could not start (vite
         # EADDRINUSE, port held by foreign proc, etc.). That is a harness
         # bug, not a code defect — running review + more rounds just burns
-        # cycles. Bail out of the round loop and jump straight to claude
-        # rescue, which is allowed to edit harness/** to fix the infra.
+        # cycles. Bail out of the round loop and jump straight to the rescue,
+        # which is allowed to edit harness/** to fix the infra.
         infra_failure = _read_harness_failure(rdir / "metrics.json")
         if should_escalate_harness_failure(infra_failure):
             log(f"[escalate] harness infra failure ({','.join(infra_failure.get('detected', [])) or 'unknown'}) "
-                f"on round {round_n} — skipping review and remaining rounds, jumping to claude rescue")
+                f"on round {round_n} — skipping review and remaining rounds, jumping to rescue")
             emit_progress_event("harness_infra_escalation", {
                 "ticket": ctx.name, "round": round_n,
                 "detected": infra_failure.get("detected", []),
@@ -287,9 +287,9 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
                     f.write("\n".join(tail) + "\n")
         append_review_pointer(review_fb, review_out)
 
-    # CLAUDE RECOVERY — last resort after rounds exhausted (unified repair path,
+    # RECOVERY — last resort after rounds exhausted (unified repair path,
     # mode="ticket": finish the ticket + close gaps).
-    log(f"########## {ctx.name} — {ctx.tunables.ticket_max_rounds} rounds exhausted; starting claude rescue ##########")
+    log(f"########## {ctx.name} — {ctx.tunables.ticket_max_rounds} rounds exhausted; starting rescue ##########")
     rescue_dir = ctx.tdir / "rescue"
     rescue_dir.mkdir(parents=True, exist_ok=True)
     emit_progress_event("rescue_start",
@@ -310,10 +310,10 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
             "LOOPLOG": "",
         },
         artifacts_dir=rescue_dir,
-        commit_msg=f"{ctx.name}: claude rescue implementation pass",
+        commit_msg=f"{ctx.name}: rescue implementation pass",
         telemetry=ctx.telemetry)
     if rescue_chain.accepted_by is None:
-        log("[tool-failure] claude rescue unavailable — escalating")
+        log("[tool-failure] rescue unavailable — escalating")
         return PipelineResult.ESCALATE
     verify_reviews(ctx.reviews_dir, ctx.tdir)
 
@@ -356,7 +356,7 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
         # GAME_BROKEN: bash falls through to split here; we do the same.
 
     # SPLIT
-    log(f"[split] {ctx.name} unsolved after {ctx.tunables.ticket_max_rounds} rounds + claude rescue — restructuring")
+    log(f"[split] {ctx.name} unsolved after {ctx.tunables.ticket_max_rounds} rounds + rescue — restructuring")
     split_role = ctx.roster.role("split")
     if split(split_role, workspace=ctx.workspace, ticket_name=ctx.name,
               ticket_file=ctx.ticket_file, base_ref=base_ref,

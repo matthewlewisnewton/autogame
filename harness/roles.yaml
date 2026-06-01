@@ -38,7 +38,6 @@ agents:
   gpt5_medium_write:     { backend: cursor, model: gpt-5.5-medium-fast,  writable: true  }
   gpt5_extra_write:      { backend: cursor, model: gpt-5.5-extra-high,   writable: true  }
   agy:                   { backend: agy,    model_label: "Gemini 3.5 Flash (High)" }
-  claude:                { backend: claude }
 
 # --- Per-family defaults. Roles in a family inherit these unless they
 # override the same field. Phase 3 supports exact-name lookup
@@ -74,7 +73,7 @@ roles:
   # Sub-ticket: QA (per-mode variants)
   qa:code:
     primary: qwen
-    fallbacks: [composer_fast_read, agy, claude]
+    fallbacks: [composer_fast_read, agy]
     prompt_template: harness/prompts/qa-code.md
     out_file: "qa.txt"
     timeout_s: 720
@@ -84,7 +83,7 @@ roles:
 
   qa:visual:
     primary: qwen
-    fallbacks: [composer_fast_read, agy, claude]
+    fallbacks: [composer_fast_read, agy]
     prompt_template: harness/prompts/qa.md
     out_file: "qa.txt"
     timeout_s: 720
@@ -131,9 +130,9 @@ roles:
       easy:   composer_write
       medium: gpt5_medium_write
       hard:   gpt5_extra_write
-    fallbacks: [composer_write, claude]
+    fallbacks: [composer_write]
     fallbacks_by_difficulty:
-      hard: [claude]                 # extra-high → claude; skip composer-2.5
+      hard: [composer_write]         # extra-high primary; composer-2.5 fallback
     prompt_template: harness/prompts/review.md
     out_file: "review-attempt.txt"
     timeout_s: 720
@@ -144,7 +143,7 @@ roles:
       deny:  ["game/**", "harness/**"]
 
   split:
-    primary: claude
+    primary: composer_write
     fallbacks: []
     timeout_s: 1800
     out_file: "split.txt"
@@ -153,15 +152,15 @@ roles:
     usage_kind: split
     scope: { allow: ["tickets/**"], deny: ["game/**"] }
 
-  # Recovery — one claude path for BOTH the in-ticket rescue (rounds
-  # exhausted: finish the ticket + close gaps) and the supervisor-level
-  # harness repair (rc=2 tool/harness failure: fix the harness so the loop
-  # can proceed). Scope spans game/** + harness/** so the same role serves
-  # both; the prompt at harness/prompts/repair.md gates which mode applies.
-  # run_repair() commits on acceptance (include_harness=True) so a harness
-  # fix persists, and the supervisor re-execs afterward to load it.
+  # Recovery — one path for BOTH the in-ticket rescue (rounds exhausted:
+  # finish the ticket + close gaps) and the supervisor-level harness repair
+  # (rc=2 tool/harness failure: fix the harness so the loop can proceed).
+  # Scope spans game/** + harness/** so the same role serves both; the prompt
+  # at harness/prompts/repair.md gates which mode applies. run_repair() commits
+  # on acceptance (include_harness=True) so a harness fix persists, and the
+  # supervisor re-execs afterward to load it.
   repair:
-    primary: claude
+    primary: composer_write
     fallbacks: []
     timeout_s: 1800
     out_file: "repair.txt"

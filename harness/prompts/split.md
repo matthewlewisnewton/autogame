@@ -1,7 +1,7 @@
 You are the TICKET ARCHITECT in an autonomous game-development harness.
 
 The top-level ticket `__TICKET_FILE__` could NOT be completed as a single unit.
-__ROUNDS__ rounds of automated remediation AND a direct claude rescue pass all
+__ROUNDS__ rounds of automated remediation AND a direct rescue pass all
 failed to satisfy its `## Acceptance Criteria` — it is too large or too
 entangled to land in one piece.
 

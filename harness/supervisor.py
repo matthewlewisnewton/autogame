@@ -110,8 +110,8 @@ class Supervisor:
                 # An unhandled exception in the pipeline used to kill the whole
                 # supervisor (observed 2026-05-31: a PermissionError in the
                 # coverage step crashed the process, no escalation). Treat a
-                # crash like any other harness failure — escalate to claude
-                # repair (+ re-exec) instead of dying.
+                # crash like any other harness failure — escalate to the
+                # repair pass (+ re-exec) instead of dying.
                 log(">>> backlog run CRASHED with an unhandled exception:")
                 log(traceback.format_exc())
                 rc = PipelineResult.ESCALATE
@@ -133,12 +133,12 @@ class Supervisor:
                 return PipelineResult.PASS
 
             # backlog() only ever yields PASS or ESCALATE; any non-PASS means
-            # the harness itself failed and needs claude/human repair.
+            # the harness itself failed and needs an automated/human repair.
             self.escalations += 1
             if self.escalations > self.max_escalations:
                 log(f"######## supervisor: {self.max_escalations} escalations exhausted — STOPPING, needs a human ########")
                 return PipelineResult.ESCALATE
-            log(f">>> ESCALATION {self.escalations}/{self.max_escalations}: claude repairing the harness")
+            log(f">>> ESCALATION {self.escalations}/{self.max_escalations}: repairing the harness")
             chain = run_repair(
                 self.roster.role("repair"), workspace=self.workspace,
                 mode="harness",
@@ -147,7 +147,7 @@ class Supervisor:
                     "TICKET_FILE": "", "REVIEW_FB": "", "BASE_REF": "", "ROUNDS": "",
                 },
                 artifacts_dir=Path(self.workspace.root) / "harness" / "repair",
-                commit_msg=f"harness: claude repair pass (escalation {self.escalations})",
+                commit_msg=f"harness: repair pass (escalation {self.escalations})",
                 telemetry=self.telemetry)
             log(">>> repair complete — restarting loop")
             if chain.accepted_by is not None:
