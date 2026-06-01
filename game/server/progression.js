@@ -2937,6 +2937,10 @@ function checkRunTerminalState() {
 
   _gameState.run.status = status;
 
+  for (const p of Object.values(_gameState.players)) {
+    p.overclockChargesRemaining = 0;
+  }
+
   for (const playerId of Object.keys(_gameState.players)) {
     grantRunRewards(playerId, { status });
   }
@@ -3049,6 +3053,7 @@ function returnPlayersToLobby() {
     player.pendingSummons.clear();
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     player.invulnerableUntil = 0;
+    player.overclockChargesRemaining = 0;
   }
 
   refreshShopOffer();
@@ -3112,6 +3117,7 @@ function giveUpRun() {
     player.inputActive = false;
     player.inputDx = 0;
     player.inputDz = 0;
+    player.overclockChargesRemaining = 0;
   }
 
   for (const playerId of Object.keys(_gameState.players)) {
@@ -3158,6 +3164,7 @@ function checkAllReady() {
       }
       player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
       player.magicStones = STARTING_MAGIC_STONES;
+      player.overclockChargesRemaining = 0;
     }
     spawnEnemies();
     startDungeonRun();
