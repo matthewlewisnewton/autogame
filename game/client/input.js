@@ -26,7 +26,8 @@ export const ACTIONS = {
 	useSlot3: 'useSlot3',
 	useSlot4: 'useSlot4',
 	useSlot5: 'useSlot5',
-	toggleDeckViewer: 'toggleDeckViewer'
+	toggleDeckViewer: 'toggleDeckViewer',
+	useKeyItem: 'useKeyItem'
 };
 
 const DEFAULT_KEYBOARD = {
@@ -40,7 +41,8 @@ const DEFAULT_KEYBOARD = {
 	useSlot3: ['4'],
 	useSlot4: ['5'],
 	useSlot5: ['6'],
-	toggleDeckViewer: ['v']
+	toggleDeckViewer: ['v'],
+	useKeyItem: ['e']
 };
 
 const DEFAULT_GAMEPAD_BUTTONS = {
@@ -62,13 +64,13 @@ const keyState = {
 	moveRight: false
 };
 
-/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, canUseGameActions?: () => boolean }} */
+/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, canUseGameActions?: () => boolean }} */
 let callbacks = {};
 let listenersAdded = false;
 const prevGamepadButtons = new Map();
 
 /**
- * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, canUseGameActions?: () => boolean }} opts
+ * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, canUseGameActions?: () => boolean }} opts
  */
 export function initInput(opts = {}) {
 	callbacks = opts;
@@ -92,6 +94,11 @@ function onKeyDown(e) {
 		if (action === 'toggleDeckViewer') {
 			e.preventDefault();
 			callbacks.onToggleDeck?.();
+			return;
+		}
+		if (action === 'useKeyItem') {
+			e.preventDefault();
+			callbacks.onUseKeyItem?.();
 			return;
 		}
 		const slotMatch = action.match(/^useSlot(\d)$/);
@@ -245,6 +252,7 @@ export function getActionLabels() {
 		useSlot4: 'Hand slot 5',
 		useSlot5: 'Hand slot 6',
 		toggleDeckViewer: 'Toggle deck viewer',
+		useKeyItem: 'Use key item',
 	};
 }
 
