@@ -410,6 +410,7 @@ const DEBUG_SCENARIOS = new Set([
   'sloped-dungeon',
   'key-item-cooldown',
   'medic-kit-ready',
+  'guard-block-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -760,6 +761,12 @@ function applyDebugScenario(socket, name) {
       player.magicStones = 5;
       player.equippedKeyItemId = 'field_medic_kit';
       player.keyItemCooldownUntil = 0;
+    } else if (name === 'guard-block-ready') {
+      // Put player at low HP with guard_block equipped and no cooldown to test blocking.
+      player.hp = Math.floor(MAX_HP * 0.5);
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'guard_block';
+      player.keyItemCooldownUntil = 0;
     }
 
     syncRunObjectiveToEnemies();
@@ -845,6 +852,8 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
     invulnerableUntil: 0,
+    blockingUntil: 0,
+    blockingYaw: 0,
   };
 
   if (savedData) {
@@ -2485,8 +2494,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, and field_medic_kit are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit') {
+    // Only dodge_roll, summon_recall, field_medic_kit, and guard_block are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2514,6 +2523,19 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'guard_block') {
+      // --- guard_block: set a blocking window + slow movement to 20% ---
+      const durationMs = def.durationMs != null ? def.durationMs : 700;
+      player.blockingUntil = now + durationMs;
+      player.blockingYaw = player.rotation || 0;
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 3500);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }

@@ -264,7 +264,7 @@ describe('useKeyItem socket handler', () => {
 		player.keyItemCooldownUntil = 0;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
-		socket.emit('useKeyItem', { keyItemId: 'guard_block' });
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
 		const result = await resultPromise;
 
 		expect(result.ok).toBe(false);

@@ -593,10 +593,10 @@ const KEY_ITEM_DEFS = {
     id: 'guard_block',
     name: 'Guard Block',
     description: 'Raise a shield to reduce incoming damage',
-    cooldownMs: 12000,
+    cooldownMs: 3500,
     type: 'defensive',
     damageReduction: 0.7,
-    durationMs: 2000,
+    durationMs: 700,
   },
   flare_beacon: {
     id: 'flare_beacon',
@@ -2989,6 +2989,9 @@ function stateSnapshot() {
       equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
       keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
       isInvulnerable: Date.now() < (p.invulnerableUntil || 0),
+      isBlocking: Date.now() < (p.blockingUntil || 0),
+      blockingUntil: p.blockingUntil || 0,
+      blockingYaw: p.blockingYaw || 0,
     };
   }
 
