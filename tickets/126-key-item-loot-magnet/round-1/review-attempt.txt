@@ -1,0 +1,13 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no page errors or fatals (only benign Vite/409 noise).
+
+**Implementation:** Three commits since baseline wire `loot_magnet` server-side: ~8s cooldown, 8m attract radius, wall-aware pull via `tryPlayerMove`, auto-collect using the same rules as `lootPickup`. Seven unit tests pass, including wall blocking and “already collected” behavior.
+
+**Debug scenario:** `loot-magnet-ready` is localhost-gated and does not bypass `useKeyItem`; capture did not use it (fallback smoke only), which is fine for code verification.
+
+**Verdict:** **PASS** — no `gaps.md` (FAIL-only).
+
+Written artifacts:
+- [`tickets/126-key-item-loot-magnet/round-1/review.md`](tickets/126-key-item-loot-magnet/round-1/review.md)
+- [`tickets/126-key-item-loot-magnet/round-1/nits.md`](tickets/126-key-item-loot-magnet/round-1/nits.md) (two optional follow-ups: test naming, client VFX)
