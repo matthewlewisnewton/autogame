@@ -25,7 +25,9 @@ const {
   CELL_SPACING,
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
+  PASSAGE_WIDTH,
+  sampleFloorY,
+  DEFAULT_FLOOR_Y,
 } = require('./dungeon');
 const {
   TICK_RATE,
@@ -550,8 +552,9 @@ function applyDebugScenario(socket, name) {
 
     player.ready = true;
     player.x = spawn.x;
-    player.y = 0.5;
     player.z = spawn.z;
+    const floorY = sampleFloorY(state.layout, player.x, player.z);
+    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
     enterPlayingPhase(lobby);
 
     if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
@@ -789,7 +792,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
       ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
       : player.selectedDeck;
     player.x = savedData.x ?? player.x;
-    player.y = savedData.y ?? player.y;
+    player.y = savedData.y ?? DEFAULT_FLOOR_Y;
     player.z = savedData.z ?? player.z;
     player.rotation = savedData.rotation ?? player.rotation;
   }
