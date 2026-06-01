@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Sub-tickets created:
+
+```
+tickets/125-key-item-flare-beacon/subtickets/
+├── 01-server-flare-reveal/ticket.md    — Server: KEY_ITEM_DEFS update, useKeyItem handler, per-tick cleanup of expired revealedUntil
+├── 02-client-highlight-VFX/ticket.md   — Client: amber emissive glow on enemy mesh when revealedUntil > now
+└── 03-tests-flare-beacon/ticket.md     — Tests: in-range gets revealed, out-of-range doesn't, dead skipped, cooldown enforced
+```
+
+All 3 use `Verification: code`.

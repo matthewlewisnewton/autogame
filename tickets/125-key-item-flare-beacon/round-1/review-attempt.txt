@@ -1,0 +1,18 @@
+## Review complete
+
+**Runtime:** Game starts cleanly — `metrics.json` has `"ok": true`, empty `pageerrors`, no fatal/page errors in `console.log`.
+
+**Verdict: PASS** — written to [`tickets/125-key-item-flare-beacon/round-1/review.md`](tickets/125-key-item-flare-beacon/round-1/review.md) (last line: `VERDICT: PASS`).
+
+**Acceptance criteria (all met):**
+- **~10s cooldown** — `cooldownMs: 10000`, enforced and tested
+- **Through walls** — Euclidean radius only, no LOS (intel-only)
+- **Clears marks** — tick cleanup in `simulation.js`, client restore, dead enemies removed from state
+- **Tests** — in/out of range `revealedUntil` in `flare_beacon.test.js`, `key-items.test.js`, plus client `applyRevealHighlight` tests
+
+**Implementation:** Server sets `revealedUntil` on enemies within 25m for 3s; client amber emissive glow each frame; `flare-beacon-ready` debug scenario follows existing dev-only patterns.
+
+**Files written:**
+- `review.md` — full assessment
+- `nits.md` — duplicate test suites, missing simulation cleanup test, capture didn’t show flare VFX (non-blocking)
+- No `gaps.md` (PASS only)
