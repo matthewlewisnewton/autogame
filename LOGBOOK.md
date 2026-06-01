@@ -1872,3 +1872,26 @@ None blocking. Runtime is clean; acceptance criteria are satisfied on the server
 
 ---
 
+
+## v0.82 — Key Item Input Bindings and Settings  (2026-05-31 20:46:57)
+
+## Debug scenarios
+
+No new `?debugScenario=` added for this ticket. Existing debug path remains localhost-gated only.
+
+## Code quality
+
+- Focused diff across input, settings, profiles, main wiring, docs, tests.
+- No dead code observed; binding capture cleans up on settings close.
+- Minor follow-ups are nits only (see `nits.md`).
+
+## Capture / visual QA
+
+- Settings row present in planned screenshot.
+- Gameplay screenshot shows normal dungeon HUD; binding glyph is a later ticket.
+- Probes reached `playing` with enemies; no browser defects.
+
+## Remaining gaps
+
+None blocking. Runtime is clean and all acceptance criteria are met for ticket 119 scope.
+

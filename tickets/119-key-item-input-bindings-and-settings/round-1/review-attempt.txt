@@ -1,0 +1,12 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no `pageerror`/`[fatal]` lines. Capture reached lobby and an active dungeon run.
+
+**Verdict: PASS** — written to [`round-1/review.md`](tickets/119-key-item-input-bindings-and-settings/round-1/review.md) (last line: `VERDICT: PASS`).
+
+All acceptance criteria are met across five commits: `useKeyItem` in `input.js` (E / btn 13, profile-aware gamepad resolution), server/client settings merge, Settings remapping row, edge-triggered input gated to `playing`, `socket.emit('useKeyItem')`, exported `getUseKeyItemBinding()`, tests, and `controls.md`. No `gaps.md` (FAIL-only).
+
+**Nits** (non-blocking) in [`round-1/nits.md`](tickets/119-key-item-input-bindings-and-settings/round-1/nits.md):
+
+1. Profile-aware gamepad hint labels in `getUseKeyItemBinding()` (8BitDo “Stick click” vs “DPad Down”).
+2. Emit `{ keyItemId }` on socket use (deferred per ticket verification until ~121; tracked as backlog).
