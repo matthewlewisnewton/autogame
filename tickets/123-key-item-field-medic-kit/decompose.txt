@@ -1,0 +1,16 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/123-key-item-field-medic-kit/subtickets/01-server-heal-and-ms-restore/ticket.md
+tickets/123-key-item-field-medic-kit/subtickets/02-client-green-pulse-VFX/ticket.md
+tickets/123-key-item-field-medic-kit/subtickets/03-tests-heal-range-cooldown/ticket.md
+```
+
+**Breakdown:**
+
+| # | Sub-ticket | Scope | Verification |
+|---|---|---|---|
+| 01 | Server: AoE heal + MS restore | Update `KEY_ITEM_DEFS` (add `healRadius: 5`, `msRestore: 3`, `cooldownMs: 7000`); add `field_medic_kit` branch to `useKeyItem` handler with radius scan, HP/MS cap, cooldown, `stateUpdate` broadcast | `code` |
+| 02 | Client: green pulse VFX | `triggerHealPulseVFX()` in `renderer.js` (expanding green ring, 600 ms, dispose); wire into `keyItemUsed` handler in `main.js` | `visual` |
+| 03 | Tests: heal, range, cooldown | New `field_medic_kit.test.js` — two players in range heal, out-of-range unchanged, dead skipped, cooldown gate, caster self-heals | `code` |
