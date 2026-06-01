@@ -5232,3 +5232,96 @@ describe('Telepipe suspend and resume', () => {
 		p2.socket.disconnect();
 	});
 });
+
+describe('Socket Integration — useKeyItem dodge_roll', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+	});
+
+	/**
+	 * Connect a client and enter the playing phase via summon-ready debug scenario.
+	 */
+	async function connectAndStartRun() {
+		const { socket } = await connectAndJoinLobby(baseUrl, `dodge-${Date.now()}`);
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+		return { socket };
+	}
+
+	it('useKeyItem dodge_roll moves player and sets cooldown; second emit within cooldown returns on_cooldown', async () => {
+		const { socket } = await connectAndStartRun();
+		const state = testGameState();
+		const player = state.players[socket._playerId];
+
+		const xBefore = player.x;
+		const zBefore = player.z;
+
+		// Set input direction so dodge has a clear direction to dash
+		player.inputDx = 1;
+		player.inputDz = 0;
+
+		// First dodge — should succeed
+		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const result1 = await result1Promise;
+
+		expect(result1.ok).toBe(true);
+		expect(result1.keyItemId).toBe('dodge_roll');
+		expect(result1.cooldownUntil).toBeGreaterThan(Date.now());
+
+		// Player position should have changed (dashed in +X direction)
+		const moved = Math.hypot(player.x - xBefore, player.z - zBefore);
+		expect(moved).toBeGreaterThan(0);
+
+		// keyItemCooldownUntil should be set
+		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
+
+		// Second dodge within cooldown — should be rejected
+		const result2Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const result2 = await result2Promise;
+
+		expect(result2.ok).toBe(false);
+		expect(result2.reason).toBe('on_cooldown');
+		expect(result2.remainingMs).toBeGreaterThan(0);
+
+		socket.disconnect();
+	});
+
+	it('stateSnapshot includes updated player position and keyItemCooldownRemaining after dodge', async () => {
+		const { socket } = await connectAndStartRun();
+		const state = testGameState();
+		const player = state.players[socket._playerId];
+
+		// Ensure no existing cooldown
+		player.keyItemCooldownUntil = 0;
+
+		// Perform dodge
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		const stateUpdatePromise = new Promise((resolve) => {
+			socket.once('stateUpdate', (data) => resolve(data));
+		});
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		await resultPromise;
+		const snapshot = await stateUpdatePromise;
+
+		// Snapshot.players is an object keyed by player ID
+		const snapshotPlayer = snapshot.players[socket._playerId];
+		expect(snapshotPlayer).toBeDefined();
+		// Position should match the player's new position
+		expect(snapshotPlayer.x).toBe(player.x);
+		expect(snapshotPlayer.z).toBe(player.z);
+		// keyItemCooldownRemaining should be > 0
+		expect(snapshotPlayer.keyItemCooldownRemaining).toBeGreaterThan(0);
+
+		socket.disconnect();
+	});
+});

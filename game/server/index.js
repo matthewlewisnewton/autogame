@@ -3071,6 +3071,7 @@ if (typeof module !== 'undefined' && module.exports) {
     COOLDOWN_MS,
     PROJECTILE_HIT_WIDTH,
     TICK_RATE,
+    MOVE_SPEED,
     ENEMY_ATTACK_RANGE,
     ENEMY_ATTACK_RECOVERY_MS,
     GRID_COLS,
