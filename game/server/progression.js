@@ -618,11 +618,10 @@ const KEY_ITEM_DEFS = {
   overclock: {
     id: 'overclock',
     name: 'Overclock',
-    description: 'Temporarily increase attack speed',
-    cooldownMs: 20000,
+    description: 'Next 2 card uses ignore slot cooldown',
+    cooldownMs: 13000,
     type: 'offensive',
-    speedMultiplier: 2.0,
-    durationMs: 5000,
+    charges: 2,
   },
   smoke_bomb: {
     id: 'smoke_bomb',
@@ -2989,6 +2988,7 @@ function stateSnapshot() {
       returnRewardsPreview: previewReturnRewards(id),
       equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
       keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
+      overclockChargesRemaining: p.overclockChargesRemaining || 0,
       isInvulnerable: Date.now() < (p.invulnerableUntil || 0),
       isBlocking: Date.now() < (p.blockingUntil || 0),
       blockingUntil: p.blockingUntil || 0,
