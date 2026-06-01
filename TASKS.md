@@ -19,7 +19,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [120-key-item-lobby-equip-ui](tickets/120-key-item-lobby-equip-ui/)
 
 ## Backlog — Key Items (Abilities)
-- [ ] [121-key-item-dodge-roll](tickets/121-key-item-dodge-roll/)
+- [x] [121-key-item-dodge-roll](tickets/121-key-item-dodge-roll/)
 - [ ] [122-key-item-summon-recall](tickets/122-key-item-summon-recall/)
 - [ ] [123-key-item-field-medic-kit](tickets/123-key-item-field-medic-kit/)
 - [ ] [124-key-item-guard-block](tickets/124-key-item-guard-block/)
@@ -44,3 +44,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
 - [ ] [147-cleanup-key-item-input-bindings-and-settings](tickets/147-cleanup-key-item-input-bindings-and-settings/)
 - [ ] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)
+- [ ] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)

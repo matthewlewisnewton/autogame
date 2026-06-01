@@ -1918,3 +1918,26 @@ None blocking. Runtime is clean and acceptance criteria are satisfied in the wor
 
 See `nits.md` for follow-ups: extend lobby tab integration test to Key Items, and improve harness capture of the Key Items panel.
 
+
+## v0.84 — Key Item: Dodge Roll  (2026-06-01 02:59:48)
+
+- Transient run state (`invulnerableUntil`, `keyItemCooldownUntil`) excluded from persistence (`key-items.test.js`).
+
+## Debug scenarios
+
+This ticket did **not** add or change `?debugScenario=` handlers in game code. Integration tests use pre-existing `summon-ready` via socket `debugScenario` (test-only entry). Normal lobby → ready → dungeon path remains the player flow; no invariant bypass for dodge itself.
+
+## Code quality
+
+- Focused diff across server handler, `damagePlayer`, client HUD/VFX, defs, tests, docs.
+- No page errors; no obvious dead code in the dodge path.
+- `useKeyItem` does not validate `keyItemId === equippedKeyItemId` (client sends equipped id; server trusts payload) — pre-existing pattern, low risk for current single implemented item.
+
+## Remaining gaps
+
+None blocking. Runtime proof is clean; acceptance criteria are implemented and tested. Spec drift on i-frame duration (top-level “one tick” vs 300 ms) is resolved in code per sub-ticket AC and is documented in nits, not as a functional defect.
+
+## Nits (non-blocking)
+
+See `round-1/nits.md` for backlog items: `controls.md` tick wording, visual capture omitting dodge, no client tests for VFX/HUD helpers.
+

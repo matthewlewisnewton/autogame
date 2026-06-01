@@ -1,0 +1,20 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 5 sub-tickets for `121-key-item-dodge-roll`:
+
+```
+tickets/121-key-item-dodge-roll/subtickets/
+├── 01-client-useKeyItem-payload-and-handler/ticket.md
+├── 02-server-invulnerability-flag/ticket.md
+├── 03-server-dash-movement-and-collision/ticket.md
+├── 04-client-dodge-VFX-and-cooldown-UI/ticket.md
+└── 05-tests-dodge-roll-and-docs/ticket.md
+```
+
+**Breakdown:**
+1. **01** — Fix client `useKeyItem` emit (sends `keyItemId` payload) + add `keyItemUsed` response handler
+2. **02** — Add `invulnerableUntil` field to player state and wire into `damagePlayer()` pipeline
+3. **03** — Implement dash movement in `useKeyItem` handler with direction resolution, wall collision, floor slope, and i-frame/cooldown setting
+4. **04** — Client VFX (squash/stretch, invulnerability shimmer) + cooldown HUD indicator
+5. **05** — Unit tests (cooldown, invuln, direction, walls), integration test (socket flow), and `controls.md` documentation
+
+All sub-tickets are `Verification: code`. They are ordered by dependency: client payload fix first (needed for any server-side testing), then server invulnerability infrastructure, then the dash movement that uses it, then client visuals, and finally tests/docs.

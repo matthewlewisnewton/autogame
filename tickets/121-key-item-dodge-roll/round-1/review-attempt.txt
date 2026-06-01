@@ -1,0 +1,13 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no fatal/page errors — game runs cleanly.
+
+**Implementation:** Five commits from baseline implement server dodge (`tryPlayerMove`, `sampleFloorY`, `invulnerableUntil`, 800 ms cooldown), client VFX/HUD, tests, and `controls.md`. Unit + integration tests pass (947 in `coverage.log`).
+
+**Verdict: PASS** — written to [`tickets/121-key-item-dodge-roll/round-1/review.md`](tickets/121-key-item-dodge-roll/round-1/review.md) (last line: `VERDICT: PASS`).
+
+**Note:** Top-level ticket says “one simulation tick” for i-frames; code uses **300 ms** per sub-ticket AC. Behavior is correct and tested; treated as doc/spec drift, not a blocker.
+
+**Nits** (non-blocking): [`round-1/nits.md`](tickets/121-key-item-dodge-roll/round-1/nits.md) — `controls.md` tick wording, capture didn’t press dodge, no client tests for VFX/HUD.
+
+No `gaps.md` (FAIL-only).
