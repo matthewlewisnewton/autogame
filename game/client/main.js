@@ -428,6 +428,7 @@ function returnToGuildLobby(state, { refreshCollection = false } = {}) {
 				if (activeLobbyTab === 'forge') renderPhotonForge();
 				if (activeLobbyTab === 'shop') renderCardShop();
 				if (activeLobbyTab === 'medic') renderGuildMedic();
+				if (activeLobbyTab === 'keyitems') renderKeyItemList();
 			}
 		}
 		if (state.selectedQuestId && state.selectedQuestId !== selectedQuestId) {
@@ -1032,6 +1033,24 @@ function bindSocketHandlers(s) {
 			invalid_player: 'Could not find your hunter',
 		};
 		showMedicError(messages[reason] || `Heal failed: ${reason}`);
+	});
+
+	s.on('keyItemEquipped', (data) => {
+		if (data && data.keyItemId) {
+			const me = myId && gameState?.players ? gameState.players[myId] : null;
+			if (me) me.equippedKeyItemId = data.keyItemId;
+		}
+		renderKeyItemList();
+	});
+
+	s.on('keyItemError', (data) => {
+		const reason = data && data.reason ? data.reason : 'unknown';
+		const messages = {
+			not_in_lobby: 'Key items can only be equipped in the lobby',
+			missing_key_item_id: 'No key item specified',
+			unknown_item: 'Unknown key item',
+		};
+		showKeyItemError(messages[reason] || `Equip failed: ${reason}`);
 	});
 
 	s.on('cardEvolutionResult', (data) => {
@@ -2158,36 +2177,117 @@ function renderGuildMedic() {
 	syncVanguardHud(me, 'lobby');
 }
 
+function showKeyItemError(message) {
+	const errorEl = document.getElementById('key-item-error');
+	if (!errorEl) return;
+	if (message) {
+		errorEl.textContent = message;
+		errorEl.style.display = 'block';
+	} else {
+		errorEl.textContent = '';
+		errorEl.style.display = 'none';
+	}
+}
+
+function renderKeyItemList() {
+	const listEl = document.getElementById('key-item-list');
+	if (!listEl) return;
+
+	listEl.innerHTML = '';
+	showKeyItemError('');
+
+	const me = myId && gameState?.players ? gameState.players[myId] : null;
+	const equippedId = me?.equippedKeyItemId || null;
+
+	const defs = Object.values(keyItemDefs);
+	if (!defs.length) {
+		const hint = document.createElement('p');
+		hint.className = 'key-item-hint';
+		hint.textContent = 'No key items available.';
+		listEl.appendChild(hint);
+		return;
+	}
+
+	for (const def of defs) {
+		const entry = document.createElement('div');
+		entry.className = 'key-item-entry' + (def.id === equippedId ? ' equipped' : '');
+		entry.setAttribute('tabindex', '0');
+		entry.setAttribute('role', 'button');
+		entry.setAttribute('aria-label', `Equip ${def.name}${def.id === equippedId ? ' (equipped)' : ''}`);
+		entry.setAttribute('aria-pressed', String(def.id === equippedId));
+
+		const nameEl = document.createElement('span');
+		nameEl.className = 'key-item-name';
+		nameEl.textContent = def.name;
+
+		const descEl = document.createElement('span');
+		descEl.className = 'key-item-desc';
+		descEl.textContent = def.description || '';
+
+		const cooldownEl = document.createElement('span');
+		cooldownEl.className = 'key-item-cooldown';
+		cooldownEl.textContent = def.cooldownMs != null ? `${(def.cooldownMs / 1000).toFixed(1)}s cooldown` : '';
+
+		entry.appendChild(nameEl);
+		if (descEl.textContent) entry.appendChild(descEl);
+		if (cooldownEl.textContent) entry.appendChild(cooldownEl);
+
+		const tryEquip = () => {
+			if (!socket || !socket.connected) {
+				showKeyItemError('Not connected to server');
+				return;
+			}
+			socket.emit('equipKeyItem', { keyItemId: def.id });
+		};
+
+		entry.addEventListener('click', tryEquip);
+		entry.addEventListener('keydown', (e) => {
+			if (e.key === 'Enter' || e.key === ' ') {
+				e.preventDefault();
+				tryEquip();
+			}
+		});
+
+		listEl.appendChild(entry);
+	}
+}
+
 function setLobbyTab(tab) {
 	activeLobbyTab = tab === 'forge' ? 'forge'
 		: tab === 'shop' ? 'shop'
 			: tab === 'economy' ? 'economy'
 				: tab === 'medic' ? 'medic'
-					: 'deck';
+					: tab === 'keyitems' ? 'keyitems'
+						: 'deck';
 	const deckEditor = document.getElementById('deck-editor');
 	const photonForge = document.getElementById('photon-forge');
 	const cardShop = document.getElementById('card-shop');
 	const cardEconomy = document.getElementById('card-economy');
 	const guildMedic = document.getElementById('guild-medic');
+	const keyItemLoadout = document.getElementById('key-item-loadout');
 	const deckTabBtn = document.getElementById('lobby-tab-deck');
 	const forgeTabBtn = document.getElementById('lobby-tab-forge');
 	const shopTabBtn = document.getElementById('lobby-tab-shop');
 	const economyTabBtn = document.getElementById('lobby-tab-economy');
 	const medicTabBtn = document.getElementById('lobby-tab-medic');
+	const keyItemsTabBtn = document.getElementById('lobby-tab-keyitems');
 	if (deckEditor) deckEditor.classList.toggle('hidden', activeLobbyTab !== 'deck');
 	if (photonForge) photonForge.classList.toggle('hidden', activeLobbyTab !== 'forge');
 	if (cardShop) cardShop.classList.toggle('hidden', activeLobbyTab !== 'shop');
 	if (cardEconomy) cardEconomy.classList.toggle('hidden', activeLobbyTab !== 'economy');
 	if (guildMedic) guildMedic.classList.toggle('hidden', activeLobbyTab !== 'medic');
+	if (keyItemLoadout) keyItemLoadout.classList.toggle('hidden', activeLobbyTab !== 'keyitems');
 	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
 	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
 	if (shopTabBtn) shopTabBtn.classList.toggle('active', activeLobbyTab === 'shop');
 	if (economyTabBtn) economyTabBtn.classList.toggle('active', activeLobbyTab === 'economy');
 	if (medicTabBtn) medicTabBtn.classList.toggle('active', activeLobbyTab === 'medic');
+	if (keyItemsTabBtn) keyItemsTabBtn.classList.toggle('active', activeLobbyTab === 'keyitems');
 	if (activeLobbyTab === 'forge') renderPhotonForge();
 	if (activeLobbyTab === 'shop') renderCardShop();
 	if (activeLobbyTab === 'economy') renderCardEconomy();
 	if (activeLobbyTab === 'medic') renderGuildMedic();
+	if (activeLobbyTab === 'keyitems') renderKeyItemList();
 }
 
 function renderCardShopSellList() {
@@ -2387,6 +2487,9 @@ if (document.getElementById('lobby-tab-shop')) {
 }
 if (document.getElementById('lobby-tab-medic')) {
 	document.getElementById('lobby-tab-medic').addEventListener('click', () => setLobbyTab('medic'));
+}
+if (document.getElementById('lobby-tab-keyitems')) {
+	document.getElementById('lobby-tab-keyitems').addEventListener('click', () => setLobbyTab('keyitems'));
 }
 const medicHealBtnEl = document.getElementById('medic-heal-btn');
 if (medicHealBtnEl) {
@@ -3148,6 +3251,7 @@ window.__resetHandLayoutLock = resetHandLayoutLock;
 window.renderDeckEditor = renderDeckEditor;
 window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
+window.renderKeyItemList = renderKeyItemList;
 window.setLobbyTab = setLobbyTab;
 window.__setLobbyTabState = (tab, instanceId) => {
 	if (tab) activeLobbyTab = tab;
