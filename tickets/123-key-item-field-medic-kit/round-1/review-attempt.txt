@@ -1,0 +1,22 @@
+## Review complete
+
+Wrote **[`tickets/123-key-item-field-medic-kit/round-1/review.md`](tickets/123-key-item-field-medic-kit/round-1/review.md)** and **[`nits.md`](tickets/123-key-item-field-medic-kit/round-1/nits.md)**. No `gaps.md` (PASS only).
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: clean (no `pageerror` / `[fatal]`; 409 on auth is benign)
+
+### Implementation (3 commits since `2116904f`)
+- **Server:** AoE heal (`healPercent` 0.4, radius 5 m), +3 MS, 7 s cooldown, `stateUpdate` to lobby; `medic-kit-ready` debug scenario (dev-only)
+- **Client:** `triggerHealPulseVFX` green ring on successful `keyItemUsed`
+- **Tests:** 6 integration cases in `field_medic_kit.test.js`; coverage run 866 passed
+
+### Acceptance criteria
+All met. Optional HUD heal numbers omitted per ticket. Capture was fallback smoke only (no in-browser medic-kit demo); code + tests are the proof.
+
+### Nits (non-blocking)
+1. Green pulse only on caster client (allies miss VFX)  
+2. Hardcoded `healRadius` in renderer vs server def  
+3. Stale self-only description string  
+
+**VERDICT: PASS**

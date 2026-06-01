@@ -1964,3 +1964,26 @@ None blocking. Runtime clean; acceptance criteria met in server code and tests.
 
 See `nits.md` for backlog items (stale client test mock, optional HUD for `no_minions`, fixed ring radius, agent-guided capture for recall).
 
+
+## v0.86 — Key Item: Field Medic Kit  (2026-06-01 06:17:06)
+
+
+---
+
+## Capture & QA limitations (non-blocking)
+
+- Fallback capture (`01-initial`, movement probes) does not show medic-kit use or green pulse in screenshots.
+- Sub-ticket 02 was `visual` verification; holistic browser proof of VFX was not in this capture plan. Code and sub-ticket QA are the evidence for VFX.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime is healthy; acceptance criteria are satisfied in code and tests.
+
+---
+
+## Nits (non-blocking)
+
+See `round-1/nits.md` for follow-up tickets: ally-visible heal VFX, shared heal-radius constant, outdated key-item description string.
+
