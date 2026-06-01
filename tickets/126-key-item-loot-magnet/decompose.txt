@@ -1,0 +1,12 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/126-key-item-loot-magnet/subtickets/01-server-loot-pull/ticket.md
+tickets/126-key-item-loot-magnet/subtickets/02-tests-loot-magnet/ticket.md
+```
+
+**Rationale:** Loot Magnet is an instant-pull utility with no client-side VFX (loot entities already render; their positions just change). The work is purely server-side state mutation + tests, so 2 sub-tickets suffice:
+
+1. **01-server-loot-pull** — Fix `KEY_ITEM_DEFS` params (cooldown 8s, radius 8m), add to implementation gate, write the pull/collect handler with wall collision, update the existing `not_implemented` test.
+2. **02-tests-loot-magnet** — Dedicated test file covering in-range pull, auto-collect, out-of-range skip, already-collected ignore, cooldown enforcement, and wall boundary.

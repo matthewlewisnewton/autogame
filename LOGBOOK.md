@@ -2033,3 +2033,26 @@ None blocking. Runtime is healthy; acceptance criteria and tests are satisfied.
 
 See `nits.md` if present — duplicate test suites, no dedicated simulation cleanup test, capture did not exercise flare visually.
 
+
+## v0.89 — Key Item: Loot Magnet  (2026-06-01 13:17:12)
+
+- Pre-existing pattern: `useKeyItem` does not verify `keyItemId === player.equippedKeyItemId` (client sends equipped id; tests emit directly). Not introduced by this ticket.
+
+---
+
+## Coverage (visibility)
+
+`round-1/coverage.log` includes full `loot_magnet.test.js` run. New handler lines in `index.js` are exercised by unit tests; global thresholds are harness-disabled for this ticket.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime is clean; acceptance criteria and sub-ticket specs are satisfied.
+
+---
+
+## Nits (non-blocking)
+
+See `round-1/nits.md` for backlog items (test naming clarity, optional client feedback).
+
