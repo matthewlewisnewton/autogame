@@ -298,9 +298,12 @@ function applyPlayerMovement() {
     let dz = player.inputDz;
     if (mag > 1) { dx /= mag; dz /= mag; }
 
+    // Slow movement to 20% while guard_block is active
+    const playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+
     const prevX = player.x;
     const prevZ = player.z;
-    const result = tryPlayerMove(player.x, player.z, dx, dz, step, colliders);
+    const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, colliders);
     player.x = result.x;
     player.z = result.z;
     const floorY = sampleFloorY(_gameState.layout, result.x, result.z);

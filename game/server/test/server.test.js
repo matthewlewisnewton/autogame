@@ -3992,6 +3992,9 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			equippedKeyItemId: 'dodge_roll',
 			keyItemCooldownRemaining: 0,
 			isInvulnerable: false,
+			isBlocking: false,
+			blockingUntil: 0,
+			blockingYaw: 0,
 		});
 	});
 
