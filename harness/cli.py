@@ -124,7 +124,9 @@ def _cmd_worker(name: str, agent: str) -> int:
     the shared HARNESS_PROGRESS_DIR. Does NOT start the progress server (the
     dispatcher owns the single one). Returns ticket()'s PipelineResult as the
     exit code so the dispatcher can interpret the outcome."""
+    from harness.dispatch.worktree_setup import install_deps
     from harness.pipelines.ticket import TicketContext, ticket
+    from harness.pipelines.result import PipelineResult
     from harness.telemetry.progress import emit_progress_event
     _write_implementer_override(Path.cwd(), agent)
     workspace = _build_workspace()
@@ -135,6 +137,12 @@ def _cmd_worker(name: str, agent: str) -> int:
         "game_port": workspace.ports.game_server, "vite_port": workspace.ports.vite,
         "worktree": str(workspace.root),
     })
+    # Fresh worktree has no node_modules — install before the pipeline runs the
+    # game. A failure here is infra, not the agent's fault: return ESCALATE so
+    # the dispatcher requeues without tripping the agent circuit-breaker.
+    if not install_deps(workspace.root):
+        emit_progress_event("worker_setup_failed", {"ticket": name, "agent": agent})
+        return int(PipelineResult.ESCALATE)
     rc = ticket(TicketContext(
         workspace=workspace, roster=roster, name=name, tdir=tdir,
         tunables=roster.tunables,
