@@ -35,7 +35,8 @@ from harness.workspace.repo import Repo, WorktreeWorkspace
 
 @dataclass
 class WorkerHandle:
-    ticket_id: str
+    ticket_id: str        # beads bead id — for queue close/requeue
+    ticket_name: str      # tickets/<name> dir — for the worktree + `harness worker <name>`
     agent: str
     difficulty: str
     worktree: WorktreeWorkspace
@@ -53,9 +54,10 @@ QuotaFn = Callable[[str], bool]
 OnPassFn = Callable[[WorkerHandle], None]
 
 
-def subprocess_spawn(ticket_id: str, agent: str, worktree: WorktreeWorkspace,
+def subprocess_spawn(ticket_name: str, agent: str, worktree: WorktreeWorkspace,
                      ports: PortAllocation) -> subprocess.Popen:
-    """Launch `harness worker` in the worktree with ports + shared telemetry."""
+    """Launch `harness worker <ticket_name>` in the worktree with ports + shared
+    telemetry."""
     env = {
         **os.environ,
         "HARNESS_GAME_PORT": str(ports.game_server),
@@ -64,7 +66,7 @@ def subprocess_spawn(ticket_id: str, agent: str, worktree: WorktreeWorkspace,
         "HARNESS_PROGRESS_DIR": str(progress_dir()),
     }
     return subprocess.Popen(
-        [sys.executable, "-m", "harness", "worker", ticket_id, "--agent", agent],
+        [sys.executable, "-m", "harness", "worker", ticket_name, "--agent", agent],
         cwd=str(worktree.root), env=env, start_new_session=True,
     )
 
@@ -79,6 +81,7 @@ class Dispatcher:
     spawn: SpawnFn = subprocess_spawn
     quota_classifier: Optional[QuotaFn] = None
     on_pass: Optional[OnPassFn] = None
+    merge_drain: Optional[Callable[[], None]] = None  # drain one merge per tick (set by launcher)
     worktree_factory: Optional[Callable[[str, PortAllocation], WorktreeWorkspace]] = None
     tick_seconds: float = 5.0
 
@@ -96,6 +99,8 @@ class Dispatcher:
     # --- one scheduling pass (pure given injected I/O) ------------------ #
     def tick(self) -> None:
         self._reap()
+        if self.merge_drain is not None:
+            self.merge_drain()  # integrate one passed branch into main this tick
         for difficulty in self.lanes:
             while self._free_ports:
                 agent = self.registry.select_and_acquire(difficulty)
@@ -105,7 +110,8 @@ class Dispatcher:
                 if issue is None:
                     self.registry.release(agent)  # nothing ready in this lane; give the slot back
                     break
-                self._spawn_worker(issue["id"], agent, difficulty)
+                self._spawn_worker(issue["id"], issue.get("title") or issue["id"],
+                                   agent, difficulty)
 
     def idle(self) -> bool:
         """True when nothing is running and no lane has ready work."""
@@ -114,20 +120,21 @@ class Dispatcher:
         return all(not self.queue.ready(difficulty=d, limit=1) for d in self.lanes)
 
     # --- internals ------------------------------------------------------ #
-    def _spawn_worker(self, ticket_id: str, agent: str, difficulty: str) -> None:
+    def _spawn_worker(self, bead_id: str, ticket_name: str, agent: str,
+                      difficulty: str) -> None:
         ports = self._free_ports.pop()
         try:
-            wt = self.worktree_factory(ticket_id, ports)
+            wt = self.worktree_factory(ticket_name, ports)
         except Exception as e:  # creation failed → undo the claim + slot reservation
-            log(f"[dispatch] worktree create failed for {ticket_id}: {e!r} — requeuing")
+            log(f"[dispatch] worktree create failed for {ticket_name}: {e!r} — requeuing")
             self._free_ports.append(ports)
             self.registry.release(agent)
-            self.queue.requeue(ticket_id, note=f"worktree create failed: {e!r}")
+            self.queue.requeue(bead_id, note=f"worktree create failed: {e!r}")
             return
-        proc = self.spawn(ticket_id, agent, wt, ports)
-        self._workers[ticket_id] = WorkerHandle(ticket_id, agent, difficulty, wt, proc)
+        proc = self.spawn(ticket_name, agent, wt, ports)
+        self._workers[bead_id] = WorkerHandle(bead_id, ticket_name, agent, difficulty, wt, proc)
         emit_progress_event("dispatch_spawn", {
-            "ticket": ticket_id, "agent": agent, "difficulty": difficulty,
+            "ticket": ticket_name, "agent": agent, "difficulty": difficulty,
             "game_port": ports.game_server, "vite_port": ports.vite,
         })
 
@@ -143,7 +150,7 @@ class Dispatcher:
 
     def _handle_outcome(self, w: WorkerHandle, rc: int) -> None:
         if rc == int(PipelineResult.PASS):
-            emit_progress_event("dispatch_pass", {"ticket": w.ticket_id, "agent": w.agent})
+            emit_progress_event("dispatch_pass", {"ticket": w.ticket_name, "agent": w.agent})
             if self.on_pass is not None:
                 self.on_pass(w)   # merge queue takes the branch + owns teardown
             return
@@ -153,7 +160,8 @@ class Dispatcher:
             self.registry.disable(w.agent, reason="quota or unavailable")
             emit_progress_event("agent_disabled", {"agent": w.agent, "reason": "quota"})
         self.queue.requeue(w.ticket_id, note=f"{w.agent} failed (rc={rc})")
-        emit_progress_event("dispatch_requeue", {"ticket": w.ticket_id, "agent": w.agent, "rc": rc})
+        emit_progress_event("dispatch_requeue",
+                            {"ticket": w.ticket_name, "agent": w.agent, "rc": rc})
         w.worktree.remove_worktree()
 
     # --- run loop ------------------------------------------------------- #

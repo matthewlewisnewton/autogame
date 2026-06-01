@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -32,6 +33,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_worker.add_argument("--agent", required=True,
                           help="Agent name (from roles.yaml) to force as the implementer primary")
 
+    p_factory = sub.add_parser("factory", help="Run the parallel dispatcher (gastown factory)")
+    p_factory.add_argument("--workers", type=int, default=3,
+                           help="Concurrent worktree slots / port pairs (default 3)")
+    p_factory.add_argument("--enable", metavar="AGENT",
+                           help="Re-enable a circuit-broken agent and exit")
+    p_factory.add_argument("--max-idle-ticks", type=int, default=0,
+                           help="Stop after N consecutive idle ticks (0 = run forever)")
+
     p_prog = sub.add_parser("progress", help="Manage the events.ndjson HTTP server")
     p_prog.add_argument("action", choices=["start", "stop", "status"])
 
@@ -52,6 +61,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_subtask(args.subdir)
     if args.cmd == "worker":
         return _cmd_worker(args.name, args.agent)
+    if args.cmd == "factory":
+        return _cmd_factory(args.workers, args.enable, args.max_idle_ticks)
     if args.cmd == "progress":
         return _cmd_progress(args.action)
     if args.cmd == "doctor":
@@ -98,6 +109,17 @@ def _cmd_ticket(name: str) -> int:
         workspace=workspace, roster=roster, name=name, tdir=tdir,
         tunables=roster.tunables,
     ))
+
+
+def _cmd_factory(workers: int, enable: Optional[str], max_idle_ticks: int) -> int:
+    if enable:
+        from harness.dispatch.factory import default_registry
+        reg = default_registry(Path.cwd() / "harness" / "agents_health.json")
+        reg.enable(enable)
+        print(f"[factory] re-enabled agent: {enable}")
+        return 0
+    from harness.dispatch.factory import run_factory
+    return run_factory(str(Path.cwd()), workers=workers, max_idle_ticks=max_idle_ticks)
 
 
 def _write_implementer_override(root: Path, agent: str) -> None:
