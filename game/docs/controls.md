@@ -33,6 +33,14 @@ Configure what happens when you press Z again while already locked in **Settings
 - **Cycle target (OoT / PSO)** — switch to the next closest enemy
 - **Re-acquire nearest** — refresh lock onto the current nearest enemy, or unlock if none are in range
 
+## Key Item
+
+The **key item** action triggers the equipped key item (e.g. dodge roll) during dungeon runs.
+
+- **Keyboard:** **E** (default, remappable in Settings)
+- **Gamepad:** **D-pad Down** (default, remappable in Settings)
+- **8BitDo 64:** **Stick click** (button 13 — same SDL index; remappable)
+
 ## Combat
 
 Card slots and deck controls are unchanged from keyboard/gamepad bindings documented in the client UI.

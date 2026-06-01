@@ -360,4 +360,91 @@ describe('input.js', () => {
 		expect(binding.gamepad).toBe(11);
 		expect(binding.gamepadHint).toBe('Btn 11');
 	});
+
+	it('useKeyItem does not fire on key repeat', () => {
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		const repeatEvent = new KeyboardEvent('keydown', { key: 'e', repeat: true });
+		Object.defineProperty(repeatEvent, 'repeat', { value: true, enumerable: true });
+		window.dispatchEvent(repeatEvent);
+		expect(onUseKeyItem).not.toHaveBeenCalled();
+	});
+
+	it('useKeyItem respects canUseGameActions', () => {
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => false,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+		expect(onUseKeyItem).not.toHaveBeenCalled();
+	});
+
+	it('patched keyboard binding changes useKeyItem key', () => {
+		patchSettings({ keyboard: { bindings: { useKeyItem: 'q' } } });
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'q' }));
+		expect(onUseKeyItem).toHaveBeenCalledTimes(1);
+	});
+
+	it('gamepad button 13 triggers onUseKeyItem', () => {
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(14).fill({ pressed: false, value: 0 });
+		buttons[13] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onUseKeyItem).toHaveBeenCalledTimes(1);
+	});
+
+	it('8BitDo 64 profile maps useKeyItem to button 13', () => {
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(14).fill({ pressed: false, value: 0 });
+		buttons[13] = { pressed: true, value: 1 };
+		mockGamepad(0, {
+			id: '8BitDo 64 (Vendor: 2dc8 Product: 1930)',
+			buttons,
+			axes: [0, 0, 0, 0],
+		});
+		pollInput();
+		expect(onUseKeyItem).toHaveBeenCalledTimes(1);
+	});
+
+	it('custom gamepad binding overrides useKeyItem', () => {
+		patchSettings({ gamepad: { bindings: { useKeyItem: { type: 'button', index: 14 } } } });
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(15).fill({ pressed: false, value: 0 });
+		buttons[14] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onUseKeyItem).toHaveBeenCalledTimes(1);
+		// Default button 13 should NOT trigger
+		onUseKeyItem.mockClear();
+		resetInputState();
+		installGamepadMock();
+		const buttons2 = Array(14).fill({ pressed: false, value: 0 });
+		buttons2[13] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons: buttons2, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onUseKeyItem).not.toHaveBeenCalled();
+	});
 });
