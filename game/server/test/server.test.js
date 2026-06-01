@@ -483,10 +483,10 @@ describe('damagePlayer(playerId, amount)', () => {
 			hp: 100,
 			rotation: 0,
 			blockingUntil: now + 1000,
-			blockingYaw: 0, // facing +Z (angle 0)
+			blockingYaw: 0, // facing +X
 		});
-		// Enemy directly in front of player (along +Z axis, angle 0 from player)
-		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		// Enemy directly in front of player (along +X axis, angle 0 from player)
+		gameState.enemies.push({ id: 'e1', x: 3, z: 0, hp: 50, type: 'grunt' });
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		// damageReduction = 0.7 → remaining = 100 * 0.3 = 30
 		expect(gameState.players['p1'].hp).toBe(70);
@@ -499,10 +499,10 @@ describe('damagePlayer(playerId, amount)', () => {
 			hp: 100,
 			rotation: 0,
 			blockingUntil: now + 1000,
-			blockingYaw: 0, // facing +Z
+			blockingYaw: 0, // facing +X
 		});
-		// Enemy directly behind player (along -Z axis, angle PI from player)
-		gameState.enemies.push({ id: 'e1', x: 0, z: -3, hp: 50, type: 'grunt' });
+		// Enemy directly behind player (along -X axis, angle PI from player)
+		gameState.enemies.push({ id: 'e1', x: -3, z: 0, hp: 50, type: 'grunt' });
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		// Full damage — attacker is behind (outside 150° arc)
 		expect(gameState.players['p1'].hp).toBe(0);
@@ -518,8 +518,8 @@ describe('damagePlayer(playerId, amount)', () => {
 		});
 		// Attacker at ~75° (just inside 150° arc)
 		const angle = (75 * Math.PI) / 180;
-		const ex = Math.sin(angle) * 3; // x = sin(angle) * dist
-		const ez = Math.cos(angle) * 3; // z = cos(angle) * dist
+		const ex = Math.cos(angle) * 3; // x = cos(angle) * dist
+		const ez = Math.sin(angle) * 3; // z = sin(angle) * dist
 		gameState.enemies.push({ id: 'e1', x: ex, z: ez, hp: 50, type: 'grunt' });
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		expect(gameState.players['p1'].hp).toBe(70);
@@ -535,8 +535,8 @@ describe('damagePlayer(playerId, amount)', () => {
 		});
 		// Attacker at ~76° (just outside 150° arc)
 		const angle = (76 * Math.PI) / 180;
-		const ex = Math.sin(angle) * 3;
-		const ez = Math.cos(angle) * 3;
+		const ex = Math.cos(angle) * 3;
+		const ez = Math.sin(angle) * 3;
 		gameState.enemies.push({ id: 'e1', x: ex, z: ez, hp: 50, type: 'grunt' });
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		expect(gameState.players['p1'].hp).toBe(0);
@@ -551,7 +551,7 @@ describe('damagePlayer(playerId, amount)', () => {
 			blockingYaw: 0,
 			invulnerableUntil: now + 500,
 		});
-		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		gameState.enemies.push({ id: 'e1', x: 3, z: 0, hp: 50, type: 'grunt' });
 		const result = damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		expect(result).toBeNull();
 		expect(gameState.players['p1'].hp).toBe(100);
@@ -565,7 +565,7 @@ describe('damagePlayer(playerId, amount)', () => {
 			blockingUntil: now - 100, // already expired
 			blockingYaw: 0,
 		});
-		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		gameState.enemies.push({ id: 'e1', x: 3, z: 0, hp: 50, type: 'grunt' });
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		expect(gameState.players['p1'].hp).toBe(0);
 	});
@@ -579,7 +579,7 @@ describe('damagePlayer(playerId, amount)', () => {
 			blockingYaw: 0,
 		});
 		// Minion in front of player
-		gameState.minions.push({ id: 'm1', ownerId: 'p2', x: 0, z: 3, hp: 30 });
+		gameState.minions.push({ id: 'm1', ownerId: 'p2', x: 3, z: 0, hp: 30 });
 		damagePlayer('p1', 100, { attackerId: 'm1' });
 		expect(gameState.players['p1'].hp).toBe(70);
 	});
@@ -592,7 +592,7 @@ describe('damagePlayer(playerId, amount)', () => {
 			blockingUntil: now + 1000,
 			blockingYaw: 0,
 		});
-		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 0, type: 'grunt' });
+		gameState.enemies.push({ id: 'e1', x: 3, z: 0, hp: 0, type: 'grunt' });
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		// Attacker not found → no position → no reduction
 		expect(gameState.players['p1'].hp).toBe(0);
@@ -608,7 +608,7 @@ describe('damagePlayer(playerId, amount)', () => {
 			blockingUntil: now + 1000,
 			blockingYaw: 0,
 		});
-		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		gameState.enemies.push({ id: 'e1', x: 3, z: 0, hp: 50, type: 'grunt' });
 		// 100 damage → block reduces to 30 → shield absorbs 10 → 20 hits HP
 		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
 		expect(gameState.players['p1'].hp).toBe(80);

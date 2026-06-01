@@ -1336,10 +1336,10 @@ function getAttackerPosition(options) {
 
 /**
  * Compute the angle (in the XZ plane) from the player to an attacker position.
- * Returns radians: 0 = +X direction, increasing toward +Z.
+ * Returns radians: 0 = +X direction, increasing toward +Z (matches rotation = atan2(z, x)).
  */
 function angleFromPlayerTo(attackerPos, player) {
-  return Math.atan2(attackerPos.x - player.x, attackerPos.z - player.z);
+  return Math.atan2(attackerPos.z - player.z, attackerPos.x - player.x);
 }
 
 function findEnemyById(enemyId) {

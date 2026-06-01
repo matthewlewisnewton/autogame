@@ -88,20 +88,20 @@ function createBlockingPlayer(overrides = {}) {
 /**
  * Create an enemy at a given angle (radians) as seen by angleFromPlayerTo.
  *
- * angleFromPlayerTo computes: Math.atan2(attacker.x - player.x, attacker.z - player.z)
+ * angleFromPlayerTo computes: Math.atan2(attacker.z - player.z, attacker.x - player.x)
  * So to place an enemy at a specific computed angle:
- *   enemy.x = player.x + sin(angle) * distance
- *   enemy.z = player.z + cos(angle) * distance
+ *   enemy.x = player.x + cos(angle) * distance
+ *   enemy.z = player.z + sin(angle) * distance
  *
- * angle = 0  → enemy at +Z (directly "in front" when blockingYaw = 0)
- * angle = PI → enemy at -Z (directly behind)
+ * angle = 0   → enemy at +X (directly "in front" when blockingYaw = 0)
+ * angle = PI  → enemy at -X (directly behind)
  */
 function createEnemyAtAngle(playerX, playerZ, angle, distance) {
 	return {
 		id: 'test-enemy',
 		type: 'grunt',
-		x: playerX + Math.sin(angle) * distance,
-		z: playerZ + Math.cos(angle) * distance,
+		x: playerX + Math.cos(angle) * distance,
+		z: playerZ + Math.sin(angle) * distance,
 		y: 0.5,
 		hp: 50,
 		maxHp: 50,
