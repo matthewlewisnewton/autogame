@@ -1,0 +1,6 @@
+Review complete. I wrote:
+
+- `tickets/127-key-item-overclock/round-1/review.md`
+- `tickets/127-key-item-overclock/round-1/gaps.md`
+
+Verdict is `FAIL` due to one blocking acceptance gap: unused overclock charges are not cleared on run end/return/redeploy and can carry into a later run. No `nits.md` was created.

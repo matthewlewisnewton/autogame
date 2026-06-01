@@ -1,0 +1,7 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created sub-tickets:
+
+- `/home/matt/workspace/autogame/tickets/127-key-item-overclock/subtickets/04-server-overclock-run-end-expiry/ticket.md` — Server fix: clear `overclockChargesRemaining` in `checkRunTerminalState`, `returnPlayersToLobby`, `giveUpRun`, and `checkAllReady`
+- `/home/matt/workspace/autogame/tickets/127-key-item-overclock/subtickets/05-tests-overclock-lifecycle/ticket.md` — Tests: verify charges expire on victory, failure, give-up, return-to-lobby, and fresh run start
+
+The existing sub-tickets 01–03 are kept as-is (correctly scoped, just missing the lifecycle coverage that 04+05 now provide).
