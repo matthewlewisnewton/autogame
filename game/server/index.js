@@ -780,6 +780,8 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     slotCooldowns: [null, null, null, null, null, null],
     nextDrawAt: null,
     extracted: false,
+    equippedKeyItemId: 'dodge_roll',
+    keyItemCooldownUntil: 0,
   };
 
   if (savedData) {
@@ -877,6 +879,8 @@ function joinPlayerToLobby(socket, lobby) {
         : player.selectedDeck;
     }
     normalizePlayerInventory(player);
+    if (player.equippedKeyItemId == null) player.equippedKeyItemId = 'dodge_roll';
+    if (player.keyItemCooldownUntil == null) player.keyItemCooldownUntil = 0;
   }
 
   if (state.gamePhase === 'lobby') {
