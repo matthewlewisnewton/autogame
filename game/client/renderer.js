@@ -1031,6 +1031,63 @@ export function flashMesh(mesh, color, durationMs) {
 	}, durationMs);
 }
 
+// ── Dash VFX (squash + ghost trail) ──
+
+/**
+ * Trigger a squash-and-stretch effect on the local player mesh,
+ * plus a short-lived ghost clone at the current position.
+ * @param {string} playerId
+ */
+export function triggerDashVFX(playerId) {
+	const mesh = playersMeshes[playerId];
+	if (!mesh || !mesh.geometry || !mesh.material) return;
+
+	// Squash: flatten Y, widen X/Z
+	mesh.scale.set(1.3, 0.7, 1.3);
+
+	// Lerp scale back to (1,1,1) over 150ms
+	const startTime = performance.now();
+	const squashDuration = 150;
+	function restoreScale() {
+		const t = Math.min((performance.now() - startTime) / squashDuration, 1);
+		const s = 1 + (1.3 - 1) * (1 - t);
+		const sy = 0.7 + (1 - 0.7) * t;
+		mesh.scale.set(s, sy, s);
+		if (t < 1) requestAnimationFrame(restoreScale);
+	}
+	requestAnimationFrame(restoreScale);
+
+	// Ghost clone at current position that fades over 200ms
+	const ghost = new THREE.Mesh(
+		mesh.geometry,
+		new THREE.MeshStandardMaterial({
+			color: mesh.material.color.getHex(),
+			transparent: true,
+			opacity: 0.45,
+			depthWrite: false,
+		})
+	);
+	ghost.position.copy(mesh.position);
+	ghost.rotation.copy(mesh.rotation);
+	ghost.scale.setScalar(0.95);
+	scene.add(ghost);
+
+	const ghostStart = performance.now();
+	const ghostDuration = 200;
+	function fadeGhost() {
+		const gt = Math.min((performance.now() - ghostStart) / ghostDuration, 1);
+		ghost.material.opacity = 0.45 * (1 - gt);
+		if (gt < 1) {
+			requestAnimationFrame(fadeGhost);
+		} else {
+			scene.remove(ghost);
+			// Don't dispose geometry — it's shared with the player mesh
+			ghost.material.dispose();
+		}
+	}
+	requestAnimationFrame(fadeGhost);
+}
+
 // ── Floating damage numbers ──
 
 /**
@@ -2457,6 +2514,17 @@ export function animate(timestamp) {
 				playersMeshes[myId].material.color.setHex(0x808080);
 			} else {
 				playersMeshes[myId].material.color.setHex(0x3b82f6);
+			}
+
+			// Invulnerability shimmer: semi-transparent when i-frames are active (not when dead)
+			if (!isDead && me && me.isInvulnerable) {
+				playersMeshes[myId].material.transparent = true;
+				playersMeshes[myId].material.opacity = 0.5;
+				playersMeshes[myId].material.depthWrite = false;
+			} else {
+				playersMeshes[myId].material.transparent = false;
+				playersMeshes[myId].material.opacity = 1;
+				playersMeshes[myId].material.depthWrite = true;
 			}
 
 			// Detect local player HP drop — flash red + spawn damage number
