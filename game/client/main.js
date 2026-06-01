@@ -710,6 +710,9 @@ initInput({
 	onToggleDeck: () => {
 		if (gameState && gameState.gamePhase === 'playing') toggleDeckViewer();
 	},
+	onUseKeyItem: () => {
+		if (gameState && gameState.gamePhase === 'playing' && socket) socket.emit('useKeyItem');
+	},
 	canUseGameActions: () => gameState && gameState.gamePhase === 'playing',
 });
 
@@ -2824,7 +2827,7 @@ function syncUseKeyItemBindingUI() {
 		useKeyItemKeyInputEl.value = binding.keyboard.toUpperCase();
 	}
 	if (useKeyItemGamepadLabelEl) {
-		useKeyItemGamepadLabelEl.textContent = `GP Btn ${binding.gamepad}`;
+		useKeyItemGamepadLabelEl.textContent = binding.gamepadHint;
 	}
 }
 

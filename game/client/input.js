@@ -278,6 +278,14 @@ const STANDARD_BUTTON_HINTS = {
 	3: 'Y',
 	4: 'LB',
 	5: 'RB',
+	6: 'LT',
+	7: 'RT',
+	8: 'Back',
+	9: 'Start',
+	12: 'DPad Up',
+	13: 'DPad Down',
+	14: 'DPad Left',
+	15: 'DPad Right',
 };
 
 const EIGHTBITDO_64_SLOT_HINTS = {
@@ -410,7 +418,7 @@ export function getHandModifierGamepadButton() {
 
 /**
  * Resolved binding for useKeyItem action.
- * @returns {{ keyboard: string, gamepad: number }}
+ * @returns {{ keyboard: string, gamepad: number, gamepadHint: string }}
  */
 export function getUseKeyItemBinding() {
 	const kbBindings = getKeyboardBindings();
@@ -421,7 +429,8 @@ export function getUseKeyItemBinding() {
 	if (customGamepad && customGamepad.type === 'button' && Number.isInteger(customGamepad.index)) {
 		gamepadIndex = customGamepad.index;
 	}
-	return { keyboard: keyboardKey, gamepad: gamepadIndex };
+	const gamepadHint = STANDARD_BUTTON_HINTS[gamepadIndex] ?? `Btn ${gamepadIndex}`;
+	return { keyboard: keyboardKey, gamepad: gamepadIndex, gamepadHint };
 }
 
 /** Test-only: reset key state */
