@@ -1983,6 +1983,14 @@ function updateMinions() {
   // Cleanup dead enemies after minion attacks
   _progression().cleanupAfterDamage();
 
+  // Cleanup expired revealedUntil on enemies (flare_beacon)
+  const nowTick = Date.now();
+  for (const enemy of _gameState.enemies) {
+    if (enemy.revealedUntil && nowTick >= enemy.revealedUntil) {
+      delete enemy.revealedUntil;
+    }
+  }
+
   // Decrement TTL and remove expired/dead minions
   for (const minion of _gameState.minions) {
     minion.ttl -= dt;
