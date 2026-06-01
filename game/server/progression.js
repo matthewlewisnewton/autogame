@@ -1199,7 +1199,8 @@ function extractPersistentData(player) {
     x: player.x || 0,
     y: player.y || 0.5,
     z: player.z || 0,
-    rotation: player.rotation || 0
+    rotation: player.rotation || 0,
+    equippedKeyItemId: player.equippedKeyItemId || 'dodge_roll'
   };
 }
 
@@ -2980,6 +2981,8 @@ function stateSnapshot() {
       debugScenario: p.debugScenario,
       extracted: !!p.extracted,
       returnRewardsPreview: previewReturnRewards(id),
+      equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
+      keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
     };
   }
 

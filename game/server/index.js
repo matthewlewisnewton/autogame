@@ -806,6 +806,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     player.y = savedData.y ?? DEFAULT_FLOOR_Y;
     player.z = savedData.z ?? player.z;
     player.rotation = savedData.rotation ?? player.rotation;
+    player.equippedKeyItemId = savedData.equippedKeyItemId || 'dodge_roll';
   }
 
   normalizePlayerInventory(player);
@@ -886,6 +887,7 @@ function joinPlayerToLobby(socket, lobby) {
       player.selectedDeck = savedData.selectedDeck && savedData.selectedDeck.length > 0
         ? normalizeSelectedDeck(savedData.selectedDeck, player.inventory)
         : player.selectedDeck;
+      player.equippedKeyItemId = savedData.equippedKeyItemId || 'dodge_roll';
     }
     normalizePlayerInventory(player);
     if (player.equippedKeyItemId == null) player.equippedKeyItemId = 'dodge_roll';

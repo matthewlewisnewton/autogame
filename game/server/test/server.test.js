@@ -3951,6 +3951,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			inventory: undefined,
 			debugScenario: null,
 			returnRewardsPreview: null,
+			equippedKeyItemId: 'dodge_roll',
+			keyItemCooldownRemaining: 0,
 		});
 	});
 
