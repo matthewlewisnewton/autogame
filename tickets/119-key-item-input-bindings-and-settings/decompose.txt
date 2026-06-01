@@ -1,0 +1,13 @@
+# 119-key-item-input-bindings-and-settings — Decomposition
+
+5 sub-tickets in dependency order:
+
+| # | Folder | Scope |
+|--|--------|-------|
+| 01 | `01-input-action-useKeyItem` | Add `useKeyItem` to ACTIONS, DEFAULT_KEYBOARD (`e`), `onKeyDown` dispatch, `onUseKeyItem` callback in `initInput`, `getActionLabels` entry |
+| 02 | `02-gamepad-bindings-useKeyItem` | Add `useKeyItem` to STANDARD_PROFILE (btn 13) and EIGHTBITDO_64_PROFILE (btn 13), DEFAULT_GAMEPAD_BUTTONS, `pollInput` dispatch |
+| 03 | `03-settings-persistence-and-ui` | Add `keyboard.bindings.useKeyItem` and `gamepad.bindings.useKeyItem` to settings defaults (server + client), deep-merge, Settings UI remapping row, `getKeyboardBindings` helper, `getUseKeyItemBinding()` export |
+| 04 | `04-main-wiring-and-socket` | Wire `onUseKeyItem` in `main.js` to emit `useKeyItem` socket during active run; export `getUseKeyItemBinding()` for HUD consumption |
+| 05 | `05-tests-and-docs` | Unit tests for keyboard/gamepad bindings, edge-trigger, `canUseGameActions` guard, custom overrides; update `controls.md` |
+
+All sub-tickets use `Verification: code`.

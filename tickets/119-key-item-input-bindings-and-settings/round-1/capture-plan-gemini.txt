@@ -1,0 +1,51 @@
+{
+  "summary": "Verifies the addition of the 'Key item / utility' binding in the Settings UI and the client-side input mapping for the 'useKeyItem' action.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-lobby-settings",
+      "description": "Verify the 'Key item / utility' remapping row exists in the Settings menu."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Query the DOM for the 'Key item / utility' label and verify the default keyboard binding is 'e'."
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "w",
+      "durationMs": 200
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-gameplay-hud",
+      "description": "Verify the HUD or game state; checking for any visual binding hints for the key item."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Inspect the client-side input action map to confirm 'useKeyItem' is correctly registered."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+
