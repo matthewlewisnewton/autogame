@@ -1195,8 +1195,8 @@ export function triggerShieldVFX(playerId) {
 
 	// Position in front of the player along facing direction
 	const yaw = playerMesh.rotation.y + Math.PI / 2; // convert back from display rotation
-	const fx = playerMesh.position.x - Math.sin(yaw) * SHIELD_OFFSET_DIST;
-	const fz = playerMesh.position.z - Math.cos(yaw) * SHIELD_OFFSET_DIST;
+	const fx = playerMesh.position.x + Math.cos(yaw) * SHIELD_OFFSET_DIST;
+	const fz = playerMesh.position.z + Math.sin(yaw) * SHIELD_OFFSET_DIST;
 	mesh.position.set(fx, playerMesh.position.y + 0.5, fz);
 	mesh.rotation.y = playerMesh.rotation.y; // align with player facing
 
@@ -2677,9 +2677,9 @@ export function animate(timestamp) {
 					const s = shieldVFX[myId];
 					const yaw = playersMeshes[myId].rotation.y + Math.PI / 2;
 					s.mesh.position.set(
-						playersMeshes[myId].position.x - Math.sin(yaw) * SHIELD_OFFSET_DIST,
+						playersMeshes[myId].position.x + Math.cos(yaw) * SHIELD_OFFSET_DIST,
 						playersMeshes[myId].position.y + 0.5,
-						playersMeshes[myId].position.z - Math.cos(yaw) * SHIELD_OFFSET_DIST,
+						playersMeshes[myId].position.z + Math.sin(yaw) * SHIELD_OFFSET_DIST,
 					);
 					s.mesh.rotation.y = playersMeshes[myId].rotation.y;
 				} else if (shieldVFX[myId]) {
