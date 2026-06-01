@@ -1,0 +1,66 @@
+{
+  "summary": "Verifies sloped movement by walking the player onto a ramp in the sloped-dungeon scenario and asserting the vertical (Y) coordinate change via probes and screenshots.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "emitScenario",
+      "player": "A",
+      "scenario": "sloped-dungeon"
+    },
+    {
+      "action": "wait",
+      "player": "A",
+      "ms": 1000
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-initial-position",
+      "description": "Initial position in the sloped dungeon layout"
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Capture the initial Y position of the player"
+    },
+    {
+      "action": "move",
+      "player": "A",
+      "key": "w",
+      "durationMs": 2000
+    },
+    {
+      "action": "wait",
+      "player": "A",
+      "ms": 500
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "02-after-movement",
+      "description": "Position after walking; player should be on a ramp with adjusted height"
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Capture the final Y position to confirm it matches the floor slope"
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

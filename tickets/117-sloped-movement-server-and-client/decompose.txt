@@ -1,0 +1,10 @@
+# 117-sloped-movement-server-and-client decomposition
+
+Broke the top-level ticket into 4 sub-tickets in dependency order:
+
+- **01-server-movement-y** — Wire `sampleFloorY()` into `applyPlayerMovement()` in `simulation.js` so `player.y` tracks floor elevation during movement ticks (replaces `player.y = 0.5`)
+- **02-server-spawn-reset-y** — Replace all hardcoded `player.y = 0.5` in spawn/reset/debug paths (`progression.js`, `index.js`) with `sampleFloorY()` calls
+- **03-client-local-avatar-y** — Update local player mesh Y in `renderer.js` render loop from hardcoded `0.5` to `sampleFloorY(currentLayout, myX, myZ)`
+- **04-tests-slope-movement** — Add integration tests for Y change on ramps, null fallback, and wall-sliding regression on sloped layouts
+
+All sub-tickets use `code` verification.

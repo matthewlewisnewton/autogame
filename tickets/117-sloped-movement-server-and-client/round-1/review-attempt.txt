@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fully and robustly satisfies all 7 acceptance criteria, and the captured run proves the game starts and plays cleanly.
+
+**Runtime health:** `metrics.json` reports `ok: true` with empty `pageerrors` and no `harness_failure`. `console.log` shows only benign noise (a pre-existing 409, Vite connect lines, the debugScenario applying). Screenshots render the sloped-dungeon scene with the avatar moving and combat resolving.
+
+**Key findings:**
+- Server Y-snapping lives in the authoritative per-tick `applyPlayerMovement()` (the `move` socket handler is correctly intent-only).
+- Client local avatar and server share the **same canonical** `floorSampling` source, so no flat-ground drift is possible. `stateUpdate` snapshots carry `y`; remote avatars render at `pData.y`.
+- All 6 server reset/spawn paths + debug spawn resample floor height.
+- Per-tick Y change on the test ramp maxes at ~0.075 — far under the 0.5 teleport limit.
+- **815/815 server tests pass**, including new ramp-movement, null-fallback, and slope wall-slide regression tests.
+- No debug scenario was added by this ticket (sloped-dungeon came from dependency 116), so that gate doesn't apply.
+
+**No blocking gaps** — so no `gaps.md`. I filed one genuine nit (`nits.md`): the client uses `?? DEFAULT_FLOOR_Y` while the server uses a `Number.isFinite` guard — equivalent today since `sampleFloorY` returns `null`, but worth unifying to avoid a future `NaN`-propagation divergence.

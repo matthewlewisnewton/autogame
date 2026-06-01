@@ -1826,3 +1826,26 @@ Not applicable — no new or changed `?debugScenario=` shortcuts in this ticket.
 
 None. Round-2 capture provides runnable proof; all acceptance criteria are met in the current codebase.
 
+
+## v0.80 — Sloped Movement (Server and Client)  (2026-05-31 17:49:08)
+
+   ramp" drives the player south into a sloped room and asserts `y > 0.5` and
+   `y ≈ sampleFloorY(...)`. Plus a null-fallback test and the wall-slide test.
+
+7. **Spawn / reset / return-to-lobby place players on valid floor height** — MET.
+   All reset paths resample: `assignRunSpawnPositions`, `repositionPlayersAwayFromPortal`,
+   `suspendRunToLobby`, `abandonSuspendedRun`, `returnPlayersToLobby`, `giveUpRun`
+   (progression.js) and the debug-scenario spawn (index.js:557). `buildPlayerRecord`
+   defaults to `DEFAULT_FLOOR_Y` when no saved `y` exists.
+
+## Design / regression consistency
+- Server remains authoritative for Y (client sends no `y`), matching the
+  Implementation Notes. Shared sampling module keeps client prediction and server
+  authority in lockstep. No regression to `requirements.md` foundations.
+- This ticket added **no** debug scenario — `sloped-dungeon` came from dependency
+  116 — so the DEBUG SCENARIOS gate does not apply.
+
+## Remaining gaps
+None. All acceptance criteria are fully and robustly met, the game runs cleanly,
+and the full server test suite passes.
+
