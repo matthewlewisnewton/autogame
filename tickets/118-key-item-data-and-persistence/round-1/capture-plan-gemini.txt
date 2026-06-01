@@ -1,0 +1,39 @@
+{
+  "summary": "Verifies that the key item system initializes correctly with 'dodge_roll' as the default, all items are marked as unlocked, and state is synchronized to the client in both lobby and gameplay.",
+  "steps": [
+    {
+      "action": "connectPlayer",
+      "player": "A"
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Verify initial account/player state: equippedKeyItemId should be 'dodge_roll' and all KEY_ITEM_DEFS should be present/unlocked."
+    },
+    {
+      "action": "readyAll"
+    },
+    {
+      "action": "waitForGame",
+      "player": "A"
+    },
+    {
+      "action": "screenshot",
+      "player": "A",
+      "name": "01-gameplay-init",
+      "description": "Gameplay active; verifying that the server-authoritative key item state is available for the HUD."
+    },
+    {
+      "action": "probe",
+      "player": "A",
+      "description": "Check public state snapshot: ensure equippedKeyItemId ('dodge_roll') and keyItemCooldownRemaining (0) are exposed to the client."
+    }
+  ]
+}
+
+
+STDERR/ERROR:
+YOLO mode is enabled. All tool calls will be automatically approved.
+YOLO mode is enabled. All tool calls will be automatically approved.
+Ripgrep is not available. Falling back to GrepTool.
+

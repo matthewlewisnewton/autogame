@@ -1,0 +1,22 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+All 5 sub-tickets created. Here's the list:
+
+```
+tickets/118-key-item-data-and-persistence/subtickets/01-key-item-definitions/ticket.md
+tickets/118-key-item-data-and-persistence/subtickets/02-player-key-item-state/ticket.md
+tickets/118-key-item-data-and-persistence/subtickets/03-socket-events-equip-use/ticket.md
+tickets/118-key-item-data-and-persistence/subtickets/04-persistence-and-snapshot/ticket.md
+tickets/118-key-item-data-and-persistence/subtickets/05-tests-key-item-system/ticket.md
+```
+
+**Decomposition summary:**
+
+| # | Sub-ticket | Scope |
+|---|-----------|-------|
+| 01 | Key Item Definitions | `KEY_ITEM_DEFS` registry + `getKeyItemDef()` helper in `progression.js` |
+| 02 | Player Key Item State | `equippedKeyItemId`, `keyItemCooldownUntil` on player record; unlock helpers |
+| 03 | Socket Events | `equipKeyItem` (lobby) + `useKeyItem` (run) handlers with validation/cooldown gating |
+| 04 | Persistence & Snapshot | Wire `equippedKeyItemId` through `extractPersistentData`; add key item fields to public state snapshot |
+| 05 | Tests | Equip persistence, cooldown rejection, unknown ID rejection, all-14 unlocked |
+
+All use `Verification: code` — every sub-ticket has criteria about logic, structure, or handler behavior that goes beyond a single happy-path screenshot.
