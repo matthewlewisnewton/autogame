@@ -54,6 +54,8 @@ import {
 	MAX_HP,
 	MAX_MS,
 	MEDIC_HEAL_COST,
+	MOVE_SPEED,
+	TICK_RATE,
 } from './config.js';
 import {
 	patchSettings,
@@ -129,6 +131,7 @@ import {
 	pruneLootPickupAttempts,
 	getWindupFlashing,
 	setGamepadInputHandler,
+	triggerDashVFX,
 } from './renderer.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
@@ -413,6 +416,7 @@ function returnToGuildLobby(state, { refreshCollection = false } = {}) {
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
+	clearKeyItemCooldownHud();
 	showGameLobby();
 	setDeployButtonVisible(true);
 	setGamePhase('lobby');
@@ -472,6 +476,7 @@ function showExtractedLobbyOverlay() {
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	setDeckStackVisible(false);
+	clearKeyItemCooldownHud();
 	showGameLobby();
 	setDeployButtonVisible(false);
 	if (suspendedRunBannerEl) {
@@ -951,6 +956,27 @@ function bindSocketHandlers(s) {
 				}
 			}
 		}
+
+		// Dash VFX detection: large position jump in a single tick
+		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
+			const me = gameState.players[myId];
+			if (_prevDashX != null) {
+				const jumpDist = Math.hypot(me.x - _prevDashX, me.z - _prevDashZ);
+				if (jumpDist > (MOVE_SPEED / TICK_RATE) * 2) {
+					triggerDashVFX(myId);
+				}
+			}
+			_prevDashX = me.x;
+			_prevDashZ = me.z;
+		} else if (state.gamePhase !== 'playing') {
+			_prevDashX = null;
+			_prevDashZ = null;
+		}
+
+		// Cooldown HUD indicator
+		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
+			updateKeyItemCooldownHud(gameState.players[myId].keyItemCooldownRemaining);
+		}
 	});
 
 	s.on('heartbeat_ack', (data) => {
@@ -1293,6 +1319,8 @@ let runDeckTotal = 0;
 let deckViewerOpen = false;
 let _lastCurrency = undefined; // tracks previous currency value for flash-on-increase
 let _lastMagicStones = undefined; // tracks previous MS for spend/gain flash
+let _prevDashX = null; // previous X for dash-VFX detection (survives stateUpdate)
+let _prevDashZ = null; // previous Z for dash-VFX detection (survives stateUpdate)
 
 function sameCollectionValue(a, b) {
 	try {
@@ -2209,13 +2237,36 @@ function showKeyItemError(message) {
 function flashKeyItemIndicator(type) {
 	const el = document.getElementById('key-item-indicator');
 	if (!el) return;
-	el.className = type === 'success' ? 'flash-success' : 'flash-cooldown';
+	const flashClass = type === 'success' ? 'flash-success' : 'flash-cooldown';
+	el.classList.add(flashClass);
 	// Clear any previous timeout
 	if (el._flashTimer) clearTimeout(el._flashTimer);
 	el._flashTimer = setTimeout(() => {
-		el.className = '';
+		el.classList.remove(flashClass);
 		el._flashTimer = null;
 	}, 450);
+}
+
+/** Update the persistent cooldown state of the key-item HUD indicator. */
+function updateKeyItemCooldownHud(cooldownRemainingMs) {
+	const el = document.getElementById('key-item-indicator');
+	if (!el) return;
+	const onCooldown = (cooldownRemainingMs || 0) > 0;
+	el.classList.toggle('cooldown', onCooldown);
+	if (onCooldown) {
+		const seconds = (cooldownRemainingMs / 1000).toFixed(1);
+		el.textContent = seconds;
+	} else {
+		el.textContent = '';
+	}
+}
+
+/** Clear the key-item cooldown HUD (hide indicator when leaving gameplay). */
+function clearKeyItemCooldownHud() {
+	const el = document.getElementById('key-item-indicator');
+	if (!el) return;
+	el.classList.remove('cooldown', 'ready');
+	el.textContent = '';
 }
 
 function renderKeyItemList() {
