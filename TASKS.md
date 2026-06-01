@@ -11,7 +11,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 ## Backlog — Sloped Floors
 - [x] [142-cleanup-sloped-floor-layout-and-geometry](tickets/142-cleanup-sloped-floor-layout-and-geometry/)
 - [x] [139-harness-misclassifies-pageerror](tickets/139-harness-misclassifies-pageerror/)
-- [ ] [117-sloped-movement-server-and-client](tickets/117-sloped-movement-server-and-client/)
+- [x] [117-sloped-movement-server-and-client](tickets/117-sloped-movement-server-and-client/)
 
 ## Backlog — Key Items (Foundation)
 - [ ] [118-key-item-data-and-persistence](tickets/118-key-item-data-and-persistence/)
@@ -40,3 +40,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [137-world-sunken-canyon-stage](tickets/137-world-sunken-canyon-stage/)
 - [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
 - [ ] [144-cleanup-harness-misclassifies-pageerror](tickets/144-cleanup-harness-misclassifies-pageerror/)
+- [ ] [145-cleanup-sloped-movement-server-and-client](tickets/145-cleanup-sloped-movement-server-and-client/)
