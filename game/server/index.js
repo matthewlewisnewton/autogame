@@ -412,6 +412,7 @@ const DEBUG_SCENARIOS = new Set([
   'medic-kit-ready',
   'guard-block-ready',
   'flare-beacon-ready',
+  'loot-magnet-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -778,6 +779,20 @@ function applyDebugScenario(socket, name) {
       ensureNearbyEnemy(state, player.x, player.z);
       spawnEnemy(player.x + 5, player.z + 3, 'skirmisher');
       spawnEnemy(player.x - 4, player.z - 2, 'grunt');
+    } else if (name === 'loot-magnet-ready') {
+      // Put player with loot_magnet equipped and scattered ground loot to test pull/collect.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'loot_magnet';
+      player.keyItemCooldownUntil = 0;
+      state.loot = [
+        { id: crypto.randomUUID(), x: player.x + 2, z: player.z + 2, y: 0, kind: 'gold', value: 10 },
+        { id: crypto.randomUUID(), x: player.x - 3, z: player.z + 4, y: 0, kind: 'gold', value: 15 },
+        { id: crypto.randomUUID(), x: player.x + 5, z: player.z - 3, y: 0, kind: 'gold', value: 20 },
+        { id: crypto.randomUUID(), x: player.x - 6, z: player.z - 5, y: 0, kind: 'gold', value: 25 },
+        { id: crypto.randomUUID(), x: player.x + 12, z: player.z + 10, y: 0, kind: 'gold', value: 50 },
+        { id: crypto.randomUUID(), x: player.x + 1, z: player.z - 1, y: 0, kind: 'magic_stone', value: 5 },
+      ];
     }
 
     syncRunObjectiveToEnemies();
@@ -2505,8 +2520,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, and flare_beacon are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, and loot_magnet are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2571,6 +2586,69 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'loot_magnet') {
+      // --- loot_magnet: pull all uncollected ground loot within attractRadius toward player ---
+      const attractRadius = def.attractRadius != null ? def.attractRadius : 8;
+      const colliders = getWallColliders();
+      let pulled = 0;
+      let collected = 0;
+
+      // Iterate backwards so splicing collected loot doesn't mess up indices
+      for (let i = state.loot.length - 1; i >= 0; i--) {
+        const loot = state.loot[i];
+        const dist = Math.hypot(loot.x - player.x, loot.z - player.z);
+        if (dist > attractRadius) continue;
+
+        // Compute direction toward player
+        let dirX = player.x - loot.x;
+        let dirZ = player.z - loot.z;
+        const mag = Math.hypot(dirX, dirZ);
+        if (mag < 1e-8) {
+          // Loot is exactly on player — auto-collect
+          dirX = 0;
+          dirZ = 0;
+        } else {
+          dirX /= mag;
+          dirZ /= mag;
+        }
+
+        // Use tryPlayerMove for wall-aware displacement
+        const result = tryPlayerMove(loot.x, loot.z, dirX, dirZ, dist, colliders);
+        loot.x = result.x;
+        loot.z = result.z;
+        pulled++;
+
+        // Check if loot is now within pickup radius — auto-collect
+        const finalDist = Math.hypot(loot.x - player.x, loot.z - player.z);
+        if (finalDist <= LOOT_PICKUP_RADIUS) {
+          const isCrystal = loot.kind === 'crystal';
+          const isMagicStone = loot.kind === 'magic_stone';
+          if (isMagicStone) {
+            addMagicStones(player, loot.value);
+          } else if (isCrystal) {
+            recordCrystalCollected(1);
+          } else {
+            player.currency += loot.value;
+            player.currencyEarnedThisRun += loot.value;
+          }
+          state.loot.splice(i, 1);
+          collected++;
+
+          if (isCrystal) {
+            checkRunTerminalState();
+          }
+        }
+      }
+
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
+      player.persistenceDirty = true;
+      savePlayerData(socket.playerId);
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
