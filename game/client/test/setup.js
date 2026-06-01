@@ -20,6 +20,7 @@ function createMockSocket() {
 	};
 	return {
 		id,
+		connected: true,
 		on: function(event, callback) {
 			const key = `${id}:${event}`;
 			if (!handlerLog[key]) handlerLog[key] = [];
