@@ -1941,3 +1941,26 @@ None blocking. Runtime proof is clean; acceptance criteria are implemented and t
 
 See `round-1/nits.md` for backlog items: `controls.md` tick wording, visual capture omitting dodge, no client tests for VFX/HUD helpers.
 
+
+## v0.85 — Key Item: Summon Recall  (2026-06-01 04:37:13)
+
+---
+
+## Integration notes
+
+- Harness fallback capture did not press the recall key or spawn minions in-browser; functional proof is unit/integration tests, not screenshots.
+- `useKeyItem` does not require `keyItemId === player.equippedKeyItemId` (client sends equipped id — same as dodge roll).
+- Emergency spiral placement can place minions farther than 2.5m when ring slots are walled — intentional escape hatch, tested up to ~7m in wall test.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime clean; acceptance criteria met in server code and tests.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for backlog items (stale client test mock, optional HUD for `no_minions`, fixed ring radius, agent-guided capture for recall).
+
