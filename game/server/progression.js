@@ -687,6 +687,16 @@ function getKeyItemDef(id) {
   return KEY_ITEM_DEFS[id] || undefined;
 }
 
+/** Return all key item definitions (all unlocked at start, no grind gate). */
+function getUnlockedKeyItems() {
+  return Object.values(KEY_ITEM_DEFS);
+}
+
+/** Check if a key item is unlocked for the given player. All 14 are unlocked at start. */
+function isKeyItemUnlocked(player, keyItemId) {
+  return keyItemId in KEY_ITEM_DEFS;
+}
+
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
 const STARTING_DECK_IDS = [
   'iron_sword',
@@ -1173,7 +1183,9 @@ function createPlayerProgress() {
     inventory,
     ownedCards: inventoryToOwnedCards(inventory),
     runRewards: null,
-    currencyEarnedThisRun: 0
+    currencyEarnedThisRun: 0,
+    equippedKeyItemId: 'dodge_roll',
+    keyItemCooldownUntil: 0,
   };
 }
 
@@ -3154,6 +3166,8 @@ module.exports = {
   CARD_DEFS,
   KEY_ITEM_DEFS,
   getKeyItemDef,
+  getUnlockedKeyItems,
+  isKeyItemUnlocked,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   getCardDef,
