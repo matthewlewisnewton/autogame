@@ -132,6 +132,7 @@ import {
 	getWindupFlashing,
 	setGamepadInputHandler,
 	triggerDashVFX,
+	triggerHealPulseVFX,
 } from './renderer.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
@@ -1088,6 +1089,12 @@ function bindSocketHandlers(s) {
 		if (!data) return;
 		if (data.ok) {
 			flashKeyItemIndicator('success');
+			if (data.keyItemId === 'field_medic_kit') {
+				const me = myId && gameState?.players ? gameState.players[myId] : null;
+				if (me) {
+					triggerHealPulseVFX({ x: me.x, y: 0, z: me.z });
+				}
+			}
 		} else if (data.reason === 'on_cooldown') {
 			flashKeyItemIndicator('cooldown');
 		} else {
