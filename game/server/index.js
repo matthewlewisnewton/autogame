@@ -797,10 +797,10 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'overclock-ready') {
       // Put player with overclock key item equipped and charges ready to test slot cooldown bypass.
       player.hp = MAX_HP;
-      player.magicStones = 5;
+      player.magicStones = 50;
       player.equippedKeyItemId = 'overclock';
       player.keyItemCooldownUntil = 0;
-      player.overclockChargesRemaining = 0;
+      player.overclockChargesRemaining = 2;
     }
 
     syncRunObjectiveToEnemies();
@@ -1407,6 +1407,15 @@ function startServer(port) {
     });
   });
 
+  // Helper: apply slot cooldown, consuming an overclock charge when available.
+  function applySlotCooldown(player, slotIndex, hasOverclock, now, cooldownMs) {
+    if (hasOverclock) {
+      player.overclockChargesRemaining -= 1;
+    } else {
+      player.slotCooldowns[slotIndex] = now + cooldownMs;
+    }
+  }
+
   socket.on('useCard', (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (state.gamePhase !== 'playing') return;
@@ -1432,9 +1441,10 @@ function startServer(port) {
       return;
     }
 
-    // (4) Cooldown check: reject if slot is still cooling down
+    // (4) Cooldown check: reject if slot is still cooling down (bypassed by overclock charges)
     const now = Date.now();
-    if (player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
+    const hasOverclock = (player.overclockChargesRemaining || 0) > 0;
+    if (!hasOverclock && player.slotCooldowns && player.slotCooldowns[data.slotIndex] && now < player.slotCooldowns[data.slotIndex]) {
       socket.emit('cardError', { reason: 'Slot on cooldown' });
       return;
     }
@@ -1455,7 +1465,7 @@ function startServer(port) {
         drawCardIntoHand(player);
         ensurePassiveDrawScheduled(player);
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
 
         if (handCard.remainingCharges <= 0) {
           exhaustHandSlot(player, data.slotIndex, handCard);
@@ -1561,7 +1571,7 @@ function startServer(port) {
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
       cleanupAfterDamage();
 
-      player.slotCooldowns[data.slotIndex] = now + cooldownMs;
+      applySlotCooldown(player, data.slotIndex, hasOverclock, now, cooldownMs);
 
       if (handCard.remainingCharges <= 0) {
         replaceConsumedCard(player, data.slotIndex, handCard);
@@ -1627,7 +1637,7 @@ function startServer(port) {
         };
         console.log(`[telepipe] placed at (${originX.toFixed(1)}, ${originZ.toFixed(1)}) by ${socket.playerId}`);
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1646,7 +1656,7 @@ function startServer(port) {
       if (cardDef.effect === 'memory_shard') {
         player.pendingSummons.add(summonKey);
         player.magicStones -= magicStoneCost;
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
 
         const exhausted = pickRandomExhaustedCard(player);
         const echo = exhausted ? createEchoCard(exhausted) : null;
@@ -1707,7 +1717,7 @@ function startServer(port) {
           selection: 'random',
         });
 
-        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1736,7 +1746,7 @@ function startServer(port) {
           slots: [data.slotIndex - 1, data.slotIndex + 1],
         });
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1763,7 +1773,7 @@ function startServer(port) {
         );
         cleanupAfterDamage();
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1784,7 +1794,7 @@ function startServer(port) {
       if (cardDef.effect === 'healing_font') {
         const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1805,7 +1815,7 @@ function startServer(port) {
         const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1827,7 +1837,7 @@ function startServer(port) {
         const radius = cardDef.pullRadius || SUMMON_RADIUS;
         const pulled = pullEnemiesToward(originX, originZ, radius, cardDef.pullStrength || 4);
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1854,7 +1864,7 @@ function startServer(port) {
         );
         cleanupAfterDamage();
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1894,7 +1904,7 @@ function startServer(port) {
         spawnDragonsBreathEffect(originX, originZ, dirX, dirZ, cardDef, socket.playerId);
         cleanupAfterDamage();
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1926,7 +1936,7 @@ function startServer(port) {
         spawnInfernoPillarEffect(originX, originZ, cardDef, socket.playerId);
         cleanupAfterDamage();
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -1964,7 +1974,7 @@ function startServer(port) {
         };
         state.minions.push(prism);
 
-        player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -2021,7 +2031,7 @@ function startServer(port) {
 
         cleanupAfterDamage();
 
-        player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
         replaceConsumedCard(player, data.slotIndex, handCard);
 
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
@@ -2059,7 +2069,7 @@ function startServer(port) {
 
       cleanupAfterDamage();
 
-      player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+      applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
 
       // Remove card from hand and draw replacement
       replaceConsumedCard(player, data.slotIndex, handCard);
@@ -2116,7 +2126,7 @@ function startServer(port) {
 
       player.pendingSummons.add(enchantKey);
       player.magicStones -= magicStoneCost;
-      player.slotCooldowns[data.slotIndex] = now + (cardDef.cooldownMs || COOLDOWN_MS);
+      applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
       replaceConsumedCard(player, data.slotIndex, handCard);
 
       if (cardDef.effect === 'spike_trap') {
@@ -2248,7 +2258,7 @@ function startServer(port) {
       }
 
       // Set slot cooldown and keep the card in hand while the minion is active.
-      player.slotCooldowns[data.slotIndex] = now + COOLDOWN_MS;
+      applySlotCooldown(player, data.slotIndex, hasOverclock, now, COOLDOWN_MS);
       beginCreatureBurnDown(player, data.slotIndex, handCard, minion);
 
       // Broadcast updated hand to all clients
