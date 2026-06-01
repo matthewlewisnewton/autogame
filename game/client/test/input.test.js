@@ -9,6 +9,7 @@ import {
 	getHandSlotInputHints,
 	getHandSlotGamepadHints,
 	is8BitDo64HandHintsActive,
+	getUseKeyItemBinding,
 	ACTIONS
 } from '../input.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
@@ -303,5 +304,51 @@ describe('input.js', () => {
 		patchSettings({ gamepad: { profile: 'standard' } });
 		expect(is8BitDo64HandHintsActive()).toBe(false);
 		expect(getHandSlotGamepadHints()).toBeNull();
+	});
+
+	it('keyboard E triggers useKeyItem by default', () => {
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+		expect(onUseKeyItem).toHaveBeenCalledTimes(1);
+	});
+
+	it('custom keyboard binding for useKeyItem overrides default', () => {
+		patchSettings({ keyboard: { bindings: { useKeyItem: 'u' } } });
+		const onUseKeyItem = vi.fn();
+		initInput({
+			onUseKeyItem,
+			canUseGameActions: () => true,
+		});
+		// Default 'e' should NOT trigger
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+		expect(onUseKeyItem).not.toHaveBeenCalled();
+		// Custom 'u' should trigger
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'u' }));
+		expect(onUseKeyItem).toHaveBeenCalledTimes(1);
+	});
+
+	it('getUseKeyItemBinding returns default binding', () => {
+		patchSettings(getDefaultSettings());
+		getSettings().keyboard.bindings = { useKeyItem: 'e' };
+		getSettings().gamepad.bindings = {};
+		const binding = getUseKeyItemBinding();
+		expect(binding.keyboard).toBe('e');
+		expect(binding.gamepad).toBe(13);
+	});
+
+	it('getUseKeyItemBinding reflects custom keyboard binding', () => {
+		patchSettings({ keyboard: { bindings: { useKeyItem: 'r' } } });
+		const binding = getUseKeyItemBinding();
+		expect(binding.keyboard).toBe('r');
+	});
+
+	it('getUseKeyItemBinding reflects custom gamepad binding', () => {
+		patchSettings({ gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
+		const binding = getUseKeyItemBinding();
+		expect(binding.gamepad).toBe(4);
 	});
 });

@@ -34,6 +34,7 @@ describe('settings persistence', () => {
 		expect(defaults.gamepad.moveStick).toBe('left');
 		expect(defaults.gamepad.deadzone).toBe(0.15);
 		expect(defaults.lockOnRepeatAction).toBe('unlock');
+		expect(defaults.keyboard.bindings.useKeyItem).toBe('e');
 	});
 
 	it('getSettings returns defaults when file missing', () => {
@@ -53,5 +54,21 @@ describe('settings persistence', () => {
 		expect(merged.soundEnabled).toBe(false);
 		expect(merged.gamepad.deadzone).toBe(0.2);
 		expect(merged.gamepad.moveStick).toBe('left');
+	});
+
+	it('updateSettings deep-merges keyboard.bindings.useKeyItem', () => {
+		const id = 'acct-kb';
+		updateSettings(id, { keyboard: { bindings: { useKeyItem: 'u' } } });
+		const s = getSettings(id);
+		expect(s.keyboard.bindings.useKeyItem).toBe('u');
+		expect(s.soundEnabled).toBe(true);
+	});
+
+	it('updateSettings deep-merges gamepad.bindings.useKeyItem', () => {
+		const id = 'acct-gp';
+		updateSettings(id, { gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
+		const s = getSettings(id);
+		expect(s.gamepad.bindings.useKeyItem).toEqual({ type: 'button', index: 4 });
+		expect(s.gamepad.moveStick).toBe('left');
 	});
 });

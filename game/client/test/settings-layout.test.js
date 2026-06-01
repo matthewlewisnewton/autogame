@@ -93,4 +93,14 @@ describe('settings layout in index.html', () => {
 		expect(doc.getElementById('calibration-debug-log')).not.toBeNull();
 		expect(doc.getElementById('calibration-debug-copy-btn')).not.toBeNull();
 	});
+
+	it('includes useKeyItem binding remap row in the Controls section', () => {
+		const doc = parseIndex();
+		const controlsSection = doc.querySelector('#settings-modal .settings-section h3');
+		expect(controlsSection?.textContent).toBe('Controls');
+		expect(doc.getElementById('use-key-item-key-input')).not.toBeNull();
+		expect(doc.getElementById('use-key-item-gamepad-label')).not.toBeNull();
+		const keyInput = doc.getElementById('use-key-item-key-input');
+		expect(keyInput.readOnly).toBe(true);
+	});
 });
