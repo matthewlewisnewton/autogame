@@ -338,6 +338,7 @@ describe('input.js', () => {
 		const binding = getUseKeyItemBinding();
 		expect(binding.keyboard).toBe('e');
 		expect(binding.gamepad).toBe(13);
+		expect(binding.gamepadHint).toBe('DPad Down');
 	});
 
 	it('getUseKeyItemBinding reflects custom keyboard binding', () => {
@@ -350,5 +351,13 @@ describe('input.js', () => {
 		patchSettings({ gamepad: { bindings: { useKeyItem: { type: 'button', index: 4 } } } });
 		const binding = getUseKeyItemBinding();
 		expect(binding.gamepad).toBe(4);
+		expect(binding.gamepadHint).toBe('LB');
+	});
+
+	it('getUseKeyItemBinding gamepadHint falls back to Btn N for unmapped indices', () => {
+		patchSettings({ gamepad: { bindings: { useKeyItem: { type: 'button', index: 11 } } } });
+		const binding = getUseKeyItemBinding();
+		expect(binding.gamepad).toBe(11);
+		expect(binding.gamepadHint).toBe('Btn 11');
 	});
 });
