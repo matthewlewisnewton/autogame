@@ -64,6 +64,33 @@ def test_no_eligible_agent_returns_none():
     assert r.select_and_acquire("hard") is None
 
 
+def test_concurrent_acquire_never_exceeds_caps():
+    # Hammer select_and_acquire from many threads; the lock must ensure no
+    # agent is acquired past its cap (qwen=1, composer=3 for the easy lane).
+    import threading
+    from collections import Counter
+
+    r = _registry()
+    results: list = []
+    rlock = threading.Lock()
+
+    def worker():
+        a = r.select_and_acquire("easy")
+        with rlock:
+            results.append(a)
+
+    threads = [threading.Thread(target=worker) for _ in range(50)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    counts = Counter(a for a in results if a)
+    assert counts["qwen"] == 1          # cap 1, never exceeded under contention
+    assert counts["composer"] == 3      # cap 3
+    assert results.count(None) == 50 - 4  # the rest correctly got nothing
+
+
 def test_health_persists_across_restart(tmp_path):
     hf = tmp_path / "agents_health.json"
     r1 = _registry(health_file=hf)

@@ -250,13 +250,27 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
     log(f"[error] Vite failed to start after {max_vite_retries} attempts")
 
 
-def stop_game() -> None:
+def stop_game(ports: "PortAllocation | None" = None) -> None:
     emit_progress_event("game_stop", {})
     for pid in _GAME_PIDS:
         _kill_proc_group(pid, signal_num=15)
     _GAME_PIDS.clear()
-    for pat in (r"node[[:space:]]+[^[:space:]]*server/index\.js([[:space:]]|$)",
-                r"vite(\.js)?[[:space:]].*--port[[:space:]]+5173([[:space:]]|$)"):
+    if ports is None:
+        # Serial path: belt-and-suspenders pkill of the default-port procs.
+        patterns = (
+            r"node[[:space:]]+[^[:space:]]*server/index\.js([[:space:]]|$)",
+            r"vite(\.js)?[[:space:]].*--port[[:space:]]+5173([[:space:]]|$)",
+        )
+    else:
+        # Parallel path: reclaim ONLY this worker's vite port. The blanket
+        # `server/index.js` pkill is deliberately omitted here — the server
+        # cmdline carries no port (it's set via PORT env), so a blanket pkill
+        # would kill sibling workers' servers. The tracked-PID kills above plus
+        # the next start_game's port-scoped wait_port_free reclaim our server.
+        patterns = (
+            rf"vite(\.js)?[[:space:]].*--port[[:space:]]+{ports.vite}([[:space:]]|$)",
+        )
+    for pat in patterns:
         try:
             subprocess.run(["pkill", "-f", pat], stdout=subprocess.DEVNULL,
                            stderr=subprocess.DEVNULL, timeout=5)

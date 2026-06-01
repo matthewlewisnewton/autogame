@@ -79,11 +79,9 @@ def record_agent_usage(*, label: str, result: AgentResult, attempt: int,
         "output_tokens": result.output_tokens,
         "cost_usd": result.cost_usd,
     }
-    path = _usage_path()
+    from harness.telemetry.progress import locked_append
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with _WRITE_LOCK, path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(row) + "\n")
+        locked_append(_usage_path(), json.dumps(row))
     except OSError:
         pass
 
