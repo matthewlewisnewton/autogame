@@ -12,7 +12,10 @@ _WRITE_LOCK = threading.Lock()
 
 
 def _usage_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "progress" / "agent-usage.ndjson"
+    # Shares progress_dir() so parallel workers (in worktrees) record usage to
+    # the main checkout's progress dir via HARNESS_PROGRESS_DIR, not their own.
+    from harness.telemetry.progress import progress_dir
+    return progress_dir() / "agent-usage.ndjson"
 
 
 class TelemetrySink:
