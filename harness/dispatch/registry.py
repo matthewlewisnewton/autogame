@@ -90,8 +90,9 @@ class AgentRegistry:
                 self._save_health()
 
     def is_available(self, name: str) -> bool:
-        st = self._states.get(name)
-        return bool(st and st.health is AgentHealth.AVAILABLE)
+        with self._lock:
+            st = self._states.get(name)
+            return bool(st and st.health is AgentHealth.AVAILABLE)
 
     # --- introspection (live view / reconcile) ------------------------- #
     def snapshot(self) -> dict[str, dict]:
@@ -135,8 +136,15 @@ class AgentRegistry:
         try:
             self._health_file.parent.mkdir(parents=True, exist_ok=True)
             self._health_file.write_text(json.dumps({"disabled": disabled}, indent=2))
-        except OSError:
-            pass
+        except OSError as e:
+            # Losing this silently would re-enable a quota-disabled agent on the
+            # next restart — surface it so the operator notices.
+            try:
+                from harness.telemetry.logging import log
+                log(f"[registry] FAILED to persist agent health to "
+                    f"{self._health_file}: {e!r} — disabled state may not survive restart")
+            except Exception:
+                pass
 
 
 __all__ = ["AgentRegistry", "AgentSpec", "AgentHealth"]

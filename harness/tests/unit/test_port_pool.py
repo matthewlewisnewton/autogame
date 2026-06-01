@@ -38,6 +38,18 @@ def test_allocate_pool_rejects_overlap():
         allocate_pool(3000)  # game range would reach the vite base
 
 
+def test_allocate_pool_boundary():
+    # Capacity with defaults is exactly vite_base - game_base = 2173 pairs:
+    # the last game port is 3000+2172 = 5172, just below vite_base 5173.
+    pool = allocate_pool(2173)
+    assert len(pool) == 2173
+    assert pool[-1].game_server == 5172          # no collision with vite range
+    assert pool[0].vite == 5173
+    # One more would place a game port at 5173 == vite_base → rejected.
+    with pytest.raises(ValueError):
+        allocate_pool(2174)
+
+
 def test_vite_match_is_port_specific():
     # A worker on vite 5174 must recognise its own vite, and NOT a sibling's
     # vite on 5173 (otherwise it would kill the wrong worker's server).

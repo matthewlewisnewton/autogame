@@ -8,7 +8,37 @@ import threading
 import urllib.request
 from pathlib import Path
 
+try:
+    import fcntl  # POSIX (Linux). Absent on Windows — degrade to thread lock only.
+except ImportError:  # pragma: no cover
+    fcntl = None  # type: ignore
+
 _WRITE_LOCK = threading.Lock()
+
+
+def locked_append(path: Path, line: str) -> None:
+    """Append `line` + newline to `path` under an exclusive lock that holds
+    ACROSS PROCESSES (fcntl.flock), not just threads. Parallel worker processes
+    share one events/usage file via HARNESS_PROGRESS_DIR, and a plain
+    threading.Lock gives them no mutual exclusion — interleaved appends can
+    corrupt lines. flock(LOCK_EX) serializes the append regardless of process."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with _WRITE_LOCK:  # cheap within-process guard
+        with path.open("a", encoding="utf-8") as f:
+            if fcntl is not None:
+                try:
+                    fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+                except OSError:
+                    pass
+            try:
+                f.write(line + "\n")
+                f.flush()
+            finally:
+                if fcntl is not None:
+                    try:
+                        fcntl.flock(f.fileno(), fcntl.LOCK_UN)
+                    except OSError:
+                        pass
 
 
 def progress_dir() -> Path:
@@ -32,22 +62,8 @@ def emit_progress_event(event_type: str, payload: dict | None = None) -> None:
     ts = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     line = json.dumps({"ts": ts, "type": event_type, "payload": payload or {}})
 
-    path = _events_path()
     try:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        with _WRITE_LOCK:
-            need_leading_newline = False
-            try:
-                if path.exists() and path.stat().st_size > 0:
-                    with path.open("rb") as f:
-                        f.seek(-1, 2)
-                        need_leading_newline = f.read(1) != b"\n"
-            except OSError:
-                pass
-            with path.open("a", encoding="utf-8") as f:
-                if need_leading_newline:
-                    f.write("\n")
-                f.write(line + "\n")
+        locked_append(_events_path(), line)
     except OSError:
         pass
 

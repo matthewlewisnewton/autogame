@@ -132,25 +132,42 @@ class WorktreeWorkspace(Repo):
         # Prune stale registrations (e.g. from a crashed prior run) so a reused
         # path/branch doesn't fail the add.
         main.run_git("worktree", "prune", capture=False)
+        # A crashed prior run can leave the `auto/<name>` branch behind (prune
+        # removes worktree registrations, NOT branches), and `worktree add -b`
+        # hard-fails if the branch exists. Drop a stale one first (best-effort)
+        # so reusing a ticket name doesn't wedge the dispatcher.
+        main.run_git("branch", "-D", branch, check=False, capture=False)
         main.run_git("worktree", "add", "-b", branch, str(wt_root), base_ref,
                      capture=False)
         return cls(root=wt_root, ports=ports, branch=branch,
                    main_root=Path(main.root))
 
-    def remove_worktree(self, *, force: bool = True, delete_branch: bool = True) -> None:
+    def remove_worktree(self, *, force: bool = True, delete_branch: bool = True) -> bool:
         """`git worktree remove` + optionally delete the branch, from the main
-        checkout (worktree ops must run against the owning repo). Best-effort."""
+        checkout (worktree ops must run against the owning repo). Returns True
+        if the worktree dir is gone afterwards; on a leak it logs and returns
+        False so the dispatcher can quarantine that worker slot instead of
+        silently re-using a still-registered path."""
         owner = str(self.main_root or self.root)
         args = ["git", "worktree", "remove"]
         if force:
             args.append("--force")
         args.append(str(self.root))
-        subprocess.run(args, cwd=owner, check=False, capture_output=True, text=True)
+        rm = subprocess.run(args, cwd=owner, check=False, capture_output=True, text=True)
         subprocess.run(["git", "worktree", "prune"], cwd=owner,
                        check=False, capture_output=True, text=True)
         if delete_branch:
             subprocess.run(["git", "branch", "-D", self.branch], cwd=owner,
                            check=False, capture_output=True, text=True)
+        ok = not Path(self.root).exists()
+        if not ok:
+            try:
+                from harness.telemetry.logging import log
+                log(f"[worktree] FAILED to remove {self.root}: "
+                    f"{(rm.stderr or rm.stdout).strip()[:200]!r} — leaked slot")
+            except Exception:
+                pass
+        return ok
 
 
 __all__ = ["CommitResult", "Repo", "WorktreeWorkspace"]

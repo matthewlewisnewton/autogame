@@ -81,8 +81,15 @@ class BeadsQueue:
             return None
         issue = rows[0]
         if assignee:
-            self.assign(issue["id"], assignee)
-            issue["assignee"] = assignee
+            # The ticket is ALREADY atomically claimed (status=in_progress, owned
+            # by the bd actor) by `ready --claim`. Re-assigning to the chosen
+            # agent is for human visibility only; make it best-effort so a failed
+            # assign can never wedge an already-claimed ticket.
+            try:
+                self.assign(issue["id"], assignee)
+                issue["assignee"] = assignee
+            except BeadsError:
+                pass
         return issue
 
     def assign(self, issue_id: str, assignee: str) -> None:
@@ -94,8 +101,10 @@ class BeadsQueue:
         fails on quota/unavailability."""
         if note:
             self._run("note", issue_id, note, check=False)
-        # clear assignee + back to open so `bd ready` surfaces it again
-        self._run("update", issue_id, "--status", "open", "--assignee", "", check=False)
+        # Reset to open + clear assignee so `bd ready` surfaces it again. MUST
+        # succeed (check=True): a silently-failed requeue loses the ticket from
+        # the pool entirely, stuck in_progress under a now-disabled agent.
+        self._run("update", issue_id, "--status", "open", "--assignee", "", check=True)
 
     def close(self, issue_id: str, reason: str = "done") -> None:
         self._run("close", issue_id, "--reason", reason)
@@ -106,10 +115,11 @@ class BeadsQueue:
         args = ["q", title]
         if priority is not None:
             args += ["-p", str(priority)]
-        issue_id = self._run(*args).stdout.strip()
         if difficulty:
-            self.add_label(issue_id, DIFFICULTY_LABEL.format(difficulty))
-        return issue_id
+            # Label atomically at creation (-l) so a crash can't leave an
+            # unlabeled, lane-invisible ticket between create and label.
+            args += ["-l", DIFFICULTY_LABEL.format(difficulty)]
+        return self._run(*args).stdout.strip()
 
     def add_label(self, issue_id: str, label: str) -> None:
         self._run("label", "add", issue_id, label)
