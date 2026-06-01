@@ -435,6 +435,44 @@ describe('damagePlayer(playerId, amount)', () => {
 		expect(gameState.players['p1'].dead).toBe(false);
 		expect(gameState.players['p1'].hp).toBe(50);
 	});
+
+	it('returns null and does not damage when player is invulnerable', () => {
+		addPlayer('p1', { hp: 100, invulnerableUntil: Date.now() + 500 });
+		const result = damagePlayer('p1', 30);
+		expect(result).toBeNull();
+		expect(gameState.players['p1'].hp).toBe(100);
+	});
+
+	it('allows damage after invulnerability expires', () => {
+		addPlayer('p1', { hp: 100, invulnerableUntil: Date.now() + 200 });
+		expect(damagePlayer('p1', 30)).not.toBeUndefined(); // may return mirror result or null
+		// Still invulnerable
+		expect(gameState.players['p1'].hp).toBe(100);
+
+		// Advance past invulnerability
+		vi.advanceTimersByTime(300);
+
+		damagePlayer('p1', 30);
+		expect(gameState.players['p1'].hp).toBe(70);
+	});
+
+	it('invulnerability takes precedence over shield absorption', () => {
+		addPlayer('p1', { hp: 100, shieldHp: 50, shieldExpiresAt: Date.now() + 10000, invulnerableUntil: Date.now() + 500 });
+		const result = damagePlayer('p1', 30);
+		expect(result).toBeNull();
+		expect(gameState.players['p1'].hp).toBe(100);
+		expect(gameState.players['p1'].shieldHp).toBe(50); // shield untouched
+	});
+
+	it('respawn resets invulnerableUntil to 0', () => {
+		addPlayer('p1', { hp: 30, invulnerableUntil: 999999999999 });
+		damagePlayer('p1', 30);
+		expect(gameState.players['p1'].invulnerableUntil).toBe(999999999999);
+
+		vi.advanceTimersByTime(3000);
+
+		expect(gameState.players['p1'].invulnerableUntil).toBe(0);
+	});
 });
 
 // ── updateEnemies ──
@@ -3953,6 +3991,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			returnRewardsPreview: null,
 			equippedKeyItemId: 'dodge_roll',
 			keyItemCooldownRemaining: 0,
+			isInvulnerable: false,
 		});
 	});
 

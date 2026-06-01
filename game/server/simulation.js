@@ -1399,6 +1399,11 @@ function damagePlayer(playerId, amount, options = {}) {
 
   let remaining = amount;
   const now = Date.now();
+
+  // Invulnerability check (i-frames from dodge roll, etc.)
+  if (player.invulnerableUntil && now < player.invulnerableUntil) return null;
+
+  // Shield expiry
   if (player.shieldExpiresAt && now > player.shieldExpiresAt) {
     player.shieldHp = 0;
     player.shieldExpiresAt = 0;
@@ -1430,6 +1435,7 @@ function damagePlayer(playerId, amount, options = {}) {
       const spawn = firstRoomPosition();
       p.hp = MAX_HP;
       p.dead = false;
+      p.invulnerableUntil = 0;
       p.lastMoveTime = Date.now();
       p.x = spawn.x;
       p.y = 0.5;

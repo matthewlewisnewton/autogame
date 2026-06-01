@@ -2791,6 +2791,7 @@ function suspendRunToLobby() {
     player.inputActive = false;
     player.inputDx = 0;
     player.inputDz = 0;
+    player.invulnerableUntil = 0;
   }
 
   refreshShopOffer();
@@ -2983,6 +2984,7 @@ function stateSnapshot() {
       returnRewardsPreview: previewReturnRewards(id),
       equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
       keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
+      isInvulnerable: Date.now() < (p.invulnerableUntil || 0),
     };
   }
 
@@ -3038,6 +3040,7 @@ function returnPlayersToLobby() {
     player.lastMoveTime = Date.now();
     player.pendingSummons.clear();
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    player.invulnerableUntil = 0;
   }
 
   refreshShopOffer();
