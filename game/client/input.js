@@ -52,7 +52,8 @@ const DEFAULT_GAMEPAD_BUTTONS = {
 	useSlot3: 3,
 	useSlot4: 4,
 	useSlot5: 5,
-	toggleDeckViewer: 8
+	toggleDeckViewer: 8,
+	useKeyItem: 13
 };
 
 const POLLABLE_ACTIONS = Object.keys(DEFAULT_GAMEPAD_BUTTONS);
@@ -230,6 +231,8 @@ export function pollInput() {
 		if (actionsEnabled && pressed && !wasPressed) {
 			if (action === 'toggleDeckViewer') {
 				callbacks.onToggleDeck?.();
+			} else if (action === 'useKeyItem') {
+				callbacks.onUseKeyItem?.();
 			} else {
 				const slotMatch = action.match(/^useSlot(\d)$/);
 				if (slotMatch) callbacks.onUseSlot?.(parseInt(slotMatch[1], 10));

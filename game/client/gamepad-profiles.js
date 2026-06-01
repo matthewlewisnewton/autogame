@@ -257,6 +257,7 @@ export const STANDARD_PROFILE = {
 		useSlot4: { type: 'button', index: 4 },
 		useSlot5: { type: 'button', index: 5 },
 		toggleDeckViewer: { type: 'button', index: 8 },
+		useKeyItem: { type: 'button', index: 13 },
 	},
 	buttonLabels: [
 		{ index: 0, label: 'South (A / Cross)' },
@@ -300,6 +301,7 @@ export const EIGHTBITDO_64_PROFILE = {
 		useSlot4: { type: 'cButton', direction: 'left', threshold: 0.2 },
 		useSlot5: { type: 'cButton', direction: 'right', threshold: 0.2 },
 		toggleDeckViewer: { type: 'button', index: 10 },
+		useKeyItem: { type: 'button', index: 13 },
 	},
 	buttonLabels: [
 		{ index: 0, label: 'A' },
