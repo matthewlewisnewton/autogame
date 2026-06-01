@@ -3218,3 +3218,220 @@ describe('Cold-start mute persistence', () => {
 		expect(document.getElementById('mute-btn').textContent).toBe('🔊');
 	});
 });
+
+// ── Key Items equip UI ──
+
+describe('Key Items equip UI', () => {
+	beforeEach(() => {
+		// Create all DOM elements that main.js queries at module load time
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		// Create card slots inside #card-hand
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+
+		// Create key-item-specific DOM elements
+		if (!document.getElementById('key-item-loadout')) {
+			const loadout = document.createElement('div');
+			loadout.id = 'key-item-loadout';
+			document.body.appendChild(loadout);
+		}
+		if (!document.getElementById('key-item-list')) {
+			const list = document.createElement('div');
+			list.id = 'key-item-list';
+			document.body.appendChild(list);
+		}
+		if (!document.getElementById('key-item-error')) {
+			const error = document.createElement('div');
+			error.id = 'key-item-error';
+			error.style.display = 'none';
+			document.body.appendChild(error);
+		}
+		if (!document.getElementById('lobby-tab-keyitems')) {
+			const tab = document.createElement('button');
+			tab.id = 'lobby-tab-keyitems';
+			document.body.appendChild(tab);
+		}
+	});
+
+	const mockKeyItemDefs = {
+		dodge_roll: {
+			id: 'dodge_roll',
+			name: 'Dodge Roll',
+			description: 'Quick roll forward with brief invincibility frames',
+			cooldownMs: 800,
+		},
+		summon_recall: {
+			id: 'summon_recall',
+			name: 'Summon Recall',
+			description: 'Teleport to your most recent summon location',
+			cooldownMs: 15000,
+		},
+		field_medic_kit: {
+			id: 'field_medic_kit',
+			name: 'Field Medic Kit',
+			description: 'Restore a portion of your health',
+			cooldownMs: 20000,
+		},
+	};
+
+	/** Ensure the mock socket exists.
+	 * restoreSession() is async (awaits loadAccountSettings before createSocket),
+	 * and fetch hangs in jsdom, so the socket may never be created by the module.
+	 * If the socket isn't ready, we create it directly. */
+	function ensureSocket() {
+		if (!window.__isSocketReady()) {
+			window.createSocket('test-fake-jwt-token');
+		}
+	}
+
+	it('renderKeyItemList creates entries for all keyItemDefs', async () => {
+		await import('../main.js');
+
+		window.__setKeyItemDefs(mockKeyItemDefs);
+		window.__setGameState({ players: {} }, 'p1');
+		window.renderKeyItemList();
+
+		const entries = document.querySelectorAll('#key-item-list .key-item-entry');
+		expect(entries.length).toBe(Object.keys(mockKeyItemDefs).length);
+	});
+
+	it('equipped key item entry has .equipped class', async () => {
+		await import('../main.js');
+
+		window.__setKeyItemDefs(mockKeyItemDefs);
+		window.__setGameState(
+			{ players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.renderKeyItemList();
+
+		const entries = document.querySelectorAll('#key-item-list .key-item-entry');
+		expect(entries.length).toBe(3);
+
+		// Find entries by their .key-item-name text
+		const entryNames = Array.from(entries).map(e => ({
+			name: e.querySelector('.key-item-name')?.textContent,
+			hasEquipped: e.classList.contains('equipped'),
+		}));
+
+		const dodgeEntry = entryNames.find(e => e.name === 'Dodge Roll');
+		expect(dodgeEntry.hasEquipped).toBe(true);
+
+		const recallEntry = entryNames.find(e => e.name === 'Summon Recall');
+		expect(recallEntry.hasEquipped).toBe(false);
+
+		const medicEntry = entryNames.find(e => e.name === 'Field Medic Kit');
+		expect(medicEntry.hasEquipped).toBe(false);
+	});
+
+	it('clicking key item entry emits equipKeyItem', async () => {
+		await import('../main.js');
+		ensureSocket();
+
+		window.__setKeyItemDefs(mockKeyItemDefs);
+		window.__setGameState(
+			{ players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.renderKeyItemList();
+
+		// Clear any previous emit log
+		window.__clearSocketEmitLog();
+
+		// Click the Summon Recall entry (non-equipped)
+		const entries = document.querySelectorAll('#key-item-list .key-item-entry');
+		const recallEntry = Array.from(entries).find(
+			e => e.querySelector('.key-item-name')?.textContent === 'Summon Recall',
+		);
+		recallEntry.click();
+
+		const log = window.__socketEmitLog();
+		const equipEmits = log.filter(e => e.event === 'equipKeyItem');
+		expect(equipEmits.length).toBe(1);
+		expect(equipEmits[0].data.keyItemId).toBe('summon_recall');
+	});
+
+	it('keyItemEquipped event re-renders list', async () => {
+		await import('../main.js');
+		ensureSocket();
+
+		window.__setKeyItemDefs(mockKeyItemDefs);
+		window.__setGameState(
+			{ players: { p1: { equippedKeyItemId: 'dodge_roll' } } },
+			'p1',
+		);
+		window.renderKeyItemList();
+
+		// Verify initial state: dodge_roll is equipped
+		const entriesBefore = document.querySelectorAll('#key-item-list .key-item-entry');
+		const dodgeEntryBefore = Array.from(entriesBefore).find(
+			e => e.querySelector('.key-item-name')?.textContent === 'Dodge Roll',
+		);
+		expect(dodgeEntryBefore.classList.contains('equipped')).toBe(true);
+
+		const medicEntryBefore = Array.from(entriesBefore).find(
+			e => e.querySelector('.key-item-name')?.textContent === 'Field Medic Kit',
+		);
+		expect(medicEntryBefore.classList.contains('equipped')).toBe(false);
+
+		// Trigger keyItemEquipped socket event — this calls renderKeyItemList() internally
+		window.__triggerSocketEvent('keyItemEquipped', { keyItemId: 'field_medic_kit' });
+
+		// Re-query DOM after re-render (old references are stale — list was innerHTML-cleared)
+		const entriesAfter = document.querySelectorAll('#key-item-list .key-item-entry');
+		const dodgeEntryAfter = Array.from(entriesAfter).find(
+			e => e.querySelector('.key-item-name')?.textContent === 'Dodge Roll',
+		);
+		expect(dodgeEntryAfter).toBeTruthy();
+		expect(dodgeEntryAfter.classList.contains('equipped')).toBe(false);
+
+		const medicEntryAfter = Array.from(entriesAfter).find(
+			e => e.querySelector('.key-item-name')?.textContent === 'Field Medic Kit',
+		);
+		expect(medicEntryAfter).toBeTruthy();
+		expect(medicEntryAfter.classList.contains('equipped')).toBe(true);
+	});
+
+	it('keyItemError event shows error message', async () => {
+		await import('../main.js');
+		ensureSocket();
+
+		const errorEl = document.getElementById('key-item-error');
+		// Ensure error is hidden initially
+		errorEl.style.display = 'none';
+		errorEl.textContent = '';
+
+		window.__triggerSocketEvent('keyItemError', { reason: 'not_in_lobby' });
+
+		expect(errorEl.style.display).toBe('block');
+		expect(errorEl.textContent).toBe('Key items can only be equipped in the lobby');
+	});
+});
