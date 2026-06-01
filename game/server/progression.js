@@ -583,9 +583,11 @@ const KEY_ITEM_DEFS = {
     id: 'field_medic_kit',
     name: 'Field Medic Kit',
     description: 'Restore a portion of your health',
-    cooldownMs: 20000,
+    cooldownMs: 7000,
     type: 'healing',
     healPercent: 0.4,
+    healRadius: 5,
+    msRestore: 3,
   },
   guard_block: {
     id: 'guard_block',
