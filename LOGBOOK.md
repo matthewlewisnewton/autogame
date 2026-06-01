@@ -2010,3 +2010,26 @@ The same end state is reachable normally: a player can equip `guard_block` in th
 
 None.
 
+
+## v0.88 — Key Item: Flare Beacon  (2026-06-01 10:57:26)
+
+## Debug scenario: `flare-beacon-ready`
+
+| Rule | Status |
+|------|--------|
+| Gated to dev (localhost URL `?debugScenario=`, server `isDebugScenarioAllowed`) | OK |
+| Normal path still valid (`equipKeyItem` + `useKeyItem` with equipped id) | OK |
+| Does not bypass `useKeyItem` server logic | OK — only pre-equips item and spawns nearby enemies |
+
+## Sub-ticket integration
+
+All three subtickets land coherently: server reveal + cooldown + tick cleanup, client highlight, tests. No dead code or obvious logic bugs found in live tree review.
+
+## Remaining gaps
+
+None blocking. Runtime is healthy; acceptance criteria and tests are satisfied.
+
+## Nits (non-blocking)
+
+See `nits.md` if present — duplicate test suites, no dedicated simulation cleanup test, capture did not exercise flare visually.
+

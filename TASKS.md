@@ -23,7 +23,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [122-key-item-summon-recall](tickets/122-key-item-summon-recall/)
 - [x] [123-key-item-field-medic-kit](tickets/123-key-item-field-medic-kit/)
 - [x] [124-key-item-guard-block](tickets/124-key-item-guard-block/)
-- [ ] [125-key-item-flare-beacon](tickets/125-key-item-flare-beacon/)
+- [x] [125-key-item-flare-beacon](tickets/125-key-item-flare-beacon/)
 - [ ] [126-key-item-loot-magnet](tickets/126-key-item-loot-magnet/)
 - [ ] [127-key-item-overclock](tickets/127-key-item-overclock/)
 - [ ] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
@@ -47,3 +47,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)
 - [ ] [150-cleanup-key-item-summon-recall](tickets/150-cleanup-key-item-summon-recall/)
 - [ ] [151-cleanup-key-item-field-medic-kit](tickets/151-cleanup-key-item-field-medic-kit/)
+- [ ] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
