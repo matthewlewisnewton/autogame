@@ -1478,6 +1478,33 @@ body[data-phase="lobby"] #objective-hud {
   text-align: center;
 }
 
+/* ── Key item HUD indicator (flash feedback) ── */
+
+#key-item-indicator {
+  position: absolute;
+  top: 36px;
+  right: 16px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  z-index: 10;
+}
+
+#key-item-indicator.flash-success {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(34, 197, 94, 0.7), rgba(34, 197, 94, 0.15));
+  box-shadow: 0 0 14px rgba(34, 197, 94, 0.6);
+}
+
+#key-item-indicator.flash-cooldown {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(239, 68, 68, 0.7), rgba(239, 68, 68, 0.15));
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
+}
+
 #lobby-tabs {
   position: relative;
   z-index: 1;

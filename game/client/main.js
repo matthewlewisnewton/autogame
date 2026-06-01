@@ -712,7 +712,12 @@ initInput({
 		if (gameState && gameState.gamePhase === 'playing') toggleDeckViewer();
 	},
 	onUseKeyItem: () => {
-		if (gameState && gameState.gamePhase === 'playing' && socket) socket.emit('useKeyItem');
+		if (gameState && gameState.gamePhase === 'playing' && socket) {
+			const me = gameState.players[myId];
+			if (me && me.equippedKeyItemId) {
+				socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
+			}
+		}
 	},
 	canUseGameActions: () => gameState && gameState.gamePhase === 'playing',
 });
@@ -1051,6 +1056,17 @@ function bindSocketHandlers(s) {
 			unknown_item: 'Unknown key item',
 		};
 		showKeyItemError(messages[reason] || `Equip failed: ${reason}`);
+	});
+
+	s.on('keyItemUsed', (data) => {
+		if (!data) return;
+		if (data.ok) {
+			flashKeyItemIndicator('success');
+		} else if (data.reason === 'on_cooldown') {
+			flashKeyItemIndicator('cooldown');
+		} else {
+			console.warn('[keyItemUsed] failed:', data.reason);
+		}
 	});
 
 	s.on('cardEvolutionResult', (data) => {
@@ -2187,6 +2203,19 @@ function showKeyItemError(message) {
 		errorEl.textContent = '';
 		errorEl.style.display = 'none';
 	}
+}
+
+/** Briefly flash the key-item HUD indicator (success=green, cooldown=red). */
+function flashKeyItemIndicator(type) {
+	const el = document.getElementById('key-item-indicator');
+	if (!el) return;
+	el.className = type === 'success' ? 'flash-success' : 'flash-cooldown';
+	// Clear any previous timeout
+	if (el._flashTimer) clearTimeout(el._flashTimer);
+	el._flashTimer = setTimeout(() => {
+		el.className = '';
+		el._flashTimer = null;
+	}, 450);
 }
 
 function renderKeyItemList() {
