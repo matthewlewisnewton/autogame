@@ -409,6 +409,7 @@ const DEBUG_SCENARIOS = new Set([
   'telepipe-ready',
   'sloped-dungeon',
   'key-item-cooldown',
+  'medic-kit-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -753,6 +754,12 @@ function applyDebugScenario(socket, name) {
       player.magicStones = MAX_MAGIC_STONES;
       player.equippedKeyItemId = 'dodge_roll';
       player.keyItemCooldownUntil = Date.now() + 5000; // 5-second cooldown remaining
+    } else if (name === 'medic-kit-ready') {
+      // Put player at low HP with some MS to test Field Medic Kit healing.
+      player.hp = Math.floor(MAX_HP * 0.3);
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'field_medic_kit';
+      player.keyItemCooldownUntil = 0;
     }
 
     syncRunObjectiveToEnemies();
@@ -2478,9 +2485,36 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll and summon_recall are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall') {
+    // Only dodge_roll, summon_recall, and field_medic_kit are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
+      return;
+    }
+
+    if (keyItemId === 'field_medic_kit') {
+      // --- field_medic_kit: AoE heal + MS restore for nearby living players ---
+      const healRadius = def.healRadius != null ? def.healRadius : 5;
+      const healPercent = def.healPercent != null ? def.healPercent : 0.4;
+      const msRestore = def.msRestore != null ? def.msRestore : 3;
+      const casterX = player.x;
+      const casterZ = player.z;
+      let healed = 0;
+
+      for (const p of Object.values(state.players)) {
+        if (!p || p.dead || p.extracted) continue;
+        const dist = Math.hypot(p.x - casterX, p.z - casterZ);
+        if (dist <= healRadius) {
+          p.hp = Math.min(p.hp + MAX_HP * healPercent, MAX_HP);
+          p.magicStones = Math.min((p.magicStones || 0) + msRestore, MAX_MAGIC_STONES);
+          healed++;
+        }
+      }
+
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 7000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
 
