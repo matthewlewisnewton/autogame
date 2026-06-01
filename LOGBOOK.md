@@ -1849,3 +1849,26 @@ None. Round-2 capture provides runnable proof; all acceptance criteria are met i
 None. All acceptance criteria are fully and robustly met, the game runs cleanly,
 and the full server test suite passes.
 
+
+## v0.81 — Key Item Data Model and Persistence  (2026-05-31 19:15:55)
+
+---
+
+## Capture vs. ticket intent
+
+Gemini capture plan probed `equippedKeyItemId` and snapshot cooldown fields, but harness `harnessState` in `metrics.json` does not surface those fields — probes only show generic lobby/gameplay UI. **Server implementation and unit tests are the authoritative proof** for snapshot fields; screenshot shows healthy dungeon HUD without key-item UI (expected).
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime is clean; acceptance criteria are satisfied on the server foundation delivered by sub-tickets 01–05.
+
+### Non-blocking nits (see `nits.md`)
+
+- Silent `useKeyItem` when dead/extracted
+- No client/socket “list key items” event yet (helpers exist server-side)
+- `key-item-cooldown` debug scenario untested
+
+---
+

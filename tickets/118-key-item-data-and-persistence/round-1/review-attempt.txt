@@ -1,0 +1,23 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no game `pageerror`/`[fatal]` lines (only Vite connect and benign 409s on duplicate register).
+
+**Implementation (5 commits on baseline `89153b4`):**
+
+- **`KEY_ITEM_DEFS`** — all 14 IDs with required fields; only `dodge_roll` is usable (cooldown stub; motion in 121).
+- **Player state** — `equippedKeyItemId` (default `dodge_roll`), `keyItemCooldownUntil` (run-only, not persisted).
+- **Unlock helpers** — `getUnlockedKeyItems()` / `isKeyItemUnlocked()` (server-side list/query per sub-ticket 02).
+- **Persistence** — `extractPersistentData` + `savePlayerData` on equip + restore on join.
+- **Sockets** — `equipKeyItem` (lobby), `useKeyItem` (dungeon) with validation, cooldown, and structured errors.
+- **Snapshot** — `equippedKeyItemId`, `keyItemCooldownRemaining` in `stateSnapshot()`.
+- **Tests** — 11/11 passing in `key-items.test.js`.
+
+**Debug:** `key-item-cooldown` scenario is gated like existing debug scenarios; normal path can reach the same cooldown via `useKeyItem`.
+
+Written:
+
+- [`tickets/118-key-item-data-and-persistence/round-1/review.md`](tickets/118-key-item-data-and-persistence/round-1/review.md) — full per-criterion review
+- [`tickets/118-key-item-data-and-persistence/round-1/nits.md`](tickets/118-key-item-data-and-persistence/round-1/nits.md) — 3 non-blocking follow-ups
+- No `gaps.md` (PASS only)
+
+**VERDICT: PASS**
