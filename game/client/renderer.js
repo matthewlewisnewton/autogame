@@ -1088,6 +1088,66 @@ export function triggerDashVFX(playerId) {
 	requestAnimationFrame(fadeGhost);
 }
 
+// ── Heal pulse VFX (Field Medic Kit) ──
+
+const HEAL_PULSE_DURATION = 600;
+const HEAL_PULSE_EXPAND_MS = 400;
+const HEAL_PULSE_COLOR = 0x44ff44;
+
+/**
+ * Spawn a green expanding ring at the caster's position to visualize
+ * the Field Medic Kit heal pulse. Expands from radius 0 to healRadius
+ * over ~400 ms, then fades out over ~200 ms.
+ *
+ * @param {{ x: number, y: number, z: number }} position
+ */
+export function triggerHealPulseVFX(position) {
+	if (!scene) return;
+
+	const healRadius = 5;
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: HEAL_PULSE_COLOR,
+		emissive: HEAL_PULSE_COLOR,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(position.x, 0.1, position.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	scene.add(mesh);
+
+	const startTime = performance.now();
+	function animatePulse() {
+		const elapsed = performance.now() - startTime;
+		const t = Math.min(elapsed / HEAL_PULSE_DURATION, 1.0);
+
+		if (elapsed < HEAL_PULSE_EXPAND_MS) {
+			// Expand phase: scale from 0 to healRadius * 2
+			const expandT = elapsed / HEAL_PULSE_EXPAND_MS;
+			mesh.scale.setScalar(healRadius * 2 * expandT);
+		} else {
+			// Fade phase: keep full size, reduce opacity
+			mesh.scale.setScalar(healRadius * 2);
+			const fadeT = (elapsed - HEAL_PULSE_EXPAND_MS) / (HEAL_PULSE_DURATION - HEAL_PULSE_EXPAND_MS);
+			mesh.material.opacity = Math.max(0, 1.0 - fadeT);
+		}
+
+		if (t < 1) {
+			requestAnimationFrame(animatePulse);
+		} else {
+			scene.remove(mesh);
+			geometry.dispose();
+			material.dispose();
+		}
+	}
+	requestAnimationFrame(animatePulse);
+}
+
 // ── Floating damage numbers ──
 
 /**
