@@ -5,7 +5,7 @@
 //   Secondary:  hold modifier (RT on standard, L on 8BitDo 64) → extended slots
 //   Lock-on:    LT (standard) or Z (8BitDo 64) — handled in gamepad.js
 
-import { getGamepadConfig } from './settings.js';
+import { getGamepadConfig, getKeyboardBindings } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
 import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.js';
 import {
@@ -85,8 +85,14 @@ export function initInput(opts = {}) {
 function onKeyDown(e) {
 	if (e.repeat) return;
 	const key = e.key.toLowerCase();
+	const kbBindings = getKeyboardBindings();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
-		if (!keys.includes(key)) continue;
+		let matchedKeys = keys;
+		// For useKeyItem, check custom keyboard binding from settings first
+		if (action === 'useKeyItem' && kbBindings.useKeyItem) {
+			matchedKeys = [kbBindings.useKeyItem.toLowerCase()];
+		}
+		if (!matchedKeys.includes(key)) continue;
 		if (action.startsWith('move')) {
 			keyState[action] = true;
 			return;
@@ -400,6 +406,22 @@ export function getHandModifierGamepadButton() {
 	if (gp) return getModifierButtonIndex(gp);
 	const cfg = getGamepadConfig();
 	return Number.isInteger(cfg.modifierButton) ? cfg.modifierButton : HAND_MODIFIER_GAMEPAD_BUTTON;
+}
+
+/**
+ * Resolved binding for useKeyItem action.
+ * @returns {{ keyboard: string, gamepad: number }}
+ */
+export function getUseKeyItemBinding() {
+	const kbBindings = getKeyboardBindings();
+	const keyboardKey = (kbBindings.useKeyItem || 'e').toLowerCase();
+	const cfg = getGamepadConfig();
+	const customGamepad = cfg.bindings && cfg.bindings.useKeyItem;
+	let gamepadIndex = DEFAULT_GAMEPAD_BUTTONS.useKeyItem;
+	if (customGamepad && customGamepad.type === 'button' && Number.isInteger(customGamepad.index)) {
+		gamepadIndex = customGamepad.index;
+	}
+	return { keyboard: keyboardKey, gamepad: gamepadIndex };
 }
 
 /** Test-only: reset key state */

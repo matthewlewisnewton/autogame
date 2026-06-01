@@ -5,7 +5,7 @@ import { setSoundEnabledFromSettings } from './audio.js';
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
 
-/** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
+/** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', keyboard: { bindings: Record<string, string> }, gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
 
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
@@ -21,6 +21,11 @@ export function getDefaultSettings() {
 		particlesEnabled: true,
 		showHitboxes: true,
 		lockOnRepeatAction: 'unlock',
+		keyboard: {
+			bindings: {
+				useKeyItem: 'e',
+			},
+		},
 		gamepad: {
 			bindings: {},
 			moveStick: 'left',
@@ -208,4 +213,9 @@ export function getLockOnRepeatAction() {
 	const action = cachedSettings.lockOnRepeatAction;
 	if (action === 'cycle' || action === 'reacquire') return action;
 	return 'unlock';
+}
+
+/** @returns {Record<string, string>} Keyboard action→key bindings */
+export function getKeyboardBindings() {
+	return cachedSettings.keyboard?.bindings || {};
 }

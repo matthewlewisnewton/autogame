@@ -15,6 +15,11 @@ function getDefaultSettings() {
 		particlesEnabled: true,
 		showHitboxes: true,
 		lockOnRepeatAction: 'unlock',
+		keyboard: {
+			bindings: {
+				useKeyItem: 'e',
+			},
+		},
 		gamepad: {
 			bindings: {},
 			moveStick: 'left',

@@ -46,6 +46,7 @@ import {
 	ACTIONS,
 	getHandSlotInputHints,
 	is8BitDo64HandHintsActive,
+	getUseKeyItemBinding,
 } from './input.js';
 import {
 	DECK_MIN_SIZE,
@@ -209,6 +210,8 @@ const settingsOverlayEl = document.getElementById('settings-overlay');
 const settingsBtnEl = document.getElementById('settings-btn');
 const settingsCloseBtnEl = document.getElementById('settings-close-btn');
 const lockOnRepeatSelectEl = document.getElementById('lock-on-repeat-select');
+const useKeyItemKeyInputEl = document.getElementById('use-key-item-key-input');
+const useKeyItemGamepadLabelEl = document.getElementById('use-key-item-gamepad-label');
 const gamepadStatusEl = document.getElementById('gamepad-status');
 const gamepadDeviceIdEl = document.getElementById('gamepad-device-id');
 const gamepadActivationHintEl = document.getElementById('gamepad-activation-hint');
@@ -2810,8 +2813,26 @@ function syncSettingsForm() {
 	if (lockOnRepeatSelectEl) {
 		lockOnRepeatSelectEl.value = getLockOnRepeatAction();
 	}
+	syncUseKeyItemBindingUI();
 	syncControllerCalibrationForm();
 }
+
+/** Display the current useKeyItem binding in the settings UI */
+function syncUseKeyItemBindingUI() {
+	const binding = getUseKeyItemBinding();
+	if (useKeyItemKeyInputEl) {
+		useKeyItemKeyInputEl.value = binding.keyboard.toUpperCase();
+	}
+	if (useKeyItemGamepadLabelEl) {
+		useKeyItemGamepadLabelEl.textContent = `GP Btn ${binding.gamepad}`;
+	}
+}
+
+/** State for keyboard key capture */
+let capturingKeyItemKey = false;
+
+/** State for gamepad button capture */
+let capturingKeyItemGamepad = false;
 
 function openSettingsOverlay() {
 	syncSettingsForm();
@@ -2821,6 +2842,12 @@ function openSettingsOverlay() {
 
 function closeSettingsOverlay() {
 	stopControllerCalibration();
+	capturingKeyItemKey = false;
+	capturingKeyItemGamepad = false;
+	if (keyItemGamepadCaptureRaf) {
+		cancelAnimationFrame(keyItemGamepadCaptureRaf);
+		keyItemGamepadCaptureRaf = 0;
+	}
 	if (settingsOverlayEl) settingsOverlayEl.classList.add('hidden');
 }
 
@@ -2839,6 +2866,80 @@ if (lockOnRepeatSelectEl) {
 	lockOnRepeatSelectEl.addEventListener('change', () => {
 		patchSettings({ lockOnRepeatAction: lockOnRepeatSelectEl.value });
 	});
+}
+
+// ── useKeyItem keyboard binding capture ──
+
+if (useKeyItemKeyInputEl) {
+	useKeyItemKeyInputEl.addEventListener('focus', () => {
+		capturingKeyItemKey = true;
+		useKeyItemKeyInputEl.value = '';
+	});
+	useKeyItemKeyInputEl.addEventListener('blur', () => {
+		capturingKeyItemKey = false;
+		if (!useKeyItemKeyInputEl.value) syncUseKeyItemBindingUI();
+	});
+	useKeyItemKeyInputEl.addEventListener('keydown', (e) => {
+		if (!capturingKeyItemKey) return;
+		// Ignore modifier-only keys
+		if (['control', 'shift', 'alt', 'meta', 'capslock', 'tab', 'escape'].includes(e.key.toLowerCase())) return;
+		e.preventDefault();
+		e.stopPropagation();
+		const key = e.key.toLowerCase();
+		patchSettings({ keyboard: { bindings: { useKeyItem: key } } });
+		capturingKeyItemKey = false;
+		useKeyItemKeyInputEl.blur();
+		syncUseKeyItemBindingUI();
+	});
+}
+
+// ── useKeyItem gamepad binding capture ──
+
+if (useKeyItemGamepadLabelEl) {
+	useKeyItemGamepadLabelEl.style.cursor = 'pointer';
+	useKeyItemGamepadLabelEl.title = 'Click to capture gamepad button';
+	useKeyItemGamepadLabelEl.addEventListener('click', () => {
+		capturingKeyItemGamepad = true;
+		useKeyItemGamepadLabelEl.textContent = 'Press…';
+		startKeyItemGamepadCapture();
+	});
+}
+
+let keyItemGamepadCaptureRaf = 0;
+let keyItemGamepadCapturePrev = null;
+
+function startKeyItemGamepadCapture() {
+	if (keyItemGamepadCaptureRaf) return;
+	keyItemGamepadCapturePrev = null;
+	keyItemGamepadCaptureRaf = requestAnimationFrame(keyItemGamepadCaptureFrame);
+}
+
+function keyItemGamepadCaptureFrame() {
+	if (!capturingKeyItemGamepad) {
+		keyItemGamepadCaptureRaf = 0;
+		return;
+	}
+	const pads = navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : [];
+	for (const gp of pads) {
+		const btnCount = Math.min(gp.buttons.length, 16);
+		for (let i = 0; i < btnCount; i++) {
+			const pressed = gp.buttons[i]?.pressed ?? false;
+			const wasPressed = keyItemGamepadCapturePrev?.[i] ?? false;
+			if (pressed && !wasPressed) {
+				patchSettings({ gamepad: { bindings: { useKeyItem: { type: 'button', index: i } } } });
+				capturingKeyItemGamepad = false;
+				keyItemGamepadCaptureRaf = 0;
+				syncUseKeyItemBindingUI();
+				return;
+			}
+		}
+		// Update prev state
+		if (!keyItemGamepadCapturePrev) keyItemGamepadCapturePrev = {};
+		for (let i = 0; i < btnCount; i++) {
+			keyItemGamepadCapturePrev[i] = gp.buttons[i]?.pressed ?? false;
+		}
+	}
+	keyItemGamepadCaptureRaf = requestAnimationFrame(keyItemGamepadCaptureFrame);
 }
 
 onSettingsChange(() => {
