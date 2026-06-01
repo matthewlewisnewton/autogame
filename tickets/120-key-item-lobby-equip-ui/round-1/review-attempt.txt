@@ -1,0 +1,9 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no page errors or fatals (only Vite connect, scene init, and benign 409s on auth).
+
+**Implementation:** Four commits add the Key Items lobby tab, `renderKeyItemList()` with all 14 defs from server `init`, equip/error handling, scrollable list, accessibility, and five passing unit tests. Server persistence and `equipKeyItem` were already covered from ticket 118.
+
+**Verdict:** **PASS** — written as the last line of [`tickets/120-key-item-lobby-equip-ui/round-1/review.md`](tickets/120-key-item-lobby-equip-ui/round-1/review.md). No `gaps.md` (FAIL-only).
+
+**Nits** (non-blocking): [`nits.md`](tickets/120-key-item-lobby-equip-ui/round-1/nits.md) — extend the lobby tab test to include Key Items, and capture a Key Items tab screenshot in harness QA. Round-1 fallback smoke never opened that tab, so there is no visual proof of the UI in screenshots even though the code meets the acceptance criteria.
