@@ -107,4 +107,50 @@ class Repo:
                             sha=self.head_short() if after != before else None)
 
 
-__all__ = ["CommitResult", "Repo"]
+@dataclass
+class WorktreeWorkspace(Repo):
+    """A Repo on an isolated `git worktree` + branch `auto/<name>`, for one
+    parallel worker. Shares the main checkout's `.git` object store but has its
+    own working tree, index, and port pair — so two workers never collide on
+    files, ports, or the git index. Create with `WorktreeWorkspace.create(...)`
+    and release with `.remove_worktree()`.
+    """
+    main_root: Optional[Path] = None  # the primary checkout that owns .git/
+
+    @classmethod
+    def create(cls, main: "Repo", *, name: str, ports: PortAllocation,
+               base_ref: str = "HEAD",
+               parent_dir: Optional[Path] = None) -> "WorktreeWorkspace":
+        """`git worktree add -b auto/<name> <path> <base_ref>` off the main
+        checkout. The worktree lives outside the main tree (default:
+        `<main_parent>/.autogame-worktrees/<name>`) so it never shows up in
+        main's status."""
+        branch = f"auto/{name}"
+        base = parent_dir or (Path(main.root).parent / ".autogame-worktrees")
+        wt_root = Path(base) / name
+        base.mkdir(parents=True, exist_ok=True)
+        # Prune stale registrations (e.g. from a crashed prior run) so a reused
+        # path/branch doesn't fail the add.
+        main.run_git("worktree", "prune", capture=False)
+        main.run_git("worktree", "add", "-b", branch, str(wt_root), base_ref,
+                     capture=False)
+        return cls(root=wt_root, ports=ports, branch=branch,
+                   main_root=Path(main.root))
+
+    def remove_worktree(self, *, force: bool = True, delete_branch: bool = True) -> None:
+        """`git worktree remove` + optionally delete the branch, from the main
+        checkout (worktree ops must run against the owning repo). Best-effort."""
+        owner = str(self.main_root or self.root)
+        args = ["git", "worktree", "remove"]
+        if force:
+            args.append("--force")
+        args.append(str(self.root))
+        subprocess.run(args, cwd=owner, check=False, capture_output=True, text=True)
+        subprocess.run(["git", "worktree", "prune"], cwd=owner,
+                       check=False, capture_output=True, text=True)
+        if delete_branch:
+            subprocess.run(["git", "branch", "-D", self.branch], cwd=owner,
+                           check=False, capture_output=True, text=True)
+
+
+__all__ = ["CommitResult", "Repo", "WorktreeWorkspace"]
