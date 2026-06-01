@@ -558,6 +558,135 @@ const CARD_DEFS = {
   },
 };
 
+// Key item definitions registry — mirrors CARD_DEFS pattern.
+// Only `dodge_roll` has a complete implementation; others return { ok: false, reason: 'not_implemented' }.
+const KEY_ITEM_DEFS = {
+  dodge_roll: {
+    id: 'dodge_roll',
+    name: 'Dodge Roll',
+    description: 'Quick roll forward with brief invincibility frames',
+    cooldownMs: 800,
+    type: 'movement',
+    invincibleDurationMs: 300,
+    rollDistanceMs: 200,
+  },
+  summon_recall: {
+    id: 'summon_recall',
+    name: 'Summon Recall',
+    description: 'Teleport to your most recent summon location',
+    cooldownMs: 15000,
+    type: 'teleport',
+  },
+  field_medic_kit: {
+    id: 'field_medic_kit',
+    name: 'Field Medic Kit',
+    description: 'Restore a portion of your health',
+    cooldownMs: 20000,
+    type: 'healing',
+    healPercent: 0.4,
+  },
+  guard_block: {
+    id: 'guard_block',
+    name: 'Guard Block',
+    description: 'Raise a shield to reduce incoming damage',
+    cooldownMs: 12000,
+    type: 'defensive',
+    damageReduction: 0.7,
+    durationMs: 2000,
+  },
+  flare_beacon: {
+    id: 'flare_beacon',
+    name: 'Flare Beacon',
+    description: 'Signal for emergency support',
+    cooldownMs: 30000,
+    type: 'utility',
+  },
+  loot_magnet: {
+    id: 'loot_magnet',
+    name: 'Loot Magnet',
+    description: 'Attract nearby drops automatically',
+    cooldownMs: 25000,
+    type: 'utility',
+    attractRadius: 15,
+    durationMs: 10000,
+  },
+  overclock: {
+    id: 'overclock',
+    name: 'Overclock',
+    description: 'Temporarily increase attack speed',
+    cooldownMs: 20000,
+    type: 'offensive',
+    speedMultiplier: 2.0,
+    durationMs: 5000,
+  },
+  smoke_bomb: {
+    id: 'smoke_bomb',
+    name: 'Smoke Bomb',
+    description: 'Become temporarily invisible',
+    cooldownMs: 18000,
+    type: 'stealth',
+    durationMs: 3000,
+  },
+  ground_anchor: {
+    id: 'ground_anchor',
+    name: 'Ground Anchor',
+    description: 'Become immune to knockback and displacement',
+    cooldownMs: 15000,
+    type: 'defensive',
+    durationMs: 4000,
+  },
+  phase_step: {
+    id: 'phase_step',
+    name: 'Phase Step',
+    description: 'Instantly teleport a short distance',
+    cooldownMs: 10000,
+    type: 'teleport',
+    maxDistance: 8,
+  },
+  purge_charm: {
+    id: 'purge_charm',
+    name: 'Purge Charm',
+    description: 'Remove all negative effects',
+    cooldownMs: 20000,
+    type: 'utility',
+  },
+  echo_strike: {
+    id: 'echo_strike',
+    name: 'Echo Strike',
+    description: 'Deal damage in a radial burst around you',
+    cooldownMs: 12000,
+    type: 'offensive',
+    radius: 6,
+    damage: 30,
+  },
+  barrier_dome: {
+    id: 'barrier_dome',
+    name: 'Barrier Dome',
+    description: 'Create a protective barrier around you',
+    cooldownMs: 25000,
+    type: 'defensive',
+    radius: 5,
+    absorbedDamage: 100,
+    durationMs: 8000,
+  },
+  rally_cry: {
+    id: 'rally_cry',
+    name: 'Rally Cry',
+    description: 'Boost nearby allies with a temporary buff',
+    cooldownMs: 30000,
+    type: 'support',
+    radius: 10,
+    durationMs: 10000,
+    hpRegenPerTick: 3,
+    tickIntervalMs: 1000,
+  },
+};
+
+/** Get a key item definition by ID, or `undefined` for unknown IDs. */
+function getKeyItemDef(id) {
+  return KEY_ITEM_DEFS[id] || undefined;
+}
+
 // Starting deck card ids — mirrors createStartingDeck() in client/cards.js.
 const STARTING_DECK_IDS = [
   'iron_sword',
@@ -3023,6 +3152,8 @@ module.exports = {
   setTestProvider,
   getProvider,
   CARD_DEFS,
+  KEY_ITEM_DEFS,
+  getKeyItemDef,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   getCardDef,
