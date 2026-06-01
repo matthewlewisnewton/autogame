@@ -26,7 +26,7 @@ class FakeQueue:
             return None
         tid = q.pop(0)
         self.assigned[tid] = assignee
-        return {"id": tid, "assignee": assignee}
+        return {"id": tid, "title": tid, "assignee": assignee}
 
     def requeue(self, ticket_id, *, note=None):
         self.requeued.append(ticket_id)

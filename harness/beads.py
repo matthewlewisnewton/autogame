@@ -67,6 +67,11 @@ class BeadsQueue:
         rows = self._run_json("show", issue_id, "--json")
         return rows[0] if rows else None
 
+    def in_progress(self) -> list[dict]:
+        """Issues currently claimed (status=in_progress) — used by reconcile to
+        find work orphaned by a dispatcher crash."""
+        return self._run_json("list", "--status", "in_progress", "--json")
+
     # --- claim / release ------------------------------------------------ #
     def claim_ready(self, *, difficulty: Optional[str] = None,
                     assignee: Optional[str] = None) -> Optional[dict]:

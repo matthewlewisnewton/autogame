@@ -29,7 +29,7 @@ class FakeQueue:
 
 
 def _handle(name):
-    return WorkerHandle(name, "composer", "medium", FakeWorktree(name), proc=object())
+    return WorkerHandle(name, name, "composer", "medium", FakeWorktree(name), proc=object())
 
 
 def _mq(queue, *, rebase=True, verify=True, merge=True):
