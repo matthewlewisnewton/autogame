@@ -1,15 +1,16 @@
-"""Unified claude recovery path.
+"""Unified recovery path.
 
 Merges the two formerly-parallel claude-repair mechanisms:
   - the in-ticket `rescue` (rounds exhausted: finish the ticket + close gaps),
   - the supervisor-level `repair_pass` (rc=2 tool/harness failure: fix harness).
 
-Both spawned claude against the live workspace and both could edit `harness/**`,
-but only rescue committed — so the supervisor's harness fixes evaporated on the
-next checkout. They are now one `run_repair()` using one role (`repair`), one
-prompt (harness/prompts/repair.md, mode-gated), that ALWAYS commits on
-acceptance (include_harness=True) so a harness fix persists. The two call sites
-differ only in `mode` and the prompt_vars they pass.
+Both spawned a recovery agent against the live workspace and both could edit
+`harness/**`, but only rescue committed — so the supervisor's harness fixes
+evaporated on the next checkout. They are now one `run_repair()` using one role
+(`repair`, model configured in roles.yaml), one prompt
+(harness/prompts/repair.md, mode-gated), that ALWAYS commits on acceptance
+(include_harness=True) so a harness fix persists. The two call sites differ only
+in `mode` and the prompt_vars they pass.
 """
 from __future__ import annotations
 
@@ -27,7 +28,7 @@ if TYPE_CHECKING:
 def run_repair(role: "Role", *, workspace, mode: str, prompt_vars: dict,
                artifacts_dir: Path, commit_msg: str,
                telemetry=None) -> "ChainResult":
-    """Run the claude recovery role and commit its work on acceptance.
+    """Run the recovery role and commit its work on acceptance.
 
     mode: "ticket" (finish a ticket) or "harness" (fix the harness). Only used
     for logging/telemetry — the prompt itself branches on the MODE var.
@@ -39,7 +40,7 @@ def run_repair(role: "Role", *, workspace, mode: str, prompt_vars: dict,
     artifacts_dir = Path(artifacts_dir)
     artifacts_dir.mkdir(parents=True, exist_ok=True)
     emit_progress_event("repair_start", {"mode": mode})
-    log(f"[repair:{mode}] claude recovery pass...")
+    log(f"[repair:{mode}] recovery pass...")
     chain = role.execute(
         workspace=workspace,
         prompt_vars=prompt_vars,

@@ -1,4 +1,4 @@
-"""split — port of run_ticket.sh::split_ticket. Claude carves a stuck
+"""split — port of run_ticket.sh::split_ticket. The split agent carves a stuck
 ticket into smaller child tickets that replace it in the backlog."""
 from __future__ import annotations
 
@@ -70,7 +70,7 @@ def split(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
     split_dir = Path(split_dir)
     split_dir.mkdir(parents=True, exist_ok=True)
     emit_progress_event("split_start", {"ticket": ticket_name})
-    log(f"[split] claude restructuring {ticket_name} into smaller tickets...")
+    log(f"[split] restructuring {ticket_name} into smaller tickets...")
 
     split_out_md = split_dir / "split-out.md"
     # split role writes new tickets under tickets/; that needs to be safe.
@@ -142,7 +142,7 @@ def split(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
         names.append(full_slug)
 
     if len(names) < 2:
-        log(f"[split] claude did not produce 2+ usable tickets — no split filed")
+        log(f"[split] did not produce 2+ usable tickets — no split filed")
         for nm in names:
             shutil.rmtree(tickets_root / nm, ignore_errors=True)
         return False
@@ -154,7 +154,7 @@ def split(role: "Role", *, workspace, ticket_name: str, ticket_file: Path,
     commit_msg = (
         f"harness: split {ticket_name} into {len(names)} smaller tickets\n\n"
         f"{ticket_name} could not be completed in the configured remediation\n"
-        f"rounds plus a claude rescue. Restructured into independently-\n"
+        f"rounds plus a rescue pass. Restructured into independently-\n"
         f"solvable tickets, which replace it in the backlog:\n"
         + "".join(f"  - {nm}\n" for nm in names)
         + "\nautogame"

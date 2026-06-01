@@ -14,7 +14,7 @@ from enum import IntEnum
 class PipelineResult(IntEnum):
     PASS = 0        # succeeded and committed
     INCOMPLETE = 1  # genuine failure after all in-pipeline recovery — retryable
-    ESCALATE = 2    # the harness/tooling itself failed — needs claude/human repair
+    ESCALATE = 2    # the harness/tooling itself failed — needs automated/human repair
     SPLIT = 3       # restructured into smaller tickets — backlog should re-scan
 
 
