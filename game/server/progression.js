@@ -559,7 +559,7 @@ const CARD_DEFS = {
 };
 
 // Key item definitions registry — mirrors CARD_DEFS pattern.
-// Only `dodge_roll` has a complete implementation; others return { ok: false, reason: 'not_implemented' }.
+// Implemented: `dodge_roll`, `summon_recall`. Others return { ok: false, reason: 'not_implemented' }.
 const KEY_ITEM_DEFS = {
   dodge_roll: {
     id: 'dodge_roll',
@@ -572,10 +572,12 @@ const KEY_ITEM_DEFS = {
   },
   summon_recall: {
     id: 'summon_recall',
-    name: 'Summon Recall',
-    description: 'Teleport to your most recent summon location',
-    cooldownMs: 15000,
-    type: 'teleport',
+    name: 'Recall Whistle',
+    description: 'Recall all your summoned minions to ring positions around you',
+    cooldownMs: 10000,
+    type: 'summon',
+    ringRadiusMin: 1.5,
+    ringRadiusMax: 2.5,
   },
   field_medic_kit: {
     id: 'field_medic_kit',

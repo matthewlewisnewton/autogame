@@ -398,6 +398,7 @@ function resetGameState() {
 const DEBUG_SCENARIOS = new Set([
   'summon-low-mana',
   'summon-ready',
+  'summon-recall',
   'combat-damaged-player',
   'mixed-enemies',
   'spawner-active',
@@ -584,6 +585,50 @@ function applyDebugScenario(socket, name) {
           player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
         }
       }
+    } else if (name === 'summon-recall') {
+      // Place player in playing phase with two minions far away to test recall
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = spawn.x;
+      player.z = spawn.z;
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      state.enemies = [];
+      state.minions = [
+        {
+          id: crypto.randomUUID(),
+          ownerId: player.id,
+          type: 'astral_guardian',
+          x: player.x + 8,
+          z: player.z + 8,
+          hp: 40,
+          maxHp: 40,
+          maxTtl: 60,
+          ttl: 60,
+          attackDamage: 10,
+          attackRange: 1.5,
+          attackIntervalMs: 1000,
+          lastAttackAt: 0,
+        },
+        {
+          id: crypto.randomUUID(),
+          ownerId: player.id,
+          type: 'dungeon_drake',
+          x: player.x - 8,
+          z: player.z - 8,
+          hp: 50,
+          maxHp: 50,
+          maxTtl: 60,
+          ttl: 60,
+          attackDamage: 15,
+          attackRange: 1.5,
+          attackIntervalMs: 1500,
+          lastAttackAt: 0,
+        },
+      ];
+      // Equip the recall whistle so the user can test it immediately
+      player.equippedKeyItemId = 'summon_recall';
+      player.keyItemCooldownUntil = 0;
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
@@ -2433,9 +2478,79 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll is implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll') {
+    // Only dodge_roll and summon_recall are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
+      return;
+    }
+
+    if (keyItemId === 'summon_recall') {
+      // --- summon_recall: teleport all owned minions to ring positions around player ---
+      const myMinions = state.minions.filter(m => m.ownerId === socket.playerId);
+      if (myMinions.length === 0) {
+        socket.emit('keyItemUsed', { ok: false, reason: 'no_minions' });
+        return; // No cooldown burn on soft-fail
+      }
+
+      const ringRadiusMin = def.ringRadiusMin != null ? def.ringRadiusMin : 2;
+      const ringRadiusMax = def.ringRadiusMax != null ? def.ringRadiusMax : 2;
+      const ringRadius = (ringRadiusMin + ringRadiusMax) / 2; // ~2m
+
+      for (let i = 0; i < myMinions.length; i++) {
+        const minion = myMinions[i];
+        const angle = (2 * Math.PI * i) / myMinions.length;
+        let targetX = player.x + Math.cos(angle) * ringRadius;
+        let targetZ = player.z + Math.sin(angle) * ringRadius;
+
+        // Clamp to dungeon bounds
+        const clamped = clampToDungeon(targetX, targetZ);
+        targetX = clamped.x;
+        targetZ = clamped.z;
+
+        // Check wall collision; if blocked, find nearby valid position
+        if (isEntityPositionBlocked(targetX, targetZ, ENTITY_RADIUS) || !isInsideDungeon(targetX, targetZ)) {
+          const nearby = nearbySpawnPosition(player.x + Math.cos(angle) * ringRadius, player.z + Math.sin(angle) * ringRadius, 3);
+          if (nearby) {
+            targetX = nearby.x;
+            targetZ = nearby.z;
+          }
+        }
+
+        // Final safety check: if still blocked, spiral outward to find a valid spot
+        if (isEntityPositionBlocked(targetX, targetZ, ENTITY_RADIUS) || !isInsideDungeon(targetX, targetZ)) {
+          let found = false;
+          for (let r = 1; r <= 6 && !found; r += 0.5) {
+            // Try the primary angle, then offsets if blocked
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
+              const tryAngle = angle + a;
+              const sx = player.x + Math.cos(tryAngle) * r;
+              const sz = player.z + Math.sin(tryAngle) * r;
+              const sc = clampToDungeon(sx, sz);
+              if (!isEntityPositionBlocked(sc.x, sc.z, ENTITY_RADIUS) && isInsideDungeon(sc.x, sc.z)) {
+                targetX = sc.x;
+                targetZ = sc.z;
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+
+        minion.x = targetX;
+        minion.z = targetZ;
+
+        // Update Y to match floor
+        if (state.layout) {
+          const floorY = sampleFloorY(state.layout, minion.x, minion.z);
+          minion.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+        }
+      }
+
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
 
