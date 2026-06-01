@@ -2439,11 +2439,43 @@ function startServer(port) {
       return;
     }
 
-    // Set cooldown and invulnerability window (i-frames for dodge roll).
-    player.keyItemCooldownUntil = now + def.cooldownMs;
-    player.invulnerableUntil = now + (def.invincibleDurationMs || 0);
+    // --- dodge_roll: dash movement with wall collision ---
+    // Resolve direction from player input or fall back to facing yaw
+    let dx = player.inputDx || 0;
+    let dz = player.inputDz || 0;
+    const mag = Math.hypot(dx, dz);
+    if (mag < 1e-8) {
+      const yaw = player.rotation || 0;
+      dx = Math.sin(yaw);
+      dz = Math.cos(yaw);
+    } else {
+      dx /= mag;
+      dz /= mag;
+    }
 
-    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil });
+    // Dash distance: MOVE_SPEED * 3 * (rollDistanceMs / 1000)
+    const dashDistance = MOVE_SPEED * 3 * ((def.rollDistanceMs || 200) / 1000);
+    const colliders = getWallColliders();
+    const result = tryPlayerMove(player.x, player.z, dx, dz, dashDistance, colliders);
+
+    // Only update position if we actually moved (handles fully enclosed edge case)
+    if (result.moved) {
+      player.x = result.x;
+      player.z = result.z;
+
+      // Follow floor slope after displacement
+      if (state.layout) {
+        const floorY = sampleFloorY(state.layout, player.x, player.z);
+        player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      }
+    }
+
+    // Set invulnerability and cooldown
+    player.invulnerableUntil = now + (def.invincibleDurationMs || 300);
+    player.keyItemCooldownUntil = now + (def.cooldownMs || 800);
+    player.persistenceDirty = true;
+
+    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
     io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     });
   });
