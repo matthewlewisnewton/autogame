@@ -601,9 +601,11 @@ const KEY_ITEM_DEFS = {
   flare_beacon: {
     id: 'flare_beacon',
     name: 'Flare Beacon',
-    description: 'Signal for emergency support',
-    cooldownMs: 30000,
+    description: 'Reveal all enemies in a large radius on your HUD for a few seconds',
+    cooldownMs: 10000,
     type: 'utility',
+    revealRadius: 25,
+    revealDurationMs: 3000,
   },
   loot_magnet: {
     id: 'loot_magnet',

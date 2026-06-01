@@ -2494,8 +2494,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, and guard_block are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, and flare_beacon are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2536,6 +2536,30 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'flare_beacon') {
+      // --- flare_beacon: reveal all living enemies within revealRadius ---
+      const revealRadius = def.revealRadius != null ? def.revealRadius : 25;
+      const revealDurationMs = def.revealDurationMs != null ? def.revealDurationMs : 3000;
+      const revealUntil = now + revealDurationMs;
+      let revealed = 0;
+
+      for (const enemy of state.enemies) {
+        if (enemy.hp <= 0) continue;
+        const dist = Math.hypot(enemy.x - player.x, enemy.z - player.z);
+        if (dist <= revealRadius) {
+          enemy.revealedUntil = revealUntil;
+          revealed++;
+        }
+      }
+
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }

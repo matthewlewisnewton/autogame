@@ -264,7 +264,7 @@ describe('useKeyItem socket handler', () => {
 		player.keyItemCooldownUntil = 0;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
-		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result = await resultPromise;
 
 		expect(result.ok).toBe(false);
@@ -519,5 +519,281 @@ describe('useKeyItem — summon_recall', () => {
 			// Position should not be blocked by walls
 			expect(isEntityPositionBlocked(m.x, m.z, ENTITY_RADIUS)).toBe(false);
 		}
+	});
+});
+
+// ── flare_beacon tests ──
+
+describe('useKeyItem — flare_beacon', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+	});
+
+	/**
+	 * Connect a client and start a dungeon run so we're in 'playing' phase.
+	 */
+	async function connectAndStartRun() {
+		const { socket } = await connectClient(baseUrl);
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		return { socket };
+	}
+
+	it('KEY_ITEM_DEFS.flare_beacon has correct parameters', () => {
+		const def = KEY_ITEM_DEFS.flare_beacon;
+		expect(def).toBeDefined();
+		expect(def.id).toBe('flare_beacon');
+		expect(def.cooldownMs).toBe(10000);
+		expect(def.revealRadius).toBe(25);
+		expect(def.revealDurationMs).toBe(3000);
+		expect(def.type).toBe('utility');
+	});
+
+	it('reveals living enemies within radius and sets revealedUntil', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		// Ensure clean state
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		// Add test enemies: one within radius, one outside
+		const nearEnemy = {
+			id: 'near-enemy',
+			type: 'grunt',
+			x: player.x + 5,
+			z: player.z + 5,
+			y: 0.5,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 5, z: player.z + 5 },
+		};
+		const farEnemy = {
+			id: 'far-enemy',
+			type: 'grunt',
+			x: player.x + 30,
+			z: player.z + 30,
+			y: 0.5,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 30, z: player.z + 30 },
+		};
+		state.enemies.push(nearEnemy, farEnemy);
+
+		const before = Date.now();
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result = await resultPromise;
+		const after = Date.now();
+
+		expect(result.ok).toBe(true);
+		expect(result.keyItemId).toBe('flare_beacon');
+		expect(result.revealed).toBe(1);
+		expect(result.cooldownUntil).toBeGreaterThan(Date.now());
+
+		// Near enemy should have revealedUntil set
+		expect(nearEnemy.revealedUntil).toBeDefined();
+		expect(nearEnemy.revealedUntil).toBeGreaterThanOrEqual(before + 3000);
+		expect(nearEnemy.revealedUntil).toBeLessThanOrEqual(after + 3000);
+
+		// Far enemy should NOT have revealedUntil
+		expect(farEnemy.revealedUntil).toBeUndefined();
+
+		// Cooldown should be set
+		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
+	});
+
+	it('does not reveal dead enemies', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		// Add a dead enemy within radius
+		const deadEnemy = {
+			id: 'dead-enemy',
+			type: 'grunt',
+			x: player.x + 3,
+			z: player.z + 3,
+			y: 0.5,
+			hp: 0,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z + 3 },
+		};
+		state.enemies.push(deadEnemy);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.revealed).toBe(0);
+		expect(deadEnemy.revealedUntil).toBeUndefined();
+	});
+
+	it('cooldown enforced: second use within 10s returns on_cooldown', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		// Add an enemy to reveal
+		state.enemies.push({
+			id: 'e1',
+			type: 'grunt',
+			x: player.x + 5,
+			z: player.z + 5,
+			y: 0.5,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 5, z: player.z + 5 },
+		});
+
+		// First use
+		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result1 = await result1Promise;
+
+		expect(result1.ok).toBe(true);
+
+		// Immediate second use
+		const result2Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result2 = await result2Promise;
+
+		expect(result2.ok).toBe(false);
+		expect(result2.reason).toBe('on_cooldown');
+		expect(result2.remainingMs).toBeGreaterThan(0);
+		// flare_beacon has 10000ms cooldown
+		expect(result2.remainingMs).toBeCloseTo(10000, -1); // within factor of 10
+	});
+
+	it('emits stateUpdate with revealedUntil in enemy data', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		state.enemies.push({
+			id: 'reveal-me',
+			type: 'grunt',
+			x: player.x + 10,
+			z: player.z + 10,
+			y: 0.5,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 10, z: player.z + 10 },
+		});
+
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const keyItemPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		await keyItemPromise;
+		const snapshot = await stateUpdatePromise;
+
+		// Snapshot should contain the enemy with revealedUntil
+		const enemyInSnapshot = snapshot.enemies.find(e => e.id === 'reveal-me');
+		expect(enemyInSnapshot).toBeDefined();
+		expect(enemyInSnapshot.revealedUntil).toBeGreaterThan(Date.now() - 1000); // within 1s tolerance
+	});
+
+	it('reveals all living enemies within radius', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		// Add multiple enemies within radius at various distances
+		const enemies = [];
+		for (let i = 0; i < 5; i++) {
+			const angle = (2 * Math.PI * i) / 5;
+			const dist = 5 + i * 4; // 5, 9, 13, 17, 21 — all within 25
+			const ex = player.x + Math.cos(angle) * dist;
+			const ez = player.z + Math.sin(angle) * dist;
+			enemies.push({
+				id: `enemy-${i}`,
+				type: 'grunt',
+				x: ex,
+				z: ez,
+				y: 0.5,
+				hp: 50,
+				maxHp: 50,
+				state: 'idle',
+				attackState: 'idle',
+				wanderTarget: { x: ex, z: ez },
+			});
+		}
+		state.enemies.push(...enemies);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.revealed).toBe(5);
+
+		// All enemies should have revealedUntil
+		for (const e of enemies) {
+			expect(e.revealedUntil).toBeDefined();
+			expect(e.revealedUntil).toBeGreaterThan(Date.now() - 1000);
+		}
+	});
+
+	it('enemies exactly at radius boundary are revealed', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		state.enemies.length = 0;
+
+		// Enemy exactly at 25m distance
+		const boundaryEnemy = {
+			id: 'boundary-enemy',
+			type: 'grunt',
+			x: player.x + 25,
+			z: player.z,
+			y: 0.5,
+			hp: 50,
+			maxHp: 50,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: player.x + 25, z: player.z },
+		};
+		state.enemies.push(boundaryEnemy);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'flare_beacon' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.revealed).toBe(1);
+		expect(boundaryEnemy.revealedUntil).toBeDefined();
 	});
 });
