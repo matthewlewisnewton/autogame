@@ -1297,6 +1297,51 @@ function armSelfEnchantment(player, cardDef) {
   };
 }
 
+// ── Block / angle helpers ──
+
+/** Normalize an angle (radians) into [-PI, PI]. */
+function normalizeAngle(a) {
+  while (a > Math.PI) a -= 2 * Math.PI;
+  while (a < -Math.PI) a += 2 * Math.PI;
+  return a;
+}
+
+/**
+ * Resolve attacker position {x, z} from damage options.
+ * Checks `options.attackerEnemyId` (enemy) then `options.attackerId` (minion).
+ * Returns null if no attacker position can be resolved.
+ */
+function getAttackerPosition(options) {
+  if (!options) return null;
+  if (options.attackerEnemyId) {
+    const enemies = _gameState && _gameState.enemies;
+    if (enemies) {
+      const enemy = enemies.find(
+        (e) => e.id === options.attackerEnemyId && e.hp > 0
+      );
+      if (enemy) return { x: enemy.x, z: enemy.z };
+    }
+  }
+  if (options.attackerId) {
+    const minions = _gameState && _gameState.minions;
+    if (minions) {
+      const minion = minions.find(
+        (m) => m.id === options.attackerId && m.hp > 0
+      );
+      if (minion) return { x: minion.x, z: minion.z };
+    }
+  }
+  return null;
+}
+
+/**
+ * Compute the angle (in the XZ plane) from the player to an attacker position.
+ * Returns radians: 0 = +X direction, increasing toward +Z.
+ */
+function angleFromPlayerTo(attackerPos, player) {
+  return Math.atan2(attackerPos.x - player.x, attackerPos.z - player.z);
+}
+
 function findEnemyById(enemyId) {
   return _gameState.enemies.find((enemy) => enemy.id === enemyId && enemy.hp > 0) || null;
 }
@@ -1405,6 +1450,22 @@ function damagePlayer(playerId, amount, options = {}) {
 
   // Invulnerability check (i-frames from dodge roll, etc.)
   if (player.invulnerableUntil && now < player.invulnerableUntil) return null;
+
+  // Block check (only if not invulnerable — dodge takes priority)
+  if (player.blockingUntil && now < player.blockingUntil) {
+    const attackerPos = getAttackerPosition(options);
+    if (attackerPos) {
+      const angle = angleFromPlayerTo(attackerPos, player);
+      const halfArc = (150 / 2) * (Math.PI / 180); // ~1.309 rad
+      const yawDiff = Math.abs(normalizeAngle(angle - (player.blockingYaw || 0)));
+      if (yawDiff <= halfArc) {
+        // Frontal — apply damage reduction
+        const def = _progression().getKeyItemDef('guard_block');
+        remaining *= (1 - (def?.damageReduction || 0.7));
+      }
+      // else: rear — full damage (chip)
+    }
+  }
 
   // Shield expiry
   if (player.shieldExpiresAt && now > player.shieldExpiresAt) {
