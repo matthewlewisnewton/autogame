@@ -2056,3 +2056,26 @@ None blocking. Runtime is clean; acceptance criteria and sub-ticket specs are sa
 
 See `round-1/nits.md` for backlog items (test naming clarity, optional client feedback).
 
+
+## v0.90 — Key Item: Overclock  (2026-06-01 16:39:44)
+
+### Does not bypass MS cost or deck empty checks
+
+PASS. The overclock path only changes slot-cooldown handling. Existing MS checks still run before the helper on spell/enchantment/creature branches, and the dedicated overclock test verifies MS is still consumed. The `draw_card` branch still calls `canDrawIntoHand()` before any overclock charge is consumed, so overclock cannot bypass the hand/deck availability check for draw effects.
+
+### Tests: use overclock, two rapid card plays without slot CD; third respects CD
+
+PASS. `server/test/overclock.test.js` covers key item use, first and second rapid card plays skipping slot cooldown, the next post-overclock card play assigning normal cooldown, MS cost preservation, snapshot visibility, and run-end charge cleanup. The coverage log shows `server/test/overclock.test.js (11 tests)` passing.
+
+Coverage note: the captured coverage run overall had one failure in `server/test/integration.test.js > Socket Integration - Quest Selection > runComplete summary includes quest metadata and quest reward data`, where a randomized hand had no weapon slot. That failure is outside the overclock suite and not caused by the changed overclock paths reviewed here.
+
+## Design and regression review
+
+The implementation is consistent with `game/docs/design.md`: overclock is a key-item combat modifier layered on the card-based dungeon combat loop, while the normal lobby, deck, hand, MS, and dungeon flow remain authoritative on the server. It does not weaken the baseline 3D rendering, websocket connection, player visualization, or movement synchronization requirements.
+
+This ticket added the `overclock-ready` debug scenario. It is gated through the existing debug scenario path, rejected in production/remote contexts unless explicitly enabled, and the client's automatic entry point is the `?debugScenario=NAME` URL parameter. The equivalent end state is reachable through normal gameplay by equipping Overclock in the lobby, deploying, and using the key item. The scenario does directly seed the debug state for QA convenience, but normal gameplay still exercises `equipKeyItem`, `useKeyItem`, cooldown application, and card-use charge consumption; the production path is not replaced by the shortcut.
+
+## Remaining gaps
+
+None.
+

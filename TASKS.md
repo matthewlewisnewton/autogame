@@ -25,7 +25,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [124-key-item-guard-block](tickets/124-key-item-guard-block/)
 - [x] [125-key-item-flare-beacon](tickets/125-key-item-flare-beacon/)
 - [x] [126-key-item-loot-magnet](tickets/126-key-item-loot-magnet/)
-- [ ] [127-key-item-overclock](tickets/127-key-item-overclock/)
+- [x] [127-key-item-overclock](tickets/127-key-item-overclock/)
 - [ ] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
 - [ ] [129-key-item-ground-anchor](tickets/129-key-item-ground-anchor/)
 - [ ] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
