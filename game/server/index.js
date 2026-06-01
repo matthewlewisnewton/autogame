@@ -170,6 +170,8 @@ const lobbies = require('./lobbies');
 const {
   CARD_DEFS,
   getCardDef,
+  KEY_ITEM_DEFS,
+  getKeyItemDef,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   drawCardFromDesperationDeck,
@@ -404,6 +406,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-exhausted',
   'telepipe-ready',
   'sloped-dungeon',
+  'key-item-cooldown',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -698,6 +701,12 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'key-item-cooldown') {
+      // Put player in a playing dungeon with key item cooldown active to test on_cooldown rejection.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.equippedKeyItemId = 'dodge_roll';
+      player.keyItemCooldownUntil = Date.now() + 5000; // 5-second cooldown remaining
     }
 
     syncRunObjectiveToEnemies();
@@ -2356,6 +2365,80 @@ function startServer(port) {
     });
 
     savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('equipKeyItem', (data) => {
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') {
+      socket.emit('keyItemError', { reason: 'not_in_lobby' });
+      return;
+    }
+
+    const player = state.players[socket.playerId];
+    if (!player) return;
+
+    const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
+    if (!keyItemId) {
+      socket.emit('keyItemError', { reason: 'missing_key_item_id' });
+      return;
+    }
+
+    const def = getKeyItemDef(keyItemId);
+    if (!def) {
+      socket.emit('keyItemError', { reason: 'unknown_item' });
+      return;
+    }
+
+    player.equippedKeyItemId = keyItemId;
+    savePlayerData(socket.playerId);
+
+    socket.emit('keyItemEquipped', { keyItemId });
+    });
+  });
+
+  socket.on('useKeyItem', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
+    if (state.gamePhase !== 'playing') {
+      socket.emit('keyItemUsed', { ok: false, reason: 'not_in_dungeon' });
+      return;
+    }
+
+    const player = state.players[socket.playerId];
+    if (!player || player.dead || player.extracted) return;
+
+    const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
+    if (!keyItemId) {
+      socket.emit('keyItemUsed', { ok: false, reason: 'missing_key_item_id' });
+      return;
+    }
+
+    const def = getKeyItemDef(keyItemId);
+    if (!def) {
+      socket.emit('keyItemUsed', { ok: false, reason: 'unknown_item' });
+      return;
+    }
+
+    // Cooldown check
+    const now = Date.now();
+    const cooldownUntil = player.keyItemCooldownUntil || 0;
+    if (now < cooldownUntil) {
+      const remainingMs = cooldownUntil - now;
+      socket.emit('keyItemUsed', { ok: false, reason: 'on_cooldown', remainingMs });
+      return;
+    }
+
+    // Only dodge_roll is implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll') {
+      socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
+      return;
+    }
+
+    // Set cooldown and confirm success (actual motion is ticket 121).
+    player.keyItemCooldownUntil = now + def.cooldownMs;
+
+    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil });
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     });
   });
 
