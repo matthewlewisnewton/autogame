@@ -109,6 +109,7 @@
         <button id="lobby-tab-forge" class="lobby-tab" type="button">Photon Forge</button>
         <button id="lobby-tab-economy" class="lobby-tab" type="button">Card Economy</button>
         <button id="lobby-tab-medic" class="lobby-tab" type="button">Medic</button>
+        <button id="lobby-tab-keyitems" class="lobby-tab" type="button">Key Items</button>
       </div>
       <div id="deck-editor">
         <div id="deck-editor-top">
@@ -168,6 +169,14 @@
           <p id="medic-cost-display" class="settings-hint">Full restore: 10 money</p>
           <button id="medic-heal-btn" type="button">Heal to full (10 money)</button>
           <div id="medic-error" style="display:none;"></div>
+        </div>
+      </div>
+      <div id="key-item-loadout" class="hidden">
+        <div id="key-item-loadout-layout">
+          <h3>Key Items</h3>
+          <p class="key-item-hint">Equip one key item to carry into the dungeon. Each use triggers a cooldown — only one slot is available.</p>
+          <div id="key-item-list"></div>
+          <div id="key-item-error" style="display:none;"></div>
         </div>
       </div>
       <div id="card-economy" class="hidden">
