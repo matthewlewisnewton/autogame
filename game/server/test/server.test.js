@@ -473,6 +473,160 @@ describe('damagePlayer(playerId, amount)', () => {
 
 		expect(gameState.players['p1'].invulnerableUntil).toBe(0);
 	});
+
+	// ── Guard block damage reduction ──
+
+	it('reduces frontal damage when blocking (enemy attacker)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			rotation: 0,
+			blockingUntil: now + 1000,
+			blockingYaw: 0, // facing +Z (angle 0)
+		});
+		// Enemy directly in front of player (along +Z axis, angle 0 from player)
+		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		// damageReduction = 0.7 → remaining = 100 * 0.3 = 30
+		expect(gameState.players['p1'].hp).toBe(70);
+	});
+
+	it('does not reduce rear damage when blocking (enemy attacker)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			rotation: 0,
+			blockingUntil: now + 1000,
+			blockingYaw: 0, // facing +Z
+		});
+		// Enemy directly behind player (along -Z axis, angle PI from player)
+		gameState.enemies.push({ id: 'e1', x: 0, z: -3, hp: 50, type: 'grunt' });
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		// Full damage — attacker is behind (outside 150° arc)
+		expect(gameState.players['p1'].hp).toBe(0);
+	});
+
+	it('reduces damage at edge of frontal arc (~75 degrees)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+		});
+		// Attacker at ~75° (just inside 150° arc)
+		const angle = (75 * Math.PI) / 180;
+		const ex = Math.sin(angle) * 3; // x = sin(angle) * dist
+		const ez = Math.cos(angle) * 3; // z = cos(angle) * dist
+		gameState.enemies.push({ id: 'e1', x: ex, z: ez, hp: 50, type: 'grunt' });
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		expect(gameState.players['p1'].hp).toBe(70);
+	});
+
+	it('does not reduce damage just outside frontal arc (~76 degrees)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+		});
+		// Attacker at ~76° (just outside 150° arc)
+		const angle = (76 * Math.PI) / 180;
+		const ex = Math.sin(angle) * 3;
+		const ez = Math.cos(angle) * 3;
+		gameState.enemies.push({ id: 'e1', x: ex, z: ez, hp: 50, type: 'grunt' });
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		expect(gameState.players['p1'].hp).toBe(0);
+	});
+
+	it('invulnerability takes priority over block reduction', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+			invulnerableUntil: now + 500,
+		});
+		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		const result = damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		expect(result).toBeNull();
+		expect(gameState.players['p1'].hp).toBe(100);
+	});
+
+	it('no block reduction when blockingUntil has expired', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now - 100, // already expired
+			blockingYaw: 0,
+		});
+		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		expect(gameState.players['p1'].hp).toBe(0);
+	});
+
+	it('reduces damage from minion attacker (attackerId)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+		});
+		// Minion in front of player
+		gameState.minions.push({ id: 'm1', ownerId: 'p2', x: 0, z: 3, hp: 30 });
+		damagePlayer('p1', 100, { attackerId: 'm1' });
+		expect(gameState.players['p1'].hp).toBe(70);
+	});
+
+	it('no block reduction when attacker enemy is dead (hp <= 0)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+		});
+		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 0, type: 'grunt' });
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		// Attacker not found → no position → no reduction
+		expect(gameState.players['p1'].hp).toBe(0);
+	});
+
+	it('block reduction works with shield absorption (block before shield)', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			shieldHp: 10,
+			shieldExpiresAt: now + 10000,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+		});
+		gameState.enemies.push({ id: 'e1', x: 0, z: 3, hp: 50, type: 'grunt' });
+		// 100 damage → block reduces to 30 → shield absorbs 10 → 20 hits HP
+		damagePlayer('p1', 100, { attackerEnemyId: 'e1' });
+		expect(gameState.players['p1'].hp).toBe(80);
+		expect(gameState.players['p1'].shieldHp).toBe(0);
+	});
+
+	it('no block reduction with no attacker info in options', () => {
+		const now = 1000000;
+		vi.setSystemTime(now);
+		addPlayer('p1', {
+			hp: 100,
+			blockingUntil: now + 1000,
+			blockingYaw: 0,
+		});
+		damagePlayer('p1', 100, {});
+		// No attacker position → no reduction
+		expect(gameState.players['p1'].hp).toBe(0);
+	});
 });
 
 // ── updateEnemies ──
