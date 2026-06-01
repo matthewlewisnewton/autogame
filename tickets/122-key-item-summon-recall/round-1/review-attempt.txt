@@ -1,0 +1,14 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no `pageerror`/`[fatal]` lines. Game loads and plays in capture.
+
+**Implementation:** One commit (`5996c51`) adds Recall Whistle in `useKeyItem` — 10s cooldown, `no_minions` soft-fail without cooldown burn, ring placement with dungeon/wall/floor handling, `stateUpdate` broadcast, and six server tests (all passing). `KEY_ITEM_DEFS` was corrected from the old player-teleport stub to minion ring recall.
+
+**Debug scenario `summon-recall`:** Gated to dev/local sockets; normal path still uses card summons + lobby equip + same `useKeyItem` handler.
+
+**Capture gap (non-blocking):** Fallback smoke never used recall (`minions: []` in probes). Code verification is covered by tests.
+
+Written files:
+- [`tickets/122-key-item-summon-recall/round-1/review.md`](tickets/122-key-item-summon-recall/round-1/review.md) — ends with **VERDICT: PASS**
+- [`tickets/122-key-item-summon-recall/round-1/nits.md`](tickets/122-key-item-summon-recall/round-1/nits.md) — four follow-ups
+- No `gaps.md` (PASS only)
