@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Sub-tickets created:
+
+- `/home/matt/workspace/autogame/tickets/124-key-item-guard-block/subtickets/05-fix-facing-convention-server-tests/ticket.md` — Fix `atan2(dx,dz)` → `atan2(dz,dx)` in server block arc + update all tests
+- `/home/matt/workspace/autogame/tickets/124-key-item-guard-block/subtickets/06-fix-shield-VFX-facing/ticket.md` — Fix shield VFX offset from `-sin/-cos` → `cos/sin` to match facing direction
