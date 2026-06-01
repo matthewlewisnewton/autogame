@@ -413,6 +413,7 @@ const DEBUG_SCENARIOS = new Set([
   'guard-block-ready',
   'flare-beacon-ready',
   'loot-magnet-ready',
+  'overclock-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -793,6 +794,13 @@ function applyDebugScenario(socket, name) {
         { id: crypto.randomUUID(), x: player.x + 12, z: player.z + 10, y: 0, kind: 'gold', value: 50 },
         { id: crypto.randomUUID(), x: player.x + 1, z: player.z - 1, y: 0, kind: 'magic_stone', value: 5 },
       ];
+    } else if (name === 'overclock-ready') {
+      // Put player with overclock key item equipped and charges ready to test slot cooldown bypass.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'overclock';
+      player.keyItemCooldownUntil = 0;
+      player.overclockChargesRemaining = 0;
     }
 
     syncRunObjectiveToEnemies();
@@ -877,6 +885,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     extracted: false,
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
+    overclockChargesRemaining: 0,
     invulnerableUntil: 0,
     blockingUntil: 0,
     blockingYaw: 0,
@@ -926,6 +935,7 @@ function initializePlayerForActiveRun(player) {
     player.dead = false;
   }
   player.invulnerableUntil = 0;
+  player.overclockChargesRemaining = 0;
 }
 
 function emitLobbyJoined(socket, lobby) {
@@ -2520,8 +2530,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, and loot_magnet are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, and overclock are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2719,6 +2729,18 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'overclock') {
+      // --- overclock: grant charges to bypass slot cooldown on next card plays ---
+      const charges = def.charges != null ? def.charges : 2;
+      player.overclockChargesRemaining = charges;
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 13000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }

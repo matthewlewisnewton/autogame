@@ -4145,6 +4145,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			returnRewardsPreview: null,
 			equippedKeyItemId: 'dodge_roll',
 			keyItemCooldownRemaining: 0,
+			overclockChargesRemaining: 0,
 			isInvulnerable: false,
 			isBlocking: false,
 			blockingUntil: 0,
