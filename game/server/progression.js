@@ -611,10 +611,9 @@ const KEY_ITEM_DEFS = {
     id: 'loot_magnet',
     name: 'Loot Magnet',
     description: 'Attract nearby drops automatically',
-    cooldownMs: 25000,
+    cooldownMs: 8000,
     type: 'utility',
-    attractRadius: 15,
-    durationMs: 10000,
+    attractRadius: 8,
   },
   overclock: {
     id: 'overclock',
