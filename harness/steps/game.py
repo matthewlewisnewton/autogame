@@ -35,10 +35,13 @@ from harness.workspace.ports import PortAllocation
 # that leftover as a harness proc — wait_port_free then refused to kill it and
 # the new server died with EADDRINUSE on :3000. Make the leading path (incl.
 # the `game/` segment) optional so both forms match.
-_HARNESS_GAME_PATTERNS = (
-    re.compile(r"\bnode\s+\S*\bserver/index(\.js)?(\s|$)"),
-    re.compile(r"\bvite(\.js)?\b[^\n]*?--port\s+5173(\s|$)"),
-)
+_SERVER_PATTERN = re.compile(r"\bnode\s+\S*\bserver/index(\.js)?(\s|$)")
+
+
+def _vite_pattern(vite_port: int) -> "re.Pattern":
+    # Port-specific so a worker reclaims only ITS own vite, never a sibling
+    # parallel worker's vite bound to a different port.
+    return re.compile(rf"\bvite(\.js)?\b[^\n]*?--port\s+{vite_port}(\s|$)")
 
 
 _GAME_PIDS: list[int] = []
@@ -128,8 +131,10 @@ def _pid_cmdline_darwin(pid: int) -> str:
     return result.stdout.strip()
 
 
-def _is_harness_game_proc(cmdline: str) -> bool:
-    return any(p.search(cmdline) for p in _HARNESS_GAME_PATTERNS)
+def _is_harness_game_proc(cmdline: str, vite_port: int = 5173) -> bool:
+    # vite_port defaults to 5173 for the serial path + existing regression tests.
+    return bool(_SERVER_PATTERN.search(cmdline)
+                or _vite_pattern(vite_port).search(cmdline))
 
 
 def port_in_use(port: int) -> bool:
@@ -141,16 +146,18 @@ def port_in_use(port: int) -> bool:
             return True
 
 
-def wait_port_free(port: int, timeout_s: int = 15) -> bool:
+def wait_port_free(port: int, timeout_s: int = 15, *, vite_port: int = 5173) -> bool:
     """Block until the port is no longer bound. Per ticket 105: only kill
-    harness-owned holders unless HARNESS_BROAD_PORT_KILL=1."""
+    harness-owned holders unless HARNESS_BROAD_PORT_KILL=1. vite_port lets a
+    parallel worker recognise its own vite (on a non-default port) as
+    harness-owned."""
     deadline = time.time() + timeout_s
     broad = os.environ.get("HARNESS_BROAD_PORT_KILL") == "1"
     while time.time() < deadline:
         if not port_in_use(port):
             return True
         for pid, cmdline in _port_holders(port):
-            if _is_harness_game_proc(cmdline) or broad:
+            if _is_harness_game_proc(cmdline, vite_port) or broad:
                 _kill_pid(pid, signal_num=9)
             else:
                 log(f"[port] :{port} held by pid {pid} ({cmdline[:60]!r}) — "
@@ -203,12 +210,13 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
     emit_progress_event("game_start", {"logdir": str(logdir)})
 
     for port in (ports.vite, ports.game_server):
-        if not wait_port_free(port, timeout_s=15):
+        if not wait_port_free(port, timeout_s=15, vite_port=ports.vite):
             log(f"[warn] port {port} still bound after 15s")
 
     server_log = (logdir / "server.log").open("wb")
     server_proc = subprocess.Popen(
         ["node", "game/server/index.js"],
+        env={**os.environ, "PORT": str(ports.game_server)},
         stdin=subprocess.DEVNULL, stdout=server_log, stderr=subprocess.STDOUT,
         start_new_session=True,
     )
