@@ -1094,6 +1094,15 @@ const HEAL_PULSE_DURATION = 600;
 const HEAL_PULSE_EXPAND_MS = 400;
 const HEAL_PULSE_COLOR = 0x44ff44;
 
+// ── Shield VFX (Guard Block) ──
+
+const SHIELD_DURATION = 800;
+const SHIELD_COLOR = 0x22d3ee;
+const SHIELD_EMISSIVE = 0x06b6d4;
+const SHIELD_RADIUS = 0.9;
+const SHIELD_OFFSET_DIST = 0.7; // distance in front of player
+const shieldVFX = {}; // playerId → { mesh, startTime }
+
 /**
  * Spawn a green expanding ring at the caster's position to visualize
  * the Field Medic Kit heal pulse. Expands from radius 0 to healRadius
@@ -1146,6 +1155,77 @@ export function triggerHealPulseVFX(position) {
 		}
 	}
 	requestAnimationFrame(animatePulse);
+}
+
+// ── Shield VFX (Guard Block) ──
+
+/**
+ * Spawn a translucent cyan shield disc in front of the player to visualize
+ * the Guard Block active state. The shield is oriented along the player's
+ * facing direction (rotation.y) and fades out after ~800ms.
+ *
+ * @param {string} playerId
+ */
+export function triggerShieldVFX(playerId) {
+	if (!scene || !playersMeshes[playerId]) return;
+
+	const playerMesh = playersMeshes[playerId];
+
+	// Remove existing shield for this player if present
+	if (shieldVFX[playerId]) {
+		const old = shieldVFX[playerId];
+		scene.remove(old.mesh);
+		old.mesh.geometry.dispose();
+		old.mesh.material.dispose();
+		delete shieldVFX[playerId];
+	}
+
+	// Create a semi-transparent disc facing forward
+	const geometry = new THREE.CircleGeometry(SHIELD_RADIUS, 24);
+	const material = new THREE.MeshStandardMaterial({
+		color: SHIELD_COLOR,
+		emissive: SHIELD_EMISSIVE,
+		emissiveIntensity: 0.8,
+		transparent: true,
+		opacity: 0.55,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+
+	// Position in front of the player along facing direction
+	const yaw = playerMesh.rotation.y + Math.PI / 2; // convert back from display rotation
+	const fx = playerMesh.position.x - Math.sin(yaw) * SHIELD_OFFSET_DIST;
+	const fz = playerMesh.position.z - Math.cos(yaw) * SHIELD_OFFSET_DIST;
+	mesh.position.set(fx, playerMesh.position.y + 0.5, fz);
+	mesh.rotation.y = playerMesh.rotation.y; // align with player facing
+
+	scene.add(mesh);
+	shieldVFX[playerId] = { mesh, startTime: performance.now() };
+
+	const startTime = performance.now();
+	function animateShield() {
+		const elapsed = performance.now() - startTime;
+		const t = Math.min(elapsed / SHIELD_DURATION, 1);
+
+		// Fade out in last 30% of duration
+		if (elapsed > SHIELD_DURATION * 0.7) {
+			const fadeT = (elapsed - SHIELD_DURATION * 0.7) / (SHIELD_DURATION * 0.3);
+			material.opacity = 0.55 * (1 - fadeT);
+		}
+
+		if (t < 1) {
+			requestAnimationFrame(animateShield);
+		} else {
+			if (shieldVFX[playerId] && shieldVFX[playerId].mesh === mesh) {
+				scene.remove(mesh);
+				geometry.dispose();
+				material.dispose();
+				delete shieldVFX[playerId];
+			}
+		}
+	}
+	requestAnimationFrame(animateShield);
 }
 
 // ── Floating damage numbers ──
@@ -2585,6 +2665,26 @@ export function animate(timestamp) {
 				playersMeshes[myId].material.transparent = false;
 				playersMeshes[myId].material.opacity = 1;
 				playersMeshes[myId].material.depthWrite = true;
+			}
+
+			// Shield VFX: ensure visible while blocking (re-trigger if expired)
+			if (!isDead && me && me.isBlocking && !shieldVFX[myId]) {
+				triggerShieldVFX(myId);
+			}
+			// Update shield position to follow player; clean up when blocking ends
+			if (shieldVFX[myId]) {
+				if (!isDead && me && me.isBlocking) {
+					const s = shieldVFX[myId];
+					const yaw = playersMeshes[myId].rotation.y + Math.PI / 2;
+					s.mesh.position.set(
+						playersMeshes[myId].position.x - Math.sin(yaw) * SHIELD_OFFSET_DIST,
+						playersMeshes[myId].position.y + 0.5,
+						playersMeshes[myId].position.z - Math.cos(yaw) * SHIELD_OFFSET_DIST,
+					);
+					s.mesh.rotation.y = playersMeshes[myId].rotation.y;
+				} else if (shieldVFX[myId]) {
+					// Blocking ended — let existing VFX finish its fade, don't re-trigger
+				}
 			}
 
 			// Detect local player HP drop — flash red + spawn damage number
