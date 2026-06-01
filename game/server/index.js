@@ -2841,6 +2841,7 @@ function startServer(port) {
     inventory: sessionPlayer.inventory,
     ownedCards: sessionPlayer.ownedCards,
     lobbies: lobbies.listLobbySummaries(),
+    keyItemDefs: KEY_ITEM_DEFS,
   });
 
   broadcastLobbyList();

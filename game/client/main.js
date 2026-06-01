@@ -790,6 +790,7 @@ function bindSocketHandlers(s) {
 		mySelectedDeck = data.selectedDeck || [];
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
+		keyItemDefs = data.keyItemDefs || {};
 		renderDeckEditor();
 
 		if (data.accountId) {
@@ -1246,6 +1247,7 @@ let currentLayout = null; // persisted layout from init; stateUpdate omits it
 let mySelectedDeck = [];
 let myInventory = null;
 let myOwnedCards = {};
+let keyItemDefs = {};
 let availableQuests = [];
 let selectedQuestId = 'training_caverns';
 let currentCardChoices = [];
