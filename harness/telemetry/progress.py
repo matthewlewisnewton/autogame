@@ -11,8 +11,19 @@ from pathlib import Path
 _WRITE_LOCK = threading.Lock()
 
 
+def progress_dir() -> Path:
+    """The progress dir. Parallel workers run in their own git worktree, where
+    the module-relative path would point at the worktree's own copy and
+    fragment the live view. HARNESS_PROGRESS_DIR pins all workers to the main
+    checkout's progress dir; unset ⇒ the historical module-relative path."""
+    override = os.environ.get("HARNESS_PROGRESS_DIR")
+    if override:
+        return Path(override)
+    return Path(__file__).resolve().parents[1] / "progress"
+
+
 def _events_path() -> Path:
-    return Path(__file__).resolve().parents[1] / "progress" / "events.ndjson"
+    return progress_dir() / "events.ndjson"
 
 
 def emit_progress_event(event_type: str, payload: dict | None = None) -> None:
