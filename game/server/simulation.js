@@ -302,9 +302,9 @@ function applyPlayerMovement() {
     const prevZ = player.z;
     const result = tryPlayerMove(player.x, player.z, dx, dz, step, colliders);
     player.x = result.x;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
     player.z = result.z;
+    const floorY = sampleFloorY(_gameState.layout, result.x, result.z);
+    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
     if (Number.isFinite(player.inputRotation)) {
       player.rotation = player.inputRotation;
     }
