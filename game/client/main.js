@@ -133,6 +133,7 @@ import {
 	setGamepadInputHandler,
 	triggerDashVFX,
 	triggerHealPulseVFX,
+	triggerShieldVFX,
 } from './renderer.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
@@ -1094,6 +1095,9 @@ function bindSocketHandlers(s) {
 				if (me) {
 					triggerHealPulseVFX({ x: me.x, y: 0, z: me.z });
 				}
+			}
+			if (data.keyItemId === 'guard_block') {
+				triggerShieldVFX(myId);
 			}
 		} else if (data.reason === 'on_cooldown') {
 			flashKeyItemIndicator('cooldown');
