@@ -67,6 +67,15 @@ game/docs/creature-burndown-verification/
 game/docs/p0-verification/
 game/client/scripts/*-results.json
 
+# Parallel "gastown" factory — local/runtime state, never committed. (Also
+# covers roles.local.yaml, long treated as an ignored override but never listed.)
+harness/roles.local.yaml
+harness/agents_health.json
+.beads/embeddeddolt/
+.beads/*.db
+.beads/*.db-*
+.autogame-worktrees/
+
 # Python build artifacts. egg-info lands at repo root (not harness/) because
 # pyproject.toml uses `where = [".."]` to make `harness` importable as a
 # top-level package; setuptools then treats autogame/ as the project source.

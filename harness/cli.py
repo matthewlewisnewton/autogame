@@ -26,6 +26,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_subtask = sub.add_parser("subtask", help="Run one sub-ticket (replaces run_subtask.sh)")
     p_subtask.add_argument("subdir", help="Sub-ticket directory path")
 
+    p_worker = sub.add_parser("worker", help="Run one ticket as a parallel-factory "
+                              "worker in the current worktree, with a forced implementer agent")
+    p_worker.add_argument("name", help="Ticket directory name under tickets/")
+    p_worker.add_argument("--agent", required=True,
+                          help="Agent name (from roles.yaml) to force as the implementer primary")
+
     p_prog = sub.add_parser("progress", help="Manage the events.ndjson HTTP server")
     p_prog.add_argument("action", choices=["start", "stop", "status"])
 
@@ -44,6 +50,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_ticket(args.name)
     if args.cmd == "subtask":
         return _cmd_subtask(args.subdir)
+    if args.cmd == "worker":
+        return _cmd_worker(args.name, args.agent)
     if args.cmd == "progress":
         return _cmd_progress(args.action)
     if args.cmd == "doctor":
@@ -90,6 +98,50 @@ def _cmd_ticket(name: str) -> int:
         workspace=workspace, roster=roster, name=name, tdir=tdir,
         tunables=roster.tunables,
     ))
+
+
+def _write_implementer_override(root: Path, agent: str) -> None:
+    """Force the implementer role's primary to `agent` via roles.local.yaml
+    (field-level merged onto roles.yaml — overrides only implementer.primary).
+    roles.local.yaml is gitignored, so this never dirties the worktree."""
+    import yaml
+    local = Path(root) / "harness" / "roles.local.yaml"
+    data: dict = {}
+    if local.exists():
+        try:
+            data = yaml.safe_load(local.read_text()) or {}
+        except yaml.YAMLError:
+            data = {}
+    data.setdefault("roles", {}).setdefault("implementer", {})["primary"] = agent
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text(yaml.safe_dump(data, sort_keys=False))
+
+
+def _cmd_worker(name: str, agent: str) -> int:
+    """Run one ticket as a parallel-factory worker in the CURRENT worktree, with
+    `agent` forced as the implementer. cwd is the worktree; ports come from
+    HARNESS_GAME_PORT/HARNESS_VITE_PORT (read by Repo.ports); telemetry goes to
+    the shared HARNESS_PROGRESS_DIR. Does NOT start the progress server (the
+    dispatcher owns the single one). Returns ticket()'s PipelineResult as the
+    exit code so the dispatcher can interpret the outcome."""
+    from harness.pipelines.ticket import TicketContext, ticket
+    from harness.telemetry.progress import emit_progress_event
+    _write_implementer_override(Path.cwd(), agent)
+    workspace = _build_workspace()
+    roster = _build_roster()
+    tdir = Path(workspace.root) / "tickets" / name
+    emit_progress_event("worker_start", {
+        "ticket": name, "agent": agent,
+        "game_port": workspace.ports.game_server, "vite_port": workspace.ports.vite,
+        "worktree": str(workspace.root),
+    })
+    rc = ticket(TicketContext(
+        workspace=workspace, roster=roster, name=name, tdir=tdir,
+        tunables=roster.tunables,
+    ))
+    emit_progress_event("worker_done",
+                        {"ticket": name, "agent": agent, "result": int(rc)})
+    return int(rc)
 
 
 def _cmd_subtask(subdir_arg: str) -> int:
