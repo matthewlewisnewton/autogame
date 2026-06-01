@@ -99,6 +99,28 @@ describe('extractPersistentData — key item persistence', () => {
 
 		expect(persistent.equippedKeyItemId).toBe('dodge_roll');
 	});
+
+	it('does not persist invulnerableUntil (transient field)', () => {
+		const player = {
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
+			currency: 0,
+			inventory: [],
+			ownedCards: {},
+			selectedDeck: [],
+			hp: 100,
+			dead: false,
+			equippedKeyItemId: 'dodge_roll',
+			invulnerableUntil: Date.now() + 99999,
+		};
+		gameState.players['p3'] = player;
+
+		const persistent = extractPersistentData(player);
+
+		expect(persistent).not.toHaveProperty('invulnerableUntil');
+	});
 });
 
 // ── Socket handler tests ──
@@ -209,6 +231,25 @@ describe('useKeyItem socket handler', () => {
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
 		// dodge_roll has 800ms cooldown
 		expect(player.keyItemCooldownUntil - result.cooldownUntil).toBe(0);
+	});
+
+	it('useKeyItem for dodge_roll sets invulnerableUntil (i-frames)', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		// Ensure clean state
+		player.keyItemCooldownUntil = 0;
+		player.invulnerableUntil = 0;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.invulnerableUntil).toBeGreaterThan(Date.now());
+		// dodge_roll has 300ms invincibleDurationMs
+		expect(player.invulnerableUntil).toBeGreaterThan(Date.now());
+		expect(result.invulnerableUntil).toBe(player.invulnerableUntil);
 	});
 
 	it('useKeyItem for non-dodge_roll items returns not_implemented', async () => {

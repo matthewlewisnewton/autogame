@@ -792,6 +792,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     extracted: false,
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
+    invulnerableUntil: 0,
   };
 
   if (savedData) {
@@ -837,6 +838,7 @@ function initializePlayerForActiveRun(player) {
     player.hp = MAX_HP;
     player.dead = false;
   }
+  player.invulnerableUntil = 0;
 }
 
 function emitLobbyJoined(socket, lobby) {
@@ -2437,10 +2439,11 @@ function startServer(port) {
       return;
     }
 
-    // Set cooldown and confirm success (actual motion is ticket 121).
+    // Set cooldown and invulnerability window (i-frames for dodge roll).
     player.keyItemCooldownUntil = now + def.cooldownMs;
+    player.invulnerableUntil = now + (def.invincibleDurationMs || 0);
 
-    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil });
+    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil });
     io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     });
   });
