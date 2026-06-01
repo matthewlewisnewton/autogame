@@ -172,6 +172,7 @@ const {
   getCardDef,
   KEY_ITEM_DEFS,
   getKeyItemDef,
+  getUnlockedKeyItems,
   DESPERATION_CARD_DEFS,
   DESPERATION_DECK_TEMPLATE,
   drawCardFromDesperationDeck,
@@ -3046,6 +3047,10 @@ if (typeof module !== 'undefined' && module.exports) {
     ENEMY_DEFS,
     MINION_FOLLOW_DISTANCE,
     MINION_FOLLOW_SPEED,
+    // Key Items
+    KEY_ITEM_DEFS,
+    getKeyItemDef,
+    getUnlockedKeyItems,
     // Persistence
     extractPersistentData,
     savePlayerData,
