@@ -7,10 +7,10 @@
 //
 // Exit 0 if capture succeeded, 1 if the game failed to load, 2 on bad usage.
 
-import { chromium } from 'playwright';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import { dirname, join, relative, resolve } from 'path';
 import { fileURLToPath } from 'url';
+import { createRequire } from 'module';
 import { spawnSync } from 'child_process';
 
 const baseUrl = process.argv[2] || 'http://localhost:5173';
@@ -22,6 +22,28 @@ if (!outDir) {
 
 const harnessDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(harnessDir, '..');
+
+// Resolve Playwright's `chromium` resiliently. Prefer the bare specifier so a
+// properly provisioned environment (harness/node_modules or repo-root
+// node_modules) keeps working unchanged. Node's resolver never reaches the only
+// installed copy (game/client/node_modules/playwright) from this harness script,
+// so on ERR_MODULE_NOT_FOUND fall back to that in-repo copy via an absolute path
+// derived from the script location.
+async function resolveChromium() {
+  try {
+    return (await import('playwright')).chromium;
+  } catch (err) {
+    try {
+      const require = createRequire(import.meta.url);
+      const inRepo = resolve(harnessDir, '..', 'game', 'client', 'node_modules', 'playwright');
+      return require(inRepo).chromium;
+    } catch {
+      throw err; // surface the original (more informative) resolution error
+    }
+  }
+}
+const chromium = await resolveChromium();
+
 const outDirAbs = resolve(outDir);
 mkdirSync(outDirAbs, { recursive: true });
 
