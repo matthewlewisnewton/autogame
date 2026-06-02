@@ -87,6 +87,10 @@ const SUNKEN_CANYON = {
   canyonSize: 32,
   rampWidth: 5,
   rampMinDepth: 20,
+  // Canyon-floor cover: same spawn-clear / perimeter margin as open-plaza.
+  coverSpawnClearRadius: OPEN_PLAZA.spawnClearRadius,
+  coverInteriorMargin: OPEN_PLAZA.interiorMargin,
+  coverTarget: 8,
 };
 
 /** Low vista walls on the plateau edge facing the canyon (≤ client WALL_HEIGHT). */
@@ -407,38 +411,39 @@ function footprintsOverlap(a, b, margin = 0) {
 
 /**
  * True when a footprint's AABB intersects the spawn-clear circle of `radius`
- * centred on plaza origin (0, 0).
+ * centred on `(centerX, centerZ)` (plaza/canyon room centre).
  */
-function overlapsSpawnClear(piece, radius) {
-  const dx = Math.max(Math.abs(piece.x) - piece.width / 2, 0);
-  const dz = Math.max(Math.abs(piece.z) - piece.depth / 2, 0);
+function overlapsSpawnClear(piece, radius, centerX = 0, centerZ = 0) {
+  const dx = Math.max(Math.abs(piece.x - centerX) - piece.width / 2, 0);
+  const dz = Math.max(Math.abs(piece.z - centerZ) - piece.depth / 2, 0);
   return dx * dx + dz * dz < radius * radius;
 }
 
 /**
- * Grid flood-fill from plaza centre over the interior, treating any cell whose
- * centre falls inside a cover footprint as blocked. Returns true only when every
- * open interior cell is reachable from the centre — i.e. the cover set never
- * forms a barrier that fully separates two interior regions.
+ * Grid flood-fill from `(centerX, centerZ)` over a square interior of side `2*half`,
+ * treating any cell whose centre falls inside a cover footprint as blocked.
+ * Returns true only when every open interior cell is reachable — i.e. cover never
+ * fully partitions the walkable floor.
  */
-function plazaFullyReachable(cover, half) {
+function interiorFullyReachable(cover, half, centerX = 0, centerZ = 0) {
   const step = 0.5;
-  const cells = Math.floor((half * 2) / step); // e.g. 64 for a 32-wide plaza
-  const cellCentre = i => -half + (i + 0.5) * step;
+  const cells = Math.floor((half * 2) / step);
+  const cellCentre = i => centerX - half + (i + 0.5) * step;
+  const cellCentreZ = j => centerZ - half + (j + 0.5) * step;
   const isBlocked = (x, z) =>
     cover.some(c =>
       x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
       z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
     );
 
-  // Locate the start cell containing the centre (0, 0).
-  const startI = Math.floor((0 + half) / step);
-  if (isBlocked(cellCentre(startI), cellCentre(startI))) return false;
+  const startI = Math.floor(half / step);
+  const startJ = startI;
+  if (isBlocked(cellCentre(startI), cellCentreZ(startJ))) return false;
 
   const seen = new Uint8Array(cells * cells);
   const idx = (i, j) => j * cells + i;
-  const queue = [[startI, startI]];
-  seen[idx(startI, startI)] = 1;
+  const queue = [[startI, startJ]];
+  seen[idx(startI, startJ)] = 1;
   let reached = 0;
   while (queue.length > 0) {
     const [i, j] = queue.pop();
@@ -448,20 +453,65 @@ function plazaFullyReachable(cover, half) {
       const nj = j + dj;
       if (ni < 0 || ni >= cells || nj < 0 || nj >= cells) continue;
       if (seen[idx(ni, nj)]) continue;
-      if (isBlocked(cellCentre(ni), cellCentre(nj))) continue;
+      if (isBlocked(cellCentre(ni), cellCentreZ(nj))) continue;
       seen[idx(ni, nj)] = 1;
       queue.push([ni, nj]);
     }
   }
 
-  // Count total open cells; every one must have been reached.
   let open = 0;
   for (let j = 0; j < cells; j++) {
     for (let i = 0; i < cells; i++) {
-      if (!isBlocked(cellCentre(i), cellCentre(j))) open++;
+      if (!isBlocked(cellCentre(i), cellCentreZ(j))) open++;
     }
   }
   return reached === open;
+}
+
+/** Open-plaza reachability (centre at origin). */
+function plazaFullyReachable(cover, half) {
+  return interiorFullyReachable(cover, half, 0, 0);
+}
+
+/**
+ * Fisher–Yates scatter of cover inside a square room interior. Offsets in
+ * `candidatePool` are relative to `(centerX, centerZ)`.
+ */
+function scatterInteriorCover({
+  rng,
+  centerX,
+  centerZ,
+  half,
+  spawnClearRadius,
+  interiorMargin,
+  candidatePool,
+  targetCover,
+  initialCover = [],
+}) {
+  const interiorMax = half - interiorMargin;
+  const cover = [...initialCover];
+  const pool = candidatePool.map(c => ({
+    ...c,
+    x: centerX + c.x,
+    z: centerZ + c.z,
+  }));
+
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+
+  for (const cand of pool) {
+    if (cover.length >= targetCover) break;
+    if (Math.abs(cand.x - centerX) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z - centerZ) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClear(cand, spawnClearRadius, centerX, centerZ)) continue;
+    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
+    if (!interiorFullyReachable([...cover, cand], half, centerX, centerZ)) continue;
+    cover.push({ ...cand });
+  }
+
+  return cover;
 }
 
 /**
@@ -477,7 +527,6 @@ function generateOpenPlaza(seed) {
   const size = OPEN_PLAZA.size;
   const half = size / 2;
   const spawnClear = OPEN_PLAZA.spawnClearRadius;
-  const interiorMax = half - OPEN_PLAZA.interiorMargin; // cover must stay within ±this
 
   // Four full perimeter walls — no passage gaps, so players cannot exit.
   const walls = [
@@ -513,9 +562,6 @@ function generateOpenPlaza(seed) {
     x: p.x, z: p.z, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar',
   }));
 
-  // Candidate scatter positions around the arena. Each is accepted only if it
-  // stays inside the interior, clears the spawn zone, doesn't overlap existing
-  // cover, and keeps the whole interior reachable (flood-fill).
   const candidatePool = [
     { x: 0, z: -11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
     { x: 0, z: 11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
@@ -527,27 +573,19 @@ function generateOpenPlaza(seed) {
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
   ];
 
-  // Deterministic shuffle (Fisher–Yates with mulberry32) so placement order is
-  // seed-driven yet reproducible.
-  for (let i = candidatePool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [candidatePool[i], candidatePool[j]] = [candidatePool[j], candidatePool[i]];
-  }
-
-  const TARGET_COVER = 8; // comfortably ≥ 6
-  for (const cand of candidatePool) {
-    if (cover.length >= TARGET_COVER) break;
-    // Reject candidates that leave the interior or breach the perimeter margin.
-    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
-    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
-    // Reject candidates inside the central spawn-clear zone.
-    if (overlapsSpawnClear(cand, spawnClear)) continue;
-    // Reject candidates overlapping any already-placed cover piece.
-    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
-    // Reject candidates that would make any interior cell unreachable.
-    if (!plazaFullyReachable([...cover, cand], half)) continue;
-    cover.push({ ...cand });
-  }
+  const scattered = scatterInteriorCover({
+    rng,
+    centerX: 0,
+    centerZ: 0,
+    half,
+    spawnClearRadius: spawnClear,
+    interiorMargin: OPEN_PLAZA.interiorMargin,
+    candidatePool,
+    targetCover: 8,
+    initialCover: cover,
+  });
+  cover.length = 0;
+  cover.push(...scattered);
 
   const layout = {
     rooms: [plaza],
@@ -841,9 +879,34 @@ function generateSunkenCanyon(seed) {
     passages.push(buildSunkenCanyonPassage(ramp, canyon, PASSAGE_WIDTH));
   }
 
+  const canyonCoverPool = [
+    { x: 0, z: -11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 0, z: 11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -9, z: -9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: 9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: -7, z: 7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 7, z: -7, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+  ];
+
+  const cover = scatterInteriorCover({
+    rng,
+    centerX: canyon.x,
+    centerZ: canyon.z,
+    half: canyonHalf,
+    spawnClearRadius: SUNKEN_CANYON.coverSpawnClearRadius,
+    interiorMargin: SUNKEN_CANYON.coverInteriorMargin,
+    candidatePool: canyonCoverPool,
+    targetCover: SUNKEN_CANYON.coverTarget,
+  });
+
   const layout = {
     rooms,
     passages,
+    cover,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: SUNKEN_CANYON.canyonSize,
     profile: 'sunken-canyon',

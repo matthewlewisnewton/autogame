@@ -1369,4 +1369,114 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     expect(counts.has(2)).toBe(true);
     expect(counts.has(3)).toBe(true);
   });
+
+  const CANYON_COVER_INTERIOR_MARGIN = 2;
+  const CANYON_SPAWN_CLEAR_RADIUS = 6;
+
+  function canyonRoom(layout) {
+    return roomsByBand(layout, 'canyon')[0];
+  }
+
+  function pieceInsideCanyonInterior(piece, canyon) {
+    const halfW = canyon.width / 2 - CANYON_COVER_INTERIOR_MARGIN;
+    const halfD = canyon.depth / 2 - CANYON_COVER_INTERIOR_MARGIN;
+    return (
+      Math.abs(piece.x - canyon.x) + piece.width / 2 <= halfW &&
+      Math.abs(piece.z - canyon.z) + piece.depth / 2 <= halfD
+    );
+  }
+
+  function canyonReachability(layout) {
+    const canyon = canyonRoom(layout);
+    const half = canyon.width / 2;
+    const step = 0.5;
+    const cells = Math.floor((half * 2) / step);
+    const cellCentre = i => canyon.x - half + (i + 0.5) * step;
+    const cellCentreZ = j => canyon.z - half + (j + 0.5) * step;
+    const blocked = (x, z) =>
+      layout.cover.some(c =>
+        x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+        z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+      );
+
+    const startI = Math.floor(half / step);
+    const seen = new Set();
+    const key = (i, j) => `${i},${j}`;
+    const queue = [[startI, startI]];
+    seen.add(key(startI, startI));
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di;
+        const nj = j + dj;
+        if (ni < 0 || ni >= cells || nj < 0 || nj >= cells) continue;
+        if (seen.has(key(ni, nj))) continue;
+        if (blocked(cellCentre(ni), cellCentreZ(nj))) continue;
+        seen.add(key(ni, nj));
+        queue.push([ni, nj]);
+      }
+    }
+
+    let open = 0;
+    for (let j = 0; j < cells; j++) {
+      for (let i = 0; i < cells; i++) {
+        if (!blocked(cellCentre(i), cellCentreZ(j))) open++;
+      }
+    }
+    return { allReachable: seen.size === open };
+  }
+
+  it('has ≥ 6 cover pieces on the canyon floor (not plateau or ramps)', () => {
+    const layout = generateLayout(123, 'sunken-canyon');
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    const canyon = canyonRoom(layout);
+    for (const c of layout.cover) {
+      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(pieceInsideCanyonInterior(c, canyon)).toBe(true);
+    }
+  });
+
+  it('cover does not overlap the spawn-clear zone around canyon centre', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const canyon = canyonRoom(layout);
+    for (const c of layout.cover) {
+      const dx = Math.max(Math.abs(c.x - canyon.x) - c.width / 2, 0);
+      const dz = Math.max(Math.abs(c.z - canyon.z) - c.depth / 2, 0);
+      expect(dx * dx + dz * dz).toBeGreaterThanOrEqual(CANYON_SPAWN_CLEAR_RADIUS * CANYON_SPAWN_CLEAR_RADIUS);
+    }
+  });
+
+  it('cover never partitions the canyon: every interior cell reachable from centre', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const { allReachable } = canyonReachability(layout);
+      expect(allReachable).toBe(true);
+    }
+  });
+
+  it('cover placement is deterministic for a fixed seed', () => {
+    const a = generateLayout(314, 'sunken-canyon').cover;
+    const b = generateLayout(314, 'sunken-canyon').cover;
+    expect(a).toEqual(b);
+  });
+
+  it('cover footprints become wall colliders on sunken-canyon layouts', () => {
+    const layout = generateLayout(88, 'sunken-canyon');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - c.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - c.width) < 1e-6 &&
+        Math.abs((w.minZ + w.maxZ) / 2 - c.z) < 1e-6 &&
+        Math.abs((w.maxZ - w.minZ) - c.depth) < 1e-6
+      );
+      expect(hit).toBe(true);
+    }
+    const c0 = layout.cover[0];
+    const collides = colliders.some(w =>
+      c0.x + PLAYER_RADIUS > w.minX && c0.x - PLAYER_RADIUS < w.maxX &&
+      c0.z + PLAYER_RADIUS > w.minZ && c0.z - PLAYER_RADIUS < w.maxZ
+    );
+    expect(collides).toBe(true);
+  });
 });
