@@ -1,0 +1,15 @@
+Review complete. **VERDICT: FAIL.**
+
+## Summary
+
+The game **runs cleanly** — `metrics.json` reports `ok: true` with an empty `pageerrors` array, no `harness_failure`, scene initialized, 5–6 enemies live, HP ticking, movement working. The only console noise is the benign lobby `409` race and Vite connect lines. All **467 client tests pass**.
+
+Most of the ticket is correct:
+- ✅ Registry maps all 7 entity keys to the right `/models/*.glb` files (all present on disk).
+- ✅ Player left untouched (`player: null`, early-returns).
+- ✅ Fallback to procedural on load failure works and is tested.
+- ✅ Scaling to `targetHeight` is correct.
+
+**The blocking defect is grounding.** Enemy meshes are placed at `world y = halfHeight` (renderer.js:3175) and minions at `world y = 0.5` (renderer.js:3348), because THREE.js centers the procedural geometry at the origin — so the procedural primitive's base lands on the floor. But `normalizeLoadedModel` grounds the loaded model to the **host's local** y=0, and the model is a child of that already-lifted host. Net result: every loaded model's feet land at `world y = halfHeight`, floating each enemy/minion ~50% of its own height above the ground (grunt +0.5, skirmisher +0.3, miniboss +0.9, spawner +0.6, minions +0.5). This directly violates the AC "sits on the ground (feet at the entity's y, not centered through the floor)." The `renderer-model-fit.test.js` grounding check only inspects the model in its own local space, so it never catches the lifted-host float.
+
+I wrote `review.md`, `gaps.md` (the single grounding fix), and `nits.md` (a dead `scaleBy: 'footprint'` branch and the noisy jsdom GLTFLoader stack trace). I did not modify any game code or git state.

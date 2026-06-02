@@ -2355,3 +2355,26 @@ None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 None blocking. The acceptance criteria are fully and robustly met and the
 captured run is clean.
 
+
+## v0.137 — Models: Wire enemy + minion placeholders into the registry  (2026-06-02 15:05:06)
+
+
+### AC5 — Existing tests pass; capture shows the new meshes — PASS
+Full suite green: **64 files / 1481 tests passed** (ran `vitest run` locally).
+The capture exercised enemies (5→6 present, procedural primitives swapped — round-1
+already confirmed the procedural meshes are hidden once a model resolves). Minions
+were not summoned in this fallback smoke flow (`minions: []` in both probes), so
+the minion GLBs were not *visually* exercised this run; their wiring is identical
+to enemies and is covered by registry + fit + fallback unit tests. Non-blocking
+(noted in nits).
+
+## Design / regression check
+Consistent with the additive model-loading plumbing from ticket 161. No server or
+shared code touched; only client model wiring + render-time normalization. No debug
+scenarios added or changed. No foundation regression.
+
+## Remaining gaps
+None blocking. The only observation is that the capture's deterministic smoke flow
+does not summon a minion, so minion model rendering is verified by tests rather than
+by a screenshot — filed as a nit.
+

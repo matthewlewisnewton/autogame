@@ -62,3 +62,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [191-cleanup-character-customization-client-render-avatar](tickets/191-cleanup-character-customization-client-render-avatar/)
 - [ ] [192-cleanup-models-gltf-loader-infrastructure](tickets/192-cleanup-models-gltf-loader-infrastructure/)
 - [ ] [193-cleanup-character-customization-client-panel](tickets/193-cleanup-character-customization-client-panel/)
+- [ ] [194-cleanup-models-wire-enemy-placeholders](tickets/194-cleanup-models-wire-enemy-placeholders/)

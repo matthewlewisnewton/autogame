@@ -1,0 +1,9 @@
+Created sub-ticket **04** for the only open gap from `review-feedback.md`: loaded models float because normalization grounds to the host's local origin while the host is pre-lifted in the render loop.
+
+Sub-tickets **01–03** have `.passed` markers and were left untouched.
+
+**Created sub-ticket folder:**
+
+- `/home/matt/workspace/.autogame-worktrees/162-models-wire-enemy-placeholders/tickets/162-models-wire-enemy-placeholders/subtickets/04-fix-registry-model-world-grounding`
+
+**04-fix-registry-model-world-grounding** adds per-key `groundOffset` in `MODEL_FIT`, updates `normalizeLoadedModel` to account for the host lift, and extends `renderer-model-fit.test.js` with a world-space grounding assertion on a lifted host. Verification mode is `code`.

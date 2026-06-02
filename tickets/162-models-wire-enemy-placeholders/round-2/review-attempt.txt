@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket wires the committed CC0 `.glb` placeholders into the model registry for the 4 enemy types and 3 minion types, with procedural fallback retained and the player intentionally left procedural.
+
+**Runtime health (gate):** `metrics.json` shows `ok: true`, servers up, `pageerrors: []`, no `harness_failure`. `console.log` is clean — only Vite + `initScene` lines, and notably **no** `[models] failed to load` warnings, so the GLBs loaded successfully. Capture reached `playing` with live enemies on screen.
+
+**Acceptance criteria — all met:**
+- **AC1** ✓ All 7 registry keys map to the correct `/models/*.glb` paths; all files present.
+- **AC2** ✓ `normalizeLoadedModel` scales to the procedural target height and grounds feet at world y=0. This is the exact fix for the round-1 float bug — `groundOffset` now matches each host's render-loop Y lift (enemy half-height / minion 0.5), with a world-space AABB test covering all 7 keys.
+- **AC3** ✓ Player stays `null` in the registry and early-returns; hero untouched.
+- **AC4** ✓ `loadModel` is fully resilient (resolves null, never throws, warns+caches); procedural mesh stays visible on failure. Fallback unit-tested.
+- **AC5** ✓ Full suite green: **64 files / 1481 tests**. Enemy meshes shown in capture.
+
+**No blocking gaps.** Two non-blocking nits filed: the smoke capture never summoned a minion (minion GLBs verified by tests, not screenshot), and the minion `groundOffset` is a hardcoded `0.5` duplicated from the render loop rather than a shared constant.
+
+Wrote `review.md` and `nits.md`; no `gaps.md` (PASS). No game code, TASKS.md, or git state was modified.
