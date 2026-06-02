@@ -408,6 +408,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-exhausted',
   'telepipe-ready',
   'sloped-dungeon',
+  'sunken-canyon',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -747,6 +748,27 @@ function applyDebugScenario(socket, name) {
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
       // Send updated layout to all clients in the lobby
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'sunken-canyon') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || questLayoutSeed(state.selectedQuestId || DEFAULT_QUEST_ID);
+      state.layout = generateLayout(seed, undefined, { stage: 'sunken-canyon', slopes: true });
+      state.layoutSeed = seed;
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      withLobbyContext({ state }, () => rebuildWallColliders());
+      const canyon = state.layout.rooms.find(r => r.elevationBand === 'canyon');
+      if (canyon) {
+        player.x = canyon.x;
+        player.z = canyon.z;
+        const floorY = sampleFloorY(state.layout, player.x, player.z);
+        player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      }
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,

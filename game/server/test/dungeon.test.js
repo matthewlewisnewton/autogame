@@ -81,6 +81,45 @@ function sunkenLayout(seed) {
   return generateLayout(seed, undefined, SUNKEN_OPTS);
 }
 
+function sunkenCoverWalls(layout) {
+  const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+  if (!canyon) return [];
+  return canyon.walls.filter(w => w.cover);
+}
+
+function coverBlocksRampGap(wall, layout) {
+  const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+  const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+  if (!plateau || !canyon) return false;
+  const rampOffsets = layout.rooms
+    .filter(r => r.elevationBand === 'ramp')
+    .map(r => r.x - plateau.x);
+  const gapWidth = layout.passageWidth;
+  const canyonNorthZ = canyon.z - canyon.depth / 2;
+  const box =
+    wall.axis === 'x'
+      ? {
+          minX: wall.x - wall.length / 2 - 0.2,
+          maxX: wall.x + wall.length / 2 + 0.2,
+          minZ: wall.z - 0.2,
+          maxZ: wall.z + 0.2,
+        }
+      : {
+          minX: wall.x - 0.2,
+          maxX: wall.x + 0.2,
+          minZ: wall.z - wall.length / 2 - 0.2,
+          maxZ: wall.z + wall.length / 2 + 0.2,
+        };
+  if (box.minZ > canyonNorthZ + 2.5) return false;
+  const clearance = gapWidth / 2 + 1.2;
+  for (const offset of rampOffsets) {
+    const gapX = plateau.x + offset;
+    if (box.maxX < gapX - clearance || box.minX > gapX + clearance) continue;
+    return true;
+  }
+  return false;
+}
+
 function canWalkBetween(layout, fromX, fromZ, toX, toZ) {
   const aabbs = computeWalkableAABBs(layout);
   const colliders = buildWallColliders(layout);
@@ -1212,5 +1251,68 @@ describe('generateLayout sunken-canyon', () => {
     }
     expect(counts.has(2)).toBe(true);
     expect(counts.has(3)).toBe(true);
+  });
+
+  it('places at least six cover pieces on the canyon floor only', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = sunkenLayout(seed);
+      const covers = sunkenCoverWalls(layout);
+      expect(covers.length).toBeGreaterThanOrEqual(6);
+      for (const cover of covers) {
+        expect(cover.axis).toMatch(/^[xz]$/);
+        expect(cover.length).toBeGreaterThan(0);
+        expect(cover.cover).toBe(true);
+      }
+      const nonCanyonCover = layout.rooms
+        .filter(r => r.elevationBand !== 'canyon')
+        .some(r => r.walls.some(w => w.cover));
+      expect(nonCanyonCover).toBe(false);
+    }
+  });
+
+  it('keeps cover on the canyon floor band south of the ramp buffer', () => {
+    const rampBuffer = 2.5;
+    const edgeMargin = 2.5;
+    for (let seed = 1; seed <= 20; seed++) {
+      const layout = sunkenLayout(seed);
+      const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+      const canyonNorthZ = canyon.z - canyon.depth / 2;
+      const minZ = canyonNorthZ + rampBuffer + 1;
+      const maxZ = canyon.z + canyon.depth / 2 - edgeMargin;
+      const minX = canyon.x - canyon.width / 2 + edgeMargin;
+      const maxX = canyon.x + canyon.width / 2 - edgeMargin;
+      for (const cover of sunkenCoverWalls(layout)) {
+        expect(cover.z).toBeGreaterThanOrEqual(minZ);
+        expect(cover.z).toBeLessThanOrEqual(maxZ);
+        expect(cover.x).toBeGreaterThanOrEqual(minX);
+        expect(cover.x).toBeLessThanOrEqual(maxX);
+      }
+    }
+  });
+
+  it('keeps cover away from ramp door gaps', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const layout = sunkenLayout(seed);
+      for (const cover of sunkenCoverWalls(layout)) {
+        expect(coverBlocksRampGap(cover, layout)).toBe(false);
+      }
+    }
+  });
+
+  it('remains reachable from plateau to canyon center after cover scatter', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = sunkenLayout(seed);
+      const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+      const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+      expect(
+        canWalkBetween(layout, plateau.x, plateau.z, canyon.x, canyon.z)
+      ).toBe(true);
+    }
+  });
+
+  it('cover scatter is deterministic for the same seed', () => {
+    const a = sunkenCoverWalls(sunkenLayout(4242));
+    const b = sunkenCoverWalls(sunkenLayout(4242));
+    expect(a).toEqual(b);
   });
 });

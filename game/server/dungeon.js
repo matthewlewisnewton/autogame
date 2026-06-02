@@ -160,6 +160,217 @@ function createFlatBandRoom({ x, z, width, depth, y, edgeGaps = {}, gapWidth = P
   };
 }
 
+const COVER_SCATTER_PLAYER_RADIUS = 0.45;
+const COVER_SCATTER_WALL_HALF_THICK = 0.2;
+const COVER_SCATTER_WALK_STEP = 0.4;
+const COVER_SCATTER_EDGE_MARGIN = 2.5;
+const COVER_SCATTER_RAMP_Z_BUFFER = 2.5;
+
+function wallSegmentAABB(wall, halfThickness = COVER_SCATTER_WALL_HALF_THICK) {
+  if (wall.axis === 'x') {
+    return {
+      minX: wall.x - wall.length / 2 - halfThickness,
+      maxX: wall.x + wall.length / 2 + halfThickness,
+      minZ: wall.z - halfThickness,
+      maxZ: wall.z + halfThickness,
+    };
+  }
+  return {
+    minX: wall.x - halfThickness,
+    maxX: wall.x + halfThickness,
+    minZ: wall.z - wall.length / 2 - halfThickness,
+    maxZ: wall.z + wall.length / 2 + halfThickness,
+  };
+}
+
+function computeWalkableAABBsForLayout(layout) {
+  const aabbs = [];
+  if (!layout) return aabbs;
+  const halfGap = (layout.passageWidth ?? PASSAGE_WIDTH) / 2;
+  for (const room of layout.rooms) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    aabbs.push({
+      minX: room.x - halfW,
+      maxX: room.x + halfW,
+      minZ: room.z - halfD,
+      maxZ: room.z + halfD,
+    });
+  }
+  for (const p of layout.passages) {
+    aabbs.push({
+      minX: Math.min(p.x1, p.x2) - halfGap,
+      maxX: Math.max(p.x1, p.x2) + halfGap,
+      minZ: Math.min(p.z1, p.z2) - halfGap,
+      maxZ: Math.max(p.z1, p.z2) + halfGap,
+    });
+  }
+  return aabbs;
+}
+
+function buildLayoutWallColliders(layout) {
+  const colliders = [];
+  for (const room of layout.rooms) {
+    for (const wall of room.walls) {
+      colliders.push(wallSegmentAABB(wall));
+    }
+  }
+  for (const passage of layout.passages) {
+    for (const wall of passage.walls) {
+      colliders.push(wallSegmentAABB(wall));
+    }
+  }
+  return colliders;
+}
+
+function isWalkableAt(x, z, aabbs, colliders) {
+  if (!aabbs.some(a => x >= a.minX && x <= a.maxX && z >= a.minZ && z <= a.maxZ)) {
+    return false;
+  }
+  const pr = COVER_SCATTER_PLAYER_RADIUS;
+  for (const w of colliders) {
+    if (x + pr <= w.minX || x - pr >= w.maxX) continue;
+    if (z + pr <= w.minZ || z - pr >= w.maxZ) continue;
+    return false;
+  }
+  return true;
+}
+
+function canWalkBetweenPoints(layout, fromX, fromZ, toX, toZ) {
+  const aabbs = computeWalkableAABBsForLayout(layout);
+  const colliders = buildLayoutWallColliders(layout);
+  const key = (x, z) => `${Math.round(x / COVER_SCATTER_WALK_STEP)},${Math.round(z / COVER_SCATTER_WALK_STEP)}`;
+  const seen = new Set([key(fromX, fromZ)]);
+  const queue = [{ x: fromX, z: fromZ }];
+  const targetKey = key(toX, toZ);
+  const dirs = [
+    [COVER_SCATTER_WALK_STEP, 0],
+    [-COVER_SCATTER_WALK_STEP, 0],
+    [0, COVER_SCATTER_WALK_STEP],
+    [0, -COVER_SCATTER_WALK_STEP],
+  ];
+
+  for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+    const { x, z } = queue[qi];
+    if (key(x, z) === targetKey) return true;
+    for (const [dx, dz] of dirs) {
+      const nx = x + dx;
+      const nz = z + dz;
+      const k = key(nx, nz);
+      if (seen.has(k) || !isWalkableAt(nx, nz, aabbs, colliders)) continue;
+      seen.add(k);
+      queue.push({ x: nx, z: nz });
+    }
+  }
+  return false;
+}
+
+function coverSpacingOk(a, b, minSpacing) {
+  const dist = Math.hypot(a.x - b.x, a.z - b.z);
+  const reach = a.length / 2 + b.length / 2 + 0.6;
+  return dist >= minSpacing + reach;
+}
+
+function coverBlocksRampGap(wall, plateauX, rampOffsets, gapWidth, canyonNorthZ) {
+  const box = wallSegmentAABB(wall);
+  if (box.minZ > canyonNorthZ + COVER_SCATTER_RAMP_Z_BUFFER) return false;
+  const clearance = gapWidth / 2 + 1.2;
+  for (const offset of rampOffsets) {
+    const gapX = plateauX + offset;
+    if (box.maxX < gapX - clearance || box.minX > gapX + clearance) continue;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Scatter freestanding cover walls on the sunken-canyon floor band.
+ * Mutates the canyon room's walls array; preserves plateau→canyon reachability.
+ */
+function scatterCanyonCover(rng, layout, options = {}) {
+  const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+  const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+  if (!canyon || !plateau) return;
+
+  const count = options.count ?? 6;
+  const minSpacing = options.minSpacing ?? 3.5;
+  const rampOffsets = options.rampOffsets ?? [];
+  const rampGapWidth = options.rampGapWidth ?? PASSAGE_WIDTH;
+  const plateauX = options.plateauX ?? plateau.x;
+  const canyonNorthZ = canyon.z - canyon.depth / 2;
+
+  const minX = canyon.x - canyon.width / 2 + COVER_SCATTER_EDGE_MARGIN;
+  const maxX = canyon.x + canyon.width / 2 - COVER_SCATTER_EDGE_MARGIN;
+  const minZ = canyonNorthZ + COVER_SCATTER_RAMP_Z_BUFFER + 1;
+  const maxZ = canyon.z + canyon.depth / 2 - COVER_SCATTER_EDGE_MARGIN;
+  if (maxZ <= minZ || maxX <= minX) return;
+
+  const placed = [];
+  const maxAttempts = count * 160;
+
+  for (let attempt = 0; attempt < maxAttempts && placed.length < count; attempt++) {
+    const axis = rng() < 0.5 ? 'x' : 'z';
+    const isPillar = rng() < 0.45;
+    const length = isPillar
+      ? 1.2 + Math.floor(rng() * 3) * 0.2
+      : 2.5 + Math.floor(rng() * 4) * 0.5;
+
+    const candidate = {
+      x: minX + rng() * (maxX - minX),
+      z: minZ + rng() * (maxZ - minZ),
+      axis,
+      length,
+      cover: true,
+    };
+
+    if (coverBlocksRampGap(candidate, plateauX, rampOffsets, rampGapWidth, canyonNorthZ)) {
+      continue;
+    }
+    if (placed.some(p => !coverSpacingOk(p, candidate, minSpacing))) {
+      continue;
+    }
+
+    canyon.walls.push(candidate);
+    placed.push(candidate);
+
+    if (
+      !canWalkBetweenPoints(layout, plateau.x, plateau.z, canyon.x, canyon.z)
+    ) {
+      canyon.walls.pop();
+      placed.pop();
+    }
+  }
+
+  if (placed.length < count) {
+    const relaxedSpacing = Math.max(2.5, minSpacing - 0.75);
+    for (let attempt = 0; attempt < count * 80 && placed.length < count; attempt++) {
+      const axis = rng() < 0.5 ? 'x' : 'z';
+      const length = 1.2 + Math.floor(rng() * 3) * 0.2;
+      const candidate = {
+        x: minX + rng() * (maxX - minX),
+        z: minZ + rng() * (maxZ - minZ),
+        axis,
+        length,
+        cover: true,
+      };
+      if (coverBlocksRampGap(candidate, plateauX, rampOffsets, rampGapWidth, canyonNorthZ)) {
+        continue;
+      }
+      if (placed.some(p => !coverSpacingOk(p, candidate, relaxedSpacing))) {
+        continue;
+      }
+      canyon.walls.push(candidate);
+      placed.push(candidate);
+      if (
+        !canWalkBetweenPoints(layout, plateau.x, plateau.z, canyon.x, canyon.z)
+      ) {
+        canyon.walls.pop();
+        placed.pop();
+      }
+    }
+  }
+}
+
 /** Open the low (south) edge of a z-axis ramp so it connects to the canyon. */
 function openRampSouthPassage(room, gapWidth) {
   const halfD = room.depth / 2;
@@ -309,6 +520,14 @@ function generateSunkenCanyonLayout(seed, options = {}) {
     cellSpacing: 0,
     profile: 'sunken-canyon',
   };
+
+  scatterCanyonCover(rng, layout, {
+    count: 6,
+    minSpacing: 3.5,
+    rampOffsets,
+    rampGapWidth: rampPassageGap,
+    plateauX,
+  });
 
   assignRoomRoles(layout);
   return layout;
@@ -736,6 +955,7 @@ module.exports = {
   mulberry32,
   generateLayout,
   generateSunkenCanyonLayout,
+  scatterCanyonCover,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
