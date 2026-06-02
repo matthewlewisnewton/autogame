@@ -15,7 +15,7 @@ Dungeon rooms and passages may have sloped floors (ramps) with varying elevation
 ## Run Suspend / Resume
 Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon without losing the current run state.
 
-- A player can place one shared Telepipe portal per run. The card is consumed, costs 0 Magic Stones, and creates a fixed portal at the caster's position.
+- A player can place one shared Telepipe portal per run. The card is consumed, costs 0 Mystic Signal, and creates a fixed portal at the caster's position.
 - Each player enters the portal individually. Extracted players return to the lobby overlay, cannot use dungeon actions, and are ignored by combat simulation while remaining squadmates continue playing.
 - The run only suspends when no active players remain in the dungeon. At that point the server captures a checkpoint with the run, layout, enemies, minions, loot, hands, objective progress, and portal position.
 - When the squad Deploys again from the suspended lobby, the checkpoint is restored instead of generating a fresh layout, and the dungeon resumes with the preserved portal/enemy/loot state.
@@ -26,12 +26,12 @@ Instead of standard weapons, players equip a deck of up to 24 cards. At any time
 
 ### Card Types
 - **Weapons**: Multi-charge directional attacks like sword slashes or projectiles. These cards have multiple charges before they are discarded from the hand.
-- **Spells**: Single-use cards with an **instant** effect at cast time (radial AoE, heal, pull, freeze, etc.). Many cost Magic Stones.
+- **Spells**: Single-use cards with an **instant** effect at cast time (radial AoE, heal, pull, freeze, etc.). Many cost Mystic Signal.
 - **Creatures**: Single-use cards that spawn a persistent battlefield ally (minion, helper, or utility construct) that fights or supports until it expires.
 - **Enchantments**: Single-use cards that leave a **lingering** magical effect on the ground or on yourself. They trigger when a condition is met (enemy walks over a hazard, you take damage) or fade after a timeout.
 
 ### Playtesting Notes (Spell vs Weapon Overlap)
-Several spell cards (e.g. Battle Familiar, Mana Leach) overlap mechanically with weapons: instant damage at a cost of Magic Stones rather than charges. With the clearer four-type system in place, evaluate after playtesting whether to merge overlapping spells into single-charge weapon variants or keep them for MS-economy variety. No cards have been removed yet — rename-first, cut-later.
+Several spell cards (e.g. Signal Familiar, Ether Siphon) overlap mechanically with weapons: instant damage at a cost of Mystic Signal rather than charges. With the clearer four-type system in place, evaluate after playtesting whether to merge overlapping spells into single-charge weapon variants or keep them for MS-economy variety. No cards have been removed yet — rename-first, cut-later.
 
 ## Future Mechanics
 - **PvP Wager Battles**: In a later update, players will be able to challenge each other to PvP deck battles and wager their collected currency.
