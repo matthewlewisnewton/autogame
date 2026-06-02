@@ -88,6 +88,7 @@ import {
 	cameraYawFromToTarget,
 } from './lockOn.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled } from './settings.js';
+import { getRegistryModelPath, loadModel } from './models.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -250,7 +251,47 @@ const MINION_VISUAL = {
 	},
 };
 
-function createMinionMesh(minionType) {
+/**
+ * Replace procedural geometry on a placeholder with a loaded glTF clone.
+ * @param {THREE.Object3D} placeholder
+ * @param {THREE.Object3D} model
+ */
+function swapPlaceholderWithRegistryModel(placeholder, model) {
+	if (placeholder._registryModelAttached) return;
+
+	while (placeholder.children.length > 0) {
+		placeholder.remove(placeholder.children[0]);
+	}
+
+	if (placeholder.geometry) {
+		placeholder.geometry.dispose();
+		placeholder.geometry = null;
+	}
+	if (placeholder.material) {
+		placeholder.material.dispose();
+		placeholder.material = null;
+	}
+
+	placeholder.add(model);
+	placeholder._registryModelAttached = true;
+}
+
+/**
+ * When a registry path exists, keep the procedural placeholder and swap in glTF async.
+ * @param {string} registryKey
+ * @param {THREE.Object3D} placeholderObject3D
+ */
+function attachRegistryModel(registryKey, placeholderObject3D) {
+	const path = getRegistryModelPath(registryKey);
+	if (!path) return;
+
+	loadModel(path).then((model) => {
+		if (!model || placeholderObject3D._disposed) return;
+		swapPlaceholderWithRegistryModel(placeholderObject3D, model);
+	});
+}
+
+function buildProceduralMinionMesh(minionType) {
 	const visual = MINION_VISUAL[minionType] || {
 		shape: 'cylinder',
 		radius: 0.4,
@@ -278,6 +319,12 @@ function createMinionMesh(minionType) {
 	if (visual.scale) {
 		mesh.scale.setScalar(visual.scale);
 	}
+	return mesh;
+}
+
+function createMinionMesh(minionType) {
+	const mesh = buildProceduralMinionMesh(minionType);
+	attachRegistryModel(minionType, mesh);
 	return mesh;
 }
 
@@ -1338,12 +1385,7 @@ export function enemyMeshHalfHeight(type) {
 	return def.type === 'octahedron' ? def.radius : def.height / 2;
 }
 
-/**
- * Create a Three.js mesh for an enemy based on its type.
- * @param {string} type - 'grunt', 'skirmisher', 'miniboss', or 'spawner'
- * @returns {THREE.Mesh}
- */
-export function createEnemyMesh(type) {
+function buildProceduralEnemyMesh(type) {
 	const def = ENEMY_GEOMETRY[type] || ENEMY_GEOMETRY.grunt;
 	let geo;
 	if (def.type === 'octahedron') {
@@ -1360,6 +1402,19 @@ export function createEnemyMesh(type) {
 	const mesh = new THREE.Mesh(geo, mat);
 	mesh._origEmissive = def.emissive != null ? def.emissive : 0x000000;
 	mesh._origEmissiveIntensity = def.emissiveIntensity != null ? def.emissiveIntensity : 0;
+	return mesh;
+}
+
+/**
+ * Create a Three.js mesh for an enemy based on its type.
+ * @param {string} type - 'grunt', 'skirmisher', 'miniboss', or 'spawner'
+ * @returns {THREE.Mesh}
+ */
+export function createEnemyMesh(type) {
+	const mesh = buildProceduralEnemyMesh(type);
+	if (type != null && Object.prototype.hasOwnProperty.call(ENEMY_GEOMETRY, type)) {
+		attachRegistryModel(type, mesh);
+	}
 	return mesh;
 }
 
@@ -2415,6 +2470,7 @@ export function updateAttackEffects() {
 export function disposeOne(map, id, targetScene, skipDispose) {
 	const mesh = map[id];
 	if (!mesh) return;
+	mesh._disposed = true;
 	if (targetScene) targetScene.remove(mesh);
 	if (!skipDispose) {
 		if (mesh.traverse) {
