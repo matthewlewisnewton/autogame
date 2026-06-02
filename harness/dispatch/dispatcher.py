@@ -85,6 +85,10 @@ class Dispatcher:
     merge_drain: Optional[Callable[[], None]] = None  # drain one merge per tick (set by launcher)
     worktree_factory: Optional[Callable[[str, PortAllocation], WorktreeWorkspace]] = None
     tick_seconds: float = 5.0
+    # Keep the local ollama box (GPU) hot: reserve a slot for qwen on an easy
+    # ticket every tick (before hard/medium can claim every port), so qwen is
+    # always running whenever easy work remains.
+    reserve_qwen_easy: bool = False
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
@@ -103,6 +107,8 @@ class Dispatcher:
         self._reap()
         if self.merge_drain is not None:
             self.merge_drain()  # integrate one passed branch into main this tick
+        if self.reserve_qwen_easy:
+            self._reserve_qwen_easy()
         for difficulty in self.lanes:
             while self._free_ports:
                 agent = self.registry.select_and_acquire(difficulty)
@@ -127,6 +133,28 @@ class Dispatcher:
         return all(not self.queue.ready(difficulty=d, limit=1) for d in self.lanes)
 
     # --- internals ------------------------------------------------------ #
+    def _reserve_qwen_easy(self) -> None:
+        """Keep qwen (the local GPU box) busy: if there's a free port and easy
+        work ready, claim one easy ticket for qwen before the hard/medium lanes
+        consume every slot. select_and_acquire("easy") returns qwen only while
+        it's under its cap, so a qwen already mid-flight is a no-op (we release
+        any non-qwen agent it hands back and bail)."""
+        if not self._free_ports:
+            return
+        if not self.queue.ready(difficulty="easy", limit=1):
+            return
+        agent = self.registry.select_and_acquire("easy")
+        if agent != "qwen":
+            if agent is not None:
+                self.registry.release(agent)
+            return
+        issue = self.queue.claim_ready(difficulty="easy", assignee="qwen")
+        if issue is None:
+            self.registry.release("qwen")
+            return
+        self._spawn_worker(issue["id"], issue.get("title") or issue["id"],
+                           "qwen", "easy")
+
     def _spawn_worker(self, bead_id: str, ticket_name: str, agent: str,
                       difficulty: str) -> bool:
         """Create a worktree + launch the worker. Returns True on success. On
