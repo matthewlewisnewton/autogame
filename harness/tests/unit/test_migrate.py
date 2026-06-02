@@ -7,9 +7,11 @@ from harness.dispatch.migrate import migrate_open_tickets, open_ticket_names, ti
 
 
 class FakeQueue:
-    def __init__(self):
+    def __init__(self, existing_ready=(), existing_in_progress=()):
         self.created = {}   # name -> difficulty
         self.deps = []      # (blocked_bead, blocker_bead)
+        self._ready = [{"id": f"bead-{t}", "title": t} for t in existing_ready]
+        self._in_prog = [{"id": f"bead-{t}", "title": t} for t in existing_in_progress]
 
     def create(self, title, *, difficulty=None, priority=None):
         self.created[title] = difficulty
@@ -17,6 +19,12 @@ class FakeQueue:
 
     def add_dep(self, blocked, blocker):
         self.deps.append((blocked, blocker))
+
+    def ready(self, *, difficulty=None, limit=100):
+        return self._ready[:limit]
+
+    def in_progress(self):
+        return self._in_prog
 
 
 def _repo(tmp_path: Path) -> Path:
@@ -63,3 +71,31 @@ def test_migrate_creates_and_wires(tmp_path):
     assert q.created == {"a-easy": "easy", "b-medium": "medium", "d-dep": "hard"}
     # only the dep to a created, non-epic ticket is wired (c-epic + ghost skipped)
     assert q.deps == [("bead-d-dep", "bead-a-easy")]
+
+
+def test_migrate_skips_tickets_with_no_directory(tmp_path):
+    # TASKS.md references a ticket whose dir doesn't exist → unrunnable, skip it
+    (tmp_path / "TASKS.md").write_text(
+        "# Tasks\n"
+        "- [ ] [real](tickets/real/)\n"
+        "- [ ] [phantom](tickets/phantom/)\n"
+    )
+    d = tmp_path / "tickets" / "real"
+    d.mkdir(parents=True)
+    (d / "ticket.md").write_text("# Real\n## Difficulty: easy\n")
+    q = FakeQueue()
+    created = migrate_open_tickets(tmp_path, q)
+    assert set(created) == {"real"}          # phantom (no dir) skipped
+    assert "phantom" not in q.created
+
+
+def test_migrate_is_idempotent_skips_existing_beads(tmp_path):
+    _repo(tmp_path)
+    # a-easy already has a live (ready) bead from a prior migrate run
+    q = FakeQueue(existing_ready=["a-easy"])
+    created = migrate_open_tickets(tmp_path, q)
+    # a-easy NOT recreated; the rest still created
+    assert "a-easy" not in q.created
+    assert set(created) == {"b-medium", "d-dep"}
+    # dep edge a-easy→d-dep is skipped (a-easy wasn't created this run)
+    assert q.deps == []

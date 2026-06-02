@@ -133,3 +133,86 @@ def test_nonquota_failure_requeues_without_disabling():
     assert d.registry.disabled_agents() == []
     assert "t1" in q.requeued
     assert wts[0].removed
+
+
+def test_spawn_failure_requeues_and_frees_slot():
+    """If launching the worker raises, the just-created worktree, the port pair,
+    and the agent slot must all be reclaimed and the ticket requeued (else they
+    leak and the bead is stuck in_progress)."""
+    q = FakeQueue({"medium": ["t1"]})
+    reg = _registry()
+    wts = []
+
+    def boom_spawn(tid, agent, wt, ports_):
+        raise RuntimeError("Popen failed")
+
+    def wt_factory(name, ports_):
+        wt = FakeWorktree(name, ports_)
+        wts.append(wt)
+        return wt
+
+    d = Dispatcher(
+        queue=q, registry=reg, main_repo=None,
+        ports_pool=[PortAllocation(3000, 5173)], lanes=["medium"],
+        spawn=boom_spawn, worktree_factory=wt_factory,
+        quota_classifier=lambda agent: False, on_pass=lambda w: None,
+    )
+    d.tick()
+    assert d._workers == {}                 # nothing left running
+    assert len(d._free_ports) == 1          # port pair reclaimed
+    assert wts[0].removed                   # worktree torn down
+    assert "t1" in q.requeued               # ticket back in the pool
+    assert reg.snapshot()["composer"]["in_flight"] == 0  # agent slot released
+
+
+class LeakyWorktree(FakeWorktree):
+    def remove_worktree(self, **kw):
+        self.removed = True
+        return False  # simulate a worktree that couldn't be removed (still registered)
+
+
+def test_leaked_worktree_quarantines_port():
+    """When teardown reports the worktree leaked, its port pair must NOT be
+    recycled — reusing it would collide with the still-registered path."""
+    q = FakeQueue({"medium": ["t1"]})
+    reg = _registry()
+
+    def spawn(tid, agent, wt, ports_):
+        p = FakeProc()
+        spawn.proc = p
+        return p
+
+    d = Dispatcher(
+        queue=q, registry=reg, main_repo=None,
+        ports_pool=[PortAllocation(3000, 5173)], lanes=["medium"],
+        spawn=spawn,
+        worktree_factory=lambda name, ports_: LeakyWorktree(name, ports_),
+        quota_classifier=lambda agent: False, on_pass=lambda w: None,
+    )
+    d.tick()
+    spawn.proc.finish(int(PipelineResult.INCOMPLETE))
+    d.tick()                                # reap: failure, remove_worktree -> False
+    assert d._free_ports == []              # port quarantined, not returned
+    assert reg.snapshot()["composer"]["in_flight"] == 0  # but the agent slot IS freed
+
+
+def test_agent_hit_quota_respects_since_ms(tmp_path):
+    """A quota row that predates the worker's start must be ignored; one within
+    its run window trips the breaker."""
+    import json
+    from harness.dispatch.dispatcher import _agent_hit_quota
+
+    path = tmp_path / "agent-usage.ndjson"
+    stale = {"label": "qwen", "model": "qwen", "reason": "quota_or_rate_limit",
+             "ended_ms": 1000}
+    recent_ok = {"label": "qwen", "model": "qwen", "reason": "ok", "ended_ms": 5000}
+    path.write_text(json.dumps(stale) + "\n" + json.dumps(recent_ok) + "\n")
+    # worker started at 4000ms — the stale quota row (1000ms) is out of window
+    assert _agent_hit_quota(tmp_path, "qwen", since_ms=4000) is False
+    # a quota failure inside the window is caught
+    with path.open("a") as f:
+        f.write(json.dumps({"label": "qwen", "model": "qwen",
+                            "reason": "quota_or_rate_limit", "ended_ms": 6000}) + "\n")
+    assert _agent_hit_quota(tmp_path, "qwen", since_ms=4000) is True
+    # with no window bound, the stale row alone still trips it (back-compat)
+    assert _agent_hit_quota(tmp_path, "qwen") is True

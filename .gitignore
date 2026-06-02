@@ -75,6 +75,7 @@ harness/agents_health.json
 .beads/*.db
 .beads/*.db-*
 .autogame-worktrees/
+.beads_merged_unclosed
 
 # Python build artifacts. egg-info lands at repo root (not harness/) because
 # pyproject.toml uses `where = [".."]` to make `harness` importable as a

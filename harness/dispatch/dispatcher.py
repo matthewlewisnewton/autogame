@@ -41,6 +41,7 @@ class WorkerHandle:
     difficulty: str
     worktree: WorktreeWorkspace
     proc: object  # has .poll() -> Optional[int]
+    started_at: int = 0  # epoch ms when spawned — lower-bounds the quota scan
 
     def poll(self) -> Optional[int]:
         return self.proc.poll()
@@ -90,8 +91,9 @@ class Dispatcher:
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
-        if self.quota_classifier is None:
-            self.quota_classifier = lambda agent: _agent_hit_quota(progress_dir(), agent)
+        # NOTE: quota_classifier intentionally left None by default — the
+        # built-in path (_hit_quota) is time-window-aware and needs the worker's
+        # start timestamp, which a bare (agent)->bool classifier can't see.
         if self.worktree_factory is None:
             self.worktree_factory = lambda name, ports: WorktreeWorkspace.create(
                 self.main_repo, name=name, ports=ports)
@@ -131,8 +133,18 @@ class Dispatcher:
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"worktree create failed: {e!r}")
             return
-        proc = self.spawn(ticket_name, agent, wt, ports)
-        self._workers[bead_id] = WorkerHandle(bead_id, ticket_name, agent, difficulty, wt, proc)
+        try:
+            proc = self.spawn(ticket_name, agent, wt, ports)
+        except Exception as e:  # Popen/launch failed → tear down the worktree too
+            log(f"[dispatch] spawn failed for {ticket_name}: {e!r} — requeuing")
+            wt.remove_worktree()
+            self._free_ports.append(ports)
+            self.registry.release(agent)
+            self.queue.requeue(bead_id, note=f"spawn failed: {e!r}")
+            return
+        self._workers[bead_id] = WorkerHandle(
+            bead_id, ticket_name, agent, difficulty, wt, proc,
+            started_at=int(time.time() * 1000))
         emit_progress_event("dispatch_spawn", {
             "ticket": ticket_name, "agent": agent, "difficulty": difficulty,
             "game_port": ports.game_server, "vite_port": ports.vite,
@@ -143,26 +155,51 @@ class Dispatcher:
             rc = w.poll()
             if rc is None:
                 continue
-            self._handle_outcome(w, rc)
+            teardown_ok = self._handle_outcome(w, rc)
             del self._workers[tid]
             self.registry.release(w.agent)
-            self._free_ports.append(w.worktree.ports)
+            if teardown_ok:
+                self._free_ports.append(w.worktree.ports)
+            else:
+                # Worktree leaked (still registered) — reusing its port pair would
+                # collide with the stale path on the next worktree add. Quarantine
+                # the slot: drop the port pair until a human prunes + restarts.
+                emit_progress_event("slot_quarantined", {
+                    "ticket": w.ticket_name,
+                    "game_port": w.worktree.ports.game_server,
+                    "vite_port": w.worktree.ports.vite,
+                })
 
-    def _handle_outcome(self, w: WorkerHandle, rc: int) -> None:
+    def _hit_quota(self, w: WorkerHandle) -> bool:
+        """True if this worker's agent hit a quota/unavailable failure. An
+        injected classifier (tests) takes precedence; otherwise scan the shared
+        usage log bounded to THIS worker's run window so a sibling worker's (or
+        an old) quota row can't falsely trip the breaker."""
+        if self.quota_classifier is not None:
+            return self.quota_classifier(w.agent)
+        return _agent_hit_quota(progress_dir(), w.agent, since_ms=w.started_at)
+
+    def _handle_outcome(self, w: WorkerHandle, rc: int) -> bool:
+        """Return True if the worker's port pair is safe to recycle. PASS hands
+        the worktree to the merge queue (owns teardown) but the process has
+        exited so the port is free → True. On failure, teardown happens here and
+        the return reflects whether the worktree actually went away."""
         if rc == int(PipelineResult.PASS):
             emit_progress_event("dispatch_pass", {"ticket": w.ticket_name, "agent": w.agent})
             if self.on_pass is not None:
                 self.on_pass(w)   # merge queue takes the branch + owns teardown
-            return
+            else:
+                w.worktree.remove_worktree()  # no merge queue wired → don't leak
+            return True
         # Failure. If the agent itself hit quota/unavailability, trip the breaker.
-        if self.quota_classifier(w.agent):
+        if self._hit_quota(w):
             log(f"[dispatch] {w.agent} hit quota/unavailable — disabling until re-enabled")
             self.registry.disable(w.agent, reason="quota or unavailable")
             emit_progress_event("agent_disabled", {"agent": w.agent, "reason": "quota"})
         self.queue.requeue(w.ticket_id, note=f"{w.agent} failed (rc={rc})")
         emit_progress_event("dispatch_requeue",
                             {"ticket": w.ticket_name, "agent": w.agent, "rc": rc})
-        w.worktree.remove_worktree()
+        return w.worktree.remove_worktree()
 
     # --- run loop ------------------------------------------------------- #
     def run(self, *, max_idle_ticks: int = 0) -> None:
@@ -180,10 +217,13 @@ class Dispatcher:
             time.sleep(self.tick_seconds)
 
 
-def _agent_hit_quota(progress: Path, agent: str, *, lookback: int = 40) -> bool:
-    """Scan the tail of the shared agent-usage.ndjson for a recent
-    quota/unavailable failure by `agent`. Reuses the reason field
-    record_agent_usage already writes — no pipeline threading needed."""
+def _agent_hit_quota(progress: Path, agent: str, *, lookback: int = 40,
+                     since_ms: Optional[int] = None) -> bool:
+    """Scan the tail of the shared agent-usage.ndjson for a quota/unavailable
+    failure by `agent`. Reuses the reason field record_agent_usage already
+    writes — no pipeline threading needed. `since_ms` bounds the scan to rows
+    that ended at/after this worker started, so a concurrent sibling worker's
+    (or a stale) quota row can't falsely trip the breaker."""
     import json
     quota_reasons = {"quota_or_rate_limit", "api_error_only_output", "empty_output"}
     path = Path(progress) / "agent-usage.ndjson"
@@ -195,6 +235,8 @@ def _agent_hit_quota(progress: Path, agent: str, *, lookback: int = 40) -> bool:
         try:
             row = json.loads(ln)
         except json.JSONDecodeError:
+            continue
+        if since_ms is not None and row.get("ended_ms", 0) < since_ms:
             continue
         model = row.get("model") or row.get("label", "")
         if agent in (row.get("label", ""), model) and row.get("reason") in quota_reasons:
