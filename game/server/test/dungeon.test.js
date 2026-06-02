@@ -1480,3 +1480,33 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     expect(collides).toBe(true);
   });
 });
+
+describe('generateLayout({ stage: "sunken-canyon" })', () => {
+  it("returns profile 'sunken-canyon' and populated stageMeta", () => {
+    const layout = generateLayout({ stage: 'sunken-canyon' });
+    expect(layout.profile).toBe('sunken-canyon');
+    expect(layout.stageMeta.plateauRoomIndex).toBe(0);
+    expect(layout.stageMeta.canyonRoomIndex).toBe(layout.rooms.length - 1);
+    expect(layout.stageMeta.rampRoomIndices.length).toBeGreaterThanOrEqual(2);
+    expect(layout.stageMeta.rampRoomIndices.length).toBeLessThanOrEqual(3);
+  });
+
+  it('matches generateLayout(seed, "sunken-canyon") for an explicit seed', () => {
+    const fromObject = generateLayout({ stage: 'sunken-canyon', seed: 42 });
+    const fromLegacy = generateLayout(42, 'sunken-canyon');
+    expect(fromObject).toEqual(fromLegacy);
+  });
+
+  it('uses questLayoutSeed("sunken-canyon") when seed is omitted', () => {
+    const expectedSeed = questLayoutSeed('sunken-canyon');
+    const fromObject = generateLayout({ stage: 'sunken-canyon' });
+    const fromLegacy = generateLayout(expectedSeed, 'sunken-canyon');
+    expect(fromObject).toEqual(fromLegacy);
+  });
+
+  it('is deterministic when seed is omitted', () => {
+    const a = generateLayout({ stage: 'sunken-canyon' });
+    const b = generateLayout({ stage: 'sunken-canyon' });
+    expect(a).toEqual(b);
+  });
+});

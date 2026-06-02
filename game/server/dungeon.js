@@ -115,14 +115,36 @@ function questLayoutSeed(questId) {
 }
 
 /**
- * Generate a deterministic dungeon layout from a numeric seed.
- * Returns { rooms: [...], passages: [...], passageWidth, profile }
+ * Generate a deterministic dungeon layout.
  *
- * @param {number} seed - PRNG seed for deterministic generation
+ * Two calling conventions are supported:
+ * - `generateLayout(seed, [profile], [options])` — legacy numeric seed first
+ * - `generateLayout({ stage, seed?, options? })` — object stage selector; when
+ *   `seed` is omitted, uses `questLayoutSeed(stage)` (e.g. `questLayoutSeed('sunken-canyon')`)
+ *
+ * Returns { rooms, passages, passageWidth, profile, ... } (shape varies by profile).
+ *
+ * @param {number|object} seedOrOpts - PRNG seed, or `{ stage: string, seed?: number, options?: object }`
  * @param {string|object} [profile=DEFAULT_LAYOUT_PROFILE] - Layout profile name or object
  * @param {object} [options={}] - Optional flags: { slopes: boolean }
  */
-function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+function generateLayout(seedOrOpts, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+  if (
+    seedOrOpts !== null &&
+    typeof seedOrOpts === 'object' &&
+    !Array.isArray(seedOrOpts) &&
+    typeof seedOrOpts.stage === 'string'
+  ) {
+    const { stage, seed: explicitSeed } = seedOrOpts;
+    if (stage === 'sunken-canyon') {
+      const resolvedSeed =
+        explicitSeed !== undefined ? explicitSeed : questLayoutSeed('sunken-canyon');
+      return generateSunkenCanyon(resolvedSeed);
+    }
+  }
+
+  const seed = seedOrOpts;
+
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
     return generateOpenPlaza(seed);
