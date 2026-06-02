@@ -6,6 +6,9 @@
 const apiTarget = `http://localhost:${process.env.HARNESS_GAME_PORT || process.env.PORT || 3000}`;
 
 export default {
+	// Serve files under public/ at the web root (e.g. public/models/*.glb is
+	// reachable at /models/*.glb). Explicit so model assets are served statically.
+	publicDir: 'public',
 	server: {
 		port: 5173,
 		strictPort: true,
