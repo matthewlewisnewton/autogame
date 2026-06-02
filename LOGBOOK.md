@@ -2240,3 +2240,26 @@ None. No blocking gaps for acceptance or runtime health.
 
 See `nits.md` for optional follow-ups (design-doc deck cap vs code, minor doc depth on run objectives).
 
+
+## v0.117 — Spire Ascent Stage  (2026-06-02 10:29:25)
+
+  no quest state). Pure render QA.
+- `spire-ascent` — sets `selectedQuestId='spire_ascent'` and calls
+  `applyLayoutForQuest(state, 'spire_ascent')`, i.e. the *same* code path a normal
+  deploy takes; it then re-spawns enemies. It does not skip validation,
+  persistence, or replication that normal play exercises.
+The equivalent end-state is reachable in normal play: `spire_ascent` is in
+`QUEST_DEFS` and surfaced to clients through `listQuests()` /
+`buildQuestUpdatePayload`, exactly like `canyon_descent`. Normal path confirmed.
+
+## Consistency / regression
+Mirrors the existing `sunken-canyon` stage structure (band-tagged rooms, empty
+`passages`, connector ramps, role-gated spawn/loot/crystal helpers). No changes
+to shared flat-layout behavior; existing dungeon/integration/server tests still
+pass. Consistent with `design.md` height-gain goals (116/117 sloped-floor work).
+
+## Remaining gaps
+None blocking. One nit (capture used the `sloped-dungeon` fallback rather than a
+spire scenario, so screenshots don't show the new geometry) is recorded in
+`nits.md`.
+

@@ -1,0 +1,19 @@
+Created **4** sub-tickets in dependency order (layout → spawns → quest → QA routing). All use **code** verification because criteria cover layout structure, slopes, reachability, spawn distribution, and handlers—not pixel-only appearance.
+
+**Sub-ticket folder paths:**
+
+1. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-spire-layout-generator/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-spire-tier-spawns/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-spire-ascent-quest/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/04-spire-qa-routing/ticket.md`
+
+**Split rationale**
+
+| # | Delivers |
+|---|----------|
+| 01 | `generateLayout(seed, 'spire-ascent')`, tiers, ramps (≥0.2 slope), ≥10 Y gain, walls, reachability, unit tests |
+| 02 | Tier-scattered enemies, top-tier objectives, no ramp spawns |
+| 03 | Selectable quest via normal deploy pipeline |
+| 04 | Dev scenarios + client mesh/treasure checks + correct spawn `player.y` for camera follow |
+
+Follows the sunken-canyon pattern (`buildDescentRampRoom`, band-aware spawns, `*-stage` dev shortcuts). No prior sub-ticket folders existed, so nothing was deleted or skipped.
