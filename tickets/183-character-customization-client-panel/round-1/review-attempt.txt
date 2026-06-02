@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health — clean.** `metrics.json` reports `ok: true`, empty `pageerrors`, scene initialized, two players connected, gameplay reached. `console.log` shows only benign noise (vite connect lines + the register-then-login 409). `server.log` started cleanly with no `harness_failure`. Screenshots confirm both lobby and live 3D gameplay render, with the HUD character portrait (blue-tinted = default body color) and toolbar account button present. All 225 client unit tests pass — the failures in `review-attempt.txt` were a misconfigured invocation (run outside the jsdom client config), not real.
+
+**All acceptance criteria met:**
+- Shape picker (4 shapes), body-color palette + custom, accent palette + custom — all in the account overlay (`index.html`).
+- Live Three.js preview (`cosmetic-preview.js`) updates immediately on any change, disposes geometry on shape swap (no GPU leak), falls back on invalid input.
+- Save → `patchProfile({ cosmetic })` → `PATCH /api/me/profile`; button disables during request; no-op when unchanged.
+- Reload persistence via `GET /api/me` + `backfillCosmetic`; failed PATCH leaves cache intact. Server side (ticket 181) validates/persists; defaults match.
+- In-run visibility via `#character-frame` portrait, refreshed after login, on `myId` set, and after save — without touching world avatar meshes.
+- Lives in the existing account overlay; no duplicate HUD UI; username flow untouched.
+
+No debug scenario added; no design/requirements conflict; changes confined to client UI + one client state field.
+
+**Files written:** `review.md` (PASS), `nits.md` (two non-blocking items: unused `readCosmeticDraft`; capture never opens the panel). No `gaps.md` since the verdict is PASS.

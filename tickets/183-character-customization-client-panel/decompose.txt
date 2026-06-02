@@ -1,0 +1,19 @@
+The top-level `ticket.md` was missing in this worktree; decomposition follows beads issue **autogame-cgf** (183 — client customization panel for Phase-A `bodyColor`, `accentColor`, `bodyShape`). World avatar rendering stays in ticket **182**; proportion sliders stay in **188**.
+
+Four `code`-verified sub-tickets in dependency order:
+
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/01-cosmetic-profile-client-state/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/02-customization-panel-markup-styles/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/03-live-cosmetic-preview/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/04-wire-panel-save-and-hud/ticket.md`
+
+**Rationale**
+
+| # | Delivers |
+|---|----------|
+| **01** | Load/cache/patch cosmetic via `settings.js` + tests |
+| **02** | Account overlay markup and CSS (shape + color pickers, preview mount) |
+| **03** | Three.js live preview module, updates on picker change |
+| **04** | Wire controls, save via `patchProfile`, persistence, HUD portrait for in-run visibility |
+
+No prior `subtickets/` folders existed, so nothing was deleted or renumbered.

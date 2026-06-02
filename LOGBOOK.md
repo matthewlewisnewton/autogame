@@ -2263,3 +2263,26 @@ None blocking. All five acceptance criteria are fully and robustly met, backed
 by HTTP-level and unit tests, and the captured run is healthy. One minor,
 non-blocking polish item is recorded in `nits.md`.
 
+
+## v0.119 — 183-character-customization-client-panel  (2026-06-02 11:09:35)
+
+  this is the Phase-A surfacing of an already-merged server feature.
+- Changes are confined to client UI + a new client state field; no server,
+  gameplay, or networking paths altered. No regression to the running game
+  (capture confirms normal auth → lobby → gameplay → movement).
+- No debug `?debugScenario=` shortcut was added by this ticket.
+
+## Code quality
+
+- Logic is cleanly split: `settings.js` (state/round-trip), `cosmetic-form.js`
+  (pure DOM/draft helpers), `cosmetic-preview.js` (Three.js), `main.js`
+  (wiring). All validate input and fall back to defaults.
+- No console errors from this code in the capture; modules import cleanly
+  (scene initialized, no page errors).
+
+## Remaining gaps
+
+None blocking. One minor nit (recorded in `nits.md`): `readCosmeticDraft` in
+`cosmetic-form.js` is exported and unit-tested but unused by `main.js`, which
+maintains the draft incrementally — slightly redundant, non-blocking.
+
