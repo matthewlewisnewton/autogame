@@ -135,6 +135,7 @@ import {
 	triggerDashVFX,
 	triggerHealPulseVFX,
 	triggerShieldVFX,
+	triggerSmokeVFX,
 	getPhaseStepTargetId,
 } from './renderer.js';
 // ── DOM element references ──
@@ -1107,6 +1108,16 @@ function bindSocketHandlers(s) {
 			}
 			if (data.keyItemId === 'guard_block') {
 				triggerShieldVFX(myId);
+			}
+			if (data.keyItemId === 'smoke_bomb') {
+				const me = myId && gameState?.players ? gameState.players[myId] : null;
+				if (me) {
+					triggerSmokeVFX(
+						{ x: me.x, z: me.z },
+						me.smokeVeilRadius || 4,
+						myId,
+					);
+				}
 			}
 		} else if (data.reason === 'on_cooldown') {
 			flashKeyItemIndicator('cooldown');

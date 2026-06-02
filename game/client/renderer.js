@@ -1238,6 +1238,82 @@ export function triggerShieldVFX(playerId) {
 	requestAnimationFrame(animateShield);
 }
 
+// ── Smoke Veil VFX (Smoke Bomb) ──
+
+const SMOKE_DURATION_MS = 2000;
+const SMOKE_EXPAND_MS = 300;
+const SMOKE_FADE_MS = 500;
+const SMOKE_COLOR = 0x9aa0a6;
+const SMOKE_DEFAULT_RADIUS = 4;
+/** @type {Record<string, { mesh: THREE.Mesh, geometry: THREE.BufferGeometry, material: THREE.Material, startTime: number }>} */
+const smokeVFX = {};
+
+function disposeSmokeVFXEntry(playerId) {
+	const entry = smokeVFX[playerId];
+	if (!entry) return;
+	if (scene && entry.mesh) scene.remove(entry.mesh);
+	entry.geometry.dispose();
+	entry.material.dispose();
+	delete smokeVFX[playerId];
+}
+
+/**
+ * Grey fog disc at a fixed world position (cast point). Does not follow the player.
+ * Replaces any existing smoke mesh for the same playerId.
+ *
+ * @param {{ x: number, z: number }} position
+ * @param {number} [radius=4]
+ * @param {string} [playerId]
+ */
+export function triggerSmokeVFX(position, radius = SMOKE_DEFAULT_RADIUS, playerId = null) {
+	if (!scene || !position) return;
+
+	const key = playerId || `smoke-${position.x}-${position.z}`;
+	disposeSmokeVFXEntry(key);
+
+	const geometry = new THREE.CircleGeometry(radius, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: SMOKE_COLOR,
+		transparent: true,
+		opacity: 0.5,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.position.set(position.x, 0.15, position.z);
+	mesh.scale.setScalar(0.01);
+	scene.add(mesh);
+
+	smokeVFX[key] = { mesh, geometry, material, startTime: performance.now() };
+
+	const startTime = performance.now();
+	function animateSmoke() {
+		const entry = smokeVFX[key];
+		if (!entry || entry.mesh !== mesh) return;
+
+		const elapsed = performance.now() - startTime;
+
+		if (elapsed < SMOKE_EXPAND_MS) {
+			mesh.scale.setScalar(elapsed / SMOKE_EXPAND_MS);
+		} else {
+			mesh.scale.setScalar(1);
+		}
+
+		if (elapsed > SMOKE_DURATION_MS - SMOKE_FADE_MS) {
+			const fadeT = (elapsed - (SMOKE_DURATION_MS - SMOKE_FADE_MS)) / SMOKE_FADE_MS;
+			material.opacity = 0.5 * (1 - Math.min(fadeT, 1));
+		}
+
+		if (elapsed < SMOKE_DURATION_MS) {
+			requestAnimationFrame(animateSmoke);
+		} else {
+			disposeSmokeVFXEntry(key);
+		}
+	}
+	requestAnimationFrame(animateSmoke);
+}
+
 // ── Floating damage numbers ──
 
 /**
@@ -2716,6 +2792,18 @@ export function animate(timestamp) {
 				flashMesh(playersMeshes[id], 0xff0000, 200);
 			}
 			previousPlayerHp[id] = pData.hp;
+		}
+
+		// Smoke Veil: fog at fixed cast point (smokeVeilX/Z), not live player position.
+		const veilNow = Date.now();
+		for (const [id, pData] of Object.entries(gs.players)) {
+			if (pData.smokeVeilUntil > veilNow && !smokeVFX[id]) {
+				triggerSmokeVFX(
+					{ x: pData.smokeVeilX, z: pData.smokeVeilZ },
+					pData.smokeVeilRadius || SMOKE_DEFAULT_RADIUS,
+					id,
+				);
+			}
 		}
 
 		if (myId != null && playersMeshes[myId]) {

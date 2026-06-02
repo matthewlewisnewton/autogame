@@ -417,6 +417,7 @@ const DEBUG_SCENARIOS = new Set([
   'overclock-ready',
   'phase-step-ready',
   'smoke-veil-ready',
+  'smoke-bomb-ready',
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
@@ -895,6 +896,16 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'phase_step';
       player.keyItemCooldownUntil = 0;
       state.enemies = [];
+    } else if (name === 'smoke-bomb-ready') {
+      // Dungeon with smoke_bomb equipped, off cooldown, no active veil — cast to test VFX.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'smoke_bomb';
+      player.keyItemCooldownUntil = 0;
+      player.smokeVeilUntil = 0;
+      ensureNearbyEnemy(state, player.x, player.z);
+      spawnEnemy(player.x + 3, player.z, 'grunt');
+      spawnEnemy(player.x + 5, player.z + 2, 'skirmisher');
     } else if (name === 'smoke-veil-ready') {
       // Player in dungeon with smoke_bomb equipped, active veil at feet, and nearby enemies.
       player.hp = MAX_HP;
