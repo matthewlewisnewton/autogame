@@ -2332,3 +2332,26 @@ foundation regressed.
 
 None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 
+
+## v0.132 — 185-character-models-spike-base-player-model  (2026-06-02 13:55:40)
+
+Blender/Node authoring scripts, a test, and a `.gitignore` entry for `.authoring`.
+Runtime code paths are untouched, so the foundation in `requirements.md` is intact.
+No debug scenarios were added (`debugScenario` remains null in probes).
+
+## Code quality
+
+Authoring scripts are dev-only and gitignored inputs; the Node normalizer and the
+two Blender scripts are clear and documented. The test reads the GLB JSON chunk
+directly (no Three.js mock) — appropriate and fast.
+
+## Remaining gaps
+
+None blocking. One quality concern is recorded as a nit (morph non-orthogonality —
+the committed base is the combined-min and each key's delta also un-shrinks the
+other axes, so the documented "0.5 = neutral per key" does not reproduce the
+original Quaternius rest mesh, and driving one slider perturbs the others). This is
+acceptable for an editable spike asset — ticket 187 owns the avatar wiring where
+real morph isolation will matter — and it does not violate any stated acceptance
+criterion. See `nits.md`.
+

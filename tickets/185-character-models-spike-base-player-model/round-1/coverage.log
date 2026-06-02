@@ -1,0 +1,17 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/playerModelMorphs.test.js (1 test) 3ms
+
+ Test Files  1 passed (1)
+      Tests  1 passed (1)
+   Start at  13:51:25
+   Duration  966ms (transform 11ms, setup 17ms, collect 3ms, tests 3ms, environment 286ms, prepare 57ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------
