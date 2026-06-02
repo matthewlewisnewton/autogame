@@ -1202,6 +1202,23 @@ function bindSocketHandlers(s) {
 		else showDeckError(data.reason);
 	});
 
+	s.on('hatUnlocked', (data) => {
+		if (!data) return;
+		// Record the unlock and refreshed currency from the server (never
+		// optimistically before this event), then re-render the hat list so the
+		// newly unlocked hat becomes an equippable (owned) entry.
+		setUnlockedHats(data.unlockedHats);
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			updateCurrencyHud(myCurrency);
+		}
+		buildHatList();
+	});
+
+	s.on('hatError', (data) => {
+		showCosmeticError(data && data.reason ? data.reason : 'Unlock failed');
+	});
+
 	s.on('tradeOffer', (data) => {
 		if (!data || !data.tradeId) return;
 		pendingTradeOffer = data;
@@ -2965,8 +2982,9 @@ buildCosmeticSwatches(cosmeticAccentSwatchesEl, ACCENT_COLOR_PALETTE, 'accentCol
 /**
  * Render one entry per catalog hat into the hat-list container, marking each as
  * owned vs locked and the equipped/selected entry. Clicking an owned entry sets
- * it as the in-progress equipped hat and refreshes the live preview; clicking a
- * locked entry does nothing (unlock is sub-ticket 02).
+ * it as the in-progress equipped hat and refreshes the live preview. Locked
+ * entries show their price and an Unlock control that spends currency via the
+ * server `unlockHat` flow (disabled when the player cannot afford the hat).
  */
 function buildHatList() {
 	if (!cosmeticHatListEl) return;
@@ -2975,34 +2993,47 @@ function buildHatList() {
 	cosmeticHatListEl.innerHTML = '';
 	for (const hat of catalog) {
 		const owned = unlocked.includes(hat.id);
-		const btn = document.createElement('button');
-		btn.type = 'button';
-		btn.className = 'cosmetic-hat';
-		btn.dataset.hatId = hat.id;
-		btn.classList.toggle('owned', owned);
-		btn.classList.toggle('locked', !owned);
+		// Owned entries are clickable buttons (equip); locked entries are static
+		// rows that contain their own Unlock <button> (no nested buttons).
+		const row = document.createElement(owned ? 'button' : 'div');
+		if (owned) row.type = 'button';
+		row.className = 'cosmetic-hat';
+		row.dataset.hatId = hat.id;
+		row.classList.toggle('owned', owned);
+		row.classList.toggle('locked', !owned);
 
 		const name = document.createElement('span');
 		name.className = 'cosmetic-hat-name';
 		name.textContent = hat.name;
-		btn.appendChild(name);
+		row.appendChild(name);
 
 		const status = document.createElement('span');
 		status.className = 'cosmetic-hat-status';
 		status.textContent = owned ? 'Owned' : `Locked · ${hat.price}`;
-		btn.appendChild(status);
+		row.appendChild(status);
 
 		if (owned) {
-			btn.addEventListener('click', () => {
+			row.addEventListener('click', () => {
 				cosmeticSelection.hat = hat.id;
 				refreshHatList();
 				refreshCosmeticPreview();
 			});
 		} else {
-			btn.disabled = true;
-			btn.setAttribute('aria-disabled', 'true');
+			const affordable = myCurrency >= hat.price;
+			const unlockBtn = document.createElement('button');
+			unlockBtn.type = 'button';
+			unlockBtn.className = 'cosmetic-hat-unlock';
+			unlockBtn.textContent = 'Unlock';
+			unlockBtn.disabled = !affordable;
+			if (!affordable) unlockBtn.setAttribute('aria-disabled', 'true');
+			unlockBtn.addEventListener('click', () => {
+				if (myCurrency < hat.price) return;
+				if (!socket || !socket.connected) return;
+				socket.emit('unlockHat', { hatId: hat.id });
+			});
+			row.appendChild(unlockBtn);
 		}
-		cosmeticHatListEl.appendChild(btn);
+		cosmeticHatListEl.appendChild(row);
 	}
 	refreshHatList();
 }
