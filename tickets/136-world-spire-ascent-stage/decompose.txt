@@ -1,0 +1,19 @@
+Remediation round 2 adds three sub-tickets mapped to the open gaps in `review-feedback.md`. Sub-tickets **01–05** already have `.passed` markers and were left untouched.
+
+### New sub-tickets (dependency order)
+
+| # | Gap | Folder |
+|---|-----|--------|
+| 06 | Vite proxy hard-coded to `:3000` while harness runs server on `PORT`/`HARNESS_GAME_PORT` | `06-vite-proxy-harness-port` |
+| 07 | Uniform elevated tier floors/treasure marker rendered at ground `FLOOR_Y` | `07-elevated-tier-client-floors` |
+| 08 | `spire_ascent` completes on enemy kills only; no required top-tier exit | `08-final-tier-exit-objective` |
+
+All three use **Verification: code** (proxy/config, mesh Y values, objective/server state — not screenshot-only checks).
+
+### Created folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/06-vite-proxy-harness-port/ticket.md
+/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/07-elevated-tier-client-floors/ticket.md
+/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/08-final-tier-exit-objective/ticket.md
+```

@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "\n  VITE v8.0.13  ready in 95 ms\n\n  \u279c  Local:   http://localhost:5174/\n  \u279c  Network: use --host to expose\n1:23:23 AM [vite] http proxy error: /api/register\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n1:23:24 AM [vite] http proxy error: /api/login\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n1:24:13 AM [vite] http proxy error: /api/register\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n1:24:14 AM [vite] http proxy error: /api/login\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)",
+    "server_log_tail": "[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/game/data/users.json\n[server] Layout for quest \"training_caverns\": seed=1335602341, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/game/data\nServer listening on port 3001",
+    "port_holders": {
+      "5174": [
+        {
+          "pid": 2963326,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/game/client/node_modules/.bin/../vite/bin/vite.js --port 5174 --strictPort"
+        }
+      ],
+      "3001": []
+    }
+  }
+}
