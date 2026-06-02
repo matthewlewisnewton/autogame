@@ -36,6 +36,15 @@ const QUEST_DEFS = {
     rewardCurrency: 14,
     layoutProfile: 'sunken-canyon',
   },
+  spire_ascent: {
+    id: 'spire_ascent',
+    name: 'Spire Ascent',
+    description: 'Climb the stacked tiers and purge hostiles from the summit.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 6,
+    rewardCurrency: 14,
+    layoutProfile: 'spire-ascent',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';
