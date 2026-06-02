@@ -757,14 +757,14 @@ export function initScene(layout, spawnPos) {
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
 	cameraYaw = 0;
-	camera.position.set(
-		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		CAMERA_HEIGHT,
-		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
-	);
 	const spawnFloorY = layout
 		? (sampleFloorY(layout, spawnPosition.x, spawnPosition.z) ?? DEFAULT_FLOOR_Y)
 		: DEFAULT_FLOOR_Y;
+	camera.position.set(
+		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
+		spawnFloorY + CAMERA_HEIGHT,
+		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
+	);
 	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
 	// Renderer
