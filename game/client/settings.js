@@ -5,11 +5,21 @@ import { setSoundEnabledFromSettings } from './audio.js';
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
 
+const DEFAULT_COSMETIC = {
+	bodyColor: '#4f9dde',
+	accentColor: '#f2c94c',
+	bodyShape: 'box'
+};
+const BODY_SHAPES = ['box', 'cylinder', 'cone', 'capsule'];
+const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/i;
+
 /** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', keyboard: { bindings: Record<string, string> }, gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
 
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
 let cachedProfile = { username: '', email: null };
+/** @type {{ bodyColor: string, accentColor: string, bodyShape: string }} */
+let cachedCosmetic = { ...DEFAULT_COSMETIC };
 let authToken = null;
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
@@ -43,6 +53,19 @@ export function getSettings() {
 
 export function getAccountProfile() {
 	return cachedProfile;
+}
+
+export function getCosmetic() {
+	return { ...cachedCosmetic };
+}
+
+function backfillCosmetic(existing) {
+	const src = (existing && typeof existing === 'object' && !Array.isArray(existing)) ? existing : {};
+	return {
+		bodyColor: HEX_COLOR_REGEX.test(src.bodyColor) ? src.bodyColor : DEFAULT_COSMETIC.bodyColor,
+		accentColor: HEX_COLOR_REGEX.test(src.accentColor) ? src.accentColor : DEFAULT_COSMETIC.accentColor,
+		bodyShape: BODY_SHAPES.includes(src.bodyShape) ? src.bodyShape : DEFAULT_COSMETIC.bodyShape
+	};
 }
 
 export function getAuthToken() {
@@ -101,6 +124,7 @@ export async function loadAccountSettings(token) {
 		username: data.username || '',
 		email: data.email || null,
 	};
+	cachedCosmetic = backfillCosmetic(data.cosmetic);
 	cachedSettings = deepMerge(getDefaultSettings(), data.settings || {});
 	await migrateLocalStorageMute();
 	applySettings();
@@ -157,8 +181,8 @@ export async function patchSettingsImmediate(partial) {
 }
 
 /**
- * Update profile (username / email).
- * @param {{ username?: string, email?: string|null }} fields
+ * Update profile (username / email / cosmetic).
+ * @param {{ username?: string, email?: string|null, cosmetic?: { bodyColor?: string, accentColor?: string, bodyShape?: string } }} fields
  * @returns {Promise<{ token?: string, username: string, email: string|null, error?: string }>}
  */
 export async function patchProfile(fields) {
@@ -183,6 +207,9 @@ export async function patchProfile(fields) {
 		username: data.username || cachedProfile.username,
 		email: data.email ?? cachedProfile.email,
 	};
+	if (data.cosmetic) {
+		cachedCosmetic = backfillCosmetic(data.cosmetic);
+	}
 	return data;
 }
 
