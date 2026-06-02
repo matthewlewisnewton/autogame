@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { KEY_ITEM_DEFS } from '../index.js';
+import { damagePlayer, setGameState } from '../simulation.js';
 import {
 	startTestServer,
 	closeServer,
@@ -111,5 +112,142 @@ describe('useKeyItem — barrier_dome (socket integration)', () => {
 
 		// Dome window was not refreshed by the rejected re-cast
 		expect(player.barrierDomeUntil).toBe(firstDomeUntil);
+	});
+});
+
+// ── Ranged/projectile blocking (damagePlayer unit) ──
+
+describe('damagePlayer — barrier dome blocks ranged/projectile', () => {
+	const FUTURE = () => Date.now() + 5000;
+	const PAST = () => Date.now() - 5000;
+
+	function makePlayer(id, overrides = {}) {
+		return {
+			id,
+			x: 0,
+			y: 0.5,
+			z: 0,
+			hp: 100,
+			dead: false,
+			...overrides,
+		};
+	}
+
+	function setupState({ players = {}, enemies = [], minions = [] } = {}) {
+		const state = { players, enemies, minions };
+		setGameState(state, []);
+		return state;
+	}
+
+	afterEach(() => {
+		setGameState(null, null);
+	});
+
+	it('ranged damage from outside an active dome is fully blocked (hp unchanged)', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 10, z: 0, hp: 50 }], // well outside the dome
+		});
+
+		const result = damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(result).toBeNull();
+		expect(victim.hp).toBe(100);
+	});
+
+	it('melee damage to a player inside the dome still applies', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 10, z: 0, hp: 50 }],
+		});
+
+		damagePlayer('v', 30, { attackerEnemyId: 'e1' }); // no ranged marker
+
+		expect(victim.hp).toBe(70);
+	});
+
+	it('an ally standing inside the caster\'s dome is protected from outside ranged damage', () => {
+		const caster = makePlayer('caster', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		// Ally has no dome of their own, but stands inside the caster's dome.
+		const ally = makePlayer('ally', { x: 1, z: 1, hp: 100 });
+		setupState({
+			players: { caster, ally },
+			enemies: [{ id: 'e1', x: 10, z: 0, hp: 50 }],
+		});
+
+		const result = damagePlayer('ally', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(result).toBeNull();
+		expect(ally.hp).toBe(100);
+	});
+
+	it('an expired dome blocks nothing', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: PAST(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 10, z: 0, hp: 50 }],
+		});
+
+		damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(victim.hp).toBe(70);
+	});
+
+	it('ranged damage from an attacker already inside the dome is NOT blocked', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		setupState({
+			players: { v: victim },
+			enemies: [{ id: 'e1', x: 1, z: 0, hp: 50 }], // inside the 3m dome
+		});
+
+		damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(victim.hp).toBe(70);
+	});
+
+	it('ranged damage with no resolvable attacker position is still blocked inside an active dome', () => {
+		const victim = makePlayer('v', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		setupState({ players: { v: victim } });
+
+		const result = damagePlayer('v', 30, { ranged: true }); // no attacker info
+
+		expect(result).toBeNull();
+		expect(victim.hp).toBe(100);
+	});
+
+	it('a ranged attack on a player standing OUTSIDE every dome is not blocked', () => {
+		const caster = makePlayer('caster', {
+			x: 0, z: 0, hp: 100,
+			barrierDomeUntil: FUTURE(), barrierDomeRadius: 3, barrierDomeX: 0, barrierDomeZ: 0,
+		});
+		const victim = makePlayer('v', { x: 20, z: 0, hp: 100 }); // far from the dome
+		setupState({
+			players: { caster, v: victim },
+			enemies: [{ id: 'e1', x: 25, z: 0, hp: 50 }],
+		});
+
+		damagePlayer('v', 30, { ranged: true, attackerEnemyId: 'e1' });
+
+		expect(victim.hp).toBe(70);
 	});
 });
