@@ -29,7 +29,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
 - [ ] [129-key-item-ground-anchor](tickets/129-key-item-ground-anchor/)
 - [x] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
-- [ ] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
+- [x] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
 - [ ] [132-key-item-echo-strike](tickets/132-key-item-echo-strike/)
 - [x] [133-key-item-barrier-dome](tickets/133-key-item-barrier-dome/)
 - [ ] [134-key-item-rally-cry](tickets/134-key-item-rally-cry/)
@@ -53,3 +53,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
 - [ ] [157-cleanup-key-item-phase-step](tickets/157-cleanup-key-item-phase-step/)
 - [ ] [158-cleanup-world-open-plaza-stage](tickets/158-cleanup-world-open-plaza-stage/)
+- [ ] [159-cleanup-key-item-purge-charm](tickets/159-cleanup-key-item-purge-charm/)

@@ -1,0 +1,10 @@
+Created 2 sub-tickets that together deliver the Purge Charm key item:
+
+- **01-server-purge-clears-debuff** — minimal `player.debuffs[]` system + `addDebuff` helper, `purge_charm` clears the oldest debuff, cooldown dropped to ~7s, added to the implemented allow-list.
+- **02-server-purge-shield-fallback** — no-debuff path grants `shieldHitsRemaining: 1`, and `damagePlayer` fully absorbs one hit.
+
+Both are server-state/logic concerns → `Verification: code`. They're split so each is one focused pass with no forward dependency (01 owns the debuff-clear branch; 02 owns the entire shield fallback — granting + absorbing).
+
+Sub-ticket folder paths created:
+- `tickets/131-key-item-purge-charm/subtickets/01-server-purge-clears-debuff/ticket.md`
+- `tickets/131-key-item-purge-charm/subtickets/02-server-purge-shield-fallback/ticket.md`
