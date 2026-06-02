@@ -1,0 +1,17 @@
+Broke the top-level **Spire Ascent** ticket into **3 sub-tickets** (same shape as sunken-canyon 137): server layout first, client render second, quest/spawns/wiring last. No prior `subtickets/` folder existed, so numbering starts at `01`.
+
+**Dependency order**
+
+| # | Focus |
+|---|--------|
+| 01 | `generateSpireAscent` — 3–5 tiers, ramps via `buildDescentRampRoom`, Y gain ≥ 10, walls, reachability, unit tests |
+| 02 | Client floors, treasure marker Y, `initScene` camera height at spawn |
+| 03 | Quest def, tiered enemy spawns, objective on top tier, `spire-ascent-stage` debug scenario |
+
+All three use **Verification: code** (structure, slopes, reachability, spawn bands — not screenshot-only).
+
+**Sub-ticket folder paths created**
+
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-server-spire-ascent-layout`
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-client-spire-ascent-render`
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-quest-spawns-and-play`

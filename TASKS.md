@@ -36,7 +36,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 
 ## Backlog — World Stages
 - [x] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
-- [ ] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
+- [x] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
 - [x] [137-world-sunken-canyon-stage](tickets/137-world-sunken-canyon-stage/)
 - [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
 - [ ] [144-cleanup-harness-misclassifies-pageerror](tickets/144-cleanup-harness-misclassifies-pageerror/)
@@ -55,3 +55,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [158-cleanup-world-open-plaza-stage](tickets/158-cleanup-world-open-plaza-stage/)
 - [ ] [159-cleanup-key-item-purge-charm](tickets/159-cleanup-key-item-purge-charm/)
 - [ ] [160-cleanup-world-sunken-canyon-stage](tickets/160-cleanup-world-sunken-canyon-stage/)
+- [ ] [161-cleanup-world-spire-ascent-stage](tickets/161-cleanup-world-spire-ascent-stage/)

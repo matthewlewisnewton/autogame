@@ -2194,3 +2194,26 @@ None blocking. All top-level acceptance criteria are implemented and covered by 
 
 ---
 
+
+## v0.107 — Spire Ascent Stage  (2026-06-02 08:15:52)
+
+
+## Debug scenarios
+
+| Scenario | Gating | Normal path | Invariants |
+|----------|--------|-------------|------------|
+| `spire-ascent-stage` | `?debugScenario=` + localhost / `ALLOW_DEBUG_SCENARIOS` | `spire_ascent` quest → `applyLayoutForQuest` | Layout-only shortcut; same `generateLayout(seed, 'spire-ascent')` as quest |
+| `spire-ascent-spawns` | Same | Deploy `spire_ascent` + `spawnEnemies()` | Calls `applyLayoutForQuest` + `spawnEnemies()` — mirrors deploy |
+
+Both are registered in `DEBUG_SCENARIOS` and only entered via URL + socket `debugScenario`. They do not weaken server validation or persistence beyond other existing dev shortcuts.
+
+## Code quality
+
+- Focused diff (~1k lines): `dungeon.js` generator, quest/spawn wiring, camera spawn height, tests.
+- No dead exports; `generateSpireAscent` and `buildDescentRampRoom` exported intentionally.
+- No browser defects in capture.
+
+## Remaining gaps
+
+None blocking. See `nits.md` for optional follow-ups (capture plan, 3-tier enemy clustering).
+
