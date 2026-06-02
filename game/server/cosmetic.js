@@ -111,6 +111,34 @@ function validateCosmetic(partial) {
 		value.hat = partial.hat;
 	}
 
+	if (partial.modelId !== undefined) {
+		if (typeof partial.modelId !== 'string' || !MODEL_IDS.includes(partial.modelId)) {
+			return { ok: false, reason: `modelId must be one of: ${MODEL_IDS.join(', ')}` };
+		}
+		value.modelId = partial.modelId;
+	}
+
+	if (partial.proportions !== undefined) {
+		if (!partial.proportions || typeof partial.proportions !== 'object' || Array.isArray(partial.proportions)) {
+			return { ok: false, reason: 'proportions must be a plain object' };
+		}
+		const validatedProps = {};
+		for (const [key, val] of Object.entries(partial.proportions)) {
+			if (!PROPORTION_RANGES.hasOwnProperty(key)) {
+				return { ok: false, reason: `Unknown proportion key: ${key}` };
+			}
+			if (typeof val !== 'number' || !Number.isFinite(val)) {
+				return { ok: false, reason: `proportions.${key} must be a finite number` };
+			}
+			const range = PROPORTION_RANGES[key];
+			if (val < range.min || val > range.max) {
+				return { ok: false, reason: `proportions.${key} must be between ${range.min} and ${range.max}` };
+			}
+			validatedProps[key] = val;
+		}
+		value.proportions = validatedProps;
+	}
+
 	return { ok: true, value };
 }
 
@@ -143,7 +171,12 @@ function backfillProportions(existing) {
 	const result = {};
 	for (const key of PROPORTION_KEYS) {
 		const val = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing[key] : undefined;
-		result[key] = (typeof val === 'number') ? val : DEFAULT_COSMETIC.proportions[key];
+		const range = PROPORTION_RANGES[key];
+		if (typeof val === 'number' && Number.isFinite(val) && val >= range.min && val <= range.max) {
+			result[key] = val;
+		} else {
+			result[key] = DEFAULT_COSMETIC.proportions[key];
+		}
 	}
 	return result;
 }
