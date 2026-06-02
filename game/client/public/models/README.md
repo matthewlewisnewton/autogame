@@ -25,30 +25,47 @@ Legacy player proxy in `renderer.js`: a **1×1×1** axis-aligned box centered at
 `player.glb` is taller (~1.8 u) with the same feet anchor so a future loader can swap
 meshes without retuning floor height.
 
-### Proportion morph targets (sub-ticket 02+)
+### Proportion morph targets
 
-Sub-ticket **02** will add glTF morph targets on the **`PlayerBody`** mesh primitive
-(visor / accent stays morph-free). Names must match server `proportions.<key>` exactly:
+Six glTF morph targets live on the **`PlayerBody`** mesh primitive only. The visor /
+accent primitive has **no** morphs. Names are case-sensitive and match future server
+field `proportions.<key>` exactly.
 
-| Proportion key | glTF morph target name | Notes |
-|----------------|------------------------|-------|
-| `height` | `height` | Scale about soles; feet stay at y ≈ 0 |
-| `headSize` | `headSize` | Head region only |
-| `torsoWidth` | `torsoWidth` | Symmetric ±X |
-| `armLength` | `armLength` | Symmetric arms |
-| `legLength` | `legLength` | Symmetric legs |
-| `shoulderWidth` | `shoulderWidth` | Symmetric ±X |
+| Proportion key | glTF morph target name | Default influence | Clamp range | Authoring notes |
+|----------------|------------------------|-------------------|-------------|-----------------|
+| `height` | `height` | `0` | −1…1 | Scale about sole Y=0; feet stay at y ≈ 0 |
+| `headSize` | `headSize` | `0` | −1…1 | Head region (y ≥ ~1.2); pivot near neck |
+| `torsoWidth` | `torsoWidth` | `0` | −1…1 | Torso band; symmetric ±X about origin |
+| `armLength` | `armLength` | `0` | −1…1 | Outer arms; symmetric |
+| `legLength` | `legLength` | `0` | −1…1 | Legs / feet; scale Y from ground |
+| `shoulderWidth` | `shoulderWidth` | `0` | −1…1 | Upper torso / shoulders; symmetric ±X |
 
-Morph export, validation test (`playerModel.test.js`), and README export notes are
-handled in sub-ticket **02** — not present on the base mesh yet.
+**Neutral pose:** `weights` are all **0**; rest geometry is the default avatar with no
+morph influence applied.
+
+**Blender authoring (if re-exporting):**
+
+- Add shape keys on the body mesh only; exclude visor / accent.
+- Keep feet on the ground plane when authoring `height` (scale about soles, not per-toe shear).
+- Width / arm / shoulder keys must be symmetric on ±X.
+- Y-up, forward −Z, feet at y = 0 before export.
+
+**glTF export notes:**
+
+- Emit morph target names in `mesh.extras.targetNames` (same order as `primitives[].targets`).
+- Coordinate system: **Y-up**; player faces **−Z**.
+- Verify with `game/client/test/playerModel.test.js` after export.
 
 ### Regenerating `player.glb`
 
-Original low-poly mesh authored via `game/client/scripts/generate-player-glb.mjs`:
+Low-poly mesh and morph deltas are authored in `game/client/scripts/generate-player-glb.mjs`:
 
 ```bash
 cd game/client && node scripts/generate-player-glb.mjs
 ```
 
-Re-run after editing that script; then update `player.glb.license.md` and the
-`CREDITS.md` row if source or license changes.
+Re-run after editing that script (idempotent overwrite). Then update `player.glb.license.md` and
+the `CREDITS.md` row if source or license changes.
+
+Automated check: `pnpm test:quick` runs `client/test/playerModel.test.js`, which parses the
+committed GLB JSON chunk and asserts all six `targetNames` on `PlayerBody`.

@@ -1,6 +1,7 @@
 /**
- * One-shot maintainer script: build game/client/public/models/player.glb
- * Original low-poly humanoid for ticket 185 sub-ticket 01 (not wired in renderer).
+ * Maintainer script: build game/client/public/models/player.glb
+ * Original low-poly humanoid for ticket 185 (not wired in renderer).
+ * Sub-ticket 02: six proportion morph targets on PlayerBody only.
  *
  * Run from game/client: node scripts/generate-player-glb.mjs
  */
@@ -13,10 +14,70 @@ import { fileURLToPath } from 'node:url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(__dirname, '../public/models/player.glb');
 
+/** Must match README proportion table and future server `proportions.<key>`. */
+const MORPH_TARGET_NAMES = [
+	'height',
+	'headSize',
+	'torsoWidth',
+	'armLength',
+	'legLength',
+	'shoulderWidth',
+];
+
+const MORPH_STRENGTH = 0.12;
+
 function footBox(w, h, d, x, yBottom, z) {
 	const g = new THREE.BoxGeometry(w, h, d);
 	g.translate(x, yBottom + h / 2, z);
 	return g;
+}
+
+function scaleAbout([x, y, z], pivot, s) {
+	return [
+		pivot[0] + (x - pivot[0]) * s,
+		pivot[1] + (y - pivot[1]) * s,
+		pivot[2] + (z - pivot[2]) * s,
+	];
+}
+
+function morphVertexAtPlusOne(name, x, y, z) {
+	switch (name) {
+		case 'height':
+			return [x, y * (1 + MORPH_STRENGTH), z];
+		case 'headSize':
+			if (y < 1.2) return [x, y, z];
+			return scaleAbout([x, y, z], [0, 1.35, 0], 1 + MORPH_STRENGTH);
+		case 'torsoWidth':
+			if (y < 0.5 || y > 1.35) return [x, y, z];
+			return [x * (1 + MORPH_STRENGTH), y, z];
+		case 'armLength':
+			if (Math.abs(x) < 0.3 || y < 0.7 || y > 1.4) return [x, y, z];
+			return [x, y + (y - 0.86) * MORPH_STRENGTH, z];
+		case 'legLength':
+			if (y > 0.55) return [x, y, z];
+			return [x, y * (1 + MORPH_STRENGTH), z];
+		case 'shoulderWidth':
+			if (y < 0.95 || y > 1.38 || Math.abs(x) < 0.22) return [x, y, z];
+			return [x * (1 + MORPH_STRENGTH), y, z];
+		default:
+			throw new Error(`unknown morph: ${name}`);
+	}
+}
+
+function computeMorphDeltas(positions) {
+	return MORPH_TARGET_NAMES.map((name) => {
+		const deltas = new Float32Array(positions.length);
+		for (let i = 0; i < positions.length; i += 3) {
+			const x = positions[i];
+			const y = positions[i + 1];
+			const z = positions[i + 2];
+			const [mx, my, mz] = morphVertexAtPlusOne(name, x, y, z);
+			deltas[i] = mx - x;
+			deltas[i + 1] = my - y;
+			deltas[i + 2] = mz - z;
+		}
+		return deltas;
+	});
 }
 
 const bodyParts = [
@@ -54,7 +115,7 @@ if (height < 1.6 || height > 2.0) {
 	throw new Error(`height ${height} outside 1.6–2.0`);
 }
 
-function meshToGltfPrimitive(geometry, materialIndex) {
+function meshToGltfPrimitive(geometry, materialIndex, morphDeltas = null) {
 	const pos = geometry.getAttribute('position');
 	const norm = geometry.getAttribute('normal');
 	const index = geometry.getIndex();
@@ -68,11 +129,15 @@ function meshToGltfPrimitive(geometry, materialIndex) {
 			return arr;
 		})();
 
-	return { positions, normals, indices, materialIndex };
+	return { positions, normals, indices, materialIndex, morphDeltas };
 }
 
+const bodyMorphDeltas = computeMorphDeltas(
+	meshToGltfPrimitive(bodyGeo, 0).positions,
+);
+
 const primitives = [
-	meshToGltfPrimitive(bodyGeo, 0),
+	meshToGltfPrimitive(bodyGeo, 0, bodyMorphDeltas),
 	meshToGltfPrimitive(visorGeo, 1),
 ];
 
@@ -88,21 +153,18 @@ function align4(n) {
 
 const binChunks = [];
 
-for (const prim of primitives) {
-	const posBytes = prim.positions.byteLength;
-	const normBytes = prim.normals.byteLength;
-	const idxBytes = prim.indices.byteLength;
+function appendBuffer(data) {
+	const offset = align4(byteOffset);
+	byteOffset = offset + data.byteLength;
+	binChunks.push({ offset, data: Buffer.from(data.buffer, data.byteOffset, data.byteLength) });
+	return offset;
+}
 
-	const posOffset = align4(byteOffset);
-	byteOffset = posOffset + posBytes;
-	const normOffset = align4(byteOffset);
-	byteOffset = normOffset + normBytes;
-	const idxOffset = align4(byteOffset);
-	byteOffset = idxOffset + idxBytes;
-
-	binChunks.push({ offset: posOffset, data: Buffer.from(prim.positions.buffer) });
-	binChunks.push({ offset: normOffset, data: Buffer.from(prim.normals.buffer) });
-	binChunks.push({ offset: idxOffset, data: Buffer.from(prim.indices.buffer) });
+for (let primIndex = 0; primIndex < primitives.length; primIndex++) {
+	const prim = primitives[primIndex];
+	const posOffset = appendBuffer(prim.positions);
+	const normOffset = appendBuffer(prim.normals);
+	const idxOffset = appendBuffer(prim.indices);
 
 	const vertexCount = prim.positions.length / 3;
 	const min = [Infinity, Infinity, Infinity];
@@ -119,21 +181,21 @@ for (const prim of primitives) {
 	bufferViews.push({
 		buffer: 0,
 		byteOffset: posOffset,
-		byteLength: posBytes,
+		byteLength: prim.positions.byteLength,
 		target: 34962,
 	});
 	const normViewIndex = bufferViews.length;
 	bufferViews.push({
 		buffer: 0,
 		byteOffset: normOffset,
-		byteLength: normBytes,
+		byteLength: prim.normals.byteLength,
 		target: 34962,
 	});
 	const idxViewIndex = bufferViews.length;
 	bufferViews.push({
 		buffer: 0,
 		byteOffset: idxOffset,
-		byteLength: idxBytes,
+		byteLength: prim.indices.byteLength,
 		target: 34963,
 	});
 
@@ -161,15 +223,44 @@ for (const prim of primitives) {
 		type: 'SCALAR',
 	});
 
-	meshes.push({
-		primitives: [
-			{
-				attributes: { POSITION: posAccessor, NORMAL: normAccessor },
-				indices: idxAccessor,
-				material: prim.materialIndex,
-			},
-		],
-	});
+	const primitive = {
+		attributes: { POSITION: posAccessor, NORMAL: normAccessor },
+		indices: idxAccessor,
+		material: prim.materialIndex,
+	};
+
+	const meshEntry = { primitives: [primitive] };
+
+	if (prim.morphDeltas) {
+		const targetAccessors = [];
+		for (const deltas of prim.morphDeltas) {
+			const morphOffset = appendBuffer(deltas);
+			const morphViewIndex = bufferViews.length;
+			bufferViews.push({
+				buffer: 0,
+				byteOffset: morphOffset,
+				byteLength: deltas.byteLength,
+				target: 34962,
+			});
+			targetAccessors.push({
+				POSITION: accessors.length,
+			});
+			accessors.push({
+				bufferView: morphViewIndex,
+				componentType: 5126,
+				count: vertexCount,
+				type: 'VEC3',
+			});
+		}
+		primitive.targets = targetAccessors;
+		meshEntry.weights = MORPH_TARGET_NAMES.map(() => 0);
+		meshEntry.extras = { targetNames: [...MORPH_TARGET_NAMES] };
+		if (primIndex === 0) {
+			meshEntry.name = 'PlayerBody';
+		}
+	}
+
+	meshes.push(meshEntry);
 }
 
 binLength = align4(byteOffset);
@@ -236,4 +327,6 @@ const glb = Buffer.concat([header, jsonHeader, jsonChunk, binHeader, binChunk]);
 
 fs.mkdirSync(path.dirname(OUT), { recursive: true });
 fs.writeFileSync(OUT, glb);
-console.log(`Wrote ${OUT} (${glb.length} bytes, height≈${height.toFixed(3)})`);
+console.log(
+	`Wrote ${OUT} (${glb.length} bytes, height≈${height.toFixed(3)}, morphs=${MORPH_TARGET_NAMES.join(',')})`,
+);
