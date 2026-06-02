@@ -26,7 +26,16 @@ const QUEST_DEFS = {
     enemyCount: 6,
     rewardCurrency: 15,
     layoutProfile: 'open-plaza',
-  }
+  },
+  canyon_descent: {
+    id: 'canyon_descent',
+    name: 'Canyon Descent',
+    description: 'Clear hostiles from the sunken canyon below the plateau overlook.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 6,
+    rewardCurrency: 14,
+    layoutProfile: 'sunken-canyon',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';

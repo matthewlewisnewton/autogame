@@ -1339,6 +1339,40 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     }
   });
 
+  it('plateau spawn can reach canyon treasure room center via walkable AABBs', () => {
+    function canReachPoint(fromX, fromZ, toX, toZ, aabbs, colliders) {
+      const tolerance = 1.5;
+      const seen = new Set();
+      const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+      const queue = [{ x: fromX, z: fromZ }];
+      seen.add(key(fromX, fromZ));
+      const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+      for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+        const { x, z } = queue[qi];
+        if (Math.hypot(x - toX, z - toZ) <= tolerance) return true;
+        for (const [dx, dz] of dirs) {
+          const nx = x + dx;
+          const nz = z + dz;
+          const k = key(nx, nz);
+          if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+          seen.add(k);
+          queue.push({ x: nx, z: nz });
+        }
+      }
+      return false;
+    }
+
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const canyon = roomsByBand(layout, 'canyon')[0];
+      const colliders = buildWallColliders(layout);
+      const aabbs = computeWalkableAABBs(layout);
+      expect(canReachPoint(plateau.x, plateau.z, canyon.x, canyon.z, aabbs, colliders)).toBe(true);
+    }
+  });
+
   it('cover footprints become wall colliders', () => {
     const layout = generateLayout(42, 'sunken-canyon');
     const colliders = buildWallColliders(layout);
