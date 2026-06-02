@@ -1,0 +1,15 @@
+Broke the parent ticket into **4 sub-tickets** (analysis-only; one markdown deliverable, dependency order). No prior `subtickets/` existed, so numbering starts at `01`. All use **Verification: code** — acceptance is about file structure, section counts, and repo citations, not screenshot-only checks.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/155-gameplay-review-doc/tickets/155-gameplay-review-doc/subtickets/01-current-lobby-meta-loop/`
+2. `/home/matt/workspace/.autogame-worktrees/155-gameplay-review-doc/tickets/155-gameplay-review-doc/subtickets/02-current-combat-dungeon/`
+3. `/home/matt/workspace/.autogame-worktrees/155-gameplay-review-doc/tickets/155-gameplay-review-doc/subtickets/03-improvements-proposals/`
+4. `/home/matt/workspace/.autogame-worktrees/155-gameplay-review-doc/tickets/155-gameplay-review-doc/subtickets/04-simplifications-and-shortlist/`
+
+| # | Focus |
+|---|--------|
+| 01 | Create `gameplay-review.md`; **Current gameplay** — lobby browser, squad, deploy, drop-in, Telepipe suspend/resume |
+| 02 | Extend **Current gameplay** — cards/hand, dungeon, combat, lock-on, dodge, loot, co-op sim |
+| 03 | **Improvements** — ≥6 grounded proposals with effort tags |
+| 04 | **Simplifications** (≥4), **Prioritized shortlist** (5), polish to satisfy parent AC |
