@@ -151,7 +151,7 @@ roles:
 
   split:
     primary: composer_write
-    fallbacks: []
+    fallbacks: [claude]            # composer primary; claude backstop if composer is out (quota)
     timeout_s: 1800
     out_file: "split.txt"
     prompt_template: harness/prompts/split.md
@@ -168,7 +168,7 @@ roles:
   # supervisor re-execs afterward to load it.
   repair:
     primary: composer_write
-    fallbacks: []
+    fallbacks: [claude]            # composer primary; claude backstop if composer is out (quota)
     timeout_s: 1800
     out_file: "repair.txt"
     prompt_template: harness/prompts/repair.md

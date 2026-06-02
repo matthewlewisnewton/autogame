@@ -25,10 +25,11 @@ from harness.roles import Roster
 _ROLES_YAML = Path(harness.__file__).resolve().parent / "roles.yaml"
 
 # Always-on role families that must NEVER resolve to claude on ANY tier
-# (primary or fallback). `review` is intentionally excluded — it may fall back to
-# claude (asserted separately below) — but its primary is still guarded.
+# (primary or fallback). `review`, `split`, and `repair` are intentionally
+# excluded — they may fall back to claude (asserted separately below) — but their
+# PRIMARIES are still guarded (see test_recovery_roles_route_to_composer).
 _ROLE_NAMES = ("implementer", "qa:code", "qa:visual", "committer",
-               "vision_feedback", "decomposer", "split", "repair")
+               "vision_feedback", "decomposer")
 
 
 def _agents_for(roster: Roster, role_name: str):
@@ -67,13 +68,17 @@ def test_review_primary_is_non_claude_but_fallback_is_claude():
             f"review for {diff!r} should fall back to claude; got {[a.name for a in role.fallbacks]}"
 
 
-def test_recovery_roles_route_to_composer():
+def test_recovery_roles_primary_composer_fallback_claude():
+    """repair (self-healing) and split (restructure) keep a non-claude PRIMARY
+    (composer — always-on cost guard) but now fall back to claude so they survive
+    a composer quota outage."""
     roster = Roster.load(_ROLES_YAML, None)
-    # repair (self-healing) and split (restructure) must not be claude.
     for role_name in ("repair", "split"):
         role = roster.role(role_name)
         assert "claude" not in role.primary.name.lower(), \
             f"role '{role_name}' primary is claude: {role.primary.name}"
+        assert any(a.name.startswith("claude/") for a in role.fallbacks), \
+            f"role '{role_name}' should fall back to claude; got {[a.name for a in role.fallbacks]}"
 
 
 def test_claude_agent_is_available_for_the_factory():
