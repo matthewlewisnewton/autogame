@@ -112,8 +112,13 @@ class Dispatcher:
                 if issue is None:
                     self.registry.release(agent)  # nothing ready in this lane; give the slot back
                     break
-                self._spawn_worker(issue["id"], issue.get("title") or issue["id"],
-                                   agent, difficulty)
+                if not self._spawn_worker(issue["id"], issue.get("title") or issue["id"],
+                                          agent, difficulty):
+                    # Spawn/worktree-create failed and the ticket was requeued.
+                    # Stop claiming in this lane this tick — otherwise we'd
+                    # immediately re-claim the same requeued ticket and hot-loop
+                    # on a persistent infra failure. It retries next tick.
+                    break
 
     def idle(self) -> bool:
         """True when nothing is running and no lane has ready work."""
@@ -123,7 +128,11 @@ class Dispatcher:
 
     # --- internals ------------------------------------------------------ #
     def _spawn_worker(self, bead_id: str, ticket_name: str, agent: str,
-                      difficulty: str) -> None:
+                      difficulty: str) -> bool:
+        """Create a worktree + launch the worker. Returns True on success. On
+        failure the ticket is requeued and the slot/agent reclaimed; returns
+        False so tick() backs off this lane (no hot-retry on persistent infra
+        failure)."""
         ports = self._free_ports.pop()
         try:
             wt = self.worktree_factory(ticket_name, ports)
@@ -132,7 +141,7 @@ class Dispatcher:
             self._free_ports.append(ports)
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"worktree create failed: {e!r}")
-            return
+            return False
         try:
             proc = self.spawn(ticket_name, agent, wt, ports)
         except Exception as e:  # Popen/launch failed → tear down the worktree too
@@ -141,7 +150,7 @@ class Dispatcher:
             self._free_ports.append(ports)
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"spawn failed: {e!r}")
-            return
+            return False
         self._workers[bead_id] = WorkerHandle(
             bead_id, ticket_name, agent, difficulty, wt, proc,
             started_at=int(time.time() * 1000))
@@ -149,6 +158,7 @@ class Dispatcher:
             "ticket": ticket_name, "agent": agent, "difficulty": difficulty,
             "game_port": ports.game_server, "vite_port": ports.vite,
         })
+        return True
 
     def _reap(self) -> None:
         for tid, w in list(self._workers.items()):
