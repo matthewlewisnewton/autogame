@@ -5,7 +5,7 @@ const jwt = require('jsonwebtoken');
 const { verifyToken } = require('./auth');
 const { findUserByAccountId, updateProfile } = require('./users');
 const { getSettings, updateSettings } = require('./settings');
-const { HAT_CATALOG } = require('./cosmetic');
+const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES } = require('./cosmetic');
 
 const router = Router();
 const JWT_EXPIRATION = '24h';
@@ -51,6 +51,8 @@ router.get('/me', (req, res) => {
 		cosmetic: user.cosmetic,
 		unlockedHats: user.unlockedHats,
 		hatCatalog: HAT_CATALOG,
+		modelIds: MODEL_IDS,
+		proportionConfig: { keys: PROPORTION_KEYS, ranges: PROPORTION_RANGES },
 		settings
 	});
 });

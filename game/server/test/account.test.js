@@ -121,6 +121,26 @@ describe('GET /api/me', () => {
 		});
 	});
 
+	it('returns modelIds and proportionConfig for client UI discovery', async () => {
+		const token = await registerAndLogin('discover', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.modelIds).toEqual(['player']);
+		expect(data.proportionConfig).toEqual({
+			keys: ['height', 'headSize', 'torsoWidth', 'armLength', 'legLength', 'shoulderWidth'],
+			ranges: {
+				height: { min: 0.8, max: 1.2 },
+				headSize: { min: 0.7, max: 1.3 },
+				torsoWidth: { min: 0.7, max: 1.3 },
+				armLength: { min: 0.8, max: 1.2 },
+				legLength: { min: 0.8, max: 1.2 },
+				shoulderWidth: { min: 0.7, max: 1.3 }
+			}
+		});
+	});
+
 	it('returns 401 without token', async () => {
 		const res = await fetch(`${baseUrl}/api/me`);
 		expect(res.status).toBe(401);
@@ -217,5 +237,73 @@ describe('PATCH /api/me/profile', () => {
 			body: JSON.stringify({ cosmetic: { bodyShape: 'pyramid' } })
 		});
 		expect(res.status).toBe(400);
+	});
+
+	it('updates modelId and proportions and returns them in the 200 payload', async () => {
+		const token = await registerAndLogin('modeler', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({
+				cosmetic: {
+					modelId: 'player',
+					proportions: { height: 1.1, headSize: 0.9, torsoWidth: 1.2 }
+				}
+			})
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.cosmetic.modelId).toBe('player');
+		expect(data.cosmetic.proportions.height).toBe(1.1);
+		expect(data.cosmetic.proportions.headSize).toBe(0.9);
+		expect(data.cosmetic.proportions.torsoWidth).toBe(1.2);
+		// Untouched proportion keys retain defaults
+		expect(data.cosmetic.proportions.armLength).toBe(1.0);
+
+		// Confirms it is reflected on GET /me as well.
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.cosmetic.modelId).toBe('player');
+		expect(me.cosmetic.proportions.height).toBe(1.1);
+	});
+
+	it('returns 400 for invalid modelId', async () => {
+		const token = await registerAndLogin('badmodel', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { modelId: 'nonexistent_model' } })
+		});
+		expect(res.status).toBe(400);
+		const body = await res.json();
+		expect(body.error).toContain('modelId');
+	});
+
+	it('returns 400 for out-of-range proportions', async () => {
+		const token = await registerAndLogin('badprop', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { proportions: { height: 5.0 } } })
+		});
+		expect(res.status).toBe(400);
+		const body = await res.json();
+		expect(body.error).toContain('height');
+	});
+
+	it('returns 400 for unknown proportion key', async () => {
+		const token = await registerAndLogin('badkey', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { proportions: { wingSpan: 1.0 } } })
+		});
+		expect(res.status).toBe(400);
+		const body = await res.json();
+		expect(body.error).toContain('wingSpan');
 	});
 });
