@@ -1,0 +1,11 @@
+I broke ticket 181 into two focused, dependency-ordered sub-tickets. The whole ticket is server-side (rendering is deferred to downstream tickets 182/183), so both use **`code`** verification — every criterion concerns account-record structure, validation, error paths, persistence across restart, and snapshot contents, none of which a one-run screenshot can check.
+
+Sub-ticket folders created:
+
+- `tickets/181-character-customization-server-cosmetic-profile/subtickets/01-cosmetic-profile-storage-api/ticket.md`
+  — `cosmetic { bodyColor, accentColor, bodyShape }` on the account record with defaults + migration backfill (`users.js`), a validation helper (shape enum + hex/palette allowlist), `updateProfile` cosmetic merge via the existing atomic write, and `PATCH /api/me/profile` accept/validate/reject (400) + `GET /api/me` exposure (`account.js`). Persists across restart.
+
+- `tickets/181-character-customization-server-cosmetic-profile/subtickets/02-cosmetic-runtime-snapshot/ticket.md`
+  — populates the runtime player record with the account's cosmetic in `buildPlayerRecord` (`index.js`) and carries `cosmetic` for every player in `stateSnapshot()` (`progression.js`). Depends on 01.
+
+These two together fully deliver all five acceptance criteria of the top-level ticket.

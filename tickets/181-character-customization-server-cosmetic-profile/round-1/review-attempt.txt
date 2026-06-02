@@ -1,0 +1,23 @@
+## Review complete
+
+Holistic review is in `tickets/181-character-customization-server-cosmetic-profile/round-1/review.md`.
+
+### Runtime gate
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: no `pageerror` / `[fatal]` lines (only benign Vite + HTTP 409 during harness auth)
+- Game reached playing phase with movement probes
+
+### Implementation (2 commits since `aa963b34`)
+Server-only cosmetic foundation:
+1. **`users.js`** — `DEFAULT_COSMETIC`, validation, legacy backfill, `updateProfile` merge
+2. **`account.js`** — `GET /api/me` + `PATCH /api/me/profile` expose `cosmetic`
+3. **`index.js`** / **`progression.js`** — runtime record + `stateUpdate` snapshot include `cosmetic` for all players
+
+Sub-ticket acceptance criteria are covered; tests include unit, API, snapshot, and socket integration cases.
+
+### Verdict
+**`VERDICT: PASS`** (last line of `review.md`)
+
+No `gaps.md` (FAIL-only). Non-blocking follow-ups are in `nits.md` (reconnect cosmetic refresh, empty `{}` PATCH, missing top-level `ticket.md`).
+
+**Note:** Top-level `ticket.md` was missing from the repo; criteria were taken from `decompose.txt` and the two sub-ticket specs.

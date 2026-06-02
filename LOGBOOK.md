@@ -2217,3 +2217,26 @@ No integration gaps found between activation and weapon echo layers.
 
 ---
 
+
+## v0.109 — 181-character-customization-server-cosmetic-profile  (2026-06-02 09:17:37)
+
+`round-1/coverage.log` shows cosmetic-related tests executing and no reported failures before the harness killed the vitest process group at **120s** (`[vitest] timed out after 120s`). Independent `pnpm test:quick` completed **1470 passed** in this review session. Treat round-1 coverage as visibility-only; functional confidence comes from the passing targeted/full run.
+
+---
+
+## Capture vs. ticket scope
+
+Screenshots and probes validate general game health only—they do not assert `cosmetic` in harness state (probes omit it). That is appropriate: acceptance is server/API/snapshot logic, covered by automated tests.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime is clean; server storage, API, runtime record, and `stateUpdate` replication satisfy the reconstructed top-level criteria.
+
+---
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up items (cosmetic refresh on socket reconnect, empty `{}` PATCH no-op, missing top-level `ticket.md` in repo).
+

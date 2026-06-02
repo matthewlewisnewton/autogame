@@ -56,3 +56,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [159-cleanup-key-item-purge-charm](tickets/159-cleanup-key-item-purge-charm/)
 - [ ] [160-cleanup-world-sunken-canyon-stage](tickets/160-cleanup-world-sunken-canyon-stage/)
 - [ ] [161-cleanup-key-item-echo-strike](tickets/161-cleanup-key-item-echo-strike/)
+- [ ] [182-cleanup-character-customization-server-cosmetic-profile](tickets/182-cleanup-character-customization-server-cosmetic-profile/)
