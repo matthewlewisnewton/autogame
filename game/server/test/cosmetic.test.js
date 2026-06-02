@@ -8,10 +8,11 @@ import {
 
 describe('DEFAULT_COSMETIC', () => {
 	it('has the three cosmetic fields with valid defaults', () => {
-		expect(Object.keys(DEFAULT_COSMETIC).sort()).toEqual(['accentColor', 'bodyColor', 'bodyShape']);
+		expect(Object.keys(DEFAULT_COSMETIC).sort()).toEqual(['accentColor', 'bodyColor', 'bodyShape', 'hat']);
 		expect(DEFAULT_COSMETIC.bodyColor).toMatch(/^#[0-9a-f]{6}$/i);
 		expect(DEFAULT_COSMETIC.accentColor).toMatch(/^#[0-9a-f]{6}$/i);
 		expect(BODY_SHAPES).toContain(DEFAULT_COSMETIC.bodyShape);
+		expect(DEFAULT_COSMETIC.hat).toBe('none');
 	});
 
 	it('exposes the expected body shapes', () => {

@@ -5,12 +5,38 @@
 // Allowed body shapes (kept in sync with the client renderer's geometry set).
 const BODY_SHAPES = ['box', 'cylinder', 'cone', 'capsule'];
 
+// Server-side hat catalog. Each hat has a stable `id`, a display `name`, and an
+// integer currency `price`. The `none` entry is the default bare-head option and
+// is always free/owned; the others are purchasable via sub-ticket 02.
+const HAT_CATALOG = [
+	{ id: 'none', name: 'No Hat', price: 0 },
+	{ id: 'cap', name: 'Adventurer Cap', price: 50 },
+	{ id: 'wizard', name: 'Wizard Hat', price: 150 },
+	{ id: 'crown', name: 'Golden Crown', price: 500 }
+];
+
+// Set of valid hat ids derived from the catalog, for fast membership checks.
+const HAT_IDS = new Set(HAT_CATALOG.map((h) => h.id));
+
+/**
+ * Look up a catalog hat by id.
+ * @param {string} id
+ * @returns {{ id: string, name: string, price: number }|undefined}
+ */
+function getHat(id) {
+	return HAT_CATALOG.find((h) => h.id === id);
+}
+
+// Default set of hats every account owns. Always includes the bare-head option.
+const DEFAULT_UNLOCKED_HATS = ['none'];
+
 // Default cosmetic applied at account creation and used to backfill legacy
 // records that predate the cosmetic field.
 const DEFAULT_COSMETIC = {
 	bodyColor: '#4f9dde',
 	accentColor: '#f2c94c',
-	bodyShape: 'box'
+	bodyShape: 'box',
+	hat: 'none'
 };
 
 // Case-insensitive 6-digit hex color (e.g. #1a2B3c).
@@ -52,6 +78,13 @@ function validateCosmetic(partial) {
 		value.bodyShape = partial.bodyShape;
 	}
 
+	if (partial.hat !== undefined) {
+		if (typeof partial.hat !== 'string' || !HAT_IDS.has(partial.hat)) {
+			return { ok: false, reason: 'hat must be a known catalog hat id' };
+		}
+		value.hat = partial.hat;
+	}
+
 	return { ok: true, value };
 }
 
@@ -67,13 +100,43 @@ function backfillCosmetic(existing) {
 	return {
 		bodyColor: HEX_COLOR_REGEX.test(src.bodyColor) ? src.bodyColor : DEFAULT_COSMETIC.bodyColor,
 		accentColor: HEX_COLOR_REGEX.test(src.accentColor) ? src.accentColor : DEFAULT_COSMETIC.accentColor,
-		bodyShape: BODY_SHAPES.includes(src.bodyShape) ? src.bodyShape : DEFAULT_COSMETIC.bodyShape
+		bodyShape: BODY_SHAPES.includes(src.bodyShape) ? src.bodyShape : DEFAULT_COSMETIC.bodyShape,
+		hat: HAT_IDS.has(src.hat) ? src.hat : DEFAULT_COSMETIC.hat
 	};
+}
+
+/**
+ * Return a deduped array of valid catalog hat ids from an existing unlocked
+ * list, always including 'none'. Used to backfill legacy account records and
+ * sanitize stored values.
+ *
+ * @param {string[]|undefined} existing
+ * @returns {string[]}
+ */
+function backfillUnlockedHats(existing) {
+	const out = [];
+	const seen = new Set();
+	const add = (id) => {
+		if (HAT_IDS.has(id) && !seen.has(id)) {
+			seen.add(id);
+			out.push(id);
+		}
+	};
+	add('none');
+	if (Array.isArray(existing)) {
+		for (const id of existing) add(id);
+	}
+	return out;
 }
 
 module.exports = {
 	BODY_SHAPES,
+	HAT_CATALOG,
+	HAT_IDS,
+	getHat,
+	DEFAULT_UNLOCKED_HATS,
 	DEFAULT_COSMETIC,
 	validateCosmetic,
-	backfillCosmetic
+	backfillCosmetic,
+	backfillUnlockedHats
 };

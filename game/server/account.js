@@ -5,6 +5,7 @@ const jwt = require('jsonwebtoken');
 const { verifyToken } = require('./auth');
 const { findUserByAccountId, updateProfile } = require('./users');
 const { getSettings, updateSettings } = require('./settings');
+const { HAT_CATALOG } = require('./cosmetic');
 
 const router = Router();
 const JWT_EXPIRATION = '24h';
@@ -48,6 +49,8 @@ router.get('/me', (req, res) => {
 		username: user.username,
 		email: user.email || null,
 		cosmetic: user.cosmetic,
+		unlockedHats: user.unlockedHats,
+		hatCatalog: HAT_CATALOG,
 		settings
 	});
 });
