@@ -1,6 +1,7 @@
 // ── Floor Height Sampling (imported from shared module) ──
 
 const { sampleFloorY, DEFAULT_FLOOR_Y } = require('../shared/floorSampling.js');
+const { buildRampPassage } = require('./rampPassage.js');
 
 // ── Seeded PRNG (Mulberry32) ──
 
@@ -491,6 +492,7 @@ function randomRoomPositionByRole(layout, role, rng) {
 module.exports = {
   mulberry32,
   generateLayout,
+  buildRampPassage,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,

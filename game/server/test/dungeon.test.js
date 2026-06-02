@@ -9,6 +9,7 @@ import {
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,
+  buildRampPassage,
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
@@ -1064,5 +1065,135 @@ describe('sampleFloorY(layout, x, z)', () => {
     const a = sampleFloorY(layout, 10, 10);
     const b = sampleFloorY(layout, 10, 10);
     expect(a).toBe(b);
+  });
+});
+
+// ── buildRampPassage ──
+
+function canonicalTierRooms() {
+  const fromRoom = {
+    x: 0,
+    z: 0,
+    width: 12,
+    depth: 12,
+    floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 },
+  };
+  const toRoom = {
+    x: 0,
+    z: 27,
+    width: 12,
+    depth: 12,
+    floorCorners: { yNW: 3.5, yNE: 3.5, ySE: 3.5, ySW: 3.5 },
+  };
+  return { fromRoom, toRoom };
+}
+
+describe('buildRampPassage', () => {
+  it('returns passage bounds, corridorLength, walls, and floorCorners', () => {
+    const { fromRoom, toRoom } = canonicalTierRooms();
+    const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'south' });
+
+    expect(ramp.x1).toBe(0);
+    expect(ramp.z1).toBe(0);
+    expect(ramp.x2).toBe(0);
+    expect(ramp.z2).toBe(27);
+    expect(ramp.corridorLength).toBeGreaterThan(0);
+    expect(ramp.floorCorners).toEqual({
+      yNW: 0.5,
+      yNE: 0.5,
+      ySE: 3.5,
+      ySW: 3.5,
+    });
+    expect(ramp.walls).toHaveLength(2);
+  });
+
+  it('matches exit and entry edge heights for corner continuity', () => {
+    const { fromRoom, toRoom } = canonicalTierRooms();
+    const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'south' });
+
+    expect(ramp.floorCorners.yNW).toBeCloseTo(fromRoom.floorCorners.ySW, 5);
+    expect(ramp.floorCorners.yNE).toBeCloseTo(fromRoom.floorCorners.ySE, 5);
+    expect(ramp.floorCorners.ySW).toBeCloseTo(toRoom.floorCorners.yNW, 5);
+    expect(ramp.floorCorners.ySE).toBeCloseTo(toRoom.floorCorners.yNE, 5);
+  });
+
+  it('enforces average slope >= minSlope by extending corridorLength when the gap is too short', () => {
+    const { fromRoom } = canonicalTierRooms();
+    const toRoom = {
+      x: 0,
+      z: 14,
+      width: 12,
+      depth: 12,
+      floorCorners: { yNW: 3.5, yNE: 3.5, ySE: 3.5, ySW: 3.5 },
+    };
+    const ramp = buildRampPassage(fromRoom, toRoom, {
+      direction: 'south',
+      rise: 3,
+      minSlope: 0.2,
+    });
+
+    expect(ramp.corridorLength).toBeCloseTo(15, 5);
+    expect(ramp.avgSlope).toBeGreaterThanOrEqual(0.2);
+    expect(ramp.rise).toBeCloseTo(3, 5);
+  });
+
+  it('meets minSlope for the canonical tier pair at the geometric corridor span', () => {
+    const { fromRoom, toRoom } = canonicalTierRooms();
+    const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'south', minSlope: 0.2 });
+
+    expect(ramp.corridorLength).toBeCloseTo(15, 5);
+    expect(ramp.avgSlope).toBeGreaterThanOrEqual(0.2);
+    expect(ramp.rise).toBeCloseTo(3, 5);
+  });
+
+  it('produces deterministic output for fixed inputs', () => {
+    const { fromRoom, toRoom } = canonicalTierRooms();
+    const a = buildRampPassage(fromRoom, toRoom, { direction: 'south', rise: 3 });
+    const b = buildRampPassage(fromRoom, toRoom, { direction: 'south', rise: 3 });
+    expect(a).toEqual(b);
+  });
+
+  it('places side walls on both long sides spanning only the corridor gap', () => {
+    const { fromRoom, toRoom } = canonicalTierRooms();
+    const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'south', passageWidth: 4 });
+
+    expect(ramp.walls).toHaveLength(2);
+    for (const wall of ramp.walls) {
+      expect(wall.length).toBeCloseTo(ramp.corridorLength, 5);
+      expect(wall.axis).toBe('z');
+    }
+    const xs = ramp.walls.map(w => w.x).sort((a, b) => a - b);
+    expect(xs[0]).toBeCloseTo(-2, 5);
+    expect(xs[1]).toBeCloseTo(2, 5);
+  });
+
+  it('builds east–west ramps with walls along the x axis', () => {
+    const fromRoom = {
+      x: 0,
+      z: 0,
+      width: 12,
+      depth: 12,
+      floorCorners: { yNW: 1, yNE: 1, ySE: 1, ySW: 1 },
+    };
+    const toRoom = {
+      x: 20,
+      z: 0,
+      width: 12,
+      depth: 12,
+      floorCorners: { yNW: 4, yNE: 4, ySE: 4, ySW: 4 },
+    };
+    const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'east', rise: 3, minSlope: 0.2 });
+
+    expect(ramp.floorCorners.yNW).toBeCloseTo(1, 5);
+    expect(ramp.floorCorners.yNE).toBeCloseTo(4, 5);
+    expect(ramp.walls.every(w => w.axis === 'x')).toBe(true);
+    expect(ramp.avgSlope).toBeGreaterThanOrEqual(0.2);
+  });
+
+  it('throws when rooms are misaligned for the chosen direction', () => {
+    const { fromRoom, toRoom } = canonicalTierRooms();
+    expect(() => buildRampPassage(fromRoom, toRoom, { direction: 'north' })).toThrow(
+      /do not align/
+    );
   });
 });
