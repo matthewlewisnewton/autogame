@@ -28,6 +28,171 @@ const PASSAGE_WIDTH = 4;
 // required 4 * MAX_ROOM_SIZE_INCLUSIVE^2 = 900 sq units floor-area bound.
 const OPEN_PLAZA_SIZE = 40;
 
+// ── Open-plaza cover pieces ──
+
+// Freestanding cover archetypes scattered through the plaza. `pillar` is a tall
+// box you fully hide behind; `brokenWall` and `planter` are low boxes for
+// partial cover. Footprints are deliberately small relative to the 40×40 arena
+// so the free floor stays one connected region (verified by the BFS guard).
+const COVER_TYPES = [
+  { type: 'pillar', width: 2, depth: 2, height: 3.0 },
+  { type: 'brokenWall', width: 4, depth: 1, height: 1.2 },
+  { type: 'planter', width: 2.5, depth: 2.5, height: 0.8 },
+];
+
+const COVER_TARGET = 8;          // try to place this many pieces
+const COVER_MIN = 6;             // acceptance floor (sub-ticket requires ≥ 6)
+const COVER_SLOPED = 2;          // ≥ 2 pieces sit on a gently sloped platform
+const COVER_WALL_MARGIN = 2;     // keep footprints this far inside the inner wall face
+const COVER_SPAWN_CLEAR = 4;     // keep cover at least this far from the spawn point
+const COVER_PIECE_GAP = 1.5;     // min gap between cover footprints (> player diameter)
+const COVER_MAX_ATTEMPTS = 600;  // bound the placement loop for determinism
+const COVER_SLOPE_DELTA = 0.5;   // gentle corner-height delta (must stay ≤ 0.6)
+const PLAYER_RADIUS = 0.5;       // matches simulation.js PLAYER_RADIUS for guards
+
+/**
+ * Axis-aligned footprint bounds of a cover piece, optionally inflated by `pad`.
+ */
+function coverBounds(piece, pad = 0) {
+  return {
+    minX: piece.x - piece.width / 2 - pad,
+    maxX: piece.x + piece.width / 2 + pad,
+    minZ: piece.z - piece.depth / 2 - pad,
+    maxZ: piece.z + piece.depth / 2 + pad,
+  };
+}
+
+function pointInBounds(x, z, b) {
+  return x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ;
+}
+
+function boundsOverlap(a, b) {
+  return a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ;
+}
+
+/**
+ * Grid BFS over the plaza interior with the given cover footprints removed
+ * (each inflated by the player radius so the check mirrors real walkability).
+ * Returns true when every free cell is reachable from the spawn cell — i.e. the
+ * free floor remains a single connected region.
+ */
+function plazaFreeFloorConnected(plazaSize, cover, spawn) {
+  const STEP = 1;
+  const half = plazaSize / 2;
+  const limit = half - PLAYER_RADIUS; // stay off the perimeter walls
+  const blocked = cover.map(c => coverBounds(c, PLAYER_RADIUS));
+  const isFree = (x, z) => !blocked.some(b => pointInBounds(x, z, b));
+
+  // Enumerate free cells on a regular grid.
+  const cells = [];
+  const index = new Map();
+  const key = (ix, iz) => `${ix},${iz}`;
+  let ix = 0;
+  for (let x = -limit; x <= limit + 1e-9; x += STEP, ix++) {
+    let iz = 0;
+    for (let z = -limit; z <= limit + 1e-9; z += STEP, iz++) {
+      if (isFree(x, z)) {
+        index.set(key(ix, iz), cells.length);
+        cells.push({ ix, iz, x, z });
+      }
+    }
+  }
+  if (cells.length === 0) return false;
+
+  // Pick the free cell nearest the spawn as the BFS root.
+  let rootIdx = 0;
+  let best = Infinity;
+  for (let i = 0; i < cells.length; i++) {
+    const d = Math.hypot(cells[i].x - spawn.x, cells[i].z - spawn.z);
+    if (d < best) { best = d; rootIdx = i; }
+  }
+
+  const seen = new Set([rootIdx]);
+  const queue = [rootIdx];
+  let head = 0;
+  while (head < queue.length) {
+    const c = cells[queue[head++]];
+    const neighbours = [
+      [c.ix + 1, c.iz], [c.ix - 1, c.iz],
+      [c.ix, c.iz + 1], [c.ix, c.iz - 1],
+    ];
+    for (const [nx, nz] of neighbours) {
+      const ni = index.get(key(nx, nz));
+      if (ni !== undefined && !seen.has(ni)) {
+        seen.add(ni);
+        queue.push(ni);
+      }
+    }
+  }
+
+  return seen.size === cells.length;
+}
+
+/**
+ * Deterministically scatter freestanding cover pieces through the plaza
+ * interior using the layout `rng`. Each piece is fully inside the outer walls,
+ * does not overlap other pieces or the spawn point, and preserves
+ * traversability (a re-roll guard skips any piece that would split the free
+ * floor). The first COVER_SLOPED accepted pieces carry a gently sloped
+ * `floorCorners` platform (corner-height delta = COVER_SLOPE_DELTA ≤ 0.6).
+ *
+ * @param {() => number} rng - seeded PRNG (Mulberry32)
+ * @param {number} plazaSize - arena side length
+ * @param {{x:number,z:number}} spawn - spawn point to keep clear
+ */
+function generatePlazaCover(rng, plazaSize, spawn) {
+  const half = plazaSize / 2;
+  const spawnClear = {
+    minX: spawn.x - COVER_SPAWN_CLEAR,
+    maxX: spawn.x + COVER_SPAWN_CLEAR,
+    minZ: spawn.z - COVER_SPAWN_CLEAR,
+    maxZ: spawn.z + COVER_SPAWN_CLEAR,
+  };
+
+  const cover = [];
+  let attempts = 0;
+  while (cover.length < COVER_TARGET && attempts < COVER_MAX_ATTEMPTS) {
+    attempts++;
+    const archetype = COVER_TYPES[Math.floor(rng() * COVER_TYPES.length)];
+    // Broken walls can sit on either axis for variety.
+    let width = archetype.width;
+    let depth = archetype.depth;
+    if (archetype.type === 'brokenWall' && rng() < 0.5) {
+      width = archetype.depth;
+      depth = archetype.width;
+    }
+    const limitX = half - COVER_WALL_MARGIN - width / 2;
+    const limitZ = half - COVER_WALL_MARGIN - depth / 2;
+    const x = (rng() * 2 - 1) * limitX;
+    const z = (rng() * 2 - 1) * limitZ;
+    const piece = { x, z, width, depth, height: archetype.height, type: archetype.type };
+    const pieceBounds = coverBounds(piece);
+
+    // Keep the spawn point and its clearance free of cover.
+    if (boundsOverlap(pieceBounds, spawnClear)) continue;
+    // Don't overlap (or crowd) an already-placed piece.
+    if (cover.some(c => boundsOverlap(pieceBounds, coverBounds(c, COVER_PIECE_GAP)))) continue;
+    // Reject anything that would split the free floor into disconnected regions.
+    if (!plazaFreeFloorConnected(plazaSize, [...cover, piece], spawn)) continue;
+
+    cover.push(piece);
+  }
+
+  // Attach gently sloped platforms to the first COVER_SLOPED pieces. The slope
+  // is visual-only for v1 (sloped movement is ticket 117); we only need the
+  // floorCorners data and a corner-height delta within the documented bound.
+  for (let i = 0; i < Math.min(COVER_SLOPED, cover.length); i++) {
+    cover[i].floorCorners = {
+      yNW: DEFAULT_FLOOR_Y,
+      yNE: DEFAULT_FLOOR_Y,
+      ySE: DEFAULT_FLOOR_Y + COVER_SLOPE_DELTA,
+      ySW: DEFAULT_FLOOR_Y + COVER_SLOPE_DELTA,
+    };
+  }
+
+  return cover;
+}
+
 const DEFAULT_LAYOUT_PROFILE = {
   gridCols: GRID_COLS,
   gridRows: GRID_ROWS,
@@ -371,12 +536,12 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
  * @param {number} seed - PRNG seed (threaded for signature parity / future
  *   seeded variation; the empty plaza itself is fixed, so output is identical
  *   for any seed and therefore trivially deterministic).
- * @param {object} [options={}] - Optional flags (e.g. slopes), unused for now —
- *   the plaza floor stays flat per the sub-ticket scope.
+ * @param {object} [options={}] - Optional flags (e.g. slopes). The plaza floor
+ *   itself stays flat; sloped platforms ride on individual cover pieces.
  */
 function generateOpenPlaza(seed, options = {}) {
-  void seed;
   void options;
+  const rng = mulberry32(seed);
   const size = OPEN_PLAZA_SIZE;
   const halfW = size / 2;
   const halfD = size / 2;
@@ -417,9 +582,16 @@ function generateOpenPlaza(seed, options = {}) {
   // room — the plaza — keeping every spawn/objective point on the plaza floor.
   assignRoomRoles({ rooms, passages });
 
+  // Scatter freestanding cover through the plaza interior. The spawn point is
+  // the plaza centre (the single 'start' room resolves to origin), so we keep
+  // cover clear of it.
+  const spawn = { x: cx, z: cz };
+  const cover = generatePlazaCover(rng, size, spawn);
+
   return {
     rooms,
     passages,
+    cover,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: CELL_SPACING,
     profile: 'open-plaza',
@@ -588,5 +760,11 @@ module.exports = {
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
   PASSAGE_WIDTH,
-  OPEN_PLAZA_SIZE
+  OPEN_PLAZA_SIZE,
+  generatePlazaCover,
+  plazaFreeFloorConnected,
+  COVER_MIN,
+  COVER_TARGET,
+  COVER_SLOPED,
+  COVER_SLOPE_DELTA
 };

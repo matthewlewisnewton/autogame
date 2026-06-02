@@ -19,7 +19,14 @@ import {
   MAX_ROOM_SIZE_INCLUSIVE,
   PASSAGE_WIDTH
 } from '../dungeon.js';
-import { generateOpenPlaza, OPEN_PLAZA_SIZE } from '../dungeon.js';
+import {
+  generateOpenPlaza,
+  OPEN_PLAZA_SIZE,
+  plazaFreeFloorConnected,
+  COVER_MIN,
+  COVER_SLOPED,
+  COVER_SLOPE_DELTA
+} from '../dungeon.js';
 import { getLayoutProfileForQuest } from '../quests.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
 
@@ -1139,5 +1146,146 @@ describe('generateLayout(seed, "open-plaza")', () => {
 
   it('generateOpenPlaza() matches the generateLayout open-plaza branch', () => {
     expect(generateOpenPlaza(7)).toEqual(generateLayout(7, 'open-plaza'));
+  });
+});
+
+// ── Open-plaza cover pieces + sloped platforms ──
+
+describe('open-plaza cover pieces', () => {
+  const SPAWN = { x: 0, z: 0 };
+  const half = OPEN_PLAZA_SIZE / 2;
+
+  function footprint(c, pad = 0) {
+    return {
+      minX: c.x - c.width / 2 - pad,
+      maxX: c.x + c.width / 2 + pad,
+      minZ: c.z - c.depth / 2 - pad,
+      maxZ: c.z + c.depth / 2 + pad,
+    };
+  }
+  function overlap(a, b) {
+    return a.minX < b.maxX && a.maxX > b.minX && a.minZ < b.maxZ && a.maxZ > b.minZ;
+  }
+
+  it('places at least 6 freestanding cover pieces', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    expect(Array.isArray(layout.cover)).toBe(true);
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    expect(layout.cover.length).toBeGreaterThanOrEqual(COVER_MIN);
+  });
+
+  it('each piece carries position, footprint, height and a recognised type', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    for (const c of layout.cover) {
+      expect(typeof c.x).toBe('number');
+      expect(typeof c.z).toBe('number');
+      expect(c.width).toBeGreaterThan(0);
+      expect(c.depth).toBeGreaterThan(0);
+      expect(c.height).toBeGreaterThan(0);
+      expect(['pillar', 'brokenWall', 'planter']).toContain(c.type);
+    }
+  });
+
+  it('every cover piece is fully inside the outer walls (no perimeter overlap)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    for (const c of layout.cover) {
+      const f = footprint(c);
+      expect(f.minX).toBeGreaterThan(-half);
+      expect(f.maxX).toBeLessThan(half);
+      expect(f.minZ).toBeGreaterThan(-half);
+      expect(f.maxZ).toBeLessThan(half);
+    }
+  });
+
+  it('cover pieces do not overlap each other', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    for (let i = 0; i < layout.cover.length; i++) {
+      for (let j = i + 1; j < layout.cover.length; j++) {
+        expect(overlap(footprint(layout.cover[i]), footprint(layout.cover[j]))).toBe(false);
+      }
+    }
+  });
+
+  it('no cover piece overlaps the spawn point', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    for (const c of layout.cover) {
+      const f = footprint(c, PLAYER_RADIUS);
+      const inside = SPAWN.x > f.minX && SPAWN.x < f.maxX && SPAWN.z > f.minZ && SPAWN.z < f.maxZ;
+      expect(inside).toBe(false);
+    }
+  });
+
+  it('spawn point is clear of every cover collider (server colliders)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover) {
+      const a = {
+        minX: c.x - c.width / 2,
+        maxX: c.x + c.width / 2,
+        minZ: c.z - c.depth / 2,
+        maxZ: c.z + c.depth / 2,
+      };
+      const hit = SPAWN.x + PLAYER_RADIUS > a.minX && SPAWN.x - PLAYER_RADIUS < a.maxX &&
+        SPAWN.z + PLAYER_RADIUS > a.minZ && SPAWN.z - PLAYER_RADIUS < a.maxZ;
+      expect(hit).toBe(false);
+    }
+    // sanity: the colliders list actually contains entries
+    expect(colliders.length).toBeGreaterThan(0);
+  });
+
+  it('at least 2 cover pieces sit on a gently sloped platform (delta ≈ 0.5, ≤ 0.6)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const sloped = layout.cover.filter(c => c.floorCorners);
+    expect(sloped.length).toBeGreaterThanOrEqual(2);
+    expect(sloped.length).toBeGreaterThanOrEqual(COVER_SLOPED);
+    for (const c of sloped) {
+      const { yNW, yNE, ySE, ySW } = c.floorCorners;
+      const heights = [yNW, yNE, ySE, ySW];
+      const delta = Math.max(...heights) - Math.min(...heights);
+      expect(delta).toBeLessThanOrEqual(0.6);
+      expect(delta).toBeCloseTo(COVER_SLOPE_DELTA, 5);
+    }
+  });
+
+  it('free-floor reachability is preserved (single connected region)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    expect(plazaFreeFloorConnected(OPEN_PLAZA_SIZE, layout.cover, SPAWN)).toBe(true);
+  });
+
+  it('free-floor reachability holds across many seeds', () => {
+    for (let seed = 1; seed <= 25; seed++) {
+      const layout = generateLayout(seed, 'open-plaza');
+      expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+      expect(plazaFreeFloorConnected(OPEN_PLAZA_SIZE, layout.cover, SPAWN)).toBe(true);
+    }
+  });
+
+  it('the wall-collider build includes one AABB per cover piece', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const withCover = buildWallColliders(layout);
+    const withoutCover = buildWallColliders({ ...layout, cover: [] });
+    expect(withCover.length - withoutCover.length).toBe(layout.cover.length);
+
+    // Each cover footprint must appear as a collider.
+    for (const c of layout.cover) {
+      const match = withCover.some(w =>
+        Math.abs(w.minX - (c.x - c.width / 2)) < 1e-9 &&
+        Math.abs(w.maxX - (c.x + c.width / 2)) < 1e-9 &&
+        Math.abs(w.minZ - (c.z - c.depth / 2)) < 1e-9 &&
+        Math.abs(w.maxZ - (c.z + c.depth / 2)) < 1e-9);
+      expect(match).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed produces identical cover and slopes (deep-equal)', () => {
+    const a = generateLayout(123, 'open-plaza');
+    const b = generateLayout(123, 'open-plaza');
+    expect(a.cover).toEqual(b.cover);
+  });
+
+  it('different seeds produce different cover placement', () => {
+    const a = generateLayout(1, 'open-plaza');
+    const b = generateLayout(2, 'open-plaza');
+    expect(a.cover).not.toEqual(b.cover);
   });
 });

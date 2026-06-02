@@ -75,7 +75,27 @@ function buildWallColliders(layout = _gameState && _gameState.layout) {
     }
   }
 
+  // Freestanding cover pieces (open-plaza arena) collide as solid boxes using
+  // their footprint directly — the footprint already describes the solid volume.
+  if (Array.isArray(layout.cover)) {
+    for (const piece of layout.cover) {
+      colliders.push(coverAABB(piece));
+    }
+  }
+
   return colliders;
+}
+
+/**
+ * AABB for a cover piece, derived straight from its footprint.
+ */
+function coverAABB(piece) {
+  return {
+    minX: piece.x - piece.width / 2,
+    maxX: piece.x + piece.width / 2,
+    minZ: piece.z - piece.depth / 2,
+    maxZ: piece.z + piece.depth / 2,
+  };
 }
 
 function rebuildWallColliders() {
@@ -575,7 +595,37 @@ function firstRoomPosition() {
   const layout = _gameState.layout;
   const startRoom = layout.rooms.find(r => r.role === 'start');
   const room = startRoom || layout.rooms[0]; // defensive fallback
-  return { x: room.x, z: room.z };
+  return nudgeClearOfCover(room.x, room.z, layout, room);
+}
+
+/**
+ * If (x, z) lands inside a cover piece (footprint inflated by the player
+ * radius), search outward in rings for the nearest clear point within the room.
+ * Returns { x, z }. A no-op when the layout has no cover or the point is
+ * already clear — open-plaza generation keeps spawn clear, this is defensive.
+ */
+function nudgeClearOfCover(x, z, layout, room) {
+  const cover = layout && layout.cover;
+  if (!Array.isArray(cover) || cover.length === 0) return { x, z };
+
+  const inCover = (px, pz) => cover.some(c =>
+    px > c.x - c.width / 2 - PLAYER_RADIUS && px < c.x + c.width / 2 + PLAYER_RADIUS &&
+    pz > c.z - c.depth / 2 - PLAYER_RADIUS && pz < c.z + c.depth / 2 + PLAYER_RADIUS);
+
+  if (!inCover(x, z)) return { x, z };
+
+  const halfW = Math.max(0, room.width / 2 - PLAYER_RADIUS);
+  const halfD = Math.max(0, room.depth / 2 - PLAYER_RADIUS);
+  const maxRadius = Math.max(room.width, room.depth);
+  for (let radius = 1; radius <= maxRadius; radius += 1) {
+    for (let a = 0; a < 16; a++) {
+      const ang = (a / 16) * Math.PI * 2;
+      const nx = Math.max(room.x - halfW, Math.min(room.x + halfW, x + Math.cos(ang) * radius));
+      const nz = Math.max(room.z - halfD, Math.min(room.z + halfD, z + Math.sin(ang) * radius));
+      if (!inCover(nx, nz)) return { x: nx, z: nz };
+    }
+  }
+  return { x, z };
 }
 
 /**
