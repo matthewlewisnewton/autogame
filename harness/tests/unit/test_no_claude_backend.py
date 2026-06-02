@@ -5,9 +5,15 @@ plans).
 claude IS available as an agent again, but only so the parallel factory can opt
 into it as an explicit medium/hard implementer at concurrency 1 (via a per-worker
 roles.local.yaml override). The base roles.yaml must still route every always-on
-role (implementer default, qa, review, decomposer, committer, split, repair) to
+role PRIMARY (implementer default, qa, decomposer, committer, split, repair) to
 non-claude agents — so claude can't silently creep into the always-on path via a
-future edit. This test asserts that invariant on the REAL roles.yaml.
+future edit.
+
+EXCEPTION: the `review` role may use claude as a *fallback* (never primary).
+claude (opus-4.8) is the chosen reviewer-of-last-resort when the primary review
+agent fails — notably gpt-5.5 fast-failing on quota — accepting the Anthropic
+cost for that degraded path only. This test asserts both invariants on the REAL
+roles.yaml.
 """
 from __future__ import annotations
 
@@ -18,10 +24,11 @@ from harness.roles import Roster
 
 _ROLES_YAML = Path(harness.__file__).resolve().parent / "roles.yaml"
 
-# Every role family declared in roles.yaml (factory overrides implementer at
-# runtime; the BASE roster must never resolve any of these to claude).
+# Always-on role families that must NEVER resolve to claude on ANY tier
+# (primary or fallback). `review` is intentionally excluded — it may fall back to
+# claude (asserted separately below) — but its primary is still guarded.
 _ROLE_NAMES = ("implementer", "qa:code", "qa:visual", "committer",
-               "vision_feedback", "decomposer", "review", "split", "repair")
+               "vision_feedback", "decomposer", "split", "repair")
 
 
 def _agents_for(roster: Roster, role_name: str):
@@ -45,6 +52,19 @@ def test_no_default_role_routes_to_claude():
         for agent in _agents_for(roster, role_name):
             assert not agent.name.startswith("claude/"), \
                 f"default role '{role_name}' routes to claude: {agent.name}"
+
+
+def test_review_primary_is_non_claude_but_fallback_is_claude():
+    """review may degrade to claude, but only as a fallback — its primary (per
+    difficulty) must stay non-claude (always-on cost guard), and claude must
+    actually be present in the fallback chain (the intended quota-degraded path)."""
+    roster = Roster.load(_ROLES_YAML, None)
+    for diff in ("easy", "medium", "hard"):
+        role = roster.role("review", difficulty=diff)
+        assert not role.primary.name.startswith("claude/"), \
+            f"review primary for {diff!r} must not be claude: {role.primary.name}"
+        assert any(a.name.startswith("claude/") for a in role.fallbacks), \
+            f"review for {diff!r} should fall back to claude; got {[a.name for a in role.fallbacks]}"
 
 
 def test_recovery_roles_route_to_composer():

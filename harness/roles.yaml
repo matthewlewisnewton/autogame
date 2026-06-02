@@ -133,9 +133,13 @@ roles:
       easy:   composer_write
       medium: gpt5_medium_write
       hard:   gpt5_extra_write
-    fallbacks: [composer_write]
-    fallbacks_by_difficulty:
-      hard: [composer_write]         # extra-high primary; composer-2.5 fallback
+    # claude (opus-4.8) is the review fallback for EVERY difficulty: when the
+    # primary fails — notably gpt-5.5 (medium/hard) fast-failing on quota — the
+    # review degrades to claude rather than composer. composer-2.5 is kept as a
+    # final backstop so a review never hard-fails if claude is also unavailable.
+    # NOTE: the review PRIMARY must stay non-claude (cost — Anthropic is always-on
+    # billing); only the fallback is claude. See test_no_claude_backend.py.
+    fallbacks: [claude, composer_write]
     prompt_template: harness/prompts/review.md
     out_file: "review-attempt.txt"
     timeout_s: 720
