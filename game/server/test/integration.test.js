@@ -334,6 +334,23 @@ function findWeaponSlot(player) {
 	return player.hand ? player.hand.findIndex(c => c && c.type === 'weapon') : -1;
 }
 
+/** Opening hands from initPlayerHand may omit a weapon (~1%); inject one for deterministic combat tests. */
+function ensureWeaponInHand(player) {
+	if (findWeaponSlot(player) >= 0) return;
+	const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+	const slot = replaceSlot >= 0 ? replaceSlot : player.hand.findIndex(c => !c);
+	if (slot >= 0) {
+		player.hand[slot] = {
+			id: 'iron_sword',
+			name: 'Rust-Forged Saber',
+			type: 'weapon',
+			charges: 5,
+			remainingCharges: 5,
+			grind: 0,
+		};
+	}
+}
+
 /**
  * Find the slot index of a card of the given type in a player's hand.
  * Returns -1 if not found.
@@ -1697,7 +1714,7 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.selectedQuestId).toBe('crystal_rescue');
 		expect(u2.selectedQuestId).toBe('crystal_rescue');
 		expect(Array.isArray(u1.quests)).toBe(true);
-		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'canyon_descent']);
+		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'canyon_descent', 'spire_ascent']);
 		expect(u1.layoutSeed).toBeDefined();
 		expect(u1.layout).toBeDefined();
 		expect(u1.layout.profile).toBe('open');
@@ -2592,7 +2609,8 @@ describe('Reward state persistence across runs', () => {
 		testGameState().run.objective.defeatedEnemies = 0;
 		testGameState().minions = [];
 
-		// Find a weapon card in hand (second run — hand is reinitialized)
+		// Find a weapon card in hand (second run — hand is reinitialized via initPlayerHand)
+		ensureWeaponInHand(player);
 		const weaponSlot2 = findWeaponSlot(player);
 		expect(weaponSlot2).toBeGreaterThanOrEqual(0);
 		const weaponCard2 = player.hand[weaponSlot2];

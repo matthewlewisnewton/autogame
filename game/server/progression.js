@@ -2550,6 +2550,70 @@ function sunkenCanyonRoomsByBand(layout, band) {
   return layout.rooms.filter(r => r.band === band);
 }
 
+function isSpireAscentLayout(layout) {
+  return !!(layout && layout.profile === 'spire-ascent');
+}
+
+function spireAscentRoomsByTier(layout, tierIndex) {
+  return layout.rooms.filter(r => r.band === 'tier' && r.tierIndex === tierIndex);
+}
+
+function spireAscentTopTierRooms(layout) {
+  const tierRooms = layout.rooms.filter(r => r.band === 'tier');
+  if (tierRooms.length === 0) return [];
+  const maxTier = Math.max(...tierRooms.map(r => r.tierIndex));
+  return tierRooms.filter(r => r.tierIndex === maxTier);
+}
+
+function buildSpireAscentTierSpawnPlan(enemyCount, tierIndices) {
+  const plan = [];
+  if (tierIndices.length === 0 || enemyCount < 1) return plan;
+
+  const numTiers = tierIndices.length;
+  const bottom = tierIndices[0];
+  const top = tierIndices[numTiers - 1];
+
+  if (enemyCount >= 1) plan.push(bottom);
+  if (enemyCount >= 2) {
+    const nonBottom = tierIndices.filter(t => t !== bottom);
+    plan.push(nonBottom.length > 0 ? nonBottom[0] : bottom);
+  }
+  if (enemyCount >= 3) {
+    if (numTiers >= 3) {
+      const middle = tierIndices.filter(t => t !== bottom && t !== top);
+      plan.push(middle.length > 0 ? middle[0] : tierIndices[1]);
+    } else {
+      const spreadPool = tierIndices.filter(t => t !== top);
+      plan.push(spreadPool[plan.length % spreadPool.length] ?? bottom);
+    }
+  }
+
+  let round = 0;
+  while (plan.length < enemyCount) {
+    plan.push(tierIndices[round % tierIndices.length]);
+    round++;
+  }
+  return plan;
+}
+
+function pickSpireAscentEnemySpawn(layout, rng, spawnIndex, enemyCount) {
+  const tierRooms = layout.rooms.filter(r => r.band === 'tier');
+  const byTier = new Map();
+  for (const room of tierRooms) {
+    if (!byTier.has(room.tierIndex)) byTier.set(room.tierIndex, []);
+    byTier.get(room.tierIndex).push(room);
+  }
+  const tierIndices = [...byTier.keys()].sort((a, b) => a - b);
+  const plan = buildSpireAscentTierSpawnPlan(enemyCount, tierIndices);
+  const tierIndex = plan[spawnIndex] ?? tierIndices[0] ?? 0;
+  const rooms = byTier.get(tierIndex) || [];
+  if (rooms.length > 0) {
+    const room = rooms[Math.floor(rng() * rooms.length)];
+    return randomPositionInRoom(room, rng);
+  }
+  return pickFloorSpawnPosition(layout, rng);
+}
+
 function spawnCrystals(layout, rng, count) {
   const itemCount = Math.max(1, count | 0);
   const treasureRooms = roomsByRole(layout, 'treasure');
@@ -2558,6 +2622,7 @@ function spawnCrystals(layout, rng, count) {
   // place objectives across the open floor with the cover-aware helper.
   const openFloor = isOpenFloorLayout(layout);
   const sunkenCanyon = isSunkenCanyonLayout(layout);
+  const spireAscent = isSpireAscentLayout(layout);
   const roomPool = [];
 
   if (sunkenCanyon) {
@@ -2567,11 +2632,18 @@ function spawnCrystals(layout, rng, count) {
     } else if (treasureRooms.length > 0) {
       roomPool.push(treasureRooms[0]);
     }
+  } else if (spireAscent) {
+    const topRooms = spireAscentTopTierRooms(layout);
+    if (topRooms.length > 0) {
+      roomPool.push(...topRooms);
+    } else if (treasureRooms.length > 0) {
+      roomPool.push(treasureRooms[0]);
+    }
   } else if (treasureRooms.length > 0) {
     roomPool.push(treasureRooms[0]);
   }
 
-  if (!sunkenCanyon) {
+  if (!sunkenCanyon && !spireAscent) {
     const others = eligibleRooms.filter(r => !roomPool.includes(r));
     for (let i = others.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
@@ -2663,6 +2735,9 @@ function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0
   if (isSunkenCanyonLayout(layout)) {
     return pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount);
   }
+  if (isSpireAscentLayout(layout)) {
+    return pickSpireAscentEnemySpawn(layout, rng, spawnIndex, enemyCount);
+  }
 
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
@@ -2713,6 +2788,14 @@ function spawnLoot(layout, rng) {
     const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
     if (canyonRooms.length > 0) {
       const room = canyonRooms[Math.floor(rng() * canyonRooms.length)];
+      pos = randomPositionInRoom(room, rng);
+    } else {
+      pos = pickFloorSpawnPosition(layout, rng);
+    }
+  } else if (isSpireAscentLayout(layout)) {
+    const topRooms = spireAscentTopTierRooms(layout);
+    if (topRooms.length > 0) {
+      const room = topRooms[Math.floor(rng() * topRooms.length)];
       pos = randomPositionInRoom(room, rng);
     } else {
       pos = pickFloorSpawnPosition(layout, rng);
