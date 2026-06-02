@@ -22,7 +22,9 @@ Author-facing summary for 3D assets served from `/models/…` on the Vite client
 | **Morph names** | Exactly: `height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` |
 | **Morph range** | Influence **0.0–1.0**, neutral **0.5** (see `MODEL_SPIKE.md`) |
 
-Import source: **Quaternius Universal Base Characters — Superhero Male** (`Superhero_Male_FullBody.gltf` from the CC0 Standard zip; see [`SPIKE_DECISION.md`](../../../docs/SPIKE_DECISION.md)). The free Standard tier ships Superhero/Teen previews only—**Regular Male** lives in the paid Source zip; swap the import path in `scripts/normalize-player-glb.mjs` when that asset is available. Sub-ticket **03** adds morph targets.
+Import source: **Quaternius Universal Base Characters — Superhero Male** (`Superhero_Male_FullBody.gltf` from the CC0 Standard zip; see [`SPIKE_DECISION.md`](../../../docs/SPIKE_DECISION.md)). The free Standard tier ships Superhero/Teen previews only—**Regular Male** lives in the paid Source zip; swap the import path in `scripts/normalize-player-glb.mjs` when that asset is available.
+
+**Morph targets (sub-ticket 03):** committed `player.glb` includes all six keys on body + eyes meshes. Regenerate after re-normalizing with `node scripts/add-player-proportion-morphs.mjs`. Automated check: `game/client/test/playerModelMorphs.test.js`.
 
 ### Head anchor (hats)
 

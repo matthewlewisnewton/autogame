@@ -61,7 +61,17 @@ All six keys use the same numeric contract for server, client, and Blender autho
 
 Ticket **186** should clamp incoming `proportions[key]` to **`[0.0, 1.0]`** and treat missing keys as **`0.5`**. At **`0.5`**, the mesh must match the normalized base silhouette from sub-ticket **02**. Extremes **`0.0`** and **`1.0`** must produce a **visible, distinct** change per key without inverted normals or collapsed volumes (verified in sub-ticket **03**).
 
-Client application (ticket **187+**): drive morph target influences directly from the clamped server values (or the same floats after local preview).
+Client application (ticket **187+**): map each clamped server value `v ∈ [0.0, 1.0]` to a Three.js morph weight `(v − 0.5) × 2` so `0.5` leaves the base mesh unchanged and `0.0` / `1.0` reach the authored extremes.
+
+### glTF encoding (sub-ticket **03**)
+
+| Item | Value |
+|------|--------|
+| **Base mesh** | Normalized neutral silhouette (sub-ticket **02**); unchanged vertex positions at influence `0.5`. |
+| **Per-key delta** | `POSITION` morph target `δ = P(w=1) − P(w=0.5)` on each skinned primitive (`SuperHero_Male` body + `Face.001` eyes). |
+| **Regenerate** | `node game/client/scripts/add-player-proportion-morphs.mjs` (after `normalize-player-glb.mjs`). |
+
+Blender authoring should use shape keys named exactly like the six keys; export with **glTF shape keys → morph targets**. Until a Blender pass lands, the committed `player.glb` uses the scripted deltas above (region-weighted, ~7–14% local scale per key at `w=1`).
 
 ## Head anchor (hats)
 
@@ -74,12 +84,21 @@ Until `player.glb` lands, procedural avatars use `bodyTopY(shape)` in `renderer.
 
 ## Authoring checklist (Blender → glTF)
 
-1. Import **Regular Male** from Universal Base Characters ([`SPIKE_DECISION.md`](./SPIKE_DECISION.md)).
-2. Apply scale/rotation so **feet = 0**, **face −Z**, **height ≈ 1.8**.
+1. Import **Regular Male** (or current spike: **Superhero Male**) from Universal Base Characters ([`SPIKE_DECISION.md`](./SPIKE_DECISION.md)).
+2. Apply scale/rotation so **feet = 0**, **face −Z**, **height ≈ 1.8** (`node game/client/scripts/normalize-player-glb.mjs`).
 3. Verify mid-torso width ≤ **1.0** m diameter (radius **0.5**).
-4. Add shape keys named exactly as the six keys (sub-ticket **03**).
+4. Add shape keys named exactly as the six keys on the body mesh; re-run `add-player-proportion-morphs.mjs` or export morph targets from Blender.
 5. Export **glTF 2.0 binary** (`.glb`) to `game/client/public/models/player.glb`.
 6. Update [`CREDITS.md`](../client/public/models/CREDITS.md) and [`README.md`](../client/public/models/README.md).
+
+### Blender / rig names (spike asset)
+
+| Role | Name in committed `player.glb` |
+|------|--------------------------------|
+| Body mesh object | `SuperHero_Male` → mesh `Sphere.005_Retopology.004` |
+| Eyes mesh object | `Eyes` → mesh `Face.001` |
+| Armature root | `root` / `Armature` |
+| Head bone (hats) | `Head` |
 
 ## Out of scope for this contract doc
 
