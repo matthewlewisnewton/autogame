@@ -34,6 +34,56 @@ from harness.workspace.repo import Repo
 # startup instead of requeuing an already-merged ticket onto a deleted branch.
 MERGED_UNCLOSED = ".beads_merged_unclosed"
 
+# Beads that PASSED review and are awaiting merge are recorded here (one
+# `bead_id\tticket_name` per line, in the main checkout). The merge queue is
+# otherwise in-memory, so a restart/crash between review-PASS and the actual
+# ff-merge would lose the branch entirely (reconcile deletes all auto/* branches)
+# and re-run the whole ticket from scratch. This durable record lets reconcile
+# PRESERVE the passed branch + its worktree and re-enqueue the merge instead.
+PENDING_MERGE = ".beads_pending_merge"
+
+
+def _pending_path(root) -> Path:
+    return Path(root) / PENDING_MERGE
+
+
+def read_pending(root) -> list[tuple[str, str]]:
+    """Return [(bead_id, ticket_name)] for branches that passed review and are
+    awaiting merge. Tolerates a missing/garbled file (returns what it can)."""
+    try:
+        text = _pending_path(root).read_text()
+    except OSError:
+        return []
+    out: list[tuple[str, str]] = []
+    for ln in text.splitlines():
+        parts = ln.split("\t")
+        if len(parts) >= 2 and parts[0].strip() and parts[1].strip():
+            out.append((parts[0].strip(), parts[1].strip()))
+    return out
+
+
+def _record_pending(root, bead_id: str, name: str) -> None:
+    """Durably note that `bead_id` (ticket dir `name`) passed and awaits merge.
+    Idempotent — the same bead is never recorded twice."""
+    if any(b == bead_id for b, _ in read_pending(root)):
+        return
+    locked_append(_pending_path(root), f"{bead_id}\t{name}")
+
+
+def resolve_pending(root, bead_id: str) -> None:
+    """Drop `bead_id` from the pending-merge file (its merge resolved: merged +
+    closed, recorded merged-unclosed, rejected back to ready, or found stale).
+    The dispatcher is the sole writer of this file, so a plain rewrite is safe."""
+    path = _pending_path(root)
+    remaining = [(b, n) for b, n in read_pending(root) if b != bead_id]
+    try:
+        if remaining:
+            path.write_text("".join(f"{b}\t{n}\n" for b, n in remaining))
+        else:
+            path.unlink(missing_ok=True)
+    except OSError as e:
+        log(f"[merge] WARN: could not update {PENDING_MERGE}: {e!r}")
+
 
 def _default_rebase(main_repo: Repo, h: WorkerHandle) -> bool:
     """Rebase the worker's branch onto current main, inside its worktree."""
@@ -98,8 +148,13 @@ class MergeQueue:
         if self.merge is None:
             self.merge = lambda h: _default_merge_ff(self.main_repo, h)
 
-    def enqueue(self, h: WorkerHandle) -> None:
+    def enqueue(self, h: WorkerHandle, *, record: bool = True) -> None:
+        """Queue a passed branch for merge. `record=True` durably notes it in
+        PENDING_MERGE so a restart can recover it; reconcile's own rebuild passes
+        record=False (the entry is already on disk)."""
         self._pending.append(h)
+        if record and self.main_repo is not None:
+            _record_pending(self.main_repo.root, h.ticket_id, h.ticket_name)
         emit_progress_event("merge_enqueue",
                             {"ticket": h.ticket_id, "branch": h.worktree.branch})
 
@@ -142,6 +197,11 @@ class MergeQueue:
                             {"ticket": h.ticket_id, "branch": h.worktree.branch})
         h.worktree.remove_worktree()
 
+    def _clear_pending(self, h: WorkerHandle) -> None:
+        """Drop the durable pending-merge record for a now-resolved branch."""
+        if self.main_repo is not None:
+            resolve_pending(self.main_repo.root, h.ticket_id)
+
     def _close_merged(self, h: WorkerHandle) -> None:
         """Close the bead after a successful merge to main. The code is ALREADY
         on main, so this must not requeue on failure (that would re-run merged
@@ -151,6 +211,7 @@ class MergeQueue:
         for attempt in range(3):
             try:
                 self.queue.close(h.ticket_id, "merged to main")
+                self._clear_pending(h)
                 return
             except Exception as e:
                 last = e
@@ -161,6 +222,7 @@ class MergeQueue:
             locked_append(Path(self.main_repo.root) / MERGED_UNCLOSED, h.ticket_id)
         except OSError as e:
             log(f"[merge] WARN: could not record merged-unclosed {h.ticket_id}: {e!r}")
+        self._clear_pending(h)  # merge is done (on main); reconcile owns the close
         emit_progress_event("merge_close_failed", {"ticket": h.ticket_id})
 
     def _reject(self, h: WorkerHandle, reason: str) -> None:
@@ -170,7 +232,9 @@ class MergeQueue:
             self.queue.requeue(h.ticket_id, note=f"merge rejected: {reason}")
         except Exception as e:
             log(f"[merge] WARN: requeue of {h.ticket_id} failed: {e!r}")
+        self._clear_pending(h)  # back to ready — a fresh pass will re-record it
         h.worktree.remove_worktree()
 
 
-__all__ = ["MergeQueue"]
+__all__ = ["MergeQueue", "PENDING_MERGE", "MERGED_UNCLOSED",
+           "read_pending", "resolve_pending"]

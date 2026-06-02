@@ -16,7 +16,12 @@ from typing import Optional
 
 from harness.beads import BeadsQueue
 from harness.dispatch.dispatcher import Dispatcher
-from harness.dispatch.merge_queue import MERGED_UNCLOSED, MergeQueue
+from harness.dispatch.merge_queue import (
+    MERGED_UNCLOSED,
+    MergeQueue,
+    read_pending,
+    resolve_pending,
+)
 from harness.dispatch.registry import AgentRegistry, AgentSpec
 from harness.telemetry.logging import log
 from harness.telemetry.progress import emit_progress_event
@@ -136,13 +141,17 @@ def _read_merged_unclosed(root: Path) -> set[str]:
     return {ln.strip() for ln in text.splitlines() if ln.strip()}
 
 
-def clean_orphan_worktrees(main_repo: Repo) -> int:
-    """Remove every `.autogame-worktrees/*` worktree and `auto/*` branch.
+def clean_orphan_worktrees(main_repo: Repo, *, keep_branches: frozenset[str] = frozenset(),
+                           keep_worktrees: frozenset[str] = frozenset()) -> int:
+    """Remove every `.autogame-worktrees/*` worktree and `auto/*` branch EXCEPT
+    those in the keep-sets (branches that passed review and are awaiting merge —
+    reconcile preserves them, with their node_modules-bearing worktree, so the
+    merge can be recovered rather than re-running the whole ticket).
 
-    At dispatcher startup nothing is live, so all of these are orphans from a
-    prior run. `git worktree prune` alone does NOT help — it only unregisters
-    worktrees whose directory is already gone, so a leftover dir would make the
-    next `worktree add` at that path fail and the reset ticket could never be
+    At dispatcher startup nothing is live, so the rest are orphans from a prior
+    run. `git worktree prune` alone does NOT help — it only unregisters worktrees
+    whose directory is already gone, so a leftover dir would make the next
+    `worktree add` at that path fail and the reset ticket could never be
     re-worked. Removing the dirs here makes a restart a clean reset. Returns the
     number of worktrees removed."""
     removed = 0
@@ -154,6 +163,8 @@ def clean_orphan_worktrees(main_repo: Repo) -> int:
     for line in listing.splitlines():
         if line.startswith("worktree ") and ".autogame-worktrees" in line:
             path = line[len("worktree "):].strip()
+            if path in keep_worktrees:
+                continue  # passed branch awaiting merge — keep its worktree (node_modules)
             try:
                 main_repo.run_git("worktree", "remove", "--force", path,
                                   check=False, capture=False)
@@ -170,7 +181,7 @@ def clean_orphan_worktrees(main_repo: Repo) -> int:
         branches = ""
     for b in branches.splitlines():
         name = b.replace("*", "").strip()
-        if name.startswith("auto/"):
+        if name.startswith("auto/") and name not in keep_branches:
             try:
                 main_repo.run_git("branch", "-D", name, check=False, capture=False)
             except Exception:
@@ -178,14 +189,42 @@ def clean_orphan_worktrees(main_repo: Repo) -> int:
     return removed
 
 
-def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
+def _recoverable_pending(main_repo: Repo) -> list[tuple[str, str]]:
+    """From the durable PENDING_MERGE file, return [(bead_id, ticket_name)] whose
+    branch AND worktree still exist on disk — those can be re-merged on startup
+    instead of re-run. Stale entries (branch/worktree already gone) are dropped
+    from the file. Returns the recoverable subset."""
+    pending = read_pending(main_repo.root)
+    if not pending:
+        return []
+    try:
+        branch_out = main_repo.run_git("branch", "--list", "auto/*")
+        existing = {b.replace("*", "").strip() for b in branch_out.splitlines() if b.strip()}
+    except Exception:
+        existing = set()
+    wt_base = Path(main_repo.root).parent / ".autogame-worktrees"
+    recoverable: list[tuple[str, str]] = []
+    for bead_id, name in pending:
+        if f"auto/{name}" in existing and (wt_base / name).exists():
+            recoverable.append((bead_id, name))
+        else:
+            resolve_pending(main_repo.root, bead_id)  # stale — let it reset normally
+    return recoverable
+
+
+def reconcile(queue: BeadsQueue, main_repo: Repo) -> tuple[int, list[tuple[str, str]]]:
     """On startup no workers should be running, so any `in_progress` bead is
-    orphaned from a previous run. Reset it to ready — EXCEPT beads recorded as
-    merged-but-unclosed (already on main): those get closed, not re-run. Also
-    kills stray detached workers first and prunes stale worktrees. Returns the
-    number of orphans reset to ready."""
+    orphaned from a previous run. Reset it to ready — EXCEPT (a) beads recorded as
+    merged-but-unclosed (already on main): closed, not re-run; (b) beads that
+    PASSED review and are awaiting merge: their branch + worktree are PRESERVED
+    and the merge is recovered (rebuilt into the merge queue by run_factory) so a
+    crash mid-merge doesn't throw away a completed ticket. Kills stray detached
+    workers first and prunes the remaining orphaned worktrees. Returns
+    (orphans_reset, recoverable_pending_merges)."""
     _kill_stray_workers()
     merged_unclosed = _read_merged_unclosed(main_repo.root)
+    recoverable = _recoverable_pending(main_repo)
+    recoverable_ids = {bid for bid, _ in recoverable}
     try:
         orphans = queue.in_progress()
     except Exception as e:
@@ -202,6 +241,9 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
             except Exception as e:
                 log(f"[factory] reconcile: close of merged {iid} failed: {e!r}")
             continue
+        if iid in recoverable_ids:
+            log(f"[factory] reconcile: {label} passed review — preserving branch for merge recovery")
+            continue  # leave in_progress; run_factory re-enqueues its merge
         log(f"[factory] reconcile: resetting orphaned in_progress {label}")
         try:
             queue.requeue(iid, note="reconcile: orphaned in_progress on dispatcher startup")
@@ -213,10 +255,16 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
             (Path(main_repo.root) / MERGED_UNCLOSED).unlink()
         except OSError:
             pass
-    n_wt = clean_orphan_worktrees(main_repo)
+    keep_branches = frozenset(f"auto/{name}" for _, name in recoverable)
+    wt_base = Path(main_repo.root).parent / ".autogame-worktrees"
+    keep_worktrees = frozenset(str(wt_base / name) for _, name in recoverable)
+    n_wt = clean_orphan_worktrees(main_repo, keep_branches=keep_branches,
+                                  keep_worktrees=keep_worktrees)
     if n_wt:
         log(f"[factory] reconcile: cleaned {n_wt} orphaned worktree(s)")
-    return reset
+    if recoverable:
+        log(f"[factory] reconcile: recovered {len(recoverable)} passed branch(es) awaiting merge")
+    return reset, recoverable
 
 
 def build_factory(main_root, *, workers: Optional[int] = None,
@@ -247,10 +295,24 @@ def build_factory(main_root, *, workers: Optional[int] = None,
 def run_factory(main_root, *, workers: Optional[int] = None, max_idle_ticks: int = 0,
                 **kw) -> int:
     from harness.telemetry import progress_server
+    from harness.dispatch.dispatcher import WorkerHandle
+    from harness.workspace.ports import default_ports
+    from harness.workspace.repo import WorktreeWorkspace
     disp, mq, queue, registry = build_factory(main_root, workers=workers, **kw)
     n_workers = len(disp.ports_pool)
-    n = reconcile(queue, disp.main_repo)
-    log(f"[factory] reconciled {n} orphaned ticket(s); launching {n_workers} workers")
+    n, recoverable = reconcile(queue, disp.main_repo)
+    # Rebuild the (in-memory) merge queue from branches that passed review before
+    # a prior crash/restart. Their worktree (with node_modules for verify) and
+    # branch were preserved by reconcile; the dispatcher drains one per tick.
+    wt_base = Path(disp.main_repo.root).parent / ".autogame-worktrees"
+    for bead_id, name in recoverable:
+        wt = WorktreeWorkspace(root=wt_base / name, ports=default_ports(),
+                               branch=f"auto/{name}", main_root=Path(disp.main_repo.root))
+        mq.enqueue(WorkerHandle(bead_id, name, "recovered", "recovered", wt, proc=None),
+                   record=False)
+    log(f"[factory] reconciled {n} orphaned ticket(s)"
+        + (f", recovered {len(recoverable)} pending merge(s)" if recoverable else "")
+        + f"; launching {n_workers} workers")
     disabled = registry.disabled_agents()
     if disabled:
         log(f"[factory] NOTE: agents disabled (need `harness factory --enable <agent>`): {disabled}")

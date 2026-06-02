@@ -138,6 +138,46 @@ def test_drain_one_never_raises_on_merge_crash():
     assert h.worktree.removed
 
 
+def test_enqueue_records_pending_and_drain_clears_it(tmp_path):
+    """A passed branch is durably recorded in PENDING_MERGE on enqueue (so a
+    restart can recover it) and the record is cleared once it merges + closes."""
+    from harness.dispatch.merge_queue import read_pending
+    q = FakeQueue()
+    mq, _ = _mq(q)
+    mq.main_repo = _Repo(tmp_path)
+    mq.enqueue(_handle("t1"))
+    assert read_pending(tmp_path) == [("t1", "t1")]
+    mq.drain_one()
+    assert q.closed == ["t1"]
+    assert read_pending(tmp_path) == []   # cleared after successful merge+close
+
+
+def test_reject_clears_pending(tmp_path):
+    """A rejected merge (e.g. verify failure) is requeued to ready, so its
+    pending-merge record must be cleared — a fresh worker pass re-records it."""
+    from harness.dispatch.merge_queue import read_pending
+    q = FakeQueue()
+    mq, _ = _mq(q, verify=False)
+    mq.main_repo = _Repo(tmp_path)
+    mq.enqueue(_handle("t1"))
+    assert read_pending(tmp_path) == [("t1", "t1")]
+    mq.drain_one()
+    assert q.requeued == ["t1"]
+    assert read_pending(tmp_path) == []
+
+
+def test_reenqueue_with_record_false_does_not_duplicate(tmp_path):
+    """reconcile's rebuild re-enqueues already-recorded branches with
+    record=False so the durable file isn't double-written."""
+    from harness.dispatch.merge_queue import read_pending, _record_pending
+    _record_pending(tmp_path, "t1", "t1")           # simulate prior run's record
+    q = FakeQueue()
+    mq, _ = _mq(q)
+    mq.main_repo = _Repo(tmp_path)
+    mq.enqueue(_handle("t1"), record=False)
+    assert read_pending(tmp_path) == [("t1", "t1")]  # still exactly one entry
+
+
 def test_drain_all_fifo():
     q = FakeQueue()
     mq, _ = _mq(q)
