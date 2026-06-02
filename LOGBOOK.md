@@ -2217,3 +2217,26 @@ No integration gaps found between activation and weapon echo layers.
 
 ---
 
+
+## v0.110 — Spire Ascent Stage  (2026-06-02 09:29:47)
+
+- Focused diff (~985 lines across 3 commits): generator, client render tests, progression spawns, quest def, debug wiring.
+- `buildDescentRampRoom` exported for ticket 137 reuse.
+- No dead code observed; exports wired in `dungeon.js` module.exports.
+- Independent `pnpm test:quick`: **62 files, 1472 tests passed** (reviewer run).
+
+---
+
+## Capture & coverage notes
+
+- Screenshots show generic lobby/play and `sloped-dungeon`, not spire geometry — harness fallback, not a code defect.
+- `coverage.log` includes `spire_ascent_spawn.test.js` and spire layout/client tests in the vitest run.
+
+---
+
+## Remaining gaps
+
+No blocking gaps. All acceptance criteria are satisfied in code and covered by unit/integration tests; the game starts and runs without page errors in round-1 capture.
+
+---
+

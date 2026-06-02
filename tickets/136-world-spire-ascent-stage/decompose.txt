@@ -1,0 +1,21 @@
+Connection lost, reconnecting (attempt 1)...
+Retry attempt 1...
+Connection lost, reconnecting (attempt 2)...
+Retry attempt 2...
+Broke the top-level **Spire Ascent** ticket into **3** dependency-ordered sub-tickets (server layout → client render → quest/spawns/play), aligned with the sunken-canyon pattern in ticket 137. All use **code** verification.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-server-spire-ascent-layout/`
+2. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-client-spire-ascent-render/`
+3. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-quest-spawns-and-play/`
+
+**Coverage map**
+
+| Parent criterion | Sub-ticket |
+|---|---|
+| `generateLayout(..., 'spire-ascent')`, 3–5 tiers, ramps ≥0.2 slope, ≥10 Y climb, walls, reachability, determinism, layout unit tests | 01 |
+| Client floors/ramps/marker at correct elevation | 02 |
+| Quest + debug scenarios, tier-distributed enemies, top-tier objective, camera follow test | 03 |
+
+No prior sub-ticket folders existed (nothing to delete or preserve with `.passed`).
