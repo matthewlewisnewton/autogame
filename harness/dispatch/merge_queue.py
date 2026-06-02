@@ -59,19 +59,25 @@ def _default_merge_ff(main_repo: Repo, h: WorkerHandle) -> bool:
 
 def _default_verify(worktree_root: Path) -> bool:
     """Run the harness's own check (vitest server + client) in the worktree's
-    game/ dir — the worker already installed node_modules there."""
+    game/ dir — the worker already installed node_modules there. Any error (a
+    missing toolchain, a vitest timeout, a bad invocation) counts as a verify
+    FAILURE, never an exception that escapes — a raised error here would crash the
+    whole dispatcher via merge_drain()."""
     from harness.steps.vitest_cleanup import run_vitest
     game = Path(worktree_root) / "game"
     if not game.exists():
         return True
-    for project in ("server", "client"):
-        try:
-            rc = run_vitest(["run", "--project", project], cwd=game, timeout_s=300)
-        except FileNotFoundError:
-            return False
-        if rc != 0:
-            return False
-    return True
+    try:
+        with open(game / ".merge-verify.log", "wb") as out:
+            for project in ("server", "client"):
+                rc = run_vitest(["run", "--project", project], cwd=game,
+                                timeout_s=300, stdout=out)
+                if rc != 0:
+                    return False
+        return True
+    except Exception as e:
+        log(f"[merge] verify raised {e!r} — treating as verification failure")
+        return False
 
 
 @dataclass
@@ -101,10 +107,20 @@ class MergeQueue:
         return len(self._pending)
 
     def drain_one(self) -> bool:
-        """Process the next queued branch (FIFO). Returns False if empty."""
+        """Process the next queued branch (FIFO). Returns False if empty. Never
+        raises — a merge that blows up must not crash the dispatcher's tick loop;
+        it's rejected (requeued) and the loop continues."""
         if not self._pending:
             return False
-        self._merge_one(self._pending.popleft())
+        h = self._pending.popleft()
+        try:
+            self._merge_one(h)
+        except Exception as e:
+            log(f"[merge] unexpected error merging {h.ticket_id}: {e!r} — requeuing")
+            try:
+                self._reject(h, f"merge crashed: {e!r}")
+            except Exception as e2:
+                log(f"[merge] reject after crash also failed for {h.ticket_id}: {e2!r}")
         return True
 
     def drain_all(self) -> int:
