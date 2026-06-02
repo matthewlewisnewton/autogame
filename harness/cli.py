@@ -45,6 +45,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_prog = sub.add_parser("progress", help="Manage the events.ndjson HTTP server")
     p_prog.add_argument("action", choices=["start", "stop", "status"])
 
+    p_lock = sub.add_parser("lock", help="Hold a shared-resource flock (e.g. blender) "
+                            "until interrupted — serializes the operator session against "
+                            "factory workers that touch the same resource")
+    p_lock.add_argument("resource", help="Resource name, e.g. 'blender'")
+    p_lock.add_argument("--timeout", type=float, default=None,
+                        help="Give up waiting after N seconds (default: wait forever)")
+
     p_doc = sub.add_parser("doctor", help="Diagnostic smoke checks")
     p_doc.add_argument("target", choices=["vision"], help="What to smoke-check")
     return parser
@@ -66,6 +73,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_factory(args.workers, args.enable, args.max_idle_ticks)
     if args.cmd == "progress":
         return _cmd_progress(args.action)
+    if args.cmd == "lock":
+        return _cmd_lock(args.resource, args.timeout)
     if args.cmd == "doctor":
         return _cmd_doctor(args.target)
     print(f"[cli] unknown subcommand: {args.cmd}", file=sys.stderr)
@@ -180,13 +189,58 @@ def _cmd_worker(name: str, agent: str) -> int:
     # `node harness/screenshot.mjs` can't import playwright and every capture
     # (hence every top-level review's runtime gate) fails. Best-effort link.
     link_harness_deps(workspace.root)
-    rc = ticket(TicketContext(
-        workspace=workspace, roster=roster, name=name, tdir=tdir,
-        tunables=roster.tunables,
-    ))
+
+    def _run():
+        return ticket(TicketContext(
+            workspace=workspace, roster=roster, name=name, tdir=tdir,
+            tunables=roster.tunables,
+        ))
+
+    # If this ticket declares a shared synchronous resource (e.g. `Resource: blender`
+    # in ticket.md), hold the cross-process flock for the whole run so two workers
+    # — or a worker and the operator session — never drive the single resource at
+    # once. install/link above are deliberately OUTSIDE the lock (they don't need
+    # the resource and shouldn't hold it during a slow pnpm install).
+    from harness.concurrency.resource_lock import resource_for_ticket, held
+    resource = resource_for_ticket(tdir)
+    if resource:
+        import os
+        timeout = float(os.environ.get("HARNESS_RESOURCE_LOCK_TIMEOUT", "1800"))
+        emit_progress_event("resource_wait", {"ticket": name, "resource": resource})
+        try:
+            with held(resource, timeout=timeout):
+                emit_progress_event("resource_acquired", {"ticket": name, "resource": resource})
+                rc = _run()
+        except TimeoutError:
+            # Resource stayed busy past the timeout — not the agent's fault; let the
+            # dispatcher requeue the slot rather than block it forever.
+            emit_progress_event("resource_timeout", {"ticket": name, "resource": resource})
+            return int(PipelineResult.ESCALATE)
+    else:
+        rc = _run()
     emit_progress_event("worker_done",
                         {"ticket": name, "agent": agent, "result": int(rc)})
     return int(rc)
+
+
+def _cmd_lock(resource: str, timeout: Optional[float]) -> int:
+    """Hold a shared-resource flock until interrupted. Run in the background while
+    hand-driving the resource (e.g. Blender) so factory workers that need the same
+    resource wait instead of colliding; kill this process to release."""
+    import os
+    import signal
+    from harness.concurrency.resource_lock import held
+    try:
+        with held(resource, timeout=timeout):
+            print(f"[lock] holding '{resource}' (PID {os.getpid()}). "
+                  f"Ctrl-C or `kill {os.getpid()}` to release.", flush=True)
+            signal.pause()  # block until a signal; flock releases on exit
+    except TimeoutError as e:
+        print(f"[lock] {e}", file=sys.stderr)
+        return 1
+    except KeyboardInterrupt:
+        pass
+    return 0
 
 
 def _cmd_subtask(subdir_arg: str) -> int:
