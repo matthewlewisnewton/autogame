@@ -1,0 +1,46 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/gamepad.test.js (14 tests) 6ms
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 100ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/controller-calibration.test.js (2 tests) 5ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/input.test.js (31 tests) 11ms
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 204ms
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 78ms
+ ✓ |client| client/test/deck-viewer.test.js (15 tests) 188ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+ ✓ |client| client/test/main.test.js (140 tests) 1093ms
+
+ Test Files  8 passed (8)
+      Tests  209 passed (209)
+   Start at  13:27:58
+   Duration  2.15s (transform 158ms, setup 121ms, collect 256ms, tests 1.69s, environment 2.31s, prepare 551ms)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |   69.51 |    62.16 |   32.25 |   69.51 |                        
+ cards.js     |      91 |    62.96 |   66.66 |      91 | ...471,480-494,588-605 
+ collision.js |   20.81 |      100 |       0 |   20.81 | ...208,214-222,228-233 
+ delta.js     |     100 |       50 |     100 |     100 | 12                     
+ hand.js      |   46.25 |     62.5 |   23.07 |   46.25 | ...140,156-157,160-163 
+--------------|---------|----------|---------|---------|------------------------

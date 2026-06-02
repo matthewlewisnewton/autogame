@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health — clean.** The round-2 capture is healthy: `metrics.json` reports `"ok": true`, empty `pageerrors`, no `harness_failure`. `console.log` shows only vite connect logs, `[initScene]`, and one benign 409 (lobby-create race) — no page errors or fatals. The smoke flow completed and gameplay probes show normal play. The round-1 FAIL was a dev-server dropout (capture infra); the re-run on unchanged code confirms it loads and runs cleanly.
+
+**Acceptance criteria — fully met.** Both sub-tickets integrate correctly:
+- Controls/state/save: Character section with body-color swatches, accent swatches, and a shape `<select>` offering exactly the four server `BODY_SHAPES`. `getAccountCosmetic()` defaults mirror the server `DEFAULT_COSMETIC`. Save persists via `patchProfile` and updates the cache; validator errors surface via `#cosmetic-error`.
+- Live preview: self-contained Three.js scene reusing `createPlayerAvatar`/`disposeAvatar` (now correctly exported), updates live on every control change, and is lifecycle-safe (idempotent `closePreview`, RAF cancelled, GPU resources disposed). Does not touch the main scene/loop.
+- Diff is 100% client-side — no server/foundation regression, no debug scenarios.
+
+**Nits filed** (non-blocking): unguarded fetch rejection in the cosmetic save path (mirrors the pre-existing account-save handler), and the smoke capture never opens the panel so there's no visual proof of the UI itself.
+
+Wrote `review.md` (VERDICT: PASS) and `nits.md`; no `gaps.md` since the verdict is PASS.
