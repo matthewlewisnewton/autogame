@@ -78,6 +78,11 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  // Spire-ascent is handled by generateSpireAscent() — see that branch.
+  'spire-ascent': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: CELL_SPACING,
+  },
 };
 
 // Sunken-canyon stage tuning. Plateau (north / high Y) overlooks a large canyon
@@ -91,6 +96,16 @@ const SUNKEN_CANYON = {
   spawnClearRadius: 6,
   interiorMargin: OPEN_PLAZA.interiorMargin,
   rampXOffsets: [-3.5, 0, 3.5], // west / centre / east bridge positions
+};
+
+// Spire-ascent: vertical stack of 3–5 flat tiers linked by sloped ramps (−Z = up).
+const SPIRE_ASCENT = {
+  tierMinSize: 12,
+  tierMaxSize: 15,
+  rampWidth: 4,
+  rampDepth: 6,
+  minTotalRise: 10,
+  minRampSlope: 0.2,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -123,6 +138,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   if (profile === 'sunken-canyon') {
     return generateSunkenCanyon(seed);
+  }
+  if (profile === 'spire-ascent') {
+    return generateSpireAscent(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
@@ -806,6 +824,132 @@ function generateSunkenCanyon(seed) {
   };
 }
 
+// ── Spire Ascent Stage Generation ──
+
+/**
+ * Build the spire-ascent stage: 3–5 stacked tier rooms along −Z (north = higher
+ * elevation), joined by (N−1) sloped ramp rooms. Deterministic for a given seed.
+ *
+ * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent' }.
+ */
+function generateSpireAscent(seed) {
+  const rng = mulberry32(seed);
+  const {
+    tierMinSize,
+    tierMaxSize,
+    rampWidth,
+    rampDepth,
+    minTotalRise,
+  } = SPIRE_ASCENT;
+
+  const numTiers = 3 + Math.floor(rng() * 3);
+  const numRamps = numTiers - 1;
+  const tierSize =
+    tierMinSize + Math.floor(rng() * (tierMaxSize - tierMinSize + 1));
+  const halfTier = tierSize / 2;
+
+  const risePerRamp = minTotalRise / numRamps;
+  const tierYs = [DEFAULT_FLOOR_Y];
+  for (let i = 0; i < numRamps; i++) {
+    tierYs.push(tierYs[i] + risePerRamp);
+  }
+
+  const tierCentersZ = [halfTier];
+  for (let i = 0; i < numRamps; i++) {
+    tierCentersZ.push(tierCentersZ[i] - tierSize - rampDepth);
+  }
+
+  const gapCenters = [0];
+  const tiers = [];
+  const ramps = [];
+
+  for (let i = 0; i < numTiers; i++) {
+    const z = tierCentersZ[i];
+    const y = tierYs[i];
+    const isBottom = i === 0;
+    const isTop = i === numTiers - 1;
+    const northZ = z - halfTier;
+    const southZ = z + halfTier;
+
+    const walls = [
+      { x: -halfTier, z, length: tierSize, axis: 'z' },
+      { x: halfTier, z, length: tierSize, axis: 'z' },
+    ];
+
+    if (isTop) {
+      walls.push({ x: 0, z: northZ, length: tierSize, axis: 'x' });
+    } else {
+      walls.push(
+        ...buildHorizontalWallWithGaps(northZ, 0, tierSize, gapCenters, rampWidth)
+      );
+    }
+
+    if (isBottom) {
+      walls.push({ x: 0, z: southZ, length: tierSize, axis: 'x' });
+    } else {
+      walls.push(
+        ...buildHorizontalWallWithGaps(southZ, 0, tierSize, gapCenters, rampWidth)
+      );
+    }
+
+    let role;
+    let spawnWeight;
+    if (isBottom) {
+      role = 'start';
+      spawnWeight = 0;
+    } else if (isTop) {
+      role = 'treasure';
+      spawnWeight = 2;
+    } else {
+      role = 'combat';
+      spawnWeight = 1;
+    }
+
+    tiers.push({
+      x: 0,
+      z,
+      width: tierSize,
+      depth: tierSize,
+      walls,
+      floorCorners: { yNW: y, yNE: y, ySE: y, ySW: y },
+      band: 'tier',
+      tierIndex: i,
+      role,
+      spawnWeight,
+      encounterTier: numTiers > 1 ? i / (numTiers - 1) : 0,
+    });
+  }
+
+  for (let i = 0; i < numRamps; i++) {
+    const rampZ = tierCentersZ[i] - halfTier - rampDepth / 2;
+    ramps.push(
+      buildDescentRampRoom({
+        x: 0,
+        z: rampZ,
+        width: rampWidth,
+        depth: rampDepth,
+        yHigh: tierYs[i + 1],
+        yLow: tierYs[i],
+        axis: 'z',
+      })
+    );
+  }
+
+  const rooms = [];
+  for (let i = 0; i < numTiers; i++) {
+    rooms.push(tiers[i]);
+    if (i < numRamps) rooms.push(ramps[i]);
+  }
+
+  return {
+    rooms,
+    passages: [],
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: tierSize,
+    profile: 'spire-ascent',
+  };
+}
+
 // ── Room Role Assignment ──
 
 /**
@@ -954,6 +1098,7 @@ module.exports = {
   generateLayout,
   generateOpenPlaza,
   generateSunkenCanyon,
+  generateSpireAscent,
   buildDescentRampRoom,
   scatterCoverInArena,
   buildAdjacencyMap,
