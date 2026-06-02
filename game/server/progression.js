@@ -642,10 +642,10 @@ const KEY_ITEM_DEFS = {
   phase_step: {
     id: 'phase_step',
     name: 'Phase Step',
-    description: 'Instantly teleport a short distance',
-    cooldownMs: 10000,
-    type: 'teleport',
-    maxDistance: 8,
+    description: 'Swap positions with an ally within range',
+    cooldownMs: 12000,
+    type: 'utility',
+    range: 6,
   },
   purge_charm: {
     id: 'purge_charm',
