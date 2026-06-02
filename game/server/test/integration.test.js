@@ -4499,6 +4499,114 @@ describe('Debug scenarios — run objective stays in sync with enemy list', () =
 	});
 });
 
+describe('Debug scenarios — spire_ascent quest parity', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	function roomForEnemyPosition(layout, enemy) {
+		return layout.rooms.find((r) => {
+			const hw = r.width / 2;
+			const hd = r.depth / 2;
+			return enemy.x >= r.x - hw && enemy.x <= r.x + hw && enemy.z >= r.z - hd && enemy.z <= r.z + hd;
+		});
+	}
+
+	async function applySpireDebugScenario(name) {
+		expect(lobbyGameState(socket._lobbyId).selectedQuestId).toBe('training_caverns');
+
+		const questUpdates = [];
+		const onQuestUpdate = (payload) => questUpdates.push(payload);
+		socket.on('questUpdate', onQuestUpdate);
+
+		const updates = [];
+		const onUpdate = (data) => updates.push(data);
+		socket.on('stateUpdate', onUpdate);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name });
+		const result = await debugResultPromise;
+		socket.off('stateUpdate', onUpdate);
+		socket.off('questUpdate', onQuestUpdate);
+
+		expect(result.ok).toBe(true);
+
+		const state = lobbyGameState(socket._lobbyId);
+		const snap = updates.find((u) => u.run) || {
+			run: state.run,
+			enemies: state.enemies,
+		};
+		return { snap, state, questUpdates };
+	}
+
+	function assertSpireRunParity(snap, state) {
+		expect(state.selectedQuestId).toBe('spire_ascent');
+		expect(state.layout.stage).toBe('spire-ascent');
+		expect(snap.run.questId).toBe('spire_ascent');
+		expect(snap.run.objective.type).toBe('defeat_enemies');
+		expect(snap.run.objective.totalEnemies).toBe(snap.enemies.length);
+		expect(snap.enemies.length).toBe(QUEST_DEFS.spire_ascent.enemyCount);
+
+		const layout = state.layout;
+		const topRoom = layout.rooms.reduce((best, room) =>
+			(room.tierIndex ?? 0) > (best.tierIndex ?? 0) ? room : best
+		);
+		expect(topRoom.role).toBe('treasure');
+
+		const summitEnemies = snap.enemies.filter((enemy) => {
+			const room = roomForEnemyPosition(layout, enemy);
+			return room && room.role === 'treasure' && room.tierIndex === topRoom.tierIndex;
+		});
+		expect(summitEnemies.length).toBeGreaterThanOrEqual(1);
+
+		const combatTiers = new Set();
+		for (const enemy of snap.enemies) {
+			const room = roomForEnemyPosition(layout, enemy);
+			if (room && room.role === 'combat') {
+				combatTiers.add(room.tierIndex);
+			}
+		}
+		expect(combatTiers.size).toBeGreaterThanOrEqual(2);
+	}
+
+	for (const scenario of ['spire-ramp-passage', 'spire-summit-combat']) {
+		it(`"${scenario}" matches spire_ascent deploy quest, layout, run, and enemy setup`, async () => {
+			const { snap, state, questUpdates } = await applySpireDebugScenario(scenario);
+			assertSpireRunParity(snap, state);
+			expect(questUpdates.some((u) => u.layout && u.layout.stage === 'spire-ascent')).toBe(true);
+		});
+	}
+
+	it('"spire-ramp-passage" places the player on the first ramp passage midpoint', async () => {
+		const { state } = await applySpireDebugScenario('spire-ramp-passage');
+		const player = state.players[socket._playerId];
+		const fromRoom = state.layout.rooms[0];
+		const toRoom = state.layout.rooms[1];
+		const zStart = fromRoom.z + fromRoom.depth / 2;
+		const zEnd = toRoom.z - toRoom.depth / 2;
+		expect(player.x).toBe(state.layout.passages[0].x1);
+		expect(player.z).toBeCloseTo((zStart + zEnd) / 2, 5);
+		expect(Number.isFinite(player.y)).toBe(true);
+	});
+
+	it('"spire-summit-combat" places the player at the summit treasure room center', async () => {
+		const { state } = await applySpireDebugScenario('spire-summit-combat');
+		const player = state.players[socket._playerId];
+		const summitRoom = state.layout.rooms[state.layout.rooms.length - 1];
+		expect(player.x).toBe(summitRoom.x);
+		expect(player.z).toBe(summitRoom.z);
+		expect(Number.isFinite(player.y)).toBe(true);
+	});
+});
+
 describe('Player ID Drift Prevention on Cold Reconnect', () => {
 	let testProvider;
 	let baseUrl;

@@ -569,7 +569,8 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
-    if (name === 'spire-summit-combat') {
+    if (name === 'spire-ramp-passage' || name === 'spire-summit-combat') {
+      state.selectedQuestId = 'spire_ascent';
       applyLayoutForQuest(state, 'spire_ascent');
     }
 
@@ -589,7 +590,9 @@ function applyDebugScenario(socket, name) {
       }
     }
 
-    ensureNearbyEnemy(state, player.x, player.z);
+    if (name !== 'spire-ramp-passage' && name !== 'spire-summit-combat') {
+      ensureNearbyEnemy(state, player.x, player.z);
+    }
 
     if (name === 'summon-low-mana') {
       player.hp = MAX_HP;
@@ -777,13 +780,6 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'spire-ramp-passage') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
-      const seed = state.layoutSeed || questLayoutSeed(state.selectedQuestId || DEFAULT_QUEST_ID);
-      const profile = getLayoutProfileForQuest(state.selectedQuestId || DEFAULT_QUEST_ID);
-      state.layout = generateLayout(seed, profile, { stage: 'spire-ascent' });
-      state.layoutSeed = seed;
-      state.dungeonBounds = computeDungeonBounds(state.layout);
-      state.walkableAABBs = computeWalkableAABBs(state.layout);
-      withLobbyContext({ state }, () => rebuildWallColliders());
       const fromRoom = state.layout.rooms[0];
       const toRoom = state.layout.rooms[1];
       const zStart = fromRoom.z + fromRoom.depth / 2;
