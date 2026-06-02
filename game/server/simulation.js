@@ -927,7 +927,10 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
       // Phase beam is a ranged/projectile attack — taggable so an active
       // barrier dome can block it (see damagePlayer's barrier-dome check).
-      damagePlayer(playerId, damage, { attackerId, ranged: true });
+      // Smoke Veil: target inside an active zone has a chance to evade.
+      if (Math.random() >= smokeMissChance(player)) {
+        damagePlayer(playerId, damage, { attackerId, ranged: true });
+      }
       hitPlayerIds.add(playerId);
       hits.push({ playerId, hp: player.hp });
     }
@@ -1525,6 +1528,29 @@ function updateEnchantments() {
   }
 }
 
+// Returns true if the given player currently stands inside a non-expired smoke
+// zone (Smoke Veil). Zones are stored on `_gameState.smokeZones` as
+// { ownerId, x, z, radius, expiry }.
+function isInSmokeZone(player) {
+  if (!player || !Array.isArray(_gameState.smokeZones)) return false;
+  const now = Date.now();
+  for (const zone of _gameState.smokeZones) {
+    if (now >= zone.expiry) continue;
+    if (Math.hypot(player.x - zone.x, player.z - zone.z) <= zone.radius) {
+      return true;
+    }
+  }
+  return false;
+}
+
+// Probability an enemy attack against `player` misses due to standing in an
+// active smoke zone. 0 when not in a zone.
+function smokeMissChance(player) {
+  if (!isInSmokeZone(player)) return 0;
+  const def = _progression().getKeyItemDef('smoke_bomb');
+  return def && def.missChance != null ? def.missChance : 0;
+}
+
 function damagePlayer(playerId, amount, options = {}) {
   const player = _gameState.players[playerId];
   if (!player) return null;
@@ -1636,6 +1662,12 @@ function updateEnemies() {
 	const dt = 1 / TICK_RATE;
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 
+	// Prune expired Smoke Veil zones so they no longer affect enemy accuracy.
+	if (Array.isArray(_gameState.smokeZones) && _gameState.smokeZones.length > 0) {
+		const nowMs = Date.now();
+		_gameState.smokeZones = _gameState.smokeZones.filter(z => nowMs < z.expiry);
+	}
+
 	for (const enemy of _gameState.enemies) {
 		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
 
@@ -1665,7 +1697,10 @@ function updateEnemies() {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, def.attackDamage);
 					} else {
-						damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
+						// Smoke Veil: target inside an active zone has a chance to evade.
+						if (Math.random() >= smokeMissChance(target)) {
+							damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
+						}
 					}
 					enemy.attackState = 'recovering';
 					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
@@ -2223,6 +2258,7 @@ module.exports = {
   damageMinion,
   healPlayer,
   addDebuff,
+  isInSmokeZone,
 
   // Card combat helpers
   collectConeHits,

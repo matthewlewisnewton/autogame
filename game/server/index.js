@@ -429,6 +429,7 @@ const DEBUG_SCENARIOS = new Set([
   'overclock-ready',
   'phase-step-ready',
   'echo-strike-ready',
+  'smoke-veil-ready',
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
@@ -969,6 +970,18 @@ function applyDebugScenario(socket, name) {
       // Tanky enemy straight ahead (rotation 0 → +x) that survives both packets.
       state.enemies = [];
       spawnEnemy(player.x + 2.5, player.z, 'grunt');
+    } else if (name === 'smoke-veil-ready') {
+      // Equip Smoke Veil (smoke_bomb) with no cooldown and a couple of melee
+      // enemies right next to the caster, so QA can drop the fog at their feet
+      // and watch enemy attacks miss while standing inside the active zone.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'smoke_bomb';
+      player.keyItemCooldownUntil = 0;
+      state.enemies = [];
+      state.smokeZones = [];
+      spawnEnemy(player.x + 1.5, player.z, 'grunt');
+      spawnEnemy(player.x - 1.5, player.z, 'skirmisher');
     }
 
     syncRunObjectiveToEnemies();
@@ -2734,9 +2747,26 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, and echo_strike are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, and smoke_bomb are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'smoke_bomb') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
+      return;
+    }
+
+    if (keyItemId === 'smoke_bomb') {
+      // --- smoke_bomb (Smoke Veil): spawn a short-lived fog zone fixed at the
+      // caster's cast position. Enemy attacks against players standing inside an
+      // active zone miss with probability `missChance` (handled in simulation).
+      const durationMs = def.durationMs != null ? def.durationMs : 2000;
+      const radius = def.radius != null ? def.radius : 4;
+      if (!Array.isArray(state.smokeZones)) state.smokeZones = [];
+      const expiry = now + durationMs;
+      state.smokeZones.push({ ownerId: socket.playerId, x: player.x, z: player.z, radius, expiry });
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, x: player.x, z: player.z, radius, durationMs });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
 

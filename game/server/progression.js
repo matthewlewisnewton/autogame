@@ -626,11 +626,13 @@ const KEY_ITEM_DEFS = {
   },
   smoke_bomb: {
     id: 'smoke_bomb',
-    name: 'Smoke Bomb',
-    description: 'Become temporarily invisible',
-    cooldownMs: 18000,
+    name: 'Smoke Veil',
+    description: 'Drop a short fog at your feet; enemies lose accuracy against players inside it',
+    cooldownMs: 8000,
     type: 'stealth',
-    durationMs: 3000,
+    durationMs: 2000,
+    radius: 4,
+    missChance: 0.75,
   },
   ground_anchor: {
     id: 'ground_anchor',
@@ -3073,6 +3075,7 @@ function resetTransientRunState() {
   _gameState.minions = [];
   _gameState.loot = [];
   _gameState.areaEffects = [];
+  _gameState.smokeZones = [];
   _gameState.telepipe = null;
 }
 
@@ -3129,6 +3132,9 @@ function stateSnapshot() {
     currency: _gameState.currency,
     shopOffer: ensureShopOffer(),
     telepipe: _gameState.telepipe || null,
+    smokeZones: Array.isArray(_gameState.smokeZones)
+      ? _gameState.smokeZones.filter(z => Date.now() < z.expiry)
+      : [],
     suspendedRunSummary: buildSuspendedRunSummary(_gameState.suspendedCheckpoint),
   };
 }
