@@ -2512,8 +2512,27 @@ function isSunkenCanyonLayout(layout) {
   return !!(layout && layout.profile === 'sunken-canyon');
 }
 
+function isSpireAscentLayout(layout) {
+  return !!(layout && layout.profile === 'spire-ascent');
+}
+
 function sunkenCanyonRoomsByBand(layout, band) {
   return layout.rooms.filter(r => r.band === band);
+}
+
+function spireAscentRoomsByTierIndex(layout, tierIndex) {
+  return layout.rooms.filter(r => r.band === 'tier' && r.tierIndex === tierIndex);
+}
+
+function spireAscentTierRooms(layout) {
+  return layout.rooms
+    .filter(r => r.band === 'tier')
+    .sort((a, b) => a.tierIndex - b.tierIndex);
+}
+
+function spireAscentTreasureTierRoom(layout) {
+  const tiers = spireAscentTierRooms(layout);
+  return tiers.find(r => r.role === 'treasure') || tiers[tiers.length - 1] || null;
 }
 
 function spawnCrystals(layout, rng, count) {
@@ -2524,9 +2543,15 @@ function spawnCrystals(layout, rng, count) {
   // place objectives across the open floor with the cover-aware helper.
   const openFloor = isOpenFloorLayout(layout);
   const sunkenCanyon = isSunkenCanyonLayout(layout);
+  const spireAscent = isSpireAscentLayout(layout);
   const roomPool = [];
 
-  if (sunkenCanyon) {
+  if (spireAscent) {
+    const treasureTier = spireAscentTreasureTierRoom(layout);
+    if (treasureTier) {
+      roomPool.push(treasureTier);
+    }
+  } else if (sunkenCanyon) {
     const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
     if (canyonRooms.length > 0) {
       roomPool.push(...canyonRooms);
@@ -2537,7 +2562,7 @@ function spawnCrystals(layout, rng, count) {
     roomPool.push(treasureRooms[0]);
   }
 
-  if (!sunkenCanyon) {
+  if (!sunkenCanyon && !spireAscent) {
     const others = eligibleRooms.filter(r => !roomPool.includes(r));
     for (let i = others.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
@@ -2602,6 +2627,33 @@ function nearestCombatRoom(layout) {
   return nearest;
 }
 
+function pickSpireAscentEnemySpawn(layout, rng, spawnIndex, enemyCount) {
+  const tiers = spireAscentTierRooms(layout);
+  const tierCount = tiers.length;
+  if (tierCount === 0) {
+    return pickFloorSpawnPosition(layout, rng);
+  }
+
+  const bottom = tiers[0];
+  const top = tiers[tierCount - 1];
+  const middleTiers = tiers.slice(1, -1);
+  const cycle = [bottom, ...middleTiers, top];
+
+  const quota = [bottom];
+  if (tierCount >= 3 && middleTiers.length > 0) {
+    quota.push(middleTiers[0]);
+  }
+  if (tierCount >= 2) {
+    quota.push(top);
+  }
+
+  const room = spawnIndex < quota.length && spawnIndex < enemyCount
+    ? quota[spawnIndex]
+    : cycle[spawnIndex % cycle.length];
+
+  return randomPositionInRoom(room, rng);
+}
+
 function pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount) {
   const plateauRooms = sunkenCanyonRoomsByBand(layout, 'plateau');
   const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
@@ -2626,6 +2678,10 @@ function pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount) {
 }
 
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0, enemyCount = 1) {
+  if (isSpireAscentLayout(layout)) {
+    return pickSpireAscentEnemySpawn(layout, rng, spawnIndex, enemyCount);
+  }
+
   if (isSunkenCanyonLayout(layout)) {
     return pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount);
   }
@@ -2675,7 +2731,14 @@ function spawnLoot(layout, rng) {
   const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
   let pos;
 
-  if (isSunkenCanyonLayout(layout)) {
+  if (isSpireAscentLayout(layout)) {
+    const treasureTier = spireAscentTreasureTierRoom(layout);
+    if (treasureTier) {
+      pos = randomPositionInRoom(treasureTier, rng);
+    } else {
+      pos = pickFloorSpawnPosition(layout, rng);
+    }
+  } else if (isSunkenCanyonLayout(layout)) {
     const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
     if (canyonRooms.length > 0) {
       const room = canyonRooms[Math.floor(rng() * canyonRooms.length)];
@@ -3366,6 +3429,7 @@ module.exports = {
   spawnLoot,
   spawnCrystals,
   spawnEnemies,
+  isSpireAscentLayout,
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,

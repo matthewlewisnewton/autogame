@@ -427,6 +427,8 @@ const DEBUG_SCENARIOS = new Set([
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'spire-ascent',
+  'spire-ascent-stage',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -835,6 +837,54 @@ function applyDebugScenario(socket, name) {
       player.z = plateauSpawn.z;
       const plateauFloorY = sampleFloorY(state.layout, player.x, player.z);
       player.y = Number.isFinite(plateauFloorY) ? plateauFloorY : DEFAULT_FLOOR_Y;
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent-stage') {
+      // Spire-ascent stage layout for render / collision QA (profile spire-ascent).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent') {
+      // Tier-distributed spawns on spire-ascent layout (training_caverns enemy count).
+      // Reachable normally once a quest uses layoutProfile 'spire-ascent' (ticket 136).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
