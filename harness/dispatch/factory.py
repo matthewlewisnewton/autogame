@@ -41,17 +41,31 @@ def default_registry(health_file: Path) -> AgentRegistry:
     return AgentRegistry(DEFAULT_SPECS, DEFAULT_ORDER, health_file=health_file)
 
 
-def _kill_stray_workers() -> None:
-    """A crashed dispatcher leaves its `harness worker` subprocesses alive
-    (they're spawned with start_new_session=True). Kill them BEFORE requeuing
-    their beads, or a survivor + the new claimant would double-run the ticket in
-    the same branch/worktree. Best-effort; no live dispatcher names its own
-    process `harness worker` (it's `harness factory`), so this won't self-kill."""
+def _kill_stray_workers(*, wait_s: float = 5.0) -> None:
+    """A crashed/restarted dispatcher leaves its `harness worker` subprocesses
+    alive (spawned with start_new_session=True). Kill them BEFORE requeuing their
+    beads and cleaning worktrees — a survivor would double-run a ticket, and a
+    worker still dying (mid pnpm-install/git) can recreate its worktree dir right
+    after we clean it. So SIGTERM, then WAIT for them to actually exit, SIGKILL
+    any stragglers. Best-effort; the dispatcher itself is `harness factory`, not
+    `harness worker`, so this won't self-kill."""
+    import time
     try:
-        subprocess.run(["pkill", "-f", "harness worker"], check=False,
-                       capture_output=True)
+        subprocess.run(["pkill", "-TERM", "-f", "harness worker"],
+                       check=False, capture_output=True)
     except Exception as e:
         log(f"[factory] reconcile: pkill stray workers failed: {e!r}")
+        return
+    deadline = time.monotonic() + wait_s
+    while time.monotonic() < deadline:
+        if subprocess.run(["pgrep", "-f", "harness worker"],
+                          capture_output=True).returncode != 0:
+            return  # all gone
+        time.sleep(0.5)
+    # stragglers: force-kill and give the OS a moment to reap
+    subprocess.run(["pkill", "-KILL", "-f", "harness worker"],
+                   check=False, capture_output=True)
+    time.sleep(0.5)
 
 
 def _read_merged_unclosed(root: Path) -> set[str]:

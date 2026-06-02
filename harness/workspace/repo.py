@@ -137,6 +137,13 @@ class WorktreeWorkspace(Repo):
         # hard-fails if the branch exists. Drop a stale one first (best-effort)
         # so reusing a ticket name doesn't wedge the dispatcher.
         main.run_git("branch", "-D", branch, check=False, capture=False)
+        # The dir itself can survive `worktree remove`/prune — e.g. a worker that
+        # was still dying during a reset recreates it (mid pnpm-install) after
+        # cleanup. `worktree add` hard-fails if the path exists, so clear any
+        # leftover first; this makes reusing a ticket name robust to that race.
+        if wt_root.exists():
+            import shutil
+            shutil.rmtree(wt_root, ignore_errors=True)
         main.run_git("worktree", "add", "-b", branch, str(wt_root), base_ref,
                      capture=False)
         return cls(root=wt_root, ports=ports, branch=branch,

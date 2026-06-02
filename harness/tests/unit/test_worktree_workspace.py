@@ -51,6 +51,26 @@ def test_create_isolates_then_removes(tmp_path):
     assert "auto/t1" not in branches
 
 
+def test_create_clears_leftover_dir_at_path(tmp_path):
+    # simulate a worker that died mid-reset and left its worktree dir behind
+    # (dir exists with content, but is NOT a registered worktree)
+    main = _make_repo(tmp_path)
+    stale = tmp_path / "wts" / "t1"
+    stale.mkdir(parents=True)
+    (stale / "leftover.txt").write_text("from a dead worker\n")
+    # create must not fail with "already exists"; it clears the stale dir first
+    wt = WorktreeWorkspace.create(
+        main, name="t1", ports=PortAllocation(3001, 5174),
+        parent_dir=tmp_path / "wts",
+    )
+    try:
+        assert wt.root.exists()
+        assert not (wt.root / "leftover.txt").exists()  # stale content cleared
+        assert (wt.root / "game" / "main.js").exists()   # fresh checkout present
+    finally:
+        wt.remove_worktree()
+
+
 def test_two_worktrees_are_independent(tmp_path):
     main = _make_repo(tmp_path)
     a = WorktreeWorkspace.create(main, name="a", ports=PortAllocation(3001, 5174),
