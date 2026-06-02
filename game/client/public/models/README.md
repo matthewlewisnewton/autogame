@@ -18,8 +18,8 @@ Author-facing summary for glTF assets under this folder. Runtime loading and the
 - **Height ≈ 1.8** world units — normalize uniform scale from the bounding box after apply.
 - **XZ footprint** — fit inside radius **0.5** (`PLAYER_RADIUS` in `game/server/simulation.js` and `game/client/collision.js`).
 
-**Proportion morphs (sub-ticket 03+):** six morph targets with exact names  
-`height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` — influence `0.0` (min) … `0.5` (neutral) … `1.0` (max). See `MODEL_SPIKE.md`.
+**Proportion morphs (sub-ticket 03):** six `POSITION` morph targets per mesh with exact names  
+`height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` — influence `0.0` (min) … `0.5` (neutral) … `1.0` (max). See `MODEL_SPIKE.md`. After re-exporting the normalized base, run `node scripts/bake-player-morph-targets.mjs` from `game/`.
 
 **Head anchor (hats, ticket 190):** attach hat props to rig bone **`Head`**. At rest (normalized mesh, foot origin):
 

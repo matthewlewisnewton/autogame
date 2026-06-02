@@ -33,6 +33,29 @@ Same range for every key above (server and UI must stay aligned):
 
 Ticket **186** should clamp stored/API values to `[0.0, 1.0]` and treat missing keys as `0.5`. At `0.5`, the mesh should match the normalized base silhouette from sub-ticket **02**. Extremes `0.0` and `1.0` are the authored min/max shape keys (sub-ticket **03**); they must remain visually distinct without inverted normals or collapsed geometry.
 
+**Runtime mapping (ticket 187+):** For each morph index, set Three.js influence to `(proportion − 0.5) × 2` so `0.5 → 0` (neutral rest), `1.0 → +1` (max delta), `0.0 → −1` (min / inverted delta). Each glTF target stores the **positive** displacement from neutral toward the max extreme.
+
+### Morph target authoring (sub-ticket 03)
+
+Committed `player.glb` carries six `POSITION` morph targets per mesh primitive (`Face`, `Face.001`, body `Sphere.005_Retopology.004`), with `mesh.extras.targetNames` set to the canonical keys above.
+
+| Morph key | Authoring intent | Primary skin joints / regions |
+|-----------|------------------|-------------------------------|
+| `height` | Stature above the ankles | Vertical scale by world Y (feet stay anchored at `y = 0`) |
+| `headSize` | Head / neck volume | `Head`, `neck_01` (+ face mesh Y band) |
+| `torsoWidth` | Chest / abdomen breadth | `pelvis`, `spine_01`–`spine_03` |
+| `armLength` | Reach along arms | `upperarm_*`, `lowerarm_*`, `hand_*` |
+| `legLength` | Leg segment length | `thigh_*`, `calf_*`, `foot_*`, `ball_*` |
+| `shoulderWidth` | Clavicle span | `clavicle_*`, `upperarm_*` at shoulder height |
+
+Re-bake after re-exporting the normalized base mesh:
+
+```bash
+cd game && node scripts/bake-player-morph-targets.mjs
+```
+
+Automated check: `game/client/test/playerModelMorphs.test.js` (included in `pnpm test:quick`).
+
 ## Base player asset conventions
 
 | Rule | Specification |
