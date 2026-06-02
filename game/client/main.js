@@ -65,6 +65,7 @@ import {
 	setAuthToken,
 	patchProfile,
 	getAccountProfile,
+	getAccountCosmetic,
 } from './settings.js';
 import {
 	initControllerCalibration,
@@ -172,6 +173,11 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
+const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches');
+const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
+const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
+const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
+const cosmeticErrorEl = document.getElementById('cosmetic-error');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 /** @type {'n64' | 'default' | null} */
@@ -2861,14 +2867,94 @@ function syncAccountForm() {
 	showAccountError('');
 }
 
+// ── Character customization ──
+
+// Preset palettes of #RRGGBB swatches offered in the customization panel.
+// Defined client-side only; the server validates any #RRGGBB value, not a
+// fixed list. The first body-color entry mirrors the server default cosmetic.
+const BODY_COLOR_PALETTE = [
+	'#4f9dde', '#ef4444', '#22c55e', '#a855f7',
+	'#f97316', '#14b8a6', '#e2e8f0', '#1e293b',
+];
+const ACCENT_COLOR_PALETTE = [
+	'#f2c94c', '#ffffff', '#ef4444', '#22d3ee',
+	'#a855f7', '#f97316', '#84cc16', '#0f172a',
+];
+
+// In-progress selection while the panel is open; persisted on Save.
+const cosmeticSelection = { bodyColor: '', accentColor: '', bodyShape: 'box' };
+
+function showCosmeticError(message) {
+	if (!cosmeticErrorEl) return;
+	if (message) {
+		cosmeticErrorEl.textContent = message;
+		cosmeticErrorEl.hidden = false;
+	} else {
+		cosmeticErrorEl.textContent = '';
+		cosmeticErrorEl.hidden = true;
+	}
+}
+
+/**
+ * Build the swatch buttons for a palette into a container, wiring each to set
+ * the given selection field and refresh the selected-state highlight.
+ * @param {HTMLElement|null} container
+ * @param {string[]} palette
+ * @param {'bodyColor'|'accentColor'} field
+ */
+function buildCosmeticSwatches(container, palette, field) {
+	if (!container) return;
+	container.innerHTML = '';
+	for (const color of palette) {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'cosmetic-swatch';
+		btn.style.backgroundColor = color;
+		btn.dataset.color = color;
+		btn.title = color;
+		btn.setAttribute('aria-label', color);
+		btn.addEventListener('click', () => {
+			cosmeticSelection[field] = color;
+			refreshSwatchSelection(container, color);
+		});
+		container.appendChild(btn);
+	}
+}
+
+function refreshSwatchSelection(container, color) {
+	if (!container) return;
+	const target = String(color).toLowerCase();
+	for (const btn of container.querySelectorAll('.cosmetic-swatch')) {
+		const isSel = (btn.dataset.color || '').toLowerCase() === target;
+		btn.classList.toggle('selected', isSel);
+	}
+}
+
+// Build the swatches once at startup; selection state is synced per-open.
+buildCosmeticSwatches(cosmeticBodySwatchesEl, BODY_COLOR_PALETTE, 'bodyColor');
+buildCosmeticSwatches(cosmeticAccentSwatchesEl, ACCENT_COLOR_PALETTE, 'accentColor');
+
+function syncCosmeticForm() {
+	const cosmetic = getAccountCosmetic();
+	cosmeticSelection.bodyColor = cosmetic.bodyColor;
+	cosmeticSelection.accentColor = cosmetic.accentColor;
+	cosmeticSelection.bodyShape = cosmetic.bodyShape;
+	refreshSwatchSelection(cosmeticBodySwatchesEl, cosmetic.bodyColor);
+	refreshSwatchSelection(cosmeticAccentSwatchesEl, cosmetic.accentColor);
+	if (cosmeticShapeSelectEl) cosmeticShapeSelectEl.value = cosmetic.bodyShape;
+	showCosmeticError('');
+}
+
 function openAccountOverlay() {
 	syncAccountForm();
+	syncCosmeticForm();
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
 }
 
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
+	showCosmeticError('');
 }
 
 function openLevelSettingsOverlay() {
@@ -2947,6 +3033,34 @@ if (accountSaveBtnEl) {
 			createSocket(result.token);
 		}
 		closeAccountOverlay();
+	});
+}
+
+if (cosmeticShapeSelectEl) {
+	cosmeticShapeSelectEl.addEventListener('change', () => {
+		cosmeticSelection.bodyShape = cosmeticShapeSelectEl.value;
+	});
+}
+
+if (cosmeticSaveBtnEl) {
+	cosmeticSaveBtnEl.addEventListener('click', async () => {
+		const cosmetic = {
+			bodyColor: cosmeticSelection.bodyColor,
+			accentColor: cosmeticSelection.accentColor,
+			bodyShape: cosmeticSelection.bodyShape,
+		};
+		showCosmeticError('');
+		cosmeticSaveBtnEl.disabled = true;
+		const result = await patchProfile({ cosmetic });
+		cosmeticSaveBtnEl.disabled = false;
+
+		if (result.error) {
+			showCosmeticError(result.error);
+			return;
+		}
+		// Re-sync from the cache (now updated by patchProfile) so the controls
+		// reflect the persisted value.
+		syncCosmeticForm();
 	});
 }
 

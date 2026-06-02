@@ -5,11 +5,22 @@ import { setSoundEnabledFromSettings } from './audio.js';
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
 
+// Mirrors the server `DEFAULT_COSMETIC` (game/server/cosmetic.js) for the
+// customization-relevant fields. Used as the fallback when an account has no
+// cosmetic yet (or the field is missing/legacy).
+const DEFAULT_COSMETIC = {
+	bodyColor: '#4f9dde',
+	accentColor: '#f2c94c',
+	bodyShape: 'box',
+};
+
 /** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', keyboard: { bindings: Record<string, string> }, gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
 
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
 let cachedProfile = { username: '', email: null };
+/** @type {{ bodyColor: string, accentColor: string, bodyShape: string }} */
+let cachedCosmetic = { ...DEFAULT_COSMETIC };
 let authToken = null;
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
@@ -43,6 +54,29 @@ export function getSettings() {
 
 export function getAccountProfile() {
 	return cachedProfile;
+}
+
+/**
+ * Current cached cosmetic for the logged-in account, with any missing fields
+ * filled from the defaults that mirror the server `DEFAULT_COSMETIC`.
+ * @returns {{ bodyColor: string, accentColor: string, bodyShape: string }}
+ */
+export function getAccountCosmetic() {
+	return normalizeCosmetic(cachedCosmetic);
+}
+
+/**
+ * Merge a (possibly partial/legacy) cosmetic onto the defaults.
+ * @param {object|undefined|null} cosmetic
+ * @returns {{ bodyColor: string, accentColor: string, bodyShape: string }}
+ */
+function normalizeCosmetic(cosmetic) {
+	const src = (cosmetic && typeof cosmetic === 'object') ? cosmetic : {};
+	return {
+		bodyColor: typeof src.bodyColor === 'string' ? src.bodyColor : DEFAULT_COSMETIC.bodyColor,
+		accentColor: typeof src.accentColor === 'string' ? src.accentColor : DEFAULT_COSMETIC.accentColor,
+		bodyShape: typeof src.bodyShape === 'string' ? src.bodyShape : DEFAULT_COSMETIC.bodyShape,
+	};
 }
 
 export function getAuthToken() {
@@ -101,6 +135,7 @@ export async function loadAccountSettings(token) {
 		username: data.username || '',
 		email: data.email || null,
 	};
+	cachedCosmetic = normalizeCosmetic(data.cosmetic);
 	cachedSettings = deepMerge(getDefaultSettings(), data.settings || {});
 	await migrateLocalStorageMute();
 	applySettings();
@@ -183,6 +218,9 @@ export async function patchProfile(fields) {
 		username: data.username || cachedProfile.username,
 		email: data.email ?? cachedProfile.email,
 	};
+	if (data.cosmetic) {
+		cachedCosmetic = normalizeCosmetic(data.cosmetic);
+	}
 	return data;
 }
 
