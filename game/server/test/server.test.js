@@ -4150,6 +4150,8 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			isBlocking: false,
 			blockingUntil: 0,
 			blockingYaw: 0,
+			barrierDomeUntil: 0,
+			barrierDomeRadius: 0,
 		});
 	});
 
