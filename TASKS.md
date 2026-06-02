@@ -50,7 +50,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
 - [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
 - [x] [155-gameplay-review-doc](tickets/155-gameplay-review-doc/)
-- [ ] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
+- [x] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
 - [ ] [157-cleanup-key-item-phase-step](tickets/157-cleanup-key-item-phase-step/)
 - [ ] [158-cleanup-world-open-plaza-stage](tickets/158-cleanup-world-open-plaza-stage/)
 - [ ] [159-cleanup-key-item-purge-charm](tickets/159-cleanup-key-item-purge-charm/)
@@ -63,3 +63,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [192-cleanup-models-gltf-loader-infrastructure](tickets/192-cleanup-models-gltf-loader-infrastructure/)
 - [ ] [193-cleanup-character-customization-client-panel](tickets/193-cleanup-character-customization-client-panel/)
 - [ ] [194-cleanup-key-item-smoke-bomb](tickets/194-cleanup-key-item-smoke-bomb/)
+- [ ] [195-cleanup-docs-design-md-stale-fixes](tickets/195-cleanup-docs-design-md-stale-fixes/)

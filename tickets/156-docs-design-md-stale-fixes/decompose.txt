@@ -1,0 +1,14 @@
+Broke the top-level docs ticket into **3** sub-tickets (dependency order). Each only edits `game/docs/design.md`, cross-checks against server/client code, and uses **`Verification: code`**.
+
+Stale items addressed:
+- **01** — Combat Mechanics still says deck ≤12 and hand ≤4; code uses 4–24 deck, 6 slots / 4-card opening hand.
+- **02** — Floor Geometry still references harness ticket 117; slope following is in `simulation.js`.
+- **03** — Playtesting notes say “Battle Familiar”; `CARD_DEFS` uses “Signal Familiar”.
+
+Telepipe, core loop, and card-type bullets were checked and left as-is.
+
+### Sub-ticket folders created
+
+1. `/home/matt/workspace/.autogame-worktrees/156-docs-design-md-stale-fixes/tickets/156-docs-design-md-stale-fixes/subtickets/01-combat-deck-and-hand/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/156-docs-design-md-stale-fixes/tickets/156-docs-design-md-stale-fixes/subtickets/02-floor-geometry-implementation-ref/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/156-docs-design-md-stale-fixes/tickets/156-docs-design-md-stale-fixes/subtickets/03-playtesting-card-display-names/ticket.md`

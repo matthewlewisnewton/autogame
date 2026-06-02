@@ -1,0 +1,14 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and gameplay probes in the `playing` phase. `console.log` has no `pageerror` or `[fatal]` lines (409s look like harness noise).
+
+**Ticket scope:** Three surgical edits in `game/docs/design.md` only (deck/hand limits, floor geometry implementation ref, Signal Familiar). Each was checked against `config.js`, `simulation.js`, `progression.js`, and capture data (`Deck: 8/12`, six hand slots).
+
+**Verdict:** **PASS** — all acceptance criteria met for this targeted docs pass.
+
+**Follow-up (non-blocking):** `nits.md` notes that the playtesting example still says “Mana Leach” while the live card name is **Ether Siphon**.
+
+Written files:
+- [`tickets/156-docs-design-md-stale-fixes/round-1/review.md`](tickets/156-docs-design-md-stale-fixes/round-1/review.md)
+- [`tickets/156-docs-design-md-stale-fixes/round-1/nits.md`](tickets/156-docs-design-md-stale-fixes/round-1/nits.md)
+- No `gaps.md` (PASS only)

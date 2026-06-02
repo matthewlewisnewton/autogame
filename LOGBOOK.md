@@ -2401,3 +2401,26 @@ fully and robustly met, with server-side validation backing the client UI.
 was exercised by code review rather than a screenshot — non-blocking; the panel
 mounts from the same module graph that loaded without error.)
 
+
+## v0.139 — Docs: fix stale sections in design.md  (2026-06-02 15:37:41)
+
+
+## Consistency with `design.md` and `requirements.md`
+
+- **`game/docs/requirements.md`:** Foundation items (3D render, WebSocket, multiplayer viz, WASD sync) are unchanged; this ticket did not touch runtime code.
+- **Holistic doc accuracy:** The corrected sections now align with implementation. One **pre-existing** inaccuracy remains in the same playtesting sentence: **Mana Leach** is still cited, but `CARD_DEFS.mana_leach.name` is **Ether Siphon** (`game/server/progression.js`, `game/client/cards.js`). Sub-ticket 03 explicitly left that name unchanged; it was out of this ticket’s stated fix list. That is a minor doc nit, not a mechanics or acceptance failure for a targeted pass (see `nits.md`).
+
+## Code quality and debug scenarios
+
+- No runtime code changes; no new dead code or console defects attributable to this ticket.
+- No new or changed `?debugScenario=` shortcuts; probes show `debugScenario: null` throughout capture.
+
+## Verification artifacts
+
+- **Coverage (`coverage.log`):** No tests run against changed files (docs-only); expected empty report.
+- **Screenshots:** Lobby and in-run movement (W/D) look healthy; UI strings match renamed cards.
+
+## Remaining gaps
+
+None blocking. Runtime capture is clean; all top-level acceptance criteria are satisfied for the scoped doc-only work.
+
