@@ -1,6 +1,9 @@
 // Per-account settings — load from server, debounced PATCH, apply to subsystems.
 
 import { setSoundEnabledFromSettings } from './audio.js';
+import { DEFAULT_COSMETIC } from './cosmetic-form.js';
+
+export { DEFAULT_COSMETIC };
 
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
@@ -9,7 +12,13 @@ const PATCH_DEBOUNCE_MS = 300;
 
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
-let cachedProfile = { username: '', email: null };
+/** @typedef {{ username: string, email: string|null, cosmetic: import('./cosmetic-form.js').Cosmetic }} CachedProfile */
+/** @type {CachedProfile} */
+let cachedProfile = {
+	username: '',
+	email: null,
+	cosmetic: { ...DEFAULT_COSMETIC },
+};
 let authToken = null;
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
@@ -43,6 +52,11 @@ export function getSettings() {
 
 export function getAccountProfile() {
 	return cachedProfile;
+}
+
+/** @returns {import('./cosmetic-form.js').Cosmetic} */
+export function getCosmetic() {
+	return { ...cachedProfile.cosmetic };
 }
 
 export function getAuthToken() {
@@ -100,6 +114,7 @@ export async function loadAccountSettings(token) {
 	cachedProfile = {
 		username: data.username || '',
 		email: data.email || null,
+		cosmetic: { ...DEFAULT_COSMETIC, ...(data.cosmetic || {}) },
 	};
 	cachedSettings = deepMerge(getDefaultSettings(), data.settings || {});
 	await migrateLocalStorageMute();
@@ -157,9 +172,9 @@ export async function patchSettingsImmediate(partial) {
 }
 
 /**
- * Update profile (username / email).
- * @param {{ username?: string, email?: string|null }} fields
- * @returns {Promise<{ token?: string, username: string, email: string|null, error?: string }>}
+ * Update profile (username / email / cosmetic).
+ * @param {{ username?: string, email?: string|null, cosmetic?: Partial<import('./cosmetic-form.js').Cosmetic> }} fields
+ * @returns {Promise<{ token?: string, username: string, email: string|null, cosmetic?: import('./cosmetic-form.js').Cosmetic, error?: string }>}
  */
 export async function patchProfile(fields) {
 	if (!authToken) return { error: 'Not logged in' };
@@ -182,6 +197,9 @@ export async function patchProfile(fields) {
 	cachedProfile = {
 		username: data.username || cachedProfile.username,
 		email: data.email ?? cachedProfile.email,
+		cosmetic: data.cosmetic
+			? { ...cachedProfile.cosmetic, ...data.cosmetic }
+			: cachedProfile.cosmetic,
 	};
 	return data;
 }
