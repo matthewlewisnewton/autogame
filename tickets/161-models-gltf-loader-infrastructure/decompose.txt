@@ -1,0 +1,12 @@
+Created 2 sub-tickets in dependency order. Both use `code` verification — the criteria concern module exports, cache behavior, registry shape, vite config, and "renders exactly as before" with fallback logic existing, none of which a single happy-path screenshot run can confirm.
+
+**Sub-ticket folder paths created:**
+
+- `tickets/161-models-gltf-loader-infrastructure/subtickets/01-model-loader-module-and-static-serving/ticket.md`
+- `tickets/161-models-gltf-loader-infrastructure/subtickets/02-renderer-registry-consult-with-fallback/ticket.md`
+
+**Rationale for the split:**
+- **01** is purely additive infra (new `models.js` with cached `loadModel` + all-`null` `MODEL_REGISTRY`, `publicDir` in vite, committed empty `public/models/.gitkeep`) and touches zero rendering code — so it carries no risk of altering visuals.
+- **02** wires the registry into the four hot render paths (`createPlayerAvatar`, `createEnemyMesh`, `createMinionMesh`, `createLootMesh`) with synchronous procedural fallback, the only place pixel-identical behavior could regress.
+
+Keeping these in separate passes isolates the risky render-path edit from the foundation, and each is independently checkable from the diff + logs.
