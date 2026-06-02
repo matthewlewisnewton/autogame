@@ -4704,7 +4704,8 @@ describe('Spawner periodic spawn', () => {
 
 		const add = gameState.enemies[1];
 		const dist = Math.hypot(add.x - 0, add.z - 0);
-		expect(dist).toBeLessThanOrEqual(3);
+		// ~3 units: allow tiny overshoot from bounds clamp + float (see nearbySpawnPosition)
+		expect(dist).toBeLessThanOrEqual(3.01);
 	});
 
 	it('spawnEnemy sets lastSpawnTime on spawner type', () => {

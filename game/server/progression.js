@@ -2525,6 +2525,7 @@ function spawnCrystals(layout, rng, count) {
   // place objectives across the open floor with the cover-aware helper.
   const openFloor = isOpenFloorLayout(layout);
   const sunkenCanyon = isSunkenCanyonLayout(layout);
+  const spireAscent = isSpireAscentLayout(layout);
   const roomPool = [];
 
   if (sunkenCanyon) {
@@ -2534,11 +2535,23 @@ function spawnCrystals(layout, rng, count) {
     } else if (treasureRooms.length > 0) {
       roomPool.push(treasureRooms[0]);
     }
+  } else if (spireAscent) {
+    const topTier = Math.max(
+      ...layout.rooms.filter((r) => r.band === 'tier').map((r) => r.tierIndex)
+    );
+    const topTreasure = layout.rooms.filter(
+      (r) => r.role === 'treasure' && r.tierIndex === topTier
+    );
+    if (topTreasure.length > 0) {
+      roomPool.push(...topTreasure);
+    } else if (treasureRooms.length > 0) {
+      roomPool.push(treasureRooms[0]);
+    }
   } else if (treasureRooms.length > 0) {
     roomPool.push(treasureRooms[0]);
   }
 
-  if (!sunkenCanyon) {
+  if (!sunkenCanyon && !spireAscent) {
     const others = eligibleRooms.filter(r => !roomPool.includes(r));
     for (let i = others.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
@@ -2648,6 +2661,32 @@ function pickSpireEnemySpawnPosition(layout, rng, tierIndex) {
   return randomPositionInRoom(room, rng);
 }
 
+/**
+ * Spire-ascent enemy placement: reserve bottom combat tier, then an upper tier when
+ * enemyCount ≥ 2, then fill remaining slots across middle/top combat tiers (never ramps).
+ */
+function pickSpireAscentEnemySpawn(layout, rng, spawnIndex, enemyCount) {
+  const tiers = spireCombatTierIndices(layout);
+  if (tiers.length === 0) {
+    return randomRoomPositionByRole(layout, 'combat', rng);
+  }
+
+  const bottom = tiers[0];
+  const top = tiers[tiers.length - 1];
+  let tierIndex;
+
+  if (spawnIndex === 0) {
+    tierIndex = bottom;
+  } else if (spawnIndex === 1 && enemyCount >= 2) {
+    tierIndex = tiers.length >= 2 ? top : bottom;
+  } else {
+    const fillTiers = tiers.length >= 3 ? tiers.slice(1) : tiers;
+    tierIndex = fillTiers[(spawnIndex - 2) % fillTiers.length];
+  }
+
+  return pickSpireEnemySpawnPosition(layout, rng, tierIndex);
+}
+
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0, enemyCount = 1) {
   if (isSunkenCanyonLayout(layout)) {
     return pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount);
@@ -2690,7 +2729,7 @@ function spawnCombatEnemies(layout, rng, quest) {
     if (useNearest) {
       pos = pickEnemySpawnPosition(layout, rng, true, i, enemyCount);
     } else if (spireTiers.length > 0) {
-      pos = pickSpireEnemySpawnPosition(layout, rng, spireTiers[i % spireTiers.length]);
+      pos = pickSpireAscentEnemySpawn(layout, rng, i, enemyCount);
     } else {
       pos = pickEnemySpawnPosition(layout, rng, false, i, enemyCount);
     }

@@ -330,11 +330,14 @@ setTerminalCheckCallback(checkRunTerminalState);
 setFindSocketCallback(findSocketByPlayerId);
 setSavePlayerCallback(savePlayerData);
 
+const BESPOKE_LAYOUT_PROFILES = new Set(['open-plaza', 'sunken-canyon', 'spire-ascent']);
+
 function applyLayoutForQuest(state, questId) {
   const profile = getLayoutProfileForQuest(questId);
   const seed = questLayoutSeed(questId);
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile, { slopes: true });
+  const layoutOptions = BESPOKE_LAYOUT_PROFILES.has(profile) ? {} : { slopes: true };
+  state.layout = generateLayout(seed, profile, layoutOptions);
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already

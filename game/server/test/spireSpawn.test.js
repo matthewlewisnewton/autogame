@@ -8,7 +8,7 @@ import {
 } from '../dungeon.js';
 import { QUEST_DEFS } from '../quests.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
-import { spawnEnemies, resetGameState, gameState } from '../index.js';
+import { spawnEnemies, spawnCrystals, resetGameState, gameState } from '../index.js';
 
 const SPIRE_SEED = 42;
 const PLAYER_RADIUS = 0.45;
@@ -150,6 +150,50 @@ describe('spire-ascent enemy spawns (spire_ascent quest)', () => {
       expect(room).toBeTruthy();
       expect(room.role).not.toBe('start');
       expect(room.spawnWeight).not.toBe(0);
+    }
+  });
+
+  it('never places enemies on ramp connector rooms', () => {
+    deploySpire();
+    const layout = gameState.layout;
+    for (const enemy of gameState.enemies) {
+      const room = roomContaining(layout, enemy.x, enemy.z);
+      expect(room?.role).not.toBe('connector');
+      expect(room?.band).not.toBe('ramp');
+    }
+  });
+
+  it('places at least one enemy on lowest combat tier and one on a higher tier when enemyCount ≥ 2', () => {
+    deploySpire();
+    const layout = gameState.layout;
+    const bottom = bottomCombatTier(layout);
+    const tiersUsed = new Set();
+    for (const enemy of gameState.enemies) {
+      const room = roomContaining(layout, enemy.x, enemy.z);
+      tiersUsed.add(room.tierIndex);
+    }
+    expect(tiersUsed.has(bottom)).toBe(true);
+    expect([...tiersUsed].some((t) => t > bottom)).toBe(true);
+  });
+});
+
+describe('spire-ascent collect objectives', () => {
+  beforeEach(() => resetGameState());
+
+  it('places collect-objective crystals only in the top-tier treasure room', () => {
+    const layout = generateLayout(SPIRE_SEED, 'spire-ascent');
+    const topTier = maxTierIndex(layout);
+    const treasure = roomsByRole(layout, 'treasure')[0];
+    expect(treasure.tierIndex).toBe(topTier);
+
+    gameState.loot = [];
+    spawnCrystals(layout, mulberry32(SPIRE_SEED), 3);
+    const crystals = gameState.loot.filter((l) => l.kind === 'crystal');
+    expect(crystals.length).toBe(3);
+    for (const c of crystals) {
+      const room = roomContaining(layout, c.x, c.z);
+      expect(room?.role).toBe('treasure');
+      expect(room?.tierIndex).toBe(topTier);
     }
   });
 });
