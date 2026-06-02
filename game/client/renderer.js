@@ -1391,6 +1391,15 @@ const SHIELD_RADIUS = 0.9;
 const SHIELD_OFFSET_DIST = 0.7; // distance in front of player
 const shieldVFX = {}; // playerId → { mesh, startTime }
 
+// ── Smoke VFX (Smoke Bomb) ──
+
+const SMOKE_DURATION = 2000; // fallback duration (ms) if payload omits it
+const SMOKE_RADIUS = 4; // fallback radius (world units) if payload omits it
+const SMOKE_COLOR = 0x9ca3af; // muted gray
+const SMOKE_MAX_OPACITY = 0.5;
+const SMOKE_FADE_IN_MS = 250; // quick fade-in at the start
+const smokeVFX = []; // [{ mesh, geometry, material }]
+
 /**
  * Spawn a green expanding ring at the caster's position to visualize
  * the Field Medic Kit heal pulse. Expands from radius 0 to healRadius
@@ -1514,6 +1523,74 @@ export function triggerShieldVFX(playerId) {
 		}
 	}
 	requestAnimationFrame(animateShield);
+}
+
+// ── Smoke VFX (Smoke Bomb) ──
+
+/**
+ * Spawn a translucent, ground-hugging gray smoke disc at the cast point to
+ * visualize an active Smoke Veil zone. Sized to the zone radius, it fades in
+ * quickly, holds, then fades out over the back half of its lifetime before
+ * being disposed and removed from the scene. Purely cosmetic.
+ *
+ * @param {{ x: number, y?: number, z: number }} position - zone center (world)
+ * @param {{ radius?: number, durationMs?: number }} [options]
+ */
+export function triggerSmokeVFX(position, options = {}) {
+	if (!scene || !position) return;
+
+	const radius = Number.isFinite(options.radius) && options.radius > 0
+		? options.radius
+		: SMOKE_RADIUS;
+	const duration = Number.isFinite(options.durationMs) && options.durationMs > 0
+		? options.durationMs
+		: SMOKE_DURATION;
+
+	// Flat disc lying on the ground, sized to the zone radius.
+	const geometry = new THREE.CircleGeometry(radius, 40);
+	const material = new THREE.MeshBasicMaterial({
+		color: SMOKE_COLOR,
+		transparent: true,
+		opacity: 0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(position.x, 0.12, position.z);
+	mesh.rotation.x = -Math.PI / 2;
+	scene.add(mesh);
+
+	const instance = { mesh, geometry, material };
+	smokeVFX.push(instance);
+
+	const startTime = performance.now();
+	const fadeOutStart = duration * 0.55;
+	function animateSmoke() {
+		const elapsed = performance.now() - startTime;
+		const t = Math.min(elapsed / duration, 1);
+
+		if (elapsed < SMOKE_FADE_IN_MS) {
+			// Fade in
+			material.opacity = SMOKE_MAX_OPACITY * (elapsed / SMOKE_FADE_IN_MS);
+		} else if (elapsed > fadeOutStart) {
+			// Fade out over the back portion of the lifetime
+			const fadeT = (elapsed - fadeOutStart) / (duration - fadeOutStart);
+			material.opacity = SMOKE_MAX_OPACITY * Math.max(0, 1 - fadeT);
+		} else {
+			material.opacity = SMOKE_MAX_OPACITY;
+		}
+
+		if (t < 1) {
+			requestAnimationFrame(animateSmoke);
+		} else {
+			scene.remove(mesh);
+			geometry.dispose();
+			material.dispose();
+			const idx = smokeVFX.indexOf(instance);
+			if (idx !== -1) smokeVFX.splice(idx, 1);
+		}
+	}
+	requestAnimationFrame(animateSmoke);
 }
 
 // ── Floating damage numbers ──
