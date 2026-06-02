@@ -5,6 +5,23 @@
 // Allowed body shapes (kept in sync with the client renderer's geometry set).
 const BODY_SHAPES = ['box', 'cylinder', 'cone', 'capsule'];
 
+// Allowed model identifiers (glTF base meshes). Extended when new character
+// models are added; 'player' is the initial procedural fallback.
+const MODEL_IDS = ['player'];
+
+// Canonical proportion keys applied to a character model at render time.
+const PROPORTION_KEYS = ['height', 'headSize', 'torsoWidth', 'armLength', 'legLength', 'shoulderWidth'];
+
+// Per-key numeric bounds for proportion values (relative multipliers).
+const PROPORTION_RANGES = {
+	height:        { min: 0.8, max: 1.2 },
+	headSize:      { min: 0.7, max: 1.3 },
+	torsoWidth:    { min: 0.7, max: 1.3 },
+	armLength:     { min: 0.8, max: 1.2 },
+	legLength:     { min: 0.8, max: 1.2 },
+	shoulderWidth: { min: 0.7, max: 1.3 }
+};
+
 // Server-side hat catalog. Each hat has a stable `id`, a display `name`, and an
 // integer currency `price`. The `none` entry is the default bare-head option and
 // is always free/owned; the others are purchasable via sub-ticket 02.
@@ -36,7 +53,16 @@ const DEFAULT_COSMETIC = {
 	bodyColor: '#4f9dde',
 	accentColor: '#f2c94c',
 	bodyShape: 'box',
-	hat: 'none'
+	hat: 'none',
+	modelId: 'player',
+	proportions: {
+		height: 1.0,
+		headSize: 1.0,
+		torsoWidth: 1.0,
+		armLength: 1.0,
+		legLength: 1.0,
+		shoulderWidth: 1.0
+	}
 };
 
 // Case-insensitive 6-digit hex color (e.g. #1a2B3c).
@@ -101,8 +127,25 @@ function backfillCosmetic(existing) {
 		bodyColor: HEX_COLOR_REGEX.test(src.bodyColor) ? src.bodyColor : DEFAULT_COSMETIC.bodyColor,
 		accentColor: HEX_COLOR_REGEX.test(src.accentColor) ? src.accentColor : DEFAULT_COSMETIC.accentColor,
 		bodyShape: BODY_SHAPES.includes(src.bodyShape) ? src.bodyShape : DEFAULT_COSMETIC.bodyShape,
-		hat: HAT_IDS.has(src.hat) ? src.hat : DEFAULT_COSMETIC.hat
+		hat: HAT_IDS.has(src.hat) ? src.hat : DEFAULT_COSMETIC.hat,
+		modelId: MODEL_IDS.includes(src.modelId) ? src.modelId : DEFAULT_COSMETIC.modelId,
+		proportions: backfillProportions(src.proportions)
 	};
+}
+
+/**
+ * Backfill proportion values, falling back to 1.0 for any missing key.
+ *
+ * @param {object|undefined} existing
+ * @returns {object}
+ */
+function backfillProportions(existing) {
+	const result = {};
+	for (const key of PROPORTION_KEYS) {
+		const val = existing && typeof existing === 'object' && !Array.isArray(existing) ? existing[key] : undefined;
+		result[key] = (typeof val === 'number') ? val : DEFAULT_COSMETIC.proportions[key];
+	}
+	return result;
 }
 
 /**
@@ -131,6 +174,9 @@ function backfillUnlockedHats(existing) {
 
 module.exports = {
 	BODY_SHAPES,
+	MODEL_IDS,
+	PROPORTION_KEYS,
+	PROPORTION_RANGES,
 	HAT_CATALOG,
 	HAT_IDS,
 	getHat,

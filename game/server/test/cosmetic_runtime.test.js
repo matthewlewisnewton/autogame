@@ -113,7 +113,13 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		await patchCosmetic(baseUrl, token, customCosmetic);
 
 		const player = buildPlayerRecord('p1', accountId, 'alice', null);
-		expect(player.cosmetic).toEqual(customCosmetic);
+		// PATCH only validates the 4 visual fields; backfillCosmetic adds default modelId/proportions
+		expect(player.cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
+		expect(player.cosmetic.accentColor).toBe(customCosmetic.accentColor);
+		expect(player.cosmetic.bodyShape).toBe(customCosmetic.bodyShape);
+		expect(player.cosmetic.hat).toBe(customCosmetic.hat);
+		expect(player.cosmetic.modelId).toBe('player');
+		expect(player.cosmetic.proportions).toEqual(DEFAULT_COSMETIC.proportions);
 	});
 
 	it('buildPlayerRecord falls back to a copy of the default cosmetic when no account is found', () => {
@@ -129,9 +135,15 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 
 		gameState.players['p3'] = buildPlayerRecord('p3', accountId, 'bob', null);
 		const snapshot = stateSnapshot();
-		expect(snapshot.players['p3'].cosmetic).toEqual(customCosmetic);
+		// Account record has customCosmetic fields + default modelId/proportions (PATCH only validates the 4 visual fields)
+		expect(snapshot.players['p3'].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
+		expect(snapshot.players['p3'].cosmetic.accentColor).toBe(customCosmetic.accentColor);
+		expect(snapshot.players['p3'].cosmetic.bodyShape).toBe(customCosmetic.bodyShape);
+		expect(snapshot.players['p3'].cosmetic.hat).toBe(customCosmetic.hat);
+		expect(snapshot.players['p3'].cosmetic.modelId).toBe('player');
+		expect(snapshot.players['p3'].cosmetic.proportions).toEqual(DEFAULT_COSMETIC.proportions);
 		expect(Object.keys(snapshot.players['p3'].cosmetic).sort()).toEqual(
-			['accentColor', 'bodyColor', 'bodyShape', 'hat']
+			['accentColor', 'bodyColor', 'bodyShape', 'hat', 'modelId', 'proportions']
 		);
 	});
 
