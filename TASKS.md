@@ -26,7 +26,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [125-key-item-flare-beacon](tickets/125-key-item-flare-beacon/)
 - [x] [126-key-item-loot-magnet](tickets/126-key-item-loot-magnet/)
 - [x] [127-key-item-overclock](tickets/127-key-item-overclock/)
-- [ ] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
+- [x] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
 - [ ] [129-key-item-ground-anchor](tickets/129-key-item-ground-anchor/)
 - [x] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
 - [x] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
@@ -54,3 +54,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [157-cleanup-key-item-phase-step](tickets/157-cleanup-key-item-phase-step/)
 - [ ] [158-cleanup-world-open-plaza-stage](tickets/158-cleanup-world-open-plaza-stage/)
 - [ ] [159-cleanup-key-item-purge-charm](tickets/159-cleanup-key-item-purge-charm/)
+- [ ] [160-cleanup-key-item-smoke-bomb](tickets/160-cleanup-key-item-smoke-bomb/)

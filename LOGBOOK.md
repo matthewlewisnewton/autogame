@@ -2171,3 +2171,26 @@ PASS with one non-blocking nit filed separately. The changes are narrowly scoped
 
 None.
 
+
+## v0.101 — Key Item: Smoke Bomb  (2026-06-02 06:15:37)
+
+
+## Debug scenarios
+
+No `?debugScenario=` shortcut was added for smoke bomb. Normal path: equip `smoke_bomb` → `useKeyItem` in dungeon — unchanged.
+
+## Code quality
+
+- Focused diff across progression def, `index.js` handler, `simulation.js` helper + AI hooks, client VFX, and dedicated tests.
+- Comments clearly state fixed-zone vs follow-player and suppression semantics.
+- **Unit tests:** `pnpm test:quick` reported 1428 passed including `smoke_bomb.test.js` (4) and `smoke_bomb_targeting.test.js` (10). Round-1 `coverage.log` shows those files executed under vitest.
+
+## Integration notes (non-blocking)
+
+- Capture screenshots show generic movement combat, not smoke-bomb usage; acceptable given code-verified VFX sub-ticket.
+- `keyItemUsed` is emitted only to the caster (same as other key-item VFX); allies do not see the fog mesh unless extended later — gameplay still replicates via server sim.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are met with documented design choices and automated tests; the captured run is healthy.
+

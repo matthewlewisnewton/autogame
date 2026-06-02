@@ -1,0 +1,16 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true` and empty `pageerrors`; `console.log` has no `pageerror` or `[fatal]` lines (only benign Vite/409 noise).
+
+**Implementation (3 commits since `9abbd7e`):**
+- **Cast:** `smoke_bomb` — 8s cooldown, 2s zone, radius 4, **fixed at cast point** (documented in `index.js`)
+- **Gameplay:** `isInSmokeZone` + enemy AI skip/cancel windup — **targeting cleared** (not miss-rate)
+- **Client:** `triggerSmokeBombVFX` on successful `keyItemUsed`
+- **Tests:** 14 dedicated tests; full suite passed (1428)
+
+**Verdict:** **PASS** — all acceptance criteria met; capture did not use smoke bomb but sub-tickets were code-verified and the game runs cleanly.
+
+Written:
+- [`tickets/128-key-item-smoke-bomb/round-1/review.md`](tickets/128-key-item-smoke-bomb/round-1/review.md) — ends with `VERDICT: PASS`
+- [`tickets/128-key-item-smoke-bomb/round-1/nits.md`](tickets/128-key-item-smoke-bomb/round-1/nits.md) — VFX radius (3 vs 4) and misleading “invisible” description
+- No `gaps.md` (FAIL-only)
