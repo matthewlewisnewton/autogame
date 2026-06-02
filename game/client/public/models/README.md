@@ -5,6 +5,9 @@ Static glTF binaries served at `/models/<filename>.glb` (Vite `public/`). See
 
 ## Base player mesh
 
+Spike decision record (source path, license, poly budget, anchor conventions):
+[MODEL_SPIKE.md](../../../docs/MODEL_SPIKE.md).
+
 | File | Registry key | Role |
 |------|--------------|------|
 | `player.glb` | `player` | Neutral rest-pose humanoid for character customization (tickets 181–188). **Not wired in the renderer yet** — gameplay still uses the procedural `BoxGeometry(1, 1, 1)` fallback in `renderer.js` until ticket 187. |
