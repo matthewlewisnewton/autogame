@@ -9,6 +9,7 @@ const {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
   isValidQuestId,
+  getQuest,
   getLayoutProfileForQuest,
   buildQuestUpdatePayload
 } = require('./quests');
@@ -330,10 +331,15 @@ setFindSocketCallback(findSocketByPlayerId);
 setSavePlayerCallback(savePlayerData);
 
 function applyLayoutForQuest(state, questId) {
+  const quest = getQuest(questId);
   const profile = getLayoutProfileForQuest(questId);
   const seed = questLayoutSeed(questId);
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile, { slopes: true });
+  const layoutOptions = { slopes: true };
+  if (quest && quest.layoutStage === 'sunken-canyon') {
+    layoutOptions.stage = 'sunken-canyon';
+  }
+  state.layout = generateLayout(seed, profile, layoutOptions);
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already
@@ -762,12 +768,17 @@ function applyDebugScenario(socket, name) {
       state.dungeonBounds = computeDungeonBounds(state.layout);
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
-      const canyon = state.layout.rooms.find(r => r.elevationBand === 'canyon');
-      if (canyon) {
-        player.x = canyon.x;
-        player.z = canyon.z;
-        const floorY = sampleFloorY(state.layout, player.x, player.z);
-        player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      const spawn = firstRoomPosition();
+      player.x = spawn.x;
+      player.z = spawn.z;
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      state.enemies = [];
+      state.loot = state.loot.filter(l => l.kind !== 'crystal');
+      spawnEnemies();
+      if (state.run && state.run.objective) {
+        state.run.objective.totalEnemies = state.enemies.length;
+        state.run.objective.defeatedEnemies = 0;
       }
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
@@ -3265,6 +3276,7 @@ if (typeof module !== 'undefined' && module.exports) {
     firstRoomPosition,
     createGameState,
     resetGameState,
+    applyLayoutForQuest,
     gameState,
     setGameState: setProgressionGameState,
     startServer,

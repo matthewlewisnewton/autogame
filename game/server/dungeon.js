@@ -529,7 +529,7 @@ function generateSunkenCanyonLayout(seed, options = {}) {
     plateauX,
   });
 
-  assignRoomRoles(layout);
+  assignSunkenCanyonRoles(layout);
   return layout;
 }
 
@@ -882,7 +882,121 @@ function findFarthestRoom(layout, startRoom) {
  * - farthest room: role 'treasure', spawnWeight 2, encounterTier 0
  * - all others: role 'combat', spawnWeight 1, encounterTier = distance / maxDistance
  */
+function isSunkenCanyonLayout(layout) {
+  return !!(layout && layout.stage === 'sunken-canyon');
+}
+
+/**
+ * Assign roles for the sunken-canyon stage from elevation bands.
+ * Plateau = start, canyon floor = treasure, ramps = combat.
+ */
+function assignSunkenCanyonRoles(layout) {
+  for (const room of layout.rooms) {
+    if (room.elevationBand === 'plateau') {
+      room.role = 'start';
+      room.spawnWeight = 0;
+      room.encounterTier = 0;
+    } else if (room.elevationBand === 'canyon') {
+      room.role = 'treasure';
+      room.spawnWeight = 2;
+      room.encounterTier = 0;
+    } else {
+      room.role = 'combat';
+      room.spawnWeight = 1;
+      room.encounterTier = 0.5;
+    }
+  }
+}
+
+function roomsByElevationBand(layout, band) {
+  return layout.rooms.filter(r => r.elevationBand === band);
+}
+
+function sunkenRampOffsets(layout) {
+  const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+  if (!plateau) return [];
+  return layout.rooms
+    .filter(r => r.elevationBand === 'ramp')
+    .map(r => r.x - plateau.x);
+}
+
+function isNearPlateauRampLip(layout, x, z) {
+  const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+  if (!plateau) return false;
+  const southZ = plateau.z + plateau.depth / 2;
+  if (z < southZ - COVER_SCATTER_RAMP_Z_BUFFER) return false;
+  const gapWidth = layout.passageWidth ?? PASSAGE_WIDTH;
+  const clearance = gapWidth / 2 + 1.2;
+  for (const offset of sunkenRampOffsets(layout)) {
+    const gapX = plateau.x + offset;
+    if (x >= gapX - clearance && x <= gapX + clearance) return true;
+  }
+  return false;
+}
+
+function isWalkablePosition(layout, x, z) {
+  const aabbs = computeWalkableAABBsForLayout(layout);
+  const colliders = buildLayoutWallColliders(layout);
+  return isWalkableAt(x, z, aabbs, colliders);
+}
+
+/**
+ * Plan enemy elevation bands: ≥1 plateau, strictly more than half in canyon.
+ */
+function planSunkenEnemySpawnBands(enemyCount) {
+  const n = Math.max(1, enemyCount | 0);
+  if (n === 1) return ['plateau'];
+
+  const bands = ['plateau'];
+  let canyonSlots = Math.floor(n / 2) + 1;
+  canyonSlots = Math.min(canyonSlots, n - 1);
+  for (let i = 0; i < canyonSlots; i++) bands.push('canyon');
+  while (bands.length < n) bands.push('ramp');
+  return bands;
+}
+
+function randomPositionInElevationBand(layout, band, rng) {
+  const pool = roomsByElevationBand(layout, band);
+  if (pool.length === 0) return null;
+  const room = pool[Math.floor(rng() * pool.length)];
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  return {
+    x: room.x + (rng() * 2 - 1) * halfW,
+    z: room.z + (rng() * 2 - 1) * halfD,
+  };
+}
+
+/**
+ * Party deploy position on the plateau floor, avoiding ramp lips and blocked tiles.
+ */
+function pickPlateauPartySpawn(layout, rng) {
+  const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+  if (!plateau) return { x: 0, z: 0 };
+
+  const halfW = Math.max(0, plateau.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, plateau.depth / 2 - SPAWN_PADDING);
+  const northZ = plateau.z - plateau.depth / 2;
+  const safeNorthZ = northZ + COVER_SCATTER_EDGE_MARGIN;
+
+  for (let attempt = 0; attempt < 48; attempt++) {
+    const x = plateau.x + (rng() * 2 - 1) * halfW;
+    const z = Math.min(plateau.z + (rng() * 2 - 1) * halfD, plateau.z + plateau.depth / 2 - COVER_SCATTER_RAMP_Z_BUFFER - 0.5);
+    const clampedZ = Math.max(z, safeNorthZ);
+    if (isNearPlateauRampLip(layout, x, clampedZ)) continue;
+    if (!isWalkablePosition(layout, x, clampedZ)) continue;
+    return { x, z: clampedZ };
+  }
+
+  return { x: plateau.x, z: plateau.z - plateau.depth / 4 };
+}
+
 function assignRoomRoles(layout) {
+  if (isSunkenCanyonLayout(layout)) {
+    assignSunkenCanyonRoles(layout);
+    return;
+  }
+
   const adj = buildAdjacencyMap(layout);
   const startIdx = 0;
   const dist = bfsDistances(adj, startIdx);
@@ -960,6 +1074,14 @@ module.exports = {
   bfsDistances,
   findFarthestRoom,
   assignRoomRoles,
+  assignSunkenCanyonRoles,
+  isSunkenCanyonLayout,
+  roomsByElevationBand,
+  planSunkenEnemySpawnBands,
+  randomPositionInElevationBand,
+  pickPlateauPartySpawn,
+  isWalkablePosition,
+  isNearPlateauRampLip,
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,

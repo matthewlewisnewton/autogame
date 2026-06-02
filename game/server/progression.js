@@ -39,6 +39,9 @@ const {
   randomRoomPositionByRole,
   sampleFloorY,
   DEFAULT_FLOOR_Y,
+  isSunkenCanyonLayout,
+  planSunkenEnemySpawnBands,
+  randomPositionInElevationBand,
 } = require('./dungeon');
 const {
   ENEMY_DEFS,
@@ -2568,7 +2571,12 @@ function nearestCombatRoom(layout) {
   return nearest;
 }
 
-function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
+function pickEnemySpawnPosition(layout, rng, preferNearestCombat, sunkenBand) {
+  if (isSunkenCanyonLayout(layout) && sunkenBand) {
+    const pos = randomPositionInElevationBand(layout, sunkenBand, rng);
+    if (pos) return pos;
+  }
+
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
     if (nearest) return randomPositionInRoom(nearest, rng);
@@ -2592,11 +2600,15 @@ function spawnCombatEnemies(layout, rng, quest) {
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
   const preferNearest = quest.objectiveType === 'collect_items';
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+  const sunkenBands = isSunkenCanyonLayout(layout)
+    ? planSunkenEnemySpawnBands(enemyCount)
+    : null;
 
   for (let i = 0; i < enemyCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
-    const pos = pickEnemySpawnPosition(layout, rng, useNearest);
+    const sunkenBand = sunkenBands ? sunkenBands[i] : null;
+    const pos = pickEnemySpawnPosition(layout, rng, useNearest, sunkenBand);
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
   }

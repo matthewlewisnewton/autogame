@@ -6,6 +6,11 @@ import {
   bfsDistances,
   findFarthestRoom,
   assignRoomRoles,
+  assignSunkenCanyonRoles,
+  planSunkenEnemySpawnBands,
+  pickPlateauPartySpawn,
+  isWalkablePosition,
+  isNearPlateauRampLip,
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,
@@ -1314,5 +1319,57 @@ describe('generateLayout sunken-canyon', () => {
     const a = sunkenCoverWalls(sunkenLayout(4242));
     const b = sunkenCoverWalls(sunkenLayout(4242));
     expect(a).toEqual(b);
+  });
+
+  it('assigns plateau start and canyon treasure roles from elevation bands', () => {
+    const layout = sunkenLayout(42);
+    const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+    const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+    const ramps = layout.rooms.filter(r => r.elevationBand === 'ramp');
+    expect(plateau.role).toBe('start');
+    expect(canyon.role).toBe('treasure');
+    expect(ramps.every(r => r.role === 'combat')).toBe(true);
+    expect(roomsByRole(layout, 'treasure')[0].elevationBand).toBe('canyon');
+  });
+
+  it('treasure objective on canyon floor is reachable from plateau spawn', () => {
+    const layout = sunkenLayout(99);
+    const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+    const treasure = layout.rooms.find(r => r.role === 'treasure');
+    const spawn = pickPlateauPartySpawn(layout, mulberry32(17));
+    expect(treasure.elevationBand).toBe('canyon');
+    expect(
+      canWalkBetween(layout, spawn.x, spawn.z, treasure.x, treasure.z)
+    ).toBe(true);
+    expect(isNearPlateauRampLip(layout, spawn.x, spawn.z)).toBe(false);
+    expect(isWalkablePosition(layout, spawn.x, spawn.z)).toBe(true);
+    expect(sampleFloorY(layout, spawn.x, spawn.z)).toBeCloseTo(SUNKEN_PLATEAU_Y, 5);
+  });
+
+  it('party spawn stays on plateau band away from ramp lips', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const layout = sunkenLayout(seed);
+      const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+      const spawn = pickPlateauPartySpawn(layout, mulberry32(seed + 17));
+      const halfW = plateau.width / 2;
+      const halfD = plateau.depth / 2;
+      expect(Math.abs(spawn.x - plateau.x)).toBeLessThanOrEqual(halfW);
+      expect(Math.abs(spawn.z - plateau.z)).toBeLessThanOrEqual(halfD);
+      expect(isNearPlateauRampLip(layout, spawn.x, spawn.z)).toBe(false);
+      expect(isWalkablePosition(layout, spawn.x, spawn.z)).toBe(true);
+    }
+  });
+
+  it('plans enemy bands with plateau threat and canyon majority', () => {
+    expect(planSunkenEnemySpawnBands(5)).toEqual([
+      'plateau',
+      'canyon',
+      'canyon',
+      'canyon',
+      'ramp',
+    ]);
+    const bands = planSunkenEnemySpawnBands(4);
+    expect(bands.filter(b => b === 'plateau').length).toBeGreaterThanOrEqual(1);
+    expect(bands.filter(b => b === 'canyon').length).toBeGreaterThan(2);
   });
 });

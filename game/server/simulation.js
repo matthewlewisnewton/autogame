@@ -22,7 +22,14 @@ const {
   RESPAWN_DELAY_MS,
   COOLDOWN_MS
 } = require('./config');
-const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y } = require('./dungeon');
+const {
+  PASSAGE_WIDTH,
+  sampleFloorY,
+  DEFAULT_FLOOR_Y,
+  isSunkenCanyonLayout,
+  pickPlateauPartySpawn,
+  mulberry32,
+} = require('./dungeon');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -573,6 +580,10 @@ function isInsideDungeon(x, z) {
  */
 function firstRoomPosition() {
   const layout = _gameState.layout;
+  if (isSunkenCanyonLayout(layout)) {
+    const seed = (_gameState && _gameState.layoutSeed) || 42;
+    return pickPlateauPartySpawn(layout, mulberry32(seed + 17));
+  }
   const startRoom = layout.rooms.find(r => r.role === 'start');
   const room = startRoom || layout.rooms[0]; // defensive fallback
   return { x: room.x, z: room.z };

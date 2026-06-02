@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import config from '../config.js';
+import { questLayoutSeed } from '../dungeon.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -12,6 +13,7 @@ import {
 	firstRoomPosition,
 	createGameState,
 	resetGameState,
+	applyLayoutForQuest,
 	gameState,
 	runGameLoopTick,
 	cleanupStalePlayers,
@@ -221,7 +223,11 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['crystal_rescue', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual([
+			'crystal_rescue',
+			'sunken_canyon_trial',
+			'training_caverns',
+		]);
 
 		for (const quest of Object.values(QUEST_DEFS)) {
 			expect(quest.id).toBeTruthy();
@@ -4781,6 +4787,57 @@ describe('Role-aware spawning constraints', () => {
 		// test suite covers this with Math.random mocking. Here we verify the
 		// structural behavior: spawnLoot uses treasure rooms when available.
 		// The spawnLoot describe block above already tests this with vi.spyOn.
+	});
+});
+
+function enemyInElevationBand(layout, x, z, band) {
+	return layout.rooms
+		.filter(r => r.elevationBand === band)
+		.some(room => {
+			const hw = room.width / 2;
+			const hd = room.depth / 2;
+			return Math.abs(x - room.x) <= hw && Math.abs(z - room.z) <= hd;
+		});
+}
+
+describe('sunken-canyon enemy spawning', () => {
+	beforeEach(() => {
+		resetGameState();
+		gameState.selectedQuestId = 'sunken_canyon_trial';
+		gameState.layoutSeed = questLayoutSeed('sunken_canyon_trial');
+		gameState.layout = generateLayout(gameState.layoutSeed, 'open', {
+			stage: 'sunken-canyon',
+			slopes: true,
+		});
+		gameState.enemies = [];
+		spawnEnemies();
+	});
+
+	it('uses sunken-canyon layout for the trial quest seed path', () => {
+		expect(gameState.layout.stage).toBe('sunken-canyon');
+		expect(gameState.layout.rooms.find(r => r.role === 'treasure').elevationBand).toBe('canyon');
+	});
+
+	it('applyLayoutForQuest selects sunken-canyon for sunken_canyon_trial', () => {
+		const state = { layoutSeed: 0 };
+		applyLayoutForQuest(state, 'sunken_canyon_trial');
+		expect(state.layout.stage).toBe('sunken-canyon');
+		expect(state.layout.rooms.find(r => r.role === 'start').elevationBand).toBe('plateau');
+	});
+
+	it('places at least one enemy on the plateau and a canyon majority', () => {
+		const layout = gameState.layout;
+		const enemyCount = QUEST_DEFS.sunken_canyon_trial.enemyCount;
+		expect(gameState.enemies.length).toBe(enemyCount);
+
+		let plateauCount = 0;
+		let canyonCount = 0;
+		for (const enemy of gameState.enemies) {
+			if (enemyInElevationBand(layout, enemy.x, enemy.z, 'plateau')) plateauCount++;
+			if (enemyInElevationBand(layout, enemy.x, enemy.z, 'canyon')) canyonCount++;
+		}
+		expect(plateauCount).toBeGreaterThanOrEqual(1);
+		expect(canyonCount).toBeGreaterThan(enemyCount / 2);
 	});
 });
 

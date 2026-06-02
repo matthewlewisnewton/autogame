@@ -17,7 +17,17 @@ const QUEST_DEFS = {
     enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
-  }
+  },
+  sunken_canyon_trial: {
+    id: 'sunken_canyon_trial',
+    name: 'Sunken Canyon Trial',
+    description: 'Descend from the plateau and clear the canyon floor.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 5,
+    rewardCurrency: 8,
+    layoutProfile: 'open',
+    layoutStage: 'sunken-canyon',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';
