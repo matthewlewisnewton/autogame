@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { KEY_ITEM_DEFS } from '../index.js';
+import { KEY_ITEM_DEFS, damagePlayer, gameState, resetGameState } from '../index.js';
 import { addDebuff } from '../simulation.js';
 import {
 	startTestServer,
@@ -98,12 +98,13 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 		expect(player.keyItemCooldownUntil - now).toBeCloseTo(def.cooldownMs, -2);
 	});
 
-	it('with no debuffs, burns cooldown and reports cleared: null (no shield)', async () => {
+	it('with no debuffs, grants a one-hit shield (shieldHitsRemaining = 1) and burns cooldown', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		player.debuffs = [];
+		player.shieldHitsRemaining = 0;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'purge_charm' });
@@ -111,8 +112,29 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 
 		const now = Date.now();
 		expect(result.ok).toBe(true);
-		expect(result.cleared).toBeNull();
+		expect(result.shielded).toBe(true);
+		expect(result.cooldownUntil).toBeGreaterThan(now);
+		expect(player.shieldHitsRemaining).toBe(1);
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
+	});
+
+	it('with a debuff, clears it WITHOUT granting a shield', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		player.debuffs = [];
+		player.shieldHitsRemaining = 0;
+		addDebuff(player, 'slow', Date.now() + 5000);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'purge_charm' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.cleared).toBe('slow');
+		expect(result.shielded).toBeUndefined();
+		expect(player.shieldHitsRemaining).toBe(0); // no shield granted
 	});
 
 	it('is no longer rejected as not_implemented', async () => {
@@ -147,5 +169,53 @@ describe('useKeyItem — purge_charm (socket integration)', () => {
 		expect(result2.ok).toBe(false);
 		expect(result2.reason).toBe('on_cooldown');
 		expect(result2.remainingMs).toBeGreaterThan(0);
+	});
+});
+
+// ── One-hit shield absorption in damagePlayer ──
+
+describe('damagePlayer — purge_charm one-hit shield (shieldHitsRemaining)', () => {
+	beforeEach(() => {
+		resetGameState();
+	});
+
+	function addShieldedPlayer(overrides = {}) {
+		gameState.players['p1'] = {
+			x: 0, y: 0.5, z: 0, rotation: 0,
+			hp: 100, dead: false,
+			lastActivity: Date.now(),
+			...overrides,
+		};
+		return gameState.players['p1'];
+	}
+
+	it('fully absorbs the next hit and decrements shieldHitsRemaining to 0', () => {
+		const player = addShieldedPlayer({ shieldHitsRemaining: 1 });
+		const result = damagePlayer('p1', 40);
+		expect(result).toBeNull();
+		expect(player.hp).toBe(100); // HP untouched
+		expect(player.shieldHitsRemaining).toBe(0); // shield consumed
+	});
+
+	it('absorbs the FULL hit regardless of damage amount (hit-based, not HP-based)', () => {
+		const player = addShieldedPlayer({ shieldHitsRemaining: 1 });
+		damagePlayer('p1', 9999);
+		expect(player.hp).toBe(100);
+		expect(player.shieldHitsRemaining).toBe(0);
+	});
+
+	it('a second hit after the shield is consumed reduces HP normally', () => {
+		const player = addShieldedPlayer({ shieldHitsRemaining: 1 });
+		damagePlayer('p1', 30); // absorbed
+		expect(player.hp).toBe(100);
+		damagePlayer('p1', 30); // shield gone → normal damage
+		expect(player.hp).toBe(70);
+		expect(player.shieldHitsRemaining).toBe(0);
+	});
+
+	it('does not interfere with normal damage when shieldHitsRemaining is undefined', () => {
+		const player = addShieldedPlayer();
+		damagePlayer('p1', 25);
+		expect(player.hp).toBe(75);
 	});
 });

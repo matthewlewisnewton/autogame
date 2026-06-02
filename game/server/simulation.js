@@ -1548,6 +1548,14 @@ function damagePlayer(playerId, amount, options = {}) {
     }
   }
 
+  // One-hit absorb shield (purge_charm no-debuff fallback). Hit-based, not
+  // HP-based: the FULL incoming hit is absorbed regardless of amount, and the
+  // shield is consumed. Checked before the shieldHp pool below.
+  if ((player.shieldHitsRemaining || 0) > 0) {
+    player.shieldHitsRemaining -= 1;
+    return null;
+  }
+
   // Shield expiry
   if (player.shieldExpiresAt && now > player.shieldExpiresAt) {
     player.shieldHp = 0;
