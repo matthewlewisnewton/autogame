@@ -34,8 +34,9 @@ def _build_parser() -> argparse.ArgumentParser:
                           help="Agent name (from roles.yaml) to force as the implementer primary")
 
     p_factory = sub.add_parser("factory", help="Run the parallel dispatcher (gastown factory)")
-    p_factory.add_argument("--workers", type=int, default=3,
-                           help="Concurrent worktree slots / port pairs (default 3)")
+    p_factory.add_argument("--workers", type=int, default=None,
+                           help="Concurrent worktree slots / port pairs "
+                                "(default: from harness/factory.yaml)")
     p_factory.add_argument("--enable", metavar="AGENT",
                            help="Re-enable a circuit-broken agent and exit")
     p_factory.add_argument("--max-idle-ticks", type=int, default=0,
