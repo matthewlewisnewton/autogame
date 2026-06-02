@@ -1402,3 +1402,209 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     }
   });
 });
+
+// ── spire-ascent stage layout ──
+
+describe("generateLayout(seed, 'spire-ascent')", () => {
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter(r => r.band === band);
+  }
+
+  function tiersSorted(layout) {
+    return roomsByBand(layout, 'tier').sort((a, b) => a.tierIndex - b.tierIndex);
+  }
+
+  function isFlatRoom(room) {
+    const fc = room.floorCorners;
+    return fc.yNW === fc.yNE && fc.yNE === fc.ySE && fc.ySE === fc.ySW;
+  }
+
+  function rampAverageSlope(room) {
+    const fc = room.floorCorners;
+    const yHigh = Math.max(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+    const yLow = Math.min(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+    const rise = yHigh - yLow;
+    const run = (fc.yNW === fc.yNE && fc.ySE === fc.ySW) ? room.depth : room.width;
+    return rise / run;
+  }
+
+  function spireReachableFromStart(layout) {
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    return countReachableRooms(layout, aabbs, colliders) === layout.rooms.length;
+  }
+
+  function canReachTopFromStart(layout) {
+    const tiers = tiersSorted(layout);
+    const start = tiers[0];
+    const top = tiers[tiers.length - 1];
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    const tolerance = 1.5;
+    const seen = new Set();
+    const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+    const queue = [{ x: start.x, z: start.z }];
+    seen.add(key(start.x, start.z));
+    const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+    for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+      const { x, z } = queue[qi];
+      if (Math.hypot(x - top.x, z - top.z) <= tolerance) return true;
+      for (const [dx, dz] of dirs) {
+        const nx = x + dx;
+        const nz = z + dz;
+        const k = key(nx, nz);
+        if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+        seen.add(k);
+        queue.push({ x: nx, z: nz });
+      }
+    }
+    return false;
+  }
+
+  it('returns profile spire-ascent with tier and ramp bands', () => {
+    const layout = generateLayout(42, 'spire-ascent');
+    expect(layout.profile).toBe('spire-ascent');
+    expect(layout.passages).toEqual([]);
+    const tiers = roomsByBand(layout, 'tier');
+    expect(tiers.length).toBeGreaterThanOrEqual(3);
+    expect(tiers.length).toBeLessThanOrEqual(5);
+    expect(roomsByBand(layout, 'ramp').length).toBe(tiers.length - 1);
+  });
+
+  it('has 3–5 tiers with tierIndex 0..N-1 and flat floorCorners', () => {
+    for (const seed of [1, 42, 99, 2024]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersSorted(layout);
+      expect(tiers.length).toBeGreaterThanOrEqual(3);
+      expect(tiers.length).toBeLessThanOrEqual(5);
+      tiers.forEach((tier, i) => {
+        expect(tier.tierIndex).toBe(i);
+        expect(isFlatRoom(tier)).toBe(true);
+        expect(tier.width).toBeGreaterThanOrEqual(12);
+        expect(tier.width).toBeLessThanOrEqual(15);
+        expect(tier.depth).toBeGreaterThanOrEqual(12);
+        expect(tier.depth).toBeLessThanOrEqual(15);
+      });
+    }
+  });
+
+  it('has strictly monotonic tier centre Y', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersSorted(layout);
+      for (let k = 1; k < tiers.length; k++) {
+        const yPrev = sampleFloorY(layout, tiers[k - 1].x, tiers[k - 1].z);
+        const yCurr = sampleFloorY(layout, tiers[k].x, tiers[k].z);
+        expect(yCurr).toBeGreaterThan(yPrev);
+      }
+    }
+  });
+
+  it('has exactly one ramp between each consecutive tier pair with slope ≥ 0.2', () => {
+    for (const seed of [1, 42, 999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersSorted(layout);
+      const ramps = roomsByBand(layout, 'ramp');
+      expect(ramps.length).toBe(tiers.length - 1);
+      for (const ramp of ramps) {
+        const fc = ramp.floorCorners;
+        const corners = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];
+        expect(new Set(corners).size).toBeGreaterThan(1);
+        expect(rampAverageSlope(ramp)).toBeGreaterThanOrEqual(0.2);
+      }
+    }
+  });
+
+  it('total Y gain from tier-0 to top tier centre is ≥ 10', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersSorted(layout);
+      const y0 = sampleFloorY(layout, tiers[0].x, tiers[0].z);
+      const yTop = sampleFloorY(layout, tiers[tiers.length - 1].x, tiers[tiers.length - 1].z);
+      expect(yTop - y0).toBeGreaterThanOrEqual(10);
+    }
+  });
+
+  it('assigns explicit roles without assignRoomRoles', () => {
+    const layout = generateLayout(42, 'spire-ascent');
+    const tiers = tiersSorted(layout);
+    expect(tiers[0].role).toBe('start');
+    expect(tiers[tiers.length - 1].role).toBe('treasure');
+    for (let i = 1; i < tiers.length - 1; i++) {
+      expect(tiers[i].role).toBe('combat');
+    }
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.role).toBe('connector');
+      expect(ramp.spawnWeight).toBe(0);
+    }
+  });
+
+  it('tiers have perimeter walls; bottom tier south and top tier north are solid', () => {
+    const layout = generateLayout(42, 'spire-ascent');
+    const tiers = tiersSorted(layout);
+    const bottom = tiers[0];
+    const top = tiers[tiers.length - 1];
+    const half = bottom.depth / 2;
+
+    expect(bottom.walls.some(
+      w => w.axis === 'x' && Math.abs(w.z - (bottom.z + half)) < 0.01 && Math.abs(w.length - bottom.width) < 0.01
+    )).toBe(true);
+    expect(top.walls.some(
+      w => w.axis === 'x' && Math.abs(w.z - (top.z - top.depth / 2)) < 0.01 && Math.abs(w.length - top.width) < 0.01
+    )).toBe(true);
+    expect(bottom.walls.some(w => w.axis === 'z' && Math.abs(w.x - (bottom.x - half)) < 0.01)).toBe(true);
+    expect(bottom.walls.some(w => w.axis === 'z' && Math.abs(w.x - (bottom.x + half)) < 0.01)).toBe(true);
+  });
+
+  it('foot flood-fill from tier-0 reaches every room and top-tier centre', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(spireReachableFromStart(layout)).toBe(true);
+      expect(canReachTopFromStart(layout)).toBe(true);
+    }
+  });
+
+  it('has no orphan tier rooms', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const colliders = buildWallColliders(layout);
+      const aabbs = computeWalkableAABBs(layout);
+      const start = layout.rooms.find(r => r.role === 'start');
+      const seen = new Set();
+      const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+      const queue = [{ x: start.x, z: start.z }];
+      seen.add(key(start.x, start.z));
+      const reachedTiers = new Set();
+      const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+      for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+        const { x, z } = queue[qi];
+        for (const tier of roomsByBand(layout, 'tier')) {
+          const hw = tier.width / 2;
+          const hd = tier.depth / 2;
+          if (x >= tier.x - hw && x <= tier.x + hw && z >= tier.z - hd && z <= tier.z + hd) {
+            reachedTiers.add(tier.tierIndex);
+          }
+        }
+        for (const [dx, dz] of dirs) {
+          const nx = x + dx;
+          const nz = z + dz;
+          const k = key(nx, nz);
+          if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+          seen.add(k);
+          queue.push({ x: nx, z: nz });
+        }
+      }
+
+      const tiers = tiersSorted(layout);
+      expect(reachedTiers.size).toBe(tiers.length);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'spire-ascent');
+    const b = generateLayout(2024, 'spire-ascent');
+    expect(a).toEqual(b);
+  });
+});
