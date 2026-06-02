@@ -2355,3 +2355,26 @@ None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 None blocking. The acceptance criteria are fully and robustly met and the
 captured run is clean.
 
+
+## v0.133 — Key Item: Smoke Bomb  (2026-06-02 14:27:33)
+
+## Debug scenario (`smoke-bomb-ready`)
+
+Verified all three requirements:
+- **Gated**: only reachable via the `debugScenario` socket event behind
+  `isDebugScenarioAllowed` (`index.js:3514-3522`) and membership in
+  `DEBUG_SCENARIOS`. Normal gameplay never invokes it.
+- **End-state still reachable normally**: the scenario only equips `smoke_bomb`,
+  zeroes the cooldown, and spawns two enemies in range. The identical state is
+  reachable by equipping the Smoke Bomb key item and approaching enemies; the
+  comment documents this.
+- **No invariant bypass**: the scenario does not cast the bomb or fabricate the
+  smoke zone — the player still casts through the real `useKeyItem` path, which
+  applies the cooldown, persistence flag, and concealment exactly as in normal
+  play.
+
+## Remaining gaps
+
+None blocking. The ticket is fully and robustly satisfied. (Minor non-blocking
+nits recorded in `nits.md`.)
+

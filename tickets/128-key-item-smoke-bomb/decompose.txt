@@ -1,0 +1,13 @@
+Both existing sub-tickets (`01-smoke-bomb-server-mechanic` and `02-smoke-bomb-client-vfx`) carry `.passed` markers — they are done and must not be touched.
+
+Reading the current gaps in `review-feedback.md`: the sole open item is **not a game-code gap**. It's a harness/capture infrastructure failure — the Vite dev server connection dropped mid-capture (409 Conflict → connection lost → `ERR_CONNECTION_REFUSED` → `waitForFunction` timeout). The review is explicit:
+
+- `pageerrors` is empty; server.log and client.log boot cleanly; 1021/1021 server tests pass.
+- "Files: none — harness infra, not game code."
+- "Do NOT modify `game/`; the smoke-bomb code fully satisfies the acceptance criteria and further code edits will not change the outcome until the capture succeeds."
+
+There is no game-code gap that a sub-ticket could close. The fix the review prescribes is purely a capture re-run on a clean Vite instance, which is outside the scope of any implementable game sub-ticket (and I must not modify `harness/`). Creating a sub-ticket here would either be a no-op or force unnecessary, explicitly-warned-against edits to already-passing `game/` code.
+
+**Sub-ticket folders created: none.**
+
+Both sub-tickets are complete and passing; the remaining failure is a transient capture-infrastructure issue that requires a clean capture re-run, not new game work.

@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Smoke Bomb ticket fully and robustly satisfies its acceptance criteria.
+
+**Runtime health (gate):** `metrics.json` reports `ok: true`, empty `pageerrors`, no `harness_failure`; both clients reached `playing` with a live scene. `console.log` shows only benign Vite/initScene lines. Game starts and loads cleanly.
+
+**Acceptance criteria — all met:**
+- **Cooldown ~8s** — retuned from stale 18000→8000; generic cooldown gate rejects early re-cast; test confirms window isn't refreshed.
+- **Zone choice documented** — fixed at cast point (snapshotted `smokeBombX/Z`), documented in 3 places; player can walk out and become targetable again.
+- **Client VFX** — `triggerSmokeVFX` puff cluster with rise/expand/fade, proper disposal, per-player dedup, triggered on cast ack and re-triggered from replicated state for other clients.
+- **Targeting behavior tested** — clean rule (concealed players can't be acquired; in-flight wind-ups against newly-concealed players are cancelled, minions excluded). 9 tests, all passing (verified via vitest).
+
+**Debug scenario `smoke-bomb-ready`** checks out on all three requirements: properly gated behind `isDebugScenarioAllowed`, the end-state is reachable through normal play, and it bypasses no invariant (the player still casts via the real `useKeyItem` path).
+
+One non-blocking nit recorded in `nits.md` (duplicated `SMOKE_DURATION` literal on the client that could drift from server `durationMs`). No `gaps.md` written since the verdict is PASS.

@@ -1,0 +1,20 @@
+{
+  "url": "http://localhost:5173/",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Both players in squad lobby."
+    }
+  ],
+  "probes": [],
+  "error": "page.waitForFunction: Timeout 12000ms exceeded.",
+  "pageerrors": []
+}

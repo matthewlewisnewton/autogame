@@ -1,0 +1,12 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/game/data
+Server listening on port 3000
+Player connected: socket=I1-OXUWIME4hWrEPAAAB, playerId=880b280c-6275-41bd-affa-54627cdd0765
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=US7k7yXY-RAuydg0AAAD, playerId=918dc310-72de-41f4-be4e-9a04eaa0cd38
+[loot] spawned id=d3db34ae-2b71-4256-b072-d8a4da4e272d value=9
+Player disconnected: I1-OXUWIME4hWrEPAAAB
+Player disconnected: US7k7yXY-RAuydg0AAAD
