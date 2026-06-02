@@ -1075,6 +1075,85 @@ describe('sampleFloorY(layout, x, z)', () => {
   });
 });
 
+function twoTierRampLayout() {
+  const { fromRoom, toRoom } = canonicalTierRooms();
+  const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'south', rise: 3, minSlope: 0.2 });
+  return {
+    rooms: [
+      { ...fromRoom, walls: [] },
+      { ...toRoom, walls: [] },
+    ],
+    passages: [ramp],
+    passageWidth: 4,
+  };
+}
+
+describe('sampleFloorY — ramp passages', () => {
+  it('bilinearly interpolates Y inside a ramp passage corridor', () => {
+    const layout = twoTierRampLayout();
+    const ramp = layout.passages[0];
+    const fromRoom = layout.rooms[0];
+    const zStart = fromRoom.z + fromRoom.depth / 2;
+    const zEnd = layout.rooms[1].z - layout.rooms[1].depth / 2;
+    const midZ = (zStart + zEnd) / 2;
+
+    const midY = sampleFloorY(layout, ramp.x1, midZ);
+    expect(midY).not.toBeNull();
+    expect(midY).toBeGreaterThan(fromRoom.floorCorners.yNW);
+    expect(midY).toBeLessThan(layout.rooms[1].floorCorners.yNW);
+
+    expect(sampleFloorY(layout, ramp.x1, zStart)).toBeCloseTo(ramp.floorCorners.yNW, 5);
+    expect(sampleFloorY(layout, ramp.x1, zEnd)).toBeCloseTo(ramp.floorCorners.ySW, 5);
+  });
+
+  it('keeps Y continuous across room↔ramp boundaries (≤ 0.05)', () => {
+    const layout = twoTierRampLayout();
+    const fromRoom = layout.rooms[0];
+    const southEdgeZ = fromRoom.z + fromRoom.depth / 2;
+    const eps = 0.01;
+
+    const yRoom = sampleFloorY(layout, fromRoom.x, southEdgeZ - eps);
+    const yRamp = sampleFloorY(layout, fromRoom.x, southEdgeZ + eps);
+    expect(yRoom).not.toBeNull();
+    expect(yRamp).not.toBeNull();
+    expect(Math.abs(yRoom - yRamp)).toBeLessThanOrEqual(0.05);
+  });
+
+  it('prefers room sampling when a point lies in both room and passage AABBs', () => {
+    const layout = twoTierRampLayout();
+    const roomY = sampleFloorY(layout, layout.rooms[0].x, layout.rooms[0].z);
+    expect(roomY).toBe(0.5);
+  });
+
+  it('returns null outside rooms and passages without floorCorners', () => {
+    const layout = generateLayout(42);
+    expect(sampleFloorY(layout, 9999, 9999)).toBeNull();
+  });
+
+  it('ignores passages that lack floorCorners', () => {
+    const layout = {
+      rooms: [],
+      passages: [{ x1: 0, z1: 0, x2: 0, z2: 10, corridorLength: 10 }],
+      passageWidth: 4,
+    };
+    expect(sampleFloorY(layout, 0, 5)).toBeNull();
+  });
+
+  it('matches spire-ascent ramp floor at corridor midpoint', () => {
+    const layout = spireLayout(42);
+    const ramp = layout.passages[0];
+    const fromRoom = layout.rooms[0];
+    const toRoom = layout.rooms[1];
+    const zStart = fromRoom.z + fromRoom.depth / 2;
+    const zEnd = toRoom.z - toRoom.depth / 2;
+    const midZ = (zStart + zEnd) / 2;
+    const y = sampleFloorY(layout, ramp.x1, midZ);
+    expect(y).not.toBeNull();
+    expect(y).toBeGreaterThan(computeTierBaseY(fromRoom));
+    expect(y).toBeLessThan(computeTierBaseY(toRoom));
+  });
+});
+
 // ── buildRampPassage ──
 
 function canonicalTierRooms() {

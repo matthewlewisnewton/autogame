@@ -408,6 +408,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-exhausted',
   'telepipe-ready',
   'sloped-dungeon',
+  'spire-ramp-passage',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -757,6 +758,29 @@ function applyDebugScenario(socket, name) {
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
       // Send updated layout to all clients in the lobby
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ramp-passage') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || questLayoutSeed(state.selectedQuestId || DEFAULT_QUEST_ID);
+      const profile = getLayoutProfileForQuest(state.selectedQuestId || DEFAULT_QUEST_ID);
+      state.layout = generateLayout(seed, profile, { stage: 'spire-ascent' });
+      state.layoutSeed = seed;
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      withLobbyContext({ state }, () => rebuildWallColliders());
+      const fromRoom = state.layout.rooms[0];
+      const toRoom = state.layout.rooms[1];
+      const zStart = fromRoom.z + fromRoom.depth / 2;
+      const zEnd = toRoom.z - toRoom.depth / 2;
+      player.x = state.layout.passages[0].x1;
+      player.z = (zStart + zEnd) / 2;
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,

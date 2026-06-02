@@ -10,7 +10,12 @@ import {
 } from '../simulation.js';
 import { createGameState } from '../index.js';
 import { INPUT_STALE_MS, MOVE_SPEED, TICK_RATE } from '../config.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y } from '../dungeon.js';
+import {
+  sampleFloorY,
+  DEFAULT_FLOOR_Y,
+  generateSpireAscentLayout,
+  PASSAGE_WIDTH,
+} from '../dungeon.js';
 
 function buildOpenLayout() {
   return {
@@ -261,6 +266,42 @@ describe('applyPlayerMovement() — slope movement', () => {
     const expectedY = sampleFloorY(state.layout, player.x, player.z);
     expect(expectedY).not.toBeNull();
     expect(player.y).toBeCloseTo(expectedY, 5);
+  });
+
+  it('sets player.y from sampleFloorY while moving along a spire ramp passage', () => {
+    const layout = generateSpireAscentLayout(42, PASSAGE_WIDTH);
+    state.layout = layout;
+    state.walkableAABBs = computeWalkableAABBs(layout);
+    state.dungeonBounds = computeDungeonBounds(layout);
+    setGameState(state, {});
+    rebuildWallColliders();
+
+    const fromRoom = layout.rooms[0];
+    const toRoom = layout.rooms[1];
+    const zStart = fromRoom.z + fromRoom.depth / 2;
+    const zEnd = toRoom.z - toRoom.depth / 2;
+    const midZ = (zStart + zEnd) / 2 - 1;
+
+    state.players.p1 = makePlayer({
+      x: layout.passages[0].x1,
+      z: midZ,
+      y: DEFAULT_FLOOR_Y,
+      inputActive: true,
+      inputDx: 0,
+      inputDz: 1,
+      lastInputTime: Date.now(),
+    });
+
+    for (let i = 0; i < 20; i++) {
+      applyPlayerMovement();
+    }
+
+    const player = state.players.p1;
+    expect(player.z).toBeGreaterThan(midZ);
+    const expectedY = sampleFloorY(state.layout, player.x, player.z);
+    expect(expectedY).not.toBeNull();
+    expect(player.y).toBeCloseTo(expectedY, 5);
+    expect(player.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
   });
 
   it('falls back to DEFAULT_FLOOR_Y when sampleFloorY returns null', () => {
