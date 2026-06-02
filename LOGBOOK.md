@@ -2217,3 +2217,26 @@ No integration gaps found between activation and weapon echo layers.
 
 ---
 
+
+## v0.108 — Gameplay Review: Improvements & Simplifications Doc  (2026-06-02 09:13:35)
+
+
+## Per-criterion summary
+
+| Criterion | Status |
+|-----------|--------|
+| `gameplay-review.md` exists, sole `game/` change | Pass |
+| Section order and minimum counts | Pass |
+| Grounded, game-specific proposals | Pass |
+| Self-contained document | Pass |
+| Game runs cleanly in capture | Pass |
+| No runtime / requirements regression | Pass |
+
+## Remaining gaps
+
+None. No blocking gaps for acceptance or runtime health.
+
+## Nits (non-blocking)
+
+See `nits.md` for optional follow-ups (design-doc deck cap vs code, minor doc depth on run objectives).
+

@@ -1,0 +1,13 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no `pageerror`/`[fatal]` lines. Capture shows playing phase, canvas, card hand, enemies, and movement.
+
+**Deliverable:** Only `game/docs/gameplay-review.md` changed under `game/` (+199 lines). Four commits since baseline `aa963b34`.
+
+**Acceptance:** All sections in order; 8 improvements (≥6), 6 simplifications (≥4), top-5 shortlist; proposals cite real files/systems (`validateDeck`, Telepipe, `battle_familiar`, lock-on, drop-in, etc.). Spot-checks match `config.js` and the codebase.
+
+**Verdict:** **PASS** — no `gaps.md` (fail-only).
+
+**Written:**
+- [`tickets/155-gameplay-review-doc/round-1/review.md`](tickets/155-gameplay-review-doc/round-1/review.md) — full assessment; last line: `VERDICT: PASS`
+- [`tickets/155-gameplay-review-doc/round-1/nits.md`](tickets/155-gameplay-review-doc/round-1/nits.md) — two optional follow-ups (design.md deck cap vs code 24; run-objectives paragraph depth)
