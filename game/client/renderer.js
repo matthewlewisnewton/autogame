@@ -252,6 +252,56 @@ const MINION_VISUAL = {
 };
 
 /**
+ * Target height and local foot Y for a registry key, derived from procedural tables.
+ * @param {string} key
+ * @returns {{ height: number, footY: number } | null}
+ */
+export function getRegistryModelTarget(key) {
+	const enemy = ENEMY_GEOMETRY[key];
+	if (enemy) {
+		if (enemy.type === 'octahedron') {
+			return { height: enemy.radius * 2, footY: -enemy.radius };
+		}
+		return { height: enemy.height, footY: -enemy.height / 2 };
+	}
+
+	const minion = MINION_VISUAL[key];
+	if (minion) {
+		const scale = minion.scale ?? 1;
+		if (minion.shape === 'octahedron') {
+			return { height: minion.radius * 2 * scale, footY: -minion.radius * scale };
+		}
+		if (minion.shape === 'box') {
+			return { height: minion.height * scale, footY: -(minion.height / 2) * scale };
+		}
+		return { height: minion.height * scale, footY: -(minion.height / 2) * scale };
+	}
+
+	return null;
+}
+
+/**
+ * Uniformly scale a loaded glTF scene to the procedural target height and align its
+ * bounding-box minimum Y with the procedural foot plane for `key`.
+ * @param {THREE.Object3D} model
+ * @param {string} key
+ */
+export function normalizeRegistryModel(model, key) {
+	const target = getRegistryModelTarget(key);
+	if (!target || !model) return;
+
+	const box = new THREE.Box3().setFromObject(model);
+	const currentHeight = box.max.y - box.min.y;
+	if (currentHeight <= 0) return;
+
+	const scaleFactor = target.height / currentHeight;
+	model.scale.multiplyScalar(scaleFactor);
+
+	box.setFromObject(model);
+	model.position.y = target.footY - box.min.y;
+}
+
+/**
  * Consult MODEL_REGISTRY for `key` and, when a model path is configured, kick off
  * an async load and swap the cloned model in for the procedural primitive on
  * success. This is fire-and-forget: callers build + return their procedural
@@ -283,6 +333,7 @@ function attachRegistryModel(key, host) {
 	loadModel(path)
 		.then((model) => {
 			if (!model) return; // load failed/returned null → procedural stays (warned in models.js).
+			normalizeRegistryModel(model, key);
 			for (const node of procedural) node.material.visible = false;
 			host.add(model);
 			host.userData.modelOverride = model;
