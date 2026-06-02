@@ -26,7 +26,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [125-key-item-flare-beacon](tickets/125-key-item-flare-beacon/)
 - [x] [126-key-item-loot-magnet](tickets/126-key-item-loot-magnet/)
 - [x] [127-key-item-overclock](tickets/127-key-item-overclock/)
-- [ ] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
+- [x] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
 - [ ] [129-key-item-ground-anchor](tickets/129-key-item-ground-anchor/)
 - [x] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
 - [x] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
@@ -61,3 +61,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [190-cleanup-character-hats-server-unlocks-currency](tickets/190-cleanup-character-hats-server-unlocks-currency/)
 - [ ] [191-cleanup-character-customization-client-render-avatar](tickets/191-cleanup-character-customization-client-render-avatar/)
 - [ ] [192-cleanup-models-gltf-loader-infrastructure](tickets/192-cleanup-models-gltf-loader-infrastructure/)
+- [ ] [193-cleanup-key-item-smoke-bomb](tickets/193-cleanup-key-item-smoke-bomb/)

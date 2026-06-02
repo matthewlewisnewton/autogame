@@ -1,0 +1,17 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Smoke Veil (`smoke_bomb`) implementation fully and robustly satisfies the top-level ticket.
+
+**Runtime health:** Captured run is clean — `metrics.json` has `ok: true`, empty `pageerrors`, both players reached `playing` with a live canvas; `console.log` has no errors or fatals; no harness failure.
+
+**Acceptance criteria — all met:**
+- **Cooldown ~8s** — `cooldownMs` 18000→8000, enforced and tested (window + `on_cooldown` rejection).
+- **Zone fixed at cast point** (documented choice) — stored `{ownerId,x,z,radius,expiry}` at cast time; radius test against live player position means leaving the cloud ends protection.
+- **Client smoke VFX** — `triggerSmokeVFX` ground disc with fade in/hold/fade out and clean disposal.
+- **Tests** — 6 passing tests; 400-beam test shows in-zone miss rate >0.5 vs 0% control; debuff applied at both ranged and melee attack sites.
+
+**Other checks:** zone lifecycle is leak-free (init/snapshot-filter/tick-prune); `key-items.test.js` correctly repointed its negative probe to `ground_anchor`; the `smoke-veil-ready` debug scenario is properly gated, only sets up state, bypasses no invariants, and the end-state remains reachable via normal play.
+
+**One nit** (filed to `nits.md`, non-blocking): smoke VFX is caster-local — teammates standing in an ally's zone get the server-side protection but see no fog, since the renderer doesn't read `snapshot.smokeZones`.

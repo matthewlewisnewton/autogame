@@ -2332,3 +2332,26 @@ foundation regressed.
 
 None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 
+
+## v0.127 — Key Item: Smoke Bomb  (2026-06-02 12:46:38)
+
+  `stateSnapshot`, and pruned each tick in `updateEnemies`. No unbounded growth.
+- `key-items.test.js` correctly updated — its "not_implemented" probe was switched from `smoke_bomb`
+  (now implemented) to `ground_anchor` (still unimplemented). Good housekeeping, keeps the negative
+  test meaningful.
+- Debug scenario `smoke-veil-ready`: added to the `DEBUG_SCENARIOS` allow-set and gated behind
+  `debugScenarioAllowed` (`ALLOW_DEBUG_SCENARIOS=1` or non-production). It only sets up state — equips
+  `smoke_bomb`, clears cooldown, clears `smokeZones`, spawns two adjacent melee enemies. It does NOT
+  spawn a zone or bypass any invariant: the actual fog/accuracy mechanic still runs through the real
+  `useKeyItem` → simulation path. The same end-state is reachable in normal play (smoke_bomb is a
+  normal equippable key item, used via the standard handler). Meets the debug-scenario rules.
+- `def` is in scope in the handler; cooldown gate precedes the smoke_bomb branch; `persistenceDirty`
+  is flagged. No dead/broken code spotted in the diff.
+
+## Remaining gaps
+
+None blocking. One non-blocking nit (filed to `nits.md`): the smoke VFX is event-driven off the
+caster's own `keyItemUsed`, so teammates standing in an ally's smoke see no fog — the renderer never
+reads `snapshot.smokeZones`. The server mechanic already affects all players in the zone; only the
+visual is caster-local. Cosmetic, does not affect any acceptance criterion.
+

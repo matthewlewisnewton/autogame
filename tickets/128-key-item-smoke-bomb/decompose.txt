@@ -1,0 +1,12 @@
+I broke the top-level ticket into two dependency-ordered sub-tickets. Created:
+
+- `/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/subtickets/01-smoke-zone-server/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/subtickets/02-smoke-vfx-client/ticket.md`
+
+**Decomposition rationale:**
+
+- **01 — Server zone + accuracy debuff + cooldown** (`code`): redefines the existing `smoke_bomb` def (currently "become invisible", in the not-implemented path) into Smoke Veil — a 2s fixed zone at the cast point, ~8s cooldown, and a per-attack miss-chance against players standing in the zone, plus the server test for miss-rate-up. Documents the two design choices the ticket asks for (fixed zone, reduced hit chance). Code-verified because every AC is about def values, handler existence, server state, cooldown timing, and an effect rate — none of which visual QA can see.
+
+- **02 — Client smoke VFX** (`code`): renders the ground fog cloud via a new `triggerSmokeVFX` helper wired into the `keyItemUsed` handler, following the existing heal-pulse/shield VFX pattern. Code-verified rather than visual because the visual QA run only loads + joins + WASD-moves (it never casts a key item), so it could never observe the smoke; and the AC also asserts a function/handler exists.
+
+01 must land first since 02 consumes the `{x, z, radius, durationMs}` payload it emits.
