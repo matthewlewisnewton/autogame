@@ -651,7 +651,7 @@ const KEY_ITEM_DEFS = {
     id: 'purge_charm',
     name: 'Purge Charm',
     description: 'Remove all negative effects',
-    cooldownMs: 20000,
+    cooldownMs: 7000,
     type: 'utility',
   },
   echo_strike: {

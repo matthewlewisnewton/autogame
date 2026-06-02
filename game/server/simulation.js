@@ -773,6 +773,18 @@ function healPlayer(playerId, amount) {
   return player.hp - before;
 }
 
+// Minimal debuff helper: append a debuff to a player's debuffs array in
+// insertion (oldest-first) order. No per-tick effects are applied here; this
+// exists so debuffs can be placed on a player (e.g. by tests or future systems)
+// for purge_charm to clear the oldest one.
+function addDebuff(player, type, expiresAt) {
+  if (!player) return null;
+  if (!Array.isArray(player.debuffs)) player.debuffs = [];
+  const debuff = { type, expiresAt };
+  player.debuffs.push(debuff);
+  return debuff;
+}
+
 function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
@@ -2171,6 +2183,7 @@ module.exports = {
   damagePlayer,
   damageMinion,
   healPlayer,
+  addDebuff,
 
   // Card combat helpers
   collectConeHits,
