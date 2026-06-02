@@ -10,7 +10,7 @@ Related: [SPIKE_DECISION.md](./SPIKE_DECISION.md) (source pack choice), [../clie
 |------|------|
 | Base player mesh | `game/client/public/models/player.glb` |
 
-Binary import is sub-ticket **02**; morph targets sub-ticket **03**. This ticket defines conventions only.
+Binary import is sub-ticket **02**; morph targets sub-ticket **03** (committed on `player.glb`).
 
 ## World-space conventions
 
@@ -85,6 +85,29 @@ Fallback if no bone is exported: offset from origin **`(0, 1.65, 0)`** in model 
 - Apply transforms before export; +Y up in Blender → **−Z forward** in glTF per table above.  
 - Export glTF 2.0 binary (`.glb`); morph targets as shape keys → glTF morph targets.  
 - Preserve normalization when re-exporting with morphs (03).
+
+### Sub-ticket 03 (committed morphs)
+
+| Item | Value |
+|------|--------|
+| Source body | Quaternius **Superhero Male** (`SuperHero_Male` / `Sphere.005_Retopology.004` mesh) + skinned `Face` / `Face.001` |
+| Rig bone for hats | `Head` (unchanged from 02) |
+| Morph names | `mesh.extras.targetNames` on each skinned mesh, same six strings as the proportion table |
+| Rest pose in glTF | **0.0** influence (short/narrow extremes); **0.5** influence reconstructs the 02 neutral mesh |
+| Rebuild helper | `node game/client/scripts/add-player-proportion-morphs.mjs` (then JSON patch for `targetNames`; see script) |
+
+**Clamp range (server ticket 186 and future UI):** every key uses **min `0.0`**, **neutral `0.5`**, **max `1.0`** (closed interval). At all defaults (`0.5`), the skinned silhouette matches the normalized 1.8 m import from 02 (feet `y = 0`, −Z forward).
+
+**Per-key silhouette (0.0 → 1.0):**
+
+| Key | 0.0 | 1.0 |
+|-----|-----|-----|
+| `height` | Shorter stature (Y scaled from feet) | Taller |
+| `headSize` | Smaller head / face volume | Larger |
+| `torsoWidth` | Narrower chest / abdomen | Wider |
+| `armLength` | Shorter reach from shoulders | Longer arms |
+| `legLength` | Shorter legs from hip | Longer legs |
+| `shoulderWidth` | Narrower clavicle span | Wider shoulders |
 
 ## Out of scope for this document
 

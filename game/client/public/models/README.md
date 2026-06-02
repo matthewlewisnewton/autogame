@@ -22,7 +22,7 @@ Assets in this folder are served at `/models/…` by the Vite client. Follow the
 | **Morph names** | Exactly: `height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` (see MODEL_SPIKE.md) |
 | **Morph range** | `0.0` … `1.0`, neutral **`0.5`** |
 
-Import and normalization steps: **SPIKE_DECISION.md** + **MODEL_SPIKE.md**. Re-export helper: `game/client/scripts/normalize-player-glb.mjs` (requires `@gltf-transform/*` + `gl-matrix` dev deps). Morph targets in sub-ticket 03. Runtime use of this file is ticket 187—until then the game keeps procedural avatars.
+Import and normalization steps: **SPIKE_DECISION.md** + **MODEL_SPIKE.md**. Re-export helpers: `game/client/scripts/normalize-player-glb.mjs` (02 import) and `game/client/scripts/add-player-proportion-morphs.mjs` (03 morph targets; requires `@gltf-transform/*` dev deps). Six proportion morphs are committed on `player.glb` with `extras.targetNames` per **MODEL_SPIKE.md**. Runtime use of this file is ticket 187—until then the game keeps procedural avatars.
 
 **Committed mesh (02):** Quaternius Universal Base Characters **Superhero Male** from the Standard zip (the free Standard tier ships Superhero male/female glTF only; Regular/Teen bodies are in the paid Source tier). Normalized to 1.8 m height, feet at `y = 0`, bind pose faces **−Z**.
 
