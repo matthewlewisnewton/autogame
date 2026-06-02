@@ -251,37 +251,62 @@ const MINION_VISUAL = {
 	},
 };
 
+/**
+ * Return the half-height for an enemy type (render-loop Y lift for enemy meshes).
+ * @param {string} type
+ * @returns {number}
+ */
+export function enemyMeshHalfHeight(type) {
+	const def = ENEMY_GEOMETRY[type] || ENEMY_GEOMETRY.grunt;
+	return def.type === 'octahedron' ? def.radius : def.height / 2;
+}
+
 /** Per-registry-key scale/ground targets derived from procedural enemy/minion meshes. */
 const MODEL_FIT = (() => {
 	const fit = {};
 	for (const [key, def] of Object.entries(ENEMY_GEOMETRY)) {
+		const groundOffset = enemyMeshHalfHeight(key);
 		if (def.type === 'octahedron') {
 			const extent = def.radius * 2;
-			fit[key] = { targetHeight: extent, targetFootprint: extent, scaleBy: 'height' };
+			fit[key] = {
+				targetHeight: extent,
+				targetFootprint: extent,
+				scaleBy: 'height',
+				groundOffset,
+			};
 		} else {
 			fit[key] = {
 				targetHeight: def.height,
 				targetFootprint: def.radius * 2,
 				scaleBy: 'height',
+				groundOffset,
 			};
 		}
 	}
 	for (const [key, visual] of Object.entries(MINION_VISUAL)) {
 		const scale = visual.scale ?? 1;
+		const groundOffset = 0.5;
 		if (visual.shape === 'octahedron') {
 			const extent = visual.radius * 2 * scale;
-			fit[key] = { targetHeight: extent, targetFootprint: extent, scaleBy: 'height' };
+			fit[key] = {
+				targetHeight: extent,
+				targetFootprint: extent,
+				scaleBy: 'height',
+				groundOffset,
+			};
 		} else if (visual.shape === 'box') {
 			fit[key] = {
 				targetHeight: visual.height * scale,
 				targetFootprint: Math.max(visual.width, visual.depth) * scale,
 				scaleBy: 'height',
+				groundOffset,
 			};
 		} else {
 			fit[key] = {
 				targetHeight: visual.height * scale,
 				targetFootprint: visual.radius * 2 * scale,
 				scaleBy: 'height',
+				groundOffset,
 			};
 		}
 	}
@@ -291,7 +316,9 @@ const MODEL_FIT = (() => {
 const _modelFitBounds = new THREE.Box3();
 
 /**
- * Uniformly scale a loaded glTF root and ground it so its AABB bottom sits at y = 0.
+ * Uniformly scale a loaded glTF root and offset it so its feet sit at world y = 0
+ * when parented to a host at y = {@link MODEL_FIT} groundOffset (enemy half-height
+ * or minion 0.5), matching procedural mesh placement in the render loop.
  * @param {THREE.Object3D} model
  * @param {string} key - MODEL_REGISTRY entity key with a MODEL_FIT entry
  */
@@ -320,7 +347,8 @@ export function normalizeLoadedModel(model, key) {
 	}
 
 	_modelFitBounds.setFromObject(model);
-	model.position.y -= _modelFitBounds.min.y;
+	const groundOffset = fit.groundOffset ?? 0;
+	model.position.y -= _modelFitBounds.min.y + groundOffset;
 }
 
 /**
@@ -1678,16 +1706,6 @@ export function updateDamageNumbers() {
 }
 
 // ── Enemy mesh creation ──
-
-/**
- * Return the half-height for an enemy type.
- * @param {string} type
- * @returns {number}
- */
-export function enemyMeshHalfHeight(type) {
-	const def = ENEMY_GEOMETRY[type] || ENEMY_GEOMETRY.grunt;
-	return def.type === 'octahedron' ? def.radius : def.height / 2;
-}
 
 /**
  * Create a Three.js mesh for an enemy based on its type.
