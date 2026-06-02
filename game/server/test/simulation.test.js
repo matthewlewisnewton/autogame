@@ -123,6 +123,35 @@ describe('computeWalkableAABBs(layout)', () => {
     expect(passage.minZ).toBe(-2);
     expect(passage.maxZ).toBe(22);
   });
+
+  it('uses corridor slab bounds when passage has floor slab fields', () => {
+    const layout = {
+      rooms: [
+        { x: 0, z: 0, width: 10, depth: 10, walls: [] },
+        { x: 0, z: 20, width: 10, depth: 10, walls: [] },
+      ],
+      passages: [
+        {
+          x1: 0,
+          z1: 0,
+          x2: 0,
+          z2: 20,
+          walls: [],
+          corridorLength: 4,
+          floorX: 0,
+          floorZ: 10,
+          floorWidth: 4,
+          floorDepth: 4,
+        },
+      ],
+    };
+    const aabbs = computeWalkableAABBs(layout);
+    const passage = aabbs[2];
+    expect(passage.minX).toBe(-2);
+    expect(passage.maxX).toBe(2);
+    expect(passage.minZ).toBe(8);
+    expect(passage.maxZ).toBe(12);
+  });
 });
 
 // ── isInsideDungeon ──

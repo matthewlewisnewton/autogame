@@ -17,34 +17,82 @@ export const DEFAULT_FLOOR_Y = 0.5;
  * @param {number} z - world Z coordinate
  * @returns {number|null} interpolated Y height, or null if outside all rooms
  */
+function bilinearFloorY(fc, centerX, centerZ, width, depth, x, z) {
+	const halfW = width / 2;
+	const halfD = depth / 2;
+	const u = (x - (centerX - halfW)) / width;
+	const v = (z - (centerZ - halfD)) / depth;
+
+	const yNW = fc ? fc.yNW : DEFAULT_FLOOR_Y;
+	const yNE = fc ? fc.yNE : DEFAULT_FLOOR_Y;
+	const ySE = fc ? fc.ySE : DEFAULT_FLOOR_Y;
+	const ySW = fc ? fc.ySW : DEFAULT_FLOOR_Y;
+
+	return (
+		(1 - u) * (1 - v) * yNW +
+		u * (1 - v) * yNE +
+		u * v * ySE +
+		(1 - u) * v * ySW
+	);
+}
+
 export function sampleFloorY(layout, x, z) {
-	for (const room of layout.rooms) {
-		const halfW = room.width / 2;
-		const halfD = room.depth / 2;
-		if (
-			x >= room.x - halfW &&
-			x <= room.x + halfW &&
-			z >= room.z - halfD &&
-			z <= room.z + halfD
-		) {
-			// Normalized local coordinates [0, 1]
-			const u = (x - (room.x - halfW)) / room.width;
-			const v = (z - (room.z - halfD)) / room.depth;
+	if (!layout) return null;
 
-			const fc = room.floorCorners;
-			const yNW = fc ? fc.yNW : DEFAULT_FLOOR_Y;
-			const yNE = fc ? fc.yNE : DEFAULT_FLOOR_Y;
-			const ySE = fc ? fc.ySE : DEFAULT_FLOOR_Y;
-			const ySW = fc ? fc.ySW : DEFAULT_FLOOR_Y;
-
-			// Bilinear interpolation
-			return (
-				(1 - u) * (1 - v) * yNW +
-				u * (1 - v) * yNE +
-				u * v * ySE +
-				(1 - u) * v * ySW
-			);
+	if (layout.rooms) {
+		for (const room of layout.rooms) {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			if (
+				x >= room.x - halfW &&
+				x <= room.x + halfW &&
+				z >= room.z - halfD &&
+				z <= room.z + halfD
+			) {
+				return bilinearFloorY(
+					room.floorCorners,
+					room.x,
+					room.z,
+					room.width,
+					room.depth,
+					x,
+					z,
+				);
+			}
 		}
 	}
+
+	if (layout.passages) {
+		for (const passage of layout.passages) {
+			if (!passage.floorCorners) continue;
+
+			const fw = passage.floorWidth;
+			const fd = passage.floorDepth;
+			const fx = passage.floorX;
+			const fz = passage.floorZ;
+			if (
+				!Number.isFinite(fw) ||
+				!Number.isFinite(fd) ||
+				!Number.isFinite(fx) ||
+				!Number.isFinite(fz) ||
+				fw <= 0 ||
+				fd <= 0
+			) {
+				continue;
+			}
+
+			const halfW = fw / 2;
+			const halfD = fd / 2;
+			if (
+				x >= fx - halfW &&
+				x <= fx + halfW &&
+				z >= fz - halfD &&
+				z <= fz + halfD
+			) {
+				return bilinearFloorY(passage.floorCorners, fx, fz, fw, fd, x, z);
+			}
+		}
+	}
+
 	return null;
 }

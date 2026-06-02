@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import {
+	buildDungeon,
+	buildWallColliders,
+	buildPassageFloorSpec,
+	isUniformFloor,
+	buildSlopedFloor,
+	computeWalkableAABBs,
+	FLOOR_Y,
+	WALL_HEIGHT,
+} from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
+import { computeWalkableAABBs as serverComputeWalkableAABBs } from '../../server/simulation.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
 
@@ -84,6 +94,81 @@ describe('buildPassageFloorSpec()', () => {
 		const centerDist = Math.hypot(passage.x2 - passage.x1, passage.z2 - passage.z1);
 		expect(spec.width).toBeCloseTo(passage.corridorLength, 5);
 		expect(spec.width).toBeLessThan(centerDist);
+	});
+});
+
+describe('sloped passage floor pipeline', () => {
+	it('computeWalkableAABBs matches server for generateLayout passages without floor fields', () => {
+		const layout = generateLayout(42, 'default');
+		const clientAabbs = computeWalkableAABBs(layout);
+		const serverAabbs = serverComputeWalkableAABBs(layout);
+		expect(clientAabbs.length).toBe(serverAabbs.length);
+		for (let i = 0; i < clientAabbs.length; i++) {
+			expect(clientAabbs[i]).toEqual(serverAabbs[i]);
+		}
+	});
+
+	it('computeWalkableAABBs uses corridor slab when floor fields are set', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, walls: [] },
+				{ x: 0, z: 24, width: 10, depth: 10, walls: [] },
+			],
+			passages: [
+				{
+					x1: 0,
+					z1: 0,
+					x2: 0,
+					z2: 24,
+					walls: [],
+					floorX: 0,
+					floorZ: 12,
+					floorWidth: 4,
+					floorDepth: 8,
+					floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 },
+				},
+			],
+		};
+		const aabbs = computeWalkableAABBs(layout);
+		const passageAabb = aabbs[2];
+		expect(passageAabb.minX).toBe(-2);
+		expect(passageAabb.maxX).toBe(2);
+		expect(passageAabb.minZ).toBe(8);
+		expect(passageAabb.maxZ).toBe(16);
+	});
+
+	it('buildDungeon renders a sloped passage without throwing', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, role: 'start', walls: [] },
+				{ x: 0, z: 24, width: 10, depth: 10, role: 'combat', walls: [] },
+			],
+			passages: [
+				{
+					x1: 0,
+					z1: 0,
+					x2: 0,
+					z2: 24,
+					corridorLength: 8,
+					walls: [
+						{ x: -2, z: 12, length: 8, axis: 'z' },
+						{ x: 2, z: 12, length: 8, axis: 'z' },
+					],
+					floorX: 0,
+					floorZ: 12,
+					floorWidth: 4,
+					floorDepth: 8,
+					floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 },
+				},
+			],
+		};
+		const scene = mockScene();
+		expect(() => buildDungeon(scene, layout)).not.toThrow();
+		const result = buildDungeon(scene, layout);
+		const slopedFloor = result.meshes.find(
+			(m) => Math.abs(m.rotation.x) > 0.01 || Math.abs(m.rotation.z) > 0.01,
+		);
+		expect(slopedFloor).toBeDefined();
 	});
 });
 

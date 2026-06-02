@@ -31,4 +31,27 @@ describe('ESM floorSampling re-export', () => {
 		// Centre of room (0, 0) → u=0.5, v=0.5 → bilinear = 2.0
 		expect(sampleFloorY(layout, 0, 0)).toBe(2.0);
 	});
+
+	it('interpolates height on a sloped passage corridor slab', () => {
+		const layout = {
+			rooms: [],
+			passages: [
+				{
+					x1: 0,
+					z1: 0,
+					x2: 0,
+					z2: 20,
+					floorX: 0,
+					floorZ: 10,
+					floorWidth: 4,
+					floorDepth: 8,
+					floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.5, ySW: 2.5 },
+				},
+			],
+		};
+		// Centre of passage slab: v=0.5 → Y = (0.5 + 2.5) / 2 = 1.5
+		expect(sampleFloorY(layout, 0, 10)).toBeCloseTo(1.5, 5);
+		// Low-Z edge (v=0)
+		expect(sampleFloorY(layout, 0, 6)).toBeCloseTo(0.5, 5);
+	});
 });

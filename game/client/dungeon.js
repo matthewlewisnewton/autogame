@@ -11,6 +11,11 @@ import {
 	DEFAULT_FLOOR_Y,
 } from './collision.js';
 import { PASSAGE_WIDTH, BOUNDS_MARGIN } from './config.js';
+import {
+	computePassageFloorSlab,
+	resolvePassageFloorSlab,
+	passageWalkableAABB,
+} from '../shared/passageFloorSlab.esm.js';
 
 // ── Visual constants ──
 
@@ -122,58 +127,35 @@ export function clearDungeon(scene, dungeonMeshes) {
 	dungeonMeshes.length = 0;
 }
 
-function findRoomAt(layout, x, z) {
-	return layout.rooms.find(r => r.x === x && r.z === z);
-}
-
 /**
  * Passage floor geometry should cover only the corridor gap between room edges.
  * Full center-to-center strips overlap room floors and z-fight at doorways.
  */
 export function buildPassageFloorSpec(passage, layout) {
 	const passageWidth = layout.passageWidth ?? PASSAGE_WIDTH;
-	const corridorLength = passage.corridorLength;
-	const fromRoom = findRoomAt(layout, passage.x1, passage.z1);
-	const toRoom = findRoomAt(layout, passage.x2, passage.z2);
+	const slab = resolvePassageFloorSlab(passage, layout) ?? computePassageFloorSlab(passage, layout);
 
-	if (!fromRoom || !toRoom || !Number.isFinite(corridorLength) || corridorLength <= 0) {
-		const dx = passage.x2 - passage.x1;
-		const dz = passage.z2 - passage.z1;
-		const dist = Math.hypot(dx, dz);
+	if (slab) {
 		return {
-			width: dist,
+			width: slab.floorWidth,
 			height: 0.1,
-			depth: passageWidth,
-			x: (passage.x1 + passage.x2) / 2,
-			z: (passage.z1 + passage.z2) / 2,
-			rotationY: Math.atan2(dz, dx),
+			depth: slab.floorDepth,
+			x: slab.floorX,
+			z: slab.floorZ,
+			rotationY: slab.rotationY ?? 0,
 		};
 	}
 
-	if (passage.x1 !== passage.x2) {
-		const sign = Math.sign(passage.x2 - passage.x1) || 1;
-		const xStart = fromRoom.x + sign * (fromRoom.width / 2);
-		const xEnd = toRoom.x - sign * (toRoom.width / 2);
-		return {
-			width: corridorLength,
-			height: 0.1,
-			depth: passageWidth,
-			x: (xStart + xEnd) / 2,
-			z: passage.z1,
-			rotationY: 0,
-		};
-	}
-
-	const sign = Math.sign(passage.z2 - passage.z1) || 1;
-	const zStart = fromRoom.z + sign * (fromRoom.depth / 2);
-	const zEnd = toRoom.z - sign * (toRoom.depth / 2);
+	const dx = passage.x2 - passage.x1;
+	const dz = passage.z2 - passage.z1;
+	const dist = Math.hypot(dx, dz);
 	return {
-		width: passageWidth,
+		width: dist,
 		height: 0.1,
-		depth: corridorLength,
-		x: passage.x1,
-		z: (zStart + zEnd) / 2,
-		rotationY: 0,
+		depth: passageWidth,
+		x: (passage.x1 + passage.x2) / 2,
+		z: (passage.z1 + passage.z2) / 2,
+		rotationY: Math.atan2(dz, dx),
 	};
 }
 
@@ -258,10 +240,30 @@ export function buildDungeon(scene, layout) {
 	// ── Build passages ──
 	for (const passage of layout.passages) {
 		const floorSpec = buildPassageFloorSpec(passage, layout);
-		const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
-		const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
-		passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
-		passageFloor.rotation.y = floorSpec.rotationY;
+		const slab = resolvePassageFloorSlab(passage, layout) ?? {
+			floorX: floorSpec.x,
+			floorZ: floorSpec.z,
+			floorWidth: floorSpec.width,
+			floorDepth: floorSpec.depth,
+		};
+
+		let passageFloor;
+		const slopedPassage = passage.floorCorners && !isUniformFloor({ floorCorners: passage.floorCorners });
+		if (slopedPassage) {
+			const pseudoRoom = {
+				x: slab.floorX,
+				z: slab.floorZ,
+				width: slab.floorWidth,
+				depth: slab.floorDepth,
+				floorCorners: passage.floorCorners,
+			};
+			({ mesh: passageFloor } = buildSlopedFloor(pseudoRoom, passageFloorMaterial));
+		} else {
+			const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
+			passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
+			passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
+			passageFloor.rotation.y = floorSpec.rotationY;
+		}
 		scene.add(passageFloor);
 		meshes.push(passageFloor);
 
@@ -280,8 +282,9 @@ export function buildDungeon(scene, layout) {
 				wallZ = wall.z;
 			}
 
+			const wallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
 			const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
-			wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+			wallMesh.position.set(wallX, wallBaseY + PASSAGE_WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}
@@ -369,12 +372,7 @@ export function computeWalkableAABBs(layout) {
 	if (layout.passages) {
 		const halfGap = (layout.passageWidth ?? PASSAGE_WIDTH) / 2;
 		for (const p of layout.passages) {
-			aabbs.push({
-				minX: Math.min(p.x1, p.x2) - halfGap,
-				maxX: Math.max(p.x1, p.x2) + halfGap,
-				minZ: Math.min(p.z1, p.z2) - halfGap,
-				maxZ: Math.max(p.z1, p.z2) + halfGap,
-			});
+			aabbs.push(passageWalkableAABB(p, halfGap));
 		}
 	}
 

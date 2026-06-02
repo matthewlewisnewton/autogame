@@ -540,12 +540,30 @@ function computeWalkableAABBs(layout) {
   if (layout.passages) {
     const halfGap = (layout.passageWidth ?? PASSAGE_WIDTH) / 2;
     for (const p of layout.passages) {
-      aabbs.push({
-        minX: Math.min(p.x1, p.x2) - halfGap,
-        maxX: Math.max(p.x1, p.x2) + halfGap,
-        minZ: Math.min(p.z1, p.z2) - halfGap,
-        maxZ: Math.max(p.z1, p.z2) + halfGap,
-      });
+      if (
+        Number.isFinite(p.floorX) &&
+        Number.isFinite(p.floorZ) &&
+        Number.isFinite(p.floorWidth) &&
+        Number.isFinite(p.floorDepth) &&
+        p.floorWidth > 0 &&
+        p.floorDepth > 0
+      ) {
+        const halfW = p.floorWidth / 2;
+        const halfD = p.floorDepth / 2;
+        aabbs.push({
+          minX: p.floorX - halfW,
+          maxX: p.floorX + halfW,
+          minZ: p.floorZ - halfD,
+          maxZ: p.floorZ + halfD,
+        });
+      } else {
+        aabbs.push({
+          minX: Math.min(p.x1, p.x2) - halfGap,
+          maxX: Math.max(p.x1, p.x2) + halfGap,
+          minZ: Math.min(p.z1, p.z2) - halfGap,
+          maxZ: Math.max(p.z1, p.z2) + halfGap,
+        });
+      }
     }
   }
 
