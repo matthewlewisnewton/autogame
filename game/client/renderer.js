@@ -1017,6 +1017,15 @@ const DEAD_AVATAR_COLOR = 0x808080;
 const AVATAR_BODY_SHAPES = new Set(['box', 'cylinder', 'cone', 'capsule']);
 const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
 
+// Hat catalog ids, kept in sync with the server's HAT_CATALOG in
+// game/server/cosmetic.js. 'none' (and any unknown id) renders no hat.
+const AVATAR_HAT_IDS = new Set(['none', 'cap', 'wizard', 'crown']);
+
+// Per-hat colors, distinct from one another and from the default body/accent.
+const HAT_CAP_COLOR = 0x2e7d32; // forest green
+const HAT_WIZARD_COLOR = 0x5b3a8a; // deep purple
+const HAT_CROWN_COLOR = 0xffd700; // gold
+
 /**
  * Build the ~1-unit-tall body geometry for a given body shape.
  * Unknown/missing shapes fall back to a box.
@@ -1034,6 +1043,78 @@ function buildBodyGeometry(shape) {
 		case 'box':
 		default:
 			return new THREE.BoxGeometry(1, 1, 1);
+	}
+}
+
+/**
+ * Approximate Y coordinate of the top of the ~1-unit-tall body for a given
+ * shape, used to seat the hat on the head regardless of bodyShape. The body
+ * geometries are centered at the group origin; the capsule is taller than the
+ * others (radius 0.4 + half-length 0.25).
+ * @param {string} shape
+ * @returns {number}
+ */
+function bodyTopY(shape) {
+	switch (shape) {
+		case 'capsule':
+			return 0.65; // 0.4 radius + 0.25 half-length
+		case 'box':
+		case 'cylinder':
+		case 'cone':
+		default:
+			return 0.5;
+	}
+}
+
+/**
+ * Build a hat child object for a catalog hat id, seated so its base sits at the
+ * group origin (the caller positions it at the body's top). Returns null for
+ * `none` or any unknown id so no hat mesh is added. Each catalog hat gets a
+ * distinct, recognizable shape and color.
+ * @param {string} hatId
+ * @returns {THREE.Object3D|null}
+ */
+function buildHatMesh(hatId) {
+	switch (hatId) {
+		case 'cap': {
+			// A low cap: a short dome-ish cylinder with a thin brim.
+			const hat = new THREE.Group();
+			const crownGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.22, 20);
+			const crownMat = new THREE.MeshStandardMaterial({ color: HAT_CAP_COLOR });
+			const crown = new THREE.Mesh(crownGeo, crownMat);
+			crown.position.y = 0.13;
+			hat.add(crown);
+			const brimGeo = new THREE.CylinderGeometry(0.58, 0.58, 0.05, 20);
+			const brimMat = new THREE.MeshStandardMaterial({ color: HAT_CAP_COLOR });
+			const brim = new THREE.Mesh(brimGeo, brimMat);
+			brim.position.y = 0.025;
+			hat.add(brim);
+			return hat;
+		}
+		case 'wizard': {
+			// A tall pointed cone.
+			const geo = new THREE.ConeGeometry(0.42, 0.85, 20);
+			const mat = new THREE.MeshStandardMaterial({ color: HAT_WIZARD_COLOR });
+			const cone = new THREE.Mesh(geo, mat);
+			cone.position.y = 0.425; // half-height so the base sits at the origin
+			return cone;
+		}
+		case 'crown': {
+			// A gold ring crown sitting flat on the head.
+			const geo = new THREE.TorusGeometry(0.34, 0.09, 12, 24);
+			const mat = new THREE.MeshStandardMaterial({
+				color: HAT_CROWN_COLOR,
+				metalness: 0.6,
+				roughness: 0.3
+			});
+			const ring = new THREE.Mesh(geo, mat);
+			ring.rotation.x = Math.PI / 2; // lay the torus flat to read as a ring
+			ring.position.y = 0.1;
+			return ring;
+		}
+		case 'none':
+		default:
+			return null;
 	}
 }
 
@@ -1060,7 +1141,8 @@ function cosmeticSignature(cosmetic) {
 	const shape = AVATAR_BODY_SHAPES.has(c.bodyShape) ? c.bodyShape : 'box';
 	const body = (typeof c.bodyColor === 'string' && HEX_COLOR_RE.test(c.bodyColor)) ? c.bodyColor.toLowerCase() : 'default';
 	const accent = (typeof c.accentColor === 'string' && HEX_COLOR_RE.test(c.accentColor)) ? c.accentColor.toLowerCase() : 'default';
-	return `${shape}|${body}|${accent}`;
+	const hat = AVATAR_HAT_IDS.has(c.hat) ? c.hat : 'none';
+	return `${shape}|${body}|${accent}|${hat}`;
 }
 
 /**
@@ -1101,6 +1183,16 @@ export function createPlayerAvatar(cosmetic, isSelf) {
 	const accentMesh = new THREE.Mesh(accentGeo, accentMat);
 	accentMesh.position.y = 0.18;
 	group.add(accentMesh);
+
+	// Hat — a child mesh seated on top of the body so it reads as worn on the
+	// head and inherits the group's rotation. `none`/unknown adds no mesh.
+	const hatId = AVATAR_HAT_IDS.has(c.hat) ? c.hat : 'none';
+	const hat = buildHatMesh(hatId);
+	if (hat) {
+		hat.position.y = bodyTopY(shape);
+		group.add(hat);
+		group.userData.hatMesh = hat;
+	}
 
 	group.userData.isAvatar = true;
 	group.userData.bodyMesh = bodyMesh;

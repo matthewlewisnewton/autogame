@@ -412,6 +412,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-recall',
   'combat-damaged-player',
   'custom-avatar-demo',
+  'avatar-wizard-hat',
   'mixed-enemies',
   'spawner-active',
   'monster-card',
@@ -688,6 +689,20 @@ function applyDebugScenario(socket, name) {
         accentColor: '#2ecc71',
         bodyShape: 'cylinder',
         hat: 'none',
+      };
+    } else if (name === 'avatar-wizard-hat') {
+      // Enter a normal run with a hat equipped so the avatar's hat child mesh
+      // can be verified without first unlocking/equipping a hat in the shop UI.
+      // The wizard hat (tall cone) is the most visually distinctive. The same
+      // visual state is reachable normally by unlocking + equipping a hat via
+      // the cosmetic/profile routes, then starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.cosmetic = {
+        bodyColor: '#4f9dde',
+        accentColor: '#f2c94c',
+        bodyShape: 'box',
+        hat: 'wizard',
       };
     } else if (name === 'mixed-enemies') {
       player.hp = MAX_HP;
