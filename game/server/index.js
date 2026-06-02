@@ -2745,6 +2745,11 @@ function startServer(port) {
       const ringRadiusMin = def.ringRadiusMin != null ? def.ringRadiusMin : 2;
       const ringRadiusMax = def.ringRadiusMax != null ? def.ringRadiusMax : 2;
       const ringRadius = (ringRadiusMin + ringRadiusMax) / 2; // ~2m
+      // Minimum separation between caster and a repositioned minion. Clamping a
+      // wall-hugged ring point can pull it inward, so candidate acceptance must
+      // explicitly enforce this floor, not just wall/dungeon checks.
+      const minDist = 1;
+      const isFarEnough = (x, z) => Math.hypot(x - player.x, z - player.z) >= minDist;
 
       for (let i = 0; i < myMinions.length; i++) {
         const minion = myMinions[i];
@@ -2757,26 +2762,31 @@ function startServer(port) {
         targetX = clamped.x;
         targetZ = clamped.z;
 
-        // Check wall collision; if blocked, find nearby valid position
-        if (isEntityPositionBlocked(targetX, targetZ, ENTITY_RADIUS) || !isInsideDungeon(targetX, targetZ)) {
+        // Check wall collision and the separation floor; if blocked or pulled too
+        // close to the caster, find a nearby valid position.
+        if (isEntityPositionBlocked(targetX, targetZ, ENTITY_RADIUS) || !isInsideDungeon(targetX, targetZ) || !isFarEnough(targetX, targetZ)) {
           const nearby = nearbySpawnPosition(player.x + Math.cos(angle) * ringRadius, player.z + Math.sin(angle) * ringRadius, 3);
-          if (nearby) {
+          // Only accept the nearby point if it also clears the separation floor;
+          // otherwise leave it to the spiral search to find a farther spot.
+          if (nearby && isFarEnough(nearby.x, nearby.z)) {
             targetX = nearby.x;
             targetZ = nearby.z;
           }
         }
 
-        // Final safety check: if still blocked, spiral outward to find a valid spot
-        if (isEntityPositionBlocked(targetX, targetZ, ENTITY_RADIUS) || !isInsideDungeon(targetX, targetZ)) {
+        // Final safety check: if still blocked or too close, spiral outward to
+        // find a valid spot. Start at the minimum distance and keep probing
+        // outward so a clamped-inward candidate is rejected, not committed.
+        if (isEntityPositionBlocked(targetX, targetZ, ENTITY_RADIUS) || !isInsideDungeon(targetX, targetZ) || !isFarEnough(targetX, targetZ)) {
           let found = false;
-          for (let r = 1; r <= 6 && !found; r += 0.5) {
+          for (let r = minDist; r <= 6 && !found; r += 0.5) {
             // Try the primary angle, then offsets if blocked
             for (let a = 0; a < Math.PI * 2; a += Math.PI / 4) {
               const tryAngle = angle + a;
               const sx = player.x + Math.cos(tryAngle) * r;
               const sz = player.z + Math.sin(tryAngle) * r;
               const sc = clampToDungeon(sx, sz);
-              if (!isEntityPositionBlocked(sc.x, sc.z, ENTITY_RADIUS) && isInsideDungeon(sc.x, sc.z)) {
+              if (!isEntityPositionBlocked(sc.x, sc.z, ENTITY_RADIUS) && isInsideDungeon(sc.x, sc.z) && isFarEnough(sc.x, sc.z)) {
                 targetX = sc.x;
                 targetZ = sc.z;
                 found = true;
