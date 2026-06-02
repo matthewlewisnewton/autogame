@@ -1,0 +1,15 @@
+## Remediation Round 2 Plan
+
+Sub-tickets **01–03** all have `.passed` markers and are complete. Round 1 review left **one open gap**: `ancient_wyrm` minion models are double-scaled (~1.5× oversized and sunk) because `getRegistryModelTarget` multiplies by `MINION_VISUAL.scale` while `createMinionMesh` already applies that scale on the host mesh.
+
+One new sub-ticket closes that gap:
+
+### Created sub-ticket
+
+**04-fix-minion-host-scale-normalization** — Remove the redundant `* scale` from the minion branch of `getRegistryModelTarget` so normalization is host-local; add unit tests proving `ancient_wyrm` world height ~2.25 and correct foot plane after host scale 1.5.
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/162-models-wire-enemy-placeholders/tickets/162-models-wire-enemy-placeholders/subtickets/04-fix-minion-host-scale-normalization
+```

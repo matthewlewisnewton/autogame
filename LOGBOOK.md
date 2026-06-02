@@ -2332,3 +2332,26 @@ foundation regressed.
 
 None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 
+
+## v0.131 — Models: Wire enemy + minion placeholders into the registry  (2026-06-02 13:47:21)
+
+cone telegraphs — both unrelated to this ticket). The disappearance of the
+procedural cones is positive evidence the model swap executed.
+
+Minions were not summoned in this deterministic smoke capture (`minions: []` in
+the probe; the `Vault Wyrm` card was never played), so minion meshes were not
+visually exercised. Their code path is identical to enemies and is unit-tested,
+so this is a capture-coverage nit, not a functional gap (see `nits.md`).
+
+## Design / regression consistency
+
+Consistent with the additive loader infra from 161. No server changes; the
+swap is purely client-visual and degrades to the prior procedural rendering on
+any failure, so the foundation in `requirements.md` is not regressed. No debug
+scenarios were added or changed by this ticket.
+
+## Remaining gaps
+
+None blocking. One non-blocking nit (minion visual coverage in capture) recorded
+in `nits.md`.
+

@@ -1,0 +1,16 @@
+Review complete. **VERDICT: FAIL.**
+
+## Summary
+
+The game runs cleanly — `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`, and `console.log` has no fatal/pageerror lines. The capture reached `phase: "playing"` with enemies rendering. So this is **not** a runtime-health failure, and 4 of the 5 acceptance criteria are met (registry mappings, player untouched, fallback resilience, tests pass — verified 6/6 locally).
+
+The fail is one genuine code defect:
+
+**`ancient_wyrm` minion model is double-scaled (~1.5×) and sunk into the floor.** `createMinionMesh` applies `mesh.scale.setScalar(1.5)` to the host *before* `attachRegistryModel` parents the loaded model under it (`host.add(model)`), so the model inherits the 1.5× host scale. But `getRegistryModelTarget` *also* folds `scale` into the target height and foot offset — so the factor is applied twice. The model ends up ~3.375 world-units tall vs. the procedural 2.25, with its foot below the procedural foot plane. This violates AC2 ("scaled to approximately match … and sits on the ground"), the ticket's explicit core requirement.
+
+It affects only `ancient_wyrm` (the lone minion with a non-1 `scale`); the 4 enemies and the other 2 minions ground correctly. It slipped through because the capture probe showed `minions: []` — no minion was spawned, so it was never visually exercised.
+
+Files written:
+- `review.md` — per-criterion findings + verdict
+- `gaps.md` — the single blocking gap with concrete fix (make normalization host-local: drop `* scale` from the minion branch, or divide by host scale in `normalizeRegistryModel`)
+- `nits.md` — two non-blocking follow-ups (missing tests for the normalization helpers; a redundant duplicated branch in `getRegistryModelTarget`)

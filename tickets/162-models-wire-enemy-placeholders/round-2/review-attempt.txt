@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): clean.** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` has only benign vite/initScene lines and no model-load warnings. Local `npm test` re-run: **1482 tests pass** across 64 files.
+
+**Acceptance criteria — all met:**
+- **AC1**: All 7 enemy/minion keys map to the correct `/models/*.glb` paths; all files exist as valid 200–500 KB glTF-binary Quaternius CC0 assets, ledgered in `CREDITS.md`.
+- **AC2**: `getRegistryModelTarget` + `normalizeRegistryModel` scale each model to its procedural footprint and ground its feet. The minion host-scale fix (commit 04) correctly makes targets host-local so `scale.setScalar(visual.scale)` applies world sizing exactly once — verified arithmetically and by unit tests.
+- **AC3**: Player stays `null` (procedural); `player.glb` parked for the customization epic.
+- **AC4**: Fire-and-forget swap with robust fallback — null/reject leaves the procedural mesh visible, never throws; both branches unit-tested.
+- **AC5**: Tests green; gameplay screenshots show **no solid procedural cones** (positive evidence the GLB swap executed), with the red wireframe cylinders confirmed as pre-existing attack-telegraph VFX, not enemy meshes.
+
+**One nit (non-blocking, filed to `nits.md`):** the deterministic capture never summoned a minion, so the three minion models were unit-tested but not visually confirmed on-screen. The code path is identical to enemies, so this is capture-coverage, not a functional gap.
+
+No `gaps.md` written (PASS).
