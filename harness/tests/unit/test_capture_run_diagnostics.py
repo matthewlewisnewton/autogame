@@ -486,3 +486,19 @@ class TestExceptionDuringCaptureWritesMetrics:
         ports = PortAllocation(game_server=3000, vite=5173)
         cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
         assert stop_called == [True]
+
+    def test_captures_at_allocated_vite_port_not_static_game_url(self, tmp_path, monkeypatch):
+        """Regression: a parallel worker's game runs on its ALLOCATED vite port;
+        the capture must hit that port, not the static game_url (which points at
+        5173 — a sibling worker's port or nothing). This is what made every
+        non-5173 worker's review fail with ERR_CONNECTION_REFUSED."""
+        captured_url = {}
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture",
+                            lambda url, d: captured_url.setdefault("url", url) or True)
+        ports = PortAllocation(game_server=3004, vite=5177)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173/", ports=ports)
+        assert ok is True
+        assert captured_url["url"] == "http://localhost:5177/"  # allocated, not 5173

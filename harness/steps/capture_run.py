@@ -116,10 +116,15 @@ def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
     dir = Path(dir)
     dir.mkdir(parents=True, exist_ok=True)
     start_game(dir, ports)
+    # The game is served on the ALLOCATED vite port (start_game uses ports.vite),
+    # so the capture must hit that port — not the static game_url default, which
+    # in a parallel worker points at port 5173 (a sibling's, or nothing). The
+    # static game_url is only a host fallback for non-default setups.
+    capture_url = ports.vite_url if ports else game_url
     try:
         servers_up = wait_for_game(ports, timeout_s=45)
         if servers_up:
-            capture_ok = capture(game_url, dir)
+            capture_ok = capture(capture_url, dir)
             if capture_ok:
                 return True
             # Capture returned failure but servers started — classify

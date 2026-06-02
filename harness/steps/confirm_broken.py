@@ -57,7 +57,7 @@ def confirm_game_broken(suspect_dir: Path, confirmation_dir: Path,
                 json.dumps({"ok": False, "error": "servers did not start"}) + "\n"
             )
             return True
-        capture(game_url, confirmation_dir)
+        capture(ports.vite_url, confirmation_dir)  # allocated port, not static default
     finally:
         stop_game()
     confirmed = not game_smoke_ok(confirmation_dir)

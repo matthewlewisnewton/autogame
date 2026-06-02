@@ -154,7 +154,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
         game_live = wait_for_game(ports, timeout_s=45)
         if game_live:
             log("[playwright] capturing screenshots...")
-            capture(ctx.tunables.game_url, arti)
+            capture(ports.vite_url, arti)  # the allocated port, not a static default
             emit_progress_event("capture_complete", {
                 "label": ctx.label, "iteration": iteration,
                 "artifacts": str(arti), "status": "captured",
@@ -228,7 +228,7 @@ def _subtask_body(ctx: SubtaskContext) -> PipelineResult:
                                       workspace=ctx.workspace,
                                       ticket_file=ctx.ticket_file,
                                       qa_file=arti / qa_role.out_file,
-                                      artifacts_dir=arti, game_url=ctx.tunables.game_url,
+                                      artifacts_dir=arti, game_url=ctx.workspace.ports.vite_url,
                                       label=ctx.label, iteration=iteration,
                                       telemetry=ctx.telemetry)
         if keep_game_running:
