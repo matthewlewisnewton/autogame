@@ -136,6 +136,7 @@ import {
 	triggerDashVFX,
 	triggerHealPulseVFX,
 	triggerShieldVFX,
+	triggerSmokeVFX,
 	getPhaseStepTargetId,
 } from './renderer.js';
 import {
@@ -1119,6 +1120,12 @@ function bindSocketHandlers(s) {
 			}
 			if (data.keyItemId === 'guard_block') {
 				triggerShieldVFX(myId);
+			}
+			if (data.keyItemId === 'smoke_bomb') {
+				const me = myId && gameState?.players ? gameState.players[myId] : null;
+				if (me) {
+					triggerSmokeVFX({ x: me.x, y: 0, z: me.z }, myId);
+				}
 			}
 		} else if (data.reason === 'on_cooldown') {
 			flashKeyItemIndicator('cooldown');

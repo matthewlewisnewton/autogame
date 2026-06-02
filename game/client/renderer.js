@@ -1516,6 +1516,98 @@ export function triggerShieldVFX(playerId) {
 	requestAnimationFrame(animateShield);
 }
 
+// ── Smoke VFX (Smoke Bomb) ──
+
+const SMOKE_DURATION = 2000; // matches the server smoke-zone durationMs
+const SMOKE_FADE_START = 0.6; // fraction of duration before the puff fades out
+const SMOKE_COLOR = 0x9aa0a6; // soft grey
+const SMOKE_PUFF_COUNT = 6;
+const SMOKE_BASE_OPACITY = 0.42;
+const smokeVFX = {}; // playerId → { group, geometries, materials, startTime }
+
+function disposeSmoke(entry) {
+	if (!entry) return;
+	if (scene) scene.remove(entry.group);
+	for (const g of entry.geometries) g.dispose();
+	for (const m of entry.materials) m.dispose();
+}
+
+/**
+ * Spawn a translucent grey smoke puff at the given world position to visualize
+ * a Smoke Bomb concealment zone. The puff is a small cluster of low-opacity
+ * spheres that gently rises and expands, then fades out over ~2s before being
+ * removed from the scene and disposed.
+ *
+ * @param {{ x: number, y: number, z: number }} position
+ * @param {string|null} [playerId] - when provided, the puff is tracked per
+ *   player so the per-frame update loop can re-trigger it while the zone is
+ *   active and avoid spawning duplicates.
+ */
+export function triggerSmokeVFX(position, playerId = null) {
+	if (!scene) return;
+
+	// Replace any existing tracked puff for this player so casts don't stack.
+	if (playerId != null && smokeVFX[playerId]) {
+		disposeSmoke(smokeVFX[playerId]);
+		delete smokeVFX[playerId];
+	}
+
+	const group = new THREE.Group();
+	const geometries = [];
+	const materials = [];
+	for (let i = 0; i < SMOKE_PUFF_COUNT; i++) {
+		const r = 0.6 + Math.random() * 0.7;
+		const geometry = new THREE.SphereGeometry(r, 12, 12);
+		const material = new THREE.MeshStandardMaterial({
+			color: SMOKE_COLOR,
+			emissive: SMOKE_COLOR,
+			emissiveIntensity: 0.12,
+			transparent: true,
+			opacity: SMOKE_BASE_OPACITY,
+			depthWrite: false,
+		});
+		const puff = new THREE.Mesh(geometry, material);
+		const angle = (i / SMOKE_PUFF_COUNT) * Math.PI * 2;
+		const spread = 0.6 + Math.random() * 0.8;
+		puff.position.set(
+			Math.cos(angle) * spread,
+			0.4 + Math.random() * 0.5,
+			Math.sin(angle) * spread,
+		);
+		group.add(puff);
+		geometries.push(geometry);
+		materials.push(material);
+	}
+	group.position.set(position.x, position.y || 0, position.z);
+	scene.add(group);
+
+	const entry = { group, geometries, materials, startTime: performance.now() };
+	if (playerId != null) smokeVFX[playerId] = entry;
+
+	function animateSmoke() {
+		const elapsed = performance.now() - entry.startTime;
+		const t = Math.min(elapsed / SMOKE_DURATION, 1);
+
+		// Gentle rise + expansion as the smoke billows out.
+		group.scale.setScalar(1 + t * 0.5);
+
+		if (t > SMOKE_FADE_START) {
+			const fadeT = (t - SMOKE_FADE_START) / (1 - SMOKE_FADE_START);
+			const op = SMOKE_BASE_OPACITY * (1 - fadeT);
+			for (const m of materials) m.opacity = op;
+		}
+
+		if (t < 1) {
+			requestAnimationFrame(animateSmoke);
+		} else if (playerId == null || smokeVFX[playerId] === entry) {
+			// Only dispose if a re-trigger hasn't already replaced this entry.
+			disposeSmoke(entry);
+			if (playerId != null) delete smokeVFX[playerId];
+		}
+	}
+	requestAnimationFrame(animateSmoke);
+}
+
 // ── Floating damage numbers ──
 
 /**
@@ -3080,6 +3172,18 @@ export function animate(timestamp) {
 			}
 			if (me) {
 				previousPlayerHp[myId] = me.hp;
+			}
+		}
+
+		// ── Smoke Bomb VFX: show a puff at each player's active smoke zone ──
+		// The zone is fixed at the cast point (smokeBombX/Z), so the puff is
+		// re-triggered while the zone is active if its VFX has faded out. Skip
+		// the tail end so a near-expired zone doesn't spawn a fresh 2s puff.
+		const smokeNow = Date.now();
+		for (const [id, pData] of Object.entries(gs.players)) {
+			const remaining = (pData.smokeBombUntil || 0) - smokeNow;
+			if (remaining > 300 && !smokeVFX[id]) {
+				triggerSmokeVFX({ x: pData.smokeBombX, y: 0, z: pData.smokeBombZ }, id);
 			}
 		}
 
