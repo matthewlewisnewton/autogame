@@ -2194,3 +2194,26 @@ None blocking. All top-level acceptance criteria are implemented and covered by 
 
 ---
 
+
+## v0.105 — Key Item: Smoke Bomb  (2026-06-02 08:04:37)
+
+33ba248 01-server-smoke-veil-cast
+2b836e7 02-server-smoke-enemy-targeting
+50bc85f 03-client-smoke-vfx
+1c40881 04-tests-and-docs-smoke-veil
+```
+
+Primary touchpoints: `progression.js`, `index.js`, `simulation.js`, `renderer.js`, `main.js`, `controls.md`, `smoke_bomb.test.js`, `key-items.test.js`, `server.test.js` snapshot fields.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are implemented, tested, and documented; runtime capture is clean.
+
+---
+
+## Nits (see `nits.md`)
+
+Optional follow-ups: agent-guided capture for smoke VFX; client-level smoke VFX test.
+

@@ -1,0 +1,23 @@
+## Review complete
+
+Holistic review is in [`tickets/128-key-item-smoke-bomb/round-1/review.md`](tickets/128-key-item-smoke-bomb/round-1/review.md).
+
+### Runtime health
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no `pageerror` or `[fatal]` lines (only Vite, benign 409s, scene init)
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| ~8s cooldown | `8000ms` + tests |
+| Fixed cast-point zone | Documented in code + `controls.md` |
+| Client smoke VFX | `triggerSmokeVFX` + `keyItemUsed` / `stateUpdate` |
+| Enemy effect in zone | Targeting suppression (documented alternative to miss rate) + 12 dedicated tests |
+
+### Debug scenarios
+`smoke-bomb-ready` / `smoke-veil-ready` are localhost-gated; normal play still goes through `useKeyItem`.
+
+### Verdict
+**VERDICT: PASS** — no `gaps.md` (FAIL-only).
+
+Optional follow-ups are in [`nits.md`](tickets/128-key-item-smoke-bomb/round-1/nits.md) (capture plan for smoke VFX screenshots, client test for `triggerSmokeVFX`).

@@ -1,0 +1,23 @@
+Broke **Key Item: Smoke Bomb** into **4 sub-tickets** in dependency order. There were no existing `subtickets/` folders to preserve or retire.
+
+| # | Focus |
+|---|--------|
+| **01** | Server cast, def retune (Smoke Veil, ~8s CD, ~2s zone), snapshot fields, allowlist |
+| **02** | Enemy targeting suppression inside the fixed veil disc |
+| **03** | Client wiring (`keyItemUsed` + existing `renderer.js` snapshot VFX) |
+| **04** | Tests + `controls.md` |
+
+Design choices baked into the tickets (aligned with existing client code in `renderer.js`):
+
+- **Fixed cast point** — zone stays where you used it; protection only while standing in the disc.
+- **Targeting cleared** — not a miss-rate roll (matches current melee enemy AI).
+- All sub-tickets use **`Verification: code`**.
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/subtickets/01-server-smoke-veil-cast/ticket.md
+/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/subtickets/02-server-smoke-enemy-targeting/ticket.md
+/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/subtickets/03-client-smoke-vfx/ticket.md
+/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/subtickets/04-tests-and-docs-smoke-veil/ticket.md
+```
