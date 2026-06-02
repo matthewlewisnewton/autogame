@@ -78,6 +78,11 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  // Spire-ascent is handled by generateSpireAscent() — see that branch.
+  'spire-ascent': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: OPEN_PLAZA.size,
+  },
 };
 
 // Sunken-canyon stage tuning. Plateau (north / high Y) overlooks a large canyon
@@ -91,6 +96,19 @@ const SUNKEN_CANYON = {
   spawnClearRadius: 6,
   interiorMargin: OPEN_PLAZA.interiorMargin,
   rampXOffsets: [-3.5, 0, 3.5], // west / centre / east bridge positions
+};
+
+// Spire-ascent: stacked tier platforms along −Z (spawn at south/+Z, treasure at north/−Z)
+// linked by single ramp rooms between each adjacent tier pair.
+const SPIRE_ASCENT = {
+  tierWidth: 13,
+  tierDepth: 13,
+  rampWidth: 4,
+  rampDepth: 14,
+  minTiers: 3,
+  maxTiers: 5,
+  minTotalYGain: 10,
+  minRampSlope: 0.2,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -123,6 +141,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   if (profile === 'sunken-canyon') {
     return generateSunkenCanyon(seed);
+  }
+  if (profile === 'spire-ascent') {
+    return generateSpireAscent(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
@@ -806,6 +827,127 @@ function generateSunkenCanyon(seed) {
   };
 }
 
+// ── Spire Ascent Stage Generation ──
+
+/**
+ * Build the spire-ascent stage: 3–5 flat tier rooms stacked along −Z (bottom
+ * spawn tier at south / +Z, top treasure tier at north / −Z) with one sloped
+ * ramp room between each adjacent tier pair. Deterministic for a given seed.
+ *
+ * Convention: tier 0 is the lowest Y (DEFAULT_FLOOR_Y); each higher tierIndex
+ * has strictly greater centre Y. Ramps use axis 'z' (high Y at north).
+ *
+ * Returns { rooms, passages: [], passageWidth, cellSpacing,
+ *           profile: 'spire-ascent' }.
+ */
+function generateSpireAscent(seed) {
+  const rng = mulberry32(seed);
+  const {
+    tierWidth,
+    tierDepth,
+    rampWidth,
+    rampDepth,
+    minTotalYGain,
+    minRampSlope,
+  } = SPIRE_ASCENT;
+
+  const numTiers = 3 + Math.floor(rng() * 3);
+  const numRamps = numTiers - 1;
+  const minRisePerRamp = minRampSlope * rampDepth + 1e-4;
+  const risePerRamp = Math.max(minTotalYGain / numRamps, minRisePerRamp);
+
+  const tierYs = [DEFAULT_FLOOR_Y];
+  for (let i = 1; i < numTiers; i++) {
+    tierYs.push(tierYs[i - 1] + risePerRamp);
+  }
+
+  const halfW = tierWidth / 2;
+  const halfD = tierDepth / 2;
+  const rampGapCenters = [0];
+
+  const tierZs = [0];
+  for (let i = 0; i < numRamps; i++) {
+    const tierNorthZ = tierZs[i] - halfD;
+    const rampZ = tierNorthZ - rampDepth / 2;
+    tierZs.push(rampZ - rampDepth / 2 - halfD);
+  }
+
+  const rooms = [];
+
+  for (let i = 0; i < numTiers; i++) {
+    const z = tierZs[i];
+    const y = tierYs[i];
+    const walls = [
+      { x: -halfW, z, length: tierDepth, axis: 'z' },
+      { x: halfW, z, length: tierDepth, axis: 'z' },
+    ];
+
+    if (i === numTiers - 1) {
+      walls.push({ x: 0, z: z - halfD, length: tierWidth, axis: 'x' });
+    } else {
+      walls.push(
+        ...buildHorizontalWallWithGaps(z - halfD, 0, tierWidth, rampGapCenters, rampWidth)
+      );
+    }
+
+    if (i === 0) {
+      walls.push({ x: 0, z: z + halfD, length: tierWidth, axis: 'x' });
+    } else {
+      walls.push(
+        ...buildHorizontalWallWithGaps(z + halfD, 0, tierWidth, rampGapCenters, rampWidth)
+      );
+    }
+
+    const tier = {
+      x: 0,
+      z,
+      width: tierWidth,
+      depth: tierDepth,
+      walls,
+      floorCorners: { yNW: y, yNE: y, ySE: y, ySW: y },
+      band: 'tier',
+      tierIndex: i,
+      encounterTier: numTiers > 1 ? i / (numTiers - 1) : 0,
+    };
+
+    if (i === 0) {
+      tier.role = 'start';
+      tier.spawnWeight = 0;
+    } else if (i === numTiers - 1) {
+      tier.role = 'treasure';
+      tier.spawnWeight = 2;
+    } else {
+      tier.role = 'combat';
+      tier.spawnWeight = 1;
+    }
+
+    rooms.push(tier);
+
+    if (i < numRamps) {
+      const rampZ = tierZs[i] - halfD - rampDepth / 2;
+      rooms.push(
+        buildDescentRampRoom({
+          x: 0,
+          z: rampZ,
+          width: rampWidth,
+          depth: rampDepth,
+          yHigh: tierYs[i + 1],
+          yLow: tierYs[i],
+          axis: 'z',
+        })
+      );
+    }
+  }
+
+  return {
+    rooms,
+    passages: [],
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: tierWidth,
+    profile: 'spire-ascent',
+  };
+}
+
 // ── Room Role Assignment ──
 
 /**
@@ -954,7 +1096,9 @@ module.exports = {
   generateLayout,
   generateOpenPlaza,
   generateSunkenCanyon,
+  generateSpireAscent,
   buildDescentRampRoom,
+  SPIRE_ASCENT,
   scatterCoverInArena,
   buildAdjacencyMap,
   bfsDistances,

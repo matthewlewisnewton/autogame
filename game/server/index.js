@@ -419,6 +419,8 @@ const DEBUG_SCENARIOS = new Set([
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'spire-ascent-stage',
+  'spire-ascent-spawns',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -790,6 +792,30 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'spire-ascent-stage') {
+      // Load the spire-ascent stage layout for client render / collision QA.
+      // Same profile as generateLayout(seed, 'spire-ascent'); reachable via the
+      // spire_ascent quest when deployed normally.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find((r) => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'open-plaza-arena') {
       // Load the open-plaza arena (the arena_trials quest layout) for visual /
       // collision verification. Reachable normally by selecting the arena_trials
@@ -807,6 +833,28 @@ function applyDebugScenario(socket, name) {
       // Populate the arena with the trial pack via the cover-aware spawn path so
       // enemy/loot placement on the open plaza is directly observable. This is
       // the same spawn that runs when deploying into arena_trials normally.
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent-spawns') {
+      // Spire Ascent quest with tier-distributed combat spawns — same state as
+      // selecting spire_ascent and deploying; shortcut for QA (multi-tier enemies).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'spire_ascent';
+      applyLayoutForQuest(state, 'spire_ascent');
+      const startRoom = state.layout.rooms.find((r) => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
       state.enemies = [];
       state.loot = [];
       spawnEnemies();

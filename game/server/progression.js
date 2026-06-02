@@ -2626,6 +2626,28 @@ function pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount) {
   return pickFloorSpawnPosition(layout, rng);
 }
 
+function isSpireAscentLayout(layout) {
+  return !!(layout && layout.profile === 'spire-ascent');
+}
+
+/** Sorted distinct tierIndex values among combat rooms (lowest = bottom combat tier). */
+function spireCombatTierIndices(layout) {
+  const tiers = new Set();
+  for (const room of roomsByRole(layout, 'combat')) {
+    tiers.add(room.tierIndex);
+  }
+  return [...tiers].sort((a, b) => a - b);
+}
+
+function pickSpireEnemySpawnPosition(layout, rng, tierIndex) {
+  const onTier = roomsByRole(layout, 'combat').filter((r) => r.tierIndex === tierIndex);
+  if (onTier.length === 0) {
+    return randomRoomPositionByRole(layout, 'combat', rng);
+  }
+  const room = onTier[Math.floor(rng() * onTier.length)];
+  return randomPositionInRoom(room, rng);
+}
+
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0, enemyCount = 1) {
   if (isSunkenCanyonLayout(layout)) {
     return pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount);
@@ -2659,11 +2681,19 @@ function spawnCombatEnemies(layout, rng, quest) {
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
   const preferNearest = quest.objectiveType === 'collect_items';
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+  const spireTiers = isSpireAscentLayout(layout) ? spireCombatTierIndices(layout) : [];
 
   for (let i = 0; i < enemyCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
-    const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
+    let pos;
+    if (useNearest) {
+      pos = pickEnemySpawnPosition(layout, rng, true, i, enemyCount);
+    } else if (spireTiers.length > 0) {
+      pos = pickSpireEnemySpawnPosition(layout, rng, spireTiers[i % spireTiers.length]);
+    } else {
+      pos = pickEnemySpawnPosition(layout, rng, false, i, enemyCount);
+    }
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
   }

@@ -36,6 +36,15 @@ const QUEST_DEFS = {
     rewardCurrency: 14,
     layoutProfile: 'sunken-canyon',
   },
+  spire_ascent: {
+    id: 'spire_ascent',
+    name: 'Spire Ascent',
+    description: 'Climb the fractured spire and purge the wards on each tier.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 8,
+    rewardCurrency: 18,
+    layoutProfile: 'spire-ascent',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';
