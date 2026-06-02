@@ -66,6 +66,20 @@ class AgentRegistry:
                     return name
             return None
 
+    def try_acquire(self, name: str, difficulty: str) -> bool:
+        """Acquire a SPECIFIC agent for `difficulty` if it is eligible, available,
+        and under its cap. Returns True (caller must release()) or False. Unlike
+        select_and_acquire this ignores preference order — used to reserve qwen
+        for a lane it's eligible for but not the preferred pick (e.g. medium)."""
+        with self._lock:
+            st = self._states.get(name)
+            if (st and st.health is AgentHealth.AVAILABLE
+                    and difficulty in st.spec.eligible
+                    and st.in_flight < st.spec.max_concurrency):
+                st.in_flight += 1
+                return True
+            return False
+
     def release(self, name: str) -> None:
         with self._lock:
             st = self._states.get(name)
