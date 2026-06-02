@@ -75,6 +75,19 @@ function buildWallColliders(layout = _gameState && _gameState.layout) {
     }
   }
 
+  // Open-plaza cover pieces (pillars / broken walls) are solid obstacles, so a
+  // player cannot walk through them. Each footprint becomes an AABB collider.
+  if (layout.cover) {
+    for (const c of layout.cover) {
+      colliders.push({
+        minX: c.x - c.width / 2,
+        maxX: c.x + c.width / 2,
+        minZ: c.z - c.depth / 2,
+        maxZ: c.z + c.depth / 2,
+      });
+    }
+  }
+
   return colliders;
 }
 

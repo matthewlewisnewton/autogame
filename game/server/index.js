@@ -415,6 +415,7 @@ const DEBUG_SCENARIOS = new Set([
   'loot-magnet-ready',
   'overclock-ready',
   'phase-step-ready',
+  'open-plaza-arena',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -757,6 +758,25 @@ function applyDebugScenario(socket, name) {
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
       // Send updated layout to all clients in the lobby
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'open-plaza-arena') {
+      // Load the open-plaza arena (the arena_trials quest layout) for visual /
+      // collision verification. Reachable normally by selecting the arena_trials
+      // quest; this scenario is just a shortcut into that state.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'arena_trials';
+      applyLayoutForQuest(state, 'arena_trials');
+      // Re-place the player at the plaza spawn (centre) on the regenerated layout.
+      const plazaSpawn = firstRoomPosition();
+      player.x = plazaSpawn.x;
+      player.z = plazaSpawn.z;
+      const plazaFloorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(plazaFloorY) ? plazaFloorY : DEFAULT_FLOOR_Y;
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,

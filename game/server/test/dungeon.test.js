@@ -1066,3 +1066,150 @@ describe('sampleFloorY(layout, x, z)', () => {
     expect(a).toBe(b);
   });
 });
+
+// ── open-plaza arena layout ──
+
+describe("generateLayout(seed, 'open-plaza')", () => {
+  const PLAYER_RADIUS_PLAZA = 0.5;
+
+  // Flood-fill reachability over the plaza interior using the cover colliders.
+  // Returns the set of cover pieces whose footprint centre is reachable from
+  // the plaza centre, plus whether every open interior cell was reached.
+  function plazaReachability(layout) {
+    const plaza = layout.rooms[0];
+    const half = plaza.width / 2;
+    const step = 0.5;
+    const cells = Math.floor((half * 2) / step);
+    const cellCentre = i => -half + (i + 0.5) * step;
+    const blocked = (x, z) =>
+      layout.cover.some(c =>
+        x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+        z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+      );
+
+    const startI = Math.floor(half / step);
+    const seen = new Set();
+    const key = (i, j) => `${i},${j}`;
+    const queue = [[startI, startI]];
+    seen.add(key(startI, startI));
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di;
+        const nj = j + dj;
+        if (ni < 0 || ni >= cells || nj < 0 || nj >= cells) continue;
+        if (seen.has(key(ni, nj))) continue;
+        if (blocked(cellCentre(ni), cellCentre(nj))) continue;
+        seen.add(key(ni, nj));
+        queue.push([ni, nj]);
+      }
+    }
+
+    let open = 0;
+    for (let j = 0; j < cells; j++) {
+      for (let i = 0; i < cells; i++) {
+        if (!blocked(cellCentre(i), cellCentre(j))) open++;
+      }
+    }
+    return { allReachable: seen.size === open };
+  }
+
+  it('produces the right shape: one start room, empty passages, profile open-plaza', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.profile).toBe('open-plaza');
+    expect(layout.rooms.length).toBe(1);
+    expect(layout.rooms[0].role).toBe('start');
+    expect(layout.rooms[0].walls.length).toBe(4); // four solid perimeter walls
+    expect(layout.passages).toEqual([]);
+  });
+
+  it('plaza walkable area is ≥ 4× a default room (~182 units²)', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const plaza = layout.rooms[0];
+    const area = plaza.width * plaza.depth;
+    expect(area).toBeGreaterThanOrEqual(4 * 182);
+  });
+
+  it('has ≥ 6 cover pieces of valid type, fully inside the interior', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    const half = layout.rooms[0].width / 2;
+    for (const c of layout.cover) {
+      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(Math.abs(c.x) + c.width / 2).toBeLessThanOrEqual(half);
+      expect(Math.abs(c.z) + c.depth / 2).toBeLessThanOrEqual(half);
+    }
+  });
+
+  it('has ≥ 2 platforms, each with corner delta ≤ 0.5', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(2);
+    for (const p of layout.platforms) {
+      const ys = [p.floorCorners.yNW, p.floorCorners.yNE, p.floorCorners.ySE, p.floorCorners.ySW];
+      expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(0.5 + 1e-9);
+    }
+  });
+
+  it('places ≥ 2 cover pieces over a platform', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const onPlatform = layout.cover.filter(c =>
+      layout.platforms.some(p =>
+        Math.abs(c.x - p.x) <= p.width / 2 && Math.abs(c.z - p.z) <= p.depth / 2
+      )
+    );
+    expect(onPlatform.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('cover does not overlap the spawn-clear zone around plaza centre', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const RADIUS = 6;
+    for (const c of layout.cover) {
+      const dx = Math.max(Math.abs(c.x) - c.width / 2, 0);
+      const dz = Math.max(Math.abs(c.z) - c.depth / 2, 0);
+      expect(dx * dx + dz * dz).toBeGreaterThanOrEqual(RADIUS * RADIUS);
+    }
+  });
+
+  it('cover never blocks reachability: every interior cell stays reachable from centre', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'open-plaza');
+      const { allReachable } = plazaReachability(layout);
+      expect(allReachable).toBe(true);
+    }
+  });
+
+  it('sampleFloorY returns raised height on a platform and DEFAULT_FLOOR_Y elsewhere', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const p = layout.platforms[0];
+    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThan(DEFAULT_FLOOR_Y);
+    // A point on the open plaza floor away from any platform reads the flat floor.
+    expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'open-plaza');
+    const b = generateLayout(2024, 'open-plaza');
+    expect(a).toEqual(b);
+  });
+
+  it('cover footprints become wall colliders (player cannot walk through cover)', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - c.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - c.width) < 1e-6 &&
+        Math.abs((w.minZ + w.maxZ) / 2 - c.z) < 1e-6 &&
+        Math.abs((w.maxZ - w.minZ) - c.depth) < 1e-6
+      );
+      expect(hit).toBe(true);
+    }
+    // A player standing at the centre of a cover footprint collides.
+    const c0 = layout.cover[0];
+    const collides = colliders.some(w =>
+      c0.x + PLAYER_RADIUS_PLAZA > w.minX && c0.x - PLAYER_RADIUS_PLAZA < w.maxX &&
+      c0.z + PLAYER_RADIUS_PLAZA > w.minZ && c0.z - PLAYER_RADIUS_PLAZA < w.maxZ
+    );
+    expect(collides).toBe(true);
+  });
+});

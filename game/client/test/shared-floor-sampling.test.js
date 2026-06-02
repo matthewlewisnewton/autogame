@@ -32,3 +32,34 @@ describe('ESM floorSampling re-export', () => {
 		expect(sampleFloorY(layout, 0, 0)).toBe(2.0);
 	});
 });
+
+describe('sampleFloorY platform sampling (open-plaza)', () => {
+	const plazaLayout = {
+		rooms: [
+			{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 },
+			},
+		],
+		platforms: [
+			{ x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.2, ySE: 1.4, ySW: 1.2 } },
+		],
+	};
+
+	it('returns the raised platform height for a point on the platform', () => {
+		// Platform centre (9, 9) → u=0.5, v=0.5 → bilinear of the four corners = 1.2
+		expect(sampleFloorY(plazaLayout, 9, 9)).toBeCloseTo(1.2, 5);
+	});
+
+	it('returns DEFAULT_FLOOR_Y for a plaza point off any platform', () => {
+		expect(sampleFloorY(plazaLayout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+	});
+
+	it('falls back to room behavior unchanged when platforms is absent', () => {
+		const noPlatforms = { rooms: plazaLayout.rooms };
+		expect(sampleFloorY(noPlatforms, 9, 9)).toBe(0.5);
+	});
+});
