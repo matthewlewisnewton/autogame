@@ -1,0 +1,20 @@
+**VERDICT: PASS**
+
+## Summary
+
+The Spire Ascent stage fully and robustly satisfies the top-level ticket.
+
+**Runtime health (gating):** The captured run is clean — `metrics.json` reports `ok: true` with an empty `pageerrors` array, both clients reached `phase: "playing"`, and `console.log` has only benign `409` auth-resource lines (no `pageerror`/`[fatal]`). Screenshots render geometry, HUD, and cards correctly. The game starts and loads cleanly.
+
+**Acceptance criteria:** All 10 are met, each backed by passing unit tests (163 tests across three suites, all green locally):
+- 3–5 flat tiers with strictly-increasing world Y, connected by sloped ramps (slope 0.31–0.63, guarded ≥0.2)
+- Total rise exactly 10 (meets ≥10)
+- Continuous walkable ramp/tier seams with walls preventing fall-through — I verified the boundary Y-values are coincident
+- Foot reachability proven by BFS over the *real* colliders + walkable AABBs (start→treasure across multiple seeds, plus full no-orphan room reachability over 30 seeds)
+- Tier-distributed enemy spawns (forced bottom+top, never on ramps), top-tier objective, deterministic generation
+
+**Integration:** The `spire_ascent` quest is registered and surfaced via `listQuests()`, so the stage is reachable through normal lobby selection — the debug scenarios (`spire-ascent`, `spire-ascent-stage`) are gated behind the `?debugScenario=` path only, run the real deploy code without skipping validation, and lead to a state also reachable normally. No design.md/foundation regression.
+
+**Non-blocking nits** (filed to `nits.md`): the capture fell back to the generic `sloped-dungeon` scenario so no screenshot shows the actual tower (capture-plan limitation, not a code defect — rendering is covered by client unit tests + sub-ticket 02 QA); and an unused `LAYOUT_PROFILES['spire-ascent']` placeholder entry.
+
+No `gaps.md` written, per the PASS verdict.

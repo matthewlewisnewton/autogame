@@ -1,0 +1,7 @@
+Broke ticket **136 — Spire Ascent Stage** into **3 sub-tickets** (same shape as sunken-canyon **137**): server layout → client render → quest/spawn wiring. All use **code** verification. `buildDescentRampRoom` already exists from **137**, so there is no separate ramp-helper sub-ticket.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-server-spire-ascent-layout/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-client-spire-ascent-render/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-quest-spawns-and-play/ticket.md`

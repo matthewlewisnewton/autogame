@@ -2424,3 +2424,26 @@ mounts from the same module graph that loaded without error.)
 
 None blocking. Runtime capture is clean; all top-level acceptance criteria are satisfied for the scoped doc-only work.
 
+
+## v0.142 — Spire Ascent Stage  (2026-06-02 16:34:54)
+
+
+- **Reachable in normal play, not just via the debug URL.** The `spire_ascent`
+  quest is registered in `QUEST_DEFS` and surfaced by `listQuests()`, so a
+  player can select it from the lobby; `applyLayoutForQuest` loads the
+  `spire-ascent` profile. The end-state is not gated behind the debug shortcut.
+- **Debug scenarios properly gated.** Both `spire-ascent` and
+  `spire-ascent-stage` live only in `DEBUG_SCENARIOS` / `applyDebugScenario`
+  (the `?debugScenario=` path). The `spire-ascent` scenario runs the *real*
+  `applyLayoutForQuest` + `spawnEnemies` — same path as normal deploy, no
+  skipped validation or replication; it only tops up HP/MS for QA convenience.
+  `spire-ascent-stage` is a layout-only render/collision QA load whose
+  equivalent state is reachable normally via the quest. Invariants intact.
+- **No design.md/requirements regression.** design.md does not enumerate stages
+  or layout profiles, so there is nothing to contradict; the existing
+  crowded/open-plaza/sunken-canyon paths are untouched.
+
+## Remaining gaps
+
+None blocking. Minor non-blocking items recorded in `nits.md`.
+
