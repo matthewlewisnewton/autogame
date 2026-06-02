@@ -2355,3 +2355,26 @@ None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 None blocking. The acceptance criteria are fully and robustly met and the
 captured run is clean.
 
+
+## v0.135 — 185-character-models-spike-base-player-model  (2026-06-02 14:44:27)
+
+contract: asset path, world-space conventions (feet y=0, −Z forward, 1.8 m,
+PLAYER_RADIUS 0.5), the six proportion keys, clamp range, head anchor, and
+authoring notes. `public/models/README.md` is a coherent author checklist. The
+decompose note explains the note lives under `game/docs/` (not `tickets/`)
+because implementer scope is `game/**`; reasonable and clearly documented.
+
+## Design consistency / regressions
+
+Consistent with `game/docs/design.md` direction (glTF avatars). No regression:
+no runtime code changed, `MODEL_REGISTRY.player` stays `null`, added packages are
+devDependencies only (`@gltf-transform/*`, `gl-matrix` for the rebuild scripts).
+No debug scenarios were added.
+
+## Remaining gaps
+
+None blocking. The committed `player.glb` is ~16 MB, dominated by 7 embedded
+textures; the body is ~12.6k tris vs the doc's optional ≤8k target. Neither
+blocks a spike (the asset is dormant), but both are worth addressing before
+ticket 187 wires it into the runtime — captured as nits.
+

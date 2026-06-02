@@ -1,0 +1,19 @@
+Broke down **185-character-models-spike-base-player-model** (beads `autogame-0yf`) into **3** sub-tickets. The top-level `ticket.md` at the ticket path is not in the worktree yet; scope matches the beads description: base humanoid `.glb`, six proportion morph targets, and a decision/contract note under `game/docs/` (not `tickets/` — implementer scope is `game/**` only).
+
+No prior `subtickets/` folders existed, so nothing was deleted or skipped.
+
+### Sub-tickets created
+
+1. **01-research-and-model-contract** — Source research + `SPIKE_DECISION.md`, `MODEL_SPIKE.md`, `public/models/README.md`
+2. **02-commit-normalized-player-glb** — Normalized `player.glb`, `CREDITS.md`, head-anchor docs (no runtime wiring)
+3. **03-proportion-morph-targets** — Six named morph targets + `playerModelMorphs.test.js` (still no renderer/registry changes)
+
+All use **`Verification: code`**.
+
+### Folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/01-research-and-model-contract
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/02-commit-normalized-player-glb
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/03-proportion-morph-targets
+```
