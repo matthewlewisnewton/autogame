@@ -2309,3 +2309,26 @@ gameplay/foundation regression. Coverage log shows the existing server suite run
 ## Remaining gaps
 None blocking. (See `nits.md` for minor non-blocking polish.)
 
+
+## v0.126 — Spire Ascent Stage  (2026-06-02 12:34:58)
+
+- **Invariant-preserving** — the scenario calls the same layout build,
+  walkable-AABB/collider rebuild, floor sampling, and `spawnEnemies` as normal
+  play; it does not skip server-side placement or validation.
+
+## Consistency / regression
+
+The spire reuses existing room/ramp primitives and the generic `floorCorners`
+render path (no spire-specific rendering branch), consistent with the 116/117
+sloped-floor foundation. Full suite for the changed files passes:
+**162/162 tests** (`server/test/dungeon.test.js` 126, `spire_ascent_spawn.test.js`
+6, `client/test/dungeon.test.js` 30). No regressions observed in the touched
+shared helpers.
+
+## Remaining gaps
+
+None blocking. The acceptance criteria are fully and robustly met and the
+captured run is clean. Three non-blocking nits are filed in `nits.md`
+(vestigial `spawnWeight` on tiers, swapped-arg ramp call readability, and the
+capture falling back to `sloped-dungeon` instead of the spire scenario).
+

@@ -36,7 +36,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 
 ## Backlog — World Stages
 - [x] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
-- [ ] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
+- [x] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
 - [x] [137-world-sunken-canyon-stage](tickets/137-world-sunken-canyon-stage/)
 - [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
 - [ ] [144-cleanup-harness-misclassifies-pageerror](tickets/144-cleanup-harness-misclassifies-pageerror/)
@@ -60,3 +60,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [182-cleanup-character-customization-server-cosmetic-profile](tickets/182-cleanup-character-customization-server-cosmetic-profile/)
 - [ ] [190-cleanup-character-hats-server-unlocks-currency](tickets/190-cleanup-character-hats-server-unlocks-currency/)
 - [ ] [191-cleanup-character-customization-client-render-avatar](tickets/191-cleanup-character-customization-client-render-avatar/)
+- [ ] [192-cleanup-world-spire-ascent-stage](tickets/192-cleanup-world-spire-ascent-stage/)

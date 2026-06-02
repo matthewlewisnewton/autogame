@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Spire Ascent ticket is fully and robustly implemented.
+
+**Runtime gate — clean.** `metrics.json` reports `ok: true`, `pageerrors: []`, and a live `playing` probe with 2 players and enemies; `console.log` has no `pageerror`/`[fatal]` lines (the `409 Conflict` is the benign lobby/run-create handshake that fires for both players, unrelated to this ticket).
+
+**All acceptance criteria met:**
+- `spire-ascent` profile routes to `generateSpireAscent`; the `spire_ascent` quest is selectable in the normal quest list.
+- 3–5 flat tiers with strictly increasing Y; one ramp per gap with slope 0.20–0.33 (worst case exactly 0.20); total Y gain ≥ 10.
+- Tier/ramp perimeter walls with ramp-width gaps prevent fall-through; foot reachability spawn→top proven via walkable-AABB BFS.
+- Camera tracks `playerY` per-frame; initial spawn camera height fixed for non-zero floor.
+- Enemies bucketed bottom→middle→top (never on ramps); objective on top tier.
+- Deterministic; **162/162 tests pass** across the three changed test files.
+
+**Debug-scenario audit passed:** both `spire-ascent` and `spire-ascent-stage` are gated to `DEBUG_SCENARIOS`/`applyDebugScenario` only, reproduce the normal quest state via the same `applyLayoutForQuest` + `spawnEnemies` path, and skip no validation.
+
+**3 non-blocking nits** filed (`nits.md`): vestigial `spawnWeight` on tiers, the swapped-arg ramp call readability, and the capture falling back to `sloped-dungeon` instead of driving the new spire debug scenario for a real screenshot. None block the ticket; no `gaps.md` written.

@@ -1,0 +1,17 @@
+Broke ticket **136-world-spire-ascent-stage** into **3 sub-tickets** (same pattern as sunken-canyon **137**): server layout → client render → quest/spawns. All use **code** verification.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-server-spire-ascent-layout/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-client-spire-ascent-render/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-quest-spawns-and-play/ticket.md`
+
+**Dependency order**
+
+| # | Scope |
+|---|--------|
+| **01** | `generateSpireAscent`, 3–5 tiers, ramps via `buildDescentRampRoom`, ≥10 Y gain, slope ≥0.2, walls, reachability + `dungeon.test.js` |
+| **02** | Client meshes, treasure marker Y, camera/spawn floor height, client tests |
+| **03** | Quest + tier-aware spawns + debug scenario + spawn tests |
+
+No existing sub-tickets or `.passed` markers were present, so nothing was deleted or renumbered. Camera follow is covered in **02** via `sampleFloorY` / `playerY` (code), not a separate visual sub-ticket.
