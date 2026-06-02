@@ -22,6 +22,7 @@ function createLobbyGameState() {
     shopOffer: null,
     telepipe: null,
     suspendedCheckpoint: null,
+    pendingEchoes: [],
     _pendingMinionBreaths: [],
   };
 }
