@@ -4,7 +4,7 @@
 This game is a 3D multiplayer action-RPG that combines elements from *Phantasy Star Online Episodes I&II* and *Lost Kingdoms 1 & 2*. Players will gather in a lobby, join lobbies, and tackle semi-procedurally generated dungeons to defeat enemies and gather loot. Combat revolves around an active "deck" of cards rather than basic attacks.
 
 ## Core Loop
-1. **Lobby browser**: After login, players see a list of open lobbies (name, player count, dungeon, in-run vs waiting). They create a new lobby or join an existing one. Lobbies mid-run support **drop-in** rejoin.
+1. **Lobby browser**: After login, players see a list of open lobbies (id, name, hostId, gamePhase, selectedQuestId, playerCount, players). The `gamePhase` field indicates whether a lobby is waiting (`'lobby'`) or actively in a run (`'playing'`); `selectedQuestId` shows which quest the lobby has chosen. They create a new lobby or join an existing one. Lobbies mid-run support **drop-in** rejoin.
 2. **Lobby**: Once in a lobby, players manage decks, select quests, trade, and ready up. See [lobbies.md](./lobbies.md) for socket events, server architecture, and testing.
 3. **Dungeon**: When all lobby members are ready, players zone into a modularly generated level where they navigate rooms, defeat AI enemies, and complete objectives.
 4. **Loot & Economy**: Enemies drop currency and new cards. Back in the lobby, players can trade or sell their loot to customize their combat decks.
