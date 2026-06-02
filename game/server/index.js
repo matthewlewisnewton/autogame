@@ -868,16 +868,12 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
     } else if (name === 'spire-ascent') {
-      // Tier-distributed spawns on spire-ascent layout (training_caverns enemy count).
-      // Reachable normally once a quest uses layoutProfile 'spire-ascent' (ticket 136).
+      // Spire Ascent quest with tier-distributed spawns — same state as deploying into
+      // spire_ascent normally; shortcut for QA (enemies, layout, bottom-tier spawn).
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
-      const seed = state.layoutSeed || 42;
-      state.layoutSeed = seed;
-      state.layout = generateLayout(seed, 'spire-ascent');
-      state.dungeonBounds = computeDungeonBounds(state.layout);
-      state.walkableAABBs = computeWalkableAABBs(state.layout);
-      rebuildWallColliders();
+      state.selectedQuestId = 'spire_ascent';
+      applyLayoutForQuest(state, 'spire_ascent');
       const startRoom = state.layout.rooms.find(r => r.role === 'start');
       if (startRoom) {
         player.x = startRoom.x;

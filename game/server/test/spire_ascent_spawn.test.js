@@ -38,7 +38,7 @@ describe('spire-ascent tier spawns', () => {
 	beforeEach(() => resetGameState());
 
 	function deploySpire(seed = SEED) {
-		gameState.selectedQuestId = 'training_caverns';
+		gameState.selectedQuestId = 'spire_ascent';
 		gameState.layout = spireAscentLayout(seed);
 		gameState.layoutSeed = seed;
 		gameState.enemies = [];
