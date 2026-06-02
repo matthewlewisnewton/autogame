@@ -2171,3 +2171,26 @@ PASS with one non-blocking nit filed separately. The changes are narrowly scoped
 
 None.
 
+
+## v0.102 — Sunken Canyon Stage  (2026-06-02 06:26:36)
+
+
+Both are dev-only shortcuts; normal gameplay reaches the same layout via `canyon_descent`. Neither skips server validation or persistence paths beyond what other debug scenarios already do.
+
+---
+
+## Code quality
+
+- Focused diff across `game/server/dungeon.js`, `progression.js`, `quests.js`, `index.js`, `game/client/dungeon.js`, `renderer.js`, and tests.
+- No dead code or obvious logic bugs in spawn/layout paths.
+- `buildDescentRampRoom` exported for reuse (136/137 pattern).
+- Console capture clean; 409 on register is harness noise, not game defects.
+
+---
+
+## Remaining gaps
+
+None blocking. All top-level acceptance criteria are implemented and covered by unit tests; the round-1 browser capture confirms general game health but not a sunken-canyon vista screenshot (tracked as a nit).
+
+---
+

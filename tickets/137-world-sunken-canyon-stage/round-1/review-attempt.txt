@@ -1,0 +1,24 @@
+## Review complete
+
+Holistic review is in [`tickets/137-world-sunken-canyon-stage/round-1/review.md`](tickets/137-world-sunken-canyon-stage/round-1/review.md).
+
+### Runtime gate
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: no `pageerror` / `[fatal]` (only Vite, benign 409, `initScene`, `sloped-dungeon` debug scenario)
+
+### Verdict: **PASS**
+
+Three commits since `9abbd7e` deliver the sunken-canyon profile end-to-end:
+
+| Area | Status |
+|------|--------|
+| `generateLayout(seed, 'sunken-canyon')` | Plateau 13×13, canyon 32×32, 2–3 ramps, yDrop=10, cover scatter |
+| Reachability / slopes | Tests + live check (slopes ~0.42, foot BFS) |
+| Client render | Sloped/flat floors, cover on `sampleFloorY`, treasure marker on canyon |
+| Play wiring | `canyon_descent` quest, band-aware spawns, debug scenarios gated |
+| Tests | 1437 passing (including 22+ sunken-canyon-specific tests) |
+
+### Notes (non-blocking)
+[`nits.md`](tickets/137-world-sunken-canyon-stage/round-1/nits.md) records two follow-ups: round-1 capture used generic `sloped-dungeon` instead of a canyon vista screenshot, and an optional stricter “two flat bands” unit assertion.
+
+No `gaps.md` (PASS only).
