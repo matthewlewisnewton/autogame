@@ -48,7 +48,7 @@ const {
 } = require('./simulation');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
-const { DEFAULT_COSMETIC } = require('./cosmetic');
+const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -1127,6 +1127,39 @@ function grindCard(player, instanceId) {
     ok: true,
     instance: { ...instance },
     cost,
+    currency: player.currency
+  };
+}
+
+/**
+ * Deduct the catalog price of a hat from a player's currency. Mirrors the
+ * lobby purchase flows (`buyShopCard`/`grindCard`): validates the hat exists
+ * and the player can afford it, then subtracts the cost. Does NOT record the
+ * unlock — recording on the account is the caller's responsibility.
+ *
+ * @param {object} player
+ * @param {string} hatId
+ * @returns {{ ok: true, cost: number, currency: number } | { ok: false, reason: string }}
+ */
+function unlockHatForPlayer(player, hatId) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+
+  const hat = getHat(hatId);
+  if (!hat) {
+    return { ok: false, reason: `Unknown hat: ${hatId}` };
+  }
+
+  const price = Number.isFinite(hat.price) ? hat.price : 0;
+  const currency = player.currency || 0;
+  if (currency < price) {
+    return { ok: false, reason: `Not enough ${THEME.currency.short.toLowerCase()} (need ${price}, have ${currency})` };
+  }
+
+  player.currency = currency - price;
+
+  return {
+    ok: true,
+    cost: price,
     currency: player.currency
   };
 }
@@ -3315,6 +3348,7 @@ module.exports = {
   scaledGrindStat,
   applyWyrmMinionBreathStats,
   grindCard,
+  unlockHatForPlayer,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,
