@@ -1,6 +1,16 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
-import { generateLayout } from '../../server/dungeon.js';
+import {
+	buildDungeon,
+	buildWallColliders,
+	buildPassageFloorSpec,
+	isUniformFloor,
+	buildSlopedFloor,
+	buildSlopedFloorMeshFromCorners,
+	FLOOR_Y,
+	WALL_HEIGHT,
+	PASSAGE_WALL_HEIGHT,
+} from '../dungeon.js';
+import { generateLayout, buildRampPassage } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
 
@@ -85,7 +95,42 @@ describe('buildPassageFloorSpec()', () => {
 		expect(spec.width).toBeCloseTo(passage.corridorLength, 5);
 		expect(spec.width).toBeLessThan(centerDist);
 	});
+
+	it('includes floorCorners when the passage defines them', () => {
+		const layout = twoTierRampLayout();
+		const spec = buildPassageFloorSpec(layout.passages[0], layout);
+		expect(spec.floorCorners).toEqual(layout.passages[0].floorCorners);
+		expect(spec.x).toBe(0);
+		expect(spec.depth).toBeCloseTo(layout.passages[0].corridorLength, 5);
+	});
 });
+
+function twoTierRampLayout() {
+	const fromRoom = {
+		x: 0,
+		z: 0,
+		width: 12,
+		depth: 12,
+		role: 'start',
+		walls: [],
+		floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 },
+	};
+	const toRoom = {
+		x: 0,
+		z: 27,
+		width: 12,
+		depth: 12,
+		role: 'combat',
+		walls: [],
+		floorCorners: { yNW: 3.5, yNE: 3.5, ySE: 3.5, ySW: 3.5 },
+	};
+	const ramp = buildRampPassage(fromRoom, toRoom, { direction: 'south', rise: 3, minSlope: 0.2 });
+	return {
+		rooms: [fromRoom, toRoom],
+		passages: [ramp],
+		passageWidth: 4,
+	};
+}
 
 describe('isUniformFloor()', () => {
 	it('returns true when floorCorners is absent', () => {
@@ -269,5 +314,80 @@ describe('buildDungeon() with floorCorners', () => {
 			expect(wallMesh).toBeDefined();
 			expect(wallMesh.position.y).toBeCloseTo(expectedBaseY + WALL_HEIGHT / 2, 4);
 		}
+	});
+});
+
+describe('buildDungeon() sloped passages', () => {
+	it('renders a sloped passage floor with non-zero rotation.x or rotation.z', () => {
+		const layout = twoTierRampLayout();
+		const result = buildDungeon(mockScene(), layout);
+
+		const slopedFloor = result.meshes.slice(1).find(
+			m => Math.abs(m.rotation.x) > 0.01 || Math.abs(m.rotation.z) > 0.01,
+		);
+		expect(slopedFloor).toBeDefined();
+		expect(slopedFloor.position.y).toBeCloseTo(2.0, 4);
+	});
+
+	it('renders flat passages at FLOOR_Y with no floor tilt', () => {
+		const layout = {
+			rooms: [
+				room(0, 0, { walls: [] }),
+				room(0, 20, { walls: [] }),
+			],
+			passages: [{
+				x1: 0,
+				z1: 0,
+				x2: 0,
+				z2: 20,
+				corridorLength: 4,
+				walls: [],
+			}],
+			passageWidth: 4,
+		};
+		const result = buildDungeon(mockScene(), layout);
+
+		const passageFloors = result.meshes.filter(
+			m => m.position.y === FLOOR_Y && m.rotation.x === 0 && m.rotation.z === 0,
+		);
+		expect(passageFloors.length).toBeGreaterThanOrEqual(1);
+	});
+
+	it('positions passage walls on sloped ramps using sampleFloorY', () => {
+		const layout = twoTierRampLayout();
+		const ramp = layout.passages[0];
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const wall of ramp.walls) {
+			const expectedBaseY = sampleFloorY(layout, wall.x, wall.z);
+			expect(expectedBaseY).not.toBeNull();
+			const wallMesh = result.meshes.find(
+				m => m.position.x === wall.x && m.position.z === wall.z,
+			);
+			expect(wallMesh).toBeDefined();
+			expect(wallMesh.position.y).toBeCloseTo(expectedBaseY + PASSAGE_WALL_HEIGHT / 2, 4);
+		}
+	});
+
+	it('renders spire-ascent ramp passages with visible slope', () => {
+		const layout = generateLayout(42, 'default', { stage: 'spire-ascent' });
+		const result = buildDungeon(mockScene(), layout);
+
+		const slopedPassageFloor = result.meshes.slice(1).find(
+			m => Math.abs(m.rotation.x) > 0.01 || Math.abs(m.rotation.z) > 0.01,
+		);
+		expect(slopedPassageFloor).toBeDefined();
+	});
+});
+
+describe('buildSlopedFloorMeshFromCorners()', () => {
+	it('matches buildSlopedFloor for room-sized slabs', () => {
+		const room = { x: 0, z: 0, width: 12, depth: 12, floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 } };
+		const mat = new THREE.MeshStandardMaterial({ color: 0xff00ff });
+		const fromRoom = buildSlopedFloor(room, mat);
+		const fromCorners = buildSlopedFloorMeshFromCorners(0, 0, 12, 12, room.floorCorners, mat);
+
+		expect(fromCorners.mesh.rotation.x).toBeCloseTo(fromRoom.mesh.rotation.x, 5);
+		expect(fromCorners.mesh.position.y).toBeCloseTo(fromRoom.mesh.position.y, 5);
 	});
 });

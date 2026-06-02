@@ -56,23 +56,14 @@ export function isUniformFloor(room) {
 }
 
 /**
- * Build a sloped floor mesh for a room with non-uniform floorCorners.
- * Determines the dominant slope axis (Z or X) by comparing edge averages,
- * then returns a rotated BoxGeometry mesh positioned at the average height.
+ * Build a sloped floor mesh from corner heights on an axis-aligned rectangle.
+ * NW/NE/SE/SW are relative to (centerX, centerZ) with width along X and depth along Z.
  *
- * The rotated BoxGeometry is a visual approximation of the bilinear surface
- * defined by `sampleFloorY()`. Minor gaps may appear at room edges for
- * non-axis-aligned corner patterns (e.g. diagonal ramps). This is intentional —
- * a four-corner BufferGeometry match is deferred to a future art pass.
+ * The rotated BoxGeometry approximates the bilinear surface from `sampleFloorY()`.
  */
-export function buildSlopedFloor(room, floorMat) {
-	const fc = room.floorCorners;
-	const yNW = fc.yNW;
-	const yNE = fc.yNE;
-	const ySE = fc.ySE;
-	const ySW = fc.ySW;
+export function buildSlopedFloorMeshFromCorners(centerX, centerZ, width, depth, floorCorners, floorMat) {
+	const { yNW, yNE, ySE, ySW } = floorCorners;
 
-	// Edge averages to determine dominant slope axis
 	const zSlopeDelta = Math.abs((ySW + ySE) / 2 - (yNW + yNE) / 2);
 	const xSlopeDelta = Math.abs((yNE + ySE) / 2 - (yNW + ySW) / 2);
 
@@ -80,30 +71,42 @@ export function buildSlopedFloor(room, floorMat) {
 	let mesh;
 
 	if (zSlopeDelta >= xSlopeDelta) {
-		// Z-slope: ramp along Z axis
 		const yDelta = (ySW + ySE) / 2 - (yNW + yNE) / 2;
-		const slopeLen = Math.hypot(room.depth, yDelta);
-		const angle = Math.atan2(yDelta, room.depth);
+		const slopeLen = Math.hypot(depth, yDelta);
+		const angle = Math.atan2(yDelta, depth);
 		const avgY = (Math.min(yNW, yNE, ySE, ySW) + Math.max(yNW, yNE, ySE, ySW)) / 2;
 
-		geo = new THREE.BoxGeometry(room.width, 0.1, slopeLen);
+		geo = new THREE.BoxGeometry(width, 0.1, slopeLen);
 		mesh = new THREE.Mesh(geo, floorMat);
-		mesh.position.set(room.x, avgY, room.z);
+		mesh.position.set(centerX, avgY, centerZ);
 		mesh.rotation.x = angle;
 	} else {
-		// X-slope: ramp along X axis
 		const yDelta = (yNE + ySE) / 2 - (yNW + ySW) / 2;
-		const slopeLen = Math.hypot(room.width, yDelta);
-		const angle = Math.atan2(yDelta, room.width);
+		const slopeLen = Math.hypot(width, yDelta);
+		const angle = Math.atan2(yDelta, width);
 		const avgY = (Math.min(yNW, yNE, ySE, ySW) + Math.max(yNW, yNE, ySE, ySW)) / 2;
 
-		geo = new THREE.BoxGeometry(slopeLen, 0.1, room.depth);
+		geo = new THREE.BoxGeometry(slopeLen, 0.1, depth);
 		mesh = new THREE.Mesh(geo, floorMat);
-		mesh.position.set(room.x, avgY, room.z);
+		mesh.position.set(centerX, avgY, centerZ);
 		mesh.rotation.z = -angle;
 	}
 
 	return { mesh, geometry: geo };
+}
+
+/**
+ * Build a sloped floor mesh for a room with non-uniform floorCorners.
+ */
+export function buildSlopedFloor(room, floorMat) {
+	return buildSlopedFloorMeshFromCorners(
+		room.x,
+		room.z,
+		room.width,
+		room.depth,
+		room.floorCorners,
+		floorMat,
+	);
 }
 
 /**
@@ -147,6 +150,7 @@ export function buildPassageFloorSpec(passage, layout) {
 			x: (passage.x1 + passage.x2) / 2,
 			z: (passage.z1 + passage.z2) / 2,
 			rotationY: Math.atan2(dz, dx),
+			floorCorners: passage.floorCorners ?? null,
 		};
 	}
 
@@ -161,6 +165,7 @@ export function buildPassageFloorSpec(passage, layout) {
 			x: (xStart + xEnd) / 2,
 			z: passage.z1,
 			rotationY: 0,
+			floorCorners: passage.floorCorners ?? null,
 		};
 	}
 
@@ -174,6 +179,7 @@ export function buildPassageFloorSpec(passage, layout) {
 		x: passage.x1,
 		z: (zStart + zEnd) / 2,
 		rotationY: 0,
+		floorCorners: passage.floorCorners ?? null,
 	};
 }
 
@@ -258,9 +264,24 @@ export function buildDungeon(scene, layout) {
 	// ── Build passages ──
 	for (const passage of layout.passages) {
 		const floorSpec = buildPassageFloorSpec(passage, layout);
-		const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
-		const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
-		passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
+		let passageFloor;
+
+		if (passage.floorCorners && !isUniformFloor(passage)) {
+			const { mesh } = buildSlopedFloorMeshFromCorners(
+				floorSpec.x,
+				floorSpec.z,
+				floorSpec.width,
+				floorSpec.depth,
+				passage.floorCorners,
+				passageFloorMaterial,
+			);
+			passageFloor = mesh;
+		} else {
+			const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
+			passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
+			passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
+		}
+
 		passageFloor.rotation.y = floorSpec.rotationY;
 		scene.add(passageFloor);
 		meshes.push(passageFloor);
@@ -280,8 +301,9 @@ export function buildDungeon(scene, layout) {
 				wallZ = wall.z;
 			}
 
+			const wallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
 			const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
-			wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+			wallMesh.position.set(wallX, wallBaseY + PASSAGE_WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}
