@@ -1,0 +1,14 @@
+Review written. **VERDICT: PASS** — no `gaps.md` and no genuine nits worth filing, so neither `gaps.md` nor `nits.md` is created.
+
+## Summary
+
+The ticket adds server-side `bodyModel` cosmetic support and it's solidly done.
+
+**Runtime health:** Game starts and plays cleanly — `metrics.json` `ok: true`, empty `pageerrors`, clean `console.log`/`server.log`, probe confirms two players in `playing` phase with live movement and combat.
+
+**Acceptance criteria (all met):**
+- **Registry** — `BODY_MODELS` + `getAvailableModelKeys()` exported from `cosmetic.js`; both `default` and `player` entries present with correct fields. I verified `player.glb` actually exists in `game/client/public/models/`.
+- **Profile** — `bodyModel` added to `DEFAULT_COSMETIC`, validated against the allowlist (rejects unknowns), backfilled on legacy load, seeded at account creation, and persisted via partial-merge PATCH.
+- **Runtime snapshot** — flows through `buildPlayerRecord` → `stateSnapshot`. The `stateSnapshot` change (`{ ...DEFAULT_COSMETIC, ...(p.cosmetic || {}) }`) is a genuine robustness improvement guaranteeing a valid default for legacy records.
+
+**Tests:** 77 pass across the five touched suites, with meaningful bodyModel coverage. No debug scenarios in scope. Diff stays within the declared technical specs.

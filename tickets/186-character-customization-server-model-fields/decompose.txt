@@ -1,0 +1,18 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Here are the sub-ticket folder paths I created:
+
+```
+tickets/186-character-customization-server-model-fields/subtickets/01-model-registry/ticket.md
+tickets/186-character-customization-server-model-fields/subtickets/02-bodyModel-in-cosmetic-profile/ticket.md
+tickets/186-character-customization-server-model-fields/subtickets/03-bodyModel-in-runtime-snapshot/ticket.md
+```
+
+**Summary of decomposition:**
+
+- **01 — Model Registry:** Define `BODY_MODELS` constant and `getAvailableModelKeys()` helper in `cosmetic.js`. Establishes the allowlist of selectable player body models (`"default"`, `"player"`).
+
+- **02 — bodyModel in cosmetic profile:** Extend `DEFAULT_COSMETIC`, `validateCosmetic()`, and `backfillCosmetic()` to handle the `bodyModel` field. Persists through `PATCH /api/me/profile` and account creation.
+
+- **03 — bodyModel in runtime snapshot:** Verify `bodyModel` flows from account cosmetic through `buildPlayerRecord()` into `stateSnapshot()` so all clients see each player's chosen model. Primarily adds integration tests to confirm the existing pipeline carries the new field.
+
+All three are `code` verification — they concern server-side data structures, validation logic, API behavior, and test coverage. No sub-ticket mixes rendering concerns with existence/behavior checks.

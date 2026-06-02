@@ -2263,3 +2263,26 @@ None blocking. All five acceptance criteria are fully and robustly met, backed
 by HTTP-level and unit tests, and the captured run is healthy. One minor,
 non-blocking polish item is recorded in `nits.md`.
 
+
+## v0.124 — 186-character-customization-server-model-fields  (2026-06-02 12:00:34)
+
+  always present, and the no-account fallback includes it too. ✅
+- `stateSnapshot()` now emits `cosmetic: { ...DEFAULT_COSMETIC, ...(p.cosmetic || {}) }`
+  (`progression.js:3081`). This is a genuine robustness improvement over the prior
+  `p.cosmetic ?? {...DEFAULT_COSMETIC}`: a legacy player record carrying a cosmetic
+  object that lacks `bodyModel` now still gets a valid default in the snapshot. ✅
+- Integration tests added in `cosmetic_runtime.test.js`: PATCH→buildPlayerRecord
+  carries updated `bodyModel`; snapshot reflects it for all players; default
+  fallback when the key is deleted; and other fields remain unchanged. ✅
+
+## Consistency / regression check
+- No contradiction with `game/docs/design.md` (no cosmetic constraints there); the
+  change is additive and mirrors the existing `bodyShape` wiring from ticket 181.
+- Foundation untouched: the only non-test production change to `progression.js` is a
+  safer spread that strictly widens the prior behavior.
+- All 77 server tests across the five touched suites pass locally.
+
+## Remaining gaps
+None. All acceptance criteria across the three sub-tickets are fully and robustly
+met, the game runs and plays cleanly, and tests pass.
+
