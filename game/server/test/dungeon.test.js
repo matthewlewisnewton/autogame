@@ -14,6 +14,7 @@ import {
   computeTierBaseY,
   validateSpireLayout,
   questLayoutSeed,
+  DEFAULT_LAYOUT_PROFILE,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
   GRID_COLS,
@@ -1397,6 +1398,32 @@ describe('generateLayout spire-ascent stage', () => {
   it('respects profile passageWidth only', () => {
     const layout = generateLayout(42, 'open', { stage: 'spire-ascent' });
     expect(layout.passageWidth).toBe(LAYOUT_PROFILES.open.passageWidth);
+  });
+
+  it('generateLayout({ stage: "spire-ascent" }) returns spire layout distinct from default grid', () => {
+    const grid = generateLayout(42);
+    const spire = generateLayout({ stage: 'spire-ascent' });
+    expect(spire.stage).toBe('spire-ascent');
+    expect(spire.rooms.length).toBeGreaterThanOrEqual(SPIRE_MIN_TIERS);
+    expect(spire.rooms.length).toBeLessThanOrEqual(SPIRE_MAX_TIERS);
+    expect(spire.rooms.length).toBeLessThan(grid.rooms.length);
+    expect(spire.passages.length).toBe(spire.rooms.length - 1);
+    const ys = spire.rooms.map(computeTierBaseY);
+    for (let i = 1; i < ys.length; i++) {
+      expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+    }
+  });
+
+  it('generateLayout({ stage: "spire-ascent", seed: 777 }) matches positional API (default seed 42 when omitted)', () => {
+    const viaOptions = generateLayout({ stage: 'spire-ascent', seed: 777 });
+    const viaPositional = generateLayout(777, DEFAULT_LAYOUT_PROFILE, { stage: 'spire-ascent' });
+    expect(viaOptions.stage).toBe(viaPositional.stage);
+    expect(viaOptions.rooms).toEqual(viaPositional.rooms);
+    expect(viaOptions.passages).toEqual(viaPositional.passages);
+
+    const defaultSeed = generateLayout({ stage: 'spire-ascent' });
+    const explicitDefaultSeed = generateLayout(42, DEFAULT_LAYOUT_PROFILE, { stage: 'spire-ascent' });
+    expect(defaultSeed).toEqual(explicitDefaultSeed);
   });
 });
 

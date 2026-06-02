@@ -285,7 +285,23 @@ function assignSpireRoomRoles(layout) {
   }
 }
 
+function isSpireAscentOptionsArg(firstArg) {
+  return (
+    firstArg !== null &&
+    typeof firstArg === 'object' &&
+    !(firstArg instanceof Number) &&
+    firstArg.stage === 'spire-ascent'
+  );
+}
+
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+  if (isSpireAscentOptionsArg(seed)) {
+    const layoutSeed = seed.seed ?? 42;
+    const layoutProfile = seed.profile ?? DEFAULT_LAYOUT_PROFILE;
+    const opts = normalizeLayoutProfile(layoutProfile);
+    return generateSpireAscentLayout(layoutSeed, opts.passageWidth);
+  }
+
   if (options.stage === 'spire-ascent') {
     const opts = normalizeLayoutProfile(profile);
     return generateSpireAscentLayout(seed, opts.passageWidth);
