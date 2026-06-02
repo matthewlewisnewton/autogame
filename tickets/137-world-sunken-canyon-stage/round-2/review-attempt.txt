@@ -1,0 +1,9 @@
+Wrote the review artifacts.
+
+Verdict is `FAIL` because `generateLayout({ stage: "sunken-canyon" })` does not select the new stage; it returns the default layout. The captured runtime itself was clean.
+
+Files written:
+- `tickets/137-world-sunken-canyon-stage/round-2/review.md`
+- `tickets/137-world-sunken-canyon-stage/round-2/gaps.md`
+
+No `nits.md` was created.

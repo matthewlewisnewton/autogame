@@ -1,0 +1,15 @@
+Remediation round 3 had **one open gap** in `review-feedback.md`: `generateLayout({ stage: "sunken-canyon" })` does not select the stage (everything else passed in round 2). Sub-tickets `01`–`05` all have `.passed` markers and were left untouched.
+
+## New sub-ticket
+
+| # | Folder | Purpose |
+|---|--------|---------|
+| 06 | `06-generatelayout-object-stage-selector` | Wire object-form `generateLayout({ stage: "sunken-canyon" })` + unit tests; keep `(seed, profile, options)` unchanged |
+
+**Verification:** `code` (API routing, `profile`/`stageMeta`, tests — not screenshot-only).
+
+## Created paths
+
+```
+/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/06-generatelayout-object-stage-selector/ticket.md
+```

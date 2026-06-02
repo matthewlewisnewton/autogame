@@ -2125,3 +2125,26 @@ The new `open-plaza-arena` debug scenario is appropriately gated through the exi
 
 None.
 
+
+## v0.98 — Sunken Canyon Stage  (2026-06-02 05:23:13)
+
+| `sunken-canyon-stage` | `DEBUG_SCENARIOS` + `isDebugScenarioAllowed` (dev/harness only) | Select `sunken_canyon` quest → deploy → `applyLayoutForQuest` + `assignRunSpawnPositions` / `firstRoomPosition` on plateau | Uses same layout quest path and `spawnEnemies()` as live deploy |
+| `sunken-canyon-floor` | Same | Descend ramps from plateau spawn | Uses `applyLayoutForQuest`; teleports to canyon center for QA only — does not skip server validation in normal play |
+
+Neither scenario is reachable without the debug socket handler / harness `emitScenario`. `sunken-canyon-floor` omits `spawnEnemies()` (visual shortcut only); normal deploy still spawns via `startDungeonRun`.
+
+## Code quality
+
+- Focused changes across `dungeon.js`, `progression.js`, `simulation.js`, client `dungeon.js` / `renderer.js`, `quests.js`.
+- No dead exports observed; `stageMeta` consumed for spawn and debug placement.
+- Six commits since baseline `c7f10fc` on branch `auto/137-world-sunken-canyon-stage`, logically split by sub-ticket.
+
+## Integration notes
+
+- `sunken_canyon` appears in `listQuests()` / integration tests (`training_caverns`, `crystal_rescue`, `arena_trials`, `sunken_canyon`).
+- Harness proxy port alignment (commit 05) is infra-only; unrelated to layout correctness.
+
+## Remaining gaps
+
+None blocking. Runtime is clean; acceptance criteria are met in code and automated tests. Round-3 browser capture did not image the sunken-canyon stage itself (harness fallback) — filed as a nit, not a code gap.
+

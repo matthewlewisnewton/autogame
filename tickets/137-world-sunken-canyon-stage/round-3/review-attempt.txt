@@ -1,0 +1,13 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no page errors or fatals (only benign Vite/409 noise).
+
+**Implementation:** Seven commits since `c7f10fc` add `generateSunkenCanyon`, object `generateLayout({ stage: "sunken-canyon" })`, canyon cover scatter, band-aware spawns, client parapet/camera fixes, quest `sunken_canyon`, and debug scenarios `sunken-canyon-stage` / `sunken-canyon-floor`. **1423** tests pass.
+
+**Verdict: PASS** — acceptance criteria are covered by code and tests; no `gaps.md` (FAIL-only).
+
+**Caveat (nit, not blocking):** Round-3 capture used the `sloped-dungeon` fallback on the default quest, so screenshots do not show the sunken-canyon vista. That’s logged in `nits.md` for harness follow-up.
+
+Written files:
+- [`tickets/137-world-sunken-canyon-stage/round-3/review.md`](tickets/137-world-sunken-canyon-stage/round-3/review.md)
+- [`tickets/137-world-sunken-canyon-stage/round-3/nits.md`](tickets/137-world-sunken-canyon-stage/round-3/nits.md)
