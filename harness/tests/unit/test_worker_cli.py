@@ -5,7 +5,7 @@ from pathlib import Path
 
 import yaml
 
-from harness.cli import _build_parser, _write_implementer_override
+from harness.cli import _build_parser, _write_worker_role_overrides
 
 
 def test_worker_subcommand_parses():
@@ -16,9 +16,13 @@ def test_worker_subcommand_parses():
 
 
 def test_override_writer_fresh(tmp_path):
-    _write_implementer_override(tmp_path, "composer_write")
+    _write_worker_role_overrides(tmp_path, "composer_write")
     data = yaml.safe_load((tmp_path / "harness/roles.local.yaml").read_text())
-    assert data == {"roles": {"implementer": {"primary": "composer_write"}}}
+    # the worker owns BOTH planning and implementation
+    assert data == {"roles": {
+        "implementer": {"primary": "composer_write"},
+        "decomposer": {"primary": "composer_write"},
+    }}
 
 
 def test_override_writer_merges_existing(tmp_path):
@@ -28,9 +32,10 @@ def test_override_writer_merges_existing(tmp_path):
         "tunables": {"max_iter": 3},
         "roles": {"qa:code": {"primary": "qwen"}},
     }))
-    _write_implementer_override(tmp_path, "gpt5_extra_write")
+    _write_worker_role_overrides(tmp_path, "gpt5_extra_write")
     data = yaml.safe_load(local.read_text())
-    # existing keys preserved, implementer.primary added
+    # existing keys preserved, implementer + decomposer primaries added
     assert data["tunables"]["max_iter"] == 3
     assert data["roles"]["qa:code"]["primary"] == "qwen"
     assert data["roles"]["implementer"]["primary"] == "gpt5_extra_write"
+    assert data["roles"]["decomposer"]["primary"] == "gpt5_extra_write"
