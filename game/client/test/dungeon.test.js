@@ -271,3 +271,77 @@ describe('buildDungeon() with floorCorners', () => {
 		}
 	});
 });
+
+describe('open-plaza cover & platforms', () => {
+	// Synthetic plaza: one flat room, two cover pieces (one on the platform,
+	// one on the flat floor), and one gently sloped platform.
+	function plazaLayout() {
+		return {
+			rooms: [{
+				x: 0, z: 0, width: 40, depth: 40, role: 'start', walls: [],
+				floorCorners: { yNW: DEFAULT_FLOOR_Y, yNE: DEFAULT_FLOOR_Y, ySE: DEFAULT_FLOOR_Y, ySW: DEFAULT_FLOOR_Y },
+			}],
+			passages: [],
+			platforms: [
+				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
+			],
+			cover: [
+				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },       // on platform
+				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },     // on flat floor
+			],
+		};
+	}
+
+	it('buildWallColliders emits one AABB per cover piece with the correct footprint', () => {
+		const layout = plazaLayout();
+		const colliders = buildWallColliders(layout);
+
+		// No room/passage walls here, so every collider is a cover footprint.
+		expect(colliders.length).toBe(layout.cover.length);
+
+		for (const c of layout.cover) {
+			const match = colliders.find(col =>
+				col.minX === c.x - c.width / 2 && col.maxX === c.x + c.width / 2 &&
+				col.minZ === c.z - c.depth / 2 && col.maxZ === c.z + c.depth / 2
+			);
+			expect(match).toBeDefined();
+		}
+	});
+
+	it('buildDungeon returns one mesh per cover piece and per platform', () => {
+		const layout = plazaLayout();
+		const result = buildDungeon(mockScene(), layout);
+
+		// ground(1) + plaza floor(1) + platform(1) + 2 cover = 5 meshes
+		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + layout.cover.length);
+	});
+
+	it('rests each cover box on the floor: base at sampleFloorY, centered at floorY + height/2', () => {
+		const layout = plazaLayout();
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const c of layout.cover) {
+			const floorY = sampleFloorY(layout, c.x, c.z);
+			// Match the cover box by its (x, z) and box height — the platform mesh
+			// can share a pillar's (x, z) but uses a thin sloped-floor geometry.
+			const mesh = result.meshes.find(m =>
+				m.position.x === c.x && m.position.z === c.z &&
+				m.geometry.parameters && m.geometry.parameters.height === c.height
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY + c.height / 2, 4);
+		}
+
+		// The pillar standing on the platform sits higher than the floor cover.
+		const onPlatform = sampleFloorY(layout, -9, -9);
+		expect(onPlatform).toBeGreaterThan(DEFAULT_FLOOR_Y);
+	});
+
+	it('renders existing room/passage layouts unchanged when cover/platforms are absent', () => {
+		const layout = { rooms: [room(0, 0, { walls: [] })], passages: [] };
+		const result = buildDungeon(mockScene(), layout);
+		// ground(1) + room floor(1) = 2 meshes; no extra cover/platform geometry.
+		expect(result.meshes.length).toBe(2);
+		expect(buildWallColliders(layout).length).toBe(0);
+	});
+});

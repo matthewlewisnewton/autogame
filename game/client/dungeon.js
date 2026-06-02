@@ -255,6 +255,31 @@ export function buildDungeon(scene, layout) {
 		}
 	}
 
+	// ── Build open-plaza platforms ──
+	// Each platform is a gently sloped raised floor patch. It carries the same
+	// { width, depth, floorCorners } fields a room needs, so reuse the room
+	// sloped-floor builder. A distinguishable existing material keeps the raised
+	// surface readable. Guarded by `|| []` so non-plaza layouts are unaffected.
+	for (const platform of layout.platforms || []) {
+		const { mesh } = buildSlopedFloor(platform, passageFloorMaterial);
+		scene.add(mesh);
+		meshes.push(mesh);
+	}
+
+	// ── Build open-plaza cover pieces ──
+	// Each cover entry (pillar = tall box, broken_wall = low box) is a solid
+	// obstacle rendered as a box that rests on the floor at its (x, z). A piece
+	// sitting on a platform reads the raised surface via sampleFloorY. Guarded by
+	// `|| []` so non-plaza layouts are unaffected.
+	for (const c of layout.cover || []) {
+		const coverGeo = new THREE.BoxGeometry(c.width, c.height, c.depth);
+		const coverMesh = new THREE.Mesh(coverGeo, wallMaterial);
+		const floorY = sampleFloorY(layout, c.x, c.z) ?? DEFAULT_FLOOR_Y;
+		coverMesh.position.set(c.x, floorY + c.height / 2, c.z);
+		scene.add(coverMesh);
+		meshes.push(coverMesh);
+	}
+
 	// ── Build passages ──
 	for (const passage of layout.passages) {
 		const floorSpec = buildPassageFloorSpec(passage, layout);
@@ -309,6 +334,18 @@ export function buildWallColliders(layout) {
 		for (const wall of passage.walls) {
 			colliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
 		}
+	}
+
+	// Open-plaza cover pieces are solid obstacles. Push an AABB for each footprint
+	// matching the server's collider (see server simulation.js) so client-side
+	// prediction stops the player at cover. Guarded by `|| []` for other layouts.
+	for (const c of layout.cover || []) {
+		colliders.push({
+			minX: c.x - c.width / 2,
+			maxX: c.x + c.width / 2,
+			minZ: c.z - c.depth / 2,
+			maxZ: c.z + c.depth / 2,
+		});
 	}
 
 	return colliders;
