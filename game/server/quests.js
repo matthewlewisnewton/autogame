@@ -36,6 +36,16 @@ const QUEST_DEFS = {
     rewardCurrency: 14,
     layoutProfile: 'sunken-canyon',
   },
+  spire_ascent: {
+    id: 'spire_ascent',
+    name: 'Spire Ascent',
+    description: 'Ascend the shattered spire and recover resonance prisms from its apex chamber.',
+    objectiveType: 'collect_items',
+    itemCount: 3,
+    enemyCount: 5,
+    rewardCurrency: 16,
+    layoutProfile: 'spire-ascent',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';

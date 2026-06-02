@@ -434,6 +434,7 @@ const DEBUG_SCENARIOS = new Set([
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'spire-ascent',
   'spire-ascent-stage',
   'hat-shop-currency',
 ]);
@@ -906,6 +907,26 @@ function applyDebugScenario(socket, name) {
       player.z = plateauSpawn.z;
       const plateauFloorY = sampleFloorY(state.layout, player.x, player.z);
       player.y = Number.isFinite(plateauFloorY) ? plateauFloorY : DEFAULT_FLOOR_Y;
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent') {
+      // Spire Ascent quest with tier-aware spawns — same state as deploying into
+      // spire_ascent normally; shortcut for QA (enemies, crystals, tier-0 spawn).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'spire_ascent';
+      applyLayoutForQuest(state, 'spire_ascent');
+      const tier0Spawn = firstRoomPosition();
+      player.x = tier0Spawn.x;
+      player.z = tier0Spawn.z;
+      const tier0FloorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(tier0FloorY) ? tier0FloorY : DEFAULT_FLOOR_Y;
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
