@@ -76,6 +76,65 @@ def test_rebase_conflict_requeues_without_touching_main():
     assert calls["verify"] == 0     # short-circuited at rebase
 
 
+class _HeadRepo:
+    """Fake main repo whose HEAD can advance, to exercise the ff-retry path."""
+    root = "/main"
+
+    def __init__(self, heads):
+        # heads[i] is the HEAD returned on the i-th rev-parse call
+        self._heads = list(heads)
+        self._i = 0
+
+    def run_git(self, *args, **kw):
+        if args[:2] == ("rev-parse", "HEAD"):
+            h = self._heads[min(self._i, len(self._heads) - 1)]
+            self._i += 1
+            return h
+        return ""
+
+
+def test_ff_retry_succeeds_after_main_advances_under_verify():
+    """main moves during verify → first ff fails; we re-rebase and the retry
+    fast-forwards. Branch merges, closes, and we verify the new (moved) main."""
+    q = FakeQueue()
+    calls = {"rebase": 0, "verify": 0, "merge": 0}
+    merge_results = iter([False, True])  # ff fails once, then succeeds
+
+    mq = MergeQueue(
+        main_repo=_HeadRepo(["sha_old", "sha_new", "sha_new"]),
+        queue=q,
+        rebase=lambda h: (calls.__setitem__("rebase", calls["rebase"] + 1) or True),
+        verify=lambda root: (calls.__setitem__("verify", calls["verify"] + 1) or True),
+        merge=lambda h: (calls.__setitem__("merge", calls["merge"] + 1) or next(merge_results)),
+    )
+    h = _handle("t1")
+    mq.enqueue(h, record=False)
+    assert mq.drain_one() is True
+    assert q.closed == ["t1"] and q.requeued == []
+    assert h.worktree.removed
+    assert calls["rebase"] == 2          # re-rebased onto the moved main
+    assert calls["merge"] == 2           # retried the ff
+    assert calls["verify"] == 2          # re-verified because main HEAD changed
+
+
+def test_ff_persistent_failure_rejects_after_bounded_attempts():
+    from harness.dispatch.merge_queue import MERGE_FF_ATTEMPTS
+    q = FakeQueue()
+    calls = {"rebase": 0, "merge": 0}
+    mq = MergeQueue(
+        main_repo=_HeadRepo(["a", "b", "c", "d"]),
+        queue=q,
+        rebase=lambda h: (calls.__setitem__("rebase", calls["rebase"] + 1) or True),
+        verify=lambda root: True,
+        merge=lambda h: (calls.__setitem__("merge", calls["merge"] + 1) or False),
+    )
+    mq.enqueue(_handle("t1"), record=False)
+    mq.drain_one()
+    assert q.closed == [] and q.requeued == ["t1"]   # safe reject, main untouched
+    assert calls["rebase"] == MERGE_FF_ATTEMPTS
+    assert calls["merge"] == MERGE_FF_ATTEMPTS
+
+
 def test_verify_failure_requeues():
     q = FakeQueue()
     mq, calls = _mq(q, verify=False)
