@@ -745,6 +745,23 @@ function isPlayerInEnemyAttack(enemy, target, def) {
 	return isEntityInEnemyAttack(enemy, target, def);
 }
 
+// Returns true when `player` is standing inside any living player's active
+// smoke zone. The zone protects any player inside it (co-op), not just the
+// caster: we scan every living player `s` with an active smokeBombUntil and
+// compare the candidate's distance to that zone's fixed center against its
+// radius. Enemies use this to skip hidden players during target acquisition.
+function isPlayerHiddenBySmoke(player, now) {
+	if (!player) return false;
+	for (const s of Object.values(_gameState.players)) {
+		if (s.dead) continue;
+		if (!s.smokeBombUntil || now >= s.smokeBombUntil) continue;
+		const dx = player.x - s.smokeBombX;
+		const dz = player.z - s.smokeBombZ;
+		if (Math.hypot(dx, dz) <= s.smokeBombRadius) return true;
+	}
+	return false;
+}
+
 function resolveWindupTarget(enemy) {
 	const targetType = enemy.windupTargetType || 'player';
 	if (targetType === 'minion') {
@@ -1633,7 +1650,11 @@ function updateEnemies() {
 			const elapsed = Date.now() - enemy.windupStartTime;
 			if (elapsed >= def.attackWindupMs) {
 				const target = resolveWindupTarget(enemy);
-				if (target && isEntityInEnemyAttack(enemy, target, def)) {
+				const hiddenBySmoke =
+					target &&
+					enemy.windupTargetType !== 'minion' &&
+					isPlayerHiddenBySmoke(target, Date.now());
+				if (target && !hiddenBySmoke && isEntityInEnemyAttack(enemy, target, def)) {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, def.attackDamage);
 					} else {
@@ -1698,7 +1719,10 @@ function updateEnemies() {
 			nearestDist = nearestMinion.dist;
 		}
 
+		const now = Date.now();
 		for (const player of players) {
+			// Players hidden by an active smoke zone cannot be acquired as targets.
+			if (isPlayerHiddenBySmoke(player, now)) continue;
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
@@ -2183,6 +2207,7 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
+  isPlayerHiddenBySmoke,
 
   // Minion AI
   updateMinions,
