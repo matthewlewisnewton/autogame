@@ -49,3 +49,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [151-cleanup-key-item-field-medic-kit](tickets/151-cleanup-key-item-field-medic-kit/)
 - [ ] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
 - [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
+- [ ] [155-gameplay-review-doc](tickets/155-gameplay-review-doc/)
