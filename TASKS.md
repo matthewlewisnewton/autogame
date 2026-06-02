@@ -28,7 +28,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [127-key-item-overclock](tickets/127-key-item-overclock/)
 - [ ] [128-key-item-smoke-bomb](tickets/128-key-item-smoke-bomb/)
 - [ ] [129-key-item-ground-anchor](tickets/129-key-item-ground-anchor/)
-- [ ] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
+- [x] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
 - [ ] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
 - [ ] [132-key-item-echo-strike](tickets/132-key-item-echo-strike/)
 - [ ] [133-key-item-barrier-dome](tickets/133-key-item-barrier-dome/)
@@ -51,3 +51,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
 - [ ] [155-gameplay-review-doc](tickets/155-gameplay-review-doc/)
 - [ ] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
+- [ ] [157-cleanup-key-item-phase-step](tickets/157-cleanup-key-item-phase-step/)
