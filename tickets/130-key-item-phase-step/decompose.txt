@@ -1,0 +1,8 @@
+Created one new sub-ticket to close the single open gap from round 6.
+
+**Created:**
+- `/home/matt/workspace/.autogame-worktrees/130-key-item-phase-step/tickets/130-key-item-phase-step/subtickets/07-server-phase-step-wall-collider-guard/ticket.md`
+
+**Why one sub-ticket:** All existing folders (`01`, `03`, `04`, `05`, `06`) have `.passed` markers and are untouched. The round-6 gap is a single, tightly-scoped concern: the `phase_step` endpoint guard at `index.js:2825` only calls `isInsideDungeon` (walkable-AABB check) and never `isEntityPositionBlocked`, so a swap endpoint sitting inside a room AABB while overlapping a wall collider is wrongly accepted. Sub-ticket 06 already covered the *off-map* (`!isInsideDungeon`) case, so 07 adds the missing *wall-collider* check plus its dedicated test in one focused pass.
+
+Verification is `code` — the criteria are about a guard existing, server-side soft-fail behavior, unchanged state, and cooldown not burning, none of which a single happy-path screenshot run can confirm.
