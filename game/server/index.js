@@ -411,6 +411,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-ready',
   'summon-recall',
   'combat-damaged-player',
+  'custom-avatar-demo',
   'mixed-enemies',
   'spawner-active',
   'monster-card',
@@ -674,6 +675,20 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'custom-avatar-demo') {
+      // Enter a normal run with a distinctive non-default cosmetic so the
+      // cosmetic-driven avatar (non-box body shape + accent color) can be
+      // verified without first going through the customization UI. The same
+      // visual state is reachable normally by saving a cosmetic via the
+      // character-customization profile route, then starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.cosmetic = {
+        bodyColor: '#e74c3c',
+        accentColor: '#2ecc71',
+        bodyShape: 'cylinder',
+        hat: 'none',
+      };
     } else if (name === 'mixed-enemies') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
