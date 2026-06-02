@@ -35,7 +35,7 @@ agents:
   composer_fast_read:    { backend: cursor, model: composer-2.5-fast,    writable: false }
   composer_write:        { backend: cursor, model: composer-2.5,         writable: true  }
   composer_read:         { backend: cursor, model: composer-2.5,         writable: false }
-  gpt5_medium_write:     { backend: cursor, model: gpt-5.5-medium-fast,  writable: true  }
+  gpt5_medium_write:     { backend: cursor, model: gpt-5.5-medium,       writable: true  }
   gpt5_extra_write:      { backend: cursor, model: gpt-5.5-extra-high,   writable: true  }
   agy:                   { backend: agy,    model_label: "Gemini 3.5 Flash (High)" }
   # claude is NOT used by any default role (cost) — it is opted into only by the
