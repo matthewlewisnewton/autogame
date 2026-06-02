@@ -1,0 +1,20 @@
+## Remediation round 2
+
+**Review gap:** only `01-research-decision-and-morph-schema` failed (exhausted MAX_ITER). Sub-tickets **02** and **03** have `.passed` and were left untouched.
+
+**Root cause:** sub-ticket 01 required `tickets/185-character-models-spike-base-player-model/MODEL_SPIKE.md`, but the implementer role only allows `game/**` (`harness/roles.yaml` denies `tickets/**`). Scope audit reverted every attempt. Meanwhile 02–03 already delivered `player.glb`, license, morph schema, and `playerModel.test.js`.
+
+**Note:** `tickets/185-character-models-spike-base-player-model/ticket.md` is not in this worktree; scope was taken from beads issue `autogame-0yf` and the existing sub-tickets.
+
+## Actions
+
+- **Deleted** failed folder `01-research-decision-and-morph-schema`
+- **Created** one replacement sub-ticket scoped to the only missing deliverable
+
+## Sub-ticket folders created
+
+```
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/04-model-spike-decision-doc
+```
+
+`04-model-spike-decision-doc` adds `game/docs/MODEL_SPIKE.md` (decision note: source vs authored, license, poly budget, anchor/scale) plus a link from `public/models/README.md`. No asset or renderer changes. Verification: **code**.

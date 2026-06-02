@@ -2217,3 +2217,26 @@ No integration gaps found between activation and weapon echo layers.
 
 ---
 
+
+## v0.112 — 185-character-models-spike-base-player-model  (2026-06-02 09:34:23)
+
+- **Tests:** `playerModel.test.js` is focused, zero new npm deps (GLB JSON chunk parse only).
+- **Dead code:** Inject script is a documented maintainer tool, idempotent skip when morphs already present.
+- **Console:** Clean per capture rules above.
+
+## Debug scenarios
+
+This ticket did **not** add or modify any `?debugScenario=` flow. Capture probes show `debugScenario: null` throughout. N/A.
+
+## Integration / holistic notes
+
+- Sub-tickets 02–03 passed prior visual QA; round-2 added only the missing decision doc (04). The three game commits form a coherent deliverable: asset + schema + validation + decision record.
+- Screenshots listed in `metrics.json` are not present on disk under `round-2/` in this worktree; runtime proof rests on `metrics.json` probes and logs (sufficient for health gate).
+- Morph deltas were generated programmatically (inject script) rather than Blender shape-key export; schema and names are stable for downstream tickets. Visual quality of morph deformation at ±1 is not exercised in-game (loader not wired) — acceptable for this spike; ticket 187 should validate appearance.
+
+## Remaining gaps
+
+No blocking gaps. Runtime is healthy; all beads acceptance criteria are satisfied in substance (decision note at `game/docs/` instead of `tickets/` is the documented harness remediation, not missing work).
+
+---
+
