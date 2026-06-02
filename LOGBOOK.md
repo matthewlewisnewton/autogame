@@ -2263,3 +2263,26 @@ None blocking. All five acceptance criteria are fully and robustly met, backed
 by HTTP-level and unit tests, and the captured run is healthy. One minor,
 non-blocking polish item is recorded in `nits.md`.
 
+
+## v0.118 — 189-character-hats-server-unlocks-currency  (2026-06-02 10:30:31)
+
+- **End-state reachable normally**: the scenario only grants currency
+  (`max(currency, 1000)`) while staying in the lobby. A real player reaches the
+  same state by earning currency in dungeon runs, then opening the same
+  `unlockHat` flow — the scenario is a shortcut to having currency, not a
+  bypass of any feature path.
+- **No weakened invariants**: it does not pre-unlock hats or skip validation;
+  the actual unlock still runs through `unlockHatForPlayer` (affordability) and
+  `users.unlockHat` (catalog validation + persistence).
+
+## Consistency with design / requirements
+Consistent with the established cosmetic/currency architecture (181 cosmetic
+profile, `buyShopCard`/`grindCard` purchase flows). No foundation regression;
+existing cosmetic fields and currency flows are untouched apart from additive
+extension. Client rendering of hats is correctly deferred (server-only feature).
+
+## Remaining gaps
+None blocking. See `nits.md` for non-blocking follow-ups (no dedicated unit
+test for the `unlockHat` socket handler / `unlockHatForPlayer` / account-level
+`unlockHat`, which are currently only covered indirectly).
+
