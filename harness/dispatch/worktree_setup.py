@@ -57,4 +57,41 @@ def install_deps(root: Path, *, pnpm: str = "pnpm", timeout_s: int = 600,
     return True
 
 
-__all__ = ["install_deps"]
+def link_harness_deps(root: Path) -> bool:
+    """Make the worktree's `harness/node_modules` resolve to the main checkout's.
+
+    A git worktree checks out the harness SOURCE (e.g. `harness/screenshot.mjs`)
+    but NOT `harness/node_modules` (gitignored). So `node harness/screenshot.mjs`
+    can't resolve `import 'playwright'` and the capture step fails with
+    `ERR_MODULE_NOT_FOUND`, which force-FAILS every top-level review's runtime
+    gate (observed: nothing ever merged because every capture returned
+    `ok: false / capture_failed`).
+
+    Unlike game deps (which a ticket may legitimately change, so each worktree
+    gets its own — see install_deps), harness tooling deps are identical across
+    worktrees: tickets work on the game, not the harness. So a symlink to the
+    main checkout's `harness/node_modules` is correct and free. Idempotent and
+    best-effort. The main harness dir is derived from HARNESS_PROGRESS_DIR
+    (=<main>/harness/progress), which the dispatcher sets for every worker."""
+    from harness.telemetry.progress import progress_dir
+    root = Path(root)
+    src = progress_dir().parent / "node_modules"   # <main>/harness/node_modules
+    dst = root / "harness" / "node_modules"
+    try:
+        if dst.exists() or dst.is_symlink():
+            return True                            # already real or linked (incl. non-worktree run)
+        if not src.exists():
+            log(f"[worktree-setup] main harness node_modules missing at {src} — capture will fail")
+            return False
+        if src.resolve() == dst.resolve():
+            return True                            # same checkout (serial run) — nothing to link
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        dst.symlink_to(src, target_is_directory=True)
+        log(f"[worktree-setup] linked harness deps {dst} -> {src}")
+        return True
+    except OSError as e:
+        log(f"[worktree-setup] could not link harness deps: {e!r}")
+        return False
+
+
+__all__ = ["install_deps", "link_harness_deps"]
