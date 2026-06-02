@@ -103,4 +103,55 @@ describe('settings layout in index.html', () => {
 		const keyInput = doc.getElementById('use-key-item-key-input');
 		expect(keyInput.readOnly).toBe(true);
 	});
+
+	it('includes account appearance cosmetic controls and character portrait target', () => {
+		const doc = parseIndex();
+		const accountOverlay = doc.getElementById('account-overlay');
+		const appearanceHeading = Array.from(
+			accountOverlay?.querySelectorAll('.settings-section h3') ?? []
+		).find((h) => h.textContent === 'Appearance');
+
+		expect(appearanceHeading).not.toBeNull();
+
+		const cosmeticIds = [
+			'cosmetic-body-colors',
+			'cosmetic-accent-color',
+			'cosmetic-body-shapes',
+			'cosmetic-preview',
+			'cosmetic-save-btn',
+			'cosmetic-error',
+		];
+		for (const id of cosmeticIds) {
+			expect(doc.getElementById(id), `missing #${id}`).not.toBeNull();
+		}
+
+		const swatches = doc.querySelectorAll('#cosmetic-body-colors .cosmetic-swatch');
+		expect(swatches.length).toBeGreaterThanOrEqual(6);
+		for (const swatch of swatches) {
+			expect(swatch.getAttribute('data-color')).toMatch(/^#[0-9a-f]{6}$/i);
+			expect(swatch.hasAttribute('aria-pressed')).toBe(true);
+		}
+
+		const shapes = doc.querySelectorAll('#cosmetic-body-shapes .cosmetic-shape-btn');
+		expect(shapes).toHaveLength(4);
+		for (const shape of ['box', 'cylinder', 'cone', 'capsule']) {
+			expect(doc.querySelector(`#cosmetic-body-shapes [data-shape="${shape}"]`)).not.toBeNull();
+		}
+		for (const btn of shapes) {
+			expect(btn.hasAttribute('aria-pressed')).toBe(true);
+		}
+
+		expect(doc.getElementById('cosmetic-error')?.hasAttribute('hidden')).toBe(true);
+
+		const frame = doc.getElementById('character-frame');
+		const portrait = doc.getElementById('character-portrait');
+		const characterId = doc.getElementById('character-id');
+		expect(frame).not.toBeNull();
+		expect(portrait).not.toBeNull();
+		expect(characterId).not.toBeNull();
+		expect(frame?.contains(portrait)).toBe(true);
+		expect(frame?.contains(characterId)).toBe(true);
+		const frameChildren = Array.from(frame?.children ?? []);
+		expect(frameChildren.indexOf(portrait)).toBeLessThan(frameChildren.indexOf(characterId));
+	});
 });

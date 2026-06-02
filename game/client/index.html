@@ -21,6 +21,7 @@
       <div id="vanguard-hud">
         <div id="vanguard-portrait">
           <div id="character-frame">
+            <span id="character-portrait" aria-hidden="true"></span>
             <span id="character-id">?</span>
           </div>
           <div id="level-indicator">
@@ -256,6 +257,40 @@
           </label>
           <p id="account-error" class="account-error" hidden></p>
           <button type="button" id="account-save-btn">Save name</button>
+        </div>
+        <div class="settings-section">
+          <h3>Appearance</h3>
+          <label class="settings-field">
+            Body color
+            <div id="cosmetic-body-colors" class="cosmetic-swatches" role="group" aria-label="Body color">
+              <button type="button" class="cosmetic-swatch" data-color="#4f9dde" aria-pressed="true" aria-label="#4f9dde" title="#4f9dde"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#38bdf8" aria-pressed="false" aria-label="#38bdf8" title="#38bdf8"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#22c55e" aria-pressed="false" aria-label="#22c55e" title="#22c55e"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#a855f7" aria-pressed="false" aria-label="#a855f7" title="#a855f7"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#f97316" aria-pressed="false" aria-label="#f97316" title="#f97316"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#ef4444" aria-pressed="false" aria-label="#ef4444" title="#ef4444"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#e2e8f0" aria-pressed="false" aria-label="#e2e8f0" title="#e2e8f0"></button>
+            </div>
+          </label>
+          <label class="settings-field" for="cosmetic-accent-color">
+            Accent color
+            <input type="color" id="cosmetic-accent-color" value="#f2c94c" />
+          </label>
+          <label class="settings-field">
+            Body shape
+            <div id="cosmetic-body-shapes" class="cosmetic-shapes" role="group" aria-label="Body shape">
+              <button type="button" class="cosmetic-shape-btn" data-shape="box" aria-pressed="true">Box</button>
+              <button type="button" class="cosmetic-shape-btn" data-shape="cylinder" aria-pressed="false">Cylinder</button>
+              <button type="button" class="cosmetic-shape-btn" data-shape="cone" aria-pressed="false">Cone</button>
+              <button type="button" class="cosmetic-shape-btn" data-shape="capsule" aria-pressed="false">Capsule</button>
+            </div>
+          </label>
+          <label class="settings-field">
+            Preview
+            <div id="cosmetic-preview" aria-label="Character appearance preview"></div>
+          </label>
+          <p id="cosmetic-error" class="account-error" hidden></p>
+          <button type="button" id="cosmetic-save-btn">Save appearance</button>
         </div>
         <div class="settings-section account-actions">
           <button type="button" id="account-logout-btn" class="account-logout-btn">Log out</button>
