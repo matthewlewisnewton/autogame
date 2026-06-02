@@ -119,6 +119,25 @@ def test_close_failure_after_merge_records_durably_not_requeue(tmp_path, monkeyp
     assert recorded == ["t1"]                     # durably recorded for reconcile
 
 
+def test_drain_one_never_raises_on_merge_crash():
+    """A merge step that throws must NOT propagate — it would crash the
+    dispatcher's tick loop (this actually happened: _default_verify called
+    run_vitest with a bad signature). drain_one swallows it and requeues."""
+    q = FakeQueue()
+
+    def boom_verify(root):
+        raise TypeError("run_vitest() missing 1 required keyword-only argument")
+
+    mq = MergeQueue(main_repo=None, queue=q,
+                    rebase=lambda h: True, verify=boom_verify, merge=lambda h: True)
+    h = _handle("t1")
+    mq.enqueue(h)
+    assert mq.drain_one() is True   # processed without raising
+    assert q.requeued == ["t1"]     # requeued, not merged
+    assert q.closed == []
+    assert h.worktree.removed
+
+
 def test_drain_all_fifo():
     q = FakeQueue()
     mq, _ = _mq(q)

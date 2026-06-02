@@ -107,7 +107,10 @@ class Dispatcher:
     def tick(self) -> None:
         self._reap()
         if self.merge_drain is not None:
-            self.merge_drain()  # integrate one passed branch into main this tick
+            try:
+                self.merge_drain()  # integrate one passed branch into main this tick
+            except Exception as e:
+                log(f"[dispatch] merge_drain raised (continuing tick): {e!r}")
         if self.reserve_qwen:
             self._reserve_qwen()
         for difficulty in self.lanes:
