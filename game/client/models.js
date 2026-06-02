@@ -15,19 +15,22 @@
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-// Registry mapping entity keys to a model path. EVERY value is null in this
-// sub-ticket — no entity uses a model yet. Keys are derived from how renderer.js
-// keys its meshes: ENEMY_GEOMETRY (enemy types), MINION_VISUAL (minion types),
-// and createLootMesh (loot kinds), plus the player.
+// Registry mapping entity keys to a model path. The four enemy keys point at
+// committed placeholder .glb files; every other value is null (procedural). Keys
+// are derived from how renderer.js keys its meshes: ENEMY_GEOMETRY (enemy types),
+// MINION_VISUAL (minion types), and createLootMesh (loot kinds), plus the player.
+// The player stays procedural — owned by the character-customization epic.
 export const MODEL_REGISTRY = {
 	// Player avatar
 	player: null,
 
-	// Enemy types (renderer.js ENEMY_GEOMETRY)
-	grunt: null,
-	skirmisher: null,
-	miniboss: null,
-	spawner: null,
+	// Enemy types (renderer.js ENEMY_GEOMETRY) — placeholder .glb models committed
+	// under client/public/models/ (see CREDITS.md). Normalized for scale + ground
+	// offset in renderer.js attachRegistryModel.
+	grunt: '/models/grunt.glb',
+	skirmisher: '/models/skirmisher.glb',
+	miniboss: '/models/miniboss.glb',
+	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)
 	ancient_wyrm: null,

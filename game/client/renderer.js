@@ -283,6 +283,7 @@ function attachRegistryModel(key, host) {
 	loadModel(path)
 		.then((model) => {
 			if (!model) return; // load failed/returned null → procedural stays (warned in models.js).
+			normalizeRegistryModel(key, model);
 			for (const node of procedural) node.material.visible = false;
 			host.add(model);
 			host.userData.modelOverride = model;
@@ -290,6 +291,56 @@ function attachRegistryModel(key, host) {
 		.catch((err) => {
 			console.warn(`[renderer] failed to apply model "${path}" for "${key}":`, err);
 		});
+}
+
+/**
+ * Per-enemy fine-tuning for placeholder models, applied on top of the
+ * bounding-box normalization. `scale` multiplies the auto-computed uniform scale
+ * (1 = match the primitive's height exactly); `yOffset` nudges the grounded base
+ * up (+) or down (−) in world units. Neutral defaults mean the bounding-box fit
+ * is used as-is; tweak here if a given .glb sits too high/low or reads too small.
+ */
+const ENEMY_MODEL_TUNING = {
+	grunt:      { scale: 1, yOffset: 0 },
+	skirmisher: { scale: 1, yOffset: 0 },
+	miniboss:   { scale: 1, yOffset: 0 },
+	spawner:    { scale: 1, yOffset: 0 },
+};
+
+/**
+ * Normalize a freshly-loaded enemy model so it roughly matches the procedural
+ * primitive: scale uniformly so the model's height equals the primitive's, then
+ * translate so the model's bounding-box min Y sits on the host's base (feet on
+ * the floor) rather than centered through the ground.
+ *
+ * The procedural enemy mesh is positioned at world y = enemyMeshHalfHeight and
+ * its geometry is centered on its origin, so the primitive's base sits at local
+ * y = -halfHeight. We ground the model to that same local base. Only enemy keys
+ * (present in ENEMY_GEOMETRY) are normalized; any other key is left untouched.
+ *
+ * @param {string} key
+ * @param {THREE.Object3D} model
+ */
+function normalizeRegistryModel(key, model) {
+	const def = ENEMY_GEOMETRY[key];
+	if (!def) return; // non-enemy (minion/loot/player) — no primitive to match.
+
+	const halfHeight = enemyMeshHalfHeight(key);
+	const targetHeight = halfHeight * 2;
+
+	const box = new THREE.Box3().setFromObject(model);
+	const size = new THREE.Vector3();
+	box.getSize(size);
+	if (!(size.y > 1e-6) || !Number.isFinite(size.y)) return; // degenerate/empty box — leave as-is.
+
+	const tuning = ENEMY_MODEL_TUNING[key] || { scale: 1, yOffset: 0 };
+	const scale = (targetHeight / size.y) * (tuning.scale ?? 1);
+	model.scale.setScalar(scale);
+
+	// Scaling is about the model's local origin, so the post-scale min Y is the
+	// pre-scale min Y times the scale factor. Shift so that becomes -halfHeight.
+	const scaledMinY = box.min.y * scale;
+	model.position.y = -halfHeight - scaledMinY + (tuning.yOffset ?? 0);
 }
 
 function createMinionMesh(minionType) {
