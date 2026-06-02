@@ -22,11 +22,15 @@ Assets in this folder are served at `/models/…` by the Vite client. Follow the
 | **Morph names** | Exactly: `height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` (see MODEL_SPIKE.md) |
 | **Morph range** | `0.0` … `1.0`, neutral **`0.5`** |
 
-Import and normalization steps: **SPIKE_DECISION.md** + **MODEL_SPIKE.md**. The binary is added in sub-ticket 02; morph targets in 03. Runtime use of this file is ticket 187—until then the game keeps procedural avatars.
+Import and normalization steps: **SPIKE_DECISION.md** + **MODEL_SPIKE.md**. Re-export helper: `game/client/scripts/normalize-player-glb.mjs` (requires `@gltf-transform/*` + `gl-matrix` dev deps). Morph targets in sub-ticket 03. Runtime use of this file is ticket 187—until then the game keeps procedural avatars.
+
+**Committed mesh (02):** Quaternius Universal Base Characters **Superhero Male** from the Standard zip (the free Standard tier ships Superhero male/female glTF only; Regular/Teen bodies are in the paid Source tier). Normalized to 1.8 m height, feet at `y = 0`, bind pose faces **−Z**.
+
+**T-pose vs collision:** Mid-torso slice (y ≈ 0.85–0.95 m) fits inside **0.5 m** radius. T-pose arms reach **±0.92 m** on X at shoulder height—wider than `PLAYER_RADIUS`; gameplay collision stays the cylinder, not mesh-accurate limbs.
 
 ## Head anchor (hats)
 
-Attach hat meshes to the rig bone **`Head`** (expected from Quaternius humanoid export). Document the exact glTF node name in this README when `player.glb` is committed if it differs. Hats should not rely on per-hat position offsets once bone attachment is live (ticket 190).
+Attach hat meshes to the rig bone **`Head`** (glTF node name in `player.glb`: **`Head`**). Hats should not rely on per-hat position offsets once bone attachment is live (ticket 190).
 
 ## Other models
 
