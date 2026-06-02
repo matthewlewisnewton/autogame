@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   mulberry32,
   generateLayout,
+  generateSpireAscentLayout,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
@@ -10,6 +11,8 @@ import {
   randomRoomPositionByRole,
   sampleFloorY,
   buildRampPassage,
+  computeTierBaseY,
+  validateSpireLayout,
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
@@ -18,7 +21,11 @@ import {
   CELL_SPACING,
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
+  PASSAGE_WIDTH,
+  SPIRE_MIN_TIERS,
+  SPIRE_MAX_TIERS,
+  SPIRE_MIN_TOTAL_RISE,
+  SPIRE_MIN_RAMP_SLOPE,
 } from '../dungeon.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
 
@@ -1195,5 +1202,120 @@ describe('buildRampPassage', () => {
     expect(() => buildRampPassage(fromRoom, toRoom, { direction: 'north' })).toThrow(
       /do not align/
     );
+  });
+});
+
+// ── Spire Ascent layout (stage: spire-ascent) ──
+
+function spireLayout(seed) {
+  return generateLayout(seed, 'crowded', { stage: 'spire-ascent' });
+}
+
+describe('generateLayout spire-ascent stage', () => {
+  it('returns a layout distinct from the default grid generator', () => {
+    const grid = generateLayout(42);
+    const spire = spireLayout(42);
+    expect(spire.stage).toBe('spire-ascent');
+    expect(spire.profile).toBe('spire-ascent');
+    expect(spire.rooms.length).toBeLessThanOrEqual(SPIRE_MAX_TIERS);
+    expect(grid.rooms.length).toBeGreaterThan(spire.rooms.length);
+  });
+
+  it('is deterministic for a fixed seed', () => {
+    const a = spireLayout(777);
+    const b = spireLayout(777);
+    expect(a).toEqual(b);
+  });
+
+  it('tier count is in [3, 5] across many seeds', () => {
+    for (let seed = 1; seed <= 40; seed++) {
+      const layout = spireLayout(seed);
+      expect(layout.rooms.length).toBeGreaterThanOrEqual(SPIRE_MIN_TIERS);
+      expect(layout.rooms.length).toBeLessThanOrEqual(SPIRE_MAX_TIERS);
+      expect(layout.passages.length).toBe(layout.rooms.length - 1);
+    }
+  });
+
+  it('tier base Y increases monotonically', () => {
+    const layout = spireLayout(42);
+    const ys = layout.rooms.map(computeTierBaseY);
+    for (let i = 1; i < ys.length; i++) {
+      expect(ys[i]).toBeGreaterThan(ys[i - 1]);
+    }
+  });
+
+  it('every ramp has average slope >= 0.2', () => {
+    const layout = spireLayout(42);
+    for (const ramp of layout.passages) {
+      expect(ramp.avgSlope).toBeGreaterThanOrEqual(SPIRE_MIN_RAMP_SLOPE);
+    }
+  });
+
+  it('total Y gain from start tier center to top tier center is >= 10', () => {
+    const layout = spireLayout(42);
+    const startY = computeTierBaseY(layout.rooms[0]);
+    const topY = computeTierBaseY(layout.rooms[layout.rooms.length - 1]);
+    expect(topY - startY).toBeGreaterThanOrEqual(SPIRE_MIN_TOTAL_RISE);
+  });
+
+  it('BFS from tier 0 reaches every tier', () => {
+    const layout = spireLayout(42);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    for (let i = 0; i < dist.length; i++) {
+      expect(dist[i]).toBeLessThan(Infinity);
+    }
+    expect(dist.filter(d => d < Infinity).length).toBe(layout.rooms.length);
+  });
+
+  it('each room has unique tierIndex 0..n-1', () => {
+    const layout = spireLayout(99);
+    const indices = layout.rooms.map(r => r.tierIndex).sort((a, b) => a - b);
+    expect(indices).toEqual([...indices.keys()]);
+  });
+
+  it('assigns start, combat, and treasure roles by tier index', () => {
+    const layout = spireLayout(42);
+    expect(layout.rooms[0].role).toBe('start');
+    expect(layout.rooms[layout.rooms.length - 1].role).toBe('treasure');
+    for (let i = 1; i < layout.rooms.length - 1; i++) {
+      expect(layout.rooms[i].role).toBe('combat');
+    }
+  });
+
+  it('ramp passages have side walls', () => {
+    const layout = spireLayout(42);
+    for (const ramp of layout.passages) {
+      expect(ramp.walls.length).toBeGreaterThanOrEqual(2);
+      expect(ramp.direction).toBe('south');
+    }
+  });
+
+  it('rooms share X center and stack along +Z', () => {
+    const layout = spireLayout(42);
+    for (const room of layout.rooms) {
+      expect(room.x).toBe(0);
+    }
+    for (let i = 1; i < layout.rooms.length; i++) {
+      expect(layout.rooms[i].z).toBeGreaterThan(layout.rooms[i - 1].z);
+    }
+  });
+
+  it('validateSpireLayout passes for generated layouts', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const layout = spireLayout(seed);
+      expect(() => validateSpireLayout(layout)).not.toThrow();
+    }
+  });
+
+  it('generateSpireAscentLayout matches stage option', () => {
+    const viaStage = spireLayout(123);
+    const direct = generateSpireAscentLayout(123, PASSAGE_WIDTH);
+    expect(direct).toEqual(viaStage);
+  });
+
+  it('respects profile passageWidth only', () => {
+    const layout = generateLayout(42, 'open', { stage: 'spire-ascent' });
+    expect(layout.passageWidth).toBe(LAYOUT_PROFILES.open.passageWidth);
   });
 });

@@ -1,0 +1,17 @@
+Broke the parent ticket into **5 sub-tickets** in dependency order (no prior subtickets existed; nothing to retire). All use **Verification: code** because acceptance criteria cover structure, slope math, reachability, server state, and tests—not pixel-perfect screenshots alone.
+
+| # | Focus |
+|---|--------|
+| 01 | Reusable `buildRampPassage` helper (shared with canyon 137) |
+| 02 | `stage: 'spire-ascent'` layout — 3–5 tiers, ramps, walls, ≥10 Y gain |
+| 03 | `sampleFloorY` on sloped passages so movement ascends |
+| 04 | Client sloped passage meshes |
+| 05 | Quest/debug wiring, enemy tier spread, final acceptance tests |
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-ramp-passage-helper`
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-spire-ascent-layout-generator`
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-passage-floor-sampling`
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/04-sloped-passage-client-render`
+- `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/05-stage-plumbing-and-acceptance-tests`
