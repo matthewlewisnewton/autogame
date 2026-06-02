@@ -48,6 +48,7 @@ const {
 } = require('./simulation');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
+const { DEFAULT_COSMETIC } = require('./cosmetic');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -3077,6 +3078,7 @@ function stateSnapshot() {
       blockingYaw: p.blockingYaw || 0,
       barrierDomeUntil: p.barrierDomeUntil || 0,
       barrierDomeRadius: p.barrierDomeRadius || 0,
+      cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     };
   }
 

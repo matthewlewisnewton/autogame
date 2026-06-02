@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import config from '../config.js';
+import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -10,6 +11,7 @@ import {
 	spawnEnemy,
 	spawnEnemies,
 	firstRoomPosition,
+	buildPlayerRecord,
 	createGameState,
 	resetGameState,
 	gameState,
@@ -4152,6 +4154,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			blockingYaw: 0,
 			barrierDomeUntil: 0,
 			barrierDomeRadius: 0,
+			cosmetic: { ...DEFAULT_COSMETIC },
 		});
 	});
 
