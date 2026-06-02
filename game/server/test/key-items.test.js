@@ -10,7 +10,9 @@ import {
 	isEntityPositionBlocked,
 	ENTITY_RADIUS,
 	wallAABB,
+	MAX_MAGIC_STONES,
 } from '../index.js';
+import { setGameState as setSimGameState, processPendingEchoes } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import {
 	startTestServer,
@@ -918,5 +920,206 @@ describe('useKeyItem — echo_strike', () => {
 		const persistent = extractPersistentData(player);
 
 		expect(persistent).not.toHaveProperty('echoStrikePending');
+	});
+});
+
+// ── echo_strike — delayed weapon echo (sub-ticket 02) ──
+
+describe('echo_strike — weapon echo', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+	});
+
+	async function connectAndStartRun() {
+		const { socket } = await connectClient(baseUrl);
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		return { socket };
+	}
+
+	/**
+	 * Put the player at the origin facing +x with a fresh weapon card in slot 0
+	 * and a single tanky enemy 2m straight ahead (within attack range).
+	 */
+	function setupWeaponAndEnemy(socket, { hp = 500 } = {}) {
+		const player = playerForSocket(socket);
+		const state = testGameState();
+
+		player.keyItemCooldownUntil = 0;
+		player.slotCooldowns = new Array(player.hand.length).fill(null);
+		player.x = 0;
+		player.z = 0;
+		player.rotation = 0;
+		player.hand[0] = {
+			id: 'iron_sword',
+			name: 'Rust-Forged Saber',
+			type: 'weapon',
+			damage: 17,
+			charges: 5,
+			remainingCharges: 5,
+		};
+
+		state.enemies.length = 0;
+		state.pendingEchoes = [];
+		const enemy = {
+			id: 'echo-target',
+			type: 'grunt',
+			x: 2,
+			z: 0,
+			y: 0.5,
+			hp,
+			maxHp: hp,
+			state: 'idle',
+			attackState: 'idle',
+			wanderTarget: { x: 2, z: 0 },
+		};
+		state.enemies.push(enemy);
+		return { player, state, enemy };
+	}
+
+	it('armed weapon hit deals primary damage immediately and enqueues a 50% echo', async () => {
+		const { socket } = await connectAndStartRun();
+		const { player, state, enemy } = setupWeaponAndEnemy(socket);
+
+		player.echoStrikePending = true;
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { slotIndex: 0, cardId: 'iron_sword', rotation: 0 });
+		await cardUsedPromise;
+
+		// Primary hit applied synchronously (17 damage).
+		expect(enemy.hp).toBe(500 - 17);
+		// Flag consumed by the one weapon use.
+		expect(player.echoStrikePending).toBe(false);
+		// One pending echo enqueued for the struck enemy at 50% (round(17*0.5)=9).
+		expect(state.pendingEchoes).toHaveLength(1);
+		const echo = state.pendingEchoes[0];
+		expect(echo.attackerId).toBe(socket._playerId);
+		expect(echo.targets).toEqual([{ enemyId: 'echo-target', damage: 9 }]);
+		expect(echo.applyAt).toBeGreaterThan(Date.now());
+	});
+
+	it('processPendingEchoes applies the delayed second packet to the same enemy', async () => {
+		const { socket } = await connectAndStartRun();
+		const { player, state, enemy } = setupWeaponAndEnemy(socket);
+
+		player.echoStrikePending = true;
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { slotIndex: 0, cardId: 'iron_sword', rotation: 0 });
+		await cardUsedPromise;
+
+		expect(enemy.hp).toBe(500 - 17);
+		expect(state.pendingEchoes).toHaveLength(1);
+
+		// Point the exported tick helper at this lobby's state (the live game loop
+		// restores _gameState to the global state between ticks). Pin the echo far
+		// out so the running loop can't apply it under us while we assert the no-op.
+		setSimGameState(state, {});
+		state.pendingEchoes[0].applyAt = Date.now() + 100000;
+		processPendingEchoes();
+		expect(enemy.hp).toBe(500 - 17);
+		expect(state.pendingEchoes).toHaveLength(1);
+
+		// Drive the delay: make it due, then process.
+		state.pendingEchoes[0].applyAt = Date.now() - 1;
+		processPendingEchoes();
+
+		// Second packet (9) landed → two total damage events on the target.
+		expect(enemy.hp).toBe(500 - 17 - 9);
+		expect(enemy.lastDamagedBy).toBe(socket._playerId);
+		// Applied entry dropped.
+		expect(state.pendingEchoes).toHaveLength(0);
+	});
+
+	it('a second weapon use is not re-armed and produces only one packet', async () => {
+		const { socket } = await connectAndStartRun();
+		const { player, state, enemy } = setupWeaponAndEnemy(socket);
+
+		player.echoStrikePending = true;
+
+		// First (armed) use.
+		const firstPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { slotIndex: 0, cardId: 'iron_sword', rotation: 0 });
+		await firstPromise;
+		expect(state.pendingEchoes).toHaveLength(1);
+		expect(player.echoStrikePending).toBe(false);
+
+		// Flush the first echo via the exported tick helper (pointed at this lobby).
+		setSimGameState(state, {});
+		state.pendingEchoes[0].applyAt = Date.now() - 1;
+		processPendingEchoes();
+		expect(state.pendingEchoes).toHaveLength(0);
+		const hpAfterFirst = enemy.hp; // 500 - 17 - 9 = 474
+
+		// Clear slot cooldown for the second swing.
+		player.slotCooldowns = new Array(player.hand.length).fill(null);
+
+		const secondPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { slotIndex: 0, cardId: 'iron_sword', rotation: 0 });
+		await secondPromise;
+
+		// Only the primary packet — no new echo enqueued.
+		expect(enemy.hp).toBe(hpAfterFirst - 17);
+		expect(state.pendingEchoes).toHaveLength(0);
+
+		// Even after processing, no echo lands.
+		processPendingEchoes();
+		expect(enemy.hp).toBe(hpAfterFirst - 17);
+	});
+
+	it('a spell use leaves the flag armed and enqueues no echo', async () => {
+		const { socket } = await connectAndStartRun();
+		const { player, state, enemy } = setupWeaponAndEnemy(socket);
+
+		player.echoStrikePending = true;
+		player.magicStones = MAX_MAGIC_STONES;
+		// Put a damage spell in slot 0.
+		player.hand[0] = {
+			id: 'frost_nova',
+			name: 'Cryo Burst',
+			type: 'spell',
+			charges: 1,
+			remainingCharges: 1,
+			magicStoneCost: 35,
+		};
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { slotIndex: 0, cardId: 'frost_nova', rotation: 0 });
+		await cardUsedPromise;
+
+		// Spell damaged the enemy but did NOT consume the flag or enqueue an echo.
+		expect(player.echoStrikePending).toBe(true);
+		expect(state.pendingEchoes).toHaveLength(0);
+
+		processPendingEchoes();
+		expect(state.pendingEchoes).toHaveLength(0);
+	});
+
+	it('echo is consumed even when the armed swing hits nothing', async () => {
+		const { socket } = await connectAndStartRun();
+		const { player, state } = setupWeaponAndEnemy(socket);
+
+		// Move the lone enemy far out of range so the swing misses.
+		state.enemies[0].x = 100;
+		state.enemies[0].z = 100;
+		state.enemies[0].wanderTarget = { x: 100, z: 100 };
+
+		player.echoStrikePending = true;
+
+		const cardUsedPromise = waitForEvent(socket, 'cardUsed');
+		socket.emit('useCard', { slotIndex: 0, cardId: 'iron_sword', rotation: 0 });
+		await cardUsedPromise;
+
+		// Flag consumed, but nothing was struck so no echo is enqueued.
+		expect(player.echoStrikePending).toBe(false);
+		expect(state.pendingEchoes).toHaveLength(0);
 	});
 });
