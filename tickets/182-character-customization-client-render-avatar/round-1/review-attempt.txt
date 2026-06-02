@@ -1,0 +1,14 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): clean.** `metrics.json` has `ok: true`, empty `pageerrors`, no `harness_failure`; the capture reached `phase: "playing"` with a live canvas. `console.log` shows only scene-init/vite-connect lines, and the only `client.log` noise is a benign `ECONNRESET` on socket close. Screenshot `02-after-w.png` confirms the local player actually renders as a cosmetic avatar (box body in the default blue + gold accent band).
+
+**Acceptance criteria fully met** across both sub-tickets:
+- `createPlayerAvatar` builds a `THREE.Group` with shape-driven body geometry (box/cylinder/cone/capsule, box fallback), color/accent from cosmetic with safe hex-validation fallbacks, and a hat child (cap/wizard/crown/none) seated on the head per body shape.
+- The old hardcoded box / blue-vs-red block is gone; every player goes through the builder. Avatars rebuild on a `cosmeticSignature` change with full geometry/material disposal.
+- All per-player visual states (dead gray, i-frame transparency, HP flash, dash squash + ghost, shield disc) were correctly retargeted to `userData.bodyMesh` via `resolveBodyMesh` — grep confirms zero remaining `.material`/`.geometry` accesses on the group.
+
+**Debug scenarios** (`custom-avatar-demo`, `avatar-wizard-hat`) are gated solely behind `isDebugScenarioAllowed`, the same end-state is reachable through the validated profile route (`users.js` → account → broadcast), and they exercise the real replication→render pipeline without short-circuiting this ticket's invariants.
+
+No blocking gaps, so no `gaps.md`. I filed three non-blocking nits (unused `isSelf` param, dash ghost cloning only the body mesh, duplicated default-color constants) to `nits.md`.

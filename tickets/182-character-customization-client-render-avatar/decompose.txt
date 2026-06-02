@@ -1,0 +1,14 @@
+Created 2 sub-tickets, both in dependency order (02 builds on 01's avatar group).
+
+**Sub-ticket folder paths created:**
+- `/home/matt/workspace/.autogame-worktrees/182-character-customization-client-render-avatar/tickets/182-character-customization-client-render-avatar/subtickets/01-render-avatar-body-and-colors/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/182-character-customization-client-render-avatar/tickets/182-character-customization-client-render-avatar/subtickets/02-render-avatar-hat/ticket.md`
+
+**Scope rationale:** The top-level `ticket.md` was missing from the folder, so I reconstructed intent from the branch title (`character-customization-client-render-avatar`) and the already-shipped server work: the cosmetic schema (#181 — `bodyColor`/`accentColor`/`bodyShape`/`hat` in `server/cosmetic.js`) and hat unlocks (#189). The server already broadcasts each player's `cosmetic` in the per-player game state (`progression.js:3114`), but the client (`renderer.js`) ignores it and draws every player as a hardcoded 1×1×1 blue/red box. So this ticket is purely the **client rendering** of that profile.
+
+- **01** — replace the hardcoded box with a `createPlayerAvatar(cosmetic)` builder (Group with shape-driven body + accent), and retarget the existing dead/i-frame/HP-flash/dash/shield effects from the bare mesh to the group's body mesh. This is the meaty refactor since lots of code assumes the player is a single `Mesh` with `.material`/`.geometry`.
+- **02** — layer the `hat` mesh (cap/wizard/crown/none) on top of that avatar.
+
+Both are `code` verification: each criterion concerns a function/structure existing, rebuild-on-change logic, and preserved behavior across dead/i-frame/flash paths — not just how one happy-path frame looks. (No `visual` because these mix "looks right" with "X exists/behaves", and the cosmetic defaults mean a plain happy-path screenshot wouldn't exercise the non-default shapes/hats anyway.)
+
+No existing sub-ticket folders were present, so nothing was deleted or modified.
