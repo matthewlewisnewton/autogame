@@ -135,6 +135,7 @@ import {
 	triggerDashVFX,
 	triggerHealPulseVFX,
 	triggerShieldVFX,
+	getPhaseStepTargetId,
 } from './renderer.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
@@ -723,7 +724,14 @@ initInput({
 		if (gameState && gameState.gamePhase === 'playing' && socket) {
 			const me = gameState.players[myId];
 			if (me && me.equippedKeyItemId) {
-				socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
+				// phase_step targets the highlighted ally; the renderer recomputes
+				// the nearest in-range ally each frame. Other items keep their shape.
+				if (me.equippedKeyItemId === 'phase_step') {
+					const targetPlayerId = getPhaseStepTargetId();
+					socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId });
+				} else {
+					socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
+				}
 			}
 		}
 	},
