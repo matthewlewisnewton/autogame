@@ -3,7 +3,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from harness.dispatch.factory import build_factory, default_registry, reconcile
+from harness.dispatch.factory import (
+    build_factory, clean_orphan_worktrees, default_registry, reconcile,
+)
 
 
 class FakeQueue:
@@ -28,6 +30,48 @@ class FakeRepo:
 
     def run_git(self, *a, **k):
         return ""
+
+
+class RecordingRepo:
+    """Records git calls and replays canned output for the two read queries
+    clean_orphan_worktrees makes (worktree list + branch list)."""
+    def __init__(self, root, worktrees, branches):
+        self.root = root
+        self._worktrees = worktrees          # paths to report in `worktree list`
+        self._branches = branches            # names to report in `branch --list`
+        self.calls = []
+
+    def run_git(self, *a, **k):
+        self.calls.append(a)
+        if a[:3] == ("worktree", "list", "--porcelain"):
+            blocks = []
+            for wt in self._worktrees:
+                blocks.append(f"worktree {wt}\nHEAD deadbeef\nbranch refs/heads/auto/x\n")
+            return "\n".join(blocks)
+        if a[:2] == ("branch", "--list"):
+            return "\n".join(self._branches)
+        return ""
+
+
+def test_clean_orphan_worktrees_removes_dirs_and_branches(tmp_path):
+    repo = RecordingRepo(
+        tmp_path,
+        worktrees=[
+            str(tmp_path),  # the main checkout itself — must NOT be removed
+            "/home/x/.autogame-worktrees/137-foo",
+            "/home/x/.autogame-worktrees/130-bar",
+        ],
+        branches=["  auto/137-foo", "* main", "  auto/130-bar"],
+    )
+    n = clean_orphan_worktrees(repo)
+    assert n == 2  # only the two .autogame-worktrees entries, not main
+    removes = [c for c in repo.calls if c[:3] == ("worktree", "remove", "--force")]
+    assert {c[3] for c in removes} == {
+        "/home/x/.autogame-worktrees/137-foo",
+        "/home/x/.autogame-worktrees/130-bar",
+    }
+    deletes = {c[2] for c in repo.calls if c[:2] == ("branch", "-D")}
+    assert deletes == {"auto/137-foo", "auto/130-bar"}  # main branch untouched
 
 
 def test_reconcile_resets_orphans(tmp_path):

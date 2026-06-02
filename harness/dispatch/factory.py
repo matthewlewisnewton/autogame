@@ -62,6 +62,48 @@ def _read_merged_unclosed(root: Path) -> set[str]:
     return {ln.strip() for ln in text.splitlines() if ln.strip()}
 
 
+def clean_orphan_worktrees(main_repo: Repo) -> int:
+    """Remove every `.autogame-worktrees/*` worktree and `auto/*` branch.
+
+    At dispatcher startup nothing is live, so all of these are orphans from a
+    prior run. `git worktree prune` alone does NOT help — it only unregisters
+    worktrees whose directory is already gone, so a leftover dir would make the
+    next `worktree add` at that path fail and the reset ticket could never be
+    re-worked. Removing the dirs here makes a restart a clean reset. Returns the
+    number of worktrees removed."""
+    removed = 0
+    try:
+        listing = main_repo.run_git("worktree", "list", "--porcelain")
+    except Exception as e:
+        log(f"[factory] reconcile: could not list worktrees: {e!r}")
+        listing = ""
+    for line in listing.splitlines():
+        if line.startswith("worktree ") and ".autogame-worktrees" in line:
+            path = line[len("worktree "):].strip()
+            try:
+                main_repo.run_git("worktree", "remove", "--force", path,
+                                  check=False, capture=False)
+                removed += 1
+            except Exception as e:
+                log(f"[factory] reconcile: worktree remove {path} failed: {e!r}")
+    try:
+        main_repo.run_git("worktree", "prune", check=False, capture=False)
+    except Exception:
+        pass
+    try:
+        branches = main_repo.run_git("branch", "--list", "auto/*")
+    except Exception:
+        branches = ""
+    for b in branches.splitlines():
+        name = b.replace("*", "").strip()
+        if name.startswith("auto/"):
+            try:
+                main_repo.run_git("branch", "-D", name, check=False, capture=False)
+            except Exception:
+                pass
+    return removed
+
+
 def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
     """On startup no workers should be running, so any `in_progress` bead is
     orphaned from a previous run. Reset it to ready — EXCEPT beads recorded as
@@ -97,10 +139,9 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
             (Path(main_repo.root) / MERGED_UNCLOSED).unlink()
         except OSError:
             pass
-    try:
-        main_repo.run_git("worktree", "prune", check=False, capture=False)
-    except Exception:
-        pass
+    n_wt = clean_orphan_worktrees(main_repo)
+    if n_wt:
+        log(f"[factory] reconcile: cleaned {n_wt} orphaned worktree(s)")
     return reset
 
 
@@ -137,4 +178,4 @@ def run_factory(main_root, *, workers: int = 3, max_idle_ticks: int = 0,
 
 
 __all__ = ["run_factory", "build_factory", "reconcile", "default_registry",
-           "DEFAULT_SPECS", "DEFAULT_ORDER"]
+           "clean_orphan_worktrees", "DEFAULT_SPECS", "DEFAULT_ORDER"]
