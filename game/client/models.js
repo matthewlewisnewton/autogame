@@ -1,5 +1,31 @@
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+/** Entity key → glTF URL under `/models/`, or null until assets are wired. */
+export const MODEL_REGISTRY = {
+	player: null,
+	grunt: null,
+	skirmisher: null,
+	miniboss: null,
+	spawner: null,
+	ancient_wyrm: null,
+	null_crawler: null,
+	bulkhead_mauler: null,
+	currency: null,
+	crystal: null,
+	magic_stone: null
+};
+
+/**
+ * @param {string} key
+ * @returns {string | null}
+ */
+export function getRegistryModelPath(key) {
+	if (!Object.prototype.hasOwnProperty.call(MODEL_REGISTRY, key)) {
+		return null;
+	}
+	return MODEL_REGISTRY[key];
+}
+
 /** @type {Map<string, Promise<import('three').Object3D | null>>} */
 const templateCache = new Map();
 const loader = new GLTFLoader();

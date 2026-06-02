@@ -6,6 +6,7 @@
 const apiTarget = `http://localhost:${process.env.HARNESS_GAME_PORT || process.env.PORT || 3000}`;
 
 export default {
+	publicDir: 'public',
 	server: {
 		port: 5173,
 		strictPort: true,
