@@ -252,7 +252,14 @@ function updateProfile(accountId, fields) {
 			}
 		}
 		// Merge only the provided sub-fields onto the existing cosmetic.
-		user.cosmetic = { ...backfillCosmetic(user.cosmetic), ...result.value };
+		// Deep-merge `proportions` so a partial update (e.g. only `height`) does not
+		// erase the other proportion keys the user previously set.
+		const base = backfillCosmetic(user.cosmetic);
+		const merged = { ...base, ...result.value };
+		if (result.value.proportions !== undefined) {
+			merged.proportions = { ...base.proportions, ...result.value.proportions };
+		}
+		user.cosmetic = merged;
 	}
 
 	saveUsers();

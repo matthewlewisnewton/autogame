@@ -285,6 +285,120 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
 	});
+
+	it('allows updating modelId through updateProfile', () => {
+		createUser('model_user', 'pass');
+		const id = findUserByUsername('model_user').accountId;
+
+		const res = updateProfile(id, { cosmetic: { modelId: 'player' } });
+		expect(res.ok).toBe(true);
+		expect(findUserByAccountId(id).cosmetic.modelId).toBe('player');
+	});
+
+	it('allows updating proportions through updateProfile', () => {
+		createUser('prop_user', 'pass');
+		const id = findUserByUsername('prop_user').accountId;
+
+		const res = updateProfile(id, { cosmetic: { proportions: { height: 1.1, headSize: 0.9 } } });
+		expect(res.ok).toBe(true);
+		const user = findUserByAccountId(id);
+		expect(user.cosmetic.proportions.height).toBe(1.1);
+		expect(user.cosmetic.proportions.headSize).toBe(0.9);
+		// Non-provided keys retain defaults
+		expect(user.cosmetic.proportions.torsoWidth).toBe(1.0);
+	});
+
+	it('allows partial proportions update (only provided keys replaced, others preserved)', () => {
+		createUser('partial_prop', 'pass');
+		const id = findUserByUsername('partial_prop').accountId;
+
+		// First set all proportions to non-default values
+		updateProfile(id, { cosmetic: { proportions: { height: 1.2, headSize: 1.1, torsoWidth: 0.8, armLength: 0.9, legLength: 1.0, shoulderWidth: 1.0 } } });
+		// Then update only one key
+		updateProfile(id, { cosmetic: { proportions: { height: 0.9 } } });
+
+		const user = findUserByAccountId(id);
+		expect(user.cosmetic.proportions.height).toBe(0.9);
+		// Other keys preserved from previous update (deep merge)
+		expect(user.cosmetic.proportions.headSize).toBe(1.1);
+		expect(user.cosmetic.proportions.torsoWidth).toBe(0.8);
+		expect(user.cosmetic.proportions.armLength).toBe(0.9);
+	});
+
+	it('rejects an unknown modelId without mutating', () => {
+		createUser('bad_model', 'pass');
+		const id = findUserByUsername('bad_model').accountId;
+
+		const res = updateProfile(id, { cosmetic: { modelId: 'unknown_model' } });
+		expect(res.ok).toBe(false);
+		expect(findUserByAccountId(id).cosmetic.modelId).toBe('player');
+	});
+
+	it('rejects proportions with a value out of range', () => {
+		createUser('bad_prop', 'pass');
+		const id = findUserByUsername('bad_prop').accountId;
+
+		const res = updateProfile(id, { cosmetic: { proportions: { height: 2.0 } } });
+		expect(res.ok).toBe(false);
+		expect(findUserByAccountId(id).cosmetic.proportions.height).toBe(1.0);
+	});
+
+	it('rejects proportions with an unknown key', () => {
+		createUser('bad_prop_key', 'pass');
+		const id = findUserByUsername('bad_prop_key').accountId;
+
+		const res = updateProfile(id, { cosmetic: { proportions: { neckSize: 1.0 } } });
+		expect(res.ok).toBe(false);
+	});
+
+	it('rejects proportions with a non-numeric value', () => {
+		createUser('bad_prop_type', 'pass');
+		const id = findUserByUsername('bad_prop_type').accountId;
+
+		const res = updateProfile(id, { cosmetic: { proportions: { height: 'tall' } } });
+		expect(res.ok).toBe(false);
+	});
+
+	it('rejects proportions that is not an object', () => {
+		createUser('bad_prop_obj', 'pass');
+		const id = findUserByUsername('bad_prop_obj').accountId;
+
+		const res = updateProfile(id, { cosmetic: { proportions: 'all-big' } });
+		expect(res.ok).toBe(false);
+	});
+
+	it('backfills modelId and proportions on a legacy record missing both', () => {
+		const legacy = [{
+			username: 'legacy_model',
+			passwordHash: 'x',
+			accountId: 'legacy-model-id',
+			cosmetic: { bodyColor: '#ff0000' }
+		}];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy), 'utf-8');
+		clearUsers();
+		loadUsers();
+
+		const user = findUserByUsername('legacy_model');
+		expect(user.cosmetic.bodyColor).toBe('#ff0000');
+		expect(user.cosmetic.modelId).toBe('player');
+		expect(user.cosmetic.proportions).toEqual({
+			height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0
+		});
+	});
+
+	it('persists modelId and proportions across a simulated restart', () => {
+		createUser('persist_model', 'pass');
+		const id = findUserByUsername('persist_model').accountId;
+		updateProfile(id, { cosmetic: { modelId: 'player', proportions: { height: 1.15, shoulderWidth: 1.2 } } });
+
+		clearUsers();
+		loadUsers();
+
+		const user = findUserByAccountId(id);
+		expect(user.cosmetic.modelId).toBe('player');
+		expect(user.cosmetic.proportions.height).toBe(1.15);
+		expect(user.cosmetic.proportions.shoulderWidth).toBe(1.2);
+	});
 });
 
 // ── File-backed persistence ──
