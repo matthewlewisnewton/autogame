@@ -8,12 +8,13 @@ agreed routing: qwen=easy (cap 1, single ollama box), composer-2.5=medium
 """
 from __future__ import annotations
 
+import subprocess
 from pathlib import Path
 from typing import Optional
 
 from harness.beads import BeadsQueue
 from harness.dispatch.dispatcher import Dispatcher
-from harness.dispatch.merge_queue import MergeQueue
+from harness.dispatch.merge_queue import MERGED_UNCLOSED, MergeQueue
 from harness.dispatch.registry import AgentRegistry, AgentSpec
 from harness.telemetry.logging import log
 from harness.telemetry.progress import emit_progress_event
@@ -37,26 +38,67 @@ def default_registry(health_file: Path) -> AgentRegistry:
     return AgentRegistry(DEFAULT_SPECS, DEFAULT_PREFERENCE, health_file=health_file)
 
 
+def _kill_stray_workers() -> None:
+    """A crashed dispatcher leaves its `harness worker` subprocesses alive
+    (they're spawned with start_new_session=True). Kill them BEFORE requeuing
+    their beads, or a survivor + the new claimant would double-run the ticket in
+    the same branch/worktree. Best-effort; no live dispatcher names its own
+    process `harness worker` (it's `harness factory`), so this won't self-kill."""
+    try:
+        subprocess.run(["pkill", "-f", "harness worker"], check=False,
+                       capture_output=True)
+    except Exception as e:
+        log(f"[factory] reconcile: pkill stray workers failed: {e!r}")
+
+
+def _read_merged_unclosed(root: Path) -> set[str]:
+    try:
+        text = (Path(root) / MERGED_UNCLOSED).read_text()
+    except OSError:
+        return set()
+    return {ln.strip() for ln in text.splitlines() if ln.strip()}
+
+
 def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
-    """On startup no workers are running, so any `in_progress` bead is orphaned
-    from a previous run — reset it to ready. Also prune stale git worktrees.
-    Returns the number of orphans reset."""
+    """On startup no workers should be running, so any `in_progress` bead is
+    orphaned from a previous run. Reset it to ready — EXCEPT beads recorded as
+    merged-but-unclosed (already on main): those get closed, not re-run. Also
+    kills stray detached workers first and prunes stale worktrees. Returns the
+    number of orphans reset to ready."""
+    _kill_stray_workers()
+    merged_unclosed = _read_merged_unclosed(main_repo.root)
     try:
         orphans = queue.in_progress()
     except Exception as e:
         log(f"[factory] reconcile: could not list in_progress beads: {e!r}")
         orphans = []
+    reset = 0
     for issue in orphans:
-        log(f"[factory] reconcile: resetting orphaned in_progress {issue.get('title', issue.get('id'))}")
+        iid = issue["id"]
+        label = issue.get("title", iid)
+        if iid in merged_unclosed:
+            log(f"[factory] reconcile: {label} was merged but unclosed — closing")
+            try:
+                queue.close(iid, "merged to main (recovered by reconcile)")
+            except Exception as e:
+                log(f"[factory] reconcile: close of merged {iid} failed: {e!r}")
+            continue
+        log(f"[factory] reconcile: resetting orphaned in_progress {label}")
         try:
-            queue.requeue(issue["id"], note="reconcile: orphaned in_progress on dispatcher startup")
+            queue.requeue(iid, note="reconcile: orphaned in_progress on dispatcher startup")
+            reset += 1
         except Exception as e:
-            log(f"[factory] reconcile: requeue failed for {issue.get('id')}: {e!r}")
+            log(f"[factory] reconcile: requeue failed for {iid}: {e!r}")
+    if merged_unclosed:
+        try:
+            (Path(main_repo.root) / MERGED_UNCLOSED).unlink()
+        except OSError:
+            pass
     try:
         main_repo.run_git("worktree", "prune", check=False, capture=False)
     except Exception:
         pass
-    return len(orphans)
+    return reset
 
 
 def build_factory(main_root, *, workers: int = 3,

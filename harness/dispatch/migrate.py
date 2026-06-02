@@ -15,6 +15,7 @@ import re
 from pathlib import Path
 
 from harness.beads import BeadsQueue
+from harness.telemetry.logging import log
 
 _UNCHECKED = re.compile(r"^- \[ \] \[([^\]]+)\]", re.MULTILINE)
 _DIFFICULTY = re.compile(r"^\s*##?\s*Difficulty\s*:\s*(easy|medium|hard)\s*$",
@@ -44,20 +45,49 @@ def ticket_meta(ticket_md: Path) -> tuple[str, bool, list[str]]:
     return difficulty, is_epic, deps
 
 
+def _existing_titles(queue: BeadsQueue) -> set[str]:
+    """Titles of beads already live (ready + in_progress) — for idempotency.
+    Closed beads aren't included: their tickets are [x] in TASKS.md so
+    open_ticket_names won't return them anyway."""
+    titles: set[str] = set()
+    try:
+        for issue in queue.ready(limit=1000):
+            if issue.get("title"):
+                titles.add(issue["title"])
+        for issue in queue.in_progress():
+            if issue.get("title"):
+                titles.add(issue["title"])
+    except Exception as e:
+        log(f"[migrate] could not list existing beads (assuming none): {e!r}")
+    return titles
+
+
 def migrate_open_tickets(repo_root, queue: BeadsQueue, *, tasks_md=None) -> dict[str, str]:
     """Create beads for every open, non-epic TASKS.md ticket + wire deps.
     Returns {ticket_name: bead_id}."""
     repo_root = Path(repo_root)
     tasks_md = Path(tasks_md) if tasks_md else repo_root / "TASKS.md"
     names = open_ticket_names(tasks_md)
+    existing = _existing_titles(queue)
 
     metas: dict[str, tuple[str, bool, list[str]]] = {}
     created: dict[str, str] = {}
     # pass 1 — create runnable (non-epic) beads
     for name in names:
-        diff, is_epic, deps = ticket_meta(repo_root / "tickets" / name / "ticket.md")
+        ticket_md = repo_root / "tickets" / name / "ticket.md"
+        if not ticket_md.exists():
+            # Stale TASKS.md entry with no ticket dir — a bead here would be
+            # unrunnable (the worker has no tickets/<name>/ to act on). Skip it.
+            log(f"[migrate] skip {name}: no tickets/{name}/ticket.md")
+            continue
+        diff, is_epic, deps = ticket_meta(ticket_md)
         metas[name] = (diff, is_epic, deps)
         if is_epic:
+            continue
+        if name in existing:
+            # Idempotent: a re-run must not create a duplicate bead (two workers
+            # would then race the same auto/<name> branch).
+            log(f"[migrate] skip {name}: bead already exists")
             continue
         created[name] = queue.create(name, difficulty=diff)
     # pass 2 — dependency edges (only among created beads; skip blockers that

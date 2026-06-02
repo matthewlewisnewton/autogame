@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from harness.dispatch.dispatcher import WorkerHandle
-from harness.dispatch.merge_queue import MergeQueue
+from harness.dispatch.merge_queue import MERGED_UNCLOSED, MergeQueue
 
 
 class FakeWorktree:
@@ -91,6 +91,32 @@ def test_merge_failure_requeues():
     mq.enqueue(_handle("t1"))
     mq.drain_one()
     assert q.closed == [] and q.requeued == ["t1"]
+
+
+class _Repo:
+    def __init__(self, root):
+        self.root = root
+
+
+class _CloseFailsQueue(FakeQueue):
+    def close(self, tid, reason="done"):
+        raise RuntimeError("dolt locked")
+
+
+def test_close_failure_after_merge_records_durably_not_requeue(tmp_path, monkeypatch):
+    """A successful merge whose `bd close` keeps failing must NOT requeue (the
+    code is already on main) — it records the id for reconcile to close."""
+    monkeypatch.setattr("harness.dispatch.merge_queue.time.sleep", lambda *_: None)
+    q = _CloseFailsQueue()
+    mq, calls = _mq(q)
+    mq.main_repo = _Repo(tmp_path)
+    h = _handle("t1")
+    mq.enqueue(h)
+    mq.drain_one()
+    assert q.requeued == []                       # NOT requeued — already merged
+    assert h.worktree.removed                     # worktree still torn down
+    recorded = (tmp_path / MERGED_UNCLOSED).read_text().split()
+    assert recorded == ["t1"]                     # durably recorded for reconcile
 
 
 def test_drain_all_fifo():

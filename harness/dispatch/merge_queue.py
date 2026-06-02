@@ -17,6 +17,7 @@ logic unit-tests with fakes (no real git/vitest).
 from __future__ import annotations
 
 import subprocess
+import time
 from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,8 +26,13 @@ from typing import Callable, Optional
 from harness.beads import BeadsQueue
 from harness.dispatch.dispatcher import WorkerHandle
 from harness.telemetry.logging import log
-from harness.telemetry.progress import emit_progress_event
+from harness.telemetry.progress import emit_progress_event, locked_append
 from harness.workspace.repo import Repo
+
+# Beads that were merged to main but whose `bd close` failed are recorded here
+# (one id per line, in the main checkout) so reconcile CLOSES them on next
+# startup instead of requeuing an already-merged ticket onto a deleted branch.
+MERGED_UNCLOSED = ".beads_merged_unclosed"
 
 
 def _default_rebase(main_repo: Repo, h: WorkerHandle) -> bool:
@@ -115,13 +121,31 @@ class MergeQueue:
             return self._reject(h, "post-rebase verification failed")
         if not self.merge(h):
             return self._reject(h, "fast-forward merge failed")
-        try:
-            self.queue.close(h.ticket_id, "merged to main")
-        except Exception as e:
-            log(f"[merge] WARN: merged {h.ticket_id} but bd close failed: {e!r}")
+        self._close_merged(h)
         emit_progress_event("merge_done",
                             {"ticket": h.ticket_id, "branch": h.worktree.branch})
         h.worktree.remove_worktree()
+
+    def _close_merged(self, h: WorkerHandle) -> None:
+        """Close the bead after a successful merge to main. The code is ALREADY
+        on main, so this must not requeue on failure (that would re-run merged
+        work). Retry a few times; if `bd close` still fails, record the id durably
+        so reconcile closes it on the next dispatcher startup."""
+        last: Optional[Exception] = None
+        for attempt in range(3):
+            try:
+                self.queue.close(h.ticket_id, "merged to main")
+                return
+            except Exception as e:
+                last = e
+                time.sleep(0.5 * (attempt + 1))
+        log(f"[merge] ERROR: merged {h.ticket_id} to main but bd close failed 3x "
+            f"({last!r}); recording to {MERGED_UNCLOSED} for reconcile to close")
+        try:
+            locked_append(Path(self.main_repo.root) / MERGED_UNCLOSED, h.ticket_id)
+        except OSError as e:
+            log(f"[merge] WARN: could not record merged-unclosed {h.ticket_id}: {e!r}")
+        emit_progress_event("merge_close_failed", {"ticket": h.ticket_id})
 
     def _reject(self, h: WorkerHandle, reason: str) -> None:
         log(f"[merge] {h.ticket_id} NOT merged ({reason}) — main untouched, requeuing")
