@@ -417,6 +417,7 @@ const DEBUG_SCENARIOS = new Set([
   'overclock-ready',
   'phase-step-ready',
   'open-plaza-arena',
+  'sunken-canyon',
   'sunken-canyon-stage',
 ]);
 
@@ -806,6 +807,26 @@ function applyDebugScenario(socket, name) {
       // Populate the arena with the trial pack via the cover-aware spawn path so
       // enemy/loot placement on the open plaza is directly observable. This is
       // the same spawn that runs when deploying into arena_trials normally.
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'sunken-canyon') {
+      // Canyon Descent quest with band-aware spawns — same state as deploying into
+      // canyon_descent normally; shortcut for QA (enemies, layout, plateau spawn).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'canyon_descent';
+      applyLayoutForQuest(state, 'canyon_descent');
+      const plateauSpawn = firstRoomPosition();
+      player.x = plateauSpawn.x;
+      player.z = plateauSpawn.z;
+      const plateauFloorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(plateauFloorY) ? plateauFloorY : DEFAULT_FLOOR_Y;
       state.enemies = [];
       state.loot = [];
       spawnEnemies();

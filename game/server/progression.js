@@ -2509,6 +2509,14 @@ function isOpenFloorLayout(layout) {
          roomsByRole(layout, 'treasure').length === 0;
 }
 
+function isSunkenCanyonLayout(layout) {
+  return !!(layout && layout.profile === 'sunken-canyon');
+}
+
+function sunkenCanyonRoomsByBand(layout, band) {
+  return layout.rooms.filter(r => r.band === band);
+}
+
 function spawnCrystals(layout, rng, count) {
   const itemCount = Math.max(1, count | 0);
   const treasureRooms = roomsByRole(layout, 'treasure');
@@ -2516,18 +2524,28 @@ function spawnCrystals(layout, rng, count) {
   // Open-plaza / no-role layouts have no treasure/combat room to target, so
   // place objectives across the open floor with the cover-aware helper.
   const openFloor = isOpenFloorLayout(layout);
+  const sunkenCanyon = isSunkenCanyonLayout(layout);
   const roomPool = [];
 
-  if (treasureRooms.length > 0) {
+  if (sunkenCanyon) {
+    const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
+    if (canyonRooms.length > 0) {
+      roomPool.push(...canyonRooms);
+    } else if (treasureRooms.length > 0) {
+      roomPool.push(treasureRooms[0]);
+    }
+  } else if (treasureRooms.length > 0) {
     roomPool.push(treasureRooms[0]);
   }
 
-  const others = eligibleRooms.filter(r => !roomPool.includes(r));
-  for (let i = others.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [others[i], others[j]] = [others[j], others[i]];
+  if (!sunkenCanyon) {
+    const others = eligibleRooms.filter(r => !roomPool.includes(r));
+    for (let i = others.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [others[i], others[j]] = [others[j], others[i]];
+    }
+    roomPool.push(...others);
   }
-  roomPool.push(...others);
 
   if (roomPool.length === 0 && layout.rooms.length > 0) {
     roomPool.push(layout.rooms[0]);
@@ -2585,7 +2603,34 @@ function nearestCombatRoom(layout) {
   return nearest;
 }
 
-function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
+function pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount) {
+  const plateauRooms = sunkenCanyonRoomsByBand(layout, 'plateau');
+  const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
+  const plateauSlots = enemyCount >= 2 ? 2 : 1;
+
+  if (spawnIndex < plateauSlots && plateauRooms.length > 0) {
+    const room = plateauRooms[Math.floor(rng() * plateauRooms.length)];
+    return randomPositionInRoom(room, rng);
+  }
+
+  if (canyonRooms.length > 0) {
+    const room = canyonRooms[Math.floor(rng() * canyonRooms.length)];
+    return randomPositionInRoom(room, rng);
+  }
+
+  if (plateauRooms.length > 0) {
+    const room = plateauRooms[Math.floor(rng() * plateauRooms.length)];
+    return randomPositionInRoom(room, rng);
+  }
+
+  return pickFloorSpawnPosition(layout, rng);
+}
+
+function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0, enemyCount = 1) {
+  if (isSunkenCanyonLayout(layout)) {
+    return pickSunkenCanyonEnemySpawn(layout, rng, spawnIndex, enemyCount);
+  }
+
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
     if (nearest) return randomPositionInRoom(nearest, rng);
@@ -2618,7 +2663,7 @@ function spawnCombatEnemies(layout, rng, quest) {
   for (let i = 0; i < enemyCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
-    const pos = pickEnemySpawnPosition(layout, rng, useNearest);
+    const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
   }
@@ -2631,7 +2676,15 @@ function spawnLoot(layout, rng) {
   const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
   let pos;
 
-  if (treasureRooms.length > 0) {
+  if (isSunkenCanyonLayout(layout)) {
+    const canyonRooms = sunkenCanyonRoomsByBand(layout, 'canyon');
+    if (canyonRooms.length > 0) {
+      const room = canyonRooms[Math.floor(rng() * canyonRooms.length)];
+      pos = randomPositionInRoom(room, rng);
+    } else {
+      pos = pickFloorSpawnPosition(layout, rng);
+    }
+  } else if (treasureRooms.length > 0) {
     const room = treasureRooms[Math.floor(rng() * treasureRooms.length)];
     const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
     const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
