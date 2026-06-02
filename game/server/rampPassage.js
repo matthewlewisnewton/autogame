@@ -1,3 +1,5 @@
+const { buildRampFloorCorners } = require('./rampGeometry.cjs.js');
+
 const DEFAULT_PASSAGE_WIDTH = 4;
 
 /**
@@ -39,10 +41,14 @@ function buildRampPassage(fromRoom, toRoom, options = {}) {
       { x: fromRoom.x - halfGap, z: wallCentreZ, length: corridorLength, axis: 'z' },
       { x: fromRoom.x + halfGap, z: wallCentreZ, length: corridorLength, axis: 'z' },
     ];
-    // NW/NE = low-Z edge; SE/SW = high-Z edge (see floorSampling corner ordering).
-    floorCorners = dz >= 0
-      ? { yNW: lowY, yNE: lowY, ySE: highY, ySW: highY }
-      : { yNW: highY, yNE: highY, ySE: lowY, ySW: lowY };
+    const fromY = dz >= 0 ? lowY : highY;
+    const toY = dz >= 0 ? highY : lowY;
+    floorCorners = buildRampFloorCorners({
+      fromY,
+      toY,
+      length: corridorLength,
+      axis: 'z',
+    });
     const sign = Math.sign(dz) || 1;
     const zStart = fromRoom.z + sign * (fromRoom.depth / 2);
     const zEnd = toRoom.z - sign * (toRoom.depth / 2);
@@ -58,10 +64,14 @@ function buildRampPassage(fromRoom, toRoom, options = {}) {
       { x: wallCentreX, z: fromRoom.z - halfGap, length: corridorLength, axis: 'x' },
       { x: wallCentreX, z: fromRoom.z + halfGap, length: corridorLength, axis: 'x' },
     ];
-    // NW/SW = low-X edge; NE/SE = high-X edge.
-    floorCorners = dx >= 0
-      ? { yNW: lowY, yNE: highY, ySE: highY, ySW: lowY }
-      : { yNW: highY, yNE: lowY, ySE: lowY, ySW: highY };
+    const fromY = dx >= 0 ? lowY : highY;
+    const toY = dx >= 0 ? highY : lowY;
+    floorCorners = buildRampFloorCorners({
+      fromY,
+      toY,
+      length: corridorLength,
+      axis: 'x',
+    });
     const sign = Math.sign(dx) || 1;
     const xStart = fromRoom.x + sign * (fromRoom.width / 2);
     const xEnd = toRoom.x - sign * (toRoom.width / 2);

@@ -1,6 +1,8 @@
 // ── Floor Height Sampling (imported from shared module) ──
 
 const { sampleFloorY, DEFAULT_FLOOR_Y } = require('../shared/floorSampling.js');
+const { buildRampPassage } = require('./rampPassage.js');
+const { averageRampSlope } = require('./rampGeometry.cjs.js');
 
 // ── Seeded PRNG (Mulberry32) ──
 
@@ -82,7 +84,141 @@ function questLayoutSeed(questId) {
  * @param {string|object} [profile=DEFAULT_LAYOUT_PROFILE] - Layout profile name or object
  * @param {object} [options={}] - Optional flags: { slopes: boolean }
  */
+const SPIRE_ASCENT_MIN_TIERS = 3;
+const SPIRE_ASCENT_MAX_TIERS = 5;
+const SPIRE_ASCENT_MIN_TOTAL_RISE = 10;
+const SPIRE_ASCENT_MIN_RAMP_SLOPE = 0.2;
+
+/**
+ * Build perimeter walls for a spire tier platform. Ramp gaps are the only openings
+ * between tiers (south gap on lower tier, north gap on upper when stacked along +Z).
+ */
+function buildSpireTierWalls(room, passageWidth, { northGap, southGap }) {
+  const halfW = room.width / 2;
+  const halfD = room.depth / 2;
+  const gap = passageWidth;
+  const walls = [];
+
+  const addXWall = (z, withGap) => {
+    if (!withGap) {
+      walls.push({ x: room.x, z, length: room.width, axis: 'x' });
+      return;
+    }
+    const segLen = (room.width - gap) / 2;
+    walls.push({ x: room.x - gap / 2 - segLen / 2, z, length: segLen, axis: 'x' });
+    walls.push({ x: room.x + gap / 2 + segLen / 2, z, length: segLen, axis: 'x' });
+  };
+
+  addXWall(room.z - halfD, northGap);
+  addXWall(room.z + halfD, southGap);
+  walls.push({ x: room.x - halfW, z: room.z, length: room.depth, axis: 'z' });
+  walls.push({ x: room.x + halfW, z: room.z, length: room.depth, axis: 'z' });
+
+  return walls;
+}
+
+/**
+ * Assign spire-ascent roles: bottom tier start, top tier treasure, others combat.
+ */
+function assignSpireRoomRoles(layout) {
+  const topIdx = layout.rooms.length - 1;
+  const maxTier = topIdx;
+
+  for (let i = 0; i < layout.rooms.length; i++) {
+    const room = layout.rooms[i];
+    const tier = room.tierIndex;
+    if (i === 0) {
+      room.role = 'start';
+      room.spawnWeight = 0;
+      room.encounterTier = 0;
+    } else if (i === topIdx) {
+      room.role = 'treasure';
+      room.spawnWeight = 2;
+      room.encounterTier = 0;
+    } else {
+      room.role = 'combat';
+      room.spawnWeight = 1;
+      room.encounterTier = maxTier > 0 ? Math.min(1, tier / maxTier) : 0;
+    }
+  }
+}
+
+/**
+ * Deterministic vertical spire layout: 3–5 flat tiers along +Z linked by ramp passages.
+ */
+function generateSpireAscentLayout(seed, rng) {
+  const tierCount = SPIRE_ASCENT_MIN_TIERS + Math.floor(rng() * (SPIRE_ASCENT_MAX_TIERS - SPIRE_ASCENT_MIN_TIERS + 1));
+  const cellSpacing = CELL_SPACING;
+  const passageWidth = PASSAGE_WIDTH;
+  const minRoomSize = MIN_ROOM_SIZE;
+  const maxRoomSize = MAX_ROOM_SIZE_INCLUSIVE;
+  const risePerRamp = SPIRE_ASCENT_MIN_TOTAL_RISE / (tierCount - 1);
+
+  const rooms = [];
+  const centerX = 0;
+  const startZ = -((tierCount - 1) / 2) * cellSpacing;
+
+  for (let tier = 0; tier < tierCount; tier++) {
+    const tierBaseY = DEFAULT_FLOOR_Y + tier * risePerRamp;
+    const width = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+    const depth = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+    const z = startZ + tier * cellSpacing;
+    const isBottom = tier === 0;
+    const isTop = tier === tierCount - 1;
+
+    const room = {
+      x: centerX,
+      z,
+      width,
+      depth,
+      tierIndex: tier,
+      tierBaseY,
+      floorCorners: {
+        yNW: tierBaseY,
+        yNE: tierBaseY,
+        ySE: tierBaseY,
+        ySW: tierBaseY,
+      },
+      walls: buildSpireTierWalls(
+        { x: centerX, z, width, depth },
+        passageWidth,
+        { northGap: !isBottom, southGap: !isTop },
+      ),
+    };
+    rooms.push(room);
+  }
+
+  const passages = [];
+  for (let i = 0; i < tierCount - 1; i++) {
+    const lowY = rooms[i].tierBaseY;
+    const highY = rooms[i + 1].tierBaseY;
+    const passage = buildRampPassage(rooms[i], rooms[i + 1], {
+      passageWidth,
+      lowY,
+      highY,
+    });
+    passages.push(passage);
+  }
+
+  const layout = {
+    stage: 'spire-ascent',
+    rooms,
+    passages,
+    passageWidth,
+    cellSpacing,
+    profile: 'spire-ascent',
+    seed,
+  };
+
+  assignSpireRoomRoles(layout);
+  return layout;
+}
+
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+  if (options.stage === 'spire-ascent') {
+    return generateSpireAscentLayout(seed, mulberry32(seed));
+  }
+
   const opts = normalizeLayoutProfile(profile);
   const rng = mulberry32(seed);
   const gridCols = opts.gridCols;
@@ -491,6 +627,10 @@ function randomRoomPositionByRole(layout, role, rng) {
 module.exports = {
   mulberry32,
   generateLayout,
+  generateSpireAscentLayout,
+  assignSpireRoomRoles,
+  buildSpireTierWalls,
+  averageRampSlope,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,

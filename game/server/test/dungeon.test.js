@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   mulberry32,
   generateLayout,
+  generateSpireAscentLayout,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
@@ -10,6 +11,7 @@ import {
   randomRoomPositionByRole,
   sampleFloorY,
   questLayoutSeed,
+  averageRampSlope,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
   GRID_COLS,
@@ -19,6 +21,7 @@ import {
   MAX_ROOM_SIZE_INCLUSIVE,
   PASSAGE_WIDTH
 } from '../dungeon.js';
+import { buildRampFloorCorners } from '../rampGeometry.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
 
 const PLAYER_RADIUS = 0.45;
@@ -1064,5 +1067,152 @@ describe('sampleFloorY(layout, x, z)', () => {
     const a = sampleFloorY(layout, 10, 10);
     const b = sampleFloorY(layout, 10, 10);
     expect(a).toBe(b);
+  });
+});
+
+function averageCornerY(floorCorners) {
+  const { yNW, yNE, ySE, ySW } = floorCorners;
+  return (yNW + yNE + ySE + ySW) / 4;
+}
+
+function isUniformFlatPlatform(floorCorners) {
+  const { yNW, yNE, ySE, ySW } = floorCorners;
+  return yNW === yNE && yNE === ySE && ySE === ySW;
+}
+
+describe('generateLayout spire-ascent', () => {
+  it('returns stage, 3–5 rooms, and a linear passage chain', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    expect(layout.stage).toBe('spire-ascent');
+    expect(layout.rooms.length).toBeGreaterThanOrEqual(3);
+    expect(layout.rooms.length).toBeLessThanOrEqual(5);
+    expect(layout.passages.length).toBe(layout.rooms.length - 1);
+  });
+
+  it('uses flat tier platforms with strictly increasing elevation', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    let prevAvgY = -Infinity;
+    for (const room of layout.rooms) {
+      expect(isUniformFlatPlatform(room.floorCorners)).toBe(true);
+      const avgY = averageCornerY(room.floorCorners);
+      expect(avgY).toBeGreaterThan(prevAvgY);
+      expect(room.tierBaseY).toBe(avgY);
+      prevAvgY = avgY;
+    }
+  });
+
+  it('connects tiers with ramp passages (slope ≥ 0.2, floor slab fields)', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    for (const passage of layout.passages) {
+      expect(passage.isRamp).toBe(true);
+      expect(passage.floorCorners).toBeDefined();
+      expect(passage.floorX).toEqual(expect.any(Number));
+      expect(passage.floorZ).toEqual(expect.any(Number));
+      expect(passage.floorWidth).toBeGreaterThan(0);
+      expect(passage.floorDepth).toBeGreaterThan(0);
+      expect(averageRampSlope(passage.floorCorners, passage.corridorLength)).toBeGreaterThanOrEqual(0.2);
+      expect(
+        averageRampSlope(passage.floorCorners, passage.corridorLength),
+      ).toBeCloseTo(
+        (passage.highY - passage.lowY) / passage.corridorLength,
+        5,
+      );
+    }
+  });
+
+  it('gains at least 10 units of Y from bottom tier center to top tier center', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    const bottom = layout.rooms[0];
+    const top = layout.rooms[layout.rooms.length - 1];
+    const bottomY = averageCornerY(bottom.floorCorners);
+    const topY = averageCornerY(top.floorCorners);
+    expect(topY - bottomY).toBeGreaterThanOrEqual(10);
+  });
+
+  it('gives each tier a closed perimeter except ramp openings between tiers', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    const topIdx = layout.rooms.length - 1;
+    for (let i = 0; i < layout.rooms.length; i++) {
+      const room = layout.rooms[i];
+      const northWalls = room.walls.filter(
+        (w) => w.axis === 'x' && Math.abs(w.z - (room.z - room.depth / 2)) < 0.01,
+      );
+      const southWalls = room.walls.filter(
+        (w) => w.axis === 'x' && Math.abs(w.z - (room.z + room.depth / 2)) < 0.01,
+      );
+      const westWalls = room.walls.filter(
+        (w) => w.axis === 'z' && Math.abs(w.x - (room.x - room.width / 2)) < 0.01,
+      );
+      const eastWalls = room.walls.filter(
+        (w) => w.axis === 'z' && Math.abs(w.x - (room.x + room.width / 2)) < 0.01,
+      );
+
+      expect(westWalls).toHaveLength(1);
+      expect(eastWalls).toHaveLength(1);
+
+      if (i === 0) {
+        expect(northWalls).toHaveLength(1);
+        expect(southWalls).toHaveLength(2);
+      } else if (i === topIdx) {
+        expect(northWalls).toHaveLength(2);
+        expect(southWalls).toHaveLength(1);
+      } else {
+        expect(northWalls).toHaveLength(2);
+        expect(southWalls).toHaveLength(2);
+      }
+    }
+  });
+
+  it('is fully connected from tier 0 via BFS', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    for (let i = 0; i < layout.rooms.length; i++) {
+      expect(dist[i]).not.toBe(Infinity);
+    }
+  });
+
+  it('assigns start, combat, treasure roles and tierIndex metadata', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    expect(layout.rooms[0].role).toBe('start');
+    expect(layout.rooms[0].tierIndex).toBe(0);
+    expect(layout.rooms[layout.rooms.length - 1].role).toBe('treasure');
+    for (let i = 0; i < layout.rooms.length; i++) {
+      expect(layout.rooms[i].tierIndex).toBe(i);
+    }
+    const combatRooms = layout.rooms.filter((r) => r.role === 'combat');
+    expect(combatRooms.length).toBe(Math.max(0, layout.rooms.length - 2));
+  });
+
+  it('is deterministic for the same seed and can vary tier count across seeds', () => {
+    const a = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    const b = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    expect(JSON.stringify(a)).toBe(JSON.stringify(b));
+
+    const tierCounts = new Set();
+    for (let seed = 0; seed < 40; seed++) {
+      tierCounts.add(generateLayout(seed, undefined, { stage: 'spire-ascent' }).rooms.length);
+    }
+    expect(tierCounts.size).toBeGreaterThan(1);
+  });
+
+  it('builds ramp floorCorners via buildRampFloorCorners geometry', () => {
+    const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+    for (let i = 0; i < layout.passages.length; i++) {
+      const passage = layout.passages[i];
+      const expected = buildRampFloorCorners({
+        fromY: passage.lowY,
+        toY: passage.highY,
+        length: passage.corridorLength,
+        axis: passage.axis,
+      });
+      expect(passage.floorCorners).toEqual(expected);
+    }
+  });
+
+  it('matches generateSpireAscentLayout export', () => {
+    const viaOption = generateLayout(99, undefined, { stage: 'spire-ascent' });
+    const direct = generateSpireAscentLayout(99, mulberry32(99));
+    expect(JSON.stringify(viaOption)).toBe(JSON.stringify(direct));
   });
 });
