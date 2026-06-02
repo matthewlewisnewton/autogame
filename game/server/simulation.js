@@ -913,7 +913,9 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
       const dist = Math.hypot(player.x - px, player.z - pz);
       if (dist > hitWidth) continue;
 
-      damagePlayer(playerId, damage, { attackerId });
+      // Phase beam is a ranged/projectile attack — taggable so an active
+      // barrier dome can block it (see damagePlayer's barrier-dome check).
+      damagePlayer(playerId, damage, { attackerId, ranged: true });
       hitPlayerIds.add(playerId);
       hits.push({ playerId, hp: player.hp });
     }
@@ -1494,6 +1496,29 @@ function damagePlayer(playerId, amount, options = {}) {
 
   // Invulnerability check (i-frames from dodge roll, etc.)
   if (player.invulnerableUntil && now < player.invulnerableUntil) return null;
+
+  // Barrier dome check (only ranged/projectile damage from outside the dome).
+  // Any living player's active dome protects allies standing inside it (co-op),
+  // not just the caster. Melee (unflagged) damage is never blocked here.
+  if (options.ranged || options.projectile) {
+    const attackerPos = getAttackerPosition(options);
+    for (const dome of Object.values(_gameState.players)) {
+      if (dome.dead) continue;
+      if (!dome.barrierDomeUntil || now >= dome.barrierDomeUntil) continue;
+      const radius = dome.barrierDomeRadius || 0;
+      if (radius <= 0) continue;
+      const victimDist = Math.hypot(player.x - dome.barrierDomeX, player.z - dome.barrierDomeZ);
+      if (victimDist > radius) continue; // victim not inside this dome
+      // Victim is inside an active dome. Block unless the attacker is also inside
+      // it (outside→inside is blocked; inside→inside is not). Unknown attacker
+      // position is treated as outside and blocked.
+      if (attackerPos) {
+        const attackerDist = Math.hypot(attackerPos.x - dome.barrierDomeX, attackerPos.z - dome.barrierDomeZ);
+        if (attackerDist <= radius) continue; // attacker inside same dome → not blocked
+      }
+      return null; // fully blocked
+    }
+  }
 
   // Block check (only if not invulnerable — dodge takes priority)
   if (player.blockingUntil && now < player.blockingUntil) {
