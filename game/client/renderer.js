@@ -1005,6 +1005,139 @@ export function updateMyPlayer(delta) {
 	myZ = prevSimZ + (simZ - prevSimZ) * alpha;
 }
 
+// ── Player avatar (cosmetic-driven) ──
+
+// Defaults used when a cosmetic field is missing/invalid. Mirrors the server's
+// DEFAULT_COSMETIC in game/server/cosmetic.js.
+const DEFAULT_AVATAR_BODY_COLOR = 0x4f9dde;
+const DEFAULT_AVATAR_ACCENT_COLOR = 0xf2c94c;
+const DEAD_AVATAR_COLOR = 0x808080;
+
+// Body-shape vocabulary, kept in sync with the server's BODY_SHAPES.
+const AVATAR_BODY_SHAPES = new Set(['box', 'cylinder', 'cone', 'capsule']);
+const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
+
+/**
+ * Build the ~1-unit-tall body geometry for a given body shape.
+ * Unknown/missing shapes fall back to a box.
+ * @param {string} shape
+ * @returns {THREE.BufferGeometry}
+ */
+function buildBodyGeometry(shape) {
+	switch (shape) {
+		case 'cylinder':
+			return new THREE.CylinderGeometry(0.5, 0.5, 1, 24);
+		case 'cone':
+			return new THREE.ConeGeometry(0.55, 1, 24);
+		case 'capsule':
+			return new THREE.CapsuleGeometry(0.4, 0.5, 8, 16);
+		case 'box':
+		default:
+			return new THREE.BoxGeometry(1, 1, 1);
+	}
+}
+
+/**
+ * Resolve a #RRGGBB hex string into a numeric hex, falling back to `fallbackHex`
+ * when the value is missing or invalid.
+ * @param {*} hex
+ * @param {number} fallbackHex
+ * @returns {number}
+ */
+function avatarColorHex(hex, fallbackHex) {
+	if (typeof hex === 'string' && HEX_COLOR_RE.test(hex)) return parseInt(hex.slice(1), 16);
+	return fallbackHex;
+}
+
+/**
+ * Stable signature string for a cosmetic, used to detect when an avatar needs
+ * to be rebuilt. Only the fields that affect geometry/material are included.
+ * @param {*} cosmetic
+ * @returns {string}
+ */
+function cosmeticSignature(cosmetic) {
+	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
+	const shape = AVATAR_BODY_SHAPES.has(c.bodyShape) ? c.bodyShape : 'box';
+	const body = (typeof c.bodyColor === 'string' && HEX_COLOR_RE.test(c.bodyColor)) ? c.bodyColor.toLowerCase() : 'default';
+	const accent = (typeof c.accentColor === 'string' && HEX_COLOR_RE.test(c.accentColor)) ? c.accentColor.toLowerCase() : 'default';
+	return `${shape}|${body}|${accent}`;
+}
+
+/**
+ * Build a player avatar as a THREE.Group from a cosmetic profile. The body mesh
+ * geometry is chosen by `bodyShape` and tinted by `bodyColor`; a smaller accent
+ * band is tinted by `accentColor`. A missing/invalid cosmetic falls back to the
+ * default colors and box shape rather than crashing.
+ *
+ * The returned group stores on `userData`:
+ *   - `bodyMesh`: the body Mesh (target for color/flash/transparency)
+ *   - `accentMesh`: the accent Mesh
+ *   - `baseColor`: numeric hex of the alive body color
+ *   - `cosmeticKey`: signature for change detection
+ *   - `isAvatar`: marker flag
+ *
+ * @param {object} cosmetic - { bodyColor, accentColor, bodyShape }
+ * @param {boolean} isSelf - whether this avatar is the local player
+ * @returns {THREE.Group}
+ */
+export function createPlayerAvatar(cosmetic, isSelf) {
+	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
+	const shape = AVATAR_BODY_SHAPES.has(c.bodyShape) ? c.bodyShape : 'box';
+
+	const group = new THREE.Group();
+
+	// Body mesh — colored from bodyColor (numeric hex so material.color exposes
+	// setHex for later state recoloring, matching the rest of the renderer).
+	const bodyHex = avatarColorHex(c.bodyColor, DEFAULT_AVATAR_BODY_COLOR);
+	const bodyGeo = buildBodyGeometry(shape);
+	const bodyMat = new THREE.MeshStandardMaterial({ color: bodyHex });
+	const bodyMesh = new THREE.Mesh(bodyGeo, bodyMat);
+	group.add(bodyMesh);
+
+	// Accent band — a thin ring around the body tinted from accentColor.
+	const accentHex = avatarColorHex(c.accentColor, DEFAULT_AVATAR_ACCENT_COLOR);
+	const accentGeo = new THREE.CylinderGeometry(0.56, 0.56, 0.18, 24);
+	const accentMat = new THREE.MeshStandardMaterial({ color: accentHex });
+	const accentMesh = new THREE.Mesh(accentGeo, accentMat);
+	accentMesh.position.y = 0.18;
+	group.add(accentMesh);
+
+	group.userData.isAvatar = true;
+	group.userData.bodyMesh = bodyMesh;
+	group.userData.accentMesh = accentMesh;
+	group.userData.baseColor = bodyHex;
+	group.userData.cosmeticKey = cosmeticSignature(c);
+
+	return group;
+}
+
+/**
+ * Resolve the body mesh from an avatar group (via `userData.bodyMesh`), or
+ * return the object itself if it's already a bare mesh. Returns null for falsy.
+ * @param {THREE.Object3D|null|undefined} obj
+ * @returns {THREE.Mesh|null}
+ */
+function resolveBodyMesh(obj) {
+	if (!obj) return null;
+	if (obj.userData && obj.userData.bodyMesh) return obj.userData.bodyMesh;
+	return obj;
+}
+
+/**
+ * Dispose every mesh geometry/material under an avatar group (or bare mesh) so
+ * it can be safely removed from the scene without leaking GPU resources.
+ * @param {THREE.Object3D} obj
+ */
+function disposeAvatar(obj) {
+	if (!obj) return;
+	obj.traverse((node) => {
+		if (node.isMesh) {
+			if (node.geometry) node.geometry.dispose();
+			if (node.material) node.material.dispose();
+		}
+	});
+}
+
 // ── Flash mesh helper ──
 
 /**
@@ -1015,10 +1148,12 @@ export function updateMyPlayer(delta) {
  * @param {number} durationMs - how long the flash lasts
  */
 export function flashMesh(mesh, color, durationMs) {
-	if (!mesh || !mesh.material) return;
+	// Accept either an avatar group (flash its body mesh) or a bare mesh.
+	const target = resolveBodyMesh(mesh);
+	if (!target || !target.material) return;
 
 	// Save original emissive state
-	const mat = mesh.material;
+	const mat = target.material;
 	const origEmissive = mat.emissive ? (mat.emissive.getHex ? mat.emissive.getHex() : 0x000000) : 0x000000;
 	const origIntensity = mat.emissiveIntensity || 0;
 
@@ -1050,7 +1185,11 @@ export function flashMesh(mesh, color, durationMs) {
  */
 export function triggerDashVFX(playerId) {
 	const mesh = playersMeshes[playerId];
-	if (!mesh || !mesh.geometry || !mesh.material) return;
+	if (!mesh) return;
+	// Resolve the body mesh — squash/ghost target geometry+material from it,
+	// while the squash scale applies to the whole avatar (group or bare mesh).
+	const bodyMesh = resolveBodyMesh(mesh);
+	if (!bodyMesh || !bodyMesh.geometry || !bodyMesh.material) return;
 
 	// Squash: flatten Y, widen X/Z
 	mesh.scale.set(1.3, 0.7, 1.3);
@@ -1069,9 +1208,9 @@ export function triggerDashVFX(playerId) {
 
 	// Ghost clone at current position that fades over 200ms
 	const ghost = new THREE.Mesh(
-		mesh.geometry,
+		bodyMesh.geometry,
 		new THREE.MeshStandardMaterial({
-			color: mesh.material.color.getHex(),
+			color: bodyMesh.material.color.getHex(),
 			transparent: true,
 			opacity: 0.45,
 			depthWrite: false,
@@ -2690,25 +2829,31 @@ export function animate(timestamp) {
 
 	if (gs) {
 		for (const [id, pData] of Object.entries(gs.players)) {
-			if (!playersMeshes[id]) {
-				const geo = new THREE.BoxGeometry(1, 1, 1);
-				const mat = new THREE.MeshStandardMaterial({ color: id === myId ? 0x3b82f6 : 0xf43f5e });
-				const mesh = new THREE.Mesh(geo, mat);
-				scene.add(mesh);
-				playersMeshes[id] = mesh;
+			// Build the cosmetic-driven avatar, or rebuild it when the player's
+			// broadcast cosmetic changes (signature differs from the rendered one).
+			const sig = cosmeticSignature(pData.cosmetic);
+			if (!playersMeshes[id] || playersMeshes[id].userData.cosmeticKey !== sig) {
+				if (playersMeshes[id]) {
+					disposeAvatar(playersMeshes[id]);
+					scene.remove(playersMeshes[id]);
+				}
+				const avatar = createPlayerAvatar(pData.cosmetic, id === myId);
+				scene.add(avatar);
+				playersMeshes[id] = avatar;
 			}
 
 			if (id === myId) continue;
 
+			const body = playersMeshes[id].userData.bodyMesh;
 			playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
 			if (Number.isFinite(pData.rotation)) {
 				playersMeshes[id].rotation.y = pData.rotation - Math.PI / 2;
 			}
 
 			if (pData.dead) {
-				playersMeshes[id].material.color.setHex(0x808080);
+				body.material.color.setHex(DEAD_AVATAR_COLOR);
 			} else {
-				playersMeshes[id].material.color.setHex(0xf43f5e);
+				body.material.color.setHex(playersMeshes[id].userData.baseColor);
 			}
 
 			// Detect remote player HP drop — flash red
@@ -2749,21 +2894,22 @@ export function animate(timestamp) {
 			}
 			wasDead = isDead;
 
+			const selfBody = playersMeshes[myId].userData.bodyMesh;
 			if (isDead) {
-				playersMeshes[myId].material.color.setHex(0x808080);
+				selfBody.material.color.setHex(DEAD_AVATAR_COLOR);
 			} else {
-				playersMeshes[myId].material.color.setHex(0x3b82f6);
+				selfBody.material.color.setHex(playersMeshes[myId].userData.baseColor);
 			}
 
 			// Invulnerability shimmer: semi-transparent when i-frames are active (not when dead)
 			if (!isDead && me && me.isInvulnerable) {
-				playersMeshes[myId].material.transparent = true;
-				playersMeshes[myId].material.opacity = 0.5;
-				playersMeshes[myId].material.depthWrite = false;
+				selfBody.material.transparent = true;
+				selfBody.material.opacity = 0.5;
+				selfBody.material.depthWrite = false;
 			} else {
-				playersMeshes[myId].material.transparent = false;
-				playersMeshes[myId].material.opacity = 1;
-				playersMeshes[myId].material.depthWrite = true;
+				selfBody.material.transparent = false;
+				selfBody.material.opacity = 1;
+				selfBody.material.depthWrite = true;
 			}
 
 			// Shield VFX: ensure visible while blocking (re-trigger if expired)
