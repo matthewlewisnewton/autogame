@@ -266,7 +266,7 @@ describe('useKeyItem socket handler', () => {
 		player.keyItemCooldownUntil = 0;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
-		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
+		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
 		const result = await resultPromise;
 
 		expect(result.ok).toBe(false);

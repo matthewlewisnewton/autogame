@@ -756,6 +756,25 @@ function resolveWindupTarget(enemy) {
 	return player && !player.dead ? player : null;
 }
 
+// Returns true if `player` is standing inside any living player's active smoke
+// zone (smoke_bomb key item). Concealed players are skipped by enemy target
+// acquisition and cause in-progress wind-ups to be cancelled. The zone is fixed
+// at the cast point, so a player who walks out — or whose zone expires — becomes
+// targetable again.
+function isPlayerConcealed(player, now) {
+	if (!player) return false;
+	for (const owner of Object.values(_gameState.players)) {
+		if (!owner || owner.dead || owner.extracted) continue;
+		if (!owner.smokeBombUntil || now >= owner.smokeBombUntil) continue;
+		const radius = owner.smokeBombRadius;
+		if (!Number.isFinite(radius) || radius <= 0) continue;
+		const dx = player.x - owner.smokeBombX;
+		const dz = player.z - owner.smokeBombZ;
+		if (Math.hypot(dx, dz) <= radius) return true;
+	}
+	return false;
+}
+
 // Minion behavior constants
 const MINION_FOLLOW_DISTANCE = 3;
 const MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;
@@ -1661,7 +1680,11 @@ function updateEnemies() {
 			const elapsed = Date.now() - enemy.windupStartTime;
 			if (elapsed >= def.attackWindupMs) {
 				const target = resolveWindupTarget(enemy);
-				if (target && isEntityInEnemyAttack(enemy, target, def)) {
+				// A player who became concealed by smoke during the wind-up is no
+				// longer a valid target — cancel the strike and return to chasing.
+				const targetConcealed = target && enemy.windupTargetType !== 'minion'
+					&& isPlayerConcealed(target, Date.now());
+				if (target && !targetConcealed && isEntityInEnemyAttack(enemy, target, def)) {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, def.attackDamage);
 					} else {
@@ -1726,7 +1749,10 @@ function updateEnemies() {
 			nearestDist = nearestMinion.dist;
 		}
 
+		const nowConceal = Date.now();
 		for (const player of players) {
+			// Players hidden inside an active smoke zone cannot be acquired.
+			if (isPlayerConcealed(player, nowConceal)) continue;
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
@@ -2214,6 +2240,7 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
+  isPlayerConcealed,
 
   // Minion AI
   updateMinions,
