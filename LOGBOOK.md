@@ -2194,3 +2194,26 @@ None blocking. All top-level acceptance criteria are implemented and covered by 
 
 ---
 
+
+## v0.106 — Docs: fix stale sections in design.md  (2026-06-02 08:14:20)
+
+---
+
+## Design consistency
+
+- **vs `game/docs/requirements.md`**: No regression. Requirements cover 3D rendering, WebSocket connectivity, multiplayer visualization, and WASD movement — all still exercised by the capture run.
+- **vs live code**: The corrected statements now match authoritative sources (`config.js`, `theme.json`, card registries). Remaining doc content outside the edit scope (lobby flow, telepipe mechanics, card-type taxonomy) aligns with server/client implementation.
+- **Debug scenarios**: Not applicable — this ticket did not add or change any `?debugScenario=` shortcuts.
+
+---
+
+## Code quality
+
+Docs-only ticket; no game code changes. The captured run proves no runtime regressions were introduced. Coverage log shows no tests run on changed files (expected — markdown is not in the vitest include paths).
+
+---
+
+## Remaining gaps
+
+None. The ticket scoped a targeted accuracy pass on known-stale deck/hand numbers and renamed resources/cards; those corrections are verified and complete. Broader staleness elsewhere in `design.md` (if any) is explicitly out of scope per the ticket goal ("not a full audit").
+

@@ -1,0 +1,20 @@
+## Review complete
+
+**Verdict: PASS**
+
+The capture run is healthy (`metrics.json` `ok: true`, empty `pageerrors`, clean `console.log`), and gameplay probes show a normal two-player dungeon session with the corrected deck/hand semantics visible in the UI (6 hand slots, Signal Familiar in hand, MS labeling).
+
+### What was verified
+
+Two commits since baseline `9c891c78` touch only `game/docs/design.md` under `game/`:
+
+1. **Deck/hand sizes** — 12→24 deck, 4→6 hand (opening deal 4), matching `DECK_MAX_SIZE`, `MAX_HAND_SLOTS`, and `OPENING_HAND_SIZE` in both client and server config.
+2. **Naming** — "Magic Stones"→"Mystic Signal" (matches `theme.json`); example cards updated to Signal Familiar and Ether Siphon (match card registries).
+
+Structure is preserved (inline edits only, no section rewrites). Unchanged sections still align with the codebase.
+
+### Files written
+
+- [`round-1/review.md`](tickets/156-docs-design-md-stale-fixes/round-1/review.md) — full assessment
+- [`round-1/nits.md`](tickets/156-docs-design-md-stale-fixes/round-1/nits.md) — two non-blocking follow-ups (stale "Battle Familiar" in `server/index.js`, ticket-number reference in Floor Geometry)
+- No `gaps.md` (PASS)
