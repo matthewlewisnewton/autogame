@@ -35,7 +35,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [134-key-item-rally-cry](tickets/134-key-item-rally-cry/)
 
 ## Backlog — World Stages
-- [ ] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
+- [x] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
 - [ ] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
 - [ ] [137-world-sunken-canyon-stage](tickets/137-world-sunken-canyon-stage/)
 - [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
@@ -51,3 +51,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
 - [ ] [155-gameplay-review-doc](tickets/155-gameplay-review-doc/)
 - [ ] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
+- [ ] [157-cleanup-world-open-plaza-stage](tickets/157-cleanup-world-open-plaza-stage/)

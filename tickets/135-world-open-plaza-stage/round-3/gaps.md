@@ -1,0 +1,3 @@
+1. Round-3 browser capture did not produce runnable proof: `metrics.json` has `"ok": false` / `failure_kind: "capture_failed"`, and the required `console.log` is missing; `screenshot.log` shows `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'` from `harness/screenshot.mjs`.
+   Files: none in `game/` — the reviewed game code satisfied the ticket criteria, but the capture environment did not produce a valid browser run.
+   Fix: restore the capture environment so Playwright resolves, rerun the round-3 capture, and require `metrics.json` to report `"ok": true` with a clean browser console before passing the ticket.

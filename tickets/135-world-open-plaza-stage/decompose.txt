@@ -1,0 +1,18 @@
+Created one sub-ticket. No existing failed folders to retire (sub-tickets 01–06 all carry `.passed` markers).
+
+**Sub-ticket folder created:**
+- `/home/matt/workspace/.autogame-worktrees/135-world-open-plaza-stage/tickets/135-world-open-plaza-stage/subtickets/07-restore-capture-playwright-resolution/ticket.md`
+
+**Why only one, and why this one:**
+
+The round-4 gap is a single, well-isolated issue, and it is **not in `game/`**:
+
+- The round-3 review confirms every acceptance criterion of the top-level ticket is satisfied in the game code ("Files: none in `game/`"). Sub-tickets 01–06 are all passed.
+- The sole blocker is that the harness browser capture never ran. I verified the failure is **identical across rounds 1, 2, and 3** — `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'` from `harness/screenshot.mjs`. It's persistent, not transient.
+- Root cause: `harness/screenshot.mjs:10` uses a bare `import { chromium } from 'playwright'`. Node resolves that by walking up from `harness/` (`harness/node_modules` → repo-root `node_modules`), and **neither exists**. The only installed copy is `game/client/node_modules/playwright`, which Node's resolver never descends into from a `harness/` script.
+
+Two consequences shaped the decision:
+1. **A `visual` sub-ticket would fail forever** (the capture environment is broken across every round), so I avoided it — the gap is exactly the thing visual QA depends on.
+2. **No `game/`-only change can fix this** — Node module resolution for a `harness/` script cannot be redirected from `game/`. I therefore scoped the one sub-ticket to the precise file at fault (`harness/screenshot.mjs`), making it fall back to the already-installed `game/client/node_modules/playwright`. It's a surgical, code-verifiable fix needing no new install. Verification is `code` (QA reads the diff plus `screenshot.log`/`metrics.json` for `ok:true` and no `ERR_MODULE_NOT_FOUND`).
+
+One caveat worth flagging: this sub-ticket modifies a `harness/` file rather than a `game/` file, which deviates from the usual "files under `game/`" default — but that deviation is unavoidable here because the gap lives entirely in the capture harness, exactly as the reviewer noted. If the implementer is hard-scoped to `game/` only, this gap cannot be closed by any sub-ticket and the environment fix must be applied at the harness/operator level (install `playwright` where `harness/screenshot.mjs` resolves, or apply the same fallback).
