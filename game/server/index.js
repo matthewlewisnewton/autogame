@@ -414,6 +414,7 @@ const DEBUG_SCENARIOS = new Set([
   'flare-beacon-ready',
   'loot-magnet-ready',
   'overclock-ready',
+  'phase-step-ready',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -588,6 +589,15 @@ function applyDebugScenario(socket, name) {
         const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
         if (replaceSlot >= 0) {
           player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
+        }
+      }
+      // The opening hand is drawn from a shuffled deck, so a weapon card is not
+      // guaranteed (~1% of hands have none). Force one in (without clobbering the
+      // spell above) so weapon-card flows entering via this scenario are deterministic.
+      if (!player.hand.some(c => c && c.type === 'weapon')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon' && c.type !== 'spell');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
         }
       }
     } else if (name === 'summon-recall') {
@@ -801,6 +811,57 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'overclock';
       player.keyItemCooldownUntil = 0;
       player.overclockChargesRemaining = 2;
+    } else if (name === 'phase-step-ready') {
+      // Put the caster in a playing dungeon with phase_step equipped and a
+      // living ally standing ~3 m away so the position swap can be exercised
+      // immediately. Mirrors the normal co-op state of two players in a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.equippedKeyItemId = 'phase_step';
+      player.keyItemCooldownUntil = 0;
+      state.enemies = [];
+
+      // Synthetic ally near the caster (inside the start room, within range).
+      const allyId = `phase-step-ally-${crypto.randomUUID()}`;
+      const allyX = player.x + 3;
+      const allyZ = player.z;
+      const allyFloorY = sampleFloorY(state.layout, allyX, allyZ);
+      state.players[allyId] = {
+        id: allyId,
+        accountId: allyId,
+        username: 'Ally',
+        x: allyX,
+        y: Number.isFinite(allyFloorY) ? allyFloorY : DEFAULT_FLOOR_Y,
+        z: allyZ,
+        rotation: 0,
+        deck: [],
+        hand: [],
+        hp: MAX_HP,
+        dead: false,
+        extracted: false,
+        lastActivity: Date.now(),
+        lastMoveTime: Date.now(),
+        inputDx: 0,
+        inputDz: 0,
+        connected: true,
+        ready: true,
+        magicStones: MAX_MAGIC_STONES,
+        currency: 0,
+        currencyEarnedThisRun: 0,
+        inventory: [],
+        ownedCards: {},
+        selectedDeck: [],
+        debugScenario: name,
+        pendingSummons: new Set(),
+        slotCooldowns: [null, null, null, null, null, null],
+        equippedKeyItemId: 'dodge_roll',
+        keyItemCooldownUntil: 0,
+        overclockChargesRemaining: 0,
+        invulnerableUntil: 0,
+        blockingUntil: 0,
+        blockingYaw: 0,
+        persistenceDirty: false,
+      };
     }
 
     syncRunObjectiveToEnemies();
@@ -2540,8 +2601,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, and overclock are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, and phase_step are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2751,6 +2812,76 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'phase_step') {
+      // --- phase_step: swap positions with a targeted (or nearest) living ally ---
+      const range = def.range != null ? def.range : 6;
+      const targetPlayerId = data && typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
+
+      // Candidate allies: other living, non-extracted players in the same run.
+      const candidates = Object.values(state.players).filter(
+        (p) => p && p !== player && !p.dead && !p.extracted
+      );
+
+      let ally = null;
+      if (targetPlayerId) {
+        ally = candidates.find((p) => p.id === targetPlayerId) || null;
+      } else {
+        // Pick the nearest candidate by horizontal distance.
+        let bestDist = Infinity;
+        for (const p of candidates) {
+          const d = Math.hypot(p.x - player.x, p.z - player.z);
+          if (d < bestDist) {
+            bestDist = d;
+            ally = p;
+          }
+        }
+      }
+
+      if (!ally) {
+        socket.emit('keyItemUsed', { ok: false, reason: 'no_ally' });
+        return; // No cooldown burn on soft-fail
+      }
+
+      const dist = Math.hypot(ally.x - player.x, ally.z - player.z);
+      if (dist > range) {
+        socket.emit('keyItemUsed', { ok: false, reason: 'out_of_range' });
+        return; // No cooldown burn on soft-fail
+      }
+
+      // Both endpoints must be inside the dungeon before we trade positions.
+      if (!isInsideDungeon(player.x, player.z) || !isInsideDungeon(ally.x, ally.z)) {
+        socket.emit('keyItemUsed', { ok: false, reason: 'invalid_position' });
+        return; // No cooldown burn on soft-fail
+      }
+
+      // Swap x, y, z between the caster and the ally.
+      const swapX = player.x;
+      const swapY = player.y;
+      const swapZ = player.z;
+      player.x = ally.x;
+      player.y = ally.y;
+      player.z = ally.z;
+      ally.x = swapX;
+      ally.y = swapY;
+      ally.z = swapZ;
+
+      player.persistenceDirty = true;
+      ally.persistenceDirty = true;
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 12000);
+
+      socket.emit('keyItemUsed', {
+        ok: true,
+        keyItemId,
+        targetPlayerId: ally.id,
+        x: player.x,
+        y: player.y,
+        z: player.z,
+        cooldownUntil: player.keyItemCooldownUntil,
+      });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
