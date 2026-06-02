@@ -1,0 +1,12 @@
+Created the top-level ticket.md (it was missing) and split the work into two `code`-verified sub-tickets in dependency order.
+
+Sub-ticket folders created:
+
+- `/home/matt/workspace/.autogame-worktrees/181-character-customization-server-cosmetic-profile/tickets/181-character-customization-server-cosmetic-profile/subtickets/01-account-cosmetic-storage/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/181-character-customization-server-cosmetic-profile/tickets/181-character-customization-server-cosmetic-profile/subtickets/02-cosmetic-in-runtime-snapshot/ticket.md`
+
+**Rationale:**
+- **01** delivers the persistent storage layer: cosmetic fields on the account record (`users.js`), defaults + legacy backfill, validation (`bodyShape` enum + `#RRGGBB` hex), and the `PATCH/GET /api/me` wiring (`account.js`). Self-contained and persistence-verifiable.
+- **02** depends on 01 and surfaces cosmetic into the live game: attaches it to the runtime player record in `buildPlayerRecord` (`index.js` — the real call site; the bead's "progression.js createPlayer" hint is noted but the actual runtime record is built in `index.js`) and into the per-player `stateUpdate` snapshot (`progression.js stateSnapshot`).
+
+Both are `code` verification — every criterion concerns server state, validation logic, handlers, and snapshot structure (no rendering involved; the client render work lives in the downstream blocked tickets 182/183).
