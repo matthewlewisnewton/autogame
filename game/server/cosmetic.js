@@ -5,6 +5,43 @@
 // Allowed body shapes (kept in sync with the client renderer's geometry set).
 const BODY_SHAPES = ['box', 'cylinder', 'cone', 'capsule'];
 
+/**
+ * Registry of available player body models.
+ *
+ * Each entry describes a selectable body model for the character.
+ * - `key`: unique identifier used in account storage and network messages
+ * - `displayName`: human-readable label for UI pickers
+ * - `glbPath`: relative path under `client/public/models/`, or `null` for
+ *   the primitive fallback (box geometry built from Three.js primitives)
+ *
+ * Adding a new model requires:
+ * 1. Placing the GLB file in `game/client/public/models/`
+ * 2. Adding an entry here with the correct `glbPath`
+ * 3. Updating the client renderer to load the GLB when `glbPath` is set
+ *    (client-side work in a follow-up ticket)
+ */
+const BODY_MODELS = {
+	default: {
+		key: 'default',
+		displayName: 'Default',
+		glbPath: null
+	},
+	player: {
+		key: 'player',
+		displayName: 'Player',
+		glbPath: 'models/player.glb'
+	}
+};
+
+/**
+ * Return an array of valid model keys from the registry.
+ *
+ * @returns {string[]} e.g. ['default', 'player']
+ */
+function getAvailableModelKeys() {
+	return Object.keys(BODY_MODELS);
+}
+
 // Default cosmetic applied at account creation and used to backfill legacy
 // records that predate the cosmetic field.
 const DEFAULT_COSMETIC = {
@@ -73,6 +110,8 @@ function backfillCosmetic(existing) {
 
 module.exports = {
 	BODY_SHAPES,
+	BODY_MODELS,
+	getAvailableModelKeys,
 	DEFAULT_COSMETIC,
 	validateCosmetic,
 	backfillCosmetic
