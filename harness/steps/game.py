@@ -228,6 +228,11 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
         client_proc = subprocess.Popen(
             ["npx", "vite", "--port", str(ports.vite), "--strictPort"],
             cwd="game/client",
+            env={
+                **os.environ,
+                "HARNESS_GAME_PORT": str(ports.game_server),
+                "HARNESS_VITE_PORT": str(ports.vite),
+            },
             stdin=subprocess.DEVNULL, stdout=client_log, stderr=subprocess.STDOUT,
             start_new_session=True,
         )

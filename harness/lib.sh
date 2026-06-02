@@ -265,20 +265,22 @@ wait_port_free() {  # wait_port_free <port> [timeout-seconds]
 
 start_game() {  # start_game <logdir>
   local logdir="$1"
+  local game_port="${HARNESS_GAME_PORT:-3000}"
+  local vite_port="${HARNESS_VITE_PORT:-5173}"
   emit_progress_event "game_start" "{\"logdir\":$(json_string "$logdir")}"
 
   # --- Port cleanup: prefer harness-owned processes; broad kill is opt-in ---
-  cleanup_port 5173
-  cleanup_port 3000
+  cleanup_port "$vite_port"
+  cleanup_port "$game_port"
 
   # Block until ports are actually free (kernel releases the socket).
   # Uses `ss` to detect TIME-WAIT sockets that `fuser` cannot see — this is
   # the critical fix for EADDRINUSE after process kill.
-  wait_port_free 5173 15 || log "[warn] port 5173 still bound after 15s"
-  wait_port_free 3000 15 || log "[warn] port 3000 still bound after 15s"
+  wait_port_free "$vite_port" 15 || log "[warn] port $vite_port still bound after 15s"
+  wait_port_free "$game_port" 15 || log "[warn] port $game_port still bound after 15s"
 
   # --- Launch dev servers (with retry on EADDRINUSE) ---
-  ( node game/server/index.js ) </dev/null >"$logdir/server.log" 2>&1 &
+  ( PORT="$game_port" node game/server/index.js ) </dev/null >"$logdir/server.log" 2>&1 &
   GAME_PIDS+=("$!")
 
   # Retry Vite up to 3 times if the port is still occupied at bind time.
@@ -286,7 +288,8 @@ start_game() {  # start_game <logdir>
   local attempt=0
   while [ $vite_started -eq 0 ] && [ $attempt -lt 3 ]; do
     attempt=$((attempt + 1))
-    ( cd game/client && npx vite --port 5173 --strictPort ) </dev/null >"$logdir/client.log" 2>&1 &
+    ( cd game/client && HARNESS_GAME_PORT="$game_port" HARNESS_VITE_PORT="$vite_port" \
+        npx vite --port "$vite_port" --strictPort ) </dev/null >"$logdir/client.log" 2>&1 &
     GAME_PIDS+=("$!")
     # Wait for Vite to either bind successfully or fail.
     sleep 3
@@ -294,8 +297,8 @@ start_game() {  # start_game <logdir>
       log "[warn] Vite EADDRINUSE on attempt $attempt — retrying after harness port cleanup"
       kill "${GAME_PIDS[-1]}" 2>/dev/null || true
       GAME_PIDS=("${GAME_PIDS[@]:0:${#GAME_PIDS[@]}-1}")
-      cleanup_port 5173
-      wait_port_free 5173 10 || log "[warn] port 5173 still bound after EADDRINUSE cleanup"
+      cleanup_port "$vite_port"
+      wait_port_free "$vite_port" 10 || log "[warn] port $vite_port still bound after EADDRINUSE cleanup"
     else
       vite_started=1
     fi
@@ -333,10 +336,12 @@ cleanup_vitest_workers() {  # cleanup_vitest_workers [game-dir]
 }
 
 wait_for_game() {  # wait_for_game [timeout-seconds] ; 0 if both ports respond
+  local game_port="${HARNESS_GAME_PORT:-3000}"
+  local vite_port="${HARNESS_VITE_PORT:-5173}"
   local deadline=$(( $(date +%s) + ${1:-45} )) up_c=0 up_s=0
   while [ "$(date +%s)" -lt "$deadline" ]; do
-    [ $up_c -eq 0 ] && curl --max-time 2 -s -o /dev/null "http://localhost:5173/" && up_c=1
-    [ $up_s -eq 0 ] && curl --max-time 2 -s -o /dev/null "http://localhost:3000/healthz" && up_s=1
+    [ $up_c -eq 0 ] && curl --max-time 2 -s -o /dev/null "http://localhost:${vite_port}/" && up_c=1
+    [ $up_s -eq 0 ] && curl --max-time 2 -s -o /dev/null "http://localhost:${game_port}/healthz" && up_s=1
     [ $up_c -eq 1 ] && [ $up_s -eq 1 ] && return 0
     sleep 1
   done
