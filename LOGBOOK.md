@@ -2286,3 +2286,26 @@ None blocking. See `nits.md` for non-blocking follow-ups (no dedicated unit
 test for the `unlockHat` socket handler / `unlockHatForPlayer` / account-level
 `unlockHat`, which are currently only covered indirectly).
 
+
+## v0.120 — 182-character-customization-client-render-avatar  (2026-06-02 11:26:23)
+
+(index.js:3480-3488) — normal gameplay never touches them.
+- **Same end-state reachable normally** — ✅ A non-default cosmetic is settable through the
+  validated profile route (`users.js:243-255` via `validateCosmetic`), persisted on the
+  account, and loaded onto the in-run player (`index.js:1062`), then broadcast
+  (`progression.js:3114`). The scenarios just pre-seed `player.cosmetic` to skip the UI.
+- **Invariants not short-circuited** — ✅ The relevant invariant for *this* ticket is the
+  broadcast→client-render pipeline, which the scenarios exercise fully (they set the
+  server-side cosmetic that is replicated normally). The values set are all valid
+  (catalog shapes/hats, valid hex). Hat-unlock/currency validation belongs to #189's flow,
+  not this rendering ticket; the normal equip path remains intact and validated.
+
+## Consistency with design / foundation
+Body-shape vocabulary (`box`/`cylinder`/`cone`/`capsule`) and hat ids
+(`none`/`cap`/`wizard`/`crown`) mirror the server's `BODY_SHAPES`/`HAT_CATALOG` — no
+invented names. Change is confined to client rendering plus two debug scenarios; no
+gameplay/foundation regression. Coverage log shows the existing server suite runs clean.
+
+## Remaining gaps
+None blocking. (See `nits.md` for minor non-blocking polish.)
+
