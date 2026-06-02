@@ -932,6 +932,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     extracted: false,
     equippedKeyItemId: 'dodge_roll',
     keyItemCooldownUntil: 0,
+    debuffs: [],
     overclockChargesRemaining: 0,
     invulnerableUntil: 0,
     blockingUntil: 0,
@@ -1039,6 +1040,7 @@ function joinPlayerToLobby(socket, lobby) {
     normalizePlayerInventory(player);
     if (player.equippedKeyItemId == null) player.equippedKeyItemId = 'dodge_roll';
     if (player.keyItemCooldownUntil == null) player.keyItemCooldownUntil = 0;
+    if (!Array.isArray(player.debuffs)) player.debuffs = [];
   }
 
   if (state.gamePhase === 'lobby') {
@@ -2587,8 +2589,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, and barrier_dome are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, and purge_charm are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2647,6 +2649,25 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'purge_charm') {
+      // --- purge_charm: remove the single OLDEST active debuff from the caster.
+      // Debuffs are stored oldest-first, so shift() drops the oldest and leaves
+      // any remaining debuffs intact. The no-debuff fallback simply burns
+      // cooldown and reports cleared: null (shield grant lives in sub-ticket 02). ---
+      if (!Array.isArray(player.debuffs)) player.debuffs = [];
+      let cleared = null;
+      if (player.debuffs.length > 0) {
+        const removed = player.debuffs.shift();
+        cleared = removed && removed.type != null ? removed.type : null;
+      }
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 7000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
