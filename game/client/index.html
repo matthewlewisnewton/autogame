@@ -257,6 +257,51 @@
           <p id="account-error" class="account-error" hidden></p>
           <button type="button" id="account-save-btn">Save name</button>
         </div>
+        <div class="settings-section" id="cosmetic-appearance-section">
+          <h3>Appearance</h3>
+          <div class="settings-field">
+            <span class="settings-field-label">Body shape</span>
+            <div class="cosmetic-shape-group" role="radiogroup" aria-label="Body shape">
+              <button type="button" id="cosmetic-shape-box" class="cosmetic-shape-btn selected" role="radio" aria-checked="true" data-shape="box">Box</button>
+              <button type="button" id="cosmetic-shape-cylinder" class="cosmetic-shape-btn" role="radio" aria-checked="false" data-shape="cylinder">Cylinder</button>
+              <button type="button" id="cosmetic-shape-cone" class="cosmetic-shape-btn" role="radio" aria-checked="false" data-shape="cone">Cone</button>
+              <button type="button" id="cosmetic-shape-capsule" class="cosmetic-shape-btn" role="radio" aria-checked="false" data-shape="capsule">Capsule</button>
+            </div>
+          </div>
+          <div class="settings-field">
+            <span class="settings-field-label">Body color</span>
+            <div id="cosmetic-body-colors" class="cosmetic-swatch-grid">
+              <button type="button" class="cosmetic-swatch selected" data-color="#4f9dde" aria-label="Body color #4f9dde" style="--swatch-color: #4f9dde"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#22c55e" aria-label="Body color #22c55e" style="--swatch-color: #22c55e"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#ef4444" aria-label="Body color #ef4444" style="--swatch-color: #ef4444"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#a855f7" aria-label="Body color #a855f7" style="--swatch-color: #a855f7"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#f97316" aria-label="Body color #f97316" style="--swatch-color: #f97316"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#e2e8f0" aria-label="Body color #e2e8f0" style="--swatch-color: #e2e8f0"></button>
+            </div>
+            <label class="cosmetic-custom-color" for="cosmetic-body-custom">
+              Custom
+              <input type="color" id="cosmetic-body-custom" value="#4f9dde" />
+            </label>
+          </div>
+          <div class="settings-field">
+            <span class="settings-field-label">Accent color</span>
+            <div id="cosmetic-accent-colors" class="cosmetic-swatch-grid">
+              <button type="button" class="cosmetic-swatch selected" data-color="#f2c94c" aria-label="Accent color #f2c94c" style="--swatch-color: #f2c94c"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#f472b6" aria-label="Accent color #f472b6" style="--swatch-color: #f472b6"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#34d399" aria-label="Accent color #34d399" style="--swatch-color: #34d399"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#fb923c" aria-label="Accent color #fb923c" style="--swatch-color: #fb923c"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#818cf8" aria-label="Accent color #818cf8" style="--swatch-color: #818cf8"></button>
+              <button type="button" class="cosmetic-swatch" data-color="#ffffff" aria-label="Accent color #ffffff" style="--swatch-color: #ffffff"></button>
+            </div>
+            <label class="cosmetic-custom-color" for="cosmetic-accent-custom">
+              Custom
+              <input type="color" id="cosmetic-accent-custom" value="#f2c94c" />
+            </label>
+          </div>
+          <div id="cosmetic-preview" aria-label="Appearance preview"></div>
+          <p id="cosmetic-error" class="account-error settings-error" hidden></p>
+          <button type="button" id="cosmetic-save-btn">Save appearance</button>
+        </div>
         <div class="settings-section account-actions">
           <button type="button" id="account-logout-btn" class="account-logout-btn">Log out</button>
         </div>
