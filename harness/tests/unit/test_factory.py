@@ -4,7 +4,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from harness.dispatch.factory import (
-    build_factory, clean_orphan_worktrees, default_registry, reconcile,
+    DEFAULT_WORKERS, build_factory, clean_orphan_worktrees, default_registry,
+    load_factory_config, reconcile,
 )
 
 
@@ -116,9 +117,73 @@ def test_build_factory_wires_components(tmp_path):
     assert snap["composer_write"]["max_concurrency"] == 3
     assert "hard" in snap["gpt5_extra_write"]["eligible"]
     assert snap["gpt5_extra_write"]["max_concurrency"] == 1
-    # claude opted in for medium/hard only, at concurrency 1
-    assert snap["claude"]["max_concurrency"] == 1
+    # claude opted in for medium/hard only, up to 2 concurrent
+    assert snap["claude"]["max_concurrency"] == 2
     assert set(snap["claude"]["eligible"]) == {"medium", "hard"}
+
+
+def _write_factory_yaml(root, text, *, name="factory.yaml"):
+    h = root / "harness"
+    h.mkdir(parents=True, exist_ok=True)
+    (h / name).write_text(text)
+
+
+def test_load_factory_config_defaults_when_absent(tmp_path):
+    cfg = load_factory_config(tmp_path)  # no harness/factory.yaml
+    assert cfg.workers == DEFAULT_WORKERS
+    assert cfg.reserve_qwen is True
+    assert cfg.order[0] == "qwen"
+    assert {s.name for s in cfg.specs} == {
+        "qwen", "composer_write", "claude", "gpt5_extra_write"}
+
+
+def test_load_factory_config_reads_yaml(tmp_path):
+    _write_factory_yaml(tmp_path, """
+workers: 7
+reserve_qwen: false
+order: [qwen, claude]
+agents:
+  qwen:   { max_concurrency: 1, eligible: [easy] }
+  claude: { max_concurrency: 3, eligible: [medium, hard] }
+""")
+    cfg = load_factory_config(tmp_path)
+    assert cfg.workers == 7
+    assert cfg.reserve_qwen is False
+    assert cfg.order == ["qwen", "claude"]
+    caps = {s.name: s.max_concurrency for s in cfg.specs}
+    assert caps == {"qwen": 1, "claude": 3}
+    claude = next(s for s in cfg.specs if s.name == "claude")
+    assert claude.eligible == frozenset({"medium", "hard"})
+
+
+def test_load_factory_config_local_override_merges(tmp_path):
+    _write_factory_yaml(tmp_path, """
+workers: 5
+agents:
+  claude: { max_concurrency: 2, eligible: [medium, hard] }
+""")
+    # local override bumps just claude's cap, leaving everything else intact
+    _write_factory_yaml(tmp_path, """
+agents:
+  claude: { max_concurrency: 4 }
+""", name="factory.local.yaml")
+    cfg = load_factory_config(tmp_path)
+    assert cfg.workers == 5
+    claude = next(s for s in cfg.specs if s.name == "claude")
+    assert claude.max_concurrency == 4
+    assert claude.eligible == frozenset({"medium", "hard"})  # preserved
+
+
+def test_load_factory_config_malformed_falls_back(tmp_path):
+    _write_factory_yaml(tmp_path, "agents: { qwen: { eligible: [easy] } }")  # missing max_concurrency
+    cfg = load_factory_config(tmp_path)
+    assert cfg.workers == DEFAULT_WORKERS  # invalid → defaults, never crashes
+
+
+def test_build_factory_honors_config_workers(tmp_path):
+    _write_factory_yaml(tmp_path, "workers: 2\n")
+    disp, _, _, _ = build_factory(tmp_path)  # no explicit workers → from yaml
+    assert len(disp.ports_pool) == 2
 
 
 def test_default_registry_health_file_roundtrip(tmp_path):

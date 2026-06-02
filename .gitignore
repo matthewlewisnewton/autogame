@@ -70,6 +70,7 @@ game/client/scripts/*-results.json
 # Parallel "gastown" factory — local/runtime state, never committed. (Also
 # covers roles.local.yaml, long treated as an ignored override but never listed.)
 harness/roles.local.yaml
+harness/factory.local.yaml
 harness/agents_health.json
 .beads/embeddeddolt/
 .beads/*.db

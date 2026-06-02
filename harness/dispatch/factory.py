@@ -2,13 +2,15 @@
 
 Wires BeadsQueue + AgentRegistry + Dispatcher + MergeQueue into one process
 (the sole beads writer, worktree creator, and merge author), reconciles state
-orphaned by a previous crash, and runs the loop. Default lane config encodes the
-agreed routing: qwen=easy (cap 1, single ollama box), composer-2.5=medium
-(cap 3), gpt-5.5-extra=hard (cap 3), with overflow via preference order.
+orphaned by a previous crash, and runs the loop. Runtime config (worker count,
+agent caps/eligibility, the cost-ordered assignment, GPU reservation) is read
+from harness/factory.yaml at startup (see load_factory_config); the DEFAULT_*
+constants below are the fallback when that file is absent.
 """
 from __future__ import annotations
 
 import subprocess
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -26,8 +28,8 @@ DEFAULT_SPECS = [
     AgentSpec("composer_write", max_concurrency=3,
               eligible=frozenset({"easy", "medium", "hard"})),
     AgentSpec("gpt5_extra_write", max_concurrency=1, eligible=frozenset({"hard"})),
-    # claude opted in for medium/hard only, single-concurrency (cost-bounded).
-    AgentSpec("claude", max_concurrency=1, eligible=frozenset({"medium", "hard"})),
+    # claude opted in for medium/hard only, up to 2 concurrent implementers.
+    AgentSpec("claude", max_concurrency=2, eligible=frozenset({"medium", "hard"})),
 ]
 # Single global priority order, cheapest first. Eligibility (above) decides which
 # difficulties each agent can take; the dispatcher walks this order and picks the
@@ -35,6 +37,64 @@ DEFAULT_SPECS = [
 # eligible (easy, medium), then composer (cheap, all lanes), then the expensive
 # remotes claude and gpt-5.5 — reached only when the cheaper agents are saturated.
 DEFAULT_ORDER = ["qwen", "composer_write", "claude", "gpt5_extra_write"]
+DEFAULT_WORKERS = 5
+
+
+@dataclass
+class FactoryConfig:
+    workers: int = DEFAULT_WORKERS
+    reserve_qwen: bool = True
+    order: list[str] = field(default_factory=lambda: list(DEFAULT_ORDER))
+    specs: list[AgentSpec] = field(default_factory=lambda: list(DEFAULT_SPECS))
+
+
+def _merge_factory_data(base: dict, override: dict) -> dict:
+    """Shallow-merge override onto base, but deep-merge the per-agent dicts so a
+    local override can tweak one agent's cap without redeclaring all of them."""
+    out = dict(base)
+    for k, v in override.items():
+        if k == "agents" and isinstance(v, dict) and isinstance(out.get("agents"), dict):
+            agents = dict(out["agents"])
+            for name, spec in v.items():
+                agents[name] = {**agents.get(name, {}), **(spec or {})}
+            out["agents"] = agents
+        else:
+            out[k] = v
+    return out
+
+
+def load_factory_config(main_root) -> FactoryConfig:
+    """Read harness/factory.yaml (+ optional factory.local.yaml override) for the
+    factory's runtime config. Missing/unreadable → hardcoded DEFAULT_* fallback,
+    so the factory always launches."""
+    import yaml
+    main_root = Path(main_root)
+    data: dict = {}
+    for p in (main_root / "harness" / "factory.yaml",
+              main_root / "harness" / "factory.local.yaml"):
+        if not p.exists():
+            continue
+        try:
+            loaded = yaml.safe_load(p.read_text()) or {}
+        except yaml.YAMLError as e:
+            log(f"[factory] config: ignoring malformed {p.name}: {e!r}")
+            continue
+        data = _merge_factory_data(data, loaded)
+    if not data:
+        return FactoryConfig()
+    try:
+        agents = data.get("agents") or {}
+        specs = [AgentSpec(name, int(a["max_concurrency"]), frozenset(a["eligible"]))
+                 for name, a in agents.items()]
+        return FactoryConfig(
+            workers=int(data.get("workers", DEFAULT_WORKERS)),
+            reserve_qwen=bool(data.get("reserve_qwen", True)),
+            order=list(data.get("order") or DEFAULT_ORDER),
+            specs=specs or list(DEFAULT_SPECS),
+        )
+    except (KeyError, TypeError, ValueError) as e:
+        log(f"[factory] config: invalid factory.yaml ({e!r}); using defaults")
+        return FactoryConfig()
 
 
 def default_registry(health_file: Path) -> AgentRegistry:
@@ -159,37 +219,47 @@ def reconcile(queue: BeadsQueue, main_repo: Repo) -> int:
     return reset
 
 
-def build_factory(main_root, *, workers: int = 3,
-                  health_file: Optional[Path] = None, tick_seconds: float = 5.0):
+def build_factory(main_root, *, workers: Optional[int] = None,
+                  health_file: Optional[Path] = None, tick_seconds: float = 5.0,
+                  config: Optional[FactoryConfig] = None):
+    """Assemble the factory from harness/factory.yaml (caps, order, reserve_qwen,
+    workers). `workers`, if given, overrides the config's worker count (e.g. the
+    CLI `--workers` flag)."""
     main_root = Path(main_root)
+    cfg = config if config is not None else load_factory_config(main_root)
+    n_workers = workers if workers is not None else cfg.workers
     main_repo = Repo(root=main_root)
     queue = BeadsQueue(main_root)
-    registry = default_registry(health_file or main_root / "harness" / "agents_health.json")
+    registry = AgentRegistry(
+        cfg.specs, cfg.order,
+        health_file=health_file or main_root / "harness" / "agents_health.json")
     mq = MergeQueue(main_repo=main_repo, queue=queue)
     disp = Dispatcher(
         queue=queue, registry=registry, main_repo=main_repo,
-        ports_pool=allocate_pool(workers),
+        ports_pool=allocate_pool(n_workers),
         on_pass=mq.enqueue, merge_drain=mq.drain_one,
         tick_seconds=tick_seconds,
-        reserve_qwen=True,   # keep the local GPU box hot (easy preferred, else medium)
+        reserve_qwen=cfg.reserve_qwen,
     )
     return disp, mq, queue, registry
 
 
-def run_factory(main_root, *, workers: int = 3, max_idle_ticks: int = 0,
+def run_factory(main_root, *, workers: Optional[int] = None, max_idle_ticks: int = 0,
                 **kw) -> int:
     from harness.telemetry import progress_server
     disp, mq, queue, registry = build_factory(main_root, workers=workers, **kw)
+    n_workers = len(disp.ports_pool)
     n = reconcile(queue, disp.main_repo)
-    log(f"[factory] reconciled {n} orphaned ticket(s); launching {workers} workers")
+    log(f"[factory] reconciled {n} orphaned ticket(s); launching {n_workers} workers")
     disabled = registry.disabled_agents()
     if disabled:
         log(f"[factory] NOTE: agents disabled (need `harness factory --enable <agent>`): {disabled}")
     progress_server.start_if_needed()
-    emit_progress_event("factory_start", {"workers": workers, "disabled_agents": disabled})
+    emit_progress_event("factory_start", {"workers": n_workers, "disabled_agents": disabled})
     disp.run(max_idle_ticks=max_idle_ticks)
     return 0
 
 
 __all__ = ["run_factory", "build_factory", "reconcile", "default_registry",
-           "clean_orphan_worktrees", "DEFAULT_SPECS", "DEFAULT_ORDER"]
+           "clean_orphan_worktrees", "load_factory_config", "FactoryConfig",
+           "DEFAULT_SPECS", "DEFAULT_ORDER"]
