@@ -1,0 +1,14 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no `pageerror` or `[fatal]` lines. Capture reached playing with movement and a 6-slot hand.
+
+**Implementation:** One commit (`1ccd44c`) updates a single line in `game/docs/design.md` — deck 12→24 and hand 4→6 — matching `DECK_MAX_SIZE` and `MAX_HAND_SLOTS` in server/client config. Only `game/docs/design.md` changed under `game/`.
+
+**Acceptance criteria:** All met for this docs-only, targeted scope.
+
+**Outputs:**
+- [`round-1/review.md`](tickets/156-docs-design-md-stale-fixes/round-1/review.md) — full assessment
+- [`round-1/nits.md`](tickets/156-docs-design-md-stale-fixes/round-1/nits.md) — non-blocking follow-ups (`index.html` `0/12` placeholder, stale root `CONTEXT.md`)
+- No `gaps.md` (PASS only)
+
+**VERDICT: PASS**

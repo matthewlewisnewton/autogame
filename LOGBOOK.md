@@ -2194,3 +2194,26 @@ None blocking. All top-level acceptance criteria are implemented and covered by 
 
 ---
 
+
+## v0.103 — Docs: fix stale sections in design.md  (2026-06-02 07:34:47)
+
+---
+
+## Integration / sub-tickets
+
+One sub-ticket (`01-fix-deck-and-hand-sizes`) delivered the full game change. No integration conflicts; no debug shortcuts introduced.
+
+---
+
+## Coverage
+
+`coverage.log` reports no test files for the changed path (docs-only diff) — expected. No coverage signal for this ticket.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is good; acceptance criteria are fully satisfied for the stated scope.
+
+---
+
