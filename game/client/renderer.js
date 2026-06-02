@@ -365,7 +365,7 @@ function attachRegistryModel(key, host) {
 		});
 }
 
-function createMinionMesh(minionType) {
+export function createMinionMesh(minionType) {
 	const visual = MINION_VISUAL[minionType] || {
 		shape: 'cylinder',
 		radius: 0.4,

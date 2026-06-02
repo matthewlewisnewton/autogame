@@ -1,7 +1,7 @@
 // ── glTF Model Loading Module ──
 // Additive plumbing for loading .glb models via Three.js GLTFLoader. renderer.js
 // consults MODEL_REGISTRY via attachRegistryModel to async-swap procedural meshes
-// for loaded glTF where paths are configured (enemy types wired; player/minion/loot
+// for loaded glTF where paths are configured (enemy + minion types wired; player/loot
 // remain null until later sub-tickets).
 //
 // Usage:
@@ -29,9 +29,9 @@ export const MODEL_REGISTRY = {
 	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)
-	ancient_wyrm: null,
-	null_crawler: null,
-	bulkhead_mauler: null,
+	ancient_wyrm: '/models/minion-ancient-wyrm.glb',
+	null_crawler: '/models/minion-null-crawler.glb',
+	bulkhead_mauler: '/models/minion-bulkhead-mauler.glb',
 
 	// Loot kinds (renderer.js createLootMesh)
 	currency: null,
