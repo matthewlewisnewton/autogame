@@ -53,3 +53,37 @@ Telepipe is a mid-run evacuation spell documented in `game/docs/design.md` and `
 **Resume:** When all players ready again, `checkAllReady()` detects `suspendedCheckpoint` and calls `restoreRunCheckpoint()` instead of spawning a fresh layout. Checkpoint restore rebuilds colliders, clears extracted flags, resets ready flags, and emits `startGame` + `stateUpdate`. The client resume path in the `startGame` handler calls `setGamePhase('playing')` and hides Deploy even when the scene was already initialized.
 
 **Abandon:** While suspended, **Abandon expedition** (`#abandon-run-btn` → `abandonRun` socket) calls `abandonSuspendedRun()` in `game/server/progression.js`, which clears `suspendedCheckpoint` and deletes the run, returning the squad to a normal waiting lobby. Quest changes are allowed again after abandon.
+
+### Cards, deck, hand, and Magic Stones
+
+Each player’s **selected deck** is validated in `game/server/progression.js` (4–24 cards; default loadout 12). Deploy shuffles it into a runtime draw deck (`createDrawDeckFromSelectedDeck`); definitions live in `CARD_DEFS` there and in `game/client/cards.js`, with client hand state in `game/client/hand.js`.
+
+**Hand:** Up to **six** slots (`MAX_HAND_SLOTS`, `game/server/config.js`), **four** dealt at open (`OPENING_HAND_SIZE`). Refills pull from the draw deck, then a desperation deck. `processPassiveDraws` draws every five seconds when a slot is empty and cards remain.
+
+**Card types:** **Weapons** use charges and ~800ms slot cooldowns (`COOLDOWN_MS`), clearing the slot at zero charges. **Spells** and **creatures** cost Magic Stones and leave the hand when played; creatures spawn **minions** updated in `game/server/simulation.js`. **Enchantments** place ground traps or self-buffs (per-player caps). The Vanguard HUD (`game/client/vanguard-hud.js`) shows Magic Stones (cap 99, run start 49; slow regen via `regenMagicStones` plus drops and pickups).
+
+### Dungeon layout and movement
+
+Quest `layoutProfile` (`game/server/quests.js`) selects a generator in `game/server/dungeon.js`: grid rooms linked by **passages**, or special single-space profiles (open plaza, sunken canyon). Rooms carry `floorCorners` for ramps; height at `(x, z)` is **`sampleFloorY`** (`game/shared/floorSampling.esm.js`, re-exported from `game/client/collision.js`; meshes in `game/client/dungeon.js`).
+
+**Movement:** Client prediction and `move` emits (`game/client/renderer.js`); server `applyPlayerMovement` (`game/server/simulation.js`) steps `MOVE_SPEED / TICK_RATE` while input is fresh, slides on walls, and snaps `player.y` to the floor sample.
+
+### Combat loop
+
+**20 Hz** simulation (`TICK_RATE`, `runGameLoopTick` in `game/server/index.js` per lobby): movement, enemies, minions, passive draws, regen, then `stateUpdate`.
+
+`useCard` validates slot, cooldown, and Magic Stones, then branches by type: weapon cones/projectiles (`game/server/simulation.js`), spell radial effects, creature minion spawns, or enchantments on the ground/self. Deaths call `removeDeadEnemies` (`game/server/progression.js`) for loot and drop tracking. `updateEnemies` chases and attacks players; damage honors invulnerability, shields, and block.
+
+**Lock-on** (`game/docs/controls.md`, `game/client/lockOn.js`): Z or gamepad acquires the nearest foe; `game/client/renderer.js` uses `targetRelativeDirection` for strafe movement and target-facing attacks while the camera orbits (repeat-press behavior from `game/client/settings.js`).
+
+### Key item (dodge roll)
+
+Default **Dodge Roll** (`equippedKeyItemId: 'dodge_roll'`): **E** / gamepad (`game/docs/controls.md`) → `useKeyItem` in `game/server/index.js` dashes along movement input (or facing), wall-clamped, with ~300ms i-frames and 800ms cooldown. Other key items use the same event with different effect branches.
+
+### Loot, currency, and lobby services
+
+Enemy deaths spawn Magic Stone and currency loot (`game/server/progression.js`, drop tables in `game/server/config.js`); crystals support collection quests. `lootPickup` within `LOOT_PICKUP_RADIUS` (`game/server/index.js`) restores stones or adds currency. In lobby: rotating **shop** (`buyShopCard`), player **trades**, and **medic** heal for 10 currency (`healAtMedic`).
+
+### Co-op simulation and drop-in
+
+One `lobby.state` per channel holds shared layout, enemies, loot, minions, enchantments, telepipe, and run objectives; everyone gets the same `stateUpdate` each tick. **Drop-in** runs `initializePlayerForActiveRun` (hand, HP, Magic Stones, cooldowns) without resetting the dungeon. Reconnect uses `DISCONNECT_GRACE_MS`; ticks skip disconnected, dead, or extracted players.
