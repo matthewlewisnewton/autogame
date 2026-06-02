@@ -1,0 +1,12 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/game/data
+Server listening on port 3003
+Player connected: socket=A8P6q5eNTBSf3BOFAAAB, playerId=525e5e1e-b277-44ca-b5f7-0ea031958b2e
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=ACKkTcluWEN7V1HMAAAD, playerId=261e8492-b50a-44a6-97dc-95d9d35f0ab1
+[loot] spawned id=9549db5f-5400-4dc1-9859-33250d4ff7eb value=18
+Player disconnected: A8P6q5eNTBSf3BOFAAAB
+Player disconnected: ACKkTcluWEN7V1HMAAAD

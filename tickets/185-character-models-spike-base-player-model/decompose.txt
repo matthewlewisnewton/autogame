@@ -1,0 +1,13 @@
+Round 2 addresses the **scope conflict**: failed sub-tickets 01 and 04 required `tickets/185-…/spike-decision.md`, but implementers are scoped to `game/**` only, so `scope_audit` reverted those writes. Sub-tickets **02** and **03** (`.passed`) already delivered `player.glb`, morph targets, and tests.
+
+**Retired** (failed, mis-scoped):
+- `01-source-research-and-decision`
+- `04-canonical-contract-docs`
+
+**Created** (scope-fixed replacement for 04; research content is covered in `MODEL_SPIKE.md` and no longer needs a separate 01):
+
+### Sub-ticket paths created
+
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/05-game-canonical-contract-docs/ticket.md`
+
+**05** commits and finalizes all contract docs under `game/` only, with the ≤1-screen spike summary at `game/tickets/185-character-models-spike-base-player-model/spike-decision.md` (not repo-root `tickets/`). Verification mode: **code**.

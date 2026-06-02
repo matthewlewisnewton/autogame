@@ -2263,3 +2263,26 @@ None blocking. All five acceptance criteria are fully and robustly met, backed
 by HTTP-level and unit tests, and the captured run is healthy. One minor,
 non-blocking polish item is recorded in `nits.md`.
 
+
+## v0.122 — 185-character-models-spike-base-player-model  (2026-06-02 11:52:52)
+
+
+## Design / requirements consistency
+
+Consistent. This is an asset+docs spike that adds no runtime code paths — the
+renderer is untouched and still draws the procedural avatar, so there is no
+gameplay regression (captured run confirms). The proportion key contract is
+self-consistent across the script, the test, README, and MODEL_SPIKE, which
+sets up tickets 186/187/188 cleanly. New deps (`@gltf-transform/*`) are
+correctly placed in `devDependencies` (build-time tooling only).
+
+No debug scenarios were added or changed by this ticket.
+
+## Remaining gaps
+
+None blocking. The acceptance criteria are fully and robustly met and the
+captured run is healthy. A few non-blocking nits are recorded in `nits.md`
+(notably a stray placeholder value in `pnpm-workspace.yaml` and the heavy
+embedded textures that should be trimmed before the renderer loads the asset in
+187).
+

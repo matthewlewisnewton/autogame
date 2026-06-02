@@ -58,3 +58,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [161-cleanup-key-item-echo-strike](tickets/161-cleanup-key-item-echo-strike/)
 - [ ] [162-cleanup-gameplay-review-doc](tickets/162-cleanup-gameplay-review-doc/)
 - [ ] [182-cleanup-character-customization-server-cosmetic-profile](tickets/182-cleanup-character-customization-server-cosmetic-profile/)
+- [ ] [186-cleanup-character-models-spike-base-player-model](tickets/186-cleanup-character-models-spike-base-player-model/)

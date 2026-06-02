@@ -1,0 +1,17 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/playerModel.glb.test.js (3 tests) 69ms
+
+ Test Files  1 passed (1)
+      Tests  3 passed (3)
+   Start at  11:49:38
+   Duration  1.29s (transform 19ms, setup 30ms, collect 75ms, tests 69ms, environment 313ms, prepare 68ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|-------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+----------|---------|----------|---------|---------|-------------------
+All files |       0 |        0 |       0 |       0 |                   
+----------|---------|----------|---------|---------|-------------------
