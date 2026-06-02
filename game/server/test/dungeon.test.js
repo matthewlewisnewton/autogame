@@ -1213,3 +1213,158 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(collides).toBe(true);
   });
 });
+
+// ── sunken-canyon stage layout ──
+
+describe("generateLayout(seed, 'sunken-canyon')", () => {
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter(r => r.band === band);
+  }
+
+  function isFlatAtY(room, y) {
+    const fc = room.floorCorners;
+    return fc.yNW === y && fc.yNE === y && fc.ySE === y && fc.ySW === y;
+  }
+
+  function rampAverageSlope(room) {
+    const fc = room.floorCorners;
+    const yHigh = Math.max(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+    const yLow = Math.min(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+    const rise = yHigh - yLow;
+    const run = (fc.yNW === fc.yNE && fc.ySE === fc.ySW) ? room.depth : room.width;
+    return rise / run;
+  }
+
+  function canyonReachableFromPlateau(layout) {
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    return countReachableRooms(layout, aabbs, colliders) === layout.rooms.length;
+  }
+
+  it('returns profile sunken-canyon with plateau, ramps, and canyon bands', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    expect(layout.profile).toBe('sunken-canyon');
+    expect(layout.passages).toEqual([]);
+    expect(roomsByBand(layout, 'plateau').length).toBe(1);
+    expect(roomsByBand(layout, 'canyon').length).toBe(1);
+    const ramps = roomsByBand(layout, 'ramp');
+    expect(ramps.length).toBeGreaterThanOrEqual(2);
+    expect(ramps.length).toBeLessThanOrEqual(3);
+  });
+
+  it('has a flat plateau (~12–15 units) and a canyon floor ≥ 4× default room area', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const plateau = roomsByBand(layout, 'plateau')[0];
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    expect(plateau.width).toBeGreaterThanOrEqual(12);
+    expect(plateau.width).toBeLessThanOrEqual(15);
+    expect(plateau.depth).toBeGreaterThanOrEqual(12);
+    expect(plateau.depth).toBeLessThanOrEqual(15);
+    expect(canyon.width * canyon.depth).toBeGreaterThanOrEqual(4 * 182);
+    expect(isFlatAtY(plateau, sampleFloorY(layout, plateau.x, plateau.z))).toBe(true);
+    expect(isFlatAtY(canyon, sampleFloorY(layout, canyon.x, canyon.z))).toBe(true);
+  });
+
+  it('Y drop from plateau centre to canyon centre is ≥ 8 units', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const canyon = roomsByBand(layout, 'canyon')[0];
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+      const yCanyon = sampleFloorY(layout, canyon.x, canyon.z);
+      expect(yPlateau - yCanyon).toBeGreaterThanOrEqual(8);
+    }
+  });
+
+  it('each ramp has non-uniform corners and average slope ≥ 0.15', () => {
+    for (const seed of [1, 42, 999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      for (const ramp of roomsByBand(layout, 'ramp')) {
+        const fc = ramp.floorCorners;
+        const corners = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];
+        expect(new Set(corners).size).toBeGreaterThan(1);
+        expect(rampAverageSlope(ramp)).toBeGreaterThanOrEqual(0.15);
+      }
+    }
+  });
+
+  it('assigns explicit roles: plateau=start, canyon=treasure, ramps=connector spawnWeight 0', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const plateau = roomsByBand(layout, 'plateau')[0];
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    expect(plateau.role).toBe('start');
+    expect(canyon.role).toBe('treasure');
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.role).toBe('connector');
+      expect(ramp.spawnWeight).toBe(0);
+    }
+  });
+
+  it('has ≥ 6 canyon cover pieces of valid type inside the canyon interior', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    const half = canyon.width / 2;
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    for (const c of layout.cover) {
+      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(Math.abs(c.x - canyon.x) + c.width / 2).toBeLessThanOrEqual(half);
+      expect(Math.abs(c.z - canyon.z) + c.depth / 2).toBeLessThanOrEqual(half);
+    }
+  });
+
+  it('plateau and canyon have solid outer perimeter walls (no walk-off gaps)', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const plateau = roomsByBand(layout, 'plateau')[0];
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    const ph = plateau.depth / 2;
+    const pw = plateau.width / 2;
+    const ch = canyon.depth / 2;
+    const cw = canyon.width / 2;
+
+    // Plateau north, west, east edges are fully walled.
+    expect(plateau.walls.some(w => w.axis === 'x' && Math.abs(w.z - (plateau.z - ph)) < 0.01 && Math.abs(w.length - plateau.width) < 0.01)).toBe(true);
+    expect(plateau.walls.some(w => w.axis === 'z' && Math.abs(w.x - (plateau.x - pw)) < 0.01)).toBe(true);
+    expect(plateau.walls.some(w => w.axis === 'z' && Math.abs(w.x - (plateau.x + pw)) < 0.01)).toBe(true);
+
+    // Canyon south, west, east edges are fully walled.
+    expect(canyon.walls.some(w => w.axis === 'x' && Math.abs(w.z - (canyon.z + ch)) < 0.01 && Math.abs(w.length - canyon.width) < 0.01)).toBe(true);
+    expect(canyon.walls.some(w => w.axis === 'z' && Math.abs(w.x - (canyon.x - cw)) < 0.01)).toBe(true);
+    expect(canyon.walls.some(w => w.axis === 'z' && Math.abs(w.x - (canyon.x + cw)) < 0.01)).toBe(true);
+  });
+
+  it('full foot reachability from plateau spawn to canyon floor via ramps', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      expect(canyonReachableFromPlateau(layout)).toBe(true);
+    }
+  });
+
+  it('cover footprints become wall colliders', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - c.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - c.width) < 1e-6 &&
+        Math.abs((w.minZ + w.maxZ) / 2 - c.z) < 1e-6 &&
+        Math.abs((w.maxZ - w.minZ) - c.depth) < 1e-6
+      );
+      expect(hit).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'sunken-canyon');
+    const b = generateLayout(2024, 'sunken-canyon');
+    expect(a).toEqual(b);
+  });
+
+  it('ramp count is 2–3 across many seeds', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const rampCount = roomsByBand(layout, 'ramp').length;
+      expect(rampCount).toBeGreaterThanOrEqual(2);
+      expect(rampCount).toBeLessThanOrEqual(3);
+    }
+  });
+});
