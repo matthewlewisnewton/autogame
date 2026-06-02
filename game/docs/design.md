@@ -22,16 +22,19 @@ Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon witho
 - Players can abandon a suspended run from the lobby, which clears the checkpoint and returns the squad to normal lobby flow.
 
 ## Combat Mechanics
-Instead of standard weapons, players equip a deck of up to 12 cards. At any time, they hold a "hand" of up to 4 cards, each mapped to an input button.
+Instead of standard weapons, players equip a deck of up to 24 cards. At any time, they hold a "hand" of up to 6 cards, each mapped to an input button.
 
 ### Card Types
-- **Weapons**: Multi-charge directional attacks like sword slashes or projectiles. These cards have multiple charges before they are discarded from the hand.
-- **Spells**: Single-use cards with an **instant** effect at cast time (radial AoE, heal, pull, freeze, etc.). Many cost Magic Stones.
-- **Creatures**: Single-use cards that spawn a persistent battlefield ally (minion, helper, or utility construct) that fights or supports until it expires.
-- **Enchantments**: Single-use cards that leave a **lingering** magical effect on the ground or on yourself. They trigger when a condition is met (enemy walks over a hazard, you take damage) or fade after a timeout.
+- **Techniques** (`weapon`): Multi-charge directional attacks like sword slashes or projectiles. These cards have multiple charges before they are discarded from the hand.
+- **Invocations** (`spell`): Single-use cards with an **instant** effect at cast time (radial AoE, heal, pull, freeze, etc.). Many cost Mystic Signal (MS).
+- **Bound Forms** (`creature`): Single-use cards that spawn a persistent battlefield ally (minion, helper, or utility construct) that fights or supports until it expires.
+- **Arcana** (`enchantment`): Single-use cards that leave a **lingering** magical effect on the ground or on yourself. They trigger when a condition is met (enemy walks over a hazard, you take damage) or fade after a timeout.
 
-### Playtesting Notes (Spell vs Weapon Overlap)
-Several spell cards (e.g. Battle Familiar, Mana Leach) overlap mechanically with weapons: instant damage at a cost of Magic Stones rather than charges. With the clearer four-type system in place, evaluate after playtesting whether to merge overlapping spells into single-charge weapon variants or keep them for MS-economy variety. No cards have been removed yet — rename-first, cut-later.
+### Player-Facing Currency
+The in-game resource for casting Invocations and other abilities is called **Mystic Signal (MS)**. Internal variable names still use `magicStone*` / `MS` prefixes for historical reasons.
+
+### Playtesting Notes (Invocation vs Technique Overlap)
+Several invocation cards (e.g. Battle Familiar, Mana Leach) overlap mechanically with techniques: instant damage at a cost of Mystic Signal rather than charges. With the clearer four-type system in place, evaluate after playtesting whether to merge overlapping invocations into single-charge technique variants or keep them for MS-economy variety. No cards have been removed yet — rename-first, cut-later.
 
 ## Future Mechanics
 - **PvP Wager Battles**: In a later update, players will be able to challenge each other to PvP deck battles and wager their collected currency.
