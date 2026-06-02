@@ -50,6 +50,16 @@ The **Dodge Roll** is the default equipped key item. When activated, your charac
 - **Direction:** Uses your current WASD/gamepad stick input; if stationary, uses your character's facing direction
 - **Collision:** The dash stops at walls — you cannot clip through dungeon geometry
 
+### Smoke Veil
+
+**Smoke Veil** (`smoke_bomb`) drops a concealing smoke cloud at your feet when you use the key item action.
+
+- **Zone:** The cloud is anchored at your **cast position** (where you stood when you activated it). It does **not** follow you if you move afterward.
+- **Duration:** ~2 seconds
+- **Cooldown:** ~8 seconds
+- **Radius:** ~4 meters (horizontal disc)
+- **Effect:** While you stand inside the active cloud, nearby enemies **cannot acquire you as a target** and will not start new attacks on you. If an enemy was already winding up on you when you entered the veil, the strike is **cancelled with no damage** when it would resolve. This is **targeting suppression**, not a random miss chance — leaving the disc or waiting for the veil to expire restores normal enemy behavior.
+
 ## Combat
 
 Card slots and deck controls are unchanged from keyboard/gamepad bindings documented in the client UI.
