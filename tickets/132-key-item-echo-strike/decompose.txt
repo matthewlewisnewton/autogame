@@ -1,0 +1,15 @@
+I've decomposed the top-level ticket into two dependency-ordered sub-tickets, both verified by **code** QA (every criterion concerns handlers, server state, timing, and value/rate — none is a pure render check).
+
+**Sub-ticket folders created:**
+
+- `tickets/132-key-item-echo-strike/subtickets/01-echo-strike-activation/ticket.md`
+- `tickets/132-key-item-echo-strike/subtickets/02-echo-strike-weapon-echo/ticket.md`
+
+**Why this split:**
+
+- **01 — Activation & pending state**: Fixes the stale `echo_strike` def in `progression.js` (it currently describes an unrelated "radial burst" — cooldown 12s, `damage: 30`), removes it from the `not_implemented` guard in the `useKeyItem` handler, and arms `player.echoStrikePending` with a ~10s cooldown. Self-contained plumbing.
+- **02 — Delayed weapon echo**: The combat hook. In `useCard`'s weapon branch, enqueues a delayed 50% second hit against the same target(s) and consumes the flag; spell/creature branches deliberately don't. A new `processPendingEchoes()` in `simulation.js` applies the deferred packet on a later tick, matching the existing area-effect tick pattern.
+
+Each is independently implementable in one focused pass and verifiable from the diff + logs (handler exists, def values, pending flag, cooldown, weapon-only gating, one-proc consumption, two-packet damage). I found and accounted for an existing unrelated `echoDamage`/`echo_blade` weapon mechanic — kept distinct from this key item to avoid confusion in implementation.
+
+No existing sub-ticket folders were present, so none were retired.
