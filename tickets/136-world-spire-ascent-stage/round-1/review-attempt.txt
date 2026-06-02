@@ -1,0 +1,21 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Spire Ascent Stage ticket fully and robustly satisfies its acceptance criteria, and the captured run is healthy.
+
+**Runtime gate (passed):**
+- `metrics.json`: `"ok": true`, `pageerrors: []`, no `harness_failure`
+- `console.log`: no page errors, fatals, or uncaught exceptions
+- Screenshots show the game running with sloped floor geometry rendering correctly
+
+**Acceptance criteria — all met and unit-tested:**
+- `generateLayout(seed, 'spire-ascent')` dispatches to `generateSpireAscent`; the `spire_ascent` quest wires it in and is reachable via normal quest selection (confirmed by integration test)
+- 3–5 flat tiers with strictly monotonic Y; ramps with average slope ≥ 0.2; total Y gain ≥ 10
+- Solid outer perimeter walls (gaps only at ramp width); full walkable-grid reachability proves no fall-through and on-foot bottom→top traversal
+- Enemy spawns distributed across tiers, never on ramps; objective/loot on top tier only
+- Deterministic per seed; comprehensive test coverage (650 tests green)
+
+**Debug scenarios verified:** `spire-ascent` / `spire-ascent-stage` are gated behind the `DEBUG_SCENARIOS` allowlist, the end-state is independently reachable via the normal quest, and neither short-circuits invariants (the gameplay scenario reuses the real `applyLayoutForQuest` + `spawnEnemies` path).
+
+**Nits (non-blocking, logged in nits.md):** the browser capture used the generic `sloped-dungeon` fallback rather than the spire scenario, so there's no direct visual of the spire stage (covered by unit tests); and a minor inline-card-literal in the test helper. Neither blocks the ticket — no `gaps.md` written.

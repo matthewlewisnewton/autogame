@@ -2355,3 +2355,26 @@ None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 None blocking. The acceptance criteria are fully and robustly met and the
 captured run is clean.
 
+
+## v0.134 — Spire Ascent Stage  (2026-06-02 14:44:05)
+
+
+## Quality / debug-scenario checks
+
+- Debug scenarios `spire-ascent` and `spire-ascent-stage` are gated behind the
+  `DEBUG_SCENARIOS` allowlist and only entered via `applyDebugScenario` (URL
+  param). The end state is independently reachable through normal play (the
+  `spire_ascent` quest). Neither scenario short-circuits invariants: `spire-ascent`
+  runs the same `applyLayoutForQuest` + `spawnEnemies` as a normal deploy;
+  `spire-ascent-stage` is a pure render/collision QA load mirroring the existing
+  `sunken-canyon-stage` pattern.
+- Full test run is green: 650 tests across the affected suites pass.
+- Code reuses existing primitives (`buildDescentRampRoom`,
+  `buildHorizontalWallWithGaps`) cleanly; no dead/broken code spotted.
+
+## Remaining gaps
+
+None blocking. The browser capture not exercising the spire scenario directly is
+a capture-plan nit (logged in nits.md), not a defect — the runtime gate passes
+and the spire behavior is robustly unit-tested.
+
