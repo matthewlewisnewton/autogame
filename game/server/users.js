@@ -8,6 +8,7 @@ const path = require('path');
 const {
 	DEFAULT_COSMETIC,
 	DEFAULT_UNLOCKED_HATS,
+	HAT_IDS,
 	validateCosmetic,
 	backfillCosmetic,
 	backfillUnlockedHats
@@ -259,6 +260,34 @@ function updateProfile(accountId, fields) {
 }
 
 /**
+ * Permanently record a hat unlock on an account. Validates the account exists
+ * and the hatId is a known catalog id; appends to `unlockedHats` (deduped) and
+ * persists. Idempotent — unlocking an already-unlocked hat is a success and
+ * leaves the list unchanged.
+ *
+ * @param {string} accountId
+ * @param {string} hatId
+ * @returns {{ ok: true, unlockedHats: string[] } | { ok: false, reason: string }}
+ */
+function unlockHat(accountId, hatId) {
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return { ok: false, reason: 'Account not found' };
+	}
+	if (typeof hatId !== 'string' || !HAT_IDS.has(hatId)) {
+		return { ok: false, reason: 'Unknown hat id' };
+	}
+
+	user.unlockedHats = backfillUnlockedHats(user.unlockedHats);
+	if (!user.unlockedHats.includes(hatId)) {
+		user.unlockedHats.push(hatId);
+		saveUsers();
+	}
+
+	return { ok: true, unlockedHats: user.unlockedHats };
+}
+
+/**
  * Clear all users from the in-memory store (test-only).
  */
 function clearUsers() {
@@ -296,6 +325,7 @@ module.exports = {
 	findUserByAccountId,
 	findUserByEmail,
 	updateProfile,
+	unlockHat,
 	normalizeEmail,
 	clearUsers,
 	loadUsers,

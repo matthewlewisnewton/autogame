@@ -13,8 +13,8 @@ const {
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
-const { findUserByAccountId } = require('./users');
-const { DEFAULT_COSMETIC } = require('./cosmetic');
+const { findUserByAccountId, unlockHat: unlockHatForAccount } = require('./users');
+const { DEFAULT_COSMETIC, backfillUnlockedHats } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
@@ -210,6 +210,7 @@ const {
   scaledGrindStat,
   applyWyrmMinionBreathStats,
   grindCard,
+  unlockHatForPlayer,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,
@@ -429,6 +430,7 @@ const DEBUG_SCENARIOS = new Set([
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'hat-shop-currency',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -572,6 +574,17 @@ function applyDebugScenario(socket, name) {
     if (name === 'telepipe-ready') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'hat-shop-currency') {
+      // Stay in the lobby with enough currency to unlock any catalog hat,
+      // so the unlockHat flow can be exercised without grinding runs first.
+      // The same state is reachable normally by earning currency in dungeons.
+      state.gamePhase = 'lobby';
+      player.ready = false;
+      player.hp = MAX_HP;
+      player.currency = Math.max(player.currency || 0, 1000);
       return { ok: true, scenario: name };
     }
 
@@ -3222,6 +3235,55 @@ function startServer(port) {
     });
   });
 
+  socket.on('unlockHat', (data) => {
+    withLobbyFromSocket(socket, (state) => {
+    if (state.gamePhase !== 'lobby') return;
+
+    const player = state.players[socket.playerId];
+    if (!player) return;
+
+    const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
+    if (!hatId) {
+      socket.emit('hatError', { reason: 'Missing hatId' });
+      return;
+    }
+
+    // Reject early if the account already owns the hat — no currency change.
+    const account = findUserByAccountId(player.accountId);
+    if (!account) {
+      socket.emit('hatError', { reason: 'Account not found' });
+      return;
+    }
+    const owned = backfillUnlockedHats(account.unlockedHats);
+    if (owned.includes(hatId)) {
+      socket.emit('hatError', { reason: 'Hat already unlocked' });
+      return;
+    }
+
+    // Deduct currency (validates the hat exists and affordability).
+    const result = unlockHatForPlayer(player, hatId);
+    if (!result.ok) {
+      socket.emit('hatError', { reason: result.reason });
+      return;
+    }
+
+    // Record the unlock on the account. If persistence fails, refund the
+    // currency so currency and unlockedHats stay consistent.
+    const unlockResult = unlockHatForAccount(player.accountId, hatId);
+    if (!unlockResult.ok) {
+      player.currency += result.cost;
+      socket.emit('hatError', { reason: unlockResult.reason });
+      return;
+    }
+
+    socket.emit('hatUnlocked', {
+      unlockedHats: unlockResult.unlockedHats,
+      currency: player.currency
+    });
+    savePlayerData(socket.playerId);
+    });
+  });
+
   socket.on('medicHeal', () => {
     withLobbyFromSocket(socket, (state) => {
       if (state.gamePhase !== 'lobby') {
@@ -3627,6 +3689,7 @@ if (typeof module !== 'undefined' && module.exports) {
     scaledGrindStat,
     applyWyrmMinionBreathStats,
     grindCard,
+    unlockHatForPlayer,
     createCardInstance,
     createInventoryFromCardIds,
     createInventoryFromOwnedCards,
