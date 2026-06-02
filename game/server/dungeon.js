@@ -84,6 +84,20 @@ function questLayoutSeed(questId) {
 const SUNKEN_PLATEAU_Y = 10;
 const SUNKEN_CANYON_Y = 2;
 const SUNKEN_MIN_CANYON_AREA = 4 * MIN_ROOM_SIZE * MIN_ROOM_SIZE;
+/** Low south-rim parapet so default spawn can see down into the canyon. */
+const SUNKEN_VISTA_PARAPET_HEIGHT = 1.5;
+const DEFAULT_ROOM_WALL_HEIGHT = 2.5;
+/** Eye height above sampled floor for vista line-of-sight checks. */
+const PLAYER_EYE_OFFSET = 0.5;
+
+function applySunkenPlateauVistaParapets(plateau) {
+  const southZ = plateau.z + plateau.depth / 2;
+  for (const wall of plateau.walls) {
+    if (wall.axis === 'x' && Math.abs(wall.z - southZ) < 0.01) {
+      wall.height = SUNKEN_VISTA_PARAPET_HEIGHT;
+    }
+  }
+}
 
 /**
  * Build axis-aligned wall segments along one rectangular edge, with optional gaps.
@@ -475,6 +489,7 @@ function generateSunkenCanyonLayout(seed, options = {}) {
     gapWidth: rampPassageGap,
   });
   plateau.elevationBand = 'plateau';
+  applySunkenPlateauVistaParapets(plateau);
 
   const canyon = createFlatBandRoom({
     x: plateauX,
@@ -1104,4 +1119,7 @@ module.exports = {
   SUNKEN_PLATEAU_Y,
   SUNKEN_CANYON_Y,
   SUNKEN_MIN_CANYON_AREA,
+  SUNKEN_VISTA_PARAPET_HEIGHT,
+  DEFAULT_ROOM_WALL_HEIGHT,
+  PLAYER_EYE_OFFSET,
 };

@@ -30,6 +30,7 @@ import {
 	groundMaterial,
 } from './dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from './collision.js';
+import { computeFollowCameraTarget } from './camera.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -388,12 +389,10 @@ function syncFacingToServer() {
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
-	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
-	const targetY = playerY + CAMERA_HEIGHT;
-	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
+	const follow = computeFollowCameraTarget(playerX, playerY, playerZ, cameraYaw);
 
 	if (lockOnReleaseLookAt) {
-		const target = new THREE.Vector3(targetX, targetY, targetZ);
+		const target = new THREE.Vector3(follow.targetX, follow.targetY, follow.targetZ);
 		camera.position.lerp(target, 4.0 * delta);
 		camera.lookAt(
 			lockOnReleaseLookAt.lookAtX,
@@ -404,9 +403,9 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	}
 
 	if (isLockOnActive()) {
-		camera.position.set(targetX, targetY, targetZ);
+		camera.position.set(follow.targetX, follow.targetY, follow.targetZ);
 	} else {
-		const target = new THREE.Vector3(targetX, targetY, targetZ);
+		const target = new THREE.Vector3(follow.targetX, follow.targetY, follow.targetZ);
 		camera.position.lerp(target, 5.0 * delta);
 	}
 
@@ -414,7 +413,7 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (lockedEnemy) {
 		camera.lookAt(lockedEnemy.x, playerY + 0.5, lockedEnemy.z);
 	} else {
-		camera.lookAt(playerX, playerY, playerZ);
+		camera.lookAt(follow.lookAtX, follow.lookAtY, follow.lookAtZ);
 	}
 }
 
@@ -750,12 +749,17 @@ export function initScene(layout, spawnPos) {
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
 	cameraYaw = 0;
-	camera.position.set(
-		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		CAMERA_HEIGHT,
-		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
+	const initialSpawnY = layout
+		? (sampleFloorY(layout, spawnPosition.x, spawnPosition.z) ?? DEFAULT_FLOOR_Y)
+		: DEFAULT_FLOOR_Y;
+	const initialFollow = computeFollowCameraTarget(
+		spawnPosition.x,
+		initialSpawnY,
+		spawnPosition.z,
+		cameraYaw,
 	);
-	camera.lookAt(spawnPosition.x, 0, spawnPosition.z);
+	camera.position.set(initialFollow.targetX, initialFollow.targetY, initialFollow.targetZ);
+	camera.lookAt(initialFollow.lookAtX, initialFollow.lookAtY, initialFollow.lookAtZ);
 
 	// Renderer
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -781,6 +785,15 @@ export function initScene(layout, spawnPos) {
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
+		const spawnFloorY = sampleFloorY(layout, spawnPosition.x, spawnPosition.z) ?? DEFAULT_FLOOR_Y;
+		const spawnFollow = computeFollowCameraTarget(
+			spawnPosition.x,
+			spawnFloorY,
+			spawnPosition.z,
+			cameraYaw,
+		);
+		camera.position.set(spawnFollow.targetX, spawnFollow.targetY, spawnFollow.targetZ);
+		camera.lookAt(spawnFollow.lookAtX, spawnFollow.lookAtY, spawnFollow.lookAtZ);
 	}
 
 	// Place player at spawn position

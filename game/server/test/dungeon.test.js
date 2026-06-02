@@ -28,6 +28,9 @@ import {
   MIN_RAMP_SLOPE,
   SUNKEN_PLATEAU_Y,
   SUNKEN_CANYON_Y,
+  SUNKEN_VISTA_PARAPET_HEIGHT,
+  DEFAULT_ROOM_WALL_HEIGHT,
+  PLAYER_EYE_OFFSET,
 } from '../dungeon.js';
 import {
   buildWallColliders,
@@ -1372,4 +1375,113 @@ describe('generateLayout sunken-canyon', () => {
     expect(bands.filter(b => b === 'plateau').length).toBeGreaterThanOrEqual(1);
     expect(bands.filter(b => b === 'canyon').length).toBeGreaterThan(2);
   });
+
+  it('uses low parapet height on plateau south rim segments only', () => {
+    const layout = sunkenLayout(42);
+    const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+    const southZ = plateau.z + plateau.depth / 2;
+    const southWalls = plateau.walls.filter(
+      w => w.axis === 'x' && Math.abs(w.z - southZ) < 0.01
+    );
+    const otherWalls = plateau.walls.filter(
+      w => !(w.axis === 'x' && Math.abs(w.z - southZ) < 0.01)
+    );
+    expect(southWalls.length).toBeGreaterThan(0);
+    for (const wall of southWalls) {
+      expect(wall.height).toBe(SUNKEN_VISTA_PARAPET_HEIGHT);
+    }
+    for (const wall of otherWalls) {
+      expect(wall.height).toBeUndefined();
+    }
+  });
+
+  it('default spawn sight line to canyon center is not blocked by south rim walls', () => {
+    const halfThickness = 0.2;
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = sunkenLayout(seed);
+      const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+      const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+      const spawn = pickPlateauPartySpawn(layout, mulberry32(seed + 17));
+      const eyeY = sampleFloorY(layout, spawn.x, spawn.z) + PLAYER_EYE_OFFSET;
+      const targetY = sampleFloorY(layout, canyon.x, canyon.z) + PLAYER_EYE_OFFSET;
+      const southZ = plateau.z + plateau.depth / 2;
+      const southWalls = plateau.walls.filter(
+        w => w.axis === 'x' && Math.abs(w.z - southZ) < 0.01
+      );
+
+      for (const wall of southWalls) {
+        const box = wallSegmentBounds3D(layout, wall, halfThickness);
+        expect(
+          segmentIntersectsBox3D(
+            spawn.x,
+            eyeY,
+            spawn.z,
+            canyon.x,
+            targetY,
+            canyon.z,
+            box
+          )
+        ).toBe(false);
+      }
+    }
+  });
 });
+
+function wallSegmentBounds2D(wall, halfThickness) {
+  if (wall.axis === 'x') {
+    return {
+      minX: wall.x - wall.length / 2 - halfThickness,
+      maxX: wall.x + wall.length / 2 + halfThickness,
+      minZ: wall.z - halfThickness,
+      maxZ: wall.z + halfThickness,
+    };
+  }
+  return {
+    minX: wall.x - halfThickness,
+    maxX: wall.x + halfThickness,
+    minZ: wall.z - wall.length / 2 - halfThickness,
+    maxZ: wall.z + wall.length / 2 + halfThickness,
+  };
+}
+
+function wallSegmentBounds3D(layout, wall, halfThickness) {
+  const flat = wallSegmentBounds2D(wall, halfThickness);
+  const baseY = sampleFloorY(layout, wall.x, wall.z) ?? DEFAULT_FLOOR_Y;
+  const height = wall.height ?? DEFAULT_ROOM_WALL_HEIGHT;
+  return {
+    ...flat,
+    minY: baseY,
+    maxY: baseY + height,
+  };
+}
+
+function segmentIntersectsBox3D(x1, y1, z1, x2, y2, z2, box) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const dz = z2 - z1;
+  let tmin = 0;
+  let tmax = 1;
+  const axes = [
+    [x1, dx, box.minX, box.maxX],
+    [y1, dy, box.minY, box.maxY],
+    [z1, dz, box.minZ, box.maxZ],
+  ];
+  for (const [start, dir, minB, maxB] of axes) {
+    if (Math.abs(dir) < 1e-9) {
+      if (start < minB || start > maxB) return false;
+      continue;
+    }
+    const inv = 1 / dir;
+    let t1 = (minB - start) * inv;
+    let t2 = (maxB - start) * inv;
+    if (t1 > t2) {
+      const tmp = t1;
+      t1 = t2;
+      t2 = tmp;
+    }
+    tmin = Math.max(tmin, t1);
+    tmax = Math.min(tmax, t2);
+    if (tmin > tmax) return false;
+  }
+  return true;
+}

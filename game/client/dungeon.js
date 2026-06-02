@@ -236,20 +236,21 @@ export function buildDungeon(scene, layout) {
 		for (const wall of room.walls) {
 			let wallGeo;
 			let wallX, wallZ;
+			const segmentHeight = wall.height ?? WALL_HEIGHT;
 
 			if (wall.axis === 'x') {
-				wallGeo = new THREE.BoxGeometry(wall.length, WALL_HEIGHT, WALL_THICKNESS);
+				wallGeo = new THREE.BoxGeometry(wall.length, segmentHeight, WALL_THICKNESS);
 				wallX = wall.x;
 				wallZ = wall.z;
 			} else {
-				wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, wall.length);
+				wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, segmentHeight, wall.length);
 				wallX = wall.x;
 				wallZ = wall.z;
 			}
 
 			const wallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
 			const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
-			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
+			wallMesh.position.set(wallX, wallBaseY + segmentHeight / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}
