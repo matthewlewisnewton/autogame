@@ -49,6 +49,12 @@ const COVER_PIECE_GAP = 1.5;     // min gap between cover footprints (> player d
 const COVER_MAX_ATTEMPTS = 600;  // bound the placement loop for determinism
 const COVER_SLOPE_DELTA = 0.5;   // gentle corner-height delta (must stay ≤ 0.6)
 const PLAYER_RADIUS = 0.5;       // matches simulation.js PLAYER_RADIUS for guards
+// Walkable apron extending beyond the solid cover on every side. ≥ 2×
+// PLAYER_RADIUS so a player can fully step off the flat floor onto the slope.
+// The platform footprint (cover inflated by this margin) carries the slope and
+// is reserved during placement, but the solid collider stays on the cover
+// footprint only — so the apron ring is walkable.
+const PLATFORM_APRON = 1.0;
 
 /**
  * Axis-aligned footprint bounds of a cover piece, optionally inflated by `pad`.
@@ -60,6 +66,16 @@ function coverBounds(piece, pad = 0) {
     minZ: piece.z - piece.depth / 2 - pad,
     maxZ: piece.z + piece.depth / 2 + pad,
   };
+}
+
+/**
+ * Axis-aligned bounds of a cover piece's walkable platform footprint (the cover
+ * inflated by PLATFORM_APRON on each side), optionally inflated further by
+ * `pad`. Used by the placement guards so the apron never clips a wall, the
+ * spawn, or another piece's apron.
+ */
+function platformBounds(piece, pad = 0) {
+  return coverBounds(piece, PLATFORM_APRON + pad);
 }
 
 function pointInBounds(x, z, b) {
@@ -161,32 +177,46 @@ function generatePlazaCover(rng, plazaSize, spawn) {
       width = archetype.depth;
       depth = archetype.width;
     }
-    const limitX = half - COVER_WALL_MARGIN - width / 2;
-    const limitZ = half - COVER_WALL_MARGIN - depth / 2;
+    // Reserve room for the platform apron, not just the solid cover, so the
+    // inflated footprint never clips the perimeter wall.
+    const limitX = half - COVER_WALL_MARGIN - width / 2 - PLATFORM_APRON;
+    const limitZ = half - COVER_WALL_MARGIN - depth / 2 - PLATFORM_APRON;
     const x = (rng() * 2 - 1) * limitX;
     const z = (rng() * 2 - 1) * limitZ;
     const piece = { x, z, width, depth, height: archetype.height, type: archetype.type };
-    const pieceBounds = coverBounds(piece);
+    // Placement guards work on the platform footprint (the larger apron) so the
+    // walkable slope around the cover never clips the spawn, a wall, or another
+    // piece — even though only the first COVER_SLOPED pieces carry a slope.
+    const pieceBounds = platformBounds(piece);
 
-    // Keep the spawn point and its clearance free of cover.
+    // Keep the spawn point and its clearance free of cover platforms.
     if (boundsOverlap(pieceBounds, spawnClear)) continue;
-    // Don't overlap (or crowd) an already-placed piece.
-    if (cover.some(c => boundsOverlap(pieceBounds, coverBounds(c, COVER_PIECE_GAP)))) continue;
-    // Reject anything that would split the free floor into disconnected regions.
+    // Don't overlap (or crowd) an already-placed piece's platform.
+    if (cover.some(c => boundsOverlap(pieceBounds, platformBounds(c, COVER_PIECE_GAP)))) continue;
+    // Reject anything whose SOLID footprint would split the free floor into
+    // disconnected regions (the apron stays walkable, so it uses coverBounds).
     if (!plazaFreeFloorConnected(plazaSize, [...cover, piece], spawn)) continue;
 
     cover.push(piece);
   }
 
-  // Attach gently sloped platforms to the first COVER_SLOPED pieces. The slope
-  // is visual-only for v1 (sloped movement is ticket 117); we only need the
-  // floorCorners data and a corner-height delta within the documented bound.
+  // Attach a gently sloped, WALKABLE platform to the first COVER_SLOPED pieces.
+  // The platform footprint is the cover inflated by PLATFORM_APRON on each side
+  // (strictly larger than the solid cover) and carries the floorCorners, so the
+  // apron ring around the solid box rises along the slope. The solid collider
+  // still covers only the cover footprint (see buildWallColliders / coverAABB),
+  // leaving the apron free to walk onto. sampleFloorY() reads this platform.
   for (let i = 0; i < Math.min(COVER_SLOPED, cover.length); i++) {
-    cover[i].floorCorners = {
-      yNW: DEFAULT_FLOOR_Y,
-      yNE: DEFAULT_FLOOR_Y,
-      ySE: DEFAULT_FLOOR_Y + COVER_SLOPE_DELTA,
-      ySW: DEFAULT_FLOOR_Y + COVER_SLOPE_DELTA,
+    const piece = cover[i];
+    piece.platform = {
+      width: piece.width + 2 * PLATFORM_APRON,
+      depth: piece.depth + 2 * PLATFORM_APRON,
+      floorCorners: {
+        yNW: DEFAULT_FLOOR_Y,
+        yNE: DEFAULT_FLOOR_Y,
+        ySE: DEFAULT_FLOOR_Y + COVER_SLOPE_DELTA,
+        ySW: DEFAULT_FLOOR_Y + COVER_SLOPE_DELTA,
+      },
     };
   }
 
@@ -763,8 +793,11 @@ module.exports = {
   OPEN_PLAZA_SIZE,
   generatePlazaCover,
   plazaFreeFloorConnected,
+  platformBounds,
   COVER_MIN,
   COVER_TARGET,
   COVER_SLOPED,
-  COVER_SLOPE_DELTA
+  COVER_SLOPE_DELTA,
+  PLATFORM_APRON,
+  PLAYER_RADIUS
 };

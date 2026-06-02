@@ -23,9 +23,11 @@ import {
   generateOpenPlaza,
   OPEN_PLAZA_SIZE,
   plazaFreeFloorConnected,
+  platformBounds,
   COVER_MIN,
   COVER_SLOPED,
-  COVER_SLOPE_DELTA
+  COVER_SLOPE_DELTA,
+  PLATFORM_APRON
 } from '../dungeon.js';
 import { getLayoutProfileForQuest } from '../quests.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
@@ -1235,16 +1237,107 @@ describe('open-plaza cover pieces', () => {
 
   it('at least 2 cover pieces sit on a gently sloped platform (delta ≈ 0.5, ≤ 0.6)', () => {
     const layout = generateLayout(7, 'open-plaza');
-    const sloped = layout.cover.filter(c => c.floorCorners);
+    const sloped = layout.cover.filter(c => c.platform);
     expect(sloped.length).toBeGreaterThanOrEqual(2);
     expect(sloped.length).toBeGreaterThanOrEqual(COVER_SLOPED);
     for (const c of sloped) {
-      const { yNW, yNE, ySE, ySW } = c.floorCorners;
+      const { yNW, yNE, ySE, ySW } = c.platform.floorCorners;
       const heights = [yNW, yNE, ySE, ySW];
       const delta = Math.max(...heights) - Math.min(...heights);
       expect(delta).toBeLessThanOrEqual(0.6);
       expect(delta).toBeCloseTo(COVER_SLOPE_DELTA, 5);
     }
+  });
+
+  it('each sloped platform footprint is strictly larger than its cover footprint (apron ≥ 1.0 / ≥ 2×PLAYER_RADIUS per side)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const sloped = layout.cover.filter(c => c.platform);
+    expect(sloped.length).toBeGreaterThanOrEqual(COVER_SLOPED);
+    expect(PLATFORM_APRON).toBeGreaterThanOrEqual(1.0);
+    for (const c of sloped) {
+      expect(c.platform.width).toBeGreaterThan(c.width);
+      expect(c.platform.depth).toBeGreaterThan(c.depth);
+      // Apron extends ≥ 1.0 (= 2×PLAYER_RADIUS) beyond the cover on each side.
+      expect((c.platform.width - c.width) / 2).toBeGreaterThanOrEqual(1.0 - 1e-9);
+      expect((c.platform.depth - c.depth) / 2).toBeGreaterThanOrEqual(1.0 - 1e-9);
+      // Platform is centered on the cover (same x/z).
+      expect(c.platform.floorCorners).toBeDefined();
+    }
+  });
+
+  it('platform footprints stay inside the outer walls and clear of spawn and other platforms', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const spawnClear = { minX: SPAWN.x - 4, maxX: SPAWN.x + 4, minZ: SPAWN.z - 4, maxZ: SPAWN.z + 4 };
+    for (const c of layout.cover) {
+      const pb = platformBounds(c);
+      // Inside the perimeter walls.
+      expect(pb.minX).toBeGreaterThan(-half);
+      expect(pb.maxX).toBeLessThan(half);
+      expect(pb.minZ).toBeGreaterThan(-half);
+      expect(pb.maxZ).toBeLessThan(half);
+      // Clear of the spawn-clear zone.
+      expect(overlap(pb, spawnClear)).toBe(false);
+    }
+    // No two platform footprints overlap each other.
+    for (let i = 0; i < layout.cover.length; i++) {
+      for (let j = i + 1; j < layout.cover.length; j++) {
+        expect(overlap(platformBounds(layout.cover[i]), platformBounds(layout.cover[j]))).toBe(false);
+      }
+    }
+  });
+
+  it('the solid collider for a sloped piece still covers only the cover footprint (apron not blocked)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover.filter(p => p.platform)) {
+      // The collider matching this piece equals the cover footprint, not the platform.
+      const match = colliders.find(w =>
+        Math.abs(w.minX - (c.x - c.width / 2)) < 1e-9 &&
+        Math.abs(w.maxX - (c.x + c.width / 2)) < 1e-9 &&
+        Math.abs(w.minZ - (c.z - c.depth / 2)) < 1e-9 &&
+        Math.abs(w.maxZ - (c.z + c.depth / 2)) < 1e-9);
+      expect(match).toBeDefined();
+      // The collider is strictly smaller than the platform footprint.
+      expect(match.maxX - match.minX).toBeLessThan(c.platform.width);
+      expect(match.maxZ - match.minZ).toBeLessThan(c.platform.depth);
+    }
+  });
+
+  it('an apron point (inside platform, outside cover) is walkable and rides up the slope (> DEFAULT_FLOOR_Y)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    const insideAny = (x, z, b) => x > b.minX && x < b.maxX && z > b.minZ && z < b.maxZ;
+
+    const sloped = layout.cover.filter(c => c.platform);
+    expect(sloped.length).toBeGreaterThanOrEqual(COVER_SLOPED);
+
+    let checked = 0;
+    for (const c of sloped) {
+      // Pick a point on the raised (south) apron: just south of the solid cover
+      // but still inside the platform footprint. The slope rises toward +z.
+      const apronZ = c.z + c.depth / 2 + PLATFORM_APRON / 2;
+      const apronX = c.x;
+      // Inside the platform footprint…
+      const pb = platformBounds(c);
+      expect(insideAny(apronX, apronZ, pb)).toBe(true);
+      // …but outside the solid cover footprint.
+      const cb = { minX: c.x - c.width / 2, maxX: c.x + c.width / 2, minZ: c.z - c.depth / 2, maxZ: c.z + c.depth / 2 };
+      expect(insideAny(apronX, apronZ, cb)).toBe(false);
+      // (a) Not inside any wall/cover collider.
+      const blocked = colliders.some(w => insideAny(apronX, apronZ, w));
+      expect(blocked).toBe(false);
+      // (b) sampleFloorY there is above the flat floor — a player rides the slope.
+      const y = sampleFloorY(layout, apronX, apronZ);
+      expect(y).toBeGreaterThan(DEFAULT_FLOOR_Y);
+      checked++;
+    }
+    expect(checked).toBeGreaterThanOrEqual(COVER_SLOPED);
+  });
+
+  it('sampleFloorY returns DEFAULT_FLOOR_Y on the flat plaza away from any platform', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    // The spawn point is kept clear of every platform, so it is flat floor.
+    expect(sampleFloorY(layout, SPAWN.x, SPAWN.z)).toBe(DEFAULT_FLOOR_Y);
   });
 
   it('free-floor reachability is preserved (single connected region)', () => {

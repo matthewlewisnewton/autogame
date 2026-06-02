@@ -319,8 +319,8 @@ export function buildDungeon(scene, layout) {
 	// ── Build open-plaza cover pieces ──
 	// Freestanding cover boxes scattered through the plaza. Each renders as a box
 	// sized to its footprint and seated on the plaza floor. Pieces that carry a
-	// `floorCorners` platform also render a sloped floor patch so the gentle rise
-	// reads visually (sloped path reused from the room loop).
+	// `platform` also render a sloped floor patch over the larger walkable apron
+	// so the gentle rise reads visually (sloped path reused from the room loop).
 	if (Array.isArray(layout.cover)) {
 		for (const piece of layout.cover) {
 			const height = coverHeight(piece);
@@ -331,9 +331,20 @@ export function buildDungeon(scene, layout) {
 			scene.add(coverMesh);
 			meshes.push(coverMesh);
 
-			// Sloped platform patch under pieces that carry floorCorners.
-			if (piece.floorCorners) {
-				const { mesh } = buildSlopedFloor(piece, floorMaterial);
+			// Sloped platform patch for pieces that carry a walkable platform. The
+			// patch spans the platform footprint (the larger walkable apron),
+			// centered on the piece — matching the slope a player rides up via
+			// sampleFloorY(). The solid box mesh / collider stay on the cover
+			// footprint only.
+			if (piece.platform) {
+				const platformRoom = {
+					x: piece.x,
+					z: piece.z,
+					width: piece.platform.width,
+					depth: piece.platform.depth,
+					floorCorners: piece.platform.floorCorners,
+				};
+				const { mesh } = buildSlopedFloor(platformRoom, floorMaterial);
 				scene.add(mesh);
 				meshes.push(mesh);
 			}

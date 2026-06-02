@@ -270,14 +270,15 @@ describe('buildDungeon() with floorCorners', () => {
 			{ x: 10, z: 10, width: 2, depth: 2, height: 3.0, type: 'pillar' },
 			{ x: -10, z: 8, width: 4, depth: 1, height: 1.2, type: 'brokenWall' },
 			{ x: 8, z: -12, width: 2.5, depth: 2.5, height: 0.8, type: 'planter' },
-			// Two pieces carry a gently sloped platform.
+			// Two pieces carry a gently sloped, walkable platform (apron larger
+			// than the cover footprint, centered on the piece).
 			{
 				x: -8, z: -8, width: 2, depth: 2, height: 3.0, type: 'pillar',
-				floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 1.0, ySW: 1.0 },
+				platform: { width: 4, depth: 4, floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 1.0, ySW: 1.0 } },
 			},
 			{
 				x: 14, z: -4, width: 4, depth: 1, height: 1.2, type: 'brokenWall',
-				floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 1.0, ySW: 1.0 },
+				platform: { width: 6, depth: 3, floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 1.0, ySW: 1.0 } },
 			},
 		];
 		const layout = {
@@ -296,13 +297,33 @@ describe('buildDungeon() with floorCorners', () => {
 		);
 		expect(coverBoxes.length).toBe(cover.length);
 
-		// One sloped platform mesh per piece that carries floorCorners.
-		const slopedCount = cover.filter(c => c.floorCorners).length;
+		// One sloped platform mesh per piece that carries a platform. The patch
+		// spans the larger platform footprint but is centered on the piece.
+		const slopedCount = cover.filter(c => c.platform).length;
 		const platforms = result.meshes.filter(m =>
 			m.geometry?.parameters?.height === 0.1 &&
 			cover.some(c => m.position.x === c.x && m.position.z === c.z)
 		);
 		expect(platforms.length).toBe(slopedCount);
+
+		// Each platform patch is sized to the platform footprint (the walkable
+		// apron), strictly larger than the cover box footprint underneath it.
+		for (const c of cover.filter(p => p.platform)) {
+			const box = result.meshes.find(m =>
+				m.position.x === c.x && m.position.z === c.z &&
+				m.geometry?.parameters?.height === coverHeight(c)
+			);
+			const patch = result.meshes.find(m =>
+				m.position.x === c.x && m.position.z === c.z &&
+				m.geometry?.parameters?.height === 0.1
+			);
+			expect(box).toBeDefined();
+			expect(patch).toBeDefined();
+			// The slope patch footprint covers the apron, wider/deeper than the box.
+			const patchW = patch.geometry.parameters.width;
+			const patchD = patch.geometry.parameters.depth;
+			expect(Math.max(patchW, patchD)).toBeGreaterThan(Math.max(c.width, c.depth));
+		}
 
 		// Total = ground(1) + plaza floor(1) + cover boxes + platforms.
 		expect(result.meshes.length).toBe(2 + cover.length + slopedCount);
