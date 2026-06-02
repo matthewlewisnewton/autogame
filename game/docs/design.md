@@ -22,7 +22,7 @@ Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon witho
 - Players can abandon a suspended run from the lobby, which clears the checkpoint and returns the squad to normal lobby flow.
 
 ## Combat Mechanics
-Instead of standard weapons, players equip a deck of up to 12 cards. At any time, they hold a "hand" of up to 4 cards, each mapped to an input button.
+Instead of standard weapons, players equip a lobby loadout of 4–24 cards (the default starter deck has 12). During a run they have six hand slots; four cards are dealt into those slots at run open (the opening hand), and each occupied slot maps to an input button.
 
 ### Card Types
 - **Weapons**: Multi-charge directional attacks like sword slashes or projectiles. These cards have multiple charges before they are discarded from the hand.
