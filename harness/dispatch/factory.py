@@ -31,7 +31,9 @@ DEFAULT_SPECS = [
 ]
 DEFAULT_PREFERENCE = {
     "easy":   ["qwen", "composer_write"],
-    "medium": ["composer_write", "qwen", "claude"],   # composer primary; qwen/claude overflow
+    # claude is the medium primary (cap 1) so it actually gets work — as pure
+    # overflow it never ran (qwen+composer+gpt5 caps already cover the slots).
+    "medium": ["claude", "composer_write", "qwen"],
     "hard":   ["gpt5_extra_write", "composer_write", "claude"],
 }
 
