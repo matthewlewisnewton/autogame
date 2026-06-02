@@ -73,6 +73,24 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  // Sunken-canyon is handled by generateSunkenCanyon() — see that branch.
+  'sunken-canyon': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: OPEN_PLAZA.size,
+  },
+};
+
+// Sunken-canyon stage tuning. Plateau (north / high Y) overlooks a large canyon
+// floor (south / low Y) connected by 2–3 sloped ramp rooms.
+const SUNKEN_CANYON = {
+  plateauSize: 13,
+  canyonSize: OPEN_PLAZA.size, // 32 × 32 ⇒ ≥ 4× default room area
+  rampWidth: 4,
+  rampDepth: 24,
+  yDrop: 10,                  // plateau Y − canyon Y (≥ 8 required)
+  spawnClearRadius: 6,
+  interiorMargin: OPEN_PLAZA.interiorMargin,
+  rampXOffsets: [-3.5, 0, 3.5], // west / centre / east bridge positions
 };
 
 function normalizeLayoutProfile(profile) {
@@ -102,6 +120,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
     return generateOpenPlaza(seed);
+  }
+  if (profile === 'sunken-canyon') {
+    return generateSunkenCanyon(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
@@ -387,35 +408,33 @@ function footprintsOverlap(a, b, margin = 0) {
  * centred on plaza origin (0, 0).
  */
 function overlapsSpawnClear(piece, radius) {
-  const dx = Math.max(Math.abs(piece.x) - piece.width / 2, 0);
-  const dz = Math.max(Math.abs(piece.z) - piece.depth / 2, 0);
-  return dx * dx + dz * dz < radius * radius;
+  return overlapsSpawnClearAt(piece, radius, 0, 0);
 }
 
 /**
- * Grid flood-fill from plaza centre over the interior, treating any cell whose
- * centre falls inside a cover footprint as blocked. Returns true only when every
- * open interior cell is reachable from the centre — i.e. the cover set never
- * forms a barrier that fully separates two interior regions.
+ * Grid flood-fill from an arena centre over the interior, treating any cell
+ * whose centre falls inside a cover footprint as blocked. Returns true only
+ * when every open interior cell is reachable from the centre.
  */
-function plazaFullyReachable(cover, half) {
+function arenaFullyReachable(cover, half, centerX = 0, centerZ = 0) {
   const step = 0.5;
-  const cells = Math.floor((half * 2) / step); // e.g. 64 for a 32-wide plaza
-  const cellCentre = i => -half + (i + 0.5) * step;
+  const cells = Math.floor((half * 2) / step);
+  const cellX = i => centerX - half + (i + 0.5) * step;
+  const cellZ = j => centerZ - half + (j + 0.5) * step;
   const isBlocked = (x, z) =>
     cover.some(c =>
       x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
       z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
     );
 
-  // Locate the start cell containing the centre (0, 0).
-  const startI = Math.floor((0 + half) / step);
-  if (isBlocked(cellCentre(startI), cellCentre(startI))) return false;
+  const startI = Math.floor(half / step);
+  const startJ = Math.floor(half / step);
+  if (isBlocked(cellX(startI), cellZ(startJ))) return false;
 
   const seen = new Uint8Array(cells * cells);
   const idx = (i, j) => j * cells + i;
-  const queue = [[startI, startI]];
-  seen[idx(startI, startI)] = 1;
+  const queue = [[startI, startJ]];
+  seen[idx(startI, startJ)] = 1;
   let reached = 0;
   while (queue.length > 0) {
     const [i, j] = queue.pop();
@@ -425,20 +444,142 @@ function plazaFullyReachable(cover, half) {
       const nj = j + dj;
       if (ni < 0 || ni >= cells || nj < 0 || nj >= cells) continue;
       if (seen[idx(ni, nj)]) continue;
-      if (isBlocked(cellCentre(ni), cellCentre(nj))) continue;
+      if (isBlocked(cellX(ni), cellZ(nj))) continue;
       seen[idx(ni, nj)] = 1;
       queue.push([ni, nj]);
     }
   }
 
-  // Count total open cells; every one must have been reached.
   let open = 0;
   for (let j = 0; j < cells; j++) {
     for (let i = 0; i < cells; i++) {
-      if (!isBlocked(cellCentre(i), cellCentre(j))) open++;
+      if (!isBlocked(cellX(i), cellZ(j))) open++;
     }
   }
   return reached === open;
+}
+
+/** @deprecated alias — use arenaFullyReachable */
+function plazaFullyReachable(cover, half) {
+  return arenaFullyReachable(cover, half, 0, 0);
+}
+
+/**
+ * True when a footprint's AABB intersects the spawn-clear circle centred on
+ * (centerX, centerZ).
+ */
+function overlapsSpawnClearAt(piece, radius, centerX = 0, centerZ = 0) {
+  const dx = Math.max(Math.abs(piece.x - centerX) - piece.width / 2, 0);
+  const dz = Math.max(Math.abs(piece.z - centerZ) - piece.depth / 2, 0);
+  return dx * dx + dz * dz < radius * radius;
+}
+
+/**
+ * Greedily scatter cover pieces inside a square arena. Candidates are shuffled
+ * with `rng`, then accepted only when they stay inside the interior margin,
+ * clear the spawn zone, avoid overlap, and preserve full interior reachability.
+ *
+ * @returns {object[]} placed cover pieces (includes any `initialCover`)
+ */
+function scatterCoverInArena(rng, {
+  half,
+  centerX = 0,
+  centerZ = 0,
+  spawnClear,
+  candidatePool,
+  initialCover = [],
+  targetCount = 8,
+  interiorMargin = OPEN_PLAZA.interiorMargin,
+}) {
+  const cover = initialCover.map(c => ({ ...c }));
+  const interiorMax = half - interiorMargin;
+  const shuffled = candidatePool.map(c => ({ ...c }));
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  for (const cand of shuffled) {
+    if (cover.length >= targetCount) break;
+    if (Math.abs(cand.x - centerX) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z - centerZ) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, centerX, centerZ)) continue;
+    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
+    if (!arenaFullyReachable([...cover, cand], half, centerX, centerZ)) continue;
+    cover.push({ ...cand });
+  }
+  return cover;
+}
+
+/**
+ * Build wall segments along a horizontal (axis 'x') edge, leaving open gaps at
+ * the given centre positions.
+ */
+function buildHorizontalWallWithGaps(z, roomX, totalLength, gapCenters, gapWidth) {
+  const walls = [];
+  const leftEdge = roomX - totalLength / 2;
+  const rightEdge = roomX + totalLength / 2;
+  const gaps = gapCenters
+    .map(cx => ({ left: cx - gapWidth / 2, right: cx + gapWidth / 2 }))
+    .sort((a, b) => a.left - b.left);
+
+  let cursor = leftEdge;
+  for (const gap of gaps) {
+    if (gap.left > cursor + 0.01) {
+      const segLen = gap.left - cursor;
+      walls.push({ x: cursor + segLen / 2, z, length: segLen, axis: 'x' });
+    }
+    cursor = Math.max(cursor, gap.right);
+  }
+  if (cursor < rightEdge - 0.01) {
+    const segLen = rightEdge - cursor;
+    walls.push({ x: cursor + segLen / 2, z, length: segLen, axis: 'x' });
+  }
+  return walls;
+}
+
+/**
+ * Build a sloped ramp room bridging two elevation bands along one axis.
+ * Exported for reuse by spire-ascent work (ticket 136).
+ *
+ * @param {object} opts
+ * @param {number} opts.x - room centre X
+ * @param {number} opts.z - room centre Z
+ * @param {number} opts.width - room width (X extent)
+ * @param {number} opts.depth - room depth (Z extent)
+ * @param {number} opts.yHigh - floor Y at the high edge
+ * @param {number} opts.yLow - floor Y at the low edge
+ * @param {'x'|'z'} opts.axis - 'z': high Y at north (−Z), low at south (+Z);
+ *   'x': high at west (−X), low at east (+X)
+ * @returns {object} room with floorCorners, side walls, band 'ramp'
+ */
+function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis }) {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  let floorCorners;
+  const walls = [];
+
+  if (axis === 'z') {
+    floorCorners = { yNW: yHigh, yNE: yHigh, ySE: yLow, ySW: yLow };
+    walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
+    walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
+  } else {
+    floorCorners = { yNW: yHigh, yNE: yLow, ySE: yLow, ySW: yHigh };
+    walls.push({ x, z: z - halfD, length: width, axis: 'x' });
+    walls.push({ x, z: z + halfD, length: width, axis: 'x' });
+  }
+
+  return {
+    x,
+    z,
+    width,
+    depth,
+    walls,
+    floorCorners,
+    band: 'ramp',
+    role: 'connector',
+    spawnWeight: 0,
+  };
 }
 
 /**
@@ -454,7 +595,6 @@ function generateOpenPlaza(seed) {
   const size = OPEN_PLAZA.size;
   const half = size / 2;
   const spawnClear = OPEN_PLAZA.spawnClearRadius;
-  const interiorMax = half - OPEN_PLAZA.interiorMargin; // cover must stay within ±this
 
   // Four full perimeter walls — no passage gaps, so players cannot exit.
   const walls = [
@@ -504,27 +644,16 @@ function generateOpenPlaza(seed) {
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
   ];
 
-  // Deterministic shuffle (Fisher–Yates with mulberry32) so placement order is
-  // seed-driven yet reproducible.
-  for (let i = candidatePool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [candidatePool[i], candidatePool[j]] = [candidatePool[j], candidatePool[i]];
-  }
-
-  const TARGET_COVER = 8; // comfortably ≥ 6
-  for (const cand of candidatePool) {
-    if (cover.length >= TARGET_COVER) break;
-    // Reject candidates that leave the interior or breach the perimeter margin.
-    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
-    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
-    // Reject candidates inside the central spawn-clear zone.
-    if (overlapsSpawnClear(cand, spawnClear)) continue;
-    // Reject candidates overlapping any already-placed cover piece.
-    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
-    // Reject candidates that would make any interior cell unreachable.
-    if (!plazaFullyReachable([...cover, cand], half)) continue;
-    cover.push({ ...cand });
-  }
+  const allCover = scatterCoverInArena(rng, {
+    half,
+    spawnClear,
+    candidatePool,
+    initialCover: cover,
+    targetCount: 8,
+    interiorMargin: OPEN_PLAZA.interiorMargin,
+  });
+  cover.length = 0;
+  cover.push(...allCover);
 
   const layout = {
     rooms: [plaza],
@@ -543,6 +672,138 @@ function generateOpenPlaza(seed) {
   assignRoomRoles(layout);
 
   return layout;
+}
+
+// ── Sunken Canyon Stage Generation ──
+
+/**
+ * Build the sunken-canyon stage: a high plateau spawn band overlooking a large
+ * lower canyon floor, connected by 2–3 sloped ramp rooms. Deterministic for a
+ * given seed.
+ *
+ * Returns { rooms, passages: [], cover, passageWidth, cellSpacing,
+ *           profile: 'sunken-canyon' }.
+ */
+function generateSunkenCanyon(seed) {
+  const rng = mulberry32(seed);
+  const {
+    plateauSize,
+    canyonSize,
+    rampWidth,
+    rampDepth,
+    yDrop,
+    spawnClearRadius,
+    interiorMargin,
+    rampXOffsets,
+  } = SUNKEN_CANYON;
+
+  const yHigh = DEFAULT_FLOOR_Y + yDrop;
+  const yLow = DEFAULT_FLOOR_Y;
+  const canyonHalf = canyonSize / 2;
+  const plateauHalf = plateauSize / 2;
+
+  // Canyon centred at origin; plateau sits to the north (negative Z).
+  const canyonX = 0;
+  const canyonZ = 0;
+  const canyonNorthZ = canyonZ - canyonHalf;
+  const rampZ = canyonNorthZ - rampDepth / 2;
+  const rampNorthZ = rampZ - rampDepth / 2;
+  const plateauZ = rampNorthZ - plateauHalf;
+  const plateauSouthZ = plateauZ + plateauHalf;
+
+  // Pick 2 or 3 ramp bridges at distinct X offsets.
+  const numRamps = 2 + Math.floor(rng() * 2);
+  const offsetPool = [...rampXOffsets];
+  for (let i = offsetPool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [offsetPool[i], offsetPool[j]] = [offsetPool[j], offsetPool[i]];
+  }
+  const rampCenters = offsetPool.slice(0, numRamps);
+
+  const ramps = rampCenters.map(rampX =>
+    buildDescentRampRoom({
+      x: rampX,
+      z: rampZ,
+      width: rampWidth,
+      depth: rampDepth,
+      yHigh,
+      yLow,
+      axis: 'z',
+    })
+  );
+
+  // Plateau room — flat high band with perimeter walls (south wall has ramp gaps).
+  const plateauWalls = [
+    { x: 0, z: plateauZ - plateauHalf, length: plateauSize, axis: 'x' }, // north
+    { x: -plateauHalf, z: plateauZ, length: plateauSize, axis: 'z' },    // west
+    { x: plateauHalf, z: plateauZ, length: plateauSize, axis: 'z' },   // east
+    ...buildHorizontalWallWithGaps(plateauSouthZ, 0, plateauSize, rampCenters, rampWidth),
+  ];
+
+  const plateau = {
+    x: 0,
+    z: plateauZ,
+    width: plateauSize,
+    depth: plateauSize,
+    walls: plateauWalls,
+    floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yHigh, ySW: yHigh },
+    band: 'plateau',
+    role: 'start',
+    spawnWeight: 0,
+    encounterTier: 0,
+  };
+
+  // Canyon room — flat low band; north wall has ramp gaps, other edges solid.
+  const canyonWalls = [
+    ...buildHorizontalWallWithGaps(canyonNorthZ, canyonX, canyonSize, rampCenters, rampWidth),
+    { x: canyonX, z: canyonZ + canyonHalf, length: canyonSize, axis: 'x' }, // south
+    { x: canyonX - canyonHalf, z: canyonZ, length: canyonSize, axis: 'z' }, // west
+    { x: canyonX + canyonHalf, z: canyonZ, length: canyonSize, axis: 'z' }, // east
+  ];
+
+  const canyon = {
+    x: canyonX,
+    z: canyonZ,
+    width: canyonSize,
+    depth: canyonSize,
+    walls: canyonWalls,
+    floorCorners: { yNW: yLow, yNE: yLow, ySE: yLow, ySW: yLow },
+    band: 'canyon',
+    role: 'treasure',
+    spawnWeight: 2,
+    encounterTier: 0,
+  };
+
+  // Cover scatter on the canyon floor (same rules as open-plaza).
+  const canyonCandidatePool = [
+    { x: 0, z: -11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 0, z: 11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 9, z: -9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+  ];
+
+  const cover = scatterCoverInArena(rng, {
+    half: canyonHalf,
+    centerX: canyonX,
+    centerZ: canyonZ,
+    spawnClear: spawnClearRadius,
+    candidatePool: canyonCandidatePool,
+    targetCount: 8,
+    interiorMargin,
+  });
+
+  return {
+    rooms: [plateau, ...ramps, canyon],
+    passages: [],
+    cover,
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: canyonSize,
+    profile: 'sunken-canyon',
+  };
 }
 
 // ── Room Role Assignment ──
@@ -692,6 +953,9 @@ module.exports = {
   mulberry32,
   generateLayout,
   generateOpenPlaza,
+  generateSunkenCanyon,
+  buildDescentRampRoom,
+  scatterCoverInArena,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
