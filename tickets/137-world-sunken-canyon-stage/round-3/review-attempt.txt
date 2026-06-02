@@ -1,0 +1,6 @@
+Wrote the review artifacts.
+
+`review.md`: `VERDICT: FAIL`  
+`gaps.md`: one blocking remediation item for Sunken Canyon flat plateau/canyon floors rendering at `FLOOR_Y` instead of their sampled `floorCorners` heights.
+
+No `nits.md` was created because I did not find separate non-blocking cleanup worth filing.

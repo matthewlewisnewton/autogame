@@ -1,0 +1,11 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/game/data
+Server listening on port 3002
+Player connected: socket=HpxY5nEh4VVqnHLQAAAB, playerId=21c4cc96-2a1b-4d57-b0bd-02d31b46c7c5
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=E6EzTAMrmt3iS7eeAAAD, playerId=dc8ee785-a1e1-4af1-a531-f45f85df8622
+Player disconnected: HpxY5nEh4VVqnHLQAAAB
+Player disconnected: E6EzTAMrmt3iS7eeAAAD
