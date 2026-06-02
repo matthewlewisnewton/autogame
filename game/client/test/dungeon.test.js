@@ -454,3 +454,71 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		);
 	});
 });
+
+describe('spire-ascent tiers, ramps & treasure marker', () => {
+	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	it('buildDungeon renders all tier and ramp rooms without throwing', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		expect(() => buildDungeon(mockScene(), layout)).not.toThrow();
+		const result = buildDungeon(mockScene(), layout);
+		expect(result.meshes.length).toBeGreaterThan(layout.rooms.length);
+	});
+
+	it('positions ramp side walls using sampleFloorY', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const result = buildDungeon(mockScene(), layout);
+		const ramps = layout.rooms.filter(r => r.band === 'ramp');
+		expect(ramps.length).toBeGreaterThan(0);
+
+		for (const ramp of ramps) {
+			for (const wall of ramp.walls) {
+				const expectedBaseY = sampleFloorY(layout, wall.x, wall.z);
+				expect(expectedBaseY).not.toBeNull();
+
+				const wallMesh = result.meshes.find(m =>
+					m.position.x === wall.x && m.position.z === wall.z &&
+					m.geometry?.parameters?.height === WALL_HEIGHT
+				);
+				expect(wallMesh).toBeDefined();
+				expect(wallMesh.position.y).toBeCloseTo(expectedBaseY + WALL_HEIGHT / 2, 4);
+			}
+		}
+	});
+
+	it('elevates tier floors above DEFAULT_FLOOR_Y for upper tiers', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const tiers = layout.rooms
+			.filter(r => r.band === 'tier')
+			.sort((a, b) => a.tierIndex - b.tierIndex);
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const tier of tiers.slice(1)) {
+			const tierFloor = result.meshes.find(m =>
+				m.position.x === tier.x && m.position.z === tier.z &&
+				m.geometry?.parameters?.height === 0.1
+			);
+			expect(tierFloor).toBeDefined();
+			expect(tierFloor.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
+			expect(tierFloor.position.y).toBeCloseTo(uniformFloorMeshY(tier), 4);
+		}
+	});
+
+	it('places the treasure marker at the apex tier sampled floor Y + offset', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		const apexFloorY = sampleFloorY(layout, treasureRoom.x, treasureRoom.z);
+		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(marker.position.y).toBeCloseTo(apexFloorY + 0.75, 4);
+	});
+});
