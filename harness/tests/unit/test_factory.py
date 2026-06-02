@@ -71,6 +71,10 @@ def test_build_factory_wires_components(tmp_path):
     assert snap["qwen"]["max_concurrency"] == 1
     assert snap["composer_write"]["max_concurrency"] == 3
     assert "hard" in snap["gpt5_extra_write"]["eligible"]
+    assert snap["gpt5_extra_write"]["max_concurrency"] == 1
+    # claude opted in for medium/hard only, at concurrency 1
+    assert snap["claude"]["max_concurrency"] == 1
+    assert set(snap["claude"]["eligible"]) == {"medium", "hard"}
 
 
 def test_default_registry_health_file_roundtrip(tmp_path):

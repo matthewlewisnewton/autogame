@@ -25,12 +25,14 @@ DEFAULT_SPECS = [
     AgentSpec("qwen", max_concurrency=1, eligible=frozenset({"easy", "medium"})),
     AgentSpec("composer_write", max_concurrency=3,
               eligible=frozenset({"easy", "medium", "hard"})),
-    AgentSpec("gpt5_extra_write", max_concurrency=3, eligible=frozenset({"hard"})),
+    AgentSpec("gpt5_extra_write", max_concurrency=1, eligible=frozenset({"hard"})),
+    # claude opted in for medium/hard only, single-concurrency (cost-bounded).
+    AgentSpec("claude", max_concurrency=1, eligible=frozenset({"medium", "hard"})),
 ]
 DEFAULT_PREFERENCE = {
     "easy":   ["qwen", "composer_write"],
-    "medium": ["composer_write", "qwen"],       # composer primary; qwen overflow
-    "hard":   ["gpt5_extra_write", "composer_write"],
+    "medium": ["composer_write", "qwen", "claude"],   # composer primary; qwen/claude overflow
+    "hard":   ["gpt5_extra_write", "composer_write", "claude"],
 }
 
 
