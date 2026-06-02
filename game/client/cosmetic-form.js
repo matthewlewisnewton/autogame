@@ -106,6 +106,46 @@ export function buildCosmeticPatchPayload(root) {
 }
 
 /**
+ * @param {ParentNode} root
+ * @param {Partial<Cosmetic>|null|undefined} savedCosmetic
+ * @returns {boolean}
+ */
+export function isCosmeticPatchUnchanged(root, savedCosmetic) {
+	const next = readCosmeticFormState(root);
+	const saved = { ...DEFAULT_COSMETIC, ...(savedCosmetic && typeof savedCosmetic === 'object' ? savedCosmetic : {}) };
+	const bodyColor = normalizeHexColor(saved.bodyColor, DEFAULT_COSMETIC.bodyColor);
+	const accentColor = normalizeHexColor(saved.accentColor, DEFAULT_COSMETIC.accentColor);
+	const bodyShape = normalizeBodyShape(saved.bodyShape);
+	return (
+		next.bodyColor === bodyColor
+		&& next.accentColor === accentColor
+		&& next.bodyShape === bodyShape
+	);
+}
+
+/**
+ * @param {HTMLElement|null|undefined} frameEl
+ * @param {HTMLElement|null|undefined} portraitEl
+ * @param {Partial<Cosmetic>|null|undefined} cosmetic
+ */
+export function applyCosmeticToCharacterFrame(frameEl, portraitEl, cosmetic) {
+	if (!frameEl) return;
+	const c = { ...DEFAULT_COSMETIC, ...(cosmetic && typeof cosmetic === 'object' ? cosmetic : {}) };
+	const bodyColor = normalizeHexColor(c.bodyColor, DEFAULT_COSMETIC.bodyColor);
+	const accentColor = normalizeHexColor(c.accentColor, DEFAULT_COSMETIC.accentColor);
+	const bodyShape = normalizeBodyShape(c.bodyShape);
+
+	frameEl.setAttribute('data-body-shape', bodyShape);
+	frameEl.style.setProperty('--cosmetic-body-color', bodyColor);
+	frameEl.style.setProperty('--cosmetic-accent-color', accentColor);
+	frameEl.style.borderColor = accentColor;
+
+	if (portraitEl) {
+		applyCosmeticToPreviewElement(portraitEl, c);
+	}
+}
+
+/**
  * @param {HTMLElement|null|undefined} previewEl
  * @param {Partial<Cosmetic>|null|undefined} cosmetic
  */

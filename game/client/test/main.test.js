@@ -2349,6 +2349,8 @@ describe('healthBarColor(hp, maxHp)', () => {
 describe('auth overlay functions', () => {
 	beforeEach(() => {
 		vi.resetModules();
+		document.getElementById('account-overlay')?.remove();
+		document.getElementById('character-frame')?.remove();
 		// Create all required DOM elements that main.js queries at module load time
 		const requiredIds = [
 			'status', 'vanguard-hud', 'character-id', 'player-level',
@@ -2471,7 +2473,10 @@ describe('auth overlay functions', () => {
 			error.hidden = true;
 			modal.appendChild(error);
 			const cosmeticStart = indexHtml.indexOf('<div id="cosmetic-body-colors"');
-			const cosmeticEnd = indexHtml.indexOf('<button type="button" id="cosmetic-save-btn">');
+			const saveBtnIdx = indexHtml.indexOf('id="cosmetic-save-btn"');
+			const cosmeticEnd = saveBtnIdx === -1
+				? -1
+				: indexHtml.indexOf('</button>', saveBtnIdx) + '</button>'.length;
 			if (cosmeticStart !== -1 && cosmeticEnd !== -1) {
 				const cosmeticWrapper = document.createElement('div');
 				cosmeticWrapper.innerHTML = indexHtml.slice(cosmeticStart, cosmeticEnd);
@@ -2485,12 +2490,33 @@ describe('auth overlay functions', () => {
 			|| document.getElementById('account-overlay');
 		if (accountModal && !document.getElementById('cosmetic-preview')) {
 			const cosmeticStart = indexHtml.indexOf('<div id="cosmetic-body-colors"');
-			const cosmeticEnd = indexHtml.indexOf('<button type="button" id="cosmetic-save-btn">');
+			const saveBtnIdx = indexHtml.indexOf('id="cosmetic-save-btn"');
+			const cosmeticEnd = saveBtnIdx === -1
+				? -1
+				: indexHtml.indexOf('</button>', saveBtnIdx) + '</button>'.length;
 			if (cosmeticStart !== -1 && cosmeticEnd !== -1) {
 				const cosmeticWrapper = document.createElement('div');
 				cosmeticWrapper.innerHTML = indexHtml.slice(cosmeticStart, cosmeticEnd);
 				accountModal.appendChild(cosmeticWrapper);
 			}
+		}
+
+		const vanguardHud = document.getElementById('vanguard-hud');
+		if (vanguardHud && !document.getElementById('character-frame')) {
+			const frame = document.createElement('div');
+			frame.id = 'character-frame';
+			const portrait = document.createElement('span');
+			portrait.id = 'character-portrait';
+			frame.appendChild(portrait);
+			const characterId = document.getElementById('character-id');
+			if (characterId) {
+				frame.appendChild(characterId);
+			} else {
+				const idSpan = document.createElement('span');
+				idSpan.id = 'character-id';
+				frame.appendChild(idSpan);
+			}
+			vanguardHud.prepend(frame);
 		}
 
 		if (!document.getElementById('settings-overlay')) {
@@ -2614,6 +2640,128 @@ describe('auth overlay functions', () => {
 		expect(greenSwatch.getAttribute('aria-pressed')).toBe('true');
 		expect(preview.style.backgroundColor).toBe('rgb(34, 197, 94)');
 		expect(fetchMock.mock.calls.length).toBe(callsAfterOpen);
+
+		vi.unstubAllGlobals();
+	});
+
+	it('cosmetic save PATCHes profile and updates HUD portrait; shows server error on failure', async () => {
+		const serverCosmetic = {
+			bodyColor: '#4f9dde',
+			accentColor: '#f2c94c',
+			bodyShape: 'box',
+			hat: 'none',
+		};
+		const fetchMock = vi.fn(async (url, init) => {
+			if (url === '/api/me') {
+				return {
+					ok: true,
+					json: async () => ({
+						username: 'save-user',
+						email: null,
+						settings: {},
+						cosmetic: serverCosmetic,
+					}),
+				};
+			}
+			if (url === '/api/me/profile' && init?.method === 'PATCH') {
+				const body = JSON.parse(init.body);
+				if (body.cosmetic?.bodyColor === '#a855f7') {
+					return {
+						ok: false,
+						json: async () => ({ error: 'Invalid cosmetic' }),
+					};
+				}
+				return {
+					ok: true,
+					json: async () => ({
+						username: 'save-user',
+						email: null,
+						cosmetic: body.cosmetic
+							? { ...serverCosmetic, ...body.cosmetic, hat: 'none' }
+							: serverCosmetic,
+					}),
+				};
+			}
+			return { ok: true, json: async () => ({}) };
+		});
+		vi.stubGlobal('fetch', fetchMock);
+		try {
+			localStorage.removeItem('autogame_token');
+			localStorage.removeItem('autogame:soundEnabled');
+		} catch (_) {}
+
+		const { loadAccountSettings } = await import('../settings.js');
+		await loadAccountSettings('token-save');
+
+		const vanguardHud = document.getElementById('vanguard-hud');
+		if (vanguardHud && !document.getElementById('character-frame')) {
+			const frame = document.createElement('div');
+			frame.id = 'character-frame';
+			const portrait = document.createElement('span');
+			portrait.id = 'character-portrait';
+			frame.appendChild(portrait);
+			const characterId = document.getElementById('character-id');
+			if (characterId) frame.appendChild(characterId);
+			vanguardHud.prepend(frame);
+		}
+
+		await import('../main.js');
+
+		const frame = document.getElementById('character-frame');
+		const portrait = document.getElementById('character-portrait');
+		const saveBtn = document.getElementById('cosmetic-save-btn');
+		const cosmeticError = document.getElementById('cosmetic-error');
+		const greenSwatch = document.querySelector(
+			'#cosmetic-body-colors .cosmetic-swatch[data-color="#22c55e"]'
+		);
+		const coneBtn = document.querySelector('#cosmetic-body-shapes .cosmetic-shape-btn[data-shape="cone"]');
+
+		expect(frame).not.toBeNull();
+		expect(saveBtn).not.toBeNull();
+
+		window.openAccountOverlay();
+		greenSwatch?.click();
+		coneBtn?.click();
+
+		const patchCallsBefore = fetchMock.mock.calls.filter(
+			([url]) => url === '/api/me/profile'
+		).length;
+		saveBtn.click();
+		await vi.waitFor(() => {
+			expect(
+				fetchMock.mock.calls.filter(([url]) => url === '/api/me/profile').length
+			).toBe(patchCallsBefore + 1);
+		});
+		await vi.waitFor(() => {
+			expect(frame.getAttribute('data-body-shape')).toBe('cone');
+		});
+
+		expect(fetchMock).toHaveBeenCalledWith('/api/me/profile', expect.objectContaining({
+			method: 'PATCH',
+			body: JSON.stringify({
+				cosmetic: { bodyColor: '#22c55e', accentColor: '#f2c94c', bodyShape: 'cone' },
+			}),
+		}));
+		expect(cosmeticError.hidden).toBe(true);
+		expect(portrait.style.backgroundColor).toBe('rgb(34, 197, 94)');
+
+		const noopCallsBefore = fetchMock.mock.calls.filter(
+			([url]) => url === '/api/me/profile'
+		).length;
+		saveBtn.click();
+		await new Promise((r) => setTimeout(r, 50));
+		expect(
+			fetchMock.mock.calls.filter(([url]) => url === '/api/me/profile').length
+		).toBe(noopCallsBefore);
+
+		document.querySelector(
+			'#cosmetic-body-colors .cosmetic-swatch[data-color="#a855f7"]'
+		)?.click();
+		saveBtn.click();
+		await vi.waitFor(() => {
+			expect(cosmeticError.hidden).toBe(false);
+		});
+		expect(cosmeticError.textContent).toBe('Invalid cosmetic');
 
 		vi.unstubAllGlobals();
 	});

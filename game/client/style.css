@@ -883,23 +883,47 @@ canvas {
   align-items: center;
   justify-content: center;
   background: radial-gradient(circle at 35% 30%, #1e3a5f 0%, #0f172a 70%);
-  border: 2px solid #38bdf8;
+  border: 2px solid var(--cosmetic-accent-color, #38bdf8);
   clip-path: polygon(50% 0%, 93% 25%, 93% 75%, 50% 100%, 7% 75%, 7% 25%);
   box-shadow:
-    0 0 10px rgba(56, 189, 248, 0.55),
-    inset 0 0 12px rgba(56, 189, 248, 0.15);
+    0 0 10px color-mix(in srgb, var(--cosmetic-accent-color, #38bdf8) 55%, transparent),
+    inset 0 0 12px color-mix(in srgb, var(--cosmetic-accent-color, #38bdf8) 15%, transparent);
+  --cosmetic-body-color: #4f9dde;
+  --cosmetic-accent-color: #f2c94c;
 }
 
 #character-portrait {
   position: absolute;
-  inset: 0;
-  width: 0;
-  height: 0;
-  overflow: hidden;
+  width: 28px;
+  height: 28px;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%);
+  box-sizing: border-box;
   pointer-events: none;
+  z-index: 0;
+}
+
+#character-frame[data-body-shape="box"] #character-portrait {
+  border-radius: 4px;
+}
+
+#character-frame[data-body-shape="cylinder"] #character-portrait {
+  border-radius: 50% / 12%;
+}
+
+#character-frame[data-body-shape="cone"] #character-portrait {
+  border-radius: 0;
+  clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+}
+
+#character-frame[data-body-shape="capsule"] #character-portrait {
+  border-radius: 999px;
 }
 
 #character-id {
+  position: relative;
+  z-index: 1;
   font-family: 'Exo 2', sans-serif;
   font-size: 16px;
   font-weight: 700;

@@ -70,7 +70,10 @@ import {
 import {
 	syncCosmeticForm,
 	readCosmeticFormState,
+	buildCosmeticPatchPayload,
+	isCosmeticPatchUnchanged,
 	applyCosmeticToPreviewElement,
+	applyCosmeticToCharacterFrame,
 } from './cosmetic-form.js';
 import {
 	initControllerCalibration,
@@ -182,6 +185,10 @@ const cosmeticPreviewEl = document.getElementById('cosmetic-preview');
 const cosmeticBodyColorsEl = document.getElementById('cosmetic-body-colors');
 const cosmeticAccentColorEl = document.getElementById('cosmetic-accent-color');
 const cosmeticBodyShapesEl = document.getElementById('cosmetic-body-shapes');
+const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
+const cosmeticErrorEl = document.getElementById('cosmetic-error');
+const characterFrameEl = document.getElementById('character-frame');
+const characterPortraitEl = document.getElementById('character-portrait');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 /** @type {'n64' | 'default' | null} */
@@ -717,6 +724,7 @@ function createSocket(token) {
 async function restoreSession(token) {
 	try {
 		await loadAccountSettings(token);
+		updateVanguardPortraitCosmetic();
 	} catch (_) {
 		setAuthToken(token);
 	}
@@ -1580,9 +1588,14 @@ function updateDeckStats(deckPile, handCards, inventory) {
 	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
+function updateVanguardPortraitCosmetic() {
+	applyCosmeticToCharacterFrame(characterFrameEl, characterPortraitEl, getCosmetic());
+}
+
 function updateVanguardPortrait() {
 	if (characterIdEl) characterIdEl.textContent = formatCharacterId(myId);
 	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
+	updateVanguardPortraitCosmetic();
 }
 
 function updateObjectiveHud() {
@@ -2863,6 +2876,22 @@ function showAccountError(message) {
 	}
 }
 
+function showCosmeticError(message) {
+	if (!cosmeticErrorEl) return;
+	if (message) {
+		cosmeticErrorEl.textContent = message;
+		cosmeticErrorEl.hidden = false;
+	} else {
+		cosmeticErrorEl.textContent = '';
+		cosmeticErrorEl.hidden = true;
+	}
+}
+
+function syncLocalPlayerCosmetic() {
+	if (!myId || !gameState?.players?.[myId]) return;
+	gameState.players[myId].cosmetic = { ...getCosmetic() };
+}
+
 function syncAccountForm() {
 	const profile = getAccountProfile();
 	if (accountUsernameInputEl) {
@@ -2891,6 +2920,7 @@ function openAccountOverlay() {
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
+	showCosmeticError('');
 }
 
 function openLevelSettingsOverlay() {
@@ -2962,6 +2992,34 @@ if (cosmeticBodyShapesEl) {
 if (cosmeticAccentColorEl) {
 	cosmeticAccentColorEl.addEventListener('input', () => {
 		refreshCosmeticPreview();
+	});
+}
+if (cosmeticSaveBtnEl) {
+	cosmeticSaveBtnEl.addEventListener('click', async () => {
+		if (!accountOverlayEl) return;
+		if (isCosmeticPatchUnchanged(accountOverlayEl, getCosmetic())) {
+			showCosmeticError('');
+			refreshCosmeticPreview();
+			updateVanguardPortraitCosmetic();
+			return;
+		}
+
+		cosmeticSaveBtnEl.disabled = true;
+		const result = await patchProfile({
+			cosmetic: buildCosmeticPatchPayload(accountOverlayEl),
+		});
+		cosmeticSaveBtnEl.disabled = false;
+
+		if (result.error) {
+			showCosmeticError(result.error);
+			return;
+		}
+
+		showCosmeticError('');
+		syncCosmeticForm(accountOverlayEl, getCosmetic());
+		refreshCosmeticPreview();
+		updateVanguardPortraitCosmetic();
+		syncLocalPlayerCosmetic();
 	});
 }
 if (accountSaveBtnEl) {

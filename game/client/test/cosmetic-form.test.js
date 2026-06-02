@@ -10,7 +10,9 @@ import {
 	syncCosmeticForm,
 	readCosmeticFormState,
 	buildCosmeticPatchPayload,
+	isCosmeticPatchUnchanged,
 	applyCosmeticToPreviewElement,
+	applyCosmeticToCharacterFrame,
 } from '../cosmetic-form.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -99,6 +101,29 @@ describe('readCosmeticFormState', () => {
 	});
 });
 
+describe('isCosmeticPatchUnchanged', () => {
+	let root;
+
+	beforeEach(() => {
+		({ root } = buildCosmeticDom());
+	});
+
+	it('returns true when form matches saved cosmetic', () => {
+		const saved = {
+			bodyColor: '#ef4444',
+			accentColor: '#112233',
+			bodyShape: 'capsule',
+		};
+		syncCosmeticForm(root, saved);
+		expect(isCosmeticPatchUnchanged(root, saved)).toBe(true);
+	});
+
+	it('returns false when body color differs', () => {
+		syncCosmeticForm(root, { bodyColor: '#22c55e', accentColor: '#f2c94c', bodyShape: 'box' });
+		expect(isCosmeticPatchUnchanged(root, DEFAULT_COSMETIC)).toBe(false);
+	});
+});
+
 describe('applyCosmeticToPreviewElement', () => {
 	let doc;
 	let previewEl;
@@ -126,6 +151,36 @@ describe('applyCosmeticToPreviewElement', () => {
 			expect(previewEl.style.border).toContain('rgb(249, 115, 22)');
 		});
 	}
+});
+
+describe('applyCosmeticToCharacterFrame', () => {
+	let doc;
+	let frameEl;
+	let portraitEl;
+
+	beforeEach(() => {
+		({ doc } = buildCosmeticDom());
+		frameEl = doc.getElementById('character-frame');
+		portraitEl = doc.getElementById('character-portrait');
+	});
+
+	it('is a no-op when frameEl is null', () => {
+		expect(() => applyCosmeticToCharacterFrame(null, portraitEl, DEFAULT_COSMETIC)).not.toThrow();
+	});
+
+	it('sets frame data-body-shape, CSS vars, and portrait fill from cosmetic', () => {
+		applyCosmeticToCharacterFrame(frameEl, portraitEl, {
+			bodyColor: '#22c55e',
+			accentColor: '#a855f7',
+			bodyShape: 'cone',
+		});
+
+		expect(frameEl.getAttribute('data-body-shape')).toBe('cone');
+		expect(frameEl.style.getPropertyValue('--cosmetic-body-color')).toBe('#22c55e');
+		expect(frameEl.style.getPropertyValue('--cosmetic-accent-color')).toBe('#a855f7');
+		expect(portraitEl.getAttribute('data-body-shape')).toBe('cone');
+		expect(portraitEl.style.backgroundColor).toBe('rgb(34, 197, 94)');
+	});
 });
 
 describe('settings cosmetic cache', () => {
@@ -213,6 +268,35 @@ describe('settings cosmetic cache', () => {
 		expect(result.cosmetic.bodyShape).toBe('cone');
 		expect(getCosmetic().bodyColor).toBe('#22c55e');
 		expect(getCosmetic().bodyShape).toBe('cone');
+		vi.unstubAllGlobals();
+	});
+
+	it('patchProfile returns error without updating cache on failure', async () => {
+		vi.stubGlobal('fetch', vi.fn()
+			.mockResolvedValueOnce({
+				ok: true,
+				json: async () => ({
+					username: 'tester',
+					email: null,
+					settings: {},
+					cosmetic: { ...DEFAULT_COSMETIC },
+				}),
+			})
+			.mockResolvedValueOnce({
+				ok: false,
+				json: async () => ({ error: 'bodyColor must be a #RRGGBB hex color' }),
+			}));
+
+		const { loadAccountSettings, patchProfile, getCosmetic } = await import('../settings.js');
+		await loadAccountSettings('token-abc');
+		const before = getCosmetic();
+
+		const result = await patchProfile({
+			cosmetic: { bodyColor: 'not-a-color', bodyShape: 'cone' },
+		});
+
+		expect(result.error).toBe('bodyColor must be a #RRGGBB hex color');
+		expect(getCosmetic()).toEqual(before);
 		vi.unstubAllGlobals();
 	});
 });
