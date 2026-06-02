@@ -152,7 +152,7 @@ def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
         )
         return False
     finally:
-        stop_game()
+        stop_game(ports)
 
 
 __all__ = ["capture_run", "_classify_capture_failure", "_read_pageerrors", "_diagnose_servers_did_not_start"]

@@ -70,7 +70,7 @@ class TestDiagnoseServersDidNotStart:
         carries the new harness_failure block, not a bare ok:false."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_artifacts / "client.log").write_text("Port 5173 is already in use\n")
         ports = PortAllocation(game_server=3000, vite=5173)
@@ -243,7 +243,7 @@ class TestCaptureRunClassification:
         """Servers start, capture fails, pageerrors present → browser_pageerror."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_path / "client.log").write_text("vite ready\n")
@@ -264,7 +264,7 @@ class TestCaptureRunClassification:
         """Servers start, capture fails, no pageerrors → capture_failed."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_path / "client.log").write_text("vite ready\n")
@@ -282,7 +282,7 @@ class TestCaptureRunClassification:
         """Servers don't start, EADDRINUSE detected → harness_failure."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_path / "client.log").write_text("Port 5173 is already in use\n")
         ports = PortAllocation(game_server=3000, vite=5173)
@@ -297,7 +297,7 @@ class TestCaptureRunClassification:
         """Servers don't start, no infra sig, no pageerrors → capture_failed."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_path / "client.log").write_text("some random log\n")
         (tmp_path / "server.log").write_text("another log\n")
@@ -373,7 +373,7 @@ class TestBrowserPageerrorClassification:
         failure_kind == 'browser_pageerror'."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_artifacts / "client.log").write_text("vite ready\n")
@@ -397,7 +397,7 @@ class TestBrowserPageerrorClassification:
         """Servers EADDRINUSE → harness_failure with detected signatures."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: False)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_artifacts / "client.log").write_text(
             "error when starting dev server:\n"
@@ -423,7 +423,7 @@ class TestBrowserPageerrorClassification:
         capture_diagnosis with empty detected (for human investigation)."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
         monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
         (tmp_artifacts / "client.log").write_text("vite ready\n")
@@ -450,7 +450,7 @@ class TestExceptionDuringCaptureWritesMetrics:
         """Mock capture to raise RuntimeError → metrics.json is written."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: (_ for _ in ()).throw(RuntimeError("boom")))
         ports = PortAllocation(game_server=3000, vite=5173)
         ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
@@ -464,7 +464,7 @@ class TestExceptionDuringCaptureWritesMetrics:
         """Mock _classify_capture_failure to raise → metrics.json is written."""
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: False)
         monkeypatch.setattr(cr_mod, "_classify_capture_failure",
                             lambda d, p: (_ for _ in ()).throw(ValueError("classify error")))
@@ -481,7 +481,7 @@ class TestExceptionDuringCaptureWritesMetrics:
         stop_called = []
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: stop_called.append(True))
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: stop_called.append(True))
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: (_ for _ in ()).throw(RuntimeError("fail")))
         ports = PortAllocation(game_server=3000, vite=5173)
         cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
@@ -495,10 +495,31 @@ class TestExceptionDuringCaptureWritesMetrics:
         captured_url = {}
         monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: None)
         monkeypatch.setattr(cr_mod, "capture",
                             lambda url, d: captured_url.setdefault("url", url) or True)
         ports = PortAllocation(game_server=3004, vite=5177)
         ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173/", ports=ports)
         assert ok is True
         assert captured_url["url"] == "http://localhost:5177/"  # allocated, not 5173
+
+
+class TestCaptureRunStopGamePorts:
+    """Regression: capture_run must pass ports to stop_game so parallel workers
+    do not blanket-kill sibling servers."""
+
+    def test_capture_run_passes_ports_to_stop_game(self, tmp_path, monkeypatch):
+        stop_calls = []
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: True)
+        monkeypatch.setattr(
+            cr_mod,
+            "stop_game",
+            lambda ports=None: stop_calls.append(ports),
+        )
+        ports = PortAllocation(game_server=3001, vite=5174)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is True
+        assert len(stop_calls) == 1
+        assert stop_calls[0] is ports
