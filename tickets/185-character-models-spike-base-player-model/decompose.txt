@@ -1,0 +1,17 @@
+Decomposed **beads `autogame-0yf`** (top-level `ticket.md` is not in this worktree) into **3 sub-tickets** in dependency order. The failed prior `01-research-decision-and-morph-schema` pattern is avoided by keeping the decision note in **`game/docs/MODEL_SPIKE.md`** (sub-ticket 03), not under `tickets/`.
+
+**Sub-ticket folders created:**
+
+```
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/01-commit-base-humanoid-glb
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/02-morph-targets-and-validation
+/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/03-model-spike-decision-doc
+```
+
+| # | Focus | Verification |
+|---|--------|----------------|
+| **01** | Commit `player.glb`, license, README/CREDITS conventions | `code` |
+| **02** | Six proportion morph targets + `playerModel.test.js` | `code` |
+| **03** | `game/docs/MODEL_SPIKE.md` decision note + README link | `code` |
+
+All three are asset/docs/test only — no renderer wiring (that stays with tickets 161 and 187). No existing sub-ticket folders with `.passed` markers were present to preserve or retire.

@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+This is an asset/docs-only spike (no renderer wiring), implemented across 3 sub-tickets. I judged it holistically and independently verified every claim.
+
+**Runtime health:** Clean. `metrics.json` has `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` shows only Vite connect + `[initScene]` lines; logs carry only benign THREE.js deprecation warnings. The probe shows the game reaching `phase: "playing"` with scene initialized and movement working — proving no regression.
+
+**Acceptance criteria — all met:**
+1. **GLB committed + licensed** — `player.glb` (17.6KB) parses as valid glTF 2.0 with 2 meshes and 2 materials; documented in `player.glb.license.md`, `CREDITS.md`, and README consistently.
+2. **Proportion morph targets** — independently confirmed exactly 6 morph targets (`height, headSize, torsoWidth, armLength, legLength, shoulderWidth`) on `PlayerBody` only, neutral weights `[0,0,0,0,0,0]`, visor excluded. `playerModel.test.js` passes 2/2 against the committed binary.
+3. **Decision note** — `game/docs/MODEL_SPIKE.md` thoroughly covers source-vs-authored, license, poly budget (84 tris vs ≤200), and anchor/scale conventions.
+
+**One judgment call:** the AC literally said "written to the ticket dir," but the note is in `game/docs/` instead. This was a deliberate, correct choice (per `decompose.txt`) — the prior attempt to put docs under `tickets/` failed the out-of-scope diff gate since `tickets/` isn't committed game code. Intent fully satisfied, so non-blocking; logged in `nits.md` along with a suggestion to use `GLTFExporter` instead of the hand-rolled GLB writer.
+
+No blocking gaps, so no `gaps.md` was written. Files written: `review.md`, `nits.md`.

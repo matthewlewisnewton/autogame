@@ -2240,3 +2240,26 @@ None. No blocking gaps for acceptance or runtime health.
 
 See `nits.md` for optional follow-ups (design-doc deck cap vs code, minor doc depth on run objectives).
 
+
+## v0.116 — 185-character-models-spike-base-player-model  (2026-06-02 10:20:47)
+
+  discoverable, and linked from the README, so the AC's intent (a durable decision
+  record exists) is fully satisfied. Treated as non-blocking; see nits.
+
+## Consistency & code quality
+
+- Design/requirements: no regression. The renderer still uses the legacy
+  `BoxGeometry` proxy; no runtime code references `player.glb` yet (grep confirms),
+  matching the "not wired until ticket 187" claim. Renderer/server untouched.
+- `generate-player-glb.mjs` is self-validating (throws if feet anchor or height
+  drift out of range) and reproducible — good hygiene for a spike asset.
+- No debug scenarios were added by this ticket.
+- Coverage log is informational only (the changed runtime file set is empty; the
+  GLB is data and the script is a maintainer tool).
+
+## Remaining gaps
+
+None blocking. AC1 and AC2 are fully and robustly met and independently verified;
+AC3 is met in substance with a justified documentation-location choice. Minor
+polish items are recorded in `nits.md`.
+
