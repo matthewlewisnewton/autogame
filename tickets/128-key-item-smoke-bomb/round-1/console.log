@@ -1,0 +1,17 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:error] Failed to load resource: the server responded with a status of 409 (Conflict)
+[B:debug] [vite] connecting...
+[B:debug] [vite] connected.
+[B:error] Failed to load resource: the server responded with a status of 409 (Conflict)
+[B:log] [vite] server connection lost. Polling for restart...
+[A:log] [vite] server connection lost. Polling for restart...
+[A:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[B:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[B:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[A:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[A:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[B:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[A:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[B:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[capture:error] page.waitForFunction: Timeout 12000ms exceeded.

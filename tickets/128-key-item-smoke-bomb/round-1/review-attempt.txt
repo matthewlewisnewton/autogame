@@ -1,0 +1,19 @@
+Review complete. **VERDICT: FAIL** — but the failure is harness infrastructure, not the ticket's code.
+
+## Summary
+
+**Why FAIL:** `metrics.json` reports `"ok": false` / `failure_kind: "capture_failed"`. The capture aborted at `page.waitForFunction: Timeout 12000ms exceeded` because the **Vite dev server connection dropped mid-flow** (409 Conflict → "server connection lost" → repeated `ERR_CONNECTION_REFUSED`). With no clean runnable proof, the runtime-health rule makes this an automatic FAIL.
+
+**Why it's infra, not code:**
+- `pageerrors` is empty (`[]`) — no browser exception, no game-code error.
+- `server.log` and `client.log` both boot cleanly; no game code anywhere in the failure trace.
+- The one captured screenshot (`01-initial.png`) shows the lobby rendering fine; the red "Disconnected" badge is the dropped Vite/socket connection, not a fault.
+
+**The code itself would have passed.** All acceptance criteria are met and robustly tested:
+- 2s zone fixed at cast point (documented choice), `isPlayerConcealed` drops enemy targeting + cancels in-progress wind-ups
+- Cooldown retuned 18000→8000ms, enforced
+- Client smoke VFX (`triggerSmokeVFX`) wired and re-triggered for active zones
+- **1021/1021 server tests pass** (9/9 in the dedicated smoke-bomb suite)
+- Debug scenario `smoke-bomb-ready` is properly gated, normal-path-reachable, and doesn't bypass validation
+
+`gaps.md` contains a single infra-only blocker steering the next round to **re-run the capture, not touch `game/`**. I wrote a `## Harness blockers` section in the review and did **not** create `nits.md` (the code is clean).

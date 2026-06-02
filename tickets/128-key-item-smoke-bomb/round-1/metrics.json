@@ -1,0 +1,13 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "\n  VITE v8.0.13  ready in 96 ms\n\n  \u279c  Local:   http://localhost:5173/\n  \u279c  Network: use --host to expose",
+    "server_log_tail": "[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/game/data/users.json\n[server] Layout for quest \"training_caverns\": seed=1335602341, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/game/data\nServer listening on port 3000\nPlayer connected: socket=eYPu6k0JUcGqKjdBAAAB, playerId=aa2c2b60-7328-4201-aff6-d8fb1fbe750c\n[server] Layout for quest \"training_caverns\": seed=1335602341, profile=crowded, rooms=10\nPlayer connected: socket=o3XNWB9BBsZD-iOhAAAD, playerId=9a754c5b-5178-4ed8-8b9a-d525304b7135",
+    "port_holders": {
+      "5173": [],
+      "3000": []
+    }
+  }
+}
