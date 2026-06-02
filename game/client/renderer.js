@@ -328,6 +328,16 @@ function createMinionMesh(minionType) {
 	return mesh;
 }
 
+function createPlayerMesh(isLocal) {
+	const geo = new THREE.BoxGeometry(1, 1, 1);
+	const mat = new THREE.MeshStandardMaterial({
+		color: isLocal ? 0x3b82f6 : 0xf43f5e,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	attachRegistryModel('player', mesh);
+	return mesh;
+}
+
 function isTypingTarget(target) {
 	return target instanceof HTMLInputElement ||
 		target instanceof HTMLTextAreaElement ||
@@ -722,6 +732,7 @@ function createLootMesh(item) {
 		group.add(ring);
 
 		group.position.set(item.x, 0, item.z);
+		attachRegistryModel('magic_stone', group);
 		return group;
 	}
 
@@ -734,6 +745,7 @@ function createLootMesh(item) {
 	mesh.position.set(item.x, baseY, item.z);
 	mesh.userData.isCrystal = isCrystal;
 	mesh.userData.lootKind = kind;
+	attachRegistryModel(isCrystal ? 'crystal' : 'currency', mesh);
 	return mesh;
 }
 
@@ -2747,9 +2759,7 @@ export function animate(timestamp) {
 	if (gs) {
 		for (const [id, pData] of Object.entries(gs.players)) {
 			if (!playersMeshes[id]) {
-				const geo = new THREE.BoxGeometry(1, 1, 1);
-				const mat = new THREE.MeshStandardMaterial({ color: id === myId ? 0x3b82f6 : 0xf43f5e });
-				const mesh = new THREE.Mesh(geo, mat);
+				const mesh = createPlayerMesh(id === myId);
 				scene.add(mesh);
 				playersMeshes[id] = mesh;
 			}
