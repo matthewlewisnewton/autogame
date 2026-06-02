@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health:** Clean. `metrics.json` reports `"ok": true`, empty `pageerrors`, a fully-loaded `playing` session; `console.log` has only benign vite/409-auth noise — no game-code page errors or fatals. All 53 relevant server unit tests pass.
+
+**Acceptance criteria:** Fully met across both sub-tickets:
+- **01** — `HAT_CATALOG` (none + 3 priced hats), `DEFAULT_COSMETIC.hat='none'`, `unlockedHats` defaulting/backfilling, `validateCosmetic`/`backfillCosmetic` hat handling, `updateProfile` ownership-gated equip, and `GET /api/me` exposing catalog + owned hats.
+- **02** — `unlockHat` lobby socket handler with full server-side validation (missing/unknown/already-owned/unaffordable all emit `hatError` with no state change), currency deduction + permanent account unlock + dual persistence, `hatUnlocked` success emit, and `cosmetic.hat` flowing through the `stateUpdate` snapshot (reused, not duplicated). The handler even refunds currency if the account write fails — a consistency guard beyond spec.
+
+**Debug scenario (`hat-shop-currency`):** Passes all three checks — gated to local/dev only via `isDebugScenarioAllowed`, only grants currency (reachable normally by earning in runs), and bypasses no validation (the real unlock still runs `unlockHatForPlayer` + `users.unlockHat`).
+
+**No blocking gaps.** One non-blocking nit filed in `nits.md`: the new unlock server functions lack dedicated unit tests (currently covered only indirectly). No `gaps.md` written, per the PASS protocol.
