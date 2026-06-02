@@ -1,0 +1,39 @@
+
+  VITE v8.0.13  ready in 95 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+5:32:14 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+5:32:14 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+5:32:17 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=mapvq2hm
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:18 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=maqd309m
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:20 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=mas2hvqq
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:21 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=masjrhdo
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:24 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=mav14y6g
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:24 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=mavfe49v
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:29 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=maz0iuzo
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+5:32:30 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=mazdewx0
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)

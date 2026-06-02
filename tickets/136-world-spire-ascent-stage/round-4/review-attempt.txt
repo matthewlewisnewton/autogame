@@ -1,0 +1,19 @@
+## Review complete
+
+Wrote **`tickets/136-world-spire-ascent-stage/round-4/review.md`** and **`nits.md`** (no `gaps.md` — verdict is PASS).
+
+### Runtime gate
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: no `pageerror` / `[fatal]` lines (only benign Vite/409/502 noise)
+- Game reached playing phase with canvas and combat UI
+
+### Acceptance criteria (holistic)
+All 10 criteria are met in the live codebase, backed by layout generator (`generateSpireAscentLayout`, `buildRampPassage`), quest `spire_ascent`, tier enemy spread + summit objective, floor sampling/movement, client rendering, and broad unit/integration tests (38 files passed in `coverage.log`).
+
+### Debug scenarios
+`spire-ramp-passage` and `spire-summit-combat` are localhost-gated, use the real `spire_ascent` deploy path, and only reposition the player for QA — normal quest deploy still exercises the full layout.
+
+### Caveat (non-blocking)
+Round-4 capture used **`sloped-dungeon` on Initiate Vault**, not the spire quest, and `emitScenario` timed out — so screenshots do not prove the full tower visually, but that does not fail the ticket given clean runtime + code/tests.
+
+**VERDICT: PASS** (last line of `review.md`)

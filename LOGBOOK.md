@@ -2102,3 +2102,26 @@ The added `phase-step-ready` debug scenario is gated through the existing local/
 
 No blocking gaps found. The only follow-up I noted is non-blocking maintainability around duplicated client/server range constants, filed separately in `nits.md`.
 
+
+## v0.100 — Spire Ascent Stage  (2026-06-02 05:38:34)
+
+Integration tests in `Debug scenarios — spire_ascent quest parity` enforce layout stage, enemy count, summit spawn, and multi-tier combat distribution.
+
+---
+
+## Code quality
+
+- **Structure:** Shared `buildRampPassage` helper; spire generator is focused and validated.
+- **Floor sampling:** `shared/floorSampling.esm.js` extended for ramp passage slabs; server movement and client rendering stay aligned.
+- **Client:** Tier floors use `uniformFloorY`; ramp passages render as sloped meshes; enemy/telegraph Y uses sampled floor height.
+- **No dead code or obvious defects** found in the changed paths.
+- **Minor:** `generateSpireAscentLayout` does not call `validateSpireLayout` at runtime (validation is test-driven only) — see nits.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime capture is healthy; acceptance criteria are implemented and covered by tests. Round-4 visuals exercised generic sloped geometry, not the spire quest end-to-end — tracked as harness/QA nits, not code gaps.
+
+---
+

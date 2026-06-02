@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/game/data
+Server listening on port 3001
+Player connected: socket=ulb4MuZxyXdGX66rAAAB, playerId=89a2b807-a2be-4095-9189-d176f17a29a4
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=YAFVXzcFFxw5cTV8AAAD, playerId=ada67501-c2fc-4a5e-8122-f48fcf170f33
+Player disconnected: ulb4MuZxyXdGX66rAAAB
+Player disconnected: YAFVXzcFFxw5cTV8AAAD
