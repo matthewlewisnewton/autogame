@@ -122,14 +122,18 @@ def _cmd_factory(workers: int, enable: Optional[str], max_idle_ticks: int) -> in
     return run_factory(str(Path.cwd()), workers=workers, max_idle_ticks=max_idle_ticks)
 
 
+_WORKER_OVERRIDE_ROLES = ("implementer", "decomposer", "qa:code", "qa:visual")
+
+
 def _write_worker_role_overrides(root: Path, agent: str) -> None:
-    """Force BOTH the implementer and decomposer roles' primary to `agent` via
-    roles.local.yaml (field-level merged onto roles.yaml). The worker that claims
-    a ticket owns its whole authoring pipeline — planning (decompose) AND
-    implementation — so it must not fall back to the shared qwen decomposer
-    (that both serializes every worker on the single ollama box and divorces a
-    ticket's planning from the agent that implements it). roles.local.yaml is
-    gitignored, so this never dirties the worktree."""
+    """Force the worker's whole per-ticket authoring pipeline onto `agent` via
+    roles.local.yaml (field-level merged onto roles.yaml): planning (decomposer),
+    implementation (implementer), AND sub-ticket review (qa:code / qa:visual).
+    None of these may fall back to the shared qwen primary — that serializes
+    every worker on the single ollama box and divorces a ticket's planning/review
+    from the agent doing the work. Only `primary` is overridden, so each role's
+    fallbacks (and the read-only deny scope on qa:*) are preserved. roles.local.yaml
+    is gitignored, so this never dirties the worktree."""
     import yaml
     local = Path(root) / "harness" / "roles.local.yaml"
     data: dict = {}
@@ -139,7 +143,7 @@ def _write_worker_role_overrides(root: Path, agent: str) -> None:
         except yaml.YAMLError:
             data = {}
     roles = data.setdefault("roles", {})
-    for role_name in ("implementer", "decomposer"):
+    for role_name in _WORKER_OVERRIDE_ROLES:
         roles.setdefault(role_name, {})["primary"] = agent
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(yaml.safe_dump(data, sort_keys=False))
