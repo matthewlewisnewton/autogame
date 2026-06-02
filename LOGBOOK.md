@@ -2240,3 +2240,26 @@ None. No blocking gaps for acceptance or runtime health.
 
 See `nits.md` for optional follow-ups (design-doc deck cap vs code, minor doc depth on run objectives).
 
+
+## v0.115 — Models: glTF Loader Infrastructure (with procedural fallback)  (2026-06-02 10:13:47)
+
+rejects. `loadModel` returns `null` for a null template; `attachRegistryModel` skips the
+swap when the model is `null`, leaving the procedural mesh in place. A `_disposed` flag set
+in `disposeOne` guards against swapping a model onto an entity that despawned mid-load.
+Unit test `warns and resolves to null on load failure without rejecting` confirms.
+
+**7. Existing server + client unit tests still pass** — MET.
+Ran the project's configured suite: client `463 passed (24 files)`, server `986 passed
+(37 files)`. The `createEnemyMesh` refactor into `buildProceduralEnemyMesh` + wrapper
+preserves the exported signature/output; `enemyMeshHalfHeight` and renderer tests pass.
+
+## Design / regression check
+
+Consistent with `game/docs/design.md`; pure additive infrastructure with no visual or
+gameplay change. No debug scenarios added. No regression to the foundation.
+
+## Remaining gaps
+
+None blocking. One minor non-blocking observation captured in `nits.md` (group-placeholder
+child disposal when models are eventually wired).
+

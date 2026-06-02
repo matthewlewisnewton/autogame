@@ -1,0 +1,18 @@
+## Review complete — VERDICT: PASS
+
+The ticket is a clean pass. Summary of what I verified:
+
+**Runtime health (the gate):** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` is clean — only vite connect lines, scene-init logs, and a benign 409 (the two-player lobby create/join race, not game code). Both players reach `playing`, and screenshot `02-after-w.png` shows the unchanged procedural look (blue-box player, red-cylinder enemies).
+
+**Acceptance criteria — all met:**
+1. `GLTFLoader` imported; cached `loadModel(path)` fetches once via a module `templateCache`, returns a deep clone per caller (test-confirmed).
+2. `publicDir: 'public'` in vite config; `.gitkeep` committed.
+3. `MODEL_REGISTRY` covers player, all enemy types, all minion types, and loot types — keys verified against `ENEMY_GEOMETRY`/`MINION_VISUAL`/loot call sites — all `null`.
+4. Player/enemy/minion/loot creation all consult the registry via `attachRegistryModel` with procedural-first fallback; the design keeps map references stable across the async swap.
+5. With all paths null, nothing loads — pixel-identical procedural rendering, clean start.
+6. Resilient: `fetchTemplate` handles both async `onError` and sync `try/catch`, always resolving `null` (never rejects); a `_disposed` flag guards despawn-during-load. Test-confirmed.
+7. Existing tests pass: **463 client + 986 server**, all green.
+
+**Notable finding I checked carefully:** the `.glb` files in `public/models/` are *not* a scope violation — they predate the baseline (added in `fdbcccc`, an ancestor of `ce7f511`) and are simply unreferenced since the registry is all-null.
+
+Files written: `review.md` (PASS), `nits.md` (one dormant non-blocking item — group-placeholder children aren't disposed on swap, only matters once a group entity gets a wired model). No `gaps.md` written, per the PASS verdict.

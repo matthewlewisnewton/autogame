@@ -1,0 +1,21 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. Together they deliver the full glTF loader infrastructure without changing visuals (all registry paths stay `null` until ticket 162).
+
+### Sub-ticket plan
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| **01** | `loadModel()` + GLTFLoader cache | Core async plumbing, testable in isolation |
+| **02** | `public/models/`, vite `publicDir`, `MODEL_REGISTRY` | Static serving + schema before renderer wiring |
+| **03** | Enemy + minion mesh registry consult | Keeps sync `createEnemyMesh` API; existing unit tests must pass |
+| **04** | Player + loot mesh registry consult | Completes all entity types; full test suite gate |
+
+All use **`Verification: code`** — acceptance criteria cover module existence, registry keys, fallback behavior, and tests, not pixel-level rendering.
+
+### Created folders
+
+```
+/home/matt/workspace/.autogame-worktrees/161-models-gltf-loader-infrastructure/tickets/161-models-gltf-loader-infrastructure/subtickets/01-gltf-load-model-helper/ticket.md
+/home/matt/workspace/.autogame-worktrees/161-models-gltf-loader-infrastructure/tickets/161-models-gltf-loader-infrastructure/subtickets/02-static-models-dir-and-registry/ticket.md
+/home/matt/workspace/.autogame-worktrees/161-models-gltf-loader-infrastructure/tickets/161-models-gltf-loader-infrastructure/subtickets/03-wire-enemy-minion-registry/ticket.md
+/home/matt/workspace/.autogame-worktrees/161-models-gltf-loader-infrastructure/tickets/161-models-gltf-loader-infrastructure/subtickets/04-wire-player-loot-registry/ticket.md
+```
