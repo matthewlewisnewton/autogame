@@ -42,6 +42,7 @@ From `game/client/` with Flatpak Blender:
 ```bash
 # Place FBX under .authoring/ubc/ (gitignored), then:
 flatpak run org.blender.Blender --background --python scripts/blender-normalize-player.py
+flatpak run org.blender.Blender --background --python scripts/blender-add-proportion-morphs.py
 ```
 
 Blender script applies: feet at **Y = 0**, forward **−Z**, height **1.8**, Draco off,

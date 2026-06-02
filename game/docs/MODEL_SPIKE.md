@@ -70,14 +70,24 @@ Hat `.glb` files attach to this anchor; per-hat fudge factors are discouraged.
 
 ## Blender authoring notes (sub-tickets 02–03)
 
-- **Source file:** Import **Regular Male** from Quaternius Universal Base Characters
-  Standard zip; save working `.blend` outside `public/models/` (not committed).
-- **Normalization steps:** Apply transforms; center feet at world origin; rotate so
-  forward is **−Z**; scale to 1.8u tall; verify XZ radius ≤ 0.5.
-- **Shape keys (03):** Name shape keys exactly as the six proportion keys; export as
-  glTF morph targets with the same names.
-- **Re-export checklist:** feet `y=0`, −Z forward, ~1.8u height, six morph names present,
-  tris ≤ 20k where possible.
+- **Source file:** Import **Superhero Male FullBody** from Quaternius Universal Base
+  Characters **[Standard]** zip; place `Superhero_Male_FullBody.fbx` under
+  `game/client/.authoring/ubc/` (gitignored).
+- **Normalization (02):** `game/client/scripts/blender-normalize-player.py` — feet at
+  **Y = 0**, forward **−Z**, height **1.8**, Draco off, materials omitted.
+- **Proportion morphs (03):** `game/client/scripts/blender-add-proportion-morphs.py` after
+  normalization. Shape keys / glTF `targetNames` must match the six keys exactly. The
+  committed mesh geometry is the **0.0** combined-min silhouette; each morph target delta
+  reaches that key’s **1.0** extreme (`influence = 0.5` per key ≈ neutral on that axis).
+- **Bone groups used for weighting** (substring match on skinning groups, case-insensitive):
+  `height` — `thigh`, `calf`, `foot`, `spine`, `pelvis`, `neck`, `head`;
+  `headSize` — `head`, `neck`;
+  `torsoWidth` — `spine`, `pelvis`, `chest`;
+  `armLength` — `upperarm`, `lowerarm`, `hand`, `clavicle`;
+  `legLength` — `thigh`, `calf`, `foot`;
+  `shoulderWidth` — `clavicle`, `upperarm`, `spine`.
+- **Re-export checklist:** feet `y=0`, −Z forward, ~1.8u height at morph weight **0**,
+  six morph names in `extras.targetNames`, tris ≤ 20k where possible.
 
 ## Runtime wiring (not in spike doc scope)
 
