@@ -115,6 +115,7 @@ const {
   isInsideDungeon,
   firstRoomPosition,
   randomRoomPosition,
+  pickFloorSpawnPosition,
   clampToDungeon,
   buildWallColliders,
   rebuildWallColliders,
@@ -777,6 +778,12 @@ function applyDebugScenario(socket, name) {
       player.z = plazaSpawn.z;
       const plazaFloorY = sampleFloorY(state.layout, player.x, player.z);
       player.y = Number.isFinite(plazaFloorY) ? plazaFloorY : DEFAULT_FLOOR_Y;
+      // Populate the arena with the trial pack via the cover-aware spawn path so
+      // enemy/loot placement on the open plaza is directly observable. This is
+      // the same spawn that runs when deploying into arena_trials normally.
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,
@@ -3364,9 +3371,11 @@ if (typeof module !== 'undefined' && module.exports) {
     updateEnemies,
     updateMinions,
     spawnLoot,
+    spawnCrystals,
     spawnEnemy,
     spawnEnemies,
     firstRoomPosition,
+    pickFloorSpawnPosition,
     createGameState,
     resetGameState,
     gameState,

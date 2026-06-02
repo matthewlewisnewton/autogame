@@ -605,6 +605,37 @@ function randomRoomPosition() {
 }
 
 /**
+ * Seeded, cover-aware spawn position for single-room / no-role layouts (the
+ * open-plaza arena). Samples points inside the walkable plaza floor and rejects
+ * any candidate that overlaps a cover piece or wall collider, retrying up to
+ * `maxAttempts` before falling back to a known-safe point near the plaza centre
+ * (the start-room spawn-clear zone, which generation keeps clear of cover).
+ *
+ * Uses the passed-in seeded `rng` only — never `Math.random()` — so placement is
+ * deterministic for a given layout seed. Collision rejection reuses the same
+ * collider set as player movement (`buildWallColliders` / `checkWallCollision`),
+ * which already includes open-plaza cover footprints.
+ */
+function pickFloorSpawnPosition(layout, rng, { maxAttempts = 24 } = {}) {
+  const startRoom = layout.rooms.find(r => r.role === 'start') || layout.rooms[0];
+  const halfW = Math.max(0, startRoom.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, startRoom.depth / 2 - SPAWN_PADDING);
+  const colliders = buildWallColliders(layout);
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const x = startRoom.x + (rng() * 2 - 1) * halfW;
+    const z = startRoom.z + (rng() * 2 - 1) * halfD;
+    if (!checkWallCollision(x, z, colliders)) {
+      return { x, z };
+    }
+  }
+
+  // Exhausted attempts: the plaza centre / start-room spawn-clear zone is kept
+  // free of cover at generation time, so it is a known-safe landing point.
+  return { x: startRoom.x, z: startRoom.z };
+}
+
+/**
  * Clamps (x, z) to dungeon AABB bounds.
  */
 function clampToDungeon(x, z) {
@@ -2095,6 +2126,7 @@ module.exports = {
   isInsideDungeon,
   firstRoomPosition,
   randomRoomPosition,
+  pickFloorSpawnPosition,
   clampToDungeon,
   nearbySpawnPosition,
   randomWanderTarget,
