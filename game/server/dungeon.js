@@ -24,6 +24,10 @@ const MIN_ROOM_SIZE = 12;
 const MAX_ROOM_SIZE_INCLUSIVE = 15;
 const PASSAGE_WIDTH = 4;
 
+// Open-plaza arena side length. 40×40 = 1600 sq units, comfortably ≥ the
+// required 4 * MAX_ROOM_SIZE_INCLUSIVE^2 = 900 sq units floor-area bound.
+const OPEN_PLAZA_SIZE = 40;
+
 const DEFAULT_LAYOUT_PROFILE = {
   gridCols: GRID_COLS,
   gridRows: GRID_ROWS,
@@ -57,6 +61,12 @@ const LAYOUT_PROFILES = {
     maxRooms: 7,
     extraEdgeFraction: 0.08,
   },
+  // The open-plaza stage is built by generateOpenPlaza() rather than the grid
+  // growth path; this entry registers the key so profile lookups recognise it.
+  'open-plaza': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    plazaSize: OPEN_PLAZA_SIZE,
+  },
 };
 
 function normalizeLayoutProfile(profile) {
@@ -83,6 +93,11 @@ function questLayoutSeed(questId) {
  * @param {object} [options={}] - Optional flags: { slopes: boolean }
  */
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+  // The open-plaza stage is a single bounded arena, not a rooms-and-passages
+  // grid, so branch out early to its dedicated generator.
+  if (profile === 'open-plaza') {
+    return generateOpenPlaza(seed, options);
+  }
   const opts = normalizeLayoutProfile(profile);
   const rng = mulberry32(seed);
   const gridCols = opts.gridCols;
@@ -348,6 +363,69 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   };
 }
 
+/**
+ * Generate the open-plaza stage: a single large bounded arena room with a
+ * continuous, gapless outer wall perimeter and no passages. Returns the same
+ * layout shape as generateLayout().
+ *
+ * @param {number} seed - PRNG seed (threaded for signature parity / future
+ *   seeded variation; the empty plaza itself is fixed, so output is identical
+ *   for any seed and therefore trivially deterministic).
+ * @param {object} [options={}] - Optional flags (e.g. slopes), unused for now —
+ *   the plaza floor stays flat per the sub-ticket scope.
+ */
+function generateOpenPlaza(seed, options = {}) {
+  void seed;
+  void options;
+  const size = OPEN_PLAZA_SIZE;
+  const halfW = size / 2;
+  const halfD = size / 2;
+  const cx = 0;
+  const cz = 0;
+
+  // Continuous outer perimeter: each of the four sides is one full-length wall
+  // segment with NO passage gaps, so the arena is fully enclosed and players
+  // cannot exit the level.
+  const walls = [
+    { x: cx, z: cz - halfD, length: size, axis: 'x' }, // north
+    { x: cx, z: cz + halfD, length: size, axis: 'x' }, // south
+    { x: cx - halfW, z: cz, length: size, axis: 'z' }, // west
+    { x: cx + halfW, z: cz, length: size, axis: 'z' }, // east
+  ];
+
+  const rooms = [{
+    x: cx,
+    z: cz,
+    width: size,
+    depth: size,
+    walls,
+    // Flat floor for now; cover pieces and slopes arrive in later sub-tickets.
+    floorCorners: {
+      yNW: DEFAULT_FLOOR_Y,
+      yNE: DEFAULT_FLOOR_Y,
+      ySE: DEFAULT_FLOOR_Y,
+      ySW: DEFAULT_FLOOR_Y,
+    },
+  }];
+
+  const passages = [];
+
+  // Reuse shared role assignment. With a single room it resolves to role
+  // 'start' (index 0), so firstRoomPosition()/spawn returns the plaza centre.
+  // Because there is no 'combat' or 'treasure' room, roomsByRole() returns []
+  // and randomRoomPositionByRole()/randomRoomPosition() fall back to the only
+  // room — the plaza — keeping every spawn/objective point on the plaza floor.
+  assignRoomRoles({ rooms, passages });
+
+  return {
+    rooms,
+    passages,
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: CELL_SPACING,
+    profile: 'open-plaza',
+  };
+}
+
 // ── Room Role Assignment ──
 
 /**
@@ -491,6 +569,7 @@ function randomRoomPositionByRole(layout, role, rng) {
 module.exports = {
   mulberry32,
   generateLayout,
+  generateOpenPlaza,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
@@ -508,5 +587,6 @@ module.exports = {
   CELL_SPACING,
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
+  PASSAGE_WIDTH,
+  OPEN_PLAZA_SIZE
 };

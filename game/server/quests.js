@@ -17,6 +17,15 @@ const QUEST_DEFS = {
     enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
+  },
+  open_plaza_trial: {
+    id: 'open_plaza_trial',
+    name: 'Plaza Trial',
+    description: 'Hold the open plaza and clear the incursion.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 5,
+    rewardCurrency: 12,
+    layoutProfile: 'open-plaza',
   }
 };
 

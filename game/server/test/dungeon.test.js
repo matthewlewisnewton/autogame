@@ -19,6 +19,8 @@ import {
   MAX_ROOM_SIZE_INCLUSIVE,
   PASSAGE_WIDTH
 } from '../dungeon.js';
+import { generateOpenPlaza, OPEN_PLAZA_SIZE } from '../dungeon.js';
+import { getLayoutProfileForQuest } from '../quests.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
 
 const PLAYER_RADIUS = 0.45;
@@ -1064,5 +1066,78 @@ describe('sampleFloorY(layout, x, z)', () => {
     const a = sampleFloorY(layout, 10, 10);
     const b = sampleFloorY(layout, 10, 10);
     expect(a).toBe(b);
+  });
+});
+
+describe('generateLayout(seed, "open-plaza")', () => {
+  it('returns exactly one room and an empty passages array', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    expect(layout.rooms).toHaveLength(1);
+    expect(layout.passages).toEqual([]);
+    expect(layout.profile).toBe('open-plaza');
+  });
+
+  it('plaza floor area is ≥ 4× the max default-profile room area (≥ 900 sq units)', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const [plaza] = layout.rooms;
+    const area = plaza.width * plaza.depth;
+    expect(area).toBeGreaterThanOrEqual(4 * MAX_ROOM_SIZE_INCLUSIVE * MAX_ROOM_SIZE_INCLUSIVE);
+    expect(area).toBeGreaterThanOrEqual(900);
+    expect(plaza.width).toBe(OPEN_PLAZA_SIZE);
+    expect(plaza.depth).toBe(OPEN_PLAZA_SIZE);
+  });
+
+  it('has a continuous, gapless outer wall perimeter (one full-length wall per side)', () => {
+    const [plaza] = generateLayout(7, 'open-plaza').rooms;
+    // Four sides, each a single full-length segment → no passage gaps.
+    expect(plaza.walls).toHaveLength(4);
+    for (const wall of plaza.walls) {
+      expect(wall.length).toBe(OPEN_PLAZA_SIZE);
+    }
+    const half = OPEN_PLAZA_SIZE / 2;
+    const xWalls = plaza.walls.filter(w => w.axis === 'x').map(w => w.z).sort((a, b) => a - b);
+    const zWalls = plaza.walls.filter(w => w.axis === 'z').map(w => w.x).sort((a, b) => a - b);
+    expect(xWalls).toEqual([plaza.z - half, plaza.z + half]); // north + south
+    expect(zWalls).toEqual([plaza.x - half, plaza.x + half]); // west + east
+  });
+
+  it('the single room is assigned role "start" so spawn lands on plaza centre', () => {
+    const [plaza] = generateLayout(7, 'open-plaza').rooms;
+    expect(plaza.role).toBe('start');
+    expect(plaza.x).toBe(0);
+    expect(plaza.z).toBe(0);
+  });
+
+  it('spawn helpers fall back to the plaza room when no combat/treasure room exists', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const [plaza] = layout.rooms;
+    expect(roomsByRole(layout, 'combat')).toEqual([]);
+    expect(roomsByRole(layout, 'treasure')).toEqual([]);
+    const rng = mulberry32(123);
+    for (let i = 0; i < 50; i++) {
+      const pos = randomRoomPositionByRole(layout, 'combat', rng);
+      expect(pos.x).toBeGreaterThanOrEqual(plaza.x - plaza.width / 2);
+      expect(pos.x).toBeLessThanOrEqual(plaza.x + plaza.width / 2);
+      expect(pos.z).toBeGreaterThanOrEqual(plaza.z - plaza.depth / 2);
+      expect(pos.z).toBeLessThanOrEqual(plaza.z + plaza.depth / 2);
+    }
+  });
+
+  it('is deterministic: same seed produces deep-equal layouts', () => {
+    const a = generateLayout(99, 'open-plaza');
+    const b = generateLayout(99, 'open-plaza');
+    expect(a).toEqual(b);
+  });
+
+  it('is reachable end-to-end via getLayoutProfileForQuest()', () => {
+    const profile = getLayoutProfileForQuest('open_plaza_trial');
+    expect(profile).toBe('open-plaza');
+    const layout = generateLayout(questLayoutSeed('open_plaza_trial'), profile);
+    expect(layout.rooms).toHaveLength(1);
+    expect(layout.rooms[0].role).toBe('start');
+  });
+
+  it('generateOpenPlaza() matches the generateLayout open-plaza branch', () => {
+    expect(generateOpenPlaza(7)).toEqual(generateLayout(7, 'open-plaza'));
   });
 });

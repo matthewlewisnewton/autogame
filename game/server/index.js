@@ -408,6 +408,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-exhausted',
   'telepipe-ready',
   'sloped-dungeon',
+  'open-plaza-stage',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -747,6 +748,30 @@ function applyDebugScenario(socket, name) {
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
       // Send updated layout to all clients in the lobby
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'open-plaza-stage') {
+      // Debug shortcut into the open-plaza arena. The same state is reachable
+      // through normal play by selecting the "open_plaza_trial" quest and
+      // deploying; this just regenerates the layout in-place for inspection.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = questLayoutSeed('open_plaza_trial');
+      state.layout = generateLayout(seed, 'open-plaza');
+      state.layoutSeed = seed;
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      withLobbyContext({ state }, () => rebuildWallColliders());
+      // Reposition onto the new single-room plaza (layout fully changed).
+      const plazaSpawn = firstRoomPosition();
+      player.x = plazaSpawn.x;
+      player.z = plazaSpawn.z;
+      const plazaFloorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(plazaFloorY) ? plazaFloorY : DEFAULT_FLOOR_Y;
+      ensureNearbyEnemy(state, player.x, player.z);
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,
