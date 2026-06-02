@@ -38,6 +38,9 @@ agents:
   gpt5_medium_write:     { backend: cursor, model: gpt-5.5-medium-fast,  writable: true  }
   gpt5_extra_write:      { backend: cursor, model: gpt-5.5-extra-high,   writable: true  }
   agy:                   { backend: agy,    model_label: "Gemini 3.5 Flash (High)" }
+  # claude is NOT used by any default role (cost) — it is opted into only by the
+  # parallel factory as an explicit medium/hard implementer at concurrency 1.
+  claude:                { backend: claude, model: claude-opus-4-7 }
 
 # --- Per-family defaults. Roles in a family inherit these unless they
 # override the same field. Phase 3 supports exact-name lookup
