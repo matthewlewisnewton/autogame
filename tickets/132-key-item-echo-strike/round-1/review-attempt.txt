@@ -1,0 +1,25 @@
+## Review complete
+
+Wrote **`tickets/132-key-item-echo-strike/round-1/review.md`** with full findings. **`gaps.md` was not created** (PASS). **`nits.md`** has one low-priority follow-up.
+
+### Runtime
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: clean (no page errors/fatals)
+- Capture was generic smoke only — did not demo Echo Strike, but the game runs
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| ~10s cooldown | Met — def + handler + tests |
+| Weapon-only echo | Met — weapon branch only; spell tested |
+| Two damage packets, one proc | Met — primary + `processPendingEchoes`, consumption tests |
+
+### Code (2 commits since baseline)
+- Activation: `echoStrikePending`, cooldown, persistence exclusion
+- Proc: delayed 50% via `state.pendingEchoes` + `ECHO_STRIKE_DELAY_MS` (150ms)
+- Debug scenario `echo-strike-ready` is properly gated
+
+### Tests
+36/36 in `key-items.test.js` pass (confirmed in `coverage.log` and local re-run).
+
+**VERDICT: PASS**
