@@ -6,6 +6,7 @@ import { resetHandState, canUseSlot, hand, slotCooldowns } from '../hand.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const styleCss = fs.readFileSync(path.join(__dirname, '..', 'style.css'), 'utf8');
+const indexHtml = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
 
 // ── renderDeckEditor ──
 
@@ -2469,8 +2470,27 @@ describe('auth overlay functions', () => {
 			error.id = 'account-error';
 			error.hidden = true;
 			modal.appendChild(error);
+			const cosmeticStart = indexHtml.indexOf('<div id="cosmetic-body-colors"');
+			const cosmeticEnd = indexHtml.indexOf('<button type="button" id="cosmetic-save-btn">');
+			if (cosmeticStart !== -1 && cosmeticEnd !== -1) {
+				const cosmeticWrapper = document.createElement('div');
+				cosmeticWrapper.innerHTML = indexHtml.slice(cosmeticStart, cosmeticEnd);
+				modal.appendChild(cosmeticWrapper);
+			}
 			overlay.appendChild(modal);
 			document.body.appendChild(overlay);
+		}
+
+		const accountModal = document.getElementById('account-modal')
+			|| document.getElementById('account-overlay');
+		if (accountModal && !document.getElementById('cosmetic-preview')) {
+			const cosmeticStart = indexHtml.indexOf('<div id="cosmetic-body-colors"');
+			const cosmeticEnd = indexHtml.indexOf('<button type="button" id="cosmetic-save-btn">');
+			if (cosmeticStart !== -1 && cosmeticEnd !== -1) {
+				const cosmeticWrapper = document.createElement('div');
+				cosmeticWrapper.innerHTML = indexHtml.slice(cosmeticStart, cosmeticEnd);
+				accountModal.appendChild(cosmeticWrapper);
+			}
 		}
 
 		if (!document.getElementById('settings-overlay')) {
@@ -2551,6 +2571,51 @@ describe('auth overlay functions', () => {
 
 		window.closeAccountOverlay();
 		expect(accountOverlay.classList.contains('hidden')).toBe(true);
+	});
+
+	it('openAccountOverlay syncs cosmetic preview; swatch click updates preview without fetch', async () => {
+		const serverCosmetic = {
+			bodyColor: '#4f9dde',
+			accentColor: '#f2c94c',
+			bodyShape: 'cone',
+			hat: 'none',
+		};
+		const fetchMock = vi.fn().mockResolvedValue({
+			ok: true,
+			json: async () => ({
+				username: 'preview-user',
+				email: null,
+				settings: {},
+				cosmetic: serverCosmetic,
+			}),
+		});
+		vi.stubGlobal('fetch', fetchMock);
+
+		const { loadAccountSettings } = await import('../settings.js');
+		await loadAccountSettings('token-preview');
+
+		await import('../main.js');
+
+		const preview = document.getElementById('cosmetic-preview');
+		const greenSwatch = document.querySelector(
+			'#cosmetic-body-colors .cosmetic-swatch[data-color="#22c55e"]'
+		);
+		expect(preview).not.toBeNull();
+		expect(greenSwatch).not.toBeNull();
+
+		window.openAccountOverlay();
+
+		expect(preview.getAttribute('data-body-shape')).toBe('cone');
+		expect(preview.style.backgroundColor).toBe('rgb(79, 157, 222)');
+
+		const callsAfterOpen = fetchMock.mock.calls.length;
+		greenSwatch.click();
+
+		expect(greenSwatch.getAttribute('aria-pressed')).toBe('true');
+		expect(preview.style.backgroundColor).toBe('rgb(34, 197, 94)');
+		expect(fetchMock.mock.calls.length).toBe(callsAfterOpen);
+
+		vi.unstubAllGlobals();
 	});
 
 	it('toolbar settings button opens the settings overlay', async () => {

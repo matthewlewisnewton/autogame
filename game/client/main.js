@@ -65,7 +65,13 @@ import {
 	setAuthToken,
 	patchProfile,
 	getAccountProfile,
+	getCosmetic,
 } from './settings.js';
+import {
+	syncCosmeticForm,
+	readCosmeticFormState,
+	applyCosmeticToPreviewElement,
+} from './cosmetic-form.js';
 import {
 	initControllerCalibration,
 	startControllerCalibration,
@@ -172,6 +178,10 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
+const cosmeticPreviewEl = document.getElementById('cosmetic-preview');
+const cosmeticBodyColorsEl = document.getElementById('cosmetic-body-colors');
+const cosmeticAccentColorEl = document.getElementById('cosmetic-accent-color');
+const cosmeticBodyShapesEl = document.getElementById('cosmetic-body-shapes');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 /** @type {'n64' | 'default' | null} */
@@ -2861,8 +2871,20 @@ function syncAccountForm() {
 	showAccountError('');
 }
 
+function refreshCosmeticPreview() {
+	if (!cosmeticPreviewEl || !accountOverlayEl) return;
+	applyCosmeticToPreviewElement(
+		cosmeticPreviewEl,
+		readCosmeticFormState(accountOverlayEl)
+	);
+}
+
 function openAccountOverlay() {
 	syncAccountForm();
+	if (accountOverlayEl) {
+		syncCosmeticForm(accountOverlayEl, getCosmetic());
+		refreshCosmeticPreview();
+	}
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
 }
 
@@ -2915,6 +2937,31 @@ if (accountCloseBtnEl) {
 if (accountOverlayEl) {
 	accountOverlayEl.addEventListener('click', (e) => {
 		if (e.target === accountOverlayEl) closeAccountOverlay();
+	});
+}
+if (cosmeticBodyColorsEl) {
+	cosmeticBodyColorsEl.addEventListener('click', (e) => {
+		const swatch = e.target.closest('.cosmetic-swatch');
+		if (!swatch || !cosmeticBodyColorsEl.contains(swatch)) return;
+		for (const el of cosmeticBodyColorsEl.querySelectorAll('.cosmetic-swatch')) {
+			el.setAttribute('aria-pressed', el === swatch ? 'true' : 'false');
+		}
+		refreshCosmeticPreview();
+	});
+}
+if (cosmeticBodyShapesEl) {
+	cosmeticBodyShapesEl.addEventListener('click', (e) => {
+		const btn = e.target.closest('.cosmetic-shape-btn');
+		if (!btn || !cosmeticBodyShapesEl.contains(btn)) return;
+		for (const el of cosmeticBodyShapesEl.querySelectorAll('.cosmetic-shape-btn')) {
+			el.setAttribute('aria-pressed', el === btn ? 'true' : 'false');
+		}
+		refreshCosmeticPreview();
+	});
+}
+if (cosmeticAccentColorEl) {
+	cosmeticAccentColorEl.addEventListener('input', () => {
+		refreshCosmeticPreview();
 	});
 }
 if (accountSaveBtnEl) {
