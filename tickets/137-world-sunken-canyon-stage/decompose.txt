@@ -1,0 +1,17 @@
+Broke **Sunken Canyon** into **5** sub-tickets (dependency order). All use **code** verification — geometry, spawns, reachability, and camera/line-of-sight are testable without screenshot-only QA.
+
+| # | Focus |
+|---|--------|
+| 01 | Shared ramp helper (`floorCorners`, slope ≥ 0.15) for 136/137 |
+| 02 | `stage: "sunken-canyon"` — two bands, 2–3 ramps, Y drop ≥ 8, walls, determinism |
+| 03 | Canyon cover scatter (≥ 6 pieces, reachability preserved) |
+| 04 | Plateau spawn, enemy split, canyon objective + quest hook |
+| 05 | Camera Y on slopes + plateau→canyon vista (no rim occlusion) |
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/01-ramp-generator-helper`
+- `/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/02-two-band-layout`
+- `/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/03-canyon-cover-scatter`
+- `/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/04-spawns-enemies-objective`
+- `/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/05-camera-plateau-vista`

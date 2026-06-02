@@ -1,6 +1,13 @@
 // ── Floor Height Sampling (imported from shared module) ──
 
 const { sampleFloorY, DEFAULT_FLOOR_Y } = require('../shared/floorSampling.js');
+const {
+  createRampRoom,
+  averageRampSlope,
+  validateRampSlope,
+  inferRampAxis,
+  MIN_RAMP_SLOPE,
+} = require('./dungeonRamps.js');
 
 // ── Seeded PRNG (Mulberry32) ──
 
@@ -508,5 +515,10 @@ module.exports = {
   CELL_SPACING,
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
+  PASSAGE_WIDTH,
+  createRampRoom,
+  averageRampSlope,
+  validateRampSlope,
+  inferRampAxis,
+  MIN_RAMP_SLOPE,
 };
