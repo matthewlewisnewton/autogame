@@ -47,7 +47,8 @@ function getAvailableModelKeys() {
 const DEFAULT_COSMETIC = {
 	bodyColor: '#4f9dde',
 	accentColor: '#f2c94c',
-	bodyShape: 'box'
+	bodyShape: 'box',
+	bodyModel: 'default'
 };
 
 // Case-insensitive 6-digit hex color (e.g. #1a2B3c).
@@ -57,7 +58,7 @@ const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/i;
  * Validate a partial cosmetic update.
  * Only the provided sub-fields are validated; missing fields are left untouched.
  *
- * @param {object} partial - subset of { bodyColor, accentColor, bodyShape }
+ * @param {object} partial - subset of { bodyColor, accentColor, bodyShape, bodyModel }
  * @returns {{ ok: true, value: object } | { ok: false, reason: string }}
  *   On success, `value` contains the validated (normalized) provided fields.
  */
@@ -89,6 +90,13 @@ function validateCosmetic(partial) {
 		value.bodyShape = partial.bodyShape;
 	}
 
+	if (partial.bodyModel !== undefined) {
+		if (typeof partial.bodyModel !== 'string' || !getAvailableModelKeys().includes(partial.bodyModel)) {
+			return { ok: false, reason: `bodyModel must be one of: ${getAvailableModelKeys().join(', ')}` };
+		}
+		value.bodyModel = partial.bodyModel;
+	}
+
 	return { ok: true, value };
 }
 
@@ -97,14 +105,15 @@ function validateCosmetic(partial) {
  * DEFAULT_COSMETIC. Used to backfill legacy account records on load.
  *
  * @param {object|undefined} existing
- * @returns {{ bodyColor: string, accentColor: string, bodyShape: string }}
+ * @returns {{ bodyColor: string, accentColor: string, bodyShape: string, bodyModel: string }}
  */
 function backfillCosmetic(existing) {
 	const src = (existing && typeof existing === 'object' && !Array.isArray(existing)) ? existing : {};
 	return {
 		bodyColor: HEX_COLOR_REGEX.test(src.bodyColor) ? src.bodyColor : DEFAULT_COSMETIC.bodyColor,
 		accentColor: HEX_COLOR_REGEX.test(src.accentColor) ? src.accentColor : DEFAULT_COSMETIC.accentColor,
-		bodyShape: BODY_SHAPES.includes(src.bodyShape) ? src.bodyShape : DEFAULT_COSMETIC.bodyShape
+		bodyShape: BODY_SHAPES.includes(src.bodyShape) ? src.bodyShape : DEFAULT_COSMETIC.bodyShape,
+		bodyModel: getAvailableModelKeys().includes(src.bodyModel) ? src.bodyModel : DEFAULT_COSMETIC.bodyModel
 	};
 }
 

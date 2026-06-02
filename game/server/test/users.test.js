@@ -197,7 +197,13 @@ describe('cosmetic profile', () => {
 	it('applies a default cosmetic at account creation', () => {
 		createUser('cosmo', 'pass');
 		const user = findUserByUsername('cosmo');
-		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', bodyModel: 'default' });
+	});
+
+	it('sets bodyModel to default on new account', () => {
+		createUser('cosmo', 'pass');
+		const user = findUserByUsername('cosmo');
+		expect(user.cosmetic.bodyModel).toBe('default');
 	});
 
 	it('partial cosmetic update merges only provided fields', () => {
@@ -210,6 +216,29 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.bodyShape).toBe('cone');
 		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+		expect(user.cosmetic.bodyModel).toBe('default');
+	});
+
+	it('partial update changes only bodyModel and preserves other fields', () => {
+		createUser('cosmo', 'pass');
+		const id = findUserByUsername('cosmo').accountId;
+
+		const res = updateProfile(id, { cosmetic: { bodyModel: 'player' } });
+		expect(res.ok).toBe(true);
+		const user = findUserByAccountId(id);
+		expect(user.cosmetic.bodyModel).toBe('player');
+		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
+		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+		expect(user.cosmetic.bodyShape).toBe('box');
+	});
+
+	it('rejects an invalid bodyModel via updateProfile', () => {
+		createUser('cosmo', 'pass');
+		const id = findUserByUsername('cosmo').accountId;
+
+		const res = updateProfile(id, { cosmetic: { bodyModel: 'nonexistent' } });
+		expect(res.ok).toBe(false);
+		expect(findUserByAccountId(id).cosmetic.bodyModel).toBe('default');
 	});
 
 	it('rejects an invalid bodyShape without mutating or persisting', () => {
@@ -233,7 +262,7 @@ describe('cosmetic profile', () => {
 	it('persists cosmetic across a simulated restart', () => {
 		createUser('cosmo', 'pass');
 		const id = findUserByUsername('cosmo').accountId;
-		updateProfile(id, { cosmetic: { bodyColor: '#010203', bodyShape: 'capsule' } });
+		updateProfile(id, { cosmetic: { bodyColor: '#010203', bodyShape: 'capsule', bodyModel: 'player' } });
 
 		clearUsers();
 		loadUsers();
@@ -242,6 +271,7 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.bodyColor).toBe('#010203');
 		expect(user.cosmetic.bodyShape).toBe('capsule');
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+		expect(user.cosmetic.bodyModel).toBe('player');
 	});
 
 	it('backfills a complete cosmetic on a legacy record missing the field', () => {
@@ -252,7 +282,7 @@ describe('cosmetic profile', () => {
 		loadUsers();
 
 		const user = findUserByUsername('legacy');
-		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', bodyModel: 'default' });
 	});
 
 	it('backfills only the missing sub-fields on a partial legacy cosmetic', () => {
@@ -269,6 +299,25 @@ describe('cosmetic profile', () => {
 		const user = findUserByUsername('partial');
 		expect(user.cosmetic.bodyShape).toBe('cylinder');
 		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
+		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+		expect(user.cosmetic.bodyModel).toBe('default');
+	});
+
+	it('backfills missing bodyModel on legacy record with partial cosmetic', () => {
+		const legacy = [{
+			username: 'legacy-model',
+			passwordHash: 'x',
+			accountId: 'legacy-model-id',
+			cosmetic: { bodyColor: '#aabbcc', bodyShape: 'cone' }
+		}];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy), 'utf-8');
+		clearUsers();
+		loadUsers();
+
+		const user = findUserByUsername('legacy-model');
+		expect(user.cosmetic.bodyColor).toBe('#aabbcc');
+		expect(user.cosmetic.bodyShape).toBe('cone');
+		expect(user.cosmetic.bodyModel).toBe('default');
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
 	});
 });

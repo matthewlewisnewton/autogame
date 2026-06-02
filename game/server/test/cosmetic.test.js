@@ -3,15 +3,18 @@ import {
 	BODY_SHAPES,
 	DEFAULT_COSMETIC,
 	validateCosmetic,
-	backfillCosmetic
+	backfillCosmetic,
+	getAvailableModelKeys
 } from '../cosmetic.js';
 
 describe('DEFAULT_COSMETIC', () => {
-	it('has the three cosmetic fields with valid defaults', () => {
-		expect(Object.keys(DEFAULT_COSMETIC).sort()).toEqual(['accentColor', 'bodyColor', 'bodyShape']);
+	it('has the four cosmetic fields with valid defaults', () => {
+		expect(Object.keys(DEFAULT_COSMETIC).sort()).toEqual(['accentColor', 'bodyColor', 'bodyModel', 'bodyShape']);
 		expect(DEFAULT_COSMETIC.bodyColor).toMatch(/^#[0-9a-f]{6}$/i);
 		expect(DEFAULT_COSMETIC.accentColor).toMatch(/^#[0-9a-f]{6}$/i);
 		expect(BODY_SHAPES).toContain(DEFAULT_COSMETIC.bodyShape);
+		expect(DEFAULT_COSMETIC.bodyModel).toBe('default');
+		expect(getAvailableModelKeys()).toContain(DEFAULT_COSMETIC.bodyModel);
 	});
 
 	it('exposes the expected body shapes', () => {
@@ -58,6 +61,29 @@ describe('validateCosmetic', () => {
 		expect(validateCosmetic('box').ok).toBe(false);
 		expect(validateCosmetic([]).ok).toBe(false);
 	});
+
+	it('accepts a valid bodyModel key', () => {
+		const result = validateCosmetic({ bodyModel: 'player' });
+		expect(result.ok).toBe(true);
+		expect(result.value).toEqual({ bodyModel: 'player' });
+	});
+
+	it('accepts the default bodyModel key', () => {
+		const result = validateCosmetic({ bodyModel: 'default' });
+		expect(result.ok).toBe(true);
+		expect(result.value.bodyModel).toBe('default');
+	});
+
+	it('rejects an unknown bodyModel key', () => {
+		const result = validateCosmetic({ bodyModel: 'unknown_model' });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/bodyModel/);
+	});
+
+	it('rejects non-string bodyModel', () => {
+		expect(validateCosmetic({ bodyModel: 123 }).ok).toBe(false);
+		expect(validateCosmetic({ bodyModel: null }).ok).toBe(false);
+	});
 });
 
 describe('backfillCosmetic', () => {
@@ -70,6 +96,7 @@ describe('backfillCosmetic', () => {
 		expect(result.bodyShape).toBe('cylinder');
 		expect(result.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
 		expect(result.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
+		expect(result.bodyModel).toBe(DEFAULT_COSMETIC.bodyModel);
 	});
 
 	it('replaces invalid stored fields with defaults', () => {
@@ -77,5 +104,18 @@ describe('backfillCosmetic', () => {
 		expect(result.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
 		expect(result.accentColor).toBe('#00ff00');
 		expect(result.bodyShape).toBe(DEFAULT_COSMETIC.bodyShape);
+		expect(result.bodyModel).toBe(DEFAULT_COSMETIC.bodyModel);
+	});
+
+	it('preserves a valid bodyModel and backfills missing fields', () => {
+		const result = backfillCosmetic({ bodyModel: 'player' });
+		expect(result.bodyModel).toBe('player');
+		expect(result.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
+		expect(result.bodyShape).toBe(DEFAULT_COSMETIC.bodyShape);
+	});
+
+	it('replaces an invalid bodyModel with default', () => {
+		const result = backfillCosmetic({ bodyModel: 'nonexistent' });
+		expect(result.bodyModel).toBe(DEFAULT_COSMETIC.bodyModel);
 	});
 });

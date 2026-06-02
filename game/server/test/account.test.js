@@ -111,7 +111,7 @@ describe('GET /api/me', () => {
 		expect(data.settings.soundEnabled).toBe(true);
 		expect(data.settings.showHitboxes).toBe(true);
 		expect(data.email).toBeNull();
-		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
+		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', bodyModel: 'default' });
 	});
 
 	it('returns 401 without token', async () => {
@@ -194,11 +194,43 @@ describe('PATCH /api/me/profile', () => {
 		expect(data.cosmetic.bodyColor).toBe('#0a0b0c');
 		expect(data.cosmetic.bodyShape).toBe('capsule');
 		expect(data.cosmetic.accentColor).toBe('#f2c94c');
+		expect(data.cosmetic.bodyModel).toBe('default');
 
 		// Confirms it is reflected on GET /me as well.
 		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
 		const me = await meRes.json();
 		expect(me.cosmetic.bodyColor).toBe('#0a0b0c');
+	});
+
+	it('accepts bodyModel in cosmetic patch and persists round-trip', async () => {
+		const token = await registerAndLogin('modeler', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { bodyModel: 'player' } })
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.cosmetic.bodyModel).toBe('player');
+		expect(data.cosmetic.bodyColor).toBe('#4f9dde');
+		expect(data.cosmetic.bodyShape).toBe('box');
+
+		// Verify via GET /me
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.cosmetic.bodyModel).toBe('player');
+	});
+
+	it('returns 400 for invalid bodyModel in cosmetic patch', async () => {
+		const token = await registerAndLogin('badmodel', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { bodyModel: 'nonexistent' } })
+		});
+		expect(res.status).toBe(400);
 	});
 
 	it('returns 400 for invalid cosmetic input', async () => {
