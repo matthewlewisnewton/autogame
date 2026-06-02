@@ -98,6 +98,13 @@ const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
 const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
+
+// phase_step ally targeting: nearest in-range ally id (or null) recomputed each
+// frame, plus the ground ring that highlights it. Read by main.js via
+// getPhaseStepTargetId() so the useKeyItem payload can carry targetPlayerId.
+const PHASE_STEP_RANGE = 6; // metres — must match server KEY_ITEM_DEFS.phase_step.range
+let phaseStepTargetId = null;
+let phaseStepAllyRing = null;
 const windupFlashing = new Set(); // enemy ids currently showing windup emissive
 const minionsMeshes = {};
 const lootMeshes = {};
@@ -1495,6 +1502,67 @@ function syncLockOnRing(enemyId, enemyX, enemyZ) {
 	}
 }
 
+function createPhaseStepAllyRing() {
+	// Cyan ground ring, distinct from the amber lock-on reticle, to mark the
+	// ally that phase_step would swap with.
+	const geo = new THREE.RingGeometry(0.6, 0.85, 28);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0x22d3ee,
+		transparent: true,
+		opacity: 0.85,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+/**
+ * Recompute the nearest living, non-extracted ally within phase_step range and
+ * update the highlight ring. Only active while the local player is playing with
+ * phase_step equipped; otherwise the target is cleared and the ring hidden.
+ * Mirrors the server's nearest-ally selection in handleUseKeyItem.
+ */
+function syncPhaseStepAllyHighlight(gs, myId) {
+	let nearestId = null;
+	const me = myId != null ? gs.players[myId] : null;
+	if (
+		currentGamePhase === 'playing'
+		&& me && !me.dead && !me.extracted
+		&& me.equippedKeyItemId === 'phase_step'
+	) {
+		let bestDist = Infinity;
+		for (const [id, p] of Object.entries(gs.players)) {
+			if (id === myId || !p || p.dead || p.extracted) continue;
+			const d = Math.hypot(p.x - me.x, p.z - me.z);
+			if (d <= PHASE_STEP_RANGE && d < bestDist) {
+				bestDist = d;
+				nearestId = id;
+			}
+		}
+	}
+
+	phaseStepTargetId = nearestId;
+
+	if (nearestId && gs.players[nearestId]) {
+		if (!phaseStepAllyRing) {
+			phaseStepAllyRing = createPhaseStepAllyRing();
+			scene.add(phaseStepAllyRing);
+		}
+		const ally = gs.players[nearestId];
+		phaseStepAllyRing.position.set(ally.x, GROUND_OVERLAY_Y + 0.02, ally.z);
+		phaseStepAllyRing.visible = true;
+	} else if (phaseStepAllyRing) {
+		phaseStepAllyRing.visible = false;
+	}
+}
+
+/** Id of the ally currently highlighted for phase_step, or null when none in range. */
+export function getPhaseStepTargetId() {
+	return phaseStepTargetId;
+}
+
 const HITBOX_FILL_OPACITY = 0.32;
 const HITBOX_EDGE_OPACITY = 0.72;
 
@@ -2725,6 +2793,9 @@ export function animate(timestamp) {
 				previousPlayerHp[myId] = me.hp;
 			}
 		}
+
+		// ── phase_step ally highlight: recompute nearest in-range ally each frame ──
+		syncPhaseStepAllyHighlight(gs, myId);
 
 		// ── Enemy mesh sync ──
 		const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
