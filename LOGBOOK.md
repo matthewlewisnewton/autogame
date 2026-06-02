@@ -2194,3 +2194,26 @@ None blocking. All top-level acceptance criteria are implemented and covered by 
 
 ---
 
+
+## v0.104 — Key Item: Echo Strike  (2026-06-02 08:02:53)
+
+
+---
+
+## Sub-ticket integration
+
+Both sub-tickets’ criteria are satisfied in the combined working tree:
+
+1. **01-echo-strike-activation** — defs, handler, cooldown, persistence exclusion, tests.
+2. **02-echo-strike-weapon-echo** — delayed 50% packet, weapon-only proc, consumption, spell non-proc test, simulation hook.
+
+No integration gaps found between activation and weapon echo layers.
+
+---
+
+## Remaining gaps
+
+**None (blocking).** Runtime is clean; all top-level acceptance criteria are implemented and covered by tests.
+
+---
+
