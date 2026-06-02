@@ -2240,3 +2240,26 @@ None. No blocking gaps for acceptance or runtime health.
 
 See `nits.md` for optional follow-ups (design-doc deck cap vs code, minor doc depth on run objectives).
 
+
+## v0.114 — Docs: fix stale sections in design.md  (2026-06-02 10:04:58)
+
+- **requirements.md:** Foundation (3D render, WebSocket, multiplayer, WASD sync) unchanged; no code regressions.
+- **Remaining design.md content:** Not exhaustively re-audited (ticket scope is targeted touch-ups, not full doc audit). No other obvious numeric staleness on deck/hand in the edited file. Telepipe, floor geometry, and card-type sections were not part of this ticket and were not re-verified line-by-line.
+
+### Code quality / debug scenarios
+
+- No runtime code changes; no new `?debugScenario=` shortcuts.
+- Coverage run on changed files since baseline reported 0% (no tests matched changed paths — expected for a markdown-only game change).
+
+## Integration (sub-tickets)
+
+Sub-tickets `01-fix-deck-size` and `02-fix-hand-size` compose cleanly: one shared sentence in `design.md` carries both corrections. No conflicting edits or integration gaps.
+
+## Remaining gaps
+
+None blocking. Runtime is clean; acceptance criteria for the design-doc accuracy pass are satisfied.
+
+## Nits (non-blocking)
+
+- Branch includes harness subticket `ticket.md` files outside `game/docs/design.md` (see `nits.md` if filed).
+

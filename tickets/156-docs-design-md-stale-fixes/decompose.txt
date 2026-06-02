@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/156-docs-design-md-stale-fixes/subtickets/01-fix-deck-size/ticket.md
+tickets/156-docs-design-md-stale-fixes/subtickets/02-fix-hand-size/ticket.md
+```
+
+Both are `Verification: code` — surgical one-line corrections to `game/docs/design.md`:
+- **01**: deck size `12` → `24` (matches `DECK_MAX_SIZE`)
+- **02**: hand size `4` → `6` (matches `MAX_HAND_SLOTS`; 4 is only the opening hand deal)

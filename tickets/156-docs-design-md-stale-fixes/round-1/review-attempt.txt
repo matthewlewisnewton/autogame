@@ -1,0 +1,19 @@
+## Review complete
+
+Wrote **`tickets/156-docs-design-md-stale-fixes/round-1/review.md`** with full per-criterion analysis.
+
+### Runtime
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: clean (Vite + scene init only)
+- Game reached playing phase with movement probes and screenshots
+
+### Implementation
+- Single edit in `game/docs/design.md`: deck **12→24**, hand **4→6**
+- Verified against `DECK_MAX_SIZE` / `MAX_HAND_SLOTS` in `game/server/config.js` and `game/client/config.js`
+- No `game/server/` or `game/client/` changes
+
+### Verdict
+**`VERDICT: PASS`** — no `gaps.md` (FAIL-only).
+
+### Nits
+**`nits.md`** — harness subticket `ticket.md` files on the branch alongside the doc change (literal AC wording vs. harness metadata).
