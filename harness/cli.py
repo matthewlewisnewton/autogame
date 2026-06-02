@@ -157,7 +157,7 @@ def _cmd_worker(name: str, agent: str) -> int:
     the shared HARNESS_PROGRESS_DIR. Does NOT start the progress server (the
     dispatcher owns the single one). Returns ticket()'s PipelineResult as the
     exit code so the dispatcher can interpret the outcome."""
-    from harness.dispatch.worktree_setup import install_deps
+    from harness.dispatch.worktree_setup import install_deps, link_harness_deps
     from harness.pipelines.ticket import TicketContext, ticket
     from harness.pipelines.result import PipelineResult
     from harness.telemetry.progress import emit_progress_event
@@ -176,6 +176,10 @@ def _cmd_worker(name: str, agent: str) -> int:
     if not install_deps(workspace.root):
         emit_progress_event("worker_setup_failed", {"ticket": name, "agent": agent})
         return int(PipelineResult.ESCALATE)
+    # The worktree has harness SOURCE but no harness/node_modules — without this
+    # `node harness/screenshot.mjs` can't import playwright and every capture
+    # (hence every top-level review's runtime gate) fails. Best-effort link.
+    link_harness_deps(workspace.root)
     rc = ticket(TicketContext(
         workspace=workspace, roster=roster, name=name, tdir=tdir,
         tunables=roster.tunables,

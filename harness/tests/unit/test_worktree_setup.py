@@ -4,7 +4,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from harness.dispatch.worktree_setup import install_deps
+from harness.dispatch.worktree_setup import install_deps, link_harness_deps
 
 
 class _Result:
@@ -75,3 +75,34 @@ def test_handles_timeout(tmp_path):
 
     ok = install_deps(tmp_path, which=lambda _: "/usr/bin/pnpm", runner=boom)
     assert ok is False
+
+
+def test_link_harness_deps_symlinks_to_main(tmp_path, monkeypatch):
+    """In a worktree, harness/node_modules is symlinked at the main checkout's so
+    `node harness/screenshot.mjs` can import playwright (else capture fails)."""
+    main = tmp_path / "main"
+    (main / "harness" / "node_modules" / "playwright").mkdir(parents=True)
+    monkeypatch.setenv("HARNESS_PROGRESS_DIR", str(main / "harness" / "progress"))
+    wt = tmp_path / "wt"
+    (wt / "harness").mkdir(parents=True)  # worktree has harness SOURCE, no node_modules
+    assert link_harness_deps(wt) is True
+    dst = wt / "harness" / "node_modules"
+    assert dst.is_symlink()
+    assert (dst / "playwright").exists()  # resolves through the link to main's
+
+
+def test_link_harness_deps_idempotent_and_noop_for_main(tmp_path, monkeypatch):
+    """Re-linking is a no-op, and a serial (non-worktree) run where the harness
+    dir already IS the main one does nothing destructive."""
+    main = tmp_path / "main"
+    (main / "harness" / "node_modules").mkdir(parents=True)
+    monkeypatch.setenv("HARNESS_PROGRESS_DIR", str(main / "harness" / "progress"))
+    # serial run: target dir == source dir → no-op, returns True
+    assert link_harness_deps(main) is True
+    assert not (main / "harness" / "node_modules").is_symlink()  # untouched, still real
+    # worktree: first link succeeds, second is a no-op
+    wt = tmp_path / "wt"
+    (wt / "harness").mkdir(parents=True)
+    assert link_harness_deps(wt) is True
+    assert link_harness_deps(wt) is True
+    assert (wt / "harness" / "node_modules").is_symlink()
