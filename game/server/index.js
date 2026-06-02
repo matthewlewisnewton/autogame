@@ -145,6 +145,7 @@ const {
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
   updateEnemies,
+  isPlayerConcealed,
   updateMinions,
   processPendingEchoes,
   damagePlayer,
@@ -429,6 +430,7 @@ const DEBUG_SCENARIOS = new Set([
   'overclock-ready',
   'phase-step-ready',
   'echo-strike-ready',
+  'smoke-bomb-ready',
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
@@ -969,6 +971,19 @@ function applyDebugScenario(socket, name) {
       // Tanky enemy straight ahead (rotation 0 → +x) that survives both packets.
       state.enemies = [];
       spawnEnemy(player.x + 2.5, player.z, 'grunt');
+    } else if (name === 'smoke-bomb-ready') {
+      // Equip smoke_bomb with no cooldown and place a couple of enemies in
+      // attack range so QA can cast the bomb and observe enemies losing their
+      // target / cancelling wind-ups while the caster stands in the smoke zone.
+      // The same state is reachable normally by equipping the Smoke Bomb key
+      // item, entering a run, and approaching enemies.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'smoke_bomb';
+      player.keyItemCooldownUntil = 0;
+      state.enemies = [];
+      spawnEnemy(player.x + 3, player.z, 'grunt');
+      spawnEnemy(player.x - 3, player.z + 1, 'skirmisher');
     }
 
     syncRunObjectiveToEnemies();
@@ -2734,8 +2749,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, and echo_strike are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, and smoke_bomb are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'smoke_bomb') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2794,6 +2809,25 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'smoke_bomb') {
+      // --- smoke_bomb: drop a short-lived smoke zone fixed at the caster's
+      // position. While any living player stands inside an active smoke zone,
+      // enemies cannot target them (see isPlayerConcealed in simulation.js).
+      // The zone stays at the cast point — the player may walk out of it. ---
+      const durationMs = def.durationMs != null ? def.durationMs : 2000;
+      const radius = def.radius != null ? def.radius : 4;
+      player.smokeBombUntil = now + durationMs;
+      player.smokeBombRadius = radius;
+      player.smokeBombX = player.x;
+      player.smokeBombZ = player.z;
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
@@ -3620,6 +3654,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnInfernoPillarEffect,
     isEnemyFrozen,
     updateEnemies,
+    isPlayerConcealed,
     updateMinions,
     processPendingEchoes,
     spawnLoot,
