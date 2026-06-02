@@ -756,6 +756,27 @@ function resolveWindupTarget(enemy) {
 	return player && !player.dead ? player : null;
 }
 
+// ── Smoke Bomb suppression ──
+// Returns true when point (x, z) lies within the active smoke zone of ANY
+// living player. A zone is active while Date.now() < p.smokeBombUntil and the
+// point is within p.smokeBombRadius of the cast point (p.smokeBombX,
+// p.smokeBombZ). Used by the enemy AI to drop targeting/attacks on players
+// hidden in the fog (co-op: a caster's zone protects everyone standing in it).
+function isInSmokeZone(x, z) {
+	if (!_gameState || !_gameState.players) return false;
+	const now = Date.now();
+	for (const p of Object.values(_gameState.players)) {
+		if (!p || p.dead) continue;
+		const radius = p.smokeBombRadius || 0;
+		if (radius <= 0) continue;
+		if (!(now < p.smokeBombUntil)) continue;
+		const dx = x - p.smokeBombX;
+		const dz = z - p.smokeBombZ;
+		if (Math.hypot(dx, dz) <= radius) return true;
+	}
+	return false;
+}
+
 // Minion behavior constants
 const MINION_FOLLOW_DISTANCE = 3;
 const MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;
@@ -1633,6 +1654,12 @@ function updateEnemies() {
 			const elapsed = Date.now() - enemy.windupStartTime;
 			if (elapsed >= def.attackWindupMs) {
 				const target = resolveWindupTarget(enemy);
+				// A player who slipped into an active smoke zone during the
+				// wind-up is undetectable: the strike misses into the fog.
+				if (target && enemy.windupTargetType === 'player' && isInSmokeZone(target.x, target.z)) {
+					enemy.attackState = 'chasing';
+					continue;
+				}
 				if (target && isEntityInEnemyAttack(enemy, target, def)) {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, def.attackDamage);
@@ -1699,6 +1726,8 @@ function updateEnemies() {
 		}
 
 		for (const player of players) {
+			// Players standing in an active smoke zone are undetectable.
+			if (isInSmokeZone(player.x, player.z)) continue;
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
@@ -2183,6 +2212,7 @@ module.exports = {
 
   // Enemy AI
   updateEnemies,
+  isInSmokeZone,
 
   // Minion AI
   updateMinions,
