@@ -65,7 +65,18 @@ import {
 	setAuthToken,
 	patchProfile,
 	getAccountProfile,
+	getCosmetic,
 } from './settings.js';
+import { initCosmeticPreview, updateCosmeticPreview } from './cosmetic-preview.js';
+import {
+	syncCosmeticForm,
+	cosmeticsEqual,
+	updateVanguardPortraitCosmetic,
+	showCosmeticError,
+	buildCosmeticPatchPayload,
+	selectShapeButton,
+	selectSwatchInGrid,
+} from './cosmetic-form.js';
 import {
 	initControllerCalibration,
 	startControllerCalibration,
@@ -172,6 +183,18 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
+const cosmeticPreviewEl = document.getElementById('cosmetic-preview');
+const cosmeticBodyColorsEl = document.getElementById('cosmetic-body-colors');
+const cosmeticAccentColorsEl = document.getElementById('cosmetic-accent-colors');
+const cosmeticBodyCustomEl = document.getElementById('cosmetic-body-custom');
+const cosmeticAccentCustomEl = document.getElementById('cosmetic-accent-custom');
+const cosmeticErrorEl = document.getElementById('cosmetic-error');
+const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
+const characterFrameEl = document.getElementById('character-frame');
+
+function getCosmeticShapeBtns() {
+	return Array.from(document.querySelectorAll('.cosmetic-shape-btn'));
+}
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 /** @type {'n64' | 'default' | null} */
@@ -711,6 +734,7 @@ async function restoreSession(token) {
 		setAuthToken(token);
 	}
 	syncSettingsForm();
+	refreshVanguardPortraitCosmetic();
 	createSocket(token);
 	hideAuthOverlay();
 }
@@ -1570,9 +1594,14 @@ function updateDeckStats(deckPile, handCards, inventory) {
 	if (deckEnchantmentCountEl) deckEnchantmentCountEl.textContent = String(stats.types.enchantment);
 }
 
+function refreshVanguardPortraitCosmetic() {
+	updateVanguardPortraitCosmetic(characterFrameEl, getCosmetic());
+}
+
 function updateVanguardPortrait() {
 	if (characterIdEl) characterIdEl.textContent = formatCharacterId(myId);
 	if (playerLevelEl) playerLevelEl.textContent = String(formatPlayerLevel());
+	refreshVanguardPortraitCosmetic();
 }
 
 function updateObjectiveHud() {
@@ -2861,14 +2890,100 @@ function syncAccountForm() {
 	showAccountError('');
 }
 
+/** @type {{ bodyColor: string, accentColor: string, bodyShape: string }} */
+let cosmeticDraft = { ...getCosmetic() };
+let cosmeticPreviewInitialized = false;
+let cosmeticFormWired = false;
+
+function getCosmeticFormRefs() {
+	return {
+		shapeBtnEls: getCosmeticShapeBtns(),
+		bodySwatchesEl: cosmeticBodyColorsEl,
+		accentSwatchesEl: cosmeticAccentColorsEl,
+		bodyCustomInput: cosmeticBodyCustomEl,
+		accentCustomInput: cosmeticAccentCustomEl,
+		cosmeticErrorEl,
+	};
+}
+
+function applyCosmeticDraftToPreview() {
+	updateCosmeticPreview({
+		bodyShape: cosmeticDraft.bodyShape,
+		bodyColor: cosmeticDraft.bodyColor,
+		accentColor: cosmeticDraft.accentColor,
+	});
+}
+
+function syncCosmeticFormFromCache() {
+	cosmeticDraft = syncCosmeticForm(getCosmeticFormRefs(), getCosmetic());
+	applyCosmeticDraftToPreview();
+}
+
+function wireCosmeticForm() {
+	if (cosmeticFormWired) return;
+	cosmeticFormWired = true;
+
+	for (const btn of getCosmeticShapeBtns()) {
+		btn.addEventListener('click', () => {
+			const shape = btn.getAttribute('data-shape');
+			if (!shape) return;
+			selectShapeButton(getCosmeticShapeBtns(), shape);
+			cosmeticDraft = { ...cosmeticDraft, bodyShape: shape };
+			applyCosmeticDraftToPreview();
+		});
+	}
+
+	const wireSwatchGrid = (gridEl, colorKey) => {
+		if (!gridEl) return;
+		gridEl.addEventListener('click', (e) => {
+			const swatch = e.target.closest('.cosmetic-swatch');
+			if (!swatch || !gridEl.contains(swatch)) return;
+			const color = swatch.getAttribute('data-color');
+			if (!color) return;
+			selectSwatchInGrid(gridEl, color);
+			if (colorKey === 'bodyColor' && cosmeticBodyCustomEl) cosmeticBodyCustomEl.value = color;
+			if (colorKey === 'accentColor' && cosmeticAccentCustomEl) cosmeticAccentCustomEl.value = color;
+			cosmeticDraft = { ...cosmeticDraft, [colorKey]: color };
+			applyCosmeticDraftToPreview();
+		});
+	};
+
+	wireSwatchGrid(cosmeticBodyColorsEl, 'bodyColor');
+	wireSwatchGrid(cosmeticAccentColorsEl, 'accentColor');
+
+	if (cosmeticBodyCustomEl) {
+		cosmeticBodyCustomEl.addEventListener('input', () => {
+			selectSwatchInGrid(cosmeticBodyColorsEl, '');
+			const color = cosmeticBodyCustomEl.value;
+			cosmeticDraft = { ...cosmeticDraft, bodyColor: color };
+			applyCosmeticDraftToPreview();
+		});
+	}
+	if (cosmeticAccentCustomEl) {
+		cosmeticAccentCustomEl.addEventListener('input', () => {
+			selectSwatchInGrid(cosmeticAccentColorsEl, '');
+			const color = cosmeticAccentCustomEl.value;
+			cosmeticDraft = { ...cosmeticDraft, accentColor: color };
+			applyCosmeticDraftToPreview();
+		});
+	}
+}
+
 function openAccountOverlay() {
 	syncAccountForm();
+	if (!cosmeticPreviewInitialized && cosmeticPreviewEl) {
+		initCosmeticPreview(cosmeticPreviewEl);
+		cosmeticPreviewInitialized = true;
+	}
+	wireCosmeticForm();
+	syncCosmeticFormFromCache();
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
 }
 
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
+	showCosmeticError(cosmeticErrorEl, '');
 }
 
 function openLevelSettingsOverlay() {
@@ -2947,6 +3062,31 @@ if (accountSaveBtnEl) {
 			createSocket(result.token);
 		}
 		closeAccountOverlay();
+	});
+}
+
+if (cosmeticSaveBtnEl) {
+	cosmeticSaveBtnEl.addEventListener('click', async () => {
+		const draft = { ...cosmeticDraft };
+		const cached = getCosmetic();
+		if (cosmeticsEqual(draft, cached)) {
+			showCosmeticError(cosmeticErrorEl, '');
+			return;
+		}
+
+		cosmeticSaveBtnEl.disabled = true;
+		const result = await patchProfile(buildCosmeticPatchPayload(draft));
+		cosmeticSaveBtnEl.disabled = false;
+
+		if (result.error) {
+			showCosmeticError(cosmeticErrorEl, result.error);
+			return;
+		}
+
+		showCosmeticError(cosmeticErrorEl, '');
+		cosmeticDraft = syncCosmeticForm(getCosmeticFormRefs(), getCosmetic());
+		applyCosmeticDraftToPreview();
+		refreshVanguardPortraitCosmetic();
 	});
 }
 
@@ -3426,6 +3566,10 @@ window.openLevelSettingsOverlay = openLevelSettingsOverlay;
 window.closeLevelSettingsOverlay = closeLevelSettingsOverlay;
 window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
+window.syncCosmeticFormFromCache = syncCosmeticFormFromCache;
+window.refreshVanguardPortraitCosmetic = refreshVanguardPortraitCosmetic;
+window.__getCosmeticDraft = () => ({ ...cosmeticDraft });
+window.__buildCosmeticPatchPayload = buildCosmeticPatchPayload;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;

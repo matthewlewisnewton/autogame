@@ -2451,6 +2451,74 @@ describe('auth overlay functions', () => {
 			document.getElementById(id)?.remove();
 		}
 
+		function ensureCosmeticAppearanceSection(modal) {
+			if (document.getElementById('cosmetic-appearance-section')) return;
+			const cosmeticSection = document.createElement('div');
+			cosmeticSection.id = 'cosmetic-appearance-section';
+			const shapeGroup = document.createElement('div');
+			shapeGroup.className = 'cosmetic-shape-group';
+			for (const shape of ['box', 'cylinder', 'cone', 'capsule']) {
+				const shapeBtn = document.createElement('button');
+				shapeBtn.type = 'button';
+				shapeBtn.className = 'cosmetic-shape-btn' + (shape === 'box' ? ' selected' : '');
+				shapeBtn.dataset.shape = shape;
+				shapeGroup.appendChild(shapeBtn);
+			}
+			cosmeticSection.appendChild(shapeGroup);
+
+			const bodyColors = document.createElement('div');
+			bodyColors.id = 'cosmetic-body-colors';
+			bodyColors.className = 'cosmetic-swatch-grid';
+			for (const color of ['#4f9dde', '#22c55e']) {
+				const sw = document.createElement('button');
+				sw.type = 'button';
+				sw.className = 'cosmetic-swatch' + (color === '#4f9dde' ? ' selected' : '');
+				sw.dataset.color = color;
+				bodyColors.appendChild(sw);
+			}
+			cosmeticSection.appendChild(bodyColors);
+
+			const accentColors = document.createElement('div');
+			accentColors.id = 'cosmetic-accent-colors';
+			accentColors.className = 'cosmetic-swatch-grid';
+			for (const color of ['#f2c94c', '#f472b6']) {
+				const sw = document.createElement('button');
+				sw.type = 'button';
+				sw.className = 'cosmetic-swatch' + (color === '#f2c94c' ? ' selected' : '');
+				sw.dataset.color = color;
+				accentColors.appendChild(sw);
+			}
+			cosmeticSection.appendChild(accentColors);
+
+			const bodyCustom = document.createElement('input');
+			bodyCustom.type = 'color';
+			bodyCustom.id = 'cosmetic-body-custom';
+			bodyCustom.value = '#4f9dde';
+			cosmeticSection.appendChild(bodyCustom);
+
+			const accentCustom = document.createElement('input');
+			accentCustom.type = 'color';
+			accentCustom.id = 'cosmetic-accent-custom';
+			accentCustom.value = '#f2c94c';
+			cosmeticSection.appendChild(accentCustom);
+
+			const preview = document.createElement('div');
+			preview.id = 'cosmetic-preview';
+			cosmeticSection.appendChild(preview);
+
+			const cosmeticError = document.createElement('p');
+			cosmeticError.id = 'cosmetic-error';
+			cosmeticError.hidden = true;
+			cosmeticSection.appendChild(cosmeticError);
+
+			const cosmeticSave = document.createElement('button');
+			cosmeticSave.type = 'button';
+			cosmeticSave.id = 'cosmetic-save-btn';
+			cosmeticSection.appendChild(cosmeticSave);
+
+			modal.appendChild(cosmeticSection);
+		}
+
 		if (!document.getElementById('account-overlay')) {
 			const overlay = document.createElement('div');
 			overlay.id = 'account-overlay';
@@ -2469,8 +2537,23 @@ describe('auth overlay functions', () => {
 			error.id = 'account-error';
 			error.hidden = true;
 			modal.appendChild(error);
+
+			ensureCosmeticAppearanceSection(modal);
 			overlay.appendChild(modal);
 			document.body.appendChild(overlay);
+		} else {
+			const existingModal = document.querySelector('#account-overlay #account-modal')
+				|| document.getElementById('account-overlay');
+			if (existingModal) ensureCosmeticAppearanceSection(existingModal);
+		}
+
+		if (!document.getElementById('character-frame')) {
+			const frame = document.createElement('div');
+			frame.id = 'character-frame';
+			const charId = document.createElement('span');
+			charId.id = 'character-id';
+			frame.appendChild(charId);
+			document.body.appendChild(frame);
 		}
 
 		if (!document.getElementById('settings-overlay')) {
@@ -2614,6 +2697,32 @@ describe('auth overlay functions', () => {
 		window.showLoginForm();
 
 		expect(logError.textContent).toBe('');
+	});
+
+	it('openAccountOverlay syncs cosmetic draft from getCosmetic', async () => {
+		const custom = { bodyShape: 'cone', bodyColor: '#22c55e', accentColor: '#f472b6' };
+		vi.doMock('../settings.js', async (importOriginal) => {
+			const actual = await importOriginal();
+			return {
+				...actual,
+				getCosmetic: () => ({ ...custom }),
+				getAccountProfile: () => ({ username: 'hero', email: null }),
+				loadAccountSettings: vi.fn(),
+				patchProfile: vi.fn(),
+				patchSettings: vi.fn(),
+				onSettingsChange: vi.fn(() => () => {}),
+				setAuthToken: vi.fn(),
+			};
+		});
+
+		await import('../main.js');
+		window.openAccountOverlay();
+
+		expect(window.__getCosmeticDraft()).toEqual(custom);
+		const coneBtn = document.querySelector('.cosmetic-shape-btn[data-shape="cone"]');
+		expect(coneBtn?.classList.contains('selected')).toBe(true);
+
+		vi.doUnmock('../settings.js');
 	});
 
 	it('clearAuthForms clears all inputs and error spans', async () => {
