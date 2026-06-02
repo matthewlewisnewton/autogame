@@ -1336,6 +1336,36 @@ export function enemyMeshHalfHeight(type) {
 }
 
 /**
+ * Walkable floor Y at an enemy's XZ; matches local player floor sampling on slopes.
+ * @param {object|null|undefined} layout
+ * @param {number} x
+ * @param {number} z
+ * @returns {number}
+ */
+export function enemyFloorY(layout, x, z) {
+	return layout ? (sampleFloorY(layout, x, z) ?? DEFAULT_FLOOR_Y) : DEFAULT_FLOOR_Y;
+}
+
+/** Ground overlay height for enemy rings, hitboxes, and telegraphs on tiered floors. */
+const ENEMY_GROUND_OVERLAY_OFFSET = 0.07;
+
+function enemyGroundOverlayY(layout, x, z) {
+	return enemyFloorY(layout, x, z) + ENEMY_GROUND_OVERLAY_OFFSET;
+}
+
+/**
+ * Enemy mesh center Y from layout sampling and type geometry.
+ * @param {object|null|undefined} layout
+ * @param {number} x
+ * @param {number} z
+ * @param {string} type
+ * @returns {number}
+ */
+export function enemyMeshWorldY(layout, x, z, type) {
+	return enemyFloorY(layout, x, z) + enemyMeshHalfHeight(type);
+}
+
+/**
  * Create a Three.js mesh for an enemy based on its type.
  * @param {string} type - 'grunt', 'skirmisher', 'miniboss', or 'spawner'
  * @returns {THREE.Mesh}
@@ -1382,12 +1412,12 @@ export function healthBarColor(hp, maxHp) {
  * @param {string} [type] - enemy type for correct vertical placement
  * @returns {THREE.Mesh}
  */
-export function createHealthBarMesh(enemyId, x, z, type) {
+export function createHealthBarMesh(enemyId, x, z, type, layout) {
 	const geo = new THREE.BoxGeometry(1.2, 0.1, 0.1);
 	const mat = new THREE.MeshStandardMaterial({ color: 0x22c55e });
 	const mesh = new THREE.Mesh(geo, mat);
-	const halfHeight = enemyMeshHalfHeight(type);
-	mesh.position.set(x, halfHeight + 0.5, z);
+	const meshY = enemyMeshWorldY(layout, x, z, type);
+	mesh.position.set(x, meshY + 0.5, z);
 	scene.add(mesh);
 	return mesh;
 }
@@ -1397,10 +1427,10 @@ function enemyIsDamaged(enemy) {
 	return enemy.hp < maxHp;
 }
 
-function ensureEnemyHealthBar(enemyId, enemy) {
+function ensureEnemyHealthBar(enemyId, enemy, layout) {
 	if (!enemyIsDamaged(enemy)) return;
 	if (!enemyHealthBars[enemyId]) {
-		enemyHealthBars[enemyId] = createHealthBarMesh(enemyId, enemy.x, enemy.z, enemy.type);
+		enemyHealthBars[enemyId] = createHealthBarMesh(enemyId, enemy.x, enemy.z, enemy.type, layout);
 	}
 }
 
@@ -1488,14 +1518,18 @@ function createLockOnRing() {
 	return mesh;
 }
 
-function syncLockOnRing(enemyId, enemyX, enemyZ) {
+function syncLockOnRing(enemyId, enemyX, enemyZ, layout) {
 	const lockedId = getLockedEnemyId();
 	if (lockedId === enemyId) {
 		if (!enemyLockOnRings[enemyId]) {
 			enemyLockOnRings[enemyId] = createLockOnRing();
 			scene.add(enemyLockOnRings[enemyId]);
 		}
-		enemyLockOnRings[enemyId].position.set(enemyX, GROUND_OVERLAY_Y + 0.02, enemyZ);
+		enemyLockOnRings[enemyId].position.set(
+			enemyX,
+			enemyGroundOverlayY(layout, enemyX, enemyZ) + 0.02,
+			enemyZ,
+		);
 		enemyLockOnRings[enemyId].visible = true;
 	} else if (enemyLockOnRings[enemyId]) {
 		enemyLockOnRings[enemyId].visible = false;
@@ -1670,7 +1704,7 @@ function getEnemyWindupDirection(enemy, targetPlayer) {
 	return { x: 1, z: 0 };
 }
 
-function createEnemyAttackTelegraph(enemy, targetEntity) {
+function createEnemyAttackTelegraph(enemy, targetEntity, layout) {
 	const visual = ENEMY_ATTACK_VISUAL[enemy.type] || ENEMY_ATTACK_VISUAL.grunt;
 	const range = visual.range ?? ENEMY_ATTACK_RANGE;
 
@@ -1682,23 +1716,27 @@ function createEnemyAttackTelegraph(enemy, targetEntity) {
 			visual.coneAngle ?? ATTACK_CONE_ANGLE,
 			{ color: visual.color ?? 0xff3333, emissive: visual.emissive ?? 0xff1111 },
 		);
-		group.position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+		group.position.set(enemy.x, enemyGroundOverlayY(layout, enemy.x, enemy.z), enemy.z);
 		return group;
 	}
 
 	const mesh = createEnemyRadialTelegraph(range);
 	const tx = targetEntity ? targetEntity.x : enemy.x;
 	const tz = targetEntity ? targetEntity.z : enemy.z;
-	mesh.position.set(tx, GROUND_OVERLAY_Y, tz);
+	mesh.position.set(tx, enemyGroundOverlayY(layout, tx, tz), tz);
 	return mesh;
 }
 
-function updateEnemyAttackTelegraph(enemy, telegraph, targetEntity) {
+function updateEnemyAttackTelegraph(enemy, telegraph, targetEntity, layout) {
 	const visual = ENEMY_ATTACK_VISUAL[enemy.type] || ENEMY_ATTACK_VISUAL.grunt;
 	if (visual.style === 'cone') {
-		telegraph.position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+		telegraph.position.set(enemy.x, enemyGroundOverlayY(layout, enemy.x, enemy.z), enemy.z);
 	} else if (targetEntity) {
-		telegraph.position.set(targetEntity.x, GROUND_OVERLAY_Y, targetEntity.z);
+		telegraph.position.set(
+			targetEntity.x,
+			enemyGroundOverlayY(layout, targetEntity.x, targetEntity.z),
+			targetEntity.z,
+		);
 	}
 }
 
@@ -2799,6 +2837,7 @@ export function animate(timestamp) {
 
 		// ── Enemy mesh sync ──
 		const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
+		const enemyLayout = gs && gs.layout;
 
 		for (const enemy of gs.enemies) {
 			if (!enemiesMeshes[enemy.id]) {
@@ -2809,19 +2848,23 @@ export function animate(timestamp) {
 				enemyHitboxMeshes[enemy.id] = createEnemyHitboxGroup(ENTITY_RADIUS);
 				scene.add(enemyHitboxMeshes[enemy.id]);
 			}
-			const halfHeight = enemyMeshHalfHeight(enemy.type);
-			enemiesMeshes[enemy.id].position.set(enemy.x, halfHeight, enemy.z);
+			const meshY = enemyMeshWorldY(enemyLayout, enemy.x, enemy.z, enemy.type);
+			enemiesMeshes[enemy.id].position.set(enemy.x, meshY, enemy.z);
 
-			ensureEnemyHealthBar(enemy.id, enemy);
+			ensureEnemyHealthBar(enemy.id, enemy, enemyLayout);
 			const healthBar = enemyHealthBars[enemy.id];
 			if (healthBar) {
-				healthBar.position.set(enemy.x, halfHeight + 0.5, enemy.z);
+				healthBar.position.set(enemy.x, meshY + 0.5, enemy.z);
 				updateHealthBarMesh(enemy.id, enemy);
 			}
 			if (enemyHitboxMeshes[enemy.id]) {
-				enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+				enemyHitboxMeshes[enemy.id].position.set(
+					enemy.x,
+					enemyGroundOverlayY(enemyLayout, enemy.x, enemy.z),
+					enemy.z,
+				);
 			}
-			syncLockOnRing(enemy.id, enemy.x, enemy.z);
+			syncLockOnRing(enemy.id, enemy.x, enemy.z, enemyLayout);
 
 			// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
 			if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
@@ -2914,7 +2957,7 @@ export function animate(timestamp) {
 							}
 						);
 					} else {
-						spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
+						spawnHitSpark({ x: enemy.x, y: meshY, z: enemy.z });
 					}
 
 					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
@@ -2937,11 +2980,11 @@ export function animate(timestamp) {
 
 				const windupTarget = resolveEnemyWindupTarget(enemy, gs);
 				if (!telegraphMeshes[enemy.id]) {
-					const telegraph = createEnemyAttackTelegraph(enemy, windupTarget);
+					const telegraph = createEnemyAttackTelegraph(enemy, windupTarget, enemyLayout);
 					scene.add(telegraph);
 					telegraphMeshes[enemy.id] = telegraph;
 				} else {
-					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget);
+					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget, enemyLayout);
 				}
 			} else {
 				disposeOne(telegraphMeshes, enemy.id, scene);
