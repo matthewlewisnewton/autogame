@@ -1259,6 +1259,25 @@ function createRunState() {
 
   const objectiveLabel = `${quest.name}: ${quest.description}`;
 
+  if (quest.objectiveType === 'defeat_enemies_reach_exit') {
+    return {
+      id: crypto.randomUUID(),
+      status: 'playing',
+      questId: quest.id,
+      questName: quest.name,
+      questDescription: quest.description,
+      rewardCurrency: quest.rewardCurrency,
+      objective: {
+        type: 'defeat_enemies_reach_exit',
+        label: objectiveLabel,
+        totalEnemies: _gameState.enemies.length,
+        defeatedEnemies: 0,
+        reachedExit: false,
+      },
+      startedAt: Date.now(),
+    };
+  }
+
   return {
     id: crypto.randomUUID(),
     status: 'playing',
@@ -1485,22 +1504,27 @@ function claimCardReward(playerId, cardId) {
   };
 }
 
+function isDefeatEnemiesObjectiveType(type) {
+  return type === 'defeat_enemies' || type === 'defeat_enemies_reach_exit';
+}
+
 function clampObjectiveProgress(run) {
   if (run.objective.type === 'collect_items') {
     run.objective.collectedItems = Math.min(run.objective.collectedItems, run.objective.totalItems);
     return;
   }
+  if (run.objective.totalEnemies == null || run.objective.defeatedEnemies == null) return;
   run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
 }
 
 function syncRunObjectiveToEnemies() {
-  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
+  if (!_gameState.run || !isDefeatEnemiesObjectiveType(_gameState.run.objective.type)) return;
   _gameState.run.objective.totalEnemies = _gameState.enemies.length;
   clampObjectiveProgress(_gameState.run);
 }
 
 function recordEnemyDefeated(count = 1) {
-  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
+  if (!_gameState.run || !isDefeatEnemiesObjectiveType(_gameState.run.objective.type)) return;
   _gameState.run.objective.defeatedEnemies += count;
   clampObjectiveProgress(_gameState.run);
 }
@@ -1511,9 +1535,20 @@ function recordCrystalCollected(count = 1) {
   clampObjectiveProgress(_gameState.run);
 }
 
+function recordSpireExitReached() {
+  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies_reach_exit') return;
+  _gameState.run.objective.reachedExit = true;
+}
+
 function isRunObjectiveComplete(objective) {
   if (objective.type === 'collect_items') {
     return objective.collectedItems >= objective.totalItems;
+  }
+  if (objective.type === 'defeat_enemies_reach_exit') {
+    return (
+      objective.defeatedEnemies >= objective.totalEnemies
+      && objective.reachedExit === true
+    );
   }
   return objective.defeatedEnemies >= objective.totalEnemies;
 }
@@ -2545,6 +2580,29 @@ function spawnCrystals(layout, rng, count) {
   }
 }
 
+/** Single summit exit interactable for spire-ascent runs (treasure tier only). */
+function spawnSpireExit(layout, rng) {
+  if (!isSpireAscentLayout(layout)) return;
+
+  const treasureRooms = roomsByRole(layout, 'treasure');
+  if (treasureRooms.length === 0) return;
+
+  const room = treasureRooms[0];
+  const pos = randomPositionInRoom(room, rng);
+  const floorY = sampleFloorY(layout, pos.x, pos.z);
+  const id = crypto.randomUUID();
+  _gameState.loot.push({
+    id,
+    x: pos.x,
+    z: pos.z,
+    y: Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y,
+    value: 0,
+    kind: 'spire_exit',
+    createdAt: Date.now(),
+  });
+  console.log(`[spire_exit] spawned id=${id} at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)}, y=${_gameState.loot[_gameState.loot.length - 1].y})`);
+}
+
 function randomPositionInRoom(room, rng) {
   const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
   const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
@@ -2742,6 +2800,9 @@ function spawnEnemies() {
   }
 
   spawnCombatEnemies(layout, rng, quest);
+  if (quest.objectiveType === 'defeat_enemies_reach_exit' && isSpireAscentLayout(layout)) {
+    spawnSpireExit(layout, rng);
+  }
   spawnLoot(layout, rng);
 }
 
@@ -3382,8 +3443,10 @@ module.exports = {
   cleanupAfterDamage,
   spawnLoot,
   spawnCrystals,
+  spawnSpireExit,
   spawnEnemies,
   recordCrystalCollected,
+  recordSpireExitReached,
   isRunObjectiveComplete,
   checkRunTerminalState,
   resetTransientRunState,

@@ -12,6 +12,11 @@ export function formatObjectiveSummary(quest) {
 		return THEME.objectives.recoverPrisms.replace('{count}', String(itemCount));
 	}
 
+	if (quest.objectiveType === 'defeat_enemies_reach_exit') {
+		const enemyCount = quest.enemyCount ?? 0;
+		return `${THEME.objectives.neutralizeHostiles.replace('{count}', String(enemyCount))} and reach the summit exit`;
+	}
+
 	if (quest.objectiveType === 'defeat_enemies') {
 		const enemyCount = quest.enemyCount ?? 0;
 		return THEME.objectives.neutralizeHostiles.replace('{count}', String(enemyCount));

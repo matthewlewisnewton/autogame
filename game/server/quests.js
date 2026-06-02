@@ -21,8 +21,8 @@ const QUEST_DEFS = {
   spire_ascent: {
     id: 'spire_ascent',
     name: 'Spire Ascent',
-    description: 'Ascend the fractured spire and purge hostiles tier by tier.',
-    objectiveType: 'defeat_enemies',
+    description: 'Ascend the fractured spire, purge hostiles tier by tier, and reach the summit exit.',
+    objectiveType: 'defeat_enemies_reach_exit',
     enemyCount: 8,
     rewardCurrency: 15,
     layoutProfile: 'crowded',

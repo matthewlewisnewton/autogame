@@ -463,6 +463,9 @@ function renderSuspendedRunBanner(state) {
 			progress = THEME.objectives.collectPrismsProgress
 				.replace('{collected}', String(objective.collectedItems))
 				.replace('{total}', String(objective.totalItems));
+		} else if (objective && objective.type === 'defeat_enemies_reach_exit') {
+			const exit = objective.reachedExit ? 'exit reached' : 'exit pending';
+			progress = `${objective.defeatedEnemies}/${objective.totalEnemies} hostiles · ${exit}`;
 		} else if (objective && objective.type === 'defeat_enemies') {
 			progress = `${objective.defeatedEnemies}/${objective.totalEnemies} hostiles`;
 		}
@@ -1574,7 +1577,14 @@ function updateObjectiveHud() {
 
 	if (gameState && gameState.gamePhase === 'playing' && run && run.objective) {
 		const obj = run.objective;
-		objectiveHudEl.textContent = `${obj.label}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
+		if (obj.type === 'defeat_enemies_reach_exit') {
+			const exitLine = obj.reachedExit ? 'Summit exit: reached' : 'Summit exit: not yet reached';
+			objectiveHudEl.textContent = `${obj.label}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles\n${exitLine}`;
+		} else if (obj.type === 'collect_items') {
+			objectiveHudEl.textContent = `${obj.label}\nRecovered ${obj.collectedItems} / ${obj.totalItems} prisms`;
+		} else {
+			objectiveHudEl.textContent = `${obj.label}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
+		}
 		objectiveHudEl.style.display = 'block';
 	} else {
 		objectiveHudEl.style.display = 'none';

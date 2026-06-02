@@ -163,6 +163,14 @@ const crystalMaterial = new THREE.MeshStandardMaterial({
 	roughness: 0.15,
 	metalness: 0.65,
 });
+const spireExitGeometry = new THREE.OctahedronGeometry(0.6, 0);
+const spireExitMaterial = new THREE.MeshStandardMaterial({
+	color: 0xfde68a,
+	emissive: 0xf59e0b,
+	emissiveIntensity: 1.0,
+	roughness: 0.2,
+	metalness: 0.7,
+});
 const magicStoneGeometry = new THREE.OctahedronGeometry(0.5, 0);
 const magicStoneRingGeometry = new THREE.RingGeometry(0.4, 0.7, 24);
 const magicStoneMaterial = new THREE.MeshStandardMaterial({
@@ -638,12 +646,21 @@ export function pruneLootPickupAttempts(currentLootIds) {
 
 function cloneLootMaterial(kind) {
 	if (kind === 'crystal') return crystalMaterial.clone();
+	if (kind === 'spire_exit') return spireExitMaterial.clone();
 	if (kind === 'magic_stone') return magicStoneMaterial.clone();
 	return lootMaterial.clone();
 }
 
+function resolveLootFloorY(item) {
+	if (Number.isFinite(item.y)) return item.y;
+	const layout = gameStateRef?.layout;
+	if (layout) return sampleFloorY(layout, item.x, item.z) ?? DEFAULT_FLOOR_Y;
+	return DEFAULT_FLOOR_Y;
+}
+
 function createLootMesh(item) {
 	const kind = item.kind || 'currency';
+	const floorY = resolveLootFloorY(item);
 	if (kind === 'magic_stone') {
 		const group = new THREE.Group();
 		group.userData.isMagicStone = true;
@@ -667,25 +684,34 @@ function createLootMesh(item) {
 		ring.position.y = 0.04;
 		group.add(ring);
 
-		group.position.set(item.x, 0, item.z);
+		group.position.set(item.x, floorY, item.z);
+		group.userData.floorY = floorY;
 		return group;
 	}
 
 	const isCrystal = kind === 'crystal';
+	const isSpireExit = kind === 'spire_exit';
 	const mesh = new THREE.Mesh(
-		isCrystal ? crystalGeometry : lootGeometry,
+		isCrystal ? crystalGeometry : isSpireExit ? spireExitGeometry : lootGeometry,
 		cloneLootMaterial(kind),
 	);
-	const baseY = isCrystal ? 0.65 : 0.5;
-	mesh.position.set(item.x, baseY, item.z);
+	const baseOffset = isSpireExit ? 0.85 : isCrystal ? 0.65 : 0.5;
+	mesh.position.set(item.x, floorY + baseOffset, item.z);
 	mesh.userData.isCrystal = isCrystal;
+	mesh.userData.isSpireExit = isSpireExit;
 	mesh.userData.lootKind = kind;
+	mesh.userData.floorY = floorY;
+	mesh.userData.baseOffset = baseOffset;
 	return mesh;
 }
 
 function getLootBaseY(mesh) {
+	if (Number.isFinite(mesh.userData?.floorY)) {
+		return mesh.userData.floorY + (mesh.userData.baseOffset ?? 0.5);
+	}
 	if (mesh.userData?.isMagicStone) return 0.6;
 	if (mesh.userData?.isCrystal) return 0.65;
+	if (mesh.userData?.isSpireExit) return 0.85;
 	return 0.5;
 }
 
@@ -2525,8 +2551,15 @@ export function syncLootMeshes() {
 			scene.add(mesh);
 			lootMeshes[item.id] = mesh;
 		} else {
-			lootMeshes[item.id].position.x = item.x;
-			lootMeshes[item.id].position.z = item.z;
+			const mesh = lootMeshes[item.id];
+			const floorY = resolveLootFloorY(item);
+			mesh.userData.floorY = floorY;
+			mesh.position.x = item.x;
+			mesh.position.z = item.z;
+			if (!mesh.userData?.isMagicStone) {
+				const offset = mesh.userData.baseOffset ?? (mesh.userData.isCrystal ? 0.65 : 0.5);
+				mesh.position.y = floorY + offset;
+			}
 		}
 	}
 
@@ -2564,7 +2597,11 @@ export function animateLootMeshes() {
 		}
 
 		mesh.position.y = baseY + bob;
-		mesh.rotation.y += mesh.userData.isCrystal ? 0.03 : 0.02;
+		mesh.rotation.y += mesh.userData.isCrystal ? 0.03 : mesh.userData.isSpireExit ? 0.045 : 0.02;
+		if (mesh.userData.isSpireExit && mesh.scale) {
+			const pulse = 1 + Math.sin(t / 220) * 0.12;
+			mesh.scale.setScalar(pulse);
+		}
 	}
 }
 

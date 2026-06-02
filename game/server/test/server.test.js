@@ -230,7 +230,7 @@ describe('QUEST_DEFS', () => {
 			expect(quest.description).toBeTruthy();
 			expect(quest.objectiveType).toBeTruthy();
 			expect(typeof quest.rewardCurrency).toBe('number');
-			if (quest.objectiveType === 'defeat_enemies') {
+			if (quest.objectiveType === 'defeat_enemies' || quest.objectiveType === 'defeat_enemies_reach_exit') {
 				expect(typeof quest.enemyCount).toBe('number');
 			}
 			if (quest.objectiveType === 'collect_items') {
@@ -2158,6 +2158,18 @@ describe('run state', () => {
 			expect(run.objective.type).toBe('collect_items');
 			expect(run.objective.totalItems).toBe(QUEST_DEFS.crystal_rescue.itemCount);
 			expect(run.objective.collectedItems).toBe(0);
+		});
+
+		it('creates a defeat-enemies-reach-exit objective for spire ascent', () => {
+			gameState.selectedQuestId = 'spire_ascent';
+			applyLayoutForQuest(gameState, 'spire_ascent');
+			spawnEnemies();
+			const run = createRunState();
+
+			expect(run.questId).toBe('spire_ascent');
+			expect(run.objective.type).toBe('defeat_enemies_reach_exit');
+			expect(run.objective.reachedExit).toBe(false);
+			expect(run.objective.totalEnemies).toBe(QUEST_DEFS.spire_ascent.enemyCount);
 		});
 	});
 

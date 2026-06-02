@@ -265,7 +265,9 @@ const {
   spawnEnemies,
   spawnLoot,
   spawnCrystals,
+  spawnSpireExit,
   recordCrystalCollected,
+  recordSpireExitReached,
   removeDeadEnemies,
   cleanupAfterDamage,
   checkRunTerminalState,
@@ -412,6 +414,7 @@ const DEBUG_SCENARIOS = new Set([
   'sloped-dungeon',
   'spire-ascent-ready',
   'spire-ascent-top-tier',
+  'spire-ascent-exit-ready',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -558,7 +561,7 @@ function applyDebugScenario(socket, name) {
     player.debugScenario = name;
     player.pendingSummons.clear();
 
-    if (name === 'spire-ascent-ready' || name === 'spire-ascent-top-tier') {
+    if (name === 'spire-ascent-ready' || name === 'spire-ascent-top-tier' || name === 'spire-ascent-exit-ready') {
       state.selectedQuestId = 'spire_ascent';
       applyLayoutForQuest(state, 'spire_ascent');
     }
@@ -743,20 +746,30 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
-    } else if (name === 'sloped-dungeon' || name === 'spire-ascent-ready' || name === 'spire-ascent-top-tier') {
+    } else if (name === 'sloped-dungeon' || name === 'spire-ascent-ready' || name === 'spire-ascent-top-tier' || name === 'spire-ascent-exit-ready') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       if (name === 'sloped-dungeon') {
         const questId = state.selectedQuestId || DEFAULT_QUEST_ID;
         applyLayoutForQuest(state, questId);
       }
-      if (name === 'spire-ascent-top-tier') {
+      if (name === 'spire-ascent-top-tier' || name === 'spire-ascent-exit-ready') {
         const treasureRoom = state.layout?.rooms?.find((r) => r.role === 'treasure');
         if (treasureRoom) {
           player.x = treasureRoom.x;
           player.z = treasureRoom.z;
           const floorY = sampleFloorY(state.layout, player.x, player.z);
           player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+        }
+      }
+      if (name === 'spire-ascent-exit-ready') {
+        state.enemies = [];
+        if (state.run?.objective?.type === 'defeat_enemies_reach_exit') {
+          state.run.objective.defeatedEnemies = state.run.objective.totalEnemies;
+          state.run.objective.reachedExit = false;
+        }
+        if (!state.loot.some((l) => l.kind === 'spire_exit')) {
+          spawnSpireExit(state.layout, mulberry32((state.layoutSeed || 42) + 7777));
         }
       }
       io.to(lobby.id).emit('questUpdate', {
@@ -2658,11 +2671,14 @@ function startServer(port) {
         const finalDist = Math.hypot(loot.x - player.x, loot.z - player.z);
         if (finalDist <= LOOT_PICKUP_RADIUS) {
           const isCrystal = loot.kind === 'crystal';
+          const isSpireExit = loot.kind === 'spire_exit';
           const isMagicStone = loot.kind === 'magic_stone';
           if (isMagicStone) {
             addMagicStones(player, loot.value);
           } else if (isCrystal) {
             recordCrystalCollected(1);
+          } else if (isSpireExit) {
+            recordSpireExitReached();
           } else {
             player.currency += loot.value;
             player.currencyEarnedThisRun += loot.value;
@@ -2670,7 +2686,7 @@ function startServer(port) {
           state.loot.splice(i, 1);
           collected++;
 
-          if (isCrystal) {
+          if (isCrystal || isSpireExit) {
             checkRunTerminalState();
           }
         }
@@ -3145,23 +3161,26 @@ function startServer(port) {
     if (dist > LOOT_PICKUP_RADIUS) return;
 
     const isCrystal = loot.kind === 'crystal';
+    const isSpireExit = loot.kind === 'spire_exit';
     const isMagicStone = loot.kind === 'magic_stone';
     if (isMagicStone) {
       addMagicStones(player, loot.value);
     } else if (isCrystal) {
       recordCrystalCollected(1);
+    } else if (isSpireExit) {
+      recordSpireExitReached();
     } else {
       player.currency += loot.value;
       player.currencyEarnedThisRun += loot.value;
     }
     state.loot.splice(lootIdx, 1);
 
-    const lootLabel = isCrystal ? ' (crystal)' : isMagicStone ? ' (magic stone)' : '';
+    const lootLabel = isCrystal ? ' (crystal)' : isSpireExit ? ' (spire exit)' : isMagicStone ? ' (magic stone)' : '';
     console.log(`[loot] picked up id=${loot.id}${lootLabel} value=${loot.value} by ${socket.id} (currency=${player.currency}, ms=${player.magicStones})`);
 
     savePlayerData(socket.playerId);
 
-    if (isCrystal) {
+    if (isCrystal || isSpireExit) {
       checkRunTerminalState();
     }
     });
