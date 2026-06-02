@@ -20,6 +20,13 @@ class PortAllocation:
     game_server: int = _DEFAULT_GAME
     vite: int = _DEFAULT_VITE
 
+    @property
+    def vite_url(self) -> str:
+        """The URL the game is served at — must track the allocated vite port,
+        NOT a hardcoded default, or a parallel worker's screenshot capture hits
+        the wrong (or a sibling's) port."""
+        return f"http://localhost:{self.vite}/"
+
 
 def default_ports() -> PortAllocation:
     """Ports for one instance. No env set ⇒ the historical (3000, 5173) serial
