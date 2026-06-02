@@ -328,8 +328,8 @@ export function normalizeLoadedModel(model, key) {
  * an async load and swap the cloned model in for the procedural primitive on
  * success. This is fire-and-forget: callers build + return their procedural
  * mesh/group synchronously, and this only mutates it later if/when a model
- * resolves. In this sub-ticket every registry path is null, so the early return
- * always fires and visuals are byte-identical to before.
+ * resolves. When the registry path is null, the early return keeps procedural
+ * visuals unchanged.
  *
  * Resilience: a null/absent path is a no-op (procedural stays); a rejected or
  * null `loadModel` result leaves the procedural mesh in place and at most logs —
@@ -343,7 +343,7 @@ function attachRegistryModel(key, host) {
 	if (!host || !Object.prototype.hasOwnProperty.call(MODEL_REGISTRY, key)) return;
 
 	const path = modelPathFor(key);
-	if (!path) return; // null/absent path → keep procedural (the only path this ticket).
+	if (!path) return; // null/absent path → keep procedural.
 
 	// Snapshot the procedural meshes now so a later swap hides only the
 	// primitives, not the model we're about to attach.

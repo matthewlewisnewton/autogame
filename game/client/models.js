@@ -1,8 +1,8 @@
 // ── glTF Model Loading Module ──
-// Additive plumbing for loading .glb models via Three.js GLTFLoader. This module
-// only provides the loader + registry; no rendering code consumes it yet (entity
-// visuals in renderer.js are unchanged). Wiring entities to models happens in
-// later sub-tickets.
+// Additive plumbing for loading .glb models via Three.js GLTFLoader. renderer.js
+// consults MODEL_REGISTRY via attachRegistryModel to async-swap procedural meshes
+// for loaded glTF where paths are configured (enemy types wired; player/minion/loot
+// remain null until later sub-tickets).
 //
 // Usage:
 //   import { loadModel, modelPathFor, MODEL_REGISTRY } from './models.js';
@@ -15,19 +15,18 @@
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-// Registry mapping entity keys to a model path. EVERY value is null in this
-// sub-ticket — no entity uses a model yet. Keys are derived from how renderer.js
-// keys its meshes: ENEMY_GEOMETRY (enemy types), MINION_VISUAL (minion types),
-// and createLootMesh (loot kinds), plus the player.
+// Registry mapping entity keys to a web-root model path (served from public/).
+// Keys are derived from how renderer.js keys its meshes: ENEMY_GEOMETRY (enemy
+// types), MINION_VISUAL (minion types), createLootMesh (loot kinds), plus player.
 export const MODEL_REGISTRY = {
 	// Player avatar
 	player: null,
 
 	// Enemy types (renderer.js ENEMY_GEOMETRY)
-	grunt: null,
-	skirmisher: null,
-	miniboss: null,
-	spawner: null,
+	grunt: '/models/grunt.glb',
+	skirmisher: '/models/skirmisher.glb',
+	miniboss: '/models/miniboss.glb',
+	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)
 	ancient_wyrm: null,
