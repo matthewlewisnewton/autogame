@@ -745,6 +745,22 @@ function isPlayerInEnemyAttack(enemy, target, def) {
 	return isEntityInEnemyAttack(enemy, target, def);
 }
 
+/**
+ * Targeting suppression inside the fixed Smoke Veil disc (cast-point snapshot).
+ * Returns true only while the veil is active and the player stands within its
+ * horizontal radius — not a global "smoked" buff after leaving the cloud.
+ */
+function isPlayerInSmokeVeil(player) {
+	if (!player) return false;
+	const now = Date.now();
+	if (!player.smokeVeilUntil || now >= player.smokeVeilUntil) return false;
+	const radius = player.smokeVeilRadius || 0;
+	if (radius <= 0) return false;
+	const dx = player.x - player.smokeVeilX;
+	const dz = player.z - player.smokeVeilZ;
+	return Math.hypot(dx, dz) <= radius;
+}
+
 function resolveWindupTarget(enemy) {
 	const targetType = enemy.windupTargetType || 'player';
 	if (targetType === 'minion') {
@@ -1636,11 +1652,17 @@ function updateEnemies() {
 				if (target && isEntityInEnemyAttack(enemy, target, def)) {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, def.attackDamage);
+					} else if (isPlayerInSmokeVeil(target)) {
+						// Targeting cleared inside the fixed veil disc — cancel strike, no damage.
+						enemy.attackState = 'chasing';
+						continue;
 					} else {
 						damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
 					}
-					enemy.attackState = 'recovering';
-					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					if (enemy.attackState === 'windup') {
+						enemy.attackState = 'recovering';
+						enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
+					}
 					continue;
 				}
 				// Target out of range or dead — cancel attack, return to chasing
@@ -1699,6 +1721,7 @@ function updateEnemies() {
 		}
 
 		for (const player of players) {
+			if (isPlayerInSmokeVeil(player)) continue;
 			const dx = player.x - enemy.x;
 			const dz = player.z - enemy.z;
 			const dist = Math.hypot(dx, dz);
@@ -2192,6 +2215,7 @@ module.exports = {
   damageMinion,
   healPlayer,
   addDebuff,
+  isPlayerInSmokeVeil,
 
   // Card combat helpers
   collectConeHits,
