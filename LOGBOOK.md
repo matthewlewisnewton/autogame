@@ -2332,3 +2332,26 @@ foundation regressed.
 
 None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 
+
+## v0.130 — Spire Ascent Stage  (2026-06-02 13:31:01)
+
+QA, `spire-ascent` full quest). Both are members of `DEBUG_SCENARIOS`, gated by
+`isDebugScenarioAllowed` (localhost/local-origin or `ALLOW_DEBUG_SCENARIOS=1`,
+hard-off in production), and reachable only through the debug URL param. The
+same end-state is reachable in normal play: `spire_climb` is exposed in
+`listQuests()` and selectable via the `selectQuest` socket handler — proven by
+the integration test asserting `quests` now includes `spire_climb`. Neither
+scenario short-circuits server validation: both call `generateLayout` /
+`applyLayoutForQuest` and `spawnEnemies`, the same paths normal deployment uses.
+
+## Test result
+
+`npx vitest run server/test/dungeon.test.js server/test/spire_ascent_spawn.test.js
+client/test/dungeon.test.js` → **161 passed (161)**.
+
+## Remaining gaps
+
+None blocking. The acceptance criteria are fully and robustly met, the game runs
+cleanly, and the implementation reuses existing room/ramp/floor primitives
+consistent with `design.md`. Minor non-blocking items are in `nits.md`.
+
