@@ -44,6 +44,22 @@ def test_runs_frozen_lockfile_install(tmp_path):
     assert seen["cwd"] == str(tmp_path)
 
 
+def test_installs_in_game_subdir_when_lockfile_is_there(tmp_path):
+    # this repo's pnpm workspace root is game/, not the worktree root
+    game = tmp_path / "game"
+    game.mkdir()
+    (game / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+    seen = {}
+
+    def runner(cmd, **kw):
+        seen["cwd"] = kw.get("cwd")
+        return _Result(0)
+
+    ok = install_deps(tmp_path, runner=runner, which=lambda _: "/usr/bin/pnpm")
+    assert ok is True
+    assert seen["cwd"] == str(game)
+
+
 def test_reports_install_failure(tmp_path):
     (tmp_path / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
     ok = install_deps(tmp_path, which=lambda _: "/usr/bin/pnpm",

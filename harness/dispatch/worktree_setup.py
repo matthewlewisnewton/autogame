@@ -31,15 +31,21 @@ def install_deps(root: Path, *, pnpm: str = "pnpm", timeout_s: int = 600,
     `runner`/`which` are injected for testing.
     """
     root = Path(root)
-    if not (root / "pnpm-lock.yaml").exists():
-        log(f"[worktree-setup] no pnpm-lock.yaml under {root} — skipping install")
+    # The pnpm workspace root may be the worktree root or a subdir (this repo's
+    # lockfile + pnpm-workspace.yaml live under game/). Install where the
+    # lockfile actually is, or there'd be no node_modules and the game wouldn't
+    # start.
+    install_dir = next((d for d in (root, root / "game")
+                        if (d / "pnpm-lock.yaml").exists()), None)
+    if install_dir is None:
+        log(f"[worktree-setup] no pnpm-lock.yaml under {root} or {root}/game — skipping install")
         return True
     if which(pnpm) is None:
         log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install deps")
         return False
-    log(f"[worktree-setup] pnpm install --frozen-lockfile in {root} ...")
+    log(f"[worktree-setup] pnpm install --frozen-lockfile in {install_dir} ...")
     try:
-        proc = runner([pnpm, "install", "--frozen-lockfile"], cwd=str(root),
+        proc = runner([pnpm, "install", "--frozen-lockfile"], cwd=str(install_dir),
                       capture_output=True, text=True, timeout=timeout_s)
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
         log(f"[worktree-setup] pnpm install errored: {e!r}")
