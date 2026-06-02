@@ -21,7 +21,19 @@ Author-facing summary for glTF assets under this folder. Runtime loading and the
 **Proportion morphs (sub-ticket 03+):** six morph targets with exact names  
 `height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` — influence `0.0` (min) … `0.5` (neutral) … `1.0` (max). See `MODEL_SPIKE.md`.
 
-**Head anchor (hats):** prefer rig bone **`Head`**; sub-ticket 02 documents the bone name or a fixed `(x, y, z)` offset from the foot origin for hat `.glb` attachment (ticket 190).
+**Head anchor (hats, ticket 190):** attach hat props to rig bone **`Head`**. At rest (normalized mesh, foot origin):
+
+| Anchor | Value |
+|--------|--------|
+| Bone name | `Head` (65-joint humanoid skin; joint name preserved in committed `player.glb`) |
+| Bone world position | `(0, 1.592, 0)` ≈ — from foot origin after normalization |
+| Mesh crown (AABB max Y) | `1.8` |
+
+If a re-export strips bone names, use offset `(0, 1.59, 0)` from the foot origin as fallback (top of head ≈ `y = 1.55–1.65` per `MODEL_SPIKE.md`).
+
+**Source mesh:** Quaternius [Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) Standard zip — `Superhero_Male_FullBody.gltf` (the Standard glTF set ships Superhero bodies only; `SPIKE_DECISION.md` names Regular Male as the long-term proportion target when available from Source).
+
+**Re-export / normalization (keep consistent):** import base glTF → apply scale/rotation so feet sit at `y = 0`, forward **−Z**, AABB height **1.8**, max XZ half-extent **0.5** → export glTF 2.0 binary, applied transforms, **Draco off**, textures embedded as in source pack.
 
 **Export tips:** glTF 2.0 binary, applied transforms, Draco compression off, single humanoid per `player.glb` until morph variants are merged in Blender.
 
