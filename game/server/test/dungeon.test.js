@@ -8,6 +8,9 @@ import {
   assignRoomRoles,
   roomsByRole,
   randomRoomPositionByRole,
+  isInsideCover,
+  nudgeClearOfCover,
+  randomRoomPositionClearOfCover,
   sampleFloorY,
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
@@ -1380,5 +1383,132 @@ describe('open-plaza cover pieces', () => {
     const a = generateLayout(1, 'open-plaza');
     const b = generateLayout(2, 'open-plaza');
     expect(a.cover).not.toEqual(b.cover);
+  });
+});
+
+describe('cover-aware spawn placement (open plaza)', () => {
+  const COVER_PAD = 0.5; // matches dungeon PLAYER_RADIUS used by the guards
+
+  // Inside the solid cover footprint — the "stuck inside a pillar" failure.
+  function insideSolidCover(x, z, layout) {
+    return layout.cover.some(c =>
+      x > c.x - c.width / 2 && x < c.x + c.width / 2 &&
+      z > c.z - c.depth / 2 && z < c.z + c.depth / 2);
+  }
+
+  // Inside the cover footprint inflated by the entity radius — the guarantee.
+  function insideInflatedCover(x, z, layout, pad = COVER_PAD) {
+    return layout.cover.some(c =>
+      x > c.x - c.width / 2 - pad && x < c.x + c.width / 2 + pad &&
+      z > c.z - c.depth / 2 - pad && z < c.z + c.depth / 2 + pad);
+  }
+
+  function withinPlazaFloor(x, z, layout) {
+    const limit = layout.rooms[0].width / 2; // perimeter wall; samples stay well inside
+    return x > -limit && x < limit && z > -limit && z < limit;
+  }
+
+  it('isInsideCover flags points inside a footprint and clears the spawn centre', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const piece = layout.cover[0];
+    expect(isInsideCover(piece.x, piece.z, layout)).toBe(true);
+    // Generation keeps the plaza centre (spawn) clear of cover.
+    expect(isInsideCover(0, 0, layout)).toBe(false);
+  });
+
+  it('isInsideCover is a no-op on layouts without a cover array', () => {
+    const layout = generateLayout(7, 'crowded');
+    expect(layout.cover).toBeUndefined();
+    for (const room of layout.rooms) {
+      expect(isInsideCover(room.x, room.z, layout)).toBe(false);
+    }
+  });
+
+  it('nudgeClearOfCover pushes a point out of cover while staying in the room', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const room = layout.rooms[0];
+    const piece = layout.cover[0];
+    const nudged = nudgeClearOfCover(piece.x, piece.z, layout, room);
+    expect(isInsideCover(nudged.x, nudged.z, layout)).toBe(false);
+    expect(withinPlazaFloor(nudged.x, nudged.z, layout)).toBe(true);
+  });
+
+  it('randomRoomPositionClearOfCover never lands inside cover across many draws', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const room = layout.rooms[0];
+    const rng = mulberry32(99);
+    for (let i = 0; i < 3000; i++) {
+      const pos = randomRoomPositionClearOfCover(room, layout, rng);
+      expect(insideSolidCover(pos.x, pos.z, layout)).toBe(false);
+      expect(insideInflatedCover(pos.x, pos.z, layout)).toBe(false);
+      expect(withinPlazaFloor(pos.x, pos.z, layout)).toBe(true);
+    }
+  });
+
+  it('randomRoomPositionByRole yields only cover-clear positions on the plaza', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const rng = mulberry32(2024);
+    for (let i = 0; i < 3000; i++) {
+      // No 'combat' room on the plaza -> falls back to the single start room.
+      const pos = randomRoomPositionByRole(layout, 'combat', rng);
+      expect(insideInflatedCover(pos.x, pos.z, layout)).toBe(false);
+      expect(withinPlazaFloor(pos.x, pos.z, layout)).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed/layout yields identical cover-aware positions', () => {
+    const layout = generateLayout(7, 'open-plaza');
+    const room = layout.rooms[0];
+    const a = mulberry32(555);
+    const b = mulberry32(555);
+    for (let i = 0; i < 200; i++) {
+      expect(randomRoomPositionClearOfCover(room, layout, a))
+        .toEqual(randomRoomPositionClearOfCover(room, layout, b));
+    }
+    const c = mulberry32(777);
+    const d = mulberry32(777);
+    for (let i = 0; i < 200; i++) {
+      expect(randomRoomPositionByRole(layout, 'combat', c))
+        .toEqual(randomRoomPositionByRole(layout, 'combat', d));
+    }
+  });
+
+  it('cover-free layout: positions match the legacy sampler byte-for-byte', () => {
+    const layout = generateLayout(7, 'crowded');
+    const room = layout.rooms[1] || layout.rooms[0];
+    const SPAWN_PADDING = 2;
+    const rngActual = mulberry32(42);
+    const rngExpected = mulberry32(42);
+    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+    for (let i = 0; i < 300; i++) {
+      const actual = randomRoomPositionClearOfCover(room, layout, rngActual);
+      const expected = {
+        x: room.x + (rngExpected() * 2 - 1) * halfW,
+        z: room.z + (rngExpected() * 2 - 1) * halfD,
+      };
+      expect(actual).toEqual(expected);
+    }
+  });
+
+  it('cover-free layout: randomRoomPositionByRole matches the original implementation', () => {
+    const layout = generateLayout(7, 'crowded');
+    const SPAWN_PADDING = 2;
+    const rngActual = mulberry32(13);
+    const rngExpected = mulberry32(13);
+    for (let i = 0; i < 300; i++) {
+      const actual = randomRoomPositionByRole(layout, 'combat', rngActual);
+      // Replicate the original: pick from the role/fallback pool, then sample.
+      const matched = roomsByRole(layout, 'combat');
+      const pool = matched.length > 0 ? matched : layout.rooms;
+      const room = pool[Math.floor(rngExpected() * pool.length)];
+      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+      const expected = {
+        x: room.x + (rngExpected() * 2 - 1) * halfW,
+        z: room.z + (rngExpected() * 2 - 1) * halfD,
+      };
+      expect(actual).toEqual(expected);
+    }
   });
 });

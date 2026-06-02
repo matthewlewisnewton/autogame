@@ -17,12 +17,17 @@ const {
   ATTACK_RANGE,
   STALE_THRESHOLD,
   BOUNDS_MARGIN,
-  SPAWN_PADDING,
   MAX_HP,
   RESPAWN_DELAY_MS,
   COOLDOWN_MS
 } = require('./config');
-const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y } = require('./dungeon');
+const {
+  PASSAGE_WIDTH,
+  sampleFloorY,
+  DEFAULT_FLOOR_Y,
+  nudgeClearOfCover,
+  randomRoomPositionClearOfCover,
+} = require('./dungeon');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -599,46 +604,14 @@ function firstRoomPosition() {
 }
 
 /**
- * If (x, z) lands inside a cover piece (footprint inflated by the player
- * radius), search outward in rings for the nearest clear point within the room.
- * Returns { x, z }. A no-op when the layout has no cover or the point is
- * already clear — open-plaza generation keeps spawn clear, this is defensive.
- */
-function nudgeClearOfCover(x, z, layout, room) {
-  const cover = layout && layout.cover;
-  if (!Array.isArray(cover) || cover.length === 0) return { x, z };
-
-  const inCover = (px, pz) => cover.some(c =>
-    px > c.x - c.width / 2 - PLAYER_RADIUS && px < c.x + c.width / 2 + PLAYER_RADIUS &&
-    pz > c.z - c.depth / 2 - PLAYER_RADIUS && pz < c.z + c.depth / 2 + PLAYER_RADIUS);
-
-  if (!inCover(x, z)) return { x, z };
-
-  const halfW = Math.max(0, room.width / 2 - PLAYER_RADIUS);
-  const halfD = Math.max(0, room.depth / 2 - PLAYER_RADIUS);
-  const maxRadius = Math.max(room.width, room.depth);
-  for (let radius = 1; radius <= maxRadius; radius += 1) {
-    for (let a = 0; a < 16; a++) {
-      const ang = (a / 16) * Math.PI * 2;
-      const nx = Math.max(room.x - halfW, Math.min(room.x + halfW, x + Math.cos(ang) * radius));
-      const nz = Math.max(room.z - halfD, Math.min(room.z + halfD, z + Math.sin(ang) * radius));
-      if (!inCover(nx, nz)) return { x: nx, z: nz };
-    }
-  }
-  return { x, z };
-}
-
-/**
- * Returns random position in a random room.
+ * Returns random position in a random room. On layouts that carry `cover` (the
+ * open plaza) the point is kept clear of cover footprints; with no cover this
+ * behaves exactly like the legacy random-room sampler.
  */
 function randomRoomPosition() {
-  const room = _gameState.layout.rooms[Math.floor(Math.random() * _gameState.layout.rooms.length)];
-  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-  return {
-    x: room.x + (Math.random() * 2 - 1) * halfW,
-    z: room.z + (Math.random() * 2 - 1) * halfD,
-  };
+  const layout = _gameState.layout;
+  const room = layout.rooms[Math.floor(Math.random() * layout.rooms.length)];
+  return randomRoomPositionClearOfCover(room, layout, Math.random);
 }
 
 /**

@@ -742,6 +742,11 @@ function assignRoomRoles(layout) {
 
 const SPAWN_PADDING = 2;
 
+// Bounded resample budget for cover-aware sampling before falling back to a
+// deterministic outward nudge. Kept small so determinism stays cheap and the
+// seeded helpers consume a predictable amount of the RNG stream.
+const COVER_RESAMPLE_ATTEMPTS = 12;
+
 /**
  * Return rooms from the layout matching the given role string.
  */
@@ -750,20 +755,78 @@ function roomsByRole(layout, role) {
 }
 
 /**
+ * True when (x, z) lands inside any `layout.cover` footprint, inflated by `pad`
+ * (defaults to the player radius). Layouts without a `cover` array are never
+ * "inside cover", so cover-aware callers degrade to a plain sampler on the
+ * ordinary rooms-and-passages layouts.
+ */
+function isInsideCover(x, z, layout, pad = PLAYER_RADIUS) {
+  const cover = layout && layout.cover;
+  if (!Array.isArray(cover) || cover.length === 0) return false;
+  return cover.some(c => pointInBounds(x, z, coverBounds(c, pad)));
+}
+
+/**
+ * If (x, z) lands inside a cover piece (footprint inflated by `pad`), search
+ * outward in rings for the nearest point within the room that is clear of all
+ * cover. Returns { x, z }. A no-op when the layout has no cover or the point is
+ * already clear. (This is the shared logic simulation.js used to keep private.)
+ */
+function nudgeClearOfCover(x, z, layout, room, pad = PLAYER_RADIUS) {
+  if (!isInsideCover(x, z, layout, pad)) return { x, z };
+
+  const halfW = Math.max(0, room.width / 2 - pad);
+  const halfD = Math.max(0, room.depth / 2 - pad);
+  const maxRadius = Math.max(room.width, room.depth);
+  for (let radius = 1; radius <= maxRadius; radius += 1) {
+    for (let a = 0; a < 16; a++) {
+      const ang = (a / 16) * Math.PI * 2;
+      const nx = Math.max(room.x - halfW, Math.min(room.x + halfW, x + Math.cos(ang) * radius));
+      const nz = Math.max(room.z - halfD, Math.min(room.z + halfD, z + Math.sin(ang) * radius));
+      if (!isInsideCover(nx, nz, layout, pad)) return { x: nx, z: nz };
+    }
+  }
+  return { x, z };
+}
+
+/**
+ * Sample a random position inside `room` (within SPAWN_PADDING of its walls)
+ * that is clear of all cover footprints. Draws once like the legacy sampler;
+ * if that point is inside cover it resamples up to COVER_RESAMPLE_ATTEMPTS times
+ * and finally nudges outward to the nearest clear floor. `rng` is consumed
+ * deterministically, and on a cover-free layout exactly one (x, z) pair is
+ * drawn — identical to the legacy sampler — so seeded callers are unaffected.
+ */
+function randomRoomPositionClearOfCover(room, layout, rng, pad = PLAYER_RADIUS) {
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  const sample = () => ({
+    x: room.x + (rng() * 2 - 1) * halfW,
+    z: room.z + (rng() * 2 - 1) * halfD,
+  });
+
+  let pos = sample();
+  if (!isInsideCover(pos.x, pos.z, layout, pad)) return pos;
+
+  for (let attempt = 0; attempt < COVER_RESAMPLE_ATTEMPTS; attempt++) {
+    pos = sample();
+    if (!isInsideCover(pos.x, pos.z, layout, pad)) return pos;
+  }
+  return nudgeClearOfCover(pos.x, pos.z, layout, room, pad);
+}
+
+/**
  * Return a random position {x, z} within a room of the specified role.
  * Uses a seeded RNG (Mulberry32) for determinism.
- * Falls back to any room when no rooms match the requested role.
+ * Falls back to any room when no rooms match the requested role. When the
+ * layout carries `cover` (the open plaza), the point is kept clear of cover
+ * footprints; with no cover this is byte-for-byte the original sampler.
  */
 function randomRoomPositionByRole(layout, role, rng) {
   const matched = roomsByRole(layout, role);
   const pool = matched.length > 0 ? matched : layout.rooms;
   const room = pool[Math.floor(rng() * pool.length)];
-  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-  return {
-    x: room.x + (rng() * 2 - 1) * halfW,
-    z: room.z + (rng() * 2 - 1) * halfD,
-  };
+  return randomRoomPositionClearOfCover(room, layout, rng);
 }
 
 // ── Exports ──
@@ -778,6 +841,9 @@ module.exports = {
   assignRoomRoles,
   roomsByRole,
   randomRoomPositionByRole,
+  isInsideCover,
+  nudgeClearOfCover,
+  randomRoomPositionClearOfCover,
   sampleFloorY,
   questLayoutSeed,
   normalizeLayoutProfile,

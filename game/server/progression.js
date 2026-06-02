@@ -11,7 +11,6 @@ const {
   LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
-  SPAWN_PADDING,
   LOOT_SPAWN_CHANCE,
   VICTORY_REWARD_ROTATION,
   ENEMY_CARD_DROPS,
@@ -37,6 +36,7 @@ const {
   mulberry32,
   roomsByRole,
   randomRoomPositionByRole,
+  randomRoomPositionClearOfCover,
   sampleFloorY,
   DEFAULT_FLOOR_Y,
 } = require('./dungeon');
@@ -2523,12 +2523,7 @@ function spawnCrystals(layout, rng, count) {
 
   for (let i = 0; i < itemCount; i++) {
     const room = roomPool[i % roomPool.length];
-    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-    const pos = {
-      x: room.x + (rng() * 2 - 1) * halfW,
-      z: room.z + (rng() * 2 - 1) * halfD,
-    };
+    const pos = randomRoomPositionClearOfCover(room, layout, rng);
     const id = crypto.randomUUID();
     _gameState.loot.push({
       id,
@@ -2542,13 +2537,8 @@ function spawnCrystals(layout, rng, count) {
   }
 }
 
-function randomPositionInRoom(room, rng) {
-  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-  return {
-    x: room.x + (rng() * 2 - 1) * halfW,
-    z: room.z + (rng() * 2 - 1) * halfD,
-  };
+function randomPositionInRoom(room, rng, layout = _gameState && _gameState.layout) {
+  return randomRoomPositionClearOfCover(room, layout, rng);
 }
 
 function nearestCombatRoom(layout) {
@@ -2571,7 +2561,7 @@ function nearestCombatRoom(layout) {
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
-    if (nearest) return randomPositionInRoom(nearest, rng);
+    if (nearest) return randomPositionInRoom(nearest, rng, layout);
   }
 
   const combatRooms = roomsByRole(layout, 'combat');
@@ -2582,7 +2572,7 @@ function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
   }
   if (nonStartRooms.length > 0) {
     const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
-    return randomPositionInRoom(room, rng);
+    return randomPositionInRoom(room, rng, layout);
   }
   return randomRoomPosition();
 }
@@ -2611,20 +2601,10 @@ function spawnLoot(layout, rng) {
 
   if (treasureRooms.length > 0) {
     const room = treasureRooms[Math.floor(rng() * treasureRooms.length)];
-    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-    pos = {
-      x: room.x + (rng() * 2 - 1) * halfW,
-      z: room.z + (rng() * 2 - 1) * halfD,
-    };
+    pos = randomRoomPositionClearOfCover(room, layout, rng);
   } else if (nonStartRooms.length > 0) {
     const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
-    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-    pos = {
-      x: room.x + (rng() * 2 - 1) * halfW,
-      z: room.z + (rng() * 2 - 1) * halfD,
-    };
+    pos = randomRoomPositionClearOfCover(room, layout, rng);
   } else {
     pos = randomRoomPosition();
   }
