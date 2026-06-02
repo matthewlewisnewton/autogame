@@ -2568,13 +2568,32 @@ function nearestCombatRoom(layout) {
   return nearest;
 }
 
-function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
+function isTieredLayout(layout) {
+  return layout.stage === 'spire-ascent' || layout.rooms.some(r => r.tierIndex != null);
+}
+
+function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = null) {
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
     if (nearest) return randomPositionInRoom(nearest, rng);
   }
 
   const combatRooms = roomsByRole(layout, 'combat');
+  if (isTieredLayout(layout) && spawnIndex != null && combatRooms.length >= 2) {
+    const sorted = [...combatRooms].sort((a, b) => (a.tierIndex ?? 0) - (b.tierIndex ?? 0));
+    const uniqueTiers = [];
+    for (const room of sorted) {
+      const tier = room.tierIndex ?? 0;
+      if (!uniqueTiers.includes(tier)) uniqueTiers.push(tier);
+    }
+    if (uniqueTiers.length >= 2) {
+      const targetTier = uniqueTiers[spawnIndex % uniqueTiers.length];
+      const tierRooms = sorted.filter(r => (r.tierIndex ?? 0) === targetTier);
+      const room = tierRooms[Math.floor(rng() * tierRooms.length)];
+      return randomPositionInRoom(room, rng);
+    }
+  }
+
   const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
 
   if (combatRooms.length > 0) {
@@ -2593,10 +2612,17 @@ function spawnCombatEnemies(layout, rng, quest) {
   const preferNearest = quest.objectiveType === 'collect_items';
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
 
+  const spreadAcrossTiers = isTieredLayout(layout) && enemyCount >= 2;
+
   for (let i = 0; i < enemyCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
-    const pos = pickEnemySpawnPosition(layout, rng, useNearest);
+    const pos = pickEnemySpawnPosition(
+      layout,
+      rng,
+      useNearest,
+      spreadAcrossTiers ? i : null
+    );
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
   }

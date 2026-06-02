@@ -1,5 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import config from '../config.js';
+import { questLayoutSeed } from '../dungeon.js';
+import { getLayoutProfileForQuest } from '../quests.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -221,7 +223,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['crystal_rescue', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['crystal_rescue', 'spire_ascent', 'training_caverns']);
 
 		for (const quest of Object.values(QUEST_DEFS)) {
 			expect(quest.id).toBeTruthy();
@@ -4364,6 +4366,40 @@ describe('spawnEnemies() mixed pack', () => {
 			e => Math.hypot(e.x - start.x, e.z - start.z) <= nearbyThreshold
 		);
 		expect(nearbyEnemies.length).toBeGreaterThanOrEqual(2);
+	});
+
+	it('distributes spire-ascent enemies across multiple combat tiers', () => {
+		const questId = 'spire_ascent';
+		const seed = questLayoutSeed(questId);
+		const profile = getLayoutProfileForQuest(questId);
+		gameState.selectedQuestId = questId;
+		gameState.layoutSeed = seed;
+		gameState.layout = generateLayout(seed, profile, { stage: 'spire-ascent', slopes: true });
+		gameState.enemies = [];
+
+		const combatTiers = new Set(
+			gameState.layout.rooms.filter(r => r.role === 'combat').map(r => r.tierIndex)
+		);
+		expect(combatTiers.size).toBeGreaterThanOrEqual(2);
+
+		spawnEnemies();
+
+		const roomForPosition = (x, z) => gameState.layout.rooms.find(r => {
+			const hw = r.width / 2;
+			const hd = r.depth / 2;
+			return x >= r.x - hw && x <= r.x + hw && z >= r.z - hd && z <= r.z + hd;
+		});
+
+		const enemyTiers = new Set();
+		for (const enemy of gameState.enemies) {
+			const room = roomForPosition(enemy.x, enemy.z);
+			expect(room).toBeDefined();
+			expect(room.role).toBe('combat');
+			expect(room.role).not.toBe('start');
+			expect(room.role).not.toBe('treasure');
+			enemyTiers.add(room.tierIndex);
+		}
+		expect(enemyTiers.size).toBeGreaterThanOrEqual(2);
 	});
 });
 

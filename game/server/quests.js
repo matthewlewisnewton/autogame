@@ -17,7 +17,17 @@ const QUEST_DEFS = {
     enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
-  }
+  },
+  spire_ascent: {
+    id: 'spire_ascent',
+    name: 'Spire Ascent',
+    description: 'Climb the vertical annex and purge hostiles tier by tier.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 5,
+    rewardCurrency: 15,
+    layoutProfile: 'crowded',
+    layoutStage: 'spire-ascent',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';

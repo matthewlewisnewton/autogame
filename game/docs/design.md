@@ -12,6 +12,8 @@ This game is a 3D multiplayer action-RPG that combines elements from *Phantasy S
 ### Floor Geometry
 Dungeon rooms and passages may have sloped floors (ramps) with varying elevation across their vertices. The walkable surface height at any `(x, z)` coordinate is determined by `sampleFloorY()`, which interpolates across the room's floor corner positions. Each room carries a `floorCorners: { yNW, yNE, ySE, ySW }` object specifying the Y height at each corner; corners are labelled NW/NE/SE/SW relative to room center (NW = top-left, counter-clockwise). Player movement on slopes — adjusting `player.y` to follow the floor surface — is implemented in ticket 117. Floor sampling logic lives in `shared/floorSampling.esm.js`; see `shared/floorSampling.js` for the CJS eval-bridge.
 
+**Stage variants:** `spire-ascent` is a vertical tower layout (3–5 tiers stacked along +Z with ramp passages). Quest defs set `layoutStage: 'spire-ascent'` (e.g. `spire_ascent` in `quests.js`); `applyLayoutForQuest` passes it to `generateLayout`. Debug shortcut: `?debugScenario=spire-ramp-passage`.
+
 ## Run Suspend / Resume
 Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon without losing the current run state.
 

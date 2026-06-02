@@ -9,6 +9,7 @@ const {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
   isValidQuestId,
+  getQuest,
   getLayoutProfileForQuest,
   buildQuestUpdatePayload
 } = require('./quests');
@@ -332,8 +333,13 @@ setSavePlayerCallback(savePlayerData);
 function applyLayoutForQuest(state, questId) {
   const profile = getLayoutProfileForQuest(questId);
   const seed = questLayoutSeed(questId);
+  const quest = getQuest(questId);
+  const layoutOptions = { slopes: true };
+  if (quest && quest.layoutStage) {
+    layoutOptions.stage = quest.layoutStage;
+  }
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile, { slopes: true });
+  state.layout = generateLayout(seed, profile, layoutOptions);
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already

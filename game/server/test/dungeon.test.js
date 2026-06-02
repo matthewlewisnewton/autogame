@@ -28,6 +28,7 @@ import {
   SPIRE_MIN_RAMP_SLOPE,
 } from '../dungeon.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
+import { QUEST_DEFS, getLayoutProfileForQuest } from '../quests.js';
 
 const PLAYER_RADIUS = 0.45;
 const WALK_STEP = 0.4;
@@ -1396,5 +1397,20 @@ describe('generateLayout spire-ascent stage', () => {
   it('respects profile passageWidth only', () => {
     const layout = generateLayout(42, 'open', { stage: 'spire-ascent' });
     expect(layout.passageWidth).toBe(LAYOUT_PROFILES.open.passageWidth);
+  });
+});
+
+describe('spire_ascent quest layout plumbing', () => {
+  it('quest def selects spire-ascent stage with slopes in generateLayout', () => {
+    const questId = 'spire_ascent';
+    const quest = QUEST_DEFS[questId];
+    const profile = getLayoutProfileForQuest(questId);
+    const layout = generateLayout(questLayoutSeed(questId), profile, {
+      stage: quest.layoutStage,
+      slopes: true,
+    });
+    expect(layout.stage).toBe('spire-ascent');
+    expect(layout.rooms[layout.rooms.length - 1].role).toBe('treasure');
+    expect(layout.rooms[layout.rooms.length - 1].tierIndex).toBe(layout.rooms.length - 1);
   });
 });
