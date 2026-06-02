@@ -36,20 +36,25 @@ function stubClass(name) {
 			// MeshStandardMaterial constructor: (options) — store properties
 			if (name === 'MeshStandardMaterial' && args[0] && typeof args[0] === 'object') {
 				Object.assign(this, args[0]);
-				// Wrap numeric color into an object with getHex() for test compatibility
-				if (typeof this.color === 'number') {
-					this.color = { _value: this.color, getHex: function() { return this._value; }, setHex: function(v) { this._value = v; } };
-				}
-				// Wrap numeric emissive the same way
-				if (typeof this.emissive === 'number') {
-					this.emissive = { _value: this.emissive, getHex: function() { return this._value; }, setHex: function(v) { this._value = v; }, set: function(v) { this._value = v; } };
-				}
+				const wrapColorField = (field) => {
+					const val = this[field];
+					if (val && typeof val.set === 'function') return;
+					const initial = val ?? '#ffffff';
+					this[field] = {
+						_value: initial,
+						set: function(v) { this._value = v; },
+						getHex: function() { return this._value; },
+						setHex: function(v) { this._value = v; },
+					};
+				};
+				wrapColorField('color');
+				wrapColorField('emissive');
 			}
 			if (name === 'MeshBasicMaterial' && args[0] && typeof args[0] === 'object') {
 				Object.assign(this, args[0]);
 			}
 			// Geometry constructors — store parameters so tests can inspect them
-			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CircleGeometry', 'EdgesGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'BufferGeometry'];
+			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CircleGeometry', 'EdgesGeometry', 'CylinderGeometry', 'CapsuleGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'BufferGeometry'];
 			if (geoNames.includes(name)) {
 				this.parameters = {};
 				if (name === 'ConeGeometry') {
@@ -66,6 +71,8 @@ function stubClass(name) {
 					this.parameters = { geometry: args[0] };
 				} else if (name === 'CylinderGeometry') {
 					this.parameters = { radiusTop: args[0], radiusBottom: args[1], height: args[2], radialSegments: args[3] };
+				} else if (name === 'CapsuleGeometry') {
+					this.parameters = { radius: args[0], length: args[1], capSegments: args[2], radialSegments: args[3] };
 				} else if (name === 'PlaneGeometry') {
 					this.parameters = { width: args[0], height: args[1] };
 				} else if (name === 'IcosahedronGeometry') {
@@ -127,6 +134,7 @@ function stubClass(name) {
 		return this;
 	};
 	C.prototype.setSize = function() {};
+	C.prototype.setPixelRatio = function() {};
 	C.prototype.render = function() {};
 	C.prototype.updateProjectionMatrix = function() {};
 	C.prototype.getDelta = function() { return 0.016; };
@@ -150,6 +158,7 @@ export const THREE = {
 	CircleGeometry: stubClass('CircleGeometry'),
 	EdgesGeometry: stubClass('EdgesGeometry'),
 	CylinderGeometry: stubClass('CylinderGeometry'),
+	CapsuleGeometry: stubClass('CapsuleGeometry'),
 	ConeGeometry: stubClass('ConeGeometry'),
 	PlaneGeometry: stubClass('PlaneGeometry'),
 	IcosahedronGeometry: stubClass('IcosahedronGeometry'),
@@ -204,6 +213,7 @@ export const RingGeometry = THREE.RingGeometry;
 export const CircleGeometry = THREE.CircleGeometry;
 export const EdgesGeometry = THREE.EdgesGeometry;
 export const CylinderGeometry = THREE.CylinderGeometry;
+export const CapsuleGeometry = THREE.CapsuleGeometry;
 export const ConeGeometry = THREE.ConeGeometry;
 export const PlaneGeometry = THREE.PlaneGeometry;
 export const IcosahedronGeometry = THREE.IcosahedronGeometry;
