@@ -122,10 +122,14 @@ def _cmd_factory(workers: int, enable: Optional[str], max_idle_ticks: int) -> in
     return run_factory(str(Path.cwd()), workers=workers, max_idle_ticks=max_idle_ticks)
 
 
-def _write_implementer_override(root: Path, agent: str) -> None:
-    """Force the implementer role's primary to `agent` via roles.local.yaml
-    (field-level merged onto roles.yaml — overrides only implementer.primary).
-    roles.local.yaml is gitignored, so this never dirties the worktree."""
+def _write_worker_role_overrides(root: Path, agent: str) -> None:
+    """Force BOTH the implementer and decomposer roles' primary to `agent` via
+    roles.local.yaml (field-level merged onto roles.yaml). The worker that claims
+    a ticket owns its whole authoring pipeline — planning (decompose) AND
+    implementation — so it must not fall back to the shared qwen decomposer
+    (that both serializes every worker on the single ollama box and divorces a
+    ticket's planning from the agent that implements it). roles.local.yaml is
+    gitignored, so this never dirties the worktree."""
     import yaml
     local = Path(root) / "harness" / "roles.local.yaml"
     data: dict = {}
@@ -134,7 +138,9 @@ def _write_implementer_override(root: Path, agent: str) -> None:
             data = yaml.safe_load(local.read_text()) or {}
         except yaml.YAMLError:
             data = {}
-    data.setdefault("roles", {}).setdefault("implementer", {})["primary"] = agent
+    roles = data.setdefault("roles", {})
+    for role_name in ("implementer", "decomposer"):
+        roles.setdefault(role_name, {})["primary"] = agent
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(yaml.safe_dump(data, sort_keys=False))
 
@@ -150,7 +156,7 @@ def _cmd_worker(name: str, agent: str) -> int:
     from harness.pipelines.ticket import TicketContext, ticket
     from harness.pipelines.result import PipelineResult
     from harness.telemetry.progress import emit_progress_event
-    _write_implementer_override(Path.cwd(), agent)
+    _write_worker_role_overrides(Path.cwd(), agent)
     workspace = _build_workspace()
     roster = _build_roster()
     tdir = Path(workspace.root) / "tickets" / name
