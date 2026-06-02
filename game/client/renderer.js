@@ -395,9 +395,7 @@ function syncFacingToServer() {
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
-	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
-	const targetY = playerY + CAMERA_HEIGHT;
-	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
+	const { targetX, targetY, targetZ } = computeCameraOrbitTarget(playerX, playerY, playerZ, cameraYaw);
 
 	if (lockOnReleaseLookAt) {
 		const target = new THREE.Vector3(targetX, targetY, targetZ);
@@ -423,6 +421,15 @@ function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	} else {
 		camera.lookAt(playerX, playerY, playerZ);
 	}
+}
+
+/** Orbit camera anchor from player world position (exported for unit tests). */
+export function computeCameraOrbitTarget(playerX, playerY, playerZ, yaw = 0) {
+	return {
+		targetX: playerX + Math.sin(yaw) * CAMERA_DISTANCE,
+		targetY: playerY + CAMERA_HEIGHT,
+		targetZ: playerZ + Math.cos(yaw) * CAMERA_DISTANCE,
+	};
 }
 
 // ── Public API ──
@@ -757,12 +764,6 @@ export function initScene(layout, spawnPos) {
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
 	cameraYaw = 0;
-	camera.position.set(
-		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		CAMERA_HEIGHT,
-		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
-	);
-	camera.lookAt(spawnPosition.x, 0, spawnPosition.z);
 
 	// Renderer
 	renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -789,6 +790,13 @@ export function initScene(layout, spawnPos) {
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
 	}
+
+	const spawnFloorY = layout
+		? (sampleFloorY(layout, spawnPosition.x, spawnPosition.z) ?? DEFAULT_FLOOR_Y)
+		: DEFAULT_FLOOR_Y;
+	const initialCam = computeCameraOrbitTarget(spawnPosition.x, spawnFloorY, spawnPosition.z, cameraYaw);
+	camera.position.set(initialCam.targetX, initialCam.targetY, initialCam.targetZ);
+	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
 	// Place player at spawn position
 	myX = spawnPosition.x;

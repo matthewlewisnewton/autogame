@@ -15,6 +15,8 @@ import { PASSAGE_WIDTH, BOUNDS_MARGIN } from './config.js';
 // ── Visual constants ──
 
 export const WALL_HEIGHT = 2.5;
+/** Matches server PARAPET_WALL_HEIGHT — low vista walls on sunken-canyon plateau edge. */
+export const PARAPET_WALL_HEIGHT = 1.2;
 export const WALL_THICKNESS = 0.4;
 export const FLOOR_Y = 0.05; // slightly above background to avoid z-fighting
 export const GROUND_Y = -0.02; // background plane sits below room floor bottoms (y=0)
@@ -53,6 +55,20 @@ export function isUniformFloor(room) {
 	if (!fc) return true;
 	const v = fc.yNW;
 	return fc.yNE === v && fc.ySE === v && fc.ySW === v;
+}
+
+/** Y center for a flat (uniform) room floor mesh; legacy rooms use FLOOR_Y. */
+export function uniformFloorElevation(room) {
+	const fc = room.floorCorners;
+	if (!fc) return FLOOR_Y;
+	return fc.yNW;
+}
+
+/** Visual height for a room wall segment (parapet / height override on sunken-canyon). */
+export function resolveWallHeight(wall, layout) {
+	if (Number.isFinite(wall.height)) return wall.height;
+	if (wall.parapet && layout?.profile === 'sunken-canyon') return PARAPET_WALL_HEIGHT;
+	return WALL_HEIGHT;
 }
 
 /**
@@ -215,7 +231,7 @@ export function buildDungeon(scene, layout) {
 		if (isUniformFloor(room)) {
 			const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
 			floorMesh = new THREE.Mesh(floorGeo, floorMat);
-			floorMesh.position.set(room.x, FLOOR_Y, room.z);
+			floorMesh.position.set(room.x, uniformFloorElevation(room), room.z);
 		} else {
 			const { mesh } = buildSlopedFloor(room, floorMat);
 			floorMesh = mesh;
@@ -234,22 +250,23 @@ export function buildDungeon(scene, layout) {
 
 		// Room walls
 		for (const wall of room.walls) {
+			const wallHeight = resolveWallHeight(wall, layout);
 			let wallGeo;
 			let wallX, wallZ;
 
 			if (wall.axis === 'x') {
-				wallGeo = new THREE.BoxGeometry(wall.length, WALL_HEIGHT, WALL_THICKNESS);
+				wallGeo = new THREE.BoxGeometry(wall.length, wallHeight, WALL_THICKNESS);
 				wallX = wall.x;
 				wallZ = wall.z;
 			} else {
-				wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, WALL_HEIGHT, wall.length);
+				wallGeo = new THREE.BoxGeometry(WALL_THICKNESS, wallHeight, wall.length);
 				wallX = wall.x;
 				wallZ = wall.z;
 			}
 
 			const wallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
 			const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
-			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
+			wallMesh.position.set(wallX, wallBaseY + wallHeight / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}

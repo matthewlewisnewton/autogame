@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorElevation, resolveWallHeight, FLOOR_Y, WALL_HEIGHT, PARAPET_WALL_HEIGHT } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -145,7 +145,7 @@ describe('buildDungeon() with floorCorners', () => {
 		// ground (index 0) + floor (index 1)
 		expect(result.meshes.length).toBe(2);
 		const floor = result.meshes[1];
-		expect(floor.position.y).toBe(FLOOR_Y);
+		expect(floor.position.y).toBe(0.5);
 		expect(floor.rotation.x).toBe(0);
 		expect(floor.rotation.z).toBe(0);
 	});
@@ -204,8 +204,8 @@ describe('buildDungeon() with floorCorners', () => {
 		expect(result.meshes[1].rotation.x).toBe(0);
 		// Room 1: sloped, rotated
 		expect(result.meshes[2].rotation.x).toBeGreaterThan(0);
-		// Room 2: flat at FLOOR_Y, no rotation
-		expect(result.meshes[3].position.y).toBe(FLOOR_Y);
+		// Room 2: flat at explicit corner Y, no rotation
+		expect(result.meshes[3].position.y).toBe(0.5);
 		expect(result.meshes[3].rotation.x).toBe(0);
 	});
 
@@ -343,5 +343,49 @@ describe('open-plaza cover & platforms', () => {
 		// ground(1) + room floor(1) = 2 meshes; no extra cover/platform geometry.
 		expect(result.meshes.length).toBe(2);
 		expect(buildWallColliders(layout).length).toBe(0);
+	});
+});
+
+describe('sunken-canyon vista walls and elevation', () => {
+	it('resolveWallHeight honors wall.height and parapet tag', () => {
+		const sunken = { profile: 'sunken-canyon' };
+		expect(resolveWallHeight({ height: 1.2, axis: 'x' }, sunken)).toBe(1.2);
+		expect(resolveWallHeight({ parapet: true, axis: 'x' }, sunken)).toBe(PARAPET_WALL_HEIGHT);
+		expect(resolveWallHeight({ axis: 'x' }, sunken)).toBe(WALL_HEIGHT);
+		expect(resolveWallHeight({ parapet: true, axis: 'x' }, { profile: 'crowded' })).toBe(WALL_HEIGHT);
+	});
+
+	it('renders parapet south-edge walls shorter than standard walls on sunken-canyon layout', () => {
+		const layout = generateLayout(88, 'sunken-canyon');
+		const result = buildDungeon(mockScene(), layout);
+
+		const wallMeshes = result.meshes.filter((m) =>
+			m.geometry?.parameters?.height != null &&
+			(m.geometry.parameters.height === WALL_HEIGHT || m.geometry.parameters.height === PARAPET_WALL_HEIGHT)
+		);
+		const parapetMeshes = wallMeshes.filter((m) => m.geometry.parameters.height === PARAPET_WALL_HEIGHT);
+		const standardMeshes = wallMeshes.filter((m) => m.geometry.parameters.height === WALL_HEIGHT);
+
+		expect(parapetMeshes.length).toBeGreaterThan(0);
+		expect(standardMeshes.length).toBeGreaterThan(0);
+		for (const m of parapetMeshes) {
+			expect(m.geometry.parameters.height).toBeLessThan(WALL_HEIGHT);
+		}
+	});
+
+	it('places elevated plateau and canyon floors at uniform floorCorners Y', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		const plateau = layout.rooms.find((r) => r.band === 'plateau');
+		const canyon = layout.rooms.find((r) => r.band === 'canyon');
+		expect(uniformFloorElevation(plateau)).toBe(plateau.floorCorners.yNW);
+		expect(uniformFloorElevation(canyon)).toBe(canyon.floorCorners.yNW);
+
+		const result = buildDungeon(mockScene(), layout);
+		const plateauFloorY = sampleFloorY(layout, plateau.x, plateau.z);
+		const plateauFloorMesh = result.meshes.find((m) =>
+			m.position.x === plateau.x && m.position.z === plateau.z &&
+			Math.abs(m.position.y - plateauFloorY) < 1e-6
+		);
+		expect(plateauFloorMesh).toBeDefined();
 	});
 });
