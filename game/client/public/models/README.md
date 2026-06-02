@@ -6,6 +6,8 @@ not load these files yet (procedural `BoxGeometry` fallback remains until ticket
 
 ## Base player mesh
 
+Spike decision rationale (source, license, poly budget, anchor/scale): [`MODEL_SPIKE.md`](../../../docs/MODEL_SPIKE.md).
+
 | File | Role |
 |------|------|
 | **`player.glb`** | Neutral rest-pose low-poly humanoid body with six proportion morph targets on the body primitive |
