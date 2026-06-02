@@ -50,3 +50,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
 - [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
 - [ ] [155-gameplay-review-doc](tickets/155-gameplay-review-doc/)
+- [ ] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
