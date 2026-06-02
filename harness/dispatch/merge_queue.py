@@ -99,11 +99,23 @@ def _default_rebase(main_repo: Repo, h: WorkerHandle) -> bool:
 
 
 def _default_merge_ff(main_repo: Repo, h: WorkerHandle) -> bool:
-    """Fast-forward main to the (already-rebased) worker branch tip."""
+    """Fast-forward main to the (already-rebased) worker branch tip.
+
+    On failure, capture git's stderr AND the main checkout's working-tree status
+    — recurring ff-only failures are suspected to be git refusing to overwrite a
+    locally-modified tracked file (the continuously-rewritten `.beads/*.jsonl`
+    export). Logging both confirms the cause before we commit to a fix."""
     try:
-        main_repo.run_git("merge", "--ff-only", h.worktree.branch, capture=False)
+        main_repo.run_git("merge", "--ff-only", h.worktree.branch)
         return True
-    except subprocess.CalledProcessError:
+    except subprocess.CalledProcessError as e:
+        detail = (getattr(e, "stderr", "") or getattr(e, "stdout", "") or "").strip()[-600:]
+        log(f"[merge] ff-only of {h.worktree.branch} FAILED: {detail!r}")
+        try:
+            dirty = main_repo.run_git("status", "--porcelain").strip()[:600]
+            log(f"[merge] main working-tree at ff-failure: {dirty!r}")
+        except Exception:
+            pass
         return False
 
 
