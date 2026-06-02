@@ -1110,6 +1110,13 @@ const SHIELD_RADIUS = 0.9;
 const SHIELD_OFFSET_DIST = 0.7; // distance in front of player
 const shieldVFX = {}; // playerId → { mesh, startTime }
 
+// ── Smoke Bomb VFX ──
+
+const SMOKE_BOMB_DURATION = 2000;
+const SMOKE_BOMB_COLOR = 0x9ca3af; // translucent grey fog
+const SMOKE_BOMB_RADIUS = 3;
+const SMOKE_BOMB_OPACITY = 0.45;
+
 /**
  * Spawn a green expanding ring at the caster's position to visualize
  * the Field Medic Kit heal pulse. Expands from radius 0 to healRadius
@@ -1233,6 +1240,48 @@ export function triggerShieldVFX(playerId) {
 		}
 	}
 	requestAnimationFrame(animateShield);
+}
+
+/**
+ * Spawn a translucent grey fog cloud at the given ground position to visualize
+ * the Smoke Bomb effect. The cloud is a flattened sphere that fades out and is
+ * removed after ~2s, matching the smoke duration.
+ *
+ * @param {{ x: number, y: number, z: number }} position
+ */
+export function triggerSmokeBombVFX(position) {
+	if (!scene) return;
+
+	const geometry = new THREE.SphereGeometry(SMOKE_BOMB_RADIUS, 24, 16);
+	const material = new THREE.MeshStandardMaterial({
+		color: SMOKE_BOMB_COLOR,
+		transparent: true,
+		opacity: SMOKE_BOMB_OPACITY,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	// Flatten into a low ground-hugging fog cloud
+	mesh.scale.set(1, 0.35, 1);
+	mesh.position.set(position.x, 0.6, position.z);
+	scene.add(mesh);
+
+	const startTime = performance.now();
+	function animateSmoke() {
+		const elapsed = performance.now() - startTime;
+		const t = Math.min(elapsed / SMOKE_BOMB_DURATION, 1);
+
+		// Hold full opacity briefly, then fade out over the remaining time
+		material.opacity = SMOKE_BOMB_OPACITY * (1 - t);
+
+		if (t < 1) {
+			requestAnimationFrame(animateSmoke);
+		} else {
+			scene.remove(mesh);
+			geometry.dispose();
+			material.dispose();
+		}
+	}
+	requestAnimationFrame(animateSmoke);
 }
 
 // ── Floating damage numbers ──
