@@ -812,56 +812,15 @@ function applyDebugScenario(socket, name) {
       player.keyItemCooldownUntil = 0;
       player.overclockChargesRemaining = 2;
     } else if (name === 'phase-step-ready') {
-      // Put the caster in a playing dungeon with phase_step equipped and a
-      // living ally standing ~3 m away so the position swap can be exercised
-      // immediately. Mirrors the normal co-op state of two players in a run.
+      // Equip and position only the local caster with phase_step ready to fire.
+      // No synthetic ally is injected — an actual position swap requires a real
+      // second player to join the run and stand in range (see phase_step.test.js
+      // for swap-logic coverage).
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       player.equippedKeyItemId = 'phase_step';
       player.keyItemCooldownUntil = 0;
       state.enemies = [];
-
-      // Synthetic ally near the caster (inside the start room, within range).
-      const allyId = `phase-step-ally-${crypto.randomUUID()}`;
-      const allyX = player.x + 3;
-      const allyZ = player.z;
-      const allyFloorY = sampleFloorY(state.layout, allyX, allyZ);
-      state.players[allyId] = {
-        id: allyId,
-        accountId: allyId,
-        username: 'Ally',
-        x: allyX,
-        y: Number.isFinite(allyFloorY) ? allyFloorY : DEFAULT_FLOOR_Y,
-        z: allyZ,
-        rotation: 0,
-        deck: [],
-        hand: [],
-        hp: MAX_HP,
-        dead: false,
-        extracted: false,
-        lastActivity: Date.now(),
-        lastMoveTime: Date.now(),
-        inputDx: 0,
-        inputDz: 0,
-        connected: true,
-        ready: true,
-        magicStones: MAX_MAGIC_STONES,
-        currency: 0,
-        currencyEarnedThisRun: 0,
-        inventory: [],
-        ownedCards: {},
-        selectedDeck: [],
-        debugScenario: name,
-        pendingSummons: new Set(),
-        slotCooldowns: [null, null, null, null, null, null],
-        equippedKeyItemId: 'dodge_roll',
-        keyItemCooldownUntil: 0,
-        overclockChargesRemaining: 0,
-        invulnerableUntil: 0,
-        blockingUntil: 0,
-        blockingYaw: 0,
-        persistenceDirty: false,
-      };
     }
 
     syncRunObjectiveToEnemies();
