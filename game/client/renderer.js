@@ -251,6 +251,78 @@ const MINION_VISUAL = {
 	},
 };
 
+/** Per-registry-key scale/ground targets derived from procedural enemy/minion meshes. */
+const MODEL_FIT = (() => {
+	const fit = {};
+	for (const [key, def] of Object.entries(ENEMY_GEOMETRY)) {
+		if (def.type === 'octahedron') {
+			const extent = def.radius * 2;
+			fit[key] = { targetHeight: extent, targetFootprint: extent, scaleBy: 'height' };
+		} else {
+			fit[key] = {
+				targetHeight: def.height,
+				targetFootprint: def.radius * 2,
+				scaleBy: 'height',
+			};
+		}
+	}
+	for (const [key, visual] of Object.entries(MINION_VISUAL)) {
+		const scale = visual.scale ?? 1;
+		if (visual.shape === 'octahedron') {
+			const extent = visual.radius * 2 * scale;
+			fit[key] = { targetHeight: extent, targetFootprint: extent, scaleBy: 'height' };
+		} else if (visual.shape === 'box') {
+			fit[key] = {
+				targetHeight: visual.height * scale,
+				targetFootprint: Math.max(visual.width, visual.depth) * scale,
+				scaleBy: 'height',
+			};
+		} else {
+			fit[key] = {
+				targetHeight: visual.height * scale,
+				targetFootprint: visual.radius * 2 * scale,
+				scaleBy: 'height',
+			};
+		}
+	}
+	return fit;
+})();
+
+const _modelFitBounds = new THREE.Box3();
+
+/**
+ * Uniformly scale a loaded glTF root and ground it so its AABB bottom sits at y = 0.
+ * @param {THREE.Object3D} model
+ * @param {string} key - MODEL_REGISTRY entity key with a MODEL_FIT entry
+ */
+export function normalizeLoadedModel(model, key) {
+	const fit = MODEL_FIT[key];
+	if (!model || !fit) return;
+
+	_modelFitBounds.setFromObject(model);
+	const size = new THREE.Vector3();
+	_modelFitBounds.getSize(size);
+
+	const currentHeight = size.y;
+	const currentFootprint = Math.max(size.x, size.z);
+	let scaleFactor = 1;
+
+	if (fit.scaleBy === 'footprint' && fit.targetFootprint > 0 && currentFootprint > 0) {
+		scaleFactor = fit.targetFootprint / currentFootprint;
+	} else if (fit.targetHeight > 0 && currentHeight > 0) {
+		scaleFactor = fit.targetHeight / currentHeight;
+	} else if (fit.targetFootprint > 0 && currentFootprint > 0) {
+		scaleFactor = fit.targetFootprint / currentFootprint;
+	}
+
+	if (scaleFactor !== 1) {
+		model.scale.multiplyScalar(scaleFactor);
+	}
+
+	_modelFitBounds.setFromObject(model);
+	model.position.y -= _modelFitBounds.min.y;
+}
+
 /**
  * Consult MODEL_REGISTRY for `key` and, when a model path is configured, kick off
  * an async load and swap the cloned model in for the procedural primitive on
@@ -283,6 +355,7 @@ function attachRegistryModel(key, host) {
 	loadModel(path)
 		.then((model) => {
 			if (!model) return; // load failed/returned null → procedural stays (warned in models.js).
+			normalizeLoadedModel(model, key);
 			for (const node of procedural) node.material.visible = false;
 			host.add(model);
 			host.userData.modelOverride = model;
@@ -3343,4 +3416,4 @@ export function animate(timestamp) {
 }
 
 // ── Expose ENEMY_GEOMETRY for external access ──
-export { ENEMY_GEOMETRY };
+export { ENEMY_GEOMETRY, MODEL_FIT };

@@ -1,5 +1,125 @@
 // Canonical Three.js stub for client tests (imported by setup.js).
 
+function createScale() {
+	return {
+		x: 1,
+		y: 1,
+		z: 1,
+		setScalar(s) {
+			this.x = s;
+			this.y = s;
+			this.z = s;
+		},
+		multiplyScalar(s) {
+			this.x *= s;
+			this.y *= s;
+			this.z *= s;
+		},
+	};
+}
+
+function meshLocalBounds(mesh) {
+	const p = mesh.geometry?.parameters;
+	if (!p) return null;
+	if (p.width != null) {
+		const hw = p.width / 2;
+		const hh = p.height / 2;
+		const hd = p.depth / 2;
+		return {
+			min: { x: -hw, y: -hh, z: -hd },
+			max: { x: hw, y: hh, z: hd },
+		};
+	}
+	if (p.radiusTop != null && p.height != null) {
+		const r = Math.max(p.radiusTop, p.radiusBottom ?? p.radiusTop);
+		const hh = p.height / 2;
+		return {
+			min: { x: -r, y: -hh, z: -r },
+			max: { x: r, y: hh, z: r },
+		};
+	}
+	if (p.radius != null && p.height != null) {
+		const hh = p.height / 2;
+		return {
+			min: { x: -p.radius, y: -hh, z: -p.radius },
+			max: { x: p.radius, y: hh, z: p.radius },
+		};
+	}
+	if (p.radius != null) {
+		const r = p.radius;
+		return {
+			min: { x: -r, y: -r, z: -r },
+			max: { x: r, y: r, z: r },
+		};
+	}
+	return null;
+}
+
+function transformBounds(bounds, node) {
+	const sx = node.scale?.x ?? 1;
+	const sy = node.scale?.y ?? 1;
+	const sz = node.scale?.z ?? 1;
+	const px = node.position?.x ?? 0;
+	const py = node.position?.y ?? 0;
+	const pz = node.position?.z ?? 0;
+	return {
+		min: {
+			x: bounds.min.x * sx + px,
+			y: bounds.min.y * sy + py,
+			z: bounds.min.z * sz + pz,
+		},
+		max: {
+			x: bounds.max.x * sx + px,
+			y: bounds.max.y * sy + py,
+			z: bounds.max.z * sz + pz,
+		},
+	};
+}
+
+function mergeBounds(a, b) {
+	if (!a) return b;
+	if (!b) return a;
+	return {
+		min: {
+			x: Math.min(a.min.x, b.min.x),
+			y: Math.min(a.min.y, b.min.y),
+			z: Math.min(a.min.z, b.min.z),
+		},
+		max: {
+			x: Math.max(a.max.x, b.max.x),
+			y: Math.max(a.max.y, b.max.y),
+			z: Math.max(a.max.z, b.max.z),
+		},
+	};
+}
+
+function boundsFromObject(object) {
+	let merged = null;
+	const walk = (node, parentScale = { x: 1, y: 1, z: 1 }, parentPos = { x: 0, y: 0, z: 0 }) => {
+		const sx = (node.scale?.x ?? 1) * parentScale.x;
+		const sy = (node.scale?.y ?? 1) * parentScale.y;
+		const sz = (node.scale?.z ?? 1) * parentScale.z;
+		const px = (node.position?.x ?? 0) + parentPos.x;
+		const py = (node.position?.y ?? 0) + parentPos.y;
+		const pz = (node.position?.z ?? 0) + parentPos.z;
+		const local = meshLocalBounds(node);
+		if (local) {
+			merged = mergeBounds(merged, transformBounds(local, {
+				scale: { x: sx, y: sy, z: sz },
+				position: { x: px, y: py, z: pz },
+			}));
+		}
+		for (const child of node.children ?? []) {
+			walk(child, { x: sx, y: sy, z: sz }, { x: px, y: py, z: pz });
+		}
+	};
+	walk(object);
+	return merged ?? {
+		min: { x: 0, y: 0, z: 0 },
+		max: { x: 0, y: 0, z: 0 },
+	};
+}
+
 function stubClass(name) {
 	class C {
 		constructor(...args) {
@@ -32,6 +152,12 @@ function stubClass(name) {
 			if (name === 'Mesh' && args.length >= 2) {
 				this.geometry = args[0];
 				this.material = args[1];
+				this.isMesh = true;
+			}
+			if (name === 'Vector3') {
+				this.x = 0;
+				this.y = 0;
+				this.z = 0;
 			}
 			// MeshStandardMaterial constructor: (options) — store properties
 			if (name === 'MeshStandardMaterial' && args[0] && typeof args[0] === 'object') {
@@ -84,7 +210,7 @@ function stubClass(name) {
 			}
 		}
 	}
-	C.prototype.scale = { setScalar: function() {} };
+	C.prototype.scale = createScale();
 	C.prototype.material = {
 		color: { setHex: function() {} },
 		emissive: {
@@ -165,13 +291,31 @@ export const THREE = {
 	LineBasicMaterial: stubClass('LineBasicMaterial'),
 	Mesh: stubClass('Mesh'),
 	LineSegments: stubClass('LineSegments'),
+	Box3: class Box3 {
+		constructor() {
+			this.min = { x: 0, y: 0, z: 0 };
+			this.max = { x: 0, y: 0, z: 0 };
+		}
+		setFromObject(object) {
+			const bounds = boundsFromObject(object);
+			this.min = { ...bounds.min };
+			this.max = { ...bounds.max };
+			return this;
+		}
+		getSize(target) {
+			target.x = this.max.x - this.min.x;
+			target.y = this.max.y - this.min.y;
+			target.z = this.max.z - this.min.z;
+			return target;
+		}
+	},
 	Group: class Group {
 		constructor() {
 			this.children = [];
 			this.userData = {};
 			this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
 			this.rotation = { x: 0, y: 0, z: 0 };
-			this.scale = { setScalar: function() {} };
+			this.scale = createScale();
 		}
 		add(child) {
 			this.children.push(child);
@@ -214,5 +358,6 @@ export const MeshBasicMaterial = THREE.MeshBasicMaterial;
 export const LineBasicMaterial = THREE.LineBasicMaterial;
 export const Mesh = THREE.Mesh;
 export const Group = THREE.Group;
+export const Box3 = THREE.Box3;
 export const LineSegments = THREE.LineSegments;
 export const DoubleSide = THREE.DoubleSide;
