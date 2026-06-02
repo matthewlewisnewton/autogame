@@ -267,14 +267,13 @@ export function getRegistryModelTarget(key) {
 
 	const minion = MINION_VISUAL[key];
 	if (minion) {
-		const scale = minion.scale ?? 1;
 		if (minion.shape === 'octahedron') {
-			return { height: minion.radius * 2 * scale, footY: -minion.radius * scale };
+			return { height: minion.radius * 2, footY: -minion.radius };
 		}
 		if (minion.shape === 'box') {
-			return { height: minion.height * scale, footY: -(minion.height / 2) * scale };
+			return { height: minion.height, footY: -(minion.height / 2) };
 		}
-		return { height: minion.height * scale, footY: -(minion.height / 2) * scale };
+		return { height: minion.height, footY: -(minion.height / 2) };
 	}
 
 	return null;
