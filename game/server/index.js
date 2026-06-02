@@ -13,6 +13,8 @@ const {
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
+const { findUserByAccountId } = require('./users');
+const { DEFAULT_COSMETIC } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
@@ -969,6 +971,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
   const progress = createPlayerProgress();
   const defaultDeck = progress.inventory.map(instance => instance.instanceId);
   const spawn = firstRoomPosition();
+  const account = findUserByAccountId(accountId);
 
   const player = {
     id: playerId,
@@ -1013,6 +1016,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     invulnerableUntil: 0,
     blockingUntil: 0,
     blockingYaw: 0,
+    cosmetic: account?.cosmetic ?? { ...DEFAULT_COSMETIC },
   };
 
   if (savedData) {
@@ -3532,6 +3536,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnEnemies,
     firstRoomPosition,
     pickFloorSpawnPosition,
+    buildPlayerRecord,
     createGameState,
     resetGameState,
     gameState,
