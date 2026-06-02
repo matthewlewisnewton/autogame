@@ -111,6 +111,11 @@ describe('GET /api/me', () => {
 		expect(data.settings.soundEnabled).toBe(true);
 		expect(data.settings.showHitboxes).toBe(true);
 		expect(data.email).toBeNull();
+		expect(data.cosmetic).toEqual({
+			bodyColor: '#4f8fdf',
+			accentColor: '#f0c040',
+			bodyShape: 'capsule'
+		});
 	});
 
 	it('returns 401 without token', async () => {
@@ -178,5 +183,45 @@ describe('PATCH /api/me/profile', () => {
 		expect(data.token).toBeDefined();
 		const decoded = jwt.verify(data.token, getJWTSecret());
 		expect(decoded.username).toBe('eve2');
+	});
+
+	it('updates cosmetic with a valid value and returns it', async () => {
+		const token = await registerAndLogin('cosmo', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { bodyColor: '#123456', bodyShape: 'box' } })
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.cosmetic.bodyColor).toBe('#123456');
+		expect(data.cosmetic.bodyShape).toBe('box');
+		// Untouched key keeps its default.
+		expect(data.cosmetic.accentColor).toBe('#f0c040');
+
+		// GET reflects the persisted change.
+		const me = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meData = await me.json();
+		expect(meData.cosmetic.bodyColor).toBe('#123456');
+		expect(meData.cosmetic.bodyShape).toBe('box');
+	});
+
+	it('rejects an invalid cosmetic with 400 and does not persist', async () => {
+		const token = await registerAndLogin('cosmo2', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { bodyShape: 'sphere' } })
+		});
+		expect(res.status).toBe(400);
+		const data = await res.json();
+		expect(data.error).toBeDefined();
+
+		// Record unchanged — still defaults.
+		const me = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const meData = await me.json();
+		expect(meData.cosmetic.bodyShape).toBe('capsule');
 	});
 });

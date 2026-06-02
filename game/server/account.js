@@ -47,6 +47,7 @@ router.get('/me', (req, res) => {
 		accountId: user.accountId,
 		username: user.username,
 		email: user.email || null,
+		cosmetic: user.cosmetic,
 		settings
 	});
 });
@@ -67,12 +68,12 @@ router.patch('/me/settings', (req, res) => {
  * PATCH /api/me/profile — username and/or email
  */
 router.patch('/me/profile', (req, res) => {
-	const { username, email } = req.body || {};
-	if (username === undefined && email === undefined) {
+	const { username, email, cosmetic } = req.body || {};
+	if (username === undefined && email === undefined && cosmetic === undefined) {
 		return res.status(400).json({ error: 'No profile fields to update' });
 	}
 
-	const result = updateProfile(req.accountId, { username, email });
+	const result = updateProfile(req.accountId, { username, email, cosmetic });
 	if (!result.ok) {
 		const status = result.reason === 'Email already in use' || result.reason === 'Username already taken'
 			? 409
@@ -83,7 +84,8 @@ router.patch('/me/profile', (req, res) => {
 	const user = findUserByAccountId(req.accountId);
 	const payload = {
 		username: user.username,
-		email: user.email || null
+		email: user.email || null,
+		cosmetic: user.cosmetic
 	};
 
 	if (result.usernameChanged) {

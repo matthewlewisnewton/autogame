@@ -12,6 +12,77 @@ const users = new Map();
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// ── Cosmetic customization ──
+
+// Allowed body shapes for a character. Validation rejects anything else.
+const BODY_SHAPES = ['box', 'cylinder', 'cone', 'capsule'];
+
+// Server-side hex color rule. Colors must be a 6-digit #RRGGBB string.
+const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{6}$/;
+
+// Default cosmetic applied to new accounts and backfilled onto legacy records.
+const DEFAULT_COSMETIC = {
+	bodyColor: '#4f8fdf',
+	accentColor: '#f0c040',
+	bodyShape: 'capsule'
+};
+
+function isValidHexColor(value) {
+	return typeof value === 'string' && HEX_COLOR_REGEX.test(value);
+}
+
+/**
+ * Validate and normalize a partial cosmetic object. Unknown keys are ignored;
+ * provided keys are validated strictly (invalid values are rejected, never
+ * silently coerced). Hex colors are lower-cased for consistency.
+ *
+ * @param {object} partial
+ * @returns {{ ok: true, value: object } | { ok: false, reason: string }}
+ */
+function normalizeCosmetic(partial) {
+	if (partial === null || typeof partial !== 'object' || Array.isArray(partial)) {
+		return { ok: false, reason: 'cosmetic must be an object' };
+	}
+
+	const value = {};
+
+	if (partial.bodyColor !== undefined) {
+		if (!isValidHexColor(partial.bodyColor)) {
+			return { ok: false, reason: 'bodyColor must be a hex color like #4f8fdf' };
+		}
+		value.bodyColor = partial.bodyColor.toLowerCase();
+	}
+
+	if (partial.accentColor !== undefined) {
+		if (!isValidHexColor(partial.accentColor)) {
+			return { ok: false, reason: 'accentColor must be a hex color like #f0c040' };
+		}
+		value.accentColor = partial.accentColor.toLowerCase();
+	}
+
+	if (partial.bodyShape !== undefined) {
+		if (!BODY_SHAPES.includes(partial.bodyShape)) {
+			return { ok: false, reason: `bodyShape must be one of ${BODY_SHAPES.join(', ')}` };
+		}
+		value.bodyShape = partial.bodyShape;
+	}
+
+	return { ok: true, value };
+}
+
+/**
+ * Return a complete cosmetic object, filling any missing/invalid keys from
+ * DEFAULT_COSMETIC. Used to backfill legacy records on load.
+ */
+function withCosmeticDefaults(existing) {
+	const source = (existing && typeof existing === 'object' && !Array.isArray(existing)) ? existing : {};
+	return {
+		bodyColor: isValidHexColor(source.bodyColor) ? source.bodyColor.toLowerCase() : DEFAULT_COSMETIC.bodyColor,
+		accentColor: isValidHexColor(source.accentColor) ? source.accentColor.toLowerCase() : DEFAULT_COSMETIC.accentColor,
+		bodyShape: BODY_SHAPES.includes(source.bodyShape) ? source.bodyShape : DEFAULT_COSMETIC.bodyShape
+	};
+}
+
 function normalizeEmail(email) {
 	if (email === null || email === undefined || email === '') return null;
 	return String(email).trim().toLowerCase();
@@ -31,6 +102,8 @@ function loadUsers() {
 		const raw = fs.readFileSync(usersFilePath, 'utf-8');
 		const records = JSON.parse(raw);
 		for (const record of records) {
+			// Backfill cosmetic defaults onto legacy records missing the field.
+			record.cosmetic = withCosmeticDefaults(record.cosmetic);
 			users.set(record.username, record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
@@ -110,7 +183,8 @@ function createUser(username, plainPassword) {
 	const record = {
 		username,
 		passwordHash,
-		accountId
+		accountId,
+		cosmetic: { ...DEFAULT_COSMETIC }
 	};
 
 	users.set(username, record);
@@ -136,7 +210,8 @@ async function createUserAsync(username, plainPassword) {
 	const record = {
 		username,
 		passwordHash,
-		accountId
+		accountId,
+		cosmetic: { ...DEFAULT_COSMETIC }
 	};
 
 	users.set(username, record);
@@ -190,6 +265,17 @@ function updateProfile(accountId, fields) {
 		return { ok: false, reason: 'Account not found' };
 	}
 
+	// Validate cosmetic up front (before any mutation) so an invalid value
+	// rejects without touching the record.
+	let cosmeticUpdate = null;
+	if (fields.cosmetic !== undefined) {
+		const result = normalizeCosmetic(fields.cosmetic);
+		if (!result.ok) {
+			return { ok: false, reason: result.reason };
+		}
+		cosmeticUpdate = result.value;
+	}
+
 	let usernameChanged = false;
 	const oldUsername = user.username;
 
@@ -221,6 +307,12 @@ function updateProfile(accountId, fields) {
 			}
 		}
 		user.email = normalized;
+	}
+
+	if (cosmeticUpdate) {
+		// Partial update: merge validated keys onto the existing cosmetic so
+		// unspecified keys are left untouched.
+		user.cosmetic = { ...withCosmeticDefaults(user.cosmetic), ...cosmeticUpdate };
 	}
 
 	saveUsers();
@@ -266,6 +358,10 @@ module.exports = {
 	findUserByEmail,
 	updateProfile,
 	normalizeEmail,
+	normalizeCosmetic,
+	withCosmeticDefaults,
+	DEFAULT_COSMETIC,
+	BODY_SHAPES,
 	clearUsers,
 	loadUsers,
 	saveUsers,

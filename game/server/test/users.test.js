@@ -10,6 +10,10 @@ import {
 	findUserByAccountId,
 	findUserByEmail,
 	updateProfile,
+	normalizeCosmetic,
+	withCosmeticDefaults,
+	DEFAULT_COSMETIC,
+	BODY_SHAPES,
 	clearUsers,
 	loadUsers,
 	saveUsers,
@@ -175,6 +179,135 @@ describe('profile helpers', () => {
 		expect(renamed.usernameChanged).toBe(true);
 		expect(findUserByUsername('a_new')).not.toBeNull();
 		expect(findUserByUsername('a')).toBeNull();
+	});
+});
+
+// ── Cosmetic customization ──
+
+describe('normalizeCosmetic', () => {
+	it('accepts a full valid cosmetic', () => {
+		const result = normalizeCosmetic({ bodyColor: '#aabbcc', accentColor: '#001122', bodyShape: 'box' });
+		expect(result).toEqual({ ok: true, value: { bodyColor: '#aabbcc', accentColor: '#001122', bodyShape: 'box' } });
+	});
+
+	it('accepts a partial cosmetic with only one key', () => {
+		const result = normalizeCosmetic({ bodyShape: 'cone' });
+		expect(result).toEqual({ ok: true, value: { bodyShape: 'cone' } });
+	});
+
+	it('lower-cases hex colors', () => {
+		const result = normalizeCosmetic({ bodyColor: '#AABBCC' });
+		expect(result.ok).toBe(true);
+		expect(result.value.bodyColor).toBe('#aabbcc');
+	});
+
+	it('accepts every valid body shape', () => {
+		for (const shape of BODY_SHAPES) {
+			expect(normalizeCosmetic({ bodyShape: shape }).ok).toBe(true);
+		}
+	});
+
+	it('rejects an invalid body shape', () => {
+		const result = normalizeCosmetic({ bodyShape: 'sphere' });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/bodyShape/);
+	});
+
+	it('rejects a malformed hex color (no coercion)', () => {
+		expect(normalizeCosmetic({ bodyColor: 'red' }).ok).toBe(false);
+		expect(normalizeCosmetic({ bodyColor: '#fff' }).ok).toBe(false);
+		expect(normalizeCosmetic({ accentColor: '#12345g' }).ok).toBe(false);
+	});
+
+	it('rejects a non-object input', () => {
+		expect(normalizeCosmetic(null).ok).toBe(false);
+		expect(normalizeCosmetic('x').ok).toBe(false);
+		expect(normalizeCosmetic([]).ok).toBe(false);
+	});
+});
+
+describe('withCosmeticDefaults', () => {
+	it('returns full defaults when given nothing', () => {
+		expect(withCosmeticDefaults(undefined)).toEqual(DEFAULT_COSMETIC);
+		expect(withCosmeticDefaults(null)).toEqual(DEFAULT_COSMETIC);
+		expect(withCosmeticDefaults({})).toEqual(DEFAULT_COSMETIC);
+	});
+
+	it('backfills only missing/invalid keys, keeping valid ones', () => {
+		const result = withCosmeticDefaults({ bodyShape: 'box', bodyColor: 'bad' });
+		expect(result.bodyShape).toBe('box');
+		expect(result.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
+		expect(result.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
+	});
+});
+
+describe('cosmetic on accounts', () => {
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-cosmetic-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
+	});
+
+	it('new accounts get default cosmetic values', () => {
+		createUser('cos1', 'pass');
+		const user = findUserByUsername('cos1');
+		expect(user.cosmetic).toEqual(DEFAULT_COSMETIC);
+	});
+
+	it('backfills cosmetic for legacy records missing the field on load', () => {
+		// Write a legacy record with no cosmetic field directly to disk.
+		const legacy = [{ username: 'legacy', passwordHash: 'x', accountId: 'acc-legacy' }];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy), 'utf-8');
+		clearUsers();
+		loadUsers();
+		const user = findUserByAccountId('acc-legacy');
+		expect(user.cosmetic).toEqual(DEFAULT_COSMETIC);
+	});
+
+	it('updateProfile applies a valid full cosmetic update', () => {
+		createUser('cos2', 'pass');
+		const id = findUserByUsername('cos2').accountId;
+		const result = updateProfile(id, { cosmetic: { bodyColor: '#111111', accentColor: '#222222', bodyShape: 'cylinder' } });
+		expect(result.ok).toBe(true);
+		expect(findUserByAccountId(id).cosmetic).toEqual({ bodyColor: '#111111', accentColor: '#222222', bodyShape: 'cylinder' });
+	});
+
+	it('partial cosmetic update leaves other keys untouched', () => {
+		createUser('cos3', 'pass');
+		const id = findUserByUsername('cos3').accountId;
+		updateProfile(id, { cosmetic: { bodyShape: 'cone' } });
+		const cosmetic = findUserByAccountId(id).cosmetic;
+		expect(cosmetic.bodyShape).toBe('cone');
+		expect(cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
+		expect(cosmetic.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
+	});
+
+	it('rejects an invalid cosmetic update without mutating the record', () => {
+		createUser('cos4', 'pass');
+		const id = findUserByUsername('cos4').accountId;
+		const result = updateProfile(id, { cosmetic: { bodyShape: 'pyramid' } });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBeDefined();
+		expect(findUserByAccountId(id).cosmetic).toEqual(DEFAULT_COSMETIC);
+	});
+
+	it('cosmetic survives a simulated restart (persist + reload)', () => {
+		createUser('cos5', 'pass');
+		const id = findUserByUsername('cos5').accountId;
+		updateProfile(id, { cosmetic: { bodyColor: '#abcdef', bodyShape: 'box' } });
+		clearUsers();
+		loadUsers();
+		const cosmetic = findUserByAccountId(id).cosmetic;
+		expect(cosmetic.bodyColor).toBe('#abcdef');
+		expect(cosmetic.bodyShape).toBe('box');
+		expect(cosmetic.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
 	});
 });
 
