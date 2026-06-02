@@ -4368,7 +4368,7 @@ describe('spawnEnemies() mixed pack', () => {
 		expect(nearbyEnemies.length).toBeGreaterThanOrEqual(2);
 	});
 
-	it('distributes spire-ascent enemies across multiple combat tiers', () => {
+	it('distributes spire-ascent enemies across combat tiers and places one on the summit treasure room', () => {
 		const questId = 'spire_ascent';
 		const seed = questLayoutSeed(questId);
 		const profile = getLayoutProfileForQuest(questId);
@@ -4382,7 +4382,13 @@ describe('spawnEnemies() mixed pack', () => {
 		);
 		expect(combatTiers.size).toBeGreaterThanOrEqual(2);
 
+		const topRoom = gameState.layout.rooms.reduce((best, room) =>
+			(room.tierIndex ?? 0) > (best.tierIndex ?? 0) ? room : best
+		);
+		expect(topRoom.role).toBe('treasure');
+
 		spawnEnemies();
+		expect(gameState.enemies.length).toBe(QUEST_DEFS.spire_ascent.enemyCount);
 
 		const roomForPosition = (x, z) => gameState.layout.rooms.find(r => {
 			const hw = r.width / 2;
@@ -4390,16 +4396,41 @@ describe('spawnEnemies() mixed pack', () => {
 			return x >= r.x - hw && x <= r.x + hw && z >= r.z - hd && z <= r.z + hd;
 		});
 
-		const enemyTiers = new Set();
+		const summitEnemies = gameState.enemies.filter((enemy) => {
+			const room = roomForPosition(enemy.x, enemy.z);
+			return room && room.role === 'treasure' && room.tierIndex === topRoom.tierIndex;
+		});
+		expect(summitEnemies.length).toBeGreaterThanOrEqual(1);
+
+		const combatEnemyTiers = new Set();
 		for (const enemy of gameState.enemies) {
 			const room = roomForPosition(enemy.x, enemy.z);
 			expect(room).toBeDefined();
-			expect(room.role).toBe('combat');
 			expect(room.role).not.toBe('start');
-			expect(room.role).not.toBe('treasure');
-			enemyTiers.add(room.tierIndex);
+			if (room.role === 'combat') {
+				combatEnemyTiers.add(room.tierIndex);
+			}
 		}
-		expect(enemyTiers.size).toBeGreaterThanOrEqual(2);
+		expect(combatEnemyTiers.size).toBeGreaterThanOrEqual(2);
+	});
+
+	it('counts the summit spire_ascent enemy toward run objective completion', () => {
+		const questId = 'spire_ascent';
+		const seed = questLayoutSeed(questId);
+		const profile = getLayoutProfileForQuest(questId);
+		gameState.selectedQuestId = questId;
+		gameState.layoutSeed = seed;
+		gameState.layout = generateLayout(seed, profile, { stage: 'spire-ascent', slopes: true });
+		gameState.enemies = [];
+
+		spawnEnemies();
+		startDungeonRun();
+
+		expect(gameState.run.objective.totalEnemies).toBe(gameState.enemies.length);
+		recordEnemyDefeated(gameState.run.objective.totalEnemies);
+		expect(gameState.run.objective.defeatedEnemies).toBeGreaterThanOrEqual(
+			gameState.run.objective.totalEnemies
+		);
 	});
 });
 

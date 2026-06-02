@@ -415,6 +415,7 @@ const DEBUG_SCENARIOS = new Set([
   'telepipe-ready',
   'sloped-dungeon',
   'spire-ramp-passage',
+  'spire-summit-combat',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -566,6 +567,10 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       return { ok: true, scenario: name };
+    }
+
+    if (name === 'spire-summit-combat') {
+      applyLayoutForQuest(state, 'spire_ascent');
     }
 
     player.ready = true;
@@ -787,6 +792,19 @@ function applyDebugScenario(socket, name) {
       player.z = (zStart + zEnd) / 2;
       const floorY = sampleFloorY(state.layout, player.x, player.z);
       player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-summit-combat') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const summitRoom = state.layout.rooms[state.layout.rooms.length - 1];
+      player.x = summitRoom.x;
+      player.z = summitRoom.z;
+      const summitFloorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(summitFloorY) ? summitFloorY : DEFAULT_FLOOR_Y;
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,

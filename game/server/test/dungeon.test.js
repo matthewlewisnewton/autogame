@@ -1413,4 +1413,18 @@ describe('spire_ascent quest layout plumbing', () => {
     expect(layout.rooms[layout.rooms.length - 1].role).toBe('treasure');
     expect(layout.rooms[layout.rooms.length - 1].tierIndex).toBe(layout.rooms.length - 1);
   });
+
+  it('assigns the highest tierIndex room as treasure for summit objective spawns', () => {
+    const layout = generateLayout(questLayoutSeed('spire_ascent'), 'crowded', {
+      stage: 'spire-ascent',
+      slopes: true,
+    });
+    const maxTier = Math.max(...layout.rooms.map((r) => r.tierIndex ?? 0));
+    const topRoom = layout.rooms.reduce((best, room) =>
+      (room.tierIndex ?? 0) > (best.tierIndex ?? 0) ? room : best
+    );
+    expect(topRoom.role).toBe('treasure');
+    expect(topRoom.tierIndex).toBe(maxTier);
+    expect(layout.rooms[layout.rooms.length - 1]).toBe(topRoom);
+  });
 });

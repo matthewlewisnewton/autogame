@@ -2572,6 +2572,16 @@ function isTieredLayout(layout) {
   return layout.stage === 'spire-ascent' || layout.rooms.some(r => r.tierIndex != null);
 }
 
+function shouldReserveSummitEnemySpawn(layout, quest) {
+  return layout.stage === 'spire-ascent' && quest.objectiveType === 'defeat_enemies';
+}
+
+function getSummitTreasureRoom(layout) {
+  const treasureRooms = roomsByRole(layout, 'treasure');
+  if (treasureRooms.length === 0) return null;
+  return [...treasureRooms].sort((a, b) => (b.tierIndex ?? 0) - (a.tierIndex ?? 0))[0];
+}
+
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = null) {
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
@@ -2612,9 +2622,14 @@ function spawnCombatEnemies(layout, rng, quest) {
   const preferNearest = quest.objectiveType === 'collect_items';
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
 
-  const spreadAcrossTiers = isTieredLayout(layout) && enemyCount >= 2;
+  const summitRoom = shouldReserveSummitEnemySpawn(layout, quest)
+    ? getSummitTreasureRoom(layout)
+    : null;
+  const reserveSummit = !!summitRoom;
+  const combatSpawnCount = reserveSummit ? enemyCount - 1 : enemyCount;
+  const spreadAcrossTiers = isTieredLayout(layout) && combatSpawnCount >= 2;
 
-  for (let i = 0; i < enemyCount; i++) {
+  for (let i = 0; i < combatSpawnCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(
@@ -2623,6 +2638,14 @@ function spawnCombatEnemies(layout, rng, quest) {
       useNearest,
       spreadAcrossTiers ? i : null
     );
+    const enemy = spawnEnemy(pos.x, pos.z, type);
+    enemy.wanderTarget = randomWanderTarget();
+  }
+
+  if (reserveSummit) {
+    const summitIndex = enemyCount - 1;
+    const type = spawnTypes[summitIndex % spawnTypes.length];
+    const pos = randomPositionInRoom(summitRoom, rng);
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
   }
