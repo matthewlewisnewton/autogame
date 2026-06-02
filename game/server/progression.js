@@ -625,11 +625,12 @@ const KEY_ITEM_DEFS = {
   },
   smoke_bomb: {
     id: 'smoke_bomb',
-    name: 'Smoke Bomb',
-    description: 'Become temporarily invisible',
-    cooldownMs: 18000,
+    name: 'Smoke Veil',
+    description: 'Drop a concealing smoke cloud at your feet; the zone stays at the cast point and does not follow you',
+    cooldownMs: 8000,
     type: 'stealth',
-    durationMs: 3000,
+    durationMs: 2000,
+    radius: 4,
   },
   ground_anchor: {
     id: 'ground_anchor',
@@ -3078,6 +3079,10 @@ function stateSnapshot() {
       blockingYaw: p.blockingYaw || 0,
       barrierDomeUntil: p.barrierDomeUntil || 0,
       barrierDomeRadius: p.barrierDomeRadius || 0,
+      smokeVeilUntil: p.smokeVeilUntil || 0,
+      smokeVeilX: p.smokeVeilX || 0,
+      smokeVeilZ: p.smokeVeilZ || 0,
+      smokeVeilRadius: p.smokeVeilRadius || 0,
     };
   }
 

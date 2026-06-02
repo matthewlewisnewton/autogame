@@ -4152,6 +4152,10 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			blockingYaw: 0,
 			barrierDomeUntil: 0,
 			barrierDomeRadius: 0,
+			smokeVeilUntil: 0,
+			smokeVeilX: 0,
+			smokeVeilZ: 0,
+			smokeVeilRadius: 0,
 		});
 	});
 

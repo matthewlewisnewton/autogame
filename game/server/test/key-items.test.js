@@ -256,22 +256,82 @@ describe('useKeyItem socket handler', () => {
 		expect(result.invulnerableUntil).toBe(player.invulnerableUntil);
 	});
 
-	it('useKeyItem for non-implemented items returns not_implemented', async () => {
+	it('useKeyItem for ground_anchor returns not_implemented', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
 
-		// Ensure no existing cooldown
 		player.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('not_implemented');
+		expect(player.keyItemCooldownUntil).toBe(0);
+	});
+
+	it('useKeyItem for smoke_bomb sets smoke veil at cast position and cooldown', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+		const def = KEY_ITEM_DEFS.smoke_bomb;
+
+		player.keyItemCooldownUntil = 0;
+		player.smokeVeilUntil = 0;
+		player.x = 3;
+		player.z = -5;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
 		const result = await resultPromise;
 
-		expect(result.ok).toBe(false);
-		expect(result.reason).toBe('not_implemented');
+		const now = Date.now();
+		expect(result.ok).toBe(true);
+		expect(result.keyItemId).toBe('smoke_bomb');
+		expect(result.smokeVeilUntil).toBeGreaterThan(now);
+		expect(result.cooldownUntil).toBeGreaterThan(now);
 
-		// Cooldown should NOT have been set for not_implemented items
-		expect(player.keyItemCooldownUntil).toBe(0);
+		expect(player.smokeVeilUntil).toBeGreaterThan(now);
+		expect(player.smokeVeilX).toBe(3);
+		expect(player.smokeVeilZ).toBe(-5);
+		expect(player.smokeVeilRadius).toBe(def.radius);
+		expect(player.smokeVeilUntil - now).toBeCloseTo(def.durationMs, -1);
+		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
+	});
+
+	it('useKeyItem smoke_bomb on cooldown returns on_cooldown without refreshing veil', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+
+		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
+		const result1 = await result1Promise;
+		expect(result1.ok).toBe(true);
+
+		const firstVeilUntil = player.smokeVeilUntil;
+		const firstVeilX = player.smokeVeilX;
+
+		const result2Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
+		const result2 = await result2Promise;
+
+		expect(result2.ok).toBe(false);
+		expect(result2.reason).toBe('on_cooldown');
+		expect(player.smokeVeilUntil).toBe(firstVeilUntil);
+		expect(player.smokeVeilX).toBe(firstVeilX);
+	});
+});
+
+describe('KEY_ITEM_DEFS.smoke_bomb — Smoke Veil definition', () => {
+	it('is re-tuned for ~2s veil, ~8s cooldown, 4m radius, cast-point concealment', () => {
+		const def = KEY_ITEM_DEFS.smoke_bomb;
+		expect(def.name).toBe('Smoke Veil');
+		expect(def.cooldownMs).toBe(8000);
+		expect(def.durationMs).toBe(2000);
+		expect(def.radius).toBe(4);
+		expect(def.description.toLowerCase()).toMatch(/cast|conceal/);
 	});
 });
 
