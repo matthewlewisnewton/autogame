@@ -75,16 +75,41 @@ def test_clean_orphan_worktrees_removes_dirs_and_branches(tmp_path):
     assert deletes == {"auto/137-foo", "auto/130-bar"}  # main branch untouched
 
 
+class RecoverRepo:
+    """Reports given `auto/*` branches present and serves worktree listings,
+    recording branch deletes / worktree removes so a test can assert that a
+    passed-branch-awaiting-merge is PRESERVED across reconcile."""
+    def __init__(self, root, branches, worktrees=()):
+        self.root = root
+        self._branches = branches
+        self._worktrees = worktrees
+        self.deleted_branches = []
+        self.removed_worktrees = []
+
+    def run_git(self, *a, **k):
+        if a[:2] == ("branch", "--list"):
+            return "\n".join(self._branches)
+        if a[:3] == ("worktree", "list", "--porcelain"):
+            return "\n".join(f"worktree {wt}\nHEAD x\nbranch refs/heads/auto/x\n"
+                             for wt in self._worktrees)
+        if a[:2] == ("branch", "-D"):
+            self.deleted_branches.append(a[2])
+        if a[:3] == ("worktree", "remove", "--force"):
+            self.removed_worktrees.append(a[3])
+        return ""
+
+
 def test_reconcile_resets_orphans(tmp_path):
     q = FakeQueue([{"id": "bd-1", "title": "t1"}, {"id": "bd-2", "title": "t2"}])
-    n = reconcile(q, FakeRepo(tmp_path))
-    assert n == 2
+    n, recoverable = reconcile(q, FakeRepo(tmp_path))
+    assert n == 2 and recoverable == []
     assert q.requeued == ["bd-1", "bd-2"]
 
 
 def test_reconcile_noop_when_nothing_in_progress(tmp_path):
     q = FakeQueue([])
-    assert reconcile(q, FakeRepo(tmp_path)) == 0
+    n, recoverable = reconcile(q, FakeRepo(tmp_path))
+    assert n == 0 and recoverable == []
     assert q.requeued == []
 
 
@@ -93,13 +118,49 @@ def test_reconcile_closes_merged_unclosed_instead_of_requeue(tmp_path):
     (tmp_path / MERGED_UNCLOSED).write_text("bd-merged\n")
     q = FakeQueue([{"id": "bd-merged", "title": "t-merged"},
                    {"id": "bd-orphan", "title": "t-orphan"}])
-    n = reconcile(q, FakeRepo(tmp_path))
+    n, _ = reconcile(q, FakeRepo(tmp_path))
     # only the genuine orphan is reset; the merged-unclosed one is closed
     assert n == 1
     assert q.requeued == ["bd-orphan"]
     assert q.closed == ["bd-merged"]
     # the durable record is cleared after recovery
     assert not (tmp_path / MERGED_UNCLOSED).exists()
+
+
+def test_reconcile_recovers_passed_branch_pending_merge(tmp_path):
+    """A branch that passed review (in PENDING_MERGE) whose branch + worktree
+    still exist is PRESERVED (not requeued, not deleted) and returned for the
+    merge queue to recover — not re-run from scratch."""
+    from harness.dispatch.merge_queue import PENDING_MERGE
+    root = tmp_path / "main"
+    root.mkdir()
+    wt = tmp_path / ".autogame-worktrees" / "135-foo"
+    wt.mkdir(parents=True)
+    (root / PENDING_MERGE).write_text("bd-pass\t135-foo\n")
+    q = FakeQueue([{"id": "bd-pass", "title": "135-foo"},
+                   {"id": "bd-orphan", "title": "t-orphan"}])
+    repo = RecoverRepo(root, branches=["  auto/135-foo", "* main"],
+                       worktrees=[str(wt)])
+    n, recoverable = reconcile(q, repo)
+    assert recoverable == [("bd-pass", "135-foo")]
+    assert n == 1 and q.requeued == ["bd-orphan"]   # passed branch NOT requeued
+    assert "auto/135-foo" not in repo.deleted_branches  # branch preserved
+    assert str(wt) not in repo.removed_worktrees        # worktree preserved
+
+
+def test_reconcile_drops_stale_pending_then_resets(tmp_path):
+    """A PENDING_MERGE entry whose branch/worktree are gone is unrecoverable: it
+    is dropped from the file and the bead reset to ready like any other orphan."""
+    from harness.dispatch.merge_queue import PENDING_MERGE
+    root = tmp_path / "main"
+    root.mkdir()
+    (root / PENDING_MERGE).write_text("bd-gone\t140-x\n")
+    q = FakeQueue([{"id": "bd-gone", "title": "140-x"}])
+    repo = RecoverRepo(root, branches=["* main"], worktrees=[])  # branch gone
+    n, recoverable = reconcile(q, repo)
+    assert recoverable == []
+    assert n == 1 and q.requeued == ["bd-gone"]
+    assert not (root / PENDING_MERGE).exists()  # stale entry cleared
 
 
 def test_build_factory_wires_components(tmp_path):
