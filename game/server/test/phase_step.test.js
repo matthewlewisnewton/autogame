@@ -1,5 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { KEY_ITEM_DEFS } from '../index.js';
+import {
+	KEY_ITEM_DEFS,
+	getWallColliders,
+	isEntityPositionBlocked,
+	isInsideDungeon,
+	PLAYER_RADIUS,
+} from '../index.js';
 import {
 	startTestServer,
 	closeServer,
@@ -160,6 +166,89 @@ describe('useKeyItem — phase_step', () => {
 		// out_of_range guard does NOT trip before invalid_position.
 		p1.x = 99999; p1.z = 99999;
 		p2.x = p1.x + 1; p2.z = p1.z;
+		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
+		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
+		p1.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
+		players[0].socket.emit('useKeyItem', { keyItemId: 'phase_step' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('invalid_position');
+
+		// Neither player's position changed (no swap occurred).
+		const p1After = playerForSocket(players[0].socket);
+		const p2After = playerForSocket(players[1].socket);
+		expect(p1After.x).toBeCloseTo(p1Before.x, 5);
+		expect(p1After.z).toBeCloseTo(p1Before.z, 5);
+		expect(p2After.x).toBeCloseTo(p2Before.x, 5);
+		expect(p2After.z).toBeCloseTo(p2Before.z, 5);
+
+		// Cooldown NOT burned.
+		expect(p1After.keyItemCooldownUntil || 0).toBe(0);
+	});
+
+	it('wall-overlapping ally endpoint fails with invalid_position and does NOT burn cooldown', async () => {
+		// Find an (x, z) that is inside the dungeon (isInsideDungeon true) but still
+		// overlaps a wall collider (isEntityPositionBlocked true), robust against the
+		// procedural layout: probe a fine grid around each wall collider, expanded by
+		// PLAYER_RADIUS. Then find a nearby caster spot that is in-dungeon, unblocked,
+		// and within 6 m of the wall point so out_of_range does NOT trip first.
+		function findWallOverlapAndCaster() {
+			const colliders = getWallColliders();
+			const step = 0.25;
+			for (const w of colliders) {
+				const cx = (w.minX + w.maxX) / 2;
+				const cz = (w.minZ + w.maxZ) / 2;
+				const halfX = (w.maxX - w.minX) / 2 + PLAYER_RADIUS;
+				const halfZ = (w.maxZ - w.minZ) / 2 + PLAYER_RADIUS;
+				for (let ox = -halfX; ox <= halfX; ox += step) {
+					for (let oz = -halfZ; oz <= halfZ; oz += step) {
+						const wx = cx + ox;
+						const wz = cz + oz;
+						if (!isInsideDungeon(wx, wz)) continue;
+						if (!isEntityPositionBlocked(wx, wz, PLAYER_RADIUS)) continue;
+						// Found a wall-overlap point inside the dungeon. Now find a valid
+						// caster spot within 6 m that is in-dungeon and NOT blocked.
+						for (let dx = -5.5; dx <= 5.5; dx += step) {
+							for (let dz = -5.5; dz <= 5.5; dz += step) {
+								const px = wx + dx;
+								const pz = wz + dz;
+								const dist = Math.hypot(px - wx, pz - wz);
+								if (dist > 5.8 || dist < 0.5) continue;
+								if (!isInsideDungeon(px, pz)) continue;
+								if (isEntityPositionBlocked(px, pz, PLAYER_RADIUS)) continue;
+								return { wall: { x: wx, z: wz }, caster: { x: px, z: pz } };
+							}
+						}
+					}
+				}
+			}
+			return null;
+		}
+
+		// Connect first so the dungeon (and its wall colliders) is active before probing.
+		const players = await connectTwoAndStartRun();
+		const p1 = playerForSocket(players[0].socket);
+		const p2 = playerForSocket(players[1].socket);
+
+		const spot = findWallOverlapAndCaster();
+		// Fail loudly if the layout exposes no such configuration.
+		expect(spot, 'no in-dungeon wall-overlap + valid caster point found').not.toBeNull();
+		// Preconditions: ally point is in-dungeon yet blocked; caster point is clear.
+		expect(isInsideDungeon(spot.wall.x, spot.wall.z)).toBe(true);
+		expect(isEntityPositionBlocked(spot.wall.x, spot.wall.z, PLAYER_RADIUS)).toBe(true);
+		expect(isInsideDungeon(spot.caster.x, spot.caster.z)).toBe(true);
+		expect(isEntityPositionBlocked(spot.caster.x, spot.caster.z, PLAYER_RADIUS)).toBe(false);
+
+		// Caster at the clear in-room spot, ally at the wall-overlap point within range.
+		p1.x = spot.caster.x; p1.z = spot.caster.z;
+		p2.x = spot.wall.x; p2.z = spot.wall.z;
+
+		// Sanity: ally is within the 6 m range so out_of_range does not trip first.
+		expect(Math.hypot(p2.x - p1.x, p2.z - p1.z)).toBeLessThanOrEqual(6);
+
 		const p1Before = { x: p1.x, y: p1.y, z: p1.z };
 		const p2Before = { x: p2.x, y: p2.y, z: p2.z };
 		p1.keyItemCooldownUntil = 0;
