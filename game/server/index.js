@@ -803,6 +803,9 @@ function applyDebugScenario(socket, name) {
       player.z = plateauSpawn.z;
       const plateauFloorY = sampleFloorY(state.layout, player.x, player.z);
       player.y = Number.isFinite(plateauFloorY) ? plateauFloorY : DEFAULT_FLOOR_Y;
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,

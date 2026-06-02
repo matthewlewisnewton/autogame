@@ -1056,6 +1056,10 @@ function roomsByRole(layout, role) {
   return layout.rooms.filter(r => r.role === role);
 }
 
+function roomsByBand(layout, band) {
+  return layout.rooms.filter(r => r.band === band);
+}
+
 /**
  * Return a random position {x, z} within a room of the specified role.
  * Uses a seeded RNG (Mulberry32) for determinism.
@@ -1094,6 +1098,7 @@ module.exports = {
   findFarthestRoom,
   assignRoomRoles,
   roomsByRole,
+  roomsByBand,
   randomRoomPositionByRole,
   sampleFloorY,
   questLayoutSeed,

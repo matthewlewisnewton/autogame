@@ -36,6 +36,7 @@ const {
 const {
   mulberry32,
   roomsByRole,
+  roomsByBand,
   randomRoomPositionByRole,
   sampleFloorY,
   DEFAULT_FLOOR_Y,
@@ -2510,8 +2511,28 @@ function isOpenFloorLayout(layout) {
          roomsByRole(layout, 'treasure').length === 0;
 }
 
+function isSunkenCanyonLayout(layout) {
+  return !!(layout && layout.profile === 'sunken-canyon');
+}
+
 function spawnCrystals(layout, rng, count) {
   const itemCount = Math.max(1, count | 0);
+  if (isSunkenCanyonLayout(layout)) {
+    for (let i = 0; i < itemCount; i++) {
+      const pos = randomRoomPositionByRole(layout, 'treasure', rng);
+      const id = crypto.randomUUID();
+      _gameState.loot.push({
+        id,
+        x: pos.x,
+        z: pos.z,
+        value: 0,
+        kind: 'crystal',
+        createdAt: Date.now(),
+      });
+      console.log(`[crystal] spawned id=${id} at (${pos.x.toFixed(1)}, ${pos.z.toFixed(1)})`);
+    }
+    return;
+  }
   const treasureRooms = roomsByRole(layout, 'treasure');
   const eligibleRooms = layout.rooms.filter(r => r.role !== 'start');
   // Open-plaza / no-role layouts have no treasure/combat room to target, so
@@ -2586,7 +2607,40 @@ function nearestCombatRoom(layout) {
   return nearest;
 }
 
+function pickSunkenCanyonEnemyBand(layout, rng, enemyIndex, enemyCount, preferNearest) {
+  const plateauRooms = roomsByBand(layout, 'plateau');
+  const canyonRooms = roomsByBand(layout, 'canyon');
+  const plateauRoom = plateauRooms[0];
+  const canyonRoom = canyonRooms[0];
+  if (!plateauRoom || !canyonRoom) {
+    return canyonRoom || plateauRoom;
+  }
+
+  const plateauCount = 1;
+  let canyonCount = enemyCount - plateauCount;
+  if (canyonCount <= enemyCount / 2) {
+    canyonCount = Math.floor(enemyCount / 2) + 1;
+  }
+
+  if (preferNearest && enemyIndex < Math.min(2, enemyCount)) {
+    return plateauRoom;
+  }
+
+  if (enemyIndex < plateauCount) {
+    return plateauRoom;
+  }
+  if (enemyIndex < plateauCount + canyonCount) {
+    return canyonRoom;
+  }
+  return canyonRoom;
+}
+
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
+  if (isSunkenCanyonLayout(layout)) {
+    const room = pickSunkenCanyonEnemyBand(layout, rng, 0, 1, preferNearestCombat);
+    return room ? randomPositionInRoom(room, rng) : pickFloorSpawnPosition(layout, rng);
+  }
+
   if (preferNearestCombat) {
     const nearest = nearestCombatRoom(layout);
     if (nearest) return randomPositionInRoom(nearest, rng);
@@ -2615,6 +2669,18 @@ function spawnCombatEnemies(layout, rng, quest) {
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
   const preferNearest = quest.objectiveType === 'collect_items';
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+
+  if (isSunkenCanyonLayout(layout)) {
+    for (let i = 0; i < enemyCount; i++) {
+      const type = spawnTypes[i % spawnTypes.length];
+      const useNearest = preferNearest && i < nearbyCount;
+      const room = pickSunkenCanyonEnemyBand(layout, rng, i, enemyCount, useNearest);
+      const pos = randomPositionInRoom(room, rng);
+      const enemy = spawnEnemy(pos.x, pos.z, type);
+      enemy.wanderTarget = randomWanderTarget();
+    }
+    return;
+  }
 
   for (let i = 0; i < enemyCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];

@@ -582,10 +582,24 @@ function isInsideDungeon(x, z) {
 }
 
 /**
+ * Plateau spawn for sunken-canyon: north-interior point, clear of south ramp mouths.
+ */
+function sunkenCanyonPlateauSpawnPosition(layout) {
+  const idx = layout.stageMeta?.plateauRoomIndex ?? 0;
+  const room = layout.rooms[idx];
+  const margin = SPAWN_PADDING + 1;
+  const zOffset = Math.max(margin, room.depth / 2 - margin - 2);
+  return { x: room.x, z: room.z - zOffset };
+}
+
+/**
  * Returns spawn position in the start room.
  */
 function firstRoomPosition() {
   const layout = _gameState.layout;
+  if (layout?.profile === 'sunken-canyon') {
+    return sunkenCanyonPlateauSpawnPosition(layout);
+  }
   const startRoom = layout.rooms.find(r => r.role === 'start');
   const room = startRoom || layout.rooms[0]; // defensive fallback
   return { x: room.x, z: room.z };
@@ -2125,6 +2139,7 @@ module.exports = {
   computeWalkableAABBs,
   isInsideDungeon,
   firstRoomPosition,
+  sunkenCanyonPlateauSpawnPosition,
   randomRoomPosition,
   pickFloorSpawnPosition,
   clampToDungeon,
