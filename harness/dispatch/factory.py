@@ -31,10 +31,13 @@ DEFAULT_SPECS = [
 ]
 DEFAULT_PREFERENCE = {
     "easy":   ["qwen", "composer_write"],
-    # claude is the medium primary (cap 1) so it actually gets work — as pure
-    # overflow it never ran (qwen+composer+gpt5 caps already cover the slots).
+    # claude (cap 1) is a first-class candidate for BOTH medium and hard — medium
+    # primary, and hard runner-up behind the gpt-5.5 hard specialist. As pure
+    # overflow it never ran (the other caps already cover the slots). With the
+    # hard lane processed first, claude picks up a hard ticket when 2+ are ready
+    # and falls back to medium otherwise.
     "medium": ["claude", "composer_write", "qwen"],
-    "hard":   ["gpt5_extra_write", "composer_write", "claude"],
+    "hard":   ["gpt5_extra_write", "claude", "composer_write"],
 }
 
 
