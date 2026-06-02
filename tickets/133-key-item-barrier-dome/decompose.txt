@@ -1,0 +1,14 @@
+Created 2 dependency-ordered sub-tickets, both server-side and verified by `code`.
+
+**Sub-ticket folders created:**
+- `tickets/133-key-item-barrier-dome/subtickets/01-server-barrier-dome-cast/ticket.md`
+- `tickets/133-key-item-barrier-dome/subtickets/02-server-barrier-dome-blocks-projectiles/ticket.md`
+
+**Rationale:**
+
+The top ticket asks for a 1s, 3m projectile-blocking dome on `useKeyItem`, with ~14s cooldown, co-op protection, and tests proving projectile damage is blocked while melee applies. The codebase already has a placeholder `barrier_dome` def (wrong values: 25s/5m/8s/absorb-100) and a generic key-item cast pipeline, so the work divides naturally:
+
+- **01 — Cast & dome state:** Re-tune the def, move `barrier_dome` out of the `not_implemented` list, add a cast branch that stamps `barrierDomeUntil` + radius + center on the caster, enforce cooldown, and expose the dome in `stateSnapshot`. This is the prerequisite state the blocking logic reads.
+- **02 — Block ranged/projectile damage:** Extend `damagePlayer()` to fully block ranged attacks that originate outside any active dome and target a player inside it (covering co-op via iterating all players' domes), leaving melee and existing invuln/`guard_block` untouched, plus tagging a real ranged attack path so the mechanic actually fires in-game.
+
+Both are `code` verification: every criterion concerns def values, handler/state existence, cooldown timing, blocking logic, co-op behavior, and an expired-dome edge case — none of which screenshot QA can see.

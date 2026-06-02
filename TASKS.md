@@ -31,7 +31,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [130-key-item-phase-step](tickets/130-key-item-phase-step/)
 - [ ] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
 - [ ] [132-key-item-echo-strike](tickets/132-key-item-echo-strike/)
-- [ ] [133-key-item-barrier-dome](tickets/133-key-item-barrier-dome/)
+- [x] [133-key-item-barrier-dome](tickets/133-key-item-barrier-dome/)
 - [ ] [134-key-item-rally-cry](tickets/134-key-item-rally-cry/)
 
 ## Backlog — World Stages
