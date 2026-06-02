@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Clean. `metrics.json` reports `ok: true`, empty `pageerrors`, no `harness_failure`; both players reached `phase: "playing"` with healthy latency/HP/movement. `console.log` has only benign vite/initScene lines — no page errors, no fatals.
+
+**Acceptance criteria — all 5 met:**
+1. ✅ `cosmetic { bodyColor, accentColor, bodyShape }` added with defaults; `loadUsers` backfills whole- and partial-missing records.
+2. ✅ `PATCH /api/me/profile` validates hex colors + shape enum, returns 400 on invalid input (HTTP test confirms).
+3. ✅ `buildPlayerRecord` sources cosmetic from the account, with a safe `{ ...DEFAULT_COSMETIC }` copy fallback.
+4. ✅ `stateSnapshot` emits `cosmetic` per player.
+5. ✅ Round-trips through the API and persists across a simulated restart (via existing atomic write).
+
+**Verification:** All 53 server tests pass. Implementation follows the ticket's Design (reuses the existing route + atomic write, no new mechanisms). No debug scenarios introduced. Default merges use spread copies, avoiding shared mutable references.
+
+**Nit (non-blocking, filed to `nits.md`):** `updateProfile` mutates in-memory username/email before validating `cosmetic`, so a valid-username + invalid-cosmetic request can leave in-memory state diverged from disk until restart. Low real-world impact; worth making atomic later.
+
+No `gaps.md` written (PASS).

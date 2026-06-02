@@ -2240,3 +2240,26 @@ None. No blocking gaps for acceptance or runtime health.
 
 See `nits.md` for optional follow-ups (design-doc deck cap vs code, minor doc depth on run objectives).
 
+
+## v0.113 — 181 — Character Customization: Server Cosmetic Profile  (2026-06-02 09:51:13)
+
+restart.** — MET. `updateProfile` merges provided sub-fields onto the existing
+cosmetic and persists via the existing atomic `saveUsers`. Verified by
+`users.test.js` ("persists cosmetic across a simulated restart") and the
+account-route round-trip test that re-reads via `GET /api/me`.
+
+## Consistency / regression
+- Reuses the existing `PATCH /api/me/profile` route and atomic `users.json`
+  write exactly as the ticket's Design section specifies — no new endpoint, no
+  new persistence mechanism.
+- Default merge/fallback uses spread copies everywhere a default is applied, so
+  no record shares a mutable `DEFAULT_COSMETIC` reference.
+- No debug scenarios were added or changed by this ticket.
+- All 53 server tests pass (`account`, `cosmetic`, `cosmetic_runtime`, `users`).
+  `server.test.js` got a +3 line touch consistent with the new export.
+
+## Remaining gaps
+None blocking. All five acceptance criteria are fully and robustly met, backed
+by HTTP-level and unit tests, and the captured run is healthy. One minor,
+non-blocking polish item is recorded in `nits.md`.
+
