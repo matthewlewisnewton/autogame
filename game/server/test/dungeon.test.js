@@ -17,9 +17,18 @@ import {
   CELL_SPACING,
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
+  PASSAGE_WIDTH,
+  averageRampSlope,
+  validateRampSlope,
+  MIN_RAMP_SLOPE,
+  SUNKEN_PLATEAU_Y,
+  SUNKEN_CANYON_Y,
 } from '../dungeon.js';
-import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
+import {
+  buildWallColliders,
+  computeWalkableAABBs,
+  computeDungeonBounds,
+} from '../simulation.js';
 
 const PLAYER_RADIUS = 0.45;
 const WALK_STEP = 0.4;
@@ -64,6 +73,50 @@ function countReachableRooms(layout, aabbs, colliders) {
   }
 
   return reachedRooms.size;
+}
+
+const SUNKEN_OPTS = { stage: 'sunken-canyon', slopes: true };
+
+function sunkenLayout(seed) {
+  return generateLayout(seed, undefined, SUNKEN_OPTS);
+}
+
+function canWalkBetween(layout, fromX, fromZ, toX, toZ) {
+  const aabbs = computeWalkableAABBs(layout);
+  const colliders = buildWallColliders(layout);
+  const key = (x, z) => `${Math.round(x / WALK_STEP)},${Math.round(z / WALK_STEP)}`;
+  const seen = new Set([key(fromX, fromZ)]);
+  const queue = [{ x: fromX, z: fromZ }];
+  const targetKey = key(toX, toZ);
+  const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+  for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+    const { x, z } = queue[qi];
+    if (key(x, z) === targetKey) return true;
+    for (const [dx, dz] of dirs) {
+      const nx = x + dx;
+      const nz = z + dz;
+      const k = key(nx, nz);
+      if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+      seen.add(k);
+      queue.push({ x: nx, z: nz });
+    }
+  }
+  return false;
+}
+
+function perimeterBlocked(layout, bounds, colliders, margin = 0.6) {
+  const { minX, maxX, minZ, maxZ } = bounds;
+  const samples = [];
+  const steps = 24;
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    samples.push({ x: minX + margin, z: minZ + t * (maxZ - minZ) });
+    samples.push({ x: maxX - margin, z: minZ + t * (maxZ - minZ) });
+    samples.push({ x: minX + t * (maxX - minX), z: minZ + margin });
+    samples.push({ x: minX + t * (maxX - minX), z: maxZ - margin });
+  }
+  return samples.every(({ x, z }) => !isWalkable(x, z, computeWalkableAABBs(layout), colliders));
 }
 
 // ── mulberry32 PRNG ──
@@ -1064,5 +1117,100 @@ describe('sampleFloorY(layout, x, z)', () => {
     const a = sampleFloorY(layout, 10, 10);
     const b = sampleFloorY(layout, 10, 10);
     expect(a).toBe(b);
+  });
+});
+
+// ── generateLayout sunken-canyon ──
+
+describe('generateLayout sunken-canyon', () => {
+  it('dispatches to sunken-canyon stage without grid growth', () => {
+    const layout = sunkenLayout(42);
+    expect(layout.stage).toBe('sunken-canyon');
+    expect(layout.profile).toBe('sunken-canyon');
+    expect(layout.rooms.length).toBeLessThan(8);
+    expect(layout.rooms.every(r => r.elevationBand)).toBe(true);
+  });
+
+  it('has exactly one plateau and one canyon band', () => {
+    const layout = sunkenLayout(99);
+    const plateaus = layout.rooms.filter(r => r.elevationBand === 'plateau');
+    const canyons = layout.rooms.filter(r => r.elevationBand === 'canyon');
+    expect(plateaus).toHaveLength(1);
+    expect(canyons).toHaveLength(1);
+    const rampCount = layout.rooms.filter(r => r.elevationBand === 'ramp').length;
+    expect(rampCount).toBeGreaterThanOrEqual(2);
+    expect(rampCount).toBeLessThanOrEqual(3);
+  });
+
+  it('sizes plateau in 12–15 and canyon area ≥ 4× MIN_ROOM_SIZE²', () => {
+    const layout = sunkenLayout(7);
+    const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+    const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+    expect(plateau.width).toBeGreaterThanOrEqual(MIN_ROOM_SIZE);
+    expect(plateau.width).toBeLessThanOrEqual(MAX_ROOM_SIZE_INCLUSIVE);
+    expect(plateau.depth).toBeGreaterThanOrEqual(MIN_ROOM_SIZE);
+    expect(plateau.depth).toBeLessThanOrEqual(MAX_ROOM_SIZE_INCLUSIVE);
+    expect(canyon.width * canyon.depth).toBeGreaterThanOrEqual(4 * MIN_ROOM_SIZE * MIN_ROOM_SIZE);
+  });
+
+  it('plateau flat floorCorners and Y drop ≥ 8 at band centers', () => {
+    const layout = sunkenLayout(123);
+    const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+    const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+    expect(plateau.floorCorners.yNW).toBe(plateau.floorCorners.ySE);
+    expect(canyon.floorCorners.yNW).toBe(canyon.floorCorners.ySE);
+    const plateauY = sampleFloorY(layout, plateau.x, plateau.z);
+    const canyonY = sampleFloorY(layout, canyon.x, canyon.z);
+    expect(plateauY - canyonY).toBeGreaterThanOrEqual(8);
+    expect(plateauY).toBeCloseTo(SUNKEN_PLATEAU_Y, 5);
+    expect(canyonY).toBeCloseTo(SUNKEN_CANYON_Y, 5);
+  });
+
+  it('ramps use createRampRoom slopes ≥ 0.15 with non-uniform floorCorners', () => {
+    const layout = sunkenLayout(55);
+    const ramps = layout.rooms.filter(r => r.elevationBand === 'ramp');
+    for (const ramp of ramps) {
+      const heights = new Set([
+        ramp.floorCorners.yNW,
+        ramp.floorCorners.yNE,
+        ramp.floorCorners.ySE,
+        ramp.floorCorners.ySW,
+      ]);
+      expect(heights.size).toBeGreaterThan(1);
+      expect(validateRampSlope(ramp)).toBe(true);
+      expect(averageRampSlope(ramp)).toBeGreaterThanOrEqual(MIN_RAMP_SLOPE);
+    }
+  });
+
+  it('plateau center is reachable from canyon center through walkable AABBs', () => {
+    const layout = sunkenLayout(42);
+    const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+    const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+    expect(
+      canWalkBetween(layout, plateau.x, plateau.z, canyon.x, canyon.z)
+    ).toBe(true);
+  });
+
+  it('outer perimeter is enclosed by room walls within dungeon bounds', () => {
+    const layout = sunkenLayout(42);
+    const bounds = computeDungeonBounds(layout);
+    const colliders = buildWallColliders(layout);
+    expect(perimeterBlocked(layout, bounds, colliders)).toBe(true);
+  });
+
+  it('is deterministic for the same seed', () => {
+    const a = sunkenLayout(777);
+    const b = sunkenLayout(777);
+    expect(a).toEqual(b);
+  });
+
+  it('varies ramp count 2–3 across seeds', () => {
+    const counts = new Set();
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = sunkenLayout(seed);
+      counts.add(layout.rooms.filter(r => r.elevationBand === 'ramp').length);
+    }
+    expect(counts.has(2)).toBe(true);
+    expect(counts.has(3)).toBe(true);
   });
 });

@@ -81,15 +81,252 @@ function questLayoutSeed(questId) {
   return Math.abs(hash) || 1;
 }
 
+const SUNKEN_PLATEAU_Y = 10;
+const SUNKEN_CANYON_Y = 2;
+const SUNKEN_MIN_CANYON_AREA = 4 * MIN_ROOM_SIZE * MIN_ROOM_SIZE;
+
+/**
+ * Build axis-aligned wall segments along one rectangular edge, with optional gaps.
+ * @param {'north'|'south'|'east'|'west'} edge
+ * @param {number[]} gapCenters - offsets from room center along the edge tangent
+ */
+function buildEdgeWallSegments(cx, cz, width, depth, edge, gapCenters, gapWidth) {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  const gapHalf = gapWidth / 2;
+  const sorted = [...gapCenters].sort((a, b) => a - b);
+  const walls = [];
+
+  function pushSegments(edgeLength, axis, fixedX, fixedZ) {
+    const halfLen = edgeLength / 2;
+    const gaps = sorted.map(g => ({ start: g - gapHalf, end: g + gapHalf }));
+    let cursor = -halfLen;
+    for (const gap of gaps) {
+      const segLen = gap.start - cursor;
+      if (segLen > 0.05) {
+        const segCenter = cursor + segLen / 2;
+        if (axis === 'x') {
+          walls.push({ x: cx + segCenter, z: fixedZ, length: segLen, axis: 'x' });
+        } else {
+          walls.push({ x: fixedX, z: cz + segCenter, length: segLen, axis: 'z' });
+        }
+      }
+      cursor = gap.end;
+    }
+    const tail = halfLen - cursor;
+    if (tail > 0.05) {
+      const segCenter = cursor + tail / 2;
+      if (axis === 'x') {
+        walls.push({ x: cx + segCenter, z: fixedZ, length: tail, axis: 'x' });
+      } else {
+        walls.push({ x: fixedX, z: cz + segCenter, length: tail, axis: 'z' });
+      }
+    }
+  }
+
+  if (edge === 'north') {
+    pushSegments(width, 'x', cx, cz - halfD);
+  } else if (edge === 'south') {
+    pushSegments(width, 'x', cx, cz + halfD);
+  } else if (edge === 'west') {
+    pushSegments(depth, 'z', cx - halfW, cz);
+  } else {
+    pushSegments(depth, 'z', cx + halfW, cz);
+  }
+
+  return walls;
+}
+
+function createFlatBandRoom({ x, z, width, depth, y, edgeGaps = {}, gapWidth = PASSAGE_WIDTH }) {
+  const walls = [];
+  for (const edge of ['north', 'south', 'east', 'west']) {
+    const gaps = edgeGaps[edge] || [];
+    walls.push(
+      ...buildEdgeWallSegments(x, z, width, depth, edge, gaps, gapWidth)
+    );
+  }
+  return {
+    x,
+    z,
+    width,
+    depth,
+    walls,
+    floorCorners: {
+      yNW: y,
+      yNE: y,
+      ySE: y,
+      ySW: y,
+    },
+  };
+}
+
+/** Open the low (south) edge of a z-axis ramp so it connects to the canyon. */
+function openRampSouthPassage(room, gapWidth) {
+  const halfD = room.depth / 2;
+  const southZ = room.z + halfD;
+  room.walls = room.walls.filter(
+    w => !(w.axis === 'x' && Math.abs(w.z - southZ) < 1e-6)
+  );
+  const segLen = (room.width - gapWidth) / 2;
+  room.walls.push(
+    { x: room.x - gapWidth / 2 - segLen / 2, z: southZ, length: segLen, axis: 'x' },
+    { x: room.x + gapWidth / 2 + segLen / 2, z: southZ, length: segLen, axis: 'x' }
+  );
+}
+
+/**
+ * Deterministic Sunken Canyon stage: upper plateau, lower canyon, 2–3 ramps.
+ * @param {number} seed
+ * @param {object} [options]
+ */
+function generateSunkenCanyonLayout(seed, options = {}) {
+  const rng = mulberry32(seed);
+  const passageWidth = PASSAGE_WIDTH;
+
+  let plateauW =
+    MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE_INCLUSIVE - MIN_ROOM_SIZE + 1));
+  const plateauD =
+    MIN_ROOM_SIZE + Math.floor(rng() * (MAX_ROOM_SIZE_INCLUSIVE - MIN_ROOM_SIZE + 1));
+
+  let canyonW = 26 + Math.floor(rng() * 10);
+  let canyonD = Math.ceil(SUNKEN_MIN_CANYON_AREA / canyonW);
+  if (canyonW * canyonD < SUNKEN_MIN_CANYON_AREA) {
+    canyonD = Math.ceil(SUNKEN_MIN_CANYON_AREA / canyonW);
+  }
+  canyonW = Math.max(canyonW, plateauW);
+
+  let numRamps = 2 + Math.floor(rng() * 2);
+  const rampW = PASSAGE_WIDTH;
+  const rampD = 12 + Math.floor(rng() * 4);
+  const edgeMargin = 1;
+
+  function computeRampOffsets(roomWidth, rampCount) {
+    const totalRampSpan = rampCount * rampW;
+    const leftover = roomWidth - 2 * edgeMargin - totalRampSpan;
+    if (leftover < 0) return null;
+    const spacing = rampCount > 1 ? leftover / (rampCount - 1) : 0;
+    const offsets = [];
+    let x = -roomWidth / 2 + edgeMargin + rampW / 2;
+    for (let i = 0; i < rampCount; i++) {
+      offsets.push(x);
+      if (i < rampCount - 1) x += rampW + spacing;
+    }
+    return offsets;
+  }
+
+  let rampOffsets = computeRampOffsets(plateauW, numRamps);
+  while (!rampOffsets && numRamps > 2) {
+    numRamps -= 1;
+    rampOffsets = computeRampOffsets(plateauW, numRamps);
+  }
+  while (!rampOffsets && plateauW < MAX_ROOM_SIZE_INCLUSIVE) {
+    plateauW += 1;
+    rampOffsets = computeRampOffsets(plateauW, numRamps);
+  }
+  if (!rampOffsets) {
+    numRamps = 2;
+    rampOffsets = computeRampOffsets(plateauW, numRamps);
+  }
+
+  const plateauX = 0;
+  const plateauZ = -48;
+  const plateauSouthZ = plateauZ + plateauD / 2;
+
+  const rampPassageGap = Math.min(passageWidth, rampW - 1);
+
+  const ramps = rampOffsets.map(offsetX => {
+    const ramp = createRampRoom({
+      x: plateauX + offsetX,
+      z: plateauSouthZ + rampD / 2,
+      width: rampW,
+      depth: rampD,
+      axis: 'z',
+      yHigh: SUNKEN_PLATEAU_Y,
+      yLow: SUNKEN_CANYON_Y,
+      passageGap: rampPassageGap,
+      minSlope: MIN_RAMP_SLOPE,
+    });
+    openRampSouthPassage(ramp, rampPassageGap);
+    ramp.elevationBand = 'ramp';
+    return ramp;
+  });
+
+  const canyonNorthZ = plateauSouthZ + rampD;
+  const canyonZ = canyonNorthZ + canyonD / 2;
+
+  const plateau = createFlatBandRoom({
+    x: plateauX,
+    z: plateauZ,
+    width: plateauW,
+    depth: plateauD,
+    y: SUNKEN_PLATEAU_Y,
+    edgeGaps: { south: rampOffsets },
+    gapWidth: rampPassageGap,
+  });
+  plateau.elevationBand = 'plateau';
+
+  const canyon = createFlatBandRoom({
+    x: plateauX,
+    z: canyonZ,
+    width: canyonW,
+    depth: canyonD,
+    y: SUNKEN_CANYON_Y,
+    edgeGaps: { north: rampOffsets },
+    gapWidth: rampPassageGap,
+  });
+  canyon.elevationBand = 'canyon';
+
+  const rooms = [plateau, ...ramps, canyon];
+  const passages = rampOffsets.flatMap(offsetX => {
+    const rx = plateauX + offsetX;
+    const rampNorthZ = plateauSouthZ;
+    const rampSouthZ = plateauSouthZ + rampD;
+    return [
+      {
+        x1: rx,
+        z1: plateauSouthZ - 1,
+        x2: rx,
+        z2: rampNorthZ + 0.5,
+        walls: [],
+        corridorLength: 1.5,
+      },
+      {
+        x1: rx,
+        z1: rampSouthZ - 0.5,
+        x2: rx,
+        z2: canyonNorthZ + 1,
+        walls: [],
+        corridorLength: Math.max(1, canyonNorthZ - rampSouthZ + 1),
+      },
+    ];
+  });
+
+  const layout = {
+    stage: 'sunken-canyon',
+    rooms,
+    passages,
+    passageWidth,
+    cellSpacing: 0,
+    profile: 'sunken-canyon',
+  };
+
+  assignRoomRoles(layout);
+  return layout;
+}
+
 /**
  * Generate a deterministic dungeon layout from a numeric seed.
  * Returns { rooms: [...], passages: [...], passageWidth, profile }
  *
  * @param {number} seed - PRNG seed for deterministic generation
  * @param {string|object} [profile=DEFAULT_LAYOUT_PROFILE] - Layout profile name or object
- * @param {object} [options={}] - Optional flags: { slopes: boolean }
+ * @param {object} [options={}] - Optional flags: { slopes: boolean, stage: string }
  */
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+  if (options.stage === 'sunken-canyon') {
+    return generateSunkenCanyonLayout(seed, options);
+  }
+
   const opts = normalizeLayoutProfile(profile);
   const rng = mulberry32(seed);
   const gridCols = opts.gridCols;
@@ -498,6 +735,7 @@ function randomRoomPositionByRole(layout, role, rng) {
 module.exports = {
   mulberry32,
   generateLayout,
+  generateSunkenCanyonLayout,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
@@ -521,4 +759,7 @@ module.exports = {
   validateRampSlope,
   inferRampAxis,
   MIN_RAMP_SLOPE,
+  SUNKEN_PLATEAU_Y,
+  SUNKEN_CANYON_Y,
+  SUNKEN_MIN_CANYON_AREA,
 };
