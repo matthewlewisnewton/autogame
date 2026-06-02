@@ -2309,3 +2309,26 @@ gameplay/foundation regression. Coverage log shows the existing server suite run
 ## Remaining gaps
 None blocking. (See `nits.md` for minor non-blocking polish.)
 
+
+## v0.123 — Models: glTF Loader Infrastructure (with procedural fallback)  (2026-06-02 11:56:04)
+
+
+6. **Resilient loading: missing/broken logs a warning, falls back, never throws/stalls.**
+   ✅ `loadModel` guards loader construction in try/catch, routes `GLTFLoader` error
+   callback to a `console.warn` + `resolve(null)`, caches the null so a bad path is
+   not re-fetched, and never leaves a hung promise. `attachRegistryModel` also wraps
+   the `.then` with a `.catch`. A null result leaves the procedural mesh untouched.
+
+7. **Existing server + client unit tests still pass.** ✅ `pnpm run test:quick`:
+   62 files / 1473 tests passed, 0 failures.
+
+8. **Debug scenarios.** None added or changed by this ticket (diff is loader-only;
+   `debugScenario` probe fields are unchanged from the existing harness). N/A.
+
+Consistency with `design.md`/`requirements.md`: additive plumbing only; no
+foundation regressed.
+
+## Remaining gaps
+
+None blocking. (See `nits.md` for minor non-blocking follow-ups.)
+
