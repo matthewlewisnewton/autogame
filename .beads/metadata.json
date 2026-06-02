@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "autogame",
+  "project_id": "a1334aca-81f4-4c61-9ac2-950cc926a380"
+}
