@@ -21,6 +21,35 @@ export const GROUND_Y = -0.02; // background plane sits below room floor bottoms
 export const PASSAGE_WALL_HEIGHT = 1.5;
 export const PASSAGE_WALL_THICKNESS = 0.3;
 
+// Open-plaza cover box heights, used as a fallback when a piece omits its own
+// `height`. `pillar` is a tall box you hide fully behind; everything else
+// (brokenWall, planter) is a low, partial-cover box.
+export const COVER_TALL_HEIGHT = 3.0;
+export const COVER_LOW_HEIGHT = 1.2;
+
+/**
+ * Resolve the render height of a cover piece: prefer the server-provided
+ * `height`, falling back to a type-based default (tall for pillars, low for
+ * everything else).
+ */
+export function coverHeight(piece) {
+	if (Number.isFinite(piece.height)) return piece.height;
+	return piece.type === 'pillar' ? COVER_TALL_HEIGHT : COVER_LOW_HEIGHT;
+}
+
+/**
+ * AABB collider for a cover piece, derived straight from its footprint.
+ * Matches the server's `coverAABB()` so client prediction blocks identically.
+ */
+export function coverAABB(piece) {
+	return {
+		minX: piece.x - piece.width / 2,
+		maxX: piece.x + piece.width / 2,
+		minZ: piece.z - piece.depth / 2,
+		maxZ: piece.z + piece.depth / 2,
+	};
+}
+
 // ── Shared materials ──
 
 export const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
@@ -287,6 +316,30 @@ export function buildDungeon(scene, layout) {
 		}
 	}
 
+	// ── Build open-plaza cover pieces ──
+	// Freestanding cover boxes scattered through the plaza. Each renders as a box
+	// sized to its footprint and seated on the plaza floor. Pieces that carry a
+	// `floorCorners` platform also render a sloped floor patch so the gentle rise
+	// reads visually (sloped path reused from the room loop).
+	if (Array.isArray(layout.cover)) {
+		for (const piece of layout.cover) {
+			const height = coverHeight(piece);
+			const coverGeo = new THREE.BoxGeometry(piece.width, height, piece.depth);
+			const coverMesh = new THREE.Mesh(coverGeo, wallMaterial);
+			const baseY = sampleFloorY(layout, piece.x, piece.z) ?? DEFAULT_FLOOR_Y;
+			coverMesh.position.set(piece.x, baseY + height / 2, piece.z);
+			scene.add(coverMesh);
+			meshes.push(coverMesh);
+
+			// Sloped platform patch under pieces that carry floorCorners.
+			if (piece.floorCorners) {
+				const { mesh } = buildSlopedFloor(piece, floorMaterial);
+				scene.add(mesh);
+				meshes.push(mesh);
+			}
+		}
+	}
+
 	return { meshes, spawnPosition };
 }
 
@@ -308,6 +361,14 @@ export function buildWallColliders(layout) {
 	for (const passage of layout.passages) {
 		for (const wall of passage.walls) {
 			colliders.push(wallAABB(wall, PASSAGE_WALL_THICKNESS / 2));
+		}
+	}
+
+	// Freestanding cover pieces collide as solid boxes from their footprint,
+	// mirroring the server's collider set so prediction blocks identically.
+	if (Array.isArray(layout.cover)) {
+		for (const piece of layout.cover) {
+			colliders.push(coverAABB(piece));
 		}
 	}
 

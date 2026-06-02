@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, clearDungeon, coverAABB, coverHeight, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -71,6 +71,47 @@ describe('buildWallColliders()', () => {
 
 		const [collider] = buildWallColliders(layout);
 		expect(collider.maxX - collider.minX).toBeCloseTo(20 + 0.3);
+	});
+
+	it('appends one footprint AABB per cover piece, matching coverAABB', () => {
+		const cover = [
+			{ x: 10, z: 10, width: 2, depth: 2, height: 3.0, type: 'pillar' },
+			{ x: -10, z: 8, width: 4, depth: 1, height: 1.2, type: 'brokenWall' },
+			{ x: 8, z: -12, width: 2.5, depth: 2.5, height: 0.8, type: 'planter' },
+		];
+		const layout = {
+			rooms: [{ x: 0, z: 0, width: 40, depth: 40, role: 'start', walls: [] }],
+			passages: [],
+			cover,
+		};
+		// Room has no walls and there are no passages, so every collider is cover.
+		const colliders = buildWallColliders(layout);
+		expect(colliders.length).toBe(cover.length);
+
+		// Each collider equals the piece footprint (no inflation), matching server.
+		for (const piece of cover) {
+			const expected = coverAABB(piece);
+			const match = colliders.find(c =>
+				c.minX === expected.minX && c.maxX === expected.maxX &&
+				c.minZ === expected.minZ && c.maxZ === expected.maxZ
+			);
+			expect(match).toBeDefined();
+		}
+	});
+
+	it('omits cover colliders when the layout has no cover array', () => {
+		const layout = {
+			rooms: [{ x: 0, z: 0, width: 10, depth: 10, role: 'start', walls: [{ axis: 'x', x: 0, z: -5, length: 10 }] }],
+			passages: [],
+		};
+		expect(buildWallColliders(layout).length).toBe(1);
+	});
+
+	it('produces a cover collider per piece on a server-generated open-plaza layout', () => {
+		const layout = generateLayout(7, 'open-plaza');
+		const colliders = buildWallColliders(layout);
+		const wallColliders = layout.rooms.reduce((n, r) => n + r.walls.length, 0);
+		expect(colliders.length).toBe(wallColliders + layout.cover.length);
 	});
 });
 
@@ -222,6 +263,86 @@ describe('buildDungeon() with floorCorners', () => {
 		const startRoom = layout.rooms.find(r => r.role === 'start');
 		expect(startRoom).toBeDefined();
 		expect(isUniformFloor(startRoom)).toBe(true);
+	});
+
+	it('renders open-plaza cover pieces as boxes plus sloped platforms', () => {
+		const cover = [
+			{ x: 10, z: 10, width: 2, depth: 2, height: 3.0, type: 'pillar' },
+			{ x: -10, z: 8, width: 4, depth: 1, height: 1.2, type: 'brokenWall' },
+			{ x: 8, z: -12, width: 2.5, depth: 2.5, height: 0.8, type: 'planter' },
+			// Two pieces carry a gently sloped platform.
+			{
+				x: -8, z: -8, width: 2, depth: 2, height: 3.0, type: 'pillar',
+				floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 1.0, ySW: 1.0 },
+			},
+			{
+				x: 14, z: -4, width: 4, depth: 1, height: 1.2, type: 'brokenWall',
+				floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 1.0, ySW: 1.0 },
+			},
+		];
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 40, depth: 40, role: 'start', walls: [], floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 } },
+			],
+			passages: [],
+			cover,
+		};
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+
+		// One box mesh per cover piece, seated at its footprint center.
+		const coverBoxes = result.meshes.filter(m =>
+			cover.some(c => m.position.x === c.x && m.position.z === c.z && m.geometry?.parameters?.height === coverHeight(c))
+		);
+		expect(coverBoxes.length).toBe(cover.length);
+
+		// One sloped platform mesh per piece that carries floorCorners.
+		const slopedCount = cover.filter(c => c.floorCorners).length;
+		const platforms = result.meshes.filter(m =>
+			m.geometry?.parameters?.height === 0.1 &&
+			cover.some(c => m.position.x === c.x && m.position.z === c.z)
+		);
+		expect(platforms.length).toBe(slopedCount);
+
+		// Total = ground(1) + plaza floor(1) + cover boxes + platforms.
+		expect(result.meshes.length).toBe(2 + cover.length + slopedCount);
+
+		// All meshes (including cover) are added to the scene and tracked for cleanup.
+		expect(scene.added.length).toBe(result.meshes.length);
+	});
+
+	it('builds a layout without a cover array (backward compatible)', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, role: 'start', walls: [] },
+			],
+			passages: [],
+		};
+		const scene = mockScene();
+		expect(() => buildDungeon(scene, layout)).not.toThrow();
+		// ground(0) + floor(1), no cover meshes.
+		expect(buildDungeon(mockScene(), layout).meshes.length).toBe(2);
+	});
+
+	it('clearDungeon removes and disposes all cover/platform meshes (no leak)', () => {
+		const layout = generateLayout(7, 'open-plaza');
+		const scene = mockScene();
+		scene.remove = function (mesh) { this.added = this.added.filter(m => m !== mesh); };
+		const { meshes } = buildDungeon(scene, layout);
+
+		const tracked = [...meshes];
+		expect(tracked.length).toBeGreaterThan(0);
+		const disposed = new Set();
+		for (const m of tracked) {
+			const orig = m.geometry.dispose.bind(m.geometry);
+			m.geometry.dispose = () => { disposed.add(m); orig(); };
+		}
+
+		clearDungeon(scene, meshes);
+
+		expect(meshes.length).toBe(0);
+		expect(disposed.size).toBe(tracked.length);
+		expect(scene.added.length).toBe(0);
 	});
 
 	it('positions wall Y on sloped rooms using sampleFloorY', () => {
