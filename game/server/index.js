@@ -2656,18 +2656,22 @@ function startServer(port) {
     if (keyItemId === 'purge_charm') {
       // --- purge_charm: remove the single OLDEST active debuff from the caster.
       // Debuffs are stored oldest-first, so shift() drops the oldest and leaves
-      // any remaining debuffs intact. The no-debuff fallback simply burns
-      // cooldown and reports cleared: null (shield grant lives in sub-ticket 02). ---
+      // any remaining debuffs intact. When the caster has NO active debuffs, the
+      // charm instead grants a one-hit shield (shieldHitsRemaining: 1) that fully
+      // absorbs the next incoming damage instance (see damagePlayer). ---
       if (!Array.isArray(player.debuffs)) player.debuffs = [];
-      let cleared = null;
-      if (player.debuffs.length > 0) {
-        const removed = player.debuffs.shift();
-        cleared = removed && removed.type != null ? removed.type : null;
-      }
       player.keyItemCooldownUntil = now + (def.cooldownMs || 7000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
+      if (player.debuffs.length > 0) {
+        const removed = player.debuffs.shift();
+        const cleared = removed && removed.type != null ? removed.type : null;
+        socket.emit('keyItemUsed', { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
+      } else {
+        // No debuffs to clear — fall back to a one-hit absorb shield.
+        player.shieldHitsRemaining = 1;
+        socket.emit('keyItemUsed', { ok: true, keyItemId, shielded: true, cooldownUntil: player.keyItemCooldownUntil });
+      }
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
