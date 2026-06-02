@@ -797,3 +797,126 @@ describe('useKeyItem — flare_beacon', () => {
 		expect(boundaryEnemy.revealedUntil).toBeDefined();
 	});
 });
+
+// ── echo_strike tests ──
+
+describe('useKeyItem — echo_strike', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+	});
+
+	async function connectAndStartRun() {
+		const { socket } = await connectClient(baseUrl);
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		return { socket };
+	}
+
+	it('KEY_ITEM_DEFS.echo_strike has 10s cooldown and echoFraction', () => {
+		const def = KEY_ITEM_DEFS.echo_strike;
+		expect(def).toBeDefined();
+		expect(def.id).toBe('echo_strike');
+		expect(def.name).toBe('Echo Strike');
+		expect(def.cooldownMs).toBe(10000);
+		expect(def.echoFraction).toBe(0.5);
+		expect(def.type).toBe('offensive');
+		// Old radial-burst fields should be gone
+		expect(def.radius).toBeUndefined();
+		expect(def.damage).toBeUndefined();
+		// Description reflects the new echo behaviour, not a radial burst
+		expect(def.description).not.toMatch(/radial|burst/i);
+		expect(def.description).toMatch(/echo|second/i);
+	});
+
+	it('activation arms echoStrikePending and burns the 10s cooldown', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+		player.echoStrikePending = false;
+
+		const before = Date.now();
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'echo_strike' });
+		const result = await resultPromise;
+		const after = Date.now();
+
+		expect(result.ok).toBe(true);
+		expect(result.keyItemId).toBe('echo_strike');
+		expect(result.echoStrikePending).toBe(true);
+		expect(result.cooldownUntil).toBeGreaterThan(Date.now());
+
+		// Player state mutated as expected
+		expect(player.echoStrikePending).toBe(true);
+		expect(player.keyItemCooldownUntil).toBe(result.cooldownUntil);
+		// cooldownUntil ≈ now + 10000
+		expect(player.keyItemCooldownUntil).toBeGreaterThanOrEqual(before + 10000);
+		expect(player.keyItemCooldownUntil).toBeLessThanOrEqual(after + 10000);
+	});
+
+	it('second immediate use returns on_cooldown with remainingMs > 0', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+
+		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'echo_strike' });
+		const result1 = await result1Promise;
+		expect(result1.ok).toBe(true);
+
+		const result2Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'echo_strike' });
+		const result2 = await result2Promise;
+
+		expect(result2.ok).toBe(false);
+		expect(result2.reason).toBe('on_cooldown');
+		expect(result2.remainingMs).toBeGreaterThan(0);
+		expect(result2.remainingMs).toBeCloseTo(10000, -1);
+	});
+
+	it('emits stateUpdate after a successful activation', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const keyItemPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'echo_strike' });
+		await keyItemPromise;
+		const snapshot = await stateUpdatePromise;
+
+		expect(snapshot).toBeDefined();
+		expect(snapshot.players).toBeDefined();
+	});
+
+	it('echoStrikePending is transient — excluded from extractPersistentData', () => {
+		const player = {
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
+			currency: 0,
+			inventory: [],
+			ownedCards: {},
+			selectedDeck: [],
+			hp: 100,
+			dead: false,
+			equippedKeyItemId: 'echo_strike',
+			echoStrikePending: true,
+		};
+		gameState.players['echo-p1'] = player;
+
+		const persistent = extractPersistentData(player);
+
+		expect(persistent).not.toHaveProperty('echoStrikePending');
+	});
+});
