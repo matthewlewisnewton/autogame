@@ -257,6 +257,28 @@
           <p id="account-error" class="account-error" hidden></p>
           <button type="button" id="account-save-btn">Save name</button>
         </div>
+        <div class="settings-section" id="cosmetic-section">
+          <h3>Character</h3>
+          <div class="settings-field">
+            Body color
+            <div id="cosmetic-body-swatches" class="cosmetic-swatches" role="group" aria-label="Body color"></div>
+          </div>
+          <div class="settings-field">
+            Accent color
+            <div id="cosmetic-accent-swatches" class="cosmetic-swatches" role="group" aria-label="Accent color"></div>
+          </div>
+          <label class="settings-field" for="cosmetic-shape-select">
+            Body shape
+            <select id="cosmetic-shape-select">
+              <option value="box">Box</option>
+              <option value="cylinder">Cylinder</option>
+              <option value="cone">Cone</option>
+              <option value="capsule">Capsule</option>
+            </select>
+          </label>
+          <p id="cosmetic-error" class="account-error" hidden></p>
+          <button type="button" id="cosmetic-save-btn">Save character</button>
+        </div>
         <div class="settings-section account-actions">
           <button type="button" id="account-logout-btn" class="account-logout-btn">Log out</button>
         </div>
