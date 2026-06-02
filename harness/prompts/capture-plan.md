@@ -36,16 +36,18 @@ Available development scenarios:
 - spawner-active: start in gameplay with a spawner enemy ready to spawn its first add on the next tick.
 - monster-card: start in gameplay with full Magic Stones and a monster card (Dungeon Drake) guaranteed in hand.
 - sloped-dungeon: regenerate the dungeon layout with slopes enabled for visual verification of ramp geometry.
+- spire-ascent-stage: load the spire-ascent tower layout for render/collision QA.
+- spire-ascent: select the spire quest, deploy layout, spawn enemies (full dev shortcut).
 
 Use a debug scenario only when the ticket needs a hard-to-reach state. Prefer
 the normal lobby-to-game flow for tickets about onboarding, lobby readiness,
 multiplayer setup, or integration between screens.
 
-Important — dungeon-state scenarios (e.g. sloped-dungeon): these require an
-authenticated player in an active game session. Do NOT use connectPlayer with
-a scenario query parameter. Instead, follow the full flow:
+Important — dungeon-state scenarios (e.g. sloped-dungeon, spire-ascent): these
+require an authenticated player in an active game session. Do NOT use connectPlayer
+with a scenario query parameter. Instead, follow the full flow:
   1. connectPlayer → registerUser → loginUser → createLobby → readyAll → waitForGame
-  2. emitScenario (player: "A", scenario: "sloped-dungeon")
+  2. emitScenario (player: "A", scenario: "sloped-dungeon" or "spire-ascent")
   3. screenshot + probe to capture the regenerated dungeon layout.
 
 Constraints:

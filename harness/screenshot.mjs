@@ -329,22 +329,46 @@ function fallbackRecipe() {
   const ticket = inferTicketFile() ? readText(inferTicketFile(), 8000) : '';
   const isSlopeTicket = /slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
                         /sloped|142/.test(outDirAbs);
+  const isSpireTicket = /spire|spire[-_]ascent/i.test(ticket) ||
+                        /136|spire/.test(outDirAbs);
 
-  const steps = isSlopeTicket
+  let steps = isSlopeTicket
     ? [
         ...baseSteps,
         { action: 'emitScenario', player: 'A', scenario: 'sloped-dungeon' },
         { action: 'wait', player: 'A', ms: 1500 },
         { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
       ]
-    : baseSteps;
+    : [...baseSteps];
 
-  return {
-    summary: isSlopeTicket
-      ? 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.'
-      : 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.',
-    steps,
-  };
+  if (isSpireTicket) {
+    steps = [
+      ...steps,
+      { action: 'emitScenario', player: 'A', scenario: 'spire-ascent' },
+      { action: 'wait', player: 'A', ms: 1500 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '04-spire-ascent',
+        description:
+          'Spire Ascent tower with stacked tiers and ramp passages after emitScenario spire-ascent.',
+      },
+    ];
+  }
+
+  let summary =
+    'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.';
+  if (isSlopeTicket) {
+    summary =
+      'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.';
+  }
+  if (isSpireTicket) {
+    summary = isSlopeTicket
+      ? `${summary.replace(/\.$/, '')}, spire-ascent tower screenshot.`
+      : 'Deterministic full-flow smoke capture with spire-ascent fallback: auth, lobby, ready, movement, tower screenshot.';
+  }
+
+  return { summary, steps };
 }
 
 function buildPlannerPrompt(ticketFile) {
