@@ -4,6 +4,7 @@ import {
 	buildWallColliders,
 	buildPassageFloorSpec,
 	isUniformFloor,
+	uniformFloorY,
 	buildSlopedFloor,
 	buildSlopedFloorMeshFromCorners,
 	FLOOR_Y,
@@ -132,6 +133,17 @@ function twoTierRampLayout() {
 	};
 }
 
+describe('uniformFloorY()', () => {
+	it('returns corner Y for uniform floorCorners', () => {
+		const room = { floorCorners: { yNW: 10.5, yNE: 10.5, ySE: 10.5, ySW: 10.5 } };
+		expect(uniformFloorY(room)).toBe(10.5);
+	});
+
+	it('returns FLOOR_Y when floorCorners is absent', () => {
+		expect(uniformFloorY({ x: 0, z: 0, width: 10, depth: 10 })).toBe(FLOOR_Y);
+	});
+});
+
 describe('isUniformFloor()', () => {
 	it('returns true when floorCorners is absent', () => {
 		expect(isUniformFloor({ x: 0, z: 0, width: 10, depth: 10 })).toBe(true);
@@ -177,7 +189,7 @@ describe('buildSlopedFloor()', () => {
 });
 
 describe('buildDungeon() with floorCorners', () => {
-	it('renders flat rooms identically when floorCorners are uniform', () => {
+	it('renders uniform floorCorners at corner Y, not legacy FLOOR_Y', () => {
 		const layout = {
 			rooms: [
 				{ x: 0, z: 0, width: 10, depth: 10, role: 'start', walls: [], floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 } },
@@ -190,9 +202,34 @@ describe('buildDungeon() with floorCorners', () => {
 		// ground (index 0) + floor (index 1)
 		expect(result.meshes.length).toBe(2);
 		const floor = result.meshes[1];
-		expect(floor.position.y).toBe(FLOOR_Y);
+		expect(floor.position.y).toBe(0.5);
 		expect(floor.rotation.x).toBe(0);
 		expect(floor.rotation.z).toBe(0);
+	});
+
+	it('renders elevated uniform tier at floorCorners Y', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, role: 'combat', walls: [], floorCorners: { yNW: 10.5, yNE: 10.5, ySE: 10.5, ySW: 10.5 } },
+			],
+			passages: [],
+		};
+		const result = buildDungeon(mockScene(), layout);
+		const floor = result.meshes[1];
+		expect(floor.position.y).toBe(10.5);
+	});
+
+	it('positions treasure marker on elevated uniform tier floor Y', () => {
+		const layout = {
+			rooms: [
+				{ x: 5, z: 5, width: 10, depth: 10, role: 'treasure', walls: [], floorCorners: { yNW: 10.5, yNE: 10.5, ySE: 10.5, ySW: 10.5 } },
+			],
+			passages: [],
+		};
+		const result = buildDungeon(mockScene(), layout);
+		// ground(0) + floor(1) + treasure marker(2)
+		const marker = result.meshes[2];
+		expect(marker.position.y).toBeCloseTo(10.5 + 0.75, 5);
 	});
 
 	it('renders flat rooms identically when floorCorners is absent (legacy)', () => {
@@ -249,8 +286,8 @@ describe('buildDungeon() with floorCorners', () => {
 		expect(result.meshes[1].rotation.x).toBe(0);
 		// Room 1: sloped, rotated
 		expect(result.meshes[2].rotation.x).toBeGreaterThan(0);
-		// Room 2: flat at FLOOR_Y, no rotation
-		expect(result.meshes[3].position.y).toBe(FLOOR_Y);
+		// Room 2: uniform corners at 0.5, no rotation
+		expect(result.meshes[3].position.y).toBe(0.5);
 		expect(result.meshes[3].rotation.x).toBe(0);
 	});
 

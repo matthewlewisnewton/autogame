@@ -56,6 +56,18 @@ export function isUniformFloor(room) {
 }
 
 /**
+ * Y position for a flat (uniform) floor mesh: corner height when floorCorners exist,
+ * otherwise the legacy visual FLOOR_Y offset for rooms without corner data.
+ */
+export function uniformFloorY(room) {
+	const fc = room.floorCorners;
+	if (fc && isUniformFloor(room)) {
+		return fc.yNW;
+	}
+	return FLOOR_Y;
+}
+
+/**
  * Build a sloped floor mesh from corner heights on an axis-aligned rectangle.
  * NW/NE/SE/SW are relative to (centerX, centerZ) with width along X and depth along Z.
  *
@@ -221,7 +233,7 @@ export function buildDungeon(scene, layout) {
 		if (isUniformFloor(room)) {
 			const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
 			floorMesh = new THREE.Mesh(floorGeo, floorMat);
-			floorMesh.position.set(room.x, FLOOR_Y, room.z);
+			floorMesh.position.set(room.x, uniformFloorY(room), room.z);
 		} else {
 			const { mesh } = buildSlopedFloor(room, floorMat);
 			floorMesh = mesh;
@@ -233,7 +245,7 @@ export function buildDungeon(scene, layout) {
 		if (room.role === 'treasure') {
 			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
 			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
-			marker.position.set(room.x, 0.75 + FLOOR_Y, room.z);
+			marker.position.set(room.x, 0.75 + uniformFloorY(room), room.z);
 			scene.add(marker);
 			meshes.push(marker);
 		}
