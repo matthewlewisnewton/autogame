@@ -12,6 +12,7 @@ const DEFAULT_COSMETIC = {
 	bodyColor: '#4f9dde',
 	accentColor: '#f2c94c',
 	bodyShape: 'box',
+	hat: 'none',
 };
 
 /** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', keyboard: { bindings: Record<string, string> }, gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
@@ -19,8 +20,12 @@ const DEFAULT_COSMETIC = {
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
 let cachedProfile = { username: '', email: null };
-/** @type {{ bodyColor: string, accentColor: string, bodyShape: string }} */
+/** @type {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string }} */
 let cachedCosmetic = { ...DEFAULT_COSMETIC };
+/** @type {string[]} Hat ids the logged-in account has unlocked (always includes 'none'). */
+let cachedUnlockedHats = ['none'];
+/** @type {{ id: string, name: string, price: number }[]} Server hat catalog. */
+let cachedHatCatalog = [];
 let authToken = null;
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
@@ -59,7 +64,7 @@ export function getAccountProfile() {
 /**
  * Current cached cosmetic for the logged-in account, with any missing fields
  * filled from the defaults that mirror the server `DEFAULT_COSMETIC`.
- * @returns {{ bodyColor: string, accentColor: string, bodyShape: string }}
+ * @returns {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string }}
  */
 export function getAccountCosmetic() {
 	return normalizeCosmetic(cachedCosmetic);
@@ -68,7 +73,7 @@ export function getAccountCosmetic() {
 /**
  * Merge a (possibly partial/legacy) cosmetic onto the defaults.
  * @param {object|undefined|null} cosmetic
- * @returns {{ bodyColor: string, accentColor: string, bodyShape: string }}
+ * @returns {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string }}
  */
 function normalizeCosmetic(cosmetic) {
 	const src = (cosmetic && typeof cosmetic === 'object') ? cosmetic : {};
@@ -76,7 +81,64 @@ function normalizeCosmetic(cosmetic) {
 		bodyColor: typeof src.bodyColor === 'string' ? src.bodyColor : DEFAULT_COSMETIC.bodyColor,
 		accentColor: typeof src.accentColor === 'string' ? src.accentColor : DEFAULT_COSMETIC.accentColor,
 		bodyShape: typeof src.bodyShape === 'string' ? src.bodyShape : DEFAULT_COSMETIC.bodyShape,
+		hat: typeof src.hat === 'string' ? src.hat : DEFAULT_COSMETIC.hat,
 	};
+}
+
+/**
+ * Coerce a server `unlockedHats` payload into a string array that always
+ * includes `'none'`, dropping non-string entries.
+ * @param {unknown} value
+ * @returns {string[]}
+ */
+function normalizeUnlockedHats(value) {
+	const ids = Array.isArray(value) ? value.filter((id) => typeof id === 'string') : [];
+	if (!ids.includes('none')) ids.unshift('none');
+	return ids;
+}
+
+/**
+ * Coerce a server `hatCatalog` payload into an array of catalog entries,
+ * keeping only objects with a string `id`. Falls back to an empty array.
+ * @param {unknown} value
+ * @returns {{ id: string, name: string, price: number }[]}
+ */
+function normalizeHatCatalog(value) {
+	if (!Array.isArray(value)) return [];
+	return value
+		.filter((h) => h && typeof h === 'object' && typeof h.id === 'string')
+		.map((h) => ({
+			id: h.id,
+			name: typeof h.name === 'string' ? h.name : h.id,
+			price: Number.isFinite(h.price) ? h.price : 0,
+		}));
+}
+
+/**
+ * Hat ids the logged-in account has unlocked. Always an array and always
+ * includes `'none'` (the free bare-head option).
+ * @returns {string[]}
+ */
+export function getUnlockedHats() {
+	return Array.isArray(cachedUnlockedHats) ? cachedUnlockedHats : ['none'];
+}
+
+/**
+ * Replace the cached unlocked-hat set (e.g. after the server reports a new
+ * unlock). Coerced to always include `'none'`.
+ * @param {unknown} hats
+ */
+export function setUnlockedHats(hats) {
+	cachedUnlockedHats = normalizeUnlockedHats(hats);
+}
+
+/**
+ * The server hat catalog cached on load. Falls back to an empty array when the
+ * server did not supply one.
+ * @returns {{ id: string, name: string, price: number }[]}
+ */
+export function getHatCatalog() {
+	return Array.isArray(cachedHatCatalog) ? cachedHatCatalog : [];
 }
 
 export function getAuthToken() {
@@ -136,6 +198,8 @@ export async function loadAccountSettings(token) {
 		email: data.email || null,
 	};
 	cachedCosmetic = normalizeCosmetic(data.cosmetic);
+	cachedUnlockedHats = normalizeUnlockedHats(data.unlockedHats);
+	cachedHatCatalog = normalizeHatCatalog(data.hatCatalog);
 	cachedSettings = deepMerge(getDefaultSettings(), data.settings || {});
 	await migrateLocalStorageMute();
 	applySettings();

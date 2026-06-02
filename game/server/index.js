@@ -14,7 +14,7 @@ const {
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
 const { findUserByAccountId, unlockHat: unlockHatForAccount } = require('./users');
-const { DEFAULT_COSMETIC, backfillUnlockedHats } = require('./cosmetic');
+const { DEFAULT_COSMETIC, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
@@ -435,6 +435,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon',
   'sunken-canyon-stage',
   'hat-shop-currency',
+  'hats-unlocked',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -590,6 +591,27 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.currency = Math.max(player.currency || 0, 1000);
       return { ok: true, scenario: name };
+    }
+
+    if (name === 'hats-unlocked') {
+      // Persist a couple of catalog-hat unlocks on the account (leaving at least
+      // one hat locked) so the customization panel's equip flow can be exercised
+      // on owned, non-'none' hats — and the locked-hat branch too — without
+      // grinding currency and unlocking each hat first. The returned
+      // `unlockedHats` lets the client refresh its cached owned set. The same
+      // owned state is reachable normally by earning currency and unlocking hats
+      // via the unlock/shop flow.
+      state.gamePhase = 'lobby';
+      player.ready = false;
+      player.hp = MAX_HP;
+      // Leave the last catalog hat locked so both owned and locked entries show.
+      const toUnlock = HAT_CATALOG.filter((h) => h.id !== 'none').slice(0, -1);
+      let unlockedHats = backfillUnlockedHats(null);
+      for (const hat of toUnlock) {
+        const r = unlockHatForAccount(player.accountId, hat.id);
+        if (r.ok) unlockedHats = r.unlockedHats;
+      }
+      return { ok: true, scenario: name, unlockedHats };
     }
 
     player.ready = true;

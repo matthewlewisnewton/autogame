@@ -31,7 +31,7 @@ function renderFrame() {
 
 /**
  * Build the avatar group from a cosmetic and add it to the preview scene.
- * @param {{bodyColor:string,accentColor:string,bodyShape:string}} cosmetic
+ * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string}} cosmetic
  */
 function mountAvatar(cosmetic) {
 	if (!scene) return;
@@ -54,7 +54,7 @@ function unmountAvatar() {
  * avatar built from `cosmetic`, then start rendering. Safe to call repeatedly:
  * any previous preview is torn down first.
  * @param {HTMLCanvasElement|null} canvasEl
- * @param {{bodyColor:string,accentColor:string,bodyShape:string}} cosmetic
+ * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string}} cosmetic
  */
 export function openPreview(canvasEl, cosmetic) {
 	if (!canvasEl) return;
@@ -91,7 +91,7 @@ export function openPreview(canvasEl, cosmetic) {
 /**
  * Replace the previewed avatar with a freshly built one from `cosmetic`. The
  * old avatar group is disposed first. No-op if the preview is not open.
- * @param {{bodyColor:string,accentColor:string,bodyShape:string}} cosmetic
+ * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string}} cosmetic
  */
 export function updatePreview(cosmetic) {
 	if (!scene) return;

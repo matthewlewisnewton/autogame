@@ -66,6 +66,9 @@ import {
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
+	getUnlockedHats,
+	getHatCatalog,
+	setUnlockedHats,
 } from './settings.js';
 import {
 	initControllerCalibration,
@@ -182,6 +185,7 @@ const accountErrorEl = document.getElementById('account-error');
 const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches');
 const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
 const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
+const cosmeticHatListEl = document.getElementById('cosmetic-hat-list');
 const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
 const cosmeticErrorEl = document.getElementById('cosmetic-error');
 const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
@@ -1014,6 +1018,16 @@ function bindSocketHandlers(s) {
 		debugScenarioResult = data || null;
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
+			// Debug-only: the `hats-unlocked` scenario persists hat unlocks on the
+			// account and reports the new owned set so the (already-loaded) client
+			// cache reflects them without a full reload. No normal scenario sends
+			// this field, so normal gameplay is unaffected.
+			if (Array.isArray(data.unlockedHats)) {
+				setUnlockedHats(data.unlockedHats);
+				if (accountOverlayEl && !accountOverlayEl.classList.contains('hidden')) {
+					syncCosmeticForm();
+				}
+			}
 		} else if (data && data.reason) {
 			console.warn(`[debugScenario] ${data.reason}`);
 		}
@@ -2895,7 +2909,7 @@ const ACCENT_COLOR_PALETTE = [
 ];
 
 // In-progress selection while the panel is open; persisted on Save.
-const cosmeticSelection = { bodyColor: '', accentColor: '', bodyShape: 'box' };
+const cosmeticSelection = { bodyColor: '', accentColor: '', bodyShape: 'box', hat: 'none' };
 
 function showCosmeticError(message) {
 	if (!cosmeticErrorEl) return;
@@ -2948,14 +2962,69 @@ function refreshSwatchSelection(container, color) {
 buildCosmeticSwatches(cosmeticBodySwatchesEl, BODY_COLOR_PALETTE, 'bodyColor');
 buildCosmeticSwatches(cosmeticAccentSwatchesEl, ACCENT_COLOR_PALETTE, 'accentColor');
 
+/**
+ * Render one entry per catalog hat into the hat-list container, marking each as
+ * owned vs locked and the equipped/selected entry. Clicking an owned entry sets
+ * it as the in-progress equipped hat and refreshes the live preview; clicking a
+ * locked entry does nothing (unlock is sub-ticket 02).
+ */
+function buildHatList() {
+	if (!cosmeticHatListEl) return;
+	const catalog = getHatCatalog();
+	const unlocked = getUnlockedHats();
+	cosmeticHatListEl.innerHTML = '';
+	for (const hat of catalog) {
+		const owned = unlocked.includes(hat.id);
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'cosmetic-hat';
+		btn.dataset.hatId = hat.id;
+		btn.classList.toggle('owned', owned);
+		btn.classList.toggle('locked', !owned);
+
+		const name = document.createElement('span');
+		name.className = 'cosmetic-hat-name';
+		name.textContent = hat.name;
+		btn.appendChild(name);
+
+		const status = document.createElement('span');
+		status.className = 'cosmetic-hat-status';
+		status.textContent = owned ? 'Owned' : `Locked · ${hat.price}`;
+		btn.appendChild(status);
+
+		if (owned) {
+			btn.addEventListener('click', () => {
+				cosmeticSelection.hat = hat.id;
+				refreshHatList();
+				refreshCosmeticPreview();
+			});
+		} else {
+			btn.disabled = true;
+			btn.setAttribute('aria-disabled', 'true');
+		}
+		cosmeticHatListEl.appendChild(btn);
+	}
+	refreshHatList();
+}
+
+/** Update the equipped/selected highlight on the rendered hat entries. */
+function refreshHatList() {
+	if (!cosmeticHatListEl) return;
+	for (const btn of cosmeticHatListEl.querySelectorAll('.cosmetic-hat')) {
+		btn.classList.toggle('selected', btn.dataset.hatId === cosmeticSelection.hat);
+	}
+}
+
 function syncCosmeticForm() {
 	const cosmetic = getAccountCosmetic();
 	cosmeticSelection.bodyColor = cosmetic.bodyColor;
 	cosmeticSelection.accentColor = cosmetic.accentColor;
 	cosmeticSelection.bodyShape = cosmetic.bodyShape;
+	cosmeticSelection.hat = cosmetic.hat;
 	refreshSwatchSelection(cosmeticBodySwatchesEl, cosmetic.bodyColor);
 	refreshSwatchSelection(cosmeticAccentSwatchesEl, cosmetic.accentColor);
 	if (cosmeticShapeSelectEl) cosmeticShapeSelectEl.value = cosmetic.bodyShape;
+	buildHatList();
 	showCosmeticError('');
 }
 
@@ -3074,6 +3143,7 @@ if (cosmeticSaveBtnEl) {
 			bodyColor: cosmeticSelection.bodyColor,
 			accentColor: cosmeticSelection.accentColor,
 			bodyShape: cosmeticSelection.bodyShape,
+			hat: cosmeticSelection.hat,
 		};
 		showCosmeticError('');
 		cosmeticSaveBtnEl.disabled = true;
