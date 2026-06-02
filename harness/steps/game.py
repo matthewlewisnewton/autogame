@@ -213,6 +213,12 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
         if not wait_port_free(port, timeout_s=15, vite_port=ports.vite):
             log(f"[warn] port {port} still bound after 15s")
 
+    game_env = {
+        **os.environ,
+        "PORT": str(ports.game_server),
+        "HARNESS_GAME_PORT": str(ports.game_server),
+    }
+
     server_log = (logdir / "server.log").open("wb")
     server_proc = subprocess.Popen(
         ["node", "game/server/index.js"],
@@ -228,6 +234,7 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
         client_proc = subprocess.Popen(
             ["npx", "vite", "--port", str(ports.vite), "--strictPort"],
             cwd="game/client",
+            env=game_env,
             stdin=subprocess.DEVNULL, stdout=client_log, stderr=subprocess.STDOUT,
             start_new_session=True,
         )
