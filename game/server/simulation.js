@@ -461,6 +461,9 @@ function moveEntityToward(entity, target, maxDistance, options) {
     const clamped = clampToDungeon(proposedX, proposedZ);
     entity.x = clamped.x;
     entity.z = clamped.z;
+    if (ENEMY_DEFS[entity.type]) {
+      _progression().syncEnemyFloorY(entity);
+    }
     const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
     return { moved: true, blocked: false, reached: postDist <= stopDistance };
   }
@@ -481,12 +484,18 @@ function moveEntityToward(entity, target, maxDistance, options) {
     const clamped = clampToDungeon(xProposed, entity.z);
     entity.x = clamped.x;
     entity.z = clamped.z;
+    if (ENEMY_DEFS[entity.type]) {
+      _progression().syncEnemyFloorY(entity);
+    }
     const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
     return { moved: true, blocked: true, reached: postDist <= stopDistance };
   } else if (!zOnlyBlocked) {
     const clamped = clampToDungeon(entity.x, zProposed);
     entity.x = clamped.x;
     entity.z = clamped.z;
+    if (ENEMY_DEFS[entity.type]) {
+      _progression().syncEnemyFloorY(entity);
+    }
     const postDist = Math.hypot(entity.x - target.x, entity.z - target.z);
     return { moved: true, blocked: true, reached: postDist <= stopDistance };
   }
@@ -1095,6 +1104,7 @@ function pullEnemiesToward(originX, originZ, radius, strength) {
     const result = tryEntityDisplacement(enemy.x, enemy.z, dx / dist, dz / dist, pull);
     enemy.x = result.x;
     enemy.z = result.z;
+    _progression().syncEnemyFloorY(enemy);
     moved.push({ enemyId: enemy.id, x: enemy.x, z: enemy.z });
   }
   return moved;
@@ -1110,6 +1120,7 @@ function applyKnockback(originX, originZ, dirX, dirZ, hits, strength) {
     const result = tryEntityDisplacement(enemy.x, enemy.z, dirX, dirZ, strength);
     enemy.x = result.x;
     enemy.z = result.z;
+    _progression().syncEnemyFloorY(enemy);
     moved.push({ enemyId: enemy.id, x: enemy.x, z: enemy.z });
   }
   return moved;

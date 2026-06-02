@@ -131,6 +131,7 @@ import {
 	MINION_FOLLOW_DISTANCE,
 	MINION_FOLLOW_SPEED
 } from '../index.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y } from '../dungeon.js';
 
 const { createLobby, resetAllLobbies } = require('../lobbies.js');
 
@@ -4838,6 +4839,31 @@ describe('sunken-canyon enemy spawning', () => {
 		}
 		expect(plateauCount).toBeGreaterThanOrEqual(1);
 		expect(canyonCount).toBeGreaterThan(enemyCount / 2);
+	});
+
+	it('sets enemy.y from sampleFloorY on plateau above canyon floor', () => {
+		const layout = gameState.layout;
+		const canyon = layout.rooms.find((r) => r.elevationBand === 'canyon');
+		const canyonFloorY = sampleFloorY(layout, canyon.x, canyon.z);
+		const plateauEnemy = gameState.enemies.find((enemy) =>
+			enemyInElevationBand(layout, enemy.x, enemy.z, 'plateau')
+		);
+		expect(plateauEnemy).toBeDefined();
+		const expectedY = sampleFloorY(layout, plateauEnemy.x, plateauEnemy.z) ?? DEFAULT_FLOOR_Y;
+		expect(plateauEnemy.y).toBeCloseTo(expectedY, 2);
+		expect(Math.abs(plateauEnemy.y - expectedY)).toBeLessThanOrEqual(0.25);
+		expect(plateauEnemy.y).toBeGreaterThan(canyonFloorY + 4);
+	});
+
+	it('sets canyon enemy.y from sampleFloorY at spawn position', () => {
+		const layout = gameState.layout;
+		const canyonEnemy = gameState.enemies.find((enemy) =>
+			enemyInElevationBand(layout, enemy.x, enemy.z, 'canyon')
+		);
+		expect(canyonEnemy).toBeDefined();
+		const expectedY = sampleFloorY(layout, canyonEnemy.x, canyonEnemy.z) ?? DEFAULT_FLOOR_Y;
+		expect(canyonEnemy.y).toBeCloseTo(expectedY, 2);
+		expect(Math.abs(canyonEnemy.y - expectedY)).toBeLessThanOrEqual(0.25);
 	});
 });
 

@@ -1478,7 +1478,18 @@ export function applyRevealHighlight(enemyId, enemy) {
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
 // Ground overlays must sit above that surface or they clip inside the floor mesh.
-const GROUND_OVERLAY_Y = FLOOR_Y + 0.07;
+const GROUND_OVERLAY_OFFSET = 0.07;
+const GROUND_OVERLAY_Y = FLOOR_Y + GROUND_OVERLAY_OFFSET;
+
+function enemyFloorY(enemy, layout) {
+	if (Number.isFinite(enemy.y)) return enemy.y;
+	if (layout) return sampleFloorY(layout, enemy.x, enemy.z) ?? DEFAULT_FLOOR_Y;
+	return DEFAULT_FLOOR_Y;
+}
+
+function enemyOverlayY(enemy, layout) {
+	return enemyFloorY(enemy, layout) + GROUND_OVERLAY_OFFSET;
+}
 
 function createLockOnRing() {
 	const geo = new THREE.RingGeometry(0.55, 0.75, 24);
@@ -1494,14 +1505,14 @@ function createLockOnRing() {
 	return mesh;
 }
 
-function syncLockOnRing(enemyId, enemyX, enemyZ) {
+function syncLockOnRing(enemyId, enemyX, enemyZ, overlayY) {
 	const lockedId = getLockedEnemyId();
 	if (lockedId === enemyId) {
 		if (!enemyLockOnRings[enemyId]) {
 			enemyLockOnRings[enemyId] = createLockOnRing();
 			scene.add(enemyLockOnRings[enemyId]);
 		}
-		enemyLockOnRings[enemyId].position.set(enemyX, GROUND_OVERLAY_Y + 0.02, enemyZ);
+		enemyLockOnRings[enemyId].position.set(enemyX, overlayY + 0.02, enemyZ);
 		enemyLockOnRings[enemyId].visible = true;
 	} else if (enemyLockOnRings[enemyId]) {
 		enemyLockOnRings[enemyId].visible = false;
@@ -1615,9 +1626,10 @@ function getEnemyWindupDirection(enemy, targetPlayer) {
 	return { x: 1, z: 0 };
 }
 
-function createEnemyAttackTelegraph(enemy, targetEntity) {
+function createEnemyAttackTelegraph(enemy, targetEntity, layout) {
 	const visual = ENEMY_ATTACK_VISUAL[enemy.type] || ENEMY_ATTACK_VISUAL.grunt;
 	const range = visual.range ?? ENEMY_ATTACK_RANGE;
+	const overlayY = enemyOverlayY(enemy, layout);
 
 	if (visual.style === 'cone') {
 		const direction = getEnemyWindupDirection(enemy, targetEntity);
@@ -1627,23 +1639,34 @@ function createEnemyAttackTelegraph(enemy, targetEntity) {
 			visual.coneAngle ?? ATTACK_CONE_ANGLE,
 			{ color: visual.color ?? 0xff3333, emissive: visual.emissive ?? 0xff1111 },
 		);
-		group.position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+		group.position.set(enemy.x, overlayY, enemy.z);
 		return group;
 	}
 
 	const mesh = createEnemyRadialTelegraph(range);
 	const tx = targetEntity ? targetEntity.x : enemy.x;
 	const tz = targetEntity ? targetEntity.z : enemy.z;
-	mesh.position.set(tx, GROUND_OVERLAY_Y, tz);
+	const targetOverlayY = targetEntity
+		? (Number.isFinite(targetEntity.y)
+			? targetEntity.y + GROUND_OVERLAY_OFFSET
+			: (layout ? (sampleFloorY(layout, tx, tz) ?? DEFAULT_FLOOR_Y) + GROUND_OVERLAY_OFFSET : GROUND_OVERLAY_Y))
+		: overlayY;
+	mesh.position.set(tx, targetOverlayY, tz);
 	return mesh;
 }
 
-function updateEnemyAttackTelegraph(enemy, telegraph, targetEntity) {
+function updateEnemyAttackTelegraph(enemy, telegraph, targetEntity, layout) {
 	const visual = ENEMY_ATTACK_VISUAL[enemy.type] || ENEMY_ATTACK_VISUAL.grunt;
+	const overlayY = enemyOverlayY(enemy, layout);
 	if (visual.style === 'cone') {
-		telegraph.position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+		telegraph.position.set(enemy.x, overlayY, enemy.z);
 	} else if (targetEntity) {
-		telegraph.position.set(targetEntity.x, GROUND_OVERLAY_Y, targetEntity.z);
+		const targetOverlayY = Number.isFinite(targetEntity.y)
+			? targetEntity.y + GROUND_OVERLAY_OFFSET
+			: (layout
+				? (sampleFloorY(layout, targetEntity.x, targetEntity.z) ?? DEFAULT_FLOOR_Y) + GROUND_OVERLAY_OFFSET
+				: GROUND_OVERLAY_Y);
+		telegraph.position.set(targetEntity.x, targetOverlayY, targetEntity.z);
 	}
 }
 
@@ -2741,6 +2764,7 @@ export function animate(timestamp) {
 
 		// ── Enemy mesh sync ──
 		const currentEnemyIds = new Set(gs.enemies.map((e) => e.id));
+		const layout = gs.layout;
 
 		for (const enemy of gs.enemies) {
 			if (!enemiesMeshes[enemy.id]) {
@@ -2751,19 +2775,21 @@ export function animate(timestamp) {
 				enemyHitboxMeshes[enemy.id] = createEnemyHitboxGroup(ENTITY_RADIUS);
 				scene.add(enemyHitboxMeshes[enemy.id]);
 			}
+			const floorY = enemyFloorY(enemy, layout);
+			const overlayY = floorY + GROUND_OVERLAY_OFFSET;
 			const halfHeight = enemyMeshHalfHeight(enemy.type);
-			enemiesMeshes[enemy.id].position.set(enemy.x, halfHeight, enemy.z);
+			enemiesMeshes[enemy.id].position.set(enemy.x, floorY + halfHeight, enemy.z);
 
 			ensureEnemyHealthBar(enemy.id, enemy);
 			const healthBar = enemyHealthBars[enemy.id];
 			if (healthBar) {
-				healthBar.position.set(enemy.x, halfHeight + 0.5, enemy.z);
+				healthBar.position.set(enemy.x, floorY + halfHeight + 0.5, enemy.z);
 				updateHealthBarMesh(enemy.id, enemy);
 			}
 			if (enemyHitboxMeshes[enemy.id]) {
-				enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+				enemyHitboxMeshes[enemy.id].position.set(enemy.x, overlayY, enemy.z);
 			}
-			syncLockOnRing(enemy.id, enemy.x, enemy.z);
+			syncLockOnRing(enemy.id, enemy.x, enemy.z, overlayY);
 
 			// Detect HP drop (minion tick damage) — skip if caused by a recent cardUsed hit
 			if (previousEnemyHp[enemy.id] !== undefined && enemy.hp < previousEnemyHp[enemy.id]) {
@@ -2856,7 +2882,7 @@ export function animate(timestamp) {
 							}
 						);
 					} else {
-						spawnHitSpark({ x: enemy.x, y: halfHeight, z: enemy.z });
+						spawnHitSpark({ x: enemy.x, y: floorY + halfHeight, z: enemy.z });
 					}
 
 					if (nearestMinion && minionsMeshes[nearestMinion.id]) {
@@ -2879,11 +2905,11 @@ export function animate(timestamp) {
 
 				const windupTarget = resolveEnemyWindupTarget(enemy, gs);
 				if (!telegraphMeshes[enemy.id]) {
-					const telegraph = createEnemyAttackTelegraph(enemy, windupTarget);
+					const telegraph = createEnemyAttackTelegraph(enemy, windupTarget, layout);
 					scene.add(telegraph);
 					telegraphMeshes[enemy.id] = telegraph;
 				} else {
-					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget);
+					updateEnemyAttackTelegraph(enemy, telegraphMeshes[enemy.id], windupTarget, layout);
 				}
 			} else {
 				disposeOne(telegraphMeshes, enemy.id, scene);

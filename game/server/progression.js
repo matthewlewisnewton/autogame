@@ -2454,6 +2454,12 @@ function restoreHandCharges(player, amount, options = {}) {
   return restored;
 }
 
+function syncEnemyFloorY(enemy) {
+  if (!_gameState?.layout) return;
+  const floorY = sampleFloorY(_gameState.layout, enemy.x, enemy.z);
+  enemy.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+}
+
 function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
   if (!ENEMY_DEFS[type]) {
     throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
@@ -2476,6 +2482,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
   if (spawnedBy !== undefined) {
     enemy.spawnedBy = spawnedBy;
   }
+  syncEnemyFloorY(enemy);
   _gameState.enemies.push(enemy);
   return enemy;
 }
@@ -3293,6 +3300,7 @@ module.exports = {
   restoreCardCharges,
   restoreHandCharges,
   spawnEnemy,
+  syncEnemyFloorY,
   removeDeadEnemies,
   cleanupAfterDamage,
   spawnLoot,
