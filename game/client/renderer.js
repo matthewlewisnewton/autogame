@@ -256,8 +256,8 @@ const MINION_VISUAL = {
  * an async load and swap the cloned model in for the procedural primitive on
  * success. This is fire-and-forget: callers build + return their procedural
  * mesh/group synchronously, and this only mutates it later if/when a model
- * resolves. In this sub-ticket every registry path is null, so the early return
- * always fires and visuals are byte-identical to before.
+ * resolves. Keys with a null registry path (player/loot) take the early return
+ * and stay procedural; enemy and minion keys load + swap their placeholder .glb.
  *
  * Resilience: a null/absent path is a no-op (procedural stays); a rejected or
  * null `loadModel` result leaves the procedural mesh in place and at most logs —
@@ -271,7 +271,7 @@ function attachRegistryModel(key, host) {
 	if (!host || !Object.prototype.hasOwnProperty.call(MODEL_REGISTRY, key)) return;
 
 	const path = modelPathFor(key);
-	if (!path) return; // null/absent path → keep procedural (the only path this ticket).
+	if (!path) return; // null/absent path → keep procedural.
 
 	// Snapshot the procedural meshes now so a later swap hides only the
 	// primitives, not the model we're about to attach.
@@ -308,24 +308,65 @@ const ENEMY_MODEL_TUNING = {
 };
 
 /**
- * Normalize a freshly-loaded enemy model so it roughly matches the procedural
- * primitive: scale uniformly so the model's height equals the primitive's, then
- * translate so the model's bounding-box min Y sits on the host's base (feet on
- * the floor) rather than centered through the ground.
+ * Per-minion fine-tuning for placeholder models, mirroring ENEMY_MODEL_TUNING.
+ * Neutral defaults mean the shared bounding-box fit is used as-is; tweak a
+ * `scale`/`yOffset` here only if a given .glb sits too high/low or reads too
+ * small relative to its procedural primitive.
+ */
+const MINION_MODEL_TUNING = {
+	ancient_wyrm:    { scale: 1, yOffset: 0 },
+	null_crawler:    { scale: 1, yOffset: 0 },
+	bulkhead_mauler: { scale: 1, yOffset: 0 },
+};
+
+/**
+ * Local half-height of a minion's procedural primitive, BEFORE the host's
+ * MINION_VISUAL.scale (which the host transform applies to the swapped-in model
+ * and the primitive alike). cylinder/box → height/2, octahedron → radius. Returns
+ * null for unknown minion types.
  *
- * The procedural enemy mesh is positioned at world y = enemyMeshHalfHeight and
- * its geometry is centered on its origin, so the primitive's base sits at local
- * y = -halfHeight. We ground the model to that same local base. Only enemy keys
- * (present in ENEMY_GEOMETRY) are normalized; any other key is left untouched.
+ * @param {string} type
+ * @returns {number|null}
+ */
+function minionMeshHalfHeight(type) {
+	const visual = MINION_VISUAL[type];
+	if (!visual) return null;
+	return visual.shape === 'octahedron' ? visual.radius : visual.height / 2;
+}
+
+/**
+ * Normalize a freshly-loaded enemy/minion model so it roughly matches the
+ * procedural primitive it replaces: scale uniformly so the model's height equals
+ * the primitive's, then translate so the model's bounding-box min Y sits on the
+ * primitive's base (feet grounded) rather than centered through the host origin.
+ *
+ * The procedural primitive's geometry is centered on the host origin, so its base
+ * sits at local y = -halfHeight; we ground the model to that same local base. The
+ * model is added as a child of the host, so the host's MINION_VISUAL.scale (when
+ * present) applies on top of both the model and the primitive equally — hence the
+ * target height here is the unscaled primitive height and the scale factor is
+ * inherited from the host, matching the rendered primitive size.
+ *
+ * Only enemy keys (ENEMY_GEOMETRY) and minion keys (MINION_VISUAL) are normalized;
+ * any other key (loot/player) is left untouched.
  *
  * @param {string} key
  * @param {THREE.Object3D} model
  */
 function normalizeRegistryModel(key, model) {
-	const def = ENEMY_GEOMETRY[key];
-	if (!def) return; // non-enemy (minion/loot/player) — no primitive to match.
+	let halfHeight;
+	let tuning;
+	if (ENEMY_GEOMETRY[key]) {
+		halfHeight = enemyMeshHalfHeight(key);
+		tuning = ENEMY_MODEL_TUNING[key];
+	} else if (MINION_VISUAL[key]) {
+		halfHeight = minionMeshHalfHeight(key);
+		tuning = MINION_MODEL_TUNING[key];
+	} else {
+		return; // non-enemy/minion (loot/player) — no primitive to match.
+	}
+	tuning = tuning || { scale: 1, yOffset: 0 };
 
-	const halfHeight = enemyMeshHalfHeight(key);
 	const targetHeight = halfHeight * 2;
 
 	const box = new THREE.Box3().setFromObject(model);
@@ -333,7 +374,6 @@ function normalizeRegistryModel(key, model) {
 	box.getSize(size);
 	if (!(size.y > 1e-6) || !Number.isFinite(size.y)) return; // degenerate/empty box — leave as-is.
 
-	const tuning = ENEMY_MODEL_TUNING[key] || { scale: 1, yOffset: 0 };
 	const scale = (targetHeight / size.y) * (tuning.scale ?? 1);
 	model.scale.setScalar(scale);
 

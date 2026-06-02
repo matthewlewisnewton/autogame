@@ -15,11 +15,12 @@
 
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
-// Registry mapping entity keys to a model path. The four enemy keys point at
-// committed placeholder .glb files; every other value is null (procedural). Keys
-// are derived from how renderer.js keys its meshes: ENEMY_GEOMETRY (enemy types),
-// MINION_VISUAL (minion types), and createLootMesh (loot kinds), plus the player.
-// The player stays procedural — owned by the character-customization epic.
+// Registry mapping entity keys to a model path. The four enemy keys and the three
+// minion keys point at committed placeholder .glb files; every other value is null
+// (procedural). Keys are derived from how renderer.js keys its meshes:
+// ENEMY_GEOMETRY (enemy types), MINION_VISUAL (minion types), and createLootMesh
+// (loot kinds), plus the player. The player stays procedural — owned by the
+// character-customization epic.
 export const MODEL_REGISTRY = {
 	// Player avatar
 	player: null,
@@ -32,10 +33,12 @@ export const MODEL_REGISTRY = {
 	miniboss: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 
-	// Minion types (renderer.js MINION_VISUAL)
-	ancient_wyrm: null,
-	null_crawler: null,
-	bulkhead_mauler: null,
+	// Minion types (renderer.js MINION_VISUAL) — placeholder .glb models committed
+	// under client/public/models/ (see CREDITS.md). Normalized for scale + ground
+	// offset in renderer.js attachRegistryModel against MINION_VISUAL.
+	ancient_wyrm: '/models/minion-ancient-wyrm.glb',
+	null_crawler: '/models/minion-null-crawler.glb',
+	bulkhead_mauler: '/models/minion-bulkhead-mauler.glb',
 
 	// Loot kinds (renderer.js createLootMesh)
 	currency: null,
