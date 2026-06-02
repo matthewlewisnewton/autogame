@@ -56,6 +56,26 @@ export function isUniformFloor(room) {
 }
 
 /**
+ * Shared corner Y for uniform flat rooms with explicit floorCorners.
+ * Returns null when corners are absent, non-uniform, or non-finite.
+ */
+export function uniformFloorElevation(room) {
+	if (!isUniformFloor(room)) return null;
+	const fc = room.floorCorners;
+	if (!fc) return null;
+	const y = fc.yNW;
+	return Number.isFinite(y) ? y : null;
+}
+
+/** Mesh center Y for a uniform flat room floor (legacy z-fight at Y=0). */
+function uniformFlatFloorMeshY(room) {
+	const elevation = uniformFloorElevation(room);
+	if (elevation === null) return FLOOR_Y;
+	if (elevation === 0) return FLOOR_Y;
+	return elevation;
+}
+
+/**
  * Build a sloped floor mesh for a room with non-uniform floorCorners.
  * Determines the dominant slope axis (Z or X) by comparing edge averages,
  * then returns a rotated BoxGeometry mesh positioned at the average height.
@@ -215,7 +235,7 @@ export function buildDungeon(scene, layout) {
 		if (isUniformFloor(room)) {
 			const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
 			floorMesh = new THREE.Mesh(floorGeo, floorMat);
-			floorMesh.position.set(room.x, FLOOR_Y, room.z);
+			floorMesh.position.set(room.x, uniformFlatFloorMeshY(room), room.z);
 		} else {
 			const { mesh } = buildSlopedFloor(room, floorMat);
 			floorMesh = mesh;
@@ -227,7 +247,8 @@ export function buildDungeon(scene, layout) {
 		if (room.role === 'treasure') {
 			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
 			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
-			marker.position.set(room.x, 0.75 + FLOOR_Y, room.z);
+			const treasureFloorY = sampleFloorY(layout, room.x, room.z) ?? DEFAULT_FLOOR_Y;
+			marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
 			scene.add(marker);
 			meshes.push(marker);
 		}
@@ -261,7 +282,8 @@ export function buildDungeon(scene, layout) {
 		const floorSpec = buildPassageFloorSpec(passage, layout);
 		const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
 		const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
-		passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
+		const passageFloorY = sampleFloorY(layout, floorSpec.x, floorSpec.z) ?? DEFAULT_FLOOR_Y;
+		passageFloor.position.set(floorSpec.x, passageFloorY, floorSpec.z);
 		passageFloor.rotation.y = floorSpec.rotationY;
 		scene.add(passageFloor);
 		meshes.push(passageFloor);
@@ -281,8 +303,9 @@ export function buildDungeon(scene, layout) {
 				wallZ = wall.z;
 			}
 
+			const passageWallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
 			const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
-			wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+			wallMesh.position.set(wallX, passageWallBaseY + PASSAGE_WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}

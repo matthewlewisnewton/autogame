@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import {
+	buildDungeon,
+	buildWallColliders,
+	buildPassageFloorSpec,
+	isUniformFloor,
+	uniformFloorElevation,
+	buildSlopedFloor,
+	FLOOR_Y,
+	WALL_HEIGHT,
+	PASSAGE_WALL_HEIGHT,
+} from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -132,7 +142,7 @@ describe('buildSlopedFloor()', () => {
 });
 
 describe('buildDungeon() with floorCorners', () => {
-	it('renders flat rooms identically when floorCorners are uniform', () => {
+	it('renders uniform floorCorners at the shared corner Y', () => {
 		const layout = {
 			rooms: [
 				{ x: 0, z: 0, width: 10, depth: 10, role: 'start', walls: [], floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 0.5, ySW: 0.5 } },
@@ -145,9 +155,23 @@ describe('buildDungeon() with floorCorners', () => {
 		// ground (index 0) + floor (index 1)
 		expect(result.meshes.length).toBe(2);
 		const floor = result.meshes[1];
-		expect(floor.position.y).toBe(FLOOR_Y);
+		expect(floor.position.y).toBeCloseTo(0.5, 4);
 		expect(floor.rotation.x).toBe(0);
 		expect(floor.rotation.z).toBe(0);
+	});
+
+	it('renders uniform floorCorners at Y=0 using legacy FLOOR_Y', () => {
+		const layout = {
+			rooms: [
+				{ x: 0, z: 0, width: 10, depth: 10, role: 'start', walls: [], floorCorners: { yNW: 0, yNE: 0, ySE: 0, ySW: 0 } },
+			],
+			passages: [],
+		};
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+
+		const floor = result.meshes[1];
+		expect(floor.position.y).toBe(FLOOR_Y);
 	});
 
 	it('renders flat rooms identically when floorCorners is absent (legacy)', () => {
@@ -204,8 +228,8 @@ describe('buildDungeon() with floorCorners', () => {
 		expect(result.meshes[1].rotation.x).toBe(0);
 		// Room 1: sloped, rotated
 		expect(result.meshes[2].rotation.x).toBeGreaterThan(0);
-		// Room 2: flat at FLOOR_Y, no rotation
-		expect(result.meshes[3].position.y).toBe(FLOOR_Y);
+		// Room 2: uniform explicit flat at corner Y
+		expect(result.meshes[3].position.y).toBeCloseTo(0.5, 4);
 		expect(result.meshes[3].rotation.x).toBe(0);
 	});
 
@@ -269,5 +293,98 @@ describe('buildDungeon() with floorCorners', () => {
 			expect(wallMesh).toBeDefined();
 			expect(wallMesh.position.y).toBeCloseTo(expectedBaseY + WALL_HEIGHT / 2, 4);
 		}
+	});
+
+	it('positions treasure marker using sampleFloorY', () => {
+		const layout = {
+			rooms: [
+				{
+					x: 0,
+					z: 0,
+					width: 10,
+					depth: 10,
+					role: 'treasure',
+					walls: [],
+					floorCorners: { yNW: 2, yNE: 2, ySE: 2, ySW: 2 },
+				},
+			],
+			passages: [],
+		};
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+
+		// ground + floor + treasure pillar
+		expect(result.meshes.length).toBe(3);
+		const marker = result.meshes[2];
+		const floorY = sampleFloorY(layout, 0, 0) ?? DEFAULT_FLOOR_Y;
+		expect(marker.position.y).toBeCloseTo(0.75 + floorY, 4);
+	});
+
+	it('positions passage floor and walls using sampleFloorY', () => {
+		const layout = generateLayout(42, 'crowded');
+		const passage = layout.passages.find(p => p.walls && p.walls.length > 0);
+		expect(passage).toBeDefined();
+
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+		const floorSpec = buildPassageFloorSpec(passage, layout);
+		const expectedFloorY = sampleFloorY(layout, floorSpec.x, floorSpec.z) ?? DEFAULT_FLOOR_Y;
+
+		const passageFloor = result.meshes.find(m =>
+			m.position.x === floorSpec.x &&
+			m.position.z === floorSpec.z &&
+			Math.abs(m.position.y - expectedFloorY) < 0.01
+		);
+		expect(passageFloor).toBeDefined();
+
+		const wall = passage.walls[0];
+		const expectedWallY = (sampleFloorY(layout, wall.x, wall.z) ?? DEFAULT_FLOOR_Y) + PASSAGE_WALL_HEIGHT / 2;
+		const passageWall = result.meshes.find(m =>
+			m.position.x === wall.x && m.position.z === wall.z
+		);
+		expect(passageWall).toBeDefined();
+		expect(passageWall.position.y).toBeCloseTo(expectedWallY, 4);
+	});
+});
+
+describe('uniformFloorElevation()', () => {
+	it('returns shared Y for uniform floorCorners', () => {
+		const room = { floorCorners: { yNW: 10, yNE: 10, ySE: 10, ySW: 10 } };
+		expect(uniformFloorElevation(room)).toBe(10);
+	});
+
+	it('returns null when floorCorners are absent', () => {
+		expect(uniformFloorElevation({})).toBeNull();
+	});
+});
+
+describe('buildDungeon() sunken-canyon elevation bands', () => {
+	function roomFloorMesh(meshes, room) {
+		return meshes.find(m =>
+			m.position.x === room.x &&
+			m.position.z === room.z &&
+			m.rotation.x === 0 &&
+			m.rotation.z === 0
+		);
+	}
+
+	it('plateau and canyon uniform floors match band Y with drop >= 8', () => {
+		const layout = generateLayout(42, undefined, { stage: 'sunken-canyon', slopes: true });
+		const plateau = layout.rooms.find(r => r.elevationBand === 'plateau');
+		const canyon = layout.rooms.find(r => r.elevationBand === 'canyon');
+		expect(plateau).toBeDefined();
+		expect(canyon).toBeDefined();
+		expect(uniformFloorElevation(plateau)).toBe(10);
+		expect(uniformFloorElevation(canyon)).toBe(2);
+
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const plateauFloor = roomFloorMesh(meshes, plateau);
+		const canyonFloor = roomFloorMesh(meshes, canyon);
+		expect(plateauFloor).toBeDefined();
+		expect(canyonFloor).toBeDefined();
+		expect(plateauFloor.position.y).toBeCloseTo(10, 2);
+		expect(canyonFloor.position.y).toBeCloseTo(2, 2);
+		expect(plateauFloor.position.y - canyonFloor.position.y).toBeGreaterThanOrEqual(8);
 	});
 });
