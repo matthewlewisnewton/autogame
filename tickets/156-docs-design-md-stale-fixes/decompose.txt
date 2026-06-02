@@ -1,0 +1,17 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 4 sub-tickets:
+
+```
+tickets/156-docs-design-md-stale-fixes/subtickets/01-combat-mechanics-values/ticket.md
+tickets/156-docs-design-md-stale-fixes/subtickets/02-terminology-sweep/ticket.md
+tickets/156-docs-design-md-stale-fixes/subtickets/03-ticket-ref-and-floor-geometry/ticket.md
+tickets/156-docs-design-md-stale-fixes/subtickets/04-core-loop-lobby-details/ticket.md
+```
+
+Summary of decomposition:
+- **01** — Combat Mechanics values: deck size (12→24), hand size (4→6), card type names (generic→themed), currency name (Magic Stones→Mystic Signal)
+- **02** — Terminology: replace all "squad" with "lobby" throughout the doc
+- **03** — Floor Geometry: remove stale "ticket 117" reference
+- **04** — Core Loop: fix lobby browser field list (remove non-existent "dungeon" field)
+
+All use `Verification: code` — they're doc-only edits verifiable by reading the diff and cross-checking against the codebase.

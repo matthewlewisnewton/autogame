@@ -1,0 +1,14 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` is clean (no page errors or fatals).
+
+**Implementation:** Four commits since `aa963b34` update only `game/docs/design.md` in `game/`. Corrections were checked against `config.js`, `lobbies.js`, `theme.json`, and floor sampling code. Capture matches (6-card hand, MS HUD, lobby flow, themed card names).
+
+**Verdict:** **PASS** — game runs cleanly and all acceptance criteria are met.
+
+**Nit filed:** Telepipe section still says "Magic Stones" while the rest of the doc uses Mystic Signal — see `round-1/nits.md`. Not blocking.
+
+Written files:
+- [`tickets/156-docs-design-md-stale-fixes/round-1/review.md`](tickets/156-docs-design-md-stale-fixes/round-1/review.md)
+- [`tickets/156-docs-design-md-stale-fixes/round-1/nits.md`](tickets/156-docs-design-md-stale-fixes/round-1/nits.md)
+- No `gaps.md` (PASS only)

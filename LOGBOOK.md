@@ -2217,3 +2217,26 @@ No integration gaps found between activation and weapon echo layers.
 
 ---
 
+
+## v0.111 — Docs: fix stale sections in design.md  (2026-06-02 09:32:42)
+
+```
+47fb013 01-combat-mechanics-values: deck/hand sizes, card types, Mystic Signal
+6d29346 02-terminology-sweep: squad → lobby
+7c77436 03-ticket-ref-and-floor-geometry: remove ticket 117 ref; sampleFloorY
+23f81aa 04-core-loop-lobby-details: lobby browser fields from lobbySummary()
+```
+
+## Remaining gaps
+
+None blocking. Runtime proof is clean; acceptance criteria are satisfied.
+
+### Nits (non-blocking)
+
+- **Telepipe currency label**: Run Suspend section still says "0 Magic Stones" while Combat Mechanics now documents **Mystic Signal (MS)** as the player-facing name. Cost is correct (`magicStoneCost: 0` on `telepipe` card); label is inconsistent. Filed in `nits.md`.
+- **Overview phrasing**: "gather in a lobby, join lobbies" is grammatically awkward but not factually wrong after the squad→lobby sweep.
+
+## Coverage
+
+`coverage.log` reports no test files matched for changed game paths (expected for a docs-only diff).
+
