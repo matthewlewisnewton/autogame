@@ -26,7 +26,16 @@ const QUEST_DEFS = {
     enemyCount: 6,
     rewardCurrency: 15,
     layoutProfile: 'open-plaza',
-  }
+  },
+  sunken_canyon: {
+    id: 'sunken_canyon',
+    name: 'Sunken Canyon',
+    description: 'Descend from the high plateau and clear the canyon floor.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 4,
+    rewardCurrency: 12,
+    layoutProfile: 'sunken-canyon',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';

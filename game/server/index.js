@@ -417,6 +417,7 @@ const DEBUG_SCENARIOS = new Set([
   'overclock-ready',
   'phase-step-ready',
   'open-plaza-arena',
+  'sunken-canyon-stage',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -784,6 +785,23 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'sunken-canyon-stage') {
+      // Load the sunken-canyon quest layout and place the player on the plateau
+      // spawn. Reachable normally by selecting the sunken_canyon quest.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'sunken_canyon';
+      applyLayoutForQuest(state, 'sunken_canyon');
+      const plateauSpawn = firstRoomPosition();
+      player.x = plateauSpawn.x;
+      player.z = plateauSpawn.z;
+      const plateauFloorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(plateauFloorY) ? plateauFloorY : DEFAULT_FLOOR_Y;
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,

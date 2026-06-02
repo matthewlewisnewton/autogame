@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   mulberry32,
   generateLayout,
+  averageRampSlope,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
@@ -11,6 +12,8 @@ import {
   sampleFloorY,
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
+  PARAPET_WALL_HEIGHT,
+  MIN_CANYON_AREA,
   LAYOUT_PROFILES,
   GRID_COLS,
   GRID_ROWS,
@@ -1211,5 +1214,159 @@ describe("generateLayout(seed, 'open-plaza')", () => {
       c0.z + PLAYER_RADIUS_PLAZA > w.minZ && c0.z - PLAYER_RADIUS_PLAZA < w.maxZ
     );
     expect(collides).toBe(true);
+  });
+});
+
+// ── sunken-canyon stage layout ──
+
+describe("generateLayout(seed, 'sunken-canyon')", () => {
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter((r) => r.band === band);
+  }
+
+  function plateauSpawnY(layout) {
+    const plateau = roomsByBand(layout, 'plateau')[0];
+    return sampleFloorY(layout, plateau.x, plateau.z);
+  }
+
+  function canyonCenterY(layout) {
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    return sampleFloorY(layout, canyon.x, canyon.z);
+  }
+
+  function wallLengthOnEdge(room, edge) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    const edgeWalls =
+      edge === 'north' ? room.walls.filter((w) => w.axis === 'x' && Math.abs(w.z - (room.z - halfD)) < 1e-6)
+      : edge === 'south' ? room.walls.filter((w) => w.axis === 'x' && Math.abs(w.z - (room.z + halfD)) < 1e-6)
+      : edge === 'west' ? room.walls.filter((w) => w.axis === 'z' && Math.abs(w.x - (room.x - halfW)) < 1e-6)
+      : room.walls.filter((w) => w.axis === 'z' && Math.abs(w.x - (room.x + halfW)) < 1e-6);
+    return edgeWalls.reduce((sum, w) => sum + w.length, 0);
+  }
+
+  function edgeSpan(room, edge) {
+    return edge === 'north' || edge === 'south' ? room.width : room.depth;
+  }
+
+  /** Outer edges are walled except deliberate ramp mouths (gap width each). */
+  function outerPerimeterClosed(layout) {
+    const gapWidth = layout.passageWidth;
+    const rampCount = layout.stageMeta.rampRoomIndices.length;
+    const allowedGap = rampCount * gapWidth + 0.05;
+
+    const plateau = roomsByBand(layout, 'plateau')[0];
+    const canyon = roomsByBand(layout, 'canyon')[0];
+
+    for (const room of [plateau, canyon]) {
+      for (const edge of ['north', 'south', 'east', 'west']) {
+        const span = edgeSpan(room, edge);
+        const walled = wallLengthOnEdge(room, edge);
+        const isRampMouth =
+          (room.band === 'plateau' && edge === 'south') ||
+          (room.band === 'canyon' && edge === 'north');
+        const minWalled = isRampMouth ? span - allowedGap : span - 0.05;
+        if (walled < minWalled) return false;
+        if (!isRampMouth && walled < span - 0.05) return false;
+      }
+    }
+    return true;
+  }
+
+  it("returns profile 'sunken-canyon' and stageMeta indices", () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    expect(layout.profile).toBe('sunken-canyon');
+    expect(layout.stageMeta.plateauRoomIndex).toBe(0);
+    expect(layout.stageMeta.canyonRoomIndex).toBe(layout.rooms.length - 1);
+    expect(layout.stageMeta.rampRoomIndices.length).toBeGreaterThanOrEqual(2);
+    expect(layout.stageMeta.rampRoomIndices.length).toBeLessThanOrEqual(3);
+  });
+
+  it('defines exactly two elevation bands (plateau + canyon)', () => {
+    const layout = generateLayout(99, 'sunken-canyon');
+    expect(roomsByBand(layout, 'plateau').length).toBe(1);
+    expect(roomsByBand(layout, 'canyon').length).toBe(1);
+    expect(roomsByBand(layout, 'ramp').length).toBeGreaterThanOrEqual(2);
+    expect(roomsByBand(layout, 'ramp').length).toBeLessThanOrEqual(3);
+  });
+
+  it('canyon area is ≥ 4× a default room (~728 units²)', () => {
+    const layout = generateLayout(7, 'sunken-canyon');
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    expect(canyon.width * canyon.depth).toBeGreaterThanOrEqual(MIN_CANYON_AREA);
+  });
+
+  it('has 2–3 ramp rooms each with slope ≥ 0.15', () => {
+    const layout = generateLayout(2024, 'sunken-canyon');
+    const ramps = roomsByBand(layout, 'ramp');
+    expect(ramps.length).toBeGreaterThanOrEqual(2);
+    expect(ramps.length).toBeLessThanOrEqual(3);
+    for (const ramp of ramps) {
+      expect(averageRampSlope(ramp)).toBeGreaterThanOrEqual(0.15 - 1e-9);
+      const { yNW, yNE, ySE, ySW } = ramp.floorCorners;
+      expect(yNW).toBeCloseTo(yNE, 5);
+      expect(ySE).toBeCloseTo(ySW, 5);
+      expect(yNW).toBeGreaterThan(ySE);
+    }
+  });
+
+  it('plateau spawn Y minus canyon center Y is ≥ 8', () => {
+    const layout = generateLayout(1, 'sunken-canyon');
+    expect(plateauSpawnY(layout) - canyonCenterY(layout)).toBeGreaterThanOrEqual(8 - 1e-6);
+  });
+
+  it('BFS from plateau reaches the canyon', () => {
+    const layout = generateLayout(55, 'sunken-canyon');
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, layout.stageMeta.plateauRoomIndex);
+    expect(dist[layout.stageMeta.canyonRoomIndex]).not.toBe(Infinity);
+  });
+
+  it('assignRoomRoles: plateau start, canyon treasure, ramps spawnWeight 0', () => {
+    const layout = generateLayout(123, 'sunken-canyon');
+    const plateau = layout.rooms[layout.stageMeta.plateauRoomIndex];
+    const canyon = layout.rooms[layout.stageMeta.canyonRoomIndex];
+    expect(plateau.role).toBe('start');
+    expect(plateau.spawnWeight).toBe(0);
+    expect(canyon.role).toBe('treasure');
+    for (const idx of layout.stageMeta.rampRoomIndices) {
+      expect(layout.rooms[idx].spawnWeight).toBe(0);
+    }
+  });
+
+  it('plateau vista edge uses parapet height ≤ 1.5 on south wall segments', () => {
+    const layout = generateLayout(88, 'sunken-canyon');
+    const plateau = roomsByBand(layout, 'plateau')[0];
+    const halfD = plateau.depth / 2;
+    const southWalls = plateau.walls.filter((w) => Math.abs(w.z - (plateau.z + halfD)) < 1e-6);
+    expect(southWalls.length).toBeGreaterThan(0);
+    for (const w of southWalls) {
+      expect(w.height).toBeDefined();
+      expect(w.height).toBeLessThanOrEqual(1.5);
+      expect(w.height).toBe(PARAPET_WALL_HEIGHT);
+    }
+  });
+
+  it('perimeter walls enclose plateau and canyon (only ramp-aligned gaps)', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      expect(outerPerimeterClosed(layout)).toBe(true);
+    }
+  });
+
+  it('is deterministic for the same seed', () => {
+    const a = generateLayout(314, 'sunken-canyon');
+    const b = generateLayout(314, 'sunken-canyon');
+    expect(a).toEqual(b);
+  });
+
+  it('varies ramp count between 2 and 3 across seeds', () => {
+    const counts = new Set();
+    for (let seed = 0; seed < 30; seed++) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      counts.add(layout.stageMeta.rampRoomIndices.length);
+    }
+    expect(counts.has(2)).toBe(true);
+    expect(counts.has(3)).toBe(true);
   });
 });

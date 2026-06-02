@@ -73,7 +73,27 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  'sunken-canyon': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: 40,
+  },
 };
+
+// Sunken-canyon stage tuning (see generateSunkenCanyon).
+const SUNKEN_CANYON = {
+  yPlateau: 10,
+  yCanyon: 1,
+  plateauSize: 14,
+  canyonSize: 32,
+  rampWidth: 5,
+  rampMinDepth: 20,
+};
+
+/** Low vista walls on the plateau edge facing the canyon (≤ client WALL_HEIGHT). */
+const PARAPET_WALL_HEIGHT = 1.2;
+
+const DEFAULT_ROOM_FOOTPRINT_AREA = 13.5 * 13.5;
+const MIN_CANYON_AREA = 4 * DEFAULT_ROOM_FOOTPRINT_AREA;
 
 function normalizeLayoutProfile(profile) {
   if (typeof profile === 'string') {
@@ -102,6 +122,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
     return generateOpenPlaza(seed);
+  }
+  if (profile === 'sunken-canyon') {
+    return generateSunkenCanyon(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
@@ -545,6 +568,307 @@ function generateOpenPlaza(seed) {
   return layout;
 }
 
+// ── Sunken Canyon Stage Generation ──
+
+/**
+ * Build wall segments along one rectangular room edge, leaving passage gaps.
+ * gapCenters are positions along the edge (x for north/south, z for east/west).
+ */
+function buildRoomEdgeWalls(room, edge, { gapCenters = [], gapWidth = PASSAGE_WIDTH, parapet = false } = {}) {
+  const halfW = room.width / 2;
+  const halfD = room.depth / 2;
+  const wallOpts = parapet ? { height: PARAPET_WALL_HEIGHT } : {};
+
+  if (edge === 'north') {
+    return buildGappedWallAlongAxis({
+      axis: 'x',
+      fixedCoord: room.z - halfD,
+      centerAlong: room.x,
+      totalLength: room.width,
+      gapCenters,
+      gapWidth,
+      wallOpts,
+    });
+  }
+  if (edge === 'south') {
+    return buildGappedWallAlongAxis({
+      axis: 'x',
+      fixedCoord: room.z + halfD,
+      centerAlong: room.x,
+      totalLength: room.width,
+      gapCenters,
+      gapWidth,
+      wallOpts,
+    });
+  }
+  if (edge === 'west') {
+    return buildGappedWallAlongAxis({
+      axis: 'z',
+      fixedCoord: room.x - halfW,
+      centerAlong: room.z,
+      totalLength: room.depth,
+      gapCenters,
+      gapWidth,
+      wallOpts,
+    });
+  }
+  if (edge === 'east') {
+    return buildGappedWallAlongAxis({
+      axis: 'z',
+      fixedCoord: room.x + halfW,
+      centerAlong: room.z,
+      totalLength: room.depth,
+      gapCenters,
+      gapWidth,
+      wallOpts,
+    });
+  }
+  return [];
+}
+
+function buildGappedWallAlongAxis({
+  axis,
+  fixedCoord,
+  centerAlong,
+  totalLength,
+  gapCenters,
+  gapWidth,
+  wallOpts,
+}) {
+  const half = totalLength / 2;
+  const minAlong = centerAlong - half;
+  const maxAlong = centerAlong + half;
+  const sortedGaps = [...gapCenters].sort((a, b) => a - b);
+  const walls = [];
+  let cursor = minAlong;
+
+  for (const gc of sortedGaps) {
+    const gapHalf = gapWidth / 2;
+    const gapStart = gc - gapHalf;
+    const gapEnd = gc + gapHalf;
+    if (gapStart > cursor) {
+      const segLen = gapStart - cursor;
+      const segMid = cursor + segLen / 2;
+      if (axis === 'x') {
+        walls.push({ x: segMid, z: fixedCoord, length: segLen, axis: 'x', ...wallOpts });
+      } else {
+        walls.push({ x: fixedCoord, z: segMid, length: segLen, axis: 'z', ...wallOpts });
+      }
+    }
+    cursor = Math.max(cursor, gapEnd);
+  }
+
+  if (cursor < maxAlong) {
+    const segLen = maxAlong - cursor;
+    const segMid = cursor + segLen / 2;
+    if (axis === 'x') {
+      walls.push({ x: segMid, z: fixedCoord, length: segLen, axis: 'x', ...wallOpts });
+    } else {
+      walls.push({ x: fixedCoord, z: segMid, length: segLen, axis: 'z', ...wallOpts });
+    }
+  }
+
+  return walls;
+}
+
+/**
+ * Shared descending ramp room for sunken-canyon (137) and future spire (136).
+ * axis 'z': high edge on north (−Z), low edge on south (+Z).
+ * axis 'x': high edge on west (−X), low edge on east (+X).
+ */
+function createDescendingRampRoom({ x, z, width, depth, yHigh, yLow, axis = 'z' }) {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  let floorCorners;
+  if (axis === 'x') {
+    floorCorners = { yNW: yHigh, ySW: yHigh, yNE: yLow, ySE: yLow };
+  } else {
+    floorCorners = { yNW: yHigh, yNE: yHigh, ySE: yLow, ySW: yLow };
+  }
+
+  const walls = [
+    { x: x - halfW, z, length: depth, axis: 'z' },
+    { x: x + halfW, z, length: depth, axis: 'z' },
+  ];
+
+  return {
+    x,
+    z,
+    width,
+    depth,
+    walls,
+    floorCorners,
+    band: 'ramp',
+  };
+}
+
+/**
+ * Average slope ΔY / horizontal run along the primary descent axis.
+ */
+function averageRampSlope(room) {
+  const { yNW, yNE, ySE, ySW } = room.floorCorners;
+  const northAvg = (yNW + yNE) / 2;
+  const southAvg = (ySE + ySW) / 2;
+  const westAvg = (yNW + ySW) / 2;
+  const eastAvg = (yNE + ySE) / 2;
+  const dz = Math.abs(northAvg - southAvg);
+  const dx = Math.abs(westAvg - eastAvg);
+  if (dz >= dx) {
+    return dz / room.depth;
+  }
+  return dx / room.width;
+}
+
+function sunkenCanyonRampXPositions(numRamps, rng) {
+  if (numRamps === 2) {
+    const flip = rng() < 0.5 ? -1 : 1;
+    return [-5 * flip, 5 * flip];
+  }
+  return [-5, 0, 5];
+}
+
+function buildSunkenCanyonPassage(fromRoom, toRoom, passageWidth) {
+  const halfGap = passageWidth / 2;
+  const dz = toRoom.z - fromRoom.z;
+  const dx = toRoom.x - fromRoom.x;
+  const corridorLength = Math.hypot(dx, dz);
+  const walls = [];
+
+  if (Math.abs(dx) >= Math.abs(dz)) {
+    const wallCentreX = (fromRoom.x + toRoom.x) / 2;
+    const z = fromRoom.z;
+    walls.push({ x: wallCentreX, z: z - halfGap, length: corridorLength, axis: 'x' });
+    walls.push({ x: wallCentreX, z: z + halfGap, length: corridorLength, axis: 'x' });
+  } else {
+    const wallCentreZ = (fromRoom.z + toRoom.z) / 2;
+    const x = fromRoom.x;
+    walls.push({ x: x - halfGap, z: wallCentreZ, length: corridorLength, axis: 'z' });
+    walls.push({ x: x + halfGap, z: wallCentreZ, length: corridorLength, axis: 'z' });
+  }
+
+  return {
+    x1: fromRoom.x,
+    z1: fromRoom.z,
+    x2: toRoom.x,
+    z2: toRoom.z,
+    walls,
+    corridorLength,
+  };
+}
+
+/**
+ * Deterministic sunken-canyon layout: elevated plateau spawn, large lower canyon,
+ * and 2–3 sloped ramp connectors.
+ */
+function generateSunkenCanyon(seed) {
+  const rng = mulberry32(seed);
+  const { yPlateau, yCanyon, plateauSize, canyonSize, rampWidth } = SUNKEN_CANYON;
+  const numRamps = 2 + Math.floor(rng() * 2);
+  const rampXs = sunkenCanyonRampXPositions(numRamps, rng);
+
+  const plateauHalf = plateauSize / 2;
+  const canyonHalf = canyonSize / 2;
+
+  const plateau = {
+    x: 0,
+    z: -50,
+    width: plateauSize,
+    depth: plateauSize,
+    walls: [],
+    floorCorners: {
+      yNW: yPlateau,
+      yNE: yPlateau,
+      ySE: yPlateau,
+      ySW: yPlateau,
+    },
+    band: 'plateau',
+  };
+
+  const canyon = {
+    x: 0,
+    z: 28,
+    width: canyonSize,
+    depth: canyonSize,
+    walls: [],
+    floorCorners: {
+      yNW: yCanyon,
+      yNE: yCanyon,
+      ySE: yCanyon,
+      ySW: yCanyon,
+    },
+    band: 'canyon',
+  };
+
+  const plateauSouthZ = plateau.z + plateauHalf;
+  const canyonNorthZ = canyon.z - canyonHalf;
+  const rampSpan = canyonNorthZ - plateauSouthZ;
+  const rampDepth = Math.max(SUNKEN_CANYON.rampMinDepth, rampSpan);
+  const rampCenterZ = (plateauSouthZ + canyonNorthZ) / 2;
+
+  const ramps = rampXs.map((rx) =>
+    createDescendingRampRoom({
+      x: rx,
+      z: rampCenterZ,
+      width: rampWidth,
+      depth: rampDepth,
+      yHigh: yPlateau,
+      yLow: yCanyon,
+      axis: 'z',
+    })
+  );
+
+  plateau.walls = [
+    ...buildRoomEdgeWalls(plateau, 'north'),
+    ...buildRoomEdgeWalls(plateau, 'west'),
+    ...buildRoomEdgeWalls(plateau, 'east'),
+    ...buildRoomEdgeWalls(plateau, 'south', { gapCenters: rampXs, parapet: true }),
+  ];
+
+  canyon.walls = [
+    ...buildRoomEdgeWalls(canyon, 'north', { gapCenters: rampXs }),
+    ...buildRoomEdgeWalls(canyon, 'south'),
+    ...buildRoomEdgeWalls(canyon, 'west'),
+    ...buildRoomEdgeWalls(canyon, 'east'),
+  ];
+
+  const rooms = [plateau, ...ramps, canyon];
+  const rampRoomIndices = ramps.map((_, i) => i + 1);
+  const canyonRoomIndex = rooms.length - 1;
+
+  const passages = [];
+  for (const ramp of ramps) {
+    passages.push(buildSunkenCanyonPassage(plateau, ramp, PASSAGE_WIDTH));
+    passages.push(buildSunkenCanyonPassage(ramp, canyon, PASSAGE_WIDTH));
+  }
+
+  const layout = {
+    rooms,
+    passages,
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: SUNKEN_CANYON.canyonSize,
+    profile: 'sunken-canyon',
+    stageMeta: {
+      plateauRoomIndex: 0,
+      canyonRoomIndex,
+      rampRoomIndices,
+    },
+  };
+
+  assignRoomRoles(layout);
+
+  for (const idx of rampRoomIndices) {
+    layout.rooms[idx].role = 'combat';
+    layout.rooms[idx].spawnWeight = 0;
+  }
+
+  layout.rooms[0].role = 'start';
+  layout.rooms[0].spawnWeight = 0;
+  layout.rooms[canyonRoomIndex].role = 'treasure';
+  layout.rooms[canyonRoomIndex].spawnWeight = 2;
+
+  return layout;
+}
+
 // ── Room Role Assignment ──
 
 /**
@@ -692,6 +1016,16 @@ module.exports = {
   mulberry32,
   generateLayout,
   generateOpenPlaza,
+  generateSunkenCanyon,
+  createDescendingRampRoom,
+  averageRampSlope,
+  buildRoomEdgeWalls,
+  buildGappedWallAlongAxis,
+  buildSunkenCanyonPassage,
+  PARAPET_WALL_HEIGHT,
+  SUNKEN_CANYON,
+  MIN_CANYON_AREA,
+  DEFAULT_ROOM_FOOTPRINT_AREA,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
