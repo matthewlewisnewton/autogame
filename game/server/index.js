@@ -10,6 +10,7 @@ const {
   DEFAULT_QUEST_ID,
   isValidQuestId,
   getLayoutProfileForQuest,
+  buildLayoutGenerateOptions,
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
@@ -332,8 +333,9 @@ setSavePlayerCallback(savePlayerData);
 function applyLayoutForQuest(state, questId) {
   const profile = getLayoutProfileForQuest(questId);
   const seed = questLayoutSeed(questId);
+  const layoutOptions = buildLayoutGenerateOptions(questId);
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile, { slopes: true });
+  state.layout = generateLayout(seed, profile, layoutOptions);
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already
@@ -408,6 +410,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-exhausted',
   'telepipe-ready',
   'sloped-dungeon',
+  'spire-ascent-ready',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -553,6 +556,11 @@ function applyDebugScenario(socket, name) {
     player.lastMoveTime = Date.now();
     player.debugScenario = name;
     player.pendingSummons.clear();
+
+    if (name === 'spire-ascent-ready') {
+      state.selectedQuestId = 'spire_ascent';
+      applyLayoutForQuest(state, 'spire_ascent');
+    }
 
     if (name === 'telepipe-ready') {
       player.hp = MAX_HP;
@@ -734,19 +742,13 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
-    } else if (name === 'sloped-dungeon') {
-      // Regenerate the dungeon layout with slopes enabled for visual verification.
-      // Uses the same seed as the current quest for determinism.
+    } else if (name === 'sloped-dungeon' || name === 'spire-ascent-ready') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
-      const seed = state.layoutSeed || questLayoutSeed(state.selectedQuestId || DEFAULT_QUEST_ID);
-      const profile = getLayoutProfileForQuest(state.selectedQuestId || DEFAULT_QUEST_ID);
-      state.layout = generateLayout(seed, profile, { slopes: true });
-      state.layoutSeed = seed;
-      state.dungeonBounds = computeDungeonBounds(state.layout);
-      state.walkableAABBs = computeWalkableAABBs(state.layout);
-      withLobbyContext({ state }, () => rebuildWallColliders());
-      // Send updated layout to all clients in the lobby
+      if (name === 'sloped-dungeon') {
+        const questId = state.selectedQuestId || DEFAULT_QUEST_ID;
+        applyLayoutForQuest(state, questId);
+      }
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,
@@ -3243,6 +3245,7 @@ if (typeof module !== 'undefined' && module.exports) {
     firstRoomPosition,
     createGameState,
     resetGameState,
+    applyLayoutForQuest,
     gameState,
     setGameState: setProgressionGameState,
     startServer,

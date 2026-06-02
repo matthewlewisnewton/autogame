@@ -12,6 +12,7 @@ import {
 	firstRoomPosition,
 	createGameState,
 	resetGameState,
+	applyLayoutForQuest,
 	gameState,
 	runGameLoopTick,
 	cleanupStalePlayers,
@@ -221,7 +222,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['crystal_rescue', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['crystal_rescue', 'spire_ascent', 'training_caverns']);
 
 		for (const quest of Object.values(QUEST_DEFS)) {
 			expect(quest.id).toBeTruthy();
@@ -359,6 +360,45 @@ describe('generateLayout(seed)', () => {
 		// gameState.layout is initialized at module load by applyLayoutForQuest,
 		// which now passes { slopes: true }. Verify the live state reflects this.
 		const hasSlopedRoom = gameState.layout.rooms.some(room => {
+			const fc = room.floorCorners;
+			if (!fc) return false;
+			const heights = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];
+			return heights.some(h => h !== heights[0]);
+		});
+		expect(hasSlopedRoom).toBe(true);
+	});
+});
+
+function averageCornerY(floorCorners) {
+	const { yNW, yNE, ySE, ySW } = floorCorners;
+	return (yNW + yNE + ySE + ySW) / 4;
+}
+
+describe('applyLayoutForQuest', () => {
+	it('deploys spire-ascent layout with structural checks for spire_ascent quest', () => {
+		const state = createGameState();
+		applyLayoutForQuest(state, 'spire_ascent');
+
+		expect(state.layout.stage).toBe('spire-ascent');
+		expect(state.layoutSeed).toBeGreaterThan(0);
+		expect(state.dungeonBounds).toBeTruthy();
+		expect(state.walkableAABBs.length).toBeGreaterThan(0);
+
+		expect(state.layout.rooms.length).toBeGreaterThanOrEqual(3);
+		expect(state.layout.rooms.length).toBeLessThanOrEqual(5);
+		expect(state.layout.rooms[0].role).toBe('start');
+		expect(state.layout.rooms[state.layout.rooms.length - 1].role).toBe('treasure');
+
+		const bottomY = averageCornerY(state.layout.rooms[0].floorCorners);
+		const topY = averageCornerY(state.layout.rooms[state.layout.rooms.length - 1].floorCorners);
+		expect(topY - bottomY).toBeGreaterThanOrEqual(10);
+	});
+
+	it('keeps default sloped grid layout for training_caverns', () => {
+		const state = createGameState();
+		applyLayoutForQuest(state, 'training_caverns');
+		expect(state.layout.stage).not.toBe('spire-ascent');
+		const hasSlopedRoom = state.layout.rooms.some(room => {
 			const fc = room.floorCorners;
 			if (!fc) return false;
 			const heights = [fc.yNW, fc.yNE, fc.ySE, fc.ySW];

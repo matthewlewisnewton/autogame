@@ -17,7 +17,17 @@ const QUEST_DEFS = {
     enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
-  }
+  },
+  spire_ascent: {
+    id: 'spire_ascent',
+    name: 'Spire Ascent',
+    description: 'Ascend the fractured spire and purge hostiles tier by tier.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 8,
+    rewardCurrency: 15,
+    layoutProfile: 'crowded',
+    layoutStage: 'spire-ascent',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';
@@ -56,6 +66,15 @@ function getLayoutProfileForQuest(questId) {
   return (quest && quest.layoutProfile) || QUEST_DEFS.training_caverns.layoutProfile;
 }
 
+/** Options passed to generateLayout for a quest (spire stage vs default sloped grid). */
+function buildLayoutGenerateOptions(questId) {
+  const quest = getQuest(questId);
+  if (quest && quest.layoutStage) {
+    return { stage: quest.layoutStage };
+  }
+  return { slopes: true };
+}
+
 module.exports = {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
@@ -65,5 +84,6 @@ module.exports = {
   listQuests,
   getSelectedQuest,
   getLayoutProfileForQuest,
+  buildLayoutGenerateOptions,
   buildQuestUpdatePayload
 };

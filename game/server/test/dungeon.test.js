@@ -838,6 +838,7 @@ describe('layout profiles', () => {
   it('uses deterministic seeds per quest id', () => {
     expect(questLayoutSeed('training_caverns')).toBe(questLayoutSeed('training_caverns'));
     expect(questLayoutSeed('training_caverns')).not.toBe(questLayoutSeed('crystal_rescue'));
+    expect(questLayoutSeed('spire_ascent')).not.toBe(questLayoutSeed('training_caverns'));
   });
 
   it('crowded layouts have more rooms than open layouts on average', () => {
