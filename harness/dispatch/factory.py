@@ -120,7 +120,7 @@ def build_factory(main_root, *, workers: int = 3,
         ports_pool=allocate_pool(workers),
         on_pass=mq.enqueue, merge_drain=mq.drain_one,
         tick_seconds=tick_seconds,
-        reserve_qwen_easy=True,   # keep the local GPU box hot while easy work remains
+        reserve_qwen=True,   # keep the local GPU box hot (easy preferred, else medium)
     )
     return disp, mq, queue, registry
 

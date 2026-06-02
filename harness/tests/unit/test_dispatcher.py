@@ -212,19 +212,29 @@ def _reservation_dispatcher(q, *, reserve):
         spawn=spawn,
         worktree_factory=lambda name, ports_: (wts.append(name) or FakeWorktree(name, ports_)),
         quota_classifier=lambda agent: False, on_pass=lambda w: None,
-        reserve_qwen_easy=reserve,
+        reserve_qwen=reserve,
     )
 
 
-def test_reserve_qwen_easy_keeps_qwen_running_under_hard_load():
+def test_reserve_qwen_prefers_easy_under_hard_load():
     # 2 ports, more hard work than ports — without a reservation hard would take
-    # every slot and qwen/easy would never run.
+    # every slot and qwen would never run.
     q = FakeQueue({"hard": ["h1", "h2"], "easy": ["e1"]})
     d = _reservation_dispatcher(q, reserve=True)
     d.tick()
     agents = {(w.agent, w.difficulty) for w in d._workers.values()}
     assert ("qwen", "easy") in agents               # qwen reserved an easy slot
     assert any(a == "composer" for a, _ in agents)  # remaining slot still did hard
+
+
+def test_reserve_qwen_falls_back_to_medium_when_no_easy():
+    # no easy work, but medium is ready — qwen should take a medium ticket to
+    # stay busy rather than sit idle while hard fills the rest.
+    q = FakeQueue({"hard": ["h1", "h2"], "medium": ["m1"]})
+    d = _reservation_dispatcher(q, reserve=True)
+    d.tick()
+    agents = {(w.agent, w.difficulty) for w in d._workers.values()}
+    assert ("qwen", "medium") in agents             # qwen kept busy on medium
 
 
 def test_without_reservation_hard_load_starves_qwen():
@@ -234,11 +244,11 @@ def test_without_reservation_hard_load_starves_qwen():
     assert "qwen" not in {w.agent for w in d._workers.values()}  # both ports → hard
 
 
-def test_reserve_qwen_easy_noop_when_no_easy_work():
+def test_reserve_qwen_noop_when_no_easy_or_medium():
     q = FakeQueue({"hard": ["h1", "h2"]})
     d = _reservation_dispatcher(q, reserve=True)
     d.tick()
-    # no easy tickets → no qwen, and the registry slot isn't leaked
+    # nothing qwen-eligible ready → no qwen, and the registry slot isn't leaked
     assert "qwen" not in {w.agent for w in d._workers.values()}
     assert d.registry.snapshot()["qwen"]["in_flight"] == 0
 
