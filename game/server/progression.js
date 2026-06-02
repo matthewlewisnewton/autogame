@@ -43,7 +43,7 @@ const {
 const {
   ENEMY_DEFS,
   firstRoomPosition,
-  randomRoomPosition,
+  pickFloorSpawnPosition,
   randomWanderTarget
 } = require('./simulation');
 const { getQuest, getSelectedQuest } = require('./quests');
@@ -2500,10 +2500,23 @@ function cleanupAfterDamage() {
   }
 }
 
+/**
+ * True for the open-plaza / single-room arena: no room carries a 'combat' or
+ * 'treasure' role, so room-relative placement has no role rooms to target and
+ * spawning must instead scatter across the open floor with cover-aware sampling.
+ */
+function isOpenFloorLayout(layout) {
+  return roomsByRole(layout, 'combat').length === 0 &&
+         roomsByRole(layout, 'treasure').length === 0;
+}
+
 function spawnCrystals(layout, rng, count) {
   const itemCount = Math.max(1, count | 0);
   const treasureRooms = roomsByRole(layout, 'treasure');
   const eligibleRooms = layout.rooms.filter(r => r.role !== 'start');
+  // Open-plaza / no-role layouts have no treasure/combat room to target, so
+  // place objectives across the open floor with the cover-aware helper.
+  const openFloor = isOpenFloorLayout(layout);
   const roomPool = [];
 
   if (treasureRooms.length > 0) {
@@ -2522,13 +2535,18 @@ function spawnCrystals(layout, rng, count) {
   }
 
   for (let i = 0; i < itemCount; i++) {
-    const room = roomPool[i % roomPool.length];
-    const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
-    const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
-    const pos = {
-      x: room.x + (rng() * 2 - 1) * halfW,
-      z: room.z + (rng() * 2 - 1) * halfD,
-    };
+    let pos;
+    if (openFloor) {
+      pos = pickFloorSpawnPosition(layout, rng);
+    } else {
+      const room = roomPool[i % roomPool.length];
+      const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+      const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+      pos = {
+        x: room.x + (rng() * 2 - 1) * halfW,
+        z: room.z + (rng() * 2 - 1) * halfD,
+      };
+    }
     const id = crypto.randomUUID();
     _gameState.loot.push({
       id,
@@ -2575,16 +2593,21 @@ function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
   }
 
   const combatRooms = roomsByRole(layout, 'combat');
-  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
 
   if (combatRooms.length > 0) {
     return randomRoomPositionByRole(layout, 'combat', rng);
   }
+  // Open-plaza / no-role layouts: place enemies across the open floor with a
+  // seeded, cover-aware sampler so they never land inside a pillar or wall.
+  if (isOpenFloorLayout(layout)) {
+    return pickFloorSpawnPosition(layout, rng);
+  }
+  const nonStartRooms = layout.rooms.filter(r => r.role !== 'start');
   if (nonStartRooms.length > 0) {
     const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
     return randomPositionInRoom(room, rng);
   }
-  return randomRoomPosition();
+  return pickFloorSpawnPosition(layout, rng);
 }
 
 function spawnCombatEnemies(layout, rng, quest) {
@@ -2617,6 +2640,10 @@ function spawnLoot(layout, rng) {
       x: room.x + (rng() * 2 - 1) * halfW,
       z: room.z + (rng() * 2 - 1) * halfD,
     };
+  } else if (isOpenFloorLayout(layout)) {
+    // Open-plaza fallback: seeded, cover-aware placement across the open floor
+    // (no unseeded Math.random() for the position).
+    pos = pickFloorSpawnPosition(layout, rng);
   } else if (nonStartRooms.length > 0) {
     const room = nonStartRooms[Math.floor(rng() * nonStartRooms.length)];
     const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
@@ -2626,7 +2653,7 @@ function spawnLoot(layout, rng) {
       z: room.z + (rng() * 2 - 1) * halfD,
     };
   } else {
-    pos = randomRoomPosition();
+    pos = pickFloorSpawnPosition(layout, rng);
   }
 
   const value = Math.floor(Math.random() * 16) + 5;

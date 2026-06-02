@@ -1,0 +1,9 @@
+Completed the holistic review.
+
+Wrote:
+- `tickets/135-world-open-plaza-stage/round-1/review.md`
+- `tickets/135-world-open-plaza-stage/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`
+
+Blocking gap: normal `arena_trials` enemy/loot/objective placement can fall back to non-cover-aware random room placement, so spawned entities can land inside the new solid plaza cover.

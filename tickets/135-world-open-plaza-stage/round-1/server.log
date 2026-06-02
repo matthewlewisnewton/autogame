@@ -1,0 +1,12 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/135-world-open-plaza-stage/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/135-world-open-plaza-stage/game/data
+Server listening on port 3000
+Player connected: socket=aUuPDsH6_A6oUIegAAAB, playerId=e56f1f8f-f98c-4e03-a986-bc85d6c041d6
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=qjOgVvB8CR8yL98xAAAD, playerId=84587c0e-53d8-49cb-b280-741f859cc012
+[loot] spawned id=ec2d7571-d0b1-495f-b867-8907275c2c24 value=9
+Player disconnected: aUuPDsH6_A6oUIegAAAB
+Player disconnected: qjOgVvB8CR8yL98xAAAD

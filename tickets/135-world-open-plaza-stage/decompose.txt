@@ -1,0 +1,6 @@
+Created one new sub-ticket to close the single open gap from the round-1 review (enemy/objective/loot placement choosing positions inside solid cover on the open-plaza stage).
+
+Sub-tickets 01 and 02 are `.passed` and were left untouched.
+
+Created:
+- `/home/matt/workspace/.autogame-worktrees/135-world-open-plaza-stage/tickets/135-world-open-plaza-stage/subtickets/03-server-arena-spawn-cover-aware/ticket.md`
