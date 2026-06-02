@@ -1279,6 +1279,34 @@ function updateAreaEffects() {
   _progression().cleanupAfterDamage();
 }
 
+/**
+ * Apply due Echo Strike packets. Each entry was enqueued by the weapon branch
+ * of useCard ({ attackerId, targets:[{enemyId,damage}], applyAt }). Once its
+ * applyAt has passed, subtract the echo damage from each still-living target
+ * enemy, attribute the kill, and drop the entry.
+ */
+function processPendingEchoes() {
+  const pending = _gameState.pendingEchoes;
+  if (!pending || pending.length === 0) return;
+  const now = Date.now();
+  let applied = false;
+
+  for (const echo of pending) {
+    if (now < echo.applyAt) continue;
+    for (const target of echo.targets) {
+      const enemy = _gameState.enemies.find(e => e.id === target.enemyId);
+      if (!enemy || enemy.hp <= 0) continue;
+      enemy.lastDamagedBy = echo.attackerId;
+      enemy.hp -= target.damage;
+      applied = true;
+    }
+    echo.done = true;
+  }
+
+  if (applied) _progression().cleanupAfterDamage();
+  _gameState.pendingEchoes = pending.filter(echo => !echo.done);
+}
+
 function findNearestMinionNear(enemyX, enemyZ, detectionRadius, options = {}) {
   const tauntOnly = options.tauntOnly === true;
   let nearestDist = Infinity;
@@ -2066,6 +2094,9 @@ function updateMinions() {
   // Process lingering area effects (e.g. Dragon's Breath DoT)
   updateAreaEffects();
 
+  // Apply due Echo Strike second-hit packets
+  processPendingEchoes();
+
   // Ground enchantments (Spike Trap, etc.)
   updateEnchantments();
 
@@ -2207,6 +2238,7 @@ module.exports = {
   spawnFireTrailEffect,
   spawnInfernoPillarEffect,
   updateAreaEffects,
+  processPendingEchoes,
   updateEnchantments,
   spawnGroundEnchantment,
   armSelfEnchantment,

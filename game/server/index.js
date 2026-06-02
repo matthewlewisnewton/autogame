@@ -90,10 +90,16 @@ function createGameState() {
     shopOffer: null,
     telepipe: null,
     suspendedCheckpoint: null,
+    // Pending Echo Strike packets ({ attackerId, targets:[{enemyId,damage}], applyAt }),
+    // applied on a later tick by simulation.processPendingEchoes().
+    pendingEchoes: [],
     // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
     _pendingMinionBreaths: [],
   };
 }
+
+// Delay before an armed Echo Strike's second packet lands (a few ticks later).
+const ECHO_STRIKE_DELAY_MS = 150;
 
 // Game state (module-level singleton used by production)
 const gameState = createGameState();
@@ -138,6 +144,7 @@ const {
   MINION_FOLLOW_SPEED,
   updateEnemies,
   updateMinions,
+  processPendingEchoes,
   damagePlayer,
   damageMinion,
   healPlayer,
@@ -416,6 +423,7 @@ const DEBUG_SCENARIOS = new Set([
   'loot-magnet-ready',
   'overclock-ready',
   'phase-step-ready',
+  'echo-strike-ready',
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
@@ -894,6 +902,28 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'phase_step';
       player.keyItemCooldownUntil = 0;
       state.enemies = [];
+    } else if (name === 'echo-strike-ready') {
+      // Equip echo_strike with no cooldown, a weapon card in hand, and a tanky
+      // enemy directly in front so QA can arm the echo then swing and observe two
+      // damage events (primary + delayed echo) on the same surviving enemy.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'echo_strike';
+      player.keyItemCooldownUntil = 0;
+      player.echoStrikePending = false;
+      player.rotation = 0;
+      if (!player.hand.some(c => c && c.type === 'weapon' && c.effect !== 'draw_card')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        const weaponCard = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 17, charges: 5, remainingCharges: 5 };
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = weaponCard;
+        } else {
+          player.hand[0] = weaponCard;
+        }
+      }
+      // Tanky enemy straight ahead (rotation 0 → +x) that survives both packets.
+      state.enemies = [];
+      spawnEnemy(player.x + 2.5, player.z, 'grunt');
     }
 
     syncRunObjectiveToEnemies();
@@ -1661,6 +1691,28 @@ function startServer(port) {
 
       if (cardDef.selfDamage) {
         damagePlayer(socket.playerId, cardDef.selfDamage);
+      }
+
+      // ── Echo Strike: arm a delayed 50% second packet on this one weapon use ──
+      // The primary damage above lands immediately; if echoStrikePending is armed
+      // we enqueue a second packet against the same struck enemies, applied a few
+      // ticks later by simulation.processPendingEchoes(). The flag is consumed by
+      // any weapon use (spell/creature branches never reach here), regardless of
+      // whether an enemy was actually hit.
+      if (player.echoStrikePending) {
+        const echoDef = getKeyItemDef('echo_strike');
+        const echoFraction = echoDef && echoDef.echoFraction != null ? echoDef.echoFraction : 0.5;
+        const echoDamage = Math.max(1, Math.round(damage * echoFraction));
+        const struckEnemyIds = [...new Set(hits.map(h => h.enemyId).filter(Boolean))];
+        if (struckEnemyIds.length > 0) {
+          if (!state.pendingEchoes) state.pendingEchoes = [];
+          state.pendingEchoes.push({
+            attackerId: socket.playerId,
+            targets: struckEnemyIds.map(enemyId => ({ enemyId, damage: echoDamage })),
+            applyAt: now + ECHO_STRIKE_DELAY_MS,
+          });
+        }
+        player.echoStrikePending = false;
       }
 
       const appliedMagicStones = addMagicStones(player, magicStonesGained);
@@ -3473,6 +3525,7 @@ if (typeof module !== 'undefined' && module.exports) {
     isEnemyFrozen,
     updateEnemies,
     updateMinions,
+    processPendingEchoes,
     spawnLoot,
     spawnCrystals,
     spawnEnemy,
