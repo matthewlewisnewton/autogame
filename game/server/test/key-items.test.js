@@ -264,7 +264,9 @@ describe('useKeyItem socket handler', () => {
 		player.keyItemCooldownUntil = 0;
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
-		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
+		// ground_anchor is a defined key item that is not yet implemented in the
+		// useKeyItem handler (smoke_bomb is now implemented, so it can't be used here).
+		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
 		const result = await resultPromise;
 
 		expect(result.ok).toBe(false);

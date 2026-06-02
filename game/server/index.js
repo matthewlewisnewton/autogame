@@ -2589,8 +2589,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, and purge_charm are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, and smoke_bomb are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'smoke_bomb') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2649,6 +2649,26 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'smoke_bomb') {
+      // --- smoke_bomb: spawn a short-lived smoke zone FIXED at the caster's
+      // cast position. The zone is anchored at (smokeBombX, smokeBombZ) and does
+      // NOT follow the player as they subsequently move. The targeting-suppression
+      // gameplay effect is handled in sub-ticket 02; here we only set the transient
+      // zone state, burn cooldown, and broadcast. ---
+      const durationMs = def.durationMs != null ? def.durationMs : 2000;
+      const radius = def.radius != null ? def.radius : 4;
+      player.smokeBombUntil = now + durationMs;
+      player.smokeBombX = player.x;
+      player.smokeBombZ = player.z;
+      player.smokeBombRadius = radius;
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }

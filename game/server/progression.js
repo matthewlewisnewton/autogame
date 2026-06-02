@@ -627,9 +627,10 @@ const KEY_ITEM_DEFS = {
     id: 'smoke_bomb',
     name: 'Smoke Bomb',
     description: 'Become temporarily invisible',
-    cooldownMs: 18000,
+    cooldownMs: 8000,
     type: 'stealth',
-    durationMs: 3000,
+    durationMs: 2000,
+    radius: 4,
   },
   ground_anchor: {
     id: 'ground_anchor',
