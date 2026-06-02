@@ -2378,3 +2378,26 @@ Verified all three requirements:
 None blocking. The ticket is fully and robustly satisfied. (Minor non-blocking
 nits recorded in `nits.md`.)
 
+
+## v0.138 — 185-character-models-spike-base-player-model  (2026-06-02 15:27:44)
+
+## Consistency / regression
+- Consistent with the character-customization direction; nothing in `game/docs`
+  is contradicted. No foundation regression: the diff only **adds** files (docs,
+  two dev-only authoring scripts, the test, the GLB, `@gltf-transform` devDeps,
+  lockfile). No runtime path changed; captured run confirms unchanged gameplay.
+- No debug scenarios were added by this ticket (no runtime code touched); the
+  `debugScenario` fields in the probe are pre-existing harness instrumentation.
+
+## Code quality
+- The morph-authoring (`add-player-proportion-morphs.mjs`) and normalizer
+  (`normalize-player-glb.mjs`) are dev-only helpers under `client/scripts/`, not
+  imported by runtime or tests. No obvious dead/broken code in the shipped paths.
+- No console/page errors attributable to the ticket.
+
+## Remaining gaps
+None blocking. One minor doc inconsistency captured in `nits.md` (SPIKE_DECISION
+"final choice" still names *Regular Male* while the committed/credited asset is
+*Superhero Male*, since Regular is paid-tier — README/CREDITS are already
+correct). Does not affect any acceptance criterion.
+

@@ -1,0 +1,7 @@
+Decomposed ticket **185-character-models-spike-base-player-model** into **3 sub-tickets** (docs → base mesh → morph targets). The top-level `ticket.md` was not on disk; scope came from the beads issue (`autogame-0yf`) and prior successful runs. All docs are scoped under `game/` so implementers stay within `game/**` and avoid the `tickets/**` scope violations that failed earlier rounds.
+
+**Sub-ticket folders created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/01-research-and-model-contract/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/02-commit-normalized-player-glb/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/03-proportion-morph-targets/ticket.md`

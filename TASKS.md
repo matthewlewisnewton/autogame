@@ -63,3 +63,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [192-cleanup-models-gltf-loader-infrastructure](tickets/192-cleanup-models-gltf-loader-infrastructure/)
 - [ ] [193-cleanup-character-customization-client-panel](tickets/193-cleanup-character-customization-client-panel/)
 - [ ] [194-cleanup-key-item-smoke-bomb](tickets/194-cleanup-key-item-smoke-bomb/)
+- [ ] [195-cleanup-character-models-spike-base-player-model](tickets/195-cleanup-character-models-spike-base-player-model/)
