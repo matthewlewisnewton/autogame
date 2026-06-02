@@ -506,6 +506,170 @@ function connect() {
 connect();
 refreshPersistedTotals();
 
+// --- Beads issue browser ---------------------------------------------------
+const tabButtons = [...document.querySelectorAll('.tab')];
+const viewEls = new Map([...document.querySelectorAll('[data-view]')].map((el) => [el.dataset.view, el]));
+const beadsStatsEl = document.querySelector('#beads-stats');
+const beadsListEl = document.querySelector('#beads-list');
+const beadsDetailEl = document.querySelector('#beads-detail');
+const beadsFilterEl = document.querySelector('#beads-filter');
+const beadsRefreshEl = document.querySelector('#beads-refresh');
+
+const BEADS_STALE_MS = 8000;
+let beadsIssues = [];
+let beadsFetchedAt = 0;
+let beadsSelectedId = null;
+
+function activateTab(name) {
+  tabButtons.forEach((btn) => btn.classList.toggle('active', btn.dataset.tab === name));
+  viewEls.forEach((el, key) => el.classList.toggle('hidden', key !== name));
+  if (name === 'beads' && Date.now() - beadsFetchedAt > BEADS_STALE_MS) {
+    loadBeads();
+  }
+}
+
+tabButtons.forEach((btn) => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+
+function priorityLabel(priority) {
+  const n = Number(priority);
+  return Number.isFinite(n) ? `P${n}` : '—';
+}
+
+function slug(value) {
+  return String(value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-');
+}
+
+function renderBeadsStats(stats) {
+  const s = stats?.summary || {};
+  const cells = [
+    ['open', s.open_issues],
+    ['in progress', s.in_progress_issues],
+    ['blocked', s.blocked_issues],
+    ['ready', s.ready_issues],
+    ['closed', s.closed_issues],
+    ['total', s.total_issues],
+  ];
+  beadsStatsEl.innerHTML = cells
+    .map(([label, val]) => `<span class="beads-stat"><strong>${formatCount(val)}</strong>${escapeHtml(label)}</span>`)
+    .join('');
+}
+
+function issueMatchesFilter(issue, query) {
+  if (!query) return true;
+  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+  const hay = `${issue.id} ${issue.title} ${issue.status} ${issue.issue_type} p${issue.priority}`.toLowerCase();
+  return terms.every((term) => {
+    if (term.startsWith('status:')) return (issue.status || '').toLowerCase().startsWith(term.slice(7));
+    if (term.startsWith('type:')) return (issue.issue_type || '').toLowerCase().startsWith(term.slice(5));
+    if (/^p[0-4]$/.test(term)) return Number(issue.priority) === Number(term[1]);
+    return hay.includes(term);
+  });
+}
+
+function beadsBadges(issue) {
+  return `
+    <span class="beads-badge status-${slug(issue.status)}">${escapeHtml(issue.status)}</span>
+    <span class="beads-badge prio-${slug(priorityLabel(issue.priority))}">${escapeHtml(priorityLabel(issue.priority))}</span>
+    <span class="beads-badge type-${slug(issue.issue_type)}">${escapeHtml(issue.issue_type)}</span>
+  `;
+}
+
+function renderBeadsList() {
+  if (!beadsListEl) return;
+  const query = (beadsFilterEl?.value || '').trim();
+  const rows = beadsIssues.filter((issue) => issueMatchesFilter(issue, query));
+  if (!rows.length) {
+    beadsListEl.innerHTML = '<div class="empty">No matching issues.</div>';
+    return;
+  }
+  beadsListEl.innerHTML = rows
+    .map((issue) => `
+      <button class="beads-row${issue.id === beadsSelectedId ? ' selected' : ''}" type="button" data-id="${escapeHtml(issue.id)}">
+        <span class="beads-row-top">
+          <span class="beads-row-id">${escapeHtml(issue.id)}</span>
+          ${beadsBadges(issue)}
+        </span>
+        <span class="beads-row-title">${escapeHtml(issue.title)}</span>
+      </button>
+    `)
+    .join('');
+  beadsListEl.querySelectorAll('.beads-row').forEach((row) => {
+    row.addEventListener('click', () => selectBead(row.dataset.id));
+  });
+}
+
+function beadsField(label, value) {
+  if (!value) return '';
+  return `
+    <div class="beads-field">
+      <div class="beads-field-label">${escapeHtml(label)}</div>
+      <div class="beads-field-body">${escapeHtml(value)}</div>
+    </div>
+  `;
+}
+
+function renderBeadsDetail(issue) {
+  if (!issue) {
+    beadsDetailEl.innerHTML = '<div class="empty">Not found.</div>';
+    return;
+  }
+  const dependents = Array.isArray(issue.dependents) ? issue.dependents : [];
+  const depsLine = `${issue.dependency_count || 0} blocking dep(s) · ${issue.dependent_count || 0} dependent(s)`;
+  const dependentsBlock = dependents.length
+    ? `<div class="beads-field"><div class="beads-field-label">Dependents</div><div class="beads-field-body">${dependents
+        .map((d) => `<button class="beads-link" type="button" data-id="${escapeHtml(d.id)}">${escapeHtml(d.id)}</button> ${escapeHtml(d.title || '')}`)
+        .join('<br>')}</div></div>`
+    : '';
+  beadsDetailEl.innerHTML = `
+    <div class="beads-detail-head">
+      <span class="beads-detail-id">${escapeHtml(issue.id)}</span>
+      <span class="beads-detail-badges">${beadsBadges(issue)}</span>
+    </div>
+    <h2 class="beads-detail-title">${escapeHtml(issue.title)}</h2>
+    <div class="beads-detail-meta">${escapeHtml(depsLine)}</div>
+    ${beadsField('Description', issue.description)}
+    ${beadsField('Acceptance criteria', issue.acceptance_criteria)}
+    ${beadsField('Design', issue.design)}
+    ${beadsField('Notes', issue.notes)}
+    ${dependentsBlock}
+  `;
+  beadsDetailEl.querySelectorAll('.beads-link').forEach((link) => {
+    link.addEventListener('click', () => selectBead(link.dataset.id));
+  });
+}
+
+function selectBead(id) {
+  if (!id) return;
+  beadsSelectedId = id;
+  renderBeadsList();
+  beadsDetailEl.innerHTML = '<div class="empty">Loading…</div>';
+  fetch(`/beads/${encodeURIComponent(id)}`)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
+    .then((issue) => renderBeadsDetail(issue))
+    .catch((err) => {
+      beadsDetailEl.innerHTML = `<div class="empty">Failed to load ${escapeHtml(id)}: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
+function loadBeads() {
+  if (!beadsListEl) return;
+  beadsListEl.innerHTML = '<div class="empty">Loading issues…</div>';
+  fetch('/beads')
+    .then((r) => (r.ok ? r.json() : r.json().then((body) => Promise.reject(new Error(body.error || `HTTP ${r.status}`)))))
+    .then((data) => {
+      beadsIssues = Array.isArray(data.issues) ? data.issues : [];
+      beadsFetchedAt = Date.now();
+      renderBeadsStats(data.stats);
+      renderBeadsList();
+    })
+    .catch((err) => {
+      beadsListEl.innerHTML = `<div class="empty">Failed to load beads: ${escapeHtml(err.message)}</div>`;
+    });
+}
+
+if (beadsFilterEl) beadsFilterEl.addEventListener('input', renderBeadsList);
+if (beadsRefreshEl) beadsRefreshEl.addEventListener('click', loadBeads);
+
 const previewUrl = liveGameUrl();
 fetch(previewUrl, { mode: 'no-cors' })
   .then(() => {
