@@ -6,6 +6,7 @@ import {
 	isUniformFloor,
 	buildSlopedFloor,
 	computeWalkableAABBs,
+	uniformFloorCenterY,
 	FLOOR_Y,
 	WALL_HEIGHT,
 } from '../dungeon.js';
@@ -354,5 +355,94 @@ describe('buildDungeon() with floorCorners', () => {
 			expect(wallMesh).toBeDefined();
 			expect(wallMesh.position.y).toBeCloseTo(expectedBaseY + WALL_HEIGHT / 2, 4);
 		}
+	});
+});
+
+function isBoxGeometry(geometry) {
+	return geometry?.type === 'BoxGeometry' || geometry?._name === 'BoxGeometry';
+}
+
+function isCylinderGeometry(geometry) {
+	return geometry?.type === 'CylinderGeometry' || geometry?._name === 'CylinderGeometry';
+}
+
+function findUniformFloorMesh(meshes, room) {
+	return meshes.find(
+		(m) =>
+			m.position.x === room.x
+			&& m.position.z === room.z
+			&& Math.abs(m.rotation.x) < 0.01
+			&& Math.abs(m.rotation.z) < 0.01
+			&& isBoxGeometry(m.geometry)
+			&& m.geometry.parameters?.height === 0.1
+			&& m.geometry.parameters?.width === room.width
+			&& m.geometry.parameters?.depth === room.depth,
+	);
+}
+
+describe('buildDungeon() spire-ascent elevated uniform tiers', () => {
+	it('positions top-tier treasure floor mesh at least 10 units above start tier', () => {
+		const layout = generateLayout(42, undefined, { stage: 'spire-ascent' });
+		const startRoom = layout.rooms.find((r) => r.role === 'start');
+		const treasureRoom = layout.rooms.find((r) => r.role === 'treasure');
+		expect(startRoom).toBeDefined();
+		expect(treasureRoom).toBeDefined();
+
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+
+		const startFloor = findUniformFloorMesh(meshes, startRoom);
+		const treasureFloor = findUniformFloorMesh(meshes, treasureRoom);
+		expect(startFloor).toBeDefined();
+		expect(treasureFloor).toBeDefined();
+		expect(treasureFloor.position.y - startFloor.position.y).toBeGreaterThanOrEqual(10);
+	});
+
+	it('elevated uniform tier uses corner height, not ground FLOOR_Y', () => {
+		const elevatedY = 6.5;
+		const layout = {
+			rooms: [
+				{
+					x: 0,
+					z: 0,
+					width: 10,
+					depth: 10,
+					role: 'combat',
+					walls: [],
+					floorCorners: { yNW: elevatedY, yNE: elevatedY, ySE: elevatedY, ySW: elevatedY },
+				},
+			],
+			passages: [],
+		};
+		const room = layout.rooms[0];
+		expect(uniformFloorCenterY(room, layout)).toBe(elevatedY);
+
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const floor = findUniformFloorMesh(meshes, room);
+		expect(floor.position.y).toBe(elevatedY);
+		expect(floor.position.y).toBeGreaterThan(FLOOR_Y);
+	});
+
+	it('treasure marker Y follows elevated treasure room floor', () => {
+		const elevatedY = 8;
+		const layout = {
+			rooms: [
+				{
+					x: 5,
+					z: 5,
+					width: 10,
+					depth: 10,
+					role: 'treasure',
+					walls: [],
+					floorCorners: { yNW: elevatedY, yNE: elevatedY, ySE: elevatedY, ySW: elevatedY },
+				},
+			],
+			passages: [],
+		};
+		const room = layout.rooms[0];
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const marker = meshes.find((m) => isCylinderGeometry(m.geometry));
+		expect(marker).toBeDefined();
+		expect(marker.position.y).toBeCloseTo(0.75 + elevatedY, 5);
 	});
 });

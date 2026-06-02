@@ -411,6 +411,7 @@ const DEBUG_SCENARIOS = new Set([
   'telepipe-ready',
   'sloped-dungeon',
   'spire-ascent-ready',
+  'spire-ascent-top-tier',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -557,7 +558,7 @@ function applyDebugScenario(socket, name) {
     player.debugScenario = name;
     player.pendingSummons.clear();
 
-    if (name === 'spire-ascent-ready') {
+    if (name === 'spire-ascent-ready' || name === 'spire-ascent-top-tier') {
       state.selectedQuestId = 'spire_ascent';
       applyLayoutForQuest(state, 'spire_ascent');
     }
@@ -742,12 +743,21 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
-    } else if (name === 'sloped-dungeon' || name === 'spire-ascent-ready') {
+    } else if (name === 'sloped-dungeon' || name === 'spire-ascent-ready' || name === 'spire-ascent-top-tier') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       if (name === 'sloped-dungeon') {
         const questId = state.selectedQuestId || DEFAULT_QUEST_ID;
         applyLayoutForQuest(state, questId);
+      }
+      if (name === 'spire-ascent-top-tier') {
+        const treasureRoom = state.layout?.rooms?.find((r) => r.role === 'treasure');
+        if (treasureRoom) {
+          player.x = treasureRoom.x;
+          player.z = treasureRoom.z;
+          const floorY = sampleFloorY(state.layout, player.x, player.z);
+          player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+        }
       }
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
