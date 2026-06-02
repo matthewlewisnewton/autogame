@@ -1,0 +1,3 @@
+1. Round-5 capture did not finish: `metrics.json` has `"ok": false` / `failure_kind: "capture_failed"`, `console.log` is missing, and `screenshot.log` fails with `ERR_MODULE_NOT_FOUND: Cannot find package 'playwright'` (import from `harness/screenshot.mjs`).
+   Files: none in `game/` — harness capture dependency/setup, not a game-code defect (`pageerrors` is empty).
+   Fix: Install/restore Playwright for the harness (e.g. `pnpm install` in `harness/` or whatever this repo uses for `screenshot.mjs`), then re-run the round-5 capture. Do not modify `game/` unless the rerun reports browser `pageerrors` or a gameplay defect.

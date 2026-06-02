@@ -1,0 +1,23 @@
+## Summary
+
+**VERDICT: FAIL** — written as the last line of `tickets/130-key-item-phase-step/round-5/review.md`.
+
+### Runtime gate (blocking)
+- `metrics.json`: `"ok": false`, `failure_kind: "capture_failed"`
+- No `pageerrors` — not a game JS defect
+- `console.log` missing; `screenshot.log` fails with missing `playwright` in the harness
+- Dev servers did start (Vite :5173, server :3000)
+
+### Acceptance criteria (code-only)
+All ticket criteria look **implemented and tested** in the working tree:
+- 12s cooldown, co-op/solo behavior, dungeon endpoint checks, client highlight + `targetPlayerId`, six `phase_step` integration tests (933 tests pass in `coverage.log`)
+- `phase-step-ready` debug scenario is dev-gated and no longer fakes an ally
+
+### Files written
+| File | Purpose |
+|------|---------|
+| `round-5/review.md` | Full assessment + **VERDICT: FAIL** |
+| `round-5/gaps.md` | Single harness blocker (restore Playwright, re-capture) |
+| `round-5/nits.md` | Wall-endpoint test coverage; shared range constant |
+
+**Next step for the harness:** install Playwright for `harness/screenshot.mjs` and re-run round-5 capture. The game code itself appears ready pending a clean browser run.
