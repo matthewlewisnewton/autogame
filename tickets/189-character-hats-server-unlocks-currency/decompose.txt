@@ -1,0 +1,14 @@
+I created two dependency-ordered sub-tickets for **189-character-hats-server-unlocks-currency**.
+
+This is a server-side feature (the predecessor 181 built the "server cosmetic profile" the same way — server-only, client rendering deferred). The existing system: cosmetic (`bodyColor`/`accentColor`/`bodyShape`) lives on the account record in `users.json`; `player.currency` lives on the runtime player and persists via the storage provider; lobby purchases (`buyShopCard`, `grindCard`) deduct currency through Socket.IO handlers. The two sub-tickets extend that cleanly:
+
+- **01 — Hat catalog, cosmetic hat field & equip validation**: defines the server hat catalog (id/name/price), adds `cosmetic.hat` and an account-level `unlockedHats` array (with backfill), validates equipping against owned hats in `updateProfile`, and surfaces the catalog + owned hats via `GET /api/me`. *(code)*
+- **02 — Unlock hats by spending currency**: adds the `unlockHat` lobby socket handler that deducts `player.currency`, records the permanent unlock on the account, persists both, and confirms the equipped hat flows through the `stateUpdate` snapshot. *(code)*
+
+Both use `code` verification since every criterion is about server state, handlers, validation, and persistence — none are pixel-level look checks.
+
+Note: there was no `ticket.md` at the expected path and 189 isn't listed in `TASKS.md`/`decompose.txt` (both empty); I scoped the work from the ticket name plus the 181/182 cosmetic precedent and the existing currency/cosmetic code.
+
+Sub-ticket folders created:
+- `/home/matt/workspace/.autogame-worktrees/189-character-hats-server-unlocks-currency/tickets/189-character-hats-server-unlocks-currency/subtickets/01-hat-catalog-and-cosmetic-schema/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/189-character-hats-server-unlocks-currency/tickets/189-character-hats-server-unlocks-currency/subtickets/02-unlock-hat-with-currency/ticket.md`
