@@ -1,0 +1,19 @@
+Created **3 sub-tickets** in dependency order, following the same split as ticket 137 (sunken-canyon): server layout → client render → quest/spawn wiring.
+
+| # | Focus | Covers from parent ticket |
+|---|--------|---------------------------|
+| **01** | `generateSpireAscent()` — tiers, ramps, walls, Y gain, reachability, unit tests | Layout structure, slopes, determinism, reachability |
+| **02** | Client floor meshes, treasure Y, camera at spawn/follow | Camera follow, correct elevation rendering |
+| **03** | Quest, tier-distributed spawns, top-tier objective, debug scenario | Enemy distribution, objective placement, in-game play |
+
+All three use **Verification: code** (structural/behavioral criteria, not screenshot-only).
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/01-server-spire-ascent-layout
+/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/02-client-spire-ascent-render
+/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/03-quest-spawns-and-play
+```
+
+No existing sub-ticket folders were present (nothing to delete or preserve with `.passed`).

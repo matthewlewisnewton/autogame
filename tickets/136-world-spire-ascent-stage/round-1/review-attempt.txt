@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** Passed. `metrics.json` shows `ok: true`, empty `pageerrors`, both servers up, scene initialized, phase `playing`. `console.log` is clean (the two `409` lines are benign auth re-registration; no `pageerror`/`[fatal]`). Screenshots render correctly, including the shared sloped-floor ramp primitive.
+
+**Acceptance criteria:** All 10 met, validated by **160/160 passing tests**:
+- `generateLayout(seed, 'spire-ascent')` dispatches to `generateSpireAscent` → 3–5 flat tier rooms with strictly increasing Y, one slope-≥0.2 ramp per tier pair, total Y gain ≥10.
+- Perimeter walls with ramp-width gaps prevent fall-through (confirmed by walking flood-fill that respects colliders).
+- Objective crystals placed only on the top tier; **reachable on foot via ramps** proven by both server- and client-side flood-fill to the top-tier centre.
+- Enemy spawns distributed across non-top, non-ramp tiers.
+- Deterministic per seed.
+
+**Debug scenario audit:** `spire-ascent`/`spire-ascent-stage` are URL-gated only; the same end-state is reachable normally (the `spire_ascent` quest is in `QUEST_DEFS` and surfaced via `listQuests()`), and the scenario runs the real `applyLayoutForQuest`/`spawnEnemies`/`spawnCrystals` path without skipping validation.
+
+**Note:** the capture fell back to the generic `sloped-dungeon` smoke scenario rather than loading the spire itself — a capture-plan limitation, not a code defect; the runtime gate is satisfied and spire behavior is covered by unit tests.
+
+Two non-blocking nits filed in `nits.md` (dead `LAYOUT_PROFILES['spire-ascent']` entry; Y-gain sits exactly on the ≥10 bound). No `gaps.md` written since the verdict is PASS.

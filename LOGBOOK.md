@@ -2378,3 +2378,26 @@ Verified all three requirements:
 None blocking. The ticket is fully and robustly satisfied. (Minor non-blocking
 nits recorded in `nits.md`.)
 
+
+## v0.140 — Spire Ascent Stage  (2026-06-02 15:38:55)
+
+- `spire-ascent` / `spire-ascent-stage` are gated solely behind
+  `applyDebugScenario` (URL `?debugScenario=` path); not touched by normal play.
+- The same end-state is reachable normally: `spire_ascent` is a real entry in
+  `QUEST_DEFS` and is surfaced to clients via `listQuests()` in
+  `buildQuestUpdatePayload`, so selecting it in the lobby applies the identical
+  `spire-ascent` layout.
+- The scenario does not short-circuit invariants — it calls the real
+  `applyLayoutForQuest` + `spawnEnemies` + `spawnCrystals` path (same validation,
+  collider rebuild, and spawn logic as normal deploy).
+
+## Design/foundation consistency
+
+Consistent with `game/docs/design.md` world-stage direction; reuses the
+116/117 sloped-floor primitives as intended. No regression to existing stages —
+the other dungeon/canyon/plaza tests remain green.
+
+## Remaining gaps
+
+None blocking. See `nits.md` for minor non-blocking polish.
+
