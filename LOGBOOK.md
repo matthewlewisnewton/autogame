@@ -2332,3 +2332,26 @@ foundation regressed.
 
 None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 
+
+## v0.141 — 186-character-customization-server-model-fields  (2026-06-02 15:49:08)
+
+
+**04 — Profile API exposure** (PASS)
+- `GET /api/me` now returns `modelIds: MODEL_IDS` and
+  `proportionConfig: { keys, ranges }` alongside the existing cosmetic/hat data.
+- `PATCH /api/me/profile` already routes `cosmetic` through `updateProfile()`, so
+  `modelId`/`proportions` updates are validated and persisted; the echoed payload
+  returns the merged `user.cosmetic`.
+
+## Consistency / regressions
+
+Consistent with the existing cosmetic system (hats, body shapes, colors) and the
+established validate/backfill pattern. `design.md` and `requirements.md` impose no
+contradicting constraints on this schema. No debug scenarios were added. No
+regressions: the full 460-test suite passes.
+
+## Remaining gaps
+
+None blocking. The acceptance criteria across all four sub-tickets are fully and
+robustly met, and the captured run is healthy.
+

@@ -1,0 +1,17 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 4 sub-tickets for ticket 186-character-customization-server-model-fields:
+
+```
+subtickets/01-schema-modelId-proportions/ticket.md   (existing, failed — kept)
+subtickets/02-validation-backfill/ticket.md          (new)
+subtickets/03-storage-integration/ticket.md          (new)
+subtickets/04-profile-api-exposure/ticket.md         (new)
+```
+
+**Dependency chain:**
+- **01** — Define `MODEL_IDS`, `PROPORTION_KEYS`, `PROPORTION_RANGES`, and extend `DEFAULT_COSMETIC` in `cosmetic.js` (constants only)
+- **02** — Extend `validateCosmetic()` and `backfillCosmetic()` to handle `modelId` and `proportions` (depends on 01's constants)
+- **03** — Wire new fields through `users.js` persistence, `buildPlayerRecord()`, and verify `stateSnapshot()` broadcast (depends on 02's backfill)
+- **04** — Expose `modelId`, `proportions`, and schema config via `GET /api/me` and `PATCH /api/me/profile` (depends on 03's storage)
+
+All sub-tickets are `Verification: code` — they concern server-side data structures, validation logic, persistence, and API responses rather than visual rendering.

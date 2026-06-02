@@ -1,0 +1,763 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/cosmetic.test.js (35 tests) 10ms
+stdout | server/test/users.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+
+stdout | server/test/account.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/account.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+
+stdout | server/test/account.test.js > GET /api/me > returns profile and default settings
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440438888.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns profile and default settings
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/server.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/jwt_recovery.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/auth.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/cosmetic_runtime.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+
+stdout | server/test/auth.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+
+stdout | server/test/websocket_jwt_auth.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/jwt_recovery.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+
+stdout | server/test/websocket_jwt_auth.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/186-character-customization-server-model-fields/game/data/users.json
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+[users] No existing user file at /tmp/claude-1000/cosmetic-runtime-users-1780440438926-vhqfakrfz7.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord sources the cosmetic from the account record
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > invalid token triggers connect_error (not connect)
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > invalid token triggers connect_error (not connect)
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 201 with accountId on success
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440438928-4e6hl9zn4uk.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 201 with accountId on success
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+Player connected: socket=_TToaghqwJjT06AjAAAB, playerId=acct-test-1780440438929
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > accepts a valid JWT and uses accountId as playerId
+Player disconnected: _TToaghqwJjT06AjAAAB
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on invalid/expired token
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on invalid/expired token
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on malformed JWT
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on malformed JWT
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on expired JWT
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > disconnects socket on expired JWT
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when no token is provided — via connect_error
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when no token is provided — via connect_error
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when auth object is empty (no token key) — via connect_error
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > rejects socket when auth object is empty (no token key) — via connect_error
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > does NOT emit connect event for rejected tokens
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > does NOT emit connect event for rejected tokens
+Server listening on port 0
+
+stdout | server/test/server.test.js > updateMinions() > removes dead enemies and spawns magic stone and currency loot on death
+[loot] magic stone drop id=05180689-db71-4a25-96e2-089325b08e98 value=20 at (0.0, 0.0)
+[loot] currency drop id=4a659da7-84d9-4b05-88f0-ab1fbed7ca67 value=8 at (0.0, 0.0)
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > creates loot with correct structure when it spawns
+[loot] spawned id=50fcf939-b371-41d0-ba18-1251c9b922ec value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot value is in range [5, 20)
+[loot] spawned id=ab0683f9-ecc9-475a-862e-1cc0f6f1cbe9 value=13
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot createdAt is a timestamp
+[loot] spawned id=d20c4403-bbbe-4a24-a4b9-a8908d165ceb value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > spawns loot in treasure room when one exists
+[loot] spawned id=dc17252d-7bbc-4a6d-943e-5d8279044471 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > falls back to non-start room when no treasure room exists
+[loot] spawned id=8615fe37-9b14-4b27-9a76-853c10c3f3ce value=11
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies skips currency loot when the drop chance fails
+[loot] magic stone drop id=1b892d54-ff9d-49d4-9709-b9c5793d20fd value=20 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies spawns magic stone and currency loot at the enemy position
+[loot] magic stone drop id=14d8e355-cf4c-49c4-bfbf-a10c7b1c5913 value=20 at (4.0, -2.0)
+[loot] currency drop id=49e67ed9-e7e6-403b-b042-c9125bb24252 value=8 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > calls savePlayerData before deleting stale player
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves stale player data even when provider is null (no crash)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves multiple stale players before deleting
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > disconnects socket by matching socket.playerId (not socket.id)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > gracefully handles stale player with no connected socket
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > captureRunCheckpoint and restoreRunCheckpoint preserve telepipe and enemies
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > tryEnterTelepipe extracts one player while another remains active
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > suspendRunToLobby when all players have extracted
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady restores checkpoint instead of spawning a fresh run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > resume does not instantly re-extract players restored at the portal
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > abandonSuspendedRun clears checkpoint and run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > portal proximity grace prevents immediate extraction after placement
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > single extract keeps dungeon running until all players leave
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardSellValue returns configured sell prices
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardBuyValue is double the sell value
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > pickShopOffer returns a valid card from the shop pool
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard grants a card and deducts gold
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard adds to inventory only when the selected deck is full
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard rejects insufficient gold
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > canSellCardInstance rejects selling deck-required copies
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > sellCard removes an extra copy and grants currency
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 409 when username is already taken
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439002-1c9wnfnjs57.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 409 when username is already taken
+Server listening on port 0
+
+stdout | server/test/server.test.js > card sell and trade economy > offerCardTrade and respondCardTrade swap one instance each
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > respondCardTrade reject does not mutate inventories
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > produces 5 enemies: 2 skirmishers, 1 grunt, 1 miniboss, 1 spawner
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > produces 5 enemies: 2 skirmishers, 1 grunt, 1 miniboss, 1 spawner
+[loot] spawned id=8ba72eab-59fc-440b-b8a1-a53bfed6ea48 value=16
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals and combat enemies for crystal rescue
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals and combat enemies for crystal rescue
+[crystal] spawned id=2857cd3b-d8c7-46c9-80e2-7e5581f1b4c2 at (7.5, -4.8)
+[crystal] spawned id=8163b709-0ec7-42b8-9afa-1e92d4cd2dce at (28.3, 30.4)
+[crystal] spawned id=bf33e746-c87e-4d37-a3c1-57b576b947ee at (8.6, 10.8)
+[loot] spawned id=94394b4d-0a4c-4be3-8f8e-c7d77de0f628 value=7
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places crystal rescue enemies near the start room
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places crystal rescue enemies near the start room
+[crystal] spawned id=028248e9-eb4a-46f3-8ea5-d6c060c4bb8b at (7.5, -4.8)
+[crystal] spawned id=c609eb4a-788d-4eea-b1b0-f6c38e986170 at (28.3, 30.4)
+[crystal] spawned id=0f117529-21d7-408d-975e-368fdfc0f635 at (8.6, 10.8)
+[loot] spawned id=61fc57ec-8688-44d6-8386-5e3cbe9be3ed value=11
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > enemy spawn positions exclude the start room when combat rooms exist
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > loot spawn positions prefer treasure room when one exists
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns false for a position in the center of a room
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns true for a position inside a wall
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > accepts a custom radius parameter
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > defaults to ENTITY_RADIUS when radius is omitted
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > moves entity toward target in open space
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > reaches target when distance is less than maxDistance
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached when entity is already within stopDistance
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > respects custom stopDistance option
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: true after direct move lands within stopDistance
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after wall-slide leaves entity beyond stopDistance
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after direct move when entity remains farther than stopDistance
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > clamps final position to dungeon bounds
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns modelIds and proportionConfig for client UI discovery
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439022.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns modelIds and proportionConfig for client UI discovery
+Server listening on port 0
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns blocked when direct movement hits a wall and both axes are blocked
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > performs wall-slide when direct movement is blocked but one axis is free
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > wall-slide moves only the free axis when the other is blocked
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > is deterministic — no timers, randomness, or socket emissions
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > uses custom radius from options
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > assigns entity x and z only to the validated final position
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+[users] No existing user file at /tmp/claude-1000/cosmetic-runtime-users-1780440439038-sy6vtuq58fq.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > buildPlayerRecord falls back to a copy of the default cosmetic when no account is found
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+[users] No existing user file at /tmp/claude-1000/cosmetic-runtime-users-1780440439039-4n6k7rbhf8l.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot exposes each player cosmetic with the full body/accent/shape
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is missing
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439041-2q00tq3bqlt.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is missing
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439043-g4kotnrrblk.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when both fields are missing
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439045-o9t68q08l7.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when both fields are missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is less than 3 characters
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439047-tbgaem09kc.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is less than 3 characters
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is more than 32 characters
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439048-1po203gs8q6.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is more than 32 characters
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is empty string
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439050-6zeohzxztie.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is empty string
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is not a string
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439052-kv1vny1oijh.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when username is not a string
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is not a string
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439055-7na9xgtobvw.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/register > returns 400 when password is not a string
+Server listening on port 0
+
+ ✓ |server| server/test/server.test.js (335 tests) 90ms
+stdout | server/test/auth.test.js > POST /api/login > returns 200 with JWT token on success
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439058-ondu7j3qqac.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 200 with JWT token on success
+Server listening on port 0
+
+stdout | server/test/account.test.js > GET /api/me > returns 401 without token
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439104.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > GET /api/me > returns 401 without token
+Server listening on port 0
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > updates and returns merged settings
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439108.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/settings > updates and returns merged settings
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+[users] No existing user file at /tmp/claude-1000/cosmetic-runtime-users-1780440439121-bbr205ery14.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > stateSnapshot defaults the cosmetic for a player record lacking one
+Server listening on port 0
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+[users] No existing user file at /tmp/claude-1000/cosmetic-runtime-users-1780440439122-7jzj06odw8v.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/cosmetic_runtime.test.js > cosmetic in runtime state & stateUpdate snapshot > snapshot reflects an account cosmetic updated before the player joins
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > creates a user and returns { ok: true }
+[users] No existing user file at /tmp/claude-1000/users-create-1780440439130-s6jtuxi47bq.json — starting fresh
+
+stdout | server/test/auth.test.js > POST /api/login > returns a JWT containing accountId and username
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439139-huzxjlpgpr.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns a JWT containing accountId and username
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > stores a user record with username, passwordHash, and accountId
+[users] No existing user file at /tmp/claude-1000/users-create-1780440439165-u3vfngdqw7d.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates email with uniqueness check
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439189.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates email with uniqueness check
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > verifies the stored password hash with comparePassword
+[users] No existing user file at /tmp/claude-1000/users-create-1780440439199-7mjgzo2t42.json — starting fresh
+
+ ✓ |server| server/test/cosmetic_runtime.test.js (5 tests) 271ms
+stdout | server/test/auth.test.js > POST /api/login > JWT token has ~24h expiration
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439214-v386ymka3gf.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > JWT token has ~24h expiration
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > rejects duplicate usernames
+[users] No existing user file at /tmp/claude-1000/users-create-1780440439268-21ke22xtvo.json — starting fresh
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for unknown username
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439287-90b9wnikd05.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for unknown username
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for wrong password
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439289-ulgaefc4y99.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 401 for wrong password
+Server listening on port 0
+
+stdout | server/test/users.test.js > createUser > generates unique accountIds for different users
+[users] No existing user file at /tmp/claude-1000/users-create-1780440439302-ljxwi40euh.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > changes username and returns new token
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439339.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > changes username and returns new token
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when username is missing
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439366-ih1jrdeywxd.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when username is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when password is missing
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439369-w66cavwxaol.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > POST /api/login > returns 400 when password is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when NODE_ENV is not test or production
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439371-fhpv6puosk.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when NODE_ENV is not test or production
+Server listening on port 0
+
+stderr | server/test/auth.test.js > initAuth() dev fallback > uses dev fallback secret when NODE_ENV is not test or production
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+
+stdout | server/test/users.test.js > findUserByUsername > returns the user record for an existing username
+[users] No existing user file at /tmp/claude-1000/users-find-1780440439372-aq38fskhz78.json — starting fresh
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws when NODE_ENV is production and JWT_SECRET is missing
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439372-5dok57bnofn.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > throws when NODE_ENV is production and JWT_SECRET is missing
+Server listening on port 0
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > accepts JWT_SECRET from environment regardless of NODE_ENV
+[users] No existing user file at /tmp/claude-1000/auth-test-1780440439373-7nrx78sgyrc.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/auth.test.js > initAuth() dev fallback > accepts JWT_SECRET from environment regardless of NODE_ENV
+Server listening on port 0
+
+ ✓ |server| server/test/auth.test.js (20 tests) 447ms
+stdout | server/test/users.test.js > findUserByUsername > returns null for a non-existent username
+[users] No existing user file at /tmp/claude-1000/users-find-1780440439407-ypkk15tdkfa.json — starting fresh
+
+stdout | server/test/users.test.js > findUserByUsername > returns null for an empty string
+[users] No existing user file at /tmp/claude-1000/users-find-1780440439407-p74brr4y2ws.json — starting fresh
+
+stdout | server/test/users.test.js > profile helpers > findUserByAccountId returns the user record
+[users] No existing user file at /tmp/claude-1000/users-profile-1780440439407.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic and returns it in the 200 payload
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439417.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates cosmetic and returns it in the 200 payload
+Server listening on port 0
+
+stdout | server/test/users.test.js > profile helpers > updateProfile sets email and rejects duplicates
+[users] No existing user file at /tmp/claude-1000/users-profile-1780440439441.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for invalid cosmetic input
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439495.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for invalid cosmetic input
+Server listening on port 0
+
+stdout | server/test/users.test.js > cosmetic profile > applies a default cosmetic at account creation
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439510-89o97s3wjtj.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > partial cosmetic update merges only provided fields
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439545-199jn1179ua.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates modelId and proportions and returns them in the 200 payload
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439570.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > updates modelId and proportions and returns them in the 200 payload
+Server listening on port 0
+
+stdout | server/test/users.test.js > cosmetic profile > rejects an invalid bodyShape without mutating or persisting
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439580-lalch9w1xxa.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > rejects a malformed color without mutating or persisting
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439615-s6od1c4y7tl.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for invalid modelId
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439648.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for invalid modelId
+Server listening on port 0
+
+stdout | server/test/users.test.js > cosmetic profile > persists cosmetic across a simulated restart
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439650-4w9qjdcqpgt.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > persists cosmetic across a simulated restart
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-cosmetic-1780440439650-4w9qjdcqpgt.json
+
+stdout | server/test/users.test.js > cosmetic profile > backfills a complete cosmetic on a legacy record missing the field
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439685-20s5rll3v36.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > backfills a complete cosmetic on a legacy record missing the field
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-cosmetic-1780440439685-20s5rll3v36.json
+
+stdout | server/test/users.test.js > cosmetic profile > backfills only the missing sub-fields on a partial legacy cosmetic
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439685-vvrave3bxvd.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > backfills only the missing sub-fields on a partial legacy cosmetic
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-cosmetic-1780440439685-vvrave3bxvd.json
+
+stdout | server/test/users.test.js > cosmetic profile > allows updating modelId through updateProfile
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439686-i3ki3onbd5p.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > allows updating proportions through updateProfile
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439721-8gyxvkhtyol.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for out-of-range proportions
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439725.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for out-of-range proportions
+Server listening on port 0
+
+stdout | server/test/users.test.js > cosmetic profile > allows partial proportions update (only provided keys replaced, others preserved)
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439756-63ju1t6e66u.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > rejects an unknown modelId without mutating
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439791-2dgg4cbowic.json — starting fresh
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for unknown proportion key
+[users] No existing user file at /tmp/claude-1000/account-test-users-1780440439800.json — starting fresh
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/account.test.js > PATCH /api/me/profile > returns 400 for unknown proportion key
+Server listening on port 0
+
+stdout | server/test/users.test.js > cosmetic profile > rejects proportions with a value out of range
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439826-zq28cwih5ak.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > rejects proportions with an unknown key
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439860-06nw2mfugp1p.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > rejects proportions with a non-numeric value
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439895-apb4yh7d0fc.json — starting fresh
+
+ ✓ |server| server/test/account.test.js (12 tests) 992ms
+stdout | server/test/users.test.js > cosmetic profile > rejects proportions that is not an object
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439929-7a21d9r2r8u.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > backfills modelId and proportions on a legacy record missing both
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439964-bup7o0fvqh7.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > backfills modelId and proportions on a legacy record missing both
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-cosmetic-1780440439964-bup7o0fvqh7.json
+
+stdout | server/test/users.test.js > cosmetic profile > persists modelId and proportions across a simulated restart
+[users] No existing user file at /tmp/claude-1000/users-cosmetic-1780440439964-qnjb5gv19hk.json — starting fresh
+
+stdout | server/test/users.test.js > cosmetic profile > persists modelId and proportions across a simulated restart
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-cosmetic-1780440439964-qnjb5gv19hk.json
+
+stdout | server/test/users.test.js > file-backed persistence > saves user to disk on createUser
+[users] No existing user file at /tmp/claude-1000/users-test-YjFeY7/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > loads existing users from file on loadUsers call
+[users] No existing user file at /tmp/claude-1000/users-test-PoFuex/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > loads existing users from file on loadUsers call
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-test-PoFuex/test_users.json
+
+stdout | server/test/users.test.js > file-backed persistence > accountId stability across restarts (clear map, reload from file)
+[users] No existing user file at /tmp/claude-1000/users-test-XUJso3/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > accountId stability across restarts (clear map, reload from file)
+[users] Loaded 1 user record(s) from /tmp/claude-1000/users-test-XUJso3/test_users.json
+
+stdout | server/test/users.test.js > file-backed persistence > handles missing file on loadUsers gracefully
+[users] No existing user file at /tmp/claude-1000/users-test-fiiNGg/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > handles missing file on loadUsers gracefully
+[users] No existing user file at /tmp/claude-1000/users-test-fiiNGg/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > uses atomic write pattern (write to .tmp then rename)
+[users] No existing user file at /tmp/claude-1000/users-test-RIaeTV/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > preserves multiple users across restart
+[users] No existing user file at /tmp/claude-1000/users-test-OlARBf/test_users.json — starting fresh
+
+stdout | server/test/users.test.js > file-backed persistence > preserves multiple users across restart
+[users] Loaded 2 user record(s) from /tmp/claude-1000/users-test-OlARBf/test_users.json
+
+stdout | server/test/users.test.js > file-backed persistence > getUsersFilePath returns the configured path
+[users] No existing user file at /tmp/claude-1000/users-test-DCwzIO/test_users.json — starting fresh
+
+ ✓ |server| server/test/users.test.js (39 tests) 1391ms
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > no token triggers connect_error
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > no token triggers connect_error
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+Player connected: socket=Op8P2ZFW5g8AhZMEAAAF, playerId=acct-jwt-recovery-1780440440445
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > valid token triggers connect and init
+Player disconnected: Op8P2ZFW5g8AhZMEAAAF
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > token signed with wrong secret triggers connect_error
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > token signed with wrong secret triggers connect_error
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > expired token triggers connect_error
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > expired token triggers connect_error
+Server listening on port 0
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > auth object with extra keys but no token triggers connect_error
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/jwt_recovery.test.js > JWT Recovery Integration > auth object with extra keys but no token triggers connect_error
+Server listening on port 0
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > verifies token using server verifyToken helper
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/websocket_jwt_auth.test.js > WebSocket JWT Authentication > verifies token using server verifyToken helper
+Server listening on port 0
+
+ ✓ |server| server/test/jwt_recovery.test.js (6 tests) 1533ms
+   ✓ JWT Recovery Integration > invalid token triggers connect_error (not connect)  1517ms
+ ✓ |server| server/test/websocket_jwt_auth.test.js (8 tests) 1539ms
+   ✓ WebSocket JWT Authentication > does NOT emit connect event for rejected tokens  1502ms
+
+ Test Files  8 passed (8)
+      Tests  460 passed (460)
+   Start at  15:47:18
+   Duration  2.45s (transform 3ms, setup 0ms, collect 834ms, tests 6.27s, environment 1ms, prepare 530ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   27.08 |    70.76 |   41.66 |   27.08 |                            
+ index.js |   27.08 |    70.76 |   41.66 |   27.08 | ...551,3558-3567,3596-3597 
+----------|---------|----------|---------|---------|----------------------------
