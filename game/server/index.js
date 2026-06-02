@@ -2821,8 +2821,14 @@ function startServer(port) {
         return; // No cooldown burn on soft-fail
       }
 
-      // Both endpoints must be inside the dungeon before we trade positions.
-      if (!isInsideDungeon(player.x, player.z) || !isInsideDungeon(ally.x, ally.z)) {
+      // Both endpoints must be inside the dungeon AND clear of wall colliders
+      // before we trade positions. isInsideDungeon only validates the walkable
+      // room/passage AABBs, so a point can be "inside" yet still overlap a wall.
+      if (
+        !isInsideDungeon(player.x, player.z) || !isInsideDungeon(ally.x, ally.z) ||
+        isEntityPositionBlocked(player.x, player.z, PLAYER_RADIUS) ||
+        isEntityPositionBlocked(ally.x, ally.z, PLAYER_RADIUS)
+      ) {
         socket.emit('keyItemUsed', { ok: false, reason: 'invalid_position' });
         return; // No cooldown burn on soft-fail
       }
