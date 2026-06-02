@@ -147,3 +147,53 @@ Concrete changes to make the current Lost Kingdoms × PSO-style loop feel sharpe
 - **Why:** MS and currency drops drive spell casts and medic/shop loops; missed pickups after latency (noted in config comments vs. client walk radius) make combat feel unrewarding even when `regenMagicStones` is slow.
 - **Touches:** `lootPickup` handler in `game/server/index.js`, drop tables in `game/server/config.js`, loot meshes in `game/client/renderer.js`, Magic Stones readout in `game/client/vanguard-hud.js`.
 - **Effort:** M
+
+## Simplifications
+
+Proposals to **remove or merge** systems so the Lost Kingdoms × PSO loop is easier to learn and maintain. Each names what to cut, why, and the tradeoff.
+
+### 1. Remove overlapping instant-damage spells instead of retuning them
+
+- **Simplify:** Delete or stop awarding **Signal Familiar** (`battle_familiar`) and **Mana Leach** (`mana_leach`) from `CARD_DEFS`, shop rotation (`VICTORY_REWARD_ROTATION`), and default decks in `game/server/progression.js`; keep instant cone damage on charge-based weapons only (`iron_sword`, `flame_blade`, etc.).
+- **Why:** `game/docs/design.md` playtesting already flags spell/weapon overlap; maintaining parallel MS-priced and charge-priced versions doubles balance surface without a distinct spell fantasy.
+- **Lost:** A Magic Stone sink for players who want “one-shot spell burst” without managing weapon charges. **Gained:** One damage pipeline, clearer four card types, less duplicate tuning in client `cards.js` and server `useCard` branches.
+
+### 2. Show four hand slots in combat; treat extra slots as server-only buffer
+
+- **Simplify:** Cap visible hand UI at **four** slots in `game/client/hand.js` and the in-run card strip in `game/client/main.js`, while optionally keeping `MAX_HAND_SLOTS` (6) and `processPassiveDraws` server-side as a hidden queue—or lower both to four if passive refill is deemed unnecessary.
+- **Why:** Marketing and design docs describe a four-card hand; six numbered slots plus a separate **deck viewer** (`deck-viewer.js`, **V** toggle) make players think they should manage six active cards.
+- **Lost:** At-a-glance view of cards waiting in slots 5–6 during combat. **Gained:** UI matches the “four cards” mental model; less clutter on small screens and less explanation in tutorials.
+
+### 3. Collapse lock-on repeat modes to a single shipped behavior
+
+- **Simplify:** Remove `lockOnRepeatAction` (`unlock` / `cycle` / `reacquire`) from `getDefaultSettings()` in `game/client/settings.js` and the settings overlay; hardcode **cycle to next target** in `handleLockOnPress` (`game/client/lockOn.js`) and trim `game/docs/controls.md` to one paragraph.
+- **Why:** Three documented repeat behaviors plus a default of **unlock** (`controls.md`) means most players never discover strafe-friendly cycling; the settings matrix is high cost for a niche preference.
+- **Lost:** Dark Souls–style “press again to unlock” and explicit reacquire-on-same-button flows. **Gained:** Predictable lock-on in crowded rooms, fewer settings to test, smaller QA matrix for keyboard and gamepad.
+
+### 4. Retire the mid-run deck-viewer overlay
+
+- **Simplify:** Remove `#deck-viewer-overlay`, the **V** key handler, and `deck-viewer.js` integration from `game/client/main.js`; show only draw-pile / desperation counts on the existing hand strip or Vanguard HUD (`vanguard-hud.js`).
+- **Why:** During `gamePhase: 'playing'`, the overlay duplicates information already implied by empty hand slots and passive draws; it adds another full-screen layer atop lobby browser, auth, settings, and run-summary overlays.
+- **Lost:** Full scrollable list of remaining deck cards mid-fight. **Gained:** One less overlay state machine (`deckViewerOpen`, click-outside-to-close), simpler input routing, and less CSS surface in `style.css`.
+
+### 5. Telepipe evac without full suspend/resume checkpoint
+
+- **Simplify:** When the last active player extracts through the telepipe portal, treat the run as **ended** (save currency/inventory, grant partial rewards) instead of `suspendRunToLobby` + `suspendedCheckpoint` + **Resume expedition** / **Abandon expedition** (`game/server/progression.js`, `game/docs/telepipe-tier2-context.md`).
+- **Why:** Tier-2 checkpoint restore must preserve enemies, loot, hands, objective progress, and portal position across lobby ready-up—large edge-case surface (quest board frozen, deploy resume vs fresh start, abandon socket).
+- **Lost:** PSO-extended “pause the dungeon in place and resume later” co-op sessions. **Gained:** Smaller server state machine, no suspended-run UI branch in `renderSuspendedRunBanner`, and fewer dual meanings for **Deploy**.
+
+### 6. Lobby economy: rotating shop only, drop player-to-player trades
+
+- **Simplify:** Remove trade offer/accept socket paths and trade UI from the squad lobby in `game/client/main.js`; keep **shop** (`buyShopCard`, `ensureShopOffer`) and **medic** (`healAtMedic`) as the only currency sinks before deploy.
+- **Why:** Trades require both players ready in lobby, duplicate validation with `validateDeck` ownership rules, and extend session time without affecting in-dungeon combat.
+- **Lost:** Direct card gifting between squad members pre-run. **Gained:** Faster lobby ready-up, less exploit surface (duplicate limits, unowned copies), and a single “spend currency here” mental model alongside quest selection.
+
+## Prioritized shortlist
+
+Top five changes for a small team’s next iteration (from **Improvements** and **Simplifications** above), ordered by player-facing impact.
+
+1. **Resolve spell/weapon overlap** (Improvements §1) — Unblocks the core card-type identity called out in design playtesting; everything else assumes players know why Magic Stones vs weapon charges matter.
+2. **Actionable Deploy / deck validation errors** (Improvements §2) — Low effort (S) with immediate co-op payoff: squads stop guessing why **Deploy** silently fails `checkAllReady()`.
+3. **Smarter lock-on repeat default** (Improvements §6) — Cheap combat-feel win in crowded dungeon rooms without removing systems; pairs well with optional Simplifications §3 if settings are cut later.
+4. **Remove overlapping instant-damage spells** (Simplifications §1) — If overlap is not worth retuning, cutting duplicate cards is faster than perpetual MS/charge balancing and shrinks `CARD_DEFS` maintenance.
+5. **Telepipe placement grace communicated in-world** (Improvements §5) — Reduces “broken portal” reports during co-op evac without re-architecting suspend/resume; defers the larger Telepipe simplification (Simplifications §5) until product commits to losing mid-run resume.
