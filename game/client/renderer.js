@@ -1267,7 +1267,7 @@ function resolveBodyMesh(obj) {
  * it can be safely removed from the scene without leaking GPU resources.
  * @param {THREE.Object3D} obj
  */
-function disposeAvatar(obj) {
+export function disposeAvatar(obj) {
 	if (!obj) return;
 	obj.traverse((node) => {
 		if (node.isMesh) {

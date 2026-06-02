@@ -138,6 +138,11 @@ import {
 	triggerShieldVFX,
 	getPhaseStepTargetId,
 } from './renderer.js';
+import {
+	openPreview as openCosmeticPreview,
+	updatePreview as updateCosmeticPreview,
+	closePreview as closeCosmeticPreview,
+} from './cosmetic-preview.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
@@ -178,6 +183,7 @@ const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatch
 const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
 const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
 const cosmeticErrorEl = document.getElementById('cosmetic-error');
+const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 /** @type {'n64' | 'default' | null} */
@@ -2916,6 +2922,7 @@ function buildCosmeticSwatches(container, palette, field) {
 		btn.addEventListener('click', () => {
 			cosmeticSelection[field] = color;
 			refreshSwatchSelection(container, color);
+			refreshCosmeticPreview();
 		});
 		container.appendChild(btn);
 	}
@@ -2945,16 +2952,27 @@ function syncCosmeticForm() {
 	showCosmeticError('');
 }
 
+// Rebuild the live preview avatar from the current (unsaved) selection. No-op
+// when the preview is closed.
+function refreshCosmeticPreview() {
+	updateCosmeticPreview({ ...cosmeticSelection });
+}
+
 function openAccountOverlay() {
 	syncAccountForm();
 	syncCosmeticForm();
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
+	// Spin up the self-contained preview from the synced selection. Done after
+	// unhiding so the canvas has a layout size to read.
+	openCosmeticPreview(cosmeticPreviewCanvasEl, { ...cosmeticSelection });
 }
 
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
 	showCosmeticError('');
+	// Stop the render loop and release the preview's Three.js resources.
+	closeCosmeticPreview();
 }
 
 function openLevelSettingsOverlay() {
@@ -3039,6 +3057,7 @@ if (accountSaveBtnEl) {
 if (cosmeticShapeSelectEl) {
 	cosmeticShapeSelectEl.addEventListener('change', () => {
 		cosmeticSelection.bodyShape = cosmeticShapeSelectEl.value;
+		refreshCosmeticPreview();
 	});
 }
 

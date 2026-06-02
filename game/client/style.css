@@ -2289,6 +2289,20 @@ body[data-phase="lobby"] #objective-hud {
   padding-bottom: 0;
 }
 
+.cosmetic-preview-field {
+  align-items: flex-start;
+}
+
+.cosmetic-preview-canvas {
+  width: 180px;
+  height: 180px;
+  margin-top: 4px;
+  border-radius: 8px;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  background: #0f172a;
+  display: block;
+}
+
 .cosmetic-swatches {
   display: flex;
   flex-wrap: wrap;
