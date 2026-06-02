@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import {
+	buildDungeon,
+	buildWallColliders,
+	buildPassageFloorSpec,
+	isUniformFloor,
+	buildSlopedFloor,
+	uniformFloorMeshY,
+	computeDungeonBounds,
+	FLOOR_Y,
+	WALL_HEIGHT,
+} from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -452,5 +462,157 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		expect(result.meshes.length).toBeGreaterThanOrEqual(
 			1 + layout.rooms.length + layout.cover.length + 1
 		);
+	});
+});
+
+describe('spire-ascent floors, treasure marker & bounds', () => {
+	const yStart = DEFAULT_FLOOR_Y;
+	const yTop = DEFAULT_FLOOR_Y + 8;
+
+	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	/** One flat floor mesh per room centre (uniform box or sloped ramp). */
+	function roomFloorMeshes(meshes, layout) {
+		return layout.rooms.map(room => {
+			const match = meshes.find(m =>
+				Math.abs(m.position.x - room.x) < 0.01 &&
+				Math.abs(m.position.z - room.z) < 0.01 &&
+				m.geometry?.parameters?.height === 0.1
+			);
+			expect(match).toBeDefined();
+			return match;
+		});
+	}
+
+	function spireAscentFixture() {
+		const tier0 = {
+			x: 0,
+			z: 0,
+			width: 12,
+			depth: 12,
+			role: 'start',
+			band: 'tier-0',
+			walls: [],
+			floorCorners: { yNW: yStart, yNE: yStart, ySE: yStart, ySW: yStart },
+		};
+		const ramp = {
+			x: 0,
+			z: -10,
+			width: 8,
+			depth: 6,
+			role: 'connector',
+			band: 'ramp',
+			walls: [],
+			floorCorners: { yNW: yTop, yNE: yTop, ySE: yStart, ySW: yStart },
+		};
+		const tier2 = {
+			x: 0,
+			z: -22,
+			width: 12,
+			depth: 12,
+			role: 'treasure',
+			band: 'tier-2',
+			walls: [],
+			floorCorners: { yNW: yTop, yNE: yTop, ySE: yTop, ySW: yTop },
+		};
+		return {
+			profile: 'spire-ascent',
+			rooms: [tier0, ramp, tier2],
+			passages: [],
+		};
+	}
+
+	it('buildDungeon emits ground + one floor per room + treasure marker', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		expect(result.meshes.length).toBe(1 + layout.rooms.length + 1);
+		expect(roomFloorMeshes(result.meshes, layout).length).toBe(layout.rooms.length);
+	});
+
+	it('renders bottom tier flat, ramp sloped, and top tier elevated', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const [bottomFloor, rampFloor, topFloor] = roomFloorMeshes(result.meshes, layout);
+
+		// Default-band flat tiers use visual FLOOR_Y; collision height stays yStart.
+		expect(bottomFloor.position.y).toBe(FLOOR_Y);
+		expect(sampleFloorY(layout, layout.rooms[0].x, layout.rooms[0].z)).toBeCloseTo(yStart, 4);
+		expect(bottomFloor.rotation.x).toBe(0);
+		expect(Math.abs(rampFloor.rotation.x)).toBeGreaterThan(0);
+		expect(topFloor.position.y).toBeCloseTo(yTop, 4);
+		expect(topFloor.rotation.x).toBe(0);
+	});
+
+	it('places treasure marker on the top tier, well above the start tier floor', () => {
+		const layout = spireAscentFixture();
+		const treasure = layout.rooms.find(r => r.role === 'treasure');
+		const start = layout.rooms.find(r => r.role === 'start');
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+
+		const startFloorY = sampleFloorY(layout, start.x, start.z);
+		const treasureFloorY = sampleFloorY(layout, treasure.x, treasure.z);
+		expect(marker).toBeDefined();
+		expect(marker.position.y).toBeGreaterThanOrEqual(startFloorY + 8);
+		expect(marker.position.y).toBeCloseTo(treasureFloorY + 0.75, 4);
+		expect(treasureFloorY).toBeGreaterThan(FLOOR_Y);
+	});
+
+	it('computeDungeonBounds unions every tier and ramp footprint on XZ', () => {
+		const layout = spireAscentFixture();
+		const bounds = computeDungeonBounds(layout);
+
+		for (const room of layout.rooms) {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			expect(bounds.minX).toBeLessThanOrEqual(room.x - halfW);
+			expect(bounds.maxX).toBeGreaterThanOrEqual(room.x + halfW);
+			expect(bounds.minZ).toBeLessThanOrEqual(room.z - halfD);
+			expect(bounds.maxZ).toBeGreaterThanOrEqual(room.z + halfD);
+		}
+	});
+
+	it('renders server-generated spire-ascent with elevated treasure marker', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const result = buildDungeon(mockScene(), layout);
+		const start = layout.rooms.find(r => r.role === 'start');
+		const treasure = layout.rooms.find(r => r.role === 'treasure');
+		const marker = findTreasureMarker(result.meshes);
+
+		const yStartSample = sampleFloorY(layout, start.x, start.z);
+		const yTreasureSample = sampleFloorY(layout, treasure.x, treasure.z);
+		expect(marker).toBeDefined();
+		expect(marker.position.y).toBeGreaterThanOrEqual(yStartSample + 8);
+		expect(marker.position.y).toBeCloseTo(yTreasureSample + 0.75, 4);
+		expect(roomFloorMeshes(result.meshes, layout).length).toBe(layout.rooms.length);
+
+		const bounds = computeDungeonBounds(layout);
+		for (const room of layout.rooms) {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			expect(bounds.minZ).toBeLessThanOrEqual(room.z - halfD);
+			expect(bounds.maxZ).toBeGreaterThanOrEqual(room.z + halfD);
+		}
+	});
+
+	it('leaves default crowded layouts unchanged', () => {
+		const layout = generateLayout(99, 'crowded');
+		expect(layout.profile).not.toBe('spire-ascent');
+		const result = buildDungeon(mockScene(), layout);
+		expect(result.meshes.length).toBeGreaterThan(0);
+		const startRoom = layout.rooms.find(r => r.role === 'start');
+		const startFloor = result.meshes.find(m =>
+			Math.abs(m.position.x - startRoom.x) < 0.01 &&
+			Math.abs(m.position.z - startRoom.z) < 0.01 &&
+			m.geometry?.parameters?.height === 0.1
+		);
+		expect(startFloor.position.y).toBe(FLOOR_Y);
 	});
 });
