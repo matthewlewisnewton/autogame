@@ -2263,3 +2263,26 @@ None blocking. All five acceptance criteria are fully and robustly met, backed
 by HTTP-level and unit tests, and the captured run is healthy. One minor,
 non-blocking polish item is recorded in `nits.md`.
 
+
+## v0.121 — Spire Ascent Stage  (2026-06-02 11:36:19)
+
+
+## Debug scenarios
+
+`spire-ascent` and `spire-ascent-stage` added to `DEBUG_SCENARIOS` (`index.js:429`) and handled in `applyDebugScenario`:
+- URL param is the only entry point; gated behind the existing `debugScenarioAllowed` dev path. ✓
+- `spire-ascent` sets `selectedQuestId = 'spire_ascent'`, calls `applyLayoutForQuest` + `spawnEnemies` — i.e. the identical state a player reaches by deploying the `spire_ascent` quest normally. The same end-state is reachable through real gameplay. ✓
+- No server validation/persistence is short-circuited; it runs the normal layout + spawn path. ✓
+
+Not a blocking shortcut.
+
+## Consistency / regressions
+
+- Existing profiles (default/crowded/open/open-plaza/sunken-canyon) are untouched — spire-ascent is an additive branch.
+- `game/docs/design.md` does not enumerate stage variants, so no conflict.
+- `buildDescentRampRoom` / `buildHorizontalWallWithGaps` are reused from the sunken-canyon work as the ticket recommended.
+
+## Remaining gaps
+
+None blocking. Minor polish noted in `nits.md`.
+

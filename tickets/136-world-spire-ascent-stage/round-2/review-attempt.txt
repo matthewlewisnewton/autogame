@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The Spire Ascent stage ticket passes the final quality gate.
+
+**Runtime health (gate):** The captured run is clean — `metrics.json` reports `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` has only benign vite/initScene lines plus successful `[debugScenario] applied spire-ascent`. The `04-spire-ascent.png` screenshot clearly shows the stacked-tier tower ascending into the distance. I also ran the changed unit suites: **161 tests passed**.
+
+**Acceptance criteria — all met:**
+- Stage selectable via `generateLayout(seed, 'spire-ascent')`, wired to the `spire_ascent` quest.
+- 3–5 strictly-stacked flat tiers; sloped ramps with slope 0.42–0.83 (≥ 0.2); total rise = 10 (≥ 10).
+- Solid outer walls on tiers and ramps with gaps aligned to ramp width — foot-reachability BFS proves no fall-through.
+- Camera follows the floor-sampled local-player Y up the spire; `CAMERA_FAR` proven to clear the summit.
+- Enemies distributed (reserved bottom + top slots, round-robin middle tiers, never on ramps); objective/loot on the top tier; deterministic.
+- Strong unit coverage including geometric reachability and a 30-seed no-orphan check.
+
+**Debug scenarios:** `spire-ascent` / `spire-ascent-stage` are URL-only, dev-gated, and reproduce the exact state of normally deploying the `spire_ascent` quest (no validation bypass). Not a blocking shortcut.
+
+No blocking gaps, so no `gaps.md`. Wrote two non-blocking nits (exact-boundary total-rise has no slack; ticket's `{ stage }` wording vs. the real positional-profile API) to `nits.md`.

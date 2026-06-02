@@ -1,0 +1,15 @@
+Remediation round 2 has one open gap from `review-feedback.md`: round-1 `capture_failed` from harness infra (server on `:3001` vacated mid-capture; spire-ascent never ran). Sub-tickets 01–03 stay untouched (`.passed`).
+
+Two new sub-tickets (game code is done; harness-only):
+
+**Created sub-ticket folder paths:**
+
+1. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/04-fix-capture-stop-game-ports/`
+2. `/home/matt/workspace/.autogame-worktrees/136-world-spire-ascent-stage/tickets/136-world-spire-ascent-stage/subtickets/05-spire-ascent-capture-fallback/`
+
+| # | Focus |
+|---|--------|
+| **04** | `capture_run()` calls `stop_game(ports)` so parallel workers don’t blanket-kill sibling game servers (root cause of ECONNREFUSED / empty `port_holders["3001"]`). |
+| **05** | Register `spire-ascent` / `spire-ascent-stage` in the capture planner and extend the ticket-aware fallback recipe so a successful re-capture loads the tower stage (not only `training_caverns`). |
+
+Both use **Verification: code** (infra + recipe behavior, not pixel QA). No failed sub-ticket folders were removed.

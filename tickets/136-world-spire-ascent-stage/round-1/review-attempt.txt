@@ -1,0 +1,18 @@
+Review complete. **VERDICT: FAIL** — but for an infrastructure reason, not a code defect.
+
+## Summary
+
+**Why it fails the gate:** `round-1/metrics.json` reports `"ok": false` (`failure_kind: "capture_failed"`). The capture's `page.waitForFunction` timed out and the browser never reached a playable state, so there's no runnable proof. Per the runtime-health gate, that's an automatic FAIL.
+
+**Why it's infra, not the ticket's code:**
+- `pageerrors` is empty (`pageerrors.json` = `[]`) — no uncaught browser exceptions.
+- `server.log` shows a clean boot (`Server listening on port 3001`, `Player connected`, no stack trace).
+- `client.log`/`console.log` show `ECONNREFUSED` and `502 Bad Gateway` from the Vite proxy, and `port_holders` shows `:3001` **empty** at diagnosis — the server process was gone before the browser could connect (a dev-server/proxy lifecycle race).
+- The capture used the **fallback** plan with the default `training_caverns` quest — the spire-ascent stage was never even loaded, so it couldn't have caused the failure.
+
+**Code judged on merits — would have passed:** 161/161 unit tests pass; every acceptance criterion is satisfied at the code level (3–5 monotonic tiers, ramp slope 0.42–0.83 ≥ 0.2, total rise = 10, perimeter walls with ramp gaps, distributed enemy spawns, top-tier objective, determinism, reachability tests). The two debug scenarios are properly dev-gated, reach the same state as the normally-selectable `spire_ascent` quest, and don't weaken invariants.
+
+I wrote:
+- `review.md` — full per-criterion assessment + a `## Harness blockers` section with the log evidence and operator action.
+- `gaps.md` — single infra blocker directing the next round to **re-run the capture, not edit `game/`**.
+- `nits.md` — two non-blocking follow-ups (total rise sits exactly on the ≥10 boundary; objectiveType vs. top-tier crystal/loot consistency).
