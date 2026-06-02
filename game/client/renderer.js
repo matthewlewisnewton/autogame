@@ -762,7 +762,10 @@ export function initScene(layout, spawnPos) {
 		CAMERA_HEIGHT,
 		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
 	);
-	camera.lookAt(spawnPosition.x, 0, spawnPosition.z);
+	const spawnFloorY = layout
+		? (sampleFloorY(layout, spawnPosition.x, spawnPosition.z) ?? DEFAULT_FLOOR_Y)
+		: DEFAULT_FLOOR_Y;
+	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
 	// Renderer
 	renderer = new THREE.WebGLRenderer({ antialias: true });
