@@ -1,0 +1,21 @@
+Created 3 sub-tickets for **128-key-item-smoke-bomb**, in dependency order:
+
+```
+tickets/128-key-item-smoke-bomb/subtickets/01-server-smoke-bomb-cast/ticket.md
+tickets/128-key-item-smoke-bomb/subtickets/02-server-smoke-bomb-breaks-targeting/ticket.md
+tickets/128-key-item-smoke-bomb/subtickets/03-client-smoke-bomb-vfx/ticket.md
+```
+
+**Decomposition rationale**
+
+The ticket maps cleanly onto the proven `barrier_dome` pattern (def re-tune → cast/zone state → combat effect → client VFX):
+
+- **01 — Cast & zone state**: re-tunes the `smoke_bomb` def (2s duration, ~8s cooldown, radius 4), adds the `useKeyItem` branch that stamps `smokeBombUntil`/radius/center on the caster, exposes the fields in `stateSnapshot()`, and keeps them transient (not persisted). Mirrors barrier_dome 01.
+- **02 — Enemies lose detection**: the combat rule. I picked the ticket's "**pause/clear targeting**" option (deterministic, no RNG needed) over "reduced hit chance" — enemies can't acquire a player inside the zone, and an in-progress wind-up is canceled if the target ducks in. Co-op via position, so allies inside are hidden too.
+- **03 — Client smoke VFX**: a state-driven fog mesh modeled on the existing shield/heal-pulse VFX helpers.
+
+**Two documented design choices** (recorded in the ticket bodies): the zone is **fixed at the cast point** (not following the player, matching barrier_dome's `barrierDomeX/Z`), and the rule is **detection loss** rather than probabilistic miss.
+
+**Verification — all `code`.** Sub-ticket 03 is client rendering, but the smoke VFX only appears after a key-item cast, which never happens in the happy-path visual smoke run (load → two players join → WASD), so visual QA couldn't observe it; code QA can confirm the export, registry, and state-driven wiring.
+
+No existing sub-ticket folders were present, so nothing was retired.

@@ -2171,3 +2171,26 @@ PASS with one non-blocking nit filed separately. The changes are narrowly scoped
 
 None.
 
+
+## v0.99 — Key Item: Smoke Bomb  (2026-06-02 05:26:01)
+
+| Normal path still reachable | Pass — equip `smoke_bomb` + `useKeyItem` in run (socket integration tests); scenario comment documents this |
+| Does not weaken production invariants | Pass — scenario only applies via `debugScenario` socket on dev server; sets extended `smokeBombUntil` (60s) for VFX QA, does not bypass cooldown logic for normal `useKeyItem` |
+
+Normal gameplay is **not** wired to the scenario; metrics show `debugScenario: null`.
+
+## Code quality
+
+- Clear separation: cast (`index.js` + `progression.js`), targeting (`simulation.js`), VFX (`renderer.js` + `main.js`).
+- `isPlayerHiddenBySmoke` exported for tests; windup revalidation and acquisition loop both consult it.
+- No dead code or obvious logic bugs in the diff; smoke removed from `not_implemented` list.
+- Minor note (non-blocking): VFX mesh Y is fixed at floor `y = 0` / half column height, not `sampleFloorY()` — acceptable on flat test rooms; see nits backlog.
+
+## Harness capture limitations (non-blocking)
+
+Round-1 used **fallback** capture (lobby + WASD movement). Screenshots do not show smoke fog or key-item use. That is a coverage gap for **visual** regression of this feature only; it does not contradict code verification or runtime health for the foundation loop.
+
+## Remaining gaps
+
+None. All top-level acceptance criteria are met with tests and consistent documentation of design choices (fixed zone, detection loss, 8s cooldown).
+

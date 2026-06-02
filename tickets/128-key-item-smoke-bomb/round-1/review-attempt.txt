@@ -1,0 +1,12 @@
+## Review complete
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, clean `console.log`. Game starts and runs.
+
+**Implementation (3 commits):** Server cast with 2s zone / 4m radius / 8s cooldown (fixed at cast point); `isPlayerHiddenBySmoke` blocks acquisition and cancels wind-ups; client fog VFX synced from snapshot. Nine server + four client tests cover cast, cooldown, targeting, co-op, and VFX.
+
+**Verdict:** **PASS** — criteria met; detection-loss rule matches the ticket’s “pick one” option; debug scenario `smoke-bomb-active` is properly gated.
+
+Written files:
+- [`tickets/128-key-item-smoke-bomb/round-1/review.md`](tickets/128-key-item-smoke-bomb/round-1/review.md) — ends with `VERDICT: PASS`
+- [`tickets/128-key-item-smoke-bomb/round-1/nits.md`](tickets/128-key-item-smoke-bomb/round-1/nits.md) — floor Y for VFX on slopes; harness capture for smoke visuals
+- No `gaps.md` (fail-only)

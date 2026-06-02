@@ -1,0 +1,292 @@
+{
+  "url": "http://localhost:5173/",
+  "ok": true,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/128-key-item-smoke-bomb/tickets/128-key-item-smoke-bomb/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Both players in squad lobby."
+    },
+    {
+      "file": "02-after-w.png",
+      "player": "A",
+      "description": "Gameplay after holding W."
+    },
+    {
+      "file": "03-after-d.png",
+      "player": "A",
+      "description": "Gameplay after holding D."
+    }
+  ],
+  "probes": [
+    {
+      "player": "A",
+      "description": "After readying all players and entering gameplay.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "myId": "1cf785b7-9008-4fb1-a209-9881dd9bc282",
+          "phase": "playing",
+          "runStatus": "playing",
+          "extracted": false,
+          "suspendedRunSummary": null,
+          "telepipe": null,
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
+          "status": "Latency: 0ms",
+          "hpText": "100/100",
+          "msText": "49/99",
+          "currencyText": "Money 0",
+          "player": {
+            "hp": 100,
+            "magicStones": 49.07500000000004,
+            "debugScenario": null,
+            "dead": false,
+            "x": -9,
+            "z": 9
+          },
+          "players": 2,
+          "enemies": 5,
+          "enemyHp": [
+            {
+              "id": "68bb0807-d75c-46fb-a24a-3bbfdd2c8d58",
+              "hp": 40,
+              "maxHp": 40
+            },
+            {
+              "id": "eea8c03f-e9b1-4b68-a000-f94acfc55c98",
+              "hp": 40,
+              "maxHp": 40
+            },
+            {
+              "id": "eb249edd-55ff-4ad5-9f69-06d3c8f078d4",
+              "hp": 100,
+              "maxHp": 100
+            },
+            {
+              "id": "5506bb85-da0a-4917-b31a-4792c33627b1",
+              "hp": 300,
+              "maxHp": 300
+            },
+            {
+              "id": "44bfd054-ce2b-45e5-837c-70a99238ccad",
+              "hp": 120,
+              "maxHp": 120
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null,
+            {
+              "id": "dungeon_drake",
+              "name": "Vault Wyrm",
+              "type": "creature",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ]
+        },
+        "status": "Latency: 0ms",
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\n1C\nLV\n1\nHP\n100/100\nMS\n49/99\nDeck: 8/12\n⟡ 6\n✦ 1\n🐉 1\n✨ 0\nMoney 0\nLatency: 0ms\nInitiate Vault: Purge hostiles from the derelict annex sector.\nPurged 0 / 5 hostiles\n1\n✦\nSignal Familiar\n50 MS\n1/1\n2\n⚔\nRust-Forged Saber\n5/5\n4\n🐉\nVault Wyrm\n1/1\n5\n✦\nSignal Familiar\n50 MS\n1/1"
+      }
+    },
+    {
+      "player": "A",
+      "description": "Final capture probe.",
+      "data": {
+        "harnessState": {
+          "debugScenario": null,
+          "debugScenarioAllowed": true,
+          "debugScenarioResult": null,
+          "myId": "1cf785b7-9008-4fb1-a209-9881dd9bc282",
+          "phase": "playing",
+          "runStatus": "playing",
+          "extracted": false,
+          "suspendedRunSummary": null,
+          "telepipe": null,
+          "connectionState": "connected",
+          "sceneInitialized": true,
+          "hasCanvas": true,
+          "lobbyVisible": false,
+          "cardHandVisible": true,
+          "status": "Latency: 1ms",
+          "hpText": "88/100",
+          "msText": "49/99",
+          "currencyText": "Money 0",
+          "player": {
+            "hp": 88,
+            "magicStones": 49.51500000000026,
+            "debugScenario": null,
+            "dead": false,
+            "x": -3.7,
+            "z": -9.599999999999994
+          },
+          "players": 2,
+          "enemies": 6,
+          "enemyHp": [
+            {
+              "id": "68bb0807-d75c-46fb-a24a-3bbfdd2c8d58",
+              "hp": 40,
+              "maxHp": 40
+            },
+            {
+              "id": "eea8c03f-e9b1-4b68-a000-f94acfc55c98",
+              "hp": 40,
+              "maxHp": 40
+            },
+            {
+              "id": "eb249edd-55ff-4ad5-9f69-06d3c8f078d4",
+              "hp": 100,
+              "maxHp": 100
+            },
+            {
+              "id": "5506bb85-da0a-4917-b31a-4792c33627b1",
+              "hp": 300,
+              "maxHp": 300
+            },
+            {
+              "id": "44bfd054-ce2b-45e5-837c-70a99238ccad",
+              "hp": 120,
+              "maxHp": 120
+            },
+            {
+              "id": "d2537198-c72f-46e0-9fc1-415ffd85695d",
+              "hp": 40,
+              "maxHp": 40
+            }
+          ],
+          "minions": [],
+          "hand": [
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "remainingCharges": 5,
+              "charges": 5,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "5/5",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "dungeon_drake",
+              "name": "Vault Wyrm",
+              "type": "creature",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            {
+              "id": "battle_familiar",
+              "name": "Signal Familiar",
+              "type": "spell",
+              "remainingCharges": 1,
+              "charges": 1,
+              "activeMinionId": null,
+              "burnMaxTtl": null,
+              "burnLabel": "1/1",
+              "creatureBurning": false,
+              "isEvolved": false
+            },
+            null
+          ]
+        },
+        "status": "Latency: 1ms",
+        "hasCanvas": true,
+        "canvasCount": 1,
+        "lobbyVisible": false,
+        "cardHandVisible": true,
+        "title": "Void Grimoire",
+        "bodyText": "👤\nLv\n🔊\n⚙\n1C\nLV\n1\nHP\n88/100\nMS\n49/99\nDeck: 7/12\n⟡ 5\n✦ 1\n🐉 1\n✨ 0\nMoney 0\nLatency: 1ms\nInitiate Vault: Purge hostiles from the derelict annex sector.\nPurged 0 / 5 hostiles\n1\n✦\nSignal Familiar\n50 MS\n1/1\n2\n⚔\nRust-Forged Saber\n5/5\n3\n⚔\nRust-Forged Saber\n5/5\n4\n🐉\nVault Wyrm\n1/1\n5\n✦\nSignal Familiar\n50 MS\n1/1\n-6"
+      }
+    }
+  ],
+  "pageerrors": []
+}
