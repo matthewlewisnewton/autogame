@@ -87,3 +87,63 @@ Enemy deaths spawn Magic Stone and currency loot (`game/server/progression.js`, 
 ### Co-op simulation and drop-in
 
 One `lobby.state` per channel holds shared layout, enemies, loot, minions, enchantments, telepipe, and run objectives; everyone gets the same `stateUpdate` each tick. **Drop-in** runs `initializePlayerForActiveRun` (hand, HP, Magic Stones, cooldowns) without resetting the dungeon. Reconnect uses `DISCONNECT_GRACE_MS`; ticks skip disconnected, dead, or extracted players.
+
+## Improvements
+
+Concrete changes to make the current Lost Kingdoms × PSO-style loop feel sharper without replacing core systems.
+
+### 1. Resolve spell/weapon overlap called out in design playtesting
+
+- **Idea:** Reclassify or retune overlapping instant-damage spells (e.g. **Signal Familiar** / `battle_familiar`, **Mana Leach** / `mana_leach` in `CARD_DEFS`) into single-charge weapon cards or raise their Magic Stone costs so they compete clearly with charge-based weapons like `iron_sword` and `flame_blade`.
+- **Why:** Players currently pay Magic Stones for the same “press button, deal damage in a cone” fantasy that weapons already cover with charges, which blurs the four card types and makes MS feel wasted.
+- **Touches:** `game/docs/design.md` (Playtesting Notes), `CARD_DEFS` and `VICTORY_REWARD_ROTATION` in `game/server/progression.js`, mirrored defs in `game/client/cards.js`.
+- **Effort:** M
+
+### 2. Actionable Deploy / deck validation errors in the lobby
+
+- **Idea:** Map `validateDeck` failure reasons (below `DECK_MIN_SIZE` / above `DECK_MAX_SIZE`, unowned copies, duplicate limits) to specific copy in `#deck-error` and highlight the offending loadout row via `buildLoadoutDeckDisplay` in `game/client/deck-loadout.js` instead of a generic `deckError` string.
+- **Why:** Squads stall on Deploy when one player’s 12-card loadout is invalid; clearer feedback reduces ready-up friction before `checkAllReady()` fires.
+- **Touches:** `validateDeck` in `game/server/progression.js`, `deckError` handler and `#deck-error` in `game/client/main.js`, Active Loadout panel helpers in `game/client/deck-loadout.js`.
+- **Effort:** S
+
+### 3. Faster passive hand refill when slots are empty
+
+- **Idea:** Lower `PASSIVE_DRAW_INTERVAL_MS` (default 5000 in `game/server/config.js`) or draw into the lowest empty slot immediately after a weapon burns its last charge, so `processPassiveDraws` in `game/server/progression.js` keeps six hand slots (`MAX_HAND_SLOTS`) useful during combat.
+- **Why:** With only four cards at open (`OPENING_HAND_SIZE`) and 800ms slot cooldowns (`COOLDOWN_MS`), long gaps between draws make weapon-heavy decks feel starved compared to spell bursts.
+- **Touches:** `PASSIVE_DRAW_INTERVAL_MS`, `processPassiveDraws`, `fillEmptyHandSlot` in `game/server/progression.js`; hand UI in `game/client/hand.js`.
+- **Effort:** S
+
+### 4. Drop-in briefing for mid-run lobby joins
+
+- **Idea:** When joining via **Drop In** (`data-join-mode="drop-in"` in `renderLobbyList`), show a short overlay after `lobbyJoined`: current quest objective from `formatObjectiveSummary` (`game/client/questBoard.js`), active telepipe position if `state.telepipe` is set, and squad extraction status (`extracted` flags).
+- **Why:** `initializePlayerForActiveRun` resets Magic Stones to `STARTING_MAGIC_STONES` and deals a fresh hand but gives no context for shared run state, so drop-in players stumble into ongoing fights blind.
+- **Touches:** `initializePlayerForActiveRun` in `game/server/index.js`, `renderLobbyList` / `startGame` paths in `game/client/main.js`, `formatObjectiveSummary` in `game/client/questBoard.js`.
+- **Effort:** M
+
+### 5. Telepipe placement grace communicated in-world
+
+- **Idea:** While `PORTAL_PLACEMENT_GRACE_MS` blocks `tryEnterTelepipe`, show a portal ring timer or Vanguard HUD hint tied to `state.telepipe.placedAt` so casters know they cannot immediately extract after placing the Telepipe card via `useCard` (`effect: 'telepipe'`).
+- **Why:** Accidental self-extraction right after placement breaks co-op pacing; players treat “portal did nothing” as a bug rather than intentional grace from `game/server/config.js`.
+- **Touches:** `tryEnterTelepipe` / `checkTelepipeProximity` in `game/server/progression.js`, telepipe mesh or banner in `game/client/main.js`, `THEME.run` strings in `game/shared/theme.json`.
+- **Effort:** S
+
+### 6. Smarter lock-on repeat default for dungeon combat
+
+- **Idea:** Default `lockOnRepeatAction` to `'cycle'` (or surface a one-time prompt) so pressing Z / gamepad lock-on while already locked advances to the next enemy in range per `lockOn.js`, instead of default `'unlock'` from `getDefaultSettings()` in `game/client/settings.js`.
+- **Why:** Strafe attacks already use `targetRelativeDirection` in `game/client/renderer.js`; unlocking on every re-press forces re-acquisition in crowded rooms and underuses the documented `'cycle'` / `'reacquire'` modes in `game/docs/controls.md`.
+- **Touches:** `game/client/settings.js`, `handleLockOnPress` in `game/client/lockOn.js`, settings panel copy.
+- **Effort:** S
+
+### 7. Suspended-run quest board shows frozen objective, not a dead UI
+
+- **Idea:** When `suspendedCheckpoint` is set and `renderSuspendedRunBanner` is visible, keep the quest board read-only with checkpoint quest name, partial crystal/enemy progress from the checkpoint payload, and disable `selectQuest` only with explicit “resume or abandon first” copy (`THEME.run` / abandon button `#abandon-run-btn`).
+- **Why:** After telepipe suspend, players return to `#lobby` but cannot change quest; the board looks identical to pre-run selection, which hides why Deploy now resumes instead of starting fresh.
+- **Touches:** `suspendRunToLobby` / `captureRunCheckpoint` in `game/server/progression.js`, `renderSuspendedRunBanner` and quest board in `game/client/main.js`, `renderQuestBoard` in `game/client/questBoard.js`.
+- **Effort:** M
+
+### 8. Tighter loot pickup feedback without widening anti-cheat
+
+- **Idea:** Add a brief client-side magnet indicator when server `lootPickup` is in range of `LOOT_PICKUP_RADIUS` (3.5) but before pickup succeeds, and tune `LOOT_SPAWN_CHANCE` / `ENEMY_MS_DROPS` in `game/server/config.js` if Magic Stone piles feel sparse after `removeDeadEnemies`.
+- **Why:** MS and currency drops drive spell casts and medic/shop loops; missed pickups after latency (noted in config comments vs. client walk radius) make combat feel unrewarding even when `regenMagicStones` is slow.
+- **Touches:** `lootPickup` handler in `game/server/index.js`, drop tables in `game/server/config.js`, loot meshes in `game/client/renderer.js`, Magic Stones readout in `game/client/vanguard-hud.js`.
+- **Effort:** M
