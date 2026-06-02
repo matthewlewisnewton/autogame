@@ -427,6 +427,7 @@ const DEBUG_SCENARIOS = new Set([
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'spire-ascent-stage',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -783,6 +784,30 @@ function applyDebugScenario(socket, name) {
       const seed = state.layoutSeed || 42;
       state.layoutSeed = seed;
       state.layout = generateLayout(seed, 'sunken-canyon');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      const floorY = sampleFloorY(state.layout, player.x, player.z);
+      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent-stage') {
+      // Spire-ascent stacked tiers + ramps for client render / collision QA.
+      // Same profile as generateLayout(seed, 'spire-ascent'); reachable once a
+      // quest uses layoutProfile 'spire-ascent' (normal play climbs all tiers).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
       state.dungeonBounds = computeDungeonBounds(state.layout);
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       rebuildWallColliders();

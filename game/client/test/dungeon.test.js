@@ -454,3 +454,181 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		);
 	});
 });
+
+describe('spire-ascent floors & treasure marker', () => {
+	const yLow = DEFAULT_FLOOR_Y;
+	const yMid = DEFAULT_FLOOR_Y + 5;
+	const yHigh = DEFAULT_FLOOR_Y + 10;
+
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	function countLayoutWallSegments(layout) {
+		let n = 0;
+		for (const room of layout.rooms) n += room.walls.length;
+		for (const passage of layout.passages || []) n += passage.walls.length;
+		return n;
+	}
+
+	function countWallMeshes(meshes) {
+		return meshes.filter(m => m.geometry?.parameters?.height === 2.5).length;
+	}
+
+	function spireAscentFixture() {
+		return {
+			profile: 'spire-ascent',
+			rooms: [
+				{
+					x: 0, z: 20, width: 12, depth: 12, role: 'start', band: 'tier', tierIndex: 0,
+					floorCorners: { yNW: yLow, yNE: yLow, ySE: yLow, ySW: yLow },
+					walls: [
+						{ axis: 'x', x: 0, z: 26, length: 12 },
+						{ axis: 'z', x: -6, z: 20, length: 12 },
+						{ axis: 'z', x: 6, z: 20, length: 12 },
+					],
+				},
+				{
+					x: 0, z: 12, width: 8, depth: 6, role: 'connector', band: 'ramp',
+					floorCorners: { yNW: yMid, yNE: yMid, ySE: yLow, ySW: yLow },
+					walls: [
+						{ axis: 'z', x: -4, z: 12, length: 6 },
+						{ axis: 'z', x: 4, z: 12, length: 6 },
+					],
+				},
+				{
+					x: 0, z: 4, width: 12, depth: 12, role: 'combat', band: 'tier', tierIndex: 1,
+					floorCorners: { yNW: yMid, yNE: yMid, ySE: yMid, ySW: yMid },
+					walls: [
+						{ axis: 'z', x: -6, z: 4, length: 12 },
+						{ axis: 'z', x: 6, z: 4, length: 12 },
+					],
+				},
+				{
+					x: 0, z: -4, width: 8, depth: 6, role: 'connector', band: 'ramp',
+					floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yMid, ySW: yMid },
+					walls: [
+						{ axis: 'z', x: -4, z: -4, length: 6 },
+						{ axis: 'z', x: 4, z: -4, length: 6 },
+					],
+				},
+				{
+					x: 0, z: -12, width: 12, depth: 12, role: 'treasure', band: 'tier', tierIndex: 2,
+					floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yHigh, ySW: yHigh },
+					walls: [
+						{ axis: 'x', x: 0, z: -18, length: 12 },
+						{ axis: 'z', x: -6, z: -12, length: 12 },
+						{ axis: 'z', x: 6, z: -12, length: 12 },
+					],
+				},
+			],
+			passages: [],
+		};
+	}
+
+	it('buildDungeon emits ground + one floor per tier and ramp + treasure marker + walls', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const expected = 1 + layout.rooms.length + 1 + countLayoutWallSegments(layout);
+		expect(result.meshes.length).toBe(expected);
+	});
+
+	it('places the treasure marker on the top tier above DEFAULT_FLOOR_Y + 8', () => {
+		const layout = spireAscentFixture();
+		const top = layout.rooms.find(r => r.role === 'treasure');
+		const start = layout.rooms.find(r => r.role === 'start');
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		expect(marker.position.x).toBe(top.x);
+		expect(marker.position.z).toBe(top.z);
+		const topFloorY = sampleFloorY(layout, top.x, top.z);
+		expect(topFloorY).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
+		expect(marker.position.y).toBeCloseTo(topFloorY + 0.75, 4);
+		expect(sampleFloorY(layout, start.x, start.z)).toBeCloseTo(yLow, 4);
+	});
+
+	it('elevates the top-tier uniform floor above DEFAULT_FLOOR_Y + 8', () => {
+		const layout = spireAscentFixture();
+		const top = layout.rooms.find(r => r.band === 'tier' && r.role === 'treasure');
+		expect(uniformFloorMeshY(top)).toBe(yHigh);
+		const result = buildDungeon(mockScene(), layout);
+		const topFloor = result.meshes.find(m =>
+			m.position.x === top.x && m.position.z === top.z &&
+			m.geometry?.parameters?.height === 0.1
+		);
+		expect(topFloor).toBeDefined();
+		expect(topFloor.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
+		expect(topFloor.position.y).toBeCloseTo(yHigh, 4);
+	});
+
+	it('renders ramp rooms as sloped floor slabs via buildSlopedFloor', () => {
+		const layout = spireAscentFixture();
+		const ramps = layout.rooms.filter(r => r.band === 'ramp');
+		expect(ramps.length).toBe(2);
+		for (const ramp of ramps) {
+			expect(isUniformFloor(ramp)).toBe(false);
+		}
+		const result = buildDungeon(mockScene(), layout);
+		for (const ramp of ramps) {
+			const floor = result.meshes.find(m =>
+				m.position.x === ramp.x && m.position.z === ramp.z &&
+				m.geometry?.parameters?.height === 0.1
+			);
+			expect(floor).toBeDefined();
+			expect(
+				Math.abs(floor.rotation.x) > 0.01 || Math.abs(floor.rotation.z) > 0.01
+			).toBe(true);
+		}
+	});
+
+	it('renders perimeter walls from the layout (wall mesh count ≥ wall segments)', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const wallSegments = countLayoutWallSegments(layout);
+		expect(wallSegments).toBeGreaterThan(0);
+		expect(countWallMeshes(result.meshes)).toBeGreaterThanOrEqual(wallSegments);
+	});
+
+	it('renders server-generated spire-ascent with treasure on top tier', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const tiers = layout.rooms.filter(r => r.band === 'tier').sort((a, b) => a.tierIndex - b.tierIndex);
+		const ramps = layout.rooms.filter(r => r.band === 'ramp');
+		const top = tiers[tiers.length - 1];
+		const result = buildDungeon(mockScene(), layout);
+
+		expect(layout.profile).toBe('spire-ascent');
+		expect(tiers.length).toBeGreaterThanOrEqual(3);
+		expect(ramps.length).toBe(tiers.length - 1);
+
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		expect(top.role).toBe('treasure');
+		const topFloorY = sampleFloorY(layout, top.x, top.z);
+		expect(topFloorY).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
+		expect(marker.position.y).toBeCloseTo(topFloorY + 0.75, 4);
+
+		const topFloor = result.meshes.find(m =>
+			m.position.x === top.x && m.position.z === top.z &&
+			m.geometry?.parameters?.height === 0.1
+		);
+		expect(topFloor.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
+
+		const slopedFloors = result.meshes.filter(m =>
+			m.geometry?.parameters?.height === 0.1 &&
+			(Math.abs(m.rotation.x) > 0.01 || Math.abs(m.rotation.z) > 0.01)
+		);
+		expect(slopedFloors.length).toBeGreaterThanOrEqual(ramps.length);
+
+		const wallSegments = countLayoutWallSegments(layout);
+		expect(countWallMeshes(result.meshes)).toBeGreaterThanOrEqual(wallSegments);
+
+		expect(result.meshes.length).toBeGreaterThanOrEqual(
+			1 + layout.rooms.length + 1
+		);
+	});
+});
