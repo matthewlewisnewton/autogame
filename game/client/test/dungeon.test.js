@@ -454,3 +454,125 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		);
 	});
 });
+
+describe('spire-ascent floors & treasure marker', () => {
+	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	/** Room floor meshes: thin boxes (0.1 tall) centered on each room. */
+	function roomFloorMeshes(meshes, layout) {
+		return layout.rooms.map((room) =>
+			meshes.find(m =>
+				m.geometry?.parameters?.height === 0.1 &&
+				m.position.x === room.x &&
+				m.position.z === room.z
+			)
+		);
+	}
+
+	function spireSyntheticFixture() {
+		const yBottom = DEFAULT_FLOOR_Y;
+		const yTop = DEFAULT_FLOOR_Y + 12;
+		return {
+			profile: 'spire-ascent',
+			rooms: [
+				{
+					x: 0, z: 20, width: 12, depth: 12, role: 'start', walls: [], band: 'tier',
+					floorCorners: { yNW: yBottom, yNE: yBottom, ySE: yBottom, ySW: yBottom },
+				},
+				{
+					x: 0, z: 8, width: 6, depth: 8, role: 'connector', walls: [], band: 'ramp',
+					floorCorners: { yNW: yTop - 4, yNE: yTop - 4, ySE: yBottom, ySW: yBottom },
+				},
+				{
+					x: 0, z: 0, width: 12, depth: 12, role: 'treasure', walls: [], band: 'tier',
+					floorCorners: { yNW: yTop, yNE: yTop, ySE: yTop, ySW: yTop },
+				},
+			],
+			passages: [],
+		};
+	}
+
+	it('synthetic fixture: one sloped ramp floor, flat tiers, treasure above bottom tier', () => {
+		const layout = spireSyntheticFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const floors = roomFloorMeshes(result.meshes, layout);
+
+		expect(floors.length).toBe(3);
+		expect(floors.every(Boolean)).toBe(true);
+		// Ramp uses buildSlopedFloor (non-uniform corners)
+		const rampFloor = floors[1];
+		expect(Math.abs(rampFloor.rotation.x) + Math.abs(rampFloor.rotation.z)).toBeGreaterThan(0.01);
+		// Tier floors are flat (no rotation)
+		expect(floors[0].rotation.x).toBe(0);
+		expect(floors[0].rotation.z).toBe(0);
+		expect(floors[2].rotation.x).toBe(0);
+		expect(floors[2].position.y).toBeCloseTo(DEFAULT_FLOOR_Y + 12, 4);
+
+		const bottomTier = layout.rooms[0];
+		const bottomFloorY = sampleFloorY(layout, bottomTier.x, bottomTier.z);
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		expect(marker.position.y).toBeGreaterThan(bottomFloorY);
+		expect(marker.position.y).toBeCloseTo(
+			(sampleFloorY(layout, layout.rooms[2].x, layout.rooms[2].z) ?? DEFAULT_FLOOR_Y) + 0.75,
+			4
+		);
+	});
+
+	it('server-generated layout: floor mesh count matches tiers + ramps', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const tiers = layout.rooms.filter(r => r.band === 'tier');
+		const ramps = layout.rooms.filter(r => r.band === 'ramp');
+		const result = buildDungeon(mockScene(), layout);
+		const floors = roomFloorMeshes(result.meshes, layout);
+
+		expect(floors.length).toBe(tiers.length + ramps.length);
+		expect(floors.every(Boolean)).toBe(true);
+
+		for (const ramp of ramps) {
+			const floor = floors[layout.rooms.indexOf(ramp)];
+			expect(Math.abs(floor.rotation.x) + Math.abs(floor.rotation.z)).toBeGreaterThan(0.01);
+		}
+		for (const tier of tiers) {
+			const floor = floors[layout.rooms.indexOf(tier)];
+			expect(floor.rotation.x).toBe(0);
+			expect(floor.rotation.z).toBe(0);
+		}
+	});
+
+	it('places treasure marker on top tier using sampleFloorY, above bottom tier', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const tiers = layout.rooms.filter(r => r.band === 'tier').sort((a, b) => a.tierIndex - b.tierIndex);
+		const bottomTier = tiers[0];
+		const topTier = tiers[tiers.length - 1];
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+
+		const bottomFloorY = sampleFloorY(layout, bottomTier.x, bottomTier.z);
+		const topFloorY = sampleFloorY(layout, topTier.x, topTier.z);
+		expect(marker).toBeDefined();
+		expect(topFloorY).toBeGreaterThan(bottomFloorY);
+		expect(marker.position.y).toBeGreaterThan(bottomFloorY);
+		expect(marker.position.y).toBeCloseTo((topFloorY ?? DEFAULT_FLOOR_Y) + 0.75, 4);
+	});
+
+	it('does not change crowded grid layout floor placement (regression)', () => {
+		const layout = generateLayout(7, 'crowded');
+		const result = buildDungeon(mockScene(), layout);
+		const startRoom = layout.rooms.find(r => r.role === 'start');
+		const startFloor = result.meshes.find(m =>
+			m.geometry?.parameters?.height === 0.1 &&
+			m.position.x === startRoom.x &&
+			m.position.z === startRoom.z
+		);
+		expect(startFloor.position.y).toBe(FLOOR_Y);
+		expect(startFloor.rotation.x).toBe(0);
+	});
+});
