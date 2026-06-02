@@ -626,10 +626,11 @@ const KEY_ITEM_DEFS = {
   smoke_bomb: {
     id: 'smoke_bomb',
     name: 'Smoke Bomb',
-    description: 'Become temporarily invisible',
-    cooldownMs: 18000,
+    description: 'Drop a cloud of fog that makes enemies lose track of you',
+    cooldownMs: 8000,
     type: 'stealth',
-    durationMs: 3000,
+    durationMs: 2000,
+    radius: 4,
   },
   ground_anchor: {
     id: 'ground_anchor',
@@ -3025,6 +3026,10 @@ function stateSnapshot() {
       blockingYaw: p.blockingYaw || 0,
       barrierDomeUntil: p.barrierDomeUntil || 0,
       barrierDomeRadius: p.barrierDomeRadius || 0,
+      smokeBombUntil: p.smokeBombUntil || 0,
+      smokeBombRadius: p.smokeBombRadius || 0,
+      smokeBombX: p.smokeBombX || 0,
+      smokeBombZ: p.smokeBombZ || 0,
     };
   }
 
