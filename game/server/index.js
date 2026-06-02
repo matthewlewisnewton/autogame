@@ -417,6 +417,7 @@ const DEBUG_SCENARIOS = new Set([
   'loot-magnet-ready',
   'overclock-ready',
   'phase-step-ready',
+  'smoke-bomb-active',
   'open-plaza-arena',
 ]);
 
@@ -849,6 +850,21 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'phase_step';
       player.keyItemCooldownUntil = 0;
       state.enemies = [];
+    } else if (name === 'smoke-bomb-active') {
+      // Put the player in a run with smoke_bomb equipped AND an active smoke zone
+      // already stamped at their position, so the client fog VFX is immediately
+      // visible. Reachable normally by equipping smoke_bomb and using it in a run;
+      // this scenario just shortcuts to the active-zone state (with an extended
+      // window so the dome stays observable longer than a normal ~2s cast).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.equippedKeyItemId = 'smoke_bomb';
+      player.keyItemCooldownUntil = 0;
+      const smokeDef = getKeyItemDef('smoke_bomb') || {};
+      player.smokeBombRadius = smokeDef.radius != null ? smokeDef.radius : 4;
+      player.smokeBombX = player.x;
+      player.smokeBombZ = player.z;
+      player.smokeBombUntil = Date.now() + 60000;
     }
 
     syncRunObjectiveToEnemies();

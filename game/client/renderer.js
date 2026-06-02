@@ -1235,6 +1235,84 @@ export function triggerShieldVFX(playerId) {
 	requestAnimationFrame(animateShield);
 }
 
+// ── Smoke Bomb VFX (smoke zone) ──
+
+const SMOKE_BOMB_COLOR = 0x9ca3af;
+const SMOKE_BOMB_OPACITY = 0.34;
+const SMOKE_BOMB_CLOUD_HEIGHT = 1.6; // fog column height in world units
+const SMOKE_BOMB_FADE_MS = 450;
+const smokeBombVFX = {}; // playerId → { mesh, geometry, material }
+
+/**
+ * Spawn a translucent fog cloud at a smoke zone's fixed world position so the
+ * zone is visible to the caster and to allies who can see it. The cloud is a
+ * low translucent column sized to the zone radius, sitting on the floor.
+ * Idempotent: if a VFX already exists for this player it is left untouched (no
+ * duplicate stack).
+ *
+ * @param {string} playerId - zone owner (registry key)
+ * @param {{ x: number, z: number }} position - zone center (cast point)
+ * @param {number} radius - zone radius in world units
+ */
+export function triggerSmokeBombVFX(playerId, position, radius) {
+	if (!scene || !playerId || !position) return;
+	if (smokeBombVFX[playerId]) return; // already showing — don't stack
+
+	const r = Math.max(0.5, Number(radius) || 1);
+	const geometry = new THREE.CylinderGeometry(r, r, SMOKE_BOMB_CLOUD_HEIGHT, 24);
+	const material = new THREE.MeshStandardMaterial({
+		color: SMOKE_BOMB_COLOR,
+		emissive: SMOKE_BOMB_COLOR,
+		emissiveIntensity: 0.12,
+		transparent: true,
+		opacity: SMOKE_BOMB_OPACITY,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	// Sit the column on the floor (base at y=0, centre at half its height).
+	mesh.position.set(position.x, SMOKE_BOMB_CLOUD_HEIGHT / 2, position.z);
+
+	scene.add(mesh);
+	smokeBombVFX[playerId] = { mesh, geometry, material };
+}
+
+/**
+ * Remove a smoke zone VFX (called when the zone expires or its owner leaves the
+ * snapshot). Fades the dome out over ~450ms, then disposes geometry/material.
+ *
+ * @param {string} playerId
+ */
+export function removeSmokeBombVFX(playerId) {
+	const entry = smokeBombVFX[playerId];
+	if (!entry) return;
+	// Drop the registry entry immediately so it won't be re-removed or block a
+	// fresh trigger; the mesh finishes fading on its own.
+	delete smokeBombVFX[playerId];
+
+	const { mesh, geometry, material } = entry;
+	const startOpacity = material.opacity;
+	const startTime = performance.now();
+	function fadeOut() {
+		const t = (performance.now() - startTime) / SMOKE_BOMB_FADE_MS;
+		if (t >= 1) {
+			if (scene) scene.remove(mesh);
+			geometry.dispose();
+			material.dispose();
+			return;
+		}
+		material.opacity = startOpacity * (1 - t);
+		requestAnimationFrame(fadeOut);
+	}
+	requestAnimationFrame(fadeOut);
+}
+
+/**
+ * @returns {string[]} playerIds that currently have an active smoke zone VFX.
+ */
+export function getSmokeBombVFXIds() {
+	return Object.keys(smokeBombVFX);
+}
+
 // ── Floating damage numbers ──
 
 /**

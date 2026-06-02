@@ -135,6 +135,9 @@ import {
 	triggerDashVFX,
 	triggerHealPulseVFX,
 	triggerShieldVFX,
+	triggerSmokeBombVFX,
+	removeSmokeBombVFX,
+	getSmokeBombVFXIds,
 	getPhaseStepTargetId,
 } from './renderer.js';
 // ── DOM element references ──
@@ -988,6 +991,10 @@ function bindSocketHandlers(s) {
 		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
 			updateKeyItemCooldownHud(gameState.players[myId].keyItemCooldownRemaining);
 		}
+
+		// Smoke Bomb zone VFX: show a fog dome at every visible player's active
+		// zone (own + ally), and clean up once a zone expires or its owner leaves.
+		syncSmokeBombVFX(state);
 	});
 
 	s.on('heartbeat_ack', (data) => {
@@ -1341,6 +1348,30 @@ let _lastCurrency = undefined; // tracks previous currency value for flash-on-in
 let _lastMagicStones = undefined; // tracks previous MS for spend/gain flash
 let _prevDashX = null; // previous X for dash-VFX detection (survives stateUpdate)
 let _prevDashZ = null; // previous Z for dash-VFX detection (survives stateUpdate)
+
+/**
+ * Reconcile the smoke zone fog VFX against the latest snapshot. Every visible
+ * player (local + allies) with an active `smokeBombUntil` gets a fog dome at its
+ * fixed cast point; zones that have expired or whose owner left the snapshot are
+ * cleaned up. `triggerSmokeBombVFX` is idempotent, so calling it each tick is
+ * safe and never stacks duplicates.
+ */
+function syncSmokeBombVFX(state) {
+	const now = Date.now();
+	const active = new Set();
+	if (state && state.gamePhase === 'playing' && state.players) {
+		for (const id of Object.keys(state.players)) {
+			const p = state.players[id];
+			if (p && p.smokeBombUntil && p.smokeBombUntil > now) {
+				active.add(id);
+				triggerSmokeBombVFX(id, { x: p.smokeBombX, z: p.smokeBombZ }, p.smokeBombRadius);
+			}
+		}
+	}
+	for (const id of getSmokeBombVFXIds()) {
+		if (!active.has(id)) removeSmokeBombVFX(id);
+	}
+}
 
 function sameCollectionValue(a, b) {
 	try {
