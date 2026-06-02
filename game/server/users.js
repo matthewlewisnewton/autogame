@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const { DEFAULT_COSMETIC, validateCosmetic, backfillCosmetic } = require('./cosmetic');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
@@ -31,6 +32,8 @@ function loadUsers() {
 		const raw = fs.readFileSync(usersFilePath, 'utf-8');
 		const records = JSON.parse(raw);
 		for (const record of records) {
+			// Backfill cosmetic on legacy records missing it (or missing fields).
+			record.cosmetic = backfillCosmetic(record.cosmetic);
 			users.set(record.username, record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
@@ -110,7 +113,8 @@ function createUser(username, plainPassword) {
 	const record = {
 		username,
 		passwordHash,
-		accountId
+		accountId,
+		cosmetic: { ...DEFAULT_COSMETIC }
 	};
 
 	users.set(username, record);
@@ -136,7 +140,8 @@ async function createUserAsync(username, plainPassword) {
 	const record = {
 		username,
 		passwordHash,
-		accountId
+		accountId,
+		cosmetic: { ...DEFAULT_COSMETIC }
 	};
 
 	users.set(username, record);
@@ -181,7 +186,7 @@ function findUserByEmail(email) {
 /**
  * Update profile fields for an account.
  * @param {string} accountId
- * @param {{ username?: string, email?: string|null }} fields
+ * @param {{ username?: string, email?: string|null, cosmetic?: object }} fields
  * @returns {{ ok: true, usernameChanged?: boolean } | { ok: false, reason: string }}
  */
 function updateProfile(accountId, fields) {
@@ -221,6 +226,15 @@ function updateProfile(accountId, fields) {
 			}
 		}
 		user.email = normalized;
+	}
+
+	if (fields.cosmetic !== undefined) {
+		const result = validateCosmetic(fields.cosmetic);
+		if (!result.ok) {
+			return { ok: false, reason: result.reason };
+		}
+		// Merge only the provided sub-fields onto the existing cosmetic.
+		user.cosmetic = { ...backfillCosmetic(user.cosmetic), ...result.value };
 	}
 
 	saveUsers();
