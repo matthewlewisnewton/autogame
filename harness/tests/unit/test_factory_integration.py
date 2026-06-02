@@ -68,7 +68,7 @@ def test_full_flow_migrate_claim_pass_merge_close(tmp_path):
                     rebase=lambda h: True, verify=lambda root: True, merge=lambda h: True)
 
     registry = AgentRegistry(
-        [AgentSpec("qwen", 1, frozenset({"easy"}))], {"easy": ["qwen"]})
+        [AgentSpec("qwen", 1, frozenset({"easy"}))], ["qwen"])
 
     disp = Dispatcher(
         queue=queue, registry=registry, main_repo=None,
