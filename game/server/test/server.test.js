@@ -223,7 +223,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'spire_climb', 'training_caverns']);
 
 		for (const quest of Object.values(QUEST_DEFS)) {
 			expect(quest.id).toBeTruthy();
