@@ -42,6 +42,11 @@ MERGED_UNCLOSED = ".beads_merged_unclosed"
 # PRESERVE the passed branch + its worktree and re-enqueue the merge instead.
 PENDING_MERGE = ".beads_pending_merge"
 
+# How many times to re-rebase+ff a passed branch when the ff fails because main
+# advanced under us (a concurrent writer to main during the multi-minute verify).
+# Bounded so a genuinely un-fast-forwardable branch still ends in a safe reject.
+MERGE_FF_ATTEMPTS = 3
+
 
 def _pending_path(root) -> Path:
     return Path(root) / PENDING_MERGE
@@ -198,16 +203,45 @@ class MergeQueue:
 
     # --- transaction ---------------------------------------------------- #
     def _merge_one(self, h: WorkerHandle) -> None:
-        if not self.rebase(h):
-            return self._reject(h, "rebase conflict with main")
-        if not self.verify(h.worktree.root):
-            return self._reject(h, "post-rebase verification failed")
-        if not self.merge(h):
-            return self._reject(h, "fast-forward merge failed")
-        self._close_merged(h)
-        emit_progress_event("merge_done",
-                            {"ticket": h.ticket_id, "branch": h.worktree.branch})
-        h.worktree.remove_worktree()
+        """rebase → verify → ff-merge, tolerant of a main that moves under us.
+
+        The dispatcher is no longer guaranteed to be the SOLE writer of main (a
+        parallel session can commit directly), and verify takes minutes — so main
+        can advance between the rebase and the ff, making `--ff-only` fail with
+        "Not possible to fast-forward". When that happens we re-rebase onto the
+        now-current main and retry (bounded). We re-verify whenever main actually
+        moved, so we never ff a tree we didn't validate against the real main.
+        A persistent failure still ends in a safe reject+requeue (main untouched)."""
+        verified_against: Optional[str] = None
+        for attempt in range(MERGE_FF_ATTEMPTS):
+            if not self.rebase(h):
+                return self._reject(h, "rebase conflict with main")
+            main_head = self._main_head()
+            if main_head is None or main_head != verified_against:
+                if not self.verify(h.worktree.root):
+                    return self._reject(h, "post-rebase verification failed")
+                verified_against = main_head
+            if self.merge(h):
+                self._close_merged(h)
+                emit_progress_event("merge_done",
+                                    {"ticket": h.ticket_id, "branch": h.worktree.branch})
+                h.worktree.remove_worktree()
+                return
+            log(f"[merge] {h.ticket_id} ff failed (main likely advanced under verify); "
+                f"re-rebasing onto current main and retrying "
+                f"(attempt {attempt + 1}/{MERGE_FF_ATTEMPTS})")
+        return self._reject(h, f"fast-forward merge failed after {MERGE_FF_ATTEMPTS} rebase attempts")
+
+    def _main_head(self) -> Optional[str]:
+        """Current main HEAD sha, used to detect a concurrent writer advancing
+        main between verify and ff. None if unavailable (tests / git error) —
+        callers treat None as 'unknown', forcing a re-verify to stay safe."""
+        if self.main_repo is None:
+            return None
+        try:
+            return self.main_repo.run_git("rev-parse", "HEAD").strip()
+        except Exception:
+            return None
 
     def _clear_pending(self, h: WorkerHandle) -> None:
         """Drop the durable pending-merge record for a now-resolved branch."""
