@@ -657,11 +657,10 @@ const KEY_ITEM_DEFS = {
   echo_strike: {
     id: 'echo_strike',
     name: 'Echo Strike',
-    description: 'Deal damage in a radial burst around you',
-    cooldownMs: 12000,
+    description: 'Arm an echo: your next weapon hit strikes a second time for 50% damage',
+    cooldownMs: 10000,
     type: 'offensive',
-    radius: 6,
-    damage: 30,
+    echoFraction: 0.5,
   },
   barrier_dome: {
     id: 'barrier_dome',
