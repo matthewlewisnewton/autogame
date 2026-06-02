@@ -666,12 +666,11 @@ const KEY_ITEM_DEFS = {
   barrier_dome: {
     id: 'barrier_dome',
     name: 'Barrier Dome',
-    description: 'Create a protective barrier around you',
-    cooldownMs: 25000,
+    description: 'Project a protective dome that blocks incoming projectiles',
+    cooldownMs: 14000,
     type: 'defensive',
-    radius: 5,
-    absorbedDamage: 100,
-    durationMs: 8000,
+    radius: 3,
+    durationMs: 1000,
   },
   rally_cry: {
     id: 'rally_cry',
@@ -3024,6 +3023,8 @@ function stateSnapshot() {
       isBlocking: Date.now() < (p.blockingUntil || 0),
       blockingUntil: p.blockingUntil || 0,
       blockingYaw: p.blockingYaw || 0,
+      barrierDomeUntil: p.barrierDomeUntil || 0,
+      barrierDomeRadius: p.barrierDomeRadius || 0,
     };
   }
 
