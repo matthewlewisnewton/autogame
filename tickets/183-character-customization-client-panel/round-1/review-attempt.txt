@@ -1,0 +1,21 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fully and robustly satisfies all six acceptance criteria, and the captured run proves the game starts and loads cleanly.
+
+**Runtime health (the gate):**
+- `metrics.json`: `ok: true`, `pageerrors: []`, both players reached `playing`, scene initialized, canvas present. No `harness_failure`.
+- `console.log`: only benign noise — Vite connect lines, an expected `409 Conflict` from the auth/registration probe flow, and `[initScene]`. No `pageerror`/`[fatal]`.
+- Screenshot confirms the HUD `#character-frame` portrait renders with the cosmetic accent border.
+- Tests: **186/186 pass** across the cosmetic-form, main, settings-layout, account, and cosmetic suites.
+
+**ACs verified against live code:**
+- Palette + accent picker + 4 body shapes present in the Account overlay's new "Appearance" section.
+- Live preview reads in-form state, updating on every control change before save.
+- Save PATCHes `/api/me/profile`, server validates (hex + shape allowlist, 400 on bad input), errors surface in-panel.
+- Reload (`GET /api/me`) restores cosmetic and applies it to `#character-frame`; all auth entry paths flow through `restoreSession`.
+- `gameState.players[myId].cosmetic` synced after save (ready for 182).
+- Panel lives inside `#account-overlay` alongside username controls; Settings overlay untouched.
+
+No blocking gaps, so no `gaps.md`. Two minor non-blocking nits (redundant portrait shape styling between inline JS and CSS; a thin `buildCosmeticPatchPayload` alias) recorded in `nits.md`.

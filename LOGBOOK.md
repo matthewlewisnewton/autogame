@@ -2286,3 +2286,26 @@ None blocking. See `nits.md` for non-blocking follow-ups (no dedicated unit
 test for the `unlockHat` socket handler / `unlockHatForPlayer` / account-level
 `unlockHat`, which are currently only covered indirectly).
 
+
+## v0.125 — 183 — Character Customization: Client Panel  (2026-06-02 12:28:10)
+
+
+### Local player's gameState.cosmetic matches saved profile after save (ready for 182)
+PASS. `syncLocalPlayerCosmetic()` sets `gameState.players[myId].cosmetic = { ...getCosmetic() }`
+after a successful save (guarded on `myId` and an existing player record).
+
+### Panel lives in the existing Account overlay alongside username/Settings
+PASS. The Appearance section is a `settings-section` inside `#account-overlay`,
+following the username controls and preceding the logout action; the separate
+Settings overlay is untouched. `settings-layout.test.js` asserts the layout.
+
+## Consistency / regressions
+- Matches the ticket Design notes: reuses `patchProfile`/`loadAccountSettings`,
+  mirrors server `BODY_SHAPES`/defaults, DOM-only preview (no Three.js).
+- No changes to server runtime, gameplay, or unrelated subsystems; diff is confined
+  to client UI + the cosmetic cache plumbing in `settings.js`. No regressions observed.
+- No debug scenarios added by this ticket.
+
+## Remaining gaps
+None blocking. Minor non-blocking nits recorded in `nits.md`.
+

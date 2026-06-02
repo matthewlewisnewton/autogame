@@ -1,0 +1,10 @@
+Broke ticket **183** into four dependency-ordered sub-tickets (all **`code`** verification). The top-level `ticket.md` was missing, so it was added from beads issue `autogame-cgf` before decomposition.
+
+**Sub-ticket folder paths created:**
+
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/01-account-panel-markup/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/02-cosmetic-cache-and-form-module/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/03-live-preview-wiring/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/183-character-customization-client-panel/tickets/183-character-customization-client-panel/subtickets/04-wire-save-persistence-and-hud/ticket.md`
+
+**Order:** markup → cache/form module → live preview wiring → save + HUD + in-run `gameState` sync. No failed sub-ticket folders existed to remove. 3D avatar rendering stays in ticket **182**; this epic covers the Account panel UI and persistence only.
