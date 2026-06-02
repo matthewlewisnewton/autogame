@@ -1,0 +1,14 @@
+Decomposed the top-level **Sunken Canyon** ticket into **3 sub-tickets** (dependency order), following the `open-plaza` pattern: server layout first, client rendering, then quest/spawn wiring. All use **Verification: code** because acceptance is structural (geometry, spawns, handlers)—not purely pixel appearance.
+
+### Sub-tickets created
+
+1. **`/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/01-server-sunken-canyon-layout/ticket.md`**  
+   `generateLayout(seed, 'sunken-canyon')`, plateau + canyon + 2–3 ramp rooms, Y drop ≥ 8, slopes ≥ 0.15, walls, canyon cover scatter, `band` metadata, unit tests.
+
+2. **`/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/02-client-sunken-canyon-render/ticket.md`**  
+   Sloped room/cover rendering, treasure marker and `initScene` lookAt at real floor Y.
+
+3. **`/home/matt/workspace/.autogame-worktrees/137-world-sunken-canyon-stage/tickets/137-world-sunken-canyon-stage/subtickets/03-quest-spawns-and-play/ticket.md`**  
+   Quest def, plateau/canyon enemy distribution, canyon objectives, `sunken-canyon` debug scenario, spawn tests.
+
+No existing sub-ticket folders were present (nothing to delete or preserve). Runtime camera follow during play is expected to work via existing `player.y` + `updateCameraOrbit` once layouts exist; sub-ticket 02 fixes the spawn lookAt gap. Vista/screenshot QA from the parent implementation note is left to the harness, not a separate sub-ticket.
