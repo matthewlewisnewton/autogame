@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import config from '../config.js';
+import { DEFAULT_COSMETIC } from '../users.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -4125,6 +4126,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			y: 0.5,
 			z: 0,
 			rotation: 0,
+			cosmetic: { ...DEFAULT_COSMETIC },
 			deck: ['iron_sword'],
 			hand: undefined,
 			hp: 80,
@@ -4241,6 +4243,48 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		const b = stateSnapshot();
 		a.players['p1'].hp = 0;
 		expect(b.players['p1'].hp).toBe(100);
+	});
+
+	it('includes a complete cosmetic object for every player', () => {
+		addPlayer('p1', { cosmetic: { bodyColor: '#112233', accentColor: '#445566', bodyShape: 'box' } });
+		addPlayer('p2', { cosmetic: { bodyColor: '#abcdef', accentColor: '#fedcba', bodyShape: 'cylinder' } });
+		const snapshot = stateSnapshot();
+
+		expect(snapshot.players['p1'].cosmetic).toEqual({
+			bodyColor: '#112233',
+			accentColor: '#445566',
+			bodyShape: 'box'
+		});
+		// Peer player's cosmetic is present too, not just the local player's.
+		expect(snapshot.players['p2'].cosmetic).toEqual({
+			bodyColor: '#abcdef',
+			accentColor: '#fedcba',
+			bodyShape: 'cylinder'
+		});
+	});
+
+	it('fills cosmetic with defaults when the player has none', () => {
+		addPlayer('p1'); // addPlayer does not set cosmetic
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p1'].cosmetic).toEqual({ ...DEFAULT_COSMETIC });
+		expect(snapshot.players['p1'].cosmetic.bodyColor).toBeDefined();
+		expect(snapshot.players['p1'].cosmetic.accentColor).toBeDefined();
+		expect(snapshot.players['p1'].cosmetic.bodyShape).toBeDefined();
+	});
+
+	it('reflects the account stored cosmetic and is not a stale hardcoded value', () => {
+		addPlayer('p1', { cosmetic: { bodyColor: '#0a0b0c', accentColor: '#0d0e0f', bodyShape: 'capsule' } });
+		const first = stateSnapshot();
+		expect(first.players['p1'].cosmetic.bodyColor).toBe('#0a0b0c');
+
+		// Simulate the player rejoining after changing their account cosmetic.
+		gameState.players['p1'].cosmetic = { bodyColor: '#ffffff', accentColor: '#000000', bodyShape: 'box' };
+		const second = stateSnapshot();
+		expect(second.players['p1'].cosmetic).toEqual({
+			bodyColor: '#ffffff',
+			accentColor: '#000000',
+			bodyShape: 'box'
+		});
 	});
 });
 

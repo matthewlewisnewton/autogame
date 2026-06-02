@@ -48,6 +48,7 @@ const {
 } = require('./simulation');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
+const { withCosmeticDefaults } = require('./users');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -3050,6 +3051,7 @@ function stateSnapshot() {
       y: p.y,
       z: p.z,
       rotation: p.rotation,
+      cosmetic: withCosmeticDefaults(p.cosmetic),
       deck: p.deck,
       desperationDeck: Array.isArray(p.desperationDeck) ? [...p.desperationDeck] : [],
       hand: p.hand,

@@ -14,6 +14,7 @@ const {
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
+const { findUserByAccountId, withCosmeticDefaults } = require('./users');
 const {
   mulberry32,
   generateLayout,
@@ -974,6 +975,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     id: playerId,
     accountId,
     username,
+    cosmetic: withCosmeticDefaults(findUserByAccountId(accountId)?.cosmetic),
     x: spawn.x,
     y: 0.5,
     z: spawn.z,

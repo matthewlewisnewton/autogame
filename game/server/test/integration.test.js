@@ -5325,3 +5325,78 @@ describe('Socket Integration — useKeyItem dodge_roll', () => {
 		socket.disconnect();
 	});
 });
+
+describe('Socket Integration — Cosmetic on runtime + stateUpdate', () => {
+	const os = require('os');
+	const path = require('path');
+	const fs = require('fs');
+	// Use the CJS require so we share the exact users-module instance that
+	// index.js (also CJS require) reads from — an ESM import resolves to a
+	// separate instance under vitest and would not be seen by the server.
+	const { createUserAsync, updateProfile, clearUsers, setTestFilePath } = require('../users.js');
+	let baseUrl, tmpUserFile;
+
+	beforeEach(async () => {
+		tmpUserFile = path.join(os.tmpdir(), `cosmetic-int-users-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.json`);
+		setTestFilePath(tmpUserFile);
+		clearUsers();
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		try { fs.unlinkSync(tmpUserFile); } catch {}
+	});
+
+	it("populates the runtime record and stateUpdate with the account's stored cosmetic", async () => {
+		const { accountId } = await createUserAsync('cosmetic-alice', 'pass1234');
+		const stored = { bodyColor: '#102030', accentColor: '#a0b0c0', bodyShape: 'box' };
+		expect(updateProfile(accountId, { cosmetic: stored }).ok).toBe(true);
+
+		const { socket } = await connectClient(baseUrl, accountId);
+		try {
+			const snapshot = await waitForEvent(socket, 'stateUpdate');
+			const player = snapshot.players[socket._playerId];
+			expect(player.cosmetic).toEqual(stored);
+
+			// Runtime record carries the cosmetic too.
+			const runtime = testGameState().players[socket._playerId];
+			expect(runtime.cosmetic).toEqual(stored);
+		} finally {
+			socket.disconnect();
+		}
+	});
+
+	it('falls back to a complete default cosmetic when the account has none', async () => {
+		// No user record exists for this account → lookup yields no cosmetic.
+		const { socket } = await connectClient(baseUrl, `no-account-${Date.now()}`);
+		try {
+			const snapshot = await waitForEvent(socket, 'stateUpdate');
+			const player = snapshot.players[socket._playerId];
+			expect(player.cosmetic).toBeDefined();
+			expect(player.cosmetic.bodyColor).toBeDefined();
+			expect(player.cosmetic.accentColor).toBeDefined();
+			expect(player.cosmetic.bodyShape).toBeDefined();
+		} finally {
+			socket.disconnect();
+		}
+	});
+
+	it('a peer player cosmetic is visible in the snapshot', async () => {
+		const a = await createUserAsync('cosmetic-host', 'pass1234');
+		const b = await createUserAsync('cosmetic-peer', 'pass1234');
+		updateProfile(a.accountId, { cosmetic: { bodyColor: '#111111', accentColor: '#222222', bodyShape: 'capsule' } });
+		updateProfile(b.accountId, { cosmetic: { bodyColor: '#333333', accentColor: '#444444', bodyShape: 'cone' } });
+
+		const host = await connectClient(baseUrl, a.accountId);
+		const peer = await connectClient(baseUrl, b.accountId, { joinLobbyId: host.lobbyId });
+		try {
+			const snapshot = await waitForEvent(host.socket, 'stateUpdate');
+			expect(snapshot.players[host.socket._playerId].cosmetic.bodyColor).toBe('#111111');
+			expect(snapshot.players[peer.socket._playerId].cosmetic.bodyColor).toBe('#333333');
+		} finally {
+			host.socket.disconnect();
+			peer.socket.disconnect();
+		}
+	});
+});
