@@ -1,0 +1,11 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/131-key-item-purge-charm/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/131-key-item-purge-charm/game/data
+Server listening on port 3000
+Player connected: socket=R8M6nxCaDs8iiD0LAAAB, playerId=45370685-c77b-431e-958e-da6557b833b9
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=Ah9sncPDnzcLLaILAAAD, playerId=eec6660c-4ce7-4429-ae70-f7ae361f199c
+Player disconnected: R8M6nxCaDs8iiD0LAAAB
+Player disconnected: Ah9sncPDnzcLLaILAAAD

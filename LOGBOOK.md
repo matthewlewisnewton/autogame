@@ -2148,3 +2148,26 @@ Not applicable. This ticket did not add or change a `?debugScenario=...` shortcu
 
 None.
 
+
+## v0.97 — Key Item: Purge Charm  (2026-06-02 04:23:30)
+
+### Tests
+
+PASS. `coverage.log` shows `server/test/purge_charm.test.js` passing 12 tests, including debuff order, oldest-debuff clearing, no-shield-when-clearing, shield grant, cooldown reuse, and one-hit damage absorption. The broader run also passed: 32 test files and 909 tests.
+
+## Design and foundation consistency
+
+PASS. The implementation stays server-authoritative and uses the existing Socket.IO `useKeyItem` path, matching the game's multiplayer server-client architecture. It does not change core lobby, movement, rendering, or card combat flow, and the captured smoke run confirms the foundational requirements still hold: 3D scene rendering, WebSocket connection, multiplayer presence, and movement.
+
+## Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` shortcut. The runtime capture used normal lobby/deploy gameplay with no debug scenario active.
+
+## Code quality
+
+PASS with one non-blocking nit filed separately. The changes are narrowly scoped, covered by focused tests, and integrate with existing key-item behavior without obvious dead or broken code. The only polish issue found is that the existing item description still says "Remove all negative effects" while the implemented and ticketed behavior removes one debuff.
+
+## Remaining gaps
+
+None.
+
