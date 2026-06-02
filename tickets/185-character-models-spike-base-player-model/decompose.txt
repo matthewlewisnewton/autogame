@@ -1,0 +1,9 @@
+Remediation round 2 addressed the **SCOPE-CONFLICT** from sub-ticket 01: acceptance criteria required `tickets/185-character-models-spike-base-player-model/spike-decision.md`, but the implementer may only write under `game/**` (writes under `tickets/` are reverted by `scope_audit`).
+
+**Action taken:** removed the failed `01-research-and-model-contract` folder (artifacts, handoff, feedback) and recreated it with scope-aligned acceptance criteria. The spike decision now lives at **`game/docs/SPIKE_DECISION.md`** (content from the prior attempt is already in the working tree). Sub-tickets **02** and **03** were left unchanged; they were never run and do not reference the old tickets path.
+
+Note: the top-level `ticket.md` at the path you gave is missing from this worktree; decomposition follows the existing 01–03 chain and round-1 review detail in sub-ticket feedback.
+
+### Sub-ticket folder paths created
+
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/01-research-and-model-contract`

@@ -60,3 +60,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [182-cleanup-character-customization-server-cosmetic-profile](tickets/182-cleanup-character-customization-server-cosmetic-profile/)
 - [ ] [190-cleanup-character-hats-server-unlocks-currency](tickets/190-cleanup-character-hats-server-unlocks-currency/)
 - [ ] [191-cleanup-character-customization-client-render-avatar](tickets/191-cleanup-character-customization-client-render-avatar/)
+- [ ] [192-cleanup-character-models-spike-base-player-model](tickets/192-cleanup-character-models-spike-base-player-model/)

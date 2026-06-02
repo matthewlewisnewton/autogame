@@ -2309,3 +2309,26 @@ gameplay/foundation regression. Coverage log shows the existing server suite run
 ## Remaining gaps
 None blocking. (See `nits.md` for minor non-blocking polish.)
 
+
+## v0.128 — 185-character-models-spike-base-player-model  (2026-06-02 12:54:40)
+
+  `client` project include (`client/test/**/*.{test,spec}.{js,mjs}`), so it is
+  picked up by `pnpm test:quick`. ✅
+- Normalization from 02 preserved (height/feet checks above) ✅; no renderer or
+  registry changes ✅.
+
+## Design / regression consistency
+- No game runtime code changed (`git diff` is docs, the glb, a bake script, and
+  one test). No regression to `requirements.md` foundation; consistent with the
+  character-customization direction in `design.md`. The smoke run proves the
+  existing game loop is unaffected.
+
+## Debug scenarios
+- None added/changed by this ticket (`debugScenario: null` in probes). N/A.
+
+## Remaining gaps
+None blocking. The asset, docs, morph contract, and test all satisfy the
+sub-ticket acceptance criteria, and the game boots cleanly with the change
+applied. The T-pose arm-span vs README "0.5 half-extent" wording and the very
+subtle torsoWidth/headSize morphs are recorded in `nits.md` for later cleanup.
+
