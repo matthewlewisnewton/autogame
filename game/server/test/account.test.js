@@ -111,7 +111,7 @@ describe('GET /api/me', () => {
 		expect(data.settings.soundEnabled).toBe(true);
 		expect(data.settings.showHitboxes).toBe(true);
 		expect(data.email).toBeNull();
-		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
+		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none' });
 	});
 
 	it('returns 401 without token', async () => {

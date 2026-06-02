@@ -5,7 +5,13 @@ const bcrypt = require('bcrypt');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { DEFAULT_COSMETIC, validateCosmetic, backfillCosmetic } = require('./cosmetic');
+const {
+	DEFAULT_COSMETIC,
+	DEFAULT_UNLOCKED_HATS,
+	validateCosmetic,
+	backfillCosmetic,
+	backfillUnlockedHats
+} = require('./cosmetic');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
@@ -34,6 +40,8 @@ function loadUsers() {
 		for (const record of records) {
 			// Backfill cosmetic on legacy records missing it (or missing fields).
 			record.cosmetic = backfillCosmetic(record.cosmetic);
+			// Backfill unlocked hats on legacy records (or missing/invalid values).
+			record.unlockedHats = backfillUnlockedHats(record.unlockedHats);
 			users.set(record.username, record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
@@ -114,7 +122,8 @@ function createUser(username, plainPassword) {
 		username,
 		passwordHash,
 		accountId,
-		cosmetic: { ...DEFAULT_COSMETIC }
+		cosmetic: { ...DEFAULT_COSMETIC },
+		unlockedHats: [...DEFAULT_UNLOCKED_HATS]
 	};
 
 	users.set(username, record);
@@ -141,7 +150,8 @@ async function createUserAsync(username, plainPassword) {
 		username,
 		passwordHash,
 		accountId,
-		cosmetic: { ...DEFAULT_COSMETIC }
+		cosmetic: { ...DEFAULT_COSMETIC },
+		unlockedHats: [...DEFAULT_UNLOCKED_HATS]
 	};
 
 	users.set(username, record);
@@ -232,6 +242,13 @@ function updateProfile(accountId, fields) {
 		const result = validateCosmetic(fields.cosmetic);
 		if (!result.ok) {
 			return { ok: false, reason: result.reason };
+		}
+		// Equipping a hat is only allowed for hats the account has unlocked.
+		if (result.value.hat !== undefined) {
+			const unlocked = backfillUnlockedHats(user.unlockedHats);
+			if (!unlocked.includes(result.value.hat)) {
+				return { ok: false, reason: 'Hat is not unlocked for this account' };
+			}
 		}
 		// Merge only the provided sub-fields onto the existing cosmetic.
 		user.cosmetic = { ...backfillCosmetic(user.cosmetic), ...result.value };
