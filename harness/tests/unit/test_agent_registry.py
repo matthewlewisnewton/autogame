@@ -10,18 +10,17 @@ def _registry(health_file=None):
         AgentSpec("composer", max_concurrency=3, eligible=frozenset({"easy", "medium", "hard"})),
         AgentSpec("gpt5_extra", max_concurrency=3, eligible=frozenset({"hard"})),
     ]
-    preference = {
-        "easy": ["qwen", "composer"],
-        "medium": ["composer", "qwen"],   # composer primary; qwen overflow
-        "hard": ["gpt5_extra", "composer"],
-    }
-    return AgentRegistry(specs, preference, health_file=health_file)
+    order = ["qwen", "composer", "gpt5_extra"]  # cheapest first
+    return AgentRegistry(specs, order, health_file=health_file)
 
 
-def test_selection_follows_preference():
+def test_selection_follows_cost_order():
     r = _registry()
+    # easy: qwen is eligible + first → qwen
     assert r.select_and_acquire("easy") == "qwen"
-    assert r.select_and_acquire("hard") == "gpt5_extra"
+    # hard: qwen ineligible, composer is next in order and eligible → composer
+    # (the expensive gpt5_extra is only reached when composer is saturated)
+    assert r.select_and_acquire("hard") == "composer"
 
 
 def test_qwen_cap_of_one_then_overflows():

@@ -57,10 +57,13 @@ class FakeWorktree:
 
 
 def _registry():
+    # order [composer, qwen]: with composer ineligible for easy and qwen
+    # ineligible for hard, eligibility routes easy→qwen, medium→composer,
+    # hard→composer — the deterministic setup these dispatcher tests expect.
     return AgentRegistry(
         [AgentSpec("qwen", 1, frozenset({"easy", "medium"})),
          AgentSpec("composer", 3, frozenset({"medium", "hard"}))],
-        {"easy": ["qwen"], "medium": ["composer", "qwen"], "hard": ["composer"]},
+        ["composer", "qwen"],
     )
 
 

@@ -3,9 +3,11 @@
 The dispatcher's decision core. Given a ticket's difficulty it selects an agent
 that is (a) eligible for that difficulty, (b) AVAILABLE (not circuit-broken),
 and (c) below its concurrency cap — then tracks in-flight counts so caps hold
-across concurrent workers. Selection follows a per-difficulty preference order
-(e.g. medium → composer first, qwen as overflow) so the qwen box (cap 1) is
-used as a primary for easy work but only overflows to medium when free.
+across concurrent workers. Selection walks a single global priority order
+(cheapest first: qwen → composer → claude → gpt-5.5) and takes the first agent
+that qualifies; eligibility (which difficulties an agent may take) does the rest,
+so a cheap local agent is always preferred and the expensive remotes are only
+reached when the cheaper ones are busy or ineligible.
 
 Health (AVAILABLE/DISABLED) is persisted so a quota-disabled agent STAYS
 disabled across a dispatcher restart — re-enable is a deliberate human act.
@@ -43,21 +45,22 @@ class _State:
 
 class AgentRegistry:
     def __init__(self, specs: list[AgentSpec],
-                 preference: dict[str, list[str]],
+                 order: list[str],
                  *, health_file: Optional[Path] = None):
         self._states: dict[str, _State] = {s.name: _State(s) for s in specs}
-        self._pref = preference
+        self._order = list(order)  # global priority, cheapest first
         self._health_file = Path(health_file) if health_file else None
         self._lock = threading.Lock()
         self._load_health()
 
     # --- selection ------------------------------------------------------ #
     def select_and_acquire(self, difficulty: str) -> Optional[str]:
-        """Atomically pick + reserve an agent for `difficulty`, honoring health,
-        concurrency caps, and preference order. Returns the agent name (already
+        """Atomically pick + reserve an agent for `difficulty`: walk the global
+        priority order and take the first agent that is eligible for this
+        difficulty, AVAILABLE, and below its cap. Returns the agent name (already
         acquired — caller must `release()` when done) or None if none free."""
         with self._lock:
-            for name in self._pref.get(difficulty, []):
+            for name in self._order:
                 st = self._states.get(name)
                 if (st and st.health is AgentHealth.AVAILABLE
                         and difficulty in st.spec.eligible

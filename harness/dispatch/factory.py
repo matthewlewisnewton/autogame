@@ -29,20 +29,16 @@ DEFAULT_SPECS = [
     # claude opted in for medium/hard only, single-concurrency (cost-bounded).
     AgentSpec("claude", max_concurrency=1, eligible=frozenset({"medium", "hard"})),
 ]
-DEFAULT_PREFERENCE = {
-    "easy":   ["qwen", "composer_write"],
-    # claude (cap 1) is a first-class candidate for BOTH medium and hard — medium
-    # primary, and hard runner-up behind the gpt-5.5 hard specialist. As pure
-    # overflow it never ran (the other caps already cover the slots). With the
-    # hard lane processed first, claude picks up a hard ticket when 2+ are ready
-    # and falls back to medium otherwise.
-    "medium": ["claude", "composer_write", "qwen"],
-    "hard":   ["gpt5_extra_write", "claude", "composer_write"],
-}
+# Single global priority order, cheapest first. Eligibility (above) decides which
+# difficulties each agent can take; the dispatcher walks this order and picks the
+# first qualifying, free agent. So qwen (local/free) is preferred wherever it's
+# eligible (easy, medium), then composer (cheap, all lanes), then the expensive
+# remotes claude and gpt-5.5 — reached only when the cheaper agents are saturated.
+DEFAULT_ORDER = ["qwen", "composer_write", "claude", "gpt5_extra_write"]
 
 
 def default_registry(health_file: Path) -> AgentRegistry:
-    return AgentRegistry(DEFAULT_SPECS, DEFAULT_PREFERENCE, health_file=health_file)
+    return AgentRegistry(DEFAULT_SPECS, DEFAULT_ORDER, health_file=health_file)
 
 
 def _kill_stray_workers() -> None:
@@ -141,4 +137,4 @@ def run_factory(main_root, *, workers: int = 3, max_idle_ticks: int = 0,
 
 
 __all__ = ["run_factory", "build_factory", "reconcile", "default_registry",
-           "DEFAULT_SPECS", "DEFAULT_PREFERENCE"]
+           "DEFAULT_SPECS", "DEFAULT_ORDER"]
