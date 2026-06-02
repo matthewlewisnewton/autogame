@@ -44,7 +44,6 @@ const {
   ENEMY_DEFS,
   firstRoomPosition,
   randomRoomPosition,
-  randomWanderTarget
 } = require('./simulation');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
@@ -2467,6 +2466,10 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
     attackState: 'idle',
     wanderTarget: { x, z }
   };
+  if (_gameState?.layout) {
+    const floorY = sampleFloorY(_gameState.layout, x, z);
+    enemy.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+  }
   if (type === 'spawner') {
     enemy.lastSpawnTime = Date.now();
   }
@@ -2551,6 +2554,19 @@ function randomPositionInRoom(room, rng) {
   };
 }
 
+function assignEnemyWanderTarget(enemy, layout, rng) {
+  const combatRooms = roomsByRole(layout, 'combat');
+  const pool = combatRooms.length > 0
+    ? combatRooms
+    : layout.rooms.filter((r) => r.role !== 'start');
+  if (pool.length > 0) {
+    const pos = randomPositionInRoom(pool[Math.floor(rng() * pool.length)], rng);
+    enemy.wanderTarget = { x: pos.x, z: pos.z };
+    return;
+  }
+  enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+}
+
 function nearestCombatRoom(layout) {
   const startRoom = layout.rooms.find(r => r.role === 'start') || layout.rooms[0];
   const combatRooms = roomsByRole(layout, 'combat');
@@ -2566,6 +2582,75 @@ function nearestCombatRoom(layout) {
     }
   }
   return nearest;
+}
+
+function isSpireAscentLayout(layout) {
+  return layout?.stage === 'spire-ascent';
+}
+
+function spireCombatTierBuckets(layout) {
+  const buckets = new Map();
+  for (const room of roomsByRole(layout, 'combat')) {
+    const tier = room.tierIndex;
+    if (!buckets.has(tier)) buckets.set(tier, []);
+    buckets.get(tier).push(room);
+  }
+  return buckets;
+}
+
+function sortedSpireCombatTierIndices(layout) {
+  return [...spireCombatTierBuckets(layout).keys()].sort((a, b) => a - b);
+}
+
+/**
+ * Tier indices for each combat enemy on spire-ascent layouts (round-robin with
+ * low / middle / top combat coverage when the layout and pack are large enough).
+ */
+function buildSpireCombatTierSpawnPlan(layout, enemyCount, rng) {
+  const tierIndices = sortedSpireCombatTierIndices(layout);
+  if (tierIndices.length === 0) return [];
+  if (tierIndices.length === 1) {
+    return Array(enemyCount).fill(tierIndices[0]);
+  }
+
+  const lowest = tierIndices[0];
+  const highest = tierIndices[tierIndices.length - 1];
+  const middleTiers = tierIndices.filter((t) => t !== lowest && t !== highest);
+  const useGuaranteed = layout.rooms.length >= 3 && enemyCount >= 3;
+
+  if (!useGuaranteed) {
+    const plan = [];
+    for (let i = 0; i < enemyCount; i++) {
+      plan.push(tierIndices[i % tierIndices.length]);
+    }
+    return plan;
+  }
+
+  const guaranteed = [lowest];
+  if (middleTiers.length > 0) {
+    guaranteed.push(middleTiers[Math.floor(rng() * middleTiers.length)]);
+  }
+  if (highest !== lowest) {
+    guaranteed.push(highest);
+  }
+  const uniqueGuaranteed = [...new Set(guaranteed)];
+  const plan = [];
+  for (let i = 0; i < enemyCount; i++) {
+    if (i < uniqueGuaranteed.length) {
+      plan.push(uniqueGuaranteed[i]);
+    } else {
+      plan.push(tierIndices[(i - uniqueGuaranteed.length) % tierIndices.length]);
+    }
+  }
+  return plan;
+}
+
+function pickSpireEnemySpawnPosition(layout, rng, tierIndex) {
+  const rooms = spireCombatTierBuckets(layout).get(tierIndex);
+  if (rooms?.length) {
+    return randomPositionInRoom(rooms[Math.floor(rng() * rooms.length)], rng);
+  }
+  return pickEnemySpawnPosition(layout, rng, false);
 }
 
 function pickEnemySpawnPosition(layout, rng, preferNearestCombat) {
@@ -2592,13 +2677,23 @@ function spawnCombatEnemies(layout, rng, quest) {
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
   const preferNearest = quest.objectiveType === 'collect_items';
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+  const useSpireTiers = isSpireAscentLayout(layout);
+  const tierPlan = useSpireTiers ? buildSpireCombatTierSpawnPlan(layout, enemyCount, rng) : null;
+  let spireTierSlot = 0;
 
   for (let i = 0; i < enemyCount; i++) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
-    const pos = pickEnemySpawnPosition(layout, rng, useNearest);
+    let pos;
+    if (useNearest) {
+      pos = pickEnemySpawnPosition(layout, rng, true);
+    } else if (tierPlan) {
+      pos = pickSpireEnemySpawnPosition(layout, rng, tierPlan[spireTierSlot++]);
+    } else {
+      pos = pickEnemySpawnPosition(layout, rng, false);
+    }
     const enemy = spawnEnemy(pos.x, pos.z, type);
-    enemy.wanderTarget = randomWanderTarget();
+    assignEnemyWanderTarget(enemy, layout, rng);
   }
 }
 
@@ -3281,6 +3376,8 @@ module.exports = {
   restoreCardCharges,
   restoreHandCharges,
   spawnEnemy,
+  spawnCombatEnemies,
+  buildSpireCombatTierSpawnPlan,
   removeDeadEnemies,
   cleanupAfterDamage,
   spawnLoot,
