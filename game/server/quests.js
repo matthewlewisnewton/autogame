@@ -17,6 +17,15 @@ const QUEST_DEFS = {
     enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
+  },
+  arena_trials: {
+    id: 'arena_trials',
+    name: 'Arena Trials',
+    description: 'Survive the open plaza and rout the trial wardens.',
+    objectiveType: 'defeat_enemies',
+    enemyCount: 6,
+    rewardCurrency: 15,
+    layoutProfile: 'open-plaza',
   }
 };
 

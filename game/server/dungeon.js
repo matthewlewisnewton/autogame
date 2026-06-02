@@ -37,6 +37,15 @@ const DEFAULT_LAYOUT_PROFILE = {
   extraEdgeFraction: 0.3,
 };
 
+// Open-plaza arena tuning. Unlike the grid profiles, the plaza is a single
+// large room built by generateOpenPlaza() rather than the room/passage path,
+// so these are plaza-specific constants rather than grid parameters.
+const OPEN_PLAZA = {
+  size: 32,                 // 32 × 32 ⇒ 1024 units² walkable (≥ 4× a ~182 unit² room)
+  spawnClearRadius: 6,      // keep cover/platforms out of this circle around centre
+  interiorMargin: 2,        // cover must stay this far inside the perimeter walls
+};
+
 const LAYOUT_PROFILES = {
   crowded: {
     ...DEFAULT_LAYOUT_PROFILE,
@@ -56,6 +65,13 @@ const LAYOUT_PROFILES = {
     minRooms: 4,
     maxRooms: 7,
     extraEdgeFraction: 0.08,
+  },
+  // The open-plaza profile is handled by a dedicated branch in generateLayout()
+  // (see generateOpenPlaza). The entry exists so the string profile resolves
+  // here instead of silently falling back to 'crowded'.
+  'open-plaza': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: OPEN_PLAZA.size,
   },
 };
 
@@ -83,6 +99,11 @@ function questLayoutSeed(questId) {
  * @param {object} [options={}] - Optional flags: { slopes: boolean }
  */
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
+  // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
+  if (profile === 'open-plaza') {
+    return generateOpenPlaza(seed);
+  }
+
   const opts = normalizeLayoutProfile(profile);
   const rng = mulberry32(seed);
   const gridCols = opts.gridCols;
@@ -348,6 +369,182 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   };
 }
 
+// ── Open Plaza Arena Generation ──
+
+/**
+ * Axis-aligned rectangle (footprint) overlap test with an optional margin.
+ * a/b are { x, z, width, depth }.
+ */
+function footprintsOverlap(a, b, margin = 0) {
+  return (
+    Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+    Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+  );
+}
+
+/**
+ * True when a footprint's AABB intersects the spawn-clear circle of `radius`
+ * centred on plaza origin (0, 0).
+ */
+function overlapsSpawnClear(piece, radius) {
+  const dx = Math.max(Math.abs(piece.x) - piece.width / 2, 0);
+  const dz = Math.max(Math.abs(piece.z) - piece.depth / 2, 0);
+  return dx * dx + dz * dz < radius * radius;
+}
+
+/**
+ * Grid flood-fill from plaza centre over the interior, treating any cell whose
+ * centre falls inside a cover footprint as blocked. Returns true only when every
+ * open interior cell is reachable from the centre — i.e. the cover set never
+ * forms a barrier that fully separates two interior regions.
+ */
+function plazaFullyReachable(cover, half) {
+  const step = 0.5;
+  const cells = Math.floor((half * 2) / step); // e.g. 64 for a 32-wide plaza
+  const cellCentre = i => -half + (i + 0.5) * step;
+  const isBlocked = (x, z) =>
+    cover.some(c =>
+      x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+      z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+    );
+
+  // Locate the start cell containing the centre (0, 0).
+  const startI = Math.floor((0 + half) / step);
+  if (isBlocked(cellCentre(startI), cellCentre(startI))) return false;
+
+  const seen = new Uint8Array(cells * cells);
+  const idx = (i, j) => j * cells + i;
+  const queue = [[startI, startI]];
+  seen[idx(startI, startI)] = 1;
+  let reached = 0;
+  while (queue.length > 0) {
+    const [i, j] = queue.pop();
+    reached++;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || ni >= cells || nj < 0 || nj >= cells) continue;
+      if (seen[idx(ni, nj)]) continue;
+      if (isBlocked(cellCentre(ni), cellCentre(nj))) continue;
+      seen[idx(ni, nj)] = 1;
+      queue.push([ni, nj]);
+    }
+  }
+
+  // Count total open cells; every one must have been reached.
+  let open = 0;
+  for (let j = 0; j < cells; j++) {
+    for (let i = 0; i < cells; i++) {
+      if (!isBlocked(cellCentre(i), cellCentre(j))) open++;
+    }
+  }
+  return reached === open;
+}
+
+/**
+ * Build the open-plaza arena: one large walkable room bounded by four solid
+ * perimeter walls, with scattered cover pieces and a couple of gently sloped
+ * platforms. Deterministic for a given seed (uses mulberry32).
+ *
+ * Returns { rooms: [plaza], passages: [], cover, platforms, passageWidth,
+ *           cellSpacing, profile: 'open-plaza' }.
+ */
+function generateOpenPlaza(seed) {
+  const rng = mulberry32(seed);
+  const size = OPEN_PLAZA.size;
+  const half = size / 2;
+  const spawnClear = OPEN_PLAZA.spawnClearRadius;
+  const interiorMax = half - OPEN_PLAZA.interiorMargin; // cover must stay within ±this
+
+  // Four full perimeter walls — no passage gaps, so players cannot exit.
+  const walls = [
+    { x: 0, z: -half, length: size, axis: 'x' }, // north
+    { x: 0, z: half, length: size, axis: 'x' },  // south
+    { x: -half, z: 0, length: size, axis: 'z' }, // west
+    { x: half, z: 0, length: size, axis: 'z' },  // east
+  ];
+
+  const plaza = {
+    x: 0,
+    z: 0,
+    width: size,
+    depth: size,
+    walls,
+    floorCorners: {
+      yNW: DEFAULT_FLOOR_Y,
+      yNE: DEFAULT_FLOOR_Y,
+      ySE: DEFAULT_FLOOR_Y,
+      ySW: DEFAULT_FLOOR_Y,
+    },
+  };
+
+  // Two gently sloped platforms (corner heights differ by ≤ 0.5 units).
+  const platforms = [
+    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
+    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.4, yNE: 1.1, ySE: 1.2, ySW: 1.3 } },
+  ];
+
+  // Cover set. Start with one pillar centred on each platform so at least two
+  // cover pieces sit on a platform, then greedily add scattered pieces.
+  const cover = platforms.map(p => ({
+    x: p.x, z: p.z, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar',
+  }));
+
+  // Candidate scatter positions around the arena. Each is accepted only if it
+  // stays inside the interior, clears the spawn zone, doesn't overlap existing
+  // cover, and keeps the whole interior reachable (flood-fill).
+  const candidatePool = [
+    { x: 0, z: -11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 0, z: 11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 9, z: -9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+  ];
+
+  // Deterministic shuffle (Fisher–Yates with mulberry32) so placement order is
+  // seed-driven yet reproducible.
+  for (let i = candidatePool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidatePool[i], candidatePool[j]] = [candidatePool[j], candidatePool[i]];
+  }
+
+  const TARGET_COVER = 8; // comfortably ≥ 6
+  for (const cand of candidatePool) {
+    if (cover.length >= TARGET_COVER) break;
+    // Reject candidates that leave the interior or breach the perimeter margin.
+    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
+    // Reject candidates inside the central spawn-clear zone.
+    if (overlapsSpawnClear(cand, spawnClear)) continue;
+    // Reject candidates overlapping any already-placed cover piece.
+    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
+    // Reject candidates that would make any interior cell unreachable.
+    if (!plazaFullyReachable([...cover, cand], half)) continue;
+    cover.push({ ...cand });
+  }
+
+  const layout = {
+    rooms: [plaza],
+    passages: [],
+    cover,
+    platforms,
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: size,
+    profile: 'open-plaza',
+  };
+
+  // assignRoomRoles marks index 0 as 'start' and works with empty passages.
+  // With a single plaza room there is no separate 'combat'/'treasure' room, so
+  // roomsByRole('combat')/'treasure' return [] and callers fall back to the
+  // plaza — enemies and objectives then place across the open floor.
+  assignRoomRoles(layout);
+
+  return layout;
+}
+
 // ── Room Role Assignment ──
 
 /**
@@ -464,6 +661,9 @@ const SPAWN_PADDING = 2;
 
 /**
  * Return rooms from the layout matching the given role string.
+ * For the single-room open-plaza layout no room has role 'combat'/'treasure',
+ * so this returns [] for those roles and callers (randomRoomPositionByRole)
+ * fall back to the plaza, placing enemies/objectives across the open floor.
  */
 function roomsByRole(layout, role) {
   return layout.rooms.filter(r => r.role === role);
@@ -491,6 +691,7 @@ function randomRoomPositionByRole(layout, role, rng) {
 module.exports = {
   mulberry32,
   generateLayout,
+  generateOpenPlaza,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
