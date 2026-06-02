@@ -542,7 +542,6 @@ function applyDebugScenario(socket, name) {
 
   const player = state.players[socket.playerId];
   if (!player) return { ok: false, reason: 'No player for debug scenario' };
-  const spawn = firstRoomPosition();
 
   return withLobbyContext(lobby, () => {
     normalizePlayerInventory(player);
@@ -561,6 +560,19 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    // open-plaza-stage uses a select-then-deploy ordering: install the
+    // open_plaza_trial quest + open-plaza layout up front so the shared
+    // enterPlayingPhase() below spawns enemies and builds the objective against
+    // the plaza layout — producing the same end-state as a normal
+    // open_plaza_trial deployment rather than the default rooms-and-passages one.
+    if (name === 'open-plaza-stage') {
+      state.selectedQuestId = 'open_plaza_trial';
+      applyLayoutForQuest(state, 'open_plaza_trial');
+    }
+
+    // Compute the spawn from the (possibly just-rebuilt) layout, inside the
+    // lobby context, so it is cover-aware on the open plaza.
+    const spawn = firstRoomPosition();
     player.ready = true;
     player.x = spawn.x;
     player.z = spawn.z;
@@ -577,7 +589,12 @@ function applyDebugScenario(socket, name) {
       }
     }
 
-    ensureNearbyEnemy(state, player.x, player.z);
+    // Normal open_plaza_trial deployment never force-spawns an extra adjacent
+    // enemy; skip it here so the plaza scenario's enemies are exactly those that
+    // spawnEnemies() produced for the quest, not a leftover grunt.
+    if (name !== 'open-plaza-stage') {
+      ensureNearbyEnemy(state, player.x, player.z);
+    }
 
     if (name === 'summon-low-mana') {
       player.hp = MAX_HP;
@@ -756,22 +773,13 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'open-plaza-stage') {
       // Debug shortcut into the open-plaza arena. The same state is reachable
       // through normal play by selecting the "open_plaza_trial" quest and
-      // deploying; this just regenerates the layout in-place for inspection.
+      // deploying. The quest + open-plaza layout were installed before
+      // enterPlayingPhase() above, so the run, enemies, loot and objective
+      // already match a normal open_plaza_trial deployment; the player is
+      // spawned cover-clear on the plaza floor. Just top off resources and push
+      // the final layout to clients.
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
-      const seed = questLayoutSeed('open_plaza_trial');
-      state.layout = generateLayout(seed, 'open-plaza');
-      state.layoutSeed = seed;
-      state.dungeonBounds = computeDungeonBounds(state.layout);
-      state.walkableAABBs = computeWalkableAABBs(state.layout);
-      withLobbyContext({ state }, () => rebuildWallColliders());
-      // Reposition onto the new single-room plaza (layout fully changed).
-      const plazaSpawn = firstRoomPosition();
-      player.x = plazaSpawn.x;
-      player.z = plazaSpawn.z;
-      const plazaFloorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(plazaFloorY) ? plazaFloorY : DEFAULT_FLOOR_Y;
-      ensureNearbyEnemy(state, player.x, player.z);
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,
