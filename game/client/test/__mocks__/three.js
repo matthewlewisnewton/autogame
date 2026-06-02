@@ -4,6 +4,11 @@ function stubClass(name) {
 	class C {
 		constructor(...args) {
 			Object.defineProperty(this, '_name', { value: name });
+			if (name === 'Vector3' && args.length >= 3) {
+				this.x = args[0];
+				this.y = args[1];
+				this.z = args[2];
+			}
 			// Per-instance position and rotation (not shared on prototype)
 			this.position = {
 				x: 0, y: 0, z: 0,
@@ -97,7 +102,12 @@ function stubClass(name) {
 		dispose: function() {}
 	};
 	C.prototype.geometry = { dispose: function() {} };
-	C.prototype.lookAt = function() { return this; };
+	C.prototype.lookAt = function(x, y, z) {
+		if (name === 'PerspectiveCamera' && typeof x === 'number') {
+			this._lookAt = { x, y, z };
+		}
+		return this;
+	};
 	C.prototype.clone = function() { return new C(); };
 	C.prototype.add = function(child) {
 		if (!this.children) this.children = [];

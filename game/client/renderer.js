@@ -392,7 +392,9 @@ function syncFacingToServer() {
 	socketRef.emit('move', { dx: 0, dz: 0, rotation: playerRotation });
 }
 
-function updateCameraOrbit(playerX, playerY, playerZ, delta) {
+// Third-person follow uses world-space playerY (local mesh Y from sampleFloorY on
+// sloped layouts such as spire-ascent; remote players use server player.y).
+export function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
 	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;

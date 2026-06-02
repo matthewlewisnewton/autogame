@@ -454,3 +454,107 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		);
 	});
 });
+
+describe('spire-ascent floors & treasure marker', () => {
+	const yBase = DEFAULT_FLOOR_Y;
+	const yTop = DEFAULT_FLOOR_Y + 10;
+
+	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	function rampFloorMeshes(meshes) {
+		return meshes.filter(m =>
+			m.geometry?.parameters?.depth != null &&
+			(Math.abs(m.rotation.x) > 0.01 || Math.abs(m.rotation.z) > 0.01)
+		);
+	}
+
+	function spireAscentFixture() {
+		return {
+			profile: 'spire-ascent',
+			rooms: [
+				{
+					x: 0, z: 20, width: 12, depth: 12, role: 'start', walls: [], band: 'tier', tierIndex: 0,
+					floorCorners: { yNW: yBase, yNE: yBase, ySE: yBase, ySW: yBase },
+				},
+				{
+					x: 0, z: 8, width: 8, depth: 6, role: 'connector', walls: [], band: 'ramp',
+					floorCorners: { yNW: yBase + 5, yNE: yBase + 5, ySE: yBase, ySW: yBase },
+				},
+				{
+					x: 0, z: -4, width: 12, depth: 12, role: 'combat', walls: [], band: 'tier', tierIndex: 1,
+					floorCorners: { yNW: yBase + 5, yNE: yBase + 5, ySE: yBase + 5, ySW: yBase + 5 },
+				},
+				{
+					x: 0, z: -16, width: 8, depth: 6, role: 'connector', walls: [], band: 'ramp',
+					floorCorners: { yNW: yTop, yNE: yTop, ySE: yBase + 5, ySW: yBase + 5 },
+				},
+				{
+					x: 0, z: -28, width: 12, depth: 12, role: 'treasure', walls: [], band: 'tier', tierIndex: 2,
+					floorCorners: { yNW: yTop, yNE: yTop, ySE: yTop, ySW: yTop },
+				},
+			],
+			passages: [],
+		};
+	}
+
+	it('buildDungeon emits flat tier floors and sloped ramp floors', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const tiers = layout.rooms.filter(r => r.band === 'tier');
+		const ramps = layout.rooms.filter(r => r.band === 'ramp');
+
+		for (const tier of tiers) {
+			const floor = result.meshes.find(m =>
+				m.position.x === tier.x && m.position.z === tier.z &&
+				m.geometry?.parameters?.height === 0.1
+			);
+			expect(floor).toBeDefined();
+			expect(floor.rotation.x).toBe(0);
+			expect(floor.rotation.z).toBe(0);
+			expect(floor.position.y).toBeCloseTo(uniformFloorMeshY(tier), 4);
+			expect(sampleFloorY(layout, tier.x, tier.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y);
+		}
+
+		expect(rampFloorMeshes(result.meshes).length).toBe(ramps.length);
+	});
+
+	it('places the treasure marker on the top tier, above DEFAULT_FLOOR_Y + 9', () => {
+		const layout = spireAscentFixture();
+		const top = layout.rooms.find(r => r.role === 'treasure');
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		const topFloorY = sampleFloorY(layout, top.x, top.z);
+		expect(topFloorY).toBeGreaterThanOrEqual(yTop);
+		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 9);
+		expect(marker.position.y).toBeCloseTo(topFloorY + 0.75, 4);
+	});
+
+	it('renders server-generated spire-ascent with elevated treasure marker and ramp floors', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		const tiers = layout.rooms.filter(r => r.band === 'tier').sort((a, b) => a.tierIndex - b.tierIndex);
+		const yStart = sampleFloorY(layout, tiers[0].x, tiers[0].z);
+		const yEnd = sampleFloorY(layout, tiers[tiers.length - 1].x, tiers[tiers.length - 1].z);
+		expect(yEnd - yStart).toBeGreaterThanOrEqual(10);
+
+		const result = buildDungeon(mockScene(), layout);
+		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 9);
+		expect(marker.position.y).toBeCloseTo(
+			(sampleFloorY(layout, treasureRoom.x, treasureRoom.z) ?? DEFAULT_FLOOR_Y) + 0.75,
+			4
+		);
+		expect(rampFloorMeshes(result.meshes).length).toBe(
+			layout.rooms.filter(r => r.band === 'ramp').length
+		);
+	});
+});
