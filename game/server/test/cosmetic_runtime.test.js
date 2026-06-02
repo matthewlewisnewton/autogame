@@ -154,4 +154,57 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		expect(snapshot.players['p5'].cosmetic.bodyColor).toBe('#00ff00');
 		expect(snapshot.players['p5'].cosmetic.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
 	});
+
+	// --- bodyModel-specific tests (ticket 186 / sub-ticket 03) ---
+
+	it('buildPlayerRecord carries updated bodyModel after PATCH via profile API', async () => {
+		const { accountId, token } = await registerUser(baseUrl, 'dave');
+		await patchCosmetic(baseUrl, token, { bodyModel: 'player' });
+
+		const player = buildPlayerRecord('p6', accountId, 'dave', null);
+		expect(player.cosmetic.bodyModel).toBe('player');
+	});
+
+	it('stateSnapshot reflects bodyModel for all players', async () => {
+		const { accountId, token } = await registerUser(baseUrl, 'eve');
+		await patchCosmetic(baseUrl, token, { bodyModel: 'player' });
+
+		gameState.players['p7'] = buildPlayerRecord('p7', accountId, 'eve', null);
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p7'].cosmetic.bodyModel).toBe('player');
+	});
+
+	it('stateSnapshot defaults bodyModel to "default" when cosmetic lacks the field', () => {
+		const player = buildPlayerRecord('p8', 'no-such-account', 'fallback', null);
+		// Simulate a legacy record missing the bodyModel key
+		delete player.cosmetic.bodyModel;
+		gameState.players['p8'] = player;
+
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p8'].cosmetic.bodyModel).toBe('default');
+	});
+
+	it('existing cosmetic fields (bodyColor, accentColor, bodyShape) remain unchanged after bodyModel patch', async () => {
+		const { accountId, token } = await registerUser(baseUrl, 'frank');
+		// Set non-default values for all fields
+		await patchCosmetic(baseUrl, token, {
+			bodyColor: '#ff0000',
+			accentColor: '#00ff00',
+			bodyShape: 'cylinder',
+			bodyModel: 'player',
+		});
+
+		const player = buildPlayerRecord('p9', accountId, 'frank', null);
+		expect(player.cosmetic.bodyColor).toBe('#ff0000');
+		expect(player.cosmetic.accentColor).toBe('#00ff00');
+		expect(player.cosmetic.bodyShape).toBe('cylinder');
+		expect(player.cosmetic.bodyModel).toBe('player');
+
+		gameState.players['p9'] = player;
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p9'].cosmetic.bodyColor).toBe('#ff0000');
+		expect(snapshot.players['p9'].cosmetic.accentColor).toBe('#00ff00');
+		expect(snapshot.players['p9'].cosmetic.bodyShape).toBe('cylinder');
+		expect(snapshot.players['p9'].cosmetic.bodyModel).toBe('player');
+	});
 });

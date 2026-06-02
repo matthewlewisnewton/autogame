@@ -3078,7 +3078,7 @@ function stateSnapshot() {
       blockingYaw: p.blockingYaw || 0,
       barrierDomeUntil: p.barrierDomeUntil || 0,
       barrierDomeRadius: p.barrierDomeRadius || 0,
-      cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
+      cosmetic: { ...DEFAULT_COSMETIC, ...(p.cosmetic || {}) },
     };
   }
 
