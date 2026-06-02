@@ -1,0 +1,11 @@
+**VERDICT: PASS** — review written to `tickets/193-character-hats-unlock-panel/round-1/review.md`.
+
+Summary:
+- **Runtime gate passed**: `metrics.json` `ok: true`, empty `pageerrors`, no `harness_failure`; logs show only benign THREE.js/Vite noise. Both players reached `phase: "playing"`, scene initialized, no fatal/pageerror.
+- **Note on scope**: the source top-level `ticket.md` was missing; the decomposer reconstructed it into two sub-tickets. I judged against those ACs plus the live server contract.
+- **Sub-ticket 01 (cache/equip/preview)**: all ACs met — `hat` threaded through cache, normalization, catalog rendering, owned-only equip, live preview, and the Save payload; `patchProfile` updates the cache from the server's returned cosmetic.
+- **Sub-ticket 02 (unlock)**: all ACs met — priced Unlock buttons disabled when unaffordable, `unlockHat` emit guarded on socket+affordability, `hatUnlocked`/`hatError` handlers update state only on server events (no optimism, no auto-equip).
+- **Integration**: server independently enforces hat ownership on equip and validates/refunds in the unlock flow — client gating is defense-in-depth, not the only guard.
+- **Debug scenario `hats-unlocked`** (added by this ticket): dev-gated via `isDebugScenarioAllowed`, URL/socket is the only entry point, persists real unlocks via the same account API, leaves one hat locked, and the same owned state is reachable through normal currency-spend play. No invariant bypass.
+
+No blocking gaps → no `gaps.md`. No backlog-worthy nits → no `nits.md`.

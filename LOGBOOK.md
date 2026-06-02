@@ -2378,3 +2378,26 @@ Verified all three requirements:
 None blocking. The ticket is fully and robustly satisfied. (Minor non-blocking
 nits recorded in `nits.md`.)
 
+
+## v0.136 — 193-character-hats-unlock-panel  (2026-06-02 15:02:40)
+
+  guarded by `isDebugScenarioAllowed` (local address/origin/host, non-production,
+  or `ALLOW_DEBUG_SCENARIOS=1`). Normal gameplay never calls
+  `applyDebugScenario`. ✓
+- **End state reachable normally**: it persists real unlocks via
+  `unlockHatForAccount` (same persistence path as the live `unlockHat` flow),
+  leaving the last catalog hat locked so both owned and locked branches show. The
+  equivalent owned state is reachable by earning currency and using the unlock
+  flow. ✓
+- **No invariant short-circuit**: it persists via the real account API and does
+  not bypass net-replication or equip validation. It only skips the currency
+  spend for setup convenience, which is appropriate for a QA shortcut. ✓
+
+## Remaining gaps
+None. The captured run is clean and all reconstructed acceptance criteria are
+fully and robustly met, with server-side validation backing the client UI.
+
+(The fallback smoke capture did not open the Account overlay, so the hat panel
+was exercised by code review rather than a screenshot — non-blocking; the panel
+mounts from the same module graph that loaded without error.)
+

@@ -1,0 +1,17 @@
+Both sub-tickets created. 
+
+## Summary
+
+The source `ticket.md` for `193-character-hats-unlock-panel` was **missing** from the ticket folder (only `decompose.txt` + `log.txt` were present). I reconstructed its intent from the directory name and the surrounding completed work:
+
+- **Server (ticket 189)** is complete: `HAT_CATALOG`, `unlockedHats`, the `unlockHat` socket flow (`hatUnlocked`/`hatError`), and `GET /api/me` returning `unlockedHats` + `hatCatalog`.
+- **Avatar rendering** is complete: `renderer.js` already builds hat meshes from `cosmetic.hat` (`buildHatMesh`, `createPlayerAvatar`).
+- **The gap** is the client *panel* — the existing "Character" customization section caches/handles `bodyColor/accentColor/bodyShape` but has no hat awareness, no equip control, and no unlock UI.
+
+So this ticket = the client hat unlock/equip panel, split into two dependency-ordered sub-tickets (both `code`-verified, since they concern state caching, accessors, socket handlers, save payloads, and error paths — not a pure render check):
+
+Created:
+- `tickets/193-character-hats-unlock-panel/subtickets/01-hat-state-cache-and-equip/ticket.md` — cache `hat`/`unlockedHats`/`hatCatalog`, render the catalog with owned/locked/equipped state, equip an owned hat, thread `hat` through Save + live preview.
+- `tickets/193-character-hats-unlock-panel/subtickets/02-unlock-hats-with-currency/ticket.md` — Unlock buttons on locked hats (priced, disabled when unaffordable), emit `unlockHat`, handle `hatUnlocked`/`hatError`, update cached unlocks + currency HUD.
+
+Note: I could not verify these sub-tickets against an authoritative top-level `ticket.md` because that file does not exist in the worktree — the scope is inferred. If the intended scope differs (e.g. it was meant to also touch server or renderer work), the decomposition would need revisiting.
