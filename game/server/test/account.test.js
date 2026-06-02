@@ -111,6 +111,7 @@ describe('GET /api/me', () => {
 		expect(data.settings.soundEnabled).toBe(true);
 		expect(data.settings.showHitboxes).toBe(true);
 		expect(data.email).toBeNull();
+		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
 	});
 
 	it('returns 401 without token', async () => {
@@ -178,5 +179,36 @@ describe('PATCH /api/me/profile', () => {
 		expect(data.token).toBeDefined();
 		const decoded = jwt.verify(data.token, getJWTSecret());
 		expect(decoded.username).toBe('eve2');
+	});
+
+	it('updates cosmetic and returns it in the 200 payload', async () => {
+		const token = await registerAndLogin('cosmo', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { bodyColor: '#0a0b0c', bodyShape: 'capsule' } })
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.cosmetic.bodyColor).toBe('#0a0b0c');
+		expect(data.cosmetic.bodyShape).toBe('capsule');
+		expect(data.cosmetic.accentColor).toBe('#f2c94c');
+
+		// Confirms it is reflected on GET /me as well.
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.cosmetic.bodyColor).toBe('#0a0b0c');
+	});
+
+	it('returns 400 for invalid cosmetic input', async () => {
+		const token = await registerAndLogin('cosmo2', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { bodyShape: 'pyramid' } })
+		});
+		expect(res.status).toBe(400);
 	});
 });

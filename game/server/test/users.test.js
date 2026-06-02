@@ -178,6 +178,101 @@ describe('profile helpers', () => {
 	});
 });
 
+// ── Cosmetic storage & validation ──
+
+describe('cosmetic profile', () => {
+	let tmpFile;
+
+	beforeEach(() => {
+		tmpFile = path.join(os.tmpdir(), `users-cosmetic-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+		setTestFilePath(tmpFile);
+		clearUsers();
+	});
+
+	afterEach(() => {
+		try { fs.unlinkSync(tmpFile); } catch {}
+		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
+	});
+
+	it('applies a default cosmetic at account creation', () => {
+		createUser('cosmo', 'pass');
+		const user = findUserByUsername('cosmo');
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
+	});
+
+	it('partial cosmetic update merges only provided fields', () => {
+		createUser('cosmo', 'pass');
+		const id = findUserByUsername('cosmo').accountId;
+
+		const res = updateProfile(id, { cosmetic: { bodyShape: 'cone' } });
+		expect(res.ok).toBe(true);
+		const user = findUserByAccountId(id);
+		expect(user.cosmetic.bodyShape).toBe('cone');
+		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
+		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+	});
+
+	it('rejects an invalid bodyShape without mutating or persisting', () => {
+		createUser('cosmo', 'pass');
+		const id = findUserByUsername('cosmo').accountId;
+
+		const res = updateProfile(id, { cosmetic: { bodyShape: 'pyramid' } });
+		expect(res.ok).toBe(false);
+		expect(findUserByAccountId(id).cosmetic.bodyShape).toBe('box');
+	});
+
+	it('rejects a malformed color without mutating or persisting', () => {
+		createUser('cosmo', 'pass');
+		const id = findUserByUsername('cosmo').accountId;
+
+		const res = updateProfile(id, { cosmetic: { bodyColor: 'notacolor' } });
+		expect(res.ok).toBe(false);
+		expect(findUserByAccountId(id).cosmetic.bodyColor).toBe('#4f9dde');
+	});
+
+	it('persists cosmetic across a simulated restart', () => {
+		createUser('cosmo', 'pass');
+		const id = findUserByUsername('cosmo').accountId;
+		updateProfile(id, { cosmetic: { bodyColor: '#010203', bodyShape: 'capsule' } });
+
+		clearUsers();
+		loadUsers();
+
+		const user = findUserByAccountId(id);
+		expect(user.cosmetic.bodyColor).toBe('#010203');
+		expect(user.cosmetic.bodyShape).toBe('capsule');
+		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+	});
+
+	it('backfills a complete cosmetic on a legacy record missing the field', () => {
+		// Write a legacy record (no cosmetic) directly to disk, then load it.
+		const legacy = [{ username: 'legacy', passwordHash: 'x', accountId: 'legacy-id' }];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy), 'utf-8');
+		clearUsers();
+		loadUsers();
+
+		const user = findUserByUsername('legacy');
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box' });
+	});
+
+	it('backfills only the missing sub-fields on a partial legacy cosmetic', () => {
+		const legacy = [{
+			username: 'partial',
+			passwordHash: 'x',
+			accountId: 'partial-id',
+			cosmetic: { bodyShape: 'cylinder' }
+		}];
+		fs.writeFileSync(tmpFile, JSON.stringify(legacy), 'utf-8');
+		clearUsers();
+		loadUsers();
+
+		const user = findUserByUsername('partial');
+		expect(user.cosmetic.bodyShape).toBe('cylinder');
+		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
+		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+	});
+});
+
 // ── File-backed persistence ──
 
 describe('file-backed persistence', () => {
