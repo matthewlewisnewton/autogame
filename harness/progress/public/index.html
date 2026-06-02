@@ -27,7 +27,12 @@
       </div>
     </header>
 
-    <main class="layout">
+    <nav class="tabs" role="tablist">
+      <button class="tab active" data-tab="live" role="tab" type="button">Live</button>
+      <button class="tab" data-tab="beads" role="tab" type="button">Beads</button>
+    </nav>
+
+    <main class="layout" data-view="live">
       <section class="stage">
         <div class="panel-title">
           <span>Game Stage</span>
@@ -50,6 +55,22 @@
         <div id="events" class="events"></div>
       </section>
     </main>
+
+    <section class="beads-view hidden" data-view="beads">
+      <div class="beads-toolbar">
+        <div id="beads-stats" class="beads-stats"></div>
+        <div class="beads-controls">
+          <input id="beads-filter" type="search" placeholder="Filter… text, status:open, type:bug, p0">
+          <button id="beads-refresh" type="button">refresh</button>
+        </div>
+      </div>
+      <div class="beads-body">
+        <div id="beads-list" class="beads-list"></div>
+        <div id="beads-detail" class="beads-detail">
+          <div class="empty">Select an issue to see its details.</div>
+        </div>
+      </div>
+    </section>
 
     <script type="module" src="/app.js"></script>
   </body>

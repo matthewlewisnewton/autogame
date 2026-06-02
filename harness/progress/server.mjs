@@ -1043,6 +1043,45 @@ function serveFile(res, path) {
   }
 }
 
+// --- Beads issue browser (read-only; shells out to `bd --json`) ---
+// No direct Dolt connection and no new npm deps: `bd` already computes the
+// ready/blocked semantics correctly, so we just spawn it like git/nvidia-smi
+// elsewhere in this file and cache the JSON for a few seconds.
+const BD_BIN = process.env.BD_BIN || 'bd';
+const BD_CACHE_TTL_MS = Number(process.env.BD_CACHE_TTL_MS || 5000);
+const BD_ID_RE = /^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$/;
+const bdCache = new Map();
+
+function runBd(args) {
+  // `--readonly` is a hard guard: even though list/stats/show only read, it
+  // blocks any accidental write path regardless of the args passed.
+  const result = spawnSync(BD_BIN, ['--readonly', ...args, '--json'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+    timeout: 10000,
+    maxBuffer: 16 * 1024 * 1024,
+  });
+  if (result.error) throw result.error;
+  if (result.status !== 0) {
+    throw new Error(`bd ${args.join(' ')} exited ${result.status}: ${(result.stderr || '').trim().slice(0, 500)}`);
+  }
+  return JSON.parse(result.stdout || 'null');
+}
+
+function bdCached(key, producer) {
+  const now = Date.now();
+  const hit = bdCache.get(key);
+  if (hit && now - hit.at < BD_CACHE_TTL_MS) return hit.data;
+  const data = producer();
+  bdCache.set(key, { at: now, data });
+  return data;
+}
+
+function sendJson(res, status, payload) {
+  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' });
+  res.end(JSON.stringify(payload, null, 2));
+}
+
 const server = createServer((req, res) => {
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
 
@@ -1104,6 +1143,42 @@ const server = createServer((req, res) => {
   if (url.pathname === '/tokens') {
     res.writeHead(200, { 'content-type': 'application/json; charset=utf-8' });
     res.end(JSON.stringify({ estimated: tokenTotals.estimatedCalls > 0, totals: tokenTotals }, null, 2));
+    return;
+  }
+
+  if (url.pathname === '/beads') {
+    try {
+      const data = bdCached('overview', () => ({
+        stats: runBd(['stats']),
+        issues: runBd(['list', '--all', '-n', '0', '--sort', 'id']),
+      }));
+      sendJson(res, 200, data);
+    } catch (err) {
+      sendJson(res, 502, { error: String(err?.message || err) });
+    }
+    return;
+  }
+
+  if (url.pathname.startsWith('/beads/')) {
+    const id = decodeURIComponent(url.pathname.slice('/beads/'.length));
+    if (!BD_ID_RE.test(id)) {
+      sendJson(res, 400, { error: 'bad issue id' });
+      return;
+    }
+    try {
+      const issue = bdCached(`issue:${id}`, () => {
+        const rows = runBd(['show', id, '--include-dependents']);
+        return Array.isArray(rows) ? rows[0] || null : rows;
+      });
+      if (!issue) {
+        sendJson(res, 404, { error: 'not found' });
+        return;
+      }
+      sendJson(res, 200, issue);
+    } catch (err) {
+      const msg = String(err?.message || err);
+      sendJson(res, /no issue/i.test(msg) ? 404 : 502, { error: msg });
+    }
     return;
   }
 
