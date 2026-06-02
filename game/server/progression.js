@@ -3112,6 +3112,10 @@ function stateSnapshot() {
       blockingYaw: p.blockingYaw || 0,
       barrierDomeUntil: p.barrierDomeUntil || 0,
       barrierDomeRadius: p.barrierDomeRadius || 0,
+      smokeBombUntil: p.smokeBombUntil || 0,
+      smokeBombRadius: p.smokeBombRadius || 0,
+      smokeBombX: p.smokeBombX || 0,
+      smokeBombZ: p.smokeBombZ || 0,
       cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     };
   }
