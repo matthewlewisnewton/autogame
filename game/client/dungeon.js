@@ -56,6 +56,19 @@ export function isUniformFloor(room) {
 }
 
 /**
+ * Visual Y for a uniform (flat) room floor mesh.
+ * Legacy/default-band rooms use FLOOR_Y; elevated bands (e.g. sunken-canyon plateau)
+ * use their uniform corner height.
+ */
+export function uniformFloorMeshY(room) {
+	if (!isUniformFloor(room)) return FLOOR_Y;
+	const fc = room.floorCorners;
+	if (!fc) return FLOOR_Y;
+	if (fc.yNW === DEFAULT_FLOOR_Y) return FLOOR_Y;
+	return fc.yNW;
+}
+
+/**
  * Build a sloped floor mesh for a room with non-uniform floorCorners.
  * Determines the dominant slope axis (Z or X) by comparing edge averages,
  * then returns a rotated BoxGeometry mesh positioned at the average height.
@@ -215,7 +228,7 @@ export function buildDungeon(scene, layout) {
 		if (isUniformFloor(room)) {
 			const floorGeo = new THREE.BoxGeometry(room.width, 0.1, room.depth);
 			floorMesh = new THREE.Mesh(floorGeo, floorMat);
-			floorMesh.position.set(room.x, FLOOR_Y, room.z);
+			floorMesh.position.set(room.x, uniformFloorMeshY(room), room.z);
 		} else {
 			const { mesh } = buildSlopedFloor(room, floorMat);
 			floorMesh = mesh;
@@ -225,9 +238,10 @@ export function buildDungeon(scene, layout) {
 
 		// Treasure room marker: glowing gold pillar at room center
 		if (room.role === 'treasure') {
+			const treasureFloorY = sampleFloorY(layout, room.x, room.z) ?? DEFAULT_FLOOR_Y;
 			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
 			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
-			marker.position.set(room.x, 0.75 + FLOOR_Y, room.z);
+			marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
 			scene.add(marker);
 			meshes.push(marker);
 		}

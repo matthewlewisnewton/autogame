@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -343,5 +343,114 @@ describe('open-plaza cover & platforms', () => {
 		// ground(1) + room floor(1) = 2 meshes; no extra cover/platform geometry.
 		expect(result.meshes.length).toBe(2);
 		expect(buildWallColliders(layout).length).toBe(0);
+	});
+});
+
+describe('sunken-canyon cover, floors & treasure marker', () => {
+	const yHigh = DEFAULT_FLOOR_Y + 8;
+	const yLow = DEFAULT_FLOOR_Y;
+
+	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+	function findTreasureMarker(meshes) {
+		return meshes.find(m =>
+			m.geometry?.parameters?.height === 1.5 &&
+			m.geometry?.parameters?.radiusTop === 0.3 &&
+			m.geometry?.parameters?.radiusBottom === 0.3
+		);
+	}
+
+	function sunkenCanyonFixture() {
+		return {
+			profile: 'sunken-canyon',
+			rooms: [
+				{
+					x: 0, z: -20, width: 12, depth: 12, role: 'start', walls: [], band: 'plateau',
+					floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yHigh, ySW: yHigh },
+				},
+				{
+					x: 0, z: -12, width: 8, depth: 6, role: 'connector', walls: [], band: 'ramp',
+					floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yLow, ySW: yLow },
+				},
+				{
+					x: 0, z: 0, width: 32, depth: 32, role: 'treasure', walls: [], band: 'canyon',
+					floorCorners: { yNW: yLow, yNE: yLow, ySE: yLow, ySW: yLow },
+				},
+			],
+			passages: [],
+			cover: [
+				{ x: 5, z: 5, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+				{ x: -8, z: 8, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+			],
+		};
+	}
+
+	it('buildDungeon emits ground + one floor per room + treasure marker + cover meshes', () => {
+		const layout = sunkenCanyonFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const roomFloors = layout.rooms.length;
+		const expected = 1 + roomFloors + 1 + layout.cover.length; // ground + floors + marker + cover
+		expect(result.meshes.length).toBe(expected);
+	});
+
+	it('places the treasure marker on the canyon floor, above DEFAULT_FLOOR_Y', () => {
+		const layout = sunkenCanyonFixture();
+		const canyon = layout.rooms.find(r => r.role === 'treasure');
+		const result = buildDungeon(mockScene(), layout);
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		const canyonFloorY = sampleFloorY(layout, canyon.x, canyon.z);
+		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(marker.position.y).toBeCloseTo(canyonFloorY + 0.75, 4);
+	});
+
+	it('elevates the plateau uniform floor to the high band', () => {
+		const layout = sunkenCanyonFixture();
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		expect(uniformFloorMeshY(plateau)).toBe(yHigh);
+		const result = buildDungeon(mockScene(), layout);
+		const plateauFloor = result.meshes.find(m =>
+			m.position.x === plateau.x && m.position.z === plateau.z &&
+			m.geometry?.parameters?.height === 0.1
+		);
+		expect(plateauFloor).toBeDefined();
+		expect(plateauFloor.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(plateauFloor.position.y).toBeCloseTo(yHigh, 4);
+	});
+
+	it('rests cover boxes on sampleFloorY in the canyon', () => {
+		const layout = sunkenCanyonFixture();
+		const result = buildDungeon(mockScene(), layout);
+		for (const c of layout.cover) {
+			const floorY = sampleFloorY(layout, c.x, c.z);
+			const mesh = result.meshes.find(m =>
+				m.position.x === c.x && m.position.z === c.z &&
+				m.geometry?.parameters?.height === c.height
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY + c.height / 2, 4);
+		}
+	});
+
+	it('buildWallColliders includes cover footprints', () => {
+		const layout = sunkenCanyonFixture();
+		const colliders = buildWallColliders(layout);
+		expect(colliders.length).toBe(layout.cover.length);
+	});
+
+	it('renders server-generated sunken-canyon with treasure marker on canyon floor', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		const result = buildDungeon(mockScene(), layout);
+		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
+		const marker = findTreasureMarker(result.meshes);
+		expect(marker).toBeDefined();
+		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(marker.position.y).toBeCloseTo(
+			(sampleFloorY(layout, treasureRoom.x, treasureRoom.z) ?? DEFAULT_FLOOR_Y) + 0.75,
+			4
+		);
+		// ground + room floors + perimeter walls + cover + treasure marker
+		expect(result.meshes.length).toBeGreaterThanOrEqual(
+			1 + layout.rooms.length + layout.cover.length + 1
+		);
 	});
 });
