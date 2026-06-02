@@ -1,0 +1,20 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket wires the 7 committed placeholder `.glb` models (4 enemies + 3 minions) into `MODEL_REGISTRY` and adds bounding-box scale/ground normalization in the renderer. It fully satisfies the acceptance criteria:
+
+**Runtime health (gate):** Clean. `metrics.json` shows `ok: true`, empty `pageerrors`, no harness failure; `console.log` has no page/fatal errors and — tellingly — **no** `[models] failed to load` warnings, which confirms all 7 GLBs resolved. Captures show enemies rendering with procedural cones swapped out.
+
+**Per-criterion:**
+1. Registry maps all 7 keys to the correct `/models/*.glb` paths; all files exist on disk (CC0). ✓
+2. `normalizeRegistryModel` scales uniformly to the primitive's height and grounds the model's scaled bbox-min to the primitive's local base — math verified, feet land on the floor. ✓
+3. Player stays `null`/procedural. ✓
+4. `loadModel` resolves null on failure (never throws) and falls back to procedural; game loads cleanly. ✓
+5. Full suite: **1482 tests passed, 0 failed**; capture shows live enemies. ✓
+
+No debug scenario added; no design.md/requirements regressions.
+
+**Non-blocking nits** (filed to `nits.md`): minion meshes weren't visually exercised in the smoke capture (none summoned — same tested code path as enemies), and placeholder models read dark under current lighting.
+
+Wrote `review.md` and `nits.md`; did not write `gaps.md` (PASS). No game code, git, or TASKS.md touched.

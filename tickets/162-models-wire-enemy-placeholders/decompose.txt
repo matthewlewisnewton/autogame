@@ -1,0 +1,10 @@
+I broke the top-level ticket into 2 sub-tickets in dependency order.
+
+**Why this split:** The model-loading infrastructure from ticket 161 already exists — `attachRegistryModel` is already wired into both `createEnemyMesh` and `createMinionMesh`, but every `MODEL_REGISTRY` path is `null` and the swap applies no scale/ground normalization. So the work is "fill in paths + add normalization." The normalization mechanism is shared, so it lands once (in the enemy sub-ticket) and the minion sub-ticket reuses it.
+
+**Verification mode — `code` for both** (not `visual`, despite the top-level ticket): the acceptance criteria mix structural/logic checks ("registry maps keys to files", "fallback preserved", "player stays null", "tests pass") with the look-check. The visual QA capture only runs the lobby happy-path (two players join + WASD) and would not reliably spawn dungeon enemies/minions on screen, so `visual` would fail forever. `code` QA reads the full diff + logs and can confirm the paths, the bounding-box scale/ground logic, and the preserved fallback.
+
+Sub-tickets created:
+
+- `/home/matt/workspace/.autogame-worktrees/162-models-wire-enemy-placeholders/tickets/162-models-wire-enemy-placeholders/subtickets/01-enemy-models-and-normalization/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/162-models-wire-enemy-placeholders/tickets/162-models-wire-enemy-placeholders/subtickets/02-minion-models/ticket.md`

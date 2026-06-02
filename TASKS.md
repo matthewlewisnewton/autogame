@@ -64,3 +64,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [193-cleanup-character-customization-client-panel](tickets/193-cleanup-character-customization-client-panel/)
 - [ ] [194-cleanup-key-item-smoke-bomb](tickets/194-cleanup-key-item-smoke-bomb/)
 - [ ] [195-cleanup-docs-design-md-stale-fixes](tickets/195-cleanup-docs-design-md-stale-fixes/)
+- [ ] [196-cleanup-models-wire-enemy-placeholders](tickets/196-cleanup-models-wire-enemy-placeholders/)

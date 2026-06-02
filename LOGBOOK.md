@@ -2424,3 +2424,26 @@ mounts from the same module graph that loaded without error.)
 
 None blocking. Runtime capture is clean; all top-level acceptance criteria are satisfied for the scoped doc-only work.
 
+
+## v0.143 — Models: Wire enemy + minion placeholders into the registry  (2026-06-02 16:38:00)
+
+
+### 5. Existing tests pass; capture shows new meshes — PASS
+Ran the full client+server vitest suite: **63 files / 1482 tests passed, 0
+failed** (the wrapper's exit-1 was the pipeline/timeout, not a test failure).
+Capture shows live enemies rendering with procedural cones swapped out and no
+load errors. (Minions were not summoned during the deterministic smoke capture —
+`minions: []` — so minion meshes were not visually exercised, but they share the
+identical, tested `attachRegistryModel`/`normalizeRegistryModel` code path.)
+
+## Consistency / regression
+- No `game/docs/design.md` or `requirements.md` constraints are violated; the
+  diff is limited to `models.js` + `renderer.js` (plus sub-ticket docs).
+- No debug scenario was added or changed (`debugScenario` is the pre-existing
+  null path).
+
+## Remaining gaps
+None blocking. The placeholder models render somewhat dark/subtle under current
+lighting and minion meshes weren't visually captured — both noted in `nits.md`
+as non-blocking follow-ups.
+
