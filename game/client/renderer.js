@@ -88,6 +88,7 @@ import {
 	cameraYawFromToTarget,
 } from './lockOn.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled } from './settings.js';
+import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -250,6 +251,47 @@ const MINION_VISUAL = {
 	},
 };
 
+/**
+ * Consult MODEL_REGISTRY for `key` and, when a model path is configured, kick off
+ * an async load and swap the cloned model in for the procedural primitive on
+ * success. This is fire-and-forget: callers build + return their procedural
+ * mesh/group synchronously, and this only mutates it later if/when a model
+ * resolves. In this sub-ticket every registry path is null, so the early return
+ * always fires and visuals are byte-identical to before.
+ *
+ * Resilience: a null/absent path is a no-op (procedural stays); a rejected or
+ * null `loadModel` result leaves the procedural mesh in place and at most logs —
+ * it never throws, never removes the host, and never blocks the render loop.
+ *
+ * @param {string} key - registry key (e.g. 'player', 'grunt', 'magic_stone').
+ * @param {THREE.Object3D} host - the procedural mesh/group already returned.
+ */
+function attachRegistryModel(key, host) {
+	// Unknown keys can't map to a model; skip without touching the registry.
+	if (!host || !Object.prototype.hasOwnProperty.call(MODEL_REGISTRY, key)) return;
+
+	const path = modelPathFor(key);
+	if (!path) return; // null/absent path → keep procedural (the only path this ticket).
+
+	// Snapshot the procedural meshes now so a later swap hides only the
+	// primitives, not the model we're about to attach.
+	const procedural = [];
+	host.traverse((node) => {
+		if (node.isMesh && node.material) procedural.push(node);
+	});
+
+	loadModel(path)
+		.then((model) => {
+			if (!model) return; // load failed/returned null → procedural stays (warned in models.js).
+			for (const node of procedural) node.material.visible = false;
+			host.add(model);
+			host.userData.modelOverride = model;
+		})
+		.catch((err) => {
+			console.warn(`[renderer] failed to apply model "${path}" for "${key}":`, err);
+		});
+}
+
 function createMinionMesh(minionType) {
 	const visual = MINION_VISUAL[minionType] || {
 		shape: 'cylinder',
@@ -278,6 +320,7 @@ function createMinionMesh(minionType) {
 	if (visual.scale) {
 		mesh.scale.setScalar(visual.scale);
 	}
+	attachRegistryModel(minionType, mesh);
 	return mesh;
 }
 
@@ -675,6 +718,7 @@ function createLootMesh(item) {
 		group.add(ring);
 
 		group.position.set(item.x, 0, item.z);
+		attachRegistryModel(kind, group);
 		return group;
 	}
 
@@ -687,6 +731,7 @@ function createLootMesh(item) {
 	mesh.position.set(item.x, baseY, item.z);
 	mesh.userData.isCrystal = isCrystal;
 	mesh.userData.lootKind = kind;
+	attachRegistryModel(kind, mesh);
 	return mesh;
 }
 
@@ -1200,6 +1245,8 @@ export function createPlayerAvatar(cosmetic, isSelf) {
 	group.userData.baseColor = bodyHex;
 	group.userData.cosmeticKey = cosmeticSignature(c);
 
+	attachRegistryModel('player', group);
+
 	return group;
 }
 
@@ -1591,6 +1638,7 @@ export function createEnemyMesh(type) {
 	const mesh = new THREE.Mesh(geo, mat);
 	mesh._origEmissive = def.emissive != null ? def.emissive : 0x000000;
 	mesh._origEmissiveIntensity = def.emissiveIntensity != null ? def.emissiveIntensity : 0;
+	attachRegistryModel(type, mesh);
 	return mesh;
 }
 
