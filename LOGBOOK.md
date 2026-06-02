@@ -2332,3 +2332,26 @@ foundation regressed.
 
 None blocking. (See `nits.md` for minor non-blocking follow-ups.)
 
+
+## v0.129 — 183-character-customization-client-panel  (2026-06-02 13:30:04)
+
+  the avatar without a save or reload (rotation preserved across rebuilds).
+- **Init from cache, lifecycle-safe** — ✅ `openCosmeticPreview` runs on
+  `openAccountOverlay` (after unhide, so the canvas has layout size);
+  `closeCosmeticPreview` on close cancels the RAF and disposes renderer + avatar
+  GPU resources. `closePreview()` is idempotent and called at the top of
+  `openPreview()`, so repeated open/close neither leaks meshes nor stacks loops.
+- **Self-contained** — ✅ Own `Scene`/`PerspectiveCamera`/`WebGLRenderer` and
+  lights; does not touch the main scene, camera, or render loop.
+
+### Consistency / regressions
+- Diff is 100% client-side (`game/client/*`); no server, shared, or net code
+  touched — no regression to the foundation. Consistent with `cosmetic.js`
+  validation contract and `design.md` cosmetic profile.
+- No debug scenarios added or changed by this ticket.
+
+## Remaining gaps
+
+None blocking. The acceptance criteria are fully and robustly met and the
+captured run is clean.
+

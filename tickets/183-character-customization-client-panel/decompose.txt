@@ -1,0 +1,20 @@
+I've read all the context. Here's the situation:
+
+**Existing sub-tickets — both DONE (`.passed` present):**
+- `01-customization-panel-controls-and-save` ✅
+- `02-customization-live-3d-preview` ✅
+
+**The single open "gap" is purely capture infrastructure, not game code.** The full review (`round-1/review.md`) is unambiguous:
+
+- `metrics.json` → `ok:false`, `failure_kind: "capture_failed"`, with `capture_diagnosis.detected: []`.
+- Both dev servers vanished mid-run: vite `:5173` reported "server connection lost" and `:3000` returned `ERR_CONNECTION_REFUSED`; `port_holders` shows both ports empty.
+- **Zero page errors**, clean server startup with no crash trace.
+- The ticket's diff is **100% client-side** (`game/client/*`) — it touches no server code, so the `:3000` server disappearing cannot be caused by it.
+- Per-criterion, every acceptance criterion of both sub-tickets is satisfied; the review states "Were the capture to have succeeded, the code would have passed."
+- The review's own remediation instruction: *"The next round should **re-run the capture**, not edit `game/`."*
+
+**Decision: I am creating no new sub-tickets.**
+
+There is no code gap to close. A sub-ticket can only modify `game/` code, but the review explicitly establishes that `game/` is correct and must not be edited — fabricating a sub-ticket would force needless (and likely harmful) changes to already-passing code, and could not fix a harness capture flake regardless. The two existing `.passed` sub-tickets together fully deliver the top-level ticket; the only outstanding action is a harness-operator capture re-run, which is outside the planner's scope.
+
+**Sub-ticket folders created this round: none.**

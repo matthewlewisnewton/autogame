@@ -1,0 +1,19 @@
+Review complete. **VERDICT: FAIL.**
+
+## Summary
+
+The ticket fails the runtime-health gate: the captured run did not complete cleanly (`metrics.json` → `"ok": false`, `failure_kind: "capture_failed"`), so there is no runnable proof of the game with this ticket applied. Per the rules, that is an automatic FAIL regardless of code quality.
+
+**Crucially, this is an infrastructure/capture flake, not a code defect:**
+- `pageerrors` is empty — no uncaught browser exceptions.
+- The signature is both dev servers vanishing mid-run: vite `server connection lost` + `net::ERR_CONNECTION_REFUSED`, with `port_holders` showing `:5173` and `:3000` both empty.
+- `server.log` shows a clean start and then just stops — no crash trace.
+- The diff is **100% client-side**, so the game server (:3000) dropping out cannot be caused by this ticket, and the smoke flow never even opens the customization panel.
+
+So `gaps.md` contains a single **infra** gap steering the next round to **re-run the capture, not edit `game/`** — churning on the code would be wasted effort.
+
+**The code itself is sound and fully meets every acceptance criterion** of both sub-tickets (controls, cosmetic caching + `getAccountCosmetic`, sync/persist via `patchProfile`, error surfacing, `#RRGGBB`/enum validity; and the self-contained live preview reusing `createPlayerAvatar` with proper open/close resource teardown). Client defaults and the shape enum exactly mirror `game/server/cosmetic.js`; 209 unit tests pass. It would have passed on a clean capture.
+
+Two minor non-blocking nits (JSDoc omission, duplicated 180px canvas dimension) are filed in `nits.md`.
+
+Files written: `review.md`, `gaps.md`, `nits.md`. No game code or git state was modified.
