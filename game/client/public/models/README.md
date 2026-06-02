@@ -22,11 +22,13 @@ Author-facing summary for 3D assets served from `/models/…` on the Vite client
 | **Morph names** | Exactly: `height`, `headSize`, `torsoWidth`, `armLength`, `legLength`, `shoulderWidth` |
 | **Morph range** | Influence **0.0–1.0**, neutral **0.5** (see `MODEL_SPIKE.md`) |
 
-Import source for the spike: **Quaternius Universal Base Characters — Regular Male** ([`SPIKE_DECISION.md`](../../../docs/SPIKE_DECISION.md)). Sub-ticket **02** commits the normalized `.glb`; sub-ticket **03** adds morph targets.
+Import source: **Quaternius Universal Base Characters — Superhero Male** (`Superhero_Male_FullBody.gltf` from the CC0 Standard zip; see [`SPIKE_DECISION.md`](../../../docs/SPIKE_DECISION.md)). The free Standard tier ships Superhero/Teen previews only—**Regular Male** lives in the paid Source zip; swap the import path in `scripts/normalize-player-glb.mjs` when that asset is available. Sub-ticket **03** adds morph targets.
 
 ### Head anchor (hats)
 
-Document here when `player.glb` is committed: **bone name** (e.g. `Head`) or **model-space offset** from the feet origin for hat attachment (ticket **190**). Procedural avatars today seat hats at ~**0.5** units on a ~1-unit body; the 1.8 m hero should place the anchor near the scalp (~**1.65–1.75** m Y).
+Attach hat `.glb` files to skinned bone **`Head`** (Mixamo-style rig). After normalization, the bone origin sits at about **(0, 1.59, 0)** model-space units (feet at **y = 0**; top of scalp ~**1.82**). Ticket **190** can parent hats to `Head` without per-hat offsets.
+
+**T-pose overhang:** At **y ≈ 0.9** m the body fits inside collision radius **0.5**; outstretched arms span ~**1.86** m on **X** (expected for T-pose; only torso width is collision-clamped).
 
 ## Other models
 
