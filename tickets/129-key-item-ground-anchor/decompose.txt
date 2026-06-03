@@ -1,0 +1,11 @@
+Created 1 sub-ticket. The `ground_anchor` feature is small, cohesive, and entirely code-verifiable (handler exists, cooldown value, knockback no-op timing, speed multiplier), so I scoped it as a single focused pass rather than splitting.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/129-key-item-ground-anchor/tickets/129-key-item-ground-anchor/subtickets/01-ground-anchor-knockback-immunity-and-slow/ticket.md`
+
+Key findings that shaped it:
+- No player-knockback path exists today (`applyKnockback` only displaces enemies), so the sub-ticket adds a guarded `applyPlayerKnockback` helper rather than "hooking" a non-existent one.
+- Move-speed modifiers already live in the server tick (`simulation.js:315-317`), so the ×0.7 slow plugs in alongside `blockingUntil`/`rallyUntil`.
+- The existing `key-items.test.js` asserts `ground_anchor` → `not_implemented`; flagged it for update so it doesn't become a stale failure.
+- The `progression.js` def currently has placeholder `durationMs:4000`/`cooldownMs:15000`; spec'd correcting them to the ticket's ~1.5s / ~6s.
