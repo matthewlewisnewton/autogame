@@ -12,3 +12,6 @@ tmp/
 
 # CLI output capture under tests/ that real CLIs would create
 tests/fixtures/cli_outputs/*-out.txt
+
+# Track harness/package-lock.json despite the repo-root **/package-lock.json rule.
+!package-lock.json
