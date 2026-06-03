@@ -337,10 +337,19 @@ function fallbackRecipe() {
   // This runs AFTER the base fallback steps execute — the existing pages are
   // still alive and in gameplay, so we can emitScenario on player A.
   const ticket = inferTicketFile() ? readText(inferTicketFile(), 8000) : '';
-  const isSlopeTicket = /slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
-                        /sloped|142/.test(outDirAbs);
-  const isFlareBeaconTicket = /flare[-_]?beacon|revealedUntil|152-cleanup-key-item-flare-beacon/i.test(ticket) ||
-                              /flare|152-cleanup-key-item-flare-beacon/i.test(outDirAbs);
+  const isWorldStageTicket = /world[-_ ]?stage|sunken[-_ ]?canyon|portal[-_ ]?transition|178-qa-world-stage/i.test(ticket) ||
+                             /world[-_]?stage|sunken[-_]?canyon|portal[-_]?transition|178-qa-world-stage/i.test(outDirAbs);
+  // Guard flare/slope detection with !isWorldStageTicket: this sub-ticket's own
+  // prose describes the flare-beacon and slope branches, so their regexes match
+  // the ticket text and would otherwise shadow the world-stage branch below.
+  // For an actual flare/slope ticket isWorldStageTicket is false, so the guard
+  // is a no-op and their behavior is unchanged.
+  const isSlopeTicket = !isWorldStageTicket &&
+                        (/slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
+                         /sloped|142/.test(outDirAbs));
+  const isFlareBeaconTicket = !isWorldStageTicket &&
+                              (/flare[-_]?beacon|revealedUntil|152-cleanup-key-item-flare-beacon/i.test(ticket) ||
+                               /flare|152-cleanup-key-item-flare-beacon/i.test(outDirAbs));
 
   let steps = baseSteps;
   let summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.';
@@ -372,6 +381,35 @@ function fallbackRecipe() {
       { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
     ];
     summary = 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.';
+  } else if (isWorldStageTicket) {
+    steps = [
+      ...baseSteps,
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '05-before-world-stage',
+        description: 'Default stage in gameplay BEFORE the world-stage transition.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        description: 'Before world-stage transition: record starting harnessState.layout (profile is the default/crowded profile, roomCount, startRoom) and player x/z.',
+      },
+      { action: 'emitScenario', player: 'A', scenario: 'sunken-canyon-stage' },
+      { action: 'wait', player: 'A', ms: 2000 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '06-after-sunken-canyon',
+        description: 'New sunken-canyon stage AFTER the questUpdate layout swap from sunken-canyon-stage.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        description: 'After world-stage transition: assert harnessState.layout.profile === "sunken-canyon" (changed from the before value) and that player x/z matches the new layout startRoom.',
+      },
+    ];
+    summary = 'Deterministic full-flow smoke capture with world-stage fallback: auth, lobby, ready, movement, then before/after screenshots and probes around the sunken-canyon-stage portal transition (default -> sunken-canyon layout swap).';
   } else {
     summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.';
   }
