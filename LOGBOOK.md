@@ -3090,3 +3090,26 @@ Pass. This ticket uses the existing `telepipe-ready` debug scenario as a QA shor
 
 None.
 
+
+## v0.175 — 174-gameplay-survive-objective  (2026-06-03 12:58:52)
+
+  untouched by the diff). Re-running `account.test.js` in isolation passes
+  **10/10**. This is pre-existing test-infra flakiness, not a regression from
+  this ticket, and does not block.
+
+## Design / requirements consistency
+
+Consistent. The change is purely additive — a new quest + an additive objective-
+type branch alongside the existing `collect_items`/`defeat_enemies` branches. No
+existing behavior is altered for the other objective types; the foundation in
+`requirements.md` is not regressed.
+
+## Debug scenarios
+
+None added or changed by this ticket. The `survive` end-state is reached purely
+through normal gameplay (select `endless_siege` on the quest board → start run).
+
+## Remaining gaps
+
+None blocking. (See `nits.md` for minor, non-blocking polish.)
+
