@@ -3292,7 +3292,7 @@ describe('Key Items equip UI', () => {
 			id: 'dodge_roll',
 			name: 'Dodge Roll',
 			description: 'Quick roll forward with brief invincibility frames',
-			cooldownMs: 800,
+			cooldownMs: 1200,
 		},
 		summon_recall: {
 			id: 'summon_recall',

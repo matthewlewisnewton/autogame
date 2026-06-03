@@ -215,8 +215,8 @@ describe('Dodge Roll — unit tests', () => {
 		const def = KEY_ITEM_DEFS.dodge_roll;
 		const expectedCooldownUntil = now + def.cooldownMs;
 
-		expect(def.cooldownMs).toBe(800);
-		expect(expectedCooldownUntil).toBe(frozenNow + 800);
+		expect(def.cooldownMs).toBe(1200);
+		expect(expectedCooldownUntil).toBe(frozenNow + 1200);
 
 		vi.useRealTimers();
 	});

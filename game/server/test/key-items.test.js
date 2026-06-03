@@ -51,7 +51,7 @@ describe('getKeyItemDef()', () => {
 		const def = getKeyItemDef('dodge_roll');
 		expect(def).toBeDefined();
 		expect(def.id).toBe('dodge_roll');
-		expect(def.cooldownMs).toBe(800);
+		expect(def.cooldownMs).toBe(1200);
 		expect(def.type).toBe('movement');
 	});
 
@@ -235,7 +235,7 @@ describe('useKeyItem socket handler', () => {
 
 		// Verify the player's cooldown was actually set
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(Date.now());
-		// dodge_roll has 800ms cooldown
+		// dodge_roll has 1200ms cooldown
 		expect(player.keyItemCooldownUntil - result.cooldownUntil).toBe(0);
 	});
 

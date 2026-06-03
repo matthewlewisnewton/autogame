@@ -566,7 +566,7 @@ const KEY_ITEM_DEFS = {
     id: 'dodge_roll',
     name: 'Dodge Roll',
     description: 'Quick roll forward with brief invincibility frames',
-    cooldownMs: 800,
+    cooldownMs: 1200,
     type: 'movement',
     invincibleDurationMs: 300,
     rollDistanceMs: 200,

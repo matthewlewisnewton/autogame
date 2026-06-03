@@ -24,6 +24,7 @@ The harness will validate and execute only these actions:
 - move: hold one WASD key. Required-ish fields: player, key, durationMs.
 - pressCard: press key 1-4 for a card slot. Fields: player, slot, cardType (optional — card type name to resolve slot dynamically), ms.
 - clickSlot: click a card slot. Fields: player, slot, ms.
+- useKeyItem: press the key-item binding (default E) during gameplay. Fields: player, key? (optional single letter, default "e"), ms? (post-press settle wait, default 400).
 - wait: bounded wait. Fields: player, ms.
 - screenshot: save a screenshot. Fields: player, name, description.
 - probe: collect DOM/game-state metrics. Fields: player, description.
