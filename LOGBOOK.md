@@ -3178,3 +3178,26 @@ through normal gameplay (select `endless_siege` on the quest board → start run
 
 None blocking. (See `nits.md` for minor, non-blocking polish.)
 
+
+## v0.177 — 162-cleanup-split-usecard-socket-handler  (2026-06-03 13:45:53)
+
+
+- `metrics.json` has `"ok": true`.
+- `metrics.json` has an empty `pageerrors` array.
+- `console.log` contains no `pageerror` or `[fatal]` entries from game code.
+- The fallback smoke capture reached lobby, entered gameplay, moved the player, and used dodge roll with cooldown HUD state visible in probes.
+
+Coverage/test evidence is also clean: `coverage.log` reports `36` test files passed and `882` tests passed. `git diff --check` reported no whitespace errors.
+
+### Design and requirements consistency
+
+Pass. The refactor is internal to server dispatch and keeps the documented action-RPG loop intact: authenticated clients can join lobbies, enter dungeon play, move, use cards/key items, and receive synchronized state updates. The captured probes confirm the foundation requirements still hold: a rendered scene exists, sockets connect, multiplayer lobby/game state is present, and movement/key-item state syncs through the server.
+
+### Debug scenarios
+
+Pass. This ticket moves the debug-scenario setup chain but does not introduce a new normal-gameplay entry point. Debug scenarios still enter through the `debugScenario` socket event and are guarded by `isDebugScenarioAllowed`; the normal captured flow has `debugScenario: null`. The scenario code remains server-side and continues to build state through the same lobby/game state structures rather than weakening normal card/key-item validation paths.
+
+## Remaining gaps
+
+None.
+

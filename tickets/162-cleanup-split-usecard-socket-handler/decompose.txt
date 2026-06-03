@@ -1,0 +1,12 @@
+I broke the top-level ticket into 3 sub-tickets, one per bloated handler. Each is an independent, behavior-preserving extraction into its own module under `game/server/`, following the established `simulation.js` setter-injection + index.js re-export seam, and each is verified by the existing per-effect test suite (`code` verification, since it's a refactor with no visual surface).
+
+Sub-ticket folders created:
+
+- `tickets/162-cleanup-split-usecard-socket-handler/subtickets/01-extract-usecard-dispatch/ticket.md` — `useCard` (~885 lines, ~36 type/effect branches) → `game/server/cardEffects.js`
+- `tickets/162-cleanup-split-usecard-socket-handler/subtickets/02-extract-usekeyitem-dispatch/ticket.md` — `useKeyItem` (~510 lines) → `game/server/keyItemEffects.js`
+- `tickets/162-cleanup-split-usecard-socket-handler/subtickets/03-extract-debug-scenarios/ticket.md` — `applyDebugScenario` (~340 lines) → `game/server/debugScenarios.js`
+
+Notes on the scoping decisions:
+- **One sub-ticket per handler, not finer.** `useCard`'s branch order is load-bearing and it's a single closure; splitting its branches across passes would mean repeated edits to the same function and merge churn. Each handler is cohesive and extractable in one focused pass.
+- **No `.passed` folders existed**, so nothing was preserved or retired; these are all new at numbers 01–03.
+- Each ticket pins the exact files to touch (`index.js` + one new module) to stay inside QA's scope check, and explicitly requires preserving the index.js export surface that `test/*.test.js` imports.
