@@ -3022,6 +3022,59 @@ describe('connect watchdog', () => {
 		vi.advanceTimersByTime(10000);
 		expect(window.__connectionState()).toBe('connected');
 	});
+
+	it('escalates after the original window despite a rapid retry loop faster than CONNECT_WATCHDOG_MS', async () => {
+		await import('../main.js');
+
+		// Build a fresh socket that records both socket-level and io-level
+		// handlers so we can drive reconnect_attempt (an io-level event), which
+		// the default mock harness does not register.
+		const freshSocket = {
+			id: 'rapid-retry-socket',
+			connected: true,
+			_handlers: {},
+			on(event, cb) {
+				(this._handlers[event] || (this._handlers[event] = [])).push(cb);
+				return this;
+			},
+			emit() { return this; },
+			disconnect() { return this; },
+			io: {
+				_handlers: {},
+				on(event, cb) {
+					(this._handlers[event] || (this._handlers[event] = [])).push(cb);
+					return this;
+				},
+				disconnect() { return this; },
+			},
+		};
+		window.bindSocketHandlers(freshSocket);
+
+		const fire = (event, data) => {
+			for (const cb of (freshSocket._handlers[event] || [])) cb(data);
+			for (const cb of (freshSocket.io._handlers[event] || [])) cb(data);
+		};
+
+		// Rapid retry loop: a non-auth signal every 3s — well under the 10s
+		// CONNECT_WATCHDOG_MS window. The first signal arms the absolute
+		// deadline; the rest must NOT postpone it. Under the old reset-on-every-
+		// signal behavior this loop would never escalate.
+		fire('connect_error', 'boom');      // t=0: episode begins, deadline at t=10000
+		vi.advanceTimersByTime(3000);       // t=3000
+		fire('reconnect_attempt');
+		vi.advanceTimersByTime(3000);       // t=6000
+		fire('connect_error', 'boom');
+		vi.advanceTimersByTime(3000);       // t=9000
+		fire('reconnect_attempt');
+		vi.advanceTimersByTime(2000);       // t=11000 — past the original window
+
+		// The absolute deadline fired and escalated to the persistent failure
+		// surface despite signals arriving faster than CONNECT_WATCHDOG_MS.
+		expect(window.__connectionState()).toBe('disconnected');
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+		expect(statusEl.innerText).toBe('Connection failed — reload to retry');
+	});
 });
 
 describe('run summary card choices', () => {

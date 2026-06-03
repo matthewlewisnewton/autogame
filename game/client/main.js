@@ -812,8 +812,9 @@ function bindSocketHandlers(s) {
 
 	s.io.on('reconnect_attempt', () => {
 		updateStatus('Reconnecting...', 'reconnecting');
-		// Idempotent (clears any prior timer first) so a stalled reconnect loop
-		// still escalates to the persistent failure surface.
+		// Idempotent: the first signal in an episode arms an absolute deadline;
+		// rapid repeated reconnect attempts do NOT postpone it, so a stalled
+		// reconnect loop still escalates to the persistent failure surface.
 		startConnectWatchdog();
 	});
 
@@ -848,7 +849,9 @@ function bindSocketHandlers(s) {
 		} else {
 			updateStatus('Connection failed — retrying...', 'reconnecting');
 			// Ensure the watchdog is running so a persistent non-auth connect
-			// failure escalates instead of retrying transiently forever.
+			// failure escalates instead of retrying transiently forever. The
+			// call is idempotent: rapid repeated connect_error events do NOT
+			// reset the absolute deadline armed by the first failure.
 			startConnectWatchdog();
 		}
 	});
@@ -1590,12 +1593,20 @@ function stopHeartbeat() {
 }
 
 /**
- * Start (or restart) the connect watchdog. If the socket fails to reach
- * `connect` within CONNECT_WATCHDOG_MS, escalate from the transient
- * "retrying..." status to a clear, persistent connection-failed error.
+ * Start the connect watchdog. If the socket fails to reach `connect` within
+ * CONNECT_WATCHDOG_MS, escalate from the transient "retrying..." status to a
+ * clear, persistent connection-failed error.
+ *
+ * Idempotent while a timer is already pending: this enforces an ABSOLUTE
+ * deadline per failure episode. In a rapid retry loop, failures can arrive
+ * faster than CONNECT_WATCHDOG_MS; if every signal reset the timer the deadline
+ * would never be reached and the user would sit in transient status forever.
+ * The first call in an episode sets the deadline; subsequent calls leave it
+ * intact. A clean recovery (`connect`/`reconnect`) clears the timer via
+ * clearConnectWatchdog(), so the next failure re-arms a fresh deadline.
  */
 function startConnectWatchdog() {
-	clearConnectWatchdog();
+	if (connectWatchdogTimer) return;
 	connectWatchdogTimer = setTimeout(() => {
 		connectWatchdogTimer = null;
 		// Reaching here means neither `connect` nor `reconnect` fired in time —
