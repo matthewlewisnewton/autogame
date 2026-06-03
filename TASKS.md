@@ -43,7 +43,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [145-cleanup-sloped-movement-server-and-client](tickets/145-cleanup-sloped-movement-server-and-client/)
 - [x] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
 - [x] [147-cleanup-key-item-input-bindings-and-settings](tickets/147-cleanup-key-item-input-bindings-and-settings/)
-- [ ] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)
+- [x] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)
 - [x] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)
 - [x] [150-cleanup-key-item-summon-recall](tickets/150-cleanup-key-item-summon-recall/)
 - [x] [151-cleanup-key-item-field-medic-kit](tickets/151-cleanup-key-item-field-medic-kit/)

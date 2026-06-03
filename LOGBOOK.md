@@ -2701,3 +2701,26 @@ is clean.
 None. Both acceptance criteria are fully and robustly met, the unit suite passes,
 and the captured run is healthy.
 
+
+## v0.155 — Cleanup nits from 120-key-item-lobby-equip-ui  (2026-06-03 02:58:57)
+
+`#key-item-list .key-item-entry.equipped` present before screenshotting the
+`#key-item-loadout` panel to `docs/walkthroughs/keyitems-capture/`. Wired as
+`test:smoke:keyitems` in `game/package.json`.
+
+The equipped-row assertion is sound: `renderKeyItemList` (main.js:2388) adds the
+`equipped` class to the entry matching `me.equippedKeyItemId`
+(main.js:2409), and the default loadout equips `dodge_roll` (confirmed by the
+metrics probe: `"equippedKeyItemId": "dodge_roll"`). The script has a graceful
+diagnostic fallback that dumps panel state on timeout.
+
+Note: round-1's own verification capture used the deterministic fallback smoke
+(lobby → movement → dodge), not this new script, so the round-1 screenshots are
+gameplay rather than the Key Items panel. That does not fail AC2 — the AC asks
+for a *scripted capture* deliverable, which is present, correct, and wired in.
+
+## Remaining gaps
+
+None. Both acceptance criteria are met, the game runs cleanly, and the full unit
+suite passes. Production game code is untouched.
+

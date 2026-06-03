@@ -1,0 +1,11 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/148-cleanup-key-item-lobby-equip-ui/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/148-cleanup-key-item-lobby-equip-ui/game/data
+Server listening on port 3001
+Player connected: socket=bTeRg-9bb8Qq2sP_AAAB, playerId=49d94007-c096-4d30-b336-05e6b60080f7
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=H5nrMpJpnIDrQdx9AAAD, playerId=25c6bd79-9499-4252-afb7-8aee14e240f1
+Player disconnected: bTeRg-9bb8Qq2sP_AAAB
+Player disconnected: H5nrMpJpnIDrQdx9AAAD
