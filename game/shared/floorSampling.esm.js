@@ -5,6 +5,17 @@
 export const DEFAULT_FLOOR_Y = 0.5;
 
 /**
+ * Canonical fallback for `sampleFloorY` results: returns a concrete Y height.
+ * Non-finite values and `null` map to `DEFAULT_FLOOR_Y`.
+ *
+ * @param {number|null} sampled - result from `sampleFloorY`, or any Y candidate
+ * @returns {number} finite Y height
+ */
+export function resolveFloorY(sampled) {
+	return Number.isFinite(sampled) ? sampled : DEFAULT_FLOOR_Y;
+}
+
+/**
  * Return the walkable surface Y height at world (x, z) using bilinear
  * interpolation of the containing room's floorCorners.
  *

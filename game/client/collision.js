@@ -6,9 +6,17 @@ const PLAYER_RADIUS = 0.5;
 
 // ── Floor Height Sampling (re-exported from shared module) ──
 
-import { sampleFloorY as _sampleFloorY, DEFAULT_FLOOR_Y as _DEFAULT_FLOOR_Y } from '../shared/floorSampling.esm.js';
+import {
+	sampleFloorY as _sampleFloorY,
+	DEFAULT_FLOOR_Y as _DEFAULT_FLOOR_Y,
+	resolveFloorY as _resolveFloorY,
+} from '../shared/floorSampling.esm.js';
 
-export { _sampleFloorY as sampleFloorY, _DEFAULT_FLOOR_Y as DEFAULT_FLOOR_Y };
+export {
+	_sampleFloorY as sampleFloorY,
+	_DEFAULT_FLOOR_Y as DEFAULT_FLOOR_Y,
+	_resolveFloorY as resolveFloorY,
+};
 
 /**
  * Compute the axis-aligned bounding box for a wall segment.
