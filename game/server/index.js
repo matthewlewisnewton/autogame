@@ -892,6 +892,18 @@ function applyDebugScenario(socket, name) {
       enemy.wanderTarget = { x: enemy.x, z: enemy.z };
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
+      // The opening hand is drawn from a shuffled deck, so a weapon card is not
+      // guaranteed (~1% of hands have none). Force a fully-charged weapon in so
+      // the lone 1-HP grunt is reliably killable through the real lock-on +
+      // weapon-swing path (the QA smoke depends on this determinism). The same
+      // near-complete state is still reachable normally with whatever hand play
+      // deals; this only fixes the entry hand for the debug shortcut.
+      if (!player.hand.some(c => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+        }
+      }
     } else if (name === 'sloped-dungeon') {
       // Regenerate the dungeon layout with slopes enabled for visual verification.
       // Uses the same seed as the current quest for determinism.

@@ -368,7 +368,7 @@ async function main() {
 		const snapshot = {
 			ok: true,
 			scenario: 'quest-objective-near-complete',
-			before: { objective: before.objective, runObjectiveComplete: before.runObjectiveComplete, enemies: before.player.enemies },
+			before: { objective: before.objective, runObjectiveComplete: before.runObjectiveComplete, enemies: before.enemies },
 			after: { runStatus: after.runStatus, objective: after.objective, runObjectiveComplete: after.runObjectiveComplete },
 			lastRunSummary: summary,
 			harnessState: after,

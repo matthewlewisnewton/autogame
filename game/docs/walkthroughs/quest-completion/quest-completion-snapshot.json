@@ -1,0 +1,229 @@
+{
+  "ok": true,
+  "scenario": "quest-objective-near-complete",
+  "before": {
+    "objective": {
+      "type": "defeat_enemies",
+      "totalEnemies": 1,
+      "defeatedEnemies": 0,
+      "label": "Initiate Vault: Purge hostiles from the derelict annex sector."
+    },
+    "runObjectiveComplete": false,
+    "enemies": 1
+  },
+  "after": {
+    "runStatus": "victory",
+    "objective": {
+      "type": "defeat_enemies",
+      "totalEnemies": 1,
+      "defeatedEnemies": 1,
+      "label": "Initiate Vault: Purge hostiles from the derelict annex sector."
+    },
+    "runObjectiveComplete": true
+  },
+  "lastRunSummary": {
+    "runId": "521c8af7-7967-4fd3-b460-b08df988cbe4",
+    "status": "victory",
+    "durationMs": 908,
+    "questId": "training_caverns",
+    "questName": "Initiate Vault",
+    "objective": {
+      "type": "defeat_enemies",
+      "label": "Initiate Vault: Purge hostiles from the derelict annex sector.",
+      "totalEnemies": 1,
+      "defeatedEnemies": 1
+    },
+    "players": [
+      {
+        "id": "8581c700-784c-4f33-a972-131e02f745bf",
+        "hp": 100,
+        "dead": false,
+        "currency": 10,
+        "rewards": {
+          "currency": 10,
+          "cards": [],
+          "cardChoices": [
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "description": "17 output technique"
+            }
+          ]
+        },
+        "cardChoices": [
+          {
+            "id": "iron_sword",
+            "name": "Rust-Forged Saber",
+            "type": "weapon",
+            "description": "17 output technique"
+          }
+        ]
+      }
+    ],
+    "defeatedEnemies": 1,
+    "currencyCollected": 10,
+    "rewards": {
+      "currency": 10
+    }
+  },
+  "harnessState": {
+    "debugScenario": null,
+    "debugScenarioAllowed": true,
+    "debugScenarioResult": {
+      "ok": true,
+      "scenario": "quest-objective-near-complete"
+    },
+    "objective": {
+      "type": "defeat_enemies",
+      "totalEnemies": 1,
+      "defeatedEnemies": 1,
+      "label": "Initiate Vault: Purge hostiles from the derelict annex sector."
+    },
+    "runObjectiveComplete": true,
+    "lastRunSummary": {
+      "runId": "521c8af7-7967-4fd3-b460-b08df988cbe4",
+      "status": "victory",
+      "durationMs": 908,
+      "questId": "training_caverns",
+      "questName": "Initiate Vault",
+      "objective": {
+        "type": "defeat_enemies",
+        "label": "Initiate Vault: Purge hostiles from the derelict annex sector.",
+        "totalEnemies": 1,
+        "defeatedEnemies": 1
+      },
+      "players": [
+        {
+          "id": "8581c700-784c-4f33-a972-131e02f745bf",
+          "hp": 100,
+          "dead": false,
+          "currency": 10,
+          "rewards": {
+            "currency": 10,
+            "cards": [],
+            "cardChoices": [
+              {
+                "id": "iron_sword",
+                "name": "Rust-Forged Saber",
+                "type": "weapon",
+                "description": "17 output technique"
+              }
+            ]
+          },
+          "cardChoices": [
+            {
+              "id": "iron_sword",
+              "name": "Rust-Forged Saber",
+              "type": "weapon",
+              "description": "17 output technique"
+            }
+          ]
+        }
+      ],
+      "defeatedEnemies": 1,
+      "currencyCollected": 10,
+      "rewards": {
+        "currency": 10
+      }
+    },
+    "myId": "8581c700-784c-4f33-a972-131e02f745bf",
+    "selectedDeck": [
+      "f10844e4-818b-4406-a89b-6e5e4d7570e3",
+      "ff488db2-eca6-4e95-a327-00870e01656c",
+      "6df471f6-893c-4ce9-83d9-96803658112f",
+      "167d0468-97ec-4fef-876b-ffd232337632",
+      "10964d68-f2fd-4012-b05f-3316f39beeb3",
+      "607edc2e-711b-4ce7-b3ed-7f75d662ee20",
+      "f3f9238a-8c24-413c-a072-c671b2302c8b",
+      "2f7fc809-d15e-483e-8d2a-cf49489e493e",
+      "89166be8-2789-4c03-aa68-3c289d167097",
+      "933c6d99-1f1d-4348-b7be-296bb61bc3f7",
+      "f4fafde8-50b9-49df-8990-3a8a6fe265f2",
+      "5f05dbba-5f1f-4207-b48b-34c02000c938"
+    ],
+    "phase": "playing",
+    "runStatus": "victory",
+    "extracted": false,
+    "suspendedRunSummary": null,
+    "telepipe": null,
+    "connectionState": "connected",
+    "sceneInitialized": true,
+    "hasCanvas": true,
+    "lobbyVisible": false,
+    "cardHandVisible": true,
+    "status": "Logged in as quest-completion-1780509391309 · Quest Completion QA",
+    "hpText": "100/100",
+    "msText": "99/99",
+    "currencyText": "Money 10",
+    "player": {
+      "hp": 100,
+      "magicStones": 99,
+      "debugScenario": "quest-objective-near-complete",
+      "dead": false,
+      "x": -9,
+      "z": 9,
+      "equippedKeyItemId": "dodge_roll",
+      "keyItemCooldownRemaining": 0
+    },
+    "keyItemIndicatorOnCooldown": false,
+    "keyItemIndicatorText": "",
+    "players": 1,
+    "enemies": 0,
+    "enemyHp": [],
+    "minions": [],
+    "hand": [
+      {
+        "id": "dungeon_drake",
+        "name": "Vault Wyrm",
+        "type": "creature",
+        "remainingCharges": 1,
+        "charges": 1,
+        "activeMinionId": null,
+        "burnMaxTtl": null,
+        "burnLabel": "1/1",
+        "creatureBurning": false,
+        "isEvolved": false
+      },
+      {
+        "id": "flame_blade",
+        "name": "Solar Edge",
+        "type": "weapon",
+        "remainingCharges": 2,
+        "charges": 3,
+        "activeMinionId": null,
+        "burnMaxTtl": null,
+        "burnLabel": "2/3",
+        "creatureBurning": false,
+        "isEvolved": false
+      },
+      null,
+      {
+        "id": "battle_familiar",
+        "name": "Signal Familiar",
+        "type": "spell",
+        "remainingCharges": 1,
+        "charges": 1,
+        "activeMinionId": null,
+        "burnMaxTtl": null,
+        "burnLabel": "1/1",
+        "creatureBurning": false,
+        "isEvolved": false
+      },
+      {
+        "id": "battle_familiar",
+        "name": "Signal Familiar",
+        "type": "spell",
+        "remainingCharges": 1,
+        "charges": 1,
+        "activeMinionId": null,
+        "burnMaxTtl": null,
+        "burnLabel": "1/1",
+        "creatureBurning": false,
+        "isEvolved": false
+      },
+      null
+    ]
+  },
+  "timestamp": "2026-06-03T17:56:32.867Z"
+}
