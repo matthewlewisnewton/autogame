@@ -3067,3 +3067,26 @@ console errors. No debug scenarios were added or changed.
 
 None blocking. (One minor wording nit recorded in `nits.md`.)
 
+
+## v0.171 — 175-qa-telepipe-suspend-resume  (2026-06-03 11:27:22)
+
+The player position criterion is also covered: after resume the player is at `(-6, 9)` while the restored portal remains at `(-9, 9)`, outside the documented portal radius and therefore not immediately re-extracting.
+
+### Existing server + client tests pass; the game starts and loads cleanly.
+
+Pass. Runtime health is clean: `metrics.json` has `ok: true`, no `harness_failure`, and `pageerrors: []`. `console.log` contains only Vite/debug/init/run messages and no `pageerror` or `[fatal]` entries from game code. Server logs show the expected Telepipe lifecycle: placed, player extracted, checkpoint captured, run suspended, checkpoint restored.
+
+The provided round-3 coverage log reports 3 client test files and 165 tests passing. I also ran `pnpm test:quick`; Vitest reported 71 test files and 1641 tests passed, then the shell process was killed with exit code 137 after the pass summary. I did not see test assertion failures in the output.
+
+### Design and Requirements Consistency.
+
+Pass. The capture aligns with `game/docs/design.md`: Telepipe is consumed mid-run, extracts the solo player, suspends when no active players remain, captures a checkpoint, and restores that checkpoint on the next deploy. The change does not alter the underlying gameplay implementation; it verifies the existing server flow through real socket/UI paths. The foundation requirements remain intact: the capture has a canvas, a connected websocket session, the player represented in 3D state, and server-driven position/state updates.
+
+### Debug Scenario Review.
+
+Pass. This ticket uses the existing `telepipe-ready` debug scenario as a QA shortcut. It remains gated through debug/local paths: the browser URL parameter is localhost-only, and server-side debug scenarios require local/development access or `ALLOW_DEBUG_SCENARIOS=1`. Normal gameplay is still the real path exercised after setup: lobby ready-up deploys the run, the player uses the Telepipe card, server proximity extraction suspends the run, and deploy restores the checkpoint. The scenario does not bypass checkpoint capture, suspend, resume, socket replication, or server validation; it only ensures the player starts with a Telepipe card available for deterministic QA.
+
+## Remaining gaps
+
+None.
+
