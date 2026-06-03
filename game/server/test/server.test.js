@@ -22,6 +22,7 @@ import {
 	createRunState,
 	startDungeonRun,
 	recordEnemyDefeated,
+	isRunObjectiveComplete,
 	getEnemyCardDrop,
 	recordEnemyCardDrop,
 	getEnemyMagicStoneDrop,
@@ -225,7 +226,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'spire_ascent', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'endless_siege', 'spire_ascent', 'training_caverns']);
 
 		for (const quest of Object.values(QUEST_DEFS)) {
 			expect(quest.id).toBeTruthy();
@@ -241,6 +242,11 @@ describe('QUEST_DEFS', () => {
 				if (quest.enemyCount !== undefined) {
 					expect(typeof quest.enemyCount).toBe('number');
 				}
+			}
+			if (quest.objectiveType === 'survive') {
+				expect(typeof quest.totalSpawns).toBe('number');
+				expect(typeof quest.minibossCount).toBe('number');
+				expect(quest.minibossCount).toBeLessThan(quest.totalSpawns);
 			}
 		}
 	});
@@ -2122,6 +2128,56 @@ describe('run state', () => {
 			expect(run.objective.type).toBe('collect_items');
 			expect(run.objective.totalItems).toBe(QUEST_DEFS.crystal_rescue.itemCount);
 			expect(run.objective.collectedItems).toBe(0);
+		});
+
+		it('creates a survive objective for the endless siege quest', () => {
+			gameState.selectedQuestId = 'endless_siege';
+			const run = createRunState();
+
+			const quest = QUEST_DEFS.endless_siege;
+			expect(run.questId).toBe('endless_siege');
+			expect(run.objective.type).toBe('survive');
+			expect(run.objective.totalSpawns).toBe(quest.totalSpawns);
+			expect(run.objective.minibossCount).toBe(quest.minibossCount);
+			expect(run.objective.spawnedEnemies).toBe(0);
+			expect(run.objective.defeatedEnemies).toBe(0);
+			// totalEnemies mirrors totalSpawns so the HUD + completion fallback reuse it
+			expect(run.objective.totalEnemies).toBe(quest.totalSpawns);
+			expect(run.objective.label).toContain(quest.name);
+		});
+	});
+
+	describe('survive objective completion', () => {
+		function makeSurviveRun() {
+			gameState.selectedQuestId = 'endless_siege';
+			gameState.run = createRunState();
+			return gameState.run;
+		}
+
+		it('recordEnemyDefeated increments a survive objective', () => {
+			makeSurviveRun();
+			recordEnemyDefeated(1);
+			recordEnemyDefeated(2);
+			expect(gameState.run.objective.defeatedEnemies).toBe(3);
+		});
+
+		it('completes only after totalSpawns defeats', () => {
+			const run = makeSurviveRun();
+			const total = run.objective.totalSpawns;
+
+			recordEnemyDefeated(total - 1);
+			expect(isRunObjectiveComplete(run.objective)).toBe(false);
+
+			recordEnemyDefeated(1);
+			expect(isRunObjectiveComplete(run.objective)).toBe(true);
+		});
+
+		it('does not affect a different objective type', () => {
+			gameState.selectedQuestId = 'crystal_rescue';
+			gameState.run = createRunState();
+			recordEnemyDefeated(1);
+			expect(gameState.run.objective.collectedItems).toBe(0);
+			expect(gameState.run.objective.defeatedEnemies).toBeUndefined();
 		});
 	});
 

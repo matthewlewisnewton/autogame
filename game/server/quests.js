@@ -45,6 +45,16 @@ const QUEST_DEFS = {
     rewardCurrency: 16,
     layoutProfile: 'spire-ascent',
   },
+  endless_siege: {
+    id: 'endless_siege',
+    name: 'Endless Siege',
+    description: 'Outlast the staggered assault until every attacker has fallen.',
+    objectiveType: 'survive',
+    totalSpawns: 10,
+    minibossCount: 2,
+    rewardCurrency: 20,
+    layoutProfile: 'open-plaza',
+  },
 };
 
 const DEFAULT_QUEST_ID = 'training_caverns';
