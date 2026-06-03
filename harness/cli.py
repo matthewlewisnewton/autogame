@@ -187,8 +187,11 @@ def _cmd_worker(name: str, agent: str) -> int:
         return int(PipelineResult.ESCALATE)
     # The worktree has harness SOURCE but no harness/node_modules — without this
     # `node harness/screenshot.mjs` can't import playwright and every capture
-    # (hence every top-level review's runtime gate) fails. Best-effort link.
-    link_harness_deps(workspace.root)
+    # (hence every top-level review's runtime gate) fails. Link to main when
+    # healthy; otherwise install locally in harness/.
+    if not link_harness_deps(workspace.root):
+        emit_progress_event("worker_setup_failed", {"ticket": name, "agent": agent, "reason": "harness_deps"})
+        return int(PipelineResult.ESCALATE)
 
     def _run():
         return ticket(TicketContext(

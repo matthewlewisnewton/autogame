@@ -1,0 +1,18 @@
+Merge conflicts are resolved in both files.
+
+### `LOGBOOK.md`
+Kept **both** release entries in version order:
+1. **v0.145** — field medic kit cleanup (from `main`)
+2. **v0.146** — enemy/minion model registry wiring (from the ticket branch)
+
+### `harness/dispatch/worktree_setup.py`
+Combined harness Playwright setup from ticket **#151** (`fc7d13f`) and ticket **#162** (`67b51b5`):
+
+| Area | Merge choice |
+|------|----------------|
+| `_harness_playwright_ok` | `modules_dir` param + import-oriented docstring |
+| `_remove_harness_node_modules` | Handles symlinks, regular files, dirs, and other paths |
+| `install_harness_deps` | `pnpm-lock.yaml` gate, post-install playwright check with logging |
+| `link_harness_deps` | Early OK check; remove broken `dst`; **`same_checkout`** guard so serial runs on `main` don’t symlink; main’s `src.exists()` + verify-after-link; diagnostic logs; `pnpm install` fallback; **OSError → install** (from `main`) |
+
+All 12 `test_worktree_setup.py` tests pass. No conflict markers remain in the two target files — the harness can finish the merge and run the full suite.

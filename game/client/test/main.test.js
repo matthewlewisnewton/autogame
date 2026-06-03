@@ -3303,7 +3303,7 @@ describe('Key Items equip UI', () => {
 		field_medic_kit: {
 			id: 'field_medic_kit',
 			name: 'Field Medic Kit',
-			description: 'Restore a portion of your health',
+			description: 'Heal nearby allies and restore Magic Stones in an area',
 			cooldownMs: 20000,
 		},
 	};

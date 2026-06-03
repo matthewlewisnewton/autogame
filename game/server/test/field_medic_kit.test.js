@@ -259,6 +259,40 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(playerForSocket(socket).keyItemCooldownUntil).toBeGreaterThan(Date.now());
 	});
 
+	it('broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius', async () => {
+		const players = await connectTwoAndStartRun();
+
+		const p1 = playerForSocket(players[0].socket);
+		const p2 = playerForSocket(players[1].socket);
+
+		p1.x = 10;
+		p1.z = -5;
+		p2.x = 12;
+		p2.z = -5;
+		p1.keyItemCooldownUntil = 0;
+
+		const casterPulsePromise = waitForEvent(players[0].socket, 'keyItemHealPulse');
+		const allyPulsePromise = waitForEvent(players[1].socket, 'keyItemHealPulse');
+		const resultPromise = waitForEvent(players[0].socket, 'keyItemUsed');
+		players[0].socket.emit('useKeyItem', { keyItemId: 'field_medic_kit' });
+
+		const [result, casterPulse, allyPulse] = await Promise.all([
+			resultPromise,
+			casterPulsePromise,
+			allyPulsePromise,
+		]);
+
+		expect(result.ok).toBe(true);
+		expect(casterPulse.playerId).toBe(players[0].socket._playerId);
+		expect(allyPulse.playerId).toBe(players[0].socket._playerId);
+		expect(casterPulse.x).toBe(10);
+		expect(casterPulse.z).toBe(-5);
+		expect(allyPulse.x).toBe(10);
+		expect(allyPulse.z).toBe(-5);
+		expect(casterPulse.healRadius).toBe(5);
+		expect(allyPulse.healRadius).toBe(5);
+	});
+
 	it('HP and MS are capped at MAX_HP and MAX_MAGIC_STONES', async () => {
 		const players = await connectTwoAndStartRun();
 

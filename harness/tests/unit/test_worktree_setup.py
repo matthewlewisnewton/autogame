@@ -4,7 +4,7 @@ from __future__ import annotations
 import subprocess
 from pathlib import Path
 
-from harness.dispatch.worktree_setup import install_deps, link_harness_deps
+from harness.dispatch.worktree_setup import install_deps, install_harness_deps, link_harness_deps
 
 
 class _Result:
@@ -89,6 +89,47 @@ def test_link_harness_deps_symlinks_to_main(tmp_path, monkeypatch):
     dst = wt / "harness" / "node_modules"
     assert dst.is_symlink()
     assert (dst / "playwright").exists()  # resolves through the link to main's
+
+
+def test_install_harness_deps_runs_in_harness_subdir(tmp_path):
+    harness = tmp_path / "harness"
+    harness.mkdir()
+    (harness / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+    seen = {}
+
+    def runner(cmd, **kw):
+        seen["cmd"] = cmd
+        seen["cwd"] = kw.get("cwd")
+        (harness / "node_modules" / "playwright").mkdir(parents=True)
+        return _Result(0)
+
+    ok = install_harness_deps(tmp_path, runner=runner, which=lambda _: "/usr/bin/pnpm")
+    assert ok is True
+    assert seen["cmd"] == ["pnpm", "install", "--frozen-lockfile"]
+    assert seen["cwd"] == str(harness)
+
+
+def test_link_harness_deps_removes_broken_symlink_and_installs(tmp_path, monkeypatch):
+    """Self-referential or missing-target symlinks must not short-circuit setup."""
+    main = tmp_path / "main"
+    (main / "harness" / "progress").mkdir(parents=True)
+    monkeypatch.setenv("HARNESS_PROGRESS_DIR", str(main / "harness" / "progress"))
+    wt = tmp_path / "wt"
+    harness = wt / "harness"
+    harness.mkdir(parents=True)
+    (harness / "pnpm-lock.yaml").write_text("lockfileVersion: '9.0'\n")
+    broken = harness / "node_modules"
+    broken.symlink_to("node_modules")  # self-referential — playwright never resolves
+    installs = []
+
+    def runner(cmd, **kw):
+        installs.append(kw.get("cwd"))
+        (harness / "node_modules" / "playwright").mkdir(parents=True)
+        return _Result(0)
+
+    assert link_harness_deps(wt, runner=runner, which=lambda _: "/usr/bin/pnpm") is True
+    assert installs == [str(harness)]
+    assert (broken / "playwright").exists()
 
 
 def test_link_harness_deps_idempotent_and_noop_for_main(tmp_path, monkeypatch):
