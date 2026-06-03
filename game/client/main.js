@@ -1580,6 +1580,46 @@ window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve
 	socket.emit('debugScenario', { name });
 });
 
+// Test-only: drive the lobby deck editor over the live socket so a smoke test
+// can configure a non-default loadout (remove every current card, then add the
+// requested card ids). Behavior-neutral — only wraps the existing deckRemoveCard
+// / deckAddCard events that the deck editor UI already emits while in the lobby.
+window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
+	if (!socket || !socket.connected) return { ok: false, reason: 'no socket' };
+	if (!Array.isArray(targetCardIds)) return { ok: false, reason: 'targetCardIds must be an array' };
+	const waitDeck = () => new Promise((resolve) => {
+		const timeout = Math.max(1000, Math.min(timeoutMs || 5000, 15000));
+		const cleanup = () => {
+			clearTimeout(timer);
+			socket.off('deckUpdate', onUpdate);
+			socket.off('deckError', onError);
+		};
+		const onUpdate = (data) => { cleanup(); resolve({ ok: true, selectedDeck: data?.selectedDeck || [] }); };
+		const onError = (data) => { cleanup(); resolve({ ok: false, reason: data?.reason || 'deckError' }); };
+		const timer = setTimeout(() => { cleanup(); resolve({ ok: false, reason: 'timeout waiting for deckUpdate' }); }, timeout);
+		socket.once('deckUpdate', onUpdate);
+		socket.once('deckError', onError);
+	});
+	// Empty the current deck one instance at a time.
+	let guard = 0;
+	while (Array.isArray(mySelectedDeck) && mySelectedDeck.length > 0 && guard < 64) {
+		guard += 1;
+		const entry = mySelectedDeck[0];
+		const pending = waitDeck();
+		socket.emit('deckRemoveCard', { instanceId: entry });
+		const res = await pending;
+		if (!res.ok) return res;
+	}
+	// Add each requested card by id (server picks an available owned instance).
+	for (const cardId of targetCardIds) {
+		const pending = waitDeck();
+		socket.emit('deckAddCard', { cardId });
+		const res = await pending;
+		if (!res.ok) return { ok: false, reason: `add ${cardId} failed: ${res.reason}` };
+	}
+	return { ok: true, selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [] };
+};
+
 function startHeartbeat() {
 	if (heartbeatTimer) return;
 	heartbeatTimer = setInterval(() => {
@@ -3817,6 +3857,16 @@ window.createEnemyMesh = rendererCreateEnemyMesh;
 window.enemyMeshHalfHeight = rendererEnemyMeshHalfHeight;
 window.healthBarColor = rendererHealthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
+// Test-only: snapshot the lobby deck-editor state (selected deck + owned cards +
+// inventory instance→card mapping) so a smoke test can build a valid non-default
+// loadout from whatever the player actually owns. Read-only, behavior-neutral.
+window.__deckStateForTest = () => ({
+	selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
+	ownedCards: myOwnedCards ? { ...myOwnedCards } : {},
+	inventory: Array.isArray(myInventory)
+		? myInventory.map((i) => ({ instanceId: i.instanceId, cardId: i.cardId }))
+		: null,
+});
 window.__setDeckState = (deck, owned, inventory, currency) => {
 	mySelectedDeck = deck || mySelectedDeck;
 	myOwnedCards = owned || myOwnedCards;
@@ -3876,6 +3926,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugScenarioAllowed,
 		debugScenarioResult,
 		myId,
+		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',
 		runStatus: gameState && gameState.run ? gameState.run.status : null,
 		extracted: !!(me && me.extracted),
