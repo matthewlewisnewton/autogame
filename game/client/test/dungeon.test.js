@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
+import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT, PASSAGE_WALL_HEIGHT } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -268,6 +268,55 @@ describe('buildDungeon() with floorCorners', () => {
 			);
 			expect(wallMesh).toBeDefined();
 			expect(wallMesh.position.y).toBeCloseTo(expectedBaseY + WALL_HEIGHT / 2, 4);
+		}
+	});
+
+	it('positions passage wall Y on sloped rooms using sampleFloorY', () => {
+		const roomW = 10;
+		const roomD = 10;
+		const halfW = roomW / 2;
+		const halfD = roomD / 2;
+
+		// Z-slope: back (NW/NE) at 0.5, front (SE/SW) at 2.0
+		const slopedRoom = {
+			x: 0,
+			z: 0,
+			width: roomW,
+			depth: roomD,
+			role: 'combat',
+			floorCorners: { yNW: 0.5, yNE: 0.5, ySE: 2.0, ySW: 2.0 },
+			walls: [],
+		};
+
+		// Passage whose side walls sit inside the sloped room footprint, so each
+		// wall (x, z) samples a different sloped height.
+		const passage = {
+			x1: -2, z1: -halfD + 1, x2: 2, z2: halfD - 1,
+			walls: [
+				{ axis: 'x', x: -2, z: -halfD + 1, length: 4 },
+				{ axis: 'x', x: 2, z: halfD - 1, length: 4 },
+				{ axis: 'z', x: -halfW + 1, z: -1, length: 4 },
+				{ axis: 'z', x: halfW - 1, z: 1, length: 4 },
+			],
+		};
+
+		const layout = { rooms: [slopedRoom], passages: [passage] };
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+
+		// ground(0) + floor(1) + passage floor(2) + 4 passage walls = 7 meshes
+		expect(result.meshes.length).toBe(7);
+
+		// Verify each passage wall's position.y = sampleFloorY + PASSAGE_WALL_HEIGHT / 2
+		for (const wall of passage.walls) {
+			const expectedBaseY = sampleFloorY(layout, wall.x, wall.z);
+			expect(expectedBaseY).not.toBeNull();
+
+			const wallMesh = result.meshes.slice(3).find(m =>
+				m.position.x === wall.x && m.position.z === wall.z
+			);
+			expect(wallMesh).toBeDefined();
+			expect(wallMesh.position.y).toBeCloseTo(resolveFloorY(expectedBaseY) + PASSAGE_WALL_HEIGHT / 2, 4);
 		}
 	});
 });
