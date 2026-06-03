@@ -284,6 +284,8 @@ describe('Photon Forge UI', () => {
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
 			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'key-item-loadout', 'lobby-tab-keyitems', 'key-item-list',
+			'lobby-tab-medic', 'guild-medic',
 			...FORGE_DOM_IDS,
 		];
 		for (const id of requiredIds) {
@@ -298,7 +300,7 @@ describe('Photon Forge UI', () => {
 		}
 	});
 
-	it('switches between deck editor, card shop, photon forge, and card economy tabs', async () => {
+	it('switches between deck editor, card shop, photon forge, card economy, and key items tabs', async () => {
 		await import('../main.js');
 
 		window.setLobbyTab('shop');
@@ -322,11 +324,20 @@ describe('Photon Forge UI', () => {
 		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(false);
 		expect(document.getElementById('lobby-tab-economy').classList.contains('active')).toBe(true);
 
+		window.setLobbyTab('keyitems');
+		expect(document.getElementById('key-item-loadout').classList.contains('hidden')).toBe(false);
+		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('lobby-tab-keyitems').classList.contains('active')).toBe(true);
+
 		window.setLobbyTab('deck');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(false);
 		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
+		expect(document.getElementById('key-item-loadout').classList.contains('hidden')).toBe(true);
 	});
 
 	it('renders inventory tiles and disables attune when money is insufficient', async () => {
