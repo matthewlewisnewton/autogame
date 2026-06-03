@@ -381,8 +381,13 @@ function attachRegistryModel(key, host) {
 
 			// Player: retarget the VFX body mesh to the loaded skinned mesh so
 			// flash / dead recolor / invuln shimmer / dash all act on the visible
-			// glTF model instead of the now-hidden procedural primitive.
-			if (key === 'player') retargetPlayerBodyMesh(host, model);
+			// glTF model instead of the now-hidden procedural primitive, then seat
+			// the equipped hat on the glTF head bone (built here, AFTER the
+			// procedural snapshot, so the hiding loop above leaves it visible).
+			if (key === 'player') {
+				retargetPlayerBodyMesh(host, model);
+				attachGltfHat(host, model);
+			}
 		})
 		.catch((err) => {
 			console.warn(`[renderer] failed to apply model "${path}" for "${key}":`, err);
@@ -437,6 +442,75 @@ function retargetPlayerBodyMesh(host, model) {
 	if (mat && mat.color && mat.color.getHex) {
 		host.userData.baseColor = mat.color.getHex();
 	}
+}
+
+// Desired world-space scale and seating for a hat worn on the loaded glTF head.
+// `buildHatMesh` sizes meshes for the ~1-unit procedural body (crown/brim radius
+// ~0.4–0.58); the glTF is normalized to ~1.8 units with a much smaller head
+// (center y ≈ 1.62, radius ≈ 0.13 per MODEL_SPIKE.md). HAT_HEAD_WORLD_SCALE
+// shrinks the built hat to read as worn on that head without being undersized,
+// and HAT_HEAD_WORLD_OFFSET lifts it just above the head bone's origin.
+const HAT_HEAD_WORLD_SCALE = 0.45;
+const HAT_HEAD_WORLD_OFFSET = 0.18;
+// World-space y anchor used only when the `Head` bone is missing: top-of-head of
+// the ~1.8-unit normalized model (head center ≈ 1.62, crown ≈ 1.8).
+const HAT_FALLBACK_WORLD_Y = 1.72;
+
+/**
+ * Build the equipped hat (from `host.userData.hatId`) and seat it on the loaded
+ * glTF avatar's head so it renders attached to the head and follows it. Called
+ * from the player branch of `attachRegistryModel` AFTER the procedural-mesh
+ * snapshot is taken, so the head-bone hat is never hidden by the hiding loop.
+ *
+ * Resilience: a `none`/unknown hat adds nothing; a missing `Head` bone falls
+ * back to a top-of-head anchor on the host so the hat still renders; the whole
+ * routine is best-effort and never throws (caught by the caller).
+ * @param {THREE.Object3D} host - the avatar group.
+ * @param {THREE.Object3D} model - the loaded, normalized glTF model.
+ */
+function attachGltfHat(host, model) {
+	const hatId = host.userData.hatId;
+	const hat = buildHatMesh(hatId);
+	if (!hat) return; // `none`/unknown → bare head, nothing to attach.
+
+	const headBone = model.getObjectByName('Head');
+	if (headBone) {
+		// Parent to the head bone so the hat inherits the head's world position and
+		// orientation. Compensate for the bone's world transform so the hat keeps a
+		// sensible world scale and stays upright (+Y up) instead of inheriting the
+		// bone's rest tilt — while still yawing with the avatar (host) rotation.
+		headBone.add(hat);
+
+		const boneScale = new THREE.Vector3();
+		headBone.getWorldScale(boneScale);
+		const sFactor = HAT_HEAD_WORLD_SCALE / (boneScale.x || 1);
+		hat.scale.setScalar(sFactor);
+
+		// hatLocal = inverse(boneWorldQuat) * hostWorldQuat. The host rotation
+		// cancels out of both terms, leaving the inverse of the bone's rotation
+		// relative to the host — constant across frames, so the hat reads upright
+		// and rotates with the avatar rather than drifting as the player turns.
+		const boneQuat = new THREE.Quaternion();
+		headBone.getWorldQuaternion(boneQuat);
+		const hostQuat = new THREE.Quaternion();
+		host.getWorldQuaternion(hostQuat);
+		hat.quaternion.copy(boneQuat).invert().multiply(hostQuat);
+
+		// Seat the hat just above the head, along the (now-upright) world up axis.
+		// Express that world offset in the bone's local space: the local up is the
+		// world up rotated by the hat's compensating quaternion; divide the world
+		// distance by the bone's world scale to land at the intended world height.
+		const localUp = new THREE.Vector3(0, 1, 0).applyQuaternion(hat.quaternion);
+		hat.position.copy(localUp.multiplyScalar(HAT_HEAD_WORLD_OFFSET / (boneScale.x || 1)));
+	} else {
+		// No head bone: anchor at the top of the head in the host's world space so
+		// the hat still renders and never floats at the group origin.
+		host.add(hat);
+		hat.scale.setScalar(HAT_HEAD_WORLD_SCALE);
+		hat.position.set(0, HAT_FALLBACK_WORLD_Y, 0);
+	}
+
+	host.userData.gltfHatMesh = hat;
 }
 
 function createMinionMesh(minionType) {
@@ -1435,6 +1509,10 @@ export function createPlayerAvatar(cosmetic, isSelf) {
 		group.add(hat);
 		group.userData.hatMesh = hat;
 	}
+	// Record the resolved hat id so the async glTF load callback can rebuild the
+	// hat and seat it on the loaded model's head bone (the procedural group-level
+	// hat above is hidden alongside the body when the glTF resolves).
+	group.userData.hatId = hatId;
 
 	group.userData.isAvatar = true;
 	group.userData.bodyMesh = bodyMesh;

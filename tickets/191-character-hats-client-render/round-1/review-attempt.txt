@@ -1,0 +1,11 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health — clean.** `metrics.json` reports `"ok": true` with an empty `pageerrors[]`; both dev servers started, the scene initialized, and gameplay reached `phase: "playing"`. The only `console.log` noise is a benign `409` HTTP response and THREE.Clock/ws-ECONNRESET deprecation lines. `pnpm test:quick` passed all **187 tests**.
+
+**Code — sound.** The change is confined to `game/client/renderer.js` (matching the ticket's edit-only constraint). New `attachGltfHat()` builds the equipped hat *after* the procedural-mesh snapshot is taken and parents it to the glTF `Head` bone, so it inherits head pose and survives the procedural-hiding loop. The quaternion compensation (`inverse(boneWorld) · hostWorld`) correctly makes the hat upright and yaw with the avatar; scale `0.45` and a `+0.18u` offset seat it on the ~1.8u normalized head. A missing-bone fallback (`y=1.72` on the host) keeps it from throwing. Equip-change is driven by the existing `cosmeticSignature` rebuild path for both local and remote players.
+
+All seven acceptance criteria are met. The deterministic capture uses default users (`hat:none`), so it positively confirms the bare-head case, clean load, and no regressions; the positive hat-on-head path is verified by code review plus the sub-ticket's own visual QA.
+
+**No blocking gaps**, so no `gaps.md`. I filed two genuine nits to `nits.md`: a stale doc comment on `attachRegistryModel` (claims all registry paths are null — no longer true), and a pending load callback that can attach a hat to an already-disposed avatar after a rapid equip change (harmless today).

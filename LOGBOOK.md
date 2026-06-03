@@ -2863,6 +2863,28 @@ contract and filed as a nit. Code is clean, all unit tests pass, and the
 captured run is healthy.
 
 
+## v0.162 — 191-character-hats-client-render  (2026-06-03 05:39:04)
+
+   compensates for the glTF being normalized to ~1.8u (vs the ~1u procedural body
+   `buildHatMesh` targets), divided by the bone's world scale. The quaternion
+   `inverse(boneWorld) * hostWorld` makes the hat's world orientation equal the
+   host's (upright, yaws with the avatar); a `+0.18`-world-unit up offset seats it
+   above the head. Math checks out: child-of-bone world rot = boneWorld·hatLocal =
+   hostWorld, and it stays aligned as the host yaws.
+
+7. **Resilient + no new errors + test:quick passes** — PASS. Missing `Head`
+   falls back to attaching at `HAT_FALLBACK_WORLD_Y = 1.72` on the host; the whole
+   routine is also wrapped by the caller's `.catch`. No new console errors on the
+   captured load; 187 unit tests pass.
+
+## Remaining gaps
+None blocking. All acceptance criteria are met; the captured run is clean.
+
+(Note: the deterministic smoke capture uses default users with `hat:none`, so the
+positive hat-on-head path is verified by code review + the sub-ticket's own visual
+QA rather than this capture. The capture does positively confirm the bare-head
+case, clean load, and no regressions.)
+
 ## v0.163 — 188-character-customization-client-proportion-sliders  (2026-06-03 05:47:22)
 
 - **Slider move updates preview live** — PASS. The input handler calls
