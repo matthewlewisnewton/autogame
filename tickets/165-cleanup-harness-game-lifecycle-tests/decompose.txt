@@ -1,0 +1,14 @@
+I've decomposed the top-level ticket into three focused, non-overlapping sub-tickets. This ticket is **harness-only** (Python test coverage for `harness/steps/game.py`) — there is no game code change, so all three use `code` verification (visual QA is impossible, nothing renders differently).
+
+I scoped the work to `game.py`'s lifecycle gap: on inspection, `capture_run.py` is already thoroughly covered by `test_capture_run_diagnostics.py`, while the `start_game`/`stop_game`/`wait_for_game` lifecycle and the kill/port-free paths (the code behind the prior orphan-proc bugs) have zero coverage. Each sub-ticket adds exactly one new test file and changes no production code.
+
+Sub-ticket folders created:
+
+- `/home/matt/workspace/.autogame-worktrees/165-cleanup-harness-game-lifecycle-tests/tickets/165-cleanup-harness-game-lifecycle-tests/subtickets/01-test-port-free-and-kill-paths/ticket.md`
+  — `port_in_use`, `wait_port_free` (harness-owned vs foreign holders, broad-kill opt-in, vite_port forwarding), `_kill_pid`, `_kill_proc_group` → `test_game_port_free.py`
+- `/home/matt/workspace/.autogame-worktrees/165-cleanup-harness-game-lifecycle-tests/tickets/165-cleanup-harness-game-lifecycle-tests/subtickets/02-test-start-game-lifecycle/ticket.md`
+  — `start_game`: log setup, pre-launch port freeing, PID tracking, vite EADDRINUSE retry loop → `test_game_start.py`
+- `/home/matt/workspace/.autogame-worktrees/165-cleanup-harness-game-lifecycle-tests/tickets/165-cleanup-harness-game-lifecycle-tests/subtickets/03-test-stop-game-and-wait-for-game/ticket.md`
+  — `stop_game` (tracked-PID group kills, serial vs parallel pkill patterns) and the `wait_for_game` polling loop → `test_game_stop_wait.py`
+
+No existing sub-tickets to retire (the folder was empty).
