@@ -126,6 +126,21 @@ def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
         if servers_up:
             capture_ok = capture(capture_url, dir)
             if capture_ok:
+                # Capture succeeded, but the run may still have recorded page
+                # errors. The servers are known up here, so skip the infra
+                # scan and promote a non-empty pageerrors list straight to a
+                # browser_pageerror failure (no harness_failure block).
+                pageerrors = _read_pageerrors(dir)
+                if pageerrors:
+                    metrics = {
+                        "ok": False,
+                        "failure_kind": "browser_pageerror",
+                        "pageerrors": pageerrors,
+                    }
+                    (dir / "metrics.json").write_text(
+                        json.dumps(metrics, indent=2) + "\n"
+                    )
+                    return False
                 return True
             # Capture returned failure but servers started — classify
             metrics = _classify_capture_failure(dir, ports)

@@ -441,6 +441,54 @@ class TestBrowserPageerrorClassification:
         assert metrics["failure_kind"] == "capture_failed"
 
 
+class TestCaptureSuccessPromotesPageerrors:
+    """Regression for 144: when capture() returns success but the run still
+    recorded page errors, capture_run must promote the result to a
+    browser_pageerror failure rather than returning True."""
+
+    def test_capture_ok_with_pageerrors_promoted_to_failure(self, tmp_path, monkeypatch):
+        """Servers up, capture succeeds, pageerrors.json non-empty →
+        metrics.json gets ok:false + browser_pageerror, capture_run → False."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: True)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_path / "client.log").write_text("vite ready\n")
+        (tmp_path / "server.log").write_text("Server listening\n")
+        (tmp_path / "pageerrors.json").write_text(json.dumps([
+            {"message": "Uncaught TypeError: cannot read properties of undefined"}
+        ]))
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is False
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is False
+        assert metrics["failure_kind"] == "browser_pageerror"
+        assert "harness_failure" not in metrics
+        assert len(metrics["pageerrors"]) == 1
+
+    def test_capture_ok_no_pageerrors_returns_true(self, tmp_path, monkeypatch):
+        """Servers up, capture succeeds, no pageerrors → capture_run returns
+        True and does not overwrite metrics.json with a failure."""
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "stop_game", lambda: None)
+        # capture() writes the success metrics it normally would
+        def _fake_capture(u, d):
+            (Path(d) / "metrics.json").write_text(
+                json.dumps({"ok": True, "screenshots": []}, indent=2) + "\n"
+            )
+            return True
+        monkeypatch.setattr(cr_mod, "capture", _fake_capture)
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        ports = PortAllocation(game_server=3000, vite=5173)
+        ok = cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
+        assert ok is True
+        metrics = json.loads((tmp_path / "metrics.json").read_text())
+        assert metrics["ok"] is True
+
+
 class TestExceptionDuringCaptureWritesMetrics:
     """Regression: when capture() or _classify_capture_failure() raises an
     unexpected exception, capture_run must still write metrics.json with
