@@ -1143,6 +1143,11 @@ function bindSocketHandlers(s) {
 			}
 		} else if (data.reason === 'on_cooldown') {
 			flashKeyItemIndicator('cooldown');
+		} else if (data.reason === 'no_minions') {
+			// Soft-fail: recall blown with zero minions. Server did not start a
+			// cooldown; give a brief amber cue distinct from the cooldown flash.
+			flashKeyItemIndicator('soft-fail');
+			console.warn('[keyItemUsed] failed:', data.reason);
 		} else {
 			console.warn('[keyItemUsed] failed:', data.reason);
 		}
@@ -2307,7 +2312,11 @@ function showKeyItemError(message) {
 function flashKeyItemIndicator(type) {
 	const el = document.getElementById('key-item-indicator');
 	if (!el) return;
-	const flashClass = type === 'success' ? 'flash-success' : 'flash-cooldown';
+	const flashClass = type === 'success'
+		? 'flash-success'
+		: type === 'soft-fail'
+			? 'flash-soft-fail'
+			: 'flash-cooldown';
 	el.classList.add(flashClass);
 	// Clear any previous timeout
 	if (el._flashTimer) clearTimeout(el._flashTimer);

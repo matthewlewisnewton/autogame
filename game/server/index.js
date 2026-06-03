@@ -3034,7 +3034,6 @@ function startServer(port) {
 
       const ringRadiusMin = def.ringRadiusMin != null ? def.ringRadiusMin : 2;
       const ringRadiusMax = def.ringRadiusMax != null ? def.ringRadiusMax : 2;
-      const ringRadius = (ringRadiusMin + ringRadiusMax) / 2; // ~2m
       // Minimum separation between caster and a repositioned minion. Clamping a
       // wall-hugged ring point can pull it inward, so candidate acceptance must
       // explicitly enforce this floor, not just wall/dungeon checks.
@@ -3044,6 +3043,12 @@ function startServer(port) {
       for (let i = 0; i < myMinions.length; i++) {
         const minion = myMinions[i];
         const angle = (2 * Math.PI * i) / myMinions.length;
+        // Vary each minion's radius across the [min, max] band so the ring has a
+        // ~1.5–2.5m spread rather than every minion sitting at a single midpoint.
+        // Deterministic interpolation: spread slots evenly across the band; a lone
+        // minion lands at the band midpoint.
+        const t = myMinions.length > 1 ? i / (myMinions.length - 1) : 0.5;
+        const ringRadius = ringRadiusMin + (ringRadiusMax - ringRadiusMin) * t;
         let targetX = player.x + Math.cos(angle) * ringRadius;
         let targetZ = player.z + Math.sin(angle) * ringRadius;
 

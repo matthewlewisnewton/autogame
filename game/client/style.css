@@ -1505,6 +1505,13 @@ body[data-phase="lobby"] #objective-hud {
   box-shadow: 0 0 14px rgba(239, 68, 68, 0.6);
 }
 
+/* Soft-fail (e.g. recall with no minions) — amber, distinct from red cooldown */
+#key-item-indicator.flash-soft-fail {
+  opacity: 1;
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.7), rgba(245, 158, 11, 0.15));
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.6);
+}
+
 /* Persistent cooldown state — dimmed circle with countdown text */
 #key-item-indicator.cooldown {
   opacity: 1;

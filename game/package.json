@@ -15,6 +15,7 @@
     "test:smoke:p0": "PHASE=after node client/scripts/test-p0-bugs.mjs",
     "test:smoke:creature-burndown": "node client/scripts/test-creature-burndown.mjs",
     "test:smoke:summon-combat": "node client/scripts/test-summon-combat.mjs",
+    "test:smoke:summon-recall": "node client/scripts/test-summon-recall.mjs",
     "test:smoke:wyrm-breath": "node client/scripts/test-wyrm-breath.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },

@@ -1,0 +1,1 @@
+S: You have an unpaid invoice Visit [cursor.com/dashboard](https://cursor.com/dashboard) and pay your invoice in Stripe to resume requests.

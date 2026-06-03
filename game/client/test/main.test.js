@@ -3296,9 +3296,9 @@ describe('Key Items equip UI', () => {
 		},
 		summon_recall: {
 			id: 'summon_recall',
-			name: 'Summon Recall',
-			description: 'Teleport to your most recent summon location',
-			cooldownMs: 15000,
+			name: 'Recall Whistle',
+			description: 'Recall all your summoned minions to ring positions around you',
+			cooldownMs: 10000,
 		},
 		field_medic_kit: {
 			id: 'field_medic_kit',
@@ -3351,7 +3351,7 @@ describe('Key Items equip UI', () => {
 		const dodgeEntry = entryNames.find(e => e.name === 'Dodge Roll');
 		expect(dodgeEntry.hasEquipped).toBe(true);
 
-		const recallEntry = entryNames.find(e => e.name === 'Summon Recall');
+		const recallEntry = entryNames.find(e => e.name === 'Recall Whistle');
 		expect(recallEntry.hasEquipped).toBe(false);
 
 		const medicEntry = entryNames.find(e => e.name === 'Field Medic Kit');
@@ -3372,10 +3372,10 @@ describe('Key Items equip UI', () => {
 		// Clear any previous emit log
 		window.__clearSocketEmitLog();
 
-		// Click the Summon Recall entry (non-equipped)
+		// Click the Recall Whistle entry (non-equipped)
 		const entries = document.querySelectorAll('#key-item-list .key-item-entry');
 		const recallEntry = Array.from(entries).find(
-			e => e.querySelector('.key-item-name')?.textContent === 'Summon Recall',
+			e => e.querySelector('.key-item-name')?.textContent === 'Recall Whistle',
 		);
 		recallEntry.click();
 
