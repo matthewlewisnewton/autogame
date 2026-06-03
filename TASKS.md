@@ -78,3 +78,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [203-cleanup-bug-intermittent-stuck-lobby-socket](tickets/203-cleanup-bug-intermittent-stuck-lobby-socket/)
 - [ ] [204-cleanup-qa-telepipe-suspend-resume](tickets/204-cleanup-qa-telepipe-suspend-resume/)
 - [ ] [205-cleanup-gameplay-survive-objective](tickets/205-cleanup-gameplay-survive-objective/)
+- [ ] [205-cleanup-cleanup-dedupe-card-defs-server-client](tickets/205-cleanup-cleanup-dedupe-card-defs-server-client/)
