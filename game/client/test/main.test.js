@@ -3442,6 +3442,75 @@ describe('Key Items equip UI', () => {
 	});
 });
 
+describe('keyItemUsed loot magnet VFX', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) {}
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+			'key-item-indicator', 'key-item-list', 'key-item-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('calls triggerLootMagnetVFX when pulled > 0, not when pulled is 0', async () => {
+		const renderer = await import('../renderer.js');
+		const vfxSpy = vi.spyOn(renderer, 'triggerLootMagnetVFX');
+		await import('../main.js');
+
+		if (!window.__isSocketReady()) {
+			window.createSocket('test-fake-jwt-token');
+		}
+
+		window.__setKeyItemDefs({ loot_magnet: { id: 'loot_magnet', attractRadius: 8 } });
+		window.__setGameState({ players: { p1: { x: 3, y: 0, z: 4 } } }, 'p1');
+
+		window.__triggerSocketEvent('keyItemUsed', {
+			ok: true,
+			keyItemId: 'loot_magnet',
+			pulled: 1,
+			collected: 1,
+		});
+		expect(vfxSpy).toHaveBeenCalledTimes(1);
+		expect(vfxSpy).toHaveBeenCalledWith({ x: 3, y: 0, z: 4 }, 8);
+
+		vfxSpy.mockClear();
+		window.__triggerSocketEvent('keyItemUsed', {
+			ok: true,
+			keyItemId: 'loot_magnet',
+			pulled: 0,
+		});
+		expect(vfxSpy).not.toHaveBeenCalled();
+	});
+});
+
 // ── applyRevealHighlight ──
 
 describe('applyRevealHighlight()', () => {

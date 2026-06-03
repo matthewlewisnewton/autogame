@@ -1526,6 +1526,67 @@ export function triggerHealPulseVFX(position, healRadius) {
 	requestAnimationFrame(animatePulse);
 }
 
+// ── Loot magnet VFX ──
+
+const LOOT_MAGNET_DURATION = 700;
+const LOOT_MAGNET_EXPAND_MS = 450;
+const LOOT_MAGNET_COLOR = 0xf59e0b;
+const LOOT_MAGNET_DEFAULT_RADIUS = 8;
+
+/**
+ * Spawn a gold/amber expanding ring at the caster's position to visualize a
+ * successful Loot Magnet pull. Expands to attractRadius over ~450 ms, then
+ * fades out before geometry/material disposal.
+ *
+ * @param {{ x: number, y: number, z: number }} position
+ * @param {number} [attractRadius] — metres; matches server loot_magnet.attractRadius
+ */
+export function triggerLootMagnetVFX(position, attractRadius = LOOT_MAGNET_DEFAULT_RADIUS) {
+	if (!scene) return;
+	const radius = Number.isFinite(attractRadius) && attractRadius > 0
+		? attractRadius
+		: LOOT_MAGNET_DEFAULT_RADIUS;
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: LOOT_MAGNET_COLOR,
+		emissive: LOOT_MAGNET_COLOR,
+		emissiveIntensity: 1.1,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(position.x, 0.12, position.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	scene.add(mesh);
+
+	const startTime = performance.now();
+	function animatePulse() {
+		const elapsed = performance.now() - startTime;
+		const t = Math.min(elapsed / LOOT_MAGNET_DURATION, 1.0);
+
+		if (elapsed < LOOT_MAGNET_EXPAND_MS) {
+			const expandT = elapsed / LOOT_MAGNET_EXPAND_MS;
+			mesh.scale.setScalar(radius * 2 * expandT);
+		} else {
+			mesh.scale.setScalar(radius * 2);
+			const fadeT = (elapsed - LOOT_MAGNET_EXPAND_MS) / (LOOT_MAGNET_DURATION - LOOT_MAGNET_EXPAND_MS);
+			mesh.material.opacity = Math.max(0, 1.0 - fadeT);
+		}
+
+		if (t < 1) {
+			requestAnimationFrame(animatePulse);
+		} else {
+			scene.remove(mesh);
+			geometry.dispose();
+			material.dispose();
+		}
+	}
+	requestAnimationFrame(animatePulse);
+}
+
 // ── Shield VFX (Guard Block) ──
 
 /**

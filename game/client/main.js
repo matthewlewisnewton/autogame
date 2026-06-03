@@ -140,6 +140,7 @@ import {
 	triggerHealPulseVFX,
 	triggerShieldVFX,
 	triggerSmokeVFX,
+	triggerLootMagnetVFX,
 	getPhaseStepTargetId,
 } from './renderer.js';
 import {
@@ -1143,6 +1144,13 @@ function bindSocketHandlers(s) {
 				const me = myId && gameState?.players ? gameState.players[myId] : null;
 				if (me) {
 					triggerSmokeVFX({ x: me.x, y: 0, z: me.z }, myId);
+				}
+			}
+			if (data.keyItemId === 'loot_magnet' && (data.pulled ?? 0) > 0) {
+				const me = myId && gameState?.players ? gameState.players[myId] : null;
+				if (me) {
+					const attractRadius = keyItemDefs.loot_magnet?.attractRadius ?? 8;
+					triggerLootMagnetVFX({ x: me.x, y: 0, z: me.z }, attractRadius);
 				}
 			}
 		} else if (data.reason === 'on_cooldown') {
