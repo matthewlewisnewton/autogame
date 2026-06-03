@@ -3132,3 +3132,26 @@ PASS. This ticket did not add or change any `?debugScenario=...` shortcut. The c
 
 None.
 
+
+## v0.174 — 166-bug-deck-viewer-grid-empty  (2026-06-03 12:56:58)
+
+### Scope and integration with design/requirements
+
+Pass. The change is narrowly scoped to the in-run deck viewer and its tests. It is consistent with the design's card-deck combat model and does not regress the foundation requirements: the captured run reached the lobby and dungeon, rendered the Three.js scene, connected to the server, showed two players, and movement/key-item probes completed.
+
+### Runtime health
+
+Pass. `metrics.json` reports `"ok": true`, no harness failure, and an empty `pageerrors` array. `console.log` has no `pageerror` or `[fatal]` lines from game code; the only notable browser messages are resource conflict lines from the capture flow and normal Vite/scene initialization output.
+
+### Tests and coverage
+
+Pass. `coverage.log` shows the focused `client/test/deck-viewer.test.js` suite passing with 21 tests, including new coverage for instance-ID decks, mixed decks, unknown entries, missing inventory, and plain-ID compatibility. The broader test run continues past the usual jsdom model-loading stderr noise and does not show failures in the relevant deck-viewer coverage.
+
+### Debug scenario review
+
+Pass. The added `deck-viewer-instances` debug scenario is reachable only through the existing `?debugScenario=...` URL/debug socket path, with client localhost gating and server debug-scenario gating. The same end-state remains reachable through normal gameplay by acquiring/forging inventory card instances, building a deck from those instances, and starting a run. The scenario constructs real inventory instances, normalizes inventory, builds the draw deck through `createDrawDeckFromSelectedDeck`, and deals via `initPlayerHand`; it does not replace the production deck-viewer render path or normal readiness flow.
+
+## Remaining gaps
+
+None.
+
