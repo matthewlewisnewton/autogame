@@ -2447,3 +2447,26 @@ None blocking. Runtime capture is clean; all top-level acceptance criteria are s
 
 None blocking. Minor non-blocking items recorded in `nits.md`.
 
+
+## v0.144 — Cleanup nits from 122-key-item-summon-recall  (2026-06-02 18:23:29)
+
+  script.
+
+### Debug-scenario gating (required checks) — PASS
+
+- The `summon-recall` scenario is pre-existing (`server/index.js:413`, member of
+  `DEBUG_SCENARIOS`) and reachable only via the `debugScenario` /
+  `__requestDebugScenarioForTest` dev path — normal gameplay never triggers it.
+- The end-state is still reachable through normal play: equip Recall Whistle →
+  summon minions → press the use-key-item key. The scenario only seeds state
+  (equips whistle, spawns 2 distant minions); it does **not** short-circuit the
+  recall itself.
+- No invariant is bypassed: the smoke test fires the real `useKeyItem` event, so
+  server-side placement validation, cooldown, and `stateUpdate` replication are
+  all exercised exactly as in normal play.
+
+## Remaining gaps
+
+None blocking. The four nits are all resolved, the game runs clean, and both
+the affected unit suites (client key-item UI, server key-items 36/36) pass.
+

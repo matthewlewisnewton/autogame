@@ -45,7 +45,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [147-cleanup-key-item-input-bindings-and-settings](tickets/147-cleanup-key-item-input-bindings-and-settings/)
 - [ ] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)
 - [ ] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)
-- [ ] [150-cleanup-key-item-summon-recall](tickets/150-cleanup-key-item-summon-recall/)
+- [x] [150-cleanup-key-item-summon-recall](tickets/150-cleanup-key-item-summon-recall/)
 - [ ] [151-cleanup-key-item-field-medic-kit](tickets/151-cleanup-key-item-field-medic-kit/)
 - [ ] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
 - [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
