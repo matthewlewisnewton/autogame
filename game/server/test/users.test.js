@@ -212,6 +212,29 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
 	});
 
+	it('partial proportions update deep-merges and preserves other proportion keys', () => {
+		createUser('propuser', 'pass');
+		const id = findUserByUsername('propuser').accountId;
+
+		// First set a non-default armLength so we have something to preserve.
+		updateProfile(id, { cosmetic: { proportions: { armLength: 1.1, legLength: 0.9 } } });
+		let user = findUserByAccountId(id);
+		expect(user.cosmetic.proportions.armLength).toBe(1.1);
+		expect(user.cosmetic.proportions.legLength).toBe(0.9);
+		expect(user.cosmetic.proportions.height).toBe(1.0);
+
+		// Now only update height — armLength and legLength must survive.
+		const res = updateProfile(id, { cosmetic: { proportions: { height: 1.15 } } });
+		expect(res.ok).toBe(true);
+		user = findUserByAccountId(id);
+		expect(user.cosmetic.proportions.height).toBe(1.15);
+		expect(user.cosmetic.proportions.armLength).toBe(1.1);
+		expect(user.cosmetic.proportions.legLength).toBe(0.9);
+		expect(user.cosmetic.proportions.headSize).toBe(1.0);
+		expect(user.cosmetic.proportions.torsoWidth).toBe(1.0);
+		expect(user.cosmetic.proportions.shoulderWidth).toBe(1.0);
+	});
+
 	it('rejects an invalid bodyShape without mutating or persisting', () => {
 		createUser('cosmo', 'pass');
 		const id = findUserByUsername('cosmo').accountId;
