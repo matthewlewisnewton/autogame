@@ -1146,12 +1146,14 @@ const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
 
 // Hat catalog ids, kept in sync with the server's HAT_CATALOG in
 // game/server/cosmetic.js. 'none' (and any unknown id) renders no hat.
-const AVATAR_HAT_IDS = new Set(['none', 'cap', 'wizard', 'crown']);
+const AVATAR_HAT_IDS = new Set(['none', 'cap', 'wizard', 'crown', 'bandana', 'beanie']);
 
 // Per-hat colors, distinct from one another and from the default body/accent.
 const HAT_CAP_COLOR = 0x2e7d32; // forest green
 const HAT_WIZARD_COLOR = 0x5b3a8a; // deep purple
 const HAT_CROWN_COLOR = 0xffd700; // gold
+const HAT_BANDANA_COLOR = 0xc62828; // crimson red
+const HAT_BEANIE_COLOR = 0x00695c; // slate teal
 
 /**
  * Build the ~1-unit-tall body geometry for a given body shape.
@@ -1238,6 +1240,34 @@ function buildHatMesh(hatId) {
 			ring.rotation.x = Math.PI / 2; // lay the torus flat to read as a ring
 			ring.position.y = 0.1;
 			return ring;
+		}
+		case 'bandana': {
+			// A thin flat band hugging the head, lower-profile than the crown
+			// and a non-gold red. A small knotted tail reads as a tied bandana.
+			const hat = new THREE.Group();
+			const mat = new THREE.MeshStandardMaterial({ color: HAT_BANDANA_COLOR });
+			const bandGeo = new THREE.TorusGeometry(0.4, 0.05, 10, 24);
+			const band = new THREE.Mesh(bandGeo, mat);
+			band.rotation.x = Math.PI / 2; // lay flat to wrap around the head
+			band.position.y = 0.06;
+			hat.add(band);
+			const knotGeo = new THREE.ConeGeometry(0.08, 0.18, 8);
+			const knot = new THREE.Mesh(knotGeo, mat);
+			knot.position.set(-0.4, 0.06, 0);
+			knot.rotation.z = Math.PI / 2; // point the tail outward to the side
+			hat.add(knot);
+			return hat;
+		}
+		case 'beanie': {
+			// A small snug dome: a low half-sphere clipped to the upper hemisphere
+			// so its base sits at the group origin.
+			const geo = new THREE.SphereGeometry(0.44, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+			const mat = new THREE.MeshStandardMaterial({
+				color: HAT_BEANIE_COLOR,
+				roughness: 0.9
+			});
+			const dome = new THREE.Mesh(geo, mat);
+			return dome;
 		}
 		case 'none':
 		default:
