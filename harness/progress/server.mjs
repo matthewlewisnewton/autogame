@@ -462,7 +462,17 @@ function safeRel(urlPath) {
   if (abs !== repoRoot && !abs.startsWith(repoRoot + sep)) return null;
   const rel = relative(repoRoot, abs).replaceAll(sep, '/');
   const parts = rel.split('/');
-  const allowed = parts.includes('artifacts') || rel.startsWith('harness/.smoketest/');
+  // Per-round QA captures land at tickets/<name>/round-N/*.png (and review-round
+  // / rescue-review dirs) — NO "artifacts" path segment — so the allowlist below
+  // would 403 every screenshot (the live view stopped showing them after the
+  // networking-exposure lockdown). Re-permit capture images anywhere under
+  // tickets/, but ONLY media extensions: this can't serve ticket source, .md, or
+  // .diff over the (possibly proxied) live view — just the rendered captures.
+  const isCaptureImage = rel.startsWith('tickets/')
+    && ['.png', '.jpg', '.jpeg', '.gif', '.webp'].includes(extname(rel).toLowerCase());
+  const allowed = parts.includes('artifacts')
+    || rel.startsWith('harness/.smoketest/')
+    || isCaptureImage;
   if (!allowed) return null;
   return { abs, rel };
 }

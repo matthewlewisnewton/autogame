@@ -1,1 +1,12 @@
-All conflict markers are removed. The resolution keeps both logbook entries in chronological order — v0.163 (main's proportion-sliders entry, 05:47) followed by v0.164 (this ticket's key-item-body-props entry, 06:08). Both intents are preserved.
+**`LOGBOOK.md` is resolved** — all conflict markers are gone.
+
+The conflict was two competing tail entries at the end of the logbook:
+
+| Version | Ticket | Source |
+|---------|--------|--------|
+| **v0.165** | `164-cleanup-retire-legacy-bash-harness` | `main` (landed during rebase) |
+| **v0.166** | `184-character-customization-player-nameplate` | This branch |
+
+**Resolution:** Keep both entries in chronological order — v0.165 first, then v0.166 — matching how the rest of `LOGBOOK.md` is ordered. The v0.165 text is unchanged from `main` (including the truncated opening that was already on `main`); the full v0.166 nameplate review block from the ticket branch follows it.
+
+No other conflict markers remain in the worktree. The harness can commit and finish the merge.

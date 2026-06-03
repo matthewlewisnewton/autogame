@@ -16,6 +16,7 @@ single-threaded — no cross-process lock needed there.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -95,10 +96,25 @@ class Dispatcher:
     # medium one when no easy work remains — so qwen is never idle while there's
     # easy/medium work to do.
     reserve_qwen: bool = False
+    # Graceful drain: when this sentinel file exists, the dispatcher stops
+    # claiming NEW work (reap + merge_drain keep running) and run() exits once
+    # every in-flight worker has finished and the merge queue is empty — a clean
+    # "finish what's started, then stop" so a restart loses no in-flight work.
+    drain_flag: Optional[Path] = None
+    merge_pending: Optional[Callable[[], int]] = None
+    # Auto-triage safety net: periodically label OPEN beads that have no
+    # difficulty lane so they stop stranding (no lane query matches them). Runs
+    # INSIDE the dispatcher (sole beads writer) so it never contends on the
+    # single-writer Dolt lock. `triage_every` ticks between passes (0 = off).
+    triage: Optional[Callable[[], None]] = None
+    triage_every: int = 0
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
     _backpressure_active: bool = field(default=False, init=False)
+    _last_status_digest: str = field(default="", init=False)
+    _draining_logged: bool = field(default=False, init=False)
+    _tick_count: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -111,12 +127,33 @@ class Dispatcher:
 
     # --- one scheduling pass (pure given injected I/O) ------------------ #
     def tick(self) -> None:
+        """One scheduling pass, then publish factory status for the live view.
+        The status emit is in a finally so it runs even on the backpressure
+        early-return — and so a stale panel signals a tick stuck mid-merge."""
+        try:
+            self._tick_inner()
+        finally:
+            self._emit_status()
+
+    def _tick_inner(self) -> None:
         self._reap()
         if self.merge_drain is not None:
             try:
                 self.merge_drain()  # integrate one passed branch into main this tick
             except Exception as e:
                 log(f"[dispatch] merge_drain raised (continuing tick): {e!r}")
+        # Auto-triage safety net: every `triage_every` ticks, label OPEN beads
+        # with no difficulty lane so they stop stranding. Skip while draining
+        # (no new beads should be touched). Best-effort — triage must NEVER break
+        # a tick, so log + continue on any error.
+        self._tick_count += 1
+        if (self.triage is not None and self.triage_every > 0
+                and self._tick_count % self.triage_every == 0
+                and not self._drain_requested()):
+            try:
+                self.triage()
+            except Exception as e:
+                log(f"[dispatch] triage raised (continuing tick): {e!r}")
         # Backpressure: if the merge queue is backed up, don't take on new work
         # this tick — let it drain first (reap + merge_drain above already ran).
         if self.backpressure is not None:
@@ -131,6 +168,12 @@ class Dispatcher:
                     log("[dispatch] merge backpressure OFF — resuming claims")
             except Exception as e:
                 log(f"[dispatch] backpressure check raised (ignoring): {e!r}")
+        if self._drain_requested():
+            if not self._draining_logged:
+                self._draining_logged = True
+                log("[dispatch] DRAIN requested — not claiming new work; "
+                    "finishing in-flight workers + merges, then exiting")
+            return
         if self.reserve_qwen:
             self._reserve_qwen()
         for difficulty in self.lanes:
@@ -150,11 +193,50 @@ class Dispatcher:
                     # on a persistent infra failure. It retries next tick.
                     break
 
+    def _drain_requested(self) -> bool:
+        return self.drain_flag is not None and self.drain_flag.exists()
+
     def idle(self) -> bool:
         """True when nothing is running and no lane has ready work."""
         if self._workers:
             return False
         return all(not self.queue.ready(difficulty=d, limit=1) for d in self.lanes)
+
+    def _emit_status(self) -> None:
+        """Publish a `factory_status` event (agents running/idle + flock holders)
+        for the live view. Emits only when the state CHANGES — the dispatcher
+        ticks every few seconds and an unchanged panel doesn't need a new event.
+        Best-effort: never let telemetry break a scheduling tick."""
+        try:
+            running_by_agent: dict[str, list[str]] = {}
+            for w in self._workers.values():
+                running_by_agent.setdefault(w.agent, []).append(w.ticket_name)
+            snap = self.registry.snapshot()
+            agents = [
+                {"name": name, "in_flight": s["in_flight"],
+                 "cap": s["max_concurrency"], "health": s["health"],
+                 "eligible": s["eligible"],
+                 "running": sorted(running_by_agent.get(name, []))}
+                for name, s in sorted(snap.items())
+            ]
+            try:
+                from harness.concurrency.resource_lock import lock_status
+                locks = lock_status()
+            except Exception:
+                locks = []
+            payload = {
+                "agents": agents,
+                "locks": locks,
+                "free_ports": len(self._free_ports),
+                "backpressure": self._backpressure_active,
+            }
+            digest = json.dumps(payload, sort_keys=True)
+            if digest == self._last_status_digest:
+                return
+            self._last_status_digest = digest
+            emit_progress_event("factory_status", payload)
+        except Exception as e:
+            log(f"[dispatch] status emit failed (ignoring): {e!r}")
 
     # --- internals ------------------------------------------------------ #
     def _reserve_qwen(self) -> None:
@@ -193,6 +275,16 @@ class Dispatcher:
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"worktree create failed: {e!r}")
             return False
+        # Best-effort: materialize a ticket.md from the bead when one isn't
+        # already committed on disk (an on-disk hand-authored spec always wins).
+        # A render failure must never block the spawn.
+        try:
+            bead = self.queue.show(bead_id)
+            if bead:
+                from harness.dispatch.ticket_render import render_ticket_md
+                render_ticket_md(bead, Path(wt.root) / "tickets" / ticket_name / "ticket.md")
+        except Exception as e:
+            log(f"[dispatch] ticket.md render skipped for {ticket_name}: {e!r}")
         try:
             proc = self.spawn(ticket_name, agent, wt, ports)
         except Exception as e:  # Popen/launch failed → tear down the worktree too
@@ -268,6 +360,12 @@ class Dispatcher:
         idle_ticks = 0
         while True:
             self.tick()
+            if self._drain_requested():
+                pend = self.merge_pending() if self.merge_pending else 0
+                if not self._workers and pend == 0:
+                    log("[dispatch] drain complete — no in-flight workers and "
+                        "merge queue empty; exiting cleanly for restart")
+                    return
             if self.idle():
                 idle_ticks += 1
                 if max_idle_ticks and idle_ticks >= max_idle_ticks:
