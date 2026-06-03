@@ -387,6 +387,9 @@ function attachRegistryModel(key, host) {
 			if (key === 'player') {
 				retargetPlayerBodyMesh(host, model);
 				attachGltfHat(host, model);
+				// Seat the equipped key-item prop on a spine bone, built here AFTER
+				// the procedural snapshot so the body-bone prop is left visible.
+				attachGltfKeyItemProp(host, model);
 			}
 		})
 		.catch((err) => {
@@ -511,6 +514,137 @@ function attachGltfHat(host, model) {
 	}
 
 	host.userData.gltfHatMesh = hat;
+}
+
+// Desired world-space scale and seating for a key-item prop worn on the loaded
+// glTF torso, analogous to the HAT_HEAD_WORLD_* constants. `buildKeyItemProp`
+// sizes props for the ~1-unit procedural body; the glTF is normalized to ~1.8
+// units, so KEY_ITEM_BODY_WORLD_SCALE shrinks the prop to read as a chest badge.
+// KEY_ITEM_BODY_WORLD_OFFSET pushes it just forward of the spine bone (+Z chest).
+const KEY_ITEM_BODY_WORLD_SCALE = 0.5;
+const KEY_ITEM_BODY_WORLD_OFFSET = 0.16;
+// World-space y/z anchor used only when no spine bone exists: mid-chest of the
+// ~1.8-unit normalized model, nudged forward so the prop sits on the torso front.
+const KEY_ITEM_FALLBACK_WORLD_Y = 1.25;
+const KEY_ITEM_FALLBACK_WORLD_Z = 0.22;
+
+// Local chest seating for the procedural primitive avatar (~1-unit body): mid
+// torso, nudged forward (+Z) so the prop reads as worn on the chest front.
+const KEY_ITEM_PROC_CHEST_Y = 0.18;
+const KEY_ITEM_PROC_CHEST_Z = 0.45;
+
+/**
+ * Build the equipped key-item prop (from `host.userData.keyItemId`) and seat it
+ * on the loaded glTF avatar's torso so it renders attached to the body and
+ * follows it. Mirrors attachGltfHat but targets a spine bone (preferring
+ * `spine_03`, then `spine_02`, then `spine_01`). Called from the player branch
+ * of `attachRegistryModel` AFTER the procedural-mesh snapshot, so the bone prop
+ * is never hidden by the hiding loop.
+ *
+ * Resilience: a `none`/unknown key item adds nothing; a missing spine bone falls
+ * back to a host-local chest anchor so the prop still renders; the whole routine
+ * is best-effort and never throws (caught by the caller).
+ * @param {THREE.Object3D} host - the avatar group.
+ * @param {THREE.Object3D} model - the loaded, normalized glTF model.
+ */
+function attachGltfKeyItemProp(host, model) {
+	// Remove any prior prop (e.g. a procedural one seated before the glTF resolved)
+	// so the body bone never carries a stale duplicate.
+	const existing = host.userData.keyItemPropMesh;
+	if (existing) {
+		if (existing.parent) existing.parent.remove(existing);
+		disposeAvatar(existing);
+		host.userData.keyItemPropMesh = null;
+	}
+
+	const prop = buildKeyItemProp(host.userData.keyItemId);
+	if (!prop) return; // `none`/unknown → no prop to attach.
+
+	const spineBone = model.getObjectByName('spine_03')
+		|| model.getObjectByName('spine_02')
+		|| model.getObjectByName('spine_01');
+	if (spineBone) {
+		// Parent to the spine bone so the prop inherits the torso's world position
+		// and orientation. Compensate for the bone's world transform so the prop
+		// keeps a sensible world scale and stays upright while yawing with the
+		// avatar (host) — same pattern as attachGltfHat.
+		spineBone.add(prop);
+
+		const boneScale = new THREE.Vector3();
+		spineBone.getWorldScale(boneScale);
+		const sFactor = KEY_ITEM_BODY_WORLD_SCALE / (boneScale.x || 1);
+		prop.scale.setScalar(sFactor);
+
+		const boneQuat = new THREE.Quaternion();
+		spineBone.getWorldQuaternion(boneQuat);
+		const hostQuat = new THREE.Quaternion();
+		host.getWorldQuaternion(hostQuat);
+		prop.quaternion.copy(boneQuat).invert().multiply(hostQuat);
+
+		// Seat the prop just forward of the spine, along the (now-upright) world
+		// forward axis (+Z). Express that world offset in the bone's local space:
+		// rotate world +Z by the prop's compensating quaternion, then divide by the
+		// bone's world scale to land at the intended world distance.
+		const localFwd = new THREE.Vector3(0, 0, 1).applyQuaternion(prop.quaternion);
+		prop.position.copy(localFwd.multiplyScalar(KEY_ITEM_BODY_WORLD_OFFSET / (boneScale.x || 1)));
+	} else {
+		// No spine bone: anchor at mid-chest in the host's world space so the prop
+		// still renders and never floats at the group origin.
+		host.add(prop);
+		prop.scale.setScalar(KEY_ITEM_BODY_WORLD_SCALE);
+		prop.position.set(0, KEY_ITEM_FALLBACK_WORLD_Y, KEY_ITEM_FALLBACK_WORLD_Z);
+	}
+
+	host.userData.keyItemPropMesh = prop;
+}
+
+/**
+ * Build the equipped key-item prop (from `host.userData.keyItemId`) and seat it
+ * on the procedural primitive avatar's torso, recording it on
+ * `host.userData.keyItemPropMesh`. Used both when the avatar is first built and
+ * when the equip changes while the procedural fallback is still in use.
+ * Best-effort: `none`/unknown adds nothing.
+ * @param {THREE.Object3D} host - the avatar group.
+ */
+function attachProceduralKeyItemProp(host) {
+	const prop = buildKeyItemProp(host.userData.keyItemId);
+	if (!prop) return;
+	prop.position.set(0, KEY_ITEM_PROC_CHEST_Y, KEY_ITEM_PROC_CHEST_Z);
+	host.add(prop);
+	host.userData.keyItemPropMesh = prop;
+}
+
+/**
+ * Apply a key-item equip change to a rendered avatar WITHOUT a page reload: when
+ * the equipped id differs from the currently-shown one, remove + dispose the old
+ * prop and build/attach the new one (to the glTF spine bone when a model is
+ * loaded, else to the procedural torso). Tracks the shown id on
+ * `host.userData.keyItemId`. Best-effort and caught so a bad id never crashes the
+ * render loop or removes the avatar.
+ * @param {THREE.Object3D} host - the avatar group.
+ * @param {string} equippedKeyItemId - the snapshot's per-player key item id.
+ */
+function updateKeyItemProp(host, equippedKeyItemId) {
+	const newId = equippedKeyItemId || 'none';
+	if (!host || !host.userData) return;
+	if (host.userData.keyItemId === newId) return; // unchanged → nothing to do.
+
+	try {
+		const old = host.userData.keyItemPropMesh;
+		if (old) {
+			if (old.parent) old.parent.remove(old);
+			disposeAvatar(old);
+			host.userData.keyItemPropMesh = null;
+		}
+		host.userData.keyItemId = newId;
+		if (host.userData.modelOverride) {
+			attachGltfKeyItemProp(host, host.userData.modelOverride);
+		} else {
+			attachProceduralKeyItemProp(host);
+		}
+	} catch (err) {
+		console.warn('[renderer] failed to update key-item prop:', err);
+	}
 }
 
 function createMinionMesh(minionType) {
@@ -1314,6 +1448,22 @@ const HAT_CROWN_COLOR = 0xffd700; // gold
 const HAT_BANDANA_COLOR = 0xc62828; // crimson red
 const HAT_BEANIE_COLOR = 0x00695c; // slate teal
 
+// Per-key-item prop colors (worn as a small torso badge). Ids match the server's
+// KEY_ITEM_DEFS in game/server/progression.js. Each defined prop gets a distinct
+// geometry + color; ids without a mapping render no prop (see buildKeyItemProp).
+const KEY_ITEM_DODGE_COLOR = 0x06b6d4; // cyan
+const KEY_ITEM_GUARD_COLOR = 0x3b82f6; // steel blue
+const KEY_ITEM_MAGNET_COLOR = 0xdc2626; // magnet red
+const KEY_ITEM_MAGNET_PRONG_COLOR = 0x9ca3af; // steel grey
+const KEY_ITEM_MEDIC_COLOR = 0xf1f5f9; // medkit white
+const KEY_ITEM_MEDIC_CROSS_COLOR = 0xdc2626; // cross red
+const KEY_ITEM_SUMMON_COLOR = 0xf59e0b; // amber
+const KEY_ITEM_FLARE_COLOR = 0xf97316; // signal orange
+const KEY_ITEM_SMOKE_COLOR = 0x64748b; // slate grey
+const KEY_ITEM_OVERCLOCK_COLOR = 0xfacc15; // electric yellow
+const KEY_ITEM_ANCHOR_COLOR = 0x78716c; // iron brown
+const KEY_ITEM_PHASE_COLOR = 0xa855f7; // phase purple
+
 /**
  * Build the ~1-unit-tall body geometry for a given body shape.
  * Unknown/missing shapes fall back to a box.
@@ -1435,6 +1585,139 @@ function buildHatMesh(hatId) {
 }
 
 /**
+ * Build a key-item prop child object for a catalog key item id, centered at the
+ * group origin (callers seat it on the avatar's torso). Mirrors buildHatMesh:
+ * each defined id returns a distinct THREE.Group/Mesh with its own geometry +
+ * MeshStandardMaterial color. Returns null for `'none'`, null/undefined, and any
+ * unknown/unmapped id so no prop is added (graceful "no prop").
+ *
+ * Key item ids come from the server's KEY_ITEM_DEFS
+ * (game/server/progression.js). Ids without a case here intentionally fall
+ * through to `null` rather than erroring.
+ * @param {string} keyItemId
+ * @returns {THREE.Object3D|null}
+ */
+export function buildKeyItemProp(keyItemId) {
+	switch (keyItemId) {
+		case 'dodge_roll': {
+			// A faceted gem reads as a quick, agile movement charm.
+			const geo = new THREE.OctahedronGeometry(0.2, 0);
+			const mat = new THREE.MeshStandardMaterial({ color: KEY_ITEM_DODGE_COLOR });
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'guard_block': {
+			// A flat shield plate worn on the chest.
+			const geo = new THREE.BoxGeometry(0.32, 0.42, 0.07);
+			const mat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_GUARD_COLOR,
+				metalness: 0.4,
+				roughness: 0.5,
+			});
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'loot_magnet': {
+			// A stubby horseshoe magnet: a red body bar with two grey prong tips.
+			const prop = new THREE.Group();
+			const bodyMat = new THREE.MeshStandardMaterial({ color: KEY_ITEM_MAGNET_COLOR });
+			const body = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.18, 0.12), bodyMat);
+			body.position.y = -0.04;
+			prop.add(body);
+			const prongMat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_MAGNET_PRONG_COLOR,
+				metalness: 0.6,
+				roughness: 0.4,
+			});
+			for (const x of [-0.09, 0.09]) {
+				const prong = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.16, 12), prongMat);
+				prong.position.set(x, 0.12, 0);
+				prop.add(prong);
+			}
+			return prop;
+		}
+		case 'field_medic_kit': {
+			// A white medkit box with a red cross on its face.
+			const prop = new THREE.Group();
+			const boxMat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_MEDIC_COLOR,
+				roughness: 0.8,
+			});
+			const box = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.26, 0.14), boxMat);
+			prop.add(box);
+			const crossMat = new THREE.MeshStandardMaterial({ color: KEY_ITEM_MEDIC_CROSS_COLOR });
+			const crossV = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.18, 0.04), crossMat);
+			crossV.position.z = 0.08;
+			prop.add(crossV);
+			const crossH = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.06, 0.04), crossMat);
+			crossH.position.z = 0.08;
+			prop.add(crossH);
+			return prop;
+		}
+		case 'summon_recall': {
+			// A small whistle/horn cone.
+			const geo = new THREE.ConeGeometry(0.14, 0.34, 14);
+			const mat = new THREE.MeshStandardMaterial({ color: KEY_ITEM_SUMMON_COLOR });
+			const cone = new THREE.Mesh(geo, mat);
+			cone.rotation.z = Math.PI / 2; // lay the horn sideways across the chest
+			return cone;
+		}
+		case 'flare_beacon': {
+			// A glowing signal ball.
+			const geo = new THREE.IcosahedronGeometry(0.2, 0);
+			const mat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_FLARE_COLOR,
+				emissive: KEY_ITEM_FLARE_COLOR,
+				emissiveIntensity: 0.5,
+			});
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'smoke_bomb': {
+			// A round grey bomb.
+			const geo = new THREE.SphereGeometry(0.2, 16, 12);
+			const mat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_SMOKE_COLOR,
+				roughness: 0.9,
+			});
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'overclock': {
+			// A short cylindrical capacitor/cog.
+			const geo = new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16);
+			const mat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_OVERCLOCK_COLOR,
+				metalness: 0.5,
+				roughness: 0.4,
+			});
+			const cyl = new THREE.Mesh(geo, mat);
+			cyl.rotation.x = Math.PI / 2; // face the disc outward from the chest
+			return cyl;
+		}
+		case 'ground_anchor': {
+			// A heavy iron block.
+			const geo = new THREE.BoxGeometry(0.2, 0.3, 0.2);
+			const mat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_ANCHOR_COLOR,
+				metalness: 0.7,
+				roughness: 0.5,
+			});
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'phase_step': {
+			// A faceted teleport crystal.
+			const geo = new THREE.IcosahedronGeometry(0.18, 0);
+			const mat = new THREE.MeshStandardMaterial({
+				color: KEY_ITEM_PHASE_COLOR,
+				emissive: KEY_ITEM_PHASE_COLOR,
+				emissiveIntensity: 0.3,
+			});
+			return new THREE.Mesh(geo, mat);
+		}
+		case 'none':
+		default:
+			return null;
+	}
+}
+
+/**
  * Resolve a #RRGGBB hex string into a numeric hex, falling back to `fallbackHex`
  * when the value is missing or invalid.
  * @param {*} hex
@@ -1476,9 +1759,11 @@ function cosmeticSignature(cosmetic) {
  *
  * @param {object} cosmetic - { bodyColor, accentColor, bodyShape }
  * @param {boolean} isSelf - whether this avatar is the local player
+ * @param {string} [equippedKeyItemId] - the player's equipped key item id; its
+ *   prop is seated on the torso (omitted/`none`/unknown → no prop).
  * @returns {THREE.Group}
  */
-export function createPlayerAvatar(cosmetic, isSelf) {
+export function createPlayerAvatar(cosmetic, isSelf, equippedKeyItemId) {
 	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
 	const shape = AVATAR_BODY_SHAPES.has(c.bodyShape) ? c.bodyShape : 'box';
 
@@ -1513,6 +1798,15 @@ export function createPlayerAvatar(cosmetic, isSelf) {
 	// hat and seat it on the loaded model's head bone (the procedural group-level
 	// hat above is hidden alongside the body when the glTF resolves).
 	group.userData.hatId = hatId;
+
+	// Key-item prop — a child mesh seated on the torso so it reads as worn on the
+	// chest and inherits the group's rotation. Added BEFORE attachRegistryModel so
+	// it is captured by the procedural snapshot and hidden alongside the body when
+	// the glTF resolves (a fresh prop is then seated on the spine bone). `none` /
+	// unknown / undefined adds no mesh.
+	const keyItemId = equippedKeyItemId || 'none';
+	group.userData.keyItemId = keyItemId;
+	attachProceduralKeyItemProp(group);
 
 	group.userData.isAvatar = true;
 	group.userData.bodyMesh = bodyMesh;
@@ -3476,7 +3770,7 @@ export function animate(timestamp) {
 					disposeAvatar(playersMeshes[id]);
 					scene.remove(playersMeshes[id]);
 				}
-				const avatar = createPlayerAvatar(pData.cosmetic, id === myId);
+				const avatar = createPlayerAvatar(pData.cosmetic, id === myId, pData.equippedKeyItemId);
 				scene.add(avatar);
 				playersMeshes[id] = avatar;
 			}
@@ -3486,6 +3780,10 @@ export function animate(timestamp) {
 			// a reload; safe no-op on the procedural fallback. Runs before either
 			// recolor path below reads userData.baseColor.
 			applyLoadedModelCosmetic(playersMeshes[id], pData.cosmetic);
+
+			// (Re)seat the equipped key-item prop when it changes between snapshots
+			// (local + remote), so an equip swap takes effect without a reload.
+			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
 
 			if (id === myId) continue;
 
