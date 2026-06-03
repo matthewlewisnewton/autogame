@@ -1,0 +1,12 @@
+Decomposed into a single focused sub-ticket. This is a pure dead-code retirement, not a game feature — one atomic, code-verifiable deletion pass is the right (and smallest) scope.
+
+**Created sub-ticket:**
+- `tickets/164-cleanup-retire-legacy-bash-harness/subtickets/01-retire-legacy-bash-harness/ticket.md`
+
+**Scoping rationale:**
+- The goal names 5 dead files (`lib.sh`, `run_ticket.sh`, `run_subtask.sh`, `run_backlog.sh`, `supervisor.sh`). I verified every Python reference to them is a `# port of lib.sh:NNN` provenance comment — no live import — so deletion is safe and `pytest` is unaffected (`test_scope_audit.py` builds its own temp `lib.sh`).
+- I extended the deletion to 3 sibling scripts that `source lib.sh` and would otherwise dangle: `test_port_ownership.sh` and `test_review_recovery.sh` (pure tests of now-ported helpers) and `qwen_vision_smoke.sh` (depends on `lib.sh::run_qwen_vision`). Leaving them would mean "retiring" the harness while keeping broken `source` statements pointing at a deleted file.
+- One live Python pointer needs fixing: `cli.py`'s `doctor vision` branch references `qwen_vision_smoke.sh`. The ticket calls for updating that message so it doesn't name a deleted file.
+- Explicitly fenced off out-of-scope churn (`lint.sh`, the pre-commit hook, the docstring mentions in other `*.py`, all of `game/`) to keep the diff clean for QA.
+
+**Verification: code** — every criterion is about files existing/not existing, references, and tests passing; nothing is a visual render check.

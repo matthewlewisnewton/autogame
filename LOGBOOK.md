@@ -2929,3 +2929,26 @@ No debug scenarios were added or changed by this ticket.
 ## Remaining gaps
 None. All acceptance criteria are fully and robustly met, and the captured run is clean.
 
+
+## v0.165 — 164-cleanup-retire-legacy-bash-harness  (2026-06-03 07:48:57)
+
+  execute the deleted files.
+- Recoverability preserved exactly as the Goal requires: tag
+  `bash-rollback-v1` exists and still contains `lib.sh`, `run_ticket.sh`,
+  `run_subtask.sh`, `run_backlog.sh`, `supervisor.sh`.
+- `harness/lint.sh` (not a target) is correctly left untouched.
+
+**AC2 — "Existing server + client tests pass; the game starts and loads
+cleanly."** — MET.
+- Game starts/loads cleanly — see runtime gate above.
+- Server + client test suites live entirely under `game/`, which this diff does
+  not touch, so they are unaffected by definition. `coverage.log` confirms "No
+  test files found" for changed files (the changed files are harness Python/bash,
+  outside vitest's `game/` scope) — expected for a harness-only cleanup.
+
+## Remaining gaps
+
+None. The change is correct, minimal, and scoped exactly to the Goal; the
+captured run proves the game is healthy and the deletions are recoverable from
+`bash-rollback-v1`.
+

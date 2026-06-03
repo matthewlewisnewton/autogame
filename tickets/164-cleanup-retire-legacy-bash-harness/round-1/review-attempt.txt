@@ -1,0 +1,8 @@
+VERDICT: PASS — review written. No `gaps.md` (PASS) and no `nits.md` (no genuine backlog-worthy nits).
+
+Summary:
+- **Runtime gate passed**: `metrics.json` `ok: true`, empty `pageerrors`, no `harness_failure`; full smoke flow (auth→lobby→play→dodge cooldown) captured cleanly. The only console `[error]` is a benign `409` resource load, not game code.
+- **Scope correct**: pure harness cleanup, zero `game/` files touched — the five bash files named in the Goal plus their sibling smoke/test helpers (~2659 lines) deleted, and a one-line stale-reference fix in `cli.py`.
+- **No dangling deps**: remaining mentions of the deleted scripts are only docstring "ported from lib.sh:NNN" citations and the historical design doc — nothing imports or executes them.
+- **Recoverability intact**: tag `bash-rollback-v1` still contains all the removed scripts, exactly as the Goal requires.
+- **Tests/coverage**: server+client suites live under `game/` (untouched), so unaffected; `coverage.log` "no test files" is expected for a harness-only change.
