@@ -1,0 +1,11 @@
+I created one sub-ticket. The top-level ticket (191-character-hats-client-render) is a single cohesive concern — attach the equipped hat to the glTF avatar's head bone and render it for all players — that one focused implementation pass in `game/client/renderer.js` fully delivers, so splitting it would only add artificial seams.
+
+Key findings that shaped the scope:
+- The glTF avatar (from ticket 187) hides **all** procedural primitives on load, including the procedural hat — that's why hats don't currently show on the glTF model.
+- The hat anchor is a real `Head` bone in `player.glb` (verified rig chain `root → … → neck_01 → Head`). The ticket's reference to "anchor convention documented by 190" has no doc behind it; 190 only added catalog + procedural meshes, so I pinned the anchor to the verified `Head` bone with a bbox fallback.
+- Equip-change / local+remote already flow through `cosmeticSignature` (which includes `hat`) and the rebuild loop, so no extra path is needed beyond reattaching the hat in the load callback.
+
+Verification mode is `code`: the criteria mix "renders on the head" (visual) with "updates on equip change", "shown for remote players", "none = no mesh", and "never throws / fallback" (structural/behavioral), so per the rules it must be `code`.
+
+Sub-ticket folder created:
+- `/home/matt/workspace/.autogame-worktrees/191-character-hats-client-render/tickets/191-character-hats-client-render/subtickets/01-render-hat-on-gltf-head-bone/ticket.md`
