@@ -1,0 +1,9 @@
+Created 1 sub-ticket. This top-level ticket is a single, self-contained QA-playthrough deliverable, so it decomposes cleanly into one focused, independently implementable pass.
+
+**Sub-ticket created:**
+- `/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/tickets/179-qa-deck-loadout-applies-to-run/subtickets/01-qa-deck-loadout-applies-to-run/ticket.md`
+
+**Scoping notes:**
+- **One sub-ticket, not several** — configuring the loadout, starting the run, asserting the match, and capturing evidence are one tightly-coupled verification flow; splitting them would create behavior-less fragments.
+- **Verification: code, not visual** (overriding the top-level ticket's `visual`). The acceptance criteria are about *card-contents matching*, server-derived run state, evidence artifacts, and a wired negative/assert path — none of which the visual QA's single happy-path screenshot run can confirm. The harness `visual` mode would fail this forever.
+- **Likely no game-code change required.** Since `DECK_MIN_SIZE=4 = OPENING_HAND_SIZE`, a minimal 4-card non-default loadout makes the opening hand fully reflect the loadout, and `__AUTOGAME_HARNESS_STATE__()` already exposes `hand`. I named the harness-state extension and the `package.json` npm-script as *optional* files (and listed them explicitly) so QA's out-of-scope diff check won't block them if the implementer needs them.

@@ -1,0 +1,159 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game
+      Coverage enabled with v8
+
+stdout | server/test/barrier_dome.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > casting sets barrierDomeUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > casting sets barrierDomeUntil/radius/center and cooldown on the caster
+Server listening on port 0
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > casting sets barrierDomeUntil/radius/center and cooldown on the caster
+Player connected: socket=-re0KsZmbIy3JA1VAAAB, playerId=test-1780505396900-vjriyn
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > casting sets barrierDomeUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > casting sets barrierDomeUntil/radius/center and cooldown on the caster
+[loot] spawned id=5fc56677-43c1-42ed-9ebd-45dae0271355 value=19
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > casting sets barrierDomeUntil/radius/center and cooldown on the caster
+Player disconnected: -re0KsZmbIy3JA1VAAAB
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the dome
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the dome
+Server listening on port 0
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the dome
+Player connected: socket=Pj8gZeNgr1n-tbHAAAAD, playerId=test-1780505396928-cmixd2
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the dome
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/barrier_dome.test.js > useKeyItem — barrier_dome (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the dome
+Player disconnected: Pj8gZeNgr1n-tbHAAAAD
+
+ ✓ |server| server/test/barrier_dome.test.js (10 tests) 39ms
+ ✓ |client| client/test/deck-viewer.test.js (15 tests) 161ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/key-item-dodge.test.js (4 tests) 180ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:2534:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/test/main.test.js:2172:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:2534:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/test/main.test.js:2184:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:2534:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/test/main.test.js:2194:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:2534:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/test/main.test.js:2207:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/179-qa-deck-loadout-applies-to-run/game/[39mclient/renderer.js:373:11[90m)[39m
+}
+
+ ✓ |client| client/test/main.test.js (146 tests) 885ms
+
+ Test Files  4 passed (4)
+      Tests  175 passed (175)
+   Start at  09:49:56
+   Duration  1.96s (transform 111ms, setup 48ms, collect 201ms, tests 1.27s, environment 861ms, prepare 246ms)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   38.24 |    52.41 |    39.7 |   38.24 |                       
+ client        |    69.2 |    62.85 |   29.03 |    69.2 |                       
+  cards.js     |      91 |    62.96 |   66.66 |      91 | ...71,480-494,588-605 
+  collision.js |   20.81 |      100 |       0 |   20.81 | ...16,222-230,236-241 
+  delta.js     |   78.57 |      100 |       0 |   78.57 | 12-14                 
+  hand.js      |   46.25 |     62.5 |   23.07 |   46.25 | ...40,156-157,160-163 
+ server        |   29.36 |    49.09 |   48.64 |   29.36 |                       
+  index.js     |   29.36 |    49.09 |   48.64 |   29.36 | ...792-3801,3830-3831 
+---------------|---------|----------|---------|---------|-----------------------
