@@ -2929,3 +2929,26 @@ No debug scenarios were added or changed by this ticket.
 ## Remaining gaps
 None. All acceptance criteria are fully and robustly met, and the captured run is clean.
 
+
+## v0.167 — 169-gameplay-enemy-variant-framework  (2026-06-03 09:07:56)
+
+### Behavior hook
+- PASS. `applyVariant()` invokes a variant definition's `apply(enemy)` only when a variant is selected and only when the registry entry provides a function. The shipped `test` variant keeps `apply: null`, so it remains behaviorally no-op.
+
+### Debug scenario checks
+- PASS. The new `variant-enemy` debug scenario is gated through the existing debugScenario socket path and local/dev allowance checks; normal gameplay does not enter it.
+- PASS. The same end-state is reachable through normal gameplay because combat enemy spawns can roll the registry `test` variant when the room tier and RNG allow it.
+- PASS. The scenario only prepares deterministic client-verification state by spawning a variant enemy beside a plain enemy. It does not bypass persistence, net replication, or server-side validation paths used by normal state updates.
+
+### Design and foundation consistency
+- PASS. The change is consistent with `game/docs/design.md`: it extends dungeon enemy/loot behavior without changing the lobby, movement, multiplayer, card-combat, or run loop foundations.
+- PASS. The captured run preserves the requirements in `game/docs/requirements.md`: Three.js scene renders, clients connect over WebSockets, players are represented in 3D, and movement/state updates continue.
+
+### Validation
+- PASS. Focused local verification completed successfully: `pnpm exec vitest run --config vitest.config.js server/test/enemy_variants.test.js server/test/server.test.js --coverage.enabled=false` passed 2 files / 351 tests.
+- Visibility note: the provided `coverage.log` shows `server/test/enemy_variants.test.js` passed and the variant-drop/server tests ran, but the overall coverage process was killed after 120s during an unrelated later key-item suite. I do not treat that coverage timeout as a blocking code gap for this ticket because the captured game run is healthy and the focused changed suites pass.
+
+## Remaining gaps
+
+None.
+

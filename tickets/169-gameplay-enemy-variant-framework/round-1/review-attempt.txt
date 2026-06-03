@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/169-gameplay-enemy-variant-framework/round-1/review.md`
+- `tickets/169-gameplay-enemy-variant-framework/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`.
+
+The captured game run was clean, but I found blocking framework gaps: `applyVariant` never invokes a selected variant behavior hook, and variant initialization is not centralized in `spawnEnemy`, so some spawn paths bypass the framework. Targeted variant tests passed; no `nits.md` was created.
