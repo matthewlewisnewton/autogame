@@ -2999,27 +2999,27 @@ None.
 None.
 
 
-## v0.168 — 168-bug-intermittent-stuck-lobby-socket  (2026-06-03 09:10:41)
+## v0.170 — 178-qa-world-stage-portal-transition  (2026-06-03 10:08:29)
 
-- Server: no server files changed; suite unaffected.
-- Captured run starts and loads cleanly (see gate above).
+Pass. Runtime health is clean: `round-2/metrics.json` has `ok: true`, no `harness_failure`, and `pageerrors: []`; `round-2/pageerrors.json` is empty. `round-2/console.log` has no `pageerror` or `[fatal]` lines from game code. The only console errors are 409 registration conflicts during the harness login/register flow, which do not prevent the capture from reaching gameplay or proving the transition.
 
-## Consistency with design / requirements
+Coverage/test visibility is also acceptable for this QA ticket: `round-2/coverage.log` shows 3 client test files passing with 160 tests total. The stderr model-load messages in those tests are existing jsdom asset-loading noise from fallback mesh tests, not runtime failures in the captured browser session.
 
-Purely additive client-side connection resilience. No gameplay, netcode, or
-state-replication semantics changed; nothing in `design.md` / `requirements.md`
-is regressed. The capture confirms movement, dodge cooldown, enemies, and HUD
-still function.
+### Design and foundation consistency
 
-## Code quality
+Pass. The implementation remains consistent with the design's lobby -> dungeon loop and the requirements for 3D rendering, client/server connectivity, multiplayer visualization, and synchronized movement. The smoke capture enters gameplay through the real UI flow before invoking the debug scenario, and the post-transition state still has an initialized Three.js scene, canvas, connected socket, visible combat HUD, and two players.
 
-Clean, well-commented, symmetric arm/clear lifecycle across handlers, reuses the
-existing error/status surfaces rather than inventing new UI. No dead code, no
-console errors. No debug scenarios were added or changed.
+The sunken canyon end-state is not fake-only: `game/server/quests.js` defines `canyon_descent` with `layoutProfile: "sunken-canyon"`, and the scenario uses the same `generateLayout(seed, "sunken-canyon")` stage profile used by normal quest deployment.
+
+### Debug scenario safeguards
+
+Pass. The browser URL shortcut is localhost-gated in `game/client/main.js`, and the direct Playwright helper is only reachable from test code with an active socket. Server-side, `debugScenario` is gated by `isDebugScenarioAllowed`, with production disabled unless `ALLOW_DEBUG_SCENARIOS=1` is explicitly set for harness runs.
+
+The `sunken-canyon-stage` scenario does not replace normal gameplay as the only route to the state: the same layout profile is reachable through the `canyon_descent` quest. The scenario preserves the core server path by mutating server-owned state, rebuilding dungeon bounds/colliders, sampling the player's floor height, and broadcasting `questUpdate` to clients; it does not bypass client-only rendering or invent a separate client-side layout.
 
 ## Remaining gaps
 
-None blocking. (One minor wording nit recorded in `nits.md`.)
+None.
 
 
 ## v0.169 — 179-qa-deck-loadout-applies-to-run  (2026-06-03 09:51:28)
@@ -3062,6 +3062,48 @@ Pass. The change supports the documented lobby-to-dungeon quest loop without alt
 ### Debug Scenario Review
 
 Pass. The scenario is gated behind the existing debug socket path and local/debug allowance, with the ticket smoke enabling `ALLOW_DEBUG_SCENARIOS=1` only for the isolated run. Normal gameplay does not invoke the scenario. The shortcut does not replace the player-facing path: it only positions an already-started defeat-enemies quest one kill from completion, and the smoke completes the objective through real combat input. It does not bypass the server-side objective, terminal-state, or reward summary invariants that normal play exercises.
+
+
+## v0.171 — 175-qa-telepipe-suspend-resume  (2026-06-03 11:27:22)
+
+The player position criterion is also covered: after resume the player is at `(-6, 9)` while the restored portal remains at `(-9, 9)`, outside the documented portal radius and therefore not immediately re-extracting.
+
+### Existing server + client tests pass; the game starts and loads cleanly.
+
+Pass. Runtime health is clean: `metrics.json` has `ok: true`, no `harness_failure`, and `pageerrors: []`. `console.log` contains only Vite/debug/init/run messages and no `pageerror` or `[fatal]` entries from game code. Server logs show the expected Telepipe lifecycle: placed, player extracted, checkpoint captured, run suspended, checkpoint restored.
+
+The provided round-3 coverage log reports 3 client test files and 165 tests passing. I also ran `pnpm test:quick`; Vitest reported 71 test files and 1641 tests passed, then the shell process was killed with exit code 137 after the pass summary. I did not see test assertion failures in the output.
+
+### Design and Requirements Consistency.
+
+Pass. The capture aligns with `game/docs/design.md`: Telepipe is consumed mid-run, extracts the solo player, suspends when no active players remain, captures a checkpoint, and restores that checkpoint on the next deploy. The change does not alter the underlying gameplay implementation; it verifies the existing server flow through real socket/UI paths. The foundation requirements remain intact: the capture has a canvas, a connected websocket session, the player represented in 3D state, and server-driven position/state updates.
+
+### Debug Scenario Review.
+
+Pass. This ticket uses the existing `telepipe-ready` debug scenario as a QA shortcut. It remains gated through debug/local paths: the browser URL parameter is localhost-only, and server-side debug scenarios require local/development access or `ALLOW_DEBUG_SCENARIOS=1`. Normal gameplay is still the real path exercised after setup: lobby ready-up deploys the run, the player uses the Telepipe card, server proximity extraction suspends the run, and deploy restores the checkpoint. The scenario does not bypass checkpoint capture, suspend, resume, socket replication, or server validation; it only ensures the player starts with a Telepipe card available for deterministic QA.
+
+
+## v0.168 — 168-bug-intermittent-stuck-lobby-socket  (2026-06-03 09:10:41)
+
+- Server: no server files changed; suite unaffected.
+- Captured run starts and loads cleanly (see gate above).
+
+## Consistency with design / requirements
+
+Purely additive client-side connection resilience. No gameplay, netcode, or
+state-replication semantics changed; nothing in `design.md` / `requirements.md`
+is regressed. The capture confirms movement, dodge cooldown, enemies, and HUD
+still function.
+
+## Code quality
+
+Clean, well-commented, symmetric arm/clear lifecycle across handlers, reuses the
+existing error/status surfaces rather than inventing new UI. No dead code, no
+console errors. No debug scenarios were added or changed.
+
+## Remaining gaps
+
+None blocking. (One minor wording nit recorded in `nits.md`.)
 
 ## Remaining gaps
 

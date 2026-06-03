@@ -32,6 +32,9 @@ const probes = [];
 const scenarios = new Set();
 // Track hand state before pressCard so the final probe can document before/after
 const cardPressBefore = new Map(); // player -> { slot, cardIdBefore, cardType, handBefore }
+// Track the pre-suspend enemy baseline and suspended objective across Telepipe steps
+// so the post-resume assertRunPreserved step can verify checkpoint preservation.
+const telepipeRunBaseline = new Map(); // player -> { preSuspendEnemies: [{id,hp,type,spawnedBy}], objective }
 
 // Benign headless-Chromium rendering noise - not game bugs. Filtered out so the
 // QA agent only sees real signal.
@@ -337,10 +340,25 @@ function fallbackRecipe() {
   // This runs AFTER the base fallback steps execute — the existing pages are
   // still alive and in gameplay, so we can emitScenario on player A.
   const ticket = inferTicketFile() ? readText(inferTicketFile(), 8000) : '';
-  const isSlopeTicket = /slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
-                        /sloped|142/.test(outDirAbs);
-  const isFlareBeaconTicket = /flare[-_]?beacon|revealedUntil|152-cleanup-key-item-flare-beacon/i.test(ticket) ||
-                              /flare|152-cleanup-key-item-flare-beacon/i.test(outDirAbs);
+  // Telepipe suspend/resume detection, computed first so its prose (which
+  // mentions portals/suspend) cannot make the world-stage/flare/slope branches
+  // fire — those are all guarded with !isTelepipeTicket below.
+  const isTelepipeTicket = /telepipe|suspend[-_ ]?resume|175-qa-telepipe/i.test(ticket) ||
+                           /telepipe|suspend[-_]?resume|175-qa-telepipe/i.test(outDirAbs);
+  const isWorldStageTicket = !isTelepipeTicket &&
+                             (/world[-_ ]?stage|sunken[-_ ]?canyon|portal[-_ ]?transition|178-qa-world-stage/i.test(ticket) ||
+                              /world[-_]?stage|sunken[-_]?canyon|portal[-_]?transition|178-qa-world-stage/i.test(outDirAbs));
+  // Guard flare/slope detection with !isWorldStageTicket and !isTelepipeTicket:
+  // this sub-ticket's own prose describes the flare-beacon and slope branches, so
+  // their regexes match the ticket text and would otherwise shadow the
+  // world-stage / telepipe branches below. For an actual flare/slope ticket both
+  // guards are false, so they are a no-op and their behavior is unchanged.
+  const isSlopeTicket = !isWorldStageTicket && !isTelepipeTicket &&
+                        (/slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
+                         /sloped|142/.test(outDirAbs));
+  const isFlareBeaconTicket = !isWorldStageTicket && !isTelepipeTicket &&
+                              (/flare[-_]?beacon|revealedUntil|152-cleanup-key-item-flare-beacon/i.test(ticket) ||
+                               /flare|152-cleanup-key-item-flare-beacon/i.test(outDirAbs));
 
   let steps = baseSteps;
   let summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.';
@@ -372,6 +390,119 @@ function fallbackRecipe() {
       { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
     ];
     summary = 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.';
+  } else if (isWorldStageTicket) {
+    steps = [
+      ...baseSteps,
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '05-before-world-stage',
+        description: 'Default stage in gameplay BEFORE the world-stage transition.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        description: 'Before world-stage transition: record starting harnessState.layout (profile is the default/crowded profile, roomCount, startRoom) and player x/z.',
+      },
+      { action: 'emitScenario', player: 'A', scenario: 'sunken-canyon-stage' },
+      { action: 'wait', player: 'A', ms: 2000 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '06-after-sunken-canyon',
+        description: 'New sunken-canyon stage AFTER the questUpdate layout swap from sunken-canyon-stage.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        description: 'After world-stage transition: assert harnessState.layout.profile === "sunken-canyon" (changed from the before value) and that player x/z matches the new layout startRoom.',
+      },
+    ];
+    summary = 'Deterministic full-flow smoke capture with world-stage fallback: auth, lobby, ready, movement, then before/after screenshots and probes around the sunken-canyon-stage portal transition (default -> sunken-canyon layout swap).';
+  } else if (isTelepipeTicket) {
+    // SOLO suspend → resume capture. A solo extraction leaves zero active
+    // players, so the run suspends to the lobby; re-readying restores it. This
+    // branch builds its OWN solo steps (player A only) — it must NOT reuse the
+    // two-player baseSteps, which connect player B and would keep the run active.
+    steps = [
+      { action: 'connectPlayer', player: 'A' },
+      { action: 'wait', player: 'A', ms: 1000 },
+      { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
+      { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
+      { action: 'wait', player: 'A', ms: 1000 },
+      { action: 'createLobby', player: 'A', name: 'Telepipe Suspend QA' },
+      { action: 'wait', player: 'A', ms: 1000 },
+      // Request telepipe-ready WHILE STILL IN THE LOBBY (sets player.debugScenario);
+      // the telepipe card is only injected into hand slot 0 at DEPLOY time
+      // (applyTelepipeReadyHand), so this must precede readyAll — emitting it after
+      // deploy would leave the hand without a telepipe and nothing to place. This
+      // mirrors the passing sub-ticket 01 smoke (request scenario, then click ready).
+      { action: 'emitScenario', player: 'A', scenario: 'telepipe-ready' },
+      { action: 'wait', player: 'A', ms: 500 },
+      // Ready the single connected player → solo deploy with a telepipe in hand.
+      { action: 'readyAll' },
+      { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
+      { action: 'wait', player: 'A', ms: 1000 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '01-in-dungeon',
+        description: 'Solo player in the dungeon with a telepipe in hand slot 0, before suspending.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        stashBaseline: true,
+        description: 'PRE-SUSPEND state: record player x/z, enemyHp count, and layout (profile + seed) before placing the telepipe. Stashes the live enemy set (id -> hp/type/spawnedBy) as the checkpoint baseline, since the suspended lobby clears live enemies.',
+      },
+      // Place the portal (hand slot key `1`) at the player's feet, then nudge so
+      // the server-side proximity check auto-extracts the solo player. A solo
+      // extraction leaves zero active players → maybeSuspendRun → suspendRunToLobby.
+      // checkTelepipeProximity runs every tick once PORTAL_PLACEMENT_GRACE_MS
+      // (~2s) elapses, extracting any player still within PORTAL_RADIUS (2.5).
+      // The portal lands at the player's exact position, so nudge OUT and back
+      // (w then s) — MOVE_SPEED is 12 u/s, so a one-way hold would walk the player
+      // clear of the radius and never extract.
+      { action: 'pressKey', player: 'A', key: '1', ms: 400 },
+      { action: 'wait', player: 'A', ms: 500 },
+      { action: 'move', player: 'A', key: 'w', durationMs: 150 },
+      { action: 'move', player: 'A', key: 's', durationMs: 150 },
+      // Wait past PORTAL_PLACEMENT_GRACE_MS (~2s) so the proximity tick fires
+      // checkTelepipeProximity → tryEnterTelepipe → suspendRunToLobby.
+      { action: 'wait', player: 'A', ms: 3000 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '02-suspended-lobby',
+        description: 'Lobby after the solo telepipe extraction suspended the run.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        stashObjective: true,
+        description: 'SUSPENDED state: record runStatus/suspendedRunSummary (questId, questName, objective totalEnemies/defeatedEnemies) after suspendRunToLobby. Stashes objective (type/totalEnemies/defeatedEnemies) for the post-resume preservation assertion.',
+      },
+      // Re-deploy → restoreRunCheckpoint resumes the suspended run.
+      { action: 'readyAll' },
+      { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '03-resumed-dungeon',
+        description: 'Resumed dungeon after re-deploying from the suspended lobby.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        description: 'RESUMED state: assert the run is preserved — same layout seed/profile and enemy set as the pre-suspend probe, and no lingering runStatus === "suspended".',
+      },
+      {
+        action: 'assertRunPreserved',
+        player: 'A',
+        description: 'VERIFY preservation: compare the resumed enemy set against the pre-suspend baseline and the stashed suspended objective. Records a `preservation` block (preserved/missing/hpChanged ids, added spawner-add enemies, objective echo) and FAILS the capture on any genuine restore mismatch.',
+      },
+    ];
+    summary = 'Deterministic solo Telepipe suspend/resume capture: auth, solo lobby + deploy, telepipe-ready scenario, then in-dungeon / suspended-lobby / resumed-dungeon screenshots with before/after probes around the suspendRunToLobby → restoreRunCheckpoint transition.';
   } else {
     summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.';
   }
@@ -773,11 +904,118 @@ async function executeRecipe(browser, recipe) {
         description: step.description || '',
       });
     } else if (step.action === 'probe') {
+      const data = await collectProbe(page);
       probes.push({
         player,
         description: step.description || '',
-        data: await collectProbe(page),
+        data,
       });
+      // Telepipe cross-step stashing (mirrors the cardPressBefore pattern): the
+      // suspended lobby clears live enemies, so the pre-suspend enemy set and the
+      // suspended objective must be captured here for assertRunPreserved to check.
+      if (step.stashBaseline) {
+        const enemyHp = (data?.harnessState?.enemyHp) || [];
+        const entry = telepipeRunBaseline.get(player) || {};
+        entry.preSuspendEnemies = enemyHp.map((e) => ({
+          id: e.id,
+          hp: e.hp,
+          type: e.type ?? null,
+          spawnedBy: e.spawnedBy ?? null,
+        }));
+        telepipeRunBaseline.set(player, entry);
+      }
+      if (step.stashObjective) {
+        const objective = data?.harnessState?.suspendedRunSummary?.objective || null;
+        const entry = telepipeRunBaseline.get(player) || {};
+        entry.objective = objective
+          ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
+          : null;
+        telepipeRunBaseline.set(player, entry);
+      }
+    } else if (step.action === 'assertRunPreserved') {
+      // Verify the suspend → resume checkpoint preserved the original enemy set and
+      // objective. Records a `preservation` block into the probes/metrics evidence,
+      // then throws on any genuine restore mismatch (propagating out of executeRecipe
+      // so metrics.ok stays false and process.exit(1) fires).
+      const data = await collectProbe(page);
+      const resumedEnemies = (data?.harnessState?.enemyHp) || [];
+      const entry = telepipeRunBaseline.get(player) || {};
+      const preSuspendEnemies = entry.preSuspendEnemies || [];
+      const objective = entry.objective || null;
+
+      const preMap = new Map(preSuspendEnemies.map((e) => [e.id, e]));
+      const resumedMap = new Map(resumedEnemies.map((e) => [e.id, {
+        id: e.id,
+        hp: e.hp,
+        type: e.type ?? null,
+        spawnedBy: e.spawnedBy ?? null,
+      }]));
+
+      const preservedIds = [];
+      const missingIds = [];
+      const hpChangedIds = [];
+      for (const [id, pre] of preMap) {
+        const res = resumedMap.get(id);
+        if (!res) { missingIds.push(id); continue; }
+        preservedIds.push(id);
+        if (res.hp !== pre.hp) hpChangedIds.push(id);
+      }
+      const addedEnemies = [];
+      for (const [id, res] of resumedMap) {
+        if (!preMap.has(id)) addedEnemies.push(res);
+      }
+      const addedAllSpawnerAdds = addedEnemies.every((e) => !!e.spawnedBy);
+      // Original/quest enemies are those WITHOUT a spawnedBy tag; spawner adds are
+      // tagged. The objective totalEnemies should match the original (non-add) count.
+      const originalPreSuspendEnemies = preSuspendEnemies.filter((e) => !e.spawnedBy);
+
+      const preservation = {
+        preSuspendEnemyCount: preSuspendEnemies.length,
+        resumedEnemyCount: resumedEnemies.length,
+        originalPreSuspendEnemyCount: originalPreSuspendEnemies.length,
+        preservedIds: preservedIds.length,
+        missingIds,
+        hpChangedIds,
+        addedEnemies,
+        addedAllSpawnerAdds,
+        objective: objective
+          ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
+          : null,
+      };
+
+      probes.push({
+        player,
+        description: step.description || 'Telepipe suspend/resume preservation verification.',
+        data: { preservation, harnessState: data?.harnessState ?? null },
+      });
+
+      const failures = [];
+      if (missingIds.length) {
+        failures.push(`pre-suspend enemy id(s) missing after resume: ${missingIds.join(', ')}`);
+      }
+      if (hpChangedIds.length) {
+        failures.push(`preserved enemy hp changed across resume: ${hpChangedIds.join(', ')}`);
+      }
+      if (!addedAllSpawnerAdds) {
+        const conjured = addedEnemies.filter((e) => !e.spawnedBy).map((e) => e.id);
+        failures.push(`restore conjured non-spawner enemy id(s): ${conjured.join(', ')}`);
+      }
+      if (!objective) {
+        failures.push('suspended objective was not captured before assertRunPreserved');
+      } else {
+        if (objective.type !== 'defeat_enemies') {
+          failures.push(`objective.type expected 'defeat_enemies', got '${objective.type}'`);
+        }
+        if (objective.defeatedEnemies !== 0) {
+          failures.push(`objective.defeatedEnemies expected 0, got ${objective.defeatedEnemies}`);
+        }
+        if (objective.totalEnemies !== originalPreSuspendEnemies.length) {
+          failures.push(`objective.totalEnemies (${objective.totalEnemies}) !== original pre-suspend enemy count (${originalPreSuspendEnemies.length})`);
+        }
+      }
+      if (failures.length) {
+        throw new Error(`Telepipe run-preservation assertion failed: ${failures.join('; ')}`);
+      }
     }
   }
 

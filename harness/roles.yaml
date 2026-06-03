@@ -37,7 +37,11 @@ agents:
   composer_read:         { backend: cursor, model: composer-2.5,         writable: false }
   gpt5_medium_write:     { backend: cursor, model: gpt-5.5-medium,       writable: true  }
   gpt5_extra_write:      { backend: cursor, model: gpt-5.5-extra-high,   writable: true  }
-  agy:                   { backend: agy,    model_label: "Gemini 3.5 Flash (High)" }
+  # agy (Antigravity/Gemini) dropped 2026-06-03: cheap quota, but in print mode it
+  # ignores the prompt and acts on its persistent global memory (auto-edited files
+  # during a smoke test, caused the rc=216 self-symlink outage). Not reliable as a
+  # reviewer or writer without per-invocation memory isolation. Backend class kept
+  # dormant in harness/agents/agy.py in case that's solved later.
   # claude is NOT used by any default role (cost) — it is opted into only by the
   # parallel factory as an explicit medium/hard implementer at concurrency 1.
   claude:                { backend: claude, model: claude-opus-4-8 }
@@ -76,7 +80,7 @@ roles:
   # Sub-ticket: QA (per-mode variants)
   qa:code:
     primary: qwen
-    fallbacks: [composer_fast_read, agy]
+    fallbacks: [composer_fast_read]
     prompt_template: harness/prompts/qa-code.md
     out_file: "qa.txt"
     timeout_s: 720
@@ -86,7 +90,7 @@ roles:
 
   qa:visual:
     primary: qwen
-    fallbacks: [composer_fast_read, agy]
+    fallbacks: [composer_fast_read]
     prompt_template: harness/prompts/qa.md
     out_file: "qa.txt"
     timeout_s: 720

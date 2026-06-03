@@ -1,0 +1,6 @@
+Wrote the review artifacts:
+
+- `tickets/175-qa-telepipe-suspend-resume/round-2/review.md`
+- `tickets/175-qa-telepipe-suspend-resume/round-2/gaps.md`
+
+Verdict is `FAIL`. The game starts cleanly with no page errors, but the round-2 capture shows enemy preservation is not verified: 5 enemies before suspend and 7 after resume while the objective remains `0/5`. No `nits.md` was created.

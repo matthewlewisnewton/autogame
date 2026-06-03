@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-06-03T16:37:58.943Z",
+  "target": "sunken-canyon",
+  "placementTolerance": 1,
+  "playerOffsetFromStartRoom": 0,
+  "before": {
+    "layout": {
+      "profile": "crowded",
+      "seed": 1335602341,
+      "roomCount": 10,
+      "startRoom": {
+        "x": -9,
+        "z": 9,
+        "role": "start"
+      }
+    },
+    "player": {
+      "hp": 100,
+      "magicStones": 49,
+      "debugScenario": null,
+      "dead": false,
+      "x": -9,
+      "z": 9,
+      "equippedKeyItemId": "dodge_roll",
+      "keyItemCooldownRemaining": 0
+    }
+  },
+  "after": {
+    "layout": {
+      "profile": "sunken-canyon",
+      "seed": 1335602341,
+      "roomCount": 5,
+      "startRoom": {
+        "x": 0,
+        "z": -46.5,
+        "role": "start"
+      }
+    },
+    "player": {
+      "hp": 100,
+      "magicStones": 99,
+      "debugScenario": "sunken-canyon-stage",
+      "dead": false,
+      "x": 0,
+      "z": -46.5,
+      "equippedKeyItemId": "dodge_roll",
+      "keyItemCooldownRemaining": 0
+    }
+  }
+}

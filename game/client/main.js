@@ -3954,6 +3954,18 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		extracted: !!(me && me.extracted),
 		suspendedRunSummary: gameState ? gameState.suspendedRunSummary : null,
 		telepipe: gameState ? gameState.telepipe : null,
+		layout: (() => {
+			const layout = currentLayout || (gameState && gameState.layout) || null;
+			if (!layout) return null;
+			const rooms = Array.isArray(layout.rooms) ? layout.rooms : [];
+			const start = rooms.find((r) => r && r.role === 'start') || null;
+			return {
+				profile: layout.profile ?? null,
+				seed: currentLayoutSeed,
+				roomCount: rooms.length,
+				startRoom: start ? { x: start.x, z: start.z, role: start.role } : null,
+			};
+		})(),
 		connectionState,
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
@@ -3988,6 +4000,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			hp: enemy.hp,
 			maxHp: enemy.maxHp,
 			revealedUntil: enemy.revealedUntil ?? undefined,
+			type: enemy.type,
+			spawnedBy: enemy.spawnedBy ?? null,
 		})) : [],
 		minions: gameState && gameState.minions ? gameState.minions.map((m) => ({
 			id: m.id,

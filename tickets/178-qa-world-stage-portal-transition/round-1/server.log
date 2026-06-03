@@ -1,0 +1,12 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/178-qa-world-stage-portal-transition/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/178-qa-world-stage-portal-transition/game/data
+Server listening on port 3001
+Player connected: socket=T_Bciz5lRM888k3gAAAB, playerId=083ea71a-26c5-4206-be78-0972770ccd8d
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=2E83NGyqfKLeBeemAAAD, playerId=c249b923-499e-4647-8783-806f4101abbc
+[loot] spawned id=e9921b6f-999d-469a-82ff-ef052bba3661 value=6
+Player disconnected: T_Bciz5lRM888k3gAAAB
+Player disconnected: 2E83NGyqfKLeBeemAAAD

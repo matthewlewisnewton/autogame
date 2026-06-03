@@ -1,0 +1,3 @@
+1. The final QA evidence does not capture the required world-stage transition: round-1 `metrics.json`/screenshots show only the fallback lobby/movement/dodge flow, and `game/docs/walkthroughs/world-stage-transition/` contains only `snapshot.json` with no before/after PNGs.
+   Files: `game/client/scripts/test-world-stage-transition.mjs`, `game/docs/walkthroughs/world-stage-transition/`, `tickets/178-qa-world-stage-portal-transition/round-1/metrics.json`
+   Fix: Run or wire the world-stage transition smoke capture so the final artifacts include the before-default-stage and after-sunken-canyon screenshots plus state evidence showing `layout.profile` changes to `sunken-canyon` and the player lands at the new start room.

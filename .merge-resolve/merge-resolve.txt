@@ -1,9 +1,17 @@
-**`LOGBOOK.md` is resolved.** The conflict was two independent append-only log sections competing for the same spot after v0.165.
+Merge conflicts are resolved in both files.
 
-**Resolution:** Kept all three entries in ascending version order (matching the rest of the logbook):
+### `game/package.json`
+Kept all three smoke scripts:
+- `test:smoke:quest-completion` (ticket 176)
+- `test:smoke:world-stage-transition` (main)
+- `test:smoke:telepipe-suspend-resume` (main)
 
-1. **v0.166** — `184-character-customization-player-nameplate` (from `main`)
-2. **v0.167** — `169-gameplay-enemy-variant-framework` (from `main`)
-3. **v0.168** — `168-bug-intermittent-stuck-lobby-socket` (from this ticket)
+JSON validates; all three script files are present.
 
-All conflict markers are removed. No other conflicted files were reported. The harness can commit and finish the merge.
+### `LOGBOOK.md`
+Merged both sides in descending version order (matching the existing v0.170 / v0.169 pattern):
+1. **v0.172** — 176-qa-quest-objective-completion (ticket)
+2. **v0.171** — 175-qa-telepipe-suspend-resume (main)
+3. **v0.168** — 168-bug-intermittent-stuck-lobby-socket (main)
+
+No conflict markers remain. The harness can commit and finish the merge.
