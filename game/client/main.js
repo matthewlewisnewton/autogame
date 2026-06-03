@@ -1004,7 +1004,13 @@ function bindSocketHandlers(s) {
 
 		// Cooldown HUD indicator
 		if (state.gamePhase === 'playing' && myId && gameState.players[myId]) {
-			updateKeyItemCooldownHud(gameState.players[myId].keyItemCooldownRemaining);
+			const meForCooldown = gameState.players[myId];
+			const remaining = getKeyItemCooldownRemainingMs(meForCooldown);
+			meForCooldown.keyItemCooldownRemaining = remaining;
+			updateKeyItemCooldownHud(remaining);
+			if (remaining <= 0) keyItemCooldownUntilClient = 0;
+		} else if (state.gamePhase !== 'playing') {
+			keyItemCooldownUntilClient = 0;
 		}
 	});
 
@@ -1135,16 +1141,20 @@ function bindSocketHandlers(s) {
 
 	s.on('keyItemUsed', (data) => {
 		if (!data) return;
+		const me = myId && gameState?.players ? gameState.players[myId] : null;
 		if (data.ok) {
+			if (me && Number.isFinite(data.cooldownUntil)) {
+				keyItemCooldownUntilClient = data.cooldownUntil;
+				const remaining = Math.max(0, data.cooldownUntil - Date.now());
+				me.keyItemCooldownRemaining = remaining;
+				updateKeyItemCooldownHud(remaining);
+			}
 			flashKeyItemIndicator('success');
 			if (data.keyItemId === 'guard_block') {
 				triggerShieldVFX(myId);
 			}
-			if (data.keyItemId === 'smoke_bomb') {
-				const me = myId && gameState?.players ? gameState.players[myId] : null;
-				if (me) {
-					triggerSmokeVFX({ x: me.x, y: 0, z: me.z }, myId);
-				}
+			if (data.keyItemId === 'smoke_bomb' && me) {
+				triggerSmokeVFX({ x: me.x, y: 0, z: me.z }, myId);
 			}
 			if (data.keyItemId === 'loot_magnet' && (data.pulled ?? 0) > 0) {
 				const me = myId && gameState?.players ? gameState.players[myId] : null;
@@ -1154,6 +1164,10 @@ function bindSocketHandlers(s) {
 				}
 			}
 		} else if (data.reason === 'on_cooldown') {
+			if (me && Number.isFinite(data.remainingMs)) {
+				me.keyItemCooldownRemaining = data.remainingMs;
+				updateKeyItemCooldownHud(data.remainingMs);
+			}
 			flashKeyItemIndicator('cooldown');
 		} else if (data.reason === 'no_minions') {
 			// Soft-fail: recall blown with zero minions. Server did not start a
@@ -1385,6 +1399,8 @@ function bindSocketHandlers(s) {
 let myId = null;
 let isReady = false;
 let gameState = null;
+/** Client anchor for key-item cooldown until the next authoritative stateUpdate. */
+let keyItemCooldownUntilClient = 0;
 let connectionState = 'connecting';
 let heartbeatTimer = null;
 let latency = null;
@@ -2338,6 +2354,14 @@ function flashKeyItemIndicator(type) {
 	}, 450);
 }
 
+function getKeyItemCooldownRemainingMs(me) {
+	const serverRemaining = me?.keyItemCooldownRemaining ?? 0;
+	const localRemaining = keyItemCooldownUntilClient > Date.now()
+		? keyItemCooldownUntilClient - Date.now()
+		: 0;
+	return Math.max(serverRemaining, localRemaining);
+}
+
 /** Update the persistent cooldown state of the key-item HUD indicator. */
 function updateKeyItemCooldownHud(cooldownRemainingMs) {
 	const el = document.getElementById('key-item-indicator');
@@ -2354,6 +2378,7 @@ function updateKeyItemCooldownHud(cooldownRemainingMs) {
 
 /** Clear the key-item cooldown HUD (hide indicator when leaving gameplay). */
 function clearKeyItemCooldownHud() {
+	keyItemCooldownUntilClient = 0;
 	const el = document.getElementById('key-item-indicator');
 	if (!el) return;
 	el.classList.remove('cooldown', 'ready');
@@ -3615,6 +3640,8 @@ window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
+window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
+window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
 window.setLobbyTab = setLobbyTab;
 window.__setLobbyTabState = (tab, instanceId) => {
@@ -3733,7 +3760,17 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			dead: me.dead,
 			x: me.x,
 			z: me.z,
+			equippedKeyItemId: me.equippedKeyItemId ?? null,
+			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
 		} : null,
+		keyItemIndicatorOnCooldown: (() => {
+			const el = document.getElementById('key-item-indicator');
+			return !!el && el.classList.contains('cooldown');
+		})(),
+		keyItemIndicatorText: (() => {
+			const el = document.getElementById('key-item-indicator');
+			return el ? el.textContent : '';
+		})(),
 		players: gameState ? Object.keys(gameState.players).length : 0,
 		enemies: gameState ? gameState.enemies.length : 0,
 		enemyHp: gameState ? gameState.enemies.map((enemy) => ({

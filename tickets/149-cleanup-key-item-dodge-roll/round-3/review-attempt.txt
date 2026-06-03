@@ -1,0 +1,16 @@
+## Review complete
+
+Round-3 senior review is written to `tickets/149-cleanup-key-item-dodge-roll/round-3/review.md`.
+
+**Runtime:** `metrics.json` has `"ok": true`, empty `pageerrors`, and a clean `console.log` (no page errors or fatals).
+
+**Acceptance criteria (all met):**
+1. **`controls.md`** — ~300 ms i-frames and 800 ms cooldown; no “one simulation tick” mismatch.
+2. **Harness capture** — `useKeyItem` + post-dodge probe shows `keyItemCooldownRemaining: 396` and `#key-item-indicator` on cooldown; `04-after-dodge.png` captured.
+3. **Client tests** — `key-item-dodge.test.js` covers cooldown HUD, flash indicator, `triggerDashVFX`, and dash detection via `stateUpdate`.
+
+**Integration:** Five subtickets land cleanly; the temporary 1200 ms cooldown from harness work was reverted so server defs match docs (net server diff vs baseline is zero). Client `keyItemCooldownUntilClient` fixes HUD/probe timing without bypassing server authority.
+
+**Nits (non-blocking):** `round-3/nits.md` — harness false-positive `sloped-dungeon` from ticket prose, and slope-mode summary text omitting dodge.
+
+**VERDICT: PASS** — no `gaps.md` (FAIL-only artifact).

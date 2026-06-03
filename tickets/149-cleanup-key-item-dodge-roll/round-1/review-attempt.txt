@@ -1,0 +1,24 @@
+## Review complete
+
+Wrote `tickets/149-cleanup-key-item-dodge-roll/round-1/review.md`, `gaps.md`, and `nits.md`.
+
+### Runtime
+Game starts cleanly: `metrics.json` has `"ok": true`, empty `pageerrors`, clean `console.log`. Dodge was exercised — post-dodge probe shows `keyItemCooldownRemaining: 279`, `keyItemIndicatorOnCooldown: true`, screenshot `04-after-dodge.png`.
+
+### Acceptance criteria (3/3 on paper, 1 regression)
+| Area | Status |
+|------|--------|
+| **controls.md i-frames** | Met — `~300ms`, no bogus “one tick” claim |
+| **Harness dodge capture** | Met — `useKeyItem`, probe, screenshot, documented in `capture-plan.md` |
+| **Client tests** | Met — 4 tests in `key-item-dodge.test.js` |
+
+### Why FAIL
+Commit `5f95516` raised `dodge_roll.cooldownMs` from **800 → 1200** for “screenshot visibility,” despite sub-ticket 02 saying **no server changes**. `controls.md` and `gameplay-review.md` still say **800ms**, so player-facing docs no longer match `KEY_ITEM_DEFS` — the same drift pattern this cleanup ticket fixed for i-frames.
+
+### Remediation (`gaps.md`)
+Revert cooldown to 800ms across server + tests (preferred); do not leave docs at 800 with server at 1200.
+
+### Nit (`nits.md`)
+Harness `isSlopeTicket` false-positive: ticket prose mentions “sloped-dungeon,” so capture appended an unrelated `emitScenario sloped-dungeon` step.
+
+**VERDICT: FAIL**

@@ -53,6 +53,7 @@ const ACTIONS = new Set([
   'pressKey',
   'pressCard',
   'clickSlot',
+  'useKeyItem',
   'wait',
   'screenshot',
   'probe',
@@ -190,7 +191,12 @@ function validateRecipe(input) {
     if (step.durationMs != null) clean.durationMs = clampInt(step.durationMs, 500, 50, 3000);
     if (step.timeoutMs != null) clean.timeoutMs = clampInt(step.timeoutMs, 10000, 500, 20000);
     if (step.ms != null) clean.ms = clampInt(step.ms, 500, 50, 5000);
-    if (typeof step.key === 'string' && /^[wasdWASD]$/.test(step.key)) clean.key = step.key.toLowerCase();
+    if (step.action === 'move' && typeof step.key === 'string' && /^[wasdWASD]$/.test(step.key)) {
+      clean.key = step.key.toLowerCase();
+    }
+    if (step.action === 'useKeyItem' && typeof step.key === 'string' && /^[a-z]$/i.test(step.key)) {
+      clean.key = step.key.toLowerCase();
+    }
     if (Number.isInteger(step.slot) && step.slot >= 0 && step.slot <= 3) clean.slot = step.slot;
     if (typeof step.cardType === 'string' && /^[a-z]+$/.test(step.cardType)) clean.cardType = step.cardType;
     if (typeof step.username === 'string' && step.username.length >= 1 && step.username.length <= 64) clean.username = step.username;
@@ -322,6 +328,9 @@ function fallbackRecipe() {
     { action: 'screenshot', player: 'A', name: '02-after-w', description: 'Gameplay after holding W.' },
     { action: 'move', player: 'A', key: 'd', durationMs: 1500 },
     { action: 'screenshot', player: 'A', name: '03-after-d', description: 'Gameplay after holding D.' },
+    { action: 'useKeyItem', player: 'A' },
+    { action: 'probe', player: 'A', description: 'After dodge roll — cooldown HUD should be active.' },
+    { action: 'screenshot', player: 'A', name: '04-after-dodge', description: 'Gameplay after dodge roll with cooldown HUD.' },
   ];
 
   // Option C: detect slope/ramp tickets and append a sloped-dungeon capture.
@@ -363,6 +372,8 @@ function fallbackRecipe() {
       { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
     ];
     summary = 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.';
+  } else {
+    summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.';
   }
 
   return { summary, steps };
@@ -478,8 +489,15 @@ async function collectProbe(page) {
     const lobby = document.querySelector('#lobby');
     const cardHand = document.querySelector('#card-hand');
     const status = document.querySelector('#status');
+    const keyItemIndicator = document.querySelector('#key-item-indicator');
+    const keyItemIndicatorOnCooldown = !!keyItemIndicator && keyItemIndicator.classList.contains('cooldown');
+    const keyItemIndicatorText = keyItemIndicator ? keyItemIndicator.textContent : '';
+    const keyItemCooldownRemaining = harnessState?.player?.keyItemCooldownRemaining ?? null;
     return {
       harnessState,
+      keyItemIndicatorOnCooldown,
+      keyItemIndicatorText,
+      keyItemCooldownRemaining,
       status: status ? status.innerText : '(no #status element)',
       hasCanvas: !!document.querySelector('canvas'),
       canvasCount: document.querySelectorAll('canvas').length,
@@ -738,6 +756,11 @@ async function executeRecipe(browser, recipe) {
       const slot = step.slot ?? 0;
       await page.locator(`.card-slot[data-slot-index="${slot}"]`).click({ timeout: 3000 });
       await page.waitForTimeout(step.ms || 500);
+    } else if (step.action === 'useKeyItem') {
+      const key = step.key || 'e';
+      await page.bringToFront();
+      await page.keyboard.press(key);
+      await page.waitForTimeout(step.ms ?? 400);
     } else if (step.action === 'wait') {
       await page.waitForTimeout(step.ms || 500);
     } else if (step.action === 'screenshot') {

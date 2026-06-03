@@ -1,0 +1,29 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/149-cleanup-key-item-dodge-roll/game
+      Coverage enabled with v8
+
+ ✓ |client| client/test/deck-viewer.test.js (15 tests) 140ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/key-item-dodge.test.js (4 tests) 161ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+ ✓ |client| client/test/main.test.js (140 tests) 924ms
+
+ Test Files  3 passed (3)
+      Tests  159 passed (159)
+   Start at  23:21:08
+   Duration  1.91s (transform 96ms, setup 59ms, collect 77ms, tests 1.23s, environment 832ms, prepare 158ms)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |    69.2 |    62.85 |   29.03 |    69.2 |                        
+ cards.js     |      91 |    62.96 |   66.66 |      91 | ...471,480-494,588-605 
+ collision.js |   20.81 |      100 |       0 |   20.81 | ...208,214-222,228-233 
+ delta.js     |   78.57 |      100 |       0 |   78.57 | 12-14                  
+ hand.js      |   46.25 |     62.5 |   23.07 |   46.25 | ...140,156-157,160-163 
+--------------|---------|----------|---------|---------|------------------------

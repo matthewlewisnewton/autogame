@@ -2563,6 +2563,29 @@ No blocking debug-scenario issues for this ticket.
 None.
 
 
+## v0.149 — Cleanup nits from 121-key-item-dodge-roll  (2026-06-02 23:32:58)
+
+- No dead code or obvious logic bugs in the touched paths.
+- Server dodge handler still uses `def.cooldownMs || 800` and `invincibleDurationMs || 300`.
+- Round-3 targeted coverage run: 159 client tests passed (3 files including new dodge tests).
+
+---
+
+## Debug scenarios
+
+This ticket did **not** add a new `?debugScenario=` shortcut.
+
+Round-3 capture appended `emitScenario sloped-dungeon` because `fallbackRecipe()` treats ticket markdown matching `/sloped[-_]dungeon/` as a slope ticket; ticket 149’s harness-capture **problem statement** mentions “sloped-dungeon geometry.” That runs **after** dodge steps and does not replace the normal dodge path exercised earlier in the recipe. Pre-existing `sloped-dungeon` remains localhost-gated via `debugScenarioAllowed` and socket `debugScenario` — not a blocking issue for this ticket (see nits).
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime proof, all three top-level acceptance criteria, and subticket integration are satisfied.
+
+---
+
+
 ## v0.150 — Cleanup nits from 126-key-item-loot-magnet  (2026-06-02 23:39:43)
 
 ---
@@ -2584,4 +2607,3 @@ Round-1 used **fallback** capture (lobby → ready → movement smoke). Screensh
 None. Runtime health passes and both acceptance-criterion groups are fully satisfied.
 
 ---
-

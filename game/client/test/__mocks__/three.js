@@ -7,7 +7,15 @@ function stubClass(name) {
 			// Per-instance position and rotation (not shared on prototype)
 			this.position = {
 				x: 0, y: 0, z: 0,
-				set: function(x, y, z) { this.x = x; this.y = y; this.z = z; },
+				set: function(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+				copy: function(other) {
+					if (other) {
+						this.x = other.x;
+						this.y = other.y;
+						this.z = other.z;
+					}
+					return this;
+				},
 				clone: function() { return { x: this.x, y: this.y, z: this.z }; },
 				lerp: function(target, t) {
 					this.x = this.x + (target.x - this.x) * t;
@@ -18,7 +26,7 @@ function stubClass(name) {
 			};
 			this.rotation = {
 				x: 0, y: 0, z: 0,
-				set: function() {},
+				set: function() { return this; },
 				copy: function(other) {
 					if (other) {
 						this.x = other.x;
@@ -243,10 +251,32 @@ export const THREE = {
 		constructor() {
 			this.children = [];
 			this.userData = {};
-			this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
-			this.rotation = { x: 0, y: 0, z: 0 };
+			this.position = {
+				x: 0, y: 0, z: 0,
+				set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+				copy(other) {
+					if (other) {
+						this.x = other.x;
+						this.y = other.y;
+						this.z = other.z;
+					}
+					return this;
+				},
+			};
+			this.rotation = {
+				x: 0, y: 0, z: 0,
+				copy(other) {
+					if (other) {
+						this.x = other.x;
+						this.y = other.y;
+						this.z = other.z;
+					}
+					return this;
+				},
+			};
 			this.scale = {
 				x: 1, y: 1, z: 1,
+				set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
 				setScalar(s) { this.x = this.y = this.z = s; return this; },
 				multiplyScalar(s) { this.x *= s; this.y *= s; this.z *= s; return this; },
 			};
