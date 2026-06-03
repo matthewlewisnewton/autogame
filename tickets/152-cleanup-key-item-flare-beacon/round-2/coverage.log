@@ -1,0 +1,541 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game
+      Coverage enabled with v8
+
+stdout | server/test/key-items.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/key-items.test.js > extractPersistentData — key item persistence > equipped key item persists through extractPersistentData / restore cycle
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > extractPersistentData — key item persistence > defaults equippedKeyItemId to dodge_roll when missing
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > extractPersistentData — key item persistence > does not persist invulnerableUntil (transient field)
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping a valid key item sets player.equippedKeyItemId
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping a valid key item sets player.equippedKeyItemId
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping a valid key item sets player.equippedKeyItemId
+Player connected: socket=EBwXND29j1AUgALcAAAB, playerId=test-1780467439539-i3778u
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping a valid key item sets player.equippedKeyItemId
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+ ✓ |client| client/test/deck-viewer.test.js (15 tests) 163ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:1814:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/test/main.test.js:2161:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:1814:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/test/main.test.js:2173:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:1814:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/test/main.test.js:2183:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:1814:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/test/main.test.js:2196:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+ ✓ |client| client/test/main.test.js (140 tests) 830ms
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping a valid key item sets player.equippedKeyItemId
+Player disconnected: EBwXND29j1AUgALcAAAB
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping an unknown key item ID is rejected with keyItemError
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping an unknown key item ID is rejected with keyItemError
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping an unknown key item ID is rejected with keyItemError
+Player connected: socket=lDErjEYIQ9Yk0450AAAD, playerId=test-1780467444565-r8azi4
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping an unknown key item ID is rejected with keyItemError
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > equipKeyItem socket handler > equipping an unknown key item ID is rejected with keyItemError
+Player disconnected: lDErjEYIQ9Yk0450AAAD
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected when on cooldown with on_cooldown reason
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected when on cooldown with on_cooldown reason
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected when on cooldown with on_cooldown reason
+Player connected: socket=cUa609qo9hgqvJkiAAAF, playerId=test-1780467449572-yn91je
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected when on cooldown with on_cooldown reason
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected when on cooldown with on_cooldown reason
+[loot] spawned id=c7a23b78-a280-4b38-b7a3-2b2063bb2280 value=5
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected when on cooldown with on_cooldown reason
+Player disconnected: cUa609qo9hgqvJkiAAAF
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected for unknown key item ID with unknown_item reason
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected for unknown key item ID with unknown_item reason
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected for unknown key item ID with unknown_item reason
+Player connected: socket=56KUNW4leamumtomAAAH, playerId=test-1780467454583-85y1ne
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected for unknown key item ID with unknown_item reason
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem is rejected for unknown key item ID with unknown_item reason
+Player disconnected: 56KUNW4leamumtomAAAH
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets keyItemCooldownUntil to a future timestamp
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets keyItemCooldownUntil to a future timestamp
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets keyItemCooldownUntil to a future timestamp
+Player connected: socket=frvAR443keGdpCiQAAAJ, playerId=test-1780467459587-wbpcti
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets keyItemCooldownUntil to a future timestamp
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets keyItemCooldownUntil to a future timestamp
+Player disconnected: frvAR443keGdpCiQAAAJ
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets invulnerableUntil (i-frames)
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets invulnerableUntil (i-frames)
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets invulnerableUntil (i-frames)
+Player connected: socket=3MieJELoZFOe22ICAAAL, playerId=test-1780467464593-pwqtzw
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets invulnerableUntil (i-frames)
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets invulnerableUntil (i-frames)
+[loot] spawned id=ecd5d342-b40f-4fe6-92e3-7da9d20428a8 value=19
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for dodge_roll sets invulnerableUntil (i-frames)
+Player disconnected: 3MieJELoZFOe22ICAAAL
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for non-implemented items returns not_implemented
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for non-implemented items returns not_implemented
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for non-implemented items returns not_implemented
+Player connected: socket=6F_OC4H0w6r-CSKLAAAN, playerId=test-1780467469598-4zl2xo
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for non-implemented items returns not_implemented
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem socket handler > useKeyItem for non-implemented items returns not_implemented
+Player disconnected: 6F_OC4H0w6r-CSKLAAAN
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > recalls two minions to new coords near the player
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > recalls two minions to new coords near the player
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > recalls two minions to new coords near the player
+Player connected: socket=xlw4BOVE-sJpiLgiAAAP, playerId=test-1780467474603-fl4vwm
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > recalls two minions to new coords near the player
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > recalls two minions to new coords near the player
+[loot] spawned id=706feb03-60a5-4345-ab7c-b21253eb87d8 value=19
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > recalls two minions to new coords near the player
+Player disconnected: xlw4BOVE-sJpiLgiAAAP
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > soft-fails with no_minions reason when player has no minions
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > soft-fails with no_minions reason when player has no minions
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > soft-fails with no_minions reason when player has no minions
+Player connected: socket=VmSJf9mMj_Fnj1lSAAAR, playerId=test-1780467479656-nlapn3
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > soft-fails with no_minions reason when player has no minions
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > soft-fails with no_minions reason when player has no minions
+Player disconnected: VmSJf9mMj_Fnj1lSAAAR
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > only recalls own minions; other players minions are untouched
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > only recalls own minions; other players minions are untouched
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > only recalls own minions; other players minions are untouched
+Player connected: socket=rqJcznensoaKdMwjAAAT, playerId=test-1780467484662-tbryfb
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > only recalls own minions; other players minions are untouched
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > only recalls own minions; other players minions are untouched
+[loot] spawned id=6f9b521a-f1ee-4f1a-a1ce-1bfb30150e87 value=19
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > only recalls own minions; other players minions are untouched
+Player disconnected: rqJcznensoaKdMwjAAAT
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > minions retain HP, TTL, and AI state after recall
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > minions retain HP, TTL, and AI state after recall
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > minions retain HP, TTL, and AI state after recall
+Player connected: socket=47i00yJyeMwLUaL-AAAV, playerId=test-1780467489714-qxhvlq
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > minions retain HP, TTL, and AI state after recall
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > minions retain HP, TTL, and AI state after recall
+[loot] spawned id=cdc362b1-daf3-485c-bc72-7561990c3edb value=19
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > minions retain HP, TTL, and AI state after recall
+Player disconnected: 47i00yJyeMwLUaL-AAAV
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > emits stateUpdate so clients see the teleport
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > emits stateUpdate so clients see the teleport
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > emits stateUpdate so clients see the teleport
+Player connected: socket=jBoEpHHNu3PJmlQYAAAX, playerId=test-1780467494766-d401md
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > emits stateUpdate so clients see the teleport
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > emits stateUpdate so clients see the teleport
+Player disconnected: jBoEpHHNu3PJmlQYAAAX
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > clamps minion positions away from walls when ring placement would be blocked
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > clamps minion positions away from walls when ring placement would be blocked
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > clamps minion positions away from walls when ring placement would be blocked
+Player connected: socket=aZKQzGNHiIgLJqu6AAAZ, playerId=test-1780467499819-g6zacu
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > clamps minion positions away from walls when ring placement would be blocked
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > clamps minion positions away from walls when ring placement would be blocked
+[loot] spawned id=65436de1-c038-4de5-b020-6d37ce8840a1 value=20
+
+stdout | server/test/key-items.test.js > useKeyItem — summon_recall > clamps minion positions away from walls when ring placement would be blocked
+Player disconnected: aZKQzGNHiIgLJqu6AAAZ
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > KEY_ITEM_DEFS.flare_beacon has correct parameters
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > KEY_ITEM_DEFS.flare_beacon has correct parameters
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals living enemies within radius and sets revealedUntil
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals living enemies within radius and sets revealedUntil
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals living enemies within radius and sets revealedUntil
+Player connected: socket=VV4XrapHlKV2tAqdAAAb, playerId=test-1780467504872-yet46b
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals living enemies within radius and sets revealedUntil
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals living enemies within radius and sets revealedUntil
+[loot] spawned id=df1d3422-016a-4ba3-8805-7e850180b41e value=17
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals living enemies within radius and sets revealedUntil
+Player disconnected: VV4XrapHlKV2tAqdAAAb
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+Player connected: socket=XlVTz94ydgvTOCRsAAAd, playerId=test-1780467509875-92algt
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+[loot] spawned id=d5f32c79-bb65-4a93-8a4c-2c01285a3e33 value=18
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+[loot] magic stone drop id=f8569c4c-2f12-42c4-9a1c-abc1d20f5672 value=20 at (-6.1, 11.9)
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > does not reveal dead enemies
+Player disconnected: XlVTz94ydgvTOCRsAAAd
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > cooldown enforced: second use within 10s returns on_cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > cooldown enforced: second use within 10s returns on_cooldown
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > cooldown enforced: second use within 10s returns on_cooldown
+Player connected: socket=Abwpecm8RAen82xPAAAf, playerId=test-1780467514880-wzdq5v
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > cooldown enforced: second use within 10s returns on_cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > cooldown enforced: second use within 10s returns on_cooldown
+[loot] spawned id=1979e9a6-f2f7-4431-b176-d6029daf94e7 value=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > cooldown enforced: second use within 10s returns on_cooldown
+Player disconnected: Abwpecm8RAen82xPAAAf
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > emits stateUpdate with revealedUntil in enemy data
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > emits stateUpdate with revealedUntil in enemy data
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > emits stateUpdate with revealedUntil in enemy data
+Player connected: socket=uwZEfyN_50_z_SGDAAAh, playerId=test-1780467519884-ncw0qh
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > emits stateUpdate with revealedUntil in enemy data
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > emits stateUpdate with revealedUntil in enemy data
+[loot] spawned id=0472dfac-9c07-4a87-ad0a-5a18a1ee9e65 value=15
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > emits stateUpdate with revealedUntil in enemy data
+Player disconnected: uwZEfyN_50_z_SGDAAAh
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals all living enemies within radius
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals all living enemies within radius
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals all living enemies within radius
+Player connected: socket=cXbb6q8FcklcXm0oAAAj, playerId=test-1780467524889-bdgq2o
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals all living enemies within radius
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals all living enemies within radius
+[loot] spawned id=483823ef-22e7-4f45-bba2-714a2ac1ab6c value=5
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > reveals all living enemies within radius
+Player disconnected: cXbb6q8FcklcXm0oAAAj
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > enemies exactly at radius boundary are revealed
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > enemies exactly at radius boundary are revealed
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > enemies exactly at radius boundary are revealed
+Player connected: socket=JB0LkCbzK6R6Sp-1AAAl, playerId=test-1780467529895-axf1zo
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > enemies exactly at radius boundary are revealed
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > enemies exactly at radius boundary are revealed
+[loot] spawned id=1877be6e-625e-4554-be55-e419700a329d value=19
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > enemies exactly at radius boundary are revealed
+Player disconnected: JB0LkCbzK6R6Sp-1AAAl
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > revealedUntil tick cleanup (updateMinions) > clears revealedUntil when the timestamp is in the past
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > revealedUntil tick cleanup (updateMinions) > clears revealedUntil when the timestamp is in the past
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > revealedUntil tick cleanup (updateMinions) > retains revealedUntil when the timestamp is still in the future
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — flare_beacon > revealedUntil tick cleanup (updateMinions) > retains revealedUntil when the timestamp is still in the future
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > KEY_ITEM_DEFS.echo_strike has 10s cooldown and echoFraction
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > KEY_ITEM_DEFS.echo_strike has 10s cooldown and echoFraction
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > activation arms echoStrikePending and burns the 10s cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > activation arms echoStrikePending and burns the 10s cooldown
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > activation arms echoStrikePending and burns the 10s cooldown
+Player connected: socket=2O0JRCX8dWC76UvOAAAn, playerId=test-1780467534903-tey3gf
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > activation arms echoStrikePending and burns the 10s cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > activation arms echoStrikePending and burns the 10s cooldown
+Player disconnected: 2O0JRCX8dWC76UvOAAAn
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > second immediate use returns on_cooldown with remainingMs > 0
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > second immediate use returns on_cooldown with remainingMs > 0
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > second immediate use returns on_cooldown with remainingMs > 0
+Player connected: socket=kQ6LC4XY5ZAr97p7AAAp, playerId=test-1780467539908-eordsr
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > second immediate use returns on_cooldown with remainingMs > 0
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > second immediate use returns on_cooldown with remainingMs > 0
+Player disconnected: kQ6LC4XY5ZAr97p7AAAp
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > emits stateUpdate after a successful activation
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > emits stateUpdate after a successful activation
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > emits stateUpdate after a successful activation
+Player connected: socket=4KkztLm_zAcM8xlYAAAr, playerId=test-1780467544913-lhxtw1
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > emits stateUpdate after a successful activation
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > emits stateUpdate after a successful activation
+Player disconnected: 4KkztLm_zAcM8xlYAAAr
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > echoStrikePending is transient — excluded from extractPersistentData
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > useKeyItem — echo_strike > echoStrikePending is transient — excluded from extractPersistentData
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > armed weapon hit deals primary damage immediately and enqueues a 50% echo
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > armed weapon hit deals primary damage immediately and enqueues a 50% echo
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > armed weapon hit deals primary damage immediately and enqueues a 50% echo
+Player connected: socket=YQPVKkUGo6a7Si6RAAAt, playerId=test-1780467549918-ojtg2j
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > armed weapon hit deals primary damage immediately and enqueues a 50% echo
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > armed weapon hit deals primary damage immediately and enqueues a 50% echo
+Player disconnected: YQPVKkUGo6a7Si6RAAAt
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > processPendingEchoes applies the delayed second packet to the same enemy
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > processPendingEchoes applies the delayed second packet to the same enemy
+Server listening on port 0
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > processPendingEchoes applies the delayed second packet to the same enemy
+Player connected: socket=uiUHxaCSuIR4TQ7BAAAv, playerId=test-1780467554926-he7bl0
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > processPendingEchoes applies the delayed second packet to the same enemy
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/key-items.test.js > echo_strike — weapon echo > processPendingEchoes applies the delayed second packet to the same enemy
+[loot] spawned id=8e0b11c7-9f37-41a0-ae32-16452501a2a2 value=16
+
+[vitest] timed out after 120s — killing process group

@@ -2516,3 +2516,26 @@ None blocking. Acceptance criteria are fully and robustly met, the game runs cle
 the change is additive and consistent with `game/docs/design.md` / `requirements.md`. Minor
 non-blocking polish is recorded in `nits.md`.
 
+
+## v0.148 — Cleanup nits from 125-key-item-flare-beacon  (2026-06-02 23:20:30)
+
+## Debug scenarios
+
+This ticket **did not add or modify** `flare-beacon-ready` (pre-existing from 125). Harness uses it only via `emitScenario` after normal lobby/ready flow.
+
+Existing safeguards remain appropriate:
+
+- Client: `?debugScenario=` on localhost only; server: `isDebugScenarioAllowed` (local address/origin/host or `ALLOW_DEBUG_SCENARIOS=1`).
+- Scenario sets `equippedKeyItemId` and spawns nearby enemies; **reveal still requires** harness `pressKey e` → client `useKeyItem` → server handler — same path as normal play.
+- Normal play: `equipKeyItem` + bound key (`useKeyItem` in settings, default keyboard binding) reaches the same reveal end-state; covered by socket integration tests.
+
+No blocking debug-scenario issues for this ticket.
+
+## Coverage artifact
+
+`round-2/coverage.log` shows all flare_beacon and `revealedUntil` cleanup tests executing and passing, then the run **timed out at 120s** during later `echo_strike` tests in the same file. That is a harness time-budget issue (visibility-only coverage), not evidence of failing ticket tests. Not a blocking gap.
+
+## Remaining gaps
+
+None.
+

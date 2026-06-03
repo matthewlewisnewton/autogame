@@ -1,0 +1,11 @@
+## Remediation round 2
+
+**Done (unchanged):** `01-consolidate-flare-beacon-server-tests`, `02-test-revealed-until-expiry-cleanup`
+
+**Removed:** `03-flare-beacon-vfx-capture-plan` — it bundled harness plumbing (already in the working tree), a `capture-plan-gemini.txt` path that `scope_audit` reverts (not under `round-*`), and runtime metrics that sub-task capture cannot satisfy because `harness/steps/screenshot.py` forces `CAPTURE_PLAN_AGENT=fallback`.
+
+**Added:** one replacement sub-ticket modeled on ticket 142’s `08-add-sloped-dungeon-fallback-recipe`: extend `fallbackRecipe()` for flare-beacon and expose `revealedUntil` on harness probes so code QA can verify `metrics.json` without a committed capture-plan file.
+
+### Sub-ticket folder created
+
+- `/home/matt/workspace/.autogame-worktrees/152-cleanup-key-item-flare-beacon/tickets/152-cleanup-key-item-flare-beacon/subtickets/04-flare-beacon-fallback-capture/ticket.md`
