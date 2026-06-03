@@ -1,0 +1,14 @@
+Created two new sub-tickets to close the two open gaps from the round-1 review. Both existing sub-tickets (`01`, `02`) carry `.passed` markers, so I left them untouched.
+
+**New sub-tickets:**
+
+- `tickets/176-qa-quest-objective-completion/subtickets/03-run-quest-completion-evidence/ticket.md`
+- `tickets/176-qa-quest-objective-completion/subtickets/04-test-suite-completes-in-budget/ticket.md`
+
+**Why these close the gaps:**
+
+- **Gap 1** (playthrough never ran; no evidence artifacts) → **03**: the script and hooks already exist and passed at the code level, but round-1 fell back to a generic movement/dodge capture and never produced the deliverable. 03 requires actually running `pnpm test:smoke:quest-completion` to green and committing the `quest-completion-snapshot.json` proving `victory` + positive rewards. I confirmed `game/docs/walkthroughs/**/*.png` is gitignored repo-wide, so the committable evidence is the JSON snapshot (matching the existing `deck-loadout-snapshot.json` precedent) — the ticket explicitly tells the implementer not to fight that and not to bypass the real combat→victory path.
+
+- **Gap 2** (coverage run killed at 120s mid-suite) → **04**: the `server` project runs fully serial (`fileParallelism: false`, `maxWorkers: 1`), the likely cause under coverage instrumentation. 04 targets bringing the full `pnpm test` gate under budget via controlled server-project parallelism (ephemeral port 0 makes this safe), without weakening coverage or dropping assertions.
+
+Both are `Verification: code` — the deliverables are committed artifacts, a script/config diff, and run logs, none of which the single happy-path visual capture can confirm.
