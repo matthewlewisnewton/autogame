@@ -287,6 +287,23 @@ export function getRegistryTargetFootprint(key) {
 }
 
 /**
+ * Vertical offset of the procedural host mesh in world space before the registry
+ * model is parented. Registry models are normalized with feet at local y=0; subtract
+ * this so world-space feet sit on the floor when the host uses the render-loop y.
+ * @param {string} key
+ * @returns {number}
+ */
+export function getRegistryHostVerticalOffset(key) {
+	if (ENEMY_GEOMETRY[key]) {
+		return enemyMeshHalfHeight(key);
+	}
+	if (MINION_VISUAL[key]) {
+		return 0.5;
+	}
+	return 0;
+}
+
+/**
  * Uniformly scale a loaded registry model to `footprint.targetHeight` and sit its
  * feet at y=0 in the host's local space (bbox min.y on the ground plane).
  * @param {THREE.Object3D} model
@@ -343,6 +360,7 @@ function attachRegistryModel(key, host) {
 			const footprint = getRegistryTargetFootprint(key);
 			if (footprint) {
 				normalizeLoadedRegistryModel(model, footprint);
+				model.position.y -= getRegistryHostVerticalOffset(key);
 			}
 			for (const node of procedural) node.material.visible = false;
 			host.add(model);
