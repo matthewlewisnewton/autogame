@@ -1,0 +1,18 @@
+## Review complete
+
+Wrote **`tickets/152-cleanup-key-item-flare-beacon/round-2/review.md`** and **`nits.md`**. No **`gaps.md`** (PASS only).
+
+### Runtime
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: clean (no page errors or fatals)
+- Game reached playing phase; flare capture ran
+
+### Acceptance criteria (all met)
+1. **Test consolidation** — `flare_beacon.test.js` removed; full coverage kept in `key-items.test.js` (superset of the deleted file).
+2. **`revealedUntil` cleanup** — server tests call `updateMinions()` for past/future timestamps.
+3. **Capture** — `04-flare-beacon-reveal.png`, `scenarios: ["flare-beacon-ready"]`, probes show `revealedUntil` on nearby enemies after real `useKeyItem` via `pressKey e`.
+
+### Commits reviewed
+`7cb1b81`, `234becc`, `4e7ee43` — test/harness only; no production flare logic changes.
+
+**VERDICT: PASS**

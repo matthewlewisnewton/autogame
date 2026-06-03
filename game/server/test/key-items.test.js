@@ -12,7 +12,7 @@ import {
 	wallAABB,
 	MAX_MAGIC_STONES,
 } from '../index.js';
-import { setGameState as setSimGameState, processPendingEchoes } from '../simulation.js';
+import { setGameState as setSimGameState, processPendingEchoes, updateMinions } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import {
 	startTestServer,
@@ -797,6 +797,47 @@ describe('useKeyItem — flare_beacon', () => {
 		expect(result.ok).toBe(true);
 		expect(result.revealed).toBe(1);
 		expect(boundaryEnemy.revealedUntil).toBeDefined();
+	});
+
+	describe('revealedUntil tick cleanup (updateMinions)', () => {
+		afterEach(() => {
+			setSimGameState(null, null);
+		});
+
+		it('clears revealedUntil when the timestamp is in the past', () => {
+			const expiredEnemy = {
+				id: 'expired-enemy',
+				type: 'grunt',
+				x: 0,
+				z: 0,
+				hp: 50,
+				revealedUntil: Date.now() - 1000,
+			};
+			const state = { enemies: [expiredEnemy], minions: [], players: {} };
+			setSimGameState(state, {});
+
+			updateMinions();
+
+			expect(expiredEnemy.revealedUntil).toBeUndefined();
+		});
+
+		it('retains revealedUntil when the timestamp is still in the future', () => {
+			const futureUntil = Date.now() + 5000;
+			const activeEnemy = {
+				id: 'active-enemy',
+				type: 'grunt',
+				x: 0,
+				z: 0,
+				hp: 50,
+				revealedUntil: futureUntil,
+			};
+			const state = { enemies: [activeEnemy], minions: [], players: {} };
+			setSimGameState(state, {});
+
+			updateMinions();
+
+			expect(activeEnemy.revealedUntil).toBe(futureUntil);
+		});
 	});
 });
 

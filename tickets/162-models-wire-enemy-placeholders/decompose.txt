@@ -1,0 +1,17 @@
+Remediation round 2 adds **two** sub-tickets for the open gaps in `review-feedback.md`. Sub-tickets **01–04** stay untouched (all have `.passed`). No failed folders needed removal.
+
+### New sub-tickets
+
+| # | Folder | Closes gap |
+|---|--------|------------|
+| **05** | `05-fix-registry-model-floor-grounding` | GLBs float because host is raised to `enemyMeshHalfHeight` / `y=0.5` while model feet sit at local y=0 |
+| **06** | `06-restore-harness-playwright-for-capture` | Capture failed: `Cannot find package 'playwright'` (broken/missing `harness/node_modules`) |
+
+Both use **Verification: code** — grounding is behavior/structure, and Playwright is dependency/resolution, not pixel-only rendering.
+
+### Created folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/162-models-wire-enemy-placeholders/tickets/162-models-wire-enemy-placeholders/subtickets/05-fix-registry-model-floor-grounding/
+/home/matt/workspace/.autogame-worktrees/162-models-wire-enemy-placeholders/tickets/162-models-wire-enemy-placeholders/subtickets/06-restore-harness-playwright-for-capture/
+```

@@ -2494,6 +2494,75 @@ the affected unit suites (client key-item UI, server key-items 36/36) pass.
 None blocking. Round-2 browser capture does not visually confirm the green heal ring or ally-side VFX; acceptance is satisfied by the lobby broadcast implementation plus the new two-player socket test.
 
 
+## v0.146 — Models: Wire enemy + minion placeholders into the registry  (2026-06-02 22:27:56)
+
+**absent** from the gameplay screenshots (`02-after-w.png`, `03-after-d.png`). Procedural
+materials are set `visible = false` *only* when a GLB resolves successfully; had any load
+failed the colored cones would still be drawn. Their disappearance is positive proof the
+GLB swap occurred and the loaded models are in the scene, sitting inside the red
+hitbox-wireframe overlays (a pre-existing combat telegraph, unrelated to this ticket).
+
+Note: no minions were summoned during the deterministic smoke capture (`minions: []`), so
+minion meshes are not pictured. This is a capture-flow coverage limitation, not a defect —
+the minion attach/normalize path is identical to the enemy path and is unit-tested.
+
+### Debug scenarios
+N/A. This ticket adds no `?debugScenario=` shortcut; `debugScenario` stays `null` in the
+probes and no scenario gating code was touched.
+
+## Remaining gaps
+
+None blocking. Acceptance criteria are fully and robustly met, the game runs cleanly, and
+the change is additive and consistent with `game/docs/design.md` / `requirements.md`. Minor
+non-blocking polish is recorded in `nits.md`.
+
+
+## v0.147 — 185-character-models-spike-base-player-model  (2026-06-02 23:07:42)
+
+
+`round-5/coverage.log` and my re-run both show the isolated `client-glb` vitest
+project running `playerModel.test.js`: **5 tests passed**. The test is well
+constructed — it parses the real `.glb` via `GLTFLoader`, exercises the
+production `loadModel` path, and asserts morph names, rest-pose height (1.7–1.9),
+feet at/above ground (min.y ≥ −0.05), and the ≤ 18k triangle budget.
+`vitest.config.js` isolates this real-Three.js test into a node project so it
+does not collide with the jsdom-mocked client suite. The 0% line in the coverage
+table reflects that the asset/test touch no instrumented `game/` source modules
+(coverage is visibility-only; thresholds disabled) — expected for a spike.
+
+## Remaining gaps
+
+None blocking. Two documentation nits noted in `nits.md`:
+- `MODEL_SPIKE.md` names the base mesh `Regular_Male`, while `SPIKE_DECISION.md`,
+  the committed asset, and the passing test all use `SuperHero_Male` — an internal
+  inconsistency to reconcile.
+- The decision note lives in `game/docs/` rather than the ticket dir named by the
+  beads AC; harmless, but worth a one-line pointer if strict location matters.
+
+
+## v0.148 — Cleanup nits from 125-key-item-flare-beacon  (2026-06-02 23:20:30)
+
+## Debug scenarios
+
+This ticket **did not add or modify** `flare-beacon-ready` (pre-existing from 125). Harness uses it only via `emitScenario` after normal lobby/ready flow.
+
+Existing safeguards remain appropriate:
+
+- Client: `?debugScenario=` on localhost only; server: `isDebugScenarioAllowed` (local address/origin/host or `ALLOW_DEBUG_SCENARIOS=1`).
+- Scenario sets `equippedKeyItemId` and spawns nearby enemies; **reveal still requires** harness `pressKey e` → client `useKeyItem` → server handler — same path as normal play.
+- Normal play: `equipKeyItem` + bound key (`useKeyItem` in settings, default keyboard binding) reaches the same reveal end-state; covered by socket integration tests.
+
+No blocking debug-scenario issues for this ticket.
+
+## Coverage artifact
+
+`round-2/coverage.log` shows all flare_beacon and `revealedUntil` cleanup tests executing and passing, then the run **timed out at 120s** during later `echo_strike` tests in the same file. That is a harness time-budget issue (visibility-only coverage), not evidence of failing ticket tests. Not a blocking gap.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.149 — Cleanup nits from 121-key-item-dodge-roll  (2026-06-02 23:32:58)
 
 - No dead code or obvious logic bugs in the touched paths.
@@ -2515,4 +2584,3 @@ Round-3 capture appended `emitScenario sloped-dungeon` because `fallbackRecipe()
 None blocking. Runtime proof, all three top-level acceptance criteria, and subticket integration are satisfied.
 
 ---
-

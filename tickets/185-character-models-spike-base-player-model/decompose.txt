@@ -1,0 +1,17 @@
+The top-level `ticket.md` is not in the worktree yet; decomposition follows **beads `autogame-0yf`** and the canonical contract in downstream tickets **186–188** (six proportion keys, `player.glb` conventions, `MODEL_SPIKE.md` / `README.md`).
+
+Five sub-tickets in dependency order (all **`Verification: code`** — asset/contract work, not in-game visuals until ticket 187):
+
+1. **01-source-research-and-decision** — pick CC0/authored base; write `DECISION.md`
+2. **02-canonical-contract-documentation** — `MODEL_SPIKE.md`, `public/models/README.md`, update `CREDITS.md`
+3. **03-base-player-glb-scale-orient** — commit oriented `player.glb` (no morphs yet)
+4. **04-proportion-morph-targets-export** — six named morph targets in `player.glb`
+5. **05-player-glb-contract-test** — vitest asserts morph names, height, feet, poly budget
+
+### Sub-ticket folder paths created
+
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/01-source-research-and-decision/`
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/02-canonical-contract-documentation/`
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/03-base-player-glb-scale-orient/`
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/04-proportion-morph-targets-export/`
+- `/home/matt/workspace/.autogame-worktrees/185-character-models-spike-base-player-model/tickets/185-character-models-spike-base-player-model/subtickets/05-player-glb-contract-test/`

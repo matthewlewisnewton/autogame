@@ -50,6 +50,7 @@ const ACTIONS = new Set([
   'waitForGame',
   'emitScenario',
   'move',
+  'pressKey',
   'pressCard',
   'clickSlot',
   'useKeyItem',
@@ -338,22 +339,44 @@ function fallbackRecipe() {
   const ticket = inferTicketFile() ? readText(inferTicketFile(), 8000) : '';
   const isSlopeTicket = /slope|ramp|sloped[-_]dungeon/i.test(ticket) ||
                         /sloped|142/.test(outDirAbs);
+  const isFlareBeaconTicket = /flare[-_]?beacon|revealedUntil|152-cleanup-key-item-flare-beacon/i.test(ticket) ||
+                              /flare|152-cleanup-key-item-flare-beacon/i.test(outDirAbs);
 
-  const steps = isSlopeTicket
-    ? [
-        ...baseSteps,
-        { action: 'emitScenario', player: 'A', scenario: 'sloped-dungeon' },
-        { action: 'wait', player: 'A', ms: 1500 },
-        { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
-      ]
-    : baseSteps;
+  let steps = baseSteps;
+  let summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement.';
 
-  return {
-    summary: isSlopeTicket
-      ? 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.'
-      : 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.',
-    steps,
-  };
+  if (isFlareBeaconTicket) {
+    steps = [
+      ...baseSteps,
+      { action: 'emitScenario', player: 'A', scenario: 'flare-beacon-ready' },
+      { action: 'pressKey', player: 'A', key: 'e', ms: 400 },
+      { action: 'wait', player: 'A', ms: 800 },
+      {
+        action: 'screenshot',
+        player: 'A',
+        name: '04-flare-beacon-reveal',
+        description: 'Gameplay with amber reveal highlight on nearby enemies after flare_beacon useKeyItem.',
+      },
+      {
+        action: 'probe',
+        player: 'A',
+        description: 'Verify revealedUntil in the future on nearby enemies in harnessState.enemyHp after flare_beacon reveal.',
+      },
+    ];
+    summary = 'Deterministic full-flow smoke capture with flare-beacon fallback: auth, lobby, ready, movement, flare_beacon useKeyItem reveal screenshot and probe.';
+  } else if (isSlopeTicket) {
+    steps = [
+      ...baseSteps,
+      { action: 'emitScenario', player: 'A', scenario: 'sloped-dungeon' },
+      { action: 'wait', player: 'A', ms: 1500 },
+      { action: 'screenshot', player: 'A', name: '04-sloped-ramp', description: 'Sloped dungeon room with ramp geometry visible after emitScenario sloped-dungeon.' },
+    ];
+    summary = 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.';
+  } else {
+    summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.';
+  }
+
+  return { summary, steps };
 }
 
 function buildPlannerPrompt(ticketFile) {
@@ -690,6 +713,13 @@ async function executeRecipe(browser, recipe) {
       await page.bringToFront();
       await page.keyboard.down(key);
       await page.waitForTimeout(step.durationMs || 500);
+      await page.keyboard.up(key);
+      await page.waitForTimeout(250);
+    } else if (step.action === 'pressKey') {
+      const key = step.key || 'e';
+      await page.bringToFront();
+      await page.keyboard.down(key);
+      await page.waitForTimeout(step.ms || 400);
       await page.keyboard.up(key);
       await page.waitForTimeout(250);
     } else if (step.action === 'pressCard') {

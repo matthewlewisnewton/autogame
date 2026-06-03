@@ -1,0 +1,17 @@
+All four conflicted files are marker-free. Summary of how each was merged:
+
+### `TASKS.md`
+Kept all backlog follow-ups: main’s model/spike/flare-beacon cleanups **and** the dodge-roll cleanup ticket (`197-cleanup-cleanup-key-item-dodge-roll`).
+
+### `LOGBOOK.md`
+Preserved chronological order: **v0.146 → v0.147 → v0.148** (main) then **v0.149** (this ticket’s dodge-roll cleanup entry).
+
+### `game/client/test/__mocks__/three.js`
+Merged `Group` stubs: ticket-side `position`/`rotation` with `copy()` (dodge/registry tests) plus main’s working `scale.setScalar` / `multiplyScalar` (model normalization tests).
+
+### `harness/screenshot.mjs`
+- **Base steps** still include dodge: `useKeyItem`, post-dodge probe, `04-after-dodge` screenshot.
+- **Main** flare-beacon and sloped-dungeon branches still append ticket-specific steps after `baseSteps`.
+- **Default** summary uses the ticket’s dodge/cooldown probe wording when neither flare nor slope ticket matches.
+
+No git write commands were run; the harness can commit and finish the merge.
