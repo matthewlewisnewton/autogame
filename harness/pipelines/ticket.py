@@ -93,10 +93,15 @@ class TicketContext:
 
 def _read_harness_failure(metrics_path: Path) -> dict | None:
     """Return the `harness_failure` block from metrics.json if present.
-    capture_run writes this block whenever wait_for_game timed out and the
-    dev servers themselves never came up (port leak, foreign holder, etc.).
-    A None return means the capture either succeeded or failed for some
-    reason other than harness infra — the round loop should proceed normally.
+    capture_run writes this block only when `_classify_capture_failure`
+    diagnoses an infra signature (non-empty `detected`, e.g. EADDRINUSE,
+    port leak, foreign holder). A bare `wait_for_game` timeout is NOT enough
+    on its own — without a matching signature the failure is classified as
+    `browser_pageerror` or generic `capture_failed` instead, with no
+    `harness_failure` block.
+    A None return therefore means the capture either succeeded or failed for
+    some reason other than harness infra — the round loop should proceed
+    normally.
     """
     try:
         return json.loads(metrics_path.read_text()).get("harness_failure")
@@ -105,7 +110,8 @@ def _read_harness_failure(metrics_path: Path) -> dict | None:
 
 
 def should_escalate_harness_failure(infra_failure: dict | None) -> bool:
-    """True only when capture_run diagnosed a harness infra signature."""
+    """True only when capture_run diagnosed a harness infra signature, i.e.
+    the `harness_failure` block is present and its `detected` list is non-empty."""
     return infra_failure is not None and bool(infra_failure.get("detected"))
 
 
