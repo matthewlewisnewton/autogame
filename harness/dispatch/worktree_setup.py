@@ -57,7 +57,55 @@ def install_deps(root: Path, *, pnpm: str = "pnpm", timeout_s: int = 600,
     return True
 
 
-def link_harness_deps(root: Path) -> bool:
+def _harness_playwright_ok(modules_dir: Path) -> bool:
+    """True when node_modules resolves and exposes the playwright package."""
+    try:
+        return (modules_dir / "playwright").exists()
+    except OSError:
+        return False
+
+
+def _remove_harness_node_modules(dst: Path) -> None:
+    if dst.is_symlink():
+        dst.unlink()
+    elif dst.is_dir():
+        shutil.rmtree(dst)
+    elif dst.exists():
+        dst.unlink()
+
+
+def install_harness_deps(root: Path, *, pnpm: str = "pnpm", timeout_s: int = 600,
+                         runner: Callable = subprocess.run,
+                         which: Callable = shutil.which) -> bool:
+    """Install harness tooling deps (`playwright`) in this worktree's `harness/`."""
+    root = Path(root)
+    harness_dir = root / "harness"
+    if not (harness_dir / "pnpm-lock.yaml").exists():
+        log(f"[worktree-setup] no harness/pnpm-lock.yaml under {root} — skipping harness install")
+        return True
+    if which(pnpm) is None:
+        log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install harness deps")
+        return False
+    log(f"[worktree-setup] pnpm install --frozen-lockfile in {harness_dir} ...")
+    try:
+        proc = runner([pnpm, "install", "--frozen-lockfile"], cwd=str(harness_dir),
+                      capture_output=True, text=True, timeout=timeout_s)
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        log(f"[worktree-setup] harness pnpm install errored: {e!r}")
+        return False
+    if getattr(proc, "returncode", 1) != 0:
+        tail = ((getattr(proc, "stderr", "") or getattr(proc, "stdout", "")) or "")[-400:]
+        log(f"[worktree-setup] harness pnpm install failed (rc={proc.returncode}): {tail}")
+        return False
+    modules = harness_dir / "node_modules"
+    if not _harness_playwright_ok(modules):
+        log(f"[worktree-setup] harness install finished but {modules}/playwright is missing")
+        return False
+    return True
+
+
+def link_harness_deps(root: Path, *, runner: Callable = subprocess.run,
+                      which: Callable = shutil.which) -> bool:
     """Make the worktree's `harness/node_modules` resolve to the main checkout's.
 
     A git worktree checks out the harness SOURCE (e.g. `harness/screenshot.mjs`)
@@ -79,19 +127,30 @@ def link_harness_deps(root: Path) -> bool:
     dst = root / "harness" / "node_modules"
     try:
         if dst.exists() or dst.is_symlink():
-            return True                            # already real or linked (incl. non-worktree run)
-        if not src.exists():
-            log(f"[worktree-setup] main harness node_modules missing at {src} — capture will fail")
-            return False
-        if src.resolve() == dst.resolve():
-            return True                            # same checkout (serial run) — nothing to link
-        dst.parent.mkdir(parents=True, exist_ok=True)
-        dst.symlink_to(src, target_is_directory=True)
-        log(f"[worktree-setup] linked harness deps {dst} -> {src}")
-        return True
+            if _harness_playwright_ok(dst):
+                return True
+            log(f"[worktree-setup] harness node_modules at {dst} is missing playwright — removing")
+            _remove_harness_node_modules(dst)
+        if src.exists() and _harness_playwright_ok(src):
+            if src.resolve() == dst.resolve():
+                return True                        # same checkout (serial run)
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst.symlink_to(src, target_is_directory=True)
+            if _harness_playwright_ok(dst):
+                log(f"[worktree-setup] linked harness deps {dst} -> {src}")
+                return True
+            log(f"[worktree-setup] linked harness deps but playwright missing — removing link")
+            _remove_harness_node_modules(dst)
+        else:
+            if not src.exists():
+                log(f"[worktree-setup] main harness node_modules missing at {src}")
+            else:
+                log(f"[worktree-setup] main harness node_modules at {src} has no playwright")
+        log(f"[worktree-setup] falling back to local harness pnpm install")
+        return install_harness_deps(root, runner=runner, which=which)
     except OSError as e:
         log(f"[worktree-setup] could not link harness deps: {e!r}")
-        return False
+        return install_harness_deps(root, runner=runner, which=which)
 
 
-__all__ = ["install_deps", "link_harness_deps"]
+__all__ = ["install_deps", "install_harness_deps", "link_harness_deps"]
