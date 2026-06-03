@@ -3109,3 +3109,26 @@ None blocking. (One minor wording nit recorded in `nits.md`.)
 
 None.
 
+
+## v0.173 — 165-cleanup-harness-game-lifecycle-tests  (2026-06-03 12:37:45)
+
+
+The game server/client Vitest suite also passes:
+
+- `pnpm exec vitest run --config vitest.config.js --coverage.enabled=false --reporter=dot`
+- Result: 71 test files passed, 1643 tests passed.
+
+The first attempted `pnpm test:quick` run produced the same full passing Vitest summary but the shell returned 137 after completion; a quieter direct Vitest rerun exited 0, so this is not treated as a test failure.
+
+### Design and requirements consistency
+
+PASS. The change is harness-test-only and does not alter the game loop, multiplayer architecture, movement, rendering, combat, lobbies, persistence, or debug gameplay behavior described in `game/docs/design.md` and `game/docs/requirements.md`. The captured gameplay still shows two players connected, lobby-to-dungeon transition, a rendered scene/canvas, movement, card hand HUD, enemies, and key-item cooldown behavior.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. The capture ran with `debugScenario: null`, so normal gameplay remains the path exercised by the runtime proof.
+
+## Remaining gaps
+
+None.
+
