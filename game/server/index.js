@@ -159,6 +159,7 @@ const {
   applyFreezeInRadius,
   pullEnemiesToward,
   applyKnockback,
+  applyPlayerKnockback,
   applyEventHorizon,
   spawnDragonsBreathEffect,
   spawnFireTrailEffect,
@@ -1152,6 +1153,8 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     blockingYaw: 0,
     rallyUntil: 0,
     rallySpeedMultiplier: 1,
+    anchorUntil: 0,
+    anchorSpeedMultiplier: 1,
     cosmetic: account?.cosmetic ?? { ...DEFAULT_COSMETIC },
   };
 
@@ -1202,6 +1205,8 @@ function initializePlayerForActiveRun(player) {
   player.overclockChargesRemaining = 0;
   player.rallyUntil = 0;
   player.rallySpeedMultiplier = 1;
+  player.anchorUntil = 0;
+  player.anchorSpeedMultiplier = 1;
 }
 
 function emitLobbyJoined(socket, lobby) {
@@ -2847,8 +2852,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, rally_cry, and smoke_bomb are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'rally_cry' && keyItemId !== 'smoke_bomb') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, rally_cry, smoke_bomb, and ground_anchor are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'rally_cry' && keyItemId !== 'smoke_bomb' && keyItemId !== 'ground_anchor') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2999,6 +3004,23 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'ground_anchor') {
+      // --- ground_anchor: become immune to knockback/displacement for a short
+      // window while moving at reduced speed. The immunity is enforced in
+      // applyPlayerKnockback (simulation.js) and the slow in the movement step;
+      // here we only set the transient anchor state, burn cooldown, and broadcast. ---
+      const durationMs = def.durationMs != null ? def.durationMs : 1500;
+      const cooldownMs = def.cooldownMs != null ? def.cooldownMs : 6000;
+      player.anchorUntil = now + durationMs;
+      player.anchorSpeedMultiplier = def.speedMultiplier != null ? def.speedMultiplier : 0.7;
+      player.keyItemCooldownUntil = now + cooldownMs;
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, anchorUntil: player.anchorUntil, cooldownUntil: player.keyItemCooldownUntil });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
@@ -3785,6 +3807,7 @@ if (typeof module !== 'undefined' && module.exports) {
     applyFreezeInRadius,
     pullEnemiesToward,
     applyKnockback,
+    applyPlayerKnockback,
     applyEventHorizon,
     spawnDragonsBreathEffect,
     spawnFireTrailEffect,

@@ -638,9 +638,10 @@ const KEY_ITEM_DEFS = {
     id: 'ground_anchor',
     name: 'Ground Anchor',
     description: 'Become immune to knockback and displacement',
-    cooldownMs: 15000,
+    cooldownMs: 6000,
     type: 'defensive',
-    durationMs: 4000,
+    durationMs: 1500,
+    speedMultiplier: 0.7,
   },
   phase_step: {
     id: 'phase_step',
