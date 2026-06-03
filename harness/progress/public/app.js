@@ -606,12 +606,29 @@ function issueMatchesFilter(issue, query) {
   });
 }
 
+function beadsBadge(extraClass, label, token) {
+  if (!label) return '';
+  if (!token) return `<span class="beads-badge ${extraClass}">${escapeHtml(label)}</span>`;
+  return `<span class="beads-badge beads-badge-btn ${extraClass}" role="button" tabindex="0" data-token="${escapeHtml(token)}">${escapeHtml(label)}</span>`;
+}
+
 function beadsBadges(issue) {
   return `
-    <span class="beads-badge status-${slug(issue.status)}">${escapeHtml(issue.status)}</span>
-    <span class="beads-badge prio-${slug(priorityLabel(issue.priority))}">${escapeHtml(priorityLabel(issue.priority))}</span>
-    <span class="beads-badge type-${slug(issue.issue_type)}">${escapeHtml(issue.issue_type)}</span>
+    ${beadsBadge(`status-${slug(issue.status)}`, issue.status, `status:${String(issue.status || '').toLowerCase()}`)}
+    ${beadsBadge(`prio-${slug(priorityLabel(issue.priority))}`, priorityLabel(issue.priority), /^[0-4]$/.test(String(issue.priority)) ? `p${issue.priority}` : '')}
+    ${beadsBadge(`type-${slug(issue.issue_type)}`, issue.issue_type, `type:${String(issue.issue_type || '').toLowerCase()}`)}
   `;
+}
+
+function toggleBeadsFilterToken(token) {
+  if (!beadsFilterEl || !token) return;
+  const terms = beadsFilterEl.value.trim().split(/\s+/).filter(Boolean);
+  const lower = token.toLowerCase();
+  const idx = terms.findIndex((t) => t.toLowerCase() === lower);
+  if (idx >= 0) terms.splice(idx, 1);
+  else terms.push(token);
+  beadsFilterEl.value = terms.join(' ');
+  renderBeadsList();
 }
 
 function renderBeadsList() {
@@ -635,6 +652,19 @@ function renderBeadsList() {
     .join('');
   beadsListEl.querySelectorAll('.beads-row').forEach((row) => {
     row.addEventListener('click', () => selectBead(row.dataset.id));
+  });
+  beadsListEl.querySelectorAll('.beads-badge-btn').forEach((badge) => {
+    badge.addEventListener('click', (event) => {
+      event.stopPropagation();
+      event.preventDefault();
+      toggleBeadsFilterToken(badge.dataset.token);
+    });
+    badge.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.stopPropagation();
+      event.preventDefault();
+      toggleBeadsFilterToken(badge.dataset.token);
+    });
   });
 }
 

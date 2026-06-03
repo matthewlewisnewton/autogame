@@ -729,6 +729,21 @@ h1 {
   color: var(--muted);
 }
 
+.beads-badge-btn {
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.beads-badge-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.beads-badge-btn:focus-visible {
+  outline: 1px solid var(--blue);
+  outline-offset: 1px;
+}
+
 .beads-badge.status-open {
   color: var(--blue);
   border-color: rgba(124, 183, 255, 0.45);
