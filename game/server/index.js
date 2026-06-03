@@ -418,6 +418,7 @@ const DEBUG_SCENARIOS = new Set([
   'avatar-proportions-demo',
   'avatar-wizard-hat',
   'mixed-enemies',
+  'variant-enemy',
   'spawner-active',
   'monster-card',
   'minion-combat',
@@ -528,6 +529,7 @@ function emitCardError(socket, reason) {
 
 const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'mixed-enemies',
+  'variant-enemy',
   'spawner-active',
   'minion-combat',
   'run-exhausted',
@@ -766,6 +768,20 @@ function applyDebugScenario(socket, name) {
       spawnEnemy(player.x, player.z - 4, 'spawner');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
+      }
+    } else if (name === 'variant-enemy') {
+      // Spawn one variant ("elite") enemy beside a plain one of the same type so
+      // the client variant marker can be verified side-by-side. The same state is
+      // reachable normally when an enemy rolls a variant on spawn (applyVariant);
+      // this is just a deterministic shortcut into it.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const variant = spawnEnemy(player.x + 3, player.z, 'grunt');
+      variant.variant = 'test';
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
       }
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;

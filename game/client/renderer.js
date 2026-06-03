@@ -99,6 +99,7 @@ const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
 const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
+const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -2560,6 +2561,50 @@ export function applyRevealHighlight(enemyId, enemy) {
 	}
 }
 
+// ── Variant marker (elite enemy badge) ──
+
+const VARIANT_MARKER_COLOR = 0xc026d3; // magenta — distinct from amber reveal/yellow lock-on
+
+/**
+ * Build the floating badge shown above a variant ("elite") enemy: a small
+ * emissive diamond, kept separate from the enemy mesh so it never collides with
+ * the windup/reveal emissive bookkeeping on the enemy material.
+ * @returns {THREE.Mesh}
+ */
+function createVariantMarker() {
+	const geo = new THREE.OctahedronGeometry(0.22);
+	const mat = new THREE.MeshStandardMaterial({
+		color: VARIANT_MARKER_COLOR,
+		emissive: VARIANT_MARKER_COLOR,
+		emissiveIntensity: 0.9,
+	});
+	return new THREE.Mesh(geo, mat);
+}
+
+/**
+ * Add or remove a variant badge for an enemy, driven purely by `enemy.variant`
+ * each update. A truthy variant gets a badge positioned above the mesh; a
+ * falsy/absent variant has any existing badge disposed, so a reused enemy id
+ * never keeps a stale marker. Safe when `variant` is undefined/null.
+ * @param {string} enemyId
+ * @param {object} enemy - { variant, x, z, type }
+ */
+export function applyVariantMarker(enemyId, enemy) {
+	if (enemy && enemy.variant) {
+		if (!variantMarkerMeshes[enemyId]) {
+			variantMarkerMeshes[enemyId] = createVariantMarker();
+			scene.add(variantMarkerMeshes[enemyId]);
+		}
+		const halfHeight = enemyMeshHalfHeight(enemy.type);
+		const marker = variantMarkerMeshes[enemyId];
+		marker.position.set(enemy.x, halfHeight + 0.95, enemy.z);
+		// Slow spin so the badge reads as an active marker rather than scenery.
+		marker.rotation.y = ((Date.now() % 4000) / 4000) * Math.PI * 2;
+	} else if (variantMarkerMeshes[enemyId]) {
+		disposeOne(variantMarkerMeshes, enemyId, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -4071,6 +4116,9 @@ export function animate(timestamp) {
 
 			// ── Reveal highlight (Flare Beacon) ──
 			applyRevealHighlight(enemy.id, enemy);
+
+			// ── Variant marker (elite enemy badge) ──
+			applyVariantMarker(enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4078,6 +4126,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
+		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];
