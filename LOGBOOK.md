@@ -2862,3 +2862,26 @@ single-material `player.glb` — is explicitly sanctioned by the sub-ticket/spik
 contract and filed as a nit. Code is clean, all unit tests pass, and the
 captured run is healthy.
 
+
+## v0.163 — 188-character-customization-client-proportion-sliders  (2026-06-03 05:47:22)
+
+- **Slider move updates preview live** — PASS. The input handler calls
+  `refreshCosmeticPreview()` → `updateCosmeticPreview({ ...cosmeticSelection })`,
+  storing proportions and re-applying them.
+- **Re-applies after async glTF load** — PASS. `cosmetic-preview.js` stores
+  `currentCosmetic` and calls `applyStoredProportions()` every `renderFrame()`
+  tick (and on mount/update), so a pre-load change lands once morph targets exist.
+- **Safe no-op without morph targets** — PASS. `applyProportionMorphs` returns
+  early when `morphTargetDictionary`/`morphTargetInfluences` are absent; the
+  helper guards a null host. No thrown errors on the procedural fallback.
+- **Driven by the same selection as Save** — PASS. Preview and Save both read
+  `cosmeticSelection.proportions`; the previewed shape matches the saved payload.
+
+## Consistency / regressions
+- Mirrors `game/docs` foundation; no server files or the in-run apply path were
+  changed (server validation/persist/broadcast from 186/187 intact). No debug
+  scenarios added.
+
+## Remaining gaps
+None. No blocking gaps.
+

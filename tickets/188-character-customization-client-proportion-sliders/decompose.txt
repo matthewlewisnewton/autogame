@@ -1,0 +1,13 @@
+I broke the top-level ticket into 2 sub-tickets. Created:
+
+- `/home/matt/workspace/.autogame-worktrees/188-character-customization-client-proportion-sliders/tickets/188-character-customization-client-proportion-sliders/subtickets/01-proportion-slider-controls/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/188-character-customization-client-proportion-sliders/tickets/188-character-customization-client-proportion-sliders/subtickets/02-live-proportion-preview/ticket.md`
+
+**Why this split:**
+
+- **01 — Slider controls:** the six range sliders in the Account overlay, wired to `cosmeticSelection.proportions`, clamped to the exact server ranges from `game/server/cosmetic.js` (height/armLength/legLength 0.8–1.2; headSize/torsoWidth/shoulderWidth 0.7–1.3), included in the `PATCH /api/me/profile` save payload, and backfilled in client `settings.js`. In-run reflection for self/peers comes for free via the existing `applyLoadedModelCosmetic` path that ticket 187 already wired.
+- **02 — Live preview:** the trickier plumbing — exporting a morph-apply helper from `renderer.js` and making `cosmetic-preview.js` apply proportions on each update and per-frame (the glTF loads async, so it must re-apply after load).
+
+Both are `code` verification: the customization panel/account overlay is **not** reachable in the visual happy-path run (game load + two players + WASD), and the criteria concern handlers, payload shape, clamp values, key-name mapping, and async behavior — none of which a single happy-path screenshot can confirm.
+
+The server already handles validation, persistence, broadcast, and the in-run apply (tickets 186/187), so no server changes are scoped. No pre-existing sub-ticket folders existed, so nothing was retired.
