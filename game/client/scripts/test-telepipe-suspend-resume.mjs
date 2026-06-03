@@ -43,6 +43,11 @@ const SERVER_URL = `http://localhost:${SERVER_PORT}`;
 const CLIENT_URL = `http://localhost:${VITE_PORT}`;
 const SCENARIO_URL = `${CLIENT_URL}/?debugScenario=telepipe-ready`;
 
+// Telepipe portal extraction radius — `CARD_DEFS.telepipe.radius` in
+// game/server/progression.js. A resumed player must be repositioned beyond this
+// so they would not immediately re-extract (repositionPlayersAwayFromPortal).
+const PORTAL_RADIUS = 2.5;
+
 const children = [];
 let cleanedUp = false;
 
@@ -305,6 +310,40 @@ async function main() {
 				`Enemy ${id} hp changed: ${hp} → ${resumedById.get(id)}`);
 		}
 
+		// 5b. Assert QUEST / OBJECTIVE progress is preserved across suspend → resume.
+		// The playing-phase harness state does not expose a live objective, so pre-
+		// suspend progress is derived from the enemy set: no enemy was defeated this
+		// run, so `defeated = 0` and `total = pre.enemies.length`.
+		const preTotalEnemies = pre.enemies.length;
+		const preDefeatedEnemies = 0;
+		const objective = summary.objective;
+		assert(objective.type === 'defeat_enemies',
+			`Expected a 'defeat_enemies' objective, got '${objective.type}'`);
+		assert(objective.totalEnemies === preTotalEnemies,
+			`Suspended objective.totalEnemies ${objective.totalEnemies} != pre-suspend enemy count ${preTotalEnemies}`);
+		assert(objective.defeatedEnemies === preDefeatedEnemies,
+			`Suspended objective.defeatedEnemies ${objective.defeatedEnemies} != expected ${preDefeatedEnemies} (none defeated this run)`);
+
+		// After resume the same enemies remain undefeated (none newly defeated), so
+		// the implied defeated/total is unchanged from pre-suspend.
+		const resumedRemainingUndefeated = resumed.enemies.length;
+		assert(resumedRemainingUndefeated === preTotalEnemies - preDefeatedEnemies,
+			`Resumed undefeated enemy count ${resumedRemainingUndefeated} != pre-suspend undefeated ${preTotalEnemies - preDefeatedEnemies}`);
+
+		// 5c. Assert resumed PLAYER POSITION semantics: after resume the player is
+		// repositioned CLEAR of the restored telepipe portal (not left inside the
+		// extraction radius), matching repositionPlayersAwayFromPortal — so they
+		// would not immediately re-extract.
+		const restoredTelepipe = resumed.telepipe ?? suspended.telepipe;
+		assert(restoredTelepipe, `Missing restored telepipe portal on resumed/suspended snapshot`);
+		assert(resumed.player, 'Missing resumed player position');
+		const resumedPlayerPortalDistance = Math.hypot(
+			resumed.player.x - restoredTelepipe.x,
+			resumed.player.z - restoredTelepipe.z,
+		);
+		assert(resumedPlayerPortalDistance > PORTAL_RADIUS,
+			`Resumed player at distance ${resumedPlayerPortalDistance.toFixed(3)} is within portal radius ${PORTAL_RADIUS} — would immediately re-extract`);
+
 		// 6. No client TypeErrors during the run (esp. on stateUpdate).
 		const typeErrors = consoleErrors.filter((t) => /TypeError|stateUpdate/i.test(t));
 		assert(typeErrors.length === 0,
@@ -318,11 +357,21 @@ async function main() {
 			preSuspend: pre,
 			suspended,
 			postResume: resumed,
+			objectiveProgress: {
+				preSuspend: { total: preTotalEnemies, defeated: preDefeatedEnemies },
+				suspendedSummary: {
+					total: objective.totalEnemies, defeated: objective.defeatedEnemies,
+				},
+				postResume: { remainingUndefeated: resumedRemainingUndefeated },
+			},
+			resumedPlayerPortalDistance,
 		}, null, 2));
 		console.log(`snapshot: ${snapshotFile}`);
 
 		console.log(`PASS: suspended quest '${summary.questName}', resumed same layout `
-			+ `(seed ${resumed.layout.seed}, ${resumed.enemies.length} enemies preserved)`);
+			+ `(seed ${resumed.layout.seed}, ${resumed.enemies.length} enemies preserved); `
+			+ `objective ${objective.defeatedEnemies}/${objective.totalEnemies} preserved, `
+			+ `resumed player ${resumedPlayerPortalDistance.toFixed(2)} from portal (radius ${PORTAL_RADIUS})`);
 	} finally {
 		await browser.close().catch(() => {});
 	}
