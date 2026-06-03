@@ -2517,6 +2517,29 @@ the change is additive and consistent with `game/docs/design.md` / `requirements
 non-blocking polish is recorded in `nits.md`.
 
 
+## v0.147 — 185-character-models-spike-base-player-model  (2026-06-02 23:07:42)
+
+
+`round-5/coverage.log` and my re-run both show the isolated `client-glb` vitest
+project running `playerModel.test.js`: **5 tests passed**. The test is well
+constructed — it parses the real `.glb` via `GLTFLoader`, exercises the
+production `loadModel` path, and asserts morph names, rest-pose height (1.7–1.9),
+feet at/above ground (min.y ≥ −0.05), and the ≤ 18k triangle budget.
+`vitest.config.js` isolates this real-Three.js test into a node project so it
+does not collide with the jsdom-mocked client suite. The 0% line in the coverage
+table reflects that the asset/test touch no instrumented `game/` source modules
+(coverage is visibility-only; thresholds disabled) — expected for a spike.
+
+## Remaining gaps
+
+None blocking. Two documentation nits noted in `nits.md`:
+- `MODEL_SPIKE.md` names the base mesh `Regular_Male`, while `SPIKE_DECISION.md`,
+  the committed asset, and the passing test all use `SuperHero_Male` — an internal
+  inconsistency to reconcile.
+- The decision note lives in `game/docs/` rather than the ticket dir named by the
+  beads AC; harmless, but worth a one-line pointer if strict location matters.
+
+
 ## v0.148 — Cleanup nits from 125-key-item-flare-beacon  (2026-06-02 23:20:30)
 
 ## Debug scenarios

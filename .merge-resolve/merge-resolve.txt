@@ -1,18 +1,15 @@
 Merge conflicts are resolved in both files.
 
+### `TASKS.md`
+Kept **both** backlog entries (main’s character-models spike and this ticket’s follow-up cleanup):
+- `197-cleanup-character-models-spike-base-player-model` (from `main`)
+- `198-cleanup-cleanup-key-item-flare-beacon` (from this branch)
+
+They sit after the existing `197-cleanup-models-wire-enemy-placeholders` line.
+
 ### `LOGBOOK.md`
-Kept **both** release entries in version order:
-1. **v0.145** — field medic kit cleanup (from `main`)
-2. **v0.146** — enemy/minion model registry wiring (from the ticket branch)
+Appended **both** version sections in timestamp order (matching the file’s v0.144 → v0.146 pattern):
+1. **v0.147** — character models spike review (`main`)
+2. **v0.148** — flare beacon cleanup review (this ticket)
 
-### `harness/dispatch/worktree_setup.py`
-Combined harness Playwright setup from ticket **#151** (`fc7d13f`) and ticket **#162** (`67b51b5`):
-
-| Area | Merge choice |
-|------|----------------|
-| `_harness_playwright_ok` | `modules_dir` param + import-oriented docstring |
-| `_remove_harness_node_modules` | Handles symlinks, regular files, dirs, and other paths |
-| `install_harness_deps` | `pnpm-lock.yaml` gate, post-install playwright check with logging |
-| `link_harness_deps` | Early OK check; remove broken `dst`; **`same_checkout`** guard so serial runs on `main` don’t symlink; main’s `src.exists()` + verify-after-link; diagnostic logs; `pnpm install` fallback; **OSError → install** (from `main`) |
-
-All 12 `test_worktree_setup.py` tests pass. No conflict markers remain in the two target files — the harness can finish the merge and run the full suite.
+All conflict markers are removed. The harness can continue the merge and run tests.

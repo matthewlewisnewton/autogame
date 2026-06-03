@@ -65,6 +65,24 @@ def _harness_playwright_ok(modules_dir: Path) -> bool:
         return False
 
 
+def _harness_install_dir(root: Path) -> Path | None:
+    """Harness package root to run npm/pnpm in.
+
+    Parallel workers set HARNESS_PROGRESS_DIR to the main checkout's progress
+    dir; install there so link_harness_deps can symlink worktrees to one copy.
+    Without that env var, install under the caller's worktree/root."""
+    root = Path(root)
+    from harness.telemetry.progress import progress_dir
+
+    override = progress_dir().parent
+    if (override / "package.json").exists():
+        return override
+    local = root / "harness"
+    if (local / "package.json").exists() or (local / "pnpm-lock.yaml").exists():
+        return local
+    return None
+
+
 def _remove_harness_node_modules(dst: Path) -> None:
     if dst.is_symlink() or dst.is_file():
         dst.unlink()
@@ -74,30 +92,47 @@ def _remove_harness_node_modules(dst: Path) -> None:
         dst.unlink()
 
 
-def install_harness_deps(root: Path, *, pnpm: str = "pnpm", timeout_s: int = 600,
+def install_harness_deps(root: Path, *, npm: str = "npm", pnpm: str = "pnpm", timeout_s: int = 600,
                          runner: Callable = subprocess.run,
                          which: Callable = shutil.which) -> bool:
-    """Install harness tooling deps (`playwright`, etc.) under `root/harness/`."""
-    root = Path(root)
-    harness_dir = root / "harness"
-    if not (harness_dir / "pnpm-lock.yaml").exists():
-        log(f"[worktree-setup] no harness/pnpm-lock.yaml under {root} — skipping harness install")
+    """Install harness tooling deps (`playwright`, etc.) when missing.
+
+    Uses pnpm when `pnpm-lock.yaml` exists, else `npm ci` / `npm install` when
+    `package-lock.json` or `package.json` is present. Idempotent when playwright
+    is already present. `runner`/`which` are injected for testing."""
+    harness_dir = _harness_install_dir(root)
+    if harness_dir is None:
+        log(f"[worktree-setup] no harness/package.json under {root} — skipping harness install")
         return True
-    if which(pnpm) is None:
-        log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install harness deps")
-        return False
-    log(f"[worktree-setup] pnpm install --frozen-lockfile in {harness_dir} ...")
+    modules = harness_dir / "node_modules"
+    if _harness_playwright_ok(modules):
+        return True
+    if (harness_dir / "pnpm-lock.yaml").exists():
+        if which(pnpm) is None:
+            log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install harness deps")
+            return False
+        cmd = [pnpm, "install", "--frozen-lockfile"]
+        pkg_mgr = "pnpm"
+    elif (harness_dir / "package-lock.json").exists() or (harness_dir / "package.json").exists():
+        if which(npm) is None:
+            log(f"[worktree-setup] '{npm}' not on PATH — cannot install harness deps")
+            return False
+        lockfile = harness_dir / "package-lock.json"
+        cmd = [npm, "ci"] if lockfile.exists() else [npm, "install"]
+        pkg_mgr = "npm"
+    else:
+        log(f"[worktree-setup] no harness lockfile under {harness_dir} — skipping harness install")
+        return True
+    log(f"[worktree-setup] {' '.join(cmd)} in {harness_dir} ...")
     try:
-        proc = runner([pnpm, "install", "--frozen-lockfile"], cwd=str(harness_dir),
-                      capture_output=True, text=True, timeout=timeout_s)
+        proc = runner(cmd, cwd=str(harness_dir), capture_output=True, text=True, timeout=timeout_s)
     except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        log(f"[worktree-setup] harness pnpm install errored: {e!r}")
+        log(f"[worktree-setup] harness {pkg_mgr} install errored: {e!r}")
         return False
     if getattr(proc, "returncode", 1) != 0:
         tail = ((getattr(proc, "stderr", "") or getattr(proc, "stdout", "")) or "")[-400:]
-        log(f"[worktree-setup] harness pnpm install failed (rc={proc.returncode}): {tail}")
+        log(f"[worktree-setup] harness {pkg_mgr} install failed (rc={proc.returncode}): {tail}")
         return False
-    modules = harness_dir / "node_modules"
     if not _harness_playwright_ok(modules):
         log(f"[worktree-setup] harness install finished but {modules}/playwright is missing")
         return False

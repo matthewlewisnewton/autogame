@@ -77,6 +77,38 @@ def test_handles_timeout(tmp_path):
     assert ok is False
 
 
+def test_install_harness_deps_runs_npm_ci_when_playwright_missing(tmp_path, monkeypatch):
+    harness = tmp_path / "harness"
+    harness.mkdir()
+    (harness / "package.json").write_text('{"dependencies":{"playwright":"^1.60.0"}}')
+    (harness / "package-lock.json").write_text("{}")
+    monkeypatch.setenv("HARNESS_PROGRESS_DIR", str(harness / "progress"))
+    seen = {}
+
+    def runner(cmd, **kw):
+        seen["cmd"] = cmd
+        seen["cwd"] = kw.get("cwd")
+        (harness / "node_modules" / "playwright").mkdir(parents=True)
+        return _Result(0)
+
+    ok = install_harness_deps(tmp_path, runner=runner, which=lambda _: "/usr/bin/npm")
+    assert ok is True
+    assert seen["cmd"] == ["npm", "ci"]
+    assert seen["cwd"] == str(harness)
+
+
+def test_install_harness_deps_noop_when_playwright_present(tmp_path, monkeypatch):
+    harness = tmp_path / "harness"
+    (harness / "node_modules" / "playwright").mkdir(parents=True)
+    (harness / "package.json").write_text("{}")
+    monkeypatch.setenv("HARNESS_PROGRESS_DIR", str(harness / "progress"))
+    calls = []
+    ok = install_harness_deps(tmp_path, runner=lambda *a, **k: calls.append(1) or _Result(0),
+                              which=lambda _: "/usr/bin/npm")
+    assert ok is True
+    assert calls == []
+
+
 def test_link_harness_deps_symlinks_to_main(tmp_path, monkeypatch):
     """In a worktree, harness/node_modules is symlinked at the main checkout's so
     `node harness/screenshot.mjs` can import playwright (else capture fails)."""

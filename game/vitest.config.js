@@ -20,10 +20,24 @@ export default defineConfig({
 					include: [
 						'client/test/**/*.{test,spec}.{js,mjs}'
 					],
+					exclude: [
+						'client/test/playerModel.test.js'
+					],
 					environment: 'jsdom',
 					setupFiles: [
 						'client/test/setup.js'
 					]
+				}
+			},
+			{
+				test: {
+					name: 'client-glb',
+					include: [
+						'client/test/playerModel.test.js'
+					],
+					environment: 'node',
+					fileParallelism: false,
+					maxWorkers: 1,
 				}
 			}
 		],

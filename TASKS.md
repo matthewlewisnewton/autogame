@@ -66,4 +66,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [195-cleanup-docs-design-md-stale-fixes](tickets/195-cleanup-docs-design-md-stale-fixes/)
 - [ ] [196-cleanup-world-spire-ascent-stage](tickets/196-cleanup-world-spire-ascent-stage/)
 - [ ] [197-cleanup-models-wire-enemy-placeholders](tickets/197-cleanup-models-wire-enemy-placeholders/)
+- [ ] [197-cleanup-character-models-spike-base-player-model](tickets/197-cleanup-character-models-spike-base-player-model/)
 - [ ] [198-cleanup-cleanup-key-item-flare-beacon](tickets/198-cleanup-cleanup-key-item-flare-beacon/)
