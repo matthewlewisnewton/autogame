@@ -107,36 +107,54 @@ def install_harness_deps(root: Path, *, npm: str = "npm", pnpm: str = "pnpm", ti
     modules = harness_dir / "node_modules"
     if _harness_playwright_ok(modules):
         return True
-    if (harness_dir / "pnpm-lock.yaml").exists():
-        if which(pnpm) is None:
-            log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install harness deps")
-            return False
-        cmd = [pnpm, "install", "--frozen-lockfile"]
-        pkg_mgr = "pnpm"
-    elif (harness_dir / "package-lock.json").exists() or (harness_dir / "package.json").exists():
-        if which(npm) is None:
-            log(f"[worktree-setup] '{npm}' not on PATH — cannot install harness deps")
-            return False
-        lockfile = harness_dir / "package-lock.json"
-        cmd = [npm, "ci"] if lockfile.exists() else [npm, "install"]
-        pkg_mgr = "npm"
-    else:
-        log(f"[worktree-setup] no harness lockfile under {harness_dir} — skipping harness install")
-        return True
-    log(f"[worktree-setup] {' '.join(cmd)} in {harness_dir} ...")
+    # SERIALIZE the install. This targets the SHARED main harness dir (every
+    # worktree links to its node_modules), so two workers running `pnpm install`
+    # here at once corrupt each other's store/lockfile temp state → pnpm crashes
+    # (rc=216), the install never completes, playwright never registers as ok, and
+    # the ticket retries setup forever (observed hot-loop). A cross-process flock
+    # makes it one-at-a-time; the double-check inside skips entirely once a peer
+    # finished. Only the install contends on the lock — the fast skip-path above
+    # never locks.
+    from harness.concurrency.resource_lock import held
     try:
-        proc = runner(cmd, cwd=str(harness_dir), capture_output=True, text=True, timeout=timeout_s)
-    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
-        log(f"[worktree-setup] harness {pkg_mgr} install errored: {e!r}")
-        return False
-    if getattr(proc, "returncode", 1) != 0:
-        tail = ((getattr(proc, "stderr", "") or getattr(proc, "stdout", "")) or "")[-400:]
-        log(f"[worktree-setup] harness {pkg_mgr} install failed (rc={proc.returncode}): {tail}")
-        return False
-    if not _harness_playwright_ok(modules):
-        log(f"[worktree-setup] harness install finished but {modules}/playwright is missing")
-        return False
-    return True
+        with held("harness-install", timeout=timeout_s):
+            if _harness_playwright_ok(modules):
+                return True  # a peer installed while we waited for the lock
+            if (harness_dir / "pnpm-lock.yaml").exists():
+                if which(pnpm) is None:
+                    log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install harness deps")
+                    return False
+                cmd = [pnpm, "install", "--frozen-lockfile"]
+                pkg_mgr = "pnpm"
+            elif (harness_dir / "package-lock.json").exists() or (harness_dir / "package.json").exists():
+                if which(npm) is None:
+                    log(f"[worktree-setup] '{npm}' not on PATH — cannot install harness deps")
+                    return False
+                lockfile = harness_dir / "package-lock.json"
+                cmd = [npm, "ci"] if lockfile.exists() else [npm, "install"]
+                pkg_mgr = "npm"
+            else:
+                log(f"[worktree-setup] no harness lockfile under {harness_dir} — skipping harness install")
+                return True
+            log(f"[worktree-setup] {' '.join(cmd)} in {harness_dir} (serialized) ...")
+            try:
+                proc = runner(cmd, cwd=str(harness_dir), capture_output=True, text=True, timeout=timeout_s)
+            except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+                log(f"[worktree-setup] harness {pkg_mgr} install errored: {e!r}")
+                return False
+            if getattr(proc, "returncode", 1) != 0:
+                tail = ((getattr(proc, "stderr", "") or getattr(proc, "stdout", "")) or "")[-400:]
+                log(f"[worktree-setup] harness {pkg_mgr} install failed (rc={proc.returncode}): {tail}")
+                return False
+            if not _harness_playwright_ok(modules):
+                log(f"[worktree-setup] harness install finished but {modules}/playwright is missing")
+                return False
+            return True
+    except TimeoutError:
+        # Held too long by a peer that's still installing — don't pile on; report
+        # whether the install they're doing has already made playwright resolvable.
+        log("[worktree-setup] harness-install lock busy >timeout — deferring to peer")
+        return _harness_playwright_ok(modules)
 
 
 def link_harness_deps(root: Path, *, runner: Callable = subprocess.run,
