@@ -1,9 +1,7 @@
-Both conflicts resolved, no markers remain.
+Both conflicted files are resolved. The remaining `=======` matches are decorative banner lines in `harness/prompts/repair.md` (not conflict markers, and not one of our files).
 
-**LOGBOOK.md** — Both sides appended new completion entries. Kept all of main's (`v0.153`–`v0.158`) and the branch's (`v0.159`), ordering `v0.159` last to preserve the "appended newest-last" version-monotonic convention.
+Resolution summary — both are append-only ledgers, so I kept both sides:
+- **TASKS.md**: kept both new `201-cleanup-*` backlog entries.
+- **LOGBOOK.md**: kept both completion entries, ordered by version (v0.160 Ground Anchor from main, then v0.161 glTF avatar from the branch — newest-last per the file's convention).
 
-**TASKS.md** — Two conflicts:
-1. Status flags: main marked `143` done, the branch marked `144` (this ticket) done. Kept both as `[x]` so neither completion is lost.
-2. Backlog tail: both sides added a different `200-…` entry. Kept both as separate backlog items.
-
-No unrelated changes; both files are marker-free and consistent.
+No conflict markers remain in either file.

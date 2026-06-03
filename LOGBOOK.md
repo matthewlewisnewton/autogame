@@ -2817,6 +2817,29 @@ screenshots/probes arrays from the rewritten metrics — consistent with existin
 classify behavior, not a regression).
 
 
+## v0.160 — Key Item: Ground Anchor  (2026-06-03 04:24:52)
+
+in place and correct.
+
+**Tests: knockback ignored during anchor; normal after expiry — MET.**
+`server/test/ground_anchor.test.js` (7 tests, all passing) covers: non-anchored player
+moves along the direction; no-op while anchored; normal knockback after `anchorUntil`
+expires; direction normalization; movement slow active vs. expired; and the definition
+values. `key-items.test.js` additions also pass (combined run exit 0).
+
+## Integration / quality
+- State init is correct: `anchorUntil`/`anchorSpeedMultiplier` are seeded in both
+  `buildPlayerRecord` and `initializePlayerForActiveRun`, mirroring `rally_cry`.
+- The handler follows the established sibling pattern (rally_cry, guard_block,
+  barrier_dome) exactly — equipped/dead/extracted/cooldown guards, `persistenceDirty`,
+  `stateSnapshot()` broadcast.
+- No console errors, no dead/broken code, no design.md or requirements.md regression. No
+  debug scenarios added.
+
+## Remaining gaps
+None blocking. (See `nits.md` for one non-blocking follow-up.)
+
+
 ## v0.161 — 187-character-customization-client-gltf-avatar  (2026-06-03 05:08:43)
 
 **10. Fallback safety no-op — MET.** Both `applyProportionMorphs` (guards on

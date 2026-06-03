@@ -344,7 +344,7 @@ describe('useKeyItem socket handler', () => {
 		expect(result.invulnerableUntil).toBe(player.invulnerableUntil);
 	});
 
-	it('useKeyItem for non-implemented items returns not_implemented', async () => {
+	it('useKeyItem for ground_anchor sets anchorUntil + cooldown (now implemented)', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);
 
@@ -355,11 +355,33 @@ describe('useKeyItem socket handler', () => {
 		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
 		const result = await resultPromise;
 
-		expect(result.ok).toBe(false);
-		expect(result.reason).toBe('not_implemented');
+		expect(result.ok).toBe(true);
+		expect(result.keyItemId).toBe('ground_anchor');
+		expect(result.anchorUntil).toBeGreaterThan(Date.now());
+		expect(result.cooldownUntil).toBeGreaterThan(Date.now());
 
-		// Cooldown should NOT have been set for not_implemented items
-		expect(player.keyItemCooldownUntil).toBe(0);
+		// anchorUntil ~now+1500ms and cooldown ~now+6000ms
+		expect(player.anchorUntil).toBe(result.anchorUntil);
+		expect(player.keyItemCooldownUntil).toBe(result.cooldownUntil);
+		expect(player.anchorSpeedMultiplier).toBe(0.7);
+	});
+
+	it('useKeyItem for ground_anchor returns on_cooldown on immediate re-use', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.keyItemCooldownUntil = 0;
+
+		const firstPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
+		const first = await firstPromise;
+		expect(first.ok).toBe(true);
+
+		const secondPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'ground_anchor' });
+		const second = await secondPromise;
+		expect(second.ok).toBe(false);
+		expect(second.reason).toBe('on_cooldown');
 	});
 });
 

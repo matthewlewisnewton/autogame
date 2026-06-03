@@ -315,6 +315,8 @@ function applyPlayerMovement() {
     let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
     // rally_cry: boost move speed while the buff is active
     if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
+    // ground_anchor: slow move speed while the anchor window is active
+    if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
 
     const prevX = player.x;
     const prevZ = player.z;
@@ -1180,6 +1182,24 @@ function applyKnockback(originX, originZ, dirX, dirZ, hits, strength) {
     moved.push({ enemyId: enemy.id, x: enemy.x, z: enemy.z });
   }
   return moved;
+}
+
+/**
+ * Knock back a single player by `strength` along (dirX, dirZ). No-op while the
+ * player's ground_anchor window is active (now < player.anchorUntil): an anchored
+ * player ignores knockback/displacement entirely. Returns true if the player moved.
+ */
+function applyPlayerKnockback(playerId, dirX, dirZ, strength) {
+  const player = _gameState && _gameState.players ? _gameState.players[playerId] : null;
+  if (!player) return false;
+  if (Date.now() < (player.anchorUntil || 0)) return false;
+  if (strength <= 0) return false;
+  const mag = Math.hypot(dirX || 0, dirZ || 0);
+  if (mag < 1e-8) return false;
+  const result = tryPlayerMove(player.x, player.z, dirX / mag, dirZ / mag, strength);
+  player.x = result.x;
+  player.z = result.z;
+  return !!result.moved;
 }
 
 function applyEventHorizon(originX, originZ, cardDef, attackerId) {
@@ -2214,6 +2234,7 @@ module.exports = {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  applyPlayerKnockback,
   applyPlayerMovement,
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
