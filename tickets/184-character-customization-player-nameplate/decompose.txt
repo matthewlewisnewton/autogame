@@ -1,0 +1,19 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Sub-tickets created:
+
+```
+tickets/184-character-customization-player-nameplate/subtickets/
+├── 01-broadcast-username/ticket.md
+├── 02-nameplate-sprite-helper/ticket.md
+└── 03-wire-nameplates-game-loop/ticket.md
+```
+
+**Decomposition rationale (3 sub-tickets):**
+
+| # | Scope | Files | Verification |
+|---|-------|-------|-------------|
+| 01 | Server: add `username` to `stateSnapshot()` broadcast | `game/server/progression.js` | code |
+| 02 | Client: `createNameplate()` + `disposeNameplate()` + registry | `game/client/renderer.js` | code |
+| 03 | Client: wire nameplates into game-loop (create, position, cleanup) | `game/client/renderer.js` | code |
+
+All three use `code` verification — sub-ticket 03 mixes rendering ("looks right") with structural concerns (registry lifecycle, cleanup on disconnect, username-change detection), which per the rules makes it `code`.

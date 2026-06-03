@@ -26,6 +26,7 @@ import {
 	recordEnemyCardDrop,
 	getEnemyMagicStoneDrop,
 	getEnemyCurrencyDrop,
+	spawnMagicStoneDrop,
 	removeDeadEnemies,
 	buildCardChoices,
 	claimCardReward,
@@ -133,6 +134,7 @@ import {
 } from '../index.js';
 
 const { createLobby, resetAllLobbies } = require('../lobbies.js');
+const { VARIANT_DEFS } = require('../enemyVariants.js');
 
 // ── Helpers ──
 
@@ -3333,6 +3335,52 @@ describe('run state', () => {
 		});
 	});
 
+	// ── variant bonus drops ──
+
+	describe('variant enemy bonus drops', () => {
+		beforeEach(() => resetState());
+
+		it('records a guaranteed bonus card for a variant enemy on top of the normal one', () => {
+			addPlayer('p1', { ownedCards: {} });
+			gameState.run = createRunState();
+
+			recordEnemyCardDrop({ type: 'grunt', variant: 'test', lastDamagedBy: 'p1' });
+
+			// Normal drop + guaranteed variant bonus = two copies of the mapped card.
+			expect(gameState.players.p1.runCardDropIds).toEqual(['iron_sword', 'iron_sword']);
+		});
+
+		it('does not record a bonus card for a non-variant enemy', () => {
+			addPlayer('p1', { ownedCards: {} });
+			gameState.run = createRunState();
+
+			recordEnemyCardDrop({ type: 'grunt', variant: null, lastDamagedBy: 'p1' });
+
+			expect(gameState.players.p1.runCardDropIds).toEqual(['iron_sword']);
+		});
+
+		it('spawns an extra magic-stone loot entry for a variant enemy', () => {
+			const enemy = { id: 'e1', type: 'grunt', x: 4, z: -2, variant: 'test' };
+
+			spawnMagicStoneDrop(enemy);
+
+			const stones = gameState.loot.filter((l) => l.kind === 'magic_stone');
+			expect(stones).toHaveLength(2);
+			// Bonus stone value is driven by the variant registry def (bonusDrop.magicStone).
+			expect(stones.some((l) => l.value === VARIANT_DEFS.test.bonusDrop.magicStone)).toBe(true);
+			expect(stones.every((l) => l.kind === 'magic_stone')).toBe(true);
+		});
+
+		it('spawns only the normal magic-stone loot entry for a non-variant enemy', () => {
+			const enemy = { id: 'e1', type: 'grunt', x: 4, z: -2, variant: null };
+
+			spawnMagicStoneDrop(enemy);
+
+			const stones = gameState.loot.filter((l) => l.kind === 'magic_stone');
+			expect(stones).toHaveLength(1);
+		});
+	});
+
 	// ── buildPlayerRewardSummary ──
 
 	describe('buildPlayerRewardSummary(playerId)', () => {
@@ -4159,6 +4207,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			smokeBombX: 0,
 			smokeBombZ: 0,
 			cosmetic: { ...DEFAULT_COSMETIC },
+			username: undefined,
 		});
 	});
 
@@ -4208,6 +4257,12 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		addPlayer('p1');
 		const snapshot = stateSnapshot();
 		expect(snapshot.players['p1'].lastActivity).toBeUndefined();
+	});
+
+	it('includes username in snapshot when player record has one', () => {
+		addPlayer('p1', { username: 'TestPlayer' });
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p1'].username).toBe('TestPlayer');
 	});
 
 	it('preserves all client-facing player fields', () => {
@@ -4325,6 +4380,51 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
 		expect(gameState.enemies.length).toBe(4);
+	});
+});
+
+// ── spawnEnemy centralizes variant init ──
+
+describe('spawnEnemy() variant field', () => {
+	beforeEach(() => resetState());
+
+	it('exposes variant: null for direct and spawner-add tier-0 spawns', () => {
+		gameState.enemies = [];
+		// Direct ad-hoc spawn: no tier/rng → tier 0 → no roll → null.
+		const direct = spawnEnemy(0, 0, 'grunt');
+		expect(direct.variant).toBe(null);
+
+		// Spawner-add path (spawnedBy set, no opts) also defaults to tier 0.
+		const add = spawnEnemy(1, 1, 'skirmisher', 'parent123');
+		expect(add.variant).toBe(null);
+
+		// Field is always present (never undefined) on every spawned enemy.
+		for (const e of gameState.enemies) {
+			expect(e.variant).not.toBe(undefined);
+			expect(e.variant === null || typeof e.variant === 'string').toBe(true);
+		}
+	});
+
+	it('tags a high-tier spawn when the seeded roll passes, rolling once via spawnEnemy', () => {
+		gameState.enemies = [];
+		// rng always returns 0.1: first call is the variant roll (< chance at
+		// tier 1), the second is the id pick → index 0 of the registry.
+		const enemy = spawnEnemy(0, 0, 'grunt', undefined, { tier: 1, rng: () => 0.1 });
+		const ids = Object.keys(VARIANT_DEFS);
+		expect(ids).toContain(enemy.variant);
+		expect(enemy.variant).toBe(ids[0]);
+	});
+
+	it('produces variant (tag or null) on every combat spawn', () => {
+		resetGameState();
+		gameState.enemies = [];
+		spawnEnemies();
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+		const ids = Object.keys(VARIANT_DEFS);
+		for (const e of gameState.enemies) {
+			expect(e.variant).not.toBe(undefined);
+			expect(e.variant === null || ids.includes(e.variant)).toBe(true);
+		}
 	});
 });
 

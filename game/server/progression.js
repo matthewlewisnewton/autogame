@@ -47,6 +47,7 @@ const {
   pickFloorSpawnPosition,
   randomWanderTarget
 } = require('./simulation');
+const { applyVariant, getVariantBonusDrop } = require('./enemyVariants');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -1419,6 +1420,13 @@ function recordEnemyCardDrop(enemy) {
     player.runCardDropIds = [];
   }
   player.runCardDropIds.push(cardId);
+
+  // Variant enemies guarantee a bonus card drop on top of their normal one.
+  // The normal type→card mapping is reused; the variant just adds the bonus.
+  const bonus = getVariantBonusDrop(enemy);
+  if (bonus && bonus.card) {
+    player.runCardDropIds.push(cardId);
+  }
 }
 
 function getEnemyMagicStoneDrop(enemy) {
@@ -1437,18 +1445,35 @@ function getEnemyCurrencyDrop(enemy) {
 
 function spawnMagicStoneDrop(enemy) {
   const value = getEnemyMagicStoneDrop(enemy);
-  if (value <= 0) return;
+  if (value > 0) {
+    const id = crypto.randomUUID();
+    _gameState.loot.push({
+      id,
+      x: enemy.x + LOOT_DROP_OFFSET_MS.x,
+      z: enemy.z + LOOT_DROP_OFFSET_MS.z,
+      value,
+      kind: 'magic_stone',
+      createdAt: Date.now(),
+    });
+    console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  }
 
-  const id = crypto.randomUUID();
-  _gameState.loot.push({
-    id,
-    x: enemy.x + LOOT_DROP_OFFSET_MS.x,
-    z: enemy.z + LOOT_DROP_OFFSET_MS.z,
-    value,
-    kind: 'magic_stone',
-    createdAt: Date.now(),
-  });
-  console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  // Variant enemies drop a guaranteed bonus magic stone beyond the normal one.
+  // Magnitude comes from the variant registry def, not a hard-coded value here.
+  const bonus = getVariantBonusDrop(enemy);
+  const bonusValue = bonus ? Number(bonus.magicStone) : 0;
+  if (bonusValue > 0) {
+    const bonusId = crypto.randomUUID();
+    _gameState.loot.push({
+      id: bonusId,
+      x: enemy.x - LOOT_DROP_OFFSET_MS.x,
+      z: enemy.z - LOOT_DROP_OFFSET_MS.z,
+      value: bonusValue,
+      kind: 'magic_stone',
+      createdAt: Date.now(),
+    });
+    console.log(`[loot] variant bonus magic stone drop id=${bonusId} value=${bonusValue} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  }
 }
 
 function spawnCurrencyDrop(enemy) {
@@ -2483,7 +2508,7 @@ function restoreHandCharges(player, amount, options = {}) {
   return restored;
 }
 
-function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
+function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   if (!ENEMY_DEFS[type]) {
     throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
   }
@@ -2505,6 +2530,12 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
   if (spawnedBy !== undefined) {
     enemy.spawnedBy = spawnedBy;
   }
+  // Variant seam, centralized so every spawned enemy exposes `variant` (a tag or
+  // null — never undefined). Combat spawns pass the resolved encounterTier and
+  // seeded rng; callers with no known room/tier (spawner adds, ad-hoc spawns)
+  // default to tier 0 → no roll → variant: null. Rolled exactly once per enemy.
+  const tier = Number.isFinite(opts.tier) ? opts.tier : 0;
+  applyVariant(enemy, tier, opts.rng);
   _gameState.enemies.push(enemy);
   return enemy;
 }
@@ -2747,6 +2778,24 @@ function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0
   return pickFloorSpawnPosition(layout, rng);
 }
 
+/**
+ * Resolve the encounterTier (0–1) of the room containing point (x, z). Used to
+ * scale the enemy-variant roll: start/treasure rooms are tier 0 (never roll a
+ * variant). Returns 0 when no containing room is found.
+ */
+function roomTierAt(layout, x, z) {
+  if (!layout || !Array.isArray(layout.rooms)) return 0;
+  for (const room of layout.rooms) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    if (x >= room.x - halfW && x <= room.x + halfW &&
+        z >= room.z - halfD && z <= room.z + halfD) {
+      return Number.isFinite(room.encounterTier) ? room.encounterTier : 0;
+    }
+  }
+  return 0;
+}
+
 function spawnCombatEnemies(layout, rng, quest) {
   const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
@@ -2757,7 +2806,13 @@ function spawnCombatEnemies(layout, rng, quest) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
-    const enemy = spawnEnemy(pos.x, pos.z, type);
+    // Variant seam (centralized in spawnEnemy): scale the roll by the spawn
+    // room's encounterTier (0 for start/treasure rooms or unknown positions, so
+    // they never roll a variant) and use the run's seeded rng.
+    const enemy = spawnEnemy(pos.x, pos.z, type, undefined, {
+      tier: roomTierAt(layout, pos.x, pos.z),
+      rng,
+    });
     enemy.wanderTarget = randomWanderTarget();
   }
 }
@@ -3182,6 +3237,7 @@ function stateSnapshot() {
       smokeBombX: p.smokeBombX || 0,
       smokeBombZ: p.smokeBombZ || 0,
       cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
+      username: p.username,
     };
   }
 

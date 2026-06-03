@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/169-gameplay-enemy-variant-framework/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/169-gameplay-enemy-variant-framework/game/data
+Server listening on port 3001
+Player connected: socket=-lxGoq6qiZFX4TBdAAAB, playerId=af76546d-4935-434f-9be5-06c0da367855
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=aQyRGlUmDKVCN4Y-AAAD, playerId=712e1911-e1bf-48ea-9480-132cdd0dee5b
+Player disconnected: -lxGoq6qiZFX4TBdAAAB
+Player disconnected: aQyRGlUmDKVCN4Y-AAAD

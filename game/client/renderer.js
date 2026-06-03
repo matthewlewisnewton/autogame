@@ -87,18 +87,21 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
-import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled } from './settings.js';
+import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
 const playersMeshes = {};
+const playerNameplates = {}; // playerId → THREE.Sprite (username label)
+const NAMEPLATE_OFFSET_Y = 1.0; // Units above avatar group Y position
 const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
 const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
+const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -1935,6 +1938,86 @@ export function disposeAvatar(obj) {
 	});
 }
 
+// ── Nameplate sprite helpers ──
+
+/**
+ * Create a canvas-texture sprite that displays a player username as a label.
+ * Returns a `THREE.Sprite` ready to be added to the scene or parented to an
+ * avatar group. Callers are responsible for positioning and lifecycle (add to
+ * `playerNameplates`, call `disposeNameplate()` on removal).
+ *
+ * @param {string} username
+ * @returns {THREE.Sprite}
+ */
+export function createNameplate(username) {
+	const canvas = document.createElement('canvas');
+	canvas.width = 512;
+	canvas.height = 128;
+	const ctx = canvas.getContext('2d');
+
+	// Semi-transparent rounded-rect background
+	ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+	const radius = 20;
+	const w = canvas.width;
+	const h = canvas.height;
+	ctx.beginPath();
+	ctx.moveTo(radius, 0);
+	ctx.lineTo(w - radius, 0);
+	ctx.quadraticCurveTo(w, 0, w, radius);
+	ctx.lineTo(w, h - radius);
+	ctx.quadraticCurveTo(w, h, w - radius, h);
+	ctx.lineTo(radius, h);
+	ctx.quadraticCurveTo(0, h, 0, h - radius);
+	ctx.lineTo(0, radius);
+	ctx.quadraticCurveTo(0, 0, radius, 0);
+	ctx.closePath();
+	ctx.fill();
+
+	// Centered text with shadow (matches spawnDamageNumber text-shadow style)
+	ctx.fillStyle = '#ffffff';
+	ctx.font = 'bold 48px sans-serif';
+	ctx.textAlign = 'center';
+	ctx.textBaseline = 'middle';
+	ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+	ctx.shadowBlur = 6;
+	ctx.fillText(username, w / 2, h / 2);
+
+	const texture = new THREE.CanvasTexture(canvas);
+	texture.minFilter = THREE.LinearFilter;
+
+	const material = new THREE.SpriteMaterial({
+		map: texture,
+		transparent: true,
+		depthTest: false,
+	});
+
+	const sprite = new THREE.Sprite(material);
+	sprite.scale.set(1.2, 0.3, 1);
+	sprite.userData.username = username;
+
+	return sprite;
+}
+
+/**
+ * Remove and dispose the nameplate sprite for a player. Cleans up the texture,
+ * material, and registry entry.
+ *
+ * @param {string} playerId
+ */
+export function disposeNameplate(playerId) {
+	const sprite = playerNameplates[playerId];
+	if (!sprite) return;
+
+	if (sprite.parent) {
+		sprite.parent.remove(sprite);
+	}
+	if (sprite.material) {
+		if (sprite.material.map) sprite.material.map.dispose();
+		sprite.material.dispose();
+	}
+	delete playerNameplates[playerId];
+}
+
 // ── Flash mesh helper ──
 
 /**
@@ -2557,6 +2640,50 @@ export function applyRevealHighlight(enemyId, enemy) {
 		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
 		mesh.material.emissiveIntensity =
 			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+	}
+}
+
+// ── Variant marker (elite enemy badge) ──
+
+const VARIANT_MARKER_COLOR = 0xc026d3; // magenta — distinct from amber reveal/yellow lock-on
+
+/**
+ * Build the floating badge shown above a variant ("elite") enemy: a small
+ * emissive diamond, kept separate from the enemy mesh so it never collides with
+ * the windup/reveal emissive bookkeeping on the enemy material.
+ * @returns {THREE.Mesh}
+ */
+function createVariantMarker() {
+	const geo = new THREE.OctahedronGeometry(0.22);
+	const mat = new THREE.MeshStandardMaterial({
+		color: VARIANT_MARKER_COLOR,
+		emissive: VARIANT_MARKER_COLOR,
+		emissiveIntensity: 0.9,
+	});
+	return new THREE.Mesh(geo, mat);
+}
+
+/**
+ * Add or remove a variant badge for an enemy, driven purely by `enemy.variant`
+ * each update. A truthy variant gets a badge positioned above the mesh; a
+ * falsy/absent variant has any existing badge disposed, so a reused enemy id
+ * never keeps a stale marker. Safe when `variant` is undefined/null.
+ * @param {string} enemyId
+ * @param {object} enemy - { variant, x, z, type }
+ */
+export function applyVariantMarker(enemyId, enemy) {
+	if (enemy && enemy.variant) {
+		if (!variantMarkerMeshes[enemyId]) {
+			variantMarkerMeshes[enemyId] = createVariantMarker();
+			scene.add(variantMarkerMeshes[enemyId]);
+		}
+		const halfHeight = enemyMeshHalfHeight(enemy.type);
+		const marker = variantMarkerMeshes[enemyId];
+		marker.position.set(enemy.x, halfHeight + 0.95, enemy.z);
+		// Slow spin so the badge reads as an active marker rather than scenery.
+		marker.rotation.y = ((Date.now() % 4000) / 4000) * Math.PI * 2;
+	} else if (variantMarkerMeshes[enemyId]) {
+		disposeOne(variantMarkerMeshes, enemyId, scene);
 	}
 }
 
@@ -3821,6 +3948,23 @@ export function animate(timestamp) {
 				flashMesh(playersMeshes[id], 0xff0000, 200);
 			}
 			previousPlayerHp[id] = pData.hp;
+
+			// ── Nameplate for remote players (after avatar is positioned) ──
+			const remoteUsername = pData.username;
+			if (remoteUsername) {
+				if (!playerNameplates[id] || playerNameplates[id].userData.username !== remoteUsername) {
+					if (playerNameplates[id]) disposeNameplate(id);
+					const np = createNameplate(remoteUsername);
+					scene.add(np);
+					playerNameplates[id] = np;
+				}
+				const avatar = playersMeshes[id];
+				playerNameplates[id].position.set(
+					avatar.position.x,
+					avatar.position.y + NAMEPLATE_OFFSET_Y,
+					avatar.position.z,
+				);
+			}
 		}
 
 		if (myId != null && playersMeshes[myId]) {
@@ -3900,6 +4044,30 @@ export function animate(timestamp) {
 			}
 			if (me) {
 				previousPlayerHp[myId] = me.hp;
+			}
+
+			// ── Nameplate for self-player ──
+			const selfUsername = getAccountProfile().username;
+			if (selfUsername) {
+				if (!playerNameplates[myId] || playerNameplates[myId].userData.username !== selfUsername) {
+					if (playerNameplates[myId]) disposeNameplate(myId);
+					const np = createNameplate(selfUsername);
+					scene.add(np);
+					playerNameplates[myId] = np;
+				}
+				const selfAvatar = playersMeshes[myId];
+				playerNameplates[myId].position.set(
+					selfAvatar.position.x,
+					selfAvatar.position.y + NAMEPLATE_OFFSET_Y,
+					selfAvatar.position.z,
+				);
+			}
+		}
+
+		// ── Clean up nameplates for players who left ──
+		for (const id of Object.keys(playerNameplates)) {
+			if (!gs.players[id]) {
+				disposeNameplate(id);
 			}
 		}
 
@@ -4071,6 +4239,9 @@ export function animate(timestamp) {
 
 			// ── Reveal highlight (Flare Beacon) ──
 			applyRevealHighlight(enemy.id, enemy);
+
+			// ── Variant marker (elite enemy badge) ──
+			applyVariantMarker(enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4078,6 +4249,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
+		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];

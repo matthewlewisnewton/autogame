@@ -2953,6 +2953,52 @@ captured run proves the game is healthy and the deletions are recoverable from
 `bash-rollback-v1`.
 
 
+## v0.166 — 184-character-customization-player-nameplate  (2026-06-03 08:03:40)
+
+
+### Nameplate sprite helper and registry
+PASS. `game/client/renderer.js` declares a module-scoped `playerNameplates` registry, exports `createNameplate(username)`, and exports `disposeNameplate(playerId)`. The helper draws the username to a canvas texture with a semi-transparent dark rounded background, white bold text, shadowing, `THREE.CanvasTexture`, and `depthTest: false` sprite material. Disposal removes the sprite from its parent, disposes the texture/material, and deletes the registry entry.
+
+### Game-loop nameplate integration
+PASS. The renderer creates or recreates remote-player nameplates from `pData.username`, positions them above each remote avatar after the avatar transform is applied, and disposes labels for players no longer present in `gs.players`. The self-player path creates a nameplate from `getAccountProfile().username` and tracks local predicted position/floor height, so the local label follows the same visual avatar the camera follows. Username changes are handled by comparing `sprite.userData.username` and rebuilding the sprite.
+
+### Design and requirements consistency
+PASS. The change is additive presentation around existing multiplayer avatars. It does not alter the lobby/dungeon/card loop described in `game/docs/design.md`, and it does not regress the foundation requirements in `game/docs/requirements.md`: the captured run still renders a 3D scene, connects over WebSockets, shows multiplayer state, and accepts movement.
+
+### Debug scenarios
+PASS. This ticket did not add or modify any `?debugScenario=NAME` shortcut or server-side debug scenario entry point. The captured scenario list is empty.
+
+### Verification and coverage
+PASS. The round coverage log shows the test suite completed successfully: 10 test files passed, 530 tests passed. The coverage report was informational only, with thresholds disabled. The logged model-load errors are from existing Vitest/jsdom relative-URL resilience paths and did not fail tests or appear in the browser capture.
+
+## Remaining gaps
+
+None.
+
+
+## v0.167 — 169-gameplay-enemy-variant-framework  (2026-06-03 09:07:56)
+
+### Behavior hook
+- PASS. `applyVariant()` invokes a variant definition's `apply(enemy)` only when a variant is selected and only when the registry entry provides a function. The shipped `test` variant keeps `apply: null`, so it remains behaviorally no-op.
+
+### Debug scenario checks
+- PASS. The new `variant-enemy` debug scenario is gated through the existing debugScenario socket path and local/dev allowance checks; normal gameplay does not enter it.
+- PASS. The same end-state is reachable through normal gameplay because combat enemy spawns can roll the registry `test` variant when the room tier and RNG allow it.
+- PASS. The scenario only prepares deterministic client-verification state by spawning a variant enemy beside a plain enemy. It does not bypass persistence, net replication, or server-side validation paths used by normal state updates.
+
+### Design and foundation consistency
+- PASS. The change is consistent with `game/docs/design.md`: it extends dungeon enemy/loot behavior without changing the lobby, movement, multiplayer, card-combat, or run loop foundations.
+- PASS. The captured run preserves the requirements in `game/docs/requirements.md`: Three.js scene renders, clients connect over WebSockets, players are represented in 3D, and movement/state updates continue.
+
+### Validation
+- PASS. Focused local verification completed successfully: `pnpm exec vitest run --config vitest.config.js server/test/enemy_variants.test.js server/test/server.test.js --coverage.enabled=false` passed 2 files / 351 tests.
+- Visibility note: the provided `coverage.log` shows `server/test/enemy_variants.test.js` passed and the variant-drop/server tests ran, but the overall coverage process was killed after 120s during an unrelated later key-item suite. I do not treat that coverage timeout as a blocking code gap for this ticket because the captured game run is healthy and the focused changed suites pass.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.168 — 168-bug-intermittent-stuck-lobby-socket  (2026-06-03 09:10:41)
 
 - Server: no server files changed; suite unaffected.

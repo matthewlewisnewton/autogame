@@ -1,0 +1,11 @@
+Created two new sub-tickets, one per open gap. Both passed sub-tickets (`01`, `02`, `03`) were left untouched.
+
+Created sub-ticket folders:
+- `/home/matt/workspace/.autogame-worktrees/169-gameplay-enemy-variant-framework/tickets/169-gameplay-enemy-variant-framework/subtickets/04-variant-behavior-hook/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/169-gameplay-enemy-variant-framework/tickets/169-gameplay-enemy-variant-framework/subtickets/05-centralize-variant-init-in-spawnenemy/ticket.md`
+
+**04** closes gap 1: `applyVariant` now calls `def.apply(enemy)` when the selected variant defines a function hook, with a regression test proving a registry hook mutates the enemy while the shipped `'test'` no-op stays safe.
+
+**05** closes gap 2: variant initialization is moved into `spawnEnemy` so every spawn path (combat, spawner adds, direct) consistently exposes `variant` as a tag or `null`, combat spawns pass the resolved tier + seeded rng, unknown-tier spawns default to tier 0, and the roll happens exactly once.
+
+Both are `code` verification — they concern functions/hooks existing, server state, and spawn-path behavior, none of which `visual` QA could check.

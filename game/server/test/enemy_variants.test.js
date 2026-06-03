@@ -1,0 +1,142 @@
+import { describe, it, expect } from 'vitest';
+import { mulberry32 } from '../dungeon';
+import {
+  VARIANT_DEFS,
+  BASE_VARIANT_CHANCE,
+  applyVariant,
+} from '../enemyVariants';
+
+// Deterministic rng stub returning a fixed sequence (looping).
+function seqRng(values) {
+  let i = 0;
+  return () => values[i++ % values.length];
+}
+
+describe('enemy variant registry', () => {
+  it('exposes a trivial no-op test variant', () => {
+    expect(VARIANT_DEFS.test).toBeDefined();
+    expect(VARIANT_DEFS.test.id).toBe('test');
+    expect(typeof VARIANT_DEFS.test.name).toBe('string');
+    // No-op behavior in this ticket: no apply function wired up yet.
+    expect(VARIANT_DEFS.test.apply).toBeNull();
+  });
+});
+
+describe('applyVariant', () => {
+  it('never tags an enemy at tier 0, even with the lowest possible roll', () => {
+    // mulberry32-seeded run: at tier 0 the chance is 0, so no roll can tag.
+    const rng = mulberry32(12345);
+    for (let i = 0; i < 200; i++) {
+      const enemy = {};
+      applyVariant(enemy, 0, rng);
+      expect(enemy.variant).toBeNull();
+    }
+
+    // A stub rng that always returns 0 (the lowest possible roll) still cannot
+    // beat a zero chance.
+    const enemy = {};
+    applyVariant(enemy, 0, seqRng([0]));
+    expect(enemy.variant).toBeNull();
+  });
+
+  it('tags an enemy with a registry variant id at high tier with a low roll', () => {
+    // First draw < chance (0.25 at tier 1) => tagged; second draw selects id.
+    const rng = seqRng([0.01, 0]);
+    const enemy = {};
+    applyVariant(enemy, 1, rng);
+    expect(enemy.variant).not.toBeNull();
+    expect(Object.keys(VARIANT_DEFS)).toContain(enemy.variant);
+  });
+
+  it('does not tag at high tier when the roll exceeds the scaled chance', () => {
+    // chance at tier 1 is BASE_VARIANT_CHANCE; a roll above it leaves it untagged.
+    const enemy = {};
+    applyVariant(enemy, 1, seqRng([BASE_VARIANT_CHANCE + 0.01]));
+    expect(enemy.variant).toBeNull();
+  });
+
+  it('leaves the variant field present (null) when not chosen', () => {
+    const enemy = {};
+    applyVariant(enemy, 0, seqRng([0]));
+    expect('variant' in enemy).toBe(true);
+    expect(enemy.variant).toBeNull();
+  });
+
+  it('invokes the variant definition apply hook when a variant is selected', () => {
+    // Temporarily register a def with a function `apply` so we can prove the
+    // hook fires for tagged enemies; restore the registry afterwards.
+    const ids = Object.keys(VARIANT_DEFS);
+    const spied = ids.map((id) => {
+      const def = VARIANT_DEFS[id];
+      const original = def.apply;
+      def.apply = (enemy) => {
+        enemy.hookRan = true;
+        enemy.maxHp = 999;
+      };
+      return { def, original };
+    });
+    try {
+      // First draw < chance (tagged); second draw selects an id.
+      const enemy = {};
+      applyVariant(enemy, 1, seqRng([0.01, 0]));
+      expect(enemy.variant).not.toBeNull();
+      expect(enemy.hookRan).toBe(true);
+      expect(enemy.maxHp).toBe(999);
+    } finally {
+      spied.forEach(({ def, original }) => {
+        def.apply = original;
+      });
+    }
+  });
+
+  it('does not invoke any apply hook for an untagged enemy', () => {
+    const ids = Object.keys(VARIANT_DEFS);
+    const spied = ids.map((id) => {
+      const def = VARIANT_DEFS[id];
+      const original = def.apply;
+      def.apply = (enemy) => {
+        enemy.hookRan = true;
+      };
+      return { def, original };
+    });
+    try {
+      // Roll above the scaled chance => no tag, so no hook should fire.
+      const enemy = {};
+      applyVariant(enemy, 1, seqRng([BASE_VARIANT_CHANCE + 0.01]));
+      expect(enemy.variant).toBeNull();
+      expect(enemy.hookRan).toBeUndefined();
+    } finally {
+      spied.forEach(({ def, original }) => {
+        def.apply = original;
+      });
+    }
+  });
+
+  it('leaves enemy stats unchanged when the no-op test variant is selected', () => {
+    // The shipped 'test' variant has apply: null, so selecting it must not
+    // mutate the enemy beyond the variant tag.
+    expect(VARIANT_DEFS.test.apply).toBeNull();
+    const enemy = { maxHp: 100, hp: 100, atk: 7 };
+    applyVariant(enemy, 1, seqRng([0.01, 0]));
+    expect(enemy.variant).toBe('test');
+    expect(enemy.maxHp).toBe(100);
+    expect(enemy.hp).toBe(100);
+    expect(enemy.atk).toBe(7);
+  });
+
+  it('produces a deterministic outcome for a fixed seed at high tier', () => {
+    const tagCount = (seed) => {
+      let tagged = 0;
+      const rng = mulberry32(seed);
+      for (let i = 0; i < 500; i++) {
+        const enemy = {};
+        applyVariant(enemy, 1, rng);
+        if (enemy.variant) tagged++;
+      }
+      return tagged;
+    };
+    // Same seed => identical tag count; and at least some get tagged at tier 1.
+    expect(tagCount(99)).toBe(tagCount(99));
+    expect(tagCount(99)).toBeGreaterThan(0);
+  });
+});
