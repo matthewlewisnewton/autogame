@@ -1293,6 +1293,29 @@ function createRunState() {
     };
   }
 
+  if (quest.objectiveType === 'survive') {
+    const totalSpawns = Number.isFinite(quest.totalSpawns) ? quest.totalSpawns : 1;
+    const minibossCount = Number.isFinite(quest.minibossCount) ? quest.minibossCount : 0;
+    return {
+      id: crypto.randomUUID(),
+      status: 'playing',
+      questId: quest.id,
+      questName: quest.name,
+      questDescription: quest.description,
+      rewardCurrency: quest.rewardCurrency,
+      objective: {
+        type: 'survive',
+        label: `${quest.name}: outlast and defeat all ${totalSpawns} attackers`,
+        totalSpawns,
+        minibossCount,
+        spawnedEnemies: 0,
+        defeatedEnemies: 0,
+        totalEnemies: totalSpawns,
+      },
+      startedAt: Date.now()
+    };
+  }
+
   const objectiveLabel = `${quest.name}: ${quest.description}`;
 
   return {
@@ -1558,7 +1581,9 @@ function syncRunObjectiveToEnemies() {
 }
 
 function recordEnemyDefeated(count = 1) {
-  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
+  if (!_gameState.run) return;
+  const type = _gameState.run.objective.type;
+  if (type !== 'defeat_enemies' && type !== 'survive') return;
   _gameState.run.objective.defeatedEnemies += count;
   clampObjectiveProgress(_gameState.run);
 }
@@ -1572,6 +1597,9 @@ function recordCrystalCollected(count = 1) {
 function isRunObjectiveComplete(objective) {
   if (objective.type === 'collect_items') {
     return objective.collectedItems >= objective.totalItems;
+  }
+  if (objective.type === 'survive') {
+    return objective.defeatedEnemies >= objective.totalSpawns;
   }
   return objective.defeatedEnemies >= objective.totalEnemies;
 }

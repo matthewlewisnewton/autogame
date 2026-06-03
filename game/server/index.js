@@ -3933,6 +3933,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
+    isRunObjectiveComplete,
     getEnemyCardDrop,
     recordEnemyCardDrop,
     getEnemyMagicStoneDrop,

@@ -1,0 +1,13 @@
+I broke the top-level ticket into 3 dependency-ordered sub-tickets. There were no pre-existing sub-ticket folders to retire.
+
+Created sub-ticket folders:
+
+- `tickets/174-gameplay-survive-objective/subtickets/01-survive-quest-and-objective-state/ticket.md` — the `survive` `QUEST_DEF` (`totalSpawns`/`minibossCount`) plus the `createRunState` branch, `recordEnemyDefeated` guard, and completion logic in `quests.js` + `progression.js`. (code)
+- `tickets/174-gameplay-survive-objective/subtickets/02-staggered-survive-spawning/ticket.md` — tick-driven staggered spawning of `totalSpawns` enemies including exactly `minibossCount` minibosses, reusing `spawnEnemy`/`pickEnemySpawnPosition`, wired into `runGameLoopTick`. (code)
+- `tickets/174-gameplay-survive-objective/subtickets/03-survive-questboard-hud/ticket.md` — the `survive` summary case in `questBoard.js` `formatObjectiveSummary` backed by a new `theme.json` template. (code)
+
+**Why this split:** the work has three independent, separately-verifiable concerns — the server data model/completion logic (01), the spawn behavior over time (02), and the client HUD string (03). 02 and 03 both depend on the objective/quest fields defined in 01 but not on each other.
+
+**Why all `code`:** every acceptance criterion is about structures, field names, counts, completion logic, or which template string a function returns — none is a pure pixel/render check, so the visual happy-path run couldn't verify any of them. I chose `code` over the top-level ticket's `visual` per the planner rules (the run-state, spawn counts, and miniboss tally are invisible to a screenshot).
+
+A design note worth flagging: I specced the survive run-objective to keep `totalEnemies === totalSpawns` so the existing in-run objective HUD (`main.js:1782`) and the `isRunObjectiveComplete` fallback work unchanged — that's why the only client change needed is the quest-board summary in 03.
