@@ -13,6 +13,9 @@ const tokenLocalCountEl = document.querySelector('#token-local-count');
 const tokenRemoteReviewsCountEl = document.querySelector('#token-remote-reviews-count');
 const tokenQwenRateEl = document.querySelector('#token-qwen-rate');
 const tokenQwenTpsEl = document.querySelector('#token-qwen-tps');
+const factoryEl = document.querySelector('#factory');
+const factoryAgentsEl = document.querySelector('#factory-agents');
+const factoryLocksEl = document.querySelector('#factory-locks');
 
 let latestStage = null;
 let latestDiffEvent = null;
@@ -447,6 +450,39 @@ function updateCurrent(event) {
   currentEl.innerHTML = bits.join(' · ');
 }
 
+function updateFactory(payload) {
+  if (!factoryEl || !payload) return;
+  const agents = Array.isArray(payload.agents) ? payload.agents : [];
+  const locks = Array.isArray(payload.locks) ? payload.locks : [];
+  if (!agents.length && !locks.length) return;
+  factoryEl.hidden = false;
+
+  factoryAgentsEl.innerHTML = agents.map((a) => {
+    const running = Array.isArray(a.running) ? a.running : [];
+    const busy = running.length > 0;
+    const disabled = a.health && a.health !== 'available';
+    const state = disabled ? 'disabled' : busy ? 'running' : 'idle';
+    const detail = disabled
+      ? escapeHtml(a.health)
+      : busy
+        ? `${running.length}/${a.cap} · ${escapeHtml(running.join(', '))}`
+        : `idle (0/${a.cap})`;
+    return `<span class="chip chip-${state}" title="${escapeHtml(a.name)}: ${detail}">`
+      + `<strong>${escapeHtml(a.name)}</strong> ${detail}</span>`;
+  }).join('');
+
+  if (!locks.length) {
+    factoryLocksEl.innerHTML = '<span class="chip chip-idle">none</span>';
+  } else {
+    factoryLocksEl.innerHTML = locks.map((l) => {
+      const held = Boolean(l.held);
+      const who = held ? escapeHtml(l.holder || 'unknown') : 'free';
+      return `<span class="chip chip-${held ? 'running' : 'idle'}" title="${escapeHtml(l.resource)}: ${who}">`
+        + `<strong>${escapeHtml(l.resource)}</strong> ${who}</span>`;
+    }).join('');
+  }
+}
+
 function refreshPersistedTotals() {
   fetch('/tokens')
     .then(response => response.ok ? response.json() : null)
@@ -489,6 +525,10 @@ function connect() {
     }
     if (event.kind === 'token_usage') {
       updateTokens(event.payload);
+      return;
+    }
+    if (event.kind === 'factory_status') {
+      updateFactory(event.payload);
       return;
     }
     if (event.kind === 'agent_usage') {

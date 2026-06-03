@@ -16,6 +16,7 @@ single-threaded — no cross-process lock needed there.
 """
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import sys
@@ -99,6 +100,7 @@ class Dispatcher:
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
     _backpressure_active: bool = field(default=False, init=False)
+    _last_status_digest: str = field(default="", init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -111,6 +113,15 @@ class Dispatcher:
 
     # --- one scheduling pass (pure given injected I/O) ------------------ #
     def tick(self) -> None:
+        """One scheduling pass, then publish factory status for the live view.
+        The status emit is in a finally so it runs even on the backpressure
+        early-return — and so a stale panel signals a tick stuck mid-merge."""
+        try:
+            self._tick_inner()
+        finally:
+            self._emit_status()
+
+    def _tick_inner(self) -> None:
         self._reap()
         if self.merge_drain is not None:
             try:
@@ -155,6 +166,42 @@ class Dispatcher:
         if self._workers:
             return False
         return all(not self.queue.ready(difficulty=d, limit=1) for d in self.lanes)
+
+    def _emit_status(self) -> None:
+        """Publish a `factory_status` event (agents running/idle + flock holders)
+        for the live view. Emits only when the state CHANGES — the dispatcher
+        ticks every few seconds and an unchanged panel doesn't need a new event.
+        Best-effort: never let telemetry break a scheduling tick."""
+        try:
+            running_by_agent: dict[str, list[str]] = {}
+            for w in self._workers.values():
+                running_by_agent.setdefault(w.agent, []).append(w.ticket_name)
+            snap = self.registry.snapshot()
+            agents = [
+                {"name": name, "in_flight": s["in_flight"],
+                 "cap": s["max_concurrency"], "health": s["health"],
+                 "eligible": s["eligible"],
+                 "running": sorted(running_by_agent.get(name, []))}
+                for name, s in sorted(snap.items())
+            ]
+            try:
+                from harness.concurrency.resource_lock import lock_status
+                locks = lock_status()
+            except Exception:
+                locks = []
+            payload = {
+                "agents": agents,
+                "locks": locks,
+                "free_ports": len(self._free_ports),
+                "backpressure": self._backpressure_active,
+            }
+            digest = json.dumps(payload, sort_keys=True)
+            if digest == self._last_status_digest:
+                return
+            self._last_status_digest = digest
+            emit_progress_event("factory_status", payload)
+        except Exception as e:
+            log(f"[dispatch] status emit failed (ignoring): {e!r}")
 
     # --- internals ------------------------------------------------------ #
     def _reserve_qwen(self) -> None:
