@@ -170,6 +170,59 @@ canvas {
   height: auto;
 }
 
+/* ── Attack affordance: center reticle + instructional hint (in-run only) ── */
+
+#attack-reticle {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 26px;
+  height: 26px;
+  transform: translate(-50%, -50%);
+  border: 2px solid rgba(226, 232, 240, 0.55);
+  border-radius: 50%;
+  box-shadow: 0 0 6px rgba(0, 0, 0, 0.55);
+  pointer-events: none;
+  z-index: 9;
+}
+
+#attack-reticle::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 3px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: rgba(226, 232, 240, 0.9);
+}
+
+#attack-hint {
+  position: fixed;
+  top: calc(50% + 30px);
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-family: 'Roboto Mono', monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  color: #cbd5e1;
+  background: rgba(15, 23, 42, 0.72);
+  border: 1px solid rgba(148, 163, 184, 0.4);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  z-index: 9;
+}
+
+#attack-reticle.hidden,
+#attack-hint.hidden {
+  display: none;
+}
+
 #card-hand.has-desperation::before {
   content: 'LAST RESORT';
   position: absolute;

@@ -194,6 +194,14 @@ const cosmeticErrorEl = document.getElementById('cosmetic-error');
 const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
+const attackReticleEl = document.getElementById('attack-reticle');
+const attackHintEl = document.getElementById('attack-hint');
+
+/** Show/hide the center reticle + attack hint (in-run affordance only). */
+function setAttackAffordanceVisible(visible) {
+	if (attackReticleEl) attackReticleEl.classList.toggle('hidden', !visible);
+	if (attackHintEl) attackHintEl.classList.toggle('hidden', !visible);
+}
 /** @type {'n64' | 'default' | null} */
 let handLayoutMode = null;
 
@@ -223,11 +231,13 @@ function showCardHand() {
 		handLayoutMode = is8BitDo64HandHintsActive() ? 'n64' : 'default';
 	}
 	cardHandEl.style.display = applyCardHandLayout();
+	setAttackAffordanceVisible(true);
 	renderHand();
 }
 
 function hideCardHand() {
 	if (cardHandEl) cardHandEl.style.display = 'none';
+	setAttackAffordanceVisible(false);
 	resetHandLayoutLock();
 }
 const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
