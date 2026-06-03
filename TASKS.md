@@ -41,7 +41,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
 - [ ] [144-cleanup-harness-misclassifies-pageerror](tickets/144-cleanup-harness-misclassifies-pageerror/)
 - [ ] [145-cleanup-sloped-movement-server-and-client](tickets/145-cleanup-sloped-movement-server-and-client/)
-- [ ] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
+- [x] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
 - [ ] [147-cleanup-key-item-input-bindings-and-settings](tickets/147-cleanup-key-item-input-bindings-and-settings/)
 - [ ] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)
 - [x] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)

@@ -1,0 +1,15 @@
+Broke the top-level ticket into **3 sub-tickets** (three independent cleanup items from the parent ticket). No existing `subtickets/` folders were present, so numbering starts at `01`.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/146-cleanup-key-item-data-and-persistence/tickets/146-cleanup-key-item-data-and-persistence/subtickets/01-use-key-item-dead-extracted/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/146-cleanup-key-item-data-and-persistence/tickets/146-cleanup-key-item-data-and-persistence/subtickets/02-list-key-items-socket/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/146-cleanup-key-item-data-and-persistence/tickets/146-cleanup-key-item-data-and-persistence/subtickets/03-key-item-cooldown-debug-test/ticket.md`
+
+| # | Scope | Verification |
+|---|--------|----------------|
+| 01 | `useKeyItem` emits `dead` / `extracted` errors + tests | `code` |
+| 02 | `listKeyItems` read-only socket + test | `code` |
+| 03 | `key-item-cooldown` debug scenario integration test | `code` |
+
+All three map 1:1 to the parent ticket’s three sections; each is a single focused implement-and-test pass with no visual QA (behavior and structure only).

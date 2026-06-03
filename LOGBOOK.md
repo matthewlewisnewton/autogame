@@ -2607,3 +2607,26 @@ Round-1 used **fallback** capture (lobby → ready → movement smoke). Screensh
 None. Runtime health passes and both acceptance-criterion groups are fully satisfied.
 
 ---
+
+## v0.152 — Cleanup nits from 118-key-item-data-and-persistence  (2026-06-03 00:54:47)
+
+
+---
+
+## Verification (reviewer)
+
+```bash
+cd game && pnpm exec vitest run server/test/debug-scenarios.test.js
+cd game && pnpm exec vitest run server/test/key-items.test.js -t "dead|extracted|listKeyItems"
+```
+
+Both succeeded during review.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime capture is clean; all top-level acceptance criteria are implemented and covered by targeted tests.
+
+---
+

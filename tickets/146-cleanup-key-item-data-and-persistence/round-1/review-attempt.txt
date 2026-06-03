@@ -1,0 +1,18 @@
+## Review complete
+
+Wrote the full assessment to [`tickets/146-cleanup-key-item-data-and-persistence/round-1/review.md`](tickets/146-cleanup-key-item-data-and-persistence/round-1/review.md).
+
+### Runtime gate
+- `metrics.json`: `"ok": true`, `"pageerrors": []`
+- `console.log`: no `pageerror` or `[fatal]` lines; game reached playing phase with dodge cooldown HUD in probes
+- Benign: Vite lines and HTTP 409 before scene init
+
+### Acceptance criteria (all three ticket sections)
+1. **useKeyItem dead/extracted** — Structured `keyItemUsed` errors; socket tests in active `playing` runs.
+2. **listKeyItems** — Read-only handler returning 14 public defs via `keyItemsListed`; tested, no player mutation.
+3. **key-item-cooldown** — New integration test with `ALLOW_DEBUG_SCENARIOS=1`; pre-existing scenario remains properly gated.
+
+### Verdict
+**VERDICT: PASS** — no `gaps.md` (fail-only). No `nits.md` (nothing worth a follow-up ticket).
+
+Three commits on baseline `fd95d4f`: server-only cleanup with targeted vitest coverage; smoke capture confirms the game still runs and dodge cooldown UI works.
