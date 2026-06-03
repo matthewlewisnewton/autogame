@@ -1,0 +1,299 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game
+      Coverage enabled with v8
+
+stdout | server/test/loot_magnet.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+Player connected: socket=_nbftjH7Si14tWnGAAAB, playerId=test-1780468707112-eswyeh
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > resolves null for a missing path without throwing
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/models-registry.test.js:52:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/models-registry.test.js:55:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > caches failure so the same missing path is not re-fetched
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/models-registry.test.js:60:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/models-registry.test.js:63:9
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createEnemyMesh keeps procedural visible when loadModel resolves null
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/models-registry.test.js:84:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:1875:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/models-registry.test.js:87:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 153ms
+ ✓ |client| client/test/renderer-registry-normalize.test.js (11 tests) 3ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/models-registry.test.js (7 tests) 28ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 212ms
+ ✓ |client| client/test/deck-viewer.test.js (15 tests) 191ms
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 118ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:1875:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/main.test.js:2161:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:1875:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/main.test.js:2173:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:1875:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/main.test.js:2183:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:1875:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/test/main.test.js:2196:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:83:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/models.js:74:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/game/[39mclient/renderer.js:357:11[90m)[39m
+}
+
+ ✓ |client| client/test/main.test.js (141 tests) 774ms
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+Player disconnected: _nbftjH7Si14tWnGAAAB
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+Player connected: socket=u_51lUrNMrnPZ-YAAAAD, playerId=test-1780468712143-ucrls9
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+[loot] spawned id=ab945c5a-bd43-4966-9c4e-53c2df844f82 value=6
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+Player disconnected: u_51lUrNMrnPZ-YAAAAD
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+Player connected: socket=19aBUNcqjGMc9_qOAAAF, playerId=test-1780468717159-1h3ouz
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+[loot] spawned id=b5f8eb87-5f78-435b-a7f6-aeb900b97472 value=6
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+Player disconnected: 19aBUNcqjGMc9_qOAAAF
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+Player connected: socket=iix3nuOmnlSeaZK6AAAH, playerId=test-1780468722171-3fceaq
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+Player disconnected: iix3nuOmnlSeaZK6AAAH
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+Player connected: socket=80FxdbmXndOIMQFzAAAJ, playerId=test-1780468727177-vp84gl
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+Player disconnected: 80FxdbmXndOIMQFzAAAJ
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+Player connected: socket=49L2QgF8YOHa9EhhAAAL, playerId=test-1780468732182-pr68kk
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+Player disconnected: 49L2QgF8YOHa9EhhAAAL
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+Player connected: socket=FUYYfvrTkz6JqwsIAAAN, playerId=test-1780468737188-u5kp23
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+Player disconnected: FUYYfvrTkz6JqwsIAAAN
+
+ ✓ |server| server/test/loot_magnet.test.js (7 tests) 35089ms
+   ✓ Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected  5033ms
+   ✓ Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected  5017ms
+   ✓ Loot Magnet — pull & collect > loot outside attractRadius is untouched  5011ms
+   ✓ Loot Magnet — pull & collect > already-collected loot does not error or double-credit  5007ms
+   ✓ Loot Magnet — pull & collect > second use within cooldown returns on_cooldown  5005ms
+   ✓ Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values  5005ms
+   ✓ Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary  5010ms
+
+ Test Files  8 passed (8)
+      Tests  188 passed (188)
+   Start at  23:38:26
+   Duration  35.85s (transform 308ms, setup 122ms, collect 606ms, tests 36.57s, environment 1.70s, prepare 498ms)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   40.46 |     52.6 |   45.58 |   40.46 |                       
+ client        |   69.51 |    62.16 |   32.25 |   69.51 |                       
+  cards.js     |      91 |    62.96 |   66.66 |      91 | ...71,480-494,588-605 
+  collision.js |   20.81 |      100 |       0 |   20.81 | ...08,214-222,228-233 
+  delta.js     |     100 |       50 |     100 |     100 | 12                    
+  hand.js      |   46.25 |     62.5 |   23.07 |   46.25 | ...40,156-157,160-163 
+ server        |    31.9 |       50 |   56.75 |    31.9 |                       
+  index.js     |    31.9 |       50 |   56.75 |    31.9 | ...671-3680,3709-3710 
+---------------|---------|----------|---------|---------|-----------------------

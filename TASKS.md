@@ -48,7 +48,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [150-cleanup-key-item-summon-recall](tickets/150-cleanup-key-item-summon-recall/)
 - [x] [151-cleanup-key-item-field-medic-kit](tickets/151-cleanup-key-item-field-medic-kit/)
 - [x] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
-- [ ] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
+- [x] [153-cleanup-key-item-loot-magnet](tickets/153-cleanup-key-item-loot-magnet/)
 - [x] [155-gameplay-review-doc](tickets/155-gameplay-review-doc/)
 - [x] [156-docs-design-md-stale-fixes](tickets/156-docs-design-md-stale-fixes/)
 - [ ] [157-cleanup-key-item-phase-step](tickets/157-cleanup-key-item-phase-step/)

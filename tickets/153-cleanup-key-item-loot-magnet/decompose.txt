@@ -1,0 +1,11 @@
+Broke the top-level cleanup ticket into **2 sub-tickets** (two independent nits, no dependency between them):
+
+1. **Test naming** — rename/comments only in `loot_magnet.test.js` (`code` QA).
+2. **Client VFX** — loot-magnet pulse when `pulled > 0` (`code` QA; not `visual` because criteria include handler existence, `pulled` gating, and no server fields).
+
+No existing `subtickets/` folders were present, so numbering starts at `01`.
+
+**Sub-ticket folders created:**
+
+- `/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/tickets/153-cleanup-key-item-loot-magnet/subtickets/01-rename-loot-magnet-test/`
+- `/home/matt/workspace/.autogame-worktrees/153-cleanup-key-item-loot-magnet/tickets/153-cleanup-key-item-loot-magnet/subtickets/02-loot-magnet-client-vfx/`

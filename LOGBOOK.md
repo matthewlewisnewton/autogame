@@ -2562,3 +2562,26 @@ No blocking debug-scenario issues for this ticket.
 
 None.
 
+
+## v0.150 — Cleanup nits from 126-key-item-loot-magnet  (2026-06-02 23:39:43)
+
+---
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. Round-1 capture shows `debugScenario: null`. No debug-scenario review items apply.
+
+---
+
+## Capture limitations (non-blocking)
+
+Round-1 used **fallback** capture (lobby → ready → movement smoke). Screenshots do not show loot magnet use or the new ring VFX in-browser; behavior is covered by unit tests and sub-ticket visual QA per harness notes. That gap does not block acceptance for this cleanup ticket.
+
+---
+
+## Remaining gaps
+
+None. Runtime health passes and both acceptance-criterion groups are fully satisfied.
+
+---
+
