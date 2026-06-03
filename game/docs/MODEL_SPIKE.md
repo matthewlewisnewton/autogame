@@ -77,6 +77,12 @@ influences on the skinned mesh; ticket **188** binds sliders to the same ids.
 - **Full influence:** value **1.0** on a single target should read clearly at the high end of the clamp range; authoring may tune shape-key deltas in Blender, but runtime only sees 0.75–1.25 from the server.
 - Sub-ticket **04** lands the morph-enabled `player.glb`; note any pack-specific quirks (which mesh holds keys, recommended per-target delta) in a short “Authoring notes” subsection here when export is done.
 
+### Export notes (sub-ticket 03)
+
+- **Source file:** `Superhero_Male_FullBody.gltf` from the Quaternius **Standard** (CC0) pack. The free Standard download currently ships Superhero male/female bodies only; **Regular_Male** / Teen variants are in the paid Source tier — swap the source glTF when that mesh is available without changing the conventions below.
+- **Transform:** uniform scale to **1.8** standing height; translate so sole contact is **y = 0**; vendor rest pose already faces **−Z** (no Y rotation applied).
+- **Format:** binary glTF (`.glb`), geometry + skin; PBR textures stripped for the spike (~510 KB) — ticket **187** tints the skinned body mesh at runtime.
+
 ## Registry and gameplay wiring
 
 - **`MODEL_REGISTRY.player`** stays `null` until ticket **187** — procedural avatar remains in use until then.
