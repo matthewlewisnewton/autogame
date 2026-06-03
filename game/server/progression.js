@@ -2825,6 +2825,11 @@ function roomTierAt(layout, x, z) {
 }
 
 function spawnCombatEnemies(layout, rng, quest) {
+  // `survive` runs spawn their enemies gradually over the encounter via the
+  // tick-driven updateSurviveSpawns() spawner, so skip the up-front bulk spawn
+  // and let the staggered spawner be the sole source of survive enemies.
+  if (quest.objectiveType === 'survive') return;
+
   const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
   const preferNearest = quest.objectiveType === 'collect_items';
@@ -2843,6 +2848,60 @@ function spawnCombatEnemies(layout, rng, quest) {
     });
     enemy.wanderTarget = randomWanderTarget();
   }
+}
+
+// Interval (ms) between staggered survive spawns. The first enemy spawns on the
+// first tick the run is playing; each subsequent enemy waits this long.
+const SURVIVE_SPAWN_INTERVAL_MS = 3000;
+
+// Regular (non-miniboss) enemy types used by the staggered survive spawner,
+// cycled in order for the non-miniboss portion of the wave.
+const SURVIVE_REGULAR_TYPES = ['grunt', 'skirmisher'];
+
+/**
+ * Tick-driven spawner for `survive` runs: while the objective still has enemies
+ * left to spawn, releases the next attacker on a throttled interval. Across the
+ * full encounter exactly `minibossCount` of the spawned enemies are minibosses
+ * (the final spawns of the wave) and the rest are regular types. Reuses the
+ * combat spawner's position picker and spawnEnemy() path. No-op for anything
+ * that isn't a `playing` `survive` run.
+ */
+function updateSurviveSpawns(now = Date.now()) {
+  const run = _gameState.run;
+  if (!run || run.status !== 'playing' || _gameState.gamePhase !== 'playing') return;
+
+  const objective = run.objective;
+  if (!objective || objective.type !== 'survive') return;
+
+  const total = objective.totalSpawns;
+  if (!(objective.spawnedEnemies < total)) return;
+
+  // Throttle on a stored timestamp; the very first spawn fires immediately.
+  const last = Number.isFinite(objective.lastSpawnAt) ? objective.lastSpawnAt : 0;
+  if (last !== 0 && now - last < SURVIVE_SPAWN_INTERVAL_MS) return;
+
+  const layout = _gameState.layout;
+  const seed = _gameState.layoutSeed || 42;
+  const index = objective.spawnedEnemies;
+  // Seed per spawn so placement is deterministic for a given seed/index.
+  const rng = mulberry32(seed + 2000 + index);
+
+  const minibossCount = Number.isFinite(objective.minibossCount) ? objective.minibossCount : 0;
+  // The final `minibossCount` spawns of the wave are minibosses.
+  const isMiniboss = index >= total - minibossCount;
+  const type = isMiniboss
+    ? 'miniboss'
+    : SURVIVE_REGULAR_TYPES[index % SURVIVE_REGULAR_TYPES.length];
+
+  const pos = pickEnemySpawnPosition(layout, rng, false, index, total);
+  const enemy = spawnEnemy(pos.x, pos.z, type, undefined, {
+    tier: roomTierAt(layout, pos.x, pos.z),
+    rng,
+  });
+  enemy.wanderTarget = randomWanderTarget();
+
+  objective.spawnedEnemies += 1;
+  objective.lastSpawnAt = now;
 }
 
 function spawnLoot(layout, rng) {
@@ -3554,6 +3613,7 @@ module.exports = {
   spawnLoot,
   spawnCrystals,
   spawnEnemies,
+  updateSurviveSpawns,
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,
