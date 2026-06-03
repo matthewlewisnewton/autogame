@@ -96,11 +96,18 @@ class Dispatcher:
     # medium one when no easy work remains — so qwen is never idle while there's
     # easy/medium work to do.
     reserve_qwen: bool = False
+    # Graceful drain: when this sentinel file exists, the dispatcher stops
+    # claiming NEW work (reap + merge_drain keep running) and run() exits once
+    # every in-flight worker has finished and the merge queue is empty — a clean
+    # "finish what's started, then stop" so a restart loses no in-flight work.
+    drain_flag: Optional[Path] = None
+    merge_pending: Optional[Callable[[], int]] = None
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
     _backpressure_active: bool = field(default=False, init=False)
     _last_status_digest: str = field(default="", init=False)
+    _draining_logged: bool = field(default=False, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -142,6 +149,12 @@ class Dispatcher:
                     log("[dispatch] merge backpressure OFF — resuming claims")
             except Exception as e:
                 log(f"[dispatch] backpressure check raised (ignoring): {e!r}")
+        if self._drain_requested():
+            if not self._draining_logged:
+                self._draining_logged = True
+                log("[dispatch] DRAIN requested — not claiming new work; "
+                    "finishing in-flight workers + merges, then exiting")
+            return
         if self.reserve_qwen:
             self._reserve_qwen()
         for difficulty in self.lanes:
@@ -160,6 +173,9 @@ class Dispatcher:
                     # immediately re-claim the same requeued ticket and hot-loop
                     # on a persistent infra failure. It retries next tick.
                     break
+
+    def _drain_requested(self) -> bool:
+        return self.drain_flag is not None and self.drain_flag.exists()
 
     def idle(self) -> bool:
         """True when nothing is running and no lane has ready work."""
@@ -315,6 +331,12 @@ class Dispatcher:
         idle_ticks = 0
         while True:
             self.tick()
+            if self._drain_requested():
+                pend = self.merge_pending() if self.merge_pending else 0
+                if not self._workers and pend == 0:
+                    log("[dispatch] drain complete — no in-flight workers and "
+                        "merge queue empty; exiting cleanly for restart")
+                    return
             if self.idle():
                 idle_ticks += 1
                 if max_idle_ticks and idle_ticks >= max_idle_ticks:

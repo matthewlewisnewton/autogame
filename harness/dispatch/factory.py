@@ -308,6 +308,8 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         backpressure=lambda: mq.pending() >= merge_cap,
         tick_seconds=tick_seconds,
         reserve_qwen=cfg.reserve_qwen,
+        drain_flag=Path(main_root) / "harness" / "tmp" / "drain.flag",
+        merge_pending=mq.pending,
     )
     return disp, mq, queue, registry
 
