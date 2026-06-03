@@ -75,13 +75,33 @@ influences on the skinned mesh; ticket **188** binds sliders to the same ids.
 - Export shape keys as glTF **morph targets** with names matching the table above **exactly**.
 - **Rest pose:** all morph influences **0** — must still satisfy feet y=0, −Z forward, ~1.8 height, and footprint within `PLAYER_RADIUS`.
 - **Full influence:** value **1.0** on a single target should read clearly at the high end of the clamp range; authoring may tune shape-key deltas in Blender, but runtime only sees 0.75–1.25 from the server.
-- Sub-ticket **04** lands the morph-enabled `player.glb`; note any pack-specific quirks (which mesh holds keys, recommended per-target delta) in a short “Authoring notes” subsection here when export is done.
+- Sub-ticket **04** lands the morph-enabled `player.glb`; see **Authoring notes** below for mesh ownership and per-target tuning.
+
+### Authoring notes (sub-ticket 04)
+
+| Item | Detail |
+|------|--------|
+| **Mesh with morphs** | `SuperHero_Male` (`SkinnedMesh`, ~12.6k tris). Eyebrows/Eyes have no shape keys. |
+| **Tooling** | Procedural deltas via `node game/scripts/build-player-morphs.mjs` (Three.js `GLTFExporter`; re-run after rest-pose edits). |
+| **Runtime influence** | Rest = **0** on all targets. Ticket **187** maps `proportions[key]` (0.75–1.25, default 1.0) onto these names. |
+| **Recommended range** | Author at **0–1** per target; **1.0** should read clearly for QA. Server clamp 0.75–1.25 applies in gameplay, not in the asset. |
+
+Per-target delta intent at influence **1.0** (single target, others 0):
+
+| Target | Effect at 1.0 |
+|--------|----------------|
+| `height` | ~14% taller, feet pinned at y = 0 |
+| `headSize` | ~20% radial scale around head center (y ≈ 1.62) |
+| `torsoWidth` | ~14% outward on mid torso (hips–upper chest) |
+| `armLength` | ~6–10% limb extension on upper arms |
+| `legLength` | ~16% leg stretch below hip, soles locked near y = 0 |
+| `shoulderWidth` | ~18% lateral span across shoulder band |
 
 ### Export notes (sub-ticket 03)
 
 - **Source file:** `Superhero_Male_FullBody.gltf` from the Quaternius **Standard** (CC0) pack. The free Standard download currently ships Superhero male/female bodies only; **Regular_Male** / Teen variants are in the paid Source tier — swap the source glTF when that mesh is available without changing the conventions below.
 - **Transform:** uniform scale to **1.8** standing height; translate so sole contact is **y = 0**; vendor rest pose already faces **−Z** (no Y rotation applied).
-- **Format:** binary glTF (`.glb`), geometry + skin; PBR textures stripped for the spike (~510 KB) — ticket **187** tints the skinned body mesh at runtime.
+- **Format:** binary glTF (`.glb`), geometry + skin + six morph targets on `SuperHero_Male` (~1.0 MB) — ticket **187** tints the skinned body mesh at runtime.
 
 ## Registry and gameplay wiring
 
