@@ -35,8 +35,10 @@ DEFAULT_SPECS = [
     AgentSpec("composer_write", max_concurrency=3,
               eligible=frozenset({"easy", "medium", "hard"})),
     AgentSpec("gpt5_extra_write", max_concurrency=1, eligible=frozenset({"hard"})),
-    # claude opted in for medium/hard only, up to 2 concurrent implementers.
-    AgentSpec("claude", max_concurrency=2, eligible=frozenset({"medium", "hard"})),
+    # claude opted in for medium/hard only, at concurrency 1 — it's expensive on
+    # weekly quota (already ~40% spent) and we want to preserve it as a reliable
+    # REVIEWER, so cap implementer use at one and let qwen carry the bulk.
+    AgentSpec("claude", max_concurrency=1, eligible=frozenset({"medium", "hard"})),
 ]
 # Single global priority order, cheapest first. Eligibility (above) decides which
 # difficulties each agent can take; the dispatcher walks this order and picks the
