@@ -102,12 +102,19 @@ class Dispatcher:
     # "finish what's started, then stop" so a restart loses no in-flight work.
     drain_flag: Optional[Path] = None
     merge_pending: Optional[Callable[[], int]] = None
+    # Auto-triage safety net: periodically label OPEN beads that have no
+    # difficulty lane so they stop stranding (no lane query matches them). Runs
+    # INSIDE the dispatcher (sole beads writer) so it never contends on the
+    # single-writer Dolt lock. `triage_every` ticks between passes (0 = off).
+    triage: Optional[Callable[[], None]] = None
+    triage_every: int = 0
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
     _backpressure_active: bool = field(default=False, init=False)
     _last_status_digest: str = field(default="", init=False)
     _draining_logged: bool = field(default=False, init=False)
+    _tick_count: int = field(default=0, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -135,6 +142,18 @@ class Dispatcher:
                 self.merge_drain()  # integrate one passed branch into main this tick
             except Exception as e:
                 log(f"[dispatch] merge_drain raised (continuing tick): {e!r}")
+        # Auto-triage safety net: every `triage_every` ticks, label OPEN beads
+        # with no difficulty lane so they stop stranding. Skip while draining
+        # (no new beads should be touched). Best-effort — triage must NEVER break
+        # a tick, so log + continue on any error.
+        self._tick_count += 1
+        if (self.triage is not None and self.triage_every > 0
+                and self._tick_count % self.triage_every == 0
+                and not self._drain_requested()):
+            try:
+                self.triage()
+            except Exception as e:
+                log(f"[dispatch] triage raised (continuing tick): {e!r}")
         # Backpressure: if the merge queue is backed up, don't take on new work
         # this tick — let it drain first (reap + merge_drain above already ran).
         if self.backpressure is not None:

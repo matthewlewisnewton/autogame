@@ -72,6 +72,11 @@ class BeadsQueue:
         find work orphaned by a dispatcher crash."""
         return self._run_json("list", "--status", "in_progress", "--json")
 
+    def list_open(self) -> list[dict]:
+        """All open issues (status=open) — used by auto-triage to find beads with
+        no difficulty lane label, including blocked ones `bd ready` won't surface."""
+        return self._run_json("list", "--status", "open", "--json")
+
     # --- claim / release ------------------------------------------------ #
     def claim_ready(self, *, difficulty: Optional[str] = None,
                     assignee: Optional[str] = None) -> Optional[dict]:
