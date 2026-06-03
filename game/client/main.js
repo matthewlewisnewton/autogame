@@ -1129,7 +1129,8 @@ function bindSocketHandlers(s) {
 			if (data.keyItemId === 'field_medic_kit') {
 				const me = myId && gameState?.players ? gameState.players[myId] : null;
 				if (me) {
-					triggerHealPulseVFX({ x: me.x, y: 0, z: me.z });
+					const healRadius = keyItemDefs.field_medic_kit?.healRadius ?? 5;
+					triggerHealPulseVFX({ x: me.x, y: 0, z: me.z }, healRadius);
 				}
 			}
 			if (data.keyItemId === 'guard_block') {

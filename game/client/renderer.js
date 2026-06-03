@@ -1400,11 +1400,10 @@ const shieldVFX = {}; // playerId → { mesh, startTime }
  * over ~400 ms, then fades out over ~200 ms.
  *
  * @param {{ x: number, y: number, z: number }} position
+ * @param {number} healRadius — metres; must match server KEY_ITEM_DEFS.field_medic_kit.healRadius
  */
-export function triggerHealPulseVFX(position) {
+export function triggerHealPulseVFX(position, healRadius) {
 	if (!scene) return;
-
-	const healRadius = 5;
 	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
 	const material = new THREE.MeshStandardMaterial({
 		color: HEAL_PULSE_COLOR,
