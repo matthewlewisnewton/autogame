@@ -27,9 +27,9 @@ export const MODEL_REGISTRY = {
 	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)
-	ancient_wyrm: null,
-	null_crawler: null,
-	bulkhead_mauler: null,
+	ancient_wyrm: '/models/minion-ancient-wyrm.glb',
+	null_crawler: '/models/minion-null-crawler.glb',
+	bulkhead_mauler: '/models/minion-bulkhead-mauler.glb',
 
 	// Loot kinds (renderer.js createLootMesh)
 	currency: null,
