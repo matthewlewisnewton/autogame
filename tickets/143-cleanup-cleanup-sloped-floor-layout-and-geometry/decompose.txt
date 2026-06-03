@@ -1,0 +1,7 @@
+Created 1 sub-ticket. The top-level ticket is a single, focused cleanup nit (passage side walls still use flat `FLOOR_Y` instead of sampling the sloped floor), so it decomposes into one independently implementable, code-verifiable sub-ticket.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/143-cleanup-cleanup-sloped-floor-layout-and-geometry/tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/subtickets/01-passage-walls-sample-floor/ticket.md`
+
+Verification mode is `code` because the criteria are about a structural change (sampling formula) plus a unit test existing and passing — not pixel-level appearance.

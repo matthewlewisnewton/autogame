@@ -2724,3 +2724,26 @@ for a *scripted capture* deliverable, which is present, correct, and wired in.
 None. Both acceptance criteria are met, the game runs cleanly, and the full unit
 suite passes. Production game code is untouched.
 
+
+## v0.156 — Cleanup nits from 142-cleanup-sloped-floor-layout-and-geometry  (2026-06-03 03:17:31)
+
+  flat layouts render unchanged. The pre-existing flat-layout tests still pass.
+- New test `positions passage wall Y on sloped rooms using sampleFloorY`
+  (`game/client/test/dungeon.test.js:274+`) builds a Z-sloped room with a passage
+  whose four side walls sit at distinct sloped heights and asserts each mesh
+  `position.y === resolveFloorY(sampleFloorY(...)) + PASSAGE_WALL_HEIGHT / 2`.
+  `PASSAGE_WALL_HEIGHT` is exported (`dungeon.js:22`) for the test.
+- `pnpm test client/test/dungeon.test.js`: **31 passed**. (The printed coverage
+  "threshold" errors come from running a single file against the global 70%
+  threshold — visibility only, not a failure of this ticket.)
+
+## Consistency
+Consistent with `design.md` sloped-floor handling; brings passage walls into line
+with the already-sloped room walls and cover meshes. No regression to flat
+corridors. No new debug scenarios added (the `sloped-dungeon` scenario predates
+this ticket).
+
+## Remaining gaps
+None. The change is minimal, correct, matches existing conventions, is covered by
+a new mirroring unit test, and the captured run is clean.
+

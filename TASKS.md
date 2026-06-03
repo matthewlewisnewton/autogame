@@ -38,7 +38,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
 - [x] [136-world-spire-ascent-stage](tickets/136-world-spire-ascent-stage/)
 - [x] [137-world-sunken-canyon-stage](tickets/137-world-sunken-canyon-stage/)
-- [ ] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
+- [x] [143-cleanup-cleanup-sloped-floor-layout-and-geometry](tickets/143-cleanup-cleanup-sloped-floor-layout-and-geometry/)
 - [ ] [144-cleanup-harness-misclassifies-pageerror](tickets/144-cleanup-harness-misclassifies-pageerror/)
 - [x] [145-cleanup-sloped-movement-server-and-client](tickets/145-cleanup-sloped-movement-server-and-client/)
 - [x] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
