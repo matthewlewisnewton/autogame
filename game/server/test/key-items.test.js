@@ -12,7 +12,7 @@ import {
 	wallAABB,
 	MAX_MAGIC_STONES,
 } from '../index.js';
-import { setGameState as setSimGameState, processPendingEchoes, updateMinions } from '../simulation.js';
+import { setGameState as setSimGameState, processPendingEchoes, updateMinions, applyPlayerMovement } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import {
 	startTestServer,
@@ -1248,5 +1248,249 @@ describe('echo_strike — weapon echo', () => {
 		// Flag consumed, but nothing was struck so no echo is enqueued.
 		expect(player.echoStrikePending).toBe(false);
 		expect(state.pendingEchoes).toHaveLength(0);
+	});
+});
+
+// ── rally_cry tests ──
+
+describe('useKeyItem — rally_cry', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		setSimGameState(null, null);
+		await closeServer();
+	});
+
+	async function connectAndStartRun() {
+		const { socket } = await connectClient(baseUrl);
+		const startGamePromise = waitForEvent(socket, 'startGame');
+		socket.emit('playerReady', true);
+		await startGamePromise;
+		return { socket };
+	}
+
+	/**
+	 * Run exactly one movement tick for `player` moving along (dirx, dirz) and
+	 * return the horizontal distance travelled. Position is restored afterwards so
+	 * repeated measurements start from the same spot. Synchronous on purpose: the
+	 * live game loop only fires between awaits, so nothing interleaves here.
+	 */
+	function oneTickDelta(state, player, dirx = 1, dirz = 0) {
+		setSimGameState(state, {});
+		const x0 = player.x;
+		const z0 = player.z;
+		player.inputActive = true;
+		player.inputDx = dirx;
+		player.inputDz = dirz;
+		player.lastInputTime = Date.now();
+		applyPlayerMovement();
+		const d = Math.hypot(player.x - x0, player.z - z0);
+		player.inputActive = false;
+		player.x = x0;
+		player.z = z0;
+		return d;
+	}
+
+	it('KEY_ITEM_DEFS.rally_cry has the move-speed-buff parameters and no heal fields', () => {
+		const def = KEY_ITEM_DEFS.rally_cry;
+		expect(def).toBeDefined();
+		expect(def.id).toBe('rally_cry');
+		expect(def.type).toBe('support');
+		expect(def.cooldownMs).toBe(10000);
+		expect(def.durationMs).toBe(4000);
+		expect(def.radius).toBe(8);
+		expect(def.speedMultiplier).toBeCloseTo(1.1, 5);
+		// Heal fields removed
+		expect(def.hpRegenPerTick).toBeUndefined();
+		expect(def.tickIntervalMs).toBeUndefined();
+	});
+
+	it('two players in radius get a larger move delta than the un-buffed baseline', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+
+		// Place the caster at the centre of the first room (guaranteed open) and an
+		// ally 2m away — both well within the 8m radius.
+		const room = state.layout.rooms[0];
+		caster.x = room.x;
+		caster.z = room.z;
+		caster.keyItemCooldownUntil = 0;
+
+		const ally = { ...caster, x: room.x + 2, z: room.z, dead: false, extracted: false, connected: true, inputActive: false };
+		state.players['rally-ally'] = ally;
+
+		// Baselines BEFORE the buff (rally fields default to 0/1).
+		const baseCaster = oneTickDelta(state, caster);
+		const baseAlly = oneTickDelta(state, ally);
+		expect(baseCaster).toBeGreaterThan(0);
+		expect(baseAlly).toBeGreaterThan(0);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.keyItemId).toBe('rally_cry');
+		expect(result.affected).toBe(2); // caster + ally
+		expect(result.rallyUntil).toBeGreaterThan(Date.now());
+
+		// Both players are now buffed.
+		expect(caster.rallySpeedMultiplier).toBeCloseTo(1.1, 5);
+		expect(ally.rallySpeedMultiplier).toBeCloseTo(1.1, 5);
+		expect(caster.rallyUntil).toBeGreaterThan(Date.now());
+		expect(ally.rallyUntil).toBeGreaterThan(Date.now());
+
+		const buffedCaster = oneTickDelta(state, caster);
+		const buffedAlly = oneTickDelta(state, ally);
+
+		// Each buffed player covers ~10% more ground than its own baseline.
+		expect(buffedCaster).toBeGreaterThan(baseCaster);
+		expect(buffedAlly).toBeGreaterThan(baseAlly);
+		expect(buffedCaster / baseCaster).toBeCloseTo(1.1, 2);
+		expect(buffedAlly / baseAlly).toBeCloseTo(1.1, 2);
+	});
+
+	it('a player outside the radius is not buffed', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+
+		const room = state.layout.rooms[0];
+		caster.x = room.x;
+		caster.z = room.z;
+		caster.keyItemCooldownUntil = 0;
+
+		// Ally 20m away — well outside the 8m radius.
+		const farAlly = { ...caster, x: room.x + 20, z: room.z, dead: false, extracted: false, connected: true, inputActive: false, rallyUntil: 0, rallySpeedMultiplier: 1 };
+		state.players['rally-far'] = farAlly;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.affected).toBe(1); // only the caster
+		// Out-of-radius ally untouched.
+		expect(farAlly.rallyUntil).toBe(0);
+		expect(farAlly.rallySpeedMultiplier).toBe(1);
+
+		// And its movement is unaffected: buffed-caster delta > far-ally delta.
+		const baseFar = oneTickDelta(state, farAlly);
+		const buffedCaster = oneTickDelta(state, caster);
+		expect(buffedCaster).toBeGreaterThan(baseFar);
+	});
+
+	it('the buff expires after its duration — movement returns to baseline', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+
+		const room = state.layout.rooms[0];
+		caster.x = room.x;
+		caster.z = room.z;
+		caster.keyItemCooldownUntil = 0;
+
+		const base = oneTickDelta(state, caster);
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		await resultPromise;
+
+		// While active, movement is boosted.
+		const buffed = oneTickDelta(state, caster);
+		expect(buffed).toBeGreaterThan(base);
+
+		// Force the buff into the past; movement returns to baseline.
+		caster.rallyUntil = Date.now() - 1;
+		const afterExpiry = oneTickDelta(state, caster);
+		expect(afterExpiry).toBeCloseTo(base, 5);
+	});
+
+	it('re-using while active re-applies the same multiplier (no self-stack)', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+		caster.keyItemCooldownUntil = 0;
+
+		const first = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		await first;
+		expect(caster.rallySpeedMultiplier).toBeCloseTo(1.1, 5);
+
+		// Clear cooldown and fire again while the buff is still active.
+		caster.keyItemCooldownUntil = 0;
+		const second = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		await second;
+
+		// Multiplier is assigned, not compounded — stays ~1.1, never ~1.21.
+		expect(caster.rallySpeedMultiplier).toBeCloseTo(1.1, 5);
+		expect(caster.rallySpeedMultiplier).toBeLessThan(1.2);
+	});
+
+	it('applies no heal and burns a ~10s cooldown; a second immediate use is on_cooldown', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+		caster.keyItemCooldownUntil = 0;
+		caster.hp = Math.floor(caster.hp * 0.5);
+		const hpBefore = caster.hp;
+
+		const before = Date.now();
+		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		const result1 = await result1Promise;
+		const after = Date.now();
+
+		expect(result1.ok).toBe(true);
+		// No heal effect.
+		expect(caster.hp).toBe(hpBefore);
+		// ~10s cooldown.
+		expect(result1.cooldownUntil).toBeGreaterThanOrEqual(before + 10000);
+		expect(result1.cooldownUntil).toBeLessThanOrEqual(after + 10000);
+		expect(caster.keyItemCooldownUntil).toBe(result1.cooldownUntil);
+
+		// Immediate second use is rejected.
+		const result2Promise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'rally_cry' });
+		const result2 = await result2Promise;
+
+		expect(result2.ok).toBe(false);
+		expect(result2.reason).toBe('on_cooldown');
+		expect(result2.remainingMs).toBeGreaterThan(0);
+	});
+
+	it('guard_block slow and rally buff compose sanely (both factors apply)', async () => {
+		const { socket } = await connectAndStartRun();
+		const caster = playerForSocket(socket);
+		const state = testGameState();
+		state.enemies.length = 0;
+
+		const room = state.layout.rooms[0];
+		caster.x = room.x;
+		caster.z = room.z;
+
+		const base = oneTickDelta(state, caster);
+
+		// Both effects active simultaneously.
+		caster.blockingUntil = Date.now() + 5000;
+		caster.rallyUntil = Date.now() + 5000;
+		caster.rallySpeedMultiplier = 1.1;
+		const both = oneTickDelta(state, caster);
+
+		// guard_block (×0.2) still dominates — much slower than baseline — but rally
+		// nudges it up by ~10% over a pure guard_block step (×0.2×1.1).
+		expect(both).toBeLessThan(base);
+		expect(both / base).toBeCloseTo(0.22, 2);
 	});
 });
