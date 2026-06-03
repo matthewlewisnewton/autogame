@@ -2655,3 +2655,26 @@ None blocking. Runtime capture is clean; all top-level acceptance criteria are i
 
 ---
 
+
+## v0.153 — 190-character-hats-asset-starter-hats  (2026-06-03 02:12:55)
+
+  base at the group origin; visually distinct snug dome. ✅
+- `buildHatMesh` still returns `null` for `none`/unknown; cap/wizard/crown cases unchanged. ✅
+- `cosmeticSignature` keys off `AVATAR_HAT_IDS`, so the new ids yield distinct signatures and
+  trigger avatar rebuilds (line 1301). Seating uses the unchanged `bodyTopY(shape)` at the
+  call site (line 1349); the new meshes seat exactly like existing hats and dispose through
+  the existing traversal. ✅
+
+## Integration
+- Server `HAT_CATALOG` ids and client `AVATAR_HAT_IDS` agree on the two new ids. ✅
+- No debug scenarios added or changed by this ticket.
+- `pnpm test` (from `game/`): **68 files, 1548 tests, all passing.**
+
+The visual capture uses the default `none` hat, so the new hats do not appear on screen —
+expected and called out by the decomposer; this is a code-verification ticket and the logic
+is exercised by unit tests.
+
+## Remaining gaps
+None. Both sub-tickets are fully and robustly implemented, tests pass, and the captured run
+is clean.
+

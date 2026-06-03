@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): clean.** `metrics.json` shows `ok: true`, servers started, browser reached `playing`, and `pageerrors: []`. `console.log` has only benign Vite/initScene lines — no page errors or fatals. No `harness_failure` block.
+
+**The ticket** — the top-level `ticket.md` was empty/missing, so the decomposer reconstructed the intent (free, default-owned starter hats + render meshes) from the slug and the ticket-189 hat pipeline. That reconstruction is sound, and both sub-tickets fully deliver against it:
+
+- **Server (`cosmetic.js`)**: `bandana`/`beanie` added at price 0; `DEFAULT_UNLOCKED_HATS = ['none','bandana','beanie']`; `backfillUnlockedHats` now seeds the full starter set then appends stored ids (legacy backfill works, dedupe/membership guard intact); free hats equip without unlocking, locked `crown` still rejected.
+- **Client (`renderer.js`)**: both ids added to `AVATAR_HAT_IDS`; distinct colors + procedural meshes (torus band + knot; clipped dome) seated at origin via the unchanged `bodyTopY`; `cosmeticSignature` rebuilds avatars correctly; `none`/unknown still return null.
+- **Integration**: server and client id sets agree; no debug scenarios added; `pnpm test` → **1548/1548 passing**.
+
+No blocking gaps and no genuine nits, so I did not write `gaps.md` or `nits.md`.
