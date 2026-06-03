@@ -703,6 +703,7 @@ const debugScenario = new URLSearchParams(window.location.search).get('debugScen
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let debugScenarioRequested = false;
 let debugScenarioResult = null;
+let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
 // ── Socket setup ──
@@ -3719,6 +3720,8 @@ function renderCardChoices(choices) {
 function showRunSummary(data) {
 	if (!data) return;
 
+	lastRunSummary = data;
+
 	if (data.status === 'victory') {
 		playSound('victory');
 	} else {
@@ -3921,10 +3924,29 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
+	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
+	const objective = runObjective ? {
+		type: runObjective.type,
+		totalEnemies: runObjective.totalEnemies,
+		defeatedEnemies: runObjective.defeatedEnemies,
+		totalItems: runObjective.totalItems,
+		collectedItems: runObjective.collectedItems,
+		label: runObjective.label,
+	} : null;
+	// Mirror the server's isRunObjectiveComplete so a test can watch the flip.
+	const runObjectiveComplete = !!objective && (
+		objective.type === 'collect_items'
+			? (objective.collectedItems ?? 0) >= (objective.totalItems ?? 0)
+			: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
+	);
+
 	return {
 		debugScenario,
 		debugScenarioAllowed,
 		debugScenarioResult,
+		objective,
+		runObjectiveComplete,
+		lastRunSummary,
 		myId,
 		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',

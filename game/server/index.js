@@ -249,6 +249,7 @@ const {
   clampObjectiveProgress,
   syncRunObjectiveToEnemies,
   recordEnemyDefeated,
+  isRunObjectiveComplete,
   getEnemyCardDrop,
   recordEnemyCardDrop,
   getEnemyMagicStoneDrop,
@@ -424,6 +425,7 @@ const DEBUG_SCENARIOS = new Set([
   'minion-combat',
   'run-failed',
   'run-exhausted',
+  'quest-objective-near-complete',
   'telepipe-ready',
   'sloped-dungeon',
   'key-item-cooldown',
@@ -533,6 +535,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spawner-active',
   'minion-combat',
   'run-exhausted',
+  'quest-objective-near-complete',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -869,6 +872,26 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
+    } else if (name === 'quest-objective-near-complete') {
+      // Leave a defeat_enemies run one trigger away from victory: a single
+      // low-HP grunt stands between the player and an objective-complete win.
+      // Defeating it flows through the real recordEnemyDefeated →
+      // checkRunTerminalState → victory path (no special-case completion logic
+      // here). The player keeps their hand so they can finish through real
+      // combat. The same near-complete state is reachable normally by clearing
+      // all but the last enemy of a defeat_enemies quest.
+      if (!state.run || state.run.status !== 'playing' || state.run.objective.type !== 'defeat_enemies') {
+        return { ok: false, reason: 'No active defeat_enemies run for quest-objective-near-complete' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const enemy = spawnEnemy(player.x + 2, player.z, 'grunt');
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS.grunt.hp;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      state.run.objective.totalEnemies = 1;
+      state.run.objective.defeatedEnemies = 0;
     } else if (name === 'sloped-dungeon') {
       // Regenerate the dungeon layout with slopes enabled for visual verification.
       // Uses the same seed as the current quest for determinism.
@@ -3890,6 +3913,7 @@ if (typeof module !== 'undefined' && module.exports) {
     removeDeadEnemies,
     cleanupAfterDamage,
     clampObjectiveProgress,
+    isRunObjectiveComplete,
     buildRunSummary,
     checkRunTerminalState,
     resetTransientRunState,

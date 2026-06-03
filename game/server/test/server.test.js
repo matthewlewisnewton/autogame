@@ -22,6 +22,7 @@ import {
 	createRunState,
 	startDungeonRun,
 	recordEnemyDefeated,
+	isRunObjectiveComplete,
 	getEnemyCardDrop,
 	recordEnemyCardDrop,
 	getEnemyMagicStoneDrop,
@@ -2265,6 +2266,49 @@ describe('run state', () => {
 			const summary = buildRunSummary('victory');
 
 			expect(summary.currencyCollected).toBe(0);
+		});
+	});
+
+	describe('quest-objective-near-complete debug scenario', () => {
+		beforeEach(() => {
+			resetState();
+			delete gameState.run;
+		});
+
+		// Mirrors the near-complete state the `quest-objective-near-complete`
+		// debug scenario installs on a started defeat_enemies run, then drives
+		// the single remaining enemy's defeat through the real combat path.
+		it('leaves one low-HP enemy and reaches victory when it is defeated', () => {
+			// Start a defeat_enemies run with several enemies, as a normal run would.
+			gameState.enemies = [
+				{ id: 'a', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } },
+				{ id: 'b', x: 4, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 4, z: 0 } },
+			];
+			startDungeonRun();
+			addPlayer('p1', { x: 2, z: 0, hp: 60 });
+
+			// Apply the scenario's near-complete setup.
+			gameState.enemies = [];
+			const enemy = spawnEnemy(5, 0, 'grunt');
+			enemy.hp = 1;
+			enemy.maxHp = ENEMY_DEFS.grunt.hp;
+			gameState.run.objective.totalEnemies = 1;
+			gameState.run.objective.defeatedEnemies = 0;
+
+			expect(gameState.run.objective.type).toBe('defeat_enemies');
+			expect(gameState.enemies.length).toBe(1);
+			expect(gameState.run.objective.totalEnemies).toBe(1);
+			expect(isRunObjectiveComplete(gameState.run.objective)).toBe(false);
+
+			// Defeat the one enemy through the real removal → recordEnemyDefeated path.
+			enemy.hp = 0;
+			removeDeadEnemies();
+
+			expect(gameState.enemies.length).toBe(0);
+			expect(isRunObjectiveComplete(gameState.run.objective)).toBe(true);
+
+			checkRunTerminalState();
+			expect(gameState.run.status).toBe('victory');
 		});
 	});
 
