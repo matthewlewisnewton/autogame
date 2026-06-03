@@ -1,0 +1,10 @@
+I've decomposed the top-level ticket into two focused, code-verifiable sub-tickets.
+
+**Findings that shaped the split:** The game is fully card-based — weapon cards already drive directional attacks through `useCard` → `socket.emit('useCard')` → `cardUsed` → `renderCardUsed`, which already spawns attack VFX, enemy flash, and floating damage numbers. So "hit feedback" and "attack animation" already exist; the genuine gaps from the QA report are (1) clicking the canvas does nothing and (2) no on-screen cue tells a new player how to attack. I scoped to exactly those, reusing the existing feedback path rather than building a parallel one (which would also conflict with the card-centric design).
+
+Both are `code`, not `visual`: the visual QA run only does load + join + WASD movement and never triggers an attack, so none of this is verifiable from those screenshots.
+
+Sub-tickets created (in dependency order):
+
+- `/home/matt/workspace/.autogame-worktrees/167-bug-no-player-attack-affordance-feedback/tickets/167-bug-no-player-attack-affordance-feedback/subtickets/01-canvas-click-basic-attack/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/167-bug-no-player-attack-affordance-feedback/tickets/167-bug-no-player-attack-affordance-feedback/subtickets/02-attack-affordance-hud/ticket.md`
