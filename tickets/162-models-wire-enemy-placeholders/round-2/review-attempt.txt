@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS.**
+
+## Summary
+
+The ticket fully and robustly satisfies its acceptance criteria, and the captured run proves the game runs cleanly.
+
+**Runtime health (gate passed):** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`; probes reach `phase: "playing"` with an initialized scene and 5–6 live enemies; `console.log` is clean (only Vite connect lines, two benign 409 lobby-create races, and `[initScene]`).
+
+**Per-criterion:**
+- **Registry wiring** — all 7 keys mapped to the correct `/models/*.glb` paths; all 7 files exist; player/loot stay `null`.
+- **Scale + grounding** — `getRegistryTargetFootprint` / `normalizeLoadedRegistryModel` / `getRegistryHostVerticalOffset` scale each model to the primitive's height and cancel the host's render-loop y so feet land on the floor. 11 unit tests cover it.
+- **Player unchanged** — `player: null`; hero stays the procedural blue box in the capture.
+- **Fallback** — fire-and-forget attach; procedural mesh only hidden after a GLB resolves; 404/null paths tested.
+- **Tests + capture** — full suite **1523 passed (66 files)**. Strong proof the GLB swap happened: the bright procedural enemy cones (red/orange/purple/teal) are *absent* in gameplay shots, which only occurs when a GLB loads successfully and hides the primitive.
+
+No debug scenario was added. No blocking gaps — so no `gaps.md`. Recorded three non-blocking nits (`nits.md`): stale `attachRegistryModel` docstring/comments, a redundant dead branch in `getRegistryTargetFootprint`, and capturing a minion mesh in the smoke flow (none were summoned, so minion models weren't pictured — a capture-coverage gap, not a code defect).

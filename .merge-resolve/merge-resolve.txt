@@ -1,0 +1,20 @@
+Merge conflicts are resolved in all three files. Summary:
+
+### `TASKS.md`
+Both cleanup tickets are listed:
+- `197-cleanup-models-wire-enemy-placeholders` (from main)
+- `197-cleanup-character-models-spike-base-player-model` (from this ticket)
+
+### `LOGBOOK.md`
+All three version entries are kept in order:
+- **v0.145** — field medic kit cleanup (main)
+- **v0.146** — enemy/minion placeholder models (main)
+- **v0.147** — character models spike / base player GLB (this ticket)
+
+### `harness/dispatch/worktree_setup.py`
+Combined both sides:
+- **From main:** `_harness_playwright_ok`, `_remove_harness_node_modules`, enhanced `link_harness_deps` (broken symlink handling, fallback install, injectable `runner`/`which`)
+- **From this ticket:** `_harness_install_dir` (HARNESS_PROGRESS_DIR override), npm `ci`/`install` via `package-lock.json`
+- **Merged `install_harness_deps`:** uses pnpm when `pnpm-lock.yaml` exists, npm when `package-lock.json`/`package.json` exists, idempotent when Playwright is already present
+
+All conflict markers are removed. `harness/tests/unit/test_worktree_setup.py` — **14 passed**.

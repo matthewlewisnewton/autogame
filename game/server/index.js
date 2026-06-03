@@ -2846,6 +2846,12 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
+      io.to(lobby.id).emit('keyItemHealPulse', {
+        playerId: socket.playerId,
+        x: casterX,
+        z: casterZ,
+        healRadius,
+      });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }

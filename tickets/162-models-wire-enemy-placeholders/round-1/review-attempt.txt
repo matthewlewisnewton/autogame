@@ -1,0 +1,9 @@
+Wrote the final review artifacts:
+
+- `tickets/162-models-wire-enemy-placeholders/round-1/review.md`
+- `tickets/162-models-wire-enemy-placeholders/round-1/gaps.md`
+- `tickets/162-models-wire-enemy-placeholders/round-1/nits.md`
+
+Verdict is `FAIL`.
+
+Blocking issues: captured runtime proof is invalid (`metrics.json` has `ok: false`, missing browser `console.log`, Playwright import failure), and registry-loaded models would float above the floor because they’re normalized locally then attached under raised enemy/minion host meshes.

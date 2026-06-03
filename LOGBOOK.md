@@ -2471,6 +2471,52 @@ None blocking. The four nits are all resolved, the game runs clean, and both
 the affected unit suites (client key-item UI, server key-items 36/36) pass.
 
 
+## v0.145 — Cleanup nits from 123-key-item-field-medic-kit  (2026-06-02 21:58:58)
+
+### Field Medic Kit description text
+
+**Met.** `KEY_ITEM_DEFS.field_medic_kit.description` is now `'Heal nearby allies and restore Magic Stones in an area'`, covering nearby allies and Magic Stone restore. Client test fixture in `main.test.js` updated to match. No remaining in-game copy with “Restore a portion of your health” under `game/`.
+
+## Design & requirements consistency
+
+- **design.md:** Change is a presentation/sync fix for an existing key item; no combat-loop or architecture drift.
+- **requirements.md:** Round-2 capture confirms 3D render, WebSocket connect, multiplayer presence, and WASD movement — foundation intact.
+- **Debug scenarios:** None added or changed for this ticket (`debugScenario: null` in probes).
+
+## Code quality
+
+- Single VFX entry point for medic kit (`keyItemHealPulse` only).
+- Server heal logic, cooldown, and `stateUpdate` ordering unchanged aside from the additive broadcast.
+- Harness sub-ticket (`fc7d13f`) hardens worktree Playwright install/link; enabled this round’s successful capture without modifying `game/`.
+
+## Remaining gaps
+
+None blocking. Round-2 browser capture does not visually confirm the green heal ring or ally-side VFX; acceptance is satisfied by the lobby broadcast implementation plus the new two-player socket test.
+
+
+## v0.146 — Models: Wire enemy + minion placeholders into the registry  (2026-06-02 22:27:56)
+
+**absent** from the gameplay screenshots (`02-after-w.png`, `03-after-d.png`). Procedural
+materials are set `visible = false` *only* when a GLB resolves successfully; had any load
+failed the colored cones would still be drawn. Their disappearance is positive proof the
+GLB swap occurred and the loaded models are in the scene, sitting inside the red
+hitbox-wireframe overlays (a pre-existing combat telegraph, unrelated to this ticket).
+
+Note: no minions were summoned during the deterministic smoke capture (`minions: []`), so
+minion meshes are not pictured. This is a capture-flow coverage limitation, not a defect —
+the minion attach/normalize path is identical to the enemy path and is unit-tested.
+
+### Debug scenarios
+N/A. This ticket adds no `?debugScenario=` shortcut; `debugScenario` stays `null` in the
+probes and no scenario gating code was touched.
+
+## Remaining gaps
+
+None blocking. Acceptance criteria are fully and robustly met, the game runs cleanly, and
+the change is additive and consistent with `game/docs/design.md` / `requirements.md`. Minor
+non-blocking polish is recorded in `nits.md`.
+
+
 ## v0.147 — 185-character-models-spike-base-player-model  (2026-06-02 23:07:42)
 
 
