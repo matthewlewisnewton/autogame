@@ -1,0 +1,19 @@
+Created one new sub-ticket. No existing folders needed deletion — all three prior sub-tickets have `.passed` markers and remain valid; this round adds verification logic they didn't cover.
+
+**Sub-ticket folder created:**
+
+- `/home/matt/workspace/.autogame-worktrees/175-qa-telepipe-suspend-resume/tickets/175-qa-telepipe-suspend-resume/subtickets/04-capture-enemy-preservation-assert/ticket.md`
+
+**Why this closes the open gap (and just this gap):**
+
+The round-2 review failed because the harness capture showed `5 enemies → 7 enemies` with the objective stuck at `0/5`, and the capture neither asserted nor explained it. My investigation found this is **expected gameplay, not a restore bug**:
+
+- `spawnCombatEnemies` always seeds a `spawner` as one of the 5 enemies; it emits `skirmisher` adds every 4s (`simulation.js:1727`), each tagged `spawnedBy`. Adds don't count toward `defeat_enemies`, so the objective correctly stays `0/5` while live count grows.
+- `restoreRunCheckpoint` (`progression.js:2956`) restores the checkpoint enemy set by id/hp exactly — preservation is already correct. No server change is warranted.
+
+So sub-ticket 04 fixes the **verification**, not the game:
+1. Additively exposes `type`/`spawnedBy` on harness `enemyHp` so spawner adds are identifiable.
+2. Hardens the capture's Telepipe branch to assert: every pre-suspend (checkpoint) enemy persists with identical HP, every *resumed-only* enemy is a spawner add, and the suspended objective is unchanged (`0/N`) — **failing** the capture (`metrics.ok=false`, exit 1) on a genuine mismatch while letting the legitimate spawner-add growth pass.
+3. Records a self-explaining `preservation` block in `metrics.json` so a reviewer sees the `5→7` is preserved-originals + spawner-adds, not a regression.
+
+Marked `Verification: code` since the criteria concern assertion logic, evidence structure, and failure paths — not pixel rendering.

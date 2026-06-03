@@ -1,0 +1,8 @@
+Wrote the final review and remediation files:
+
+- `tickets/175-qa-telepipe-suspend-resume/round-1/review.md`
+- `tickets/175-qa-telepipe-suspend-resume/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The game itself loads cleanly, but the ticket is blocked because Telepipe walkthrough screenshots are missing and the smoke does not assert position semantics or quest/objective progress preservation across suspend/resume.
