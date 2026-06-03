@@ -1122,17 +1122,20 @@ function bindSocketHandlers(s) {
 		showKeyItemError(messages[reason] || `Equip failed: ${reason}`);
 	});
 
+	s.on('keyItemHealPulse', (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, healRadius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		const radius = Number.isFinite(healRadius)
+			? healRadius
+			: (keyItemDefs.field_medic_kit?.healRadius ?? 5);
+		triggerHealPulseVFX({ x, y: 0, z }, radius);
+	});
+
 	s.on('keyItemUsed', (data) => {
 		if (!data) return;
 		if (data.ok) {
 			flashKeyItemIndicator('success');
-			if (data.keyItemId === 'field_medic_kit') {
-				const me = myId && gameState?.players ? gameState.players[myId] : null;
-				if (me) {
-					const healRadius = keyItemDefs.field_medic_kit?.healRadius ?? 5;
-					triggerHealPulseVFX({ x: me.x, y: 0, z: me.z }, healRadius);
-				}
-			}
 			if (data.keyItemId === 'guard_block') {
 				triggerShieldVFX(myId);
 			}
