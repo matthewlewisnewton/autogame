@@ -2816,3 +2816,26 @@ None blocking. See `nits.md` for one minor follow-up (the promote path drops the
 screenshots/probes arrays from the rewritten metrics — consistent with existing
 classify behavior, not a regression).
 
+
+## v0.161 — 187-character-customization-client-gltf-avatar  (2026-06-03 05:08:43)
+
+**10. Fallback safety no-op — MET.** Both `applyProportionMorphs` (guards on
+`morphTargetDictionary`/`morphTargetInfluences`) and `applyLoadedModelCosmetic`
+(guards on `modelOverride`/`bodyMesh`) are no-ops under the procedural fallback.
+
+**Debug scenario `avatar-proportions-demo` — OK.** New scenario added to
+`game/server/index.js`. It is gated behind the same `isDebugScenarioAllowed(socket)`
+check as every other scenario (only reachable via the `debugScenario` socket
+path), sets `cosmetic.proportions` strictly within the server clamp
+(0.75–1.25), and does not short-circuit any validation/persistence — the same
+end-state is reachable normally by saving proportions via the
+character-customization route (ticket 186) and starting a run. The capture ran
+normal flow (`debugScenario: null`), confirming the scenario is not on the
+normal path.
+
+## Remaining gaps
+None blocking. The only notable shortfall — accent tint not visible on the
+single-material `player.glb` — is explicitly sanctioned by the sub-ticket/spike
+contract and filed as a nit. Code is clean, all unit tests pass, and the
+captured run is healthy.
+

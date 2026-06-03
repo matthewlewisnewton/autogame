@@ -1,0 +1,21 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+I judged ticket 187 (glTF player avatar render) holistically against the live working tree.
+
+**Runtime health — clean:**
+- `metrics.json`: `"ok": true`, `pageerrors: []`, no `harness_failure`. Probe confirms the game reached `phase: "playing"` with scene initialized, 2 canvases, 2 players, enemies spawning, dodge HUD working.
+- `console.log`/`client.log`: only benign noise (vite connect, a 409 lobby conflict, THREE.Clock deprecation, ws EPIPE). No `[renderer] failed to apply model` warning → `player.glb` (1 MB, present) loaded.
+- `pnpm test:quick`: **1604/1604 tests pass**.
+
+**Acceptance criteria — all met:**
+- `MODEL_REGISTRY.player = '/models/player.glb'`; loads/renders for local + remote, hiding (not removing) the procedural meshes.
+- Normalized to 1.8 / feet-at-0 (`getRegistryTargetFootprint`/`getRegistryHostVerticalOffset`), −Z facing untouched.
+- Procedural fallback no-ops cleanly on load failure (dedicated test).
+- VFX retargeted via `retargetPlayerBodyMesh` (with per-player material clone to prevent recolor bleed).
+- Proportion morphs mapped 1:1 by identical name with full guard coverage (missing/non-finite/unknown skipped).
+- Body tint routed through `baseColor`, re-applied live each frame for both players.
+- New `avatar-proportions-demo` debug scenario is gated behind `isDebugScenarioAllowed`, stays within server clamps, doesn't bypass validation, and the same state is reachable via the normal customization route.
+
+**No blocking gaps**, so no `gaps.md`. I filed two non-blocking nits (accent color is a no-op on the single-material `player.glb`; no direct unit coverage for the morph/tint apply helpers) to `nits.md`.

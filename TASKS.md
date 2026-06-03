@@ -72,3 +72,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [199-cleanup-cleanup-sloped-movement-server-and-client](tickets/199-cleanup-cleanup-sloped-movement-server-and-client/)
 - [ ] [200-cleanup-key-item-rally-cry](tickets/200-cleanup-key-item-rally-cry/)
 - [ ] [200-cleanup-cleanup-harness-misclassifies-pageerror](tickets/200-cleanup-cleanup-harness-misclassifies-pageerror/)
+- [ ] [201-cleanup-character-customization-client-gltf-avatar](tickets/201-cleanup-character-customization-client-gltf-avatar/)
