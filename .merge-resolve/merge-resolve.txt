@@ -1,17 +1,7 @@
 Merge conflicts are resolved in both files.
 
-### `game/package.json`
-Kept all three smoke scripts:
-- `test:smoke:quest-completion` (ticket 176)
-- `test:smoke:world-stage-transition` (main)
-- `test:smoke:telepipe-suspend-resume` (main)
+**`TASKS.md`** — Both follow-up cleanup tickets are listed (main’s survive-objective entry first, then this branch’s dedupe-card-defs entry).
 
-JSON validates; all three script files are present.
+**`LOGBOOK.md`** — Both log entries are kept in version order: **v0.175** (`174-gameplay-survive-objective` from main) then **v0.176** (`163-cleanup-dedupe-card-defs-server-client` from this ticket).
 
-### `LOGBOOK.md`
-Merged both sides in descending version order (matching the existing v0.170 / v0.169 pattern):
-1. **v0.172** — 176-qa-quest-objective-completion (ticket)
-2. **v0.171** — 175-qa-telepipe-suspend-resume (main)
-3. **v0.168** — 168-bug-intermittent-stuck-lobby-socket (main)
-
-No conflict markers remain. The harness can commit and finish the merge.
+All conflict markers are removed. The harness can finish the merge and run tests.

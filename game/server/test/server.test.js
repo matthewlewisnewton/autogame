@@ -10,6 +10,7 @@ import {
 	spawnLoot,
 	spawnEnemy,
 	spawnEnemies,
+	updateSurviveSpawns,
 	firstRoomPosition,
 	buildPlayerRecord,
 	createGameState,
@@ -226,7 +227,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'spire_ascent', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'endless_siege', 'spire_ascent', 'training_caverns']);
 
 		for (const quest of Object.values(QUEST_DEFS)) {
 			expect(quest.id).toBeTruthy();
@@ -242,6 +243,11 @@ describe('QUEST_DEFS', () => {
 				if (quest.enemyCount !== undefined) {
 					expect(typeof quest.enemyCount).toBe('number');
 				}
+			}
+			if (quest.objectiveType === 'survive') {
+				expect(typeof quest.totalSpawns).toBe('number');
+				expect(typeof quest.minibossCount).toBe('number');
+				expect(quest.minibossCount).toBeLessThan(quest.totalSpawns);
 			}
 		}
 	});
@@ -2123,6 +2129,150 @@ describe('run state', () => {
 			expect(run.objective.type).toBe('collect_items');
 			expect(run.objective.totalItems).toBe(QUEST_DEFS.crystal_rescue.itemCount);
 			expect(run.objective.collectedItems).toBe(0);
+		});
+
+		it('creates a survive objective for the endless siege quest', () => {
+			gameState.selectedQuestId = 'endless_siege';
+			const run = createRunState();
+
+			const quest = QUEST_DEFS.endless_siege;
+			expect(run.questId).toBe('endless_siege');
+			expect(run.objective.type).toBe('survive');
+			expect(run.objective.totalSpawns).toBe(quest.totalSpawns);
+			expect(run.objective.minibossCount).toBe(quest.minibossCount);
+			expect(run.objective.spawnedEnemies).toBe(0);
+			expect(run.objective.defeatedEnemies).toBe(0);
+			// totalEnemies mirrors totalSpawns so the HUD + completion fallback reuse it
+			expect(run.objective.totalEnemies).toBe(quest.totalSpawns);
+			expect(run.objective.label).toContain(quest.name);
+		});
+	});
+
+	describe('survive objective completion', () => {
+		function makeSurviveRun() {
+			gameState.selectedQuestId = 'endless_siege';
+			gameState.run = createRunState();
+			return gameState.run;
+		}
+
+		it('recordEnemyDefeated increments a survive objective', () => {
+			makeSurviveRun();
+			recordEnemyDefeated(1);
+			recordEnemyDefeated(2);
+			expect(gameState.run.objective.defeatedEnemies).toBe(3);
+		});
+
+		it('completes only after totalSpawns defeats', () => {
+			const run = makeSurviveRun();
+			const total = run.objective.totalSpawns;
+
+			recordEnemyDefeated(total - 1);
+			expect(isRunObjectiveComplete(run.objective)).toBe(false);
+
+			recordEnemyDefeated(1);
+			expect(isRunObjectiveComplete(run.objective)).toBe(true);
+		});
+
+		it('does not affect a different objective type', () => {
+			gameState.selectedQuestId = 'crystal_rescue';
+			gameState.run = createRunState();
+			recordEnemyDefeated(1);
+			expect(gameState.run.objective.collectedItems).toBe(0);
+			expect(gameState.run.objective.defeatedEnemies).toBeUndefined();
+		});
+	});
+
+	describe('updateSurviveSpawns()', () => {
+		function startSurviveRun() {
+			resetState();
+			gameState.selectedQuestId = 'endless_siege';
+			gameState.layoutSeed = 42;
+			gameState.gamePhase = 'playing';
+			gameState.enemies = [];
+			startDungeonRun();
+			return gameState.run;
+		}
+
+		// Advance well past the throttle interval between every spawn so each call
+		// that has enemies left releases exactly one.
+		function drainSpawns(run) {
+			let now = 1_000_000;
+			const guard = run.objective.totalSpawns + 50;
+			let iterations = 0;
+			while (run.objective.spawnedEnemies < run.objective.totalSpawns && iterations < guard) {
+				updateSurviveSpawns(now);
+				now += 60_000;
+				iterations++;
+			}
+		}
+
+		it('skips the up-front bulk combat spawn for survive runs', () => {
+			startSurviveRun();
+			spawnEnemies();
+			expect(gameState.enemies.length).toBe(0);
+		});
+
+		it('spawns one enemy at a time and increments spawnedEnemies', () => {
+			const run = startSurviveRun();
+			expect(run.objective.spawnedEnemies).toBe(0);
+
+			// First tick spawns immediately.
+			updateSurviveSpawns(1_000_000);
+			expect(run.objective.spawnedEnemies).toBe(1);
+			expect(gameState.enemies.length).toBe(1);
+
+			// A second tick within the interval is throttled.
+			updateSurviveSpawns(1_000_100);
+			expect(run.objective.spawnedEnemies).toBe(1);
+			expect(gameState.enemies.length).toBe(1);
+
+			// After the interval elapses, the next enemy spawns.
+			updateSurviveSpawns(1_060_000);
+			expect(run.objective.spawnedEnemies).toBe(2);
+			expect(gameState.enemies.length).toBe(2);
+		});
+
+		it('spawns exactly totalSpawns enemies including minibossCount minibosses', () => {
+			const run = startSurviveRun();
+			const total = run.objective.totalSpawns;
+			const minibosses = run.objective.minibossCount;
+
+			drainSpawns(run);
+
+			expect(run.objective.spawnedEnemies).toBe(total);
+			expect(gameState.enemies.length).toBe(total);
+			const minibossSpawned = gameState.enemies.filter(e => e.type === 'miniboss').length;
+			expect(minibossSpawned).toBe(minibosses);
+			const regularSpawned = gameState.enemies.filter(e => e.type !== 'miniboss').length;
+			expect(regularSpawned).toBe(total - minibosses);
+		});
+
+		it('stops spawning once spawnedEnemies reaches totalSpawns', () => {
+			const run = startSurviveRun();
+			drainSpawns(run);
+			const count = gameState.enemies.length;
+
+			updateSurviveSpawns(99_000_000);
+			expect(run.objective.spawnedEnemies).toBe(run.objective.totalSpawns);
+			expect(gameState.enemies.length).toBe(count);
+		});
+
+		it('does not spawn outside the playing phase', () => {
+			const run = startSurviveRun();
+			gameState.gamePhase = 'lobby';
+			updateSurviveSpawns(1_000_000);
+			expect(run.objective.spawnedEnemies).toBe(0);
+			expect(gameState.enemies.length).toBe(0);
+		});
+
+		it('does not spawn for non-survive runs', () => {
+			resetState();
+			gameState.selectedQuestId = DEFAULT_QUEST_ID;
+			gameState.gamePhase = 'playing';
+			gameState.enemies = [];
+			startDungeonRun();
+			updateSurviveSpawns(1_000_000);
+			expect(gameState.enemies.length).toBe(0);
 		});
 	});
 

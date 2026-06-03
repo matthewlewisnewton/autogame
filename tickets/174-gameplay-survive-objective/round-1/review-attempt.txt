@@ -1,0 +1,16 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): PASS** — `metrics.json` shows `"ok": true`, empty `pageerrors`, valid capture plan. Logs contain only benign noise (THREE deprecation, Vite ws ECONNRESET on shutdown). Screenshots render the scene/HUD/deck/combat cleanly.
+
+**Caveat noted in review:** the capture used the deterministic *fallback* smoke plan, which lands on the default `defeat_enemies` quest — so it doesn't itself exercise the new `survive` quest. The build's runtime health is still proven; the survive feature is verified via the live code + passing tests.
+
+**The feature is implemented correctly and tightly scoped** (quests.js, progression.js, index.js, questBoard.js, theme.json + tests):
+- New `endless_siege` survive quest, exposed normally on the quest board (no debug shortcut added).
+- Tick-driven `updateSurviveSpawns` releases one enemy per 3s, with the final `minibossCount` as minibosses; `spawnCombatEnemies` early-returns so it's the sole spawner.
+- Completion via `recordEnemyDefeated`/`isRunObjectiveComplete` branching on `survive`. Notably, `syncRunObjectiveToEnemies` correctly skips survive, so a transiently empty enemy list can't prematurely complete the run — a well-handled edge case.
+
+**Tests:** new server/client tests are thorough and pass. Full suite: 1651 passed / 1 failed — the lone failure is `account.test.js` email-uniqueness, a parallel filesystem race on the shared `users.json` (`ENOENT ... rename users.json.tmp`), unrelated to this ticket and **passing 10/10 in isolation**. Pre-existing infra flake, non-blocking.
+
+Wrote `review.md` (PASS) and `nits.md` (two non-blocking polish items: generic in-game HUD copy for survive; hardcoded objective label not themed). No `gaps.md` written, per PASS.

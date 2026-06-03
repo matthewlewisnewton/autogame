@@ -1,0 +1,12 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/174-gameplay-survive-objective/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/174-gameplay-survive-objective/game/data
+Server listening on port 3001
+Player connected: socket=gWSg0mPvKq2HWJ6sAAAB, playerId=6153af70-1f69-4c8b-92e0-679d25ea1e97
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=Nn-BPdgBf5qARp6KAAAD, playerId=f6f7c653-717a-45ba-a1a4-47521847eee1
+[loot] spawned id=b3a1c511-489c-406f-8d38-379b31440299 value=9
+Player disconnected: gWSg0mPvKq2HWJ6sAAAB
+Player disconnected: Nn-BPdgBf5qARp6KAAAD

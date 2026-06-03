@@ -22,6 +22,15 @@ const SAMPLE_QUESTS = [
 		itemCount: 3,
 		rewardCurrency: 12,
 	},
+	{
+		id: 'last_stand',
+		name: 'Last Stand',
+		description: 'Hold the line against the incoming swarm.',
+		objectiveType: 'survive',
+		totalSpawns: 10,
+		minibossCount: 2,
+		rewardCurrency: 15,
+	},
 ];
 
 describe('formatObjectiveSummary()', () => {
@@ -32,6 +41,12 @@ describe('formatObjectiveSummary()', () => {
 	it('summarizes collect-items quests as metadata-only', () => {
 		expect(formatObjectiveSummary(SAMPLE_QUESTS[1])).toBe(
 			'Recover 3 prisms',
+		);
+	});
+
+	it('summarizes survive quests with spawns and minibosses', () => {
+		expect(formatObjectiveSummary(SAMPLE_QUESTS[2])).toBe(
+			'Survive 10 hostiles (2 minibosses)',
 		);
 	});
 });
@@ -54,11 +69,14 @@ describe('renderQuestBoard()', () => {
 		renderQuestBoard(container, SAMPLE_QUESTS, 'crystal_rescue');
 
 		const cards = container.querySelectorAll('.quest-card');
-		expect(cards.length).toBe(2);
+		expect(cards.length).toBe(3);
 		expect(cards[1].classList.contains('selected')).toBe(true);
 		expect(cards[1].querySelector('.quest-name').textContent).toBe('Prism Salvage');
 		expect(cards[1].querySelector('.quest-objective').textContent).toContain('Recover 3 prisms');
 		expect(cards[1].querySelector('.quest-reward').textContent).toBe('Reward: 12 money');
+		expect(cards[2].querySelector('.quest-objective').textContent).toContain(
+			'Survive 10 hostiles (2 minibosses)',
+		);
 	});
 
 	it('invokes onSelectQuest when a card is clicked', () => {
