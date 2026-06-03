@@ -277,6 +277,7 @@ const {
   restoreHandCharges,
   spawnEnemy,
   spawnEnemies,
+  updateSurviveSpawns,
   spawnLoot,
   spawnCrystals,
   recordCrystalCollected,
@@ -1474,6 +1475,7 @@ function runGameLoopTick() {
         flushDirtyPlayerSaves();
         updateEnemies();
         updateMinions();
+        updateSurviveSpawns();
 
         const now = Date.now();
         processPassiveDraws(now);
@@ -3863,6 +3865,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnCrystals,
     spawnEnemy,
     spawnEnemies,
+    updateSurviveSpawns,
     firstRoomPosition,
     pickFloorSpawnPosition,
     buildPlayerRecord,
