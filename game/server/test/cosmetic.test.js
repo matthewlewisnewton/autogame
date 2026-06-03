@@ -7,24 +7,165 @@ import {
 	DEFAULT_COSMETIC,
 	DEFAULT_UNLOCKED_HATS,
 	HAT_CATALOG,
+	MODEL_IDS,
+	PROPORTION_KEYS,
+	PROPORTION_RANGES,
 	getHat,
 	validateCosmetic,
 	backfillCosmetic,
+	backfillProportions,
 	backfillUnlockedHats
 } from '../cosmetic.js';
 import { createUser, findUserByUsername, updateProfile, clearUsers, setTestFilePath } from '../users.js';
 
 describe('DEFAULT_COSMETIC', () => {
-	it('has the three cosmetic fields with valid defaults', () => {
-		expect(Object.keys(DEFAULT_COSMETIC).sort()).toEqual(['accentColor', 'bodyColor', 'bodyShape', 'hat']);
+	it('has the expected cosmetic fields with valid defaults', () => {
+		expect(Object.keys(DEFAULT_COSMETIC).sort()).toEqual(['accentColor', 'bodyColor', 'bodyShape', 'hat', 'modelId', 'proportions']);
 		expect(DEFAULT_COSMETIC.bodyColor).toMatch(/^#[0-9a-f]{6}$/i);
 		expect(DEFAULT_COSMETIC.accentColor).toMatch(/^#[0-9a-f]{6}$/i);
 		expect(BODY_SHAPES).toContain(DEFAULT_COSMETIC.bodyShape);
 		expect(DEFAULT_COSMETIC.hat).toBe('none');
+		expect(DEFAULT_COSMETIC.modelId).toBe('player');
+		expect(DEFAULT_COSMETIC.proportions).toBeDefined();
+		for (const key of PROPORTION_KEYS) {
+			expect(DEFAULT_COSMETIC.proportions[key]).toBe(1.0);
+		}
 	});
 
 	it('exposes the expected body shapes', () => {
 		expect(BODY_SHAPES).toEqual(['box', 'cylinder', 'cone', 'capsule']);
+	});
+});
+
+describe('MODEL_IDS', () => {
+	it('contains the default player model', () => {
+		expect(MODEL_IDS).toEqual(['player']);
+	});
+
+	it('membership check works for valid id', () => {
+		expect(MODEL_IDS.includes('player')).toBe(true);
+	});
+
+	it('rejects unknown model id', () => {
+		expect(MODEL_IDS.includes('unknown')).toBe(false);
+	});
+});
+
+describe('PROPORTION_KEYS', () => {
+	it('has exactly 6 keys', () => {
+		expect(PROPORTION_KEYS.length).toBe(6);
+	});
+
+	it('contains the expected keys in order', () => {
+		expect(PROPORTION_KEYS).toEqual(['height', 'headSize', 'torsoWidth', 'armLength', 'legLength', 'shoulderWidth']);
+	});
+});
+
+describe('PROPORTION_RANGES', () => {
+	it('has an entry for every PROPORTION_KEY', () => {
+		for (const key of PROPORTION_KEYS) {
+			expect(PROPORTION_RANGES[key]).toBeDefined();
+			expect(typeof PROPORTION_RANGES[key].min).toBe('number');
+			expect(typeof PROPORTION_RANGES[key].max).toBe('number');
+			expect(PROPORTION_RANGES[key].min).toBeLessThan(PROPORTION_RANGES[key].max);
+		}
+	});
+
+	it('has the correct bounds for height', () => {
+		expect(PROPORTION_RANGES.height).toEqual({ min: 0.8, max: 1.2 });
+	});
+
+	it('has the correct bounds for headSize', () => {
+		expect(PROPORTION_RANGES.headSize).toEqual({ min: 0.7, max: 1.3 });
+	});
+
+	it('has the correct bounds for torsoWidth', () => {
+		expect(PROPORTION_RANGES.torsoWidth).toEqual({ min: 0.7, max: 1.3 });
+	});
+
+	it('has the correct bounds for armLength', () => {
+		expect(PROPORTION_RANGES.armLength).toEqual({ min: 0.8, max: 1.2 });
+	});
+
+	it('has the correct bounds for legLength', () => {
+		expect(PROPORTION_RANGES.legLength).toEqual({ min: 0.8, max: 1.2 });
+	});
+
+	it('has the correct bounds for shoulderWidth', () => {
+		expect(PROPORTION_RANGES.shoulderWidth).toEqual({ min: 0.7, max: 1.3 });
+	});
+});
+
+describe('backfillProportions', () => {
+	it('returns all 1.0 for undefined input', () => {
+		const result = backfillProportions(undefined);
+		for (const key of PROPORTION_KEYS) {
+			expect(result[key]).toBe(1.0);
+		}
+	});
+
+	it('returns all 1.0 for null input', () => {
+		const result = backfillProportions(null);
+		for (const key of PROPORTION_KEYS) {
+			expect(result[key]).toBe(1.0);
+		}
+	});
+
+	it('preserves valid proportion values', () => {
+		const result = backfillProportions({ height: 1.1, headSize: 0.9 });
+		expect(result.height).toBe(1.1);
+		expect(result.headSize).toBe(0.9);
+		// missing keys filled with 1.0
+		expect(result.torsoWidth).toBe(1.0);
+	});
+
+	it('clamps out-of-range values to bounds', () => {
+		const result = backfillProportions({ height: 0.5, headSize: 2.0 });
+		expect(result.height).toBe(PROPORTION_RANGES.height.min);
+		expect(result.headSize).toBe(PROPORTION_RANGES.headSize.max);
+	});
+
+	it('fills missing keys with 1.0 even when some keys are present', () => {
+		const result = backfillProportions({ shoulderWidth: 1.2 });
+		expect(result.shoulderWidth).toBe(1.2);
+		expect(result.height).toBe(1.0);
+		expect(result.legLength).toBe(1.0);
+	});
+});
+
+describe('backfillCosmetic with modelId and proportions', () => {
+	it('returns defaults for undefined input including modelId and proportions', () => {
+		const result = backfillCosmetic(undefined);
+		expect(result.modelId).toBe('player');
+		expect(result.proportions).toEqual(DEFAULT_COSMETIC.proportions);
+	});
+
+	it('preserves valid modelId', () => {
+		const result = backfillCosmetic({ modelId: 'player' });
+		expect(result.modelId).toBe('player');
+	});
+
+	it('falls back to default modelId for unknown value', () => {
+		const result = backfillCosmetic({ modelId: 'unknown' });
+		expect(result.modelId).toBe('player');
+	});
+
+	it('backfills proportions when missing', () => {
+		const result = backfillCosmetic({});
+		for (const key of PROPORTION_KEYS) {
+			expect(result.proportions[key]).toBe(1.0);
+		}
+	});
+
+	it('preserves valid partial proportions and fills rest', () => {
+		const result = backfillCosmetic({ proportions: { height: 1.15 } });
+		expect(result.proportions.height).toBe(1.15);
+		expect(result.proportions.headSize).toBe(1.0);
+	});
+
+	it('clamps out-of-range proportion values', () => {
+		const result = backfillCosmetic({ proportions: { height: 0.1 } });
+		expect(result.proportions.height).toBe(PROPORTION_RANGES.height.min);
 	});
 });
 
@@ -66,6 +207,46 @@ describe('validateCosmetic', () => {
 		expect(validateCosmetic(null).ok).toBe(false);
 		expect(validateCosmetic('box').ok).toBe(false);
 		expect(validateCosmetic([]).ok).toBe(false);
+	});
+
+	it('accepts a valid modelId', () => {
+		const result = validateCosmetic({ modelId: 'player' });
+		expect(result.ok).toBe(true);
+		expect(result.value.modelId).toBe('player');
+	});
+
+	it('rejects an unknown modelId', () => {
+		const result = validateCosmetic({ modelId: 'unknown' });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/modelId/);
+	});
+
+	it('accepts valid proportions', () => {
+		const result = validateCosmetic({ proportions: { height: 1.0, headSize: 0.9 } });
+		expect(result.ok).toBe(true);
+		expect(result.value.proportions).toEqual({ height: 1.0, headSize: 0.9 });
+	});
+
+	it('rejects proportions with unknown key', () => {
+		const result = validateCosmetic({ proportions: { bogus: 1.0 } });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/Unknown proportion key/);
+	});
+
+	it('rejects proportions with out-of-range value', () => {
+		const result = validateCosmetic({ proportions: { height: 0.1 } });
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/between/);
+	});
+
+	it('rejects proportions with non-number value', () => {
+		expect(validateCosmetic({ proportions: { height: 'tall' } }).ok).toBe(false);
+	});
+
+	it('rejects proportions that is not an object', () => {
+		expect(validateCosmetic({ proportions: null }).ok).toBe(false);
+		expect(validateCosmetic({ proportions: [] }).ok).toBe(false);
+		expect(validateCosmetic({ proportions: 'nope' }).ok).toBe(false);
 	});
 });
 

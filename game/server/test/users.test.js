@@ -197,7 +197,7 @@ describe('cosmetic profile', () => {
 	it('applies a default cosmetic at account creation', () => {
 		createUser('cosmo', 'pass');
 		const user = findUserByUsername('cosmo');
-		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none' });
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } });
 	});
 
 	it('partial cosmetic update merges only provided fields', () => {
@@ -252,7 +252,7 @@ describe('cosmetic profile', () => {
 		loadUsers();
 
 		const user = findUserByUsername('legacy');
-		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none' });
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } });
 	});
 
 	it('backfills only the missing sub-fields on a partial legacy cosmetic', () => {
