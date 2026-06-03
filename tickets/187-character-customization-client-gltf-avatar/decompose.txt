@@ -1,0 +1,9 @@
+Created 2 sub-tickets that together deliver ticket 187 (glTF avatar render with proportion morphs, color tint, and procedural fallback).
+
+**Decomposition rationale:** The work is one cohesive renderer feature, but splits cleanly along the model-swap boundary. Sub-ticket 01 makes the glTF model load, seat, orient, and replace the procedural primitive *while keeping VFX alive* (the swap hides `userData.bodyMesh`, so flash/invuln/dash/dead must be retargeted — bundling this with the swap avoids shipping a VFX-regressed intermediate). Sub-ticket 02 then layers the cosmetic data (six 1:1-named morph influences + body/accent tint) onto the now-loaded skinned mesh. Both depend on the existing `loadModel`/`attachRegistryModel` infra and the already-shipped server `proportions{}` broadcast.
+
+Both are `## Verification: code` — neither is purely visual: 01 hinges on registry value, footprint/seating logic, fallback path, and VFX retargeting; 02 on exact morph-name mapping, tint logic, live re-application, and no-op fallback guards.
+
+Sub-ticket folders created:
+- `/home/matt/workspace/.autogame-worktrees/187-character-customization-client-gltf-avatar/tickets/187-character-customization-client-gltf-avatar/subtickets/01-load-render-gltf-player/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/187-character-customization-client-gltf-avatar/tickets/187-character-customization-client-gltf-avatar/subtickets/02-proportions-morphs-and-tint/ticket.md`

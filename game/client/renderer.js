@@ -283,6 +283,13 @@ export function getRegistryTargetFootprint(key) {
 		return { targetHeight };
 	}
 
+	// Player avatar — normalize the glTF humanoid to the spike contract height
+	// (~1.8 world units, feet at y=0, footprint within PLAYER_RADIUS = 0.5).
+	// See game/docs/MODEL_SPIKE.md.
+	if (key === 'player') {
+		return { targetHeight: PLAYER_MODEL_HEIGHT };
+	}
+
 	return null;
 }
 
@@ -299,6 +306,12 @@ export function getRegistryHostVerticalOffset(key) {
 	}
 	if (MINION_VISUAL[key]) {
 		return 0.5;
+	}
+	// Player avatar host group is positioned with its origin at floor y (see the
+	// (x, floorY, z) placement in the render loop), and the model is normalized
+	// with feet at local y=0 — so no extra offset is needed to seat the soles.
+	if (key === 'player') {
+		return 0;
 	}
 	return 0;
 }
@@ -365,10 +378,65 @@ function attachRegistryModel(key, host) {
 			for (const node of procedural) node.material.visible = false;
 			host.add(model);
 			host.userData.modelOverride = model;
+
+			// Player: retarget the VFX body mesh to the loaded skinned mesh so
+			// flash / dead recolor / invuln shimmer / dash all act on the visible
+			// glTF model instead of the now-hidden procedural primitive.
+			if (key === 'player') retargetPlayerBodyMesh(host, model);
 		})
 		.catch((err) => {
 			console.warn(`[renderer] failed to apply model "${path}" for "${key}":`, err);
 		});
+}
+
+/**
+ * Locate the skinned body mesh inside a loaded player glTF — preferring the mesh
+ * carrying morph targets (e.g. `SuperHero_Male`), then any `SkinnedMesh`, then
+ * any mesh — so proportion morphs (sub-ticket 02/04) and runtime tint land on
+ * the right surface.
+ * @param {THREE.Object3D} model
+ * @returns {THREE.Mesh|null}
+ */
+function findPlayerBodyMesh(model) {
+	let morphed = null;
+	let skinned = null;
+	let anyMesh = null;
+	model.traverse((node) => {
+		if (!node.isMesh || !node.material) return;
+		if (!anyMesh) anyMesh = node;
+		if (node.isSkinnedMesh && !skinned) skinned = node;
+		if (node.morphTargetDictionary && !morphed) morphed = node;
+	});
+	return morphed || skinned || anyMesh;
+}
+
+/**
+ * Point an avatar host's `userData.bodyMesh` (and `baseColor`) at the loaded
+ * glTF body mesh so the existing `resolveBodyMesh`-based VFX keep working after
+ * the model swap. The body material is cloned so per-player recolor (dead /
+ * flash / invuln) does not bleed across players sharing the cloned glTF.
+ * @param {THREE.Object3D} host
+ * @param {THREE.Object3D} model
+ */
+function retargetPlayerBodyMesh(host, model) {
+	const bodyMesh = findPlayerBodyMesh(model);
+	if (!bodyMesh) return;
+
+	// clone(true) shares materials across player instances; give this avatar its
+	// own material so VFX recolors only affect this player.
+	if (bodyMesh.material) {
+		bodyMesh.material = Array.isArray(bodyMesh.material)
+			? bodyMesh.material.map((m) => m.clone())
+			: bodyMesh.material.clone();
+	}
+
+	host.userData.bodyMesh = bodyMesh;
+	// baseColor must match the loaded mesh so the dead/invuln recolor restores
+	// the model's own color (not the hidden procedural body's color).
+	const mat = Array.isArray(bodyMesh.material) ? bodyMesh.material[0] : bodyMesh.material;
+	if (mat && mat.color && mat.color.getHex) {
+		host.userData.baseColor = mat.color.getHex();
+	}
 }
 
 function createMinionMesh(minionType) {
@@ -1139,6 +1207,10 @@ export function updateMyPlayer(delta) {
 const DEFAULT_AVATAR_BODY_COLOR = 0x4f9dde;
 const DEFAULT_AVATAR_ACCENT_COLOR = 0xf2c94c;
 const DEAD_AVATAR_COLOR = 0x808080;
+
+// Standing height (world units) the glTF player avatar is normalized to. Matches
+// the spike contract in game/docs/MODEL_SPIKE.md (1.8, feet at y=0).
+const PLAYER_MODEL_HEIGHT = 1.8;
 
 // Body-shape vocabulary, kept in sync with the server's BODY_SHAPES.
 const AVATAR_BODY_SHAPES = new Set(['box', 'cylinder', 'cone', 'capsule']);

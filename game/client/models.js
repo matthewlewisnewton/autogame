@@ -18,7 +18,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 // createLootMesh (loot kinds), and the player. Null means procedural-only.
 export const MODEL_REGISTRY = {
 	// Player avatar
-	player: null,
+	player: '/models/player.glb',
 
 	// Enemy types (renderer.js ENEMY_GEOMETRY)
 	grunt: '/models/grunt.glb',

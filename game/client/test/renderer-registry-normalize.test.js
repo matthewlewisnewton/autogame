@@ -25,8 +25,11 @@ describe('getRegistryTargetFootprint()', () => {
 		expect(getRegistryTargetFootprint('null_crawler')).toEqual({ targetHeight: 0.7 });
 	});
 
+	it('normalizes the player avatar to the ~1.8 spike-contract height', () => {
+		expect(getRegistryTargetFootprint('player')).toEqual({ targetHeight: 1.8 });
+	});
+
 	it('returns null for keys without geometry tables', () => {
-		expect(getRegistryTargetFootprint('player')).toBeNull();
 		expect(getRegistryTargetFootprint('magic_stone')).toBeNull();
 	});
 });
