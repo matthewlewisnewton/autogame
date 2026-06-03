@@ -19,6 +19,7 @@
     "test:smoke:summon-combat": "node client/scripts/test-summon-combat.mjs",
     "test:smoke:summon-recall": "node client/scripts/test-summon-recall.mjs",
     "test:smoke:wyrm-breath": "node client/scripts/test-wyrm-breath.mjs",
+    "test:smoke:quest-completion": "node client/scripts/test-quest-completion.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },
   "keywords": [],
