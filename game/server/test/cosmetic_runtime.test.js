@@ -12,7 +12,7 @@ import {
 	server as httpServer,
 	clearAllTimers,
 } from '../index.js';
-import { DEFAULT_COSMETIC } from '../cosmetic.js';
+import { DEFAULT_COSMETIC, PROPORTION_KEYS } from '../cosmetic.js';
 import { clearUsers, setTestFilePath } from '../users.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import { clearAllSettings, resetSettingsPath } from '../settings.js';
@@ -22,7 +22,14 @@ import { clearAllSettings, resetSettingsPath } from '../settings.js';
 // seeded through the real HTTP register/profile routes (the same instance the
 // server uses) rather than by importing the users module directly.
 
-const customCosmetic = { bodyColor: '#112233', accentColor: '#445566', bodyShape: 'cone', hat: 'none' };
+const customCosmetic = {
+	bodyColor: '#112233',
+	accentColor: '#445566',
+	bodyShape: 'cone',
+	hat: 'none',
+	modelId: 'player',
+	proportions: { height: 1.1, headSize: 0.9, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 }
+};
 
 async function startTestServer() {
 	if (httpServer.listening) {
@@ -131,7 +138,7 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		const snapshot = stateSnapshot();
 		expect(snapshot.players['p3'].cosmetic).toEqual(customCosmetic);
 		expect(Object.keys(snapshot.players['p3'].cosmetic).sort()).toEqual(
-			['accentColor', 'bodyColor', 'bodyShape', 'hat']
+			['accentColor', 'bodyColor', 'bodyShape', 'hat', 'modelId', 'proportions']
 		);
 	});
 

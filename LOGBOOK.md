@@ -2656,6 +2656,144 @@ None blocking. Runtime capture is clean; all top-level acceptance criteria are i
 ---
 
 
+## v0.153 — 190-character-hats-asset-starter-hats  (2026-06-03 02:12:55)
+
+  base at the group origin; visually distinct snug dome. ✅
+- `buildHatMesh` still returns `null` for `none`/unknown; cap/wizard/crown cases unchanged. ✅
+- `cosmeticSignature` keys off `AVATAR_HAT_IDS`, so the new ids yield distinct signatures and
+  trigger avatar rebuilds (line 1301). Seating uses the unchanged `bodyTopY(shape)` at the
+  call site (line 1349); the new meshes seat exactly like existing hats and dispose through
+  the existing traversal. ✅
+
+## Integration
+- Server `HAT_CATALOG` ids and client `AVATAR_HAT_IDS` agree on the two new ids. ✅
+- No debug scenarios added or changed by this ticket.
+- `pnpm test` (from `game/`): **68 files, 1548 tests, all passing.**
+
+The visual capture uses the default `none` hat, so the new hats do not appear on screen —
+expected and called out by the decomposer; this is a code-verification ticket and the logic
+is exercised by unit tests.
+
+## Remaining gaps
+None. Both sub-tickets are fully and robustly implemented, tests pass, and the captured run
+is clean.
+
+
+## v0.154 — Cleanup nits from 119-key-item-input-bindings-and-settings  (2026-06-03 02:24:49)
+
+  other than `missing_key_item_id`."** — MET, proven by capture. The dodge probe
+  shows `equippedKeyItemId: "dodge_roll"`, the dodge executed (player moved
+  -9,9 → -10.9,-9.6), and the cooldown engaged afterward
+  (`keyItemCooldownRemaining: 359`, HUD indicator "0.4", then "0.1"), with no
+  rejection error in the console. The server clearly received a valid
+  `{ keyItemId }`.
+
+## Code quality
+
+- The new branch is small, readable, and matches surrounding style. No dead code,
+  no console errors, no leftover debug paths. No new `?debugScenario` shortcuts
+  were introduced (`debugScenario: null`, `debugScenarioAllowed: true` in probes).
+- Consistent with `design.md`: profile-aware control glyphs are exactly the
+  intent of the gamepad-profiles abstraction; no foundation regression.
+
+## Remaining gaps
+
+None. Both acceptance criteria are fully and robustly met, the unit suite passes,
+and the captured run is healthy.
+
+
+## v0.155 — Cleanup nits from 120-key-item-lobby-equip-ui  (2026-06-03 02:58:57)
+
+`#key-item-list .key-item-entry.equipped` present before screenshotting the
+`#key-item-loadout` panel to `docs/walkthroughs/keyitems-capture/`. Wired as
+`test:smoke:keyitems` in `game/package.json`.
+
+The equipped-row assertion is sound: `renderKeyItemList` (main.js:2388) adds the
+`equipped` class to the entry matching `me.equippedKeyItemId`
+(main.js:2409), and the default loadout equips `dodge_roll` (confirmed by the
+metrics probe: `"equippedKeyItemId": "dodge_roll"`). The script has a graceful
+diagnostic fallback that dumps panel state on timeout.
+
+Note: round-1's own verification capture used the deterministic fallback smoke
+(lobby → movement → dodge), not this new script, so the round-1 screenshots are
+gameplay rather than the Key Items panel. That does not fail AC2 — the AC asks
+for a *scripted capture* deliverable, which is present, correct, and wired in.
+
+## Remaining gaps
+
+None. Both acceptance criteria are met, the game runs cleanly, and the full unit
+suite passes. Production game code is untouched.
+
+
+## v0.156 — Cleanup nits from 142-cleanup-sloped-floor-layout-and-geometry  (2026-06-03 03:17:31)
+
+  flat layouts render unchanged. The pre-existing flat-layout tests still pass.
+- New test `positions passage wall Y on sloped rooms using sampleFloorY`
+  (`game/client/test/dungeon.test.js:274+`) builds a Z-sloped room with a passage
+  whose four side walls sit at distinct sloped heights and asserts each mesh
+  `position.y === resolveFloorY(sampleFloorY(...)) + PASSAGE_WALL_HEIGHT / 2`.
+  `PASSAGE_WALL_HEIGHT` is exported (`dungeon.js:22`) for the test.
+- `pnpm test client/test/dungeon.test.js`: **31 passed**. (The printed coverage
+  "threshold" errors come from running a single file against the global 70%
+  threshold — visibility only, not a failure of this ticket.)
+
+## Consistency
+Consistent with `design.md` sloped-floor handling; brings passage walls into line
+with the already-sloped room walls and cover meshes. No regression to flat
+corridors. No new debug scenarios added (the `sloped-dungeon` scenario predates
+this ticket).
+
+## Remaining gaps
+None. The change is minimal, correct, matches existing conventions, is covered by
+a new mirroring unit test, and the captured run is clean.
+
+
+## v0.157 — Key Item: Rally Cry  (2026-06-03 03:47:31)
+
+- Normal path still reachable: the scenario only equips `rally_cry` with a
+  cleared cooldown — exactly the state a player reaches by equipping the Rally
+  Cry key item in the lobby and entering a run.
+- No invariants bypassed: the scenario does not cast the buff itself; casting
+  still flows through the normal `useKeyItem` handler, which enforces
+  dead/extracted/cooldown checks and net-replicates via `stateUpdate`.
+
+## Consistency / regressions
+The change is additive and follows the established per-key-item pattern in the
+`useKeyItem` handler (cooldown gate → per-item block → `stateUpdate` broadcast).
+New fields `rallyUntil`/`rallySpeedMultiplier` are initialized in both
+`buildPlayerRecord` and `initializePlayerForActiveRun`, so they reset correctly
+on new runs. No existing behavior is altered beyond the guard_block movement
+line, which now composes the rally multiplier (verified by test). No design.md
+or requirements.md regression.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the acceptance
+criteria, the game runs cleanly, and the tests are thorough and pass.
+
+
+## v0.158 — 186-character-customization-server-model-fields  (2026-06-03 04:14:40)
+
+`game/server/cosmetic.js` adds `MODEL_IDS = ['player']`, `PROPORTION_KEYS` (the exact six contract keys: height, headSize, torsoWidth, armLength, legLength, shoulderWidth), and `PROPORTION_RANGES`. `DEFAULT_COSMETIC` now carries `modelId: 'player'` and `proportions` initialized to 1.0 for every key. Key names match the canonical contract in `MODEL_SPIKE.md` verbatim, so server fields will line up 1:1 with glTF morph targets and client slider ids.
+
+**2. Server validates/clamps proportion ranges and modelId allowlist.** ✅
+`validateCosmetic()` rejects unknown proportion keys (`Unknown proportion key: …`), rejects non-numbers/NaN, rejects out-of-range values against `PROPORTION_RANGES`, and rejects any `modelId` not in `MODEL_IDS`. On the load/backfill path, `backfillProportions()` clamps each value into range rather than rejecting — so legacy/out-of-range stored data is repaired, while live PATCH input is strictly validated. Both "validate" and "clamp" behaviors are present and appropriate to their context.
+
+**3. Fields persisted and included in the stateUpdate snapshot.** ✅
+`updateProfile()` (`game/server/users.js`) deep-merges `proportions` so a partial update (e.g. `{ height: 1.1 }`) no longer erases sibling keys — covered by a new test. The full `cosmetic` blob (now containing `modelId` + `proportions`) is replicated in `stateSnapshot()` at `game/server/progression.js:3184`. `cosmetic_runtime.test.js` explicitly asserts the snapshot player cosmetic equals the custom value and that its keys include `modelId` and `proportions`.
+
+**4. Defaults applied to existing accounts.** ✅
+`backfillCosmetic()` fills `modelId` (allowlist-checked) and a complete `proportions` object on load. `users.test.js` verifies both fresh-account creation and legacy-record load produce the full default cosmetic including the new fields; partial-legacy backfill only fills the missing sub-fields.
+
+## Design consistency
+Consistent with the canonical model contract (`MODEL_SPIKE.md`): the six proportion keys are used verbatim and `modelId` defaults to `"player"`. As a bonus aligned with the downstream client tickets (187/188), `GET /api/me` now also exposes `modelIds` and `proportionConfig: { keys, ranges }` so the client can build sliders from the server's source of truth. No foundation regression — existing cosmetic/snapshot/persistence behavior is preserved and all prior tests still pass.
+
+## Debug scenarios
+This ticket adds no `?debugScenario=` shortcuts. (The pre-existing `cosmetic`-distinctive scenario in `index.js` is untouched.) N/A.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies all acceptance criteria, the captured run is clean, and unit coverage for validation, deep-merge, persistence, backfill, API exposure, and snapshot replication is thorough.
+
+
 ## v0.159 — Cleanup nits from 139-harness-misclassifies-pageerror  (2026-06-03 04:15:09)
 
 `{"ok": false, "error": "servers did not start"}`. `game_smoke_ok` still reads

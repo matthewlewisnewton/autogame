@@ -1,0 +1,11 @@
+**VERDICT: PASS**
+
+This is a clean cleanup ticket with no blocking gaps and no nits worth filing — so no `gaps.md` or `nits.md` was written.
+
+Summary of findings:
+
+- **Runtime health** — `metrics.json` is `ok: true` with an empty `pageerrors` array and no `harness_failure`; `console.log` shows only benign vite/initScene lines; the unit suite is `141 passed (141)`. The game starts and loads cleanly.
+- **AC1 (lobby tab test)** — `main.test.js` now drives `setLobbyTab('keyitems')` and asserts `#key-item-loadout` visible, sibling panels hidden, and `#lobby-tab-keyitems` active (plus a reverse assertion on switching back to `deck`). Verified against live `setLobbyTab` wiring; the test is green.
+- **AC2 (capture)** — new `test-keyitems-capture.mjs` opens the Key Items tab, waits for an `.equipped` row (default `dodge_roll`, confirmed by the metrics probe), and screenshots the panel; wired as `test:smoke:keyitems` in `package.json`.
+
+The diff is test/tooling-only — no production game code changed, so no gameplay regression risk.

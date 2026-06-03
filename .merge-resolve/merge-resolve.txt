@@ -1,5 +1,9 @@
 Both conflicts resolved, no markers remain.
 
-**TASKS.md** — main marked `145` complete; the branch marked `146` complete. Kept both as `[x]` and used main's ordering (145 before 146).
+**LOGBOOK.md** — Both sides appended new completion entries. Kept all of main's (`v0.153`–`v0.158`) and the branch's (`v0.159`), ordering `v0.159` last to preserve the "appended newest-last" version-monotonic convention.
 
-**LOGBOOK.md** — both sides appended a new entry. Main added `v0.151` (sloped-movement cleanup); the branch added `v0.152` (this ticket's key-item cleanup). Kept both in version order — `v0.151` then `v0.152` — preserving each entry's full content.
+**TASKS.md** — Two conflicts:
+1. Status flags: main marked `143` done, the branch marked `144` (this ticket) done. Kept both as `[x]` so neither completion is lost.
+2. Backlog tail: both sides added a different `200-…` entry. Kept both as separate backlog items.
+
+No unrelated changes; both files are marker-free and consistent.

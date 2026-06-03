@@ -312,7 +312,9 @@ function applyPlayerMovement() {
     if (mag > 1) { dx /= mag; dz /= mag; }
 
     // Slow movement to 20% while guard_block is active
-    const playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+    let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+    // rally_cry: boost move speed while the buff is active
+    if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
 
     const prevX = player.x;
     const prevZ = player.z;

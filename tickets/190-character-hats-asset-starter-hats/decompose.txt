@@ -1,0 +1,12 @@
+Created 2 sub-tickets.
+
+**Note on the top-level ticket:** `tickets/190-character-hats-asset-starter-hats/ticket.md` is **empty/missing** (only an empty `decompose.txt` and a `log.txt` exist) — the ticket content never materialized. I reconstructed intent from the slug `character-hats-asset-starter-hats` and the existing code: ticket 189 already shipped (and committed at base `a19db40`) the full hat pipeline — catalog (`none`/`cap`/`wizard`/`crown`), unlock-with-currency, and renderer meshes. The remaining gap implied by "**starter** hats" is a set of **free, default-owned** hats plus their render assets. That's what these sub-tickets deliver.
+
+Sub-ticket folders created:
+
+- `tickets/190-character-hats-asset-starter-hats/subtickets/01-starter-hats-catalog-defaults/ticket.md` — server: add free `bandana`/`beanie` hats (price 0) to `HAT_CATALOG`, put them in `DEFAULT_UNLOCKED_HATS`, backfill onto legacy accounts, + tests. **Verification: code.**
+- `tickets/190-character-hats-asset-starter-hats/subtickets/02-starter-hats-render-meshes/ticket.md` — client: add distinct procedural meshes + colors for the two starter hats in `renderer.js` (`AVATAR_HAT_IDS` + `buildHatMesh`). **Verification: code.**
+
+Both are `code` (not `visual`): the happy-path visual run uses the default `none` hat, so the new hats never appear on screen — every criterion is about catalog/default-set structure and mesh-building logic, which only diff+log QA can check. Order is dependency-correct (server defines the ids; client renders them).
+
+If my reconstructed scope is wrong (e.g. you intended external GLTF asset files rather than the project's procedural-geometry convention, or a different starter-hat list), let me know and I'll re-decompose.

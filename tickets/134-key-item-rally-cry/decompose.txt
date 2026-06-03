@@ -1,0 +1,5 @@
+Created one sub-ticket. The whole feature — defining the buff, applying it party-wide on `useKeyItem`, consuming it in the movement tick, and the tests — is a single cohesive server-side pass, all verifiable from the diff/logs (state fields, timing, rate, cooldown error path), so it's `code` QA.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/134-key-item-rally-cry/tickets/134-key-item-rally-cry/subtickets/01-rally-cry-party-speed-buff/ticket.md`

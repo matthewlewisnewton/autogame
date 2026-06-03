@@ -14,6 +14,7 @@ import {
 import { clearUsers, setTestFilePath } from '../users.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import { clearAllSettings, resetSettingsPath } from '../settings.js';
+import { PROPORTION_KEYS, PROPORTION_RANGES } from '../cosmetic.js';
 
 async function startTestServer() {
 	if (httpServer.listening) {
@@ -111,12 +112,36 @@ describe('GET /api/me', () => {
 		expect(data.settings.soundEnabled).toBe(true);
 		expect(data.settings.showHitboxes).toBe(true);
 		expect(data.email).toBeNull();
-		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none' });
+		expect(data.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } });
 	});
 
 	it('returns 401 without token', async () => {
 		const res = await fetch(`${baseUrl}/api/me`);
 		expect(res.status).toBe(401);
+	});
+
+	it('returns modelIds array containing player model', async () => {
+		const token = await registerAndLogin('modelUser', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.modelIds).toBeDefined();
+		expect(Array.isArray(data.modelIds)).toBe(true);
+		expect(data.modelIds).toContain('player');
+	});
+
+	it('returns proportionConfig with keys and ranges', async () => {
+		const token = await registerAndLogin('propUser', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.proportionConfig).toBeDefined();
+		expect(data.proportionConfig.keys).toEqual(PROPORTION_KEYS);
+		for (const key of PROPORTION_KEYS) {
+			expect(data.proportionConfig.ranges[key]).toEqual(PROPORTION_RANGES[key]);
+		}
 	});
 });
 
@@ -210,5 +235,27 @@ describe('PATCH /api/me/profile', () => {
 			body: JSON.stringify({ cosmetic: { bodyShape: 'pyramid' } })
 		});
 		expect(res.status).toBe(400);
+	});
+
+	it('updates cosmetic modelId and proportions and persists correctly', async () => {
+		const token = await registerAndLogin('cosmo3', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: { modelId: 'player', proportions: { height: 1.1 } } })
+		});
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.cosmetic.modelId).toBe('player');
+		expect(data.cosmetic.proportions.height).toBe(1.1);
+		// Other proportions remain at default.
+		expect(data.cosmetic.proportions.headSize).toBe(1.0);
+
+		// Verify it is reflected on subsequent GET /me.
+		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const me = await meRes.json();
+		expect(me.cosmetic.modelId).toBe('player');
+		expect(me.cosmetic.proportions.height).toBe(1.1);
 	});
 });

@@ -197,7 +197,7 @@ describe('cosmetic profile', () => {
 	it('applies a default cosmetic at account creation', () => {
 		createUser('cosmo', 'pass');
 		const user = findUserByUsername('cosmo');
-		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none' });
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } });
 	});
 
 	it('partial cosmetic update merges only provided fields', () => {
@@ -210,6 +210,29 @@ describe('cosmetic profile', () => {
 		expect(user.cosmetic.bodyShape).toBe('cone');
 		expect(user.cosmetic.bodyColor).toBe('#4f9dde');
 		expect(user.cosmetic.accentColor).toBe('#f2c94c');
+	});
+
+	it('partial proportions update deep-merges and preserves other proportion keys', () => {
+		createUser('propuser', 'pass');
+		const id = findUserByUsername('propuser').accountId;
+
+		// First set a non-default armLength so we have something to preserve.
+		updateProfile(id, { cosmetic: { proportions: { armLength: 1.1, legLength: 0.9 } } });
+		let user = findUserByAccountId(id);
+		expect(user.cosmetic.proportions.armLength).toBe(1.1);
+		expect(user.cosmetic.proportions.legLength).toBe(0.9);
+		expect(user.cosmetic.proportions.height).toBe(1.0);
+
+		// Now only update height — armLength and legLength must survive.
+		const res = updateProfile(id, { cosmetic: { proportions: { height: 1.15 } } });
+		expect(res.ok).toBe(true);
+		user = findUserByAccountId(id);
+		expect(user.cosmetic.proportions.height).toBe(1.15);
+		expect(user.cosmetic.proportions.armLength).toBe(1.1);
+		expect(user.cosmetic.proportions.legLength).toBe(0.9);
+		expect(user.cosmetic.proportions.headSize).toBe(1.0);
+		expect(user.cosmetic.proportions.torsoWidth).toBe(1.0);
+		expect(user.cosmetic.proportions.shoulderWidth).toBe(1.0);
 	});
 
 	it('rejects an invalid bodyShape without mutating or persisting', () => {
@@ -252,7 +275,7 @@ describe('cosmetic profile', () => {
 		loadUsers();
 
 		const user = findUserByUsername('legacy');
-		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none' });
+		expect(user.cosmetic).toEqual({ bodyColor: '#4f9dde', accentColor: '#f2c94c', bodyShape: 'box', hat: 'none', modelId: 'player', proportions: { height: 1.0, headSize: 1.0, torsoWidth: 1.0, armLength: 1.0, legLength: 1.0, shoulderWidth: 1.0 } });
 	});
 
 	it('backfills only the missing sub-fields on a partial legacy cosmetic', () => {

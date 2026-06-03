@@ -1,0 +1,9 @@
+**VERDICT: PASS**
+
+The ticket is a single cleanup nit and it's correctly resolved:
+
+- **Runtime health:** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` has no fatal/pageerror lines. The captured run reached `phase: "playing"` for both players and exercised the `sloped-dungeon` scenario successfully.
+- **Acceptance criterion met:** Passage side walls (`game/client/dungeon.js:323-325`) now position with `resolveFloorY(sampleFloorY(layout, wallX, wallZ)) + PASSAGE_WALL_HEIGHT / 2`, matching the room-wall/cover-mesh pattern. Flat corridors are unchanged (default band → `FLOOR_Y`). A new mirroring unit test covers four walls at distinct sloped heights; `PASSAGE_WALL_HEIGHT` is exported for it.
+- **Tests:** 31/31 pass. (Coverage threshold errors are just an artifact of running one file against the global 70% gate — visibility only.)
+
+No blocking gaps and no nits worth filing, so I did not write `gaps.md` or `nits.md`. Review written to `round-1/review.md`.

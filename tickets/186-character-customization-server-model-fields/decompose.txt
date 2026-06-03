@@ -1,0 +1,20 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 4 sub-tickets:
+
+```
+tickets/186-character-customization-server-model-fields/subtickets/01-schema-modelId-proportions/ticket.md
+tickets/186-character-customization-server-model-fields/subtickets/02-validation-backfill/ticket.md
+tickets/186-character-customization-server-model-fields/subtickets/03-storage-integration/ticket.md
+tickets/186-character-customization-server-model-fields/subtickets/04-profile-api-exposure/ticket.md
+```
+
+**Decomposition summary:**
+
+| # | Sub-ticket | Scope |
+|---|-----------|-------|
+| 01 | `schema-modelId-proportions` | Add `MODEL_IDS`, `PROPORTION_KEYS`, `PROPORTION_RANGES` constants; extend `DEFAULT_COSMETIC`; add `backfillProportions()` helper |
+| 02 | `validation-backfill` | Extend `validateCosmetic()` for modelId membership and proportions bounds; clamp in `backfillCosmetic()` |
+| 03 | `storage-integration` | Deep-merge proportions in `updateProfile()`; verify `createUser` and `loadUsers` backfill |
+| 04 | `profile-api-exposure` | Add `modelIds` and `proportionConfig` to `GET /api/me` response |
+
+All sub-tickets are `code` verification (unit-test verifiable, no visual rendering changes).

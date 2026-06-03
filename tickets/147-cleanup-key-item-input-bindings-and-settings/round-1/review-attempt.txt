@@ -1,0 +1,13 @@
+Review complete — **VERDICT: PASS**.
+
+## Summary
+
+**Runtime health:** clean. `metrics.json` shows `"ok": true`, `pageerrors: []`, two connected players in `playing` phase, scene initialized. No `pageerror`/`[fatal]` lines in `console.log` (only a benign vite connect message and a 409 idempotency conflict).
+
+**Both ACs met:**
+
+1. **Profile-aware gamepad hint** — `getUseKeyItemBinding()` (`input.js:433-439`) now branches on `is8BitDo64HandHintsActive()` and resolves index 13 to "Stick click" on the 8BitDo profile vs "D-pad Down" on standard. Unit test covers it; full suite passes 32/32.
+
+2. **`useKeyItem` emits `{ keyItemId }`** — `main.js:741-755` emits the equipped item id (and the targeted `phase_step` variant), skipping when nothing's equipped. This was already resolved before the baseline, so it's correctly absent from the diff per the ticket's staleness note. The capture proves the behavior: dodge fired (`equippedKeyItemId: "dodge_roll"`, player moved), cooldown engaged afterward (`keyItemCooldownRemaining: 359`, HUD "0.4").
+
+No blocking gaps, no nits worth filing — so no `gaps.md` or `nits.md` written. Clean, small, in-style change with no new debug shortcuts.

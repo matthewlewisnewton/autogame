@@ -1,0 +1,15 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate): passed.** `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` is clean (only benign Vite/initScene logs). I re-ran the four relevant server suites locally — **108 tests pass, 0 fail**.
+
+**All four acceptance criteria fully met:**
+1. **Schema** — `cosmetic.js` adds `MODEL_IDS`, the exact six contract proportion keys, ranges, and extends `DEFAULT_COSMETIC`. Key names match the canonical `MODEL_SPIKE.md` contract verbatim.
+2. **Validate/clamp** — `validateCosmetic()` strictly rejects unknown keys, non-numbers, out-of-range values, and non-allowlisted `modelId`; `backfillProportions()` clamps legacy data on load.
+3. **Persist + stateUpdate snapshot** — `updateProfile()` deep-merges proportions (no sibling-key erasure); the full cosmetic blob with `modelId`/`proportions` rides through `stateSnapshot()` at `progression.js:3184`, with `cosmetic_runtime.test.js` explicitly asserting it.
+4. **Backfill existing accounts** — `backfillCosmetic()` fills both new fields on create and legacy load; tested.
+
+Bonus: `GET /api/me` now exposes `modelIds` and `proportionConfig` for the downstream client tickets (187/188). No debug scenarios added, no foundation regressions.
+
+No blocking gaps and no genuine nits worth filing — so I wrote only `review.md` (no `gaps.md`, no `nits.md`).
