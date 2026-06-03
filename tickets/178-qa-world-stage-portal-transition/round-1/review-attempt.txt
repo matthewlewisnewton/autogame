@@ -1,0 +1,6 @@
+Wrote the review artifacts:
+
+- `tickets/178-qa-world-stage-portal-transition/round-1/review.md`
+- `tickets/178-qa-world-stage-portal-transition/round-1/gaps.md`
+
+Verdict is `FAIL`: the game loads cleanly, but the final round evidence does not capture the required world-stage transition, and the walkthrough output has `snapshot.json` but no required before/after screenshots. No `nits.md` was created.

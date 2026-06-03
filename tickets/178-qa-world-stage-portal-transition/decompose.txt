@@ -1,0 +1,11 @@
+Created one new sub-ticket that closes the single open gap.
+
+**Root cause of the remaining gap:** `harness/steps/screenshot.py:35` forces `CAPTURE_PLAN_AGENT=fallback`, so the top-level QA capture always runs `fallbackRecipe()` in `harness/screenshot.mjs`. That function has special-case branches only for slope and flare-beacon tickets — for this ticket it ran the generic lobby/movement/dodge flow, which is exactly what round-1's `metrics.json` (`capturePlanSource: "fallback"`, empty `scenarios`, screenshots `01-initial`…`04-after-dodge`) shows. The committed smoke script and the layout-state exposure (sub-tickets 01/02, both `.passed`) are correct, but nothing made the *harness capture* drive the transition.
+
+**Fix:** add a world-stage branch to `fallbackRecipe()`, mirroring the proven `isSlopeTicket`/`isFlareBeaconTicket` pattern, so the capture emits `sunken-canyon-stage` and records before/after screenshots + layout probes. Verification is `code` (it's about a recipe branch existing and the resulting `metrics.json` scenarios/probes/screenshots — structural and state, not a pixel look).
+
+Both existing sub-tickets carry `.passed` markers, so nothing was modified or deleted.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/178-qa-world-stage-portal-transition/tickets/178-qa-world-stage-portal-transition/subtickets/03-world-stage-fallback-capture-branch/`
