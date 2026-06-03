@@ -66,21 +66,39 @@ export function getSessionCount() {
 }
 
 /**
+ * Tear down the shared server, forcing all sockets closed so the HTTP
+ * server's close callback fires immediately instead of waiting on the 5s
+ * fallback. `httpServer.close()` only invokes its callback once every open
+ * connection has drained; lingering keep-alive/websocket sockets used to keep
+ * that pending until the timer expired, costing ~5s per test teardown.
+ */
+async function teardownServer() {
+	// Forcibly disconnect every connected client (closing the underlying
+	// transport). Engine.io tracks live connections under `engine.clients`,
+	// not `engine.sockets`, so the public Socket.IO API is the reliable way
+	// to drop them.
+	try { serverIo.disconnectSockets(true); } catch (_) {}
+	for (const conn of Object.values(serverIo.engine?.clients || {})) {
+		try { conn.close(true); } catch (_) {}
+	}
+	if (!httpServer.listening) {
+		return;
+	}
+	await new Promise((resolve) => {
+		const t = setTimeout(resolve, 5000);
+		httpServer.close(() => { clearTimeout(t); resolve(); });
+		// Destroy any sockets still held open so close() can complete now.
+		if (typeof httpServer.closeAllConnections === 'function') {
+			try { httpServer.closeAllConnections(); } catch (_) {}
+		}
+	});
+}
+
+/**
  * Start a fresh server on a random port and return the base URL.
  */
 export async function startTestServer() {
-	for (const conn of Object.values(serverIo.engine?.sockets || {})) {
-		try { conn.close(true); } catch (_) {}
-	}
-	if (httpServer.listening) {
-		await new Promise((resolve, reject) => {
-			const t = setTimeout(() => {
-				try { serverIo.close(); } catch (_) {}
-				httpServer.close(resolve);
-			}, 5000);
-			httpServer.close(() => { clearTimeout(t); resolve(); });
-		});
-	}
+	await teardownServer();
 
 	return new Promise((resolve, reject) => {
 		const timeout = setTimeout(() => reject(new Error('startTestServer timed out')), 15000);
@@ -102,16 +120,7 @@ export async function startTestServer() {
 }
 
 export async function closeServer() {
-	for (const conn of Object.values(serverIo.engine?.sockets || {})) {
-		try { conn.close(true); } catch (_) {}
-	}
-	await new Promise((resolve) => {
-		const t = setTimeout(() => {
-			try { serverIo.close(); } catch (_) {}
-			resolve();
-		}, 5000);
-		httpServer.close(() => { clearTimeout(t); resolve(); });
-	});
+	await teardownServer();
 }
 
 /**

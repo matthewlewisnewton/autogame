@@ -10,8 +10,18 @@ export default defineConfig({
 						'server/test/**/*.{test,spec}.{js,mjs}'
 					],
 					environment: 'node',
-					fileParallelism: false,
-					maxWorkers: 1,
+					// Run server test files in parallel. Each file gets its own
+					// isolated worker process, so the module-level singletons in
+					// index.js (httpServer/io) are per-file, and every suite binds
+					// an ephemeral port (0) — parallel files cannot collide on a
+					// port or on each other's state. The few suites that touch the
+					// filesystem (auth/account/users/cosmetic) point persistence at
+					// their own unique temp paths, so disk writes stay isolated too.
+					// This is the primary fix for the coverage run blowing past the
+					// 120s budget while crawling through the suite serially.
+					fileParallelism: true,
+					minWorkers: 1,
+					maxWorkers: 4,
 				}
 			},
 			{
