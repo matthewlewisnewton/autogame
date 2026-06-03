@@ -114,6 +114,24 @@ def test_pass_frees_slot_and_calls_on_pass():
     assert "t3" in procs           # freed slot reused
 
 
+def test_backpressure_pauses_new_claims_but_still_drains():
+    """When the merge queue is backed up, tick() skips claiming NEW work but still
+    reaps + drains; once backpressure clears, claims resume."""
+    q = FakeQueue({"medium": ["t1", "t2", "t3"]})
+    drains = {"n": 0}
+    gate = {"on": True}
+    d, procs, wts = _dispatcher(q, _registry())
+    d.merge_drain = lambda: drains.__setitem__("n", drains["n"] + 1)
+    d.backpressure = lambda: gate["on"]
+    d.tick()
+    assert procs == {}             # backpressure ON → nothing claimed/spawned
+    assert drains["n"] == 1        # but the merge queue still drained
+    gate["on"] = False
+    d.tick()
+    assert set(procs) == {"t1", "t2"}  # released → claims resume
+    assert drains["n"] == 2
+
+
 def test_quota_failure_disables_agent_and_requeues():
     q = FakeQueue({"medium": ["t1"]})
     d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)], quota=True)

@@ -147,6 +147,126 @@ def _default_verify(worktree_root: Path) -> bool:
         return False
 
 
+def _unmerged_files(wt) -> list[str]:
+    """Paths left in conflict (unmerged) in the worktree."""
+    try:
+        out = wt.run_git("diff", "--name-only", "--diff-filter=U")
+    except Exception:
+        return []
+    return [ln.strip() for ln in out.splitlines() if ln.strip()]
+
+
+def _branch_commit_subjects(wt, main_branch: str) -> str:
+    """The passed branch's own commit subjects (its intent) — `<main>..HEAD`.
+    This is the COMPACT context the resolver gets instead of a full review/diff."""
+    try:
+        return wt.run_git("log", f"{main_branch}..HEAD", "--format=- %s").strip()
+    except Exception:
+        return "(could not read branch commits)"
+
+
+def _has_conflict_markers(wt, files: list[str]) -> bool:
+    """True if any listed file still contains a git conflict marker."""
+    for rel in files:
+        try:
+            text = (Path(wt.root) / rel).read_text(errors="replace")
+        except OSError:
+            continue
+        if "<<<<<<<" in text or ">>>>>>>" in text or "\n=======\n" in text:
+            return True
+    return False
+
+
+def _find_review_md(main_root, ticket_name: str) -> Optional[Path]:
+    """Latest review.md for the ticket (compact-context pointer for the resolver)."""
+    try:
+        cands = sorted((Path(main_root) / "tickets" / ticket_name).glob("round-*/review.md"))
+        return cands[-1] if cands else None
+    except OSError:
+        return None
+
+
+def _default_resolve(main_repo: Repo, roster, h: WorkerHandle) -> bool:
+    """Integrate current main into the passed branch, resolving any textual
+    conflict with the context-aware `merge_resolve` agent. Returns True iff the
+    branch now cleanly contains main (no unmerged paths, no markers, merge
+    committed) — ready to ff. On any failure leaves the worktree clean (merge
+    aborted) and returns False, so the caller safely rejects (main untouched).
+
+    Uses a MERGE (not a rebase) so the agent resolves ONE conflict set in place,
+    and the branch ends a descendant of main → the subsequent `--ff-only` works."""
+    wt = h.worktree
+    try:
+        wt.run_git("merge", "--no-edit", main_repo.branch, capture=False)
+        return True  # clean merge — main had no overlapping change
+    except subprocess.CalledProcessError:
+        pass  # conflict — fall through to agent resolution
+    except Exception as e:
+        log(f"[merge] resolve: merge of {main_repo.branch} raised {e!r} — aborting")
+        _abort_merge(wt)
+        return False
+
+    files = _unmerged_files(wt)
+    if not files or roster is None:
+        _abort_merge(wt)
+        return False
+    review = _find_review_md(main_repo.root, h.ticket_name)
+    art = Path(wt.root) / ".merge-resolve"
+    try:
+        art.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        pass
+    try:
+        role = roster.role("merge_resolve")
+        chain = role.execute(
+            workspace=wt,
+            prompt_vars={
+                "CONFLICT_FILES": "\n".join(files),
+                "CHANGE_COMMITS": _branch_commit_subjects(wt, main_repo.branch),
+                "REVIEW_FILE": str(review) if review else "(no review.md found)",
+            },
+            artifacts_dir=art,
+            telemetry=None,
+        )
+    except Exception as e:
+        log(f"[merge] resolve: merge_resolve agent raised {e!r} — aborting")
+        _abort_merge(wt)
+        return False
+    if chain.accepted_by is None:
+        log(f"[merge] resolve: {h.ticket_id} resolver tier exhausted — aborting merge")
+        _abort_merge(wt)
+        return False
+    # Stage the agent's resolution (it edited the working tree but won't have
+    # `git add`ed — and we forbid it from running git), THEN validate: the marker
+    # content check is what actually proves the conflict is gone (after `add`,
+    # git's own unmerged list is cleared whether or not markers remain).
+    try:
+        wt.run_git("add", "-A", capture=False)
+    except Exception as e:
+        log(f"[merge] resolve: staging resolution failed ({e!r}) — aborting")
+        _abort_merge(wt)
+        return False
+    if _unmerged_files(wt) or _has_conflict_markers(wt, files):
+        log(f"[merge] resolve: {h.ticket_id} not cleanly resolved (markers remain) — aborting merge")
+        _abort_merge(wt)
+        return False
+    try:
+        wt.run_git("commit", "--no-edit", capture=False)
+    except Exception as e:
+        log(f"[merge] resolve: completing merge commit failed ({e!r}) — aborting")
+        _abort_merge(wt)
+        return False
+    log(f"[merge] resolve: {h.ticket_id} conflict resolved by {chain.accepted_by.name}")
+    return True
+
+
+def _abort_merge(wt) -> None:
+    try:
+        wt.run_git("merge", "--abort", check=False, capture=False)
+    except Exception:
+        pass
+
+
 @dataclass
 class MergeQueue:
     main_repo: Repo
@@ -154,6 +274,13 @@ class MergeQueue:
     rebase: Optional[Callable[[WorkerHandle], bool]] = None
     verify: Optional[Callable[[Path], bool]] = None
     merge: Optional[Callable[[WorkerHandle], bool]] = None
+    # Context-aware conflict resolver: integrate current main into the passed
+    # branch (merging, not rebasing) and resolve any conflict with an agent that
+    # has the change's intent. Returns True if the branch now cleanly contains
+    # main (ready to ff). None (the default) = no resolver → a rebase conflict
+    # falls straight to reject (the pre-resolver behavior). factory wires the real
+    # one (it needs the roster); unit tests inject a fake.
+    resolve: Optional[Callable[[WorkerHandle], bool]] = None
 
     _pending: "deque[WorkerHandle]" = field(default_factory=deque, init=False)
 
@@ -203,19 +330,42 @@ class MergeQueue:
 
     # --- transaction ---------------------------------------------------- #
     def _merge_one(self, h: WorkerHandle) -> None:
-        """rebase → verify → ff-merge, tolerant of a main that moves under us.
+        """Integrate the passed branch into main: get it onto current main →
+        re-verify → ff-merge, tolerant of a moving main AND of textual conflicts.
 
-        The dispatcher is no longer guaranteed to be the SOLE writer of main (a
-        parallel session can commit directly), and verify takes minutes — so main
-        can advance between the rebase and the ff, making `--ff-only` fail with
-        "Not possible to fast-forward". When that happens we re-rebase onto the
-        now-current main and retry (bounded). We re-verify whenever main actually
-        moved, so we never ff a tree we didn't validate against the real main.
-        A persistent failure still ends in a safe reject+requeue (main untouched)."""
+        Two things can go wrong when bringing the branch onto current main:
+          1. main ADVANCED with non-conflicting work (a concurrent writer, or a
+             merge that landed during this branch's multi-minute verify). The
+             clean rebase succeeds; only the ff can fail ("Not possible to
+             fast-forward") — we re-integrate and retry (bounded).
+          2. main advanced with CONFLICTING work (two branches edited the same
+             lines — the world-stage/registry livelock). The rebase conflicts.
+             Rather than discard the passed work and re-run the whole ticket, we
+             hand it to the context-aware `resolve` step (merge main in + an agent
+             that has the change's intent), which preserves the work. We ALWAYS
+             re-verify the integrated tree before it can land, so a bad resolution
+             never reaches main. Out of attempts / no resolver → safe reject."""
         verified_against: Optional[str] = None
+        integrated_via_resolve = False
         for attempt in range(MERGE_FF_ATTEMPTS):
-            if not self.rebase(h):
-                return self._reject(h, "rebase conflict with main")
+            if integrated_via_resolve:
+                # A prior resolve already merged main into the branch; main has
+                # since moved (ff failed). Re-integrate by MERGING the newer main
+                # (re-resolving if it conflicts) — never rebase, which would drop
+                # the resolution commit.
+                if self.resolve is None or not self.resolve(h):
+                    return self._reject(h, "merge resolve failed on re-integration")
+                verified_against = None
+            elif not self.rebase(h):
+                # rebase conflict — resolve with context instead of re-running.
+                if self.resolve is None:
+                    return self._reject(h, "rebase conflict with main")
+                log(f"[merge] {h.ticket_id} rebase conflict with main — invoking "
+                    f"context-aware resolver (preserving passed work)")
+                if not self.resolve(h):
+                    return self._reject(h, "rebase conflict; resolver could not integrate")
+                integrated_via_resolve = True
+                verified_against = None
             main_head = self._main_head()
             if main_head is None or main_head != verified_against:
                 if not self.verify(h.worktree.root):
@@ -224,13 +374,13 @@ class MergeQueue:
             if self.merge(h):
                 self._close_merged(h)
                 emit_progress_event("merge_done",
-                                    {"ticket": h.ticket_id, "branch": h.worktree.branch})
+                                    {"ticket": h.ticket_id, "branch": h.worktree.branch,
+                                     "resolved": integrated_via_resolve})
                 h.worktree.remove_worktree()
                 return
-            log(f"[merge] {h.ticket_id} ff failed (main likely advanced under verify); "
-                f"re-rebasing onto current main and retrying "
-                f"(attempt {attempt + 1}/{MERGE_FF_ATTEMPTS})")
-        return self._reject(h, f"fast-forward merge failed after {MERGE_FF_ATTEMPTS} rebase attempts")
+            log(f"[merge] {h.ticket_id} ff failed (main advanced under verify); "
+                f"re-integrating and retrying (attempt {attempt + 1}/{MERGE_FF_ATTEMPTS})")
+        return self._reject(h, f"fast-forward merge failed after {MERGE_FF_ATTEMPTS} attempts")
 
     def _main_head(self) -> Optional[str]:
         """Current main HEAD sha, used to detect a concurrent writer advancing

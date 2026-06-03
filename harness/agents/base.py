@@ -25,6 +25,7 @@ class UsageKind(str, Enum):
     RESCUE       = "rescue"
     SPLIT        = "split"
     VISION       = "vision"
+    MERGE_RESOLVE = "merge_resolve"  # context-aware merge-conflict resolver
 
 
 class FailureReason(str, Enum):

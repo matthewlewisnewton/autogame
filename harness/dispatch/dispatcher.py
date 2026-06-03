@@ -83,6 +83,11 @@ class Dispatcher:
     quota_classifier: Optional[QuotaFn] = None
     on_pass: Optional[OnPassFn] = None
     merge_drain: Optional[Callable[[], None]] = None  # drain one merge per tick (set by launcher)
+    # Backpressure: returns True when too many PASSED branches are waiting to
+    # merge — the dispatcher then skips claiming NEW work this tick (reap +
+    # merge_drain still run) so reviewed tickets drain instead of piling up and
+    # going stale. None = unbounded (no backpressure).
+    backpressure: Optional[Callable[[], bool]] = None
     worktree_factory: Optional[Callable[[str, PortAllocation], WorktreeWorkspace]] = None
     tick_seconds: float = 5.0
     # Keep the local ollama box (GPU) hot: reserve a slot for qwen every tick
@@ -93,6 +98,7 @@ class Dispatcher:
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
+    _backpressure_active: bool = field(default=False, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -111,6 +117,20 @@ class Dispatcher:
                 self.merge_drain()  # integrate one passed branch into main this tick
             except Exception as e:
                 log(f"[dispatch] merge_drain raised (continuing tick): {e!r}")
+        # Backpressure: if the merge queue is backed up, don't take on new work
+        # this tick — let it drain first (reap + merge_drain above already ran).
+        if self.backpressure is not None:
+            try:
+                if self.backpressure():
+                    if not self._backpressure_active:
+                        self._backpressure_active = True
+                        log("[dispatch] merge backpressure ON — pausing new claims until the merge queue drains")
+                    return
+                if self._backpressure_active:
+                    self._backpressure_active = False
+                    log("[dispatch] merge backpressure OFF — resuming claims")
+            except Exception as e:
+                log(f"[dispatch] backpressure check raised (ignoring): {e!r}")
         if self.reserve_qwen:
             self._reserve_qwen()
         for difficulty in self.lanes:

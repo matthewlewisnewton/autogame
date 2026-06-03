@@ -175,3 +175,28 @@ roles:
     acceptance: { kind: ok_rc }
     usage_kind: repair
     scope: { allow: ["game/**", "harness/**"], deny: ["tickets/**"] }
+
+  # Merge-conflict resolver. When a PASSED branch's rebase onto main conflicts,
+  # the merge queue invokes this to resolve the conflict IN the worktree —
+  # preserving the passed work instead of throwing it away and re-running the
+  # whole ticket (the world-stage livelock). Fed a COMPACT context (the branch's
+  # own commit subjects = the change's intent, plus the in-file conflict markers
+  # and a review.md pointer), so it reconciles knowing what the change does and
+  # why, without re-loading the full review. composer primary, claude backstop —
+  # same chain as split/repair (keeps the no-claude-primary guard happy).
+  merge_resolve:
+    primary: composer_write
+    fallbacks: [claude]
+    timeout_s: 1800
+    out_file: "merge-resolve.txt"
+    prompt_template: harness/prompts/merge_resolve.md
+    acceptance: { kind: ok_rc }
+    usage_kind: merge_resolve
+    # Scope is the WHOLE tree (allow ["**"]), deliberately. This role runs while
+    # the worktree is mid-`git merge main`, so the uncommitted state legitimately
+    # contains ALL of main's changes — a narrow scope would make scope_audit
+    # revert main's out-of-scope changes and CORRUPT the merge. A merge
+    # integrator's real scope is the whole repo; correctness is gated by the
+    # mandatory post-resolve re-verify (full vitest) before anything lands on main,
+    # not by scope_audit. The prompt still tells it to touch only the conflict.
+    scope: { allow: ["**"], deny: [] }

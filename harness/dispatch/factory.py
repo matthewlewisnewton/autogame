@@ -19,6 +19,7 @@ from harness.dispatch.dispatcher import Dispatcher
 from harness.dispatch.merge_queue import (
     MERGED_UNCLOSED,
     MergeQueue,
+    _default_resolve,
     read_pending,
     resolve_pending,
 )
@@ -282,10 +283,29 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         cfg.specs, cfg.order,
         health_file=health_file or main_root / "harness" / "agents_health.json")
     mq = MergeQueue(main_repo=main_repo, queue=queue)
+    # Context-aware conflict resolver: when a passed branch's rebase conflicts,
+    # merge main in and let the merge_resolve role (with the change's intent)
+    # resolve it, instead of discarding the work and re-running the ticket. Needs
+    # a roster (base roles.yaml only — deterministic, no worker overrides). If it
+    # can't load, rebase conflicts fall back to the old reject behavior.
+    try:
+        from harness.roles import Roster
+        _roster = Roster.load(main_root / "harness" / "roles.yaml", None)
+        mq.resolve = lambda h: _default_resolve(main_repo, _roster, h)
+    except Exception as e:
+        log(f"[factory] merge_resolve roster unavailable ({e!r}); "
+            f"rebase conflicts will reject + requeue as before")
+    # Backpressure: cap how many PASSED branches may sit waiting to merge. When
+    # the merge queue is at/over the cap, the dispatcher stops claiming NEW work
+    # (reap + merge_drain still run) so reviewed tickets drain instead of piling
+    # up and going stale (stale → conflict). Cap = worker count, bounding total
+    # in-flight worktrees to ~2x workers.
+    merge_cap = max(1, n_workers)
     disp = Dispatcher(
         queue=queue, registry=registry, main_repo=main_repo,
         ports_pool=allocate_pool(n_workers),
         on_pass=mq.enqueue, merge_drain=mq.drain_one,
+        backpressure=lambda: mq.pending() >= merge_cap,
         tick_seconds=tick_seconds,
         reserve_qwen=cfg.reserve_qwen,
     )
