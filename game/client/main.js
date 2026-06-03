@@ -719,9 +719,22 @@ let socket = null;
 /** Create (or recreate) the Socket.IO connection with a JWT auth token. */
 function createSocket(token) {
 	if (socket) socket.disconnect();
-	socket = io({ auth: { token } });
+	// Explicit reconnection/timeout config rather than relying on undocumented
+	// defaults, so a stalled initial connect deterministically surfaces a
+	// `connect_error` the client can act on instead of hanging silently.
+	socket = io({
+		auth: { token },
+		timeout: CONNECT_WATCHDOG_MS,
+		reconnection: true,
+		reconnectionAttempts: Infinity,
+		reconnectionDelay: 1000,
+		reconnectionDelayMax: 5000,
+	});
 	setSocketRef(socket);
 	bindSocketHandlers(socket);
+	// Surface a persistent error if this (re)created socket never reaches
+	// `connect`. Cleared in the `connect`/`reconnect` handlers below.
+	startConnectWatchdog();
 }
 
 async function restoreSession(token) {
@@ -781,6 +794,8 @@ function bindSocketHandlers(s) {
 	if (!s) return;
 
 	s.on('connect', () => {
+		clearConnectWatchdog();
+		showLobbyBrowserError('');
 		updateStatus('Connected', 'connected');
 		startHeartbeat();
 	});
@@ -796,6 +811,8 @@ function bindSocketHandlers(s) {
 	});
 
 	s.io.on('reconnect', () => {
+		clearConnectWatchdog();
+		showLobbyBrowserError('');
 		updateStatus('Connected', 'connected');
 		startHeartbeat();
 	});
@@ -805,6 +822,10 @@ function bindSocketHandlers(s) {
 		const isAuthError = /jwt|token|unauthorized|authentication/i.test(msg);
 		stopHeartbeat();
 		if (isAuthError) {
+			// Auth recovery wins outright: cancel the connect watchdog so it can
+			// never overwrite the "session expired" surface with a generic
+			// connect-timeout error.
+			clearConnectWatchdog();
 			try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
 			setAuthToken(null);
 			s.io.disconnect();
@@ -1405,6 +1426,11 @@ let gameState = null;
 let keyItemCooldownUntilClient = 0;
 let connectionState = 'connecting';
 let heartbeatTimer = null;
+let connectWatchdogTimer = null;
+// How long a freshly (re)created socket may take to reach `connect` before we
+// stop showing the transient "retrying..." status and surface a persistent,
+// user-visible connection-failed error. Also passed as the socket's `timeout`.
+const CONNECT_WATCHDOG_MS = 10000;
 let latency = null;
 let currentLayoutSeed = null; // tracks the layout seed we last built from
 let currentLayout = null; // persisted layout from init; stateUpdate omits it
@@ -1551,6 +1577,31 @@ function startHeartbeat() {
 function stopHeartbeat() {
 	clearInterval(heartbeatTimer);
 	heartbeatTimer = null;
+}
+
+/**
+ * Start (or restart) the connect watchdog. If the socket fails to reach
+ * `connect` within CONNECT_WATCHDOG_MS, escalate from the transient
+ * "retrying..." status to a clear, persistent connection-failed error.
+ */
+function startConnectWatchdog() {
+	clearConnectWatchdog();
+	connectWatchdogTimer = setTimeout(() => {
+		connectWatchdogTimer = null;
+		// Reaching here means neither `connect` nor `reconnect` fired in time —
+		// a real failure, not a normal in-flight connection.
+		const msg = 'Connection failed — could not reach the server. Reload the page to retry.';
+		updateStatus('Connection failed — reload to retry', 'disconnected');
+		showLobbyBrowserError(msg);
+	}, CONNECT_WATCHDOG_MS);
+}
+
+/** Cancel a pending connect watchdog (called once a connection succeeds). */
+function clearConnectWatchdog() {
+	if (connectWatchdogTimer) {
+		clearTimeout(connectWatchdogTimer);
+		connectWatchdogTimer = null;
+	}
 }
 
 function updateStatus(text, state) {

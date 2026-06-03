@@ -2909,6 +2909,80 @@ describe('connect_error handler', () => {
 	});
 });
 
+// ── connect watchdog (stalled-connect escalation) ──
+
+describe('connect watchdog', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-browser-error', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.runOnlyPendingTimers();
+		vi.useRealTimers();
+	});
+
+	it('surfaces a persistent error when connect never fires within the timeout', async () => {
+		await import('../main.js');
+
+		// Fresh socket: this starts a new watchdog and clears any prior one.
+		window.createSocket('watchdog-token');
+
+		// Connection never reaches `connect` — let the watchdog fire.
+		vi.advanceTimersByTime(10000);
+
+		// 'disconnected' is the escalated failure state, distinct from the
+		// transient 'reconnecting' status used while a connect is in flight.
+		expect(window.__connectionState()).toBe('disconnected');
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+	});
+
+	it('clears the watchdog when connect fires before the timeout (no error shown)', async () => {
+		await import('../main.js');
+
+		window.createSocket('watchdog-token');
+
+		// A timely `connect` should cancel the watchdog.
+		window.__triggerSocketEvent('connect');
+		expect(window.__connectionState()).toBe('connected');
+
+		// Advancing past the timeout must NOT escalate to a failure state.
+		vi.advanceTimersByTime(10000);
+		expect(window.__connectionState()).toBe('connected');
+	});
+});
+
 describe('run summary card choices', () => {
 	beforeEach(() => {
 		const requiredIds = [
