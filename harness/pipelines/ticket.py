@@ -33,6 +33,24 @@ from harness.workspace.repo import Repo
 _DIFFICULTY_RE = re.compile(r"^\s*##?\s*Difficulty\s*:\s*(\w+)\s*$", re.MULTILINE | re.IGNORECASE)
 _REVIEW_VERDICT_RE = re.compile(r"^VERDICT:\s*(PASS|APPROVE|FAIL|REJECT)\b", re.MULTILINE)
 
+# A decompose AGENT failure that returns in under this many seconds is an
+# "immediate error" — the assigned agent is down / quota'd / rate-limited (e.g.
+# cursor's "unpaid invoice" rejection fast-fails in ~2-3s), not a content problem.
+# Re-decomposing with the same dead agent just burns all the ticket's rounds (the
+# spiral), so we bail and let the dispatcher re-assign next tick instead. A real
+# decompose takes far longer (tens of seconds to minutes), so this never trips on
+# a genuine "couldn't decompose" failure.
+_DECOMPOSE_FAST_FAIL_S = 12.0
+
+
+def _decompose_fast_failed(chain) -> bool:
+    """True when the decompose agent returned an error IMMEDIATELY (fast-fail =
+    agent unavailable/quota), so the ticket should bail for re-assignment rather
+    than re-decomposing with the same dead agent. A SLOW failure stays in the
+    normal re-decompose loop (it's a content problem, possibly fixable next round)."""
+    f = chain.final
+    return (not f.ok) and f.duration_s < _DECOMPOSE_FAST_FAIL_S
+
 
 def _difficulty(ticket_file: Path) -> str:
     try:
@@ -147,6 +165,20 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
         subs = list_subticket_dirs(ctx.subroot)
         if not subs:
             if not decomp_chain.final.ok:
+                if _decompose_fast_failed(decomp_chain):
+                    # Assigned agent errored immediately (down/quota) — don't burn
+                    # the remaining rounds re-decomposing it; bail so the dispatcher
+                    # requeues and re-assigns next tick (the agent stays in rotation
+                    # and is retried, not disabled).
+                    log(f"[decompose] agent returned an error immediately "
+                        f"({decomp_chain.final.reason}, {decomp_chain.final.duration_s:.1f}s) "
+                        f"— bailing for re-assignment next tick (no round spiral)")
+                    emit_progress_event("decompose_fast_bail", {
+                        "ticket": ctx.name, "round": round_n,
+                        "reason": str(decomp_chain.final.reason),
+                        "duration_s": round(decomp_chain.final.duration_s, 1),
+                    })
+                    return PipelineResult.INCOMPLETE
                 log(f"[decompose] decomposition call FAILED (rc={decomp_chain.final.rc}) — re-decomposing next round")
                 continue
             log("[decompose] no sub-tickets produced — using ticket as a single sub-task")
