@@ -328,7 +328,6 @@ function fallbackRecipe() {
     { action: 'move', player: 'A', key: 'd', durationMs: 1500 },
     { action: 'screenshot', player: 'A', name: '03-after-d', description: 'Gameplay after holding D.' },
     { action: 'useKeyItem', player: 'A' },
-    { action: 'wait', player: 'A', ms: 500 },
     { action: 'probe', player: 'A', description: 'After dodge roll — cooldown HUD should be active.' },
     { action: 'screenshot', player: 'A', name: '04-after-dodge', description: 'Gameplay after dodge roll with cooldown HUD.' },
   ];
@@ -352,7 +351,7 @@ function fallbackRecipe() {
   return {
     summary: isSlopeTicket
       ? 'Deterministic full-flow smoke capture with sloped-dungeon fallback: auth, lobby, ready, movement, ramp screenshot.'
-      : 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item.',
+      : 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.',
     steps,
   };
 }
