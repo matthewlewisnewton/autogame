@@ -12,6 +12,7 @@
     "test:smoke:lobby-dropin": "node scripts/test-lobby-dropin.mjs",
     "test:smoke:lobby-browser": "node client/scripts/test-lobby-browser.mjs",
     "test:smoke:lock-on": "node client/scripts/test-lock-on.mjs",
+    "test:smoke:keyitems": "node client/scripts/test-keyitems-capture.mjs",
     "test:smoke:p0": "PHASE=after node client/scripts/test-p0-bugs.mjs",
     "test:smoke:creature-burndown": "node client/scripts/test-creature-burndown.mjs",
     "test:smoke:summon-combat": "node client/scripts/test-summon-combat.mjs",
