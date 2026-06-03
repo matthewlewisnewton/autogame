@@ -45,6 +45,7 @@ def game_smoke_ok(artifacts_dir: Path) -> bool:
 def confirm_game_broken(suspect_dir: Path, confirmation_dir: Path,
                         *, game_url: str, ports: PortAllocation) -> bool:
     """Second capture run to disambiguate flake. True iff CONFIRMED broken."""
+    from harness.steps.capture_run import _classify_capture_failure
     from harness.steps.game import start_game, stop_game, wait_for_game
     from harness.steps.screenshot import capture
     log("[confirm] second capture run to disambiguate game-smoke flake...")
@@ -53,8 +54,13 @@ def confirm_game_broken(suspect_dir: Path, confirmation_dir: Path,
     start_game(confirmation_dir, ports)
     try:
         if not wait_for_game(ports, timeout_s=45):
+            # Route the server-down path through the classifier so the
+            # confirmation metrics carry a proper failure_kind (harness_failure
+            # for infra signatures, capture_failed otherwise) instead of a bare
+            # ambiguous error string. game_smoke_ok still reads these as broken.
+            metrics = _classify_capture_failure(confirmation_dir, ports)
             (confirmation_dir / "metrics.json").write_text(
-                json.dumps({"ok": False, "error": "servers did not start"}) + "\n"
+                json.dumps(metrics) + "\n"
             )
             return True
         capture(ports.vite_url, confirmation_dir)  # allocated port, not static default
