@@ -252,6 +252,63 @@ const MINION_VISUAL = {
 };
 
 /**
+ * Target axis-aligned height for a registry-loaded model, derived from procedural
+ * footprint tables. Returns null when `key` has no geometry preset (player, loot).
+ * @param {string} key
+ * @returns {{ targetHeight: number } | null}
+ */
+export function getRegistryTargetFootprint(key) {
+	const enemy = ENEMY_GEOMETRY[key];
+	if (enemy) {
+		if (enemy.type === 'octahedron') {
+			return { targetHeight: enemy.radius * 2 };
+		}
+		const diameter = enemy.radius * 2;
+		return { targetHeight: Math.max(enemy.height, diameter) };
+	}
+
+	const minion = MINION_VISUAL[key];
+	if (minion) {
+		let targetHeight;
+		if (minion.shape === 'octahedron') {
+			targetHeight = minion.radius * 2;
+		} else if (minion.shape === 'box') {
+			targetHeight = minion.height;
+		} else {
+			targetHeight = minion.height;
+		}
+		if (minion.scale) {
+			targetHeight *= minion.scale;
+		}
+		return { targetHeight };
+	}
+
+	return null;
+}
+
+/**
+ * Uniformly scale a loaded registry model to `footprint.targetHeight` and sit its
+ * feet at y=0 in the host's local space (bbox min.y on the ground plane).
+ * @param {THREE.Object3D} model
+ * @param {{ targetHeight: number }} footprint
+ */
+export function normalizeLoadedRegistryModel(model, footprint) {
+	const targetHeight = footprint?.targetHeight;
+	if (!model || !targetHeight || targetHeight <= 0) return;
+
+	const box = new THREE.Box3().setFromObject(model);
+	const size = new THREE.Vector3();
+	box.getSize(size);
+	if (size.y <= 0) return;
+
+	const scale = targetHeight / size.y;
+	model.scale.multiplyScalar(scale);
+
+	box.setFromObject(model);
+	model.position.y -= box.min.y;
+}
+
+/**
  * Consult MODEL_REGISTRY for `key` and, when a model path is configured, kick off
  * an async load and swap the cloned model in for the procedural primitive on
  * success. This is fire-and-forget: callers build + return their procedural
@@ -283,6 +340,10 @@ function attachRegistryModel(key, host) {
 	loadModel(path)
 		.then((model) => {
 			if (!model) return; // load failed/returned null → procedural stays (warned in models.js).
+			const footprint = getRegistryTargetFootprint(key);
+			if (footprint) {
+				normalizeLoadedRegistryModel(model, footprint);
+			}
 			for (const node of procedural) node.material.visible = false;
 			host.add(model);
 			host.userData.modelOverride = model;
