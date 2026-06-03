@@ -17,6 +17,14 @@ export function formatObjectiveSummary(quest) {
 		return THEME.objectives.neutralizeHostiles.replace('{count}', String(enemyCount));
 	}
 
+	if (quest.objectiveType === 'survive') {
+		const totalSpawns = quest.totalSpawns ?? 0;
+		const minibossCount = quest.minibossCount ?? 0;
+		return THEME.objectives.surviveHostiles
+			.replace('{count}', String(totalSpawns))
+			.replace('{minibosses}', String(minibossCount));
+	}
+
 	return quest.description || '';
 }
 
