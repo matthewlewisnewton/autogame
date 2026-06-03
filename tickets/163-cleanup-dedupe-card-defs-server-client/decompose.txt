@@ -1,0 +1,12 @@
+Created one sub-ticket. This top-level ticket is a single atomic dedup refactor, so it decomposes cleanly into one focused, code-verifiable pass.
+
+**Sub-ticket folder created:**
+
+- `/home/matt/workspace/.autogame-worktrees/163-cleanup-dedupe-card-defs-server-client/tickets/163-cleanup-dedupe-card-defs-server-client/subtickets/01-extract-shared-card-identity/`
+
+**Decomposition rationale:**
+- The goal is one cohesive change: extract the duplicated `{id, name, type, charges}` identity subset into a single `game/shared/cardDefs.json` (mirroring the existing `constants.json`/`theme.json` pattern) and have both `server/progression.js` and `client/cards.js` derive their `CARD_DEFS` from it while keeping their own extra fields.
+- Splitting server vs. client into separate sub-tickets would create a misleading half-done state (the existing `card_sync.test.js` passes either way since values are identical), so there's no clean verification boundary — one pass is correct.
+- Verification is `code`: it's entirely about structure (shared file exists, both sides consume it, no duplicated literals, all card values unchanged, tests pass) — nothing visual.
+
+I scoped out the tangential duplications (`STARTING_DECK_IDS`/`createStartingDeck`, sell values, evolution transforms) explicitly, since the ticket's AC requires the change to stay scoped to the identity subset.

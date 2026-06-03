@@ -1,0 +1,8 @@
+Review complete. Wrote:
+
+- `tickets/163-cleanup-dedupe-card-defs-server-client/round-1/review.md`
+- `tickets/163-cleanup-dedupe-card-defs-server-client/round-1/nits.md`
+
+No `gaps.md` was created because the verdict is pass.
+
+VERDICT: PASS
