@@ -1,0 +1,3 @@
+1. Capture failed: harness could not run the browser screenshot — `metrics.json` reports `"ok": false`, `failure_kind: "capture_failed"`, caused by `Cannot find package 'playwright'` imported from `harness/screenshot.mjs`. Both dev servers started cleanly and there are no `pageerrors`; this is harness infra, not game code.
+   Files: none in `game/` — `harness/screenshot.mjs` (harness infra).
+   Fix: install/resolve Playwright for the harness and re-run the capture so `metrics.json` is `ok` and browser console/pageerrors can be verified. Do NOT modify `game/` — code edits will not change the outcome until the capture can run.

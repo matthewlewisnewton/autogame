@@ -1,0 +1,18 @@
+Review complete. Verdict: **FAIL** — but the cause is a **harness infrastructure failure**, not a code defect.
+
+## Summary
+
+**Runtime health:** `metrics.json` reports `"ok": false` (`failure_kind: "capture_failed"`), which forces an automatic FAIL. The actual cause is the harness's own screenshot tool: `Cannot find package 'playwright' imported from harness/screenshot.mjs`. Both dev servers started cleanly (vite on :5176, server on :3003), there are **no `pageerrors`**, and no game code appears in the trace. This ticket doesn't even touch runtime — `MODEL_REGISTRY.player` is still `null` and neither `models.js` nor `renderer.js` was modified — so there's nothing the capture could have broken.
+
+**The code would have passed.** All three acceptance criteria from beads `autogame-0yf` are met:
+- ✅ `player.glb` committed (~1.0 MB) with CC0 license documented in CREDITS/README/MODEL_SPIKE/SPIKE_DECISION (Quaternius `SuperHero_Male`)
+- ✅ Six proportion morph targets present and asserted by the contract test
+- ✅ Decision note complete (source/license/poly budget/anchor-scale) — content lives in `game/docs/SPIKE_DECISION.md` rather than the ticket dir, which I judge satisfied-in-spirit (the more durable home; flagged the wording as a nit, not a blocker)
+- ✅ Contract test: **5/5 passed**, well constructed (real `GLTFLoader`, production `loadModel` path, isolated into its own node vitest project)
+
+**Files written:**
+- `review.md` — per-criterion findings + a `## Harness blockers` section pointing the operator at the playwright issue
+- `gaps.md` — the single infra blocker, with explicit "do NOT modify `game/`" guidance to keep the next round from churning on already-correct code
+- `nits.md` — three non-blocking follow-ups (stale `Regular_Male` in MODEL_SPIKE.md, mirror decision note to ticket dir, assert foot footprint)
+
+I diverged from the prior review on one point: it listed the missing ticket-dir decision note as a second blocking gap. Since the decision content is complete and better-placed in `game/docs/`, I demoted that to a nit so the next round focuses solely on the real blocker — installing Playwright in the harness and re-running the capture.
