@@ -297,7 +297,7 @@ def _cmd_progress(action: str) -> int:
 
 def _cmd_doctor(target: str) -> int:
     if target == "vision":
-        print("[doctor] vision smoke not yet wired in Phase 4 — see harness/qwen_vision_smoke.sh",
+        print("[doctor] vision smoke not yet ported to the Python harness",
               file=sys.stderr)
         return 64
     return 64
