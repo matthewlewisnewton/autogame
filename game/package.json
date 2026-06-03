@@ -20,6 +20,7 @@
     "test:smoke:summon-recall": "node client/scripts/test-summon-recall.mjs",
     "test:smoke:wyrm-breath": "node client/scripts/test-wyrm-breath.mjs",
     "test:smoke:world-stage-transition": "node client/scripts/test-world-stage-transition.mjs",
+    "test:smoke:telepipe-suspend-resume": "node client/scripts/test-telepipe-suspend-resume.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },
   "keywords": [],
