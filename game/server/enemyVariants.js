@@ -12,6 +12,11 @@ const VARIANT_DEFS = {
     name: 'Test Variant',
     // Placeholder for future behavior. Null means no-op for this ticket.
     apply: null,
+    // Guaranteed bonus loot for enemies carrying this variant, consulted by the
+    // loot path (recordEnemyCardDrop / spawnMagicStoneDrop). `card: true`
+    // guarantees an extra copy of the enemy's normal card drop; `magicStone` is
+    // the value of an additional magic-stone loot entry beyond the normal drop.
+    bonusDrop: { card: true, magicStone: 15 },
   },
 };
 
@@ -57,9 +62,22 @@ function applyVariant(enemy, tier, rng) {
   return enemy;
 }
 
+/**
+ * Resolve the bonus-drop definition for an enemy, driven by the variant
+ * registry rather than hard-coded at the call site. Returns the def's
+ * `bonusDrop` object when the enemy carries a truthy variant whose registry
+ * entry declares one, otherwise null (non-variant enemies are unaffected).
+ */
+function getVariantBonusDrop(enemy) {
+  if (!enemy || !enemy.variant) return null;
+  const def = VARIANT_DEFS[enemy.variant];
+  return def && def.bonusDrop ? def.bonusDrop : null;
+}
+
 module.exports = {
   VARIANT_DEFS,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
   applyVariant,
+  getVariantBonusDrop,
 };

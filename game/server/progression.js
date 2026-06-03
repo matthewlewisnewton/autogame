@@ -47,7 +47,7 @@ const {
   pickFloorSpawnPosition,
   randomWanderTarget
 } = require('./simulation');
-const { applyVariant } = require('./enemyVariants');
+const { applyVariant, getVariantBonusDrop } = require('./enemyVariants');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -1420,6 +1420,13 @@ function recordEnemyCardDrop(enemy) {
     player.runCardDropIds = [];
   }
   player.runCardDropIds.push(cardId);
+
+  // Variant enemies guarantee a bonus card drop on top of their normal one.
+  // The normal type→card mapping is reused; the variant just adds the bonus.
+  const bonus = getVariantBonusDrop(enemy);
+  if (bonus && bonus.card) {
+    player.runCardDropIds.push(cardId);
+  }
 }
 
 function getEnemyMagicStoneDrop(enemy) {
@@ -1438,18 +1445,35 @@ function getEnemyCurrencyDrop(enemy) {
 
 function spawnMagicStoneDrop(enemy) {
   const value = getEnemyMagicStoneDrop(enemy);
-  if (value <= 0) return;
+  if (value > 0) {
+    const id = crypto.randomUUID();
+    _gameState.loot.push({
+      id,
+      x: enemy.x + LOOT_DROP_OFFSET_MS.x,
+      z: enemy.z + LOOT_DROP_OFFSET_MS.z,
+      value,
+      kind: 'magic_stone',
+      createdAt: Date.now(),
+    });
+    console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  }
 
-  const id = crypto.randomUUID();
-  _gameState.loot.push({
-    id,
-    x: enemy.x + LOOT_DROP_OFFSET_MS.x,
-    z: enemy.z + LOOT_DROP_OFFSET_MS.z,
-    value,
-    kind: 'magic_stone',
-    createdAt: Date.now(),
-  });
-  console.log(`[loot] magic stone drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  // Variant enemies drop a guaranteed bonus magic stone beyond the normal one.
+  // Magnitude comes from the variant registry def, not a hard-coded value here.
+  const bonus = getVariantBonusDrop(enemy);
+  const bonusValue = bonus ? Number(bonus.magicStone) : 0;
+  if (bonusValue > 0) {
+    const bonusId = crypto.randomUUID();
+    _gameState.loot.push({
+      id: bonusId,
+      x: enemy.x - LOOT_DROP_OFFSET_MS.x,
+      z: enemy.z - LOOT_DROP_OFFSET_MS.z,
+      value: bonusValue,
+      kind: 'magic_stone',
+      createdAt: Date.now(),
+    });
+    console.log(`[loot] variant bonus magic stone drop id=${bonusId} value=${bonusValue} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
+  }
 }
 
 function spawnCurrencyDrop(enemy) {

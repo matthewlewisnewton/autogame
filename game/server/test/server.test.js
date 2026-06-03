@@ -26,6 +26,7 @@ import {
 	recordEnemyCardDrop,
 	getEnemyMagicStoneDrop,
 	getEnemyCurrencyDrop,
+	spawnMagicStoneDrop,
 	removeDeadEnemies,
 	buildCardChoices,
 	claimCardReward,
@@ -133,6 +134,7 @@ import {
 } from '../index.js';
 
 const { createLobby, resetAllLobbies } = require('../lobbies.js');
+const { VARIANT_DEFS } = require('../enemyVariants.js');
 
 // ── Helpers ──
 
@@ -3330,6 +3332,52 @@ describe('run state', () => {
 			expect(result.ok).toBe(false);
 			expect(result.reason).toBe('invalid_choice');
 			expect(gameState.players.p1.ownedCards.flame_blade).toBeUndefined();
+		});
+	});
+
+	// ── variant bonus drops ──
+
+	describe('variant enemy bonus drops', () => {
+		beforeEach(() => resetState());
+
+		it('records a guaranteed bonus card for a variant enemy on top of the normal one', () => {
+			addPlayer('p1', { ownedCards: {} });
+			gameState.run = createRunState();
+
+			recordEnemyCardDrop({ type: 'grunt', variant: 'test', lastDamagedBy: 'p1' });
+
+			// Normal drop + guaranteed variant bonus = two copies of the mapped card.
+			expect(gameState.players.p1.runCardDropIds).toEqual(['iron_sword', 'iron_sword']);
+		});
+
+		it('does not record a bonus card for a non-variant enemy', () => {
+			addPlayer('p1', { ownedCards: {} });
+			gameState.run = createRunState();
+
+			recordEnemyCardDrop({ type: 'grunt', variant: null, lastDamagedBy: 'p1' });
+
+			expect(gameState.players.p1.runCardDropIds).toEqual(['iron_sword']);
+		});
+
+		it('spawns an extra magic-stone loot entry for a variant enemy', () => {
+			const enemy = { id: 'e1', type: 'grunt', x: 4, z: -2, variant: 'test' };
+
+			spawnMagicStoneDrop(enemy);
+
+			const stones = gameState.loot.filter((l) => l.kind === 'magic_stone');
+			expect(stones).toHaveLength(2);
+			// Bonus stone value is driven by the variant registry def (bonusDrop.magicStone).
+			expect(stones.some((l) => l.value === VARIANT_DEFS.test.bonusDrop.magicStone)).toBe(true);
+			expect(stones.every((l) => l.kind === 'magic_stone')).toBe(true);
+		});
+
+		it('spawns only the normal magic-stone loot entry for a non-variant enemy', () => {
+			const enemy = { id: 'e1', type: 'grunt', x: 4, z: -2, variant: null };
+
+			spawnMagicStoneDrop(enemy);
+
+			const stones = gameState.loot.filter((l) => l.kind === 'magic_stone');
+			expect(stones).toHaveLength(1);
 		});
 	});
 
