@@ -191,6 +191,38 @@ describe('useKeyItem socket handler', () => {
 		return { socket };
 	}
 
+	it('useKeyItem is rejected when player is dead with dead reason', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.dead = true;
+		player.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('dead');
+		expect(player.keyItemCooldownUntil).toBe(0);
+	});
+
+	it('useKeyItem is rejected when player is extracted with extracted reason', async () => {
+		const { socket } = await connectAndStartRun();
+		const player = playerForSocket(socket);
+
+		player.extracted = true;
+		player.keyItemCooldownUntil = 0;
+
+		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		socket.emit('useKeyItem', { keyItemId: 'dodge_roll' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toBe('extracted');
+		expect(player.keyItemCooldownUntil).toBe(0);
+	});
+
 	it('useKeyItem is rejected when on cooldown with on_cooldown reason', async () => {
 		const { socket } = await connectAndStartRun();
 		const player = playerForSocket(socket);

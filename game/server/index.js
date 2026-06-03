@@ -2794,7 +2794,15 @@ function startServer(port) {
     }
 
     const player = state.players[socket.playerId];
-    if (!player || player.dead || player.extracted) return;
+    if (!player) return;
+    if (player.dead) {
+      socket.emit('keyItemUsed', { ok: false, reason: 'dead' });
+      return;
+    }
+    if (player.extracted) {
+      socket.emit('keyItemUsed', { ok: false, reason: 'extracted' });
+      return;
+    }
 
     const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
     if (!keyItemId) {
