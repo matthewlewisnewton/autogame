@@ -5,7 +5,7 @@ contract is documented in [`game/docs/MODEL_SPIKE.md`](../../../docs/MODEL_SPIKE
 
 ## Replacing `player.glb`
 
-1. **Source** — Start from the chosen spike base ([Quaternius Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html), CC0) or a derivative that keeps the same rig and proportion shape keys. See `DECISION.md` under ticket **185** for alternatives that were considered.
+1. **Source** — Start from the chosen spike base ([Quaternius Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html), CC0) or a derivative that keeps the same rig and proportion shape keys. See [`../../../docs/SPIKE_DECISION.md`](../../../docs/SPIKE_DECISION.md) for alternatives that were considered.
 2. **Blender cleanup** — Scale and orient only as needed (see checklist below). Do not rename morph targets or proportion keys.
 3. **Export** — Overwrite `player.glb` in this directory (binary glTF 2.0, `.glb`).
 4. **Credits** — Update the `player.glb` row in [`CREDITS.md`](./CREDITS.md) (source, license, URL, status).

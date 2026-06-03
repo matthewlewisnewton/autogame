@@ -3,8 +3,8 @@
 This document is the **durable contract** for ticket **185** and downstream work
 (**186** server `proportions{}`, **187** glTF avatar render, **188** proportion
 sliders). Source research and candidate comparison live in
-`tickets/185-character-models-spike-base-player-model/DECISION.md` (when present);
-this file is what implementers under `game/` should treat as authoritative.
+[`game/docs/SPIKE_DECISION.md`](SPIKE_DECISION.md); this file is the technical contract
+implementers under `game/` should treat as authoritative for export and runtime behavior.
 
 ## Chosen base asset
 
@@ -112,4 +112,4 @@ Per-target delta intent at influence **1.0** (single target, others 0):
 
 - Artist/engineer replacement steps: [`game/client/public/models/README.md`](../client/public/models/README.md)
 - Attribution ledger: [`game/client/public/models/CREDITS.md`](../client/public/models/CREDITS.md)
-- Decision note (candidates, URLs): `tickets/185-character-models-spike-base-player-model/DECISION.md`
+- Decision note (candidates, URLs): [`game/docs/SPIKE_DECISION.md`](SPIKE_DECISION.md)
