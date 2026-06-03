@@ -2885,3 +2885,26 @@ positive hat-on-head path is verified by code review + the sub-ticket's own visu
 QA rather than this capture. The capture does positively confirm the bare-head
 case, clean load, and no regressions.)
 
+
+## v0.164 — 192-character-keyitem-body-props  (2026-06-03 06:08:02)
+
+**Procedural fallback prop on the torso, removed/hidden when glTF resolves** — MET. `createPlayerAvatar` now takes `equippedKeyItemId`, records `group.userData.keyItemId`, and seats a procedural prop via `attachProceduralKeyItemProp` BEFORE `attachRegistryModel`, so it is captured by the procedural-visibility snapshot. When the glTF resolves, `attachGltfKeyItemProp` additionally removes+disposes the prior (procedural) prop and seats a fresh one on the spine bone — no duplicate, nothing left floating.
+
+**Updates on equip change without reload; tracked on `userData.keyItemId`** — MET. `updateKeyItemProp` no-ops when the id is unchanged; otherwise removes+disposes the old `keyItemPropMesh`, updates `keyItemId`, and rebuilds via the glTF path (`modelOverride` present) or procedural path. Called every frame in the player-update loop.
+
+**Renders for local AND remote players** — MET. `updateKeyItemProp` is invoked before the `if (id === myId) continue;` guard, so it runs for both branches; new avatars also receive `pData.equippedKeyItemId` at creation for both local and remote.
+
+**Unknown/none/asset-less ids never throw; routine best-effort and caught** — MET. `buildKeyItemProp` returns `null` for unmapped ids; `updateKeyItemProp` wraps the rebuild in try/catch with a warn; `attachGltfKeyItemProp` is invoked inside `attachRegistryModel`'s `.then`/`.catch`. The probe shows `equippedKeyItemId: "dodge_roll"` rendering without error.
+
+## Consistency / regression
+- No server changes (snapshot already exposes `equippedKeyItemId` at `progression.js:3171`). Diff is confined to `game/client/renderer.js` plus a new test. Mirrors the shipped hat feature (191) faithfully; no foundation regression.
+- Hat path, body retarget, and procedural snapshot logic are untouched in behavior.
+
+## Code quality
+- Clean, well-commented, constants named analogously to the hat constants. Dispose-on-swap avoids leaks. No dead/broken code, no console errors in the live capture.
+
+No debug scenarios were added or changed by this ticket.
+
+## Remaining gaps
+None. All acceptance criteria are fully and robustly met, and the captured run is clean.
+

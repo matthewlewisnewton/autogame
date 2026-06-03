@@ -1,0 +1,9 @@
+**VERDICT: PASS**
+
+The ticket is complete and robust. Summary:
+
+- **Game runs cleanly** — `metrics.json` reports `ok: true`, empty `pageerrors`, no harness failure; `console.log` has only benign Vite/init lines and a non-game `409`. The live screenshot shows the cyan `dodge_roll` prop seated on the avatar torso during play.
+- **All acceptance criteria met (and exceeded)** — `buildKeyItemProp` returns distinct meshes for **10** mapped ids (AC asked for ≥4) and `null` for `none`/null/undefined/unknown; glTF spine-bone attachment with world-scale/quaternion compensation plus a no-bone chest fallback; procedural fallback prop captured by the snapshot and re-seated on the glTF; equip-change rebuild without reload tracked on `userData.keyItemId`; runs for both local and remote players; best-effort/caught so bad ids never crash.
+- **Scope clean** — confined to `game/client/renderer.js` + a new test, no server changes, mirrors the shipped hat feature. All 7 unit tests pass (the URL log noise is a pre-existing caught model-load rejection in jsdom, shared with the hat test).
+
+No blocking gaps and no nits worth a backlog ticket, so I wrote only `review.md` (no `gaps.md`, no `nits.md`).

@@ -1,0 +1,5 @@
+Created 1 sub-ticket. Decomposition rationale: the work is a single cohesive feature (all in `client/renderer.js`) directly analogous to the already-shipped hat sub-ticket (191) — a prop catalog, glTF-bone attachment with procedural fallback, equip-change rebuild, and graceful no-prop degradation. Splitting the procedural and glTF halves would be wrong because `player.glb` actually loads, so a procedural-only prop would be hidden in the running game and unverifiable on its own. Verification is `code` because every acceptance criterion concerns a builder existing, equip-change behavior, local+remote logic, and an error/fallback path — none are pure happy-path visuals.
+
+Sub-ticket folder created:
+
+- `/home/matt/workspace/.autogame-worktrees/192-character-keyitem-body-props/tickets/192-character-keyitem-body-props/subtickets/01-keyitem-body-prop/ticket.md`
