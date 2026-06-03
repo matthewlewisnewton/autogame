@@ -1,0 +1,12 @@
+I created one sub-ticket. Here is the decomposition.
+
+## Summary
+
+The whole top-level ticket is a single, focused render-path bug, so it decomposes into **one sub-ticket**.
+
+**Root cause I traced:** The server's `player.deck` draw pile stores entries that are either plain card ids *or* inventory instance IDs (for owned/forged cards — `resolveDeckEntry` in `progression.js:2327`). The deck-viewer's `resolveDeckCardId` (`deck-viewer.js:19`) only runs `getCardDef` on the raw entry, so instance-ID entries resolve to `null` and are filtered out by `buildDeckMiniEntries` — leaving `#deck-viewer-grid` empty while the count uses raw `deck.length`. The HUD already solves this correctly via `resolveDeckEntryCardId` (`vanguard-hud.js:27`); the fix mirrors that into the deck viewer.
+
+**Verification mode: `code`** — the criteria are about resolution logic, a function signature accepting inventory, and DOM structure existing. Visual QA only runs a happy-path WASD session and wouldn't open the V-key viewer against an instance-ID deck, so it could never confirm this fix.
+
+Sub-ticket folder created:
+- `tickets/166-bug-deck-viewer-grid-empty/subtickets/01-resolve-instance-ids-in-deck-viewer/ticket.md`

@@ -445,6 +445,7 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-stage',
   'hat-shop-currency',
   'hats-unlocked',
+  'deck-viewer-instances',
 ]);
 
 // Helper: build a compact player list for lobbyUpdate payloads
@@ -709,6 +710,24 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'deck-viewer-instances') {
+      // Enter a normal run whose draw pile is built entirely from owned-card
+      // *instances* — the deck/selectedDeck store inventory instance IDs rather
+      // than plain card ids (as happens for acquired/forged cards). This drives
+      // the deck viewer's (V key) instance-id resolution path so the grid is
+      // populated, not empty. The same state is reachable normally by acquiring
+      // or forging cards into the inventory, building a deck from those owned
+      // cards in the lobby, then starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.inventory = createInventoryFromCardIds([
+        'iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake', 'steel_claymore',
+      ]);
+      normalizePlayerInventory(player);
+      player.selectedDeck = player.inventory.map((instance) => instance.instanceId);
+      createDrawDeckFromSelectedDeck(player);
+      initPlayerHand(player);
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
     } else if (name === 'custom-avatar-demo') {
       // Enter a normal run with a distinctive non-default cosmetic so the
       // cosmetic-driven avatar (non-box body shape + accent color) can be

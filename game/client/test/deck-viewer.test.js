@@ -59,6 +59,49 @@ describe('buildDeckMiniEntries()', () => {
 			isDesperation: true,
 		});
 	});
+
+	it('resolves inventory instance-id deck entries via the inventory', () => {
+		const inventory = [
+			{ instanceId: 'inst-1', cardId: 'iron_sword' },
+			{ instanceId: 'inst-2', cardId: 'battle_familiar' },
+		];
+		const entries = buildDeckMiniEntries(['inst-1', 'inst-2'], inventory);
+		expect(entries).toHaveLength(2);
+		expect(entries[0]).toMatchObject({ cardId: 'iron_sword', name: 'Rust-Forged Saber', icon: '⚔' });
+		expect(entries[1]).toMatchObject({ cardId: 'battle_familiar', icon: '✦' });
+	});
+
+	it('handles mixed plain-id and instance-id decks, skipping unresolvable entries', () => {
+		const inventory = [{ instanceId: 'inst-1', cardId: 'iron_sword' }];
+		const entries = buildDeckMiniEntries(
+			['inst-1', 'battle_familiar', 'inst-unknown', 'not_a_card'],
+			inventory,
+		);
+		expect(entries).toHaveLength(2);
+		expect(entries[0]).toMatchObject({ cardId: 'iron_sword' });
+		expect(entries[1]).toMatchObject({ cardId: 'battle_familiar' });
+	});
+
+	it('skips instance-id entries when no inventory is provided', () => {
+		expect(buildDeckMiniEntries(['inst-1'])).toHaveLength(0);
+	});
+});
+
+describe('resolveDeckCardId() with inventory', () => {
+	it('resolves an instance id to its underlying card id', () => {
+		const inventory = [{ instanceId: 'inst-1', cardId: 'iron_sword' }];
+		expect(resolveDeckCardId('inst-1', inventory)).toBe('iron_sword');
+	});
+
+	it('returns null for an instance id whose cardId is unknown', () => {
+		const inventory = [{ instanceId: 'inst-1', cardId: 'not_a_card' }];
+		expect(resolveDeckCardId('inst-1', inventory)).toBeNull();
+	});
+
+	it('still resolves plain card ids when inventory is provided', () => {
+		const inventory = [{ instanceId: 'inst-1', cardId: 'iron_sword' }];
+		expect(resolveDeckCardId('steel_claymore', inventory)).toBe('steel_claymore');
+	});
 });
 
 describe('getDeckStackLayerCount()', () => {

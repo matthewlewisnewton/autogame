@@ -11,29 +11,42 @@ import {
 
 /**
  * Resolve a draw-pile entry to a card id string.
- * Server/client deck arrays store card ids after shuffling.
+ * Server/client deck arrays store either plain card ids or inventory instance
+ * IDs (for owned/forged cards). Plain ids resolve via the card def directly;
+ * instance IDs fall back to the inventory's `{ instanceId, cardId }` mapping.
  *
  * @param {string | null | undefined} entry
+ * @param {Array<{ instanceId?: string, cardId?: string }> | null | undefined} [inventory]
  * @returns {string | null}
  */
-export function resolveDeckCardId(entry) {
+export function resolveDeckCardId(entry, inventory) {
 	if (!entry || typeof entry !== 'string') return null;
 	const cardId = migrateCardId(entry);
-	return getCardDef(cardId) ? cardId : null;
+	if (getCardDef(cardId)) return cardId;
+
+	if (Array.isArray(inventory)) {
+		const instance = inventory.find((item) => item && item.instanceId === entry);
+		if (instance && instance.cardId && getCardDef(instance.cardId)) {
+			return instance.cardId;
+		}
+	}
+
+	return null;
 }
 
 /**
  * Build display metadata for each card id in the draw pile.
  *
  * @param {string[]} deckIds
+ * @param {Array<{ instanceId?: string, cardId?: string }> | null | undefined} [inventory]
  * @returns {Array<{ cardId: string, name: string, icon: string, color: string, isEvolved: boolean, isDesperation: boolean }>}
  */
-export function buildDeckMiniEntries(deckIds) {
+export function buildDeckMiniEntries(deckIds, inventory) {
 	if (!Array.isArray(deckIds)) return [];
 
 	return deckIds
 		.map((entry) => {
-			const cardId = resolveDeckCardId(entry);
+			const cardId = resolveDeckCardId(entry, inventory);
 			const def = cardId ? getCardDef(cardId) : null;
 			if (!def) return null;
 			const style = CARD_TYPE_STYLE[def.type] || CARD_TYPE_STYLE.weapon;
