@@ -1,0 +1,13 @@
+## Planning summary
+
+**Round-1 status:** Sub-tickets `01`–`03` all have `.passed` markers — game code (description, shared heal radius, lobby broadcast VFX) is complete. The full review confirms no blocking code gaps for those three criteria.
+
+**Open gap (from `review-feedback.md`):** Harness capture failed because `playwright` could not be resolved when running `harness/screenshot.mjs` — an infrastructure issue, not a `game/` defect.
+
+**Action taken:** One new sub-ticket added to close that gap. No failed sub-tickets needed deletion (all existing ones passed).
+
+### Sub-ticket created
+
+- `/home/matt/workspace/.autogame-worktrees/151-cleanup-key-item-field-medic-kit/tickets/151-cleanup-key-item-field-medic-kit/subtickets/04-install-harness-playwright-deps/ticket.md`
+
+**04-install-harness-playwright-deps** — Install/resolve harness Playwright deps so `screenshot.mjs` can import the package and produce a successful capture (`metrics.json` `"ok": true`). Optionally harden `link_harness_deps()` in `worktree_setup.py` to handle broken symlinks. No `game/` changes. Verification: **code**.
