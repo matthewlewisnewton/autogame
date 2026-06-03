@@ -4159,6 +4159,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			smokeBombX: 0,
 			smokeBombZ: 0,
 			cosmetic: { ...DEFAULT_COSMETIC },
+			username: undefined,
 		});
 	});
 
@@ -4208,6 +4209,12 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		addPlayer('p1');
 		const snapshot = stateSnapshot();
 		expect(snapshot.players['p1'].lastActivity).toBeUndefined();
+	});
+
+	it('includes username in snapshot when player record has one', () => {
+		addPlayer('p1', { username: 'TestPlayer' });
+		const snapshot = stateSnapshot();
+		expect(snapshot.players['p1'].username).toBe('TestPlayer');
 	});
 
 	it('preserves all client-facing player fields', () => {
