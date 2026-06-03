@@ -1,1 +1,9 @@
-All conflict markers are removed. The resolution keeps both logbook entries in chronological order — v0.163 (main's proportion-sliders entry, 05:47) followed by v0.164 (this ticket's key-item-body-props entry, 06:08). Both intents are preserved.
+**`LOGBOOK.md` is resolved** — all conflict markers are gone.
+
+The conflict was two append-only logbook sections at the same place after v0.164. The merge keeps both sides in version order:
+
+1. **v0.165** — `164-cleanup-retire-legacy-bash-harness` (from `main`)
+2. **v0.166** — `184-character-customization-player-nameplate` (from `main`)
+3. **v0.167** — `169-gameplay-enemy-variant-framework` (from the ticket branch)
+
+Each entry keeps its own **Remaining gaps** section; v0.167 closes the file. The harness can commit and finish the merge.

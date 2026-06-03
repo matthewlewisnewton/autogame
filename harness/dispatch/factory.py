@@ -24,6 +24,7 @@ from harness.dispatch.merge_queue import (
     resolve_pending,
 )
 from harness.dispatch.registry import AgentRegistry, AgentSpec
+from harness.dispatch.triage import triage_uncategorized
 from harness.telemetry.logging import log
 from harness.telemetry.progress import emit_progress_event
 from harness.workspace.ports import allocate_pool
@@ -308,6 +309,12 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         backpressure=lambda: mq.pending() >= merge_cap,
         tick_seconds=tick_seconds,
         reserve_qwen=cfg.reserve_qwen,
+        drain_flag=Path(main_root) / "harness" / "tmp" / "drain.flag",
+        merge_pending=mq.pending,
+        # Safety net: every ~60 ticks, label OPEN beads with no difficulty lane
+        # so a raw `bd create`/import can't strand a bead out of every lane query.
+        triage=lambda: triage_uncategorized(queue),
+        triage_every=60,
     )
     return disp, mq, queue, registry
 

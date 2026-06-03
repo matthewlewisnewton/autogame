@@ -1,0 +1,11 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/164-cleanup-retire-legacy-bash-harness/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/164-cleanup-retire-legacy-bash-harness/game/data
+Server listening on port 3000
+Player connected: socket=1zjzUO_VLENDXbfpAAAB, playerId=2972982d-7d66-4d2e-b2e8-3d65be7ef1bd
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=T7AR6F0yl3-kzgXGAAAD, playerId=423d1288-d531-4fc0-81ae-dbca1304432a
+Player disconnected: 1zjzUO_VLENDXbfpAAAB
+Player disconnected: T7AR6F0yl3-kzgXGAAAD

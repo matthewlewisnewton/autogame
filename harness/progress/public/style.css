@@ -729,6 +729,21 @@ h1 {
   color: var(--muted);
 }
 
+.beads-badge-btn {
+  cursor: pointer;
+  background: transparent;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.beads-badge-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.beads-badge-btn:focus-visible {
+  outline: 1px solid var(--blue);
+  outline-offset: 1px;
+}
+
 .beads-badge.status-open {
   color: var(--blue);
   border-color: rgba(124, 183, 255, 0.45);
@@ -856,3 +871,52 @@ h1 {
     min-height: 70vh;
   }
 }
+
+/* Factory status strip — agents running/idle + flock holders (live view) */
+.factory-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  align-items: center;
+  padding: 8px 24px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(8, 11, 18, 0.6);
+  font-size: 12px;
+}
+.factory-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.factory-label {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+}
+.factory-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.factory-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 9px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--muted);
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.factory-chips .chip strong { color: var(--text); font-weight: 600; }
+.factory-chips .chip-running { border-color: var(--green); color: var(--green); }
+.factory-chips .chip-running strong { color: var(--green); }
+.factory-chips .chip-idle { opacity: 0.75; }
+.factory-chips .chip-disabled { border-color: var(--red); color: var(--red); }
+.factory-chips .chip-disabled strong { color: var(--red); }

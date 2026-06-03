@@ -3237,6 +3237,7 @@ function stateSnapshot() {
       smokeBombX: p.smokeBombX || 0,
       smokeBombZ: p.smokeBombZ || 0,
       cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
+      username: p.username,
     };
   }
 

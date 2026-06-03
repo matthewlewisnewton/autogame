@@ -2930,6 +2930,52 @@ No debug scenarios were added or changed by this ticket.
 None. All acceptance criteria are fully and robustly met, and the captured run is clean.
 
 
+## v0.165 — 164-cleanup-retire-legacy-bash-harness  (2026-06-03 07:48:57)
+
+  execute the deleted files.
+- Recoverability preserved exactly as the Goal requires: tag
+  `bash-rollback-v1` exists and still contains `lib.sh`, `run_ticket.sh`,
+  `run_subtask.sh`, `run_backlog.sh`, `supervisor.sh`.
+- `harness/lint.sh` (not a target) is correctly left untouched.
+
+**AC2 — "Existing server + client tests pass; the game starts and loads
+cleanly."** — MET.
+- Game starts/loads cleanly — see runtime gate above.
+- Server + client test suites live entirely under `game/`, which this diff does
+  not touch, so they are unaffected by definition. `coverage.log` confirms "No
+  test files found" for changed files (the changed files are harness Python/bash,
+  outside vitest's `game/` scope) — expected for a harness-only cleanup.
+
+## Remaining gaps
+
+None. The change is correct, minimal, and scoped exactly to the Goal; the
+captured run proves the game is healthy and the deletions are recoverable from
+`bash-rollback-v1`.
+
+
+## v0.166 — 184-character-customization-player-nameplate  (2026-06-03 08:03:40)
+
+
+### Nameplate sprite helper and registry
+PASS. `game/client/renderer.js` declares a module-scoped `playerNameplates` registry, exports `createNameplate(username)`, and exports `disposeNameplate(playerId)`. The helper draws the username to a canvas texture with a semi-transparent dark rounded background, white bold text, shadowing, `THREE.CanvasTexture`, and `depthTest: false` sprite material. Disposal removes the sprite from its parent, disposes the texture/material, and deletes the registry entry.
+
+### Game-loop nameplate integration
+PASS. The renderer creates or recreates remote-player nameplates from `pData.username`, positions them above each remote avatar after the avatar transform is applied, and disposes labels for players no longer present in `gs.players`. The self-player path creates a nameplate from `getAccountProfile().username` and tracks local predicted position/floor height, so the local label follows the same visual avatar the camera follows. Username changes are handled by comparing `sprite.userData.username` and rebuilding the sprite.
+
+### Design and requirements consistency
+PASS. The change is additive presentation around existing multiplayer avatars. It does not alter the lobby/dungeon/card loop described in `game/docs/design.md`, and it does not regress the foundation requirements in `game/docs/requirements.md`: the captured run still renders a 3D scene, connects over WebSockets, shows multiplayer state, and accepts movement.
+
+### Debug scenarios
+PASS. This ticket did not add or modify any `?debugScenario=NAME` shortcut or server-side debug scenario entry point. The captured scenario list is empty.
+
+### Verification and coverage
+PASS. The round coverage log shows the test suite completed successfully: 10 test files passed, 530 tests passed. The coverage report was informational only, with thresholds disabled. The logged model-load errors are from existing Vitest/jsdom relative-URL resilience paths and did not fail tests or appear in the browser capture.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.167 — 169-gameplay-enemy-variant-framework  (2026-06-03 09:07:56)
 
 ### Behavior hook

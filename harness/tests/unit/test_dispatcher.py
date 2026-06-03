@@ -132,6 +132,29 @@ def test_backpressure_pauses_new_claims_but_still_drains():
     assert drains["n"] == 2
 
 
+def test_drain_flag_stops_new_claims_but_finishes_in_flight(tmp_path):
+    """With the drain sentinel present, tick() reaps + merges but claims NO new
+    work, and run()'s loop body exits once no workers remain and merges are empty."""
+    q = FakeQueue({"medium": ["t1", "t2", "t3"]})
+    flag = tmp_path / "drain.flag"
+    pend = {"n": 0}
+    d, procs, wts = _dispatcher(q, _registry())
+    d.drain_flag = flag
+    d.merge_pending = lambda: pend["n"]
+    d.tick()                       # no flag yet → normal claims
+    assert set(procs) == {"t1", "t2"}
+    flag.write_text("drain")       # request drain
+    procs["t1"].finish(int(PipelineResult.PASS))
+    d.tick()                       # reap t1, but DON'T claim t3 (draining)
+    assert "t3" not in procs       # no new claim while draining
+    # finish the last in-flight worker; once workers + merge queue are empty the
+    # drain-exit condition in run() is satisfiable.
+    procs["t2"].finish(int(PipelineResult.PASS))
+    d.tick()
+    assert d._workers == {}
+    assert d._drain_requested() and d.merge_pending() == 0
+
+
 def test_quota_failure_disables_agent_and_requeues():
     q = FakeQueue({"medium": ["t1"]})
     d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)], quota=True)

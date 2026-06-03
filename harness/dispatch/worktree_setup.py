@@ -120,6 +120,18 @@ def install_harness_deps(root: Path, *, npm: str = "npm", pnpm: str = "pnpm", ti
         with held("harness-install", timeout=timeout_s):
             if _harness_playwright_ok(modules):
                 return True  # a peer installed while we waited for the lock
+            # A SYMLINK at the main harness/node_modules is never valid — only
+            # worktrees symlink (to this dir). A self-referential or broken symlink
+            # here (observed: node_modules -> itself) makes pnpm crash rc=216, so
+            # every worker fails setup and the dispatcher hot-loops. Remove it
+            # before installing so a fresh real node_modules can be created.
+            if modules.is_symlink():
+                log(f"[worktree-setup] removing stray symlink at {modules} (main "
+                    f"node_modules must be a real dir) before install")
+                try:
+                    modules.unlink()
+                except OSError as e:
+                    log(f"[worktree-setup] could not unlink {modules}: {e!r}")
             if (harness_dir / "pnpm-lock.yaml").exists():
                 if which(pnpm) is None:
                     log(f"[worktree-setup] '{pnpm}' not on PATH — cannot install harness deps")
