@@ -3632,6 +3632,8 @@ window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
+window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
+window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
 window.setLobbyTab = setLobbyTab;
 window.__setLobbyTabState = (tab, instanceId) => {
