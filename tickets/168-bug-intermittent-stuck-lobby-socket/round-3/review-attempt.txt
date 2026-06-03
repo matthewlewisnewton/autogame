@@ -1,0 +1,19 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fixes the intermittent stuck-lobby flake where a socket that never (re)connects left the player silently stuck with no surfaced error.
+
+**Runtime health (gate):** `metrics.json` shows `ok: true`, `pageerrors: []`, no `harness_failure`. Final probes reach `phase: "playing"` with `connectionState: "connected"`. `console.log` has no page/fatal errors — the two `409 Conflict` lines are pre-existing harness auth-flow noise ("Username taken" on re-register), unrelated to this ticket. Game starts and loads cleanly.
+
+**Implementation (scoped to `game/client/main.js` only):**
+- Explicit socket.io `timeout`/`reconnection` config so stalls deterministically emit `connect_error`.
+- A 10s connect watchdog armed on socket creation, post-connect drop, `reconnect_attempt`, and non-auth `connect_error`; escalates to a persistent error via both the always-visible status line and the lobby-browser error surface.
+- Idempotent absolute deadline so a rapid retry loop (the reported "rapid sequential sessions" condition) can't postpone the failure surface forever.
+- Correct recovery: `connect`/`reconnect` clear it; auth errors take precedence so "session expired" isn't clobbered.
+
+**Tests:** Client suite re-run → 146/146 pass, including 5 new watchdog tests. No server files changed.
+
+**Nits (non-blocking, written to `nits.md`):** (1) pre-existing — `performLogout`'s intentional disconnect can arm a stale watchdog; (2) the "reload to retry" message overstates the need to reload given background auto-reconnect.
+
+No blocking gaps, so no `gaps.md` written.

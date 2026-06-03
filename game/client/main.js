@@ -719,9 +719,22 @@ let socket = null;
 /** Create (or recreate) the Socket.IO connection with a JWT auth token. */
 function createSocket(token) {
 	if (socket) socket.disconnect();
-	socket = io({ auth: { token } });
+	// Explicit reconnection/timeout config rather than relying on undocumented
+	// defaults, so a stalled initial connect deterministically surfaces a
+	// `connect_error` the client can act on instead of hanging silently.
+	socket = io({
+		auth: { token },
+		timeout: CONNECT_WATCHDOG_MS,
+		reconnection: true,
+		reconnectionAttempts: Infinity,
+		reconnectionDelay: 1000,
+		reconnectionDelayMax: 5000,
+	});
 	setSocketRef(socket);
 	bindSocketHandlers(socket);
+	// Surface a persistent error if this (re)created socket never reaches
+	// `connect`. Cleared in the `connect`/`reconnect` handlers below.
+	startConnectWatchdog();
 }
 
 async function restoreSession(token) {
@@ -781,6 +794,8 @@ function bindSocketHandlers(s) {
 	if (!s) return;
 
 	s.on('connect', () => {
+		clearConnectWatchdog();
+		showLobbyBrowserError('');
 		updateStatus('Connected', 'connected');
 		startHeartbeat();
 	});
@@ -789,13 +804,23 @@ function bindSocketHandlers(s) {
 		stopHeartbeat();
 		updateStatus('Disconnected', 'disconnected');
 		rendererDisposeAllLootMeshes();
+		// A drop after a good connection re-arms the watchdog: reconnection is
+		// configured as infinite, so without this an unrecoverable drop would sit
+		// in transient status forever. Cleared again on `connect`/`reconnect`.
+		startConnectWatchdog();
 	});
 
 	s.io.on('reconnect_attempt', () => {
 		updateStatus('Reconnecting...', 'reconnecting');
+		// Idempotent: the first signal in an episode arms an absolute deadline;
+		// rapid repeated reconnect attempts do NOT postpone it, so a stalled
+		// reconnect loop still escalates to the persistent failure surface.
+		startConnectWatchdog();
 	});
 
 	s.io.on('reconnect', () => {
+		clearConnectWatchdog();
+		showLobbyBrowserError('');
 		updateStatus('Connected', 'connected');
 		startHeartbeat();
 	});
@@ -805,6 +830,10 @@ function bindSocketHandlers(s) {
 		const isAuthError = /jwt|token|unauthorized|authentication/i.test(msg);
 		stopHeartbeat();
 		if (isAuthError) {
+			// Auth recovery wins outright: cancel the connect watchdog so it can
+			// never overwrite the "session expired" surface with a generic
+			// connect-timeout error.
+			clearConnectWatchdog();
 			try { localStorage.removeItem(TOKEN_KEY); } catch (_) {}
 			setAuthToken(null);
 			s.io.disconnect();
@@ -819,6 +848,11 @@ function bindSocketHandlers(s) {
 			updateStatus('Session expired — please log in again', 'disconnected');
 		} else {
 			updateStatus('Connection failed — retrying...', 'reconnecting');
+			// Ensure the watchdog is running so a persistent non-auth connect
+			// failure escalates instead of retrying transiently forever. The
+			// call is idempotent: rapid repeated connect_error events do NOT
+			// reset the absolute deadline armed by the first failure.
+			startConnectWatchdog();
 		}
 	});
 
@@ -1405,6 +1439,11 @@ let gameState = null;
 let keyItemCooldownUntilClient = 0;
 let connectionState = 'connecting';
 let heartbeatTimer = null;
+let connectWatchdogTimer = null;
+// How long a freshly (re)created socket may take to reach `connect` before we
+// stop showing the transient "retrying..." status and surface a persistent,
+// user-visible connection-failed error. Also passed as the socket's `timeout`.
+const CONNECT_WATCHDOG_MS = 10000;
 let latency = null;
 let currentLayoutSeed = null; // tracks the layout seed we last built from
 let currentLayout = null; // persisted layout from init; stateUpdate omits it
@@ -1541,6 +1580,46 @@ window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve
 	socket.emit('debugScenario', { name });
 });
 
+// Test-only: drive the lobby deck editor over the live socket so a smoke test
+// can configure a non-default loadout (remove every current card, then add the
+// requested card ids). Behavior-neutral — only wraps the existing deckRemoveCard
+// / deckAddCard events that the deck editor UI already emits while in the lobby.
+window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
+	if (!socket || !socket.connected) return { ok: false, reason: 'no socket' };
+	if (!Array.isArray(targetCardIds)) return { ok: false, reason: 'targetCardIds must be an array' };
+	const waitDeck = () => new Promise((resolve) => {
+		const timeout = Math.max(1000, Math.min(timeoutMs || 5000, 15000));
+		const cleanup = () => {
+			clearTimeout(timer);
+			socket.off('deckUpdate', onUpdate);
+			socket.off('deckError', onError);
+		};
+		const onUpdate = (data) => { cleanup(); resolve({ ok: true, selectedDeck: data?.selectedDeck || [] }); };
+		const onError = (data) => { cleanup(); resolve({ ok: false, reason: data?.reason || 'deckError' }); };
+		const timer = setTimeout(() => { cleanup(); resolve({ ok: false, reason: 'timeout waiting for deckUpdate' }); }, timeout);
+		socket.once('deckUpdate', onUpdate);
+		socket.once('deckError', onError);
+	});
+	// Empty the current deck one instance at a time.
+	let guard = 0;
+	while (Array.isArray(mySelectedDeck) && mySelectedDeck.length > 0 && guard < 64) {
+		guard += 1;
+		const entry = mySelectedDeck[0];
+		const pending = waitDeck();
+		socket.emit('deckRemoveCard', { instanceId: entry });
+		const res = await pending;
+		if (!res.ok) return res;
+	}
+	// Add each requested card by id (server picks an available owned instance).
+	for (const cardId of targetCardIds) {
+		const pending = waitDeck();
+		socket.emit('deckAddCard', { cardId });
+		const res = await pending;
+		if (!res.ok) return { ok: false, reason: `add ${cardId} failed: ${res.reason}` };
+	}
+	return { ok: true, selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [] };
+};
+
 function startHeartbeat() {
 	if (heartbeatTimer) return;
 	heartbeatTimer = setInterval(() => {
@@ -1551,6 +1630,39 @@ function startHeartbeat() {
 function stopHeartbeat() {
 	clearInterval(heartbeatTimer);
 	heartbeatTimer = null;
+}
+
+/**
+ * Start the connect watchdog. If the socket fails to reach `connect` within
+ * CONNECT_WATCHDOG_MS, escalate from the transient "retrying..." status to a
+ * clear, persistent connection-failed error.
+ *
+ * Idempotent while a timer is already pending: this enforces an ABSOLUTE
+ * deadline per failure episode. In a rapid retry loop, failures can arrive
+ * faster than CONNECT_WATCHDOG_MS; if every signal reset the timer the deadline
+ * would never be reached and the user would sit in transient status forever.
+ * The first call in an episode sets the deadline; subsequent calls leave it
+ * intact. A clean recovery (`connect`/`reconnect`) clears the timer via
+ * clearConnectWatchdog(), so the next failure re-arms a fresh deadline.
+ */
+function startConnectWatchdog() {
+	if (connectWatchdogTimer) return;
+	connectWatchdogTimer = setTimeout(() => {
+		connectWatchdogTimer = null;
+		// Reaching here means neither `connect` nor `reconnect` fired in time —
+		// a real failure, not a normal in-flight connection.
+		const msg = 'Connection failed — could not reach the server. Reload the page to retry.';
+		updateStatus('Connection failed — reload to retry', 'disconnected');
+		showLobbyBrowserError(msg);
+	}, CONNECT_WATCHDOG_MS);
+}
+
+/** Cancel a pending connect watchdog (called once a connection succeeds). */
+function clearConnectWatchdog() {
+	if (connectWatchdogTimer) {
+		clearTimeout(connectWatchdogTimer);
+		connectWatchdogTimer = null;
+	}
 }
 
 function updateStatus(text, state) {
@@ -3745,6 +3857,16 @@ window.createEnemyMesh = rendererCreateEnemyMesh;
 window.enemyMeshHalfHeight = rendererEnemyMeshHalfHeight;
 window.healthBarColor = rendererHealthBarColor;
 window.__mySelectedDeck = () => mySelectedDeck;
+// Test-only: snapshot the lobby deck-editor state (selected deck + owned cards +
+// inventory instance→card mapping) so a smoke test can build a valid non-default
+// loadout from whatever the player actually owns. Read-only, behavior-neutral.
+window.__deckStateForTest = () => ({
+	selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
+	ownedCards: myOwnedCards ? { ...myOwnedCards } : {},
+	inventory: Array.isArray(myInventory)
+		? myInventory.map((i) => ({ instanceId: i.instanceId, cardId: i.cardId }))
+		: null,
+});
 window.__setDeckState = (deck, owned, inventory, currency) => {
 	mySelectedDeck = deck || mySelectedDeck;
 	myOwnedCards = owned || myOwnedCards;
@@ -3804,6 +3926,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugScenarioAllowed,
 		debugScenarioResult,
 		myId,
+		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',
 		runStatus: gameState && gameState.run ? gameState.run.status : null,
 		extracted: !!(me && me.extracted),

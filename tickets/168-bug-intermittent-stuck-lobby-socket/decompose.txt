@@ -1,0 +1,6 @@
+Created one new sub-ticket to close the single open gap from round 2. Both existing sub-tickets (`01`, `02`) carry `.passed` markers and were left untouched.
+
+**Sub-ticket created:**
+- `/home/matt/workspace/.autogame-worktrees/168-bug-intermittent-stuck-lobby-socket/tickets/168-bug-intermittent-stuck-lobby-socket/subtickets/03-watchdog-absolute-deadline/ticket.md`
+
+It addresses the gap directly: the watchdog timer is reset on every retry signal, so a rapid retry loop (failures arriving faster than the 10s `CONNECT_WATCHDOG_MS`) indefinitely postpones the persistent "reload to retry" failure surface. The fix makes `startConnectWatchdog()` idempotent while a timer is pending — preserving an absolute per-episode deadline — and adds a test that emits repeated non-auth `connect_error`/`reconnect_attempt` events faster than the window and asserts the persistent failure state still appears. Verification mode is `code` (timing/logic + test). No game code was written or servers/git touched.

@@ -2909,6 +2909,174 @@ describe('connect_error handler', () => {
 	});
 });
 
+// ── connect watchdog (stalled-connect escalation) ──
+
+describe('connect watchdog', () => {
+	beforeEach(() => {
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand',
+			'lobby', 'lobby-browser', 'lobby-browser-error', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
+			'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+		vi.useFakeTimers();
+	});
+
+	afterEach(() => {
+		vi.runOnlyPendingTimers();
+		vi.useRealTimers();
+	});
+
+	it('surfaces a persistent error when connect never fires within the timeout', async () => {
+		await import('../main.js');
+
+		// Fresh socket: this starts a new watchdog and clears any prior one.
+		window.createSocket('watchdog-token');
+
+		// Connection never reaches `connect` — let the watchdog fire.
+		vi.advanceTimersByTime(10000);
+
+		// 'disconnected' is the escalated failure state, distinct from the
+		// transient 'reconnecting' status used while a connect is in flight.
+		expect(window.__connectionState()).toBe('disconnected');
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+	});
+
+	it('clears the watchdog when connect fires before the timeout (no error shown)', async () => {
+		await import('../main.js');
+
+		window.createSocket('watchdog-token');
+
+		// A timely `connect` should cancel the watchdog.
+		window.__triggerSocketEvent('connect');
+		expect(window.__connectionState()).toBe('connected');
+
+		// Advancing past the timeout must NOT escalate to a failure state.
+		vi.advanceTimersByTime(10000);
+		expect(window.__connectionState()).toBe('connected');
+	});
+
+	it('re-arms the watchdog after a post-connect disconnect and escalates if no reconnect', async () => {
+		await import('../main.js');
+
+		window.createSocket('watchdog-token');
+
+		// Establish a good connection first — this clears the initial watchdog.
+		window.__triggerSocketEvent('connect');
+		expect(window.__connectionState()).toBe('connected');
+
+		// A later drop should re-arm the watchdog rather than sit transiently.
+		window.__triggerSocketEvent('disconnect');
+		expect(window.__connectionState()).toBe('disconnected');
+
+		// With no subsequent `connect`/`reconnect`, the persistent failure surface
+		// must appear once the watchdog window elapses (status stays 'disconnected'
+		// and the lobby-browser error is shown).
+		vi.advanceTimersByTime(10000);
+		expect(window.__connectionState()).toBe('disconnected');
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+		expect(statusEl.innerText).toBe('Connection failed — reload to retry');
+	});
+
+	it('clears the re-armed watchdog when a post-disconnect reconnect succeeds in time', async () => {
+		await import('../main.js');
+
+		window.createSocket('watchdog-token');
+
+		window.__triggerSocketEvent('connect');
+		window.__triggerSocketEvent('disconnect');
+		expect(window.__connectionState()).toBe('disconnected');
+
+		// A timely `connect` before the window elapses cancels the re-armed
+		// watchdog and restores the connected status — no persistent error.
+		window.__triggerSocketEvent('connect');
+		expect(window.__connectionState()).toBe('connected');
+
+		vi.advanceTimersByTime(10000);
+		expect(window.__connectionState()).toBe('connected');
+	});
+
+	it('escalates after the original window despite a rapid retry loop faster than CONNECT_WATCHDOG_MS', async () => {
+		await import('../main.js');
+
+		// Build a fresh socket that records both socket-level and io-level
+		// handlers so we can drive reconnect_attempt (an io-level event), which
+		// the default mock harness does not register.
+		const freshSocket = {
+			id: 'rapid-retry-socket',
+			connected: true,
+			_handlers: {},
+			on(event, cb) {
+				(this._handlers[event] || (this._handlers[event] = [])).push(cb);
+				return this;
+			},
+			emit() { return this; },
+			disconnect() { return this; },
+			io: {
+				_handlers: {},
+				on(event, cb) {
+					(this._handlers[event] || (this._handlers[event] = [])).push(cb);
+					return this;
+				},
+				disconnect() { return this; },
+			},
+		};
+		window.bindSocketHandlers(freshSocket);
+
+		const fire = (event, data) => {
+			for (const cb of (freshSocket._handlers[event] || [])) cb(data);
+			for (const cb of (freshSocket.io._handlers[event] || [])) cb(data);
+		};
+
+		// Rapid retry loop: a non-auth signal every 3s — well under the 10s
+		// CONNECT_WATCHDOG_MS window. The first signal arms the absolute
+		// deadline; the rest must NOT postpone it. Under the old reset-on-every-
+		// signal behavior this loop would never escalate.
+		fire('connect_error', 'boom');      // t=0: episode begins, deadline at t=10000
+		vi.advanceTimersByTime(3000);       // t=3000
+		fire('reconnect_attempt');
+		vi.advanceTimersByTime(3000);       // t=6000
+		fire('connect_error', 'boom');
+		vi.advanceTimersByTime(3000);       // t=9000
+		fire('reconnect_attempt');
+		vi.advanceTimersByTime(2000);       // t=11000 — past the original window
+
+		// The absolute deadline fired and escalated to the persistent failure
+		// surface despite signals arriving faster than CONNECT_WATCHDOG_MS.
+		expect(window.__connectionState()).toBe('disconnected');
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+		expect(statusEl.innerText).toBe('Connection failed — reload to retry');
+	});
+});
+
 describe('run summary card choices', () => {
 	beforeEach(() => {
 		const requiredIds = [

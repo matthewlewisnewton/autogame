@@ -85,8 +85,16 @@ describe('useKeyItem — barrier_dome (socket integration)', () => {
 		expect(player.barrierDomeZ).toBe(-2);
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
 
-		// Duration roughly matches def
-		expect(player.barrierDomeUntil - now).toBeCloseTo(def.durationMs, -1);
+		// Duration roughly matches def. `barrierDomeUntil` was set to castTime +
+		// durationMs on the server; `now` is captured here after the keyItemUsed
+		// event has crossed the socket, so the remaining window is durationMs minus
+		// a small, variable client-receive latency. Assert it falls in a generous
+		// (durationMs - 500ms, durationMs] band instead of an exact ±5ms match,
+		// which flaked when socket latency exceeded 5ms under load. This still
+		// catches gross regressions (e.g. a duration of 200ms or 8000ms).
+		const remainingMs = player.barrierDomeUntil - now;
+		expect(remainingMs).toBeLessThanOrEqual(def.durationMs);
+		expect(remainingMs).toBeGreaterThan(def.durationMs - 500);
 	});
 
 	it('cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the dome', async () => {

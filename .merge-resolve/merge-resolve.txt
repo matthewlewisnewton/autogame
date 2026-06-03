@@ -1,9 +1,20 @@
-**`LOGBOOK.md` is resolved** — all conflict markers are gone.
+`LOGBOOK.md` is resolved and marker-free.
 
-The conflict was two append-only logbook sections at the same place after v0.164. The merge keeps both sides in version order:
+**What was merged**
 
-1. **v0.165** — `164-cleanup-retire-legacy-bash-harness` (from `main`)
-2. **v0.166** — `184-character-customization-player-nameplate` (from `main`)
-3. **v0.167** — `169-gameplay-enemy-variant-framework` (from the ticket branch)
+Both sides added new logbook entries after `v0.167`. The conflict was only about which entries to keep at the tail:
 
-Each entry keeps its own **Remaining gaps** section; v0.167 closes the file. The harness can commit and finish the merge.
+| Side | Content |
+|------|---------|
+| Branch (HEAD) | `v0.170` — 178 world-stage portal transition QA |
+| `main` | `v0.168` — lobby socket fix, `v0.169` — deck loadout QA |
+
+**Resolution**
+
+All three entries are kept in descending version order (newest first), matching the rest of the logbook:
+
+1. **v0.170** — ticket 178 (branch), including its “Remaining gaps: None”
+2. **v0.169** — ticket 179 (from `main`)
+3. **v0.168** — ticket 168 (from `main`)
+
+Conflict markers are removed; the harness can finish the merge and run tests.
