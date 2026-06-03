@@ -6,13 +6,15 @@
 const BODY_SHAPES = ['box', 'cylinder', 'cone', 'capsule'];
 
 // Server-side hat catalog. Each hat has a stable `id`, a display `name`, and an
-// integer currency `price`. The `none` entry is the default bare-head option and
-// is always free/owned; the others are purchasable via sub-ticket 02.
+// integer currency `price`. The `none`/`bandana`/`beanie` entries are free
+// starter hats every account owns by default; the others are purchasable.
 const HAT_CATALOG = [
 	{ id: 'none', name: 'No Hat', price: 0 },
 	{ id: 'cap', name: 'Adventurer Cap', price: 50 },
 	{ id: 'wizard', name: 'Wizard Hat', price: 150 },
-	{ id: 'crown', name: 'Golden Crown', price: 500 }
+	{ id: 'crown', name: 'Golden Crown', price: 500 },
+	{ id: 'bandana', name: 'Bandana', price: 0 },
+	{ id: 'beanie', name: 'Beanie', price: 0 }
 ];
 
 // Set of valid hat ids derived from the catalog, for fast membership checks.
@@ -27,8 +29,9 @@ function getHat(id) {
 	return HAT_CATALOG.find((h) => h.id === id);
 }
 
-// Default set of hats every account owns. Always includes the bare-head option.
-const DEFAULT_UNLOCKED_HATS = ['none'];
+// Default set of hats every account owns. Always includes the bare-head option
+// plus the free starter hats.
+const DEFAULT_UNLOCKED_HATS = ['none', 'bandana', 'beanie'];
 
 // Default cosmetic applied at account creation and used to backfill legacy
 // records that predate the cosmetic field.
@@ -107,8 +110,9 @@ function backfillCosmetic(existing) {
 
 /**
  * Return a deduped array of valid catalog hat ids from an existing unlocked
- * list, always including 'none'. Used to backfill legacy account records and
- * sanitize stored values.
+ * list, always including the full default-owned starter set
+ * (DEFAULT_UNLOCKED_HATS). Used to backfill legacy account records and sanitize
+ * stored values, retroactively granting newly-added starter hats.
  *
  * @param {string[]|undefined} existing
  * @returns {string[]}
@@ -122,7 +126,7 @@ function backfillUnlockedHats(existing) {
 			out.push(id);
 		}
 	};
-	add('none');
+	for (const id of DEFAULT_UNLOCKED_HATS) add(id);
 	if (Array.isArray(existing)) {
 		for (const id of existing) add(id);
 	}
