@@ -1,0 +1,10 @@
+Created sub-ticket(s) for the remaining work.
+
+**Findings:** This is a two-nit cleanup ticket. Checking the current code against the stale references:
+- **Nit 2 (pass equipped key item id on `useKeyItem`)** — already resolved. `main.js:741-753` emits `{ keyItemId: me.equippedKeyItemId }` and skips emit when nothing is equipped, plus special-cases `phase_step`. No sub-ticket needed.
+- **Nit 1 (profile-aware gamepad hint)** — still open. `input.js:432` hardcodes `STANDARD_BUTTON_HINTS` regardless of the active profile, so 8BitDo 64 players see "DPad Down" instead of "Stick click" for index 13.
+
+So one sub-ticket fully delivers the remaining work.
+
+Sub-ticket created:
+- `/home/matt/workspace/.autogame-worktrees/147-cleanup-key-item-input-bindings-and-settings/tickets/147-cleanup-key-item-input-bindings-and-settings/subtickets/01-profile-aware-key-item-gamepad-hint/ticket.md`

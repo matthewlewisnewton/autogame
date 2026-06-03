@@ -2678,3 +2678,26 @@ is exercised by unit tests.
 None. Both sub-tickets are fully and robustly implemented, tests pass, and the captured run
 is clean.
 
+
+## v0.154 — Cleanup nits from 119-key-item-input-bindings-and-settings  (2026-06-03 02:24:49)
+
+  other than `missing_key_item_id`."** — MET, proven by capture. The dodge probe
+  shows `equippedKeyItemId: "dodge_roll"`, the dodge executed (player moved
+  -9,9 → -10.9,-9.6), and the cooldown engaged afterward
+  (`keyItemCooldownRemaining: 359`, HUD indicator "0.4", then "0.1"), with no
+  rejection error in the console. The server clearly received a valid
+  `{ keyItemId }`.
+
+## Code quality
+
+- The new branch is small, readable, and matches surrounding style. No dead code,
+  no console errors, no leftover debug paths. No new `?debugScenario` shortcuts
+  were introduced (`debugScenario: null`, `debugScenarioAllowed: true` in probes).
+- Consistent with `design.md`: profile-aware control glyphs are exactly the
+  intent of the gamepad-profiles abstraction; no foundation regression.
+
+## Remaining gaps
+
+None. Both acceptance criteria are fully and robustly met, the unit suite passes,
+and the captured run is healthy.
+
