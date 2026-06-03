@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/144-cleanup-harness-misclassifies-pageerror/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/144-cleanup-harness-misclassifies-pageerror/game/data
+Server listening on port 3000
+Player connected: socket=mso1n43l44gwgcHyAAAB, playerId=32b012c9-ff74-48b5-9507-dba1a7a45fc6
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=KOtXsqBABT8nqVFhAAAD, playerId=8cbc4300-3a1f-44e8-b14e-3170ff40b59c
+Player disconnected: mso1n43l44gwgcHyAAAB
+Player disconnected: KOtXsqBABT8nqVFhAAAD

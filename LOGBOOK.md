@@ -2655,3 +2655,26 @@ None blocking. Runtime capture is clean; all top-level acceptance criteria are i
 
 ---
 
+
+## v0.159 — Cleanup nits from 139-harness-misclassifies-pageerror  (2026-06-03 04:15:09)
+
+`{"ok": false, "error": "servers did not start"}`. `game_smoke_ok` still reads
+both shapes as broken (both set `ok: false`, neither is `browser_pageerror`), so
+`confirm_game_broken` still returns `True` for a server-down confirmation — no
+behavior regression, only richer metrics for the smoke gate.
+
+## Integration / quality
+- The promote-pageerrors and classify paths are consistent with the existing
+  `_classify_capture_failure` contract (all failure shapes set `ok: false`;
+  only true infra sets `harness_failure`/`detected`).
+- The lazy `from harness.steps.capture_run import _classify_capture_failure`
+  inside `confirm_game_broken` matches the existing lazy-import style there and
+  avoids any import cycle with `capture_run`.
+- Tests: `tests/unit/test_capture_run_diagnostics.py` 37 passed; related
+  confirm/smoke/escalate unit tests 14 passed. No regressions observed.
+
+## Remaining gaps
+None blocking. See `nits.md` for one minor follow-up (the promote path drops the
+screenshots/probes arrays from the rewritten metrics — consistent with existing
+classify behavior, not a regression).
+

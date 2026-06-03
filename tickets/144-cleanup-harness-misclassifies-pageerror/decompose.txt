@@ -1,0 +1,14 @@
+Created 3 sub-tickets. This is a harness-Python cleanup ticket (no `game/` changes), so all three are `code`-verified against the diff — none are observable in the running game. The three nits are independent (separate files/concerns), each implementable in one focused pass.
+
+Sub-ticket folder paths created:
+
+- `tickets/144-cleanup-harness-misclassifies-pageerror/subtickets/01-promote-pageerrors-on-capture-success/ticket.md`
+- `tickets/144-cleanup-harness-misclassifies-pageerror/subtickets/02-classify-confirm-broken-server-down/ticket.md`
+- `tickets/144-cleanup-harness-misclassifies-pageerror/subtickets/03-fix-read-harness-failure-docstring/ticket.md`
+
+Mapping to the top-level ticket's three nits:
+- **01** → "Promote pageerrors when capture exits 0" (`capture_run.py` — the only real logic change, plus a unit test)
+- **02** → "confirm_broken uses unclassified server-down metrics" (`confirm_broken.py` — route through `_classify_capture_failure`)
+- **03** → "Stale `_read_harness_failure` docstring" (`pipelines/ticket.py` — docs-only)
+
+All three were verified as still-unresolved against the current code before scoping.
