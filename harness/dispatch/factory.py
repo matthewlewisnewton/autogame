@@ -24,6 +24,7 @@ from harness.dispatch.merge_queue import (
     resolve_pending,
 )
 from harness.dispatch.registry import AgentRegistry, AgentSpec
+from harness.dispatch.quota_probe import probe_agent_quota
 from harness.dispatch.triage import triage_uncategorized
 from harness.telemetry.logging import log
 from harness.telemetry.progress import emit_progress_event
@@ -291,6 +292,7 @@ def build_factory(main_root, *, workers: Optional[int] = None,
     # resolve it, instead of discarding the work and re-running the ticket. Needs
     # a roster (base roles.yaml only — deterministic, no worker overrides). If it
     # can't load, rebase conflicts fall back to the old reject behavior.
+    _roster = None
     try:
         from harness.roles import Roster
         _roster = Roster.load(main_root / "harness" / "roles.yaml", None)
@@ -298,6 +300,11 @@ def build_factory(main_root, *, workers: Optional[int] = None,
     except Exception as e:
         log(f"[factory] merge_resolve roster unavailable ({e!r}); "
             f"rebase conflicts will reject + requeue as before")
+    # Quota auto-recovery probe: reuse the same roster to look up an agent's CLI
+    # backend and run a cheap isolated "reply OK" probe (see quota_probe). Without
+    # a roster, a quota-disabled agent stays down until a human `--enable`s it.
+    probe_fn = ((lambda name: probe_agent_quota(_roster.agents.get(name)))
+                if _roster is not None else None)
     # Backpressure: cap how many PASSED branches may sit waiting to merge. When
     # the merge queue is at/over the cap, the dispatcher stops claiming NEW work
     # (reap + merge_drain still run) so reviewed tickets drain instead of piling
@@ -317,6 +324,9 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         # so a raw `bd create`/import can't strand a bead out of every lane query.
         triage=lambda: triage_uncategorized(queue),
         triage_every=60,
+        # Auto-recover a quota-disabled remote agent: re-probe it after a cooldown
+        # and re-enable the moment its quota is back (no manual --enable).
+        probe_fn=probe_fn,
     )
     return disp, mq, queue, registry
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import json
 import threading
+import time
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
@@ -41,6 +42,10 @@ class _State:
     in_flight: int = 0
     health: AgentHealth = AgentHealth.AVAILABLE
     disabled_reason: Optional[str] = None
+    # Epoch seconds at which a circuit-broken agent becomes eligible for a quota
+    # RE-PROBE (not auto-available — it stays DISABLED until a probe succeeds).
+    # None = disabled indefinitely (manual re-enable only, e.g. a human disable).
+    probe_at: Optional[float] = None
 
 
 class AgentRegistry:
@@ -90,12 +95,17 @@ class AgentRegistry:
                 st.in_flight -= 1
 
     # --- circuit breaker ------------------------------------------------ #
-    def disable(self, name: str, *, reason: str = "") -> None:
+    def disable(self, name: str, *, reason: str = "", cooldown_s: Optional[float] = None) -> None:
+        """Circuit-break an agent. `cooldown_s` schedules an automatic quota
+        re-probe that many seconds out (the agent stays DISABLED until that probe
+        succeeds — see due_for_probe/enable). cooldown_s=None means indefinite:
+        manual re-enable only (used for a deliberate human disable)."""
         with self._lock:
             st = self._states.get(name)
             if st:
                 st.health = AgentHealth.DISABLED
                 st.disabled_reason = reason or None
+                st.probe_at = (time.time() + cooldown_s) if cooldown_s is not None else None
                 self._save_health()
 
     def enable(self, name: str) -> None:
@@ -104,7 +114,19 @@ class AgentRegistry:
             if st:
                 st.health = AgentHealth.AVAILABLE
                 st.disabled_reason = None
+                st.probe_at = None
                 self._save_health()
+
+    def due_for_probe(self, *, now: Optional[float] = None) -> list[str]:
+        """Disabled agents whose cooldown has elapsed — i.e. it's time to re-probe
+        their quota. They stay unavailable until a probe actually succeeds (the
+        dispatcher calls enable() on success, or disable(cooldown_s=…) to back
+        off again on failure)."""
+        t = time.time() if now is None else now
+        with self._lock:
+            return [n for n, st in self._states.items()
+                    if st.health is AgentHealth.DISABLED
+                    and st.probe_at is not None and t >= st.probe_at]
 
     def is_available(self, name: str) -> bool:
         with self._lock:
@@ -120,6 +142,7 @@ class AgentRegistry:
                     "max_concurrency": st.spec.max_concurrency,
                     "health": st.health.value,
                     "disabled_reason": st.disabled_reason,
+                    "probe_at": st.probe_at,
                     "eligible": sorted(st.spec.eligible),
                 }
                 for name, st in self._states.items()
@@ -138,16 +161,25 @@ class AgentRegistry:
             data = json.loads(self._health_file.read_text())
         except (OSError, json.JSONDecodeError):
             return
-        for name, reason in (data.get("disabled") or {}).items():
+        for name, val in (data.get("disabled") or {}).items():
             st = self._states.get(name)
-            if st:
-                st.health = AgentHealth.DISABLED
-                st.disabled_reason = reason
+            if not st:
+                continue
+            st.health = AgentHealth.DISABLED
+            # New format: {reason, probe_at} (preserves the auto-probe schedule
+            # across a restart). Old format: a bare reason string (probe_at=None →
+            # indefinite, matching the pre-cooldown behaviour).
+            if isinstance(val, dict):
+                st.disabled_reason = val.get("reason") or None
+                st.probe_at = val.get("probe_at")
+            else:
+                st.disabled_reason = val or None
+                st.probe_at = None
 
     def _save_health(self) -> None:
         if not self._health_file:
             return
-        disabled = {n: (st.disabled_reason or "")
+        disabled = {n: {"reason": (st.disabled_reason or ""), "probe_at": st.probe_at}
                     for n, st in self._states.items()
                     if st.health is AgentHealth.DISABLED}
         try:

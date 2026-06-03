@@ -155,6 +155,31 @@ def test_drain_flag_stops_new_claims_but_finishes_in_flight(tmp_path):
     assert d._drain_requested() and d.merge_pending() == 0
 
 
+def test_quota_auto_recovery_reenables_on_probe_success():
+    """A circuit-broken agent past its cooldown is re-probed; a recovered probe
+    re-enables it with no manual --enable."""
+    reg = _registry()
+    reg.disable("composer", reason="quota", cooldown_s=0)   # probe_at = now → due
+    assert "composer" in reg.disabled_agents()
+    d, _, _ = _dispatcher(FakeQueue({}), reg)
+    d.probe_fn = lambda name: True                          # quota's back
+    d._recover_disabled_agents()
+    assert reg.is_available("composer")
+
+
+def test_quota_auto_recovery_backs_off_when_still_out():
+    """A failed probe keeps the agent disabled and re-arms the cooldown (so it
+    isn't probed again until the next interval — no per-tick hammering)."""
+    reg = _registry()
+    reg.disable("composer", reason="quota", cooldown_s=0)
+    d, _, _ = _dispatcher(FakeQueue({}), reg)
+    d.quota_cooldown_s = 600
+    d.probe_fn = lambda name: False                         # still out
+    d._recover_disabled_agents()
+    assert "composer" in reg.disabled_agents()              # still disabled
+    assert reg.due_for_probe() == []                        # cooldown pushed to the future
+
+
 def test_quota_failure_disables_agent_and_requeues():
     q = FakeQueue({"medium": ["t1"]})
     d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)], quota=True)

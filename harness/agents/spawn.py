@@ -61,6 +61,15 @@ _TRANSIENT_RETRY_RE = re.compile(r"attempt\s+\d+\s+failed.*retry", re.IGNORECASE
 _TERMINAL_QUOTA_SUBSTRINGS = (
     "exhausted your capacity on this model",
     "quota will reset after",
+    # Cursor (composer/gpt-5.5) surfaces a quota dip as a billing-flavoured
+    # message that USED to fall through to EXIT_NONZERO — so the dispatcher's
+    # circuit breaker never tripped and cursor hot-looped instead of being
+    # disabled. These distinctive phrases (never in normal task output; the
+    # has_verdict carve-out still protects reviewers) classify it as quota so the
+    # breaker disables cursor + starts its cooldown.
+    "out of usage",
+    "increase your limit",
+    "unpaid invoice",
 )
 
 # Verdict marker — duplicated lightly here to break the import cycle with

@@ -108,6 +108,13 @@ class Dispatcher:
     # single-writer Dolt lock. `triage_every` ticks between passes (0 = off).
     triage: Optional[Callable[[], None]] = None
     triage_every: int = 0
+    # Quota auto-recovery: when a remote agent is circuit-broken on quota it's
+    # disabled with a cooldown; once that elapses, probe_fn(name) re-checks its
+    # quota (cheap "reply OK" in an isolated dir) and the agent is re-enabled the
+    # moment it recovers — no manual `--enable`. None = no auto-recovery (a
+    # quota-disabled agent stays down until a human re-enables, the old behaviour).
+    probe_fn: Optional[Callable[[str], Optional[bool]]] = None
+    quota_cooldown_s: float = 600.0
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
@@ -154,6 +161,11 @@ class Dispatcher:
                 self.triage()
             except Exception as e:
                 log(f"[dispatch] triage raised (continuing tick): {e!r}")
+        # Quota auto-recovery: re-probe any circuit-broken agent whose cooldown
+        # has elapsed and re-enable it the moment its quota is back (skip while
+        # draining — we're winding down, not bringing agents back).
+        if self.probe_fn is not None and not self._drain_requested():
+            self._recover_disabled_agents()
         # Backpressure: if the merge queue is backed up, don't take on new work
         # this tick — let it drain first (reap + merge_drain above already ran).
         if self.backpressure is not None:
@@ -195,6 +207,32 @@ class Dispatcher:
 
     def _drain_requested(self) -> bool:
         return self.drain_flag is not None and self.drain_flag.exists()
+
+    def _recover_disabled_agents(self) -> None:
+        """For each circuit-broken agent past its cooldown, probe its quota; on
+        recovery re-enable it, else re-arm the cooldown so we back off instead of
+        probing every tick. The probe runs an isolated CLI call (may take a few
+        seconds) — only `due_for_probe()` agents are probed, so this is rare."""
+        try:
+            due = self.registry.due_for_probe()
+        except Exception as e:
+            log(f"[dispatch] due_for_probe raised (ignoring): {e!r}")
+            return
+        for name in due:
+            try:
+                result = self.probe_fn(name)
+            except Exception as e:
+                log(f"[dispatch] quota probe of {name} raised ({e!r}) — backing off")
+                result = False
+            if result is True:
+                self.registry.enable(name)
+                log(f"[dispatch] {name} quota recovered — re-enabled")
+                emit_progress_event("agent_reenabled", {"agent": name})
+            else:
+                # Still out (False) or undetermined (None): push the next probe out
+                # so we don't hammer it, keeping it disabled meanwhile.
+                self.registry.disable(name, reason="quota (still out)",
+                                      cooldown_s=self.quota_cooldown_s)
 
     def idle(self) -> bool:
         """True when nothing is running and no lane has ready work."""
@@ -346,8 +384,10 @@ class Dispatcher:
             return True
         # Failure. If the agent itself hit quota/unavailability, trip the breaker.
         if self._hit_quota(w):
-            log(f"[dispatch] {w.agent} hit quota/unavailable — disabling until re-enabled")
-            self.registry.disable(w.agent, reason="quota or unavailable")
+            cd = self.quota_cooldown_s if self.probe_fn is not None else None
+            log(f"[dispatch] {w.agent} hit quota/unavailable — disabling"
+                + (f" (auto-reprobe in {int(cd)}s)" if cd else " until re-enabled"))
+            self.registry.disable(w.agent, reason="quota or unavailable", cooldown_s=cd)
             emit_progress_event("agent_disabled", {"agent": w.agent, "reason": "quota"})
         self.queue.requeue(w.ticket_id, note=f"{w.agent} failed (rc={rc})")
         emit_progress_event("dispatch_requeue",
