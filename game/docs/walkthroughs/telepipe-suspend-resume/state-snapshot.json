@@ -1,0 +1,105 @@
+{
+  "capturedAt": "2026-06-03T17:24:42.452Z",
+  "preSuspend": {
+    "phase": "playing",
+    "runStatus": "playing",
+    "suspendedRunSummary": null,
+    "layout": {
+      "profile": "crowded",
+      "seed": 1335602341
+    },
+    "telepipe": null,
+    "player": {
+      "x": -9,
+      "z": 9
+    },
+    "enemyCount": 5,
+    "enemies": [
+      {
+        "id": "4de3e682-2902-4578-808b-aef43d4a1731",
+        "hp": 40
+      },
+      {
+        "id": "67a61068-bc49-4667-86db-fa5cab0fb35e",
+        "hp": 40
+      },
+      {
+        "id": "2d2769c8-ce4a-4130-9e27-c0d60362a1fe",
+        "hp": 100
+      },
+      {
+        "id": "e28b9b4b-970c-4f01-8881-97efe0ff0aa6",
+        "hp": 300
+      },
+      {
+        "id": "2539ef58-9f8d-4f81-a326-edc1a4bc278c",
+        "hp": 120
+      }
+    ]
+  },
+  "suspended": {
+    "phase": "lobby",
+    "runStatus": "suspended",
+    "suspendedRunSummary": {
+      "questId": "training_caverns",
+      "questName": "Initiate Vault",
+      "objective": {
+        "type": "defeat_enemies",
+        "label": "Initiate Vault: Purge hostiles from the derelict annex sector.",
+        "totalEnemies": 5,
+        "defeatedEnemies": 0
+      }
+    },
+    "layout": {
+      "profile": "crowded",
+      "seed": 1335602341
+    },
+    "telepipe": null,
+    "player": {
+      "x": -9,
+      "z": 9
+    },
+    "enemyCount": 0,
+    "enemies": []
+  },
+  "postResume": {
+    "phase": "playing",
+    "runStatus": "playing",
+    "suspendedRunSummary": null,
+    "layout": {
+      "profile": "crowded",
+      "seed": 1335602341
+    },
+    "telepipe": {
+      "x": -9,
+      "z": 9
+    },
+    "player": {
+      "x": -6,
+      "z": 9
+    },
+    "enemyCount": 5,
+    "enemies": [
+      {
+        "id": "4de3e682-2902-4578-808b-aef43d4a1731",
+        "hp": 40
+      },
+      {
+        "id": "67a61068-bc49-4667-86db-fa5cab0fb35e",
+        "hp": 40
+      },
+      {
+        "id": "2d2769c8-ce4a-4130-9e27-c0d60362a1fe",
+        "hp": 100
+      },
+      {
+        "id": "e28b9b4b-970c-4f01-8881-97efe0ff0aa6",
+        "hp": 300
+      },
+      {
+        "id": "2539ef58-9f8d-4f81-a326-edc1a4bc278c",
+        "hp": 120
+      }
+    ]
+  }
+}
