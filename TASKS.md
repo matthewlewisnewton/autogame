@@ -65,3 +65,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [194-cleanup-key-item-smoke-bomb](tickets/194-cleanup-key-item-smoke-bomb/)
 - [ ] [195-cleanup-docs-design-md-stale-fixes](tickets/195-cleanup-docs-design-md-stale-fixes/)
 - [ ] [196-cleanup-world-spire-ascent-stage](tickets/196-cleanup-world-spire-ascent-stage/)
+- [ ] [197-cleanup-models-wire-enemy-placeholders](tickets/197-cleanup-models-wire-enemy-placeholders/)
