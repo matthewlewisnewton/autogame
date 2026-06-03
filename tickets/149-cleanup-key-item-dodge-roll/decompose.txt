@@ -1,0 +1,9 @@
+**Remediation round 3 plan**
+
+`review-feedback.md` has one open gap: after the 800 ms dodge cooldown revert, the fallback recipe still probes ~900 ms post-dodge, so cooldown metrics are always zero. Sub-tickets `01`–`04` all have `.passed` and were left untouched. No failed subticket folders needed removal.
+
+**New sub-ticket created**
+
+- `/home/matt/workspace/.autogame-worktrees/149-cleanup-key-item-dodge-roll/tickets/149-cleanup-key-item-dodge-roll/subtickets/05-harness-post-dodge-cooldown-probe-timing/ticket.md`
+
+It scopes a harness-only timing fix in `fallbackRecipe()` so the post-dodge probe runs while `keyItemCooldownRemaining > 0` or `#key-item-indicator.cooldown` is still active, using **Verification: code** (metrics.json probe assertions).

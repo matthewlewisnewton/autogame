@@ -1,0 +1,25 @@
+## Review complete
+
+Wrote holistic review artifacts under `tickets/149-cleanup-key-item-dodge-roll/round-2/`.
+
+### Runtime health — pass
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: no `pageerror` / `[fatal]` lines
+
+### Acceptance criteria
+
+| Criterion | Result |
+|-----------|--------|
+| `controls.md` i-frame / cooldown wording | **Pass** — 800 ms cooldown, ~300 ms i-frames, no “one simulation tick” |
+| Harness dodge capture with cooldown proof | **Fail** — post-dodge probe: `keyItemCooldownRemaining: 0`, `keyItemIndicatorOnCooldown: false` |
+| Client tests for VFX / cooldown HUD | **Pass** — 4 tests in `key-item-dodge.test.js` |
+
+### Why capture fails
+Commit `7f1be88` correctly restored an **800 ms** dodge cooldown, but the fallback recipe still waits **~900 ms** (400 ms `useKeyItem` + 500 ms `wait`) before probing, so the cooldown has already expired. Round-1 only passed this probe while cooldown was temporarily **1200 ms**.
+
+### Verdict
+**VERDICT: FAIL** — see `round-2/review.md` (last line).
+
+**Remediation:** `round-2/gaps.md` — shorten post-dodge harness wait so capture asserts active cooldown at 800 ms.
+
+**Nits:** `round-2/nits.md` — false-positive `sloped-dungeon` `emitScenario` from ticket prose mentioning “sloped-dungeon geometry”.

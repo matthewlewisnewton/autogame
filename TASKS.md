@@ -44,7 +44,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [146-cleanup-key-item-data-and-persistence](tickets/146-cleanup-key-item-data-and-persistence/)
 - [ ] [147-cleanup-key-item-input-bindings-and-settings](tickets/147-cleanup-key-item-input-bindings-and-settings/)
 - [ ] [148-cleanup-key-item-lobby-equip-ui](tickets/148-cleanup-key-item-lobby-equip-ui/)
-- [ ] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)
+- [x] [149-cleanup-key-item-dodge-roll](tickets/149-cleanup-key-item-dodge-roll/)
 - [x] [150-cleanup-key-item-summon-recall](tickets/150-cleanup-key-item-summon-recall/)
 - [x] [151-cleanup-key-item-field-medic-kit](tickets/151-cleanup-key-item-field-medic-kit/)
 - [ ] [152-cleanup-key-item-flare-beacon](tickets/152-cleanup-key-item-flare-beacon/)
@@ -65,3 +65,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [194-cleanup-key-item-smoke-bomb](tickets/194-cleanup-key-item-smoke-bomb/)
 - [ ] [195-cleanup-docs-design-md-stale-fixes](tickets/195-cleanup-docs-design-md-stale-fixes/)
 - [ ] [196-cleanup-world-spire-ascent-stage](tickets/196-cleanup-world-spire-ascent-stage/)
+- [ ] [197-cleanup-cleanup-key-item-dodge-roll](tickets/197-cleanup-cleanup-key-item-dodge-roll/)
