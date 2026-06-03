@@ -2508,7 +2508,7 @@ function restoreHandCharges(player, amount, options = {}) {
   return restored;
 }
 
-function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
+function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   if (!ENEMY_DEFS[type]) {
     throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
   }
@@ -2530,6 +2530,12 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy) {
   if (spawnedBy !== undefined) {
     enemy.spawnedBy = spawnedBy;
   }
+  // Variant seam, centralized so every spawned enemy exposes `variant` (a tag or
+  // null — never undefined). Combat spawns pass the resolved encounterTier and
+  // seeded rng; callers with no known room/tier (spawner adds, ad-hoc spawns)
+  // default to tier 0 → no roll → variant: null. Rolled exactly once per enemy.
+  const tier = Number.isFinite(opts.tier) ? opts.tier : 0;
+  applyVariant(enemy, tier, opts.rng);
   _gameState.enemies.push(enemy);
   return enemy;
 }
@@ -2800,11 +2806,14 @@ function spawnCombatEnemies(layout, rng, quest) {
     const type = spawnTypes[i % spawnTypes.length];
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
-    const enemy = spawnEnemy(pos.x, pos.z, type);
+    // Variant seam (centralized in spawnEnemy): scale the roll by the spawn
+    // room's encounterTier (0 for start/treasure rooms or unknown positions, so
+    // they never roll a variant) and use the run's seeded rng.
+    const enemy = spawnEnemy(pos.x, pos.z, type, undefined, {
+      tier: roomTierAt(layout, pos.x, pos.z),
+      rng,
+    });
     enemy.wanderTarget = randomWanderTarget();
-    // Variant seam: scale the roll by the spawn room's encounterTier (0 for
-    // start/treasure rooms or unknown positions, so they never roll a variant).
-    applyVariant(enemy, roomTierAt(layout, pos.x, pos.z), rng);
   }
 }
 

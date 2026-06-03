@@ -4376,6 +4376,51 @@ describe('spawnEnemy() type validation', () => {
 	});
 });
 
+// ── spawnEnemy centralizes variant init ──
+
+describe('spawnEnemy() variant field', () => {
+	beforeEach(() => resetState());
+
+	it('exposes variant: null for direct and spawner-add tier-0 spawns', () => {
+		gameState.enemies = [];
+		// Direct ad-hoc spawn: no tier/rng → tier 0 → no roll → null.
+		const direct = spawnEnemy(0, 0, 'grunt');
+		expect(direct.variant).toBe(null);
+
+		// Spawner-add path (spawnedBy set, no opts) also defaults to tier 0.
+		const add = spawnEnemy(1, 1, 'skirmisher', 'parent123');
+		expect(add.variant).toBe(null);
+
+		// Field is always present (never undefined) on every spawned enemy.
+		for (const e of gameState.enemies) {
+			expect(e.variant).not.toBe(undefined);
+			expect(e.variant === null || typeof e.variant === 'string').toBe(true);
+		}
+	});
+
+	it('tags a high-tier spawn when the seeded roll passes, rolling once via spawnEnemy', () => {
+		gameState.enemies = [];
+		// rng always returns 0.1: first call is the variant roll (< chance at
+		// tier 1), the second is the id pick → index 0 of the registry.
+		const enemy = spawnEnemy(0, 0, 'grunt', undefined, { tier: 1, rng: () => 0.1 });
+		const ids = Object.keys(VARIANT_DEFS);
+		expect(ids).toContain(enemy.variant);
+		expect(enemy.variant).toBe(ids[0]);
+	});
+
+	it('produces variant (tag or null) on every combat spawn', () => {
+		resetGameState();
+		gameState.enemies = [];
+		spawnEnemies();
+		expect(gameState.enemies.length).toBeGreaterThan(0);
+		const ids = Object.keys(VARIANT_DEFS);
+		for (const e of gameState.enemies) {
+			expect(e.variant).not.toBe(undefined);
+			expect(e.variant === null || ids.includes(e.variant)).toBe(true);
+		}
+	});
+});
+
 // ── spawnEnemies mixed pack ──
 
 describe('spawnEnemies() mixed pack', () => {
