@@ -30,6 +30,7 @@ function stubClass(name) {
 			};
 			// Mesh constructor: (geometry, material) — store both
 			if (name === 'Mesh' && args.length >= 2) {
+				this.isMesh = true;
 				this.geometry = args[0];
 				this.material = args[1];
 			}
@@ -84,7 +85,11 @@ function stubClass(name) {
 			}
 		}
 	}
-	C.prototype.scale = { setScalar: function() {} };
+	C.prototype.scale = {
+		x: 1, y: 1, z: 1,
+		setScalar: function(s) { this.x = this.y = this.z = s; },
+		multiplyScalar: function(s) { this.x *= s; this.y *= s; this.z *= s; },
+	};
 	C.prototype.material = {
 		color: { setHex: function() {} },
 		emissive: {
@@ -135,10 +140,79 @@ function stubClass(name) {
 	return C;
 }
 
+function expandBoxFromNode(node, min, max, parentScale = { x: 1, y: 1, z: 1 }) {
+	const p = node.geometry?.parameters;
+	if (!p || p.width == null || p.height == null || p.depth == null) return;
+	const sx = (node.scale?.x ?? 1) * parentScale.x;
+	const sy = (node.scale?.y ?? 1) * parentScale.y;
+	const sz = (node.scale?.z ?? 1) * parentScale.z;
+	const px = (node.position?.x ?? 0) * parentScale.x;
+	const py = (node.position?.y ?? 0) * parentScale.y;
+	const pz = (node.position?.z ?? 0) * parentScale.z;
+	const hw = (p.width * sx) / 2;
+	const hh = (p.height * sy) / 2;
+	const hd = (p.depth * sz) / 2;
+	const corners = [
+		[px - hw, py - hh, pz - hd],
+		[px + hw, py + hh, pz + hd],
+	];
+	for (const [x, y, z] of corners) {
+		min.x = Math.min(min.x, x);
+		min.y = Math.min(min.y, y);
+		min.z = Math.min(min.z, z);
+		max.x = Math.max(max.x, x);
+		max.y = Math.max(max.y, y);
+		max.z = Math.max(max.z, z);
+	}
+}
+
 export const THREE = {
 	Scene: stubClass('Scene'),
 	PerspectiveCamera: stubClass('PerspectiveCamera'),
-	Vector3: stubClass('Vector3'),
+	Vector3: class Vector3 {
+		constructor(x = 0, y = 0, z = 0) {
+			this.x = x;
+			this.y = y;
+			this.z = z;
+		}
+	},
+	Box3: class Box3 {
+		constructor() {
+			this.min = { x: 0, y: 0, z: 0 };
+			this.max = { x: 0, y: 0, z: 0 };
+		}
+		setFromObject(root) {
+			const min = { x: Infinity, y: Infinity, z: Infinity };
+			const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+			const rootScale = {
+				x: root.scale?.x ?? 1,
+				y: root.scale?.y ?? 1,
+				z: root.scale?.z ?? 1,
+			};
+			root.traverse((node) => {
+				if (node.isMesh || node.geometry?.parameters?.width != null) {
+					expandBoxFromNode(node, min, max, rootScale);
+				}
+			});
+			const ox = root.position?.x ?? 0;
+			const oy = root.position?.y ?? 0;
+			const oz = root.position?.z ?? 0;
+			if (min.x === Infinity) {
+				this.min = { x: 0, y: 0, z: 0 };
+				this.max = { x: 0, y: 0, z: 0 };
+			} else {
+				this.min = { x: min.x + ox, y: min.y + oy, z: min.z + oz };
+				this.max = { x: max.x + ox, y: max.y + oy, z: max.z + oz };
+			}
+			return this;
+		}
+		getSize(target) {
+			target.x = this.max.x - this.min.x;
+			target.y = this.max.y - this.min.y;
+			target.z = this.max.z - this.min.z;
+			return target;
+		}
+	},
 	Color: stubClass('Color'),
 	Clock: stubClass('Clock'),
 	AmbientLight: stubClass('AmbientLight'),
@@ -171,7 +245,11 @@ export const THREE = {
 			this.userData = {};
 			this.position = { x: 0, y: 0, z: 0, set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; } };
 			this.rotation = { x: 0, y: 0, z: 0 };
-			this.scale = { setScalar: function() {} };
+			this.scale = {
+				x: 1, y: 1, z: 1,
+				setScalar(s) { this.x = this.y = this.z = s; return this; },
+				multiplyScalar(s) { this.x *= s; this.y *= s; this.z *= s; return this; },
+			};
 		}
 		add(child) {
 			this.children.push(child);
@@ -193,6 +271,7 @@ export const THREE = {
 export const Scene = THREE.Scene;
 export const PerspectiveCamera = THREE.PerspectiveCamera;
 export const Vector3 = THREE.Vector3;
+export const Box3 = THREE.Box3;
 export const Color = THREE.Color;
 export const Clock = THREE.Clock;
 export const AmbientLight = THREE.AmbientLight;
