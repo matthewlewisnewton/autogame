@@ -87,13 +87,14 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
-import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled } from './settings.js';
+import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
 const playersMeshes = {};
 const playerNameplates = {}; // playerId → THREE.Sprite (username label)
+const NAMEPLATE_OFFSET_Y = 1.0; // Units above avatar group Y position
 const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
 const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
@@ -1991,6 +1992,7 @@ export function createNameplate(username) {
 
 	const sprite = new THREE.Sprite(material);
 	sprite.scale.set(1.2, 0.3, 1);
+	sprite.userData.username = username;
 
 	return sprite;
 }
@@ -3901,6 +3903,23 @@ export function animate(timestamp) {
 				flashMesh(playersMeshes[id], 0xff0000, 200);
 			}
 			previousPlayerHp[id] = pData.hp;
+
+			// ── Nameplate for remote players (after avatar is positioned) ──
+			const remoteUsername = pData.username;
+			if (remoteUsername) {
+				if (!playerNameplates[id] || playerNameplates[id].userData.username !== remoteUsername) {
+					if (playerNameplates[id]) disposeNameplate(id);
+					const np = createNameplate(remoteUsername);
+					scene.add(np);
+					playerNameplates[id] = np;
+				}
+				const avatar = playersMeshes[id];
+				playerNameplates[id].position.set(
+					avatar.position.x,
+					avatar.position.y + NAMEPLATE_OFFSET_Y,
+					avatar.position.z,
+				);
+			}
 		}
 
 		if (myId != null && playersMeshes[myId]) {
@@ -3980,6 +3999,30 @@ export function animate(timestamp) {
 			}
 			if (me) {
 				previousPlayerHp[myId] = me.hp;
+			}
+
+			// ── Nameplate for self-player ──
+			const selfUsername = getAccountProfile().username;
+			if (selfUsername) {
+				if (!playerNameplates[myId] || playerNameplates[myId].userData.username !== selfUsername) {
+					if (playerNameplates[myId]) disposeNameplate(myId);
+					const np = createNameplate(selfUsername);
+					scene.add(np);
+					playerNameplates[myId] = np;
+				}
+				const selfAvatar = playersMeshes[myId];
+				playerNameplates[myId].position.set(
+					selfAvatar.position.x,
+					selfAvatar.position.y + NAMEPLATE_OFFSET_Y,
+					selfAvatar.position.z,
+				);
+			}
+		}
+
+		// ── Clean up nameplates for players who left ──
+		for (const id of Object.keys(playerNameplates)) {
+			if (!gs.players[id]) {
+				disposeNameplate(id);
 			}
 		}
 
