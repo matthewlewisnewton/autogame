@@ -2981,6 +2981,47 @@ describe('connect watchdog', () => {
 		vi.advanceTimersByTime(10000);
 		expect(window.__connectionState()).toBe('connected');
 	});
+
+	it('re-arms the watchdog after a post-connect disconnect and escalates if no reconnect', async () => {
+		await import('../main.js');
+
+		window.createSocket('watchdog-token');
+
+		// Establish a good connection first — this clears the initial watchdog.
+		window.__triggerSocketEvent('connect');
+		expect(window.__connectionState()).toBe('connected');
+
+		// A later drop should re-arm the watchdog rather than sit transiently.
+		window.__triggerSocketEvent('disconnect');
+		expect(window.__connectionState()).toBe('disconnected');
+
+		// With no subsequent `connect`/`reconnect`, the persistent failure surface
+		// must appear once the watchdog window elapses (status stays 'disconnected'
+		// and the lobby-browser error is shown).
+		vi.advanceTimersByTime(10000);
+		expect(window.__connectionState()).toBe('disconnected');
+		const statusEl = document.getElementById('status');
+		expect(statusEl.className).toBe('disconnected');
+		expect(statusEl.innerText).toBe('Connection failed — reload to retry');
+	});
+
+	it('clears the re-armed watchdog when a post-disconnect reconnect succeeds in time', async () => {
+		await import('../main.js');
+
+		window.createSocket('watchdog-token');
+
+		window.__triggerSocketEvent('connect');
+		window.__triggerSocketEvent('disconnect');
+		expect(window.__connectionState()).toBe('disconnected');
+
+		// A timely `connect` before the window elapses cancels the re-armed
+		// watchdog and restores the connected status — no persistent error.
+		window.__triggerSocketEvent('connect');
+		expect(window.__connectionState()).toBe('connected');
+
+		vi.advanceTimersByTime(10000);
+		expect(window.__connectionState()).toBe('connected');
+	});
 });
 
 describe('run summary card choices', () => {

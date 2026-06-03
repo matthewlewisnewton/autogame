@@ -804,10 +804,17 @@ function bindSocketHandlers(s) {
 		stopHeartbeat();
 		updateStatus('Disconnected', 'disconnected');
 		rendererDisposeAllLootMeshes();
+		// A drop after a good connection re-arms the watchdog: reconnection is
+		// configured as infinite, so without this an unrecoverable drop would sit
+		// in transient status forever. Cleared again on `connect`/`reconnect`.
+		startConnectWatchdog();
 	});
 
 	s.io.on('reconnect_attempt', () => {
 		updateStatus('Reconnecting...', 'reconnecting');
+		// Idempotent (clears any prior timer first) so a stalled reconnect loop
+		// still escalates to the persistent failure surface.
+		startConnectWatchdog();
 	});
 
 	s.io.on('reconnect', () => {
@@ -840,6 +847,9 @@ function bindSocketHandlers(s) {
 			updateStatus('Session expired — please log in again', 'disconnected');
 		} else {
 			updateStatus('Connection failed — retrying...', 'reconnecting');
+			// Ensure the watchdog is running so a persistent non-auth connect
+			// failure escalates instead of retrying transiently forever.
+			startConnectWatchdog();
 		}
 	});
 
