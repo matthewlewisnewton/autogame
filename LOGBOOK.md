@@ -2771,6 +2771,52 @@ None blocking. The implementation fully and robustly satisfies the acceptance
 criteria, the game runs cleanly, and the tests are thorough and pass.
 
 
+## v0.158 — 186-character-customization-server-model-fields  (2026-06-03 04:14:40)
+
+`game/server/cosmetic.js` adds `MODEL_IDS = ['player']`, `PROPORTION_KEYS` (the exact six contract keys: height, headSize, torsoWidth, armLength, legLength, shoulderWidth), and `PROPORTION_RANGES`. `DEFAULT_COSMETIC` now carries `modelId: 'player'` and `proportions` initialized to 1.0 for every key. Key names match the canonical contract in `MODEL_SPIKE.md` verbatim, so server fields will line up 1:1 with glTF morph targets and client slider ids.
+
+**2. Server validates/clamps proportion ranges and modelId allowlist.** ✅
+`validateCosmetic()` rejects unknown proportion keys (`Unknown proportion key: …`), rejects non-numbers/NaN, rejects out-of-range values against `PROPORTION_RANGES`, and rejects any `modelId` not in `MODEL_IDS`. On the load/backfill path, `backfillProportions()` clamps each value into range rather than rejecting — so legacy/out-of-range stored data is repaired, while live PATCH input is strictly validated. Both "validate" and "clamp" behaviors are present and appropriate to their context.
+
+**3. Fields persisted and included in the stateUpdate snapshot.** ✅
+`updateProfile()` (`game/server/users.js`) deep-merges `proportions` so a partial update (e.g. `{ height: 1.1 }`) no longer erases sibling keys — covered by a new test. The full `cosmetic` blob (now containing `modelId` + `proportions`) is replicated in `stateSnapshot()` at `game/server/progression.js:3184`. `cosmetic_runtime.test.js` explicitly asserts the snapshot player cosmetic equals the custom value and that its keys include `modelId` and `proportions`.
+
+**4. Defaults applied to existing accounts.** ✅
+`backfillCosmetic()` fills `modelId` (allowlist-checked) and a complete `proportions` object on load. `users.test.js` verifies both fresh-account creation and legacy-record load produce the full default cosmetic including the new fields; partial-legacy backfill only fills the missing sub-fields.
+
+## Design consistency
+Consistent with the canonical model contract (`MODEL_SPIKE.md`): the six proportion keys are used verbatim and `modelId` defaults to `"player"`. As a bonus aligned with the downstream client tickets (187/188), `GET /api/me` now also exposes `modelIds` and `proportionConfig: { keys, ranges }` so the client can build sliders from the server's source of truth. No foundation regression — existing cosmetic/snapshot/persistence behavior is preserved and all prior tests still pass.
+
+## Debug scenarios
+This ticket adds no `?debugScenario=` shortcuts. (The pre-existing `cosmetic`-distinctive scenario in `index.js` is untouched.) N/A.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies all acceptance criteria, the captured run is clean, and unit coverage for validation, deep-merge, persistence, backfill, API exposure, and snapshot replication is thorough.
+
+
+## v0.159 — Cleanup nits from 139-harness-misclassifies-pageerror  (2026-06-03 04:15:09)
+
+`{"ok": false, "error": "servers did not start"}`. `game_smoke_ok` still reads
+both shapes as broken (both set `ok: false`, neither is `browser_pageerror`), so
+`confirm_game_broken` still returns `True` for a server-down confirmation — no
+behavior regression, only richer metrics for the smoke gate.
+
+## Integration / quality
+- The promote-pageerrors and classify paths are consistent with the existing
+  `_classify_capture_failure` contract (all failure shapes set `ok: false`;
+  only true infra sets `harness_failure`/`detected`).
+- The lazy `from harness.steps.capture_run import _classify_capture_failure`
+  inside `confirm_game_broken` matches the existing lazy-import style there and
+  avoids any import cycle with `capture_run`.
+- Tests: `tests/unit/test_capture_run_diagnostics.py` 37 passed; related
+  confirm/smoke/escalate unit tests 14 passed. No regressions observed.
+
+## Remaining gaps
+None blocking. See `nits.md` for one minor follow-up (the promote path drops the
+screenshots/probes arrays from the rewritten metrics — consistent with existing
+classify behavior, not a regression).
+
+
 ## v0.160 — Key Item: Ground Anchor  (2026-06-03 04:24:52)
 
 in place and correct.

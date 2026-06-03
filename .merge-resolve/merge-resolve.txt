@@ -1,5 +1,6 @@
-Both conflicts resolved, no markers remain.
+Conflicts resolved in both files, preserving both intents:
 
-**TASKS.md** — main marked `145` complete; the branch marked `146` complete. Kept both as `[x]` and used main's ordering (145 before 146).
+- **TASKS.md** — kept both backlog entries: main's `200-cleanup-cleanup-harness-misclassifies-pageerror` and the branch's `201-cleanup-key-item-ground-anchor`.
+- **LOGBOOK.md** — kept main's `v0.158` and `v0.159` entries and re-appended the branch's `v0.160 — Key Item: Ground Anchor` entry newest-last, preserving the chronological/version ordering the log uses.
 
-**LOGBOOK.md** — both sides appended a new entry. Main added `v0.151` (sloped-movement cleanup); the branch added `v0.152` (this ticket's key-item cleanup). Kept both in version order — `v0.151` then `v0.152` — preserving each entry's full content.
+No conflict markers remain and no unrelated changes were made.

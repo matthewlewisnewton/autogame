@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+This is a harness-cleanup ticket bundling three nits from ticket 139, all in `harness/` Python. I judged the live working tree, the captured smoke run, and ran the tests.
+
+**Runtime health — clean.** `metrics.json` shows `ok: true`, empty `pageerrors`, no `harness_failure`, no `failure_kind`. `pageerrors.json` is `[]`. `console.log` has only benign noise (vite connect, initScene logs, and two `409 Conflict` resource lines tagged `[A:error]` — dev-server session contention, not `pageerror`/`fatal`). The game starts and loads.
+
+**All three ACs met:**
+1. **Docstring fix** (`8d8f168`) — `_read_harness_failure` / `should_escalate_harness_failure` docstrings now accurately describe the `detected`-gated classification instead of the stale "any wait_for_game timeout" claim.
+2. **Promote pageerrors on capture exit 0** (`77c76a7`) — after a successful `capture()`, a non-empty `pageerrors` rewrites metrics to `ok:false` + `browser_pageerror` (no `harness_failure`) and returns `False`; the clean path is untouched. Covered by new regression tests.
+3. **confirm_broken classifies server-down** (`fd1868c`) — routes the `wait_for_game` failure through `_classify_capture_failure`; `game_smoke_ok` still reads both shapes as broken, so confirmation behavior is unchanged with richer metrics.
+
+**Tests:** 37 passed in `test_capture_run_diagnostics.py`, plus 14 related confirm/smoke/escalate tests. No regressions.
+
+**Nits (non-blocking, written to `nits.md`):** the promote path overwrites `metrics.json` with a minimal dict, dropping the `screenshots[]` the reviewer uses — consistent with existing classify behavior, not a regression, but worth preserving the metadata later.
+
+No `gaps.md` written (PASS).

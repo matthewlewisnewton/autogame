@@ -252,7 +252,18 @@ function updateProfile(accountId, fields) {
 			}
 		}
 		// Merge only the provided sub-fields onto the existing cosmetic.
-		user.cosmetic = { ...backfillCosmetic(user.cosmetic), ...result.value };
+		const base = backfillCosmetic(user.cosmetic);
+		// Deep-merge proportions so a partial update (e.g. { height: 1.1 })
+		// does not erase other keys (armLength, legLength, …).
+		if (result.value.proportions && typeof result.value.proportions === 'object') {
+			user.cosmetic = {
+				...base,
+				...result.value,
+				proportions: { ...base.proportions, ...result.value.proportions }
+			};
+		} else {
+			user.cosmetic = { ...base, ...result.value };
+		}
 	}
 
 	saveUsers();
