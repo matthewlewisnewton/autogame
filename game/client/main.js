@@ -2027,10 +2027,14 @@ function renderDeckViewer() {
 
 	const showingDesperation = deck.length === 0 && inDesperation;
 	const total = runDeckTotal || computeRunDeckTotal(deck.length, hand);
+	const serverPlayer = gameState && myId && gameState.players[myId];
+	const inventory = (serverPlayer && Array.isArray(serverPlayer.inventory))
+		? serverPlayer.inventory
+		: myInventory;
 	const displayIds = showingDesperation
 		? deckIdsForDisplay(desperationDeck)
 		: deckIdsForDisplay(deck);
-	const entries = buildDeckMiniEntries(displayIds);
+	const entries = buildDeckMiniEntries(displayIds, inventory);
 
 	deckViewerGridEl.innerHTML = '';
 	for (const entry of entries) {
