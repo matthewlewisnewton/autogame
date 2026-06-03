@@ -1,0 +1,669 @@
+// ── Debug-Scenario Setup Module ──
+// Houses the per-`name` debug-scenario setup chain that previously lived inline
+// inside applyDebugScenario() in index.js. This is a behavior-preserving
+// extraction: the up-front guards, shared player reset, branch evaluation order,
+// emitted payload shapes, and the { ok, ... } return contract all match the
+// original handler exactly.
+//
+// ── Circular-dependency resolution ──
+// Like simulation.js / cardEffects.js, this module must NOT require('./index')
+// (circular). Plain helpers come from the leaf modules
+// (dungeon/quests/config/simulation/progression/users/cosmetic) via direct
+// require; the handful of index.js-local helpers (io, getLobbyForSocket,
+// withLobbyContext, enterPlayingPhase, ensureNearbyEnemy, applyLayoutForQuest)
+// and the DEBUG_SCENARIOS set are supplied via setCallbacks() after the modules
+// are loaded.
+
+const crypto = require('crypto');
+const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
+const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
+const { DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS } = require('./config');
+const {
+  firstRoomPosition,
+  computeDungeonBounds,
+  computeWalkableAABBs,
+  rebuildWallColliders,
+  ENEMY_DEFS,
+} = require('./simulation');
+const {
+  normalizePlayerInventory,
+  validateDeck,
+  createDrawDeckFromSelectedDeck,
+  initPlayerHand,
+  createInventoryFromCardIds,
+  spawnEnemy,
+  spawnEnemies,
+  syncRunObjectiveToEnemies,
+  checkRunTerminalState,
+  stateSnapshot,
+} = require('./progression');
+const { unlockHat: unlockHatForAccount } = require('./users');
+const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
+
+// index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
+let io = null;
+let getLobbyForSocket = null;
+let withLobbyContext = null;
+let enterPlayingPhase = null;
+let ensureNearbyEnemy = null;
+let applyLayoutForQuest = null;
+let broadcastLobbyUpdate = null;
+let DEBUG_SCENARIOS = null;
+
+function setCallbacks(deps) {
+  io = deps.io;
+  getLobbyForSocket = deps.getLobbyForSocket;
+  withLobbyContext = deps.withLobbyContext;
+  enterPlayingPhase = deps.enterPlayingPhase;
+  ensureNearbyEnemy = deps.ensureNearbyEnemy;
+  applyLayoutForQuest = deps.applyLayoutForQuest;
+  broadcastLobbyUpdate = deps.broadcastLobbyUpdate;
+  DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
+}
+
+function applyDebugScenario(socket, name) {
+  const lobby = getLobbyForSocket(socket);
+  if (!lobby) return { ok: false, reason: 'Not in a lobby' };
+  const state = lobby.state;
+
+  if (!DEBUG_SCENARIOS.has(name)) {
+    return { ok: false, reason: `Unknown debug scenario: ${name}` };
+  }
+
+  const player = state.players[socket.playerId];
+  if (!player) return { ok: false, reason: 'No player for debug scenario' };
+  const spawn = firstRoomPosition();
+
+  return withLobbyContext(lobby, () => {
+    normalizePlayerInventory(player);
+    const result = validateDeck(player.selectedDeck, player.inventory);
+    if (!result.valid) return { ok: false, reason: result.reason };
+
+    player.dead = false;
+    player.firstMoveAfterSpawn = false;
+    player.lastMoveTime = Date.now();
+    player.debugScenario = name;
+    player.pendingSummons.clear();
+
+    if (name === 'telepipe-ready') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'hat-shop-currency') {
+      // Stay in the lobby with enough currency to unlock any catalog hat,
+      // so the unlockHat flow can be exercised without grinding runs first.
+      // The same state is reachable normally by earning currency in dungeons.
+      state.gamePhase = 'lobby';
+      player.ready = false;
+      player.hp = MAX_HP;
+      player.currency = Math.max(player.currency || 0, 1000);
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'hats-unlocked') {
+      // Persist a couple of catalog-hat unlocks on the account (leaving at least
+      // one hat locked) so the customization panel's equip flow can be exercised
+      // on owned, non-'none' hats — and the locked-hat branch too — without
+      // grinding currency and unlocking each hat first. The returned
+      // `unlockedHats` lets the client refresh its cached owned set. The same
+      // owned state is reachable normally by earning currency and unlocking hats
+      // via the unlock/shop flow.
+      state.gamePhase = 'lobby';
+      player.ready = false;
+      player.hp = MAX_HP;
+      // Leave the last catalog hat locked so both owned and locked entries show.
+      const toUnlock = HAT_CATALOG.filter((h) => h.id !== 'none').slice(0, -1);
+      let unlockedHats = backfillUnlockedHats(null);
+      for (const hat of toUnlock) {
+        const r = unlockHatForAccount(player.accountId, hat.id);
+        if (r.ok) unlockedHats = r.unlockedHats;
+      }
+      return { ok: true, scenario: name, unlockedHats };
+    }
+
+    player.ready = true;
+    player.x = spawn.x;
+    player.z = spawn.z;
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+    enterPlayingPhase(lobby);
+
+    if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+      createDrawDeckFromSelectedDeck(player);
+      initPlayerHand(player);
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+      if (!player.pendingSummons) {
+        player.pendingSummons = new Set();
+      }
+    }
+
+    ensureNearbyEnemy(state, player.x, player.z);
+
+    if (name === 'summon-low-mana') {
+      player.hp = MAX_HP;
+      player.magicStones = 0;
+    } else if (name === 'summon-ready') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!player.hand.some(c => c && c.type === 'spell')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'spell');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'battle_familiar', name: 'Battle Familiar', type: 'spell', charges: 1, remainingCharges: 1, magicStoneCost: 50, damage: 44 };
+        }
+      }
+      // The opening hand is drawn from a shuffled deck, so a weapon card is not
+      // guaranteed (~1% of hands have none). Force one in (without clobbering the
+      // spell above) so weapon-card flows entering via this scenario are deterministic.
+      if (!player.hand.some(c => c && c.type === 'weapon')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon' && c.type !== 'spell');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+        }
+      }
+    } else if (name === 'summon-recall') {
+      // Place player in playing phase with two minions far away to test recall
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = spawn.x;
+      player.z = spawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.enemies = [];
+      state.minions = [
+        {
+          id: crypto.randomUUID(),
+          ownerId: player.id,
+          type: 'astral_guardian',
+          x: player.x + 8,
+          z: player.z + 8,
+          hp: 40,
+          maxHp: 40,
+          maxTtl: 60,
+          ttl: 60,
+          attackDamage: 10,
+          attackRange: 1.5,
+          attackIntervalMs: 1000,
+          lastAttackAt: 0,
+        },
+        {
+          id: crypto.randomUUID(),
+          ownerId: player.id,
+          type: 'dungeon_drake',
+          x: player.x - 8,
+          z: player.z - 8,
+          hp: 50,
+          maxHp: 50,
+          maxTtl: 60,
+          ttl: 60,
+          attackDamage: 15,
+          attackRange: 1.5,
+          attackIntervalMs: 1500,
+          lastAttackAt: 0,
+        },
+      ];
+      // Equip the recall whistle so the user can test it immediately
+      player.equippedKeyItemId = 'summon_recall';
+      player.keyItemCooldownUntil = 0;
+    } else if (name === 'combat-damaged-player') {
+      player.hp = 25;
+      player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'deck-viewer-instances') {
+      // Enter a normal run whose draw pile is built entirely from owned-card
+      // *instances* — the deck/selectedDeck store inventory instance IDs rather
+      // than plain card ids (as happens for acquired/forged cards). This drives
+      // the deck viewer's (V key) instance-id resolution path so the grid is
+      // populated, not empty. The same state is reachable normally by acquiring
+      // or forging cards into the inventory, building a deck from those owned
+      // cards in the lobby, then starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.inventory = createInventoryFromCardIds([
+        'iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake', 'steel_claymore',
+      ]);
+      normalizePlayerInventory(player);
+      player.selectedDeck = player.inventory.map((instance) => instance.instanceId);
+      createDrawDeckFromSelectedDeck(player);
+      initPlayerHand(player);
+      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    } else if (name === 'custom-avatar-demo') {
+      // Enter a normal run with a distinctive non-default cosmetic so the
+      // cosmetic-driven avatar (non-box body shape + accent color) can be
+      // verified without first going through the customization UI. The same
+      // visual state is reachable normally by saving a cosmetic via the
+      // character-customization profile route, then starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.cosmetic = {
+        bodyColor: '#e74c3c',
+        accentColor: '#2ecc71',
+        bodyShape: 'cylinder',
+        hat: 'none',
+      };
+    } else if (name === 'avatar-proportions-demo') {
+      // Enter a normal run with distinctive (non-default) body proportions so
+      // the glTF avatar's proportion morph-target influences can be verified
+      // without first going through the customization sliders. Values stay
+      // inside the server clamp (0.75–1.25) and read clearly against the 1.0
+      // default. The same visual state is reachable normally by saving
+      // proportions via the character-customization profile route, then
+      // starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.cosmetic = {
+        bodyColor: '#e74c3c',
+        accentColor: '#2ecc71',
+        bodyShape: 'box',
+        hat: 'none',
+        proportions: {
+          height: 1.25,
+          headSize: 1.25,
+          torsoWidth: 0.75,
+          armLength: 0.75,
+          legLength: 1.25,
+          shoulderWidth: 1.25,
+        },
+      };
+    } else if (name === 'avatar-wizard-hat') {
+      // Enter a normal run with a hat equipped so the avatar's hat child mesh
+      // can be verified without first unlocking/equipping a hat in the shop UI.
+      // The wizard hat (tall cone) is the most visually distinctive. The same
+      // visual state is reachable normally by unlocking + equipping a hat via
+      // the cosmetic/profile routes, then starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.cosmetic = {
+        bodyColor: '#4f9dde',
+        accentColor: '#f2c94c',
+        bodyShape: 'box',
+        hat: 'wizard',
+      };
+    } else if (name === 'mixed-enemies') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      spawnEnemy(player.x + 3, player.z, 'grunt');
+      spawnEnemy(player.x - 3, player.z, 'skirmisher');
+      spawnEnemy(player.x, player.z + 4, 'miniboss');
+      spawnEnemy(player.x, player.z - 4, 'spawner');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
+      }
+    } else if (name === 'variant-enemy') {
+      // Spawn one variant ("elite") enemy beside a plain one of the same type so
+      // the client variant marker can be verified side-by-side. The same state is
+      // reachable normally when an enemy rolls a variant on spawn (applyVariant);
+      // this is just a deterministic shortcut into it.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const variant = spawnEnemy(player.x + 3, player.z, 'grunt');
+      variant.variant = 'test';
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
+    } else if (name === 'spawner-active') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const spawner = spawnEnemy(player.x + 4, player.z, 'spawner');
+      spawner.lastSpawnTime = Date.now() - ENEMY_DEFS.spawner.spawnIntervalMs - 500;
+    } else if (name === 'monster-card') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!player.hand.some(c => c && c.type === 'creature')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
+          const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
+          if (deckMonsterIndex !== -1) {
+            player.deck.splice(deckMonsterIndex, 1);
+          }
+        }
+      }
+    } else if (name === 'minion-combat') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const anchorX = player.x;
+      const anchorZ = player.z;
+      // Keep the player out of aggro range while a pre-spawned minion brawls nearby.
+      player.x = anchorX - DETECTION_RADIUS - 1;
+      state.enemies = [];
+      const enemy = spawnEnemy(anchorX + 2, anchorZ, 'grunt');
+      enemy.hp = 500;
+      enemy.maxHp = 500;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.attackState = 'idle';
+      state.minions = [{
+        id: crypto.randomUUID(),
+        ownerId: player.id,
+        type: 'dungeon_drake',
+        x: anchorX + 1,
+        z: anchorZ,
+        hp: 50,
+        maxHp: 50,
+        maxTtl: 30,
+        ttl: 30,
+        breathRange: 6,
+        breathHoldDistance: 3.5,
+        breathConeAngle: Math.PI / 4,
+        breathDamage: 3,
+        breathDurationMs: 2000,
+        breathTickMs: 500,
+        breathIntervalMs: 2500,
+        lastBreathAt: 0,
+      }];
+      if (!player.hand.some(c => c && c.type === 'creature')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'creature');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'dungeon_drake', name: 'Dungeon Drake', type: 'creature', charges: 1, remainingCharges: 1 };
+          const deckMonsterIndex = player.deck ? player.deck.indexOf('dungeon_drake') : -1;
+          if (deckMonsterIndex !== -1) {
+            player.deck.splice(deckMonsterIndex, 1);
+          }
+        }
+      }
+    } else if (name === 'run-failed') {
+      for (const p of Object.values(state.players)) {
+        p.hp = 0;
+        p.dead = true;
+      }
+      state.minions = [];
+      checkRunTerminalState();
+    } else if (name === 'run-exhausted') {
+      for (const p of Object.values(state.players)) {
+        p.deck = [];
+        p.hand = [];
+        p.desperationDeck = [];
+      }
+      state.enemies = [{
+        id: 'e_remaining',
+        x: player.x + 5,
+        z: player.z,
+        hp: ENEMY_DEFS.grunt.hp,
+        maxHp: ENEMY_DEFS.grunt.hp,
+        state: 'idle',
+        wanderTarget: { x: player.x + 5, z: player.z },
+      }];
+      state.run.objective.totalEnemies = 1;
+      state.run.objective.defeatedEnemies = 0;
+      checkRunTerminalState();
+    } else if (name === 'quest-objective-near-complete') {
+      // Leave a defeat_enemies run one trigger away from victory: a single
+      // low-HP grunt stands between the player and an objective-complete win.
+      // Defeating it flows through the real recordEnemyDefeated →
+      // checkRunTerminalState → victory path (no special-case completion logic
+      // here). The player keeps their hand so they can finish through real
+      // combat. The same near-complete state is reachable normally by clearing
+      // all but the last enemy of a defeat_enemies quest.
+      if (!state.run || state.run.status !== 'playing' || state.run.objective.type !== 'defeat_enemies') {
+        return { ok: false, reason: 'No active defeat_enemies run for quest-objective-near-complete' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const enemy = spawnEnemy(player.x + 2, player.z, 'grunt');
+      enemy.hp = 1;
+      enemy.maxHp = ENEMY_DEFS.grunt.hp;
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      state.run.objective.totalEnemies = 1;
+      state.run.objective.defeatedEnemies = 0;
+      // The opening hand is drawn from a shuffled deck, so a weapon card is not
+      // guaranteed (~1% of hands have none). Force a fully-charged weapon in so
+      // the lone 1-HP grunt is reliably killable through the real lock-on +
+      // weapon-swing path (the QA smoke depends on this determinism). The same
+      // near-complete state is still reachable normally with whatever hand play
+      // deals; this only fixes the entry hand for the debug shortcut.
+      if (!player.hand.some(c => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+        }
+      }
+    } else if (name === 'sloped-dungeon') {
+      // Regenerate the dungeon layout with slopes enabled for visual verification.
+      // Uses the same seed as the current quest for determinism.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || questLayoutSeed(state.selectedQuestId || DEFAULT_QUEST_ID);
+      const profile = getLayoutProfileForQuest(state.selectedQuestId || DEFAULT_QUEST_ID);
+      state.layout = generateLayout(seed, profile, { slopes: true });
+      state.layoutSeed = seed;
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      withLobbyContext({ state }, () => rebuildWallColliders());
+      // Send updated layout to all clients in the lobby
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'sunken-canyon-stage') {
+      // Load the sunken-canyon stage layout for client render / collision QA.
+      // Same profile as generateLayout(seed, 'sunken-canyon'); reachable via quests
+      // once a quest uses layoutProfile 'sunken-canyon'.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'sunken-canyon');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent-stage') {
+      // Load the spire-ascent tower layout for client render / collision QA.
+      // Same profile as generateLayout(seed, 'spire-ascent'); reachable via quests
+      // once a quest uses layoutProfile 'spire-ascent'.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'open-plaza-arena') {
+      // Load the open-plaza arena (the arena_trials quest layout) for visual /
+      // collision verification. Reachable normally by selecting the arena_trials
+      // quest; this scenario is just a shortcut into that state.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'arena_trials';
+      applyLayoutForQuest(state, 'arena_trials');
+      // Re-place the player at the plaza spawn (centre) on the regenerated layout.
+      const plazaSpawn = firstRoomPosition();
+      player.x = plazaSpawn.x;
+      player.z = plazaSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      // Populate the arena with the trial pack via the cover-aware spawn path so
+      // enemy/loot placement on the open plaza is directly observable. This is
+      // the same spawn that runs when deploying into arena_trials normally.
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'sunken-canyon') {
+      // Canyon Descent quest with band-aware spawns — same state as deploying into
+      // canyon_descent normally; shortcut for QA (enemies, layout, plateau spawn).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'canyon_descent';
+      applyLayoutForQuest(state, 'canyon_descent');
+      const plateauSpawn = firstRoomPosition();
+      player.x = plateauSpawn.x;
+      player.z = plateauSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-ascent') {
+      // Spire Ascent quest with tier-aware spawns — same state as deploying into
+      // spire_ascent normally; shortcut for QA (enemies, layout, bottom-tier spawn).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'spire_ascent';
+      applyLayoutForQuest(state, 'spire_ascent');
+      const bottomSpawn = firstRoomPosition();
+      player.x = bottomSpawn.x;
+      player.z = bottomSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      io.to(lobby.id).emit('questUpdate', {
+        ...buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'key-item-cooldown') {
+      // Put player in a playing dungeon with key item cooldown active to test on_cooldown rejection.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.equippedKeyItemId = 'dodge_roll';
+      player.keyItemCooldownUntil = Date.now() + 5000; // 5-second cooldown remaining
+    } else if (name === 'medic-kit-ready') {
+      // Put player at low HP with some MS to test Field Medic Kit healing.
+      player.hp = Math.floor(MAX_HP * 0.3);
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'field_medic_kit';
+      player.keyItemCooldownUntil = 0;
+    } else if (name === 'guard-block-ready') {
+      // Put player at low HP with guard_block equipped and no cooldown to test blocking.
+      player.hp = Math.floor(MAX_HP * 0.5);
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'guard_block';
+      player.keyItemCooldownUntil = 0;
+    } else if (name === 'flare-beacon-ready') {
+      // Put player with flare_beacon equipped and nearby enemies to test reveal VFX.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'flare_beacon';
+      player.keyItemCooldownUntil = 0;
+      // Ensure a few enemies are nearby to reveal
+      ensureNearbyEnemy(state, player.x, player.z);
+      spawnEnemy(player.x + 5, player.z + 3, 'skirmisher');
+      spawnEnemy(player.x - 4, player.z - 2, 'grunt');
+    } else if (name === 'loot-magnet-ready') {
+      // Put player with loot_magnet equipped and scattered ground loot to test pull/collect.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'loot_magnet';
+      player.keyItemCooldownUntil = 0;
+      state.loot = [
+        { id: crypto.randomUUID(), x: player.x + 2, z: player.z + 2, y: 0, kind: 'gold', value: 10 },
+        { id: crypto.randomUUID(), x: player.x - 3, z: player.z + 4, y: 0, kind: 'gold', value: 15 },
+        { id: crypto.randomUUID(), x: player.x + 5, z: player.z - 3, y: 0, kind: 'gold', value: 20 },
+        { id: crypto.randomUUID(), x: player.x - 6, z: player.z - 5, y: 0, kind: 'gold', value: 25 },
+        { id: crypto.randomUUID(), x: player.x + 12, z: player.z + 10, y: 0, kind: 'gold', value: 50 },
+        { id: crypto.randomUUID(), x: player.x + 1, z: player.z - 1, y: 0, kind: 'magic_stone', value: 5 },
+      ];
+    } else if (name === 'overclock-ready') {
+      // Put player with overclock key item equipped and charges ready to test slot cooldown bypass.
+      player.hp = MAX_HP;
+      player.magicStones = 50;
+      player.equippedKeyItemId = 'overclock';
+      player.keyItemCooldownUntil = 0;
+      player.overclockChargesRemaining = 2;
+    } else if (name === 'phase-step-ready') {
+      // Equip and position only the local caster with phase_step ready to fire.
+      // No synthetic ally is injected — an actual position swap requires a real
+      // second player to join the run and stand in range (see phase_step.test.js
+      // for swap-logic coverage).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.equippedKeyItemId = 'phase_step';
+      player.keyItemCooldownUntil = 0;
+      state.enemies = [];
+    } else if (name === 'echo-strike-ready') {
+      // Equip echo_strike with no cooldown, a weapon card in hand, and a tanky
+      // enemy directly in front so QA can arm the echo then swing and observe two
+      // damage events (primary + delayed echo) on the same surviving enemy.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'echo_strike';
+      player.keyItemCooldownUntil = 0;
+      player.echoStrikePending = false;
+      player.rotation = 0;
+      if (!player.hand.some(c => c && c.type === 'weapon' && c.effect !== 'draw_card')) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        const weaponCard = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 17, charges: 5, remainingCharges: 5 };
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = weaponCard;
+        } else {
+          player.hand[0] = weaponCard;
+        }
+      }
+      // Tanky enemy straight ahead (rotation 0 → +x) that survives both packets.
+      state.enemies = [];
+      spawnEnemy(player.x + 2.5, player.z, 'grunt');
+    } else if (name === 'smoke-bomb-ready') {
+      // Equip smoke_bomb with no cooldown and place a couple of enemies in
+      // attack range so QA can cast the bomb and observe enemies losing their
+      // target / cancelling wind-ups while the caster stands in the smoke zone.
+      // The same state is reachable normally by equipping the Smoke Bomb key
+      // item, entering a run, and approaching enemies.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'smoke_bomb';
+      player.keyItemCooldownUntil = 0;
+      state.enemies = [];
+      spawnEnemy(player.x + 3, player.z, 'grunt');
+      spawnEnemy(player.x - 3, player.z + 1, 'skirmisher');
+    } else if (name === 'rally-cry-ready') {
+      // Equip rally_cry with no cooldown so QA can cast the party move-speed buff
+      // and observe the caster (and any allies in radius) speed up for ~4s. The
+      // same state is reachable normally by equipping the Rally Cry key item in
+      // the lobby and entering a run. A real second player must join to observe
+      // the ally-buff aspect; here only the local caster is set up.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'rally_cry';
+      player.keyItemCooldownUntil = 0;
+      player.rallyUntil = 0;
+      player.rallySpeedMultiplier = 1;
+      state.enemies = [];
+    }
+
+    syncRunObjectiveToEnemies();
+
+    broadcastLobbyUpdate(lobby);
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    return { ok: true, scenario: name };
+  });
+}
+
+module.exports = {
+  setCallbacks,
+  applyDebugScenario,
+};
