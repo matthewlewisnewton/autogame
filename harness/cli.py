@@ -52,6 +52,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_lock.add_argument("--timeout", type=float, default=None,
                         help="Give up waiting after N seconds (default: wait forever)")
 
+    sub.add_parser("locks", help="Show every shared-resource flock: held/free and "
+                   "who holds it (read-only; safe to run against a live factory)")
+
     p_doc = sub.add_parser("doctor", help="Diagnostic smoke checks")
     p_doc.add_argument("target", choices=["vision"], help="What to smoke-check")
     return parser
@@ -75,6 +78,8 @@ def main(argv: list[str] | None = None) -> int:
         return _cmd_progress(args.action)
     if args.cmd == "lock":
         return _cmd_lock(args.resource, args.timeout)
+    if args.cmd == "locks":
+        return _cmd_locks()
     if args.cmd == "doctor":
         return _cmd_doctor(args.target)
     print(f"[cli] unknown subcommand: {args.cmd}", file=sys.stderr)
@@ -246,6 +251,22 @@ def _cmd_lock(resource: str, timeout: Optional[float]) -> int:
         return 1
     except KeyboardInterrupt:
         pass
+    return 0
+
+
+def _cmd_locks() -> int:
+    """Print every known shared-resource flock, whether it's currently held, and
+    the recorded holder. Read-only — takes no flock itself (probes non-blocking),
+    so it's safe to run against a live factory without contending."""
+    from harness.concurrency.resource_lock import lock_status
+    rows = lock_status()
+    if not rows:
+        print("[locks] no lock files yet (no shared resource has been used)")
+        return 0
+    width = max(len(r["resource"]) for r in rows)
+    for r in rows:
+        state = "HELD" if r["held"] else "free"
+        print(f"  {r['resource']:<{width}}  {state:<4}  {r['holder']}")
     return 0
 
 
