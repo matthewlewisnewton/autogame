@@ -12,6 +12,7 @@ import {
 	resolveGamepadProfile,
 	isBindingActive,
 	STANDARD_PROFILE,
+	EIGHTBITDO_64_PROFILE,
 	getPrimaryGamepad as getProfilePrimaryGamepad,
 } from './gamepad-profiles.js';
 
@@ -429,7 +430,13 @@ export function getUseKeyItemBinding() {
 	if (customGamepad && customGamepad.type === 'button' && Number.isInteger(customGamepad.index)) {
 		gamepadIndex = customGamepad.index;
 	}
-	const gamepadHint = STANDARD_BUTTON_HINTS[gamepadIndex] ?? `Btn ${gamepadIndex}`;
+	let gamepadHint;
+	if (is8BitDo64HandHintsActive()) {
+		const label = EIGHTBITDO_64_PROFILE.buttonLabels.find((l) => l.index === gamepadIndex);
+		gamepadHint = label ? label.label : `Btn ${gamepadIndex}`;
+	} else {
+		gamepadHint = STANDARD_BUTTON_HINTS[gamepadIndex] ?? `Btn ${gamepadIndex}`;
+	}
 	return { keyboard: keyboardKey, gamepad: gamepadIndex, gamepadHint };
 }
 

@@ -320,8 +320,9 @@ export function buildDungeon(scene, layout) {
 				wallZ = wall.z;
 			}
 
+			const wallBaseY = resolveFloorY(sampleFloorY(layout, wallX, wallZ));
 			const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
-			wallMesh.position.set(wallX, PASSAGE_WALL_HEIGHT / 2 + FLOOR_Y, wallZ);
+			wallMesh.position.set(wallX, wallBaseY + PASSAGE_WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}

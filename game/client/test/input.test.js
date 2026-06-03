@@ -361,6 +361,18 @@ describe('input.js', () => {
 		expect(binding.gamepadHint).toBe('Btn 11');
 	});
 
+	it('getUseKeyItemBinding gamepadHint is profile-aware for the 8BitDo 64 layout', () => {
+		patchSettings(getDefaultSettings());
+		const standardHint = getUseKeyItemBinding().gamepadHint;
+		expect(standardHint).toBe('DPad Down');
+
+		patchSettings({ gamepad: { profile: '8bitdo-64' } });
+		const eightBitDoBinding = getUseKeyItemBinding();
+		expect(eightBitDoBinding.gamepad).toBe(13);
+		expect(eightBitDoBinding.gamepadHint).toBe('Stick click');
+		expect(eightBitDoBinding.gamepadHint).not.toBe(standardHint);
+	});
+
 	it('useKeyItem does not fire on key repeat', () => {
 		const onUseKeyItem = vi.fn();
 		initInput({

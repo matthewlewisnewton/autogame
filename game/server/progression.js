@@ -677,13 +677,12 @@ const KEY_ITEM_DEFS = {
   rally_cry: {
     id: 'rally_cry',
     name: 'Rally Cry',
-    description: 'Boost nearby allies with a temporary buff',
-    cooldownMs: 30000,
+    description: 'Grant a short party-wide move-speed buff to nearby allies',
+    cooldownMs: 10000,
     type: 'support',
-    radius: 10,
-    durationMs: 10000,
-    hpRegenPerTick: 3,
-    tickIntervalMs: 1000,
+    radius: 8,
+    durationMs: 4000,
+    speedMultiplier: 1.1,
   },
 };
 

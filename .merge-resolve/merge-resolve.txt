@@ -1,5 +1,1 @@
-Both conflicts resolved, no markers remain.
-
-**TASKS.md** — main marked `145` complete; the branch marked `146` complete. Kept both as `[x]` and used main's ordering (145 before 146).
-
-**LOGBOOK.md** — both sides appended a new entry. Main added `v0.151` (sloped-movement cleanup); the branch added `v0.152` (this ticket's key-item cleanup). Kept both in version order — `v0.151` then `v0.152` — preserving each entry's full content.
+Resolved. The conflict was a pure append collision in `LOGBOOK.md` — main had landed entries v0.154–v0.157 while this branch appended its own v0.158 entry at the same spot. I kept all five entries in version order, with this ticket's v0.158 entry last. No conflict markers remain and both sides' content is preserved intact.

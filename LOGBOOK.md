@@ -2679,6 +2679,98 @@ None. Both sub-tickets are fully and robustly implemented, tests pass, and the c
 is clean.
 
 
+## v0.154 — Cleanup nits from 119-key-item-input-bindings-and-settings  (2026-06-03 02:24:49)
+
+  other than `missing_key_item_id`."** — MET, proven by capture. The dodge probe
+  shows `equippedKeyItemId: "dodge_roll"`, the dodge executed (player moved
+  -9,9 → -10.9,-9.6), and the cooldown engaged afterward
+  (`keyItemCooldownRemaining: 359`, HUD indicator "0.4", then "0.1"), with no
+  rejection error in the console. The server clearly received a valid
+  `{ keyItemId }`.
+
+## Code quality
+
+- The new branch is small, readable, and matches surrounding style. No dead code,
+  no console errors, no leftover debug paths. No new `?debugScenario` shortcuts
+  were introduced (`debugScenario: null`, `debugScenarioAllowed: true` in probes).
+- Consistent with `design.md`: profile-aware control glyphs are exactly the
+  intent of the gamepad-profiles abstraction; no foundation regression.
+
+## Remaining gaps
+
+None. Both acceptance criteria are fully and robustly met, the unit suite passes,
+and the captured run is healthy.
+
+
+## v0.155 — Cleanup nits from 120-key-item-lobby-equip-ui  (2026-06-03 02:58:57)
+
+`#key-item-list .key-item-entry.equipped` present before screenshotting the
+`#key-item-loadout` panel to `docs/walkthroughs/keyitems-capture/`. Wired as
+`test:smoke:keyitems` in `game/package.json`.
+
+The equipped-row assertion is sound: `renderKeyItemList` (main.js:2388) adds the
+`equipped` class to the entry matching `me.equippedKeyItemId`
+(main.js:2409), and the default loadout equips `dodge_roll` (confirmed by the
+metrics probe: `"equippedKeyItemId": "dodge_roll"`). The script has a graceful
+diagnostic fallback that dumps panel state on timeout.
+
+Note: round-1's own verification capture used the deterministic fallback smoke
+(lobby → movement → dodge), not this new script, so the round-1 screenshots are
+gameplay rather than the Key Items panel. That does not fail AC2 — the AC asks
+for a *scripted capture* deliverable, which is present, correct, and wired in.
+
+## Remaining gaps
+
+None. Both acceptance criteria are met, the game runs cleanly, and the full unit
+suite passes. Production game code is untouched.
+
+
+## v0.156 — Cleanup nits from 142-cleanup-sloped-floor-layout-and-geometry  (2026-06-03 03:17:31)
+
+  flat layouts render unchanged. The pre-existing flat-layout tests still pass.
+- New test `positions passage wall Y on sloped rooms using sampleFloorY`
+  (`game/client/test/dungeon.test.js:274+`) builds a Z-sloped room with a passage
+  whose four side walls sit at distinct sloped heights and asserts each mesh
+  `position.y === resolveFloorY(sampleFloorY(...)) + PASSAGE_WALL_HEIGHT / 2`.
+  `PASSAGE_WALL_HEIGHT` is exported (`dungeon.js:22`) for the test.
+- `pnpm test client/test/dungeon.test.js`: **31 passed**. (The printed coverage
+  "threshold" errors come from running a single file against the global 70%
+  threshold — visibility only, not a failure of this ticket.)
+
+## Consistency
+Consistent with `design.md` sloped-floor handling; brings passage walls into line
+with the already-sloped room walls and cover meshes. No regression to flat
+corridors. No new debug scenarios added (the `sloped-dungeon` scenario predates
+this ticket).
+
+## Remaining gaps
+None. The change is minimal, correct, matches existing conventions, is covered by
+a new mirroring unit test, and the captured run is clean.
+
+
+## v0.157 — Key Item: Rally Cry  (2026-06-03 03:47:31)
+
+- Normal path still reachable: the scenario only equips `rally_cry` with a
+  cleared cooldown — exactly the state a player reaches by equipping the Rally
+  Cry key item in the lobby and entering a run.
+- No invariants bypassed: the scenario does not cast the buff itself; casting
+  still flows through the normal `useKeyItem` handler, which enforces
+  dead/extracted/cooldown checks and net-replicates via `stateUpdate`.
+
+## Consistency / regressions
+The change is additive and follows the established per-key-item pattern in the
+`useKeyItem` handler (cooldown gate → per-item block → `stateUpdate` broadcast).
+New fields `rallyUntil`/`rallySpeedMultiplier` are initialized in both
+`buildPlayerRecord` and `initializePlayerForActiveRun`, so they reset correctly
+on new runs. No existing behavior is altered beyond the guard_block movement
+line, which now composes the rally multiplier (verified by test). No design.md
+or requirements.md regression.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the acceptance
+criteria, the game runs cleanly, and the tests are thorough and pass.
+
+
 ## v0.158 — 186-character-customization-server-model-fields  (2026-06-03 04:14:40)
 
 `game/server/cosmetic.js` adds `MODEL_IDS = ['player']`, `PROPORTION_KEYS` (the exact six contract keys: height, headSize, torsoWidth, armLength, legLength, shoulderWidth), and `PROPORTION_RANGES`. `DEFAULT_COSMETIC` now carries `modelId: 'player'` and `proportions` initialized to 1.0 for every key. Key names match the canonical contract in `MODEL_SPIKE.md` verbatim, so server fields will line up 1:1 with glTF morph targets and client slider ids.

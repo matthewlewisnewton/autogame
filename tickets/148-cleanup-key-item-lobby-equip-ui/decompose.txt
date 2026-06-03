@@ -1,0 +1,12 @@
+I broke the top-level ticket into two focused, independently-verifiable sub-tickets. Both nits are verification gaps — the `keyitems` lobby tab itself is already fully implemented in `main.js`/`progression.js`, so neither sub-ticket touches game feature code.
+
+Created sub-ticket folders:
+
+- `/home/matt/workspace/.autogame-worktrees/148-cleanup-key-item-lobby-equip-ui/tickets/148-cleanup-key-item-lobby-equip-ui/subtickets/01-keyitems-lobby-tab-test/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/148-cleanup-key-item-lobby-equip-ui/tickets/148-cleanup-key-item-lobby-equip-ui/subtickets/02-keyitems-capture-smoke/ticket.md`
+
+**01 — Key Items lobby tab test** (code): extends the existing `setLobbyTab` vitest in `main.test.js` to cover `keyitems` (panel shown, others hidden, tab active), including adding the missing key-item DOM IDs to the test's `beforeEach` setup.
+
+**02 — Key Items capture smoke** (code): new Playwright script `test-keyitems-capture.mjs` + a `test:smoke:keyitems` package.json entry that opens the Key Items tab, asserts the default `dodge_roll` equipped row, and saves a screenshot.
+
+Both are `code` verification: the criteria are about a test/handler/script existing and behaving (DOM state, equipped-row assertion, suite passing) — not pixel-level look — and a `visual` QA run never opens the Key Items tab, so it could never confirm either.

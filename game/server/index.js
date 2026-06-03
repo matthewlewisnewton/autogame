@@ -432,6 +432,7 @@ const DEBUG_SCENARIOS = new Set([
   'phase-step-ready',
   'echo-strike-ready',
   'smoke-bomb-ready',
+  'rally-cry-ready',
   'open-plaza-arena',
   'sunken-canyon',
   'sunken-canyon-stage',
@@ -1046,6 +1047,19 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       spawnEnemy(player.x + 3, player.z, 'grunt');
       spawnEnemy(player.x - 3, player.z + 1, 'skirmisher');
+    } else if (name === 'rally-cry-ready') {
+      // Equip rally_cry with no cooldown so QA can cast the party move-speed buff
+      // and observe the caster (and any allies in radius) speed up for ~4s. The
+      // same state is reachable normally by equipping the Rally Cry key item in
+      // the lobby and entering a run. A real second player must join to observe
+      // the ally-buff aspect; here only the local caster is set up.
+      player.hp = MAX_HP;
+      player.magicStones = 5;
+      player.equippedKeyItemId = 'rally_cry';
+      player.keyItemCooldownUntil = 0;
+      player.rallyUntil = 0;
+      player.rallySpeedMultiplier = 1;
+      state.enemies = [];
     }
 
     syncRunObjectiveToEnemies();
@@ -1136,6 +1150,8 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     invulnerableUntil: 0,
     blockingUntil: 0,
     blockingYaw: 0,
+    rallyUntil: 0,
+    rallySpeedMultiplier: 1,
     cosmetic: account?.cosmetic ?? { ...DEFAULT_COSMETIC },
   };
 
@@ -1184,6 +1200,8 @@ function initializePlayerForActiveRun(player) {
   }
   player.invulnerableUntil = 0;
   player.overclockChargesRemaining = 0;
+  player.rallyUntil = 0;
+  player.rallySpeedMultiplier = 1;
 }
 
 function emitLobbyJoined(socket, lobby) {
@@ -2829,8 +2847,8 @@ function startServer(port) {
       return;
     }
 
-    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, and smoke_bomb are implemented; all other key items return not_implemented.
-    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'smoke_bomb') {
+    // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, rally_cry, and smoke_bomb are implemented; all other key items return not_implemented.
+    if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'rally_cry' && keyItemId !== 'smoke_bomb') {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
       return;
     }
@@ -2951,6 +2969,36 @@ function startServer(port) {
       player.persistenceDirty = true;
 
       socket.emit('keyItemUsed', { ok: true, keyItemId, echoStrikePending: true, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return;
+    }
+
+    if (keyItemId === 'rally_cry') {
+      // --- rally_cry: grant a short party-wide move-speed buff to the caster and
+      // every living, non-extracted ally in the same run within `radius`. The buff
+      // is assigned (not multiplied) so re-using it never compounds — the effective
+      // multiplier stays at ~1.1. No heal effect. ---
+      const radius = def.radius != null ? def.radius : 8;
+      const durationMs = def.durationMs != null ? def.durationMs : 4000;
+      const multiplier = def.speedMultiplier != null ? def.speedMultiplier : 1.1;
+      const rallyUntil = now + durationMs;
+      let affected = 0;
+
+      for (const p of Object.values(state.players)) {
+        if (!p || p.dead || p.extracted) continue;
+        const dist = Math.hypot(p.x - player.x, p.z - player.z);
+        if (dist <= radius) {
+          p.rallyUntil = rallyUntil;
+          p.rallySpeedMultiplier = multiplier;
+          p.persistenceDirty = true;
+          affected++;
+        }
+      }
+
+      player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
+      player.persistenceDirty = true;
+
+      socket.emit('keyItemUsed', { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return;
     }
