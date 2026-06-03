@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
 
 /** Minimal mock scene that `buildDungeon` only needs `.add()` on. */
@@ -445,7 +445,7 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		expect(marker).toBeDefined();
 		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y);
 		expect(marker.position.y).toBeCloseTo(
-			(sampleFloorY(layout, treasureRoom.x, treasureRoom.z) ?? DEFAULT_FLOOR_Y) + 0.75,
+			resolveFloorY(sampleFloorY(layout, treasureRoom.x, treasureRoom.z)) + 0.75,
 			4
 		);
 		// ground + room floors + perimeter walls + cover + treasure marker

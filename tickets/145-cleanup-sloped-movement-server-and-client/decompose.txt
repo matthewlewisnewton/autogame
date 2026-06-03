@@ -1,0 +1,15 @@
+Broke ticket **145** into **2** sub-tickets (dependency order: shared helper, then migrate call sites). The parent ticket has a single acceptance criterion; two focused passes are enough without over-splitting.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/145-cleanup-sloped-movement-server-and-client/tickets/145-cleanup-sloped-movement-server-and-client/subtickets/01-shared-resolve-floor-y/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/145-cleanup-sloped-movement-server-and-client/tickets/145-cleanup-sloped-movement-server-and-client/subtickets/02-migrate-floor-y-fallbacks/ticket.md`
+
+**Plan summary**
+
+| # | Scope | Verification |
+|---|--------|----------------|
+| **01** | Add `resolveFloorY` in `floorSampling.esm.js`, wire CJS + `collision.js` + `dungeon.js` exports, unit tests | `code` |
+| **02** | Replace server `Number.isFinite(…)` ternaries and client `?? DEFAULT_FLOOR_Y` after `sampleFloorY`; update related tests; `pnpm test:quick` | `code` |
+
+No prior `subtickets/` folders existed (nothing to retire). Both use **code** verification because criteria cover helper existence, export wiring, grep-clean migration, and tests—not pixel-level rendering.

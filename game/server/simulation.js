@@ -22,7 +22,7 @@ const {
   RESPAWN_DELAY_MS,
   COOLDOWN_MS
 } = require('./config');
-const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y } = require('./dungeon');
+const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -319,8 +319,7 @@ function applyPlayerMovement() {
     const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, colliders);
     player.x = result.x;
     player.z = result.z;
-    const floorY = sampleFloorY(_gameState.layout, result.x, result.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, result.x, result.z));
     if (Number.isFinite(player.inputRotation)) {
       player.rotation = player.inputRotation;
     }

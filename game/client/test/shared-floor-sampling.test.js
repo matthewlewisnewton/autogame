@@ -1,5 +1,29 @@
 import { describe, it, expect } from 'vitest';
-import { sampleFloorY, DEFAULT_FLOOR_Y } from '../../shared/floorSampling.esm.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
+
+describe('resolveFloorY', () => {
+	it('returns DEFAULT_FLOOR_Y for null', () => {
+		expect(resolveFloorY(null)).toBe(0.5);
+	});
+
+	it('returns DEFAULT_FLOOR_Y for NaN', () => {
+		expect(resolveFloorY(NaN)).toBe(0.5);
+	});
+
+	it('returns DEFAULT_FLOOR_Y for Infinity and -Infinity', () => {
+		expect(resolveFloorY(Infinity)).toBe(0.5);
+		expect(resolveFloorY(-Infinity)).toBe(0.5);
+	});
+
+	it('returns DEFAULT_FLOOR_Y for undefined', () => {
+		expect(resolveFloorY(undefined)).toBe(0.5);
+	});
+
+	it('returns the input unchanged for finite numbers', () => {
+		expect(resolveFloorY(1.25)).toBe(1.25);
+		expect(resolveFloorY(0)).toBe(0);
+	});
+});
 
 describe('ESM floorSampling re-export', () => {
 	it('exposes DEFAULT_FLOOR_Y === 0.5', () => {

@@ -27,7 +27,7 @@ source = source.replace(/^export (const|let|var) /gm, '$1 ');
 const mod = (new Function(
 	'"use strict";\n' +
 	source + '\n' +
-	'return { sampleFloorY, DEFAULT_FLOOR_Y };'
+	'return { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY };'
 ))();
 
 module.exports = mod;

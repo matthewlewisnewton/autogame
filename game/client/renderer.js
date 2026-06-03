@@ -29,7 +29,7 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y } from './collision.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from './collision.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -890,7 +890,7 @@ export function initScene(layout, spawnPos) {
 		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
 	);
 	const spawnFloorY = layout
-		? (sampleFloorY(layout, spawnPosition.x, spawnPosition.z) ?? DEFAULT_FLOOR_Y)
+		? resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z))
 		: DEFAULT_FLOOR_Y;
 	camera.lookAt(spawnPosition.x, spawnFloorY, spawnPosition.z);
 
@@ -3239,7 +3239,7 @@ export function animate(timestamp) {
 
 		if (myId != null && playersMeshes[myId]) {
 			const layout = gs && gs.layout;
-			const floorY = layout ? (sampleFloorY(layout, myX, myZ) ?? DEFAULT_FLOOR_Y) : DEFAULT_FLOOR_Y;
+			const floorY = layout ? resolveFloorY(sampleFloorY(layout, myX, myZ)) : DEFAULT_FLOOR_Y;
 			playersMeshes[myId].position.set(myX, floorY, myZ);
 			playersMeshes[myId].rotation.y = playerRotation - Math.PI / 2;
 

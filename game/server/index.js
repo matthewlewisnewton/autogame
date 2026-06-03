@@ -30,6 +30,7 @@ const {
   PASSAGE_WIDTH,
   sampleFloorY,
   DEFAULT_FLOOR_Y,
+  resolveFloorY,
 } = require('./dungeon');
 const {
   TICK_RATE,
@@ -619,8 +620,7 @@ function applyDebugScenario(socket, name) {
     player.ready = true;
     player.x = spawn.x;
     player.z = spawn.z;
-    const floorY = sampleFloorY(state.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     enterPlayingPhase(lobby);
 
     if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
@@ -661,8 +661,7 @@ function applyDebugScenario(socket, name) {
       player.magicStones = MAX_MAGIC_STONES;
       player.x = spawn.x;
       player.z = spawn.z;
-      const floorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       state.enemies = [];
       state.minions = [
         {
@@ -862,8 +861,7 @@ function applyDebugScenario(socket, name) {
         player.x = startRoom.x;
         player.z = startRoom.z;
       }
-      const floorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,
@@ -886,8 +884,7 @@ function applyDebugScenario(socket, name) {
         player.x = startRoom.x;
         player.z = startRoom.z;
       }
-      const floorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       io.to(lobby.id).emit('questUpdate', {
         ...buildQuestUpdatePayload(state),
         layoutSeed: state.layoutSeed,
@@ -905,8 +902,7 @@ function applyDebugScenario(socket, name) {
       const plazaSpawn = firstRoomPosition();
       player.x = plazaSpawn.x;
       player.z = plazaSpawn.z;
-      const plazaFloorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(plazaFloorY) ? plazaFloorY : DEFAULT_FLOOR_Y;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       // Populate the arena with the trial pack via the cover-aware spawn path so
       // enemy/loot placement on the open plaza is directly observable. This is
       // the same spawn that runs when deploying into arena_trials normally.
@@ -928,8 +924,7 @@ function applyDebugScenario(socket, name) {
       const plateauSpawn = firstRoomPosition();
       player.x = plateauSpawn.x;
       player.z = plateauSpawn.z;
-      const plateauFloorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(plateauFloorY) ? plateauFloorY : DEFAULT_FLOOR_Y;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
@@ -948,8 +943,7 @@ function applyDebugScenario(socket, name) {
       const bottomSpawn = firstRoomPosition();
       player.x = bottomSpawn.x;
       player.z = bottomSpawn.z;
-      const bottomFloorY = sampleFloorY(state.layout, player.x, player.z);
-      player.y = Number.isFinite(bottomFloorY) ? bottomFloorY : DEFAULT_FLOOR_Y;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
@@ -3120,8 +3114,7 @@ function startServer(port) {
 
         // Update Y to match floor
         if (state.layout) {
-          const floorY = sampleFloorY(state.layout, minion.x, minion.z);
-          minion.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+          minion.y = resolveFloorY(sampleFloorY(state.layout, minion.x, minion.z));
         }
       }
 
@@ -3247,8 +3240,7 @@ function startServer(port) {
 
       // Follow floor slope after displacement
       if (state.layout) {
-        const floorY = sampleFloorY(state.layout, player.x, player.z);
-        player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       }
     }
 

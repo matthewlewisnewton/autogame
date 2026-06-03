@@ -1,0 +1,20 @@
+## Verdict: **PASS**
+
+Holistic review is in [`round-1/review.md`](tickets/145-cleanup-sloped-movement-server-and-client/round-1/review.md).
+
+### Runtime gate
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: no `pageerror` / `[fatal]` (only benign Vite/THREE noise and register 409s)
+- Game reached playing phase with movement, dodge HUD, and successful `sloped-dungeon` harness scenario
+
+### Acceptance criteria
+Ticket 145 asked for one shared fallback for `sampleFloorY` results on client and server. That is done via `resolveFloorY` in `game/shared/floorSampling.esm.js`, exported through the CJS bridge and used at all former `??` / `Number.isFinite` sampling sites in `simulation.js`, `progression.js`, `index.js`, `renderer.js`, and `dungeon.js`. Tests cover null/NaN/non-finite cases; harness and a local `pnpm test:quick` run reported **1534 passing** tests.
+
+### Files written
+| File | Purpose |
+|------|---------|
+| `round-1/review.md` | Full per-criterion assessment |
+| `round-1/nits.md` | Doc mention of `resolveFloorY` (non-blocking) |
+| `round-1/gaps.md` | **Not written** (PASS only) |
+
+Two commits on branch `auto/145-cleanup-sloped-movement-server-and-client` since baseline `fd95d4f`. No game code was modified during review.

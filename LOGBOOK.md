@@ -2608,6 +2608,31 @@ None. Runtime health passes and both acceptance-criterion groups are fully satis
 
 ---
 
+## v0.151 — Cleanup nits from 117-sloped-movement-server-and-client  (2026-06-03 00:43:08)
+
+- Gated by `isDebugScenarioAllowed` (localhost / dev env / `ALLOW_DEBUG_SCENARIOS=1`; disabled in production).
+- Entry only via socket `debugScenario` event (harness), not normal UI.
+- Normal play already generates sloped layouts via `applyLayoutForQuest` → `generateLayout(…, { slopes: true })`; the debug scenario mid-run regen is a QA shortcut, not the only path to ramps.
+- Does not skip server movement validation; `applyPlayerMovement` still uses the same `resolveFloorY` path as production.
+
+No debug-scenario blocking issues for this cleanup ticket.
+
+## Integration / holistic notes
+
+- Visual QA path (movement, dodge HUD, sloped-dungeon screenshot description in metrics) aligns with sloped-movement foundation from ticket 117.
+- Client visual Y and server authoritative Y now share one fallback definition, closing the `??` vs `Number.isFinite` divergence called out in the parent ticket.
+
+## Remaining gaps
+
+None blocking. Runtime proof and acceptance criteria are satisfied.
+
+## Nits (non-blocking)
+
+See `round-1/nits.md` — documentation could mention `resolveFloorY` where design docs describe player Y snapping.
+
+---
+
+
 ## v0.152 — Cleanup nits from 118-key-item-data-and-persistence  (2026-06-03 00:54:47)
 
 
