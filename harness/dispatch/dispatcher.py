@@ -275,6 +275,16 @@ class Dispatcher:
             self.registry.release(agent)
             self.queue.requeue(bead_id, note=f"worktree create failed: {e!r}")
             return False
+        # Best-effort: materialize a ticket.md from the bead when one isn't
+        # already committed on disk (an on-disk hand-authored spec always wins).
+        # A render failure must never block the spawn.
+        try:
+            bead = self.queue.show(bead_id)
+            if bead:
+                from harness.dispatch.ticket_render import render_ticket_md
+                render_ticket_md(bead, Path(wt.root) / "tickets" / ticket_name / "ticket.md")
+        except Exception as e:
+            log(f"[dispatch] ticket.md render skipped for {ticket_name}: {e!r}")
         try:
             proc = self.spawn(ticket_name, agent, wt, ports)
         except Exception as e:  # Popen/launch failed → tear down the worktree too
