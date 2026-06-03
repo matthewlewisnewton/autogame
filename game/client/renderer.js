@@ -1216,6 +1216,19 @@ const PLAYER_MODEL_HEIGHT = 1.8;
 const AVATAR_BODY_SHAPES = new Set(['box', 'cylinder', 'cone', 'capsule']);
 const HEX_COLOR_RE = /^#[0-9a-f]{6}$/i;
 
+// Proportion morph-target vocabulary — the SAME case-sensitive strings used by
+// the server's cosmetic.proportions{}, the glTF morph targets, and the UI
+// sliders. There is NO alias/rename layer (see game/docs/MODEL_SPIKE.md):
+// proportions[key] maps 1:1 onto morphTargetInfluences[morphTargetDictionary[key]].
+const PROPORTION_MORPH_KEYS = [
+	'height',
+	'headSize',
+	'torsoWidth',
+	'armLength',
+	'legLength',
+	'shoulderWidth',
+];
+
 // Hat catalog ids, kept in sync with the server's HAT_CATALOG in
 // game/server/cosmetic.js. 'none' (and any unknown id) renders no hat.
 const AVATAR_HAT_IDS = new Set(['none', 'cap', 'wizard', 'crown', 'bandana', 'beanie']);
@@ -1432,6 +1445,78 @@ export function createPlayerAvatar(cosmetic, isSelf) {
 	attachRegistryModel('player', group);
 
 	return group;
+}
+
+/**
+ * Drive a loaded glTF body mesh's proportion morph-target influences from a
+ * cosmetic `proportions{}` object, mapping each of the six keys 1:1 by IDENTICAL
+ * name (no alias/translation table — see game/docs/MODEL_SPIKE.md):
+ *   morphTargetInfluences[morphTargetDictionary[key]] = proportions[key].
+ *
+ * Absent keys and non-finite values are skipped so that target keeps its current
+ * (rest) influence rather than becoming `undefined`. Safe no-op when the mesh
+ * carries no morph targets (procedural primitive fallback in use).
+ *
+ * @param {THREE.Mesh|null|undefined} skinnedMesh
+ * @param {*} proportions
+ */
+function applyProportionMorphs(skinnedMesh, proportions) {
+	const dict = skinnedMesh && skinnedMesh.morphTargetDictionary;
+	const influences = skinnedMesh && skinnedMesh.morphTargetInfluences;
+	if (!dict || !influences) return; // no morph targets → procedural fallback, no-op
+	if (!proportions || typeof proportions !== 'object' || Array.isArray(proportions)) return;
+
+	for (const key of PROPORTION_MORPH_KEYS) {
+		if (!Object.prototype.hasOwnProperty.call(proportions, key)) continue;
+		const value = proportions[key];
+		if (!Number.isFinite(value)) continue;
+		const idx = dict[key];
+		if (idx === undefined) continue; // model lacks this morph → skip, leave at rest
+		influences[idx] = value;
+	}
+}
+
+/**
+ * (Re)apply cosmetic proportions + body/accent tint to a player's LOADED glTF
+ * avatar each update, so a broadcast cosmetic change takes effect WITHOUT a page
+ * reload (proportions are not part of cosmeticSignature, so the avatar is not
+ * rebuilt for proportion-only changes — we re-apply influences on the existing
+ * mesh instead).
+ *
+ * Body tint flows through `userData.baseColor` so the dead/flash/invuln recolor
+ * paths from sub-ticket 01 still win when active (they recolor the same cloned
+ * body material this routes through). Accent tint applies only when the body
+ * mesh exposes a distinguishable accent material (a material array); the
+ * committed player.glb body mesh (`SuperHero_Male`) carries a single material,
+ * so accent currently has no separate surface and is left untinted — we do not
+ * invent a second mesh (MODEL_SPIKE.md).
+ *
+ * Safe no-op when the procedural primitive is in use (no `modelOverride`).
+ *
+ * @param {THREE.Object3D} host - the avatar group from createPlayerAvatar
+ * @param {*} cosmetic
+ */
+function applyLoadedModelCosmetic(host, cosmetic) {
+	if (!host || !host.userData || !host.userData.modelOverride) return; // procedural fallback → no-op
+	const bodyMesh = host.userData.bodyMesh;
+	if (!bodyMesh) return;
+
+	const c = (cosmetic && typeof cosmetic === 'object' && !Array.isArray(cosmetic)) ? cosmetic : {};
+
+	applyProportionMorphs(bodyMesh, c.proportions);
+
+	// Body tint: route through baseColor so the dead/flash/invuln recolor paths
+	// restore the cosmetic body color rather than the model's intrinsic color.
+	host.userData.baseColor = avatarColorHex(c.bodyColor, DEFAULT_AVATAR_BODY_COLOR);
+
+	// Accent tint: only when the body mesh exposes a separate accent material.
+	// Single-material bodies (current player.glb) have no accent surface.
+	if (Array.isArray(bodyMesh.material) && bodyMesh.material.length > 1) {
+		const accentMat = bodyMesh.material[1];
+		if (accentMat && accentMat.color && accentMat.color.setHex) {
+			accentMat.color.setHex(avatarColorHex(c.accentColor, DEFAULT_AVATAR_ACCENT_COLOR));
+		}
+	}
 }
 
 /**
@@ -3317,6 +3402,12 @@ export function animate(timestamp) {
 				scene.add(avatar);
 				playersMeshes[id] = avatar;
 			}
+
+			// (Re)apply proportion morphs + body/accent tint from the broadcast
+			// cosmetic every update (local + remote) so changes take effect without
+			// a reload; safe no-op on the procedural fallback. Runs before either
+			// recolor path below reads userData.baseColor.
+			applyLoadedModelCosmetic(playersMeshes[id], pData.cosmetic);
 
 			if (id === myId) continue;
 

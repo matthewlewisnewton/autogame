@@ -414,6 +414,7 @@ const DEBUG_SCENARIOS = new Set([
   'summon-recall',
   'combat-damaged-player',
   'custom-avatar-demo',
+  'avatar-proportions-demo',
   'avatar-wizard-hat',
   'mixed-enemies',
   'spawner-active',
@@ -715,6 +716,30 @@ function applyDebugScenario(socket, name) {
         accentColor: '#2ecc71',
         bodyShape: 'cylinder',
         hat: 'none',
+      };
+    } else if (name === 'avatar-proportions-demo') {
+      // Enter a normal run with distinctive (non-default) body proportions so
+      // the glTF avatar's proportion morph-target influences can be verified
+      // without first going through the customization sliders. Values stay
+      // inside the server clamp (0.75–1.25) and read clearly against the 1.0
+      // default. The same visual state is reachable normally by saving
+      // proportions via the character-customization profile route, then
+      // starting a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.cosmetic = {
+        bodyColor: '#e74c3c',
+        accentColor: '#2ecc71',
+        bodyShape: 'box',
+        hat: 'none',
+        proportions: {
+          height: 1.25,
+          headSize: 1.25,
+          torsoWidth: 0.75,
+          armLength: 0.75,
+          legLength: 1.25,
+          shoulderWidth: 1.25,
+        },
       };
     } else if (name === 'avatar-wizard-hat') {
       // Enter a normal run with a hat equipped so the avatar's hat child mesh
