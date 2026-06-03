@@ -1554,6 +1554,16 @@ function startServer(port) {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
     });
 
+    socket.on('listKeyItems', () => {
+      const items = getUnlockedKeyItems().map((def) => ({
+        id: def.id,
+        name: def.name,
+        description: def.description,
+        cooldownMs: def.cooldownMs,
+      }));
+      socket.emit('keyItemsListed', { items });
+    });
+
     socket.on('createLobby', (data) => {
       if (lobbies.getLobbyForPlayer(playerId)) {
         socket.emit('lobbyError', { reason: 'Already in a lobby' });
