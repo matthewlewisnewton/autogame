@@ -1,7 +1,1 @@
-Both conflicted files are resolved. The remaining `=======` matches are decorative banner lines in `harness/prompts/repair.md` (not conflict markers, and not one of our files).
-
-Resolution summary — both are append-only ledgers, so I kept both sides:
-- **TASKS.md**: kept both new `201-cleanup-*` backlog entries.
-- **LOGBOOK.md**: kept both completion entries, ordered by version (v0.160 Ground Anchor from main, then v0.161 glTF avatar from the branch — newest-last per the file's convention).
-
-No conflict markers remain in either file.
+All conflict markers are removed. The resolution keeps both logbook entries in chronological order — v0.163 (main's proportion-sliders entry, 05:47) followed by v0.164 (this ticket's key-item-body-props entry, 06:08). Both intents are preserved.

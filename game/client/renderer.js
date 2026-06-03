@@ -1892,6 +1892,23 @@ function applyLoadedModelCosmetic(host, cosmetic) {
 }
 
 /**
+ * Apply proportion morph-target influences to a preview/avatar group by
+ * resolving its body mesh (`userData.bodyMesh`, else the object itself) and
+ * reusing `applyProportionMorphs`. Keeps the 1:1 identical-name mapping with no
+ * alias layer, and inherits its no-op guards: a missing morph dictionary (the
+ * procedural primitive, or the glTF body not yet loaded) is a safe no-op with no
+ * thrown errors. This lets callers re-apply the current proportions every frame
+ * so a change made before the async model loads still lands once it is ready.
+ *
+ * @param {THREE.Object3D|null|undefined} host - avatar group or bare body mesh
+ * @param {*} proportions - cosmetic.proportions{} (six identical-name keys)
+ */
+export function applyAvatarProportions(host, proportions) {
+	if (!host) return;
+	applyProportionMorphs(resolveBodyMesh(host), proportions);
+}
+
+/**
  * Resolve the body mesh from an avatar group (via `userData.bodyMesh`), or
  * return the object itself if it's already a bare mesh. Returns null for falsy.
  * @param {THREE.Object3D|null|undefined} obj

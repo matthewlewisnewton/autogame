@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+**Runtime health (gate):** The captured run is clean — `metrics.json` has `ok: true`, empty `pageerrors`, no `harness_failure`. `console.log` shows only Vite connect lines, scene-init logs, and a benign 409 (lobby create/join race in the smoke flow); `client.log` has only THREE.js deprecation warnings. All 235 unit tests pass.
+
+This is a `code`-verified ticket (the customization panel isn't on the happy-path), so the smoke proves the game still starts/runs with the change applied, and I judged the acceptance criteria against the live source.
+
+**Sub-ticket 01 (sliders):** All met — six `<input type="range">` with verbatim `data-prop` keys and stable ids; min/max/step/default mirror `game/server/cosmetic.js` exactly via `PROPORTION_RANGES`; clamped writes + live readouts; `syncCosmeticForm()` resets from saved cosmetic; Save spreads all six keys into the PATCH payload; `DEFAULT_COSMETIC`/`normalizeCosmetic` backfill+clamp proportions.
+
+**Sub-ticket 02 (live preview):** All met — `applyAvatarProportions` → `applyProportionMorphs` uses the identical 1:1 key mapping; slider moves refresh the preview live; proportions re-applied each `renderFrame()` to survive async glTF load; safe no-op guards when morph targets are absent; driven by the same `cosmeticSelection.proportions` as Save.
+
+No blocking gaps and no genuine nits worth filing — so per the rules I wrote only `review.md` (no `gaps.md`, no `nits.md`).

@@ -5,6 +5,27 @@ import { setSoundEnabledFromSettings } from './audio.js';
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
 const PATCH_DEBOUNCE_MS = 300;
 
+// Body-proportion keys and their valid ranges. Mirrors `PROPORTION_RANGES` in
+// game/server/cosmetic.js (six keys + min/max, default 1.0). Used to build the
+// customization sliders and to clamp/backfill cosmetic proportions client-side.
+export const PROPORTION_RANGES = {
+	height:        { min: 0.8, max: 1.2 },
+	headSize:      { min: 0.7, max: 1.3 },
+	torsoWidth:    { min: 0.7, max: 1.3 },
+	armLength:     { min: 0.8, max: 1.2 },
+	legLength:     { min: 0.8, max: 1.2 },
+	shoulderWidth: { min: 0.7, max: 1.3 },
+};
+
+const PROPORTION_KEYS = Object.keys(PROPORTION_RANGES);
+
+/** Default proportion map: every key at its neutral value of 1.0. */
+function defaultProportions() {
+	const out = {};
+	for (const key of PROPORTION_KEYS) out[key] = 1.0;
+	return out;
+}
+
 // Mirrors the server `DEFAULT_COSMETIC` (game/server/cosmetic.js) for the
 // customization-relevant fields. Used as the fallback when an account has no
 // cosmetic yet (or the field is missing/legacy).
@@ -13,6 +34,7 @@ const DEFAULT_COSMETIC = {
 	accentColor: '#f2c94c',
 	bodyShape: 'box',
 	hat: 'none',
+	proportions: defaultProportions(),
 };
 
 /** @typedef {{ soundEnabled: boolean, particlesEnabled: boolean, showHitboxes: boolean, lockOnRepeatAction: 'unlock' | 'cycle' | 'reacquire', keyboard: { bindings: Record<string, string> }, gamepad: { bindings: object, moveStick: string, deadzone: number, profile?: string, modifierButton?: number } }} AccountSettings */
@@ -20,8 +42,9 @@ const DEFAULT_COSMETIC = {
 /** @type {AccountSettings} */
 let cachedSettings = getDefaultSettings();
 let cachedProfile = { username: '', email: null };
-/** @type {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string }} */
-let cachedCosmetic = { ...DEFAULT_COSMETIC };
+/** @typedef {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string, proportions: Record<string, number> }} Cosmetic */
+/** @type {Cosmetic} */
+let cachedCosmetic = { ...DEFAULT_COSMETIC, proportions: defaultProportions() };
 /** @type {string[]} Hat ids the logged-in account has unlocked (always includes 'none'). */
 let cachedUnlockedHats = ['none'];
 /** @type {{ id: string, name: string, price: number }[]} Server hat catalog. */
@@ -64,16 +87,36 @@ export function getAccountProfile() {
 /**
  * Current cached cosmetic for the logged-in account, with any missing fields
  * filled from the defaults that mirror the server `DEFAULT_COSMETIC`.
- * @returns {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string }}
+ * @returns {Cosmetic}
  */
 export function getAccountCosmetic() {
 	return normalizeCosmetic(cachedCosmetic);
 }
 
 /**
+ * Coerce/backfill a proportions map: every key numeric and clamped to its
+ * range; missing or invalid values default to 1.0. Returns a new object with
+ * exactly the six known keys.
+ * @param {unknown} value
+ * @returns {Record<string, number>}
+ */
+function normalizeProportions(value) {
+	const src = (value && typeof value === 'object' && !Array.isArray(value)) ? value : {};
+	const out = {};
+	for (const key of PROPORTION_KEYS) {
+		const range = PROPORTION_RANGES[key];
+		const raw = src[key];
+		out[key] = (typeof raw === 'number' && Number.isFinite(raw))
+			? Math.max(range.min, Math.min(range.max, raw))
+			: 1.0;
+	}
+	return out;
+}
+
+/**
  * Merge a (possibly partial/legacy) cosmetic onto the defaults.
  * @param {object|undefined|null} cosmetic
- * @returns {{ bodyColor: string, accentColor: string, bodyShape: string, hat: string }}
+ * @returns {Cosmetic}
  */
 function normalizeCosmetic(cosmetic) {
 	const src = (cosmetic && typeof cosmetic === 'object') ? cosmetic : {};
@@ -82,6 +125,7 @@ function normalizeCosmetic(cosmetic) {
 		accentColor: typeof src.accentColor === 'string' ? src.accentColor : DEFAULT_COSMETIC.accentColor,
 		bodyShape: typeof src.bodyShape === 'string' ? src.bodyShape : DEFAULT_COSMETIC.bodyShape,
 		hat: typeof src.hat === 'string' ? src.hat : DEFAULT_COSMETIC.hat,
+		proportions: normalizeProportions(src.proportions),
 	};
 }
 

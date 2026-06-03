@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/188-character-customization-client-proportion-sliders/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/188-character-customization-client-proportion-sliders/game/data
+Server listening on port 3000
+Player connected: socket=JFEsLhFpeywPZ-5HAAAB, playerId=68930693-9028-46dd-9025-7327a6e96100
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=HyE20DhZFbc6X8XuAAAD, playerId=69a5ede5-feaa-4027-af74-63eaca66eaaa
+Player disconnected: JFEsLhFpeywPZ-5HAAAB
+Player disconnected: HyE20DhZFbc6X8XuAAAD

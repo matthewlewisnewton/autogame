@@ -69,6 +69,7 @@ import {
 	getUnlockedHats,
 	getHatCatalog,
 	setUnlockedHats,
+	PROPORTION_RANGES,
 } from './settings.js';
 import {
 	initControllerCalibration,
@@ -187,6 +188,7 @@ const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches')
 const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
 const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
 const cosmeticHatListEl = document.getElementById('cosmetic-hat-list');
+const cosmeticProportionsEl = document.getElementById('cosmetic-proportions');
 const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
 const cosmeticErrorEl = document.getElementById('cosmetic-error');
 const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
@@ -2972,7 +2974,13 @@ const ACCENT_COLOR_PALETTE = [
 ];
 
 // In-progress selection while the panel is open; persisted on Save.
-const cosmeticSelection = { bodyColor: '', accentColor: '', bodyShape: 'box', hat: 'none' };
+const cosmeticSelection = {
+	bodyColor: '',
+	accentColor: '',
+	bodyShape: 'box',
+	hat: 'none',
+	proportions: Object.fromEntries(Object.keys(PROPORTION_RANGES).map((k) => [k, 1.0])),
+};
 
 function showCosmeticError(message) {
 	if (!cosmeticErrorEl) return;
@@ -3092,15 +3100,71 @@ function refreshHatList() {
 	}
 }
 
+/** Clamp a numeric proportion value into the configured range for `key`. */
+function clampProportion(key, value) {
+	const range = PROPORTION_RANGES[key];
+	if (!range) return value;
+	const num = Number(value);
+	if (!Number.isFinite(num)) return 1.0;
+	return Math.max(range.min, Math.min(range.max, num));
+}
+
+// Cache of proportion-slider elements (keyed by proportion key) plus their value
+// readout spans, populated once when the controls are wired.
+/** @type {Map<string, { input: HTMLInputElement, value: HTMLElement|null }>} */
+const cosmeticPropEls = new Map();
+
+/**
+ * Wire each proportion range slider: configure its min/max/step from
+ * `PROPORTION_RANGES` and attach an input handler that clamps and writes
+ * `cosmeticSelection.proportions[key]`, updates the readout, and refreshes the
+ * live preview. Called once at startup.
+ */
+function buildProportionSliders() {
+	if (!cosmeticProportionsEl) return;
+	const sliders = cosmeticProportionsEl.querySelectorAll('input[type="range"][data-prop]');
+	for (const input of sliders) {
+		const key = input.dataset.prop;
+		const range = PROPORTION_RANGES[key];
+		if (!range) continue;
+		input.min = String(range.min);
+		input.max = String(range.max);
+		input.step = '0.01';
+		const valueEl = document.getElementById(`cosmetic-prop-${key}-value`);
+		cosmeticPropEls.set(key, { input, value: valueEl });
+		input.addEventListener('input', () => {
+			const clamped = clampProportion(key, input.value);
+			cosmeticSelection.proportions[key] = clamped;
+			if (valueEl) valueEl.textContent = clamped.toFixed(2);
+			refreshCosmeticPreview();
+		});
+	}
+}
+
+/** Set every proportion slider position + readout from `cosmeticSelection`. */
+function refreshProportionSliders() {
+	for (const [key, { input, value }] of cosmeticPropEls) {
+		const val = clampProportion(key, cosmeticSelection.proportions[key]);
+		cosmeticSelection.proportions[key] = val;
+		input.value = String(val);
+		if (value) value.textContent = val.toFixed(2);
+	}
+}
+
+// Wire the sliders once at startup; positions are synced per-open.
+buildProportionSliders();
+
 function syncCosmeticForm() {
 	const cosmetic = getAccountCosmetic();
 	cosmeticSelection.bodyColor = cosmetic.bodyColor;
 	cosmeticSelection.accentColor = cosmetic.accentColor;
 	cosmeticSelection.bodyShape = cosmetic.bodyShape;
 	cosmeticSelection.hat = cosmetic.hat;
+	cosmeticSelection.proportions = { ...cosmetic.proportions };
 	refreshSwatchSelection(cosmeticBodySwatchesEl, cosmetic.bodyColor);
 	refreshSwatchSelection(cosmeticAccentSwatchesEl, cosmetic.accentColor);
 	if (cosmeticShapeSelectEl) cosmeticShapeSelectEl.value = cosmetic.bodyShape;
+	refreshProportionSliders();
 	buildHatList();
 	showCosmeticError('');
 }
@@ -3221,6 +3285,7 @@ if (cosmeticSaveBtnEl) {
 			accentColor: cosmeticSelection.accentColor,
 			bodyShape: cosmeticSelection.bodyShape,
 			hat: cosmeticSelection.hat,
+			proportions: { ...cosmeticSelection.proportions },
 		};
 		showCosmeticError('');
 		cosmeticSaveBtnEl.disabled = true;
