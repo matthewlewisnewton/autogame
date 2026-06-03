@@ -17,7 +17,7 @@ import {
 	getCardTypeLabel,
 } from './theme.js';
 import { io } from 'socket.io-client';
-import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
+import { CARD_DEFS, CARD_TYPE_STYLE, CARD_ACCENT_STYLE, EVOLUTION_GRIND_REQUIRED, EVOLUTION_TRANSFORMS, getCardSellValue, getGrindCost, getCardDef, getForgeAttunePreview, weaponCardIds, spellCardIds, creatureCardIds, enchantmentCardIds } from './cards.js';
 import { buildLoadoutDeckDisplay } from './deck-loadout.js';
 import { drawCard, initHand as initHandFromModule, hand, deck, desperationDeck, slotCooldowns, canUseSlot, setDrawPile, setDesperationDrawPile, inDesperation, setInDesperation, canDrawIntoHandLocal, MAX_HAND_SLOTS } from './hand.js';
 import { renderCardUsed } from './cardRenderers.js';
@@ -2929,6 +2929,35 @@ cardHandEl.addEventListener('contextmenu', (e) => {
 	if (!slot || slot.classList.contains('empty')) return;
 	e.preventDefault();
 	discardCard(parseInt(slot.dataset.slotIndex, 10));
+});
+
+// Pick the slot for a canvas basic attack: the first usable weapon-type slot,
+// falling back to the first usable slot of any type. Returns -1 if none usable.
+function pickBasicAttackSlot() {
+	let fallback = -1;
+	for (let i = 0; i < MAX_HAND_SLOTS; i++) {
+		const card = hand[i];
+		if (!card || !canUseSlot(i)) continue;
+		if (weaponCardIds.has(card.id)) return i;
+		if (fallback === -1) fallback = i;
+	}
+	return fallback;
+}
+
+// Left-clicking the 3D canvas during a run performs the player's basic attack
+// by routing through the existing useCard flow (which emits `useCard` and, on a
+// hit, fires the shared attack/flash/damage-number feedback via renderCardUsed).
+// Delegated on window so it survives the renderer being recreated between runs;
+// the e.target === canvas guard means clicks on HUD/overlay elements (card
+// slots, buttons) never double-trigger an attack, and button === 0 leaves
+// right-click camera orbit untouched.
+window.addEventListener('pointerdown', (e) => {
+	if (e.button !== 0) return;
+	if (!gameState || gameState.gamePhase !== 'playing') return;
+	const canvas = getRenderer()?.domElement;
+	if (!canvas || e.target !== canvas) return;
+	const slot = pickBasicAttackSlot();
+	if (slot >= 0) useCard(slot);
 });
 
 if (deckStackEl) {
