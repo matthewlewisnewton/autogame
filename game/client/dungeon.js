@@ -9,6 +9,7 @@ import {
 	isPositionBlocked as isPositionBlockedPure,
 	sampleFloorY,
 	DEFAULT_FLOOR_Y,
+	resolveFloorY,
 } from './collision.js';
 import { PASSAGE_WIDTH, BOUNDS_MARGIN } from './config.js';
 
@@ -238,7 +239,7 @@ export function buildDungeon(scene, layout) {
 
 		// Treasure room marker: glowing gold pillar at room center
 		if (room.role === 'treasure') {
-			const treasureFloorY = sampleFloorY(layout, room.x, room.z) ?? DEFAULT_FLOOR_Y;
+			const treasureFloorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
 			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
 			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
 			marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
@@ -261,7 +262,7 @@ export function buildDungeon(scene, layout) {
 				wallZ = wall.z;
 			}
 
-			const wallBaseY = sampleFloorY(layout, wallX, wallZ) ?? DEFAULT_FLOOR_Y;
+			const wallBaseY = resolveFloorY(sampleFloorY(layout, wallX, wallZ));
 			const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
 			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
@@ -288,7 +289,7 @@ export function buildDungeon(scene, layout) {
 	for (const c of layout.cover || []) {
 		const coverGeo = new THREE.BoxGeometry(c.width, c.height, c.depth);
 		const coverMesh = new THREE.Mesh(coverGeo, wallMaterial);
-		const floorY = sampleFloorY(layout, c.x, c.z) ?? DEFAULT_FLOOR_Y;
+		const floorY = resolveFloorY(sampleFloorY(layout, c.x, c.z));
 		coverMesh.position.set(c.x, floorY + c.height / 2, c.z);
 		scene.add(coverMesh);
 		meshes.push(coverMesh);

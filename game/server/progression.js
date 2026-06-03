@@ -39,6 +39,7 @@ const {
   randomRoomPositionByRole,
   sampleFloorY,
   DEFAULT_FLOOR_Y,
+  resolveFloorY,
 } = require('./dungeon');
 const {
   ENEMY_DEFS,
@@ -1358,8 +1359,7 @@ function assignRunSpawnPositions(players) {
     const offset = RUN_SPAWN_OFFSETS[index % RUN_SPAWN_OFFSETS.length];
     player.x = base.x + offset.x;
     player.z = base.z + offset.z;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
   });
 }
 
@@ -1376,8 +1376,7 @@ function repositionPlayersAwayFromPortal(players) {
     const offset = RUN_SPAWN_OFFSETS[(index + 1) % RUN_SPAWN_OFFSETS.length];
     player.x = telepipe.x + offset.x;
     player.z = telepipe.z + offset.z;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
   });
 }
 
@@ -2966,8 +2965,7 @@ function suspendRunToLobby() {
     player.dead = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
     player.lastMoveTime = Date.now();
     player.pendingSummons = new Set();
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -3067,8 +3065,7 @@ function abandonSuspendedRun() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
     player.hand = [];
     player.deck = [];
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -3230,8 +3227,7 @@ function returnPlayersToLobby() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
     player.currency = preservedCurrency;
     player.inventory = preservedInventory;
     player.ownedCards = preservedOwnedCards;
@@ -3288,8 +3284,7 @@ function giveUpRun() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    const floorY = sampleFloorY(_gameState.layout, player.x, player.z);
-    player.y = Number.isFinite(floorY) ? floorY : DEFAULT_FLOOR_Y;
+    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
     player.currencyEarnedThisRun = 0;
     player.runRewards = null;
     player.hand = [];

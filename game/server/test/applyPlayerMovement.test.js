@@ -10,7 +10,7 @@ import {
 } from '../simulation.js';
 import { createGameState } from '../index.js';
 import { INPUT_STALE_MS, MOVE_SPEED, TICK_RATE } from '../config.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y } from '../dungeon.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../dungeon.js';
 
 function buildOpenLayout() {
   return {
@@ -295,7 +295,7 @@ describe('applyPlayerMovement() — slope movement', () => {
     state.players.p1 = makePlayer({
       x: playerStartX,
       z: playerStartZ,
-      y: sampleFloorY(state.layout, playerStartX, playerStartZ) ?? DEFAULT_FLOOR_Y,
+      y: resolveFloorY(sampleFloorY(state.layout, playerStartX, playerStartZ)),
       inputActive: true,
       inputDx: 0,
       inputDz: 1, // move south (parallel to eastern wall)
