@@ -12,7 +12,7 @@
 // independent of the main game scene/camera/render loop.
 
 import * as THREE from 'three';
-import { createPlayerAvatar, disposeAvatar } from './renderer.js';
+import { createPlayerAvatar, disposeAvatar, applyAvatarProportions } from './renderer.js';
 
 let scene = null;
 let camera = null;
@@ -20,23 +20,41 @@ let renderer = null;
 let avatar = null;
 let canvas = null;
 let rafId = null;
+// Latest cosmetic passed to openPreview()/updatePreview(), kept so we can
+// re-apply its proportions every frame — the glTF body mesh loads async, so a
+// proportion change made before the model is ready must take effect once it is.
+let currentCosmetic = null;
+
+/**
+ * Re-apply the stored cosmetic's proportions to the mounted avatar. Cheap and
+ * a no-op until the morph-bearing body mesh exists (procedural fallback / model
+ * still loading), so it is safe to call on every render frame.
+ */
+function applyStoredProportions() {
+	if (avatar) applyAvatarProportions(avatar, currentCosmetic && currentCosmetic.proportions);
+}
 
 function renderFrame() {
 	if (!renderer || !scene || !camera) return;
 	rafId = requestAnimationFrame(renderFrame);
 	// Slow turntable so the player can see the avatar from all sides.
 	if (avatar) avatar.rotation.y += 0.01;
+	// Re-apply proportions each tick so a change made before the async glTF body
+	// mesh finished loading still lands once the morph targets exist.
+	applyStoredProportions();
 	renderer.render(scene, camera);
 }
 
 /**
  * Build the avatar group from a cosmetic and add it to the preview scene.
- * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string}} cosmetic
+ * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string,proportions?:object}} cosmetic
  */
 function mountAvatar(cosmetic) {
 	if (!scene) return;
 	avatar = createPlayerAvatar(cosmetic, true);
 	scene.add(avatar);
+	// Apply proportions immediately; harmless no-op until morph targets load.
+	applyStoredProportions();
 }
 
 /**
@@ -54,13 +72,15 @@ function unmountAvatar() {
  * avatar built from `cosmetic`, then start rendering. Safe to call repeatedly:
  * any previous preview is torn down first.
  * @param {HTMLCanvasElement|null} canvasEl
- * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string}} cosmetic
+ * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string,proportions?:object}} cosmetic
  */
 export function openPreview(canvasEl, cosmetic) {
 	if (!canvasEl) return;
 	// Drop any prior preview so we never double-allocate or stack render loops.
 	closePreview();
 	canvas = canvasEl;
+	// Store the cosmetic (incl. proportions) so renderFrame() can re-apply it.
+	currentCosmetic = cosmetic;
 
 	const width = canvas.clientWidth || canvas.width || 180;
 	const height = canvas.clientHeight || canvas.height || 180;
@@ -91,14 +111,18 @@ export function openPreview(canvasEl, cosmetic) {
 /**
  * Replace the previewed avatar with a freshly built one from `cosmetic`. The
  * old avatar group is disposed first. No-op if the preview is not open.
- * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string}} cosmetic
+ * @param {{bodyColor:string,accentColor:string,bodyShape:string,hat:string,proportions?:object}} cosmetic
  */
 export function updatePreview(cosmetic) {
 	if (!scene) return;
+	// Store the latest cosmetic (incl. proportions) so the preview applies the
+	// current proportions on this update and on every subsequent frame.
+	currentCosmetic = cosmetic;
 	const prevRotation = avatar ? avatar.rotation.y : 0;
 	unmountAvatar();
 	mountAvatar(cosmetic);
 	if (avatar) avatar.rotation.y = prevRotation;
+	applyStoredProportions();
 }
 
 /**
@@ -117,6 +141,7 @@ export function closePreview() {
 	scene = null;
 	camera = null;
 	canvas = null;
+	currentCosmetic = null;
 }
 
 /** Whether a preview is currently open (test/debug helper). */
