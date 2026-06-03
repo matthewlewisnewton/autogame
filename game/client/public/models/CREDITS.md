@@ -20,7 +20,7 @@ Every 3D model under `game/client/public/models/` is tracked here. Most are
 
 | File | Entity (registry key) | Source (creature) | License | URL | Status |
 |------|----------------------|-------------------|---------|-----|--------|
-| player.glb | player | Blender (original) | Project-owned | — | parked — hero deferred to character-customization epic (181–188) |
+| player.glb | player | Quaternius "Universal Base Characters" — Regular_Male (spike base) | CC0 | https://quaternius.com/packs/universalbasecharacters.html | spike — `player.glb` export pending (sub-ticket 03); contract in `game/docs/MODEL_SPIKE.md` |
 | grunt.glb | grunt | Quaternius "Ultimate Monsters" — Orc | CC0 | https://quaternius.com/ | placeholder |
 | skirmisher.glb | skirmisher | Quaternius "Ultimate Monsters" — Goleling | CC0 | https://quaternius.com/ | placeholder |
 | miniboss.glb | miniboss | Quaternius "Ultimate Monsters" — Blue Demon | CC0 | https://quaternius.com/ | placeholder |
