@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/168-bug-intermittent-stuck-lobby-socket/round-2/review.md`.
+
+Verdict is `VERDICT: FAIL` due to one blocking gap: repeated non-auth `connect_error` / `reconnect_attempt` events can keep resetting the watchdog, preventing the persistent reload/retry error from ever surfacing.
+
+Also wrote the standalone remediation file to `tickets/168-bug-intermittent-stuck-lobby-socket/round-2/gaps.md`. No nits file was created.

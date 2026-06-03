@@ -1,0 +1,11 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/168-bug-intermittent-stuck-lobby-socket/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/168-bug-intermittent-stuck-lobby-socket/game/data
+Server listening on port 3000
+Player connected: socket=dDs4ekooZ4zYKbLlAAAB, playerId=9f7ff570-521c-450f-a639-ed168d353439
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=RCPXWieFB5XH1qI8AAAD, playerId=1a23dc14-eae2-4e53-afd6-05e6e3e37dd3
+Player disconnected: dDs4ekooZ4zYKbLlAAAB
+Player disconnected: RCPXWieFB5XH1qI8AAAD

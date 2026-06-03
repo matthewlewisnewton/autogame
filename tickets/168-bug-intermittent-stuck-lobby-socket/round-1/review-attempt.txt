@@ -1,0 +1,6 @@
+Review complete. I wrote:
+
+- `tickets/168-bug-intermittent-stuck-lobby-socket/round-1/review.md`
+- `tickets/168-bug-intermittent-stuck-lobby-socket/round-1/gaps.md`
+
+Verdict is `FAIL` because the fresh-connect watchdog works, but the post-connect reconnect/drop path can still retry forever without surfacing the persistent recovery error. No `nits.md` was created.

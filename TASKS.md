@@ -75,3 +75,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [201-cleanup-character-customization-client-gltf-avatar](tickets/201-cleanup-character-customization-client-gltf-avatar/)
 - [ ] [201-cleanup-key-item-ground-anchor](tickets/201-cleanup-key-item-ground-anchor/)
 - [ ] [202-cleanup-character-hats-client-render](tickets/202-cleanup-character-hats-client-render/)
+- [ ] [203-cleanup-bug-intermittent-stuck-lobby-socket](tickets/203-cleanup-bug-intermittent-stuck-lobby-socket/)

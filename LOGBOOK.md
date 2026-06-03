@@ -2952,3 +2952,26 @@ None. The change is correct, minimal, and scoped exactly to the Goal; the
 captured run proves the game is healthy and the deletions are recoverable from
 `bash-rollback-v1`.
 
+
+## v0.168 — 168-bug-intermittent-stuck-lobby-socket  (2026-06-03 09:10:41)
+
+- Server: no server files changed; suite unaffected.
+- Captured run starts and loads cleanly (see gate above).
+
+## Consistency with design / requirements
+
+Purely additive client-side connection resilience. No gameplay, netcode, or
+state-replication semantics changed; nothing in `design.md` / `requirements.md`
+is regressed. The capture confirms movement, dodge cooldown, enemies, and HUD
+still function.
+
+## Code quality
+
+Clean, well-commented, symmetric arm/clear lifecycle across handlers, reuses the
+existing error/status surfaces rather than inventing new UI. No dead code, no
+console errors. No debug scenarios were added or changed.
+
+## Remaining gaps
+
+None blocking. (One minor wording nit recorded in `nits.md`.)
+
