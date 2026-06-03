@@ -3978,6 +3978,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			hp: enemy.hp,
 			maxHp: enemy.maxHp,
 			revealedUntil: enemy.revealedUntil ?? undefined,
+			type: enemy.type,
+			spawnedBy: enemy.spawnedBy ?? null,
 		})) : [],
 		minions: gameState && gameState.minions ? gameState.minions.map((m) => ({
 			id: m.id,
