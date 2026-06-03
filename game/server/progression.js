@@ -47,6 +47,7 @@ const {
   pickFloorSpawnPosition,
   randomWanderTarget
 } = require('./simulation');
+const { applyVariant } = require('./enemyVariants');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -2747,6 +2748,24 @@ function pickEnemySpawnPosition(layout, rng, preferNearestCombat, spawnIndex = 0
   return pickFloorSpawnPosition(layout, rng);
 }
 
+/**
+ * Resolve the encounterTier (0–1) of the room containing point (x, z). Used to
+ * scale the enemy-variant roll: start/treasure rooms are tier 0 (never roll a
+ * variant). Returns 0 when no containing room is found.
+ */
+function roomTierAt(layout, x, z) {
+  if (!layout || !Array.isArray(layout.rooms)) return 0;
+  for (const room of layout.rooms) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    if (x >= room.x - halfW && x <= room.x + halfW &&
+        z >= room.z - halfD && z <= room.z + halfD) {
+      return Number.isFinite(room.encounterTier) ? room.encounterTier : 0;
+    }
+  }
+  return 0;
+}
+
 function spawnCombatEnemies(layout, rng, quest) {
   const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
@@ -2759,6 +2778,9 @@ function spawnCombatEnemies(layout, rng, quest) {
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
     const enemy = spawnEnemy(pos.x, pos.z, type);
     enemy.wanderTarget = randomWanderTarget();
+    // Variant seam: scale the roll by the spawn room's encounterTier (0 for
+    // start/treasure rooms or unknown positions, so they never roll a variant).
+    applyVariant(enemy, roomTierAt(layout, pos.x, pos.z), rng);
   }
 }
 
