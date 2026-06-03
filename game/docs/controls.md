@@ -46,7 +46,7 @@ The **key item** action triggers the equipped key item during dungeon runs.
 The **Dodge Roll** is the default equipped key item. When activated, your character performs a fast burst in the current movement direction (or facing direction if stationary) with brief invulnerability.
 
 - **Cooldown:** 800ms
-- **Invulnerability:** ~300ms (one simulation tick) — you cannot take damage during this window
+- **Invulnerability:** ~300ms — you cannot take damage during this window
 - **Direction:** Uses your current WASD/gamepad stick input; if stationary, uses your character's facing direction
 - **Collision:** The dash stops at walls — you cannot clip through dungeon geometry
 
