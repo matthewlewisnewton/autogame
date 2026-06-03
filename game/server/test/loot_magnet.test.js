@@ -49,7 +49,7 @@ describe('Loot Magnet — pull & collect', () => {
 		await closeServer();
 	});
 
-	it('loot within attractRadius moves closer to player after useKeyItem', async () => {
+	it('loot at 6m within attractRadius (8m) is pulled to the player and auto-collected', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
 		const state = testGameState();
@@ -57,9 +57,10 @@ describe('Loot Magnet — pull & collect', () => {
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
 
-		// Place loot 6m from player — within attractRadius (8m).
-		// tryPlayerMove pulls the full distance to player (0m).
-		// 0m <= LOOT_PICKUP_RADIUS (3.5m), so auto-collected.
+		// Loot 6m away — inside attractRadius (8m). useKeyItem (loot_magnet) does an
+		// instant full pull to the player (0m separation). That is within
+		// LOOT_PICKUP_RADIUS (3.5m), so the server auto-collects and removes the drop.
+		// Partial pull without collection (e.g. wall-blocked) is covered below.
 		const loot = {
 			id: 'loot-1',
 			x: player.x + 6,
