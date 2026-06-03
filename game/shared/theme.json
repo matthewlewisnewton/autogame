@@ -65,6 +65,7 @@
     "hostiles": "hostiles",
     "recoverPrisms": "Recover {count} prisms",
     "neutralizeHostiles": "Neutralize {count} hostiles",
+    "surviveHostiles": "Survive {count} hostiles ({minibosses} minibosses)",
     "collectPrismsProgress": "{collected}/{total} prisms"
   },
   "cardDescriptions": {
