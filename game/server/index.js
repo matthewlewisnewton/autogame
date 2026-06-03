@@ -3236,7 +3236,7 @@ function startServer(port) {
 
     // Set invulnerability and cooldown
     player.invulnerableUntil = now + (def.invincibleDurationMs || 300);
-    player.keyItemCooldownUntil = now + (def.cooldownMs || 1200);
+    player.keyItemCooldownUntil = now + (def.cooldownMs || 800);
     player.persistenceDirty = true;
 
     socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
