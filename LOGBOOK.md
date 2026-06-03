@@ -2747,3 +2747,26 @@ this ticket).
 None. The change is minimal, correct, matches existing conventions, is covered by
 a new mirroring unit test, and the captured run is clean.
 
+
+## v0.157 — Key Item: Rally Cry  (2026-06-03 03:47:31)
+
+- Normal path still reachable: the scenario only equips `rally_cry` with a
+  cleared cooldown — exactly the state a player reaches by equipping the Rally
+  Cry key item in the lobby and entering a run.
+- No invariants bypassed: the scenario does not cast the buff itself; casting
+  still flows through the normal `useKeyItem` handler, which enforces
+  dead/extracted/cooldown checks and net-replicates via `stateUpdate`.
+
+## Consistency / regressions
+The change is additive and follows the established per-key-item pattern in the
+`useKeyItem` handler (cooldown gate → per-item block → `stateUpdate` broadcast).
+New fields `rallyUntil`/`rallySpeedMultiplier` are initialized in both
+`buildPlayerRecord` and `initializePlayerForActiveRun`, so they reset correctly
+on new runs. No existing behavior is altered beyond the guard_block movement
+line, which now composes the rally multiplier (verified by test). No design.md
+or requirements.md regression.
+
+## Remaining gaps
+None blocking. The implementation fully and robustly satisfies the acceptance
+criteria, the game runs cleanly, and the tests are thorough and pass.
+

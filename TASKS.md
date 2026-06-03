@@ -32,7 +32,7 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [x] [131-key-item-purge-charm](tickets/131-key-item-purge-charm/)
 - [x] [132-key-item-echo-strike](tickets/132-key-item-echo-strike/)
 - [x] [133-key-item-barrier-dome](tickets/133-key-item-barrier-dome/)
-- [ ] [134-key-item-rally-cry](tickets/134-key-item-rally-cry/)
+- [x] [134-key-item-rally-cry](tickets/134-key-item-rally-cry/)
 
 ## Backlog — World Stages
 - [x] [135-world-open-plaza-stage](tickets/135-world-open-plaza-stage/)
@@ -70,3 +70,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [197-cleanup-cleanup-key-item-dodge-roll](tickets/197-cleanup-cleanup-key-item-dodge-roll/)
 - [ ] [198-cleanup-cleanup-key-item-flare-beacon](tickets/198-cleanup-cleanup-key-item-flare-beacon/)
 - [ ] [199-cleanup-cleanup-sloped-movement-server-and-client](tickets/199-cleanup-cleanup-sloped-movement-server-and-client/)
+- [ ] [200-cleanup-key-item-rally-cry](tickets/200-cleanup-key-item-rally-cry/)

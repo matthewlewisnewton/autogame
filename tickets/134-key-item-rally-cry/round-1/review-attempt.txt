@@ -1,0 +1,18 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket implements `rally_cry` as a party-wide move-speed buff and fully meets every acceptance criterion:
+
+- **Runtime health** — `metrics.json` shows `"ok": true`, empty `pageerrors`, no `harness_failure`; `console.log` is clean (only a benign 409 + normal init lines). The game starts and loads cleanly with two players.
+- **Cooldown ~10s** — `cooldownMs` changed 30000→10000; enforced by the shared cooldown gate; test verifies the bound and `on_cooldown` rejection.
+- **~+10% speed, no self-stack** — `speedMultiplier: 1.1`, **assigned** (not multiplied) so re-casting never compounds; applied in `applyPlayerMovement`; old heal fields removed. Tests confirm 1.1× delta and HP unchanged.
+- **Tests** — 7 rally_cry tests pass locally (verified `7 passed | 41 skipped`): two-player faster delta, expiry after 4s, out-of-radius exclusion, no self-stack, guard_block composition.
+- **Goal** — buffs all living/non-extracted players in 8m radius including the caster; no heal.
+- **Debug scenario** `rally-cry-ready` — properly gated (allow-set + `isDebugScenarioAllowed`), URL is the only entry point, normal lobby-equip path reaches the same state, and casting still flows through the validated handler (no invariant bypass).
+
+Files written:
+- `review.md` (full per-criterion assessment, VERDICT: PASS)
+- `nits.md` (one non-blocking follow-up: no client-side HUD/visual feedback for the active buff)
+
+No `gaps.md` written (PASS).
