@@ -55,6 +55,13 @@ function applyVariant(enemy, tier, rng) {
     const pick = typeof rng === 'function' ? rng() : Math.random();
     const id = ids[Math.min(ids.length - 1, Math.floor(pick * ids.length))];
     enemy.variant = id;
+    // Invoke the variant definition's behavior hook so follow-up tickets can
+    // modify the enemy's stats/AI through the registry. A null/absent `apply`
+    // (as for the 'test' variant) leaves the enemy unchanged beyond the tag.
+    const def = VARIANT_DEFS[id];
+    if (def && typeof def.apply === 'function') {
+      def.apply(enemy);
+    }
   } else if (enemy.variant === undefined) {
     enemy.variant = null;
   }

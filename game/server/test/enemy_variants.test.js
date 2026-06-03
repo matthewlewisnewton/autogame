@@ -62,6 +62,68 @@ describe('applyVariant', () => {
     expect(enemy.variant).toBeNull();
   });
 
+  it('invokes the variant definition apply hook when a variant is selected', () => {
+    // Temporarily register a def with a function `apply` so we can prove the
+    // hook fires for tagged enemies; restore the registry afterwards.
+    const ids = Object.keys(VARIANT_DEFS);
+    const spied = ids.map((id) => {
+      const def = VARIANT_DEFS[id];
+      const original = def.apply;
+      def.apply = (enemy) => {
+        enemy.hookRan = true;
+        enemy.maxHp = 999;
+      };
+      return { def, original };
+    });
+    try {
+      // First draw < chance (tagged); second draw selects an id.
+      const enemy = {};
+      applyVariant(enemy, 1, seqRng([0.01, 0]));
+      expect(enemy.variant).not.toBeNull();
+      expect(enemy.hookRan).toBe(true);
+      expect(enemy.maxHp).toBe(999);
+    } finally {
+      spied.forEach(({ def, original }) => {
+        def.apply = original;
+      });
+    }
+  });
+
+  it('does not invoke any apply hook for an untagged enemy', () => {
+    const ids = Object.keys(VARIANT_DEFS);
+    const spied = ids.map((id) => {
+      const def = VARIANT_DEFS[id];
+      const original = def.apply;
+      def.apply = (enemy) => {
+        enemy.hookRan = true;
+      };
+      return { def, original };
+    });
+    try {
+      // Roll above the scaled chance => no tag, so no hook should fire.
+      const enemy = {};
+      applyVariant(enemy, 1, seqRng([BASE_VARIANT_CHANCE + 0.01]));
+      expect(enemy.variant).toBeNull();
+      expect(enemy.hookRan).toBeUndefined();
+    } finally {
+      spied.forEach(({ def, original }) => {
+        def.apply = original;
+      });
+    }
+  });
+
+  it('leaves enemy stats unchanged when the no-op test variant is selected', () => {
+    // The shipped 'test' variant has apply: null, so selecting it must not
+    // mutate the enemy beyond the variant tag.
+    expect(VARIANT_DEFS.test.apply).toBeNull();
+    const enemy = { maxHp: 100, hp: 100, atk: 7 };
+    applyVariant(enemy, 1, seqRng([0.01, 0]));
+    expect(enemy.variant).toBe('test');
+    expect(enemy.maxHp).toBe(100);
+    expect(enemy.hp).toBe(100);
+    expect(enemy.atk).toBe(7);
+  });
+
   it('produces a deterministic outcome for a fixed seed at high tier', () => {
     const tagCount = (seed) => {
       let tagged = 0;
