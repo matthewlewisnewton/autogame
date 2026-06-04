@@ -3513,3 +3513,26 @@ No new or changed debug scenario was introduced by this ticket. The capture used
 
 None.
 
+
+## v0.195 — 219-input-unify-keyboard-onto-keymap  (2026-06-04 13:02:31)
+
+5. **Remove dead gamepad handler plumbing:** Satisfied. `setGamepadInputHandler`, `gamepadInputHandler`, and the empty main.js registration are gone; `pollInput()` is the single per-frame gamepad action dispatcher.
+
+6. **Collapse redundant per-callback phase guards:** Satisfied. `main.js` centralizes action gating in `canUseGameActions()` for `initInput()` callbacks and uses the same helper for pointer/deck interactions. Renderer still guards `applyLockOnPress()` internally, which is appropriate because the function is exported and can be called independently.
+
+## Design and requirements fit
+
+The implementation stays within the existing client input architecture and does not alter server simulation, persistence, dungeon flow, or combat rules. It preserves the requirement that WASD movement updates the local player and broadcasts through the existing renderer movement pipeline, while reducing duplicate hardware readers that could diverge.
+
+No new debug scenario was added or changed for this ticket. The capture used the normal gameplay path, not a `debugScenario` shortcut.
+
+## Code quality and verification
+
+The changed code is focused and covered by targeted unit tests. `coverage.log` shows the Vitest suite passed: 12 files and 253 tests. The new input tests cover keyboard movement, typing-target keyup clearing, merged keyboard/gamepad movement, keyboard and gamepad lock-on dispatch, exposed action labels, and existing key-item binding behavior.
+
+I did not find dead replacement code, duplicate keyboard listeners, uncaught runtime errors, or integration issues in the live `game/` files.
+
+## Remaining gaps
+
+None.
+

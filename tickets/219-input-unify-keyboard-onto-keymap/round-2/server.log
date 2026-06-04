@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/219-input-unify-keyboard-onto-keymap/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/219-input-unify-keyboard-onto-keymap/game/data
+Server listening on port 3001
+Player connected: socket=h5qI9F8mKGjmG3cIAAAB, playerId=964de8bf-0f8c-44a3-b697-39657894a29c
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=FKyc9ZmamFzz9xRiAAAD, playerId=be217308-2a6f-4656-b047-766ed4cab0f8
+Player disconnected: h5qI9F8mKGjmG3cIAAAB
+Player disconnected: FKyc9ZmamFzz9xRiAAAD
