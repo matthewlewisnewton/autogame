@@ -21,6 +21,18 @@ const {
 } = require('../progression');
 const { findUserByAccountId, unlockHat: unlockHatForAccount } = require('../users');
 const { backfillUnlockedHats } = require('../cosmetic');
+const { offerCardTrade, respondCardTrade, getKeyItemDef } = require('../progression');
+const keyItemEffects = require('../keyItemEffects');
+
+const tradeHelpers = {
+  offerCardTrade,
+  respondCardTrade,
+};
+
+const keyItemHelpers = {
+  getKeyItemDef,
+  keyItemEffects,
+};
 
 const deckHelpers = {
   DECK_MAX_SIZE,
@@ -69,8 +81,12 @@ function buildSocketContext(socket, session, helpers) {
     joinLobbyWithPhasePolicy: helpers.joinLobbyWithPhasePolicy,
     leaveLobbyForSocket: helpers.leaveLobbyForSocket,
     buildSessionFromPlayer: helpers.buildSessionFromPlayer,
+    isDebugScenarioAllowed: helpers.isDebugScenarioAllowed,
+    applyDebugScenario: helpers.applyDebugScenario,
     ...deckHelpers,
+    ...tradeHelpers,
+    ...keyItemHelpers,
   };
 }
 
-module.exports = { buildSocketContext, deckHelpers };
+module.exports = { buildSocketContext, deckHelpers, tradeHelpers, keyItemHelpers };
