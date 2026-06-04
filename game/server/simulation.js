@@ -23,7 +23,7 @@ const {
   COOLDOWN_MS
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
-const { applyLeechHeal } = require('./enemyVariants');
+const { applyLeechHeal, getFrenziedCombatMultipliers } = require('./enemyVariants');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -1748,6 +1748,9 @@ function updateEnemies() {
 
 	for (const enemy of _gameState.enemies) {
 		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
+		const chaseSpeed = def.chaseSpeed * chaseSpeedMult;
+		const attackWindupMs = def.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
 			continue;
@@ -1769,7 +1772,7 @@ function updateEnemies() {
 		// ── Wind-up: wait, then revalidate range before striking ──
 		if (enemy.attackState === 'windup') {
 			const elapsed = Date.now() - enemy.windupStartTime;
-			if (elapsed >= def.attackWindupMs) {
+			if (elapsed >= attackWindupMs) {
 				const target = resolveWindupTarget(enemy);
 				// A player who became concealed by smoke during the wind-up is no
 				// longer a valid target — cancel the strike and return to chasing.
@@ -1824,7 +1827,7 @@ function updateEnemies() {
 			if (dist <= ENEMY_ATTACK_RANGE) {
 				damageMinion(tauntMinion, def.attackDamage);
 			} else {
-				moveEntityToward(enemy, tauntMinion, def.chaseSpeed * dt);
+				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
 			continue;
 		}
@@ -1871,7 +1874,7 @@ function updateEnemies() {
 				enemy.attackState = 'chasing';
 			}
 
-			const chaseResult = moveEntityToward(enemy, nearestTarget, def.chaseSpeed * dt);
+			const chaseResult = moveEntityToward(enemy, nearestTarget, chaseSpeed * dt);
 			// If blocked while chasing, enemy stops at wall edge (wall-slide handles sliding)
 			void chaseResult;
 			continue;

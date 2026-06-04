@@ -353,6 +353,24 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'frenzied-enemy') {
+      // Frenzied grunt below 50% HP (enraged) beside a full-HP frenzied grunt for
+      // side-by-side chase/wind-up QA. Same state is reachable by damaging a
+      // frenzied enemy in normal combat after applyVariant rolls frenzied on spawn.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const full = spawnEnemy(player.x + 3, player.z, 'grunt');
+      full.variant = 'frenzied';
+      full.maxHp = ENEMY_DEFS.grunt.hp;
+      full.hp = full.maxHp;
+      const enraged = spawnEnemy(player.x - 3, player.z, 'grunt');
+      enraged.variant = 'frenzied';
+      enraged.maxHp = ENEMY_DEFS.grunt.hp;
+      enraged.hp = Math.floor(enraged.maxHp * 0.4);
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;

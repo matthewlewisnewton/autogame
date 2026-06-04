@@ -38,8 +38,8 @@ describe('VARIANT_DEFS.warded', () => {
 describe('applyVariant with warded', () => {
   it('tags warded and applies shield fields via the registry hook', () => {
     const enemy = gruntStub();
-    // First roll tags (below tier-1 chance); second roll picks index 1 (warded).
-    applyVariant(enemy, 1, seqRng([0.01, 0.6]));
+    // First roll tags (below tier-1 chance); second roll picks warded (index 2 of 5).
+    applyVariant(enemy, 1, seqRng([0.01, 0.5]));
     expect(enemy.variant).toBe('warded');
     expect(enemy.shieldHp).toBeGreaterThan(0);
     expect(enemy.maxShieldHp).toBe(enemy.shieldHp);

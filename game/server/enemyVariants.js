@@ -51,6 +51,17 @@ const VARIANT_DEFS = {
     leechFraction: LEECH_FRACTION,
     bonusDrop: { card: true, magicStone: 15 },
   },
+  frenzied: {
+    id: 'frenzied',
+    name: 'Frenzied',
+    // No stat mutation on spawn; chase speed and attack wind-up scale up once
+    // HP drops below 50% (see getFrenziedCombatMultipliers + updateEnemies).
+    apply: null,
+    // Multipliers applied while enraged (hp < maxHp * 0.5).
+    chaseSpeedMult: 1.5,
+    attackWindupMult: 0.5,
+    bonusDrop: { card: true, magicStone: 15 },
+  },
 };
 
 // Base chance that any single enemy rolls a variant, before tier scaling.
@@ -122,6 +133,30 @@ function getVariantBonusDrop(enemy) {
  *
  * @returns {number} HP actually restored (0 when no heal).
  */
+const FRENZIED_ENRAGE_HP_FRACTION = 0.5;
+
+/**
+ * Combat multipliers for a Frenzied enemy. Returns `{ chaseSpeedMult, attackWindupMult }`
+ * (both `1` when not enraged). Enraged when `variant === 'frenzied'` and
+ * `hp < maxHp * 0.5`.
+ */
+function getFrenziedCombatMultipliers(enemy) {
+  if (!enemy || enemy.variant !== 'frenzied') {
+    return { chaseSpeedMult: 1, attackWindupMult: 1 };
+  }
+
+  const maxHp = Number.isFinite(enemy.maxHp) ? enemy.maxHp : enemy.hp;
+  if (!Number.isFinite(maxHp) || maxHp <= 0 || enemy.hp >= maxHp * FRENZIED_ENRAGE_HP_FRACTION) {
+    return { chaseSpeedMult: 1, attackWindupMult: 1 };
+  }
+
+  const def = VARIANT_DEFS.frenzied;
+  return {
+    chaseSpeedMult: def?.chaseSpeedMult ?? 1,
+    attackWindupMult: def?.attackWindupMult ?? 1,
+  };
+}
+
 function applyLeechHeal(attackerEnemyId, damageDealt, enemies) {
   if (!attackerEnemyId || damageDealt <= 0 || !Array.isArray(enemies)) return 0;
 
@@ -142,9 +177,11 @@ function applyLeechHeal(attackerEnemyId, damageDealt, enemies) {
 module.exports = {
   VARIANT_DEFS,
   LEECH_FRACTION,
+  FRENZIED_ENRAGE_HP_FRACTION,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
   applyVariant,
   getVariantBonusDrop,
+  getFrenziedCombatMultipliers,
   applyLeechHeal,
 };
