@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import config from '../config.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
+import { createLobbyGameState } from '../lobbies.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -2084,6 +2085,30 @@ describe('createGameState()', () => {
 		const b = createGameState();
 		a.players['test'] = {};
 		expect(b.players['test']).toBeUndefined();
+	});
+});
+
+// ── state factory parity ──
+
+describe('state factory parity', () => {
+	it('createGameState and createLobbyGameState produce identical key sets', () => {
+		const keysA = Object.keys(createGameState()).sort();
+		const keysB = Object.keys(createLobbyGameState()).sort();
+		expect(keysA).toEqual(keysB);
+	});
+
+	it('factory output contains previously-missing keys as arrays', () => {
+		const state = createGameState();
+		expect(Array.isArray(state.enchantments)).toBe(true);
+		expect(Array.isArray(state.lobby)).toBe(true);
+		expect(Array.isArray(state._pendingVolatileExplosions)).toBe(true);
+	});
+
+	it('createLobbyGameState output also contains the three keys', () => {
+		const state = createLobbyGameState();
+		expect(Array.isArray(state.enchantments)).toBe(true);
+		expect(Array.isArray(state.lobby)).toBe(true);
+		expect(Array.isArray(state._pendingVolatileExplosions)).toBe(true);
 	});
 });
 
