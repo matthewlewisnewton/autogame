@@ -1174,7 +1174,7 @@ function startServer(port) {
         socket.emit('lobbyError', { reason: 'Already in a lobby' });
         return;
       }
-      const lobby = lobbies.createLobby(playerId, data && data.name);
+      const lobby = lobbies.createLobby(data && data.name);
       withLobbyContext(lobby, () => {
         applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
         ensureShopOffer();
