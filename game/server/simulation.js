@@ -1354,7 +1354,8 @@ function updateAreaEffects() {
         effect.originX,
         effect.originZ,
         effect.range,
-        effect.damagePerTick
+        effect.damagePerTick,
+        { attackerId: effect.ownerId }
       ));
     } else {
       ({ hits } = collectConeHits(

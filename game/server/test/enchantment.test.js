@@ -103,6 +103,44 @@ describe('enchantment cards', () => {
 		expect(gameState.enemies[0].hp).toBe(hpAfterTick1 - CARD_DEFS.cinder_snare.damagePerTick);
 	});
 
+	it('cinder_snare DoT attributes kill credit to the trap owner', () => {
+		// A DoT kill runs the defeat bookkeeping, which reads run.objective.
+		gameState.run = {
+			status: 'playing',
+			objective: { type: 'defeat_enemies', current: 0, target: 1 },
+		};
+		gameState.players.p1 = {
+			x: 0,
+			z: 0,
+			hp: 100,
+			dead: false,
+			activeEnchantment: null,
+		};
+		// Low-HP enemy so a single DoT tick kills it.
+		const enemy = {
+			id: 'e1',
+			type: 'grunt',
+			x: 0.5,
+			z: 0,
+			hp: CARD_DEFS.cinder_snare.damagePerTick,
+			attackState: 'idle',
+		};
+		gameState.enemies.push(enemy);
+
+		spawnGroundEnchantment(0, 0, CARD_DEFS.cinder_snare, 'p1');
+		updateEnchantments();
+		expect(gameState.areaEffects).toHaveLength(1);
+
+		// Advance the DoT tick so it lands and kills the enemy. The dead enemy is
+		// pruned from gameState.enemies, so assert against the held reference.
+		gameState.areaEffects[0].lastTickAt = Date.now() - CARD_DEFS.cinder_snare.dotIntervalMs;
+		updateMinions();
+
+		// Drop credit is attributed to the trap owner via lastDamagedBy.
+		expect(enemy.hp).toBeLessThanOrEqual(0);
+		expect(enemy.lastDamagedBy).toBe('p1');
+	});
+
 	it('spike_trap expires after ttl when untriggered', () => {
 		spawnGroundEnchantment(0, 0, CARD_DEFS.spike_trap, 'p1');
 		gameState.enchantments[0].expiresAt = Date.now() - 1;
