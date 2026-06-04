@@ -1,0 +1,12 @@
+Review complete. I wrote:
+
+`/tickets/228-gameplay-card-cinder-snare/round-1/review.md`  
+`/tickets/228-gameplay-card-cinder-snare/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+Blocking gaps:
+1. `coverage.log` shows Vitest is not green: 2 failing `guard_block` timing assertions.
+2. Cinder Snare’s delayed DoT damage does not attribute kills to the trap owner, which can lose or misassign card-drop credit via `enemy.lastDamagedBy`.
+
+No `nits.md` was created.

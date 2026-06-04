@@ -1,0 +1,9 @@
+Created two new sub-tickets, one per open gap from `review-feedback.md`. The two passed sub-tickets (01, 02) were left untouched.
+
+**New sub-tickets:**
+
+- `tickets/228-gameplay-card-cinder-snare/subtickets/03-guard-block-timing-determinism/ticket.md` — closes gap 1 (flaky `guard_block` timing assertions failing the full suite). Verified the root cause in `round-1/coverage.log`: `toBeCloseTo(..., -1)` checks failing on ~5–7ms real-time drift (3495 vs 3500, 693 vs 700). Fix is drift-tolerant bounds in the test. **Verification: code.**
+
+- `tickets/228-gameplay-card-cinder-snare/subtickets/04-cinder-snare-dot-owner-attribution/ticket.md` — closes gap 2 (DoT damage not attributed to trap owner). Confirmed in `simulation.js:1352` the `inferno_pillar` branch calls `collectRadialHits` without `attackerId`, while `spawnInfernoPillarEffect` already stores `ownerId`. Fix threads `effect.ownerId` as `attackerId` plus a new attribution test. **Verification: code.**
+
+Both default to `code` QA since each criterion concerns logic, state, and test-suite results — nothing purely visual.
