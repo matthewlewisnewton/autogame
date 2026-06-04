@@ -1,249 +1,26 @@
 // ── Card Data Module ──
 // Shared card definitions, starting deck builder, and type styling.
-// ES module — identity subset (id/name/type/charges) comes from the shared
-// ../shared/cardDefs.json (single source of truth, mirrored on the server).
+// ES module — CARD_DEFS is rebuilt from the shared single sources that the
+// server also consumes (server/progression.js): identity from
+// ../shared/cardDefs.json and per-card stats from ../shared/cardStats.json.
 
 import cardIdentity from '../shared/cardDefs.json' with { type: 'json' };
+import cardStats from '../shared/cardStats.json' with { type: 'json' };
 
 // ── Card Definitions ──
-// Keyed by card id. Identity fields { id, name, type, charges } are spread from
-// the shared cardIdentity; each entry merges in client-only rendering hints.
-//   type: "weapon" | "summon" | "monster"
+// Keyed by card id. Each entry is the identity subset
+// { id, name, type, charges, acquisition, rewardOrder } from the shared
+// cardIdentity, merged with the full per-card stat object from the shared
+// cardStats. Both are the same sources the server uses, so the client no longer
+// hand-maintains a partial stat copy and the two sides cannot drift.
+//   type: "weapon" | "spell" | "creature" | "enchantment"
 //   charges: uses remaining (multi-use weapons > 1, single-use = 1)
-export const CARD_DEFS = {
-  iron_sword: {
-    ...cardIdentity.iron_sword,
-  },
-  flame_blade: {
-    ...cardIdentity.flame_blade,
-  },
-  battle_familiar: {
-    ...cardIdentity.battle_familiar,
-    magicStoneCost: 50,
-    damage: 44,
-  },
-  dungeon_drake: {
-    ...cardIdentity.dungeon_drake,
-  },
-  null_crawler: {
-    ...cardIdentity.null_crawler,
-    magicStoneCost: 35,
-    specialEffect: 'phase_beam',
-    effect: 'null_crawler',
-  },
-  bulkhead_mauler: {
-    ...cardIdentity.bulkhead_mauler,
-    specialEffect: 'shockwave_sweep',
-    effect: 'bulkhead_mauler',
-  },
-  steel_claymore: {
-    ...cardIdentity.steel_claymore,
-    attackRange: 7,
-    isEvolved: true,
-    specialEffect: 'knockback',
-  },
-  magma_greatsword: {
-    ...cardIdentity.magma_greatsword,
-    isEvolved: true,
-    specialEffect: 'fire_trail',
-  },
-  aegis_sentinel: {
-    ...cardIdentity.aegis_sentinel,
-    magicStoneCost: 45,
-    damage: 0,
-    isEvolved: true,
-    specialEffect: 'astral_shield',
-    effect: 'astral_guardian',
-    taunt: true,
-  },
-  astral_guardian: {
-    ...cardIdentity.astral_guardian,
-    magicStoneCost: 65,
-    damage: 66,
-    isEvolved: true,
-    specialEffect: 'astral_shield',
-    effect: 'astral_guardian',
-  },
-  ancient_wyrm: {
-    ...cardIdentity.ancient_wyrm,
-    minionHp: 90,
-    isEvolved: true,
-    specialEffect: 'fire_breath',
-    effect: 'ancient_wyrm',
-  },
-  mana_prism: {
-    ...cardIdentity.mana_prism,
-    magicStoneCost: 0,
-    effect: 'mana_prism',
-  },
-  harvesting_scythe: {
-    ...cardIdentity.harvesting_scythe,
-  },
-  deck_sifter: {
-    ...cardIdentity.deck_sifter,
-    effect: 'draw_card',
-    magicStoneCost: 0,
-  },
-  sacrificial_altar: {
-    ...cardIdentity.sacrificial_altar,
-    magicStoneCost: 0,
-    effect: 'sacrificial_altar',
-  },
-  battery_automaton: {
-    ...cardIdentity.battery_automaton,
-    magicStoneCost: 50,
-    effect: 'battery_automaton',
-  },
-  chrono_trigger: {
-    ...cardIdentity.chrono_trigger,
-    magicStoneCost: 0,
-    effect: 'chrono_trigger',
-    adjacentChargeRestore: 2,
-  },
-  saber_of_light: {
-    ...cardIdentity.saber_of_light,
-    specialEffect: 'swift_slash',
-  },
-  excalibur_photon: {
-    ...cardIdentity.excalibur_photon,
-    isEvolved: true,
-    specialEffect: 'photon_barrage',
-  },
-  photon_slicer: {
-    ...cardIdentity.photon_slicer,
-    specialEffect: 'returning_projectile',
-  },
-  infinite_disk: {
-    ...cardIdentity.infinite_disk,
-    isEvolved: true,
-    specialEffect: 'triple_returning_projectile',
-  },
-  arcane_bolt: {
-    ...cardIdentity.arcane_bolt,
-    attackRange: 10,
-    specialEffect: 'long_range',
-  },
-  frost_nova: {
-    ...cardIdentity.frost_nova,
-    magicStoneCost: 35,
-    effect: 'frost_nova',
-    specialEffect: 'freeze',
-  },
-  permafrost_lance: {
-    ...cardIdentity.permafrost_lance,
-    magicStoneCost: 30,
-    effect: 'frost_nova',
-    specialEffect: 'freeze',
-  },
-  glacier_collapse: {
-    ...cardIdentity.glacier_collapse,
-    magicStoneCost: 35,
-    effect: 'glacier_collapse',
-    isEvolved: true,
-    specialEffect: 'shatter',
-  },
-  healing_font: {
-    ...cardIdentity.healing_font,
-    magicStoneCost: 0,
-    effect: 'healing_font',
-    specialEffect: 'heal',
-  },
-  divine_grace: {
-    ...cardIdentity.divine_grace,
-    magicStoneCost: 0,
-    effect: 'divine_grace',
-    healAmount: 38,
-    magicStoneRestore: 10,
-    isEvolved: true,
-    specialEffect: 'heal_and_mana',
-  },
-  skeleton_knight: {
-    ...cardIdentity.skeleton_knight,
-    specialEffect: 'taunt',
-  },
-  undead_commander: {
-    ...cardIdentity.undead_commander,
-    isEvolved: true,
-    specialEffect: 'summon_skeletons',
-  },
-  storm_eagle: {
-    ...cardIdentity.storm_eagle,
-    magicStoneCost: 40,
-    specialEffect: 'ranged_strike',
-  },
-  thunderbird: {
-    ...cardIdentity.thunderbird,
-    magicStoneCost: 40,
-    isEvolved: true,
-    specialEffect: 'chain_lightning',
-  },
-  gravity_well: {
-    ...cardIdentity.gravity_well,
-    magicStoneCost: 45,
-    effect: 'gravity_well',
-    specialEffect: 'pull',
-  },
-  event_horizon: {
-    ...cardIdentity.event_horizon,
-    magicStoneCost: 45,
-    effect: 'event_horizon',
-    isEvolved: true,
-    specialEffect: 'crush',
-  },
-  echo_blade: {
-    ...cardIdentity.echo_blade,
-    specialEffect: 'shockwave',
-  },
-  resonance_edge: {
-    ...cardIdentity.resonance_edge,
-    isEvolved: true,
-    specialEffect: 'shockwave',
-  },
-  mana_leach: {
-    ...cardIdentity.mana_leach,
-    magicStoneCost: 30,
-    specialEffect: 'mana_drain',
-  },
-  soul_drain: {
-    ...cardIdentity.soul_drain,
-    magicStoneCost: 30,
-    isEvolved: true,
-    specialEffect: 'soul_drain',
-  },
-  dragons_breath: {
-    ...cardIdentity.dragons_breath,
-    magicStoneCost: 40,
-    effect: 'dragons_breath',
-    specialEffect: 'fire_dot',
-  },
-  inferno_pillar: {
-    ...cardIdentity.inferno_pillar,
-    magicStoneCost: 40,
-    effect: 'inferno_pillar',
-    isEvolved: true,
-    specialEffect: 'fire_dot',
-  },
-  telepipe: {
-    ...cardIdentity.telepipe,
-    magicStoneCost: 0,
-    effect: 'telepipe',
-    specialEffect: 'portal',
-  },
-  spike_trap: {
-    ...cardIdentity.spike_trap,
-    magicStoneCost: 25,
-    effect: 'spike_trap',
-    target: 'ground',
-    specialEffect: 'proximity_hazard',
-  },
-  mirror_ward: {
-    ...cardIdentity.mirror_ward,
-    magicStoneCost: 30,
-    effect: 'mirror_ward',
-    target: 'self',
-    specialEffect: 'damage_reflect',
-  },
-};
+export const CARD_DEFS = Object.fromEntries(
+  Object.keys(cardIdentity).map((id) => [
+    id,
+    { ...cardIdentity[id], ...cardStats[id] },
+  ]),
+);
 
 export const EVOLUTION_GRIND_REQUIRED = 10;
 export const GRIND_COST_BASE = 100;
