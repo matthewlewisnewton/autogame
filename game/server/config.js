@@ -40,6 +40,7 @@ const VICTORY_REWARD_ROTATION = [
   'dungeon_drake',
   'saber_of_light',
   'frost_nova',
+  'permafrost_lance',
   'photon_slicer',
   'arcane_bolt',
   'healing_font',

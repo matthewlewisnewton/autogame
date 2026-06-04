@@ -296,6 +296,15 @@ const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'shatter',
   },
+  permafrost_lance: {
+    ...CARD_IDENTITY.permafrost_lance,
+    magicStoneCost: 30,
+    effect: 'frost_nova',
+    damage: 8,
+    radius: 6,
+    freezeDurationMs: 2000,
+    specialEffect: 'freeze',
+  },
   healing_font: {
     ...CARD_IDENTITY.healing_font,
     magicStoneCost: 0,
