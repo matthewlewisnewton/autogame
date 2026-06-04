@@ -1,0 +1,15 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/208-gameplay-card-permafrost-lance/subtickets/01-add-card-definitions/ticket.md
+tickets/208-gameplay-card-permafrost-lance/subtickets/02-shop-pool-and-client-render/ticket.md
+tickets/208-gameplay-card-permafrost-lance/subtickets/03-tests-permafrost-lance/ticket.md
+```
+
+**Breakdown:**
+- **01** — Identity stub in `cardDefs.json` + server `CARD_DEFS` in `progression.js` (the core definition)
+- **02** — Add to `VICTORY_REWARD_ROTATION` (shop pool) + client `CARD_DEFS` + `CARD_ACCENT_STYLE` (rendering)
+- **03** — Server + client tests for the new def and freeze behavior; full vitest green
+
+All 3 use `code` verification. The card reuses the `frost_nova` effect branch entirely — no new engine code needed.
