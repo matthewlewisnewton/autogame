@@ -65,6 +65,28 @@ describe('input.js', () => {
 		expect(dir.dz).toBeLessThan(0);
 	});
 
+	it('merges keyboard and gamepad movement when both are active', () => {
+		initInput({});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+		mockGamepad(0, { axes: [0.9, 0, 0, 0], buttons: [] });
+
+		const merged = getMovementDirection();
+
+		resetInputState();
+		installGamepadMock();
+		mockGamepad(0, { axes: [0.9, 0, 0, 0], buttons: [] });
+		const stickOnly = getMovementDirection();
+
+		expect(merged.mag).toBeGreaterThan(0);
+		expect(merged.dz).toBeLessThan(0);
+		expect(merged.dx).toBeGreaterThan(0);
+		expect(merged.dx).not.toBeCloseTo(stickOnly.dx, 5);
+		expect(merged.dz).not.toBeCloseTo(stickOnly.dz, 5);
+		expect(Math.hypot(merged.dx, merged.dz)).toBeLessThanOrEqual(1.0001);
+
+		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+	});
+
 	it('default gamepad buttons 0–5 trigger hand slots 0–5', () => {
 		const onUseSlot = vi.fn();
 		initInput({
