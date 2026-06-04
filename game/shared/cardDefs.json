@@ -7,6 +7,7 @@
   "bulkhead_mauler": { "id": "bulkhead_mauler", "name": "Bulkhead Mauler", "type": "creature", "charges": 1 },
   "steel_claymore": { "id": "steel_claymore", "name": "Alloy Greatblade", "type": "weapon", "charges": 6 },
   "magma_greatsword": { "id": "magma_greatsword", "name": "Corebreaker Greatsword", "type": "weapon", "charges": 4 },
+  "aegis_sentinel": { "id": "aegis_sentinel", "name": "Aegis Sentinel", "type": "creature", "charges": 1 },
   "astral_guardian": { "id": "astral_guardian", "name": "Astral Guardian", "type": "spell", "charges": 1 },
   "ancient_wyrm": { "id": "ancient_wyrm", "name": "Archive Wyrm", "type": "creature", "charges": 1 },
   "mana_prism": { "id": "mana_prism", "name": "Mana Prism", "type": "spell", "charges": 1 },
