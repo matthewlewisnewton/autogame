@@ -77,6 +77,21 @@ function variantIds() {
 }
 
 /**
+ * Pick a single variant id from `ids` using `rng`.
+ *
+ * Calls `rng()` once (falling back to `Math.random()` when `rng` is not a
+ * function) and returns the selected id.  Safe when `ids` is empty — returns
+ * `undefined` in that edge case (the caller never passes an empty array).
+ *
+ * Exported so tests can stub or bypass the index-mapping and assert membership
+ * + effect rather than relying on `rng() * N` landing on a specific position.
+ */
+function pickVariant(rng, ids) {
+  const pick = typeof rng === 'function' ? rng() : Math.random();
+  return ids[Math.min(ids.length - 1, Math.floor(pick * ids.length))];
+}
+
+/**
  * Maybe tag `enemy` with a variant.
  *
  * Uses `rng` (a 0–1 generator, e.g. mulberry32) and a probability scaled by
@@ -96,8 +111,7 @@ function applyVariant(enemy, tier, rng) {
 
   if (chance > 0 && roll < chance) {
     const ids = variantIds();
-    const pick = typeof rng === 'function' ? rng() : Math.random();
-    const id = ids[Math.min(ids.length - 1, Math.floor(pick * ids.length))];
+    const id = pickVariant(rng, ids);
     enemy.variant = id;
     // Invoke the variant definition's behavior hook so follow-up tickets can
     // modify the enemy's stats/AI through the registry. A null/absent `apply`
@@ -180,6 +194,7 @@ module.exports = {
   FRENZIED_ENRAGE_HP_FRACTION,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
+  pickVariant,
   applyVariant,
   getVariantBonusDrop,
   getFrenziedCombatMultipliers,
