@@ -61,14 +61,11 @@ import {
 } from './config.js';
 import {
 	initGamepadListeners,
-	pollGamepadMovement,
 	pollGamepadLook,
 	pollGamepadButtons,
 	resetGamepadState,
-	isGamepadMoving,
-	mergeMovementVectors,
 } from './gamepad.js';
-import { pollInput } from './input.js';
+import { pollInput, getMovementDirection, resetInputState } from './input.js';
 import { playSound } from './audio.js';
 import {
 	isLockOnActive,
@@ -142,7 +139,6 @@ let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
 
 // ── Input state ──
-const keys = { w: false, a: false, s: false, d: false };
 let inputListenersAdded = false;
 let gamepadInputHandler = null;
 const TICK_DT = 1 / TICK_RATE;
@@ -683,14 +679,8 @@ function createMinionMesh(minionType) {
 	return mesh;
 }
 
-function isTypingTarget(target) {
-	return target instanceof HTMLInputElement ||
-		target instanceof HTMLTextAreaElement ||
-		target?.isContentEditable;
-}
-
 function resetMovementKeys() {
-	for (const key of Object.keys(keys)) keys[key] = false;
+	resetInputState();
 	resetGamepadState();
 }
 
@@ -705,18 +695,6 @@ function cameraRelativeDirection(inputX, inputZ) {
 	};
 }
 
-function getKeyboardMovement() {
-	let inputX = 0;
-	let inputZ = 0;
-	if (keys.w) inputZ += 1;
-	if (keys.s) inputZ -= 1;
-	if (keys.a) inputX -= 1;
-	if (keys.d) inputX += 1;
-	const mag = Math.hypot(inputX, inputZ);
-	if (mag <= 0) return null;
-	return { x: inputX / mag, z: inputZ / mag };
-}
-
 function getGamepadRuntimeOptions() {
 	const gpCfg = getGamepadConfig();
 	return {
@@ -726,8 +704,9 @@ function getGamepadRuntimeOptions() {
 }
 
 function getMovementInput() {
-	const { deadzone, moveStick } = getGamepadRuntimeOptions();
-	return mergeMovementVectors(getKeyboardMovement(), pollGamepadMovement(deadzone, moveStick));
+	const dir = getMovementDirection();
+	if (dir.mag <= 0) return null;
+	return { x: dir.dx, z: -dir.dz };
 }
 
 function getCameraForwardDirection() {
@@ -961,8 +940,7 @@ export function setPlayerPosition(x, z) {
  * @returns {boolean}
  */
 export function isPlayerMoving() {
-	const { deadzone, moveStick } = getGamepadRuntimeOptions();
-	return keys.w || keys.a || keys.s || keys.d || isGamepadMoving(deadzone, moveStick);
+	return getMovementDirection().mag > 0;
 }
 
 /**
@@ -1210,21 +1188,8 @@ export function initScene(layout, spawnPos) {
 	prevSimZ = spawnPosition.z;
 	moveAccumulator = 0;
 
-	// Input tracking
+	// Reset movement when the tab loses focus (keyboard state lives in input.js).
 	if (!inputListenersAdded) {
-		window.addEventListener('keydown', (e) => {
-			if (isTypingTarget(e.target)) return;
-			if (e.key.toLowerCase() === 'z') {
-				if (e.repeat || currentGamePhase !== 'playing') return;
-				e.preventDefault();
-				applyLockOnPress();
-				return;
-			}
-			if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = true;
-		});
-		window.addEventListener('keyup', (e) => {
-			if (keys.hasOwnProperty(e.key.toLowerCase())) keys[e.key.toLowerCase()] = false;
-		});
 		window.addEventListener('blur', resetMovementKeys);
 		document.addEventListener('visibilitychange', () => {
 			if (document.visibilityState !== 'visible') resetMovementKeys();
