@@ -3421,3 +3421,26 @@ PASS. The implementation fits the design document's spell-card model: a single-u
 
 None.
 
+
+## v0.192 — 222-data-collapse-card-def-drift  (2026-06-04 12:23:46)
+
+### Expanded sync testing
+
+PASS. `game/server/test/card_sync.test.js` now compares every shared field present on the client card definitions against the server definitions, and asserts exact parity for both shared maps. The latest coverage run reports 10 test files and 322 tests passing, including `server/test/card_sync.test.js`.
+
+### Design and foundation consistency
+
+PASS. The implementation is a data ownership refactor and does not alter the documented lobby, dungeon, card-combat, rendering, WebSocket, or movement foundations. The captured smoke flow exercises auth, lobby creation/join, ready transition, dungeon entry, movement, dodge cooldown UI, canvas rendering, and socket connectivity without regressions.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=NAME` shortcut or debug scenario entry point, so there is no new debug-only path to validate.
+
+### Code quality
+
+PASS. The live code has no obvious dead or broken exports from this refactor: server progression exports the shared maps, client card consumers still expose the same public constants/functions, and the tests cover the integration surface that previously drifted. The only observed runtime log noise is benign Vite/Three output explicitly excluded by the review instructions.
+
+## Remaining gaps
+
+None.
+

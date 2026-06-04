@@ -1,0 +1,7 @@
+Review complete: `VERDICT: PASS`.
+
+Wrote:
+- `tickets/222-data-collapse-card-def-drift/round-1/review.md`
+- `tickets/222-data-collapse-card-def-drift/round-1/nits.md`
+
+No blocking gaps found, so no `gaps.md` was created.

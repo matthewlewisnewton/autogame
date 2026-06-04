@@ -1,0 +1,15 @@
+Created 3 sub-tickets in dependency order, all `code`-verified (these are pure data/logic/structure refactors with no purely-visual criteria).
+
+The decomposition follows the ticket's explicit "land shared module first, switch one consumer at a time" directive, keeping the game in a working state at every step:
+
+- **01** — Build the shared single source (extend `cardDefs.json` with full stat objects; add `cardSellValues.json` + `evolutionTransforms.json`, reconciling the `aegis_sentinel`/`arcane_bolt` drift) and switch the **server** to consume it, thinning `progression.js` to a server-only overlay.
+- **02** — Switch the **client** (`cards.js`) to spread from the same shared source, deleting its partial hand-retyped stat copy and the drifted duplicate maps.
+- **03** — Expand `card_sync.test.js` to diff full stat objects and assert the sell-value and evolution-transform maps match, so the silent drift can't recur.
+
+Sub-ticket folder paths created:
+
+```
+tickets/222-data-collapse-card-def-drift/subtickets/01-shared-source-and-server/ticket.md
+tickets/222-data-collapse-card-def-drift/subtickets/02-switch-client-consumer/ticket.md
+tickets/222-data-collapse-card-def-drift/subtickets/03-expand-sync-test/ticket.md
+```
