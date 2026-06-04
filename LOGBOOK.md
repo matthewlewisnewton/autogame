@@ -3444,3 +3444,49 @@ The refactor is scoped and keeps objective-specific state ownership in `game/ser
 
 No blocking gaps remain.
 
+
+## v0.191 — 225-data-centralize-enemy-construction-and-consts  (2026-06-04 12:20:15)
+
+
+### Enemy construction and unknown type handling
+PASS. Enemy construction now resolves definitions through `enemyDefFor(type)`, which throws for unknown types, and `spawnEnemy()` copies definition-backed combat fields onto the entity before pushing it into game state. Active enemy AI reads from the entity (`chaseSpeed`, `attackDamage`, `attackWindupMs`, attack style/range, and spawner config) instead of silently falling back through `ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt`. A backfill helper preserves manually created valid test/legacy enemies while still throwing for corrupt unknown types that lack self-describing stats.
+
+### Minion and simulation constant audit
+PASS. The duplicated `PROJECTILE_HIT_WIDTH` literal was removed from `simulation.js` and imported from `config.js`. Minion movement values that previously reused enemy definition fields are promoted to named config constants and imported into the simulation, avoiding coupling minion movement to grunt/skirmisher enemy defs.
+
+### Integration with design and foundation requirements
+PASS. The change is server-side combat/config hygiene and does not alter the documented lobby-to-dungeon loop, card combat model, floor geometry, suspend/resume flow, rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization requirements. The captured run confirms the foundation still starts, connects, renders, deploys, and moves.
+
+### Debug scenarios
+PASS. This ticket did not add a new `?debugScenario=NAME` shortcut, and the existing browser URL entry point remains gated to localhost. Existing active combat debug scenarios that spawn enemies use `spawnEnemy()` for valid enemy shapes. I noted one terminal-state debug fixture cleanup separately as a nit because it does not exercise live enemy AI after the scenario immediately fails the run.
+
+### Tests and coverage
+PASS. The provided coverage run reports `42 passed (42)` test files and `1055 passed (1055)` tests. Coverage visibility shows the changed-file coverage run completed successfully.
+
+## Remaining gaps
+
+None.
+
+
+## v0.190 — 223-data-derive-shop-pool-from-defs  (2026-06-04 12:09:41)
+
+1. Add per-card acquisition data and derive `SHOP_CARD_POOL` / reward rotation from `CARD_DEFS`: PASS. `game/shared/cardDefs.json` now carries `acquisition` metadata for direct starter/reward/shop paths plus `rewardOrder` for reward cards. `game/server/config.js` derives `VICTORY_REWARD_ROTATION` from reward-tagged card definitions and builds `SHOP_CARD_POOL` from the reward rotation plus shop-only entries, preserving the previous shop behavior while making shared card definitions the source of truth.
+
+2. Add a test asserting every card is reachable or explicitly flagged drop-only: PASS. `game/server/test/card_acquisition.test.js` checks server/shared card key parity, verifies every server card is reachable through starter/reward/shop/drop/evolution paths, rejects drop-only cards that are not actually in `ENEMY_CARD_DROPS`, and verifies tagged direct paths are directly obtainable.
+
+3. Review the 8 previously unreachable cards before flipping: PASS. The eight named cards (`mana_prism`, `harvesting_scythe`, `deck_sifter`, `sacrificial_altar`, `battery_automaton`, `chrono_trigger`, `spike_trap`, `mirror_ward`) are all intentionally tagged as reward cards with deterministic reward order values and are asserted to appear in `VICTORY_REWARD_ROTATION`.
+
+## Design and regression check
+
+PASS. The change is consistent with the design document's loot/economy loop: cards are acquired through rewards, shop, drops, starter inventory, or evolution. Existing reward and shop flows in `game/server/progression.js` continue to grant cards through the same server-side validation and inventory helpers. The foundation requirements are not regressed; the captured run connected to the backend, initialized the scene, rendered the player/dungeon, and proceeded through live gameplay states.
+
+No new or changed debug scenario was introduced by this ticket. The capture used the existing `telepipe-ready` scenario as a QA shortcut, but the changed acquisition code is exercised by normal reward/shop/drop/evolution paths and does not depend on that debug shortcut.
+
+## Verification
+
+`coverage.log` reports 25 test files passed, 981 tests passed. The new acquisition test file ran successfully. Coverage visibility shows all files at 87.39% statements / 87.39% lines, with thresholds disabled.
+
+## Remaining gaps
+
+None.
+

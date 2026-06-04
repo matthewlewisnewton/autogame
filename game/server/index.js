@@ -143,6 +143,7 @@ const {
   ENTITY_RADIUS,
   PLAYER_RADIUS,
   ENEMY_DEFS,
+  enemyDefFor,
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
   updateEnemies,
@@ -2154,6 +2155,7 @@ if (typeof module !== 'undefined' && module.exports) {
     MAX_HP,
     VICTORY_REWARD_ROTATION,
     ENEMY_DEFS,
+    enemyDefFor,
     MINION_FOLLOW_DISTANCE,
     MINION_FOLLOW_SPEED,
     // Key Items

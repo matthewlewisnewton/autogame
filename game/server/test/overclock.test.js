@@ -54,6 +54,7 @@ function findWeaponSlot(player) {
 function placeEnemyInRange(state, player) {
 	state.enemies.push({
 		id: `e-overclock-${Date.now()}`,
+		type: 'grunt',
 		x: player.x + 3,
 		z: player.z,
 		hp: 100,
@@ -310,7 +311,7 @@ describe('Overclock run-end lifecycle', () => {
 	it('checkRunTerminalState clears overclockChargesRemaining on victory', () => {
 		startDungeonRun();
 		addPlayer('p1', { overclockChargesRemaining: 2 });
-		gameState.enemies.push({ id: 'e1', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
+		gameState.enemies.push({ id: 'e1', type: 'grunt', x: 0, z: 0, hp: 50, state: 'idle', wanderTarget: { x: 0, z: 0 } });
 		recordEnemyDefeated(1);
 		checkRunTerminalState();
 		expect(gameState.players.p1.overclockChargesRemaining).toBe(0);

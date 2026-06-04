@@ -42,7 +42,7 @@ const {
   resolveFloorY,
 } = require('./dungeon');
 const {
-  ENEMY_DEFS,
+  enemyDefFor,
   firstRoomPosition,
   pickFloorSpawnPosition,
   randomWanderTarget,
@@ -715,10 +715,9 @@ function getCardBuyValue(cardId) {
 }
 
 function pickShopOffer(seed) {
-  const pool = SHOP_CARD_POOL.filter((id) => CARD_DEFS[id]);
-  if (pool.length === 0) return null;
+  if (SHOP_CARD_POOL.length === 0) return null;
   const rng = mulberry32(seed);
-  const cardId = pool[Math.floor(rng() * pool.length)];
+  const cardId = SHOP_CARD_POOL[Math.floor(rng() * SHOP_CARD_POOL.length)];
   const def = CARD_DEFS[cardId];
   return {
     cardId,
@@ -737,7 +736,7 @@ function refreshShopOffer() {
   const seed = Math.floor(Math.random() * 2147483647);
   let offer = pickShopOffer(seed);
   if (!offer) {
-    const fallbackId = SHOP_CARD_POOL.find((id) => CARD_DEFS[id]);
+    const fallbackId = SHOP_CARD_POOL[0];
     if (!fallbackId) {
       _gameState.shopOffer = null;
       return null;
@@ -2413,15 +2412,14 @@ function restoreHandCharges(player, amount, options = {}) {
 }
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
-  if (!ENEMY_DEFS[type]) {
-    throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
-  }
-  const def = ENEMY_DEFS[type];
+  const def = enemyDefFor(type);
+  const { hp, ...statFieldsFromDef } = def;
   const enemy = {
     id: crypto.randomUUID(),
     x,
     z,
     type,
+    ...statFieldsFromDef,
     hp: def.hp,
     maxHp: def.hp,
     state: 'idle',

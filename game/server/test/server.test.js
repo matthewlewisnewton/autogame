@@ -653,6 +653,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -671,6 +672,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 100, z: 100, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 0,
 			z: 0,
 			hp: 50,
@@ -687,6 +689,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: true });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 1,
 			z: 0,
 			hp: 50,
@@ -702,6 +705,7 @@ describe('updateEnemies()', () => {
 	it('enemy picks new wander target when reaching current one', () => {
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 5,
 			z: 5,
 			hp: 50,
@@ -720,6 +724,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -739,6 +744,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -757,6 +763,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -797,6 +804,7 @@ describe('Enemy attack state machine', () => {
 		addPlayer('p1', { id: 'p1', x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: ENEMY_ATTACK_RANGE - 1, // within ENEMY_ATTACK_RANGE of player
 			z: 0,
 			hp: 50,
@@ -933,6 +941,7 @@ describe('Enemy attack state machine', () => {
 
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 0, // enemy stays here
 			z: 0,
 			hp: 50,
@@ -961,6 +970,7 @@ describe('Enemy attack state machine', () => {
 		// Place enemy within DETECTION_RADIUS so after recovery it finds the player and enters chasing
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 2,
 			z: 0,
 			hp: 50,
@@ -981,6 +991,7 @@ describe('Enemy attack state machine', () => {
 
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: ENEMY_ATTACK_RANGE + 5,
 			z: 0,
 			hp: 50,
@@ -1350,7 +1361,7 @@ describe('updateMinions()', () => {
 
 	it('MINION_FOLLOW_DISTANCE and MINION_FOLLOW_SPEED are defined and exported', () => {
 		expect(MINION_FOLLOW_DISTANCE).toBe(3);
-		expect(MINION_FOLLOW_SPEED).toBe(ENEMY_DEFS.grunt.chaseSpeed);
+		expect(MINION_FOLLOW_SPEED).toBe(2.5);
 	});
 });
 
@@ -4552,6 +4563,33 @@ describe('ENEMY_DEFS', () => {
 	});
 });
 
+// ── enemyDefFor / updateEnemies unknown type ──
+
+describe('enemyDefFor / updateEnemies unknown type', () => {
+	beforeEach(() => resetState());
+
+	it('updateEnemies throws on corrupt enemy type without mutating player HP', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'dragon',
+			x: 0,
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - 1000,
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		expect(() => updateEnemies()).toThrow(/Unknown enemy type/);
+		expect(gameState.players['p1'].hp).toBe(100);
+	});
+});
+
 // ── spawnEnemy type validation ──
 
 describe('spawnEnemy() type validation', () => {
@@ -4574,6 +4612,40 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
 		expect(gameState.enemies.length).toBe(4);
+	});
+});
+
+describe('spawnEnemy() spreads combat stats from def', () => {
+	beforeEach(() => resetState());
+
+	it('copies cone attack and chase stats for skirmisher', () => {
+		gameState.enemies = [];
+		const enemy = spawnEnemy(0, 0, 'skirmisher');
+		expect(enemy.attackStyle).toBe('cone');
+		expect(enemy.attackConeAngle).toBe(ENEMY_DEFS.skirmisher.attackConeAngle);
+		expect(enemy.chaseSpeed).toBe(4.5);
+	});
+
+	it('copies spawner add config onto spawner entity', () => {
+		gameState.enemies = [];
+		const enemy = spawnEnemy(0, 0, 'spawner');
+		expect(enemy.spawnIntervalMs).toBe(4000);
+		expect(enemy.spawnMaxAlive).toBe(3);
+	});
+
+	it('does not overwrite runtime-only fields with def spread', () => {
+		gameState.enemies = [];
+		const before = Date.now();
+		const enemy = spawnEnemy(5, 7, 'spawner');
+		expect(enemy.id).toBeDefined();
+		expect(enemy.x).toBe(5);
+		expect(enemy.z).toBe(7);
+		expect(enemy.type).toBe('spawner');
+		expect(enemy.state).toBe('idle');
+		expect(enemy.attackState).toBe('idle');
+		expect(enemy.wanderTarget).toEqual({ x: 5, z: 7 });
+		expect(enemy.lastSpawnTime).toBeGreaterThanOrEqual(before);
+		expect(enemy.spawnedBy).toBeUndefined();
 	});
 });
 
