@@ -272,7 +272,7 @@ const CARD_DEFS = {
   },
   arcane_bolt: {
     ...CARD_IDENTITY.arcane_bolt,
-    damage: 15,
+    damage: 20,
     attackRange: 10,
     effect: 'projectile',
     specialEffect: 'long_range',

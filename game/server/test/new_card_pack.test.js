@@ -149,7 +149,7 @@ describe('new card combat helpers', () => {
 		expect(result.hits.some(h => h.enemyId === 'out-of-range')).toBe(false);
 		expect(CARD_DEFS.arcane_bolt).toMatchObject({
 			type: 'weapon',
-			damage: 15,
+			damage: 20,
 			charges: 4,
 			attackRange: 10,
 			effect: 'projectile',
