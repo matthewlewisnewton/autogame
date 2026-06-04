@@ -708,6 +708,18 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
   return player;
 }
 
+function buildSessionFromPlayer(player) {
+  return {
+    playerId: player.id,
+    accountId: player.accountId,
+    username: player.username,
+    selectedDeck: player.selectedDeck,
+    inventory: player.inventory,
+    ownedCards: player.ownedCards,
+    currency: player.currency,
+  };
+}
+
 function loadSavedPlayerData(loadKey) {
   try {
     return getProvider() ? getProvider().loadPlayer(loadKey) : null;
@@ -1122,15 +1134,7 @@ function startServer(port) {
 
     const savedData = loadSavedPlayerData(accountId || playerId);
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
-    lobbies.registerSession(playerId, {
-      playerId,
-      accountId,
-      username,
-      selectedDeck: sessionPlayer.selectedDeck,
-      inventory: sessionPlayer.inventory,
-      ownedCards: sessionPlayer.ownedCards,
-      currency: sessionPlayer.currency,
-    });
+    lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
     socket.on('listLobbies', () => {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
@@ -1190,15 +1194,7 @@ function startServer(port) {
         return;
       }
       leaveLobbyForSocket(socket);
-      const session = lobbies.getSession(playerId) || {
-        playerId,
-        accountId,
-        username,
-        selectedDeck: sessionPlayer.selectedDeck,
-        inventory: sessionPlayer.inventory,
-        ownedCards: sessionPlayer.ownedCards,
-        currency: sessionPlayer.currency,
-      };
+      const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
       lobbies.registerSession(playerId, session);
       socket.emit('lobbyLeft', {
         lobbies: lobbies.listLobbySummaries(),
