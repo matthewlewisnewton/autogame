@@ -2040,6 +2040,23 @@ describe('findSocketByPlayerId', () => {
 		expect(findSocketByPlayerId('p1')).toBe(s1);
 		expect(findSocketByPlayerId('p3')).toBe(s3);
 	});
+
+	it('excludeSocketId returns the other socket when two share a playerId', () => {
+		const s1 = { id: 'sock-old', playerId: 'shared', connected: true };
+		const s2 = { id: 'sock-new', playerId: 'shared', connected: true };
+		serverIo.sockets.sockets.set(s1.id, s1);
+		serverIo.sockets.sockets.set(s2.id, s2);
+
+		expect(findSocketByPlayerId('shared', 'sock-new')).toBe(s1);
+		expect(findSocketByPlayerId('shared', 'sock-old')).toBe(s2);
+	});
+
+	it('excludeSocketId returns null when only the excluded socket matches', () => {
+		const only = { id: 'sock-only', playerId: 'solo', connected: true };
+		serverIo.sockets.sockets.set(only.id, only);
+
+		expect(findSocketByPlayerId('solo', 'sock-only')).toBeNull();
+	});
 });
 
 // ── Constants ──
