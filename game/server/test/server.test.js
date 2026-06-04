@@ -1361,7 +1361,7 @@ describe('updateMinions()', () => {
 
 	it('MINION_FOLLOW_DISTANCE and MINION_FOLLOW_SPEED are defined and exported', () => {
 		expect(MINION_FOLLOW_DISTANCE).toBe(3);
-		expect(MINION_FOLLOW_SPEED).toBe(ENEMY_DEFS.grunt.chaseSpeed);
+		expect(MINION_FOLLOW_SPEED).toBe(2.5);
 	});
 });
 

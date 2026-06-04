@@ -15,6 +15,10 @@ const SUMMON_RADIUS = 10; // units — radial AoE
 const ATTACK_RANGE = 5; // units — max distance to hit
 const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
 const PROJECTILE_HIT_WIDTH = 1.2; // units — radius around sampled projectile path
+const MINION_FOLLOW_DISTANCE = 3;
+const MINION_FOLLOW_SPEED = 2.5;
+const MINION_CHASE_SPEED_GRUNT = 2.5;
+const MINION_CHASE_SPEED_SKIRMISHER = 4.5;
 const STALE_THRESHOLD = 10000; // 10 seconds
 const DISCONNECT_GRACE_MS = 60000; // keep disconnected players in lobby for reconnection
 const COOLDOWN_MS = 800; // server-side cooldown between uses of the same slot (milliseconds)
@@ -114,6 +118,10 @@ module.exports = {
   ATTACK_RANGE,
   ATTACK_CONE_ANGLE,
   PROJECTILE_HIT_WIDTH,
+  MINION_FOLLOW_DISTANCE,
+  MINION_FOLLOW_SPEED,
+  MINION_CHASE_SPEED_GRUNT,
+  MINION_CHASE_SPEED_SKIRMISHER,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
   COOLDOWN_MS,

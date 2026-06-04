@@ -15,6 +15,11 @@ const {
   MAGIC_STONES_REGEN_PER_TICK,
   SUMMON_RADIUS,
   ATTACK_RANGE,
+  PROJECTILE_HIT_WIDTH,
+  MINION_FOLLOW_DISTANCE,
+  MINION_FOLLOW_SPEED,
+  MINION_CHASE_SPEED_GRUNT,
+  MINION_CHASE_SPEED_SKIRMISHER,
   STALE_THRESHOLD,
   BOUNDS_MARGIN,
   SPAWN_PADDING,
@@ -794,11 +799,6 @@ function isPlayerConcealed(player, now) {
 	}
 	return false;
 }
-
-// Minion behavior constants
-const MINION_FOLLOW_DISTANCE = 3;
-const MINION_FOLLOW_SPEED = ENEMY_DEFS.grunt.chaseSpeed;
-const PROJECTILE_HIT_WIDTH = 1.2;
 
 function isEnemyFrozen(enemy) {
   return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
@@ -1997,7 +1997,7 @@ function updateMinions() {
               minion.lastAttackAt = now;
             }
           } else {
-            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
+            moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_GRUNT * dt);
           }
         } else {
           const owner = _gameState.players[minion.ownerId];
@@ -2047,7 +2047,7 @@ function updateMinions() {
               }
             }
           } else {
-            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.skirmisher.chaseSpeed * dt);
+            moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_SKIRMISHER * dt);
           }
         } else {
           const owner = _gameState.players[minion.ownerId];
@@ -2117,7 +2117,7 @@ function updateMinions() {
               lockMinionWindupDirection(minion, nearestEnemy);
             }
           } else {
-            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.skirmisher.chaseSpeed * dt);
+            moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_SKIRMISHER * dt);
           }
         } else {
           const owner = _gameState.players[minion.ownerId];
@@ -2167,7 +2167,7 @@ function updateMinions() {
               });
             }
           } else {
-            moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * 0.75 * dt);
+            moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_GRUNT * 0.75 * dt);
           }
         } else {
           const owner = _gameState.players[minion.ownerId];
@@ -2195,7 +2195,7 @@ function updateMinions() {
           breathDurationMs: minion.breathDurationMs ?? (isAncient ? 2500 : 2000),
           breathTickMs: minion.breathTickMs ?? 500,
           breathIntervalMs: minion.breathIntervalMs ?? (isAncient ? 3000 : 2500),
-          chaseSpeed: ENEMY_DEFS.grunt.chaseSpeed,
+          chaseSpeed: MINION_CHASE_SPEED_GRUNT,
         });
         continue;
       }
@@ -2208,7 +2208,7 @@ function updateMinions() {
           damageEnemy(nearestEnemy, 5);
         } else {
           // Move toward enemy using moveEntityToward (wall-aware)
-          moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);
+          moveEntityToward(minion, nearestEnemy, MINION_CHASE_SPEED_GRUNT * dt);
         }
       } else {
         // No enemy in range — follow owner
