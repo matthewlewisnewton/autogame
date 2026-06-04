@@ -3574,3 +3574,26 @@ Validation observed in `coverage.log`: `41` test files passed, `918` tests passe
 
 None.
 
+
+## v0.200 — 218-lobby-handler-preamble-and-session-helper  (2026-06-04 14:12:16)
+
+## Code quality
+
+- Helpers are small, documented with JSDoc for options, and colocated with existing `withLobbyFromSocket`.
+- No dead code or broken imports introduced.
+- Minor style: several callbacks receive `lobby` but do not use it (acceptable for uniform signature; optional cleanup only).
+
+## Debug scenarios
+
+No new or changed `?debugScenario=` entry points in this ticket. N/A.
+
+## Screenshots & probes
+
+- `01-initial.png`: Squad lobby with contract terminal, loadout bay, two players standby — lobby path works.
+- `02`–`04`: In-run HUD, movement, dodge cooldown — post-lobby gameplay unaffected.
+- Probes confirm dodge cooldown UI and return to ready state after cooldown.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; captured run is clean; refactor is complete for the handlers named in the ticket goal.
+

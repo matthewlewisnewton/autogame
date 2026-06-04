@@ -1,0 +1,21 @@
+Broke the top-level ticket into **4 sub-tickets** (dependency order: session helper → wrapper → two migration passes). No prior `subtickets/` folders existed, so nothing was deleted.
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| 01 | `buildSessionFromPlayer` — dedupe connect + `leaveLobby` session literals |
+| 02 | `withLobbyPlayer` helper only (no handler migrations) |
+| 03 | Deck/shop/grind/hat handlers → `requirePhase: 'lobby'` |
+| 04 | Quest, ready, key item, medic, trade + custom `phaseMismatch` |
+
+All use **Verification: code** (structure, handlers, tests — not screenshot-only).
+
+**Created sub-ticket paths**
+
+```
+/home/matt/workspace/.autogame-worktrees/218-lobby-handler-preamble-and-session-helper/tickets/218-lobby-handler-preamble-and-session-helper/subtickets/01-build-session-from-player/ticket.md
+/home/matt/workspace/.autogame-worktrees/218-lobby-handler-preamble-and-session-helper/tickets/218-lobby-handler-preamble-and-session-helper/subtickets/02-with-lobby-player-helper/ticket.md
+/home/matt/workspace/.autogame-worktrees/218-lobby-handler-preamble-and-session-helper/tickets/218-lobby-handler-preamble-and-session-helper/subtickets/03-migrate-lobby-deck-shop-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/218-lobby-handler-preamble-and-session-helper/tickets/218-lobby-handler-preamble-and-session-helper/subtickets/04-migrate-remaining-lobby-handlers/ticket.md
+```
