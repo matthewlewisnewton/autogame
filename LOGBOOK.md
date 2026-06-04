@@ -3490,3 +3490,26 @@ No new or changed debug scenario was introduced by this ticket. The capture used
 
 None.
 
+
+## v0.197 — 215-lobby-atomic-hat-unlock-ordering  (2026-06-04 13:19:47)
+
+### Test that kills the write between steps
+
+Pass. `server/test/hat_unlock_persistence.test.js` adds focused coverage for the write ordering, the crash-between-steps persistence state, currency-save failure, and account-unlock failure refund. The crash-window test blocks the `users.json` rename after the currency save and verifies a reload sees deducted currency without the purchased hat, preventing the original free-hat exploit.
+
+## Design and requirements consistency
+
+The change is server-side persistence ordering for a lobby economy action. It does not alter the documented lobby/dungeon loop, card combat, multiplayer rendering, movement synchronization, or client/server connection requirements. The round-2 screenshots and probes confirm the foundation still loads, connects two players, enters gameplay, moves, and uses a key item.
+
+No development debug scenario was added or changed by this ticket, so the debug-scenario shortcut criteria are not applicable.
+
+## Code quality and validation
+
+The implementation is narrow and follows existing server patterns for player persistence, account unlocks, and socket error events. I did not find dead/broken code or an obvious integration regression in the changed files.
+
+Validation observed in `coverage.log`: `41` test files passed, `918` tests passed. The new `server/test/hat_unlock_persistence.test.js` passed all `4` tests. Coverage on changed server code is visible, with `server/index.js` reported at `89.22%` statements / `64.65%` branches / `89.18%` functions / `89.22%` lines.
+
+## Remaining gaps
+
+None.
+

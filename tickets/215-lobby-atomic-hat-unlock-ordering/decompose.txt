@@ -1,0 +1,15 @@
+Remediation round 2 has one open gap from `review-feedback.md`: currency save failures are silent, so `unlockHatForAccount` can still run. Sub-tickets **01** and **02** are done (`.passed`) and were left untouched.
+
+### New sub-ticket
+
+| # | Folder | Purpose |
+|---|--------|---------|
+| 03 | `03-abort-hat-unlock-on-currency-save-failure` | Make `savePlayerData` return success/failure, abort `unlockHat` (refund + `hatError`) when currency write fails, add regression test |
+
+### Created paths
+
+```
+/home/matt/workspace/.autogame-worktrees/215-lobby-atomic-hat-unlock-ordering/tickets/215-lobby-atomic-hat-unlock-ordering/subtickets/03-abort-hat-unlock-on-currency-save-failure/ticket.md
+```
+
+With 01–02 already shipped, **03** is the only new work needed to close the top-level ticket’s remaining exploit path. Verification is **code** (handler behavior, return values, provider-throw test).
