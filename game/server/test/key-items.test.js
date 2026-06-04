@@ -794,8 +794,9 @@ describe('useKeyItem — flare_beacon', () => {
 		expect(result2.ok).toBe(false);
 		expect(result2.reason).toBe('on_cooldown');
 		expect(result2.remainingMs).toBeGreaterThan(0);
-		// flare_beacon has 10000ms cooldown
-		expect(result2.remainingMs).toBeCloseTo(10000, -1); // within factor of 10
+		// flare_beacon has 10000ms cooldown (allow a few ms elapsed between uses)
+		expect(result2.remainingMs).toBeLessThanOrEqual(10000);
+		expect(result2.remainingMs).toBeGreaterThan(10000 - 50);
 	});
 
 	it('emits stateUpdate with revealedUntil in enemy data', async () => {
@@ -1030,7 +1031,8 @@ describe('useKeyItem — echo_strike', () => {
 		expect(result2.ok).toBe(false);
 		expect(result2.reason).toBe('on_cooldown');
 		expect(result2.remainingMs).toBeGreaterThan(0);
-		expect(result2.remainingMs).toBeCloseTo(10000, -1);
+		expect(result2.remainingMs).toBeLessThanOrEqual(10000);
+		expect(result2.remainingMs).toBeGreaterThan(10000 - 50);
 	});
 
 	it('emits stateUpdate after a successful activation', async () => {

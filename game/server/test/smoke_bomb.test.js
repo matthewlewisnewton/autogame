@@ -95,8 +95,10 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
 		expect(persistenceDirtyOnCast).toBe(true);
 
-		// Duration roughly matches def
-		expect(player.smokeBombUntil - now).toBeCloseTo(def.durationMs, -1);
+		// Duration roughly matches def (allow a few ms elapsed since `now`)
+		const smokeRemainingMs = player.smokeBombUntil - now;
+		expect(smokeRemainingMs).toBeLessThanOrEqual(def.durationMs);
+		expect(smokeRemainingMs).toBeGreaterThan(def.durationMs - 50);
 	});
 
 	it('cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window', async () => {

@@ -1294,9 +1294,7 @@ function startServer(port) {
   });
 
   socket.on('selectQuest', (data) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
-    if (!isLobbyPhase(state)) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, _player) => {
     if (state.suspendedCheckpoint) {
       socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
       return;
@@ -1328,10 +1326,7 @@ function startServer(port) {
   });
 
   socket.on('playerReady', (ready) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
       normalizePlayerInventory(player);
       const result = validateDeck(player.selectedDeck, player.inventory);
@@ -1472,15 +1467,10 @@ function startServer(port) {
   });
 
   socket.on('equipKeyItem', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) {
-      socket.emit('keyItemError', { reason: 'not_in_lobby' });
-      return;
-    }
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
     const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
     if (!keyItemId) {
       socket.emit('keyItemError', { reason: 'missing_key_item_id' });
@@ -1678,19 +1668,16 @@ function startServer(port) {
   });
 
   socket.on('medicHeal', () => {
-    withLobbyFromSocket(socket, (state) => {
-      if (!isLobbyPhase(state)) {
-        socket.emit('medicError', { reason: 'not_in_lobby' });
-        return;
-      }
-
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
       const result = healAtMedic(socket.playerId);
       if (!result.ok) {
         socket.emit('medicError', { reason: result.reason });
         return;
       }
 
-      const player = state.players[socket.playerId];
       socket.emit('medicHealed', {
         hp: result.hp,
         currency: player.currency,
@@ -1727,11 +1714,8 @@ function startServer(port) {
   });
 
   socket.on('offerCardTrade', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player || !data) return;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (!data) return;
 
     const targetPlayerId = typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
     const offeredCardId = typeof data.offeredCardId === 'string' ? data.offeredCardId : null;
@@ -1775,11 +1759,8 @@ function startServer(port) {
   });
 
   socket.on('respondCardTrade', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player || !data) return;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (!data) return;
 
     const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
     const accepted = !!data.accepted;

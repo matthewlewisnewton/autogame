@@ -353,9 +353,10 @@ describe('useKeyItem — guard_block (socket integration)', () => {
 		expect(result2.reason).toBe('on_cooldown');
 		expect(result2.remainingMs).toBeGreaterThan(0);
 
-		// guard_block has 3500ms cooldown
+		// guard_block has 3500ms cooldown (allow a few ms elapsed between uses)
 		const def = KEY_ITEM_DEFS.guard_block;
-		expect(result2.remainingMs).toBeCloseTo(def.cooldownMs, -1); // within factor of 10
+		expect(result2.remainingMs).toBeLessThanOrEqual(def.cooldownMs);
+		expect(result2.remainingMs).toBeGreaterThan(def.cooldownMs - 50);
 	});
 
 	it('blockingUntil expires and subsequent hits deal full damage', async () => {
