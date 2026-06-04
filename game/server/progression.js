@@ -1167,14 +1167,16 @@ function persistenceKey(playerId) {
 }
 
 function savePlayerData(playerId) {
-  if (!provider) return;
+  if (!provider) return true;
   const player = _gameState.players[playerId];
-  if (!player) return;
+  if (!player) return true;
   try {
     const key = persistenceKey(playerId);
     provider.savePlayer(key, extractPersistentData(player));
+    return true;
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
+    return false;
   }
 }
 

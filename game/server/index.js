@@ -1662,7 +1662,12 @@ function startServer(port) {
     // Safe ordering: currency first, hat second — a crash after this save but
     // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
     // instead of unlocked-but-not-charged (free-hat exploit).
-    savePlayerData(socket.playerId);
+    const saved = savePlayerData(socket.playerId);
+    if (!saved) {
+      player.currency += result.cost;
+      socket.emit('hatError', { reason: 'Failed to save progress' });
+      return;
+    }
 
     const unlockResult = unlockHatForAccount(player.accountId, hatId);
     if (!unlockResult.ok) {

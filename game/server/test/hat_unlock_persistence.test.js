@@ -177,6 +177,32 @@ describe('unlockHat persistence (currency before account hat write)', () => {
 		socket.disconnect();
 	});
 
+	it('does not unlock hat when currency save throws', async () => {
+		const socket = await connectInLobby();
+		const expectedCurrency = initialCurrency - hatPrice;
+
+		vi.spyOn(fileProvider, 'savePlayer').mockImplementation((id, data) => {
+			if (data.currency === expectedCurrency) {
+				throw new Error('disk full');
+			}
+			return FileProvider.prototype.savePlayer.call(fileProvider, id, data);
+		});
+
+		const errorPromise = waitForEvent(socket, 'hatError');
+		socket.emit('unlockHat', { hatId: HAT_ID });
+		const err = await errorPromise;
+		expect(err.reason).toBe('Failed to save progress');
+
+		expect(playerForSocket(socket).currency).toBe(initialCurrency);
+		expect(accountHatsOnDisk(usersFile)).not.toContain(HAT_ID);
+
+		const reloaded = reloadFromDisk(progressDir, usersFile);
+		expect(reloaded.loadPlayer(accountId).currency).toBe(initialCurrency);
+		expect(users.findUserByAccountId(accountId).unlockedHats).not.toContain(HAT_ID);
+
+		socket.disconnect();
+	});
+
 	it('refunds currency to disk when account unlock returns ok: false', async () => {
 		const socket = await connectInLobby();
 		const expectedCurrency = initialCurrency - hatPrice;

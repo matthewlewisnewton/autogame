@@ -376,7 +376,7 @@ describe('savePlayerData', () => {
 		gameState.players['errPlayer'] = player;
 
 		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-		expect(() => savePlayerData('errPlayer')).not.toThrow();
+		expect(savePlayerData('errPlayer')).toBe(false);
 		expect(consoleErrorSpy).toHaveBeenCalledWith(
 			expect.stringContaining('[persistence] savePlayerData failed for errPlayer'),
 			expect.any(String)
