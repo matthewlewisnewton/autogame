@@ -62,7 +62,6 @@ import {
 import {
 	initGamepadListeners,
 	pollGamepadLook,
-	pollGamepadButtons,
 	resetGamepadState,
 } from './gamepad.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
@@ -140,7 +139,6 @@ let socketRef = null; // socket instance for emitting 'move'
 
 // ── Input state ──
 let inputListenersAdded = false;
-let gamepadInputHandler = null;
 const TICK_DT = 1 / TICK_RATE;
 let moveAccumulator = 0;
 let moveEmitAccumulator = 0;
@@ -833,14 +831,6 @@ export function setMyId(id) {
  */
 export function setSocketRef(s) {
 	socketRef = s;
-}
-
-/**
- * Register a callback for gamepad card/deck actions each frame.
- * @param {(actions: { slots: number[], toggleDeck: boolean, lockOn: boolean }) => void} handler
- */
-export function setGamepadInputHandler(handler) {
-	gamepadInputHandler = handler;
 }
 
 /**
@@ -4024,10 +4014,6 @@ export function animate(timestamp) {
 	updateMyPlayer(delta);
 
 	pollInput();
-	const gamepadActions = pollGamepadButtons();
-	if (gamepadInputHandler) {
-		gamepadInputHandler(gamepadActions);
-	}
 
 	const gs = gameStateRef;
 	const myId = myIdRef;
