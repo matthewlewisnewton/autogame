@@ -1240,6 +1240,7 @@ function bindSocketHandlers(s) {
 
 	s.on('cardEvolutionResult', (data) => {
 		if (!data) return;
+		lastEvolutionResult = data;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
@@ -1476,6 +1477,7 @@ let currentLayout = null; // persisted layout from init; stateUpdate omits it
 let mySelectedDeck = [];
 let myInventory = null;
 let myOwnedCards = {};
+let lastEvolutionResult = null;
 let keyItemDefs = {};
 let availableQuests = [];
 let selectedQuestId = 'training_caverns';
@@ -1643,6 +1645,39 @@ window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
 	}
 	return { ok: true, selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [] };
 };
+
+/** Test / Playwright hook: evolve a card by instanceId and wait for the result. */
+window.__evolveCardForTest = (instanceId, timeoutMs) => new Promise((resolve) => {
+	if (!socket) {
+		resolve({ ok: false, reason: 'no socket' });
+		return;
+	}
+	if (typeof instanceId !== 'string') {
+		resolve({ ok: false, reason: 'instanceId must be a string' });
+		return;
+	}
+	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
+	const timer = setTimeout(() => {
+		socket.off('cardEvolutionResult', onResult);
+		socket.off('cardEvolutionError', onError);
+		resolve({ ok: false, reason: 'timeout waiting for evolution result' });
+	}, timeout);
+	function onResult(data) {
+		clearTimeout(timer);
+		socket.off('cardEvolutionResult', onResult);
+		socket.off('cardEvolutionError', onError);
+		resolve({ ok: true, instance: data?.instance, fromCardId: data?.fromCardId, toCardId: data?.toCardId });
+	}
+	function onError(data) {
+		clearTimeout(timer);
+		socket.off('cardEvolutionResult', onResult);
+		socket.off('cardEvolutionError', onError);
+		resolve({ ok: false, reason: data?.reason || 'cardEvolutionError' });
+	}
+	socket.once('cardEvolutionResult', onResult);
+	socket.once('cardEvolutionError', onError);
+	socket.emit('evolveCard', { instanceId });
+});
 
 function startHeartbeat() {
 	if (heartbeatTimer) return;
@@ -4085,6 +4120,22 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 				specialEffect: card.specialEffect,
 			};
 		}),
+		inventory: Array.isArray(myInventory)
+			? myInventory.map((inst) => ({
+				instanceId: inst.instanceId,
+				cardId: inst.cardId,
+				grind: inst.grind,
+				isEvolved: inst.isEvolved,
+				evolvedFrom: inst.evolvedFrom,
+			  }))
+			: [],
+		lastEvolutionResult: lastEvolutionResult
+			? {
+				instance: lastEvolutionResult.instance,
+				fromCardId: lastEvolutionResult.fromCardId,
+				toCardId: lastEvolutionResult.toCardId,
+			  }
+			: null,
 	};
 };
 

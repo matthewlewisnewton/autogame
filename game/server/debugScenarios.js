@@ -31,6 +31,8 @@ const {
   createDrawDeckFromSelectedDeck,
   initPlayerHand,
   createInventoryFromCardIds,
+  createCardInstance,
+  inventoryToOwnedCards,
   spawnEnemy,
   spawnEnemies,
   syncRunObjectiveToEnemies,
@@ -122,6 +124,27 @@ function applyDebugScenario(socket, name) {
         if (r.ok) unlockedHats = r.unlockedHats;
       }
       return { ok: true, scenario: name, unlockedHats };
+    }
+
+    if (name === 'evolution-ready') {
+      // Stay in the lobby with a skeleton_knight card at +10 grind (the
+      // EVOLUTION_GRIND_REQUIRED threshold) so the card-evolution flow can be
+      // exercised without grinding runs first. The same state is reachable
+      // normally by leveling a skeleton_knight through +10 defeats and then
+      // evolving it in the deck editor.
+      state.gamePhase = 'lobby';
+      player.ready = false;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const instance = createCardInstance('skeleton_knight', { grind: 10 });
+      player.inventory.push(instance);
+      normalizePlayerInventory(player);
+      player.ownedCards = inventoryToOwnedCards(player.inventory);
+      if (!Array.isArray(player.selectedDeck)) player.selectedDeck = [];
+      if (!player.selectedDeck.includes(instance.instanceId)) {
+        player.selectedDeck.push(instance.instanceId);
+      }
+      return { ok: true, scenario: name };
     }
 
     player.ready = true;

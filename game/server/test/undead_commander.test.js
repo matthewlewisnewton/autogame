@@ -148,3 +148,60 @@ describe('Legion Marshal gameplay', () => {
 		expect(cardUsed.summonedMinions).toHaveLength(2);
 	});
 });
+
+describe('evolution-ready debug scenario', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('provisions a skeleton_knight at +10 grind and evolves it to undead_commander', async () => {
+		// Apply the evolution-ready debug scenario
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'evolution-ready' });
+		const debugResult = await debugResultPromise;
+
+		// Verify the scenario result
+		expect(debugResult.ok).toBe(true);
+		expect(debugResult.scenario).toBe('evolution-ready');
+
+		// Read player state to verify the +10 skeleton_knight instance
+		const player = playerForSocket(socket);
+		expect(player).toBeDefined();
+
+		const skInstance = player.inventory.find(
+			(inst) => inst.cardId === 'skeleton_knight' && inst.grind === 10
+		);
+		expect(skInstance).toBeDefined();
+		expect(skInstance.instanceId).toBeDefined();
+
+		// Verify the instance is in the selected deck
+		expect(player.selectedDeck).toContain(skInstance.instanceId);
+
+		// Verify the game phase is lobby (not playing)
+		const state = lobbyStateForSocket(socket);
+		expect(state.gamePhase).toBe('lobby');
+
+		// Evolve the card
+		const evolveResult = evolveCard(player, skInstance.instanceId);
+		expect(evolveResult.ok).toBe(true);
+		expect(evolveResult.toCardId).toBe('undead_commander');
+		expect(evolveResult.fromCardId).toBe('skeleton_knight');
+
+		// Verify the transformed instance
+		const evolvedInstance = player.inventory.find(
+			(inst) => inst.instanceId === skInstance.instanceId
+		);
+		expect(evolvedInstance.cardId).toBe('undead_commander');
+		expect(evolvedInstance.isEvolved).toBe(true);
+		expect(evolvedInstance.grind).toBe(0);
+		expect(evolvedInstance.evolvedFrom).toBe('skeleton_knight');
+	});
+});

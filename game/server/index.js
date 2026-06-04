@@ -476,6 +476,7 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-stage',
   'hat-shop-currency',
   'hats-unlocked',
+  'evolution-ready',
   'deck-viewer-instances',
 ]);
 
