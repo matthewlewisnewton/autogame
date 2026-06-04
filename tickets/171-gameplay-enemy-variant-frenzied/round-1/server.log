@@ -1,0 +1,12 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/game/data
+Server listening on port 3002
+Player connected: socket=o6s6OY4gxVzuWdhDAAAB, playerId=5018b87c-ab48-4bda-bca7-261101d0dbff
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=p9ZPcEMm2le6g638AAAD, playerId=528effe0-abdf-44ed-a876-48dcc989d168
+[loot] spawned id=478ba042-91bf-4a2f-89b7-deb4f47019c6 value=17
+Player disconnected: o6s6OY4gxVzuWdhDAAAB
+Player disconnected: p9ZPcEMm2le6g638AAAD

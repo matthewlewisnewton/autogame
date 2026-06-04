@@ -3247,3 +3247,26 @@ PASS. This ticket did not add or change any `?debugScenario=NAME` shortcut. The 
 
 None.
 
+
+## v0.180 — 171-gameplay-enemy-variant-frenzied  (2026-06-03 21:50:48)
+
+## Design and requirements consistency
+
+PASS. The change fits the existing server-authoritative combat model in `game/docs/design.md`: enemies remain normal dungeon AI entities, variant selection happens through the existing spawn pipeline, and the client only reflects server state visually. The foundation requirements are not regressed: the captured smoke flow demonstrates the Three.js scene, client/server connection, multiplayer lobby/run transition, and synchronized movement still work.
+
+## Client visuals
+
+PASS. `game/client/renderer.js` adds variant-specific marker visuals and an orange frenzied body tint without changing gameplay state on the client. The marker is driven by `enemy.variant`, stale markers are disposed, and reveal/windup visuals retain precedence over the variant tint.
+
+## Debug scenarios
+
+PASS. The new `frenzied-enemy` shortcut is only reachable through the existing `debugScenario` socket event and remains gated by `isDebugScenarioAllowed`. It creates the same end-state a player can reach normally by encountering a spawned frenzied variant and damaging it below half HP; it does not bypass persistence, rewards, or combat validation paths. Normal gameplay still rolls variants through `spawnEnemy` / `applyVariant`.
+
+## Code quality
+
+PASS. The implementation is localized and follows existing module boundaries. The enrage behavior is data-driven from `ENEMY_DEFS`, keeps base stats untouched until the threshold, and avoids client-authoritative mechanics. No dead or broken code stood out in the reviewed files.
+
+## Remaining gaps
+
+None.
+

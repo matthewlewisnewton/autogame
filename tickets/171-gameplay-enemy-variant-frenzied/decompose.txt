@@ -1,0 +1,15 @@
+Broke ticket **171** into **3** sub-tickets (dependency order). No prior `subtickets/` folder existed, so nothing was deleted or skipped.
+
+| # | Folder | Delivers |
+|---|--------|----------|
+| **01** | Registry | `frenzied` in `VARIANT_DEFS` + unit tests |
+| **02** | Server | Below-50%-HP chase/attack speed boost + server test |
+| **03** | Client | Distinct frenzied badge color + body tint |
+
+All use **`Verification: code`** — the parent ticket’s main proof is a server test; client work is map/branch logic, not screenshot-only pixels.
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/01-frenzied-variant-registry/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/02-frenzied-enrage-speed-server/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/03-frenzied-client-tint-and-badge/ticket.md`
