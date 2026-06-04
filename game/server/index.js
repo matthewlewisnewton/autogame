@@ -945,6 +945,20 @@ function softDisconnectPlayerFromLobby(socket) {
   return { lobby, playerId };
 }
 
+function notifyPlayerRemoved(lobby, playerId, result) {
+  io.to(lobby.id).emit('playerDisconnected', playerId);
+
+  if (result && !result.deleted) {
+    withLobbyContext(lobby, () => {
+      if (isPlayingPhase(lobby.state)) {
+        checkRunTerminalState();
+      } else {
+        broadcastLobbyUpdate(lobby);
+      }
+    });
+  }
+}
+
 function evictDisconnectedPlayers() {
   const now = Date.now();
   let evictedAny = false;
@@ -965,18 +979,8 @@ function evictDisconnectedPlayers() {
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
-      io.to(lobby.id).emit('playerDisconnected', playerId);
+      notifyPlayerRemoved(lobby, playerId, result);
       evictedAny = true;
-
-      if (result && !result.deleted) {
-        withLobbyContext(lobby, () => {
-          if (isPlayingPhase(lobby.state)) {
-            checkRunTerminalState();
-          } else {
-            broadcastLobbyUpdate(lobby);
-          }
-        });
-      }
     }
   }
 
@@ -997,17 +1001,7 @@ function leaveLobbyForSocket(socket) {
   socket.leave(lobby.id);
 
   const result = lobbies.removePlayerFromLobby(playerId);
-  io.to(lobby.id).emit('playerDisconnected', playerId);
-
-  if (result && !result.deleted) {
-    withLobbyContext(lobby, () => {
-      if (isPlayingPhase(lobby.state)) {
-        checkRunTerminalState();
-      } else {
-        broadcastLobbyUpdate(lobby);
-      }
-    });
-  }
+  notifyPlayerRemoved(lobby, playerId, result);
 
   broadcastLobbyList();
   return result;
@@ -1184,16 +1178,6 @@ function startServer(port) {
 
     socket.on('listLobbies', () => {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-    });
-
-    socket.on('listKeyItems', () => {
-      const items = getUnlockedKeyItems().map((def) => ({
-        id: def.id,
-        name: def.name,
-        description: def.description,
-        cooldownMs: def.cooldownMs,
-      }));
-      socket.emit('keyItemsListed', { items });
     });
 
     socket.on('createLobby', (data) => {
@@ -1606,24 +1590,6 @@ function startServer(port) {
     }
 
     const result = sellCard(player, cardId, requestedInstanceId);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardInventoryUpdate', {
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency,
-      selectedDeck: player.selectedDeck
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
-  socket.on('buyShopCard', () => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const result = buyShopCard(player, state.shopOffer);
     if (!result.ok) {
       socket.emit('deckError', { reason: result.reason });
       return;

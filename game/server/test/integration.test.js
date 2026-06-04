@@ -3148,46 +3148,6 @@ describe('Lobby card sell and trade', () => {
 		expect(update.shopOffer.price).toBeGreaterThan(0);
 	});
 
-	it('buyShopCard adds the offered card and deducts gold', async () => {
-		const player = testGameState().players[socket1._playerId];
-		const offer = testGameState().shopOffer;
-		expect(offer).toBeTruthy();
-
-		player.currency = offer.price + 50;
-		const countBefore = player.ownedCards[offer.cardId] || 0;
-		const deckBefore = [...player.selectedDeck];
-
-		const updatePromise = waitForEvent(socket1, 'cardInventoryUpdate');
-		socket1.emit('buyShopCard');
-		const update = await updatePromise;
-
-		expect(player.ownedCards[offer.cardId]).toBe(countBefore + 1);
-		expect(player.currency).toBe(50);
-		expect(update.currency).toBe(50);
-		expect(update.selectedDeck.length).toBe(deckBefore.length + 1);
-		expect(update.inventory.length).toBe(player.inventory.length);
-		expect(validateDeck(player.selectedDeck, player.inventory).valid).toBe(true);
-		const purchasedInstance = player.inventory.find(
-			(instance) => instance.cardId === offer.cardId && player.selectedDeck.includes(instance.instanceId)
-		);
-		expect(purchasedInstance).toBeTruthy();
-	});
-
-	it('buyShopCard rejects insufficient gold', async () => {
-		const player = testGameState().players[socket1._playerId];
-		const offer = testGameState().shopOffer;
-		expect(offer).toBeTruthy();
-		player.currency = 0;
-		const countBefore = player.ownedCards[offer.cardId] || 0;
-
-		const errorPromise = waitForEvent(socket1, 'deckError');
-		socket1.emit('buyShopCard');
-		const err = await errorPromise;
-
-		expect(err.reason).toBe('insufficient_gold');
-		expect(player.ownedCards[offer.cardId] || 0).toBe(countBefore);
-	});
-
 	it('trade offer/accept swaps cards once and preserves both decks', async () => {
 		const playerA = testGameState().players[socket1._playerId];
 		const playerB = testGameState().players[socket2._playerId];
