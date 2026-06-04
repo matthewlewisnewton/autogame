@@ -1,0 +1,10 @@
+Broke ticket **173** into **2** sub-tickets in dependency order (server behavior first, then client visuals). No prior `subtickets/` folders existed, so nothing was deleted or skipped.
+
+**Created:**
+
+- `/home/matt/workspace/.autogame-worktrees/173-gameplay-enemy-variant-leeching/tickets/173-gameplay-enemy-variant-leeching/subtickets/01-server-leeching-heal-on-player-damage/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/173-gameplay-enemy-variant-leeching/tickets/173-gameplay-enemy-variant-leeching/subtickets/02-client-leeching-variant-visuals/ticket.md`
+
+**01** adds `leeching` to `VARIANT_DEFS`, hooks heal into `damagePlayer` via `attackerEnemyId`, and covers behavior with server tests (`code` QA).
+
+**02** adds per-variant badge/tint for `leeching`, plus a `variant-leeching` debug scenario (`code` QA — criteria include handlers, scenario registration, and tint wiring, not screenshot-only checks).
