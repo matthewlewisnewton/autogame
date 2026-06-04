@@ -1,10 +1,9 @@
-**LOGBOOK.md** is resolved.
+Merge conflicts are resolved in both files.
 
-Both sides added a new release section at the same place after **v0.185**. The conflict was only about which entry to keep.
+**`TASKS.md`** — Kept both cleanup backlog entries (main’s `224-cleanup-data-derive-shop-pool-from-defs` and this ticket’s `226-cleanup-data-centralize-enemy-construction-and-consts`), in ticket-number order.
 
-**Resolution:** keep both, in descending version order (same as the rest of the log):
+**`LOGBOOK.md`** — Kept both version entries in descending version order:
+- **v0.191** — ticket 225 (enemy construction centralization), with its own “Remaining gaps” section
+- **v0.190** — ticket 223 (shop pool derived from card defs), with its own “Remaining gaps” section
 
-1. **v0.187 — 207-gameplay-card-balance-pass** (ticket branch): Arcane Bolt / Mirror Ward balance pass, vitest stability, review sections unchanged  
-2. **v0.186 — 209-gameplay-card-aegis-sentinel** (from `main`): full Aegis Sentinel review entry unchanged  
-
-All conflict markers are removed. The file is ready for the harness to stage and finish the merge.
+All conflict markers are removed. The harness can continue the merge/rebase.

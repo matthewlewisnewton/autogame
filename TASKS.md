@@ -81,4 +81,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [205-cleanup-cleanup-dedupe-card-defs-server-client](tickets/205-cleanup-cleanup-dedupe-card-defs-server-client/)
 - [ ] [206-cleanup-bug-no-player-attack-affordance-feedback](tickets/206-cleanup-bug-no-player-attack-affordance-feedback/)
 - [ ] [210-cleanup-gameplay-card-permafrost-lance](tickets/210-cleanup-gameplay-card-permafrost-lance/)
+- [ ] [224-cleanup-data-derive-shop-pool-from-defs](tickets/224-cleanup-data-derive-shop-pool-from-defs/)
 - [ ] [226-cleanup-data-centralize-enemy-construction-and-consts](tickets/226-cleanup-data-centralize-enemy-construction-and-consts/)

@@ -1,0 +1,21 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order. Each is independently implementable and uses **code** verification (pool derivation, tag schema, and reachability logic are not visible in a happy-path screenshot run).
+
+### Plan summary
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| **01** | Add `acquisition` (+ `rewardOrder`) tags to `cardDefs.json`; fix the 8 unreachable cards | Data model must exist before derivation |
+| **02** | Derive `VICTORY_REWARD_ROTATION` / `SHOP_CARD_POOL` from tags; remove hardcoded config arrays | Behavior change once tags are in place |
+| **03** | Reachability test guarding all 42 cards | Regression guard after pools are derived |
+
+**Review call on the 8 unreachable cards:** tag as `reward` (unintentional omission — they have sell values, server/client defs, and tests but were never added to any pool).
+
+**Dual-path note:** `flame_blade`, `battle_familiar`, and `dungeon_drake` stay tagged `reward` for pool derivation; starter reachability still comes from `STARTING_DECK_IDS`. Only `iron_sword` gets `starter`.
+
+### Created sub-ticket folders
+
+```
+/home/matt/workspace/.autogame-worktrees/223-data-derive-shop-pool-from-defs/tickets/223-data-derive-shop-pool-from-defs/subtickets/01-acquisition-tags/ticket.md
+/home/matt/workspace/.autogame-worktrees/223-data-derive-shop-pool-from-defs/tickets/223-data-derive-shop-pool-from-defs/subtickets/02-derive-shop-pools/ticket.md
+/home/matt/workspace/.autogame-worktrees/223-data-derive-shop-pool-from-defs/tickets/223-data-derive-shop-pool-from-defs/subtickets/03-reachability-test/ticket.md
+```

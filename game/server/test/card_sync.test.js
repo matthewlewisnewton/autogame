@@ -31,6 +31,22 @@ describe('CARD_DEFS sync (server vs client)', () => {
 			expect(c.charges).toBe(s.charges);
 		}
 	});
+
+	it('each card has matching acquisition and rewardOrder', () => {
+		const serverKeys = Object.keys(SERVER_CARD_DEFS);
+
+		for (const key of serverKeys) {
+			const s = SERVER_CARD_DEFS[key];
+			const c = CLIENT_CARD_DEFS[key];
+
+			expect(c.acquisition).toBe(s.acquisition);
+			if (s.rewardOrder !== undefined) {
+				expect(c.rewardOrder).toBe(s.rewardOrder);
+			} else {
+				expect(c.rewardOrder).toBeUndefined();
+			}
+		}
+	});
 });
 
 // ── Starting Deck Sync ──
