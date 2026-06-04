@@ -3597,3 +3597,49 @@ No new or changed `?debugScenario=` entry points in this ticket. N/A.
 
 None blocking. All acceptance criteria are satisfied; captured run is clean; refactor is complete for the handlers named in the ticket goal.
 
+
+## v0.199 — 220-input-rebind-collision-guard  (2026-06-04 14:07:21)
+
+
+New tests are well targeted and pass (188/188 across `input.test.js` +
+`main.test.js`):
+- `getReservedKeys lists fixed keyboard bindings and excludes useKeyItem`
+- `rejects reserved keys without changing the binding and shows a toast`
+- `saves a non-reserved key via patchSettings`
+- `ignores modifier-only keys with no toast`
+
+## Code quality
+
+Clean, minimal, self-contained change consistent with surrounding input/
+settings code. No dead code, no regressions to `onKeyDown` resolution, and no
+console errors introduced. Consistent with `design.md`/`requirements.md`
+(input remapping is a settings-UI concern only; no net or server invariants
+touched). No debug scenarios added.
+
+## Remaining gaps
+
+None blocking.
+
+
+## v0.198 — 222-data-collapse-card-def-drift  (2026-06-04 13:33:34)
+
+3. Keep `getCardSellValue` computed fallback.
+
+PASS. Both server and client retain the fallback behavior: explicit sell value first, then evolved/spell/creature/default values, with unknown cards returning `0`.
+
+4. Expand `card_sync.test.js` to diff full stat objects.
+
+PASS. `game/server/test/card_sync.test.js` now compares all client-defined fields against the server surface, checks that only documented server-only overlay fields are absent from the client, validates shared sell values and evolution transforms, and checks sell-value fallback agreement for every card id. The latest coverage run shows `server/test/card_sync.test.js` passing with 9 tests, and the coverage summary reports the broader run green.
+
+## Design and foundation consistency
+
+PASS. The change is data-ownership focused and preserves the documented card-combat loop, lobby-to-dungeon flow, rendering, WebSocket connection, and movement foundation. The live capture confirms the foundation requirements still work: the app rendered a 3D scene, connected two clients to the backend, represented players in gameplay, and accepted movement input without runtime errors.
+
+## Code quality
+
+PASS. The implementation is appropriately scoped: shared JSON owns static data, server-only computed fields remain in a small overlay, and tests explicitly guard the allowed overlay exception. No ticket changes introduced debug scenarios or normal-gameplay shortcuts, so the debug-scenario gate review is not applicable.
+
+## Remaining gaps
+
+No blocking gaps.
+

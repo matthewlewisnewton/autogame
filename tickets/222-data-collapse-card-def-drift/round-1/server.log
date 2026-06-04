@@ -1,0 +1,12 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/222-data-collapse-card-def-drift/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/222-data-collapse-card-def-drift/game/data
+Server listening on port 3000
+Player connected: socket=MU0OjI69BQnXnnE4AAAB, playerId=bce90869-946b-48cc-8c98-1b3fcbcf3c51
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=syW9adoFJDrnsuYRAAAD, playerId=2c88ad3c-0fa1-451e-9c87-1ef9e2a916de
+[loot] spawned id=419624ec-ff01-4b47-b448-22ad9ebbda9e value=16
+Player disconnected: MU0OjI69BQnXnnE4AAAB
+Player disconnected: syW9adoFJDrnsuYRAAAD

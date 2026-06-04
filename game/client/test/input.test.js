@@ -10,6 +10,7 @@ import {
 	getHandSlotGamepadHints,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
+	getReservedKeys,
 	ACTIONS
 } from '../input.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
@@ -32,6 +33,14 @@ describe('input.js', () => {
 	afterEach(() => {
 		uninstallGamepadMock();
 		resetInputState();
+	});
+
+	it('getReservedKeys lists fixed keyboard bindings and excludes useKeyItem', () => {
+		const reserved = getReservedKeys();
+		expect(reserved).toEqual(
+			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z']),
+		);
+		expect(reserved.has('e')).toBe(false);
 	});
 
 	it('keyboard W produces upward movement', () => {

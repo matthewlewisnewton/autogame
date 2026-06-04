@@ -51,6 +51,19 @@ const DEFAULT_KEYBOARD = {
 	dodge: [],
 };
 
+/** Lowercase keys claimed by non-remappable DEFAULT_KEYBOARD actions (excludes useKeyItem). */
+export function getReservedKeys() {
+	const reserved = new Set();
+	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
+		if (action === 'useKeyItem') continue;
+		for (const key of keys) {
+			const normalized = key.toLowerCase();
+			if (normalized) reserved.add(normalized);
+		}
+	}
+	return reserved;
+}
+
 const DEFAULT_GAMEPAD_BUTTONS = {
 	useSlot0: 0,
 	useSlot1: 1,
