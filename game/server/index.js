@@ -763,6 +763,33 @@ function initializePlayerForActiveRun(player) {
   player.anchorSpeedMultiplier = 1;
 }
 
+/**
+ * Drop-in policy for mid-run lobby joins. When true, joinLobby permits
+ * joinPlayerToLobby with drop-in setup (see joinLobbyWithPhasePolicy).
+ */
+function allowDropInJoin(lobby) {
+  return isPlayingPhase(lobby.state);
+}
+
+/** Active-run join setup; only called from the playing-phase drop-in path. */
+function handleDropInJoin(socket, lobby) {
+  const player = lobby.state.players[socket.playerId];
+  if (!player) return;
+  withLobbyContext(lobby, () => initializePlayerForActiveRun(player));
+}
+
+function joinLobbyWithPhasePolicy(socket, lobby) {
+  if (isPlayingPhase(lobby.state)) {
+    if (!allowDropInJoin(lobby)) {
+      socket.emit('lobbyError', { reason: 'Drop-in not allowed for this lobby' });
+      return;
+    }
+    joinPlayerToLobby(socket, lobby, { dropIn: true });
+    return;
+  }
+  joinPlayerToLobby(socket, lobby);
+}
+
 function emitLobbyJoined(socket, lobby) {
   const state = lobby.state;
   const player = state.players[socket.playerId];
@@ -788,7 +815,7 @@ function emitLobbyJoined(socket, lobby) {
   broadcastLobbyUpdate(lobby);
 }
 
-function joinPlayerToLobby(socket, lobby) {
+function joinPlayerToLobby(socket, lobby, options = {}) {
   const playerId = socket.playerId;
   const state = lobby.state;
   const savedData = loadSavedPlayerData(playerId);
@@ -824,8 +851,8 @@ function joinPlayerToLobby(socket, lobby) {
     revivePlayerInLobby(state.players[playerId]);
   }
 
-  if (isPlayingPhase(state)) {
-    withLobbyContext(lobby, () => initializePlayerForActiveRun(state.players[playerId]));
+  if (options.dropIn) {
+    handleDropInJoin(socket, lobby);
   }
 
   const player = state.players[playerId];
@@ -1178,7 +1205,7 @@ function startServer(port) {
         socket.emit('lobbyError', { reason: 'Lobby not found' });
         return;
       }
-      joinPlayerToLobby(socket, lobby);
+      joinLobbyWithPhasePolicy(socket, lobby);
     });
 
     socket.on('leaveLobby', () => {

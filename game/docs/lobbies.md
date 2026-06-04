@@ -71,7 +71,9 @@ Socket.IO rooms: on join, `socket.join(lobby.id)`. Progression emits (`startGame
 
 ### Drop-in during an active run
 
-When `joinLobby` is called on a lobby with `gamePhase === 'playing'`:
+The `joinLobby` handler in `game/server/index.js` calls `joinLobbyWithPhasePolicy` before `joinPlayerToLobby`. When the target lobby is in `PHASES.PLAYING` (`isPlayingPhase`), it checks `allowDropInJoin(lobby)` (currently always permits drop-in) and joins with `{ dropIn: true }`, which runs `handleDropInJoin` → `initializePlayerForActiveRun`. Lobbies in `PHASES.LOBBY` — including those waiting to resume with `suspendedCheckpoint` set — take the normal lobby join path with no active-run setup.
+
+When drop-in is allowed:
 
 - Player record is added (or restored from persistence).
 - `initializePlayerForActiveRun` sets up hand, deck, HP, magic stones, and cooldowns.
