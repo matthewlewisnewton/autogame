@@ -756,6 +756,7 @@ describe('Socket Integration — useCard Event', () => {
 			// Place an enemy within ATTACK_RANGE in front of the player
 			testGameState().enemies.push({
 				id: 'e1',
+				type: 'grunt',
 				x: player.x + 3, // within range, in +X direction (player default rotation = 0)
 				z: player.z,
 				hp: 50,
@@ -855,6 +856,7 @@ describe('Socket Integration — useCard Event', () => {
 			// Place enemies within SUMMON_RADIUS
 			testGameState().enemies.push({
 				id: 'e1',
+				type: 'grunt',
 				x: player.x + 5,
 				z: player.z,
 				hp: 60,
@@ -1287,6 +1289,7 @@ describe('Server hand authority — useCard validation', () => {
 
 		testGameState().enemies.push({
 			id: 'e_exhaust',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 100,
@@ -1796,6 +1799,7 @@ describe('Socket Integration — Quest Selection', () => {
 		const player = testGameState().players[socket1._playerId];
 		testGameState().enemies = [{
 			id: 'e_final',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 10,
@@ -1912,6 +1916,7 @@ describe('dungeon run objective', () => {
 		const player = testGameState().players[socket1._playerId];
 		testGameState().enemies = [{
 			id: 'e_kill',
+			type: 'grunt',
 			x: player.x + 3, // within ATTACK_RANGE, in +X direction (rotation = 0)
 			z: player.z,
 			hp: 10, // weapon deals at least 15 damage, so this dies
@@ -1972,6 +1977,7 @@ describe('Run terminal state — integration', () => {
 		const player = testGameState().players[socket1._playerId];
 		testGameState().enemies = [{
 			id: 'e_final',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 10,
@@ -2224,31 +2230,18 @@ describe('Rewards in run complete payload', () => {
 		await debugResultPromise;
 		await waitForEvent(socket1, 'stateUpdate');
 
-		// Replace all enemies with a single low-HP enemy in weapon range
 		const player = testGameState().players[socket1._playerId];
-		testGameState().enemies = [{
-			id: 'e_final',
-			x: player.x + 3,
-			z: player.z,
-			hp: 10,
-			state: 'idle',
-			wanderTarget: { x: player.x + 3, z: player.z }
-		}];
+		testGameState().enemies = [];
 		testGameState().run.objective.totalEnemies = 1;
-		testGameState().run.objective.defeatedEnemies = 0;
+		testGameState().run.objective.defeatedEnemies = 1;
 		testGameState().minions = [];
 
-		// Clear victory counter so we get a deterministic card
+		// Clear victory counter so we get a deterministic card (no enemy card drops)
 		if (!testGameState()._victoryCounters) testGameState()._victoryCounters = {};
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
-		// Find a weapon card in hand
-		const weaponSlot = findWeaponSlot(player);
-		expect(weaponSlot).toBeGreaterThanOrEqual(0);
-		const weaponCard = player.hand[weaponSlot];
-
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
 		const summary = await runCompletePromise;
 
 		expect(summary.status).toBe('victory');
@@ -2275,7 +2268,8 @@ describe('Rewards in run complete payload', () => {
 		const player = testGameState().players[socket1._playerId];
 		testGameState().enemies = [{
 			id: 'drop_enemy',
-			type: 'drake',
+			type: 'grunt',
+			cardDrop: 'dungeon_drake',
 			x: player.x + 3,
 			z: player.z,
 			hp: 10,
@@ -2319,7 +2313,8 @@ describe('Rewards in run complete payload', () => {
 		const player = testGameState().players[socket1._playerId];
 		testGameState().enemies = [{
 			id: 'drop_enemy',
-			type: 'drake',
+			type: 'grunt',
+			cardDrop: 'dungeon_drake',
 			x: player.x + 3,
 			z: player.z,
 			hp: 10,
@@ -2421,6 +2416,7 @@ describe('Rewards in run complete payload', () => {
 		// Now trigger a victory to check the summary includes the currency
 		testGameState().enemies = [{
 			id: 'e_final',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 10,
@@ -2478,31 +2474,16 @@ describe('Reward state persistence across runs', () => {
 		const initialOwnedCards = { ...player.ownedCards };
 		const initialCurrency = player.currency;
 
-		// Replace all enemies with a single low-HP enemy in weapon range
-		testGameState().enemies = [{
-			id: 'e_final',
-			x: player.x + 3,
-			z: player.z,
-			hp: 10,
-			state: 'idle',
-			wanderTarget: { x: player.x + 3, z: player.z }
-		}];
+		testGameState().enemies = [];
 		testGameState().run.objective.totalEnemies = 1;
-		testGameState().run.objective.defeatedEnemies = 0;
+		testGameState().run.objective.defeatedEnemies = 1;
 		testGameState().minions = [];
 
-		// Clear victory counter for deterministic card reward
 		if (!testGameState()._victoryCounters) testGameState()._victoryCounters = {};
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
-		// Find a weapon card in hand
-		const weaponSlot = findWeaponSlot(player);
-		expect(weaponSlot).toBeGreaterThanOrEqual(0);
-		const weaponCard = player.hand[weaponSlot];
-
-		// Complete the run
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
 		await runCompletePromise;
 
 		// Verify rewards were granted
@@ -2534,29 +2515,16 @@ describe('Reward state persistence across runs', () => {
 
 		const player = testGameState().players[socket1._playerId];
 
-		// Set up a killable enemy
-		testGameState().enemies = [{
-			id: 'e1',
-			x: player.x + 3,
-			z: player.z,
-			hp: 10,
-			state: 'idle',
-			wanderTarget: { x: player.x + 3, z: player.z }
-		}];
+		testGameState().enemies = [];
 		testGameState().run.objective.totalEnemies = 1;
-		testGameState().run.objective.defeatedEnemies = 0;
+		testGameState().run.objective.defeatedEnemies = 1;
 		testGameState().minions = [];
 
 		if (!testGameState()._victoryCounters) testGameState()._victoryCounters = {};
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
-		// Find a weapon card in hand (first run)
-		const weaponSlot1 = findWeaponSlot(player);
-		expect(weaponSlot1).toBeGreaterThanOrEqual(0);
-		const weaponCard1 = player.hand[weaponSlot1];
-
 		const runComplete1 = waitForEvent(socket1, 'runComplete');
-		socket1.emit('useCard', { cardId: weaponCard1.id, slotIndex: weaponSlot1 });
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
 		await runComplete1;
 
 		const currencyAfterRun1 = player.currency;
@@ -2579,26 +2547,13 @@ describe('Reward state persistence across runs', () => {
 		expect(player.currency).toBe(currencyAfterRun1);
 		expect(player.ownedCards).toEqual(ownedCardsAfterRun1);
 
-		// Complete the second run
-		testGameState().enemies = [{
-			id: 'e2',
-			x: player.x + 3,
-			z: player.z,
-			hp: 10,
-			state: 'idle',
-			wanderTarget: { x: player.x + 3, z: player.z }
-		}];
+		testGameState().enemies = [];
 		testGameState().run.objective.totalEnemies = 1;
-		testGameState().run.objective.defeatedEnemies = 0;
+		testGameState().run.objective.defeatedEnemies = 1;
 		testGameState().minions = [];
 
-		// Find a weapon card in hand (second run — hand is reinitialized)
-		const weaponSlot2 = findWeaponSlot(player);
-		expect(weaponSlot2).toBeGreaterThanOrEqual(0);
-		const weaponCard2 = player.hand[weaponSlot2];
-
 		const runComplete2 = waitForEvent(socket1, 'runComplete');
-		socket1.emit('useCard', { cardId: weaponCard2.id, slotIndex: weaponSlot2 });
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
 		await runComplete2;
 
 		// Verify currency accumulated (second victory bonus on top of first)
@@ -2625,29 +2580,16 @@ describe('Reward state persistence across runs', () => {
 
 		const player = testGameState().players[socket1._playerId];
 
-		// Set up and complete a victory
-		testGameState().enemies = [{
-			id: 'e_final',
-			x: player.x + 3,
-			z: player.z,
-			hp: 10,
-			state: 'idle',
-			wanderTarget: { x: player.x + 3, z: player.z }
-		}];
+		testGameState().enemies = [];
 		testGameState().run.objective.totalEnemies = 1;
-		testGameState().run.objective.defeatedEnemies = 0;
+		testGameState().run.objective.defeatedEnemies = 1;
 		testGameState().minions = [];
 
 		if (!testGameState()._victoryCounters) testGameState()._victoryCounters = {};
 		testGameState()._victoryCounters[socket1._playerId] = 0;
 
-		// Find a weapon card in hand
-		const weaponSlot = findWeaponSlot(player);
-		expect(weaponSlot).toBeGreaterThanOrEqual(0);
-		const weaponCard = player.hand[weaponSlot];
-
 		const runCompletePromise = waitForEvent(socket1, 'runComplete');
-		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		runSimulationInPrimaryLobby(() => checkRunTerminalState());
 		await runCompletePromise;
 
 		// Capture state before returnToLobby
@@ -3298,6 +3240,7 @@ describe('Card grinding handler', () => {
 
 		testGameState().enemies = [{
 			id: 'e_grind',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 100,
@@ -3341,6 +3284,7 @@ describe('Enemy telegraph integration', () => {
 		// We position it just within ENEMY_ATTACK_RANGE so updateEnemies triggers windup
 		testGameState().enemies = [{
 			id: 'e_telegraph',
+			type: 'grunt',
 			x: player.x + ENEMY_ATTACK_RANGE - 1,
 			z: player.z,
 			hp: 50,
@@ -3401,6 +3345,7 @@ describe('Enemy telegraph integration', () => {
 		// Place enemy in chasing state, within attack range so it transitions to windup
 		testGameState().enemies = [{
 			id: 'e_avoid',
+			type: 'grunt',
 			x: player.x + ENEMY_ATTACK_RANGE - 1,
 			z: player.z,
 			hp: 50,
@@ -3514,6 +3459,7 @@ describe('Enemy telegraph integration', () => {
 		// Place a single grunt enemy within ENEMY_ATTACK_RANGE of the player
 		testGameState().enemies = [{
 			id: 'e_damage_test',
+			type: 'grunt',
 			x: player.x + ENEMY_ATTACK_RANGE - 1,
 			z: player.z,
 			hp: 50,
@@ -4246,6 +4192,7 @@ describe('Card cooldown — COOLDOWN_MS', () => {
 		// Place an enemy in range for the first hit
 		testGameState().enemies.push({
 			id: 'e_cd',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 100,
@@ -4282,6 +4229,7 @@ describe('Card cooldown — COOLDOWN_MS', () => {
 		// Place an enemy in range
 		testGameState().enemies.push({
 			id: 'e_cd2',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 100,
@@ -4377,6 +4325,7 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 		// Place an enemy in range so the weapon hits something
 		testGameState().enemies.push({
 			id: 'e_hand_recon',
+			type: 'grunt',
 			x: player.x + 3,
 			z: player.z,
 			hp: 100,

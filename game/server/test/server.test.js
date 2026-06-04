@@ -653,6 +653,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -671,6 +672,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 100, z: 100, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 0,
 			z: 0,
 			hp: 50,
@@ -687,6 +689,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: true });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 1,
 			z: 0,
 			hp: 50,
@@ -702,6 +705,7 @@ describe('updateEnemies()', () => {
 	it('enemy picks new wander target when reaching current one', () => {
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 5,
 			z: 5,
 			hp: 50,
@@ -720,6 +724,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -739,6 +744,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -757,6 +763,7 @@ describe('updateEnemies()', () => {
 		addPlayer('p1', { x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 1,
 			z: 0,
 			hp: 50,
@@ -797,6 +804,7 @@ describe('Enemy attack state machine', () => {
 		addPlayer('p1', { id: 'p1', x: 0, z: 0, dead: false });
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: ENEMY_ATTACK_RANGE - 1, // within ENEMY_ATTACK_RANGE of player
 			z: 0,
 			hp: 50,
@@ -933,6 +941,7 @@ describe('Enemy attack state machine', () => {
 
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: 0, // enemy stays here
 			z: 0,
 			hp: 50,
@@ -961,6 +970,7 @@ describe('Enemy attack state machine', () => {
 		// Place enemy within DETECTION_RADIUS so after recovery it finds the player and enters chasing
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: DETECTION_RADIUS - 2,
 			z: 0,
 			hp: 50,
@@ -981,6 +991,7 @@ describe('Enemy attack state machine', () => {
 
 		gameState.enemies.push({
 			id: 'e1',
+			type: 'grunt',
 			x: ENEMY_ATTACK_RANGE + 5,
 			z: 0,
 			hp: 50,
@@ -4549,6 +4560,33 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.spawnIntervalMs).toBe(4000);
 		expect(ENEMY_DEFS.spawner.spawnMaxAlive).toBe(3);
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
+	});
+});
+
+// ── enemyDefFor / updateEnemies unknown type ──
+
+describe('enemyDefFor / updateEnemies unknown type', () => {
+	beforeEach(() => resetState());
+
+	it('updateEnemies throws on corrupt enemy type without mutating player HP', () => {
+		addPlayer('p1', { id: 'p1', x: 0, z: 0, dead: false, hp: 100 });
+		const now = Date.now();
+
+		gameState.enemies.push({
+			id: 'e1',
+			type: 'dragon',
+			x: 0,
+			z: 0,
+			hp: 50,
+			state: 'chasing',
+			attackState: 'windup',
+			windupTargetId: 'p1',
+			windupStartTime: now - 1000,
+			wanderTarget: { x: 0, z: 0 },
+		});
+
+		expect(() => updateEnemies()).toThrow(/Unknown enemy type/);
+		expect(gameState.players['p1'].hp).toBe(100);
 	});
 });
 

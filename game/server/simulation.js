@@ -712,6 +712,14 @@ const ENEMY_DEFS = {
 	},
 };
 
+function enemyDefFor(type) {
+	const def = ENEMY_DEFS[type];
+	if (!def) {
+		throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
+	}
+	return def;
+}
+
 function lockWindupDirection(enemy, target) {
 	const dx = target.x - enemy.x;
 	const dz = target.z - enemy.z;
@@ -1747,7 +1755,7 @@ function updateEnemies() {
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 
 	for (const enemy of _gameState.enemies) {
-		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+		const def = enemyDefFor(enemy.type);
 		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
 		const chaseSpeed = def.chaseSpeed * chaseSpeedMult;
 		const attackWindupMs = def.attackWindupMs * attackWindupMult;
@@ -2330,6 +2338,7 @@ module.exports = {
 
   // Enemy definitions
   ENEMY_DEFS,
+  enemyDefFor,
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
 

@@ -42,7 +42,7 @@ const {
   resolveFloorY,
 } = require('./dungeon');
 const {
-  ENEMY_DEFS,
+  enemyDefFor,
   firstRoomPosition,
   pickFloorSpawnPosition,
   randomWanderTarget,
@@ -2454,10 +2454,7 @@ function restoreHandCharges(player, amount, options = {}) {
 }
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
-  if (!ENEMY_DEFS[type]) {
-    throw new Error(`Unknown enemy type: ${type} (valid: ${Object.keys(ENEMY_DEFS).join(', ')})`);
-  }
-  const def = ENEMY_DEFS[type];
+  const def = enemyDefFor(type);
   const enemy = {
     id: crypto.randomUUID(),
     x,
