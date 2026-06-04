@@ -1,3 +1,10 @@
+/**
+ * Objective type registry. To add a fourth (or later) objective kind, append one
+ * entry to OBJECTIVE_DEFS with objectiveType, createObjective, isComplete, and
+ * any optional hooks (skipBulkCombatSpawn, spawnQuestEntities, tickSpawns, …).
+ * Quests reference the type via quest.objectiveType in quests.js; progression
+ * dispatches through getObjectiveDef — no type switches elsewhere.
+ */
 function clampDefeatedEnemies(objective) {
   objective.defeatedEnemies = Math.min(objective.defeatedEnemies, objective.totalEnemies);
 }
