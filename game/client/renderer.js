@@ -2646,18 +2646,27 @@ export function applyRevealHighlight(enemyId, enemy) {
 // ── Variant marker (elite enemy badge) ──
 
 const VARIANT_MARKER_COLOR = 0xc026d3; // magenta — distinct from amber reveal/yellow lock-on
+// Volatile enemies get a hot-orange badge so they read as a "will detonate"
+// threat, distinct from the generic magenta variant marker.
+const VOLATILE_MARKER_COLOR = 0xf97316;
+
+// Per-variant marker tint. Variants not listed fall back to VARIANT_MARKER_COLOR.
+function variantMarkerColor(variant) {
+	return variant === 'volatile' ? VOLATILE_MARKER_COLOR : VARIANT_MARKER_COLOR;
+}
 
 /**
  * Build the floating badge shown above a variant ("elite") enemy: a small
  * emissive diamond, kept separate from the enemy mesh so it never collides with
  * the windup/reveal emissive bookkeeping on the enemy material.
+ * @param {number} [color] - badge tint (defaults to the generic variant color)
  * @returns {THREE.Mesh}
  */
-function createVariantMarker() {
+function createVariantMarker(color = VARIANT_MARKER_COLOR) {
 	const geo = new THREE.OctahedronGeometry(0.22);
 	const mat = new THREE.MeshStandardMaterial({
-		color: VARIANT_MARKER_COLOR,
-		emissive: VARIANT_MARKER_COLOR,
+		color,
+		emissive: color,
 		emissiveIntensity: 0.9,
 	});
 	return new THREE.Mesh(geo, mat);
@@ -2673,12 +2682,19 @@ function createVariantMarker() {
  */
 export function applyVariantMarker(enemyId, enemy) {
 	if (enemy && enemy.variant) {
+		const color = variantMarkerColor(enemy.variant);
 		if (!variantMarkerMeshes[enemyId]) {
-			variantMarkerMeshes[enemyId] = createVariantMarker();
+			variantMarkerMeshes[enemyId] = createVariantMarker(color);
 			scene.add(variantMarkerMeshes[enemyId]);
 		}
 		const halfHeight = enemyMeshHalfHeight(enemy.type);
 		const marker = variantMarkerMeshes[enemyId];
+		// A reused enemy id may swap variants (e.g. test → volatile); keep the
+		// badge tint in sync so it always matches the current variant.
+		if (marker.material.color.getHex() !== color) {
+			marker.material.color.setHex(color);
+			marker.material.emissive.setHex(color);
+		}
 		marker.position.set(enemy.x, halfHeight + 0.95, enemy.z);
 		// Slow spin so the badge reads as an active marker rather than scenery.
 		marker.rotation.y = ((Date.now() % 4000) / 4000) * Math.PI * 2;
@@ -3385,6 +3401,42 @@ export function spawnInfernoPillarEffect(origin, radius) {
 		createdAt: performance.now(),
 		duration: SUMMON_EFFECT_DURATION,
 		infernoBurst: true,
+	});
+}
+
+/**
+ * Spawn the on-death radial blast of a `volatile`-variant enemy: an expanding
+ * ground ring in a hot volatile orange, distinct from the friendly amber summon
+ * and red inferno bursts. Reuses the radius-based lifecycle in
+ * updateAttackEffects (expand → fade → dispose), so it leaves no persistent mesh.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnVolatileExplosionEffect(origin, radius) {
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 48);
+	const material = new THREE.MeshStandardMaterial({
+		color: 0xfb7185,
+		emissive: 0xea580c,
+		emissiveIntensity: 1.3,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.15, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+		volatileBurst: true,
 	});
 }
 

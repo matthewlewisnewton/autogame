@@ -125,6 +125,7 @@ import {
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
 	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
 	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
+	spawnVolatileExplosionEffect as rendererSpawnVolatileExplosionEffect,
 	spawnFireTrailEffect as rendererSpawnFireTrailEffect,
 	markLootCollected as rendererMarkLootCollected,
 	markCardHitEnemies as rendererMarkCardHitEnemies,
@@ -790,6 +791,7 @@ const cardRenderCtx = {
 	spawnSummonEffect: rendererSpawnSummonEffect,
 	spawnDivineGraceEffect: rendererSpawnDivineGraceEffect,
 	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
+	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
 	flashMesh: rendererFlashMesh,
 	markCardHitEnemies: rendererMarkCardHitEnemies,
@@ -1099,6 +1101,16 @@ function bindSocketHandlers(s) {
 	s.on('cardUsed', (data) => {
 		if (!data || !getScene()) return;
 		renderCardUsed(data, cardRenderCtx);
+	});
+
+	s.on('volatileExplosion', (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, radius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		rendererSpawnVolatileExplosionEffect(
+			{ x, z },
+			Number.isFinite(radius) ? radius : 5,
+		);
 	});
 
 	s.on('cardError', (data) => {

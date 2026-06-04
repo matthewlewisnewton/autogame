@@ -302,6 +302,31 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'volatile-enemy') {
+      // Spawn a `volatile`-variant grunt (hot-orange badge) at 1 HP beside a
+      // plain grunt, so the QA can confirm the distinct volatile tint and then
+      // kill it to trigger the on-death radial explosion VFX. The same state is
+      // reachable normally when an enemy rolls the volatile variant on spawn
+      // (applyVariant) and is defeated; this is just a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const volatileEnemy = spawnEnemy(player.x + 3, player.z, 'grunt');
+      volatileEnemy.variant = 'volatile';
+      volatileEnemy.hp = 1;
+      volatileEnemy.maxHp = ENEMY_DEFS.grunt.hp;
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
+      // Force a fully-charged weapon so the 1-HP volatile enemy is reliably
+      // killable through the real lock-on + weapon-swing path.
+      if (!player.hand.some(c => c && c.type === 'weapon' && (c.remainingCharges == null || c.remainingCharges > 0))) {
+        const replaceSlot = player.hand.findIndex(c => c && c.type !== 'weapon');
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
+        }
+      }
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
