@@ -1,0 +1,206 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game
+      Coverage enabled with v8
+
+stdout | server/test/smoke_bomb.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/loot_magnet.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/new_card_pack.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+Server listening on port 0
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Server listening on port 0
+
+stdout | server/test/enchantment.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+Player connected: socket=vu3gIc6TiBXPhJPLAAAB, playerId=test-1780593026339-mprukj
+
+ ✓ |server| server/test/new_card_pack.test.js (28 tests) 10ms
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Player connected: socket=vBnWkdBcYatcj5_wAAAB, playerId=test-1780593026341-if6a6u
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+[loot] spawned id=9207b1e8-a135-465e-b9d1-ea6cbefa6056 value=8
+
+ ✓ |server| server/test/enchantment.test.js (5 tests) 5ms
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot at 6m within attractRadius (8m) is pulled to the player and auto-collected
+Player disconnected: vu3gIc6TiBXPhJPLAAAB
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Player disconnected: vBnWkdBcYatcj5_wAAAB
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+Server listening on port 0
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+Player connected: socket=c2U8u7ijH5THL8bMAAAD, playerId=test-1780593026373-kk69qv
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Player connected: socket=okuEsxtNzJs_CwypAAAD, playerId=test-1780593026374-67wojo
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[loot] spawned id=852d6a12-f7af-4269-9c15-1f1d4b8a9eeb value=13
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Player disconnected: okuEsxtNzJs_CwypAAAD
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > isPlayerConcealed is true inside an active zone and false once expired or exited
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an ally standing in the caster's zone is concealed even without their own smoke
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > a concealed player is never acquired as an enemy target
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > the same player IS acquired once the smoke zone has expired
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an enemy mid-wind-up against a newly concealed player cancels the strike
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an enemy mid-wind-up against a non-concealed player still deals damage
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot within LOOT_PICKUP_RADIUS is auto-collected
+Player disconnected: c2U8u7ijH5THL8bMAAAD
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+Player connected: socket=CcJJ_z6dIGEcEon7AAAF, playerId=test-1780593026380-ffgvg2
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot outside attractRadius is untouched
+Player disconnected: CcJJ_z6dIGEcEon7AAAF
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+Player connected: socket=bnmBYT6BlfpKCq2lAAAH, playerId=test-1780593026386-g8s7fq
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+[loot] spawned id=24a0a6d6-5959-47d6-98c5-f9e28de6eb02 value=7
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > already-collected loot does not error or double-credit
+Player disconnected: bnmBYT6BlfpKCq2lAAAH
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+Player connected: socket=2yt4M6MxT23UGrrlAAAJ, playerId=test-1780593026394-8hg1it
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+[loot] spawned id=8ce5d0a0-019f-41b2-be45-8505bb29727f value=8
+
+ ✓ |server| server/test/smoke_bomb.test.js (9 tests) 50ms
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > second use within cooldown returns on_cooldown
+Player disconnected: 2yt4M6MxT23UGrrlAAAJ
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+Player connected: socket=Vm6ngg8j9oU4_Js5AAAL, playerId=test-1780593026400-ej15kh
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > response contains pulled and collected counts matching expected values
+Player disconnected: Vm6ngg8j9oU4_Js5AAAL
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+Server listening on port 0
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+Player connected: socket=M5bj7tDsU4QJk4DVAAAN, playerId=test-1780593026406-pq2y45
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/loot_magnet.test.js > Loot Magnet — pull & collect > loot pulled through a wall stops at the wall boundary
+Player disconnected: M5bj7tDsU4QJk4DVAAAN
+
+ ✓ |server| server/test/loot_magnet.test.js (7 tests) 79ms
+
+ Test Files  4 passed (4)
+      Tests  49 passed (49)
+   Start at  10:10:25
+   Duration  925ms (transform 2ms, setup 0ms, collect 463ms, tests 143ms, environment 1ms, prepare 246ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   53.35 |       56 |   51.42 |   53.35 |                            
+ index.js |   53.35 |       56 |   51.42 |   53.35 | ...912,1917-1926,1955-1956 
+----------|---------|----------|---------|---------|----------------------------

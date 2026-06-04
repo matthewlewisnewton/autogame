@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/207-gameplay-card-balance-pass/round-1/review.md`
+- `tickets/207-gameplay-card-balance-pass/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The game capture itself is healthy and the three card balance data changes are correct, but the full vitest acceptance criterion is not met: `pnpm test` reported a full-suite `loot_magnet` failure before exit `137`, and `pnpm test:quick` printed a green summary but still exited `137`.

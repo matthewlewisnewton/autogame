@@ -3352,3 +3352,26 @@ Pass. The new `evolution-ready` scenario is confined to debug/test entry points 
 
 None.
 
+
+## v0.187 — 207-gameplay-card-balance-pass  (2026-06-04 10:12:49)
+
+2. `arcane_bolt` damage 15 -> 20: PASS. The live `CARD_DEFS.arcane_bolt.damage` is `20`, with its weapon type, charges, range, projectile, and long-range special effect preserved. The Arcane Bolt projectile test now asserts `damage: 20` while still verifying in-range, far-edge, out-of-range, and piercing behavior.
+
+3. `mirror_ward` reflect range 8 -> 11: PASS. The live `CARD_DEFS.mirror_ward.reflectRange` is `11`, with the existing self-target, 50% reflect scale, minimum reflect damage, TTL, and damage-reflect effect preserved. `game/server/test/enchantment.test.js` adds a direct balance-target assertion, and the existing reflect/expiry coverage remains intact.
+
+4. Affected card tests updated: PASS. Each changed card value has direct test coverage in the affected server tests. The implementation did not require effect-resolution or gameplay behavior changes for these balance values.
+
+5. Full server+client vitest green: PASS. I ran `pnpm test:quick` from `game/`; it passed with `77` test files and `1706` tests. The provided `round-2/coverage.log` also shows the changed-file coverage run passing with `4` files and `49` tests.
+
+## Design and requirements consistency
+
+PASS. The work is consistent with the design document's card-combat model: these are definition-level card balance adjustments within `CARD_DEFS`, preserving the existing weapon, spell, and enchantment mechanics. It does not regress the setup requirements: the capture proves the 3D client renders, the frontend connects to the server, players are represented, and movement/key-item state continues to synchronize.
+
+## Code quality
+
+PASS. The card changes are minimal data edits, and the supporting tests assert the updated balance values without weakening the mechanics being tested. Additional test-runner and test-stability changes are outside gameplay behavior; they make the vitest wrapper preserve child exit codes and avoid killing its own launcher, and the full suite passes after those changes. No debug scenario files were changed, so the debug-scenario gate is not applicable.
+
+## Remaining gaps
+
+None.
+

@@ -1,0 +1,13 @@
+Remediation round 2 addresses the single open gap in `review-feedback.md` (vitest not green). Sub-tickets **01–04** have `.passed` and were left unchanged. Failed scope from the old **04** attempt is covered by two narrower replacements numbered **05** and **06**.
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/tickets/207-gameplay-card-balance-pass/subtickets/05-loot-magnet-full-suite-stable`
+- `/home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/tickets/207-gameplay-card-balance-pass/subtickets/06-vitest-runner-clean-exit`
+
+| # | Focus | Why separate |
+|---|--------|----------------|
+| **05** | Flaky `loot_magnet.test.js` under full suite (`result.pulled` 0 vs 1) | Test/scheduling only; no runner changes |
+| **06** | Exit **137** after green `pnpm test` / `pnpm test:quick` | `run-vitest.mjs`, `kill-vitest.sh`, vitest worker/memory config |
+
+Both use **Verification: code**. **06** depends on **05** when loot_magnet still fails the full suite. Card balance work (01–03) is already done per round-1 review.

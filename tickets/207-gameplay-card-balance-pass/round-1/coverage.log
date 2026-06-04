@@ -1,0 +1,83 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game
+      Coverage enabled with v8
+
+stdout | server/test/enchantment.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/smoke_bomb.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/new_card_pack.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/207-gameplay-card-balance-pass/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+ ✓ |server| server/test/enchantment.test.js (5 tests) 4ms
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Server listening on port 0
+
+ ✓ |server| server/test/new_card_pack.test.js (28 tests) 12ms
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Player connected: socket=gUqSE_SrNHSereNgAAAB, playerId=test-1780590126110-afp72r
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > casting sets smokeBombUntil/radius/center and cooldown on the caster
+Player disconnected: gUqSE_SrNHSereNgAAAB
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Server listening on port 0
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Player connected: socket=w0F4xOKu2KsO2doZAAAD, playerId=test-1780590126149-lbknob
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > useKeyItem — smoke_bomb (socket integration) > cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window
+Player disconnected: w0F4xOKu2KsO2doZAAAD
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > isPlayerConcealed is true inside an active zone and false once expired or exited
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an ally standing in the caster's zone is concealed even without their own smoke
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > a concealed player is never acquired as an enemy target
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > the same player IS acquired once the smoke zone has expired
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an enemy mid-wind-up against a newly concealed player cancels the strike
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/smoke_bomb.test.js > smoke_bomb concealment — enemy targeting > an enemy mid-wind-up against a non-concealed player still deals damage
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+ ✓ |server| server/test/smoke_bomb.test.js (9 tests) 59ms
+
+ Test Files  3 passed (3)
+      Tests  42 passed (42)
+   Start at  09:22:05
+   Duration  910ms (transform 2ms, setup 0ms, collect 308ms, tests 76ms, environment 0ms, prepare 194ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   53.35 |     55.4 |   51.42 |   53.35 |                            
+ index.js |   53.35 |     55.4 |   51.42 |   53.35 | ...912,1917-1926,1955-1956 
+----------|---------|----------|---------|---------|----------------------------
