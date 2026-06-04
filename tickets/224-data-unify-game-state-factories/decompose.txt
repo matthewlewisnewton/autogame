@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+- `tickets/224-data-unify-game-state-factories/subtickets/01-extract-shared-factory/ticket.md` — Extract game-state shape to `game/server/game-state.js`; wire both `index.js` and `lobbies.js` to use it
+- `tickets/224-data-unify-game-state-factories/subtickets/02-smoke-test-key-parity/ticket.md` — Unit test asserting both factory exports produce identical key sets (including the 3 previously-missing fields)

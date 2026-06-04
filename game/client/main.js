@@ -137,13 +137,13 @@ import {
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
 	getWindupFlashing,
-	setGamepadInputHandler,
 	triggerDashVFX,
 	triggerHealPulseVFX,
 	triggerShieldVFX,
 	triggerSmokeVFX,
 	triggerLootMagnetVFX,
 	getPhaseStepTargetId,
+	applyLockOnPress,
 } from './renderer.js';
 import {
 	openPreview as openCosmeticPreview,
@@ -760,27 +760,29 @@ async function restoreSession(token) {
 	hideAuthOverlay();
 }
 
+function canUseGameActions() {
+	return gameState && gameState.gamePhase === 'playing';
+}
+
 initInput({
 	onUseSlot: (slot) => useCard(slot),
-	onToggleDeck: () => {
-		if (gameState && gameState.gamePhase === 'playing') toggleDeckViewer();
-	},
+	onToggleDeck: () => toggleDeckViewer(),
 	onUseKeyItem: () => {
-		if (gameState && gameState.gamePhase === 'playing' && socket) {
-			const me = gameState.players[myId];
-			if (me && me.equippedKeyItemId) {
-				// phase_step targets the highlighted ally; the renderer recomputes
-				// the nearest in-range ally each frame. Other items keep their shape.
-				if (me.equippedKeyItemId === 'phase_step') {
-					const targetPlayerId = getPhaseStepTargetId();
-					socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId });
-				} else {
-					socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
-				}
+		if (!socket) return;
+		const me = gameState?.players?.[myId];
+		if (me && me.equippedKeyItemId) {
+			// phase_step targets the highlighted ally; the renderer recomputes
+			// the nearest in-range ally each frame. Other items keep their shape.
+			if (me.equippedKeyItemId === 'phase_step') {
+				const targetPlayerId = getPhaseStepTargetId();
+				socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId });
+			} else {
+				socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
 			}
 		}
 	},
-	canUseGameActions: () => gameState && gameState.gamePhase === 'playing',
+	onLockOn: () => applyLockOnPress(),
+	canUseGameActions,
 });
 
 // Context bundle handed to per-card renderers — declared once so the
@@ -2969,12 +2971,6 @@ function discardCard(slotIndex) {
 	socket.emit('discardCard', { slotIndex, cardId: card.id });
 }
 
-// Keyboard input is handled by initInput() above; gamepad via setGamepadInputHandler below.
-
-setGamepadInputHandler(({ lockOn: _lockOn }) => {
-	// Card slots and deck toggle are handled by input.js pollInput().
-});
-
 // Click: delegate on #card-hand, read data-slot-index from .card-slot target
 cardHandEl.addEventListener('click', (e) => {
 	const slot = e.target.closest('.card-slot');
@@ -3011,7 +3007,7 @@ function pickBasicAttackSlot() {
 // right-click camera orbit untouched.
 window.addEventListener('pointerdown', (e) => {
 	if (e.button !== 0) return;
-	if (!gameState || gameState.gamePhase !== 'playing') return;
+	if (!canUseGameActions()) return;
 	const canvas = getRenderer()?.domElement;
 	if (!canvas || e.target !== canvas) return;
 	const slot = pickBasicAttackSlot();
@@ -3020,9 +3016,7 @@ window.addEventListener('pointerdown', (e) => {
 
 if (deckStackEl) {
 	deckStackEl.addEventListener('click', () => {
-		if (gameState && gameState.gamePhase === 'playing') {
-			toggleDeckViewer();
-		}
+		if (canUseGameActions()) toggleDeckViewer();
 	});
 }
 

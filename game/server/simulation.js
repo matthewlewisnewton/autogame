@@ -29,6 +29,7 @@ const {
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers } = require('./enemyVariants');
+const { isPlayingPhase } = require('./lobbies');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -295,7 +296,7 @@ function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, colliders = getWallCo
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
  */
 function applyPlayerMovement() {
-  if (!_gameState || _gameState.gamePhase !== 'playing') return;
+  if (!_gameState || !isPlayingPhase(_gameState)) return;
 
   const step = MOVE_SPEED / TICK_RATE;
   const colliders = getWallColliders();

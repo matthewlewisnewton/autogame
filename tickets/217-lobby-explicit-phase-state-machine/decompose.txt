@@ -1,0 +1,21 @@
+Broke the top-level ticket into **4 sub-tickets** (dependency order). No prior `subtickets/` folder existed, so numbering starts at `01`.
+
+| # | Focus |
+|---|--------|
+| **01** | `PHASES`, `setPhase`, `canTransition` + unit tests in `lobbies.js` |
+| **02** | Route every server `gamePhase =` write through `setPhase` |
+| **03** | Replace server-side string guards with `PHASES`/helpers (`index`, `progression`, `simulation`, effects) |
+| **04** | Explicit **allow** drop-in policy in `joinLobby` + doc + integration test |
+
+Note: “suspended” in the parent ticket is modeled via `run.status`, not a third `gamePhase` — called out in `01`.
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/217-lobby-explicit-phase-state-machine/tickets/217-lobby-explicit-phase-state-machine/subtickets/01-phase-api
+/home/matt/workspace/.autogame-worktrees/217-lobby-explicit-phase-state-machine/tickets/217-lobby-explicit-phase-state-machine/subtickets/02-route-phase-writes
+/home/matt/workspace/.autogame-worktrees/217-lobby-explicit-phase-state-machine/tickets/217-lobby-explicit-phase-state-machine/subtickets/03-server-phase-guards
+/home/matt/workspace/.autogame-worktrees/217-lobby-explicit-phase-state-machine/tickets/217-lobby-explicit-phase-state-machine/subtickets/04-explicit-drop-in-join
+```
+
+All use **Verification: code** (behavior, structure, tests — not screenshot-only UI).

@@ -1,31 +1,125 @@
 const crypto = require('crypto');
-const { DEFAULT_QUEST_ID } = require('./quests');
+const { createGameState } = require('./game-state');
 
 /** @typedef {import('./index').GameState} GameState */
+
+/**
+ * Canonical lobby `gamePhase` values.
+ *
+ * Run suspend/resume uses `run.status === 'suspended'` while `gamePhase` remains
+ * `lobby` — there is no separate suspended phase string.
+ */
+const PHASES = Object.freeze({
+  LOBBY: 'lobby',
+  PLAYING: 'playing',
+});
+
+const KNOWN_PHASES = new Set(Object.values(PHASES));
+
+function isKnownPhase(phase) {
+  return KNOWN_PHASES.has(phase);
+}
+
+/**
+ * @param {{ gamePhase?: string }} state
+ * @returns {boolean}
+ */
+function isLobbyPhase(state) {
+  return state?.gamePhase === PHASES.LOBBY;
+}
+
+/**
+ * @param {{ gamePhase?: string }} state
+ * @returns {boolean}
+ */
+function isPlayingPhase(state) {
+  return state?.gamePhase === PHASES.PLAYING;
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ * @returns {boolean}
+ */
+function canTransition(from, to) {
+  if (!isKnownPhase(from) || !isKnownPhase(to)) {
+    return false;
+  }
+  if (from === to) {
+    return true;
+  }
+  return (
+    (from === PHASES.LOBBY && to === PHASES.PLAYING) ||
+    (from === PHASES.PLAYING && to === PHASES.LOBBY)
+  );
+}
+
+/**
+ * @param {{ state: { gamePhase: string } }} lobby
+ * @param {string} nextPhase
+ * @returns {boolean}
+ */
+function setPhase(lobby, nextPhase) {
+  if (!lobby?.state) {
+    throw new Error('setPhase: lobby must have state');
+  }
+  if (!isKnownPhase(nextPhase)) {
+    throw new Error(
+      `setPhase: unknown phase "${nextPhase}" (expected ${[...KNOWN_PHASES].join(' or ')})`,
+    );
+  }
+  const from = lobby.state.gamePhase;
+  if (!canTransition(from, nextPhase)) {
+    throw new Error(`setPhase: illegal transition from "${from}" to "${nextPhase}"`);
+  }
+  lobby.state.gamePhase = nextPhase;
+  return true;
+}
+
+/**
+ * @param {{ gamePhase?: string, _lobbyId?: string }} state
+ * @param {string} nextPhase
+ * @returns {boolean}
+ */
+function resolveLobbyForState(state) {
+  if (!state) return null;
+  if (state._lobbyId) {
+    const lobby = lobbies.get(state._lobbyId);
+    if (lobby) return lobby;
+  }
+  for (const lobby of lobbies.values()) {
+    if (lobby.state === state) return lobby;
+  }
+  return null;
+}
+
+/**
+ * Route a phase write when only lobby {@link GameState} is in scope (e.g. progression
+ * inside `withLobbyContext`). Resolves the lobby via `_lobbyId` or state identity.
+ *
+ * @param {{ gamePhase?: string, _lobbyId?: string }} state
+ * @param {string} nextPhase
+ * @returns {boolean}
+ */
+function setGamePhase(state, nextPhase) {
+  if (!state) {
+    throw new Error('setGamePhase: state is required');
+  }
+  const lobby = resolveLobbyForState(state);
+  return setPhase(lobby ?? { state }, nextPhase);
+}
+
+// Alias: lobby-created state uses the same canonical factory as the module-level
+// singleton in index.js.  The previous local definition lacked `enchantments`,
+// `lobby`, and `_pendingVolatileExplosions`, causing latent `undefined` errors
+// when lobby state entered combat code paths.
+const createLobbyGameState = createGameState;
 
 const lobbies = new Map();
 /** @type {Map<string, string>} playerId -> lobbyId */
 const playerLobby = new Map();
 /** @type {Map<string, object>} playerId -> session data while browsing (not in a lobby) */
 const playerSessions = new Map();
-
-function createLobbyGameState() {
-  return {
-    players: {},
-    enemies: [],
-    minions: [],
-    loot: [],
-    areaEffects: [],
-    gamePhase: 'lobby',
-    selectedQuestId: DEFAULT_QUEST_ID,
-    pendingTrades: {},
-    shopOffer: null,
-    telepipe: null,
-    suspendedCheckpoint: null,
-    pendingEchoes: [],
-    _pendingMinionBreaths: [],
-  };
-}
 
 function generateLobbyId() {
   return crypto.randomBytes(4).toString('hex');
@@ -137,6 +231,12 @@ function getPrimaryLobbyStateForTests() {
 }
 
 module.exports = {
+  PHASES,
+  isLobbyPhase,
+  isPlayingPhase,
+  canTransition,
+  setPhase,
+  setGamePhase,
   createLobbyGameState,
   createLobby,
   assignPlayerToLobby,

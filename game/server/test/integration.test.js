@@ -479,6 +479,38 @@ describe('Socket Integration — Lobby create/join', () => {
 
 		p1.socket.disconnect();
 	});
+
+	it('joinLobby during PHASES.PLAYING emits lobbyJoined with drop-in run setup', async () => {
+		const p1 = await connectAndJoinLobby(baseUrl, 'dropin-host');
+		const p2 = await connectClient(baseUrl, 'dropin-mate', { joinLobbyId: p1.init.lobbyId });
+
+		const lobbyErrors = [];
+		const onLobbyError = (payload) => lobbyErrors.push(payload);
+		p1.socket.on('lobbyError', onLobbyError);
+		p2.socket.on('lobbyError', onLobbyError);
+
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await Promise.all([
+			waitForEvent(p1.socket, 'startGame'),
+			waitForEvent(p2.socket, 'startGame'),
+		]);
+
+		const p3 = await connectClient(baseUrl, 'dropin-third', { joinLobbyId: p1.init.lobbyId });
+		p3.socket.on('lobbyError', onLobbyError);
+
+		expect(lobbyErrors).toEqual([]);
+		expect(p3.init.state.gamePhase).toBe('playing');
+		const joinedPlayer = p3.init.state.players[p3.socket._playerId];
+		expect(joinedPlayer).toBeDefined();
+		expect(joinedPlayer.hand.length).toBeGreaterThan(0);
+		expect(joinedPlayer.deck.length).toBeGreaterThan(0);
+		expect(joinedPlayer.magicStones).toBe(STARTING_MAGIC_STONES);
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+		p3.socket.disconnect();
+	});
 });
 
 describe('Socket Integration — Move Event', () => {

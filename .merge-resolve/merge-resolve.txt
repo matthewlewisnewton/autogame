@@ -1,13 +1,12 @@
-Merge conflicts resolved in both files by keeping content from both sides.
+**`LOGBOOK.md` is resolved** — all conflict markers are gone.
 
-**`TASKS.md`** — All three cleanup tickets are listed in ticket-number order:
-- `224-cleanup-data-derive-shop-pool-from-defs` (from main)
-- `226-cleanup-data-centralize-enemy-construction-and-consts` (from main)
-- `227-cleanup-data-objective-registry` (from this branch)
+The conflict was two independent log appendages after `v0.190`:
 
-**`LOGBOOK.md`** — All three review log entries are preserved in version order (newest first):
-- v0.193 — 226-data-objective-registry (this branch)
-- v0.191 — 225-data-centralize-enemy-construction-and-consts (main)
-- v0.190 — 223-data-derive-shop-pool-from-defs (main)
+| Side | Content |
+|------|---------|
+| **Branch (HEAD)** | `v0.197` — 215-lobby-atomic-hat-unlock-ordering (atomic hat unlock / persistence ordering) |
+| **main** | `v0.196` — 217-lobby-explicit-phase-state-machine and `v0.195` — 219-input-unify-keyboard-onto-keymap |
 
-No conflict markers remain. The harness can proceed with commit and merge.
+**Resolution:** kept all three entries, ordered **newest-last** per the logbook header (`v0.195` → `v0.196` → `v0.197`), with the shared closing `## Remaining gaps` / `None.` at the end.
+
+No other conflicted files had markers in this worktree. The harness can finish the merge and run tests.

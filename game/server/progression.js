@@ -54,6 +54,7 @@ const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
+const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -772,7 +773,7 @@ function revivePlayerInLobby(player) {
 }
 
 function healAtMedic(playerId) {
-  if (!_gameState || _gameState.gamePhase !== 'lobby') {
+  if (!_gameState || !isLobbyPhase(_gameState)) {
     return { ok: false, reason: 'not_in_lobby' };
   }
 
@@ -1571,7 +1572,7 @@ function buildPlayerRewardSummary(playerId) {
 /** Non-mutating preview of rewards if the player returns to guild with the current run state. */
 function previewReturnRewards(playerId) {
   const player = _gameState.players[playerId];
-  if (!player || !_gameState.run || _gameState.gamePhase !== 'playing' || !_gameState.run.objective) {
+  if (!player || !_gameState.run || !isPlayingPhase(_gameState) || !_gameState.run.objective) {
     return null;
   }
 
@@ -2057,7 +2058,7 @@ function discardHandSlot(player, slotIndex) {
 }
 
 function processPassiveDraws(now) {
-  if (!_gameState || _gameState.gamePhase !== 'playing') return;
+  if (!_gameState || !isPlayingPhase(_gameState)) return;
   for (const player of Object.values(_gameState.players)) {
     if (!isPlayerActive(player)) continue;
     if (!canDrawIntoHand(player)) {
@@ -2747,7 +2748,7 @@ function spawnCombatEnemies(layout, rng, quest) {
  */
 function updateSurviveSpawns(now = Date.now()) {
   const run = _gameState.run;
-  if (!run?.objective) return;
+  if (!run?.objective || !isPlayingPhase(_gameState)) return;
   const def = getObjectiveDef(run.objective.type);
   if (!def?.tickSpawns) return;
   def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
@@ -2948,7 +2949,7 @@ function suspendRunToLobby() {
   _gameState.run.status = 'suspended';
   resetTransientRunState();
   _gameState.telepipe = null;
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -3048,7 +3049,7 @@ function abandonSuspendedRun() {
 
   clearSuspendedRunData();
   delete _gameState.run;
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -3204,7 +3205,7 @@ function returnPlayersToLobby() {
   clearSuspendedRunData();
   resetTransientRunState();
 
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
   delete _gameState.run;
 
   const spawn = firstRoomPosition();
@@ -3254,14 +3255,14 @@ function giveUpRun() {
   if (!_gameState || !_gameState._lobbyId) {
     throw new Error('giveUpRun requires lobby context');
   }
-  if (_gameState.gamePhase !== 'playing' || !_gameState.run || _gameState.run.status === 'suspended') {
+  if (!isPlayingPhase(_gameState) || !_gameState.run || _gameState.run.status === 'suspended') {
     return { ok: false, reason: 'no_active_run' };
   }
 
   clearSuspendedRunData();
   resetTransientRunState();
 
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
   delete _gameState.run;
 
   const spawn = firstRoomPosition();
@@ -3317,7 +3318,7 @@ function giveUpRun() {
 function checkAllReady() {
   const all = Object.values(_gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
-    _gameState.gamePhase = 'playing';
+    setGamePhase(_gameState, PHASES.PLAYING);
 
     if (_gameState.suspendedCheckpoint) {
       restoreRunCheckpoint();

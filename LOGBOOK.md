@@ -3422,6 +3422,29 @@ PASS. The implementation fits the design document's spell-card model: a single-u
 None.
 
 
+## v0.194 — 224-data-unify-game-state-factories  (2026-06-04 12:36:04)
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. Capture probes show `debugScenario: null` throughout normal lobby → deploy flow. N/A for the debug-scenario checklist.
+
+---
+
+## Integration / holistic notes
+
+The original defect was **latent**: lobby paths missing three fields would throw or misbehave only when combat code touched `enchantments`, `lobby`, or `_pendingVolatileExplosions`. The capture exercises the real integration path (multi-player lobby create/join, ready, dungeon deploy, movement, key item) on state created via `createLobby()` → `createLobbyGameState()`, which is stronger proof than the unit test alone.
+
+Sub-ticket artifacts under `tickets/224-data-unify-game-state-factories/subtickets/` document the intended split; implementation matches both subtickets.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime capture is clean, both acceptance criteria are fully satisfied, and the refactor is minimal and correct.
+
+---
+
+
 ## v0.193 — 226-data-objective-registry  (2026-06-04 12:23:50)
 
 2. New objective types become one registry entry, not scattered `createRunState()` and completion edits.
@@ -3489,6 +3512,44 @@ No new or changed debug scenario was introduced by this ticket. The capture used
 ## Remaining gaps
 
 None.
+
+
+## v0.195 — 219-input-unify-keyboard-onto-keymap  (2026-06-04 13:02:31)
+
+5. **Remove dead gamepad handler plumbing:** Satisfied. `setGamepadInputHandler`, `gamepadInputHandler`, and the empty main.js registration are gone; `pollInput()` is the single per-frame gamepad action dispatcher.
+
+6. **Collapse redundant per-callback phase guards:** Satisfied. `main.js` centralizes action gating in `canUseGameActions()` for `initInput()` callbacks and uses the same helper for pointer/deck interactions. Renderer still guards `applyLockOnPress()` internally, which is appropriate because the function is exported and can be called independently.
+
+## Design and requirements fit
+
+The implementation stays within the existing client input architecture and does not alter server simulation, persistence, dungeon flow, or combat rules. It preserves the requirement that WASD movement updates the local player and broadcasts through the existing renderer movement pipeline, while reducing duplicate hardware readers that could diverge.
+
+No new debug scenario was added or changed for this ticket. The capture used the normal gameplay path, not a `debugScenario` shortcut.
+
+## Code quality and verification
+
+The changed code is focused and covered by targeted unit tests. `coverage.log` shows the Vitest suite passed: 12 files and 253 tests. The new input tests cover keyboard movement, typing-target keyup clearing, merged keyboard/gamepad movement, keyboard and gamepad lock-on dispatch, exposed action labels, and existing key-item binding behavior.
+
+I did not find dead replacement code, duplicate keyboard listeners, uncaught runtime errors, or integration issues in the live `game/` files.
+
+
+## v0.196 — 217-lobby-explicit-phase-state-machine  (2026-06-04 13:14:25)
+
+The server-side gameplay guards have also largely moved from raw string comparisons to `isLobbyPhase` / `isPlayingPhase`, including movement, ready-up, deck/shop/trade lobby-only actions, card/key-item use, simulation ticks, passive draws, survive spawns, give-up, and telepipe suspend/resume paths. One remaining debug-scenario literal check is a cleanup nit rather than a blocking behavior issue because it does not mutate phase or affect normal gameplay.
+
+### 2. Make join-in-progress explicit
+PASS. `joinLobby` now delegates to `joinLobbyWithPhasePolicy`, which explicitly recognizes `PHASES.PLAYING`, consults `allowDropInJoin`, and joins with `{ dropIn: true }`. That path is documented in `game/docs/lobbies.md` and initializes only the joining player via `initializePlayerForActiveRun`, preserving the existing run, enemies, layout, and objective state for current players. Waiting or suspended lobbies remain on the normal lobby-join path.
+
+This matches the design document's stated lobby-browser behavior: mid-run lobbies support drop-in rejoin while the normal lobby flow remains `Lobby Browser -> Lobby UI -> ready up -> playing`.
+
+### 3. Pure refactor with existing tests green
+PASS. The changed production code keeps behavior aligned with the existing lobby lifecycle and uses the new phase API for the transition points. The recorded coverage run passed: `44` test files and `1075` tests. New tests cover legal/illegal phase transitions and mid-run drop-in setup.
+
+### Design and requirements consistency
+PASS. The implementation remains consistent with `game/docs/design.md`: lobbies can be joined from the browser, players ready into dungeons, and mid-run lobbies support drop-in. The foundational requirements are not regressed: the captured run renders the Three.js scene, connects via WebSockets, shows multiplayer state, and accepts movement.
+
+### Debug scenarios
+PASS. This ticket did not add a new `?debugScenario=...` shortcut. It only routed existing scenario phase writes through `setPhase`. Debug scenarios remain behind the existing dev/debug URL path and are not part of normal gameplay. The normal ready-up path still reaches `playing` through `checkAllReady`, and the scenario changes do not skip any new server-side validation or persistence path beyond the existing QA shortcuts.
 
 
 ## v0.197 — 215-lobby-atomic-hat-unlock-ordering  (2026-06-04 13:19:47)
