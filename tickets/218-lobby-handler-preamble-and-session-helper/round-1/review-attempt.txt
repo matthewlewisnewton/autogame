@@ -1,0 +1,20 @@
+## Review complete
+
+Holistic review written to `tickets/218-lobby-handler-preamble-and-session-helper/round-1/review.md`.
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: no `pageerror` or `[fatal]` lines (only benign Vite/409 noise)
+- Capture completed lobby → ready → gameplay including dodge cooldown
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| `withLobbyPlayer` over `withLobbyFromSocket` | All listed lobby handlers migrated; `equipKeyItem` / `medicHeal` keep `phaseMismatch` errors |
+| `buildSessionFromPlayer` | Both duplicate session literals replaced |
+| Tests green | 917 passed in round-1 coverage; ticket-touched server tests pass |
+
+### Verdict
+**VERDICT: PASS** — no `gaps.md` (fail-only). No `nits.md` (nothing worth a backlog ticket).
+
+Refactor is mechanical with behavior preserved; game runs cleanly in capture.

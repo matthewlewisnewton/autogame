@@ -3575,6 +3575,52 @@ Validation observed in `coverage.log`: `41` test files passed, `918` tests passe
 None.
 
 
+## v0.200 — 218-lobby-handler-preamble-and-session-helper  (2026-06-04 14:12:16)
+
+## Code quality
+
+- Helpers are small, documented with JSDoc for options, and colocated with existing `withLobbyFromSocket`.
+- No dead code or broken imports introduced.
+- Minor style: several callbacks receive `lobby` but do not use it (acceptable for uniform signature; optional cleanup only).
+
+## Debug scenarios
+
+No new or changed `?debugScenario=` entry points in this ticket. N/A.
+
+## Screenshots & probes
+
+- `01-initial.png`: Squad lobby with contract terminal, loadout bay, two players standby — lobby path works.
+- `02`–`04`: In-run HUD, movement, dodge cooldown — post-lobby gameplay unaffected.
+- Probes confirm dodge cooldown UI and return to ready state after cooldown.
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; captured run is clean; refactor is complete for the handlers named in the ticket goal.
+
+
+## v0.199 — 220-input-rebind-collision-guard  (2026-06-04 14:07:21)
+
+
+New tests are well targeted and pass (188/188 across `input.test.js` +
+`main.test.js`):
+- `getReservedKeys lists fixed keyboard bindings and excludes useKeyItem`
+- `rejects reserved keys without changing the binding and shows a toast`
+- `saves a non-reserved key via patchSettings`
+- `ignores modifier-only keys with no toast`
+
+## Code quality
+
+Clean, minimal, self-contained change consistent with surrounding input/
+settings code. No dead code, no regressions to `onKeyDown` resolution, and no
+console errors introduced. Consistent with `design.md`/`requirements.md`
+(input remapping is a settings-UI concern only; no net or server invariants
+touched). No debug scenarios added.
+
+## Remaining gaps
+
+None blocking.
+
+
 ## v0.198 — 222-data-collapse-card-def-drift  (2026-06-04 13:33:34)
 
 3. Keep `getCardSellValue` computed fallback.
@@ -3597,6 +3643,28 @@ PASS. The implementation is appropriately scoped: shared JSON owns static data, 
 
 No blocking gaps.
 
+
+## v0.202 — 216-lobby-remove-dead-hostid  (2026-06-04 14:40:58)
+
+- No dangling `hostChanged` comments, partial migrations, or dead branches.
+- `removePlayerFromLobby` still deletes empty lobbies and cleans minions/trades on leave.
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts. N/A.
+
+## Integration notes
+
+Branch `auto/216-lobby-remove-dead-hostid` has two implementation commits on baseline `9134e7d`:
+
+1. `a8af6b3` — server model + tests (+ `field_medic_kit` MS assertion hardening)
+2. `f5d5ef9` — doc alignment
+
+Capture exercised the normal lobby create/join/ready/deploy path (not a debug shortcut), which is the right holistic check for this cleanup.
+
+## Remaining gaps
+
+None. Runtime capture is clean and both acceptance criteria are satisfied.
 
 ## v0.203 — 228-gameplay-card-cinder-snare  (2026-06-04 14:44:24)
 

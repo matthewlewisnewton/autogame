@@ -357,7 +357,6 @@ describe('useKeyItem — guard_block (socket integration)', () => {
 		// assertion, so bound remainingMs against the cooldown with a drift tolerance
 		// instead of an exact match.
 		const def = KEY_ITEM_DEFS.guard_block;
-		expect(result2.remainingMs).toBeGreaterThan(0);
 		expect(result2.remainingMs).toBeLessThanOrEqual(def.cooldownMs);
 		expect(result2.remainingMs).toBeGreaterThanOrEqual(def.cooldownMs - 250);
 	});

@@ -47,6 +47,7 @@ import {
 	getHandSlotInputHints,
 	is8BitDo64HandHintsActive,
 	getUseKeyItemBinding,
+	getReservedKeys,
 } from './input.js';
 import {
 	DECK_MIN_SIZE,
@@ -3644,6 +3645,13 @@ if (useKeyItemKeyInputEl) {
 		e.preventDefault();
 		e.stopPropagation();
 		const key = e.key.toLowerCase();
+		if (getReservedKeys().has(key)) {
+			showCardErrorToast('Key already in use');
+			capturingKeyItemKey = false;
+			useKeyItemKeyInputEl.blur();
+			syncUseKeyItemBindingUI();
+			return;
+		}
 		patchSettings({ keyboard: { bindings: { useKeyItem: key } } });
 		capturingKeyItemKey = false;
 		useKeyItemKeyInputEl.blur();

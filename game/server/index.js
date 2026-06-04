@@ -634,6 +634,24 @@ function withLobbyFromSocket(socket, fn) {
   return withLobbyContext(lobby, () => fn(lobby.state, lobby));
 }
 
+/** @param {{ requirePhase?: 'lobby' | 'playing', phaseMismatch?: { event: string, payload: object } }} options */
+function withLobbyPlayer(socket, options, fn) {
+  const { requirePhase, phaseMismatch } = options || {};
+  return withLobbyFromSocket(socket, (state, lobby) => {
+    if (requirePhase === 'lobby' && !isLobbyPhase(state)) {
+      if (phaseMismatch) socket.emit(phaseMismatch.event, phaseMismatch.payload);
+      return;
+    }
+    if (requirePhase === 'playing' && !isPlayingPhase(state)) {
+      if (phaseMismatch) socket.emit(phaseMismatch.event, phaseMismatch.payload);
+      return;
+    }
+    const player = state.players[socket.playerId];
+    if (!player) return;
+    return fn(state, lobby, player);
+  });
+}
+
 function buildPlayerRecord(playerId, accountId, username, savedData) {
   const progress = createPlayerProgress();
   const defaultDeck = progress.inventory.map(instance => instance.instanceId);
@@ -708,6 +726,18 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
 
   normalizePlayerInventory(player);
   return player;
+}
+
+function buildSessionFromPlayer(player) {
+  return {
+    playerId: player.id,
+    accountId: player.accountId,
+    username: player.username,
+    selectedDeck: player.selectedDeck,
+    inventory: player.inventory,
+    ownedCards: player.ownedCards,
+    currency: player.currency,
+  };
 }
 
 function loadSavedPlayerData(loadKey) {
@@ -1124,15 +1154,7 @@ function startServer(port) {
 
     const savedData = loadSavedPlayerData(accountId || playerId);
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
-    lobbies.registerSession(playerId, {
-      playerId,
-      accountId,
-      username,
-      selectedDeck: sessionPlayer.selectedDeck,
-      inventory: sessionPlayer.inventory,
-      ownedCards: sessionPlayer.ownedCards,
-      currency: sessionPlayer.currency,
-    });
+    lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
     socket.on('listLobbies', () => {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
@@ -1153,7 +1175,7 @@ function startServer(port) {
         socket.emit('lobbyError', { reason: 'Already in a lobby' });
         return;
       }
-      const lobby = lobbies.createLobby(playerId, data && data.name);
+      const lobby = lobbies.createLobby(data && data.name);
       withLobbyContext(lobby, () => {
         applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
         ensureShopOffer();
@@ -1192,15 +1214,7 @@ function startServer(port) {
         return;
       }
       leaveLobbyForSocket(socket);
-      const session = lobbies.getSession(playerId) || {
-        playerId,
-        accountId,
-        username,
-        selectedDeck: sessionPlayer.selectedDeck,
-        inventory: sessionPlayer.inventory,
-        ownedCards: sessionPlayer.ownedCards,
-        currency: sessionPlayer.currency,
-      };
+      const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
       lobbies.registerSession(playerId, session);
       socket.emit('lobbyLeft', {
         lobbies: lobbies.listLobbySummaries(),
@@ -1282,9 +1296,7 @@ function startServer(port) {
   });
 
   socket.on('selectQuest', (data) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
-    if (!isLobbyPhase(state)) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, _player) => {
     if (state.suspendedCheckpoint) {
       socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
       return;
@@ -1316,10 +1328,7 @@ function startServer(port) {
   });
 
   socket.on('playerReady', (ready) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
       normalizePlayerInventory(player);
       const result = validateDeck(player.selectedDeck, player.inventory);
@@ -1402,11 +1411,7 @@ function startServer(port) {
   });
 
   socket.on('deckAddCard', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     normalizePlayerInventory(player);
 
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -1464,15 +1469,10 @@ function startServer(port) {
   });
 
   socket.on('equipKeyItem', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) {
-      socket.emit('keyItemError', { reason: 'not_in_lobby' });
-      return;
-    }
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
     const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
     if (!keyItemId) {
       socket.emit('keyItemError', { reason: 'missing_key_item_id' });
@@ -1499,11 +1499,7 @@ function startServer(port) {
   });
 
   socket.on('deckRemoveCard', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     normalizePlayerInventory(player);
 
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
@@ -1545,12 +1541,7 @@ function startServer(port) {
   });
 
   socket.on('evolveCard', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
     const result = evolveCard(player, instanceId);
     if (!result.ok) {
@@ -1574,12 +1565,7 @@ function startServer(port) {
   });
 
   socket.on('sellCard', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
     const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
     if (!requestedInstanceId && !requestedCardId) {
@@ -1610,12 +1596,7 @@ function startServer(port) {
   });
 
   socket.on('buyShopCard', () => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const result = buyShopCard(player, state.shopOffer);
     if (!result.ok) {
       socket.emit('deckError', { reason: result.reason });
@@ -1633,12 +1614,7 @@ function startServer(port) {
   });
 
   socket.on('unlockHat', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
     if (!hatId) {
       socket.emit('hatError', { reason: 'Missing hatId' });
@@ -1694,19 +1670,16 @@ function startServer(port) {
   });
 
   socket.on('medicHeal', () => {
-    withLobbyFromSocket(socket, (state) => {
-      if (!isLobbyPhase(state)) {
-        socket.emit('medicError', { reason: 'not_in_lobby' });
-        return;
-      }
-
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
       const result = healAtMedic(socket.playerId);
       if (!result.ok) {
         socket.emit('medicError', { reason: result.reason });
         return;
       }
 
-      const player = state.players[socket.playerId];
       socket.emit('medicHealed', {
         hp: result.hp,
         currency: player.currency,
@@ -1717,12 +1690,7 @@ function startServer(port) {
   });
 
   socket.on('grindCard', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
     const result = grindCard(player, instanceId);
     if (!result.ok) {
@@ -1748,11 +1716,8 @@ function startServer(port) {
   });
 
   socket.on('offerCardTrade', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player || !data) return;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (!data) return;
 
     const targetPlayerId = typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
     const offeredCardId = typeof data.offeredCardId === 'string' ? data.offeredCardId : null;
@@ -1796,11 +1761,8 @@ function startServer(port) {
   });
 
   socket.on('respondCardTrade', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    if (!isLobbyPhase(state)) return;
-
-    const player = state.players[socket.playerId];
-    if (!player || !data) return;
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (!data) return;
 
     const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
     const accepted = !!data.accepted;

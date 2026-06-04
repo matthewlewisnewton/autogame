@@ -1,13 +1,11 @@
 Merge conflicts are resolved in both files.
 
-### `game/server/progression.js`
-Kept **both** import groups:
-- Ticket: `cardStats.json` and `cardEconomy.json` (`CARD_STATS`, `EVOLUTION_TRANSFORMS`, `CARD_SELL_VALUES`)
-- Main: `PHASES`, `setGamePhase`, `isLobbyPhase`, `isPlayingPhase` from `./lobbies`
-
-`getObjectiveDef` from `./objectives` was already present above the conflict. Syntax check passes.
-
 ### `LOGBOOK.md`
-Merged chronologically: **v0.195** (input keymap), **v0.196** (lobby phase machine), **v0.197** (hat unlock ordering), then **v0.198** (card def drift).
+Kept **both** review entries in version order:
+- **v0.202** — `216-lobby-remove-dead-hostid` (from `main`)
+- **v0.203** — `228-gameplay-card-cinder-snare` (from the ticket branch)
 
-All conflict markers are removed. The harness can commit and finish the merge.
+### `game/server/test/guard_block.test.js`
+Kept the ticket’s **drift-tolerant** cooldown assertions (250ms window, matching the `blockingUntil` test below), with the clearer comment explaining why bounds are used instead of an exact value. Dropped the duplicate `toBeGreaterThan(0)` because line 354 already asserts it. Did not keep `main`’s tighter 50ms window, since that conflicts with the ticket’s timing-determinism work.
+
+All conflict markers are removed. Server tests passed (1214 tests). The harness can commit and finish the merge.
