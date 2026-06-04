@@ -2645,19 +2645,33 @@ export function applyRevealHighlight(enemyId, enemy) {
 
 // ── Variant marker (elite enemy badge) ──
 
-const VARIANT_MARKER_COLOR = 0xc026d3; // magenta — distinct from amber reveal/yellow lock-on
+/** @type {Record<string, number>} */
+const VARIANT_BADGE_COLORS = {
+	default: 0xc026d3, // magenta — distinct from amber reveal/yellow lock-on
+	leeching: 0x14b8a6, // teal — distinct from default variant badge
+};
+
+/** @type {Record<string, { color: number, intensity: number }>} */
+const VARIANT_MESH_TINTS = {
+	leeching: { color: 0x0d9488, intensity: 0.45 },
+};
+
+function variantBadgeColor(variant) {
+	return VARIANT_BADGE_COLORS[variant] ?? VARIANT_BADGE_COLORS.default;
+}
 
 /**
  * Build the floating badge shown above a variant ("elite") enemy: a small
  * emissive diamond, kept separate from the enemy mesh so it never collides with
  * the windup/reveal emissive bookkeeping on the enemy material.
+ * @param {number} badgeColor
  * @returns {THREE.Mesh}
  */
-function createVariantMarker() {
+function createVariantMarker(badgeColor) {
 	const geo = new THREE.OctahedronGeometry(0.22);
 	const mat = new THREE.MeshStandardMaterial({
-		color: VARIANT_MARKER_COLOR,
-		emissive: VARIANT_MARKER_COLOR,
+		color: badgeColor,
+		emissive: badgeColor,
 		emissiveIntensity: 0.9,
 	});
 	return new THREE.Mesh(geo, mat);
@@ -2673,9 +2687,16 @@ function createVariantMarker() {
  */
 export function applyVariantMarker(enemyId, enemy) {
 	if (enemy && enemy.variant) {
+		const badgeColor = variantBadgeColor(enemy.variant);
 		if (!variantMarkerMeshes[enemyId]) {
-			variantMarkerMeshes[enemyId] = createVariantMarker();
+			variantMarkerMeshes[enemyId] = createVariantMarker(badgeColor);
 			scene.add(variantMarkerMeshes[enemyId]);
+		} else {
+			const mat = variantMarkerMeshes[enemyId].material;
+			if (mat.color.getHex() !== badgeColor) {
+				mat.color.setHex(badgeColor);
+				mat.emissive.setHex(badgeColor);
+			}
 		}
 		const halfHeight = enemyMeshHalfHeight(enemy.type);
 		const marker = variantMarkerMeshes[enemyId];
@@ -2684,6 +2705,32 @@ export function applyVariantMarker(enemyId, enemy) {
 		marker.rotation.y = ((Date.now() % 4000) / 4000) * Math.PI * 2;
 	} else if (variantMarkerMeshes[enemyId]) {
 		disposeOne(variantMarkerMeshes, enemyId, scene);
+	}
+}
+
+/**
+ * Apply or remove a per-variant emissive tint on the enemy mesh. Reveal glow and
+ * windup flash take priority; when neither is active, leeching enemies get a
+ * subtle teal tint and all others restore `_origEmissive` bookkeeping.
+ * @param {string} enemyId
+ * @param {object} enemy - { variant, revealedUntil, attackState }
+ */
+export function applyVariantEmissiveTint(enemyId, enemy) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+
+	const revealed = enemy.revealedUntil && Date.now() < enemy.revealedUntil;
+	const windup = enemy.attackState === 'windup' || windupFlashing.has(enemyId);
+	if (revealed || windup) return;
+
+	const tint = enemy.variant ? VARIANT_MESH_TINTS[enemy.variant] : null;
+	if (tint) {
+		mesh.material.emissive.set(tint.color);
+		mesh.material.emissiveIntensity = tint.intensity;
+	} else {
+		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
+		mesh.material.emissiveIntensity =
+			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
 	}
 }
 
@@ -4242,6 +4289,9 @@ export function animate(timestamp) {
 
 			// ── Variant marker (elite enemy badge) ──
 			applyVariantMarker(enemy.id, enemy);
+
+			// ── Variant mesh tint (e.g. leeching) ──
+			applyVariantEmissiveTint(enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
