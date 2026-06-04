@@ -12,10 +12,40 @@ import {
 	connectClient,
 	waitForEvent,
 	playerForSocket,
-	testGameState,
+	lobbyStateForSocket,
 } from './helpers.js';
 
 // ── Helpers ──
+
+/** Test loot must include createdAt or runGameLoopTick purges it (NaN lifetime). */
+function testLoot(overrides) {
+	return {
+		y: 0,
+		kind: 'gold',
+		createdAt: Date.now(),
+		...overrides,
+	};
+}
+
+/**
+ * Wait for a loot_magnet keyItemUsed emit. Filters stale/wrong payloads that can
+ * arrive when the game loop or parallel suites interleave socket events.
+ */
+function waitForLootMagnetUsed(socket, timeout = 15000) {
+	return new Promise((resolve, reject) => {
+		const timer = setTimeout(
+			() => reject(new Error('Timed out waiting for loot_magnet keyItemUsed')),
+			timeout
+		);
+		const onUsed = (payload) => {
+			if (payload?.keyItemId !== 'loot_magnet') return;
+			clearTimeout(timer);
+			socket.off('keyItemUsed', onUsed);
+			resolve(payload);
+		};
+		socket.on('keyItemUsed', onUsed);
+	});
+}
 
 async function connectAndStartRun(baseUrl) {
 	const { socket } = await connectClient(baseUrl);
@@ -52,7 +82,7 @@ describe('Loot Magnet — pull & collect', () => {
 	it('loot at 6m within attractRadius (8m) is pulled to the player and auto-collected', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
@@ -61,17 +91,29 @@ describe('Loot Magnet — pull & collect', () => {
 		// instant full pull to the player (0m separation). That is within
 		// LOOT_PICKUP_RADIUS (3.5m), so the server auto-collects and removes the drop.
 		// Partial pull without collection (e.g. wall-blocked) is covered below.
-		const loot = {
+		const loot = testLoot({
 			id: 'loot-1',
 			x: player.x + 6,
 			z: player.z,
-			y: 0,
-			kind: 'gold',
 			value: 10,
-		};
+		});
 		state.loot.push(loot);
+		const origCurrency = player.currency;
 
-		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		let lootCollectedInHandler;
+		const resultPromise = new Promise((resolve, reject) => {
+			const timer = setTimeout(
+				() => reject(new Error('Timed out waiting for loot_magnet keyItemUsed')),
+				15000
+			);
+			socket.once('keyItemUsed', (payload) => {
+				clearTimeout(timer);
+				// Capture authoritative state in the emit handler before the next tick.
+				lootCollectedInHandler =
+					state.loot.find((l) => l.id === 'loot-1') === undefined;
+				resolve(payload);
+			});
+		});
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result = await resultPromise;
 
@@ -79,29 +121,29 @@ describe('Loot Magnet — pull & collect', () => {
 		expect(result.keyItemId).toBe('loot_magnet');
 		expect(result.pulled).toBe(1);
 		expect(result.collected).toBe(1);
+		expect(lootCollectedInHandler).toBe(true);
 		expect(state.loot.find((l) => l.id === 'loot-1')).toBeUndefined();
+		expect(player.currency).toBe(origCurrency + 10);
 	});
 
 	it('loot within LOOT_PICKUP_RADIUS is auto-collected', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
 
-		const closeLoot = {
+		const closeLoot = testLoot({
 			id: 'close-loot',
 			x: player.x + 2,
 			z: player.z,
-			y: 0,
-			kind: 'gold',
 			value: 50,
-		};
+		});
 		const origCurrency = player.currency;
 		state.loot.push(closeLoot);
 
-		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		const resultPromise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result = await resultPromise;
 
@@ -114,24 +156,22 @@ describe('Loot Magnet — pull & collect', () => {
 	it('loot outside attractRadius is untouched', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
 
-		const farLoot = {
+		const farLoot = testLoot({
 			id: 'far-loot',
 			x: player.x + 15,
 			z: player.z,
-			y: 0,
-			kind: 'gold',
 			value: 100,
-		};
+		});
 		const origX = farLoot.x;
 		const origZ = farLoot.z;
 		state.loot.push(farLoot);
 
-		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		const resultPromise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result = await resultPromise;
 
@@ -144,22 +184,20 @@ describe('Loot Magnet — pull & collect', () => {
 	it('already-collected loot does not error or double-credit', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
 
-		const closeLoot = {
+		const closeLoot = testLoot({
 			id: 'collect-me',
 			x: player.x + 1,
 			z: player.z,
-			y: 0,
-			kind: 'gold',
 			value: 30,
-		};
+		});
 		state.loot.push(closeLoot);
 
-		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		const result1Promise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result1 = await result1Promise;
 
@@ -169,7 +207,7 @@ describe('Loot Magnet — pull & collect', () => {
 
 		player.keyItemCooldownUntil = 0;
 
-		const result2Promise = waitForEvent(socket, 'keyItemUsed');
+		const result2Promise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result2 = await result2Promise;
 
@@ -182,12 +220,12 @@ describe('Loot Magnet — pull & collect', () => {
 	it('second use within cooldown returns on_cooldown', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
 
-		const result1Promise = waitForEvent(socket, 'keyItemUsed');
+		const result1Promise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result1 = await result1Promise;
 
@@ -206,19 +244,19 @@ describe('Loot Magnet — pull & collect', () => {
 	it('response contains pulled and collected counts matching expected values', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		player.keyItemCooldownUntil = 0;
 		state.loot.length = 0;
 
 		state.loot.push(
-			{ id: 'loot-1m', x: player.x + 1, z: player.z, y: 0, kind: 'gold', value: 10 },
-			{ id: 'loot-4m', x: player.x + 4, z: player.z, y: 0, kind: 'gold', value: 20 },
-			{ id: 'loot-7m', x: player.x + 7, z: player.z, y: 0, kind: 'gold', value: 30 },
-			{ id: 'loot-12m', x: player.x + 12, z: player.z, y: 0, kind: 'gold', value: 40 },
+			testLoot({ id: 'loot-1m', x: player.x + 1, z: player.z, value: 10 }),
+			testLoot({ id: 'loot-4m', x: player.x + 4, z: player.z, value: 20 }),
+			testLoot({ id: 'loot-7m', x: player.x + 7, z: player.z, value: 30 }),
+			testLoot({ id: 'loot-12m', x: player.x + 12, z: player.z, value: 40 }),
 		);
 
-		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		const resultPromise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result = await resultPromise;
 
@@ -231,7 +269,7 @@ describe('Loot Magnet — pull & collect', () => {
 	it('loot pulled through a wall stops at the wall boundary', async () => {
 		const { socket } = await connectAndStartRun(baseUrl);
 		const player = playerForSocket(socket);
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 
 		// Custom layout: single room with a horizontal wall between player and loot.
 		// Room: center=(0,0), width=20, depth=12. Interior: x in [-10, 10], z in [-6, 6].
@@ -276,14 +314,12 @@ describe('Loot Magnet — pull & collect', () => {
 		player.x = 0;
 		player.z = 0;
 
-		const loot = {
+		const loot = testLoot({
 			id: 'wall-loot',
 			x: 5,
 			z: 5,
-			y: 0,
-			kind: 'gold',
 			value: 10,
-		};
+		});
 		state.loot.length = 0;
 		state.loot.push(loot);
 
@@ -295,7 +331,7 @@ describe('Loot Magnet — pull & collect', () => {
 
 		player.keyItemCooldownUntil = 0;
 
-		const resultPromise = waitForEvent(socket, 'keyItemUsed');
+		const resultPromise = waitForLootMagnetUsed(socket);
 		socket.emit('useKeyItem', { keyItemId: 'loot_magnet' });
 		const result = await resultPromise;
 
