@@ -3,6 +3,63 @@ const { DEFAULT_QUEST_ID } = require('./quests');
 
 /** @typedef {import('./index').GameState} GameState */
 
+/**
+ * Canonical lobby `gamePhase` values.
+ *
+ * Run suspend/resume uses `run.status === 'suspended'` while `gamePhase` remains
+ * `lobby` — there is no separate suspended phase string.
+ */
+const PHASES = Object.freeze({
+  LOBBY: 'lobby',
+  PLAYING: 'playing',
+});
+
+const KNOWN_PHASES = new Set(Object.values(PHASES));
+
+function isKnownPhase(phase) {
+  return KNOWN_PHASES.has(phase);
+}
+
+/**
+ * @param {string} from
+ * @param {string} to
+ * @returns {boolean}
+ */
+function canTransition(from, to) {
+  if (!isKnownPhase(from) || !isKnownPhase(to)) {
+    return false;
+  }
+  if (from === to) {
+    return true;
+  }
+  return (
+    (from === PHASES.LOBBY && to === PHASES.PLAYING) ||
+    (from === PHASES.PLAYING && to === PHASES.LOBBY)
+  );
+}
+
+/**
+ * @param {{ state: { gamePhase: string } }} lobby
+ * @param {string} nextPhase
+ * @returns {boolean}
+ */
+function setPhase(lobby, nextPhase) {
+  if (!lobby?.state) {
+    throw new Error('setPhase: lobby must have state');
+  }
+  if (!isKnownPhase(nextPhase)) {
+    throw new Error(
+      `setPhase: unknown phase "${nextPhase}" (expected ${[...KNOWN_PHASES].join(' or ')})`,
+    );
+  }
+  const from = lobby.state.gamePhase;
+  if (!canTransition(from, nextPhase)) {
+    throw new Error(`setPhase: illegal transition from "${from}" to "${nextPhase}"`);
+  }
+  lobby.state.gamePhase = nextPhase;
+  return true;
+}
+
 const lobbies = new Map();
 /** @type {Map<string, string>} playerId -> lobbyId */
 const playerLobby = new Map();
@@ -16,7 +73,7 @@ function createLobbyGameState() {
     minions: [],
     loot: [],
     areaEffects: [],
-    gamePhase: 'lobby',
+    gamePhase: PHASES.LOBBY,
     selectedQuestId: DEFAULT_QUEST_ID,
     pendingTrades: {},
     shopOffer: null,
@@ -137,6 +194,9 @@ function getPrimaryLobbyStateForTests() {
 }
 
 module.exports = {
+  PHASES,
+  canTransition,
+  setPhase,
   createLobbyGameState,
   createLobby,
   assignPlayerToLobby,
