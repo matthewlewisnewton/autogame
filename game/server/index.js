@@ -632,6 +632,24 @@ function withLobbyFromSocket(socket, fn) {
   return withLobbyContext(lobby, () => fn(lobby.state, lobby));
 }
 
+/** @param {{ requirePhase?: 'lobby' | 'playing', phaseMismatch?: { event: string, payload: object } }} options */
+function withLobbyPlayer(socket, options, fn) {
+  const { requirePhase, phaseMismatch } = options || {};
+  return withLobbyFromSocket(socket, (state, lobby) => {
+    if (requirePhase === 'lobby' && !isLobbyPhase(state)) {
+      if (phaseMismatch) socket.emit(phaseMismatch.event, phaseMismatch.payload);
+      return;
+    }
+    if (requirePhase === 'playing' && !isPlayingPhase(state)) {
+      if (phaseMismatch) socket.emit(phaseMismatch.event, phaseMismatch.payload);
+      return;
+    }
+    const player = state.players[socket.playerId];
+    if (!player) return;
+    return fn(state, lobby, player);
+  });
+}
+
 function buildPlayerRecord(playerId, accountId, username, savedData) {
   const progress = createPlayerProgress();
   const defaultDeck = progress.inventory.map(instance => instance.instanceId);
