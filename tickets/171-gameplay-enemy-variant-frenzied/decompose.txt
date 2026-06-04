@@ -1,0 +1,8 @@
+Broke ticket **171** into **2** sub-tickets (server behavior first, then client visuals), following the leeching/volatile split and the parent acceptance criteria (chase-speed server test + distinct client tint/badge).
+
+**Sub-ticket folders created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/01-server-frenzied-enrage-speed/`
+2. `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/02-client-frenzied-tint-and-badge/`
+
+There were no prior `subtickets/` entries (no `.passed` or failed folders to retire). Both use **Verification: code**.

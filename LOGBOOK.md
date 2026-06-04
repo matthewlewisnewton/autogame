@@ -3306,3 +3306,26 @@ PASS. The changes are scoped and use existing extension points: variant registry
 
 None.
 
+
+## v0.184 — 171-gameplay-enemy-variant-frenzied  (2026-06-03 22:54:50)
+
+### Server test coverage
+
+PASS. `game/server/test/frenzied_variant.test.js` covers registry tuning, threshold behavior, faster chase movement below 50% HP, non-Frenzied damaged enemies not speeding up, and shorter wind-up timing. The captured coverage run reports `53` test files and `1266` tests passed, including `server/test/frenzied_variant.test.js`, `server/test/debug-scenarios.test.js`, and `client/test/renderer-variant.test.js`.
+
+### Client tint and badge integration
+
+PASS. `game/client/renderer.js` gives Frenzied enemies a distinct red body tint and red badge color, restores the original mesh color when the variant clears, and reuses the existing variant marker lifecycle so stale badges are disposed. The renderer tests assert the Frenzied constants, marker color, and tint restoration.
+
+### Debug scenarios
+
+PASS. The added `variant-frenzied` and `frenzied-enemy` shortcuts are registered only in the existing debug scenario allowlists and invoked through the debug scenario path. Normal gameplay still reaches equivalent states through normal enemy spawning via `applyVariant()` and combat damage dropping a Frenzied enemy below the enrage threshold. The scenarios do not bypass combat invariants beyond setting up QA state; they use spawned enemies in the active run state and do not alter persistence or networking validation paths.
+
+### Design and requirements consistency
+
+PASS. The change stays within the documented dungeon combat loop: enemies still spawn through the shared progression path, serialize variant tags like the existing variant framework, and render through the existing Three.js scene update. The captured run preserves the foundation requirements: 3D rendering, client/server connection, multiplayer state, and movement synchronization.
+
+## Remaining gaps
+
+None.
+
