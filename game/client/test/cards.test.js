@@ -273,6 +273,17 @@ describe('CARD_DEFS', () => {
 			isEvolved: true,
 			specialEffect: 'fire_dot',
 		});
+		expect(CARD_DEFS.aegis_sentinel).toMatchObject({
+			id: 'aegis_sentinel',
+			name: 'Aegis Sentinel',
+			type: 'creature',
+			magicStoneCost: 45,
+			damage: 0,
+			isEvolved: true,
+			specialEffect: 'astral_shield',
+			effect: 'astral_guardian',
+			taunt: true,
+		});
 	});
 });
 
@@ -405,6 +416,7 @@ describe('card ID sets', () => {
 			'glacier_collapse',
 			'inferno_pillar',
 			'soul_drain',
+			'aegis_sentinel',
 		];
 		for (const cardId of packIds) {
 			expect(CARD_ACCENT_STYLE[cardId]).toMatchObject({
