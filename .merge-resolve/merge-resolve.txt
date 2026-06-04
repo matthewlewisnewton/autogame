@@ -1,6 +1,9 @@
-Resolved the `LOGBOOK.md` conflict by keeping **both** review entries:
+`LOGBOOK.md` is resolved.
 
-1. **v0.199 — 220-input-rebind-collision-guard** (this ticket’s input rebind collision guard review)
-2. **v0.198 — 222-data-collapse-card-def-drift** (card def drift work that landed on `main`)
+Both sides landed at the same place in the log (after v0.198), so the fix was to keep **all three** version entries in order:
 
-They’re ordered by version number (newest first), matching the logbook pattern. All conflict markers are removed — the harness can proceed with the merge.
+1. **v0.202** — `216-lobby-remove-dead-hostid` (from `main`)
+2. **v0.203** — `228-gameplay-card-cinder-snare` (from `main`)
+3. **v0.204** — `214-lobby-clear-ready-on-disconnect` (from this ticket branch)
+
+Conflict markers are removed; there are no remaining `<<<<<<<` / `=======` / `>>>>>>>` markers in the repo. The harness can finish the merge and run tests.

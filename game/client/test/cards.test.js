@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(42);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(43);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {

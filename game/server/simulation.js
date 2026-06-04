@@ -1354,7 +1354,8 @@ function updateAreaEffects() {
         effect.originX,
         effect.originZ,
         effect.range,
-        effect.damagePerTick
+        effect.damagePerTick,
+        { attackerId: effect.ownerId }
       ));
     } else {
       ({ hits } = collectConeHits(
@@ -1463,6 +1464,9 @@ function spawnGroundEnchantment(x, z, cardDef, ownerId) {
     z,
     radius: cardDef.radius || 2.5,
     damage: cardDef.damage || 35,
+    damagePerTick: cardDef.damagePerTick,
+    dotTicks: cardDef.dotTicks,
+    dotIntervalMs: cardDef.dotIntervalMs,
     expiresAt: now + (cardDef.ttlMs || 30000),
     armed: true,
   });
@@ -1594,14 +1598,26 @@ function updateEnchantments() {
 
   for (const enc of _gameState.enchantments) {
     if (!enc.armed || now >= enc.expiresAt) continue;
-    if (enc.effect !== 'spike_trap') continue;
+    if (enc.effect !== 'spike_trap' && enc.effect !== 'cinder_snare') continue;
 
     for (const enemy of _gameState.enemies) {
       if (enemy.hp <= 0) continue;
       const dist = Math.hypot(enemy.x - enc.x, enemy.z - enc.z);
       if (dist <= enc.radius) {
-        enemy.lastDamagedBy = enc.ownerId;
-        damageEnemy(enemy, enc.damage);
+        if (enc.effect === 'cinder_snare') {
+          // Instead of a one-shot hit, drop a lingering inferno-pillar DoT
+          // area at the trap position; updateAreaEffects ticks the damage.
+          const syntheticDef = {
+            damage: enc.damagePerTick,
+            dotTicks: enc.dotTicks,
+            dotIntervalMs: enc.dotIntervalMs,
+            attackRange: enc.radius,
+          };
+          spawnInfernoPillarEffect(enc.x, enc.z, syntheticDef, enc.ownerId);
+        } else {
+          enemy.lastDamagedBy = enc.ownerId;
+          damageEnemy(enemy, enc.damage);
+        }
         enc.armed = false;
         triggered = true;
         break;

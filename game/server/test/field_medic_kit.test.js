@@ -162,9 +162,9 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result.ok).toBe(true);
 		expect(result.healed).toBe(2); // only p1 and p2
 
-		// p3 should be completely unchanged
+		// p3 should be unchanged (HP exact; MS may tick regen by a fraction)
 		expect(playerForSocket(players[2].socket).hp).toBe(p3HpBefore);
-		expect(playerForSocket(players[2].socket).magicStones).toBe(p3MsBefore);
+		expect(playerForSocket(players[2].socket).magicStones).toBeCloseTo(p3MsBefore, 2);
 	});
 
 	it('dead players skipped', async () => {

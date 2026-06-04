@@ -181,7 +181,7 @@ describe('runGameLoopTick()', () => {
 	});
 
 	function setupLobby(phase = 'lobby') {
-		const lobby = createLobby('host-1', 'Tick Test');
+		const lobby = createLobby('Tick Test');
 		lobby.state.gamePhase = phase;
 		return lobby;
 	}

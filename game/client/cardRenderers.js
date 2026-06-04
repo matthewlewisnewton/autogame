@@ -284,6 +284,7 @@ const CARD_RENDERERS = {
 	// Enchantments
 	spike_trap: renderGroundEnchantment,
 	mirror_ward: renderSelfEnchantment,
+	cinder_snare: renderGroundEnchantment,
 };
 
 // Type-level defaults — used when no card-specific renderer is registered.

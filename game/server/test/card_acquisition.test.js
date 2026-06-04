@@ -73,8 +73,8 @@ const FORMERLY_UNREACHABLE_REWARD_CARDS = [
 
 describe('card acquisition reachability', () => {
 	it('covers all CARD_DEFS keys', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(42);
-		expect(Object.keys(cardDefsJson)).toHaveLength(42);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(43);
+		expect(Object.keys(cardDefsJson)).toHaveLength(43);
 		expect(Object.keys(CARD_DEFS).sort()).toEqual(Object.keys(cardDefsJson).sort());
 	});
 

@@ -1,0 +1,15 @@
+## Plan
+
+The top-level ticket is a small, behavior-preserving cleanup: `hostId` is stored and reassigned but never enforced and never read on the client. Two sub-tickets cover it in dependency order:
+
+| # | Scope |
+|---|--------|
+| **01** | Server + unit tests — remove field, API, summary payload, reassignment; keep tests green |
+| **02** | Docs — match the no-host model and fix the incorrect “host-only quest” line in `gameplay-review.md` |
+
+No existing `subtickets/` folders or `.passed` markers were present, so nothing was deleted or skipped.
+
+## Sub-ticket folders created
+
+- `/home/matt/workspace/.autogame-worktrees/216-lobby-remove-dead-hostid/tickets/216-lobby-remove-dead-hostid/subtickets/01-remove-hostid-server/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/216-lobby-remove-dead-hostid/tickets/216-lobby-remove-dead-hostid/subtickets/02-remove-hostid-docs/ticket.md`
