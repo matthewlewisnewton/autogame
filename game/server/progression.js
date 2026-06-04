@@ -50,6 +50,7 @@ const {
 } = require('./simulation');
 const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
 const { getQuest, getSelectedQuest } = require('./quests');
+const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -1190,50 +1191,10 @@ function saveAllPlayers() {
 
 function createRunState() {
   const quest = getSelectedQuest(_gameState);
-
-  if (quest.objectiveType === 'collect_items') {
-    const totalItems = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
-    return {
-      id: crypto.randomUUID(),
-      status: 'playing',
-      questId: quest.id,
-      questName: quest.name,
-      questDescription: quest.description,
-      rewardCurrency: quest.rewardCurrency,
-      objective: {
-        type: 'collect_items',
-        label: `${quest.name}: recover ${totalItems} prisms`,
-        totalItems,
-        collectedItems: 0,
-      },
-      startedAt: Date.now()
-    };
+  const def = getObjectiveDef(quest.objectiveType);
+  if (!def) {
+    throw new Error(`Unknown objective type: ${quest.objectiveType}`);
   }
-
-  if (quest.objectiveType === 'survive') {
-    const totalSpawns = Number.isFinite(quest.totalSpawns) ? quest.totalSpawns : 1;
-    const minibossCount = Number.isFinite(quest.minibossCount) ? quest.minibossCount : 0;
-    return {
-      id: crypto.randomUUID(),
-      status: 'playing',
-      questId: quest.id,
-      questName: quest.name,
-      questDescription: quest.description,
-      rewardCurrency: quest.rewardCurrency,
-      objective: {
-        type: 'survive',
-        label: `${quest.name}: outlast and defeat all ${totalSpawns} attackers`,
-        totalSpawns,
-        minibossCount,
-        spawnedEnemies: 0,
-        defeatedEnemies: 0,
-        totalEnemies: totalSpawns,
-      },
-      startedAt: Date.now()
-    };
-  }
-
-  const objectiveLabel = `${quest.name}: ${quest.description}`;
 
   return {
     id: crypto.randomUUID(),
@@ -1242,12 +1203,7 @@ function createRunState() {
     questName: quest.name,
     questDescription: quest.description,
     rewardCurrency: quest.rewardCurrency,
-    objective: {
-      type: 'defeat_enemies',
-      label: objectiveLabel,
-      totalEnemies: _gameState.enemies.length,
-      defeatedEnemies: 0
-    },
+    objective: def.createObjective(quest, { enemyCount: _gameState.enemies.length }),
     startedAt: Date.now()
   };
 }
@@ -1512,13 +1468,11 @@ function recordCrystalCollected(count = 1) {
 }
 
 function isRunObjectiveComplete(objective) {
-  if (objective.type === 'collect_items') {
-    return objective.collectedItems >= objective.totalItems;
+  const def = getObjectiveDef(objective.type);
+  if (!def) {
+    throw new Error(`Unknown objective type: ${objective.type}`);
   }
-  if (objective.type === 'survive') {
-    return objective.defeatedEnemies >= objective.totalSpawns;
-  }
-  return objective.defeatedEnemies >= objective.totalEnemies;
+  return def.isComplete(objective);
 }
 
 function buildRunSummary(status) {
