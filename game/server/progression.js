@@ -1440,31 +1440,36 @@ function claimCardReward(playerId, cardId) {
 }
 
 function clampObjectiveProgress(run) {
-  if (run.objective.type === 'collect_items') {
-    run.objective.collectedItems = Math.min(run.objective.collectedItems, run.objective.totalItems);
+  if (!run?.objective) return;
+  const def = getObjectiveDef(run.objective.type);
+  if (def?.clampProgress) {
+    def.clampProgress(run);
     return;
   }
-  run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
+  if (run.objective.totalEnemies != null && run.objective.defeatedEnemies != null) {
+    run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
+  }
 }
 
 function syncRunObjectiveToEnemies() {
-  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
-  _gameState.run.objective.totalEnemies = _gameState.enemies.length;
-  clampObjectiveProgress(_gameState.run);
+  if (!_gameState.run) return;
+  const def = getObjectiveDef(_gameState.run.objective.type);
+  if (!def?.syncToEnemyCount) return;
+  def.syncToEnemyCount(_gameState.run, _gameState.enemies.length);
 }
 
 function recordEnemyDefeated(count = 1) {
   if (!_gameState.run) return;
-  const type = _gameState.run.objective.type;
-  if (type !== 'defeat_enemies' && type !== 'survive') return;
-  _gameState.run.objective.defeatedEnemies += count;
-  clampObjectiveProgress(_gameState.run);
+  const def = getObjectiveDef(_gameState.run.objective.type);
+  if (!def?.onEnemyDefeated) return;
+  def.onEnemyDefeated(_gameState.run, count);
 }
 
 function recordCrystalCollected(count = 1) {
-  if (!_gameState.run || _gameState.run.objective.type !== 'collect_items') return;
-  _gameState.run.objective.collectedItems += count;
-  clampObjectiveProgress(_gameState.run);
+  if (!_gameState.run) return;
+  const def = getObjectiveDef(_gameState.run.objective.type);
+  if (!def?.onCrystalCollected) return;
+  def.onCrystalCollected(_gameState.run, count);
 }
 
 function isRunObjectiveComplete(objective) {

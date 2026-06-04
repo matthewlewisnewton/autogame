@@ -1,3 +1,11 @@
+function clampDefeatedEnemies(objective) {
+  objective.defeatedEnemies = Math.min(objective.defeatedEnemies, objective.totalEnemies);
+}
+
+function clampCollectedItems(objective) {
+  objective.collectedItems = Math.min(objective.collectedItems, objective.totalItems);
+}
+
 const OBJECTIVE_DEFS = {
   defeat_enemies: {
     objectiveType: 'defeat_enemies',
@@ -13,6 +21,17 @@ const OBJECTIVE_DEFS = {
     isComplete(objective) {
       return objective.defeatedEnemies >= objective.totalEnemies;
     },
+    clampProgress(run) {
+      clampDefeatedEnemies(run.objective);
+    },
+    onEnemyDefeated(run, count) {
+      run.objective.defeatedEnemies += count;
+      clampDefeatedEnemies(run.objective);
+    },
+    syncToEnemyCount(run, enemyCount) {
+      run.objective.totalEnemies = enemyCount;
+      clampDefeatedEnemies(run.objective);
+    },
   },
   collect_items: {
     objectiveType: 'collect_items',
@@ -27,6 +46,13 @@ const OBJECTIVE_DEFS = {
     },
     isComplete(objective) {
       return objective.collectedItems >= objective.totalItems;
+    },
+    clampProgress(run) {
+      clampCollectedItems(run.objective);
+    },
+    onCrystalCollected(run, count) {
+      run.objective.collectedItems += count;
+      clampCollectedItems(run.objective);
     },
   },
   survive: {
@@ -46,6 +72,13 @@ const OBJECTIVE_DEFS = {
     },
     isComplete(objective) {
       return objective.defeatedEnemies >= objective.totalSpawns;
+    },
+    clampProgress(run) {
+      clampDefeatedEnemies(run.objective);
+    },
+    onEnemyDefeated(run, count) {
+      run.objective.defeatedEnemies += count;
+      clampDefeatedEnemies(run.objective);
     },
   },
 };
