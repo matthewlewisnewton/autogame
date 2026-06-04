@@ -1406,6 +1406,25 @@ describe('Socket Integration — Disconnect Event', () => {
 		socket2.disconnect();
 	});
 
+	it('clears ready on soft disconnect while player remains in lobby', async () => {
+		const { socket1, socket2, lobbyId } = await connectTwoClients(baseUrl);
+		const playerId = socket1._playerId;
+
+		socket1.emit('playerReady', true);
+		await sleep(50);
+		expect(lobbyGameState(lobbyId).players[playerId].ready).toBe(true);
+
+		socket1.disconnect();
+		await sleep(100);
+
+		const state = lobbyGameState(lobbyId);
+		expect(state.players[playerId]).toBeDefined();
+		expect(state.players[playerId].connected).toBe(false);
+		expect(state.players[playerId].ready).toBe(false);
+
+		socket2.disconnect();
+	});
+
 	it('evicts player after disconnect grace period expires', async () => {
 		const { socket1, socket2, lobbyId } = await connectTwoClients(baseUrl);
 

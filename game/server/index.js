@@ -888,6 +888,7 @@ function softDisconnectPlayerFromLobby(socket) {
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
 
     player.connected = false;
+    player.ready = false;
     player.disconnectedAt = Date.now();
     player.inputActive = false;
     player.inputDx = 0;
