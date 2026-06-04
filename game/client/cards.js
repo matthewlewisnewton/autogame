@@ -6,6 +6,7 @@
 
 import cardIdentity from '../shared/cardDefs.json' with { type: 'json' };
 import cardStats from '../shared/cardStats.json' with { type: 'json' };
+import cardEconomy from '../shared/cardEconomy.json' with { type: 'json' };
 
 // ── Card Definitions ──
 // Keyed by card id. Each entry is the identity subset
@@ -38,52 +39,11 @@ export function migrateCardId(cardId) {
   return LEGACY_EVOLVED_CARD_IDS[cardId] || cardId;
 }
 
-export const EVOLUTION_TRANSFORMS = {
-  iron_sword: 'steel_claymore',
-  flame_blade: 'magma_greatsword',
-  battle_familiar: 'astral_guardian',
-  dungeon_drake: 'ancient_wyrm',
-  saber_of_light: 'excalibur_photon',
-  photon_slicer: 'infinite_disk',
-  frost_nova: 'glacier_collapse',
-  healing_font: 'divine_grace',
-  skeleton_knight: 'undead_commander',
-  storm_eagle: 'thunderbird',
-  gravity_well: 'event_horizon',
-  echo_blade: 'resonance_edge',
-  mana_leach: 'soul_drain',
-  dragons_breath: 'inferno_pillar',
-};
+// EVOLUTION_TRANSFORMS and CARD_SELL_VALUES come from the single shared source
+// the server (server/progression.js) also consumes, so the two sides cannot drift.
+export const EVOLUTION_TRANSFORMS = cardEconomy.evolutionTransforms;
 
-export const CARD_SELL_VALUES = {
-  iron_sword: 5,
-  flame_blade: 8,
-  battle_familiar: 12,
-  dungeon_drake: 10,
-  null_crawler: 12,
-  bulkhead_mauler: 10,
-  steel_claymore: 15,
-  magma_greatsword: 18,
-  astral_guardian: 25,
-  ancient_wyrm: 20,
-  divine_grace: 18,
-  undead_commander: 18,
-  thunderbird: 18,
-  mana_prism: 10,
-  harvesting_scythe: 6,
-  sacrificial_altar: 14,
-  battery_automaton: 12,
-  chrono_trigger: 16,
-  saber_of_light: 8,
-  excalibur_photon: 12,
-  infinite_disk: 18,
-  arcane_bolt: 8,
-  event_horizon: 22,
-  soul_drain: 18,
-  dragons_breath: 14,
-  inferno_pillar: 22,
-  telepipe: 18,
-};
+export const CARD_SELL_VALUES = cardEconomy.cardSellValues;
 
 export function getCardSellValue(cardId) {
   if (Object.prototype.hasOwnProperty.call(CARD_SELL_VALUES, cardId)) {
