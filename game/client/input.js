@@ -136,7 +136,6 @@ function onKeyDown(e) {
 }
 
 function onKeyUp(e) {
-	if (isTypingTarget(e.target)) return;
 	const key = e.key.toLowerCase();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
 		if (keys.includes(key) && action.startsWith('move')) {

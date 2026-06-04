@@ -43,6 +43,25 @@ describe('input.js', () => {
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
 	});
 
+	it('movement keyup clears keyState when focus is in a typing target', () => {
+		initInput({});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+		expect(getMovementDirection().mag).toBeGreaterThan(0);
+
+		const input = document.createElement('input');
+		document.body.appendChild(input);
+		input.focus();
+
+		const keyup = new KeyboardEvent('keyup', { key: 'w', bubbles: true });
+		Object.defineProperty(keyup, 'target', { value: input, enumerable: true });
+		window.dispatchEvent(keyup);
+
+		expect(getMovementDirection().mag).toBe(0);
+
+		input.remove();
+		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+	});
+
 	it('keyboard keys 1–6 trigger hand slots 0–5', () => {
 		const onUseSlot = vi.fn();
 		initInput({
