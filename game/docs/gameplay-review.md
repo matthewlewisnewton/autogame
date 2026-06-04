@@ -14,7 +14,7 @@ From the browser, a player can refresh the list (`listLobbies` → `lobbyListUpd
 
 ### Creating, joining, and drop-in
 
-**Create:** `createLobby` in `game/server/index.js` calls `lobbies.createLobby(hostId, name)`, which allocates a fresh per-lobby state via `createLobbyGameState()` (`gamePhase: 'lobby'`, empty players, default quest, `telepipe: null`, `suspendedCheckpoint: null`). The host is joined through `joinPlayerToLobby`, which assigns membership, joins the Socket.IO room named after the lobby id, and emits `lobbyJoined` with full lobby state.
+**Create:** `createLobby` in `game/server/index.js` calls `lobbies.createLobby(name)`, which allocates a fresh per-lobby state via `createLobbyGameState()` (`gamePhase: 'lobby'`, empty players, default quest, `telepipe: null`, `suspendedCheckpoint: null`). The creator is joined through `joinPlayerToLobby`, which assigns membership, joins the Socket.IO room named after the lobby id, and emits `lobbyJoined` with full lobby state.
 
 **Join / drop-in:** `joinLobby` resolves the target lobby and calls the same `joinPlayerToLobby` path. Each lobby owns an isolated `lobby.state` object; simulation and progression read it through `withLobbyContext` (a re-entrant context stack in `game/server/index.js` that temporarily sets `_gameState` for `game/server/progression.js` and `game/server/simulation.js`). Broadcasts such as `startGame` and `stateUpdate` go to `io.to(_gameState._lobbyId)` when scoped.
 
@@ -30,7 +30,7 @@ Quest selection emits `selectQuest`; the server only accepts changes while `game
 
 Ready-up uses the **Deploy** button (`#ready-btn`, themed via `THEME.lobby.deploy`). Clicking toggles `playerReady` on the server. When a player readies, the server runs `validateDeck`; invalid decks emit `deckError`, force `ready = false`, and do not count toward launch. When every connected player in the lobby has `ready: true` and `gamePhase === 'lobby'`, `checkAllReady()` in `game/server/progression.js` transitions to `gamePhase: 'playing'`, assigns staggered spawn positions, builds draw decks from each player's selected loadout, spawns enemies, calls `startDungeonRun()`, and emits `startGame` plus `stateUpdate` to the lobby room. The client `startGame` handler hides the lobby overlay, shows the dungeon HUD and card hand, and initializes or resumes the Three.js scene.
 
-While waiting, `lobbyUpdate` keeps the player list, ready flags, and quest board in sync. Only the lobby host's quest choice applies to the shared run until deploy.
+While waiting, `lobbyUpdate` keeps the player list, ready flags, and quest board in sync. Any connected lobby member may change the selected quest via `selectQuest` while `gamePhase === 'lobby'` (blocked while a suspended checkpoint exists); the shared layout and quest apply to everyone until deploy.
 
 ### Mid-run persistence and empty-lobby teardown
 

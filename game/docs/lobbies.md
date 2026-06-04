@@ -24,7 +24,7 @@ In-memory lobby registry (not persisted across server restarts).
 
 | Export | Purpose |
 |--------|---------|
-| `createLobby(hostId, name?)` | Creates a lobby with fresh `gamePhase: 'lobby'` state |
+| `createLobby(name?)` | Creates a lobby with fresh `gamePhase: 'lobby'` state |
 | `getLobbyById` / `getLobbyForPlayer` | Lookup helpers |
 | `assignPlayerToLobby` / `removePlayerFromLobby` | Membership; deletes lobby when empty |
 | `listLobbySummaries` | Public lobby list for the browser UI |
@@ -36,7 +36,6 @@ Each lobby object:
 {
   id,           // 8-char hex
   name,
-  hostId,       // reassigns to next player when host leaves
   state,        // full GameState for this lobby (players, enemies, run, layout, …)
   createdAt,
 }
@@ -134,7 +133,7 @@ All existing gameplay events (`playerReady`, `move`, `useCard`, …) require the
 cd game && pnpm exec vitest run server/test/lobbies.test.js
 ```
 
-Covers lobby CRUD, summaries, host reassignment, and empty-lobby deletion.
+Covers lobby CRUD, summaries, membership, and empty-lobby deletion.
 
 ### Integration tests
 
