@@ -1,0 +1,17 @@
+Broke ticket **172** into **4** sub-tickets in dependency order. They build on the ticket **169** variant framework (`VARIANT_DEFS`, `applyVariant`, generic variant badge) and deliver the top-level acceptance criteria: warded spawn shield, server absorption + tests, distinct client look, shield UI.
+
+| # | Focus |
+|---|--------|
+| **01** | `warded` registry + spawn-time `shieldHp` / `maxShieldHp` |
+| **02** | Central `damageEnemy` helper; all `simulation.js` damage paths |
+| **03** | Cyan tint + warded badge color + `warded-enemy` debug scenario |
+| **04** | Shield bar/indicator driven by broadcast `shieldHp` |
+
+All use **Verification: code** (server tests, renderer tests, debug-scenario registration — not screenshot-only visual QA).
+
+### Sub-ticket folders created
+
+- `/home/matt/workspace/.autogame-worktrees/172-gameplay-enemy-variant-warded/tickets/172-gameplay-enemy-variant-warded/subtickets/01-warded-variant-registry/`
+- `/home/matt/workspace/.autogame-worktrees/172-gameplay-enemy-variant-warded/tickets/172-gameplay-enemy-variant-warded/subtickets/02-enemy-shield-damage-absorption/`
+- `/home/matt/workspace/.autogame-worktrees/172-gameplay-enemy-variant-warded/tickets/172-gameplay-enemy-variant-warded/subtickets/03-client-warded-tint-and-badge/`
+- `/home/matt/workspace/.autogame-worktrees/172-gameplay-enemy-variant-warded/tickets/172-gameplay-enemy-variant-warded/subtickets/04-client-shield-indicator/`
