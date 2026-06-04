@@ -97,6 +97,7 @@ const playerNameplates = {}; // playerId → THREE.Sprite (username label)
 const NAMEPLATE_OFFSET_Y = 1.0; // Units above avatar group Y position
 const enemiesMeshes = {};
 const enemyHealthBars = {}; // enemy id → health bar mesh
+const enemyShieldBars = {}; // enemy id → shield absorb bar mesh
 const enemyHitboxMeshes = {}; // enemy id → pulsing hitbox group
 const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle during windup)
 const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
@@ -900,6 +901,7 @@ export function getMeshMaps() {
 		playersMeshes,
 		enemiesMeshes,
 		enemyHealthBars,
+		enemyShieldBars,
 		telegraphMeshes,
 		minionTelegraphMeshes,
 		minionsMeshes,
@@ -2595,6 +2597,52 @@ export function updateHealthBarMesh(enemyId, enemy) {
 	mesh.material.color.setHex(healthBarColor(enemy.hp, maxHp));
 }
 
+const ENEMY_SHIELD_BAR_COLOR = 0x22d3ee;
+
+/**
+ * Create a slim shield-absorb bar above the HP bar.
+ * @param {string} enemyId
+ * @param {number} x
+ * @param {number} z
+ * @param {string} type
+ * @returns {THREE.Mesh}
+ */
+export function createEnemyShieldBarMesh(enemyId, x, z, type) {
+	const geo = new THREE.BoxGeometry(1.2, 0.06, 0.1);
+	const mat = new THREE.MeshStandardMaterial({ color: ENEMY_SHIELD_BAR_COLOR });
+	const mesh = new THREE.Mesh(geo, mat);
+	const halfHeight = enemyMeshHalfHeight(type);
+	mesh.position.set(x, halfHeight + 0.65, z);
+	scene.add(mesh);
+	return mesh;
+}
+
+function ensureEnemyShieldBar(enemyId, enemy) {
+	if ((enemy.shieldHp || 0) <= 0) {
+		if (enemyShieldBars[enemyId]) {
+			disposeOne(enemyShieldBars, enemyId, scene);
+		}
+		return;
+	}
+	if (!enemyShieldBars[enemyId]) {
+		enemyShieldBars[enemyId] = createEnemyShieldBarMesh(enemyId, enemy.x, enemy.z, enemy.type);
+	}
+}
+
+/**
+ * Update shield bar scale to reflect remaining absorb HP.
+ * @param {string} enemyId
+ * @param {object} enemy - { shieldHp, maxShieldHp }
+ */
+export function updateEnemyShieldBarMesh(enemyId, enemy) {
+	const mesh = enemyShieldBars[enemyId];
+	if (!mesh) return;
+
+	const maxShield = enemy.maxShieldHp || enemy.shieldHp || 1;
+	const ratio = Math.max(0, (enemy.shieldHp || 0) / maxShield);
+	mesh.scale.x = ratio;
+}
+
 /**
  * Apply or remove the windup emissive flash on an enemy mesh.
  * @param {string} enemyId
@@ -4152,6 +4200,12 @@ export function animate(timestamp) {
 				healthBar.position.set(enemy.x, halfHeight + 0.5, enemy.z);
 				updateHealthBarMesh(enemy.id, enemy);
 			}
+			ensureEnemyShieldBar(enemy.id, enemy);
+			const shieldBar = enemyShieldBars[enemy.id];
+			if (shieldBar) {
+				shieldBar.position.set(enemy.x, halfHeight + 0.65, enemy.z);
+				updateEnemyShieldBarMesh(enemy.id, enemy);
+			}
 			if (enemyHitboxMeshes[enemy.id]) {
 				enemyHitboxMeshes[enemy.id].position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
 			}
@@ -4295,6 +4349,7 @@ export function animate(timestamp) {
 		// Clean up removed enemies
 		disposeStaleMeshes(enemiesMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHealthBars, currentEnemyIds, scene);
+		disposeStaleMeshes(enemyShieldBars, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);

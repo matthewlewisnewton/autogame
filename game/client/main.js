@@ -1387,6 +1387,7 @@ function bindSocketHandlers(s) {
 			const maps = getMeshMaps();
 			rendererDisposeMeshMap(maps.enemiesMeshes, sc);
 			rendererDisposeMeshMap(maps.enemyHealthBars, sc);
+			rendererDisposeMeshMap(maps.enemyShieldBars, sc);
 			rendererDisposeMeshMap(maps.telegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionTelegraphMeshes, sc);
 			rendererDisposeMeshMap(maps.minionsMeshes, sc);
