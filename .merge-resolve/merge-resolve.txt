@@ -1,10 +1,8 @@
-**LOGBOOK.md** is resolved.
+Resolved `LOGBOOK.md` by combining both sides in reverse-chronological order (newest first, matching the rest of the logbook):
 
-Both sides added a new release section at the same place after **v0.185**. The conflict was only about which entry to keep.
+1. **v0.194** — `224-data-unify-game-state-factories` (ticket branch)
+2. **v0.193** — `226-data-objective-registry` (from `main`)
+3. **v0.191** — `225-data-centralize-enemy-construction-and-consts` (from `main`)
+4. **v0.190** — `223-data-derive-shop-pool-from-defs` (from `main`)
 
-**Resolution:** keep both, in descending version order (same as the rest of the log):
-
-1. **v0.187 — 207-gameplay-card-balance-pass** (ticket branch): Arcane Bolt / Mirror Ward balance pass, vitest stability, review sections unchanged  
-2. **v0.186 — 209-gameplay-card-aegis-sentinel** (from `main`): full Aegis Sentinel review entry unchanged  
-
-All conflict markers are removed. The file is ready for the harness to stage and finish the merge.
+All conflict markers are removed; `git diff --check` reports no leftover markers. The file is ready for the harness to stage and complete the merge.

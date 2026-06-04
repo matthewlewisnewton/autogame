@@ -1,5 +1,6 @@
 // Server configuration constants
 const { MAX_MAGIC_STONES: SHARED_MAX_MAGIC_STONES, STARTING_MAGIC_STONES: SHARED_STARTING_MAGIC_STONES, HAND_SLOT_FILL_ORDER: SHARED_HAND_SLOT_FILL_ORDER } = require('../shared/constants.json');
+const CARD_DEFS = require('../shared/cardDefs.json');
 
 const TICK_RATE = 20; // times per second
 const MOVE_SPEED = 12; // units per second — maximum player movement speed (matches client terminal velocity)
@@ -15,6 +16,10 @@ const SUMMON_RADIUS = 10; // units — radial AoE
 const ATTACK_RANGE = 5; // units — max distance to hit
 const ATTACK_CONE_ANGLE = Math.PI / 2; // 90-degree forward cone
 const PROJECTILE_HIT_WIDTH = 1.2; // units — radius around sampled projectile path
+const MINION_FOLLOW_DISTANCE = 3;
+const MINION_FOLLOW_SPEED = 2.5;
+const MINION_CHASE_SPEED_GRUNT = 2.5;
+const MINION_CHASE_SPEED_SKIRMISHER = 4.5;
 const STALE_THRESHOLD = 10000; // 10 seconds
 const DISCONNECT_GRACE_MS = 60000; // keep disconnected players in lobby for reconnection
 const COOLDOWN_MS = 800; // server-side cooldown between uses of the same slot (milliseconds)
@@ -34,26 +39,14 @@ const LOOT_SPAWN_CHANCE = 0.5;
 const STALE_CLEANUP_INTERVAL_MS = 5000;
 const PERIODIC_SAVE_INTERVAL_MS = 30000;
 
-const VICTORY_REWARD_ROTATION = [
-  'flame_blade',
-  'battle_familiar',
-  'dungeon_drake',
-  'saber_of_light',
-  'frost_nova',
-  'permafrost_lance',
-  'photon_slicer',
-  'arcane_bolt',
-  'healing_font',
-  'skeleton_knight',
-  'aegis_sentinel',
-  'storm_eagle',
-  'null_crawler',
-  'bulkhead_mauler',
-  'gravity_well',
-  'echo_blade',
-  'mana_leach',
-  'dragons_breath',
-];
+const VICTORY_REWARD_ROTATION = Object.values(CARD_DEFS)
+  .filter((def) => def.acquisition === 'reward')
+  .sort((a, b) => a.rewardOrder - b.rewardOrder)
+  .map((def) => def.id);
+
+const shopOnlyIds = Object.values(CARD_DEFS)
+  .filter((def) => def.acquisition === 'shop')
+  .map((def) => def.id);
 
 // Deterministic enemy-type → card drop mapping (Lost Kingdoms-style acquisition).
 const ENEMY_CARD_DROPS = {
@@ -87,7 +80,7 @@ const LOOT_DROP_OFFSET_CURRENCY = { x: 0.6, z: -0.5 };
 
 const MAX_CARD_CHOICES = 3;
 
-const SHOP_CARD_POOL = [...VICTORY_REWARD_ROTATION, 'telepipe'];
+const SHOP_CARD_POOL = [...VICTORY_REWARD_ROTATION, ...shopOnlyIds];
 const SHOP_PRICE_MULTIPLIER = 2;
 const PORTAL_RADIUS = 2.5;
 const PORTAL_ENTER_COOLDOWN_MS = 1000;
@@ -114,6 +107,10 @@ module.exports = {
   ATTACK_RANGE,
   ATTACK_CONE_ANGLE,
   PROJECTILE_HIT_WIDTH,
+  MINION_FOLLOW_DISTANCE,
+  MINION_FOLLOW_SPEED,
+  MINION_CHASE_SPEED_GRUNT,
+  MINION_CHASE_SPEED_SKIRMISHER,
   STALE_THRESHOLD,
   DISCONNECT_GRACE_MS,
   COOLDOWN_MS,

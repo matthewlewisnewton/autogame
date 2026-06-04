@@ -1,0 +1,19 @@
+Created **3 sub-tickets** in dependency order. Each is scoped for one focused implementation pass and uses **code** verification (logic, structure, tests — not screenshot-only QA).
+
+### Plan summary
+
+| # | Focus | Why separate |
+|---|--------|--------------|
+| **01** | `enemyDefFor(type)` throws on unknown type; remove silent grunt fallback in `updateEnemies` | Fixes the immediate correctness bug without changing entity shape |
+| **02** | `spawnEnemy` spreads combat stats onto the entity; enemy AI reads entity fields | Delivers self-describing enemies (the main construction centralization) |
+| **03** | Import `PROJECTILE_HIT_WIDTH` from config; promote minion chase/follow literals to `config.js` | Cleans const drift and decouples minion AI from `ENEMY_DEFS.grunt/skirmisher` |
+
+Note: `spawnEnemy` already throws on unknown types at spawn time; sub-ticket **01** closes the remaining gap where `updateEnemies` still silently fell back to grunt for corrupt checkpoint/test enemies.
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/225-data-centralize-enemy-construction-and-consts/tickets/225-data-centralize-enemy-construction-and-consts/subtickets/01-enemy-def-for-throws/
+/home/matt/workspace/.autogame-worktrees/225-data-centralize-enemy-construction-and-consts/tickets/225-data-centralize-enemy-construction-and-consts/subtickets/02-spawn-enemy-spreads-stats/
+/home/matt/workspace/.autogame-worktrees/225-data-centralize-enemy-construction-and-consts/tickets/225-data-centralize-enemy-construction-and-consts/subtickets/03-centralize-simulation-config-constants/
+```

@@ -1,0 +1,5 @@
+Wrote the final review artifacts.
+
+`review.md` ends with `VERDICT: PASS`. The captured run was clean, acceptance criteria are met, and no `gaps.md` was created.
+
+I also wrote `nits.md` with one non-blocking cleanup for the `run-exhausted` debug fixture. No game code or git state was changed.
