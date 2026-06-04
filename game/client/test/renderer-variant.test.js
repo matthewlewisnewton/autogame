@@ -87,3 +87,63 @@ describe('warded variant visuals', () => {
 		expect(testMarker.material.emissive.getHex()).toBe(0xc026d3);
 	});
 });
+
+describe('frenzied variant visuals', () => {
+	beforeEach(() => {
+		vi.resetModules();
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('variantMarkerColor returns red for frenzied, distinct from other variants', async () => {
+		const {
+			variantMarkerColor,
+			VARIANT_MARKER_COLORS,
+			FRENZIED_TINT,
+		} = await import('../renderer.js');
+
+		expect(FRENZIED_TINT).toBe(0xb91c1c);
+		expect(VARIANT_MARKER_COLORS.frenzied).toBe(0xdc2626);
+		expect(variantMarkerColor('frenzied')).toBe(0xdc2626);
+		expect(variantMarkerColor('volatile')).toBe(0xf97316);
+		expect(variantMarkerColor('leeching')).toBe(0x14b8a6);
+	});
+
+	it('applyEnemyVariantTint sets frenzied red and restores the type default', async () => {
+		const {
+			applyEnemyVariantTint,
+			FRENZIED_TINT,
+			getMeshMaps,
+		} = await import('../renderer.js');
+
+		const { enemiesMeshes } = getMeshMaps();
+		const mesh = {
+			_origColor: 0xdc2626,
+			material: {
+				color: {
+					setHex(hex) {
+						this._hex = hex;
+					},
+					getHex() {
+						return this._hex;
+					},
+					_hex: 0xdc2626,
+				},
+			},
+		};
+		enemiesMeshes.e2 = mesh;
+
+		applyEnemyVariantTint('e2', { variant: 'frenzied' });
+		expect(mesh.material.color.getHex()).toBe(FRENZIED_TINT);
+
+		applyEnemyVariantTint('e2', { variant: 'test' });
+		expect(mesh.material.color.getHex()).toBe(0xdc2626);
+
+		applyEnemyVariantTint('e2', {});
+		expect(mesh.material.color.getHex()).toBe(0xdc2626);
+
+		delete enemiesMeshes.e2;
+	});
+});

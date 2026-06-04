@@ -2697,12 +2697,16 @@ export function applyRevealHighlight(enemyId, enemy) {
 /** Cool cyan body tint for warded enemies — distinct from grunt/skirmisher/miniboss palettes. */
 export const WARDED_TINT = 0x22d3ee;
 
+/** Red body tint for frenzied enemies — distinct from volatile hot-orange badge. */
+export const FRENZIED_TINT = 0xb91c1c;
+
 /** @type {Record<string, number>} */
 const VARIANT_BADGE_COLORS = {
 	default: 0xc026d3, // magenta — distinct from amber reveal/yellow lock-on
 	leeching: 0x14b8a6, // teal — distinct from default variant badge
 	warded: 0x22d3ee, // cyan — matches warded body tint / shield bar
 	volatile: 0xf97316, // hot orange — distinct "will detonate" threat read
+	frenzied: 0xdc2626, // red — distinct from volatile orange and other variant badges
 };
 
 /** @type {Record<string, { color: number, intensity: number }>} */
@@ -2718,6 +2722,7 @@ function variantBadgeColor(variant) {
 export const VARIANT_MARKER_COLORS = {
 	warded: VARIANT_BADGE_COLORS.warded,
 	volatile: VARIANT_BADGE_COLORS.volatile,
+	frenzied: VARIANT_BADGE_COLORS.frenzied,
 };
 
 /**
@@ -2730,7 +2735,7 @@ export function variantMarkerColor(variant) {
 }
 
 /**
- * Apply or clear the warded body tint on an enemy mesh (color channel only;
+ * Apply or clear per-variant body tints on an enemy mesh (color channel only;
  * windup/reveal flashes continue to use emissive on the same material).
  * @param {string} enemyId
  * @param {object} enemy - { variant }
@@ -2741,6 +2746,8 @@ export function applyEnemyVariantTint(enemyId, enemy) {
 
 	if (enemy && enemy.variant === 'warded') {
 		mesh.material.color.setHex(WARDED_TINT);
+	} else if (enemy && enemy.variant === 'frenzied') {
+		mesh.material.color.setHex(FRENZIED_TINT);
 	} else if (mesh._origColor != null) {
 		mesh.material.color.setHex(mesh._origColor);
 	}

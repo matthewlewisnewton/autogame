@@ -353,6 +353,18 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'variant-frenzied') {
+      // Spawn one frenzied grunt beside a plain grunt for side-by-side client QA.
+      // The same state is reachable when applyVariant rolls frenzied on spawn.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const frenzied = spawnEnemy(player.x + 3, player.z, 'grunt');
+      frenzied.variant = 'frenzied';
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     } else if (name === 'frenzied-enemy') {
       // Frenzied grunt below 50% HP (enraged) beside a full-HP frenzied grunt for
       // side-by-side chase/wind-up QA. Same state is reachable by damaging a

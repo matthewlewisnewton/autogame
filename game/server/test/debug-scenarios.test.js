@@ -138,3 +138,45 @@ describe('debugScenario — warded-enemy', () => {
 		expect(plain.type).toBe('grunt');
 	});
 });
+
+describe('debugScenario — variant-frenzied', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('spawns a frenzied grunt beside a plain grunt', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'variant-frenzied' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('variant-frenzied');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+		expect(state.enemies.length).toBe(2);
+
+		const frenzied = state.enemies.find((e) => e.variant === 'frenzied');
+		const plain = state.enemies.find((e) => !e.variant);
+		expect(frenzied).toBeDefined();
+		expect(frenzied.type).toBe('grunt');
+		expect(plain).toBeDefined();
+		expect(plain.type).toBe('grunt');
+	});
+});
