@@ -5,6 +5,7 @@
 //   Secondary:  hold modifier (RT on standard, L on 8BitDo 64) → extended slots
 //   Lock-on:    LT (standard) or Z (8BitDo 64) — handled in gamepad.js
 
+import { pollGamepadMovement } from './gamepad.js';
 import { getGamepadConfig, getKeyboardBindings } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
 import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.js';
@@ -83,7 +84,14 @@ export function initInput(opts = {}) {
 	}
 }
 
+function isTypingTarget(target) {
+	return target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target?.isContentEditable;
+}
+
 function onKeyDown(e) {
+	if (isTypingTarget(e.target)) return;
 	if (e.repeat) return;
 	const key = e.key.toLowerCase();
 	const kbBindings = getKeyboardBindings();
@@ -119,6 +127,7 @@ function onKeyDown(e) {
 }
 
 function onKeyUp(e) {
+	if (isTypingTarget(e.target)) return;
 	const key = e.key.toLowerCase();
 	for (const [action, keys] of Object.entries(DEFAULT_KEYBOARD)) {
 		if (keys.includes(key) && action.startsWith('move')) {
@@ -163,22 +172,6 @@ function getBindingForAction(action, gamepad) {
 	return profile.bindings[action] ?? null;
 }
 
-function readMoveStick(gp) {
-	const cfg = getGamepadConfig();
-	const profile = getActiveProfile(gp);
-	const deadzone = cfg.deadzone ?? 0.15;
-	const moveStick = cfg.moveStick ?? profile.moveStick ?? 'left';
-	const useRight = moveStick === 'right';
-	const x = useRight ? gp.axes[2] : gp.axes[0];
-	const z = useRight ? gp.axes[3] : gp.axes[1];
-	const mag = Math.hypot(x, z);
-	if (mag < deadzone) return { dx: 0, dz: 0, mag: 0 };
-	const scale = (mag - deadzone) / (1 - deadzone);
-	const nx = (x / mag) * scale;
-	const nz = (z / mag) * scale;
-	return { dx: nx, dz: nz, mag: Math.hypot(nx, nz) };
-}
-
 /**
  * Movement direction for the local player (normalized when mag > 0).
  * @returns {{ dx: number, dz: number, mag: number }}
@@ -193,11 +186,14 @@ export function getMovementDirection() {
 
 	const gp = getPrimaryGamepad();
 	if (gp) {
-		const stick = readMoveStick(gp);
-		if (stick.mag > 0) {
-			dirX = stick.dx;
-			dirZ = stick.dz;
-			return { dx: dirX, dz: dirZ, mag: stick.mag };
+		const cfg = getGamepadConfig();
+		const profile = getActiveProfile(gp);
+		const deadzone = cfg.deadzone ?? 0.15;
+		const moveStick = cfg.moveStick ?? profile.moveStick ?? 'left';
+		const stick = pollGamepadMovement(deadzone, moveStick);
+		if (stick) {
+			const mag = Math.hypot(stick.x, stick.z);
+			return { dx: stick.x, dz: -stick.z, mag };
 		}
 	}
 
