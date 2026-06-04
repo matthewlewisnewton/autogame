@@ -53,6 +53,7 @@ const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
+const { PHASES, setGamePhase } = require('./lobbies');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -3019,7 +3020,7 @@ function suspendRunToLobby() {
   _gameState.run.status = 'suspended';
   resetTransientRunState();
   _gameState.telepipe = null;
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -3119,7 +3120,7 @@ function abandonSuspendedRun() {
 
   clearSuspendedRunData();
   delete _gameState.run;
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -3275,7 +3276,7 @@ function returnPlayersToLobby() {
   clearSuspendedRunData();
   resetTransientRunState();
 
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
   delete _gameState.run;
 
   const spawn = firstRoomPosition();
@@ -3332,7 +3333,7 @@ function giveUpRun() {
   clearSuspendedRunData();
   resetTransientRunState();
 
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
   delete _gameState.run;
 
   const spawn = firstRoomPosition();
@@ -3388,7 +3389,7 @@ function giveUpRun() {
 function checkAllReady() {
   const all = Object.values(_gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
-    _gameState.gamePhase = 'playing';
+    setGamePhase(_gameState, PHASES.PLAYING);
 
     if (_gameState.suspendedCheckpoint) {
       restoreRunCheckpoint();

@@ -600,8 +600,8 @@ function shouldSkipDefaultEnemySpawn(state) {
 
 function enterPlayingPhase(lobby) {
   const state = lobby.state;
-  if (state.gamePhase !== 'playing') {
-    state.gamePhase = 'playing';
+  if (state.gamePhase !== lobbies.PHASES.PLAYING) {
+    lobbies.setPhase(lobby, lobbies.PHASES.PLAYING);
     for (const player of Object.values(state.players)) {
       if (!player.hand || player.hand.length === 0) {
         createDrawDeckFromSelectedDeck(player);

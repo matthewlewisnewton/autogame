@@ -60,6 +60,39 @@ function setPhase(lobby, nextPhase) {
   return true;
 }
 
+/**
+ * @param {{ gamePhase?: string, _lobbyId?: string }} state
+ * @param {string} nextPhase
+ * @returns {boolean}
+ */
+function resolveLobbyForState(state) {
+  if (!state) return null;
+  if (state._lobbyId) {
+    const lobby = lobbies.get(state._lobbyId);
+    if (lobby) return lobby;
+  }
+  for (const lobby of lobbies.values()) {
+    if (lobby.state === state) return lobby;
+  }
+  return null;
+}
+
+/**
+ * Route a phase write when only lobby {@link GameState} is in scope (e.g. progression
+ * inside `withLobbyContext`). Resolves the lobby via `_lobbyId` or state identity.
+ *
+ * @param {{ gamePhase?: string, _lobbyId?: string }} state
+ * @param {string} nextPhase
+ * @returns {boolean}
+ */
+function setGamePhase(state, nextPhase) {
+  if (!state) {
+    throw new Error('setGamePhase: state is required');
+  }
+  const lobby = resolveLobbyForState(state);
+  return setPhase(lobby ?? { state }, nextPhase);
+}
+
 const lobbies = new Map();
 /** @type {Map<string, string>} playerId -> lobbyId */
 const playerLobby = new Map();
@@ -197,6 +230,7 @@ module.exports = {
   PHASES,
   canTransition,
   setPhase,
+  setGamePhase,
   createLobbyGameState,
   createLobby,
   assignPlayerToLobby,
