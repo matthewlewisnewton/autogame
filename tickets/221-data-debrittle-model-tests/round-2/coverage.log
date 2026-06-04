@@ -1,0 +1,64 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/warded_variant.test.js (9 tests) 7ms
+ ✓ |server| server/test/card_acquisition.test.js (5 tests) 4ms
+ ✓ |server| server/test/leeching_variant.test.js (12 tests) 17ms
+ ✓ |server| server/test/enemy_variants.test.js (9 tests) 18ms
+stdout | server/test/frenzied_variant.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/new_card_pack.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/new_card_pack_definitions.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+ ✓ |server| server/test/frenzied_variant.test.js (6 tests) 6ms
+stdout | server/test/volatile_explosion.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+ ✓ |server| server/test/new_card_pack_definitions.test.js (3 tests) 5ms
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > damages a nearby player but spares one beyond the radius
+[loot] magic stone drop id=ee2c9da4-43bd-4fd3-9224-a0edd07921a3 value=20 at (0.0, 0.0)
+[loot] variant bonus magic stone drop id=41e8a68c-1857-485e-afd3-1e446137a4bc value=10 at (0.0, 0.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > damages nearby minions and living enemies within the radius
+[loot] magic stone drop id=24a23814-55a2-4982-b62c-8529f814d346 value=20 at (0.0, 0.0)
+[loot] variant bonus magic stone drop id=5a7fb7af-ab86-47de-b2b8-94e7b04b3a95 value=10 at (0.0, 0.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > records the detonation on the per-lobby pending queue
+[loot] magic stone drop id=fe7d78a9-d62b-4074-b6d4-f696d0a96b5b value=20 at (3.0, -4.0)
+[loot] variant bonus magic stone drop id=05d3bcac-b05f-44af-b22c-612d33d40692 value=10 at (3.0, -4.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > does not explode or queue anything for a non-volatile enemy death
+[loot] magic stone drop id=08c9d17b-42be-4d1f-9413-2a06e3d611d6 value=20 at (0.0, 0.0)
+
+ ✓ |server| server/test/new_card_pack.test.js (28 tests) 14ms
+ ✓ |server| server/test/volatile_explosion.test.js (5 tests) 7ms
+ ✓ |client| client/test/cards.test.js (21 tests) 7ms
+
+ Test Files  9 passed (9)
+      Tests  98 passed (98)
+   Start at  16:19:42
+   Duration  1.24s (transform 29ms, setup 24ms, collect 759ms, tests 86ms, environment 344ms, prepare 875ms)
+
+ % Coverage report from v8
+-----------|---------|----------|---------|---------|---------------------------
+File       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s         
+-----------|---------|----------|---------|---------|---------------------------
+All files  |    37.6 |    76.47 |    6.25 |    37.6 |                           
+ client    |   69.19 |      100 |   11.11 |   69.19 |                           
+  cards.js |   69.19 |      100 |   11.11 |   69.19 | ...76-110,222-223,226-243 
+ server    |   33.56 |    42.85 |    5.12 |   33.56 |                           
+  index.js |   33.56 |    42.85 |    5.12 |   33.56 | ...618,627-1932,1936-1937 
+-----------|---------|----------|---------|---------|---------------------------

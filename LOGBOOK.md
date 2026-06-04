@@ -3643,3 +3643,26 @@ PASS. The implementation is appropriately scoped: shared JSON owns static data, 
 
 No blocking gaps.
 
+
+## v0.207 — 221-data-debrittle-model-tests  (2026-06-04 16:23:02)
+
+
+## Commits (baseline `9134e7d` → HEAD)
+
+| Commit | Summary |
+|--------|---------|
+| `713c1f6` | Extract `pickVariant(rng, ids)` |
+| `cd83081` | De-index warded variant tests |
+| `27f2529` | De-index enemy_variants tests |
+| `d51e09c` | `>= 42` card count assertions |
+| `41360f3` | Suite-green verification |
+| `9e484b0` | Split `new_card_pack_definitions.test.js` |
+
+## Remaining gaps
+
+None blocking. Runtime is healthy; all five acceptance criteria are satisfied for the churn generators and test layout described in the ticket.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up backlog items (unused import, residual `ids[0]` assertion in `server.test.js`).
+

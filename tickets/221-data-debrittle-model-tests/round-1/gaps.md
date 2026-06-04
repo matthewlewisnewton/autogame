@@ -1,0 +1,3 @@
+1. Per-card identity checks were not split out of the 567-line `new_card_pack.test.js`; adding a pack card still requires editing that monolith (definitions + combat blocks).
+   Files: `game/server/test/new_card_pack.test.js` (and new file(s) to create, e.g. `game/server/test/new_card_pack_definitions.test.js` + slim combat-only file)
+   Fix: Move the `describe('new card pack definitions', …)` block (and any per-card `toMatchObject` identity assertions) into a small dedicated test file; leave `describe('new card combat helpers', …)` in a separate file so new cards add one focused definitions file (or one new `it` in that small file) instead of touching the large combat suite.

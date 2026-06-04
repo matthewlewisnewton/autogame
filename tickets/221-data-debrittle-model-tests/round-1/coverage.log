@@ -1,0 +1,62 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/enemy_variants.test.js (9 tests) 12ms
+ ✓ |server| server/test/card_acquisition.test.js (5 tests) 8ms
+ ✓ |server| server/test/warded_variant.test.js (9 tests) 7ms
+ ✓ |server| server/test/leeching_variant.test.js (12 tests) 18ms
+stdout | server/test/volatile_explosion.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/frenzied_variant.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > damages a nearby player but spares one beyond the radius
+[loot] magic stone drop id=abc00192-e601-4837-bd0c-c3917805e854 value=20 at (0.0, 0.0)
+[loot] variant bonus magic stone drop id=b319e8a6-52a7-4069-a333-c4ad9f3db8b5 value=10 at (0.0, 0.0)
+[loot] currency drop id=fe3e4d6c-d6f0-4ba6-adb6-b7e207272815 value=17 at (0.0, 0.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > damages nearby minions and living enemies within the radius
+[loot] magic stone drop id=11fd3cc0-5b4e-4cfc-bb10-7be19e13c514 value=20 at (0.0, 0.0)
+[loot] variant bonus magic stone drop id=c79b7878-6e27-44c1-af45-1c16b4d60d64 value=10 at (0.0, 0.0)
+[loot] currency drop id=7eccf403-722d-4382-96d1-2bfbf8bdaabb value=15 at (0.0, 0.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > records the detonation on the per-lobby pending queue
+[loot] magic stone drop id=76d8093a-32e2-42c4-a73d-b2431db17482 value=20 at (3.0, -4.0)
+[loot] variant bonus magic stone drop id=84e2307a-52fe-443b-a8f8-34ecf0954fbd value=10 at (3.0, -4.0)
+[loot] currency drop id=c7d64e49-5e79-4855-aa5a-de7cf0c0878e value=11 at (3.0, -4.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > does not explode or queue anything for a non-volatile enemy death
+[loot] magic stone drop id=3a97711a-9f94-4c85-bfb5-0302b1f2570e value=20 at (0.0, 0.0)
+[loot] currency drop id=f5256fc9-9eaf-422b-b54c-c70bf0872b18 value=19 at (0.0, 0.0)
+
+ ✓ |server| server/test/volatile_explosion.test.js (5 tests) 6ms
+ ✓ |server| server/test/frenzied_variant.test.js (6 tests) 6ms
+stdout | server/test/new_card_pack.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+ ✓ |server| server/test/new_card_pack.test.js (31 tests) 16ms
+ ✓ |client| client/test/cards.test.js (21 tests) 7ms
+
+ Test Files  8 passed (8)
+      Tests  98 passed (98)
+   Start at  15:51:47
+   Duration  1.23s (transform 24ms, setup 21ms, collect 531ms, tests 80ms, environment 324ms, prepare 733ms)
+
+ % Coverage report from v8
+-----------|---------|----------|---------|---------|---------------------------
+File       | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s         
+-----------|---------|----------|---------|---------|---------------------------
+All files  |    37.6 |    76.47 |    6.25 |    37.6 |                           
+ client    |   69.19 |      100 |   11.11 |   69.19 |                           
+  cards.js |   69.19 |      100 |   11.11 |   69.19 | ...76-110,222-223,226-243 
+ server    |   33.56 |    42.85 |    5.12 |   33.56 |                           
+  index.js |   33.56 |    42.85 |    5.12 |   33.56 | ...618,627-1932,1936-1937 
+-----------|---------|----------|---------|---------|---------------------------

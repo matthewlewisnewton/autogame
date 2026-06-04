@@ -1,0 +1,8 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Created one new sub-ticket to close the single remaining gap:
+
+```
+tickets/221-data-debrittle-model-tests/subtickets/06-split-card-definitions-test/ticket.md
+```
+
+This sub-ticket splits the `describe('new card pack definitions', …)` block out of the 567-line `new_card_pack.test.js` into a dedicated `new_card_pack_definitions.test.js`, so adding a new pack card touches a small file instead of the monolith.

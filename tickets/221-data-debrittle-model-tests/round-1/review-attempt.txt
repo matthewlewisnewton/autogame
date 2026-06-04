@@ -1,0 +1,23 @@
+## Review complete
+
+Wrote:
+- [`tickets/221-data-debrittle-model-tests/round-1/review.md`](tickets/221-data-debrittle-model-tests/round-1/review.md)
+- [`tickets/221-data-debrittle-model-tests/round-1/gaps.md`](tickets/221-data-debrittle-model-tests/round-1/gaps.md)
+- [`tickets/221-data-debrittle-model-tests/round-1/nits.md`](tickets/221-data-debrittle-model-tests/round-1/nits.md)
+
+### Runtime
+Capture is healthy: `metrics.json` has `"ok": true`, empty `pageerrors`, clean `console.log`. Game reached playing phase with movement and dodge cooldown.
+
+### Acceptance criteria
+| # | Result |
+|---|--------|
+| 1 Variant seam / de-indexed tests | **Pass** — `pickVariant` extracted; warded/enemy_variants tests use direct variant id, not “index 2 of 5” |
+| 2 Variant data-only (tests) | **Pass** |
+| 3 Card count + split | **Partial** — `>= 42` done; **567-line `new_card_pack.test.js` not split** |
+| 4 Suite green | **Pass** for tests (1754/1754); `pnpm test` still fails on pre-existing 70% coverage gate |
+
+### Verdict: **FAIL**
+
+One blocking gap: AC3 requires splitting per-card identity checks out of `new_card_pack.test.js` so new cards touch a small file; definitions and combat helpers remain in one 567-line file.
+
+Variant debrittling and card-count fixes are solid; game runs; no debug-scenario issues.

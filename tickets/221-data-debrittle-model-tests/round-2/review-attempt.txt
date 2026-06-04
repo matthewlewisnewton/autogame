@@ -1,0 +1,14 @@
+## Review complete
+
+**Runtime:** Round-2 capture is healthy (`ok: true`, no `pageerrors`, game loads and plays).
+
+**Acceptance criteria:** All five met — `pickVariant` seam, de-indexed variant tests, `>= 42` card count with comments, split `new_card_pack_definitions.test.js`, suite green (98/98 in capture coverage; 1754/1754 tests pass locally).
+
+**Verdict:** `VERDICT: PASS` (last line of `review.md`)
+
+**Files written:**
+- [`tickets/221-data-debrittle-model-tests/round-2/review.md`](tickets/221-data-debrittle-model-tests/round-2/review.md) — full assessment
+- [`tickets/221-data-debrittle-model-tests/round-2/nits.md`](tickets/221-data-debrittle-model-tests/round-2/nits.md) — two non-blocking follow-ups (unused `pickVariant` import; residual `ids[0]` in `server.test.js`)
+- No `gaps.md` (PASS only)
+
+**Note:** `npm test` exits 1 on global coverage thresholds (~62% vs 70%); all tests still pass. One unrelated flaky failure appeared on a single `pnpm test:quick` run; ticket-focused tests are stable.

@@ -1,0 +1,7 @@
+
+  VITE v8.0.13  ready in 111 ms
+
+  ➜  Local:   http://localhost:5177/
+  ➜  Network: use --host to expose
+4:19:33 PM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+4:19:33 PM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
