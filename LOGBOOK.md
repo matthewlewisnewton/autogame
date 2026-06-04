@@ -3467,3 +3467,26 @@ No new or changed debug scenario was introduced by this ticket. The capture used
 
 None.
 
+
+## v0.198 — 222-data-collapse-card-def-drift  (2026-06-04 13:33:34)
+
+3. Keep `getCardSellValue` computed fallback.
+
+PASS. Both server and client retain the fallback behavior: explicit sell value first, then evolved/spell/creature/default values, with unknown cards returning `0`.
+
+4. Expand `card_sync.test.js` to diff full stat objects.
+
+PASS. `game/server/test/card_sync.test.js` now compares all client-defined fields against the server surface, checks that only documented server-only overlay fields are absent from the client, validates shared sell values and evolution transforms, and checks sell-value fallback agreement for every card id. The latest coverage run shows `server/test/card_sync.test.js` passing with 9 tests, and the coverage summary reports the broader run green.
+
+## Design and foundation consistency
+
+PASS. The change is data-ownership focused and preserves the documented card-combat loop, lobby-to-dungeon flow, rendering, WebSocket connection, and movement foundation. The live capture confirms the foundation requirements still work: the app rendered a 3D scene, connected two clients to the backend, represented players in gameplay, and accepted movement input without runtime errors.
+
+## Code quality
+
+PASS. The implementation is appropriately scoped: shared JSON owns static data, server-only computed fields remain in a small overlay, and tests explicitly guard the allowed overlay exception. No ticket changes introduced debug scenarios or normal-gameplay shortcuts, so the debug-scenario gate review is not applicable.
+
+## Remaining gaps
+
+No blocking gaps.
+
