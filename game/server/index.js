@@ -1658,11 +1658,18 @@ function startServer(port) {
       return;
     }
 
-    // Record the unlock on the account. If persistence fails, refund the
-    // currency so currency and unlockedHats stay consistent.
+    // Persist deducted currency before recording the hat on the account.
+    // Safe ordering: currency first, hat second — a crash after this save but
+    // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
+    // instead of unlocked-but-not-charged (free-hat exploit).
+    savePlayerData(socket.playerId);
+
     const unlockResult = unlockHatForAccount(player.accountId, hatId);
     if (!unlockResult.ok) {
+      // Refund in memory and re-save so disk matches RAM; otherwise the first
+      // save would leave deducted currency on disk without a hat unlock.
       player.currency += result.cost;
+      savePlayerData(socket.playerId);
       socket.emit('hatError', { reason: unlockResult.reason });
       return;
     }
