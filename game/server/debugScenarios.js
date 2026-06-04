@@ -432,6 +432,23 @@ function applyDebugScenario(socket, name) {
           }
         }
       }
+    } else if (name === 'aegis-sentinel-ready') {
+      // Playing phase with Aegis Sentinel in hand and enough Magic Stones to cast.
+      // Same state is reachable by buying the card from the shop and entering a run.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'aegis_sentinel',
+          name: 'Aegis Sentinel',
+          type: 'creature',
+          charges: 1,
+          remainingCharges: 1,
+          magicStoneCost: 45,
+          damage: 0,
+        };
+      }
     } else if (name === 'minion-combat') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;

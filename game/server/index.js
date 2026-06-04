@@ -453,6 +453,7 @@ const DEBUG_SCENARIOS = new Set([
   'frenzied-enemy',
   'spawner-active',
   'monster-card',
+  'aegis-sentinel-ready',
   'minion-combat',
   'run-failed',
   'run-exhausted',
