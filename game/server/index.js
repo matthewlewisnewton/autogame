@@ -68,6 +68,7 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const { createSocketHandlerCtx, registerAll } = require('./socketHandlers');
 
 const app = express();
 const server = http.createServer(app);
@@ -1163,6 +1164,24 @@ function startServer(port) {
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
+    const ctx = createSocketHandlerCtx({
+      socket,
+      playerId,
+      accountId,
+      username,
+      sessionPlayer,
+      getLobbyForSocket,
+      withLobbyFromSocket,
+      withLobbyPlayer,
+      broadcastLobbyUpdate,
+      findSocketByPlayerId,
+      savePlayerData,
+      isDebugScenarioAllowed,
+      applyDebugScenario,
+      softDisconnectPlayerFromLobby,
+    });
+    registerAll(socket, ctx);
+
     socket.on('listLobbies', () => {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
     });
@@ -1825,29 +1844,6 @@ function startServer(port) {
     });
   });
 
-  socket.on('debugScenario', (data) => {
-    const name = data && typeof data.name === 'string' ? data.name : '';
-    if (!isDebugScenarioAllowed(socket)) {
-      socket.emit('debugScenarioResult', { ok: false, reason: 'Debug scenarios are disabled' });
-      return;
-    }
-
-    const result = applyDebugScenario(socket, name);
-    socket.emit('debugScenarioResult', result);
-  });
-
-  socket.on('heartbeat', (data) => {
-    if (!data || !Number.isFinite(data.timestamp)) {
-      console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
-      return;
-    }
-    const lobby = getLobbyForSocket(socket);
-    if (lobby && lobby.state.players[socket.playerId]) {
-      lobby.state.players[socket.playerId].lastActivity = Date.now();
-    }
-    socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
-  });
-
   socket.on('lootPickup', (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
@@ -1885,20 +1881,6 @@ function startServer(port) {
       checkRunTerminalState();
     }
     });
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
-
-    if (!socket.playerId) return;
-
-    const lobby = lobbies.getLobbyForPlayer(socket.playerId);
-    if (lobby && lobby.state.players[socket.playerId]) {
-      softDisconnectPlayerFromLobby(socket);
-      return;
-    }
-
-    lobbies.removeSession(socket.playerId);
   });
 
   const resumeLobby = lobbies.getLobbyForPlayer(playerId);
