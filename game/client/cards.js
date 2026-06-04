@@ -127,6 +127,12 @@ export const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'shatter',
   },
+  permafrost_lance: {
+    ...cardIdentity.permafrost_lance,
+    magicStoneCost: 30,
+    effect: 'frost_nova',
+    specialEffect: 'freeze',
+  },
   healing_font: {
     ...cardIdentity.healing_font,
     magicStoneCost: 0,
@@ -396,6 +402,7 @@ export const CARD_ACCENT_STYLE = {
   arcane_bolt: { color: '#a78bfa', icon: '⟡' },
   frost_nova: { color: '#67e8f9', icon: '❄' },
   glacier_collapse: { color: '#38bdf8', icon: '🧊' },
+  permafrost_lance: { color: '#22d3ee', icon: '🔱' },
   healing_font: { color: '#86efac', icon: '♥' },
   divine_grace: { color: '#fde68a', icon: '✧' },
   skeleton_knight: { color: '#d4d4d8', icon: '💀' },
