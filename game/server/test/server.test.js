@@ -2880,6 +2880,24 @@ describe('run state', () => {
 			expect(gameState.suspendedCheckpoint).toBeUndefined();
 			expect(gameState.run).toBeUndefined();
 		});
+		it('checkAllReady does not start when a disconnected player has stale ready', () => {
+			resetState();
+			addPlayer('p1', {
+				connected: false,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+			addPlayer('p2', {
+				connected: true,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('lobby');
+		});
+
 		it('checkAllReady injects telepipe for telepipe-ready debug scenario', () => {
 			resetState();
 			addPlayer('p1', {
