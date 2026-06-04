@@ -1,0 +1,15 @@
+I've broken the top-level ticket into 4 dependency-ordered sub-tickets, each independently implementable and code-verifiable. Created folder paths:
+
+- `tickets/222-data-collapse-card-def-drift/subtickets/01-shared-card-stats-server/ticket.md`
+- `tickets/222-data-collapse-card-def-drift/subtickets/02-client-spreads-shared-stats/ticket.md`
+- `tickets/222-data-collapse-card-def-drift/subtickets/03-shared-sell-values-and-transforms/ticket.md`
+- `tickets/222-data-collapse-card-def-drift/subtickets/04-expand-card-sync-test/ticket.md`
+
+**Rationale / mapping to the top-level ACs:**
+
+- **01** lands the shared single-source stat module and switches the *server* consumer (AC1, "land shared module first"). Key finding: nearly every server stat is plain JSON, so only 6 `Math.PI`/`TICK_RATE` fields need to stay as a genuinely thin server overlay.
+- **02** switches the *client* consumer ("one consumer at a time"), retiring the partial hand-retyped copy — kills the stat-copy drift.
+- **03** collapses `CARD_SELL_VALUES` + `EVOLUTION_TRANSFORMS` to shared sources and explicitly reconciles the known `aegis_sentinel:22` / `arcane_bolt:8` drift, while keeping the `getCardSellValue` computed fallback (AC2, AC3).
+- **04** expands `card_sync.test.js` to diff full stat objects, sell values, transforms, and `getCardSellValue` parity (AC4), so future drift fails CI.
+
+All four are `code` verification — they concern structure, imports, server state, and values, none are purely visual. No existing sub-ticket folders were present, so nothing needed retiring.

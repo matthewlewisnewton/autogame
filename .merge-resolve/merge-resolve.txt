@@ -1,24 +1,6 @@
-All five conflicted files are resolved and marker-free. Summary of how each side was combined:
+Resolved the `LOGBOOK.md` conflict by keeping **both** review entries:
 
-### `game/server/index.js`
-Kept **main**’s shared `createGameState` import from `./game-state` (224-data-unify-game-state-factories) instead of the ticket’s inline factory.
+1. **v0.199 — 220-input-rebind-collision-guard** (this ticket’s input rebind collision guard review)
+2. **v0.198 — 222-data-collapse-card-def-drift** (card def drift work that landed on `main`)
 
-### `game/server/lobbies.js`
-Kept **both**:
-- Ticket **217** phase API: `PHASES`, `isLobbyPhase`, `isPlayingPhase`, `canTransition`, `setPhase`, `setGamePhase`
-- **Main**’s `createLobbyGameState = createGameState` alias (canonical full state shape)
-
-Removed the ticket’s duplicate incomplete `createLobbyGameState` implementation.
-
-### `game/server/progression.js`
-Kept **both**:
-- **Main**’s objective-registry delegation in `updateSurviveSpawns` (`getObjectiveDef` → `tickSpawns`)
-- Ticket’s `isPlayingPhase(_gameState)` guard before delegating
-
-### `TASKS.md`
-Listed both cleanup tickets: `227-cleanup-lobby-explicit-phase-state-machine` and `227-cleanup-data-objective-registry`.
-
-### `LOGBOOK.md`
-Included both release notes: **v0.196** (217) and **v0.195** (219).
-
-All **1741 tests pass**. The harness can commit and finish the merge.
+They’re ordered by version number (newest first), matching the logbook pattern. All conflict markers are removed — the harness can proceed with the merge.

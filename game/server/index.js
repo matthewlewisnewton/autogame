@@ -186,6 +186,7 @@ const {
   STARTING_DECK_IDS,
   EVOLUTION_GRIND_REQUIRED,
   EVOLUTION_TRANSFORMS,
+  CARD_SELL_VALUES,
   GRIND_COST_BASE,
   GRIND_STAT_SCALE,
   getGrindCost,
@@ -1662,11 +1663,23 @@ function startServer(port) {
       return;
     }
 
-    // Record the unlock on the account. If persistence fails, refund the
-    // currency so currency and unlockedHats stay consistent.
+    // Persist deducted currency before recording the hat on the account.
+    // Safe ordering: currency first, hat second — a crash after this save but
+    // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
+    // instead of unlocked-but-not-charged (free-hat exploit).
+    const saved = savePlayerData(socket.playerId);
+    if (!saved) {
+      player.currency += result.cost;
+      socket.emit('hatError', { reason: 'Failed to save progress' });
+      return;
+    }
+
     const unlockResult = unlockHatForAccount(player.accountId, hatId);
     if (!unlockResult.ok) {
+      // Refund in memory and re-save so disk matches RAM; otherwise the first
+      // save would leave deducted currency on disk without a hat unlock.
       player.currency += result.cost;
+      savePlayerData(socket.playerId);
       socket.emit('hatError', { reason: unlockResult.reason });
       return;
     }
@@ -2084,6 +2097,7 @@ if (typeof module !== 'undefined' && module.exports) {
     STARTING_DECK_IDS,
     EVOLUTION_GRIND_REQUIRED,
     EVOLUTION_TRANSFORMS,
+    CARD_SELL_VALUES,
     GRIND_COST_BASE,
     GRIND_STAT_SCALE,
     getGrindCost,

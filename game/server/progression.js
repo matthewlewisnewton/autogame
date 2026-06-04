@@ -54,6 +54,13 @@ const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
+const CARD_STATS = require('../shared/cardStats.json');
+// EVOLUTION_TRANSFORMS and CARD_SELL_VALUES are the single shared sources the
+// client (client/cards.js) also consumes, so the two sides cannot drift.
+const {
+  evolutionTransforms: EVOLUTION_TRANSFORMS,
+  cardSellValues: CARD_SELL_VALUES,
+} = require('../shared/cardEconomy.json');
 const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
 
 let _gameState = null;
@@ -111,373 +118,30 @@ function getProvider() {
   return provider;
 }
 
-// Server-side card definitions: identity subset (id/name/type/charges) comes
-// from the shared ../shared/cardDefs.json; each entry merges in server-only
-// fields (damage/effect/cooldown/minion stats, etc.).
-const CARD_DEFS = {
-  iron_sword: { ...CARD_IDENTITY.iron_sword, damage: 17 },
-  flame_blade: { ...CARD_IDENTITY.flame_blade, damage: 28 },
-  battle_familiar: { ...CARD_IDENTITY.battle_familiar, magicStoneCost: 50, damage: 44 },
-  dungeon_drake: {
-    ...CARD_IDENTITY.dungeon_drake,
-    minionTtl: 30,
-    attackDamage: 3,
-    breathRange: 6,
-    breathHoldDistance: 3.5,
-    breathConeAngle: Math.PI / 4,
-    breathDurationMs: 2000,
-    breathTickMs: 500,
-    breathIntervalMs: 2500,
-  },
-  null_crawler: {
-    ...CARD_IDENTITY.null_crawler,
-    magicStoneCost: 35,
-    effect: 'null_crawler',
-    minionHp: 55,
-    minionTtl: 30,
-    attackRange: 14,
-    attackDamage: 22,
-    attackIntervalMs: 2000,
-    attackWindupMs: 1000,
-    projectileHitWidth: 0.8,
-    specialEffect: 'phase_beam',
-  },
-  bulkhead_mauler: {
-    ...CARD_IDENTITY.bulkhead_mauler,
-    effect: 'bulkhead_mauler',
-    minionHp: 100,
-    minionTtl: 30,
-    attackRange: 4,
-    attackConeAngle: (Math.PI * 2) / 3,
-    attackDamage: 9,
-    specialEffect: 'shockwave_sweep',
-  },
-  steel_claymore: {
-    ...CARD_IDENTITY.steel_claymore,
-    damage: 25,
-    attackRange: 7,
-    knockbackStrength: 3,
-    isEvolved: true,
-    specialEffect: 'knockback'
-  },
-  magma_greatsword: {
-    ...CARD_IDENTITY.magma_greatsword,
-    damage: 42,
-    dotTicks: 4,
-    dotIntervalMs: 500,
-    trailDamagePerTick: 11,
-    isEvolved: true,
-    specialEffect: 'fire_trail'
-  },
-  aegis_sentinel: {
-    ...CARD_IDENTITY.aegis_sentinel,
-    magicStoneCost: 45,
-    damage: 0,
-    isEvolved: true,
-    specialEffect: 'astral_shield',
-    effect: 'astral_guardian',
-    shieldHp: 30,
-    shieldDurationMs: 8000,
-    minionHp: 160,
-    minionTtl: 30,
-    attackDamage: 0,
-    taunt: true,
-  },
-  astral_guardian: {
-    ...CARD_IDENTITY.astral_guardian,
-    magicStoneCost: 65,
-    damage: 66,
-    isEvolved: true,
-    specialEffect: 'astral_shield',
-    effect: 'astral_guardian',
-    shieldHp: 15,
-    shieldDurationMs: 8000,
-    minionHp: 60,
-    minionTtl: 30,
-    attackDamage: 11,
-    // One attack per sim tick at most (TICK_RATE Hz); sub-tick intervals cannot fire faster.
-    attackIntervalMs: Math.floor(1000 / TICK_RATE),
-  },
-  ancient_wyrm: {
-    ...CARD_IDENTITY.ancient_wyrm,
-    minionHp: 90,
-    isEvolved: true,
-    specialEffect: 'fire_breath',
-    effect: 'ancient_wyrm',
-    breathIntervalMs: 3000,
-    breathRange: 10,
-    breathHoldDistance: 5.5,
-    breathConeAngle: Math.PI / 3,
-    breathDurationMs: 2500,
-    breathTickMs: 500,
-    breathDamage: 4,
-  },
-  mana_prism: {
-    ...CARD_IDENTITY.mana_prism,
-    magicStoneCost: 0,
-    effect: 'mana_prism',
-    durationSeconds: 12,
-    magicStonePulse: 10,
-    pulseIntervalMs: 2000,
-  },
-  harvesting_scythe: {
-    ...CARD_IDENTITY.harvesting_scythe,
-    damage: 9,
-    attackConeAngle: Math.PI,
-    magicStoneOnHit: 5,
-    magicStoneOnKill: 15,
-  },
-  deck_sifter: {
-    ...CARD_IDENTITY.deck_sifter,
-    effect: 'draw_card',
-    magicStoneCost: 0,
-    drawsOnUse: 1,
-  },
-  sacrificial_altar: {
-    ...CARD_IDENTITY.sacrificial_altar,
-    magicStoneCost: 0,
-    effect: 'sacrificial_altar',
-    sacrificeRadius: 10,
-    magicStoneGain: 100,
-    chargeRestore: 2,
-  },
-  battery_automaton: {
-    ...CARD_IDENTITY.battery_automaton,
-    magicStoneCost: 50,
-    effect: 'battery_automaton',
-    minionHp: 80,
-    minionTtl: 30,
-    chargeRestore: 1,
-    chargePulseIntervalMs: 6000,
-  },
-  chrono_trigger: {
-    ...CARD_IDENTITY.chrono_trigger,
-    magicStoneCost: 0,
-    effect: 'chrono_trigger',
-    adjacentChargeRestore: 2,
-  },
-  saber_of_light: {
-    ...CARD_IDENTITY.saber_of_light,
-    damage: 9,
-    cooldownMs: 400,
-    specialEffect: 'swift_slash',
-  },
-  excalibur_photon: {
-    ...CARD_IDENTITY.excalibur_photon,
-    damage: 14,
-    cooldownMs: 200,
-    isEvolved: true,
-    swingsPerUse: 2,
-    specialEffect: 'photon_barrage',
-  },
-  photon_slicer: {
-    ...CARD_IDENTITY.photon_slicer,
-    damage: 13,
-    attackRange: 8,
-    effect: 'returning_projectile',
-    specialEffect: 'returning_projectile',
-  },
-  infinite_disk: {
-    ...CARD_IDENTITY.infinite_disk,
-    damage: 20,
-    attackRange: 8,
-    effect: 'triple_returning_projectile',
-    returnPasses: 3,
-    isEvolved: true,
-    specialEffect: 'triple_returning_projectile',
-  },
-  arcane_bolt: {
-    ...CARD_IDENTITY.arcane_bolt,
-    damage: 20,
-    attackRange: 10,
-    effect: 'projectile',
-    specialEffect: 'long_range',
-    projectile: { pierces: true },
-  },
-  frost_nova: {
-    ...CARD_IDENTITY.frost_nova,
-    magicStoneCost: 35,
-    effect: 'frost_nova',
-    damage: 11,
-    freezeDurationMs: 2500,
-    specialEffect: 'freeze',
-  },
-  permafrost_lance: {
-    ...CARD_IDENTITY.permafrost_lance,
-    magicStoneCost: 30,
-    effect: 'frost_nova',
-    damage: 8,
-    radius: 6,
-    freezeDurationMs: 2000,
-    specialEffect: 'freeze',
-  },
-  glacier_collapse: {
-    ...CARD_IDENTITY.glacier_collapse,
-    magicStoneCost: 35,
-    effect: 'glacier_collapse',
-    damage: 17,
-    freezeDurationMs: 2500,
-    frozenBonusDamage: 33,
-    isEvolved: true,
-    specialEffect: 'shatter',
-  },
-  healing_font: {
-    ...CARD_IDENTITY.healing_font,
-    magicStoneCost: 0,
-    effect: 'healing_font',
-    healAmount: 25,
-    specialEffect: 'heal',
-  },
-  divine_grace: {
-    ...CARD_IDENTITY.divine_grace,
-    magicStoneCost: 0,
-    effect: 'divine_grace',
-    healAmount: 38,
-    magicStoneRestore: 10,
-    isEvolved: true,
-    specialEffect: 'heal_and_mana',
-  },
-  skeleton_knight: {
-    ...CARD_IDENTITY.skeleton_knight,
-    minionHp: 120,
-    effect: 'skeleton_knight',
-    taunt: true,
-    specialEffect: 'taunt',
-  },
-  undead_commander: {
-    ...CARD_IDENTITY.undead_commander,
-    minionHp: 180,
-    effect: 'undead_commander',
-    taunt: true,
-    summonSkeletonCount: 2,
-    summonSkeletonHp: 60,
-    isEvolved: true,
-    specialEffect: 'summon_skeletons',
-  },
-  storm_eagle: {
-    ...CARD_IDENTITY.storm_eagle,
-    magicStoneCost: 40,
-    effect: 'storm_eagle',
-    minionHp: 45,
-    attackRange: 7,
-    attackDamage: 13,
-    specialEffect: 'ranged_strike',
-  },
-  thunderbird: {
-    ...CARD_IDENTITY.thunderbird,
-    magicStoneCost: 40,
-    effect: 'thunderbird',
-    minionHp: 68,
-    attackRange: 11,
-    attackDamage: 20,
-    chainRadius: 5,
-    maxChainTargets: 2,
-    isEvolved: true,
-    specialEffect: 'chain_lightning',
-  },
-  gravity_well: {
-    ...CARD_IDENTITY.gravity_well,
-    magicStoneCost: 45,
-    effect: 'gravity_well',
-    pullRadius: 12,
-    pullStrength: 4,
-    specialEffect: 'pull',
-  },
-  event_horizon: {
-    ...CARD_IDENTITY.event_horizon,
-    magicStoneCost: 45,
-    effect: 'event_horizon',
-    pullRadius: 12,
-    pullStrength: 6,
-    centerRadius: 2.5,
-    centerDamage: 33,
-    isEvolved: true,
-    specialEffect: 'crush',
-  },
-  echo_blade: {
-    ...CARD_IDENTITY.echo_blade,
-    damage: 15,
-    shockwaveEvery: 3,
-    shockwaveDamage: 22,
-    shockwaveRadius: 6,
-    specialEffect: 'shockwave',
-  },
-  resonance_edge: {
-    ...CARD_IDENTITY.resonance_edge,
-    damage: 23,
-    shockwaveEvery: 2,
-    shockwaveDamage: 33,
-    shockwaveRadius: 6,
-    isEvolved: true,
-    specialEffect: 'shockwave',
-  },
-  mana_leach: {
-    ...CARD_IDENTITY.mana_leach,
-    magicStoneCost: 30,
-    damage: 28,
-    magicStoneOnHit: 8,
-    specialEffect: 'mana_drain',
-  },
-  soul_drain: {
-    ...CARD_IDENTITY.soul_drain,
-    magicStoneCost: 30,
-    damage: 42,
-    magicStoneOnHit: 12,
-    healOnHit: 4,
-    healOnKill: 8,
-    isEvolved: true,
-    specialEffect: 'soul_drain',
-  },
-  dragons_breath: {
-    ...CARD_IDENTITY.dragons_breath,
-    magicStoneCost: 40,
-    effect: 'dragons_breath',
-    damage: 9,
-    dotTicks: 4,
-    dotIntervalMs: 500,
-    attackConeAngle: Math.PI / 3,
-    attackRange: 7,
-    specialEffect: 'fire_dot',
-  },
-  inferno_pillar: {
-    ...CARD_IDENTITY.inferno_pillar,
-    magicStoneCost: 40,
-    effect: 'inferno_pillar',
-    damage: 13,
-    dotTicks: 4,
-    dotIntervalMs: 500,
-    attackRange: 7,
-    isEvolved: true,
-    specialEffect: 'fire_dot',
-  },
-  telepipe: {
-    ...CARD_IDENTITY.telepipe,
-    magicStoneCost: 0,
-    effect: 'telepipe',
-    specialEffect: 'portal',
-  },
-  spike_trap: {
-    ...CARD_IDENTITY.spike_trap,
-    magicStoneCost: 25,
-    effect: 'spike_trap',
-    target: 'ground',
-    radius: 2.5,
-    damage: 39,
-    ttlMs: 30000,
-    specialEffect: 'proximity_hazard',
-  },
-  mirror_ward: {
-    ...CARD_IDENTITY.mirror_ward,
-    magicStoneCost: 30,
-    effect: 'mirror_ward',
-    target: 'self',
-    damageScale: 0.5,
-    minReflectDamage: 17,
-    reflectRange: 11,
-    ttlMs: 20000,
-    specialEffect: 'damage_reflect',
-  },
+// Server-side card definitions, rebuilt from shared single sources:
+//   - identity subset (id/name/type/charges/acquisition/rewardOrder) from
+//     ../shared/cardDefs.json
+//   - full per-card stat objects from ../shared/cardStats.json
+// A thin server overlay supplies ONLY the fields that require runtime
+// computation and cannot be JSON-encoded (Math.PI-based cone/breath angles and
+// astral_guardian's tick-derived attack interval). Everything else lives in the
+// shared JSON so the server no longer hand-maintains per-card stats.
+const CARD_STAT_OVERLAY = {
+  dungeon_drake: { breathConeAngle: Math.PI / 4 },
+  bulkhead_mauler: { attackConeAngle: (Math.PI * 2) / 3 },
+  ancient_wyrm: { breathConeAngle: Math.PI / 3 },
+  harvesting_scythe: { attackConeAngle: Math.PI },
+  dragons_breath: { attackConeAngle: Math.PI / 3 },
+  // One attack per sim tick at most (TICK_RATE Hz); sub-tick intervals cannot fire faster.
+  astral_guardian: { attackIntervalMs: Math.floor(1000 / TICK_RATE) },
 };
+
+const CARD_DEFS = Object.fromEntries(
+  Object.keys(CARD_IDENTITY).map((id) => [
+    id,
+    { ...CARD_IDENTITY[id], ...CARD_STATS[id], ...CARD_STAT_OVERLAY[id] },
+  ])
+);
 
 // Key item definitions registry — mirrors CARD_DEFS pattern.
 // Implemented: `dodge_roll`, `summon_recall`. Others return { ok: false, reason: 'not_implemented' }.
@@ -651,53 +315,6 @@ function migrateCardId(cardId) {
   if (!cardId || typeof cardId !== 'string') return cardId;
   return LEGACY_EVOLVED_CARD_IDS[cardId] || cardId;
 }
-
-const EVOLUTION_TRANSFORMS = {
-  iron_sword: 'steel_claymore',
-  flame_blade: 'magma_greatsword',
-  battle_familiar: 'astral_guardian',
-  dungeon_drake: 'ancient_wyrm',
-  saber_of_light: 'excalibur_photon',
-  photon_slicer: 'infinite_disk',
-  frost_nova: 'glacier_collapse',
-  healing_font: 'divine_grace',
-  skeleton_knight: 'undead_commander',
-  storm_eagle: 'thunderbird',
-  gravity_well: 'event_horizon',
-  echo_blade: 'resonance_edge',
-  mana_leach: 'soul_drain',
-  dragons_breath: 'inferno_pillar',
-};
-
-const CARD_SELL_VALUES = {
-  iron_sword: 5,
-  flame_blade: 8,
-  battle_familiar: 12,
-  dungeon_drake: 10,
-  null_crawler: 12,
-  bulkhead_mauler: 10,
-  steel_claymore: 15,
-  magma_greatsword: 18,
-  aegis_sentinel: 22,
-  astral_guardian: 25,
-  ancient_wyrm: 20,
-  divine_grace: 18,
-  undead_commander: 18,
-  thunderbird: 18,
-  mana_prism: 10,
-  harvesting_scythe: 6,
-  sacrificial_altar: 14,
-  battery_automaton: 12,
-  chrono_trigger: 16,
-  saber_of_light: 8,
-  excalibur_photon: 12,
-  infinite_disk: 18,
-  event_horizon: 22,
-  soul_drain: 18,
-  dragons_breath: 14,
-  inferno_pillar: 22,
-  telepipe: 18,
-};
 
 function getCardSellValue(cardId) {
   if (Object.prototype.hasOwnProperty.call(CARD_SELL_VALUES, cardId)) {
@@ -1168,14 +785,16 @@ function persistenceKey(playerId) {
 }
 
 function savePlayerData(playerId) {
-  if (!provider) return;
+  if (!provider) return true;
   const player = _gameState.players[playerId];
-  if (!player) return;
+  if (!player) return true;
   try {
     const key = persistenceKey(playerId);
     provider.savePlayer(key, extractPersistentData(player));
+    return true;
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
+    return false;
   }
 }
 

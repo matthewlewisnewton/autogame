@@ -3514,6 +3514,25 @@ No new or changed debug scenario was introduced by this ticket. The capture used
 None.
 
 
+## v0.195 — 219-input-unify-keyboard-onto-keymap  (2026-06-04 13:02:31)
+
+5. **Remove dead gamepad handler plumbing:** Satisfied. `setGamepadInputHandler`, `gamepadInputHandler`, and the empty main.js registration are gone; `pollInput()` is the single per-frame gamepad action dispatcher.
+
+6. **Collapse redundant per-callback phase guards:** Satisfied. `main.js` centralizes action gating in `canUseGameActions()` for `initInput()` callbacks and uses the same helper for pointer/deck interactions. Renderer still guards `applyLockOnPress()` internally, which is appropriate because the function is exported and can be called independently.
+
+## Design and requirements fit
+
+The implementation stays within the existing client input architecture and does not alter server simulation, persistence, dungeon flow, or combat rules. It preserves the requirement that WASD movement updates the local player and broadcasts through the existing renderer movement pipeline, while reducing duplicate hardware readers that could diverge.
+
+No new debug scenario was added or changed for this ticket. The capture used the normal gameplay path, not a `debugScenario` shortcut.
+
+## Code quality and verification
+
+The changed code is focused and covered by targeted unit tests. `coverage.log` shows the Vitest suite passed: 12 files and 253 tests. The new input tests cover keyboard movement, typing-target keyup clearing, merged keyboard/gamepad movement, keyboard and gamepad lock-on dispatch, exposed action labels, and existing key-item binding behavior.
+
+I did not find dead replacement code, duplicate keyboard listeners, uncaught runtime errors, or integration issues in the live `game/` files.
+
+
 ## v0.196 — 217-lobby-explicit-phase-state-machine  (2026-06-04 13:14:25)
 
 The server-side gameplay guards have also largely moved from raw string comparisons to `isLobbyPhase` / `isPlayingPhase`, including movement, ready-up, deck/shop/trade lobby-only actions, card/key-item use, simulation ticks, passive draws, survive spawns, give-up, and telepipe suspend/resume paths. One remaining debug-scenario literal check is a cleanup nit rather than a blocking behavior issue because it does not mutate phase or affect normal gameplay.
@@ -3532,23 +3551,24 @@ PASS. The implementation remains consistent with `game/docs/design.md`: lobbies 
 ### Debug scenarios
 PASS. This ticket did not add a new `?debugScenario=...` shortcut. It only routed existing scenario phase writes through `setPhase`. Debug scenarios remain behind the existing dev/debug URL path and are not part of normal gameplay. The normal ready-up path still reaches `playing` through `checkAllReady`, and the scenario changes do not skip any new server-side validation or persistence path beyond the existing QA shortcuts.
 
-## v0.195 — 219-input-unify-keyboard-onto-keymap  (2026-06-04 13:02:31)
 
-5. **Remove dead gamepad handler plumbing:** Satisfied. `setGamepadInputHandler`, `gamepadInputHandler`, and the empty main.js registration are gone; `pollInput()` is the single per-frame gamepad action dispatcher.
+## v0.197 — 215-lobby-atomic-hat-unlock-ordering  (2026-06-04 13:19:47)
 
-6. **Collapse redundant per-callback phase guards:** Satisfied. `main.js` centralizes action gating in `canUseGameActions()` for `initInput()` callbacks and uses the same helper for pointer/deck interactions. Renderer still guards `applyLockOnPress()` internally, which is appropriate because the function is exported and can be called independently.
+### Test that kills the write between steps
 
-## Design and requirements fit
+Pass. `server/test/hat_unlock_persistence.test.js` adds focused coverage for the write ordering, the crash-between-steps persistence state, currency-save failure, and account-unlock failure refund. The crash-window test blocks the `users.json` rename after the currency save and verifies a reload sees deducted currency without the purchased hat, preventing the original free-hat exploit.
 
-The implementation stays within the existing client input architecture and does not alter server simulation, persistence, dungeon flow, or combat rules. It preserves the requirement that WASD movement updates the local player and broadcasts through the existing renderer movement pipeline, while reducing duplicate hardware readers that could diverge.
+## Design and requirements consistency
 
-No new debug scenario was added or changed for this ticket. The capture used the normal gameplay path, not a `debugScenario` shortcut.
+The change is server-side persistence ordering for a lobby economy action. It does not alter the documented lobby/dungeon loop, card combat, multiplayer rendering, movement synchronization, or client/server connection requirements. The round-2 screenshots and probes confirm the foundation still loads, connects two players, enters gameplay, moves, and uses a key item.
 
-## Code quality and verification
+No development debug scenario was added or changed by this ticket, so the debug-scenario shortcut criteria are not applicable.
 
-The changed code is focused and covered by targeted unit tests. `coverage.log` shows the Vitest suite passed: 12 files and 253 tests. The new input tests cover keyboard movement, typing-target keyup clearing, merged keyboard/gamepad movement, keyboard and gamepad lock-on dispatch, exposed action labels, and existing key-item binding behavior.
+## Code quality and validation
 
-I did not find dead replacement code, duplicate keyboard listeners, uncaught runtime errors, or integration issues in the live `game/` files.
+The implementation is narrow and follows existing server patterns for player persistence, account unlocks, and socket error events. I did not find dead/broken code or an obvious integration regression in the changed files.
+
+Validation observed in `coverage.log`: `41` test files passed, `918` tests passed. The new `server/test/hat_unlock_persistence.test.js` passed all `4` tests. Coverage on changed server code is visible, with `server/index.js` reported at `89.22%` statements / `64.65%` branches / `89.18%` functions / `89.22%` lines.
 
 ## Remaining gaps
 
@@ -3576,4 +3596,27 @@ touched). No debug scenarios added.
 ## Remaining gaps
 
 None blocking.
+
+
+## v0.198 — 222-data-collapse-card-def-drift  (2026-06-04 13:33:34)
+
+3. Keep `getCardSellValue` computed fallback.
+
+PASS. Both server and client retain the fallback behavior: explicit sell value first, then evolved/spell/creature/default values, with unknown cards returning `0`.
+
+4. Expand `card_sync.test.js` to diff full stat objects.
+
+PASS. `game/server/test/card_sync.test.js` now compares all client-defined fields against the server surface, checks that only documented server-only overlay fields are absent from the client, validates shared sell values and evolution transforms, and checks sell-value fallback agreement for every card id. The latest coverage run shows `server/test/card_sync.test.js` passing with 9 tests, and the coverage summary reports the broader run green.
+
+## Design and foundation consistency
+
+PASS. The change is data-ownership focused and preserves the documented card-combat loop, lobby-to-dungeon flow, rendering, WebSocket connection, and movement foundation. The live capture confirms the foundation requirements still work: the app rendered a 3D scene, connected two clients to the backend, represented players in gameplay, and accepted movement input without runtime errors.
+
+## Code quality
+
+PASS. The implementation is appropriately scoped: shared JSON owns static data, server-only computed fields remain in a small overlay, and tests explicitly guard the allowed overlay exception. No ticket changes introduced debug scenarios or normal-gameplay shortcuts, so the debug-scenario gate review is not applicable.
+
+## Remaining gaps
+
+No blocking gaps.
 

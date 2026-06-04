@@ -1,0 +1,12 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/215-lobby-atomic-hat-unlock-ordering/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/215-lobby-atomic-hat-unlock-ordering/game/data
+Server listening on port 3003
+Player connected: socket=7xd3Ey6UjXovW08rAAAB, playerId=1610f198-1612-4f0a-9028-67f30a175fcd
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=7IFJlD7WNAioT2rpAAAD, playerId=48eadf18-9264-4064-a018-05135e30839d
+[loot] spawned id=58662e3f-8bd4-415d-a8b5-74fa3cfa5f3f value=8
+Player disconnected: 7xd3Ey6UjXovW08rAAAB
+Player disconnected: 7IFJlD7WNAioT2rpAAAD
