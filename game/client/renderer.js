@@ -2649,11 +2649,13 @@ export function applyRevealHighlight(enemyId, enemy) {
 const VARIANT_BADGE_COLORS = {
 	default: 0xc026d3, // magenta — distinct from amber reveal/yellow lock-on
 	leeching: 0x14b8a6, // teal — distinct from default variant badge
+	frenzied: 0xea580c, // orange — distinct from default magenta and leeching teal
 };
 
 /** @type {Record<string, { color: number, intensity: number }>} */
 const VARIANT_MESH_TINTS = {
 	leeching: { color: 0x0d9488, intensity: 0.45 },
+	frenzied: { color: 0xc2410c, intensity: 0.42 },
 };
 
 function variantBadgeColor(variant) {
@@ -2711,7 +2713,7 @@ export function applyVariantMarker(enemyId, enemy) {
 /**
  * Apply or remove a per-variant emissive tint on the enemy mesh. Reveal glow and
  * windup flash take priority; when neither is active, leeching enemies get a
- * subtle teal tint and all others restore `_origEmissive` bookkeeping.
+ * subtle per-variant tint and all others restore `_origEmissive` bookkeeping.
  * @param {string} enemyId
  * @param {object} enemy - { variant, revealedUntil, attackState }
  */

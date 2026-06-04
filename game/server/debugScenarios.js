@@ -314,7 +314,7 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
-    } else if (name === 'variant-frenzied-low-hp') {
+    } else if (name === 'variant-frenzied') {
       // Frenzied grunt below 50% HP so frenzied-active chase/windup boost is on.
       // Same state is reachable when applyVariant rolls frenzied and combat drops HP.
       player.hp = MAX_HP;
