@@ -1,0 +1,14 @@
+Broke ticket **171** into **2** sub-tickets (same pattern as **173** leeching): server combat behavior first, then client visuals + debug scenario.
+
+**Sub-ticket folders created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/01-server-frenzied-speed-below-half-hp/`
+2. `/home/matt/workspace/.autogame-worktrees/171-gameplay-enemy-variant-frenzied/tickets/171-gameplay-enemy-variant-frenzied/subtickets/02-client-frenzied-variant-visuals/`
+
+**Rationale**
+
+- **01** delivers the top-level acceptance criterion (measurable chase-speed boost below 50% HP, server-tested) and the goal’s attack-speed piece via `getEffectiveEnemyCombatStats` wired into `updateEnemies`.
+- **02** adds distinct badge/tint and `variant-frenzied` debug spawn (Frenzied grunt pre-damaged so the boost is active in manual runs).
+- Both use **Verification: code** because criteria cover registry helpers, AI wiring, tests, and debug-scenario registration—not screenshot-only rendering.
+
+No prior `subtickets/` folder existed, so nothing was deleted or renumbered.
