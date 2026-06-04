@@ -134,6 +134,21 @@ class BeadsQueue:
     def add_label(self, issue_id: str, label: str) -> None:
         self._run("label", "add", issue_id, label)
 
+    def set_difficulty(self, issue_id: str, difficulty: str) -> None:
+        """Force a ticket onto a single difficulty lane: drop any other
+        `difficulty:*` labels, then add the target. Used by the staleness
+        breaker to re-route a churning ticket to a faster agent (qwen is
+        eligible only for easy/medium, so bumping to `hard` excludes it).
+        Removes are best-effort (`check=False`) — a label that isn't present
+        is a no-op, not an error — but the add MUST land or the ticket could
+        end up lane-invisible."""
+        for d in ("easy", "medium", "hard"):
+            if d != difficulty:
+                self._run("update", issue_id,
+                          "--remove-label", DIFFICULTY_LABEL.format(d), check=False)
+        self._run("update", issue_id,
+                  "--add-label", DIFFICULTY_LABEL.format(difficulty), check=True)
+
     def add_dep(self, blocked_id: str, blocker_id: str) -> None:
         """blocked_id depends on (is blocked by) blocker_id."""
         self._run("dep", "add", blocked_id, blocker_id)

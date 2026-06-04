@@ -138,6 +138,62 @@ def _carry_scope_conflict_into_feedback(ctx: TicketContext, review_fb: Path,
                 "ticket with the relevant sub-tickets restructured.\n")
 
 
+_INTEGRATION_REF = "main"
+
+
+def _rebase_onto_integration(workspace: Repo, base_ref: str,
+                             *, integration_ref: str = _INTEGRATION_REF,
+                             ticket_name: str = "") -> str:
+    """Keep a ticket branch from drifting away from current `main` at a round
+    boundary (autogame-6xs). The failure this prevents: 177 ran ~12h on a branch
+    55 commits behind main, fighting an already-refactored test and facing an
+    impossible final merge. At each round boundary the tree is clean and no agent
+    is running, so if the branch is BEHIND main we attempt a CLEAN, git-mechanical
+    rebase onto it — instant when there's no overlap, which is the common case for
+    focused tickets, so the branch always works against current code.
+
+    Clean-only by design: on ANY conflict (or a dirty tree) we leave the branch
+    exactly as it was and proceed. Resolving a conflict here would mean running an
+    agent mid-pipeline; instead the staleness breaker (autogame-sug) abandons a
+    branch that can never catch up. Returns the new base_ref (the integration head
+    the work now sits on, so `base_ref..HEAD` stays = just this ticket's commits)
+    after a successful rebase, else the unchanged base_ref. Never raises."""
+    try:
+        workspace.run_git("rev-parse", "--verify", "--quiet", integration_ref)
+    except Exception:
+        return base_ref  # no integration ref here (e.g. a test repo) — nothing to do
+    try:
+        if workspace.run_git("status", "--porcelain").strip():
+            return base_ref  # uncommitted work — never rebase a dirty tree
+        behind = workspace.run_git("rev-list", "--count",
+                                   f"HEAD..{integration_ref}").strip()
+        if behind in ("", "0"):
+            return base_ref  # already current with main
+    except Exception:
+        return base_ref
+    try:
+        workspace.run_git("rebase", integration_ref)
+    except Exception:
+        try:
+            workspace.run_git("rebase", "--abort")
+        except Exception:
+            pass
+        emit_progress_event("incremental_rebase", {
+            "ticket": ticket_name, "behind": behind, "result": "conflict_skipped"})
+        log(f"[rebase] {ticket_name}: {behind} commit(s) behind {integration_ref}; "
+            f"rebase conflicted — staying put (breaker handles persistent drift)")
+        return base_ref
+    try:
+        new_base = workspace.run_git("rev-parse", integration_ref).strip() or base_ref
+    except Exception:
+        new_base = base_ref
+    emit_progress_event("incremental_rebase", {
+        "ticket": ticket_name, "behind": behind, "result": "rebased"})
+    log(f"[rebase] {ticket_name}: rebased {behind} commit(s) onto {integration_ref} "
+        f"(base now {new_base[:8]})")
+    return new_base
+
+
 def ticket(ctx: TicketContext) -> PipelineResult:
     """Ticket loop. Wraps body in tee_pipeline_log → tdir/log.txt (claude
     impl-review blocker fix)."""
@@ -160,6 +216,12 @@ def _ticket_body(ctx: TicketContext) -> PipelineResult:
             "ticket": ctx.name, "round": round_n,
             "maxRounds": ctx.tunables.ticket_max_rounds,
         })
+
+        # Round boundary: clean tree, no agent running — pull the branch up to
+        # current main so a multi-round ticket never drifts far (autogame-6xs).
+        # Advances base_ref so the coverage/rescue diffs stay scoped to this
+        # ticket's own commits.
+        base_ref = _rebase_onto_integration(ctx.workspace, base_ref, ticket_name=ctx.name)
 
         decomp_chain = decompose(decomp_role, workspace=ctx.workspace,
                                   ticket_name=ctx.name, ticket_file=ctx.ticket_file,

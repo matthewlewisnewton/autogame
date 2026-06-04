@@ -327,6 +327,15 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         # Auto-recover a quota-disabled remote agent: re-probe it after a cooldown
         # and re-enable the moment its quota is back (no manual --enable).
         probe_fn=probe_fn,
+        # Staleness breaker (autogame-sug): a ticket that keeps failing gets
+        # requeued forever (171 looped ~8h, 177 churned ~12h). After 3 attempts,
+        # bump it to `hard` so a stronger agent than the churning one retries;
+        # after 6 attempts OR 8h, abandon it (close) so it stops looping. Pairs
+        # with the round-boundary incremental rebase (autogame-6xs) that keeps
+        # branches from drifting in the first place.
+        breaker_escalate_attempts=3,
+        breaker_max_attempts=6,
+        breaker_max_hours=8.0,
     )
     return disp, mq, queue, registry
 

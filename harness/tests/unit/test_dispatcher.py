@@ -4,6 +4,8 @@ Drives tick()/reap with injected fakes — no real git, beads, or subprocesses.
 """
 from __future__ import annotations
 
+import time
+
 from harness.dispatch.dispatcher import Dispatcher, WorkerHandle
 from harness.dispatch.registry import AgentRegistry, AgentSpec
 from harness.pipelines.result import PipelineResult
@@ -16,6 +18,8 @@ class FakeQueue:
         self._ready = {d: list(ids) for d, ids in ready_by_diff.items()}
         self.requeued = []
         self.assigned = {}
+        self.closed = []          # (ticket_id, reason) — breaker abandons
+        self.difficulties = {}    # ticket_id -> difficulty — breaker escalations
 
     def ready(self, *, difficulty=None, limit=100):
         return [{"id": i} for i in self._ready.get(difficulty, [])][:limit]
@@ -32,6 +36,12 @@ class FakeQueue:
         self.requeued.append(ticket_id)
         # back to the front of its (assumed medium) lane for re-pickup
         self._ready.setdefault("medium", []).insert(0, ticket_id)
+
+    def close(self, ticket_id, reason="done"):
+        self.closed.append((ticket_id, reason))
+
+    def set_difficulty(self, ticket_id, difficulty):
+        self.difficulties[ticket_id] = difficulty
 
 
 class FakeProc:
@@ -342,3 +352,70 @@ def test_agent_hit_quota_respects_since_ms(tmp_path):
     assert _agent_hit_quota(tmp_path, "qwen", since_ms=4000) is True
     # with no window bound, the stale row alone still trips it (back-compat)
     assert _agent_hit_quota(tmp_path, "qwen") is True
+
+
+# --- staleness circuit-breaker (autogame-sug) -------------------------- #
+def _fail(proc):
+    proc.finish(int(PipelineResult.INCOMPLETE))
+
+
+def test_breaker_disabled_by_default_always_requeues():
+    """With breaker limits at 0 (off), behaviour is unchanged: a failure always
+    requeues and never abandons."""
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)])
+    d.tick()                               # spawn t1
+    _fail(procs["t1"])
+    d.tick()                               # reap → requeue (no breaker)
+    assert q.closed == []
+    assert "t1" in q.requeued
+
+
+def test_breaker_pass_clears_attempt_tracking():
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)])
+    d.tick()
+    assert d._attempts["t1"] == 1 and "t1" in d._first_seen
+    procs["t1"].finish(int(PipelineResult.PASS))
+    d.tick()                               # reap pass → tracking cleared
+    assert "t1" not in d._attempts and "t1" not in d._first_seen
+
+
+def test_breaker_abandons_after_max_attempts():
+    """A ticket that fails up to the attempt ceiling is closed (abandoned), not
+    requeued again — bounding the churn."""
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)])
+    d.breaker_max_attempts = 2
+    d.tick()                               # attempt 1
+    _fail(procs["t1"]); d.tick()           # reap (1<2 → requeue) + re-spawn (attempt 2)
+    assert "t1" in q.requeued and q.closed == []
+    _fail(procs["t1"]); d.tick()           # reap (2>=2 → ABANDON)
+    assert any(tid == "t1" for tid, _ in q.closed)
+    assert q.requeued.count("t1") == 1     # not requeued a second time
+    assert "t1" not in d._attempts         # tracking cleared on abandon
+
+
+def test_breaker_abandons_after_max_hours():
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)])
+    d.breaker_max_hours = 1.0
+    d.tick()                               # spawn t1
+    d._first_seen["t1"] = time.time() - 2 * 3600   # pretend it started 2h ago
+    _fail(procs["t1"]); d.tick()           # reap → 2h >= 1h → abandon
+    assert any(tid == "t1" for tid, _ in q.closed)
+    assert "t1" not in q.requeued
+
+
+def test_breaker_escalates_to_hard_then_requeues():
+    """Past the escalate threshold (but under the abandon ceiling) the ticket is
+    bumped to `hard` (so qwen can't take it) and still requeued for a retry."""
+    q = FakeQueue({"medium": ["t1"]})
+    d, procs, wts = _dispatcher(q, _registry(), ports=[PortAllocation(3000, 5173)])
+    d.breaker_escalate_attempts = 1
+    d.breaker_max_attempts = 0             # never abandon in this test
+    d.tick()                               # attempt 1 (difficulty medium)
+    _fail(procs["t1"]); d.tick()           # reap → 1>=1 → escalate + requeue
+    assert q.difficulties.get("t1") == "hard"
+    assert "t1" in q.requeued
+    assert q.closed == []

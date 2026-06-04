@@ -115,6 +115,20 @@ class Dispatcher:
     # quota-disabled agent stays down until a human re-enables, the old behaviour).
     probe_fn: Optional[Callable[[str], Optional[bool]]] = None
     quota_cooldown_s: float = 600.0
+    # Staleness circuit-breaker (autogame-sug). A ticket that keeps failing keeps
+    # getting requeued + re-spawned (177 churned ~12h, 171 looped ~8h). These bound
+    # the loss across that requeue loop, keyed per bead across attempts:
+    #   - escalate: after this many failed attempts, BUMP the ticket to `hard` so
+    #     the cheap/slow agent that churned (qwen, easy+medium only) is no longer
+    #     eligible and a stronger agent (composer/claude/gpt5) takes the retry.
+    #   - abandon: after this many attempts OR this many wall-clock hours, stop
+    #     retrying entirely — close the bead with an "abandoned" reason + event so
+    #     it leaves the ready pool instead of churning forever.
+    # 0 / 0.0 = that limit is OFF (default off so existing behaviour/tests are
+    # unchanged; the launcher wires real values).
+    breaker_escalate_attempts: int = 0
+    breaker_max_attempts: int = 0
+    breaker_max_hours: float = 0.0
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
@@ -122,6 +136,10 @@ class Dispatcher:
     _last_status_digest: str = field(default="", init=False)
     _draining_logged: bool = field(default=False, init=False)
     _tick_count: int = field(default=0, init=False)
+    # Staleness breaker bookkeeping, keyed by bead id and persisted across the
+    # requeue/respawn loop (cleared on PASS or abandon).
+    _attempts: dict[str, int] = field(default_factory=dict, init=False)
+    _first_seen: dict[str, float] = field(default_factory=dict, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -335,6 +353,10 @@ class Dispatcher:
         self._workers[bead_id] = WorkerHandle(
             bead_id, ticket_name, agent, difficulty, wt, proc,
             started_at=int(time.time() * 1000))
+        # Staleness-breaker bookkeeping: count this attempt and stamp first-seen
+        # (the wall-clock the ticket FIRST started churning, kept across requeues).
+        self._attempts[bead_id] = self._attempts.get(bead_id, 0) + 1
+        self._first_seen.setdefault(bead_id, time.time())
         emit_progress_event("dispatch_spawn", {
             "ticket": ticket_name, "agent": agent, "difficulty": difficulty,
             "game_port": ports.game_server, "vite_port": ports.vite,
@@ -377,6 +399,7 @@ class Dispatcher:
         the return reflects whether the worktree actually went away."""
         if rc == int(PipelineResult.PASS):
             emit_progress_event("dispatch_pass", {"ticket": w.ticket_name, "agent": w.agent})
+            self._clear_breaker(w.ticket_id)  # done — stop tracking churn for it
             if self.on_pass is not None:
                 self.on_pass(w)   # merge queue takes the branch + owns teardown
             else:
@@ -389,10 +412,69 @@ class Dispatcher:
                 + (f" (auto-reprobe in {int(cd)}s)" if cd else " until re-enabled"))
             self.registry.disable(w.agent, reason="quota or unavailable", cooldown_s=cd)
             emit_progress_event("agent_disabled", {"agent": w.agent, "reason": "quota"})
-        self.queue.requeue(w.ticket_id, note=f"{w.agent} failed (rc={rc})")
-        emit_progress_event("dispatch_requeue",
-                            {"ticket": w.ticket_name, "agent": w.agent, "rc": rc})
+        # Staleness breaker: abandon a ticket that has churned too long/too many
+        # times; otherwise requeue (after a possible difficulty bump to a faster
+        # agent). A quota disable above still requeues — quota is the agent's fault,
+        # not the ticket's, so it doesn't count toward abandonment.
+        if not self._apply_breaker(w):
+            self.queue.requeue(w.ticket_id, note=f"{w.agent} failed (rc={rc})")
+            emit_progress_event("dispatch_requeue",
+                                {"ticket": w.ticket_name, "agent": w.agent, "rc": rc})
         return w.worktree.remove_worktree()
+
+    def _clear_breaker(self, tid: str) -> None:
+        self._attempts.pop(tid, None)
+        self._first_seen.pop(tid, None)
+
+    def _apply_breaker(self, w: WorkerHandle) -> bool:
+        """Staleness circuit-breaker (autogame-sug). Given a FAILED ticket, decide
+        based on how many attempts it's had and how long it's been churning:
+          - ABANDON (return True): past the attempt/hour ceiling — close the bead so
+            it leaves the ready pool instead of looping forever; caller must NOT
+            requeue.
+          - ESCALATE then requeue (return False): past the softer escalate
+            threshold — bump it to `hard` so qwen (easy/medium only) stops getting
+            it and a stronger agent retries.
+          - else requeue as usual (return False).
+        Every beads op is best-effort: a breaker failure must never crash a tick —
+        on error we fall back to a plain requeue (the pre-breaker behaviour)."""
+        tid = w.ticket_id
+        attempts = self._attempts.get(tid, 0)
+        elapsed_h = (time.time() - self._first_seen.get(tid, time.time())) / 3600.0
+
+        hit_attempts = self.breaker_max_attempts and attempts >= self.breaker_max_attempts
+        hit_hours = self.breaker_max_hours and elapsed_h >= self.breaker_max_hours
+        if hit_attempts or hit_hours:
+            reason = (f"abandoned by staleness breaker: {attempts} attempts, "
+                      f"{elapsed_h:.1f}h churning (last agent {w.agent})")
+            try:
+                self.queue.close(tid, reason=reason)
+            except Exception as e:
+                log(f"[dispatch] breaker close failed for {w.ticket_name}: {e!r} "
+                    f"— falling back to requeue")
+                return False
+            log(f"[dispatch] BREAKER abandoned {w.ticket_name} — {reason}")
+            emit_progress_event("ticket_abandoned", {
+                "ticket": w.ticket_name, "agent": w.agent,
+                "attempts": attempts, "hours": round(elapsed_h, 1),
+            })
+            self._clear_breaker(tid)
+            return True
+
+        if (self.breaker_escalate_attempts
+                and attempts >= self.breaker_escalate_attempts
+                and w.difficulty != "hard"):
+            try:
+                self.queue.set_difficulty(tid, "hard")
+                log(f"[dispatch] BREAKER escalating {w.ticket_name} "
+                    f"({w.difficulty} -> hard) after {attempts} attempts on {w.agent}")
+                emit_progress_event("ticket_escalated", {
+                    "ticket": w.ticket_name, "from": w.difficulty, "to": "hard",
+                    "attempts": attempts, "agent": w.agent,
+                })
+            except Exception as e:
+                log(f"[dispatch] breaker escalate failed for {w.ticket_name}: {e!r}")
+        return False
 
     # --- run loop ------------------------------------------------------- #
     def run(self, *, max_idle_ticks: int = 0) -> None:
