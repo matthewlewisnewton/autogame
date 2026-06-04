@@ -211,6 +211,7 @@ describe('new card combat helpers', () => {
 	it('Glacier Rupture deals bonus damage to already-frozen enemies', () => {
 		const now = Date.now();
 		const def = CARD_DEFS.glacier_collapse;
+		expect(def).toMatchObject({ frozenBonusDamage: 33, damage: 17 });
 		gameState.enemies = [
 			{ id: 'e1', type: 'grunt', x: 2, z: 0, hp: 100, frozenUntil: now + 5000 },
 			{ id: 'e2', type: 'grunt', x: -2, z: 0, hp: 100 },

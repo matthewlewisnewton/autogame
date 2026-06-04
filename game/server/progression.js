@@ -292,7 +292,7 @@ const CARD_DEFS = {
     effect: 'glacier_collapse',
     damage: 17,
     freezeDurationMs: 2500,
-    frozenBonusDamage: 44,
+    frozenBonusDamage: 33,
     isEvolved: true,
     specialEffect: 'shatter',
   },
