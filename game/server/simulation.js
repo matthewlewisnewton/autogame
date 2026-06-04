@@ -733,15 +733,15 @@ function lockWindupDirection(enemy, target) {
 	}
 }
 
-function isEntityInEnemyAttack(enemy, target, def) {
-	const range = def.attackRange ?? ENEMY_ATTACK_RANGE;
+function isEntityInEnemyAttack(enemy, target) {
+	const range = enemy.attackRange ?? ENEMY_ATTACK_RANGE;
 	const dx = target.x - enemy.x;
 	const dz = target.z - enemy.z;
 	const dist = Math.hypot(dx, dz);
 	if (dist > range) return false;
 
-	if (def.attackStyle === 'cone') {
-		const coneAngle = def.attackConeAngle ?? ATTACK_CONE_ANGLE;
+	if (enemy.attackStyle === 'cone') {
+		const coneAngle = enemy.attackConeAngle ?? ATTACK_CONE_ANGLE;
 		const dirX = enemy.windupDirX ?? 1;
 		const dirZ = enemy.windupDirZ ?? 0;
 		const tDirX = dist > 0 ? dx / dist : dirX;
@@ -753,8 +753,16 @@ function isEntityInEnemyAttack(enemy, target, def) {
 	return true;
 }
 
-function isPlayerInEnemyAttack(enemy, target, def) {
-	return isEntityInEnemyAttack(enemy, target, def);
+function isPlayerInEnemyAttack(enemy, target) {
+	return isEntityInEnemyAttack(enemy, target);
+}
+
+/** Backfill combat stats on enemies created before spawnEnemy spread (tests, corrupt type throws). */
+function ensureEnemyCombatStats(enemy) {
+	if (enemy.chaseSpeed !== undefined) return;
+	const def = enemyDefFor(enemy.type);
+	const { hp, ...statFields } = def;
+	Object.assign(enemy, statFields);
 }
 
 function resolveWindupTarget(enemy) {
@@ -1755,10 +1763,10 @@ function updateEnemies() {
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 
 	for (const enemy of _gameState.enemies) {
-		const def = enemyDefFor(enemy.type);
+		ensureEnemyCombatStats(enemy);
 		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
-		const chaseSpeed = def.chaseSpeed * chaseSpeedMult;
-		const attackWindupMs = def.attackWindupMs * attackWindupMult;
+		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult;
+		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
 			continue;
@@ -1786,11 +1794,11 @@ function updateEnemies() {
 				// longer a valid target — cancel the strike and return to chasing.
 				const targetConcealed = target && enemy.windupTargetType !== 'minion'
 					&& isPlayerConcealed(target, Date.now());
-				if (target && !targetConcealed && isEntityInEnemyAttack(enemy, target, def)) {
+				if (target && !targetConcealed && isEntityInEnemyAttack(enemy, target)) {
 					if (enemy.windupTargetType === 'minion') {
-						damageMinion(target, def.attackDamage);
+						damageMinion(target, enemy.attackDamage);
 					} else {
-						damagePlayer(enemy.windupTargetId, def.attackDamage, { attackerEnemyId: enemy.id });
+						damagePlayer(enemy.windupTargetId, enemy.attackDamage, { attackerEnemyId: enemy.id });
 					}
 					enemy.attackState = 'recovering';
 					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
@@ -1806,9 +1814,9 @@ function updateEnemies() {
 
 		// ── Spawner: periodically spawn adds ──
 		if (enemy.type === 'spawner' && enemy.hp > 0) {
-			const spawnInterval = def.spawnIntervalMs || 4000;
-			const spawnMaxAlive = def.spawnMaxAlive || 3;
-			const spawnType = def.spawnType || 'skirmisher';
+			const spawnInterval = enemy.spawnIntervalMs || 4000;
+			const spawnMaxAlive = enemy.spawnMaxAlive || 3;
+			const spawnType = enemy.spawnType || 'skirmisher';
 			const now = Date.now();
 
 			if (now - enemy.lastSpawnTime >= spawnInterval) {
@@ -1833,7 +1841,7 @@ function updateEnemies() {
 			enemy.state = 'chasing';
 			const dist = Math.hypot(tauntMinion.x - enemy.x, tauntMinion.z - enemy.z);
 			if (dist <= ENEMY_ATTACK_RANGE) {
-				damageMinion(tauntMinion, def.attackDamage);
+				damageMinion(tauntMinion, enemy.attackDamage);
 			} else {
 				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
@@ -1871,7 +1879,7 @@ function updateEnemies() {
 
 			// If in chasing (not mid-windup/recover) and within attack range, start wind-up
 			if (enemy.attackState === 'chasing' || enemy.attackState === 'idle') {
-				if (nearestDist <= (def.attackRange ?? ENEMY_ATTACK_RANGE)) {
+				if (nearestDist <= (enemy.attackRange ?? ENEMY_ATTACK_RANGE)) {
 					enemy.attackState = 'windup';
 					enemy.windupTargetType = nearestTargetType;
 					enemy.windupTargetId = nearestTarget.id;
@@ -1903,7 +1911,7 @@ function updateEnemies() {
 		}
 
 		// Move toward wander target using wall-aware movement
-		const wanderResult = moveEntityToward(enemy, enemy.wanderTarget, def.wanderSpeed * dt);
+		const wanderResult = moveEntityToward(enemy, enemy.wanderTarget, enemy.wanderSpeed * dt);
 
 		// Track consecutive blocked ticks — pick a new target after too many blocks
 		if (wanderResult.blocked) {

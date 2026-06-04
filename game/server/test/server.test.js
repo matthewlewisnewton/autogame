@@ -4615,6 +4615,40 @@ describe('spawnEnemy() type validation', () => {
 	});
 });
 
+describe('spawnEnemy() spreads combat stats from def', () => {
+	beforeEach(() => resetState());
+
+	it('copies cone attack and chase stats for skirmisher', () => {
+		gameState.enemies = [];
+		const enemy = spawnEnemy(0, 0, 'skirmisher');
+		expect(enemy.attackStyle).toBe('cone');
+		expect(enemy.attackConeAngle).toBe(ENEMY_DEFS.skirmisher.attackConeAngle);
+		expect(enemy.chaseSpeed).toBe(4.5);
+	});
+
+	it('copies spawner add config onto spawner entity', () => {
+		gameState.enemies = [];
+		const enemy = spawnEnemy(0, 0, 'spawner');
+		expect(enemy.spawnIntervalMs).toBe(4000);
+		expect(enemy.spawnMaxAlive).toBe(3);
+	});
+
+	it('does not overwrite runtime-only fields with def spread', () => {
+		gameState.enemies = [];
+		const before = Date.now();
+		const enemy = spawnEnemy(5, 7, 'spawner');
+		expect(enemy.id).toBeDefined();
+		expect(enemy.x).toBe(5);
+		expect(enemy.z).toBe(7);
+		expect(enemy.type).toBe('spawner');
+		expect(enemy.state).toBe('idle');
+		expect(enemy.attackState).toBe('idle');
+		expect(enemy.wanderTarget).toEqual({ x: 5, z: 7 });
+		expect(enemy.lastSpawnTime).toBeGreaterThanOrEqual(before);
+		expect(enemy.spawnedBy).toBeUndefined();
+	});
+});
+
 // ── spawnEnemy centralizes variant init ──
 
 describe('spawnEnemy() variant field', () => {
