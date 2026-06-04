@@ -3710,3 +3710,26 @@ None blocking. All acceptance criteria are satisfied; captured run is healthy; t
 
 ---
 
+
+## v0.208 — 210-net-extract-socket-handlers  (2026-06-04 16:27:29)
+
+4. Behavior-preserving with server tests green.
+
+PASS. The committed coverage log reports `40` test files and `924` tests passing. The changed tests remove only the deleted dead socket-event coverage; lower-level shop helper tests remain. The smoke capture confirms the main multiplayer loop still reaches gameplay, moves, and uses a key item without page errors.
+
+## Design and Requirements
+
+PASS. This is an internal server-architecture refactor and does not alter the documented PSO-style lobby/dungeon/card-combat loop in `game/docs/design.md`. The foundation requirements remain intact: the captured run renders a scene, connects frontend to backend via WebSockets, visualizes multiplayer state, and updates movement through server-backed socket events.
+
+## Debug Scenarios
+
+PASS. This ticket moved the existing `debugScenario` handler into `game/server/socketHandlers/debug.js` but did not add a new scenario or introduce a new shortcut path. The moved handler preserves the existing `isDebugScenarioAllowed()` gate, and the capture used normal gameplay with `debugScenario: null`.
+
+## Code Quality
+
+PASS. The new modules are thin, dependency-injected socket registration layers and continue delegating domain logic to the existing progression, card-effect, key-item, lobby, and debug helpers. I did not find broken exports, lost helper captures, duplicate connection-handler registration, or a client/server event mismatch. Coverage visibility for changed files is adequate for a move-only refactor; the smoke run covers the highest-risk integration path.
+
+## Remaining gaps
+
+None.
+

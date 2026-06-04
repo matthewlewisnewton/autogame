@@ -86,3 +86,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [227-cleanup-lobby-explicit-phase-state-machine](tickets/227-cleanup-lobby-explicit-phase-state-machine/)
 - [ ] [227-cleanup-data-objective-registry](tickets/227-cleanup-data-objective-registry/)
 - [ ] [228-cleanup-lobby-remove-dead-hostid](tickets/228-cleanup-lobby-remove-dead-hostid/)
+- [ ] [229-cleanup-net-extract-socket-handlers](tickets/229-cleanup-net-extract-socket-handlers/)

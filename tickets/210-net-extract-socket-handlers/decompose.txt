@@ -1,0 +1,21 @@
+Broke the top-level ticket into **5 sub-tickets** in dependency order (foundation → lobby → run → deck → trade/keyItem/debug). All use **Verification: code** because every slice checks structure, handlers, tests, and behavior—not only pixels.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/01-foundation-cleanup/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/02-lobby-handlers/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/03-run-handlers/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/04-deck-progression-handlers/ticket.md`
+5. `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/05-trade-keyitem-debug/ticket.md`
+
+**Slice rationale**
+
+| # | Focus |
+|---|--------|
+| **01** | `socketHandlers/` scaffold, `buildSocketContext`, `notifyPlayerRemoved`, remove dead `listKeyItems` / `buyShopCard` handlers, extract `disconnect` + `heartbeat` |
+| **02** | Lobby browser/join/leave (4 handlers) |
+| **03** | Run/dungeon (10 handlers; `useCard` still delegates to `cardEffects`) |
+| **04** | Deck/shop/progression lobby handlers (7 handlers; no `buyShopCard` socket) |
+| **05** | Trade, key items, debug + thin connection closure that only builds `ctx` and calls `register` |
+
+No prior sub-ticket folders existed, so nothing was deleted or skipped.
