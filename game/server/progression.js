@@ -448,7 +448,7 @@ const CARD_DEFS = {
     target: 'self',
     damageScale: 0.5,
     minReflectDamage: 17,
-    reflectRange: 8,
+    reflectRange: 11,
     ttlMs: 20000,
     specialEffect: 'damage_reflect',
   },

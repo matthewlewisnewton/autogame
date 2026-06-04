@@ -59,6 +59,10 @@ describe('enchantment cards', () => {
 		expect(gameState.enchantments).toHaveLength(0);
 	});
 
+	it('mirror_ward reflectRange matches balance target', () => {
+		expect(CARD_DEFS.mirror_ward.reflectRange).toBe(11);
+	});
+
 	it('mirror_ward reflects damage back to the attacking enemy', () => {
 		gameState.players.p1 = {
 			x: 0,
