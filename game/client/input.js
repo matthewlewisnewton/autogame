@@ -5,7 +5,7 @@
 //   Secondary:  hold modifier (RT on standard, L on 8BitDo 64) → extended slots
 //   Lock-on:    LT (standard) or Z (8BitDo 64) — handled in gamepad.js
 
-import { pollGamepadMovement, pollGamepadButtons } from './gamepad.js';
+import { pollGamepadMovement, pollGamepadButtons, mergeMovementVectors } from './gamepad.js';
 import { getGamepadConfig, getKeyboardBindings } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
 import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.js';
@@ -193,22 +193,27 @@ export function getMovementDirection() {
 	if (keyState.moveLeft) dirX -= 1;
 	if (keyState.moveRight) dirX += 1;
 
+	let keyboardVec = null;
+	const kbMag = Math.hypot(dirX, dirZ);
+	if (kbMag > 0) {
+		// Map keyboard axes into gamepad stick space (world dz = -stick.z).
+		keyboardVec = { x: dirX / kbMag, z: -dirZ / kbMag };
+	}
+
+	let stickVec = null;
 	const gp = getPrimaryGamepad();
 	if (gp) {
 		const cfg = getGamepadConfig();
 		const profile = getActiveProfile(gp);
 		const deadzone = cfg.deadzone ?? 0.15;
 		const moveStick = cfg.moveStick ?? profile.moveStick ?? 'left';
-		const stick = pollGamepadMovement(deadzone, moveStick);
-		if (stick) {
-			const mag = Math.hypot(stick.x, stick.z);
-			return { dx: stick.x, dz: -stick.z, mag };
-		}
+		stickVec = pollGamepadMovement(deadzone, moveStick);
 	}
 
-	const mag = Math.hypot(dirX, dirZ);
-	if (mag > 0) {
-		return { dx: dirX / mag, dz: dirZ / mag, mag: 1 };
+	const merged = mergeMovementVectors(keyboardVec, stickVec);
+	if (merged) {
+		const mag = Math.hypot(merged.x, merged.z);
+		return { dx: merged.x, dz: -merged.z, mag };
 	}
 	return { dx: 0, dz: 0, mag: 0 };
 }
