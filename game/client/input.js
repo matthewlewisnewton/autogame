@@ -5,7 +5,7 @@
 //   Secondary:  hold modifier (RT on standard, L on 8BitDo 64) → extended slots
 //   Lock-on:    LT (standard) or Z (8BitDo 64) — handled in gamepad.js
 
-import { pollGamepadMovement } from './gamepad.js';
+import { pollGamepadMovement, pollGamepadButtons } from './gamepad.js';
 import { getGamepadConfig, getKeyboardBindings } from './settings.js';
 import { HAND_MODIFIER_GAMEPAD_BUTTON } from './config.js';
 import { renderCButtonMark, getCButtonAccessibleLabel } from './c-button-icons.js';
@@ -29,7 +29,9 @@ export const ACTIONS = {
 	useSlot4: 'useSlot4',
 	useSlot5: 'useSlot5',
 	toggleDeckViewer: 'toggleDeckViewer',
-	useKeyItem: 'useKeyItem'
+	useKeyItem: 'useKeyItem',
+	lockOn: 'lockOn',
+	dodge: 'dodge',
 };
 
 const DEFAULT_KEYBOARD = {
@@ -44,7 +46,9 @@ const DEFAULT_KEYBOARD = {
 	useSlot4: ['5'],
 	useSlot5: ['6'],
 	toggleDeckViewer: ['v'],
-	useKeyItem: ['e']
+	useKeyItem: ['e'],
+	lockOn: ['z'],
+	dodge: [],
 };
 
 const DEFAULT_GAMEPAD_BUTTONS = {
@@ -67,13 +71,13 @@ const keyState = {
 	moveRight: false
 };
 
-/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, canUseGameActions?: () => boolean }} */
+/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, canUseGameActions?: () => boolean }} */
 let callbacks = {};
 let listenersAdded = false;
 const prevGamepadButtons = new Map();
 
 /**
- * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, canUseGameActions?: () => boolean }} opts
+ * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, canUseGameActions?: () => boolean }} opts
  */
 export function initInput(opts = {}) {
 	callbacks = opts;
@@ -115,6 +119,11 @@ function onKeyDown(e) {
 		if (action === 'useKeyItem') {
 			e.preventDefault();
 			callbacks.onUseKeyItem?.();
+			return;
+		}
+		if (action === 'lockOn') {
+			e.preventDefault();
+			callbacks.onLockOn?.();
 			return;
 		}
 		const slotMatch = action.match(/^useSlot(\d)$/);
@@ -214,33 +223,39 @@ function isButtonPressed(gp, index) {
  * Poll gamepad buttons for edge-triggered actions. Call each frame.
  */
 export function pollInput() {
-	const gp = getPrimaryGamepad();
-	if (!gp) return;
 	const actionsEnabled = !callbacks.canUseGameActions || callbacks.canUseGameActions();
+	const gp = getPrimaryGamepad();
 
-	const padKey = gp.index;
-	if (!prevGamepadButtons.has(padKey)) {
-		prevGamepadButtons.set(padKey, {});
-	}
-	const prev = prevGamepadButtons.get(padKey);
-	const modifierHeld = isHandModifierHeld(gp);
+	if (gp) {
+		const padKey = gp.index;
+		if (!prevGamepadButtons.has(padKey)) {
+			prevGamepadButtons.set(padKey, {});
+		}
+		const prev = prevGamepadButtons.get(padKey);
+		const modifierHeld = isHandModifierHeld(gp);
 
-	for (const action of POLLABLE_ACTIONS) {
-		const binding = getBindingForAction(action, gp);
-		if (!binding || !bindingMatchesModifier(binding, modifierHeld)) continue;
-		const pressed = isBindingActive(gp, binding);
-		const wasPressed = !!prev[action];
-		prev[action] = pressed;
-		if (actionsEnabled && pressed && !wasPressed) {
-			if (action === 'toggleDeckViewer') {
-				callbacks.onToggleDeck?.();
-			} else if (action === 'useKeyItem') {
-				callbacks.onUseKeyItem?.();
-			} else {
-				const slotMatch = action.match(/^useSlot(\d)$/);
-				if (slotMatch) callbacks.onUseSlot?.(parseInt(slotMatch[1], 10));
+		for (const action of POLLABLE_ACTIONS) {
+			const binding = getBindingForAction(action, gp);
+			if (!binding || !bindingMatchesModifier(binding, modifierHeld)) continue;
+			const pressed = isBindingActive(gp, binding);
+			const wasPressed = !!prev[action];
+			prev[action] = pressed;
+			if (actionsEnabled && pressed && !wasPressed) {
+				if (action === 'toggleDeckViewer') {
+					callbacks.onToggleDeck?.();
+				} else if (action === 'useKeyItem') {
+					callbacks.onUseKeyItem?.();
+				} else {
+					const slotMatch = action.match(/^useSlot(\d)$/);
+					if (slotMatch) callbacks.onUseSlot?.(parseInt(slotMatch[1], 10));
+				}
 			}
 		}
+	}
+
+	if (actionsEnabled) {
+		const { lockOn } = pollGamepadButtons();
+		if (lockOn) callbacks.onLockOn?.();
 	}
 }
 
@@ -259,6 +274,8 @@ export function getActionLabels() {
 		useSlot5: 'Hand slot 6',
 		toggleDeckViewer: 'Toggle deck viewer',
 		useKeyItem: 'Use key item',
+		lockOn: 'Lock on',
+		dodge: 'Dodge',
 	};
 }
 
