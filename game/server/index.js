@@ -300,6 +300,10 @@ const keyItemEffects = require('./keyItemEffects');
 // below once io, the index.js-local helpers it needs, and DEBUG_SCENARIOS exist.
 const debugScenarios = require('./debugScenarios');
 
+const { buildSocketContext } = require('./socketHandlers/context');
+const lifecycle = require('./socketHandlers/lifecycle');
+const socketHelpers = require('./socketHandlers/helpers');
+
 const _lobbyContextStack = [];
 
 function withLobbyContext(lobby, fn) {
@@ -517,6 +521,14 @@ function broadcastLobbyUpdate(lobby) {
 }
 
 progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
+
+socketHelpers.setCallbacks({
+  io,
+  withLobbyContext,
+  isPlayingPhase,
+  checkRunTerminalState,
+  broadcastLobbyUpdate,
+});
 
 // Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
 // Socket.IO keys sockets by socket.id (a random string), not by playerId,
@@ -955,18 +967,8 @@ function evictDisconnectedPlayers() {
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
-      io.to(lobby.id).emit('playerDisconnected', playerId);
+      socketHelpers.notifyPlayerRemoved(lobby, playerId, result);
       evictedAny = true;
-
-      if (result && !result.deleted) {
-        withLobbyContext(lobby, () => {
-          if (isPlayingPhase(lobby.state)) {
-            checkRunTerminalState();
-          } else {
-            broadcastLobbyUpdate(lobby);
-          }
-        });
-      }
     }
   }
 
@@ -987,17 +989,7 @@ function leaveLobbyForSocket(socket) {
   socket.leave(lobby.id);
 
   const result = lobbies.removePlayerFromLobby(playerId);
-  io.to(lobby.id).emit('playerDisconnected', playerId);
-
-  if (result && !result.deleted) {
-    withLobbyContext(lobby, () => {
-      if (isPlayingPhase(lobby.state)) {
-        checkRunTerminalState();
-      } else {
-        broadcastLobbyUpdate(lobby);
-      }
-    });
-  }
+  socketHelpers.notifyPlayerRemoved(lobby, playerId, result);
 
   broadcastLobbyList();
   return result;
@@ -1157,18 +1149,22 @@ function startServer(port) {
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
+    const ctx = buildSocketContext(socket, { playerId, sessionPlayer, accountId, username }, {
+      io,
+      withLobbyFromSocket,
+      withLobbyPlayer,
+      broadcastLobbyUpdate,
+      findSocketByPlayerId,
+      savePlayerData,
+      getLobbyForSocket,
+      getLobbyForPlayer: lobbies.getLobbyForPlayer.bind(lobbies),
+      softDisconnectPlayerFromLobby,
+      removeSession: lobbies.removeSession.bind(lobbies),
+    });
+    lifecycle.register(socket, ctx);
+
     socket.on('listLobbies', () => {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-    });
-
-    socket.on('listKeyItems', () => {
-      const items = getUnlockedKeyItems().map((def) => ({
-        id: def.id,
-        name: def.name,
-        description: def.description,
-        cooldownMs: def.cooldownMs,
-      }));
-      socket.emit('keyItemsListed', { items });
     });
 
     socket.on('createLobby', (data) => {
@@ -1596,24 +1592,6 @@ function startServer(port) {
     });
   });
 
-  socket.on('buyShopCard', () => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const result = buyShopCard(player, state.shopOffer);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardInventoryUpdate', {
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency,
-      selectedDeck: player.selectedDeck
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
   socket.on('unlockHat', (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
@@ -1830,18 +1808,6 @@ function startServer(port) {
     socket.emit('debugScenarioResult', result);
   });
 
-  socket.on('heartbeat', (data) => {
-    if (!data || !Number.isFinite(data.timestamp)) {
-      console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
-      return;
-    }
-    const lobby = getLobbyForSocket(socket);
-    if (lobby && lobby.state.players[socket.playerId]) {
-      lobby.state.players[socket.playerId].lastActivity = Date.now();
-    }
-    socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
-  });
-
   socket.on('lootPickup', (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
@@ -1879,20 +1845,6 @@ function startServer(port) {
       checkRunTerminalState();
     }
     });
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
-
-    if (!socket.playerId) return;
-
-    const lobby = lobbies.getLobbyForPlayer(socket.playerId);
-    if (lobby && lobby.state.players[socket.playerId]) {
-      softDisconnectPlayerFromLobby(socket);
-      return;
-    }
-
-    lobbies.removeSession(socket.playerId);
   });
 
   const resumeLobby = lobbies.getLobbyForPlayer(playerId);
