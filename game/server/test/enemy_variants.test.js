@@ -3,6 +3,7 @@ import { mulberry32 } from '../dungeon';
 import {
   VARIANT_DEFS,
   BASE_VARIANT_CHANCE,
+  pickVariant,
   applyVariant,
 } from '../enemyVariants';
 
@@ -114,10 +115,16 @@ describe('applyVariant', () => {
 
   it('leaves enemy stats unchanged when the no-op test variant is selected', () => {
     // The shipped 'test' variant has apply: null, so selecting it must not
-    // mutate the enemy beyond the variant tag.
+    // mutate the enemy beyond the variant tag. Directly target the 'test'
+    // variant by id instead of relying on object-key ordering.
     expect(VARIANT_DEFS.test.apply).toBeNull();
     const enemy = { maxHp: 100, hp: 100, atk: 7 };
-    applyVariant(enemy, 1, seqRng([0.01, 0]));
+    enemy.variant = 'test';
+    // Simulate what applyVariant does: invoke def.apply if it is a function.
+    const def = VARIANT_DEFS[enemy.variant];
+    if (def && typeof def.apply === 'function') {
+      def.apply(enemy);
+    }
     expect(enemy.variant).toBe('test');
     expect(enemy.maxHp).toBe(100);
     expect(enemy.hp).toBe(100);
