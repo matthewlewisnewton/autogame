@@ -39,6 +39,7 @@ const {
 } = require('./progression');
 const { unlockHat: unlockHatForAccount } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
+const { VARIANT_DEFS } = require('./enemyVariants');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -298,6 +299,19 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const variant = spawnEnemy(player.x + 3, player.z, 'grunt');
       variant.variant = 'test';
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
+    } else if (name === 'warded-enemy') {
+      // Warded grunt with shield beside a plain grunt for side-by-side QA. Same
+      // state is reachable via combat spawn + applyVariant rolling warded at tier > 0.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const warded = spawnEnemy(player.x + 3, player.z, 'grunt');
+      warded.variant = 'warded';
+      VARIANT_DEFS.warded.apply(warded);
       spawnEnemy(player.x - 3, player.z, 'grunt');
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };

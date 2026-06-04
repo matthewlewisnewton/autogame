@@ -18,6 +18,16 @@ const VARIANT_DEFS = {
     // the value of an additional magic-stone loot entry beyond the normal drop.
     bonusDrop: { card: true, magicStone: 15 },
   },
+  warded: {
+    id: 'warded',
+    name: 'Warded',
+    apply(enemy) {
+      const maxShieldHp = Math.max(20, Math.round((enemy.maxHp || enemy.hp || 0) * 0.4));
+      enemy.maxShieldHp = maxShieldHp;
+      enemy.shieldHp = maxShieldHp;
+    },
+    bonusDrop: { card: true, magicStone: 20 },
+  },
 };
 
 // Base chance that any single enemy rolls a variant, before tier scaling.

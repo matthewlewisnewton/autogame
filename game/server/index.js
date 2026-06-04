@@ -441,6 +441,7 @@ const DEBUG_SCENARIOS = new Set([
   'avatar-wizard-hat',
   'mixed-enemies',
   'variant-enemy',
+  'warded-enemy',
   'spawner-active',
   'monster-card',
   'minion-combat',
@@ -568,6 +569,7 @@ function emitCardError(socket, reason) {
 const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'mixed-enemies',
   'variant-enemy',
+  'warded-enemy',
   'spawner-active',
   'minion-combat',
   'run-exhausted',
