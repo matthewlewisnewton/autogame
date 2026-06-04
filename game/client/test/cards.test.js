@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(41);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(42);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -377,7 +377,7 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('dragons_breath')).toBe(true);
 		expect(spellCardIds.has('inferno_pillar')).toBe(true);
 		expect(spellCardIds.has('iron_sword')).toBe(false);
-		expect(spellCardIds.size).toBe(17);
+		expect(spellCardIds.size).toBe(18);
 	});
 
 	it('creatureCardIds contains base, evolved, and synergistic creature card IDs', () => {

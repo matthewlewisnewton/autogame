@@ -129,6 +129,12 @@ export const CARD_DEFS = {
     effect: 'frost_nova',
     specialEffect: 'freeze',
   },
+  permafrost_lance: {
+    ...cardIdentity.permafrost_lance,
+    magicStoneCost: 30,
+    effect: 'frost_nova',
+    specialEffect: 'freeze',
+  },
   glacier_collapse: {
     ...cardIdentity.glacier_collapse,
     magicStoneCost: 35,

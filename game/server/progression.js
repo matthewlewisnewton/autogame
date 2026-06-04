@@ -300,6 +300,15 @@ const CARD_DEFS = {
     freezeDurationMs: 2500,
     specialEffect: 'freeze',
   },
+  permafrost_lance: {
+    ...CARD_IDENTITY.permafrost_lance,
+    magicStoneCost: 30,
+    effect: 'frost_nova',
+    damage: 8,
+    radius: 6,
+    freezeDurationMs: 2000,
+    specialEffect: 'freeze',
+  },
   glacier_collapse: {
     ...CARD_IDENTITY.glacier_collapse,
     magicStoneCost: 35,
