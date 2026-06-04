@@ -1,0 +1,182 @@
+{
+  "ok": true,
+  "preEvolution": {
+    "instanceId": "56d5d3ef-d09e-4864-a68d-2e00e0ba63d7",
+    "cardId": "skeleton_knight",
+    "grind": 10
+  },
+  "evolveResult": {
+    "ok": true,
+    "fromCardId": "skeleton_knight",
+    "toCardId": "undead_commander"
+  },
+  "postEvolution": {
+    "instanceId": "56d5d3ef-d09e-4864-a68d-2e00e0ba63d7",
+    "cardId": "undead_commander",
+    "grind": 0,
+    "isEvolved": true,
+    "evolvedFrom": "skeleton_knight"
+  },
+  "lastEvolutionResult": {
+    "instance": {
+      "grind": 0,
+      "instanceId": "56d5d3ef-d09e-4864-a68d-2e00e0ba63d7",
+      "cardId": "undead_commander",
+      "evolvedFrom": "skeleton_knight",
+      "evolvedAt": 1780568984275,
+      "isEvolved": true
+    },
+    "fromCardId": "skeleton_knight",
+    "toCardId": "undead_commander"
+  },
+  "fullHarnessState": {
+    "debugScenario": null,
+    "debugScenarioAllowed": true,
+    "debugScenarioResult": {
+      "ok": true,
+      "scenario": "evolution-ready"
+    },
+    "objective": null,
+    "runObjectiveComplete": false,
+    "lastRunSummary": null,
+    "myId": "d68b3ee6-6cca-40e4-9b87-50ae2f21b505",
+    "selectedDeck": [
+      "50e61bb6-a81e-4385-91e9-617ce75297dd",
+      "a990636e-a7f8-40f0-bb7f-719747eb7072",
+      "99d7cf64-ae6a-436e-bd02-0dde6bcbdf61",
+      "8065b1d1-66ca-46ce-951e-2cdde856639f",
+      "9157b62c-0fc2-44d2-837b-2ec793065a04",
+      "3b1cb3db-1b3d-48e8-ac37-e0a745c3022c",
+      "9f1c5673-25e8-477c-9788-3d48365b6927",
+      "4df7afbb-fd3d-4b10-84e8-56045a36e976",
+      "fa5cf639-4a48-40cf-9bf9-dba8a5a5024f",
+      "c223890f-c15c-46ef-a972-4e01f77d23ac",
+      "5ed78848-0de1-4374-b383-79044cc2d0c7",
+      "ddccf3b7-67e4-4bb1-953c-382678795633",
+      "56d5d3ef-d09e-4864-a68d-2e00e0ba63d7"
+    ],
+    "phase": "lobby",
+    "runStatus": null,
+    "extracted": false,
+    "suspendedRunSummary": null,
+    "telepipe": null,
+    "layout": {
+      "profile": "crowded",
+      "seed": 1335602341,
+      "roomCount": 10,
+      "startRoom": {
+        "x": -9,
+        "z": 9,
+        "role": "start"
+      }
+    },
+    "connectionState": "connected",
+    "sceneInitialized": false,
+    "hasCanvas": true,
+    "lobbyVisible": true,
+    "cardHandVisible": false,
+    "status": "Logged in as evolution-1780568983948 · Card Evolution QA",
+    "hpText": "100/100",
+    "msText": "90/90",
+    "currencyText": "Money 0",
+    "player": {
+      "hp": 100,
+      "magicStones": 49,
+      "debugScenario": null,
+      "dead": false,
+      "x": -9,
+      "z": 9,
+      "equippedKeyItemId": "dodge_roll",
+      "keyItemCooldownRemaining": 0
+    },
+    "keyItemIndicatorOnCooldown": false,
+    "keyItemIndicatorText": "",
+    "players": 1,
+    "enemies": 0,
+    "enemyHp": [],
+    "minions": [],
+    "hand": [],
+    "inventory": [
+      {
+        "instanceId": "50e61bb6-a81e-4385-91e9-617ce75297dd",
+        "cardId": "iron_sword",
+        "grind": 0
+      },
+      {
+        "instanceId": "a990636e-a7f8-40f0-bb7f-719747eb7072",
+        "cardId": "flame_blade",
+        "grind": 0
+      },
+      {
+        "instanceId": "99d7cf64-ae6a-436e-bd02-0dde6bcbdf61",
+        "cardId": "battle_familiar",
+        "grind": 0
+      },
+      {
+        "instanceId": "8065b1d1-66ca-46ce-951e-2cdde856639f",
+        "cardId": "dungeon_drake",
+        "grind": 0
+      },
+      {
+        "instanceId": "9157b62c-0fc2-44d2-837b-2ec793065a04",
+        "cardId": "iron_sword",
+        "grind": 0
+      },
+      {
+        "instanceId": "3b1cb3db-1b3d-48e8-ac37-e0a745c3022c",
+        "cardId": "iron_sword",
+        "grind": 0
+      },
+      {
+        "instanceId": "9f1c5673-25e8-477c-9788-3d48365b6927",
+        "cardId": "iron_sword",
+        "grind": 0
+      },
+      {
+        "instanceId": "4df7afbb-fd3d-4b10-84e8-56045a36e976",
+        "cardId": "battle_familiar",
+        "grind": 0
+      },
+      {
+        "instanceId": "fa5cf639-4a48-40cf-9bf9-dba8a5a5024f",
+        "cardId": "battle_familiar",
+        "grind": 0
+      },
+      {
+        "instanceId": "c223890f-c15c-46ef-a972-4e01f77d23ac",
+        "cardId": "flame_blade",
+        "grind": 0
+      },
+      {
+        "instanceId": "5ed78848-0de1-4374-b383-79044cc2d0c7",
+        "cardId": "flame_blade",
+        "grind": 0
+      },
+      {
+        "instanceId": "ddccf3b7-67e4-4bb1-953c-382678795633",
+        "cardId": "dungeon_drake",
+        "grind": 0
+      },
+      {
+        "instanceId": "56d5d3ef-d09e-4864-a68d-2e00e0ba63d7",
+        "cardId": "undead_commander",
+        "grind": 0,
+        "isEvolved": true,
+        "evolvedFrom": "skeleton_knight"
+      }
+    ],
+    "lastEvolutionResult": {
+      "instance": {
+        "grind": 0,
+        "instanceId": "56d5d3ef-d09e-4864-a68d-2e00e0ba63d7",
+        "cardId": "undead_commander",
+        "evolvedFrom": "skeleton_knight",
+        "evolvedAt": 1780568984275,
+        "isEvolved": true
+      },
+      "fromCardId": "skeleton_knight",
+      "toCardId": "undead_commander"
+    }
+  },
+  "timestamp": "2026-06-04T10:29:44.403Z"
+}
