@@ -3352,3 +3352,26 @@ Pass. The new `evolution-ready` scenario is confined to debug/test entry points 
 
 None.
 
+
+## v0.188 — 208-gameplay-card-permafrost-lance  (2026-06-04 10:33:03)
+
+it is pure data routed through the shared `applyFreezeInRadius` branch via `effect:
+'frost_nova'`. That function's freeze + radius-damage behavior is already covered by direct
+behavioral tests ("Cryo Burst freezes enemies in radius" and "Glacier Rupture deals bonus
+damage to already-frozen enemies" in `new_card_pack.test.js:204,211`), and the new test
+asserts the exact parameters this card feeds into that proven path. The functional
+requirement — the card freezes and lightly damages enemies in range — is therefore robustly
+covered. A permafrost_lance-named behavioral assertion would add no meaningful protection
+beyond what the def test plus the shared-branch tests already guarantee; it is recorded as a
+nit, not a blocker.
+
+## Consistency & regression
+Consistent with the ticket's stated approach (reuse the existing frost_nova freeze branch,
+near-zero new engine code) and with `game/docs/design.md`'s spell model. No engine changes,
+no debug scenarios added or touched, no new entry points. No regression: the full suite —
+including the frost_nova / freeze integration tests this card piggybacks on — stays green.
+
+## Remaining gaps
+None blocking. See `nits.md` for one minor follow-up (a dedicated freeze-behavior assertion
+for permafrost_lance, for explicitness).
+

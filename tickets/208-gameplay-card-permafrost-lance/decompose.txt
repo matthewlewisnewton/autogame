@@ -1,0 +1,8 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Done. Created 3 sub-tickets:
+
+- `tickets/208-gameplay-card-permafrost-lance/subtickets/01-add-card-identity/ticket.md` — Add identity stub to `cardDefs.json`
+- `tickets/208-gameplay-card-permafrost-lance/subtickets/02-add-card-def-and-shop-pool/ticket.md` — Add `CARD_DEFS` entry + register in `SHOP_CARD_POOL`
+- `tickets/208-gameplay-card-permafrost-lance/subtickets/03-test-permafrost-lance/ticket.md` — Unit tests for def properties and shop pool membership
+
+All three are `code` verification. No engine changes needed — the card reuses the existing `frost_nova` effect branch in `cardEffects.js`.
