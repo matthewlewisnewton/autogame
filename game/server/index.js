@@ -458,6 +458,7 @@ const DEBUG_SCENARIOS = new Set([
   'hats-unlocked',
   'evolution-ready',
   'deck-viewer-instances',
+  'cinder-snare-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -520,13 +521,23 @@ progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 // Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
 // Socket.IO keys sockets by socket.id (a random string), not by playerId,
 // so we must iterate and match on socket.playerId.
-function findSocketByPlayerId(playerId) {
+function findSocketByPlayerId(playerId, excludeSocketId) {
   for (const socket of io.sockets.sockets.values()) {
+    if (excludeSocketId && socket.id === excludeSocketId) {
+      continue;
+    }
     if (socket.playerId === playerId) {
       return socket;
     }
   }
   return null;
+}
+
+function evictPriorSocketForPlayer(playerId, currentSocketId) {
+  const priorSocket = findSocketByPlayerId(playerId, currentSocketId);
+  if (priorSocket && priorSocket.connected) {
+    priorSocket.disconnect(true);
+  }
 }
 
 function isDebugScenarioAllowed(socket) {
@@ -797,16 +808,18 @@ function joinLobbyWithPhasePolicy(socket, lobby) {
   joinPlayerToLobby(socket, lobby);
 }
 
-function emitLobbyJoined(socket, lobby) {
+function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   const state = lobby.state;
-  const player = state.players[socket.playerId];
+  const playerId = explicitPlayerId ?? socket.playerId;
+  const player = state.players[playerId];
+  if (!player) return;
   withLobbyContext(lobby, () => ensureShopOffer());
 
   socket.emit('lobbyJoined', {
     lobbyId: lobby.id,
     lobbyName: lobby.name,
-    id: socket.playerId,
-    playerId: socket.playerId,
+    id: playerId,
+    playerId,
     accountId: player.accountId,
     username: player.username,
     state,
@@ -873,10 +886,12 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   emitLobbyJoined(socket, lobby);
 }
 
-function reconnectPlayerToLobby(socket, lobby) {
-  const playerId = socket.playerId;
+function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
+  const playerId = explicitPlayerId ?? socket.playerId;
   const player = lobby.state.players[playerId];
   if (!player) return false;
+
+  evictPriorSocketForPlayer(playerId, socket.id);
 
   player.activeSocketId = socket.id;
   player.connected = true;
@@ -887,15 +902,10 @@ function reconnectPlayerToLobby(socket, lobby) {
   player.inputDz = 0;
   player.lastActivity = Date.now();
 
-  const oldSocket = findSocketByPlayerId(playerId);
-  if (oldSocket && oldSocket.id !== socket.id && oldSocket.connected) {
-    oldSocket.disconnect(true);
-  }
-
   lobbies.assignPlayerToLobby(playerId, lobby.id);
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
-  emitLobbyJoined(socket, lobby);
+  emitLobbyJoined(socket, lobby, playerId);
   io.to(lobby.id).emit('playerReconnected', playerId);
   broadcastLobbyList();
   return true;
@@ -918,6 +928,7 @@ function softDisconnectPlayerFromLobby(socket) {
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
 
     player.connected = false;
+    player.ready = false;
     player.disconnectedAt = Date.now();
     player.inputActive = false;
     player.inputDx = 0;
@@ -1148,9 +1159,6 @@ function startServer(port) {
     // Authenticated connection — accountId is the stable identity
     const playerId = accountId;
 
-    socket.playerId = playerId;
-    console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
-
     const savedData = loadSavedPlayerData(accountId || playerId);
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
@@ -1174,7 +1182,7 @@ function startServer(port) {
         socket.emit('lobbyError', { reason: 'Already in a lobby' });
         return;
       }
-      const lobby = lobbies.createLobby(playerId, data && data.name);
+      const lobby = lobbies.createLobby(data && data.name);
       withLobbyContext(lobby, () => {
         applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
         ensureShopOffer();
@@ -1896,15 +1904,15 @@ function startServer(port) {
   const resumeLobby = lobbies.getLobbyForPlayer(playerId);
   if (resumeLobby && resumeLobby.state.players[playerId]) {
     const player = resumeLobby.state.players[playerId];
-    const oldSocket = findSocketByPlayerId(playerId);
-    const hasLiveSocket = oldSocket && oldSocket.id !== socket.id && oldSocket.connected;
+    const priorSocket = findSocketByPlayerId(playerId, socket.id);
+    const hasLiveSocket = priorSocket && priorSocket.connected;
     if (player.connected === false || hasLiveSocket) {
-      if (hasLiveSocket) {
-        oldSocket.disconnect(true);
-      }
-      reconnectPlayerToLobby(socket, resumeLobby);
+      reconnectPlayerToLobby(socket, resumeLobby, playerId);
     }
   }
+
+  socket.playerId = playerId;
+  console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
   socket.emit('init', {
     id: playerId,

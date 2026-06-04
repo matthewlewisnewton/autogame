@@ -1,0 +1,12 @@
+Created **3 sub-tickets** (no existing `subtickets/` folders; nothing to retire):
+
+1. `/home/matt/workspace/.autogame-worktrees/214-lobby-clear-ready-on-disconnect/tickets/214-lobby-clear-ready-on-disconnect/subtickets/01-clear-ready-on-soft-disconnect/ticket.md`  
+   — Clear `player.ready` in `softDisconnectPlayerFromLobby`.
+
+2. `/home/matt/workspace/.autogame-worktrees/214-lobby-clear-ready-on-disconnect/tickets/214-lobby-clear-ready-on-disconnect/subtickets/02-gate-check-all-ready-on-connected/ticket.md`  
+   — Gate `checkAllReady` on connected players only + unit test.
+
+3. `/home/matt/workspace/.autogame-worktrees/214-lobby-clear-ready-on-disconnect/tickets/214-lobby-clear-ready-on-disconnect/subtickets/03-test-ready-then-disconnect-no-start/ticket.md`  
+   — Socket integration regression for ready → disconnect → no `startGame`.
+
+All use **Verification: code** (server state, handlers, and tests — not screenshot-only checks).

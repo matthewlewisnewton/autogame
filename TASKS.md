@@ -85,4 +85,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [226-cleanup-data-centralize-enemy-construction-and-consts](tickets/226-cleanup-data-centralize-enemy-construction-and-consts/)
 - [ ] [227-cleanup-lobby-explicit-phase-state-machine](tickets/227-cleanup-lobby-explicit-phase-state-machine/)
 - [ ] [227-cleanup-data-objective-registry](tickets/227-cleanup-data-objective-registry/)
+- [ ] [228-cleanup-lobby-remove-dead-hostid](tickets/228-cleanup-lobby-remove-dead-hostid/)
 - [ ] [228-cleanup-data-debrittle-model-tests](tickets/228-cleanup-data-debrittle-model-tests/)

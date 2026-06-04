@@ -3644,6 +3644,95 @@ PASS. The implementation is appropriately scoped: shared JSON owns static data, 
 No blocking gaps.
 
 
+## v0.202 — 216-lobby-remove-dead-hostid  (2026-06-04 14:40:58)
+
+- No dangling `hostChanged` comments, partial migrations, or dead branches.
+- `removePlayerFromLobby` still deletes empty lobbies and cleans minions/trades on leave.
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts. N/A.
+
+## Integration notes
+
+Branch `auto/216-lobby-remove-dead-hostid` has two implementation commits on baseline `9134e7d`:
+
+1. `a8af6b3` — server model + tests (+ `field_medic_kit` MS assertion hardening)
+2. `f5d5ef9` — doc alignment
+
+Capture exercised the normal lobby create/join/ready/deploy path (not a debug shortcut), which is the right holistic check for this cleanup.
+
+## Remaining gaps
+
+None. Runtime capture is clean and both acceptance criteria are satisfied.
+
+## v0.203 — 228-gameplay-card-cinder-snare  (2026-06-04 14:44:24)
+
+### DoT attribution and integration with existing combat systems
+
+PASS. `spawnInfernoPillarEffect` carries `ownerId`, and `updateAreaEffects` passes that owner through `collectRadialHits`, preserving kill/drop attribution for the trap owner. The implementation continues using the existing area-effect damage pipeline and run cleanup flow, consistent with the design's enchantment model of lingering ground effects.
+
+### Tests and coverage visibility
+
+PASS. The round-2 coverage run completed successfully: `53` test files passed and `1392` tests passed. The new enchantment tests cover Cinder Snare arming, non-trigger persistence, trigger-to-DoT conversion, repeated tick damage, and owner attribution on DoT kills. Acquisition reachability tests also cover shop/reward/starter/drop validity across all card definitions.
+
+### Debug scenario review
+
+PASS. The added `cinder-snare-ready` shortcut is gated through the existing `debugScenario` socket event and `isDebugScenarioAllowed` local/dev checks; normal gameplay does not call it. The scenario reaches a state that is also reachable through normal play by buying Cinder Snare from the shop, entering a run, and encountering enemies. It does not bypass the real card-use logic: it only places the card in hand and creates a nearby enemy, leaving placement, cost validation during normal use, trap trigger detection, and DoT ticking to the same server systems used in gameplay.
+
+### Design and foundation regression
+
+PASS. The change fits the documented card taxonomy: Cinder Snare is an enchantment that leaves a lingering ground effect triggered by enemy proximity. The captured run still demonstrates the foundational requirements: Three.js scene initialized, WebSocket connection established, multiplayer lobby/run flow works, and movement/key-item smoke probes completed without runtime errors.
+
+## Remaining gaps
+
+None.
+
+## v0.204 — 214-lobby-clear-ready-on-disconnect  (2026-06-04 14:54:00)
+
+| 02-gate-check-all-ready-on-connected | `checkAllReady` connected + stale-ready guards |
+| 03-test-ready-then-disconnect-no-start | Integration + unit regression |
+| 04-pass-harness-game-port-to-vite | Capture infra (not ticket AC, supports QA) |
+
+No gaps between sub-tickets; holistic behavior matches top-level AC.
+
+---
+
+## Visual / capture notes
+
+Fallback capture plan exercised full lobby → deploy → gameplay smoke (not a dedicated “ready then disconnect” screenshot). Behavioral proof for the bug fix is in automated tests; capture confirms no regression in normal two-player deploy and play.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; captured run is healthy; tests pass.
+
+---
+
+
+## v0.206 — 212-net-reconnect-socket-race-and-dup-listener  (2026-06-04 16:10:16)
+
+
+- Localized server/client networking correctness fix; no changes to gameplay loop, combat, or lobby phase policy.
+- No new debug scenarios added — nothing to gate-check.
+- Aligns with design doc networking expectations (JWT auth, lobby drop-in/rejoin) without altering documented player flows.
+
+## Code quality
+
+- Fix is minimal and targeted (50 lines changed in `index.js`, 5 removed in `client/main.js`).
+- No dead code introduced; helper is used on the reconnect path that resume-on-connect shares.
+- No browser console defects in capture.
+- Changed-file coverage (`index.js` ~89%) is adequate for this scope; new paths exercised by unit + integration tests.
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Remaining gaps
+
+None. All three acceptance criteria are fully satisfied, runtime capture is clean, and regression tests pass.
+
 ## v0.207 — 221-data-debrittle-model-tests  (2026-06-04 16:23:02)
 
 

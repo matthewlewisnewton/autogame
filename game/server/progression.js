@@ -2934,7 +2934,10 @@ function giveUpRun() {
 
 function checkAllReady() {
   const all = Object.values(_gameState.players);
-  if (all.length > 0 && all.every(p => p.ready)) {
+  const connectedPlayers = all.filter(p => p.connected !== false);
+  const allConnectedReady = connectedPlayers.length > 0 && connectedPlayers.every(p => p.ready);
+  const noStaleDisconnectReady = all.every(p => p.connected !== false || !p.ready);
+  if (allConnectedReady && noStaleDisconnectReady) {
     setGamePhase(_gameState, PHASES.PLAYING);
 
     if (_gameState.suspendedCheckpoint) {

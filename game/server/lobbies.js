@@ -137,7 +137,6 @@ function lobbySummary(lobby) {
   return {
     id: lobby.id,
     name: lobby.name,
-    hostId: lobby.hostId,
     gamePhase: lobby.state.gamePhase,
     selectedQuestId: lobby.state.selectedQuestId,
     playerCount: Object.keys(lobby.state.players).length,
@@ -175,12 +174,11 @@ function removeSession(playerId) {
   playerSessions.delete(playerId);
 }
 
-function createLobby(hostId, name) {
+function createLobby(name) {
   const id = generateLobbyId();
   const lobby = {
     id,
     name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 48) : `Lobby ${id}`,
-    hostId,
     state: createLobbyGameState(),
     createdAt: Date.now(),
   };
@@ -209,11 +207,6 @@ function removePlayerFromLobby(playerId) {
   if (remaining === 0) {
     lobbies.delete(lobbyId);
     return { lobby, deleted: true };
-  }
-
-  if (lobby.hostId === playerId) {
-    // No hostChanged event — clients re-derive hostId from lobbyListUpdate / lobbyJoined snapshots.
-    lobby.hostId = Object.keys(lobby.state.players)[0];
   }
 
   return { lobby, deleted: false };

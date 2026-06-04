@@ -40,5 +40,6 @@
   "inferno_pillar": { "id": "inferno_pillar", "name": "Thermal Column", "type": "spell", "charges": 1 },
   "telepipe": { "id": "telepipe", "name": "Telepipe", "type": "spell", "charges": 1, "acquisition": "shop" },
   "spike_trap": { "id": "spike_trap", "name": "Spike Trap", "type": "enchantment", "charges": 1, "acquisition": "reward", "rewardOrder": 24 },
-  "mirror_ward": { "id": "mirror_ward", "name": "Mirror Ward", "type": "enchantment", "charges": 1, "acquisition": "reward", "rewardOrder": 25 }
+  "mirror_ward": { "id": "mirror_ward", "name": "Mirror Ward", "type": "enchantment", "charges": 1, "acquisition": "reward", "rewardOrder": 25 },
+  "cinder_snare": { "id": "cinder_snare", "name": "Cinder Snare", "type": "enchantment", "charges": 1, "acquisition": "shop" }
 }

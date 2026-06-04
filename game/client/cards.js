@@ -176,6 +176,7 @@ export const CARD_ACCENT_STYLE = {
   telepipe: { color: '#67e8f9', icon: '⬡' },
   spike_trap: { color: '#f87171', icon: '⚠' },
   mirror_ward: { color: '#5eead4', icon: '🪞' },
+  cinder_snare: { color: '#f97316', icon: '🔥' },
 };
 
 // Per-player desperation cards (not deck-buildable).

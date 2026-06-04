@@ -181,7 +181,7 @@ describe('runGameLoopTick()', () => {
 	});
 
 	function setupLobby(phase = 'lobby') {
-		const lobby = createLobby('host-1', 'Tick Test');
+		const lobby = createLobby('Tick Test');
 		lobby.state.gamePhase = phase;
 		return lobby;
 	}
@@ -2040,6 +2040,23 @@ describe('findSocketByPlayerId', () => {
 		expect(findSocketByPlayerId('p1')).toBe(s1);
 		expect(findSocketByPlayerId('p3')).toBe(s3);
 	});
+
+	it('excludeSocketId returns the other socket when two share a playerId', () => {
+		const s1 = { id: 'sock-old', playerId: 'shared', connected: true };
+		const s2 = { id: 'sock-new', playerId: 'shared', connected: true };
+		serverIo.sockets.sockets.set(s1.id, s1);
+		serverIo.sockets.sockets.set(s2.id, s2);
+
+		expect(findSocketByPlayerId('shared', 'sock-new')).toBe(s1);
+		expect(findSocketByPlayerId('shared', 'sock-old')).toBe(s2);
+	});
+
+	it('excludeSocketId returns null when only the excluded socket matches', () => {
+		const only = { id: 'sock-only', playerId: 'solo', connected: true };
+		serverIo.sockets.sockets.set(only.id, only);
+
+		expect(findSocketByPlayerId('solo', 'sock-only')).toBeNull();
+	});
 });
 
 // ── Constants ──
@@ -2880,6 +2897,24 @@ describe('run state', () => {
 			expect(gameState.suspendedCheckpoint).toBeUndefined();
 			expect(gameState.run).toBeUndefined();
 		});
+		it('checkAllReady does not start when a disconnected player has stale ready', () => {
+			resetState();
+			addPlayer('p1', {
+				connected: false,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+			addPlayer('p2', {
+				connected: true,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('lobby');
+		});
+
 		it('checkAllReady injects telepipe for telepipe-ready debug scenario', () => {
 			resetState();
 			addPlayer('p1', {

@@ -1,0 +1,24 @@
+## Review complete
+
+**Verdict: FAIL** — not because the implementation is wrong, but because the captured run never loaded the game.
+
+### Runtime
+- `metrics.json`: `"ok": false`, `"failure_kind": "capture_failed"`
+- `pageerrors.json`: empty (no game JS defects)
+- Vite on **5175** proxied to port **3000** (default) while the server ran on **3002** → `ECONNREFUSED` on `/api` and `/socket.io`
+
+### Code (would pass if capture worked)
+All three acceptance criteria are met in the working tree:
+
+1. `player.ready = false` in `softDisconnectPlayerFromLobby`
+2. `checkAllReady` gated on connected players only, with stale-ready defense
+3. Integration + unit regression tests for ready-then-disconnect
+
+Ticket-specific tests pass. One unrelated flaky spawner test failed in the full suite.
+
+### Files written
+- [`round-1/review.md`](tickets/214-lobby-clear-ready-on-disconnect/round-1/review.md) — full assessment
+- [`round-1/gaps.md`](tickets/214-lobby-clear-ready-on-disconnect/round-1/gaps.md) — single harness infra blocker (re-run capture with matching `HARNESS_GAME_PORT`)
+- No `nits.md` — nothing worth a backlog ticket
+
+**Next step for the harness operator:** re-run capture with the Vite client’s proxy target set to the allocated game server port (3002 in this run). No game code changes needed.
