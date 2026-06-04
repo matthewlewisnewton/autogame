@@ -458,6 +458,7 @@ const DEBUG_SCENARIOS = new Set([
   'hats-unlocked',
   'evolution-ready',
   'deck-viewer-instances',
+  'cinder-snare-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,

@@ -821,7 +821,7 @@ function handleUseCard(socket, state, lobby, data) {
         return;
       }
 
-      if (cardDef.effect === 'spike_trap') {
+      if (cardDef.effect === 'spike_trap' || cardDef.effect === 'cinder_snare') {
         if (countGroundEnchantmentsForPlayer(socket.playerId) >= MAX_GROUND_ENCHANTMENTS_PER_PLAYER) {
           socket.emit('cardError', { reason: 'Too many ground enchantments active' });
           return;
@@ -838,7 +838,7 @@ function handleUseCard(socket, state, lobby, data) {
       applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
       replaceConsumedCard(player, data.slotIndex, handCard);
 
-      if (cardDef.effect === 'spike_trap') {
+      if (cardDef.effect === 'spike_trap' || cardDef.effect === 'cinder_snare') {
         spawnGroundEnchantment(originX, originZ, cardDef, socket.playerId);
         io.to(lobby.id).emit('stateUpdate', stateSnapshot());
         io.to(lobby.id).emit('cardUsed', {

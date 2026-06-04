@@ -782,6 +782,26 @@ function applyDebugScenario(socket, name) {
       player.rallyUntil = 0;
       player.rallySpeedMultiplier = 1;
       state.enemies = [];
+    } else if (name === 'cinder-snare-ready') {
+      // Playing phase with Cinder Snare in hand, full Magic Stones, and a grunt
+      // wandering nearby so QA can drop the trap and watch an enemy walk into it
+      // and take the lingering inferno DoT. The same state is reachable normally
+      // by buying the card from the shop, entering a run, and approaching enemies.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'cinder_snare',
+          name: 'Cinder Snare',
+          type: 'enchantment',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
     }
 
     syncRunObjectiveToEnemies();
