@@ -45,9 +45,10 @@ const {
   ENEMY_DEFS,
   firstRoomPosition,
   pickFloorSpawnPosition,
-  randomWanderTarget
+  randomWanderTarget,
+  spawnVolatileExplosion
 } = require('./simulation');
-const { applyVariant, getVariantBonusDrop } = require('./enemyVariants');
+const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
 const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -2466,6 +2467,12 @@ function removeDeadEnemies() {
     recordEnemyCardDrop(enemy);
     spawnMagicStoneDrop(enemy);
     spawnCurrencyDrop(enemy);
+    // Volatile-variant enemies detonate a radial blast where they fall before
+    // being filtered out of the enemy list.
+    const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
+    if (variantDef && variantDef.id === 'volatile') {
+      spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+    }
   }
 
   const before = _gameState.enemies.length;

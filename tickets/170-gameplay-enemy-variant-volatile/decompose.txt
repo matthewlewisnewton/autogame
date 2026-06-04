@@ -1,0 +1,13 @@
+I broke the top-level ticket into 2 sub-tickets in dependency order.
+
+**Created sub-ticket folders:**
+- `tickets/170-gameplay-enemy-variant-volatile/subtickets/01-server-volatile-explosion/ticket.md`
+- `tickets/170-gameplay-enemy-variant-volatile/subtickets/02-client-volatile-tint-explosion/ticket.md`
+
+**Rationale:**
+
+- **01 (server)** — Adds the `volatile` entry to the existing 169 `VARIANT_DEFS` registry, hooks the death chokepoint `removeDeadEnemies()` to spawn a one-shot radial blast resolved through `updateAreaEffects` (extended to damage players/minions/enemies within radius via `damagePlayer`/`collectRadialHits`), queues each detonation on a pending queue drained by `runGameLoopTick` (mirroring the established `_pendingMinionBreaths` pattern) to emit a `volatileExplosion` event, and adds a server test covering "damages within radius / spares beyond radius / no explosion for non-volatile deaths." This is the AC's "server test" + the damage logic.
+
+- **02 (client)** — Gives the variant a distinct badge/tint in `applyVariantMarker` and renders the explosion ring on the `volatileExplosion` event using the existing `activeEffects` lifecycle. Depends on 01's event payload.
+
+**Both are `code` verification.** The visual QA run only sees game-load + two players joining + WASD movement — it never spawns a volatile enemy or triggers a death explosion, so a `visual` mode would fail forever. Both sub-tickets also hinge on structures/handlers/server-state existing (registry entry, socket handler, radial damage, event emission), which is squarely `code` territory.

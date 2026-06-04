@@ -98,6 +98,9 @@ function createGameState() {
     pendingEchoes: [],
     // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
     _pendingMinionBreaths: [],
+    // Per-tick queue of volatile-enemy detonations ({ x, z, radius }); drained
+    // in runGameLoopTick to emit 'volatileExplosion' to the lobby room.
+    _pendingVolatileExplosions: [],
   };
 }
 
@@ -161,6 +164,8 @@ const {
   spawnDragonsBreathEffect,
   spawnFireTrailEffect,
   spawnInfernoPillarEffect,
+  spawnVolatileExplosion,
+  updateAreaEffects,
   isEnemyFrozen,
   cleanupStalePlayers,
   regenMagicStones,
@@ -977,6 +982,13 @@ function runGameLoopTick() {
             io.to(lobby.id).emit('cardUsed', event);
           }
           state._pendingMinionBreaths.length = 0;
+        }
+
+        if (state._pendingVolatileExplosions?.length) {
+          for (const record of state._pendingVolatileExplosions) {
+            io.to(lobby.id).emit('volatileExplosion', record);
+          }
+          state._pendingVolatileExplosions.length = 0;
         }
 
         regenMagicStones();
@@ -1955,6 +1967,8 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnDragonsBreathEffect,
     spawnFireTrailEffect,
     spawnInfernoPillarEffect,
+    spawnVolatileExplosion,
+    updateAreaEffects,
     isEnemyFrozen,
     updateEnemies,
     isPlayerConcealed,

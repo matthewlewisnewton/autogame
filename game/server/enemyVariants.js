@@ -18,6 +18,19 @@ const VARIANT_DEFS = {
     // the value of an additional magic-stone loot entry beyond the normal drop.
     bonusDrop: { card: true, magicStone: 15 },
   },
+  volatile: {
+    id: 'volatile',
+    name: 'Volatile',
+    // No stat/AI mutation on spawn; the variant's behavior is an on-death
+    // radial explosion resolved by the simulation (spawnVolatileExplosion +
+    // the 'volatile_explosion' branch of updateAreaEffects).
+    apply: null,
+    // Explosion tuning consumed when a tagged enemy dies: every player, minion,
+    // and living enemy within `radius` of the corpse takes `damage`.
+    radius: 5,
+    damage: 20,
+    bonusDrop: { magicStone: 10 },
+  },
 };
 
 // Base chance that any single enemy rolls a variant, before tier scaling.

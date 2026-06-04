@@ -1281,6 +1281,35 @@ function spawnInfernoPillarEffect(originX, originZ, cardDef, ownerId) {
   });
 }
 
+/**
+ * Spawn the on-death radial blast of a `volatile`-variant enemy. Pushes a
+ * one-shot `volatile_explosion` area effect at (x, z) that the next
+ * updateAreaEffects() tick resolves into damage, and records the detonation on
+ * `_gameState._pendingVolatileExplosions` so runGameLoopTick can broadcast it
+ * to clients (mirroring `_pendingMinionBreaths`). `def` is the variant registry
+ * entry carrying `radius`/`damage`.
+ */
+function spawnVolatileExplosion(x, z, def) {
+  if (!_gameState.areaEffects) _gameState.areaEffects = [];
+  if (!_gameState._pendingVolatileExplosions) _gameState._pendingVolatileExplosions = [];
+  const now = Date.now();
+  const radius = Number.isFinite(def?.radius) ? def.radius : 5;
+  const damage = Number.isFinite(def?.damage) ? def.damage : 20;
+  _gameState.areaEffects.push({
+    id: crypto.randomUUID(),
+    type: 'volatile_explosion',
+    originX: x,
+    originZ: z,
+    range: radius,
+    damagePerTick: damage,
+    ticksRemaining: 1,
+    intervalMs: 0,
+    lastTickAt: now,
+    expiresAt: now + 250,
+  });
+  _gameState._pendingVolatileExplosions.push({ x, z, radius });
+}
+
 function updateAreaEffects() {
   if (!_gameState.areaEffects || _gameState.areaEffects.length === 0) return;
   const now = Date.now();
@@ -1290,7 +1319,27 @@ function updateAreaEffects() {
     if (now - effect.lastTickAt < effect.intervalMs) continue;
 
     let hits;
-    if (effect.type === 'inferno_pillar') {
+    if (effect.type === 'volatile_explosion') {
+      // One-shot radial blast from a dead `volatile` enemy: damages every
+      // living enemy, minion, and player within `range` of the origin.
+      ({ hits } = collectRadialHits(
+        effect.originX,
+        effect.originZ,
+        effect.range,
+        effect.damagePerTick
+      ));
+      for (const minion of _gameState.minions) {
+        if (minion.hp <= 0) continue;
+        const dist = Math.hypot(minion.x - effect.originX, minion.z - effect.originZ);
+        if (dist <= effect.range) damageMinion(minion, effect.damagePerTick);
+      }
+      for (const [playerId, player] of Object.entries(_gameState.players)) {
+        if (player.dead) continue;
+        const dist = Math.hypot(player.x - effect.originX, player.z - effect.originZ);
+        // Route through damagePlayer so barrier/anchor/shield rules still apply.
+        if (dist <= effect.range) damagePlayer(playerId, effect.damagePerTick);
+      }
+    } else if (effect.type === 'inferno_pillar') {
       ({ hits } = collectRadialHits(
         effect.originX,
         effect.originZ,
@@ -2286,6 +2335,7 @@ module.exports = {
   spawnDragonsBreathEffect,
   spawnFireTrailEffect,
   spawnInfernoPillarEffect,
+  spawnVolatileExplosion,
   updateAreaEffects,
   processPendingEchoes,
   updateEnchantments,
