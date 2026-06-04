@@ -10,6 +10,9 @@ import { fileURLToPath } from 'node:url';
 const gameDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const vitestArgs = process.argv.slice(2);
 
+// kill-vitest.sh must never SIGKILL this launcher (pgrep "vitest" matches vitest.config.js).
+process.env.RUN_VITEST_LAUNCHER_PID = String(process.pid);
+
 if (vitestArgs.length === 0) {
 	console.error('usage: node scripts/run-vitest.mjs <vitest args…>');
 	process.exit(2);
@@ -75,10 +78,13 @@ for (const sig of ['SIGINT', 'SIGTERM', 'SIGHUP']) {
 child.on('exit', (code, signal) => {
 	cleanupOnce();
 	if (signal) {
-		process.kill(process.pid, signal);
+		const sigNum =
+			{ SIGINT: 2, SIGKILL: 9, SIGTERM: 15 }[signal] ??
+			(typeof signal === 'number' ? signal : 1);
+		process.exit(128 + sigNum);
 		return;
 	}
-	process.exit(code ?? 1);
+	process.exit(code === 0 ? 0 : (code ?? 1));
 });
 
 child.on('error', (err) => {
