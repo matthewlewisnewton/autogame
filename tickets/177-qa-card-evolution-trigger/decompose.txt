@@ -1,0 +1,18 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+```
+tickets/177-qa-card-evolution-trigger/subtickets/01-evolution-test-hooks/ticket.md
+tickets/177-qa-card-evolution-trigger/subtickets/02-evolution-playthrough-smoke/ticket.md
+tickets/177-qa-card-evolution-trigger/subtickets/03-run-evolution-evidence/ticket.md
+```
+
+**Decomposition rationale:**
+
+- **01 — Evolution test hooks**: Adds the `evolution-ready` debug scenario (lobby-phase, gives `skeleton_knight` at +10 grind), extends `__AUTOGAME_HARNESS_STATE__` with `inventory` and `lastEvolutionResult`, adds `__evolveCardForTest()` client helper, and a server unit test. No such debug scenario exists today — this is the prerequisite for the smoke script.
+
+- **02 — Playthrough smoke script**: Writes `test-card-evolution.mjs` that launches isolated server+client, applies `evolution-ready`, triggers evolution via `__evolveCardForTest`, and verifies `skeleton_knight` → `undead_commander` with correct post-evolution state (isEvolved, grind reset, evolvedFrom).
+
+- **03 — Run & capture evidence**: Executes the smoke script to green, fixes any failures, and commits the `card-evolution-snapshot.json` evidence artifact.
+
+All 3 use `Verification: code` — they verify logic, state transforms, and structure, not just visual rendering.

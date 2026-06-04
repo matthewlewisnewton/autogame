@@ -26,6 +26,14 @@ For **each** acceptance criterion:
 
 A criterion already satisfied by pre-existing code still counts as met. A stale ticket with an empty/minimal diff is a **PASS** if all criteria hold.
 
+### QA Evidence Tickets (smoke-run sub-tickets)
+
+For tickets whose sole deliverable is running a smoke script and committing an evidence snapshot:
+- An empty `git diff HEAD` is the **correct** outcome — all artifacts were committed by the implementer
+- Verify the committed snapshot file (e.g., `*-snapshot.json`) exists at the expected path and contains the proof fields named by the acceptance criteria (e.g., `lastEvolutionResult.fromCardId`, `postEvolution.isEvolved`)
+- Confirm the smoke script flows through the **real production path** (e.g., `evolveCard` in `progression.js`, not a test-only bypass)
+- Confirm screenshots (`.png`) are gitignored per repo convention (`game/docs/walkthroughs/**/*.png`) and NOT force-added
+
 ## Step 3 — Check Runtime Health
 
 - `local-checks.status.json`: should show `rc: 0`. A nonzero `rc` is suspicious but **not automatically fatal** — it can indicate a harness infrastructure timeout (e.g., server startup detection race) rather than a code error. Cross-check:
