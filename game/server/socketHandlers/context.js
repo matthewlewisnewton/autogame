@@ -3,6 +3,45 @@
  * Helpers are passed in from index.js to avoid circular requires
  * (mirrors cardEffects.setCallbacks / keyItemEffects.setCallbacks).
  */
+const { DECK_MAX_SIZE } = require('../config');
+const {
+  CARD_DEFS,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
+  canAddCardInstanceToDeck,
+  validateDeck,
+  evolveCard,
+  sellCard,
+  grindCard,
+  healAtMedic,
+  unlockHatForPlayer,
+  stateSnapshot,
+} = require('../progression');
+const { findUserByAccountId, unlockHat: unlockHatForAccount } = require('../users');
+const { backfillUnlockedHats } = require('../cosmetic');
+
+const deckHelpers = {
+  DECK_MAX_SIZE,
+  CARD_DEFS,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
+  canAddCardInstanceToDeck,
+  validateDeck,
+  evolveCard,
+  sellCard,
+  grindCard,
+  healAtMedic,
+  unlockHatForPlayer,
+  stateSnapshot,
+  findUserByAccountId,
+  backfillUnlockedHats,
+  unlockHatForAccount,
+};
+
 function buildSocketContext(socket, session, helpers) {
   const { playerId, sessionPlayer, accountId, username } = session;
   return {
@@ -30,7 +69,8 @@ function buildSocketContext(socket, session, helpers) {
     joinLobbyWithPhasePolicy: helpers.joinLobbyWithPhasePolicy,
     leaveLobbyForSocket: helpers.leaveLobbyForSocket,
     buildSessionFromPlayer: helpers.buildSessionFromPlayer,
+    ...deckHelpers,
   };
 }
 
-module.exports = { buildSocketContext };
+module.exports = { buildSocketContext, deckHelpers };
