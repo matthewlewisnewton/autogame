@@ -13,11 +13,14 @@ import {
 	ACTIONS
 } from '../input.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
+import { resetGamepadState } from '../gamepad.js';
+import { LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
 import { patchSettings, getDefaultSettings, getSettings } from '../settings.js';
 
 describe('input.js', () => {
 	beforeEach(() => {
 		resetInputState();
+		resetGamepadState();
 		installGamepadMock();
 		clearMockGamepads();
 		patchSettings(getDefaultSettings());
@@ -198,6 +201,51 @@ describe('input.js', () => {
 		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
 		pollInput();
 		expect(onUseSlot).not.toHaveBeenCalled();
+	});
+
+	it('keyboard Z triggers onLockOn when gameplay actions are enabled', () => {
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z' }));
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+	});
+
+	it('keyboard Z does not trigger onLockOn when gameplay actions are disabled', () => {
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => false,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z' }));
+		expect(onLockOn).not.toHaveBeenCalled();
+	});
+
+	it('gamepad lock-on edge triggers onLockOn', () => {
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[LOCK_ON_GAMEPAD_BUTTON] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+		onLockOn.mockClear();
+		pollInput();
+		expect(onLockOn).not.toHaveBeenCalled();
+	});
+
+	it('exposes lockOn and dodge action labels', () => {
+		expect(getActionLabels()).toMatchObject({
+			lockOn: 'Lock on',
+			dodge: 'Dodge',
+		});
+		expect(ACTIONS.lockOn).toBe('lockOn');
+		expect(ACTIONS.dodge).toBe('dodge');
 	});
 
 	it('exposes labels and defaults for all six hand slots', () => {

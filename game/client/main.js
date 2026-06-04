@@ -144,6 +144,7 @@ import {
 	triggerSmokeVFX,
 	triggerLootMagnetVFX,
 	getPhaseStepTargetId,
+	applyLockOnPress,
 } from './renderer.js';
 import {
 	openPreview as openCosmeticPreview,
@@ -780,6 +781,7 @@ initInput({
 			}
 		}
 	},
+	onLockOn: () => applyLockOnPress(),
 	canUseGameActions: () => gameState && gameState.gamePhase === 'playing',
 });
 

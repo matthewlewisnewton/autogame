@@ -713,7 +713,7 @@ function getCameraForwardDirection() {
 	return cameraRelativeDirection(0, 1);
 }
 
-function applyLockOnPress() {
+export function applyLockOnPress() {
 	if (currentGamePhase !== 'playing') return;
 	const gs = gameStateRef;
 	if (!gs?.enemies) return;
@@ -4027,9 +4027,6 @@ export function animate(timestamp) {
 	const gamepadActions = pollGamepadButtons();
 	if (gamepadInputHandler) {
 		gamepadInputHandler(gamepadActions);
-	}
-	if (currentGamePhase === 'playing' && gamepadActions.lockOn) {
-		applyLockOnPress();
 	}
 
 	const gs = gameStateRef;
