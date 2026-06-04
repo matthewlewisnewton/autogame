@@ -874,6 +874,28 @@ function softDisconnectPlayerFromLobby(socket) {
   return { lobby, playerId };
 }
 
+function notifyPlayerRemoved(lobby, playerId) {
+  withLobbyContext(lobby, () => {
+    savePlayerData(playerId);
+    cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
+  });
+
+  const result = lobbies.removePlayerFromLobby(playerId);
+  io.to(lobby.id).emit('playerDisconnected', playerId);
+
+  if (result && !result.deleted) {
+    withLobbyContext(lobby, () => {
+      if (lobby.state.gamePhase === 'playing') {
+        checkRunTerminalState();
+      } else {
+        broadcastLobbyUpdate(lobby);
+      }
+    });
+  }
+
+  return result;
+}
+
 function evictDisconnectedPlayers() {
   const now = Date.now();
   let evictedAny = false;
@@ -889,23 +911,8 @@ function evictDisconnectedPlayers() {
     if (toEvict.length === 0) continue;
 
     for (const playerId of toEvict) {
-      withLobbyContext(lobby, () => {
-        savePlayerData(playerId);
-        cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
-      });
-      const result = lobbies.removePlayerFromLobby(playerId);
-      io.to(lobby.id).emit('playerDisconnected', playerId);
+      notifyPlayerRemoved(lobby, playerId);
       evictedAny = true;
-
-      if (result && !result.deleted) {
-        withLobbyContext(lobby, () => {
-          if (lobby.state.gamePhase === 'playing') {
-            checkRunTerminalState();
-          } else {
-            broadcastLobbyUpdate(lobby);
-          }
-        });
-      }
     }
   }
 
@@ -919,25 +926,9 @@ function leaveLobbyForSocket(socket) {
   if (!lobby) return null;
 
   const playerId = socket.playerId;
-  withLobbyContext(lobby, () => {
-    savePlayerData(playerId);
-    cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
-  });
   socket.leave(lobby.id);
 
-  const result = lobbies.removePlayerFromLobby(playerId);
-  io.to(lobby.id).emit('playerDisconnected', playerId);
-
-  if (result && !result.deleted) {
-    withLobbyContext(lobby, () => {
-      if (lobby.state.gamePhase === 'playing') {
-        checkRunTerminalState();
-      } else {
-        broadcastLobbyUpdate(lobby);
-      }
-    });
-  }
-
+  const result = notifyPlayerRemoved(lobby, playerId);
   broadcastLobbyList();
   return result;
 }
@@ -1106,16 +1097,6 @@ function startServer(port) {
 
     socket.on('listLobbies', () => {
       socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-    });
-
-    socket.on('listKeyItems', () => {
-      const items = getUnlockedKeyItems().map((def) => ({
-        id: def.id,
-        name: def.name,
-        description: def.description,
-        cooldownMs: def.cooldownMs,
-      }));
-      socket.emit('keyItemsListed', { items });
     });
 
     socket.on('createLobby', (data) => {
@@ -1564,29 +1545,6 @@ function startServer(port) {
     }
 
     const result = sellCard(player, cardId, requestedInstanceId);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardInventoryUpdate', {
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency,
-      selectedDeck: player.selectedDeck
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
-  socket.on('buyShopCard', () => {
-    withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
-
-    const player = state.players[socket.playerId];
-    if (!player) return;
-
-    const result = buyShopCard(player, state.shopOffer);
     if (!result.ok) {
       socket.emit('deckError', { reason: result.reason });
       return;
