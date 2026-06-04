@@ -28,6 +28,12 @@ const VARIANT_DEFS = {
   },
 };
 
+// Frenzied enrage: below this HP fraction, chase/attack speed boosts latch on.
+const FRENZIED_HP_THRESHOLD = 0.5;
+// Multipliers applied to ENEMY_DEFS chaseSpeed / attackWindupMs once enraged.
+const FRENZIED_CHASE_SPEED_MULT = 1.5;
+const FRENZIED_ATTACK_SPEED_MULT = 1.5;
+
 // Base chance that any single enemy rolls a variant, before tier scaling.
 // Tunable knob for follow-up tickets.
 const BASE_VARIANT_CHANCE = 0.25;
@@ -89,10 +95,43 @@ function getVariantBonusDrop(enemy) {
   return def && def.bonusDrop ? def.bonusDrop : null;
 }
 
+/**
+ * Apply frenzied enrage overrides when a frenzied enemy crosses the HP threshold.
+ * Latches on first trigger; healing above threshold does not revert boosts.
+ * No-ops for non-frenzied enemies or when maxHp is missing/invalid.
+ */
+function applyFrenziedEnrage(enemy) {
+  if (!enemy || enemy.variant !== 'frenzied' || enemy.hp <= 0) return enemy;
+
+  const maxHp = enemy.maxHp;
+  if (!Number.isFinite(maxHp) || maxHp <= 0) return enemy;
+
+  const { ENEMY_DEFS } = require('./simulation');
+  const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+
+  if (enemy.frenziedEnraged) {
+    enemy.chaseSpeed = def.chaseSpeed * FRENZIED_CHASE_SPEED_MULT;
+    enemy.attackWindupMs = Math.round(def.attackWindupMs / FRENZIED_ATTACK_SPEED_MULT);
+    return enemy;
+  }
+
+  const hp = Number.isFinite(enemy.hp) ? enemy.hp : maxHp;
+  if (hp > maxHp * FRENZIED_HP_THRESHOLD) return enemy;
+
+  enemy.frenziedEnraged = true;
+  enemy.chaseSpeed = def.chaseSpeed * FRENZIED_CHASE_SPEED_MULT;
+  enemy.attackWindupMs = Math.round(def.attackWindupMs / FRENZIED_ATTACK_SPEED_MULT);
+  return enemy;
+}
+
 module.exports = {
   VARIANT_DEFS,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
+  FRENZIED_HP_THRESHOLD,
+  FRENZIED_CHASE_SPEED_MULT,
+  FRENZIED_ATTACK_SPEED_MULT,
   applyVariant,
   getVariantBonusDrop,
+  applyFrenziedEnrage,
 };

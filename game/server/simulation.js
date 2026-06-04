@@ -23,6 +23,7 @@ const {
   COOLDOWN_MS
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
+const { applyFrenziedEnrage } = require('./enemyVariants');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -787,6 +788,13 @@ function isEnemyFrozen(enemy) {
   return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
 }
 
+function applyEnemyDamage(enemy, damage, options = {}) {
+  if (!enemy || damage <= 0) return;
+  if (options.attackerId) enemy.lastDamagedBy = options.attackerId;
+  enemy.hp -= damage;
+  applyFrenziedEnrage(enemy);
+}
+
 function healPlayer(playerId, amount) {
   const player = _gameState.players[playerId];
   if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
@@ -826,8 +834,7 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
     if (dot < Math.cos(coneAngle / 2)) continue;
 
     const hpBefore = enemy.hp;
-    if (attackerId) enemy.lastDamagedBy = attackerId;
-    enemy.hp -= damage;
+    applyEnemyDamage(enemy, damage, { attackerId });
     const killed = hpBefore > 0 && enemy.hp <= 0;
     const hitGain = magicStoneOnHit;
     const killGain = killed ? magicStoneOnKill : 0;
@@ -853,8 +860,7 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
     if (dist > radius) continue;
 
     const hpBefore = enemy.hp;
-    if (attackerId) enemy.lastDamagedBy = attackerId;
-    enemy.hp -= damage;
+    applyEnemyDamage(enemy, damage, { attackerId });
     const killed = hpBefore > 0 && enemy.hp <= 0;
     const hitGain = magicStoneOnHit;
     const killGain = killed ? magicStoneOnKill : 0;
@@ -889,8 +895,7 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
       if (dist > hitWidth) continue;
 
       const hpBefore = enemy.hp;
-      if (attackerId) enemy.lastDamagedBy = attackerId;
-      enemy.hp -= damage;
+      applyEnemyDamage(enemy, damage, { attackerId });
       const killed = hpBefore > 0 && enemy.hp <= 0;
       const hitGain = magicStoneOnHit;
       const killGain = killed ? magicStoneOnKill : 0;
@@ -927,7 +932,7 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
       if (dist > hitWidth) continue;
 
       if (attackerId) enemy.lastDamagedBy = attackerId;
-      enemy.hp -= damage;
+      applyEnemyDamage(enemy, damage);
       hitEnemyIds.add(enemy.id);
       hits.push({ enemyId: enemy.id, hp: enemy.hp });
     }
@@ -1110,8 +1115,7 @@ function collectReturningProjectileHits(originX, originZ, dirX, dirZ, range, dam
         if (dist > PROJECTILE_HIT_WIDTH) continue;
 
         const hpBefore = enemy.hp;
-        if (attackerId) enemy.lastDamagedBy = attackerId;
-        enemy.hp -= damage;
+        applyEnemyDamage(enemy, damage, { attackerId });
         const killed = hpBefore > 0 && enemy.hp <= 0;
         const hitGain = magicStoneOnHit;
         const killGain = killed ? magicStoneOnKill : 0;
@@ -1139,7 +1143,7 @@ function applyFreezeInRadius(originX, originZ, radius, durationMs, damage = 0, f
       hitDamage += frozenBonusDamage;
     }
     if (hitDamage > 0) {
-      enemy.hp -= hitDamage;
+      applyEnemyDamage(enemy, hitDamage);
       const hit = { enemyId: enemy.id, hp: enemy.hp };
       if (wasFrozen && frozenBonusDamage > 0) {
         hit.frozenShatter = true;
@@ -1337,7 +1341,7 @@ function processPendingEchoes() {
       const enemy = _gameState.enemies.find(e => e.id === target.enemyId);
       if (!enemy || enemy.hp <= 0) continue;
       enemy.lastDamagedBy = echo.attackerId;
-      enemy.hp -= target.damage;
+      applyEnemyDamage(enemy, target.damage);
       applied = true;
     }
     echo.done = true;
@@ -1542,7 +1546,7 @@ function updateEnchantments() {
       const dist = Math.hypot(enemy.x - enc.x, enemy.z - enc.z);
       if (dist <= enc.radius) {
         enemy.lastDamagedBy = enc.ownerId;
-        enemy.hp -= enc.damage;
+        applyEnemyDamage(enemy, enc.damage);
         enc.armed = false;
         triggered = true;
         break;
@@ -1677,7 +1681,13 @@ function updateEnemies() {
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
 
 	for (const enemy of _gameState.enemies) {
+		if (enemy.hp <= 0) continue;
+
+		applyFrenziedEnrage(enemy);
+
 		const def = ENEMY_DEFS[enemy.type] || ENEMY_DEFS.grunt;
+		const chaseSpeed = enemy.chaseSpeed ?? def.chaseSpeed;
+		const attackWindupMs = enemy.attackWindupMs ?? def.attackWindupMs;
 
 		if (isEnemyFrozen(enemy)) {
 			continue;
@@ -1699,7 +1709,7 @@ function updateEnemies() {
 		// ── Wind-up: wait, then revalidate range before striking ──
 		if (enemy.attackState === 'windup') {
 			const elapsed = Date.now() - enemy.windupStartTime;
-			if (elapsed >= def.attackWindupMs) {
+			if (elapsed >= attackWindupMs) {
 				const target = resolveWindupTarget(enemy);
 				// A player who became concealed by smoke during the wind-up is no
 				// longer a valid target — cancel the strike and return to chasing.
@@ -1754,7 +1764,7 @@ function updateEnemies() {
 			if (dist <= ENEMY_ATTACK_RANGE) {
 				damageMinion(tauntMinion, def.attackDamage);
 			} else {
-				moveEntityToward(enemy, tauntMinion, def.chaseSpeed * dt);
+				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
 			continue;
 		}
@@ -1801,7 +1811,7 @@ function updateEnemies() {
 				enemy.attackState = 'chasing';
 			}
 
-			const chaseResult = moveEntityToward(enemy, nearestTarget, def.chaseSpeed * dt);
+			const chaseResult = moveEntityToward(enemy, nearestTarget, chaseSpeed * dt);
 			// If blocked while chasing, enemy stops at wall edge (wall-slide handles sliding)
 			void chaseResult;
 			continue;
@@ -1903,8 +1913,7 @@ function updateMinions() {
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
           if (nearestDist <= ATTACK_RANGE) {
             if (now - lastAttackAt >= attackIntervalMs) {
-              nearestEnemy.lastDamagedBy = minion.ownerId;
-              nearestEnemy.hp -= attackDamage;
+              applyEnemyDamage(nearestEnemy, attackDamage, { attackerId: minion.ownerId });
               minion.lastAttackAt = now;
             }
           } else {
@@ -1930,8 +1939,7 @@ function updateMinions() {
 
         if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
           if (nearestDist <= attackRange) {
-            nearestEnemy.lastDamagedBy = minion.ownerId;
-            nearestEnemy.hp -= attackDamage;
+            applyEnemyDamage(nearestEnemy, attackDamage, { attackerId: minion.ownerId });
             if (minion.type === 'thunderbird') {
               const chainRadius = minion.chainRadius || 5;
               const maxChainTargets = minion.maxChainTargets || 2;
@@ -1950,8 +1958,7 @@ function updateMinions() {
                   }
                 }
                 if (!next) break;
-                next.lastDamagedBy = minion.ownerId;
-                next.hp -= attackDamage;
+                applyEnemyDamage(next, attackDamage, { attackerId: minion.ownerId });
                 hitIds.add(next.id);
                 current = next;
                 chains++;
@@ -2115,8 +2122,7 @@ function updateMinions() {
       if (nearestEnemy && nearestDist < DETECTION_RADIUS) {
         // Attack if within attack range
         if (nearestDist <= ATTACK_RANGE) {
-          nearestEnemy.lastDamagedBy = minion.ownerId;
-          nearestEnemy.hp -= 5;
+          applyEnemyDamage(nearestEnemy, 5, { attackerId: minion.ownerId });
         } else {
           // Move toward enemy using moveEntityToward (wall-aware)
           moveEntityToward(minion, nearestEnemy, ENEMY_DEFS.grunt.chaseSpeed * dt);

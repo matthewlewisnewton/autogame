@@ -39,6 +39,7 @@ const {
 } = require('./progression');
 const { unlockHat: unlockHatForAccount } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
+const { applyFrenziedEnrage } = require('./enemyVariants');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -302,6 +303,20 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'frenzied-enemy') {
+      // Spawn a frenzied grunt already below half HP so faster pursuit is visible
+      // immediately. The same state is reachable by damaging a frenzied spawn in
+      // normal play; this is a deterministic shortcut for QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const enemy = spawnEnemy(player.x + 3, player.z, 'grunt');
+      enemy.variant = 'frenzied';
+      enemy.maxHp = 100;
+      enemy.hp = 40;
+      applyFrenziedEnrage(enemy);
+      enemy.wanderTarget = { x: enemy.x, z: enemy.z };
+      enemy.attackState = 'idle';
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;

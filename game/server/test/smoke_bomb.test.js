@@ -7,6 +7,7 @@ import {
 	waitForEvent,
 	playerForSocket,
 } from './helpers.js';
+import { clearAllTimers } from '../index.js';
 
 // ── Def values ──
 
@@ -64,6 +65,10 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		player.smokeBombUntil = 0;
 		player.x = 5;
 		player.z = -3;
+
+		// Stop the game-loop interval so flushDirtyPlayerSaves cannot clear
+		// persistenceDirty between the handler and this assertion (race under load).
+		clearAllTimers();
 
 		const resultPromise = waitForEvent(socket, 'keyItemUsed');
 		socket.emit('useKeyItem', { keyItemId: 'smoke_bomb' });
