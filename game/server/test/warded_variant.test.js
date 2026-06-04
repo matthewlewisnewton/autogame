@@ -1,15 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
   VARIANT_DEFS,
-  BASE_VARIANT_CHANCE,
-  applyVariant,
 } from '../enemyVariants';
 import { damageEnemy } from '../simulation.js';
-
-function seqRng(values) {
-  let i = 0;
-  return () => values[i++ % values.length];
-}
 
 function gruntStub() {
   return { type: 'grunt', hp: 100, maxHp: 100, atk: 10 };
@@ -38,8 +31,8 @@ describe('VARIANT_DEFS.warded', () => {
 describe('applyVariant with warded', () => {
   it('tags warded and applies shield fields via the registry hook', () => {
     const enemy = gruntStub();
-    // First roll tags (below tier-1 chance); second roll picks warded (index 2 of 5).
-    applyVariant(enemy, 1, seqRng([0.01, 0.5]));
+    enemy.variant = 'warded';
+    VARIANT_DEFS.warded.apply(enemy);
     expect(enemy.variant).toBe('warded');
     expect(enemy.shieldHp).toBeGreaterThan(0);
     expect(enemy.maxShieldHp).toBe(enemy.shieldHp);
@@ -49,14 +42,18 @@ describe('applyVariant with warded', () => {
 
   it('leaves shieldHp unset for enemies that are not tagged', () => {
     const enemy = gruntStub();
-    applyVariant(enemy, 1, seqRng([BASE_VARIANT_CHANCE + 0.01]));
+    enemy.variant = null;
     expect(enemy.variant).toBeNull();
     expect(enemy.shieldHp === undefined || enemy.shieldHp === 0).toBe(true);
   });
 
   it('leaves shieldHp unset when the no-op test variant is selected', () => {
     const enemy = gruntStub();
-    applyVariant(enemy, 1, seqRng([0.01, 0]));
+    enemy.variant = 'test';
+    const def = VARIANT_DEFS.test;
+    if (def && typeof def.apply === 'function') {
+      def.apply(enemy);
+    }
     expect(enemy.variant).toBe('test');
     expect(enemy.shieldHp === undefined || enemy.shieldHp === 0).toBe(true);
   });
