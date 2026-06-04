@@ -1,21 +1,10 @@
-Merge conflicts are resolved so **volatile** (ticket 170) and **warded/leeching** (main) coexist.
+**LOGBOOK.md** is resolved.
 
-### `game/server/enemyVariants.js`
-Registry now includes all four gameplay variants: `test`, `volatile`, `warded`, and `leeching`.
+Both sides added a new release section at the same place after **v0.185**. The conflict was only about which entry to keep.
 
-### `game/server/index.js`
-`DEBUG_SCENARIOS` and `DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN` list all three debug shortcuts: `volatile-enemy`, `warded-enemy`, and `variant-leeching`.
+**Resolution:** keep both, in descending version order (same as the rest of the log):
 
-### `game/server/debugScenarios.js`
-Three separate `else if` branches, each with full setup:
-- **volatile-enemy** — 1 HP volatile grunt + charged weapon for kill QA
-- **warded-enemy** — shielded warded grunt via `VARIANT_DEFS.warded.apply`
-- **variant-leeching** — leeching grunt beside a plain grunt
+1. **v0.187 — 207-gameplay-card-balance-pass** (ticket branch): Arcane Bolt / Mirror Ward balance pass, vitest stability, review sections unchanged  
+2. **v0.186 — 209-gameplay-card-aegis-sentinel** (from `main`): full Aegis Sentinel review entry unchanged  
 
-### `game/client/renderer.js`
-Merged onto main’s `VARIANT_BADGE_COLORS` / `applyEnemyVariantTint` / `applyVariantEmissiveTint` pattern; added `volatile: 0xf97316` to badge colors and `VARIANT_MARKER_COLORS`. Removed the broken stray `}` and duplicate badge-sync logic.
-
-### `LOGBOOK.md`
-Kept review entries in version order: v0.179 (leeching), v0.181 (warded), v0.182 (volatile).
-
-All conflict markers are gone. `pnpm test:quick` passed: **76 files, 1695 tests**. The harness can commit and finish the merge.
+All conflict markers are removed. The file is ready for the harness to stage and finish the merge.

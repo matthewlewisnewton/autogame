@@ -44,6 +44,7 @@ const VICTORY_REWARD_ROTATION = [
   'arcane_bolt',
   'healing_font',
   'skeleton_knight',
+  'aegis_sentinel',
   'storm_eagle',
   'null_crawler',
   'bulkhead_mauler',

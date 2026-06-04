@@ -47,6 +47,15 @@ export const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'fire_trail',
   },
+  aegis_sentinel: {
+    ...cardIdentity.aegis_sentinel,
+    magicStoneCost: 45,
+    damage: 0,
+    isEvolved: true,
+    specialEffect: 'astral_shield',
+    effect: 'astral_guardian',
+    taunt: true,
+  },
   astral_guardian: {
     ...cardIdentity.astral_guardian,
     magicStoneCost: 65,
@@ -411,6 +420,7 @@ export const CARD_ACCENT_STYLE = {
   dragons_breath: { color: '#fb923c', icon: '🔥' },
   magma_greatsword: { color: '#f97316', icon: '🗡' },
   inferno_pillar: { color: '#ef4444', icon: '🌋' },
+  aegis_sentinel: { color: '#4ade80', icon: '🛡' },
   astral_guardian: { color: '#818cf8', icon: '✧' },
   ancient_wyrm: { color: '#9333ea', icon: '🔥' },
   null_crawler: { color: '#22d3ee', icon: '◎' },

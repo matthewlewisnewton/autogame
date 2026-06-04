@@ -87,6 +87,75 @@ function applySlotCooldown(player, slotIndex, hasOverclock, now, cooldownMs) {
   }
 }
 
+function applyAstralShieldCast(ctx) {
+  const {
+    socket, state, lobby, data, cardDef, handCard, player,
+    originX, originZ, now, hasOverclock,
+  } = ctx;
+
+  const grind = handCard.grind || 0;
+  const summonDamage = handCard.echoDamage != null
+    ? handCard.echoDamage
+    : scaledGrindStat(cardDef.damage || 0, grind);
+  const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
+    magicStoneOnHit: cardDef.magicStoneOnHit,
+    magicStoneOnKill: cardDef.magicStoneOnKill,
+    healOnHit: cardDef.healOnHit,
+    healOnKill: cardDef.healOnKill,
+    attackerId: socket.playerId,
+  });
+  const hits = radial.hits;
+  const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
+
+  const shieldHp = cardDef.shieldHp || 15;
+  const shieldDurationMs = cardDef.shieldDurationMs || 8000;
+  player.shieldHp = shieldHp;
+  player.shieldExpiresAt = now + shieldDurationMs;
+
+  const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind);
+  const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
+  const minion = {
+    id: crypto.randomUUID(),
+    ownerId: socket.playerId,
+    type: data.cardId,
+    x: originX,
+    z: originZ,
+    hp: minionHp,
+    maxHp: minionHp,
+    specialEffect: cardDef.specialEffect,
+    ttl: minionTtl,
+    maxTtl: minionTtl,
+    createdAt: now,
+    attackDamage: cardDef.attackDamage != null ? cardDef.attackDamage : 10,
+    attackIntervalMs: cardDef.attackIntervalMs || Math.floor(1000 / TICK_RATE),
+    lastAttackAt: 0,
+  };
+  if (cardDef.taunt) {
+    minion.taunt = true;
+  }
+  state.minions.push(minion);
+
+  cleanupAfterDamage();
+
+  applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+  replaceConsumedCard(player, data.slotIndex, handCard);
+
+  io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+  io.to(lobby.id).emit('cardUsed', {
+    playerId: socket.playerId,
+    cardId: data.cardId,
+    slotIndex: data.slotIndex,
+    specialEffect: cardDef.specialEffect,
+    origin: { x: originX, z: originZ },
+    radius: SUMMON_RADIUS,
+    hits,
+    magicStonesGained: appliedMagicStones,
+    hpHealed: radial.hpHealed || 0,
+    shieldGranted: shieldHp,
+    minionId: minion.id,
+  });
+}
+
 // Dispatch a useCard event. Called from socket.on('useCard') inside the active
 // lobby context (gameState already pointed at lobby.state by withLobbyContext).
 function handleUseCard(socket, state, lobby, data) {
@@ -684,65 +753,10 @@ function handleUseCard(socket, state, lobby, data) {
       }
 
       if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
-        const grind = handCard.grind || 0;
-        const summonDamage = handCard.echoDamage != null
-          ? handCard.echoDamage
-          : scaledGrindStat(cardDef.damage || 0, grind);
-        const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
-          magicStoneOnHit: cardDef.magicStoneOnHit,
-          magicStoneOnKill: cardDef.magicStoneOnKill,
-          healOnHit: cardDef.healOnHit,
-          healOnKill: cardDef.healOnKill,
-          attackerId: socket.playerId,
+        applyAstralShieldCast({
+          socket, state, lobby, data, cardDef, handCard, player,
+          originX, originZ, now, hasOverclock,
         });
-        const hits = radial.hits;
-        const appliedMagicStones = addMagicStones(player, radial.magicStonesGained);
-
-        const shieldHp = cardDef.shieldHp || 15;
-        const shieldDurationMs = cardDef.shieldDurationMs || 8000;
-        player.shieldHp = shieldHp;
-        player.shieldExpiresAt = now + shieldDurationMs;
-
-        const minionHp = scaledGrindStat(cardDef.minionHp || 60, grind);
-        const minionTtl = scaledGrindStat(cardDef.minionTtl || 30, grind);
-        const minion = {
-          id: crypto.randomUUID(),
-          ownerId: socket.playerId,
-          type: 'astral_guardian',
-          x: originX,
-          z: originZ,
-          hp: minionHp,
-          maxHp: minionHp,
-          specialEffect: cardDef.specialEffect,
-          ttl: minionTtl,
-          maxTtl: minionTtl,
-          createdAt: now,
-          attackDamage: cardDef.attackDamage || 10,
-          attackIntervalMs: cardDef.attackIntervalMs || Math.floor(1000 / TICK_RATE),
-          lastAttackAt: 0,
-        };
-        state.minions.push(minion);
-
-        cleanupAfterDamage();
-
-        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
-        replaceConsumedCard(player, data.slotIndex, handCard);
-
-        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
-        io.to(lobby.id).emit('cardUsed', {
-          playerId: socket.playerId,
-          cardId: data.cardId,
-          slotIndex: data.slotIndex,
-          specialEffect: cardDef.specialEffect,
-          origin: { x: originX, z: originZ },
-          radius: SUMMON_RADIUS,
-          hits,
-          magicStonesGained: appliedMagicStones,
-          hpHealed: radial.hpHealed || 0,
-          shieldGranted: shieldHp,
-          minionId: minion.id,
-        });
-
         return;
       }
 
@@ -865,6 +879,16 @@ function handleUseCard(socket, state, lobby, data) {
         socket.emit('cardError', { reason: THEME.resource.insufficient });
         return;
       }
+
+      if (cardDef.effect === 'astral_guardian' || cardDef.specialEffect === 'astral_shield') {
+        player.magicStones -= magicStoneCost;
+        applyAstralShieldCast({
+          socket, state, lobby, data, cardDef, handCard, player,
+          originX, originZ, now, hasOverclock,
+        });
+        return;
+      }
+
       player.magicStones -= magicStoneCost;
 
       const grind = handCard.grind || 0;

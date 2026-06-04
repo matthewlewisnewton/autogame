@@ -167,6 +167,20 @@ const CARD_DEFS = {
     isEvolved: true,
     specialEffect: 'fire_trail'
   },
+  aegis_sentinel: {
+    ...CARD_IDENTITY.aegis_sentinel,
+    magicStoneCost: 45,
+    damage: 0,
+    isEvolved: true,
+    specialEffect: 'astral_shield',
+    effect: 'astral_guardian',
+    shieldHp: 30,
+    shieldDurationMs: 8000,
+    minionHp: 160,
+    minionTtl: 30,
+    attackDamage: 0,
+    taunt: true,
+  },
   astral_guardian: {
     ...CARD_IDENTITY.astral_guardian,
     magicStoneCost: 65,
@@ -653,6 +667,7 @@ const CARD_SELL_VALUES = {
   bulkhead_mauler: 10,
   steel_claymore: 15,
   magma_greatsword: 18,
+  aegis_sentinel: 22,
   astral_guardian: 25,
   ancient_wyrm: 20,
   divine_grace: 18,

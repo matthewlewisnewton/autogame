@@ -14,7 +14,7 @@ import {
 
 describe('CARD_DEFS', () => {
 	it('has base, evolved, synergistic, and pack card entries', () => {
-		expect(Object.keys(CARD_DEFS)).toHaveLength(40);
+		expect(Object.keys(CARD_DEFS)).toHaveLength(41);
 	});
 
 	it('contains iron_sword with correct type and charges', () => {
@@ -273,6 +273,17 @@ describe('CARD_DEFS', () => {
 			isEvolved: true,
 			specialEffect: 'fire_dot',
 		});
+		expect(CARD_DEFS.aegis_sentinel).toMatchObject({
+			id: 'aegis_sentinel',
+			name: 'Aegis Sentinel',
+			type: 'creature',
+			magicStoneCost: 45,
+			damage: 0,
+			isEvolved: true,
+			specialEffect: 'astral_shield',
+			effect: 'astral_guardian',
+			taunt: true,
+		});
 	});
 });
 
@@ -380,8 +391,9 @@ describe('card ID sets', () => {
 		expect(creatureCardIds.has('thunderbird')).toBe(true);
 		expect(creatureCardIds.has('null_crawler')).toBe(true);
 		expect(creatureCardIds.has('bulkhead_mauler')).toBe(true);
+		expect(creatureCardIds.has('aegis_sentinel')).toBe(true);
 		expect(creatureCardIds.has('iron_sword')).toBe(false);
-		expect(creatureCardIds.size).toBe(9);
+		expect(creatureCardIds.size).toBe(10);
 	});
 
 	it('CARD_ACCENT_STYLE defines icon and color for each new pack card', () => {
@@ -404,6 +416,7 @@ describe('card ID sets', () => {
 			'glacier_collapse',
 			'inferno_pillar',
 			'soul_drain',
+			'aegis_sentinel',
 		];
 		for (const cardId of packIds) {
 			expect(CARD_ACCENT_STYLE[cardId]).toMatchObject({
