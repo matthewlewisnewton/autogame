@@ -1,31 +1,19 @@
 const crypto = require('crypto');
-const { DEFAULT_QUEST_ID } = require('./quests');
+const { createGameState } = require('./game-state');
 
 /** @typedef {import('./index').GameState} GameState */
+
+// Alias: lobby-created state uses the same canonical factory as the module-level
+// singleton in index.js.  The previous local definition lacked `enchantments`,
+// `lobby`, and `_pendingVolatileExplosions`, causing latent `undefined` errors
+// when lobby state entered combat code paths.
+const createLobbyGameState = createGameState;
 
 const lobbies = new Map();
 /** @type {Map<string, string>} playerId -> lobbyId */
 const playerLobby = new Map();
 /** @type {Map<string, object>} playerId -> session data while browsing (not in a lobby) */
 const playerSessions = new Map();
-
-function createLobbyGameState() {
-  return {
-    players: {},
-    enemies: [],
-    minions: [],
-    loot: [],
-    areaEffects: [],
-    gamePhase: 'lobby',
-    selectedQuestId: DEFAULT_QUEST_ID,
-    pendingTrades: {},
-    shopOffer: null,
-    telepipe: null,
-    suspendedCheckpoint: null,
-    pendingEchoes: [],
-    _pendingMinionBreaths: [],
-  };
-}
 
 function generateLobbyId() {
   return crypto.randomBytes(4).toString('hex');

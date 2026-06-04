@@ -77,32 +77,8 @@ const io = new Server(server, {
 });
 server.setMaxListeners(0);
 
-// Game state factory — used by tests to get a fresh state
-function createGameState() {
-  return {
-    players: {},
-    enemies: [],
-    minions: [],
-    loot: [],
-    areaEffects: [],
-    enchantments: [],
-    lobby: [],
-    gamePhase: 'lobby',
-    selectedQuestId: DEFAULT_QUEST_ID,
-    pendingTrades: {},
-    shopOffer: null,
-    telepipe: null,
-    suspendedCheckpoint: null,
-    // Pending Echo Strike packets ({ attackerId, targets:[{enemyId,damage}], applyAt }),
-    // applied on a later tick by simulation.processPendingEchoes().
-    pendingEchoes: [],
-    // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
-    _pendingMinionBreaths: [],
-    // Per-tick queue of volatile-enemy detonations ({ x, z, radius }); drained
-    // in runGameLoopTick to emit 'volatileExplosion' to the lobby room.
-    _pendingVolatileExplosions: [],
-  };
-}
+// Game state factory — shared with lobbies.js to keep the canonical shape in one place
+const { createGameState } = require('./game-state');
 
 // Game state (module-level singleton used by production)
 const gameState = createGameState();
