@@ -231,6 +231,18 @@ class TestViteCleanStart:
         assert isolate_pids == [server_pid, vite_pid]
         assert patched.kills == []  # nothing killed on the happy path
 
+    def test_vite_env_harness_game_port_matches_allocated_server(
+        self, tmp_path, patched, isolate_pids
+    ):
+        factory = patched.set_popen(FakePopenFactory([""]))
+
+        game.start_game(tmp_path, PORTS_ALT, max_vite_retries=2)
+
+        assert (
+            factory.vite_calls[0]["kwargs"]["env"]["HARNESS_GAME_PORT"]
+            == str(PORTS_ALT.game_server)
+        )
+
 
 # --------------------------------------------------------------------------- #
 # Vite launch — EADDRINUSE retry loop
