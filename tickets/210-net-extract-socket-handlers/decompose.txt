@@ -1,0 +1,23 @@
+Broke the top-level ticket into **6 sub-tickets** in dependency order, aligned with the ticket’s suggested slices (lobby → run → deck → keyItem → trade/session) plus an upfront scaffold/cleanup pass.
+
+**Plan summary**
+
+| # | Focus | Handlers / work |
+|---|--------|-----------------|
+| 01 | Scaffold + cleanup | `socketHandlers/` layout, `buildSocketContext`, `notifyPlayerRemoved`, delete dead `buyShopCard`/`listKeyItems` |
+| 02 | Lobby | `listLobbies`, `createLobby`, `joinLobby`, `leaveLobby`, `disconnect` |
+| 03 | Run | `move`, `useCard`, `discardCard`, quest/ready/run flow, `claimCardReward`, `lootPickup`, `medicHeal` |
+| 04 | Deck | `deckAddCard`, `deckRemoveCard`, `evolveCard`, `sellCard`, `grindCard`, `unlockHat` |
+| 05 | Key items | `equipKeyItem`, `useKeyItem` |
+| 06 | Trade + session | `offerCardTrade`, `respondCardTrade`, `heartbeat`, `debugScenario`; final connection slim-down |
+
+All sub-tickets use **Verification: code** (structure, handlers, tests — not pixel checks).
+
+**Created sub-ticket paths**
+
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/01-scaffold-and-cleanup/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/02-extract-lobby-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/03-extract-run-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/04-extract-deck-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/05-extract-keyitem-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/06-extract-trade-and-session-handlers/ticket.md`
