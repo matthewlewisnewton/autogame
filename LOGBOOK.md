@@ -3554,3 +3554,26 @@ I did not find dead replacement code, duplicate keyboard listeners, uncaught run
 
 None.
 
+
+## v0.199 — 220-input-rebind-collision-guard  (2026-06-04 14:07:21)
+
+
+New tests are well targeted and pass (188/188 across `input.test.js` +
+`main.test.js`):
+- `getReservedKeys lists fixed keyboard bindings and excludes useKeyItem`
+- `rejects reserved keys without changing the binding and shows a toast`
+- `saves a non-reserved key via patchSettings`
+- `ignores modifier-only keys with no toast`
+
+## Code quality
+
+Clean, minimal, self-contained change consistent with surrounding input/
+settings code. No dead code, no regressions to `onKeyDown` resolution, and no
+console errors introduced. Consistent with `design.md`/`requirements.md`
+(input remapping is a settings-UI concern only; no net or server invariants
+touched). No debug scenarios added.
+
+## Remaining gaps
+
+None blocking.
+

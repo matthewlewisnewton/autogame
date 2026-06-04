@@ -1,0 +1,8 @@
+Broke the top-level ticket into **2 sub-tickets** (helper first, then UI wiring). No prior `subtickets/` folders existed, so nothing was deleted.
+
+**Sub-ticket folder paths created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/220-input-rebind-collision-guard/tickets/220-input-rebind-collision-guard/subtickets/01-get-reserved-keys/`
+2. `/home/matt/workspace/.autogame-worktrees/220-input-rebind-collision-guard/tickets/220-input-rebind-collision-guard/subtickets/02-key-capture-collision-guard/`
+
+**Rationale:** The parent ticket names two concrete deliverables (`getReservedKeys()` in `input.js` and collision rejection in `main.js`’s capture handler). Splitting them keeps each pass small and testable; both use **code** verification (toast presence, settings unchanged, unit tests) rather than visual QA, since the acceptance criteria cover handlers, state, and error paths. Gamepad capture is out of scope — the parent ticket only mentions keyboard fixed bindings (`1`–`6` / WASD / `v` / `z`).

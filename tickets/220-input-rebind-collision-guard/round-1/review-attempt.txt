@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+Summary of my findings:
+
+- **Runtime health** — `metrics.json` has `"ok": true`, empty `pageerrors`, no harness failure. The capture reached `phase: "playing"` with a live scene and a working key-item/dodge cooldown probe. `console.log` shows only a benign lobby-create 409 retry and normal scene init — no page errors or fatals.
+
+- **AC1 (reject reserved keys, surface toast)** — Met. `getReservedKeys()` (`input.js:55-65`) derives the fixed set `{w,a,s,d,1-6,v,z}` from `DEFAULT_KEYBOARD`, correctly excluding `useKeyItem` (so it can't self-block) and the empty `dodge`. The capture handler (`main.js:3648-3654`) blocks reserved keys with the existing `showCardErrorToast('Key already in use')` and returns before `patchSettings`.
+
+- **AC2 (no behavior change for valid binds)** — Met. Non-reserved keys fall through to the unchanged save path; modifier filtering is preserved.
+
+- **Tests** — 4 new targeted tests; full suite passes 188/188.
+
+No blocking gaps, no nits worth filing — so no `gaps.md` or `nits.md` written, per the PASS path.
