@@ -21,6 +21,22 @@ function isKnownPhase(phase) {
 }
 
 /**
+ * @param {{ gamePhase?: string }} state
+ * @returns {boolean}
+ */
+function isLobbyPhase(state) {
+  return state?.gamePhase === PHASES.LOBBY;
+}
+
+/**
+ * @param {{ gamePhase?: string }} state
+ * @returns {boolean}
+ */
+function isPlayingPhase(state) {
+  return state?.gamePhase === PHASES.PLAYING;
+}
+
+/**
  * @param {string} from
  * @param {string} to
  * @returns {boolean}
@@ -228,6 +244,8 @@ function getPrimaryLobbyStateForTests() {
 
 module.exports = {
   PHASES,
+  isLobbyPhase,
+  isPlayingPhase,
   canTransition,
   setPhase,
   setGamePhase,

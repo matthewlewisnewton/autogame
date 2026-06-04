@@ -53,7 +53,7 @@ const { getQuest, getSelectedQuest } = require('./quests');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
-const { PHASES, setGamePhase } = require('./lobbies');
+const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -772,7 +772,7 @@ function revivePlayerInLobby(player) {
 }
 
 function healAtMedic(playerId) {
-  if (!_gameState || _gameState.gamePhase !== 'lobby') {
+  if (!_gameState || !isLobbyPhase(_gameState)) {
     return { ok: false, reason: 'not_in_lobby' };
   }
 
@@ -1611,7 +1611,7 @@ function buildPlayerRewardSummary(playerId) {
 /** Non-mutating preview of rewards if the player returns to guild with the current run state. */
 function previewReturnRewards(playerId) {
   const player = _gameState.players[playerId];
-  if (!player || !_gameState.run || _gameState.gamePhase !== 'playing' || !_gameState.run.objective) {
+  if (!player || !_gameState.run || !isPlayingPhase(_gameState) || !_gameState.run.objective) {
     return null;
   }
 
@@ -2097,7 +2097,7 @@ function discardHandSlot(player, slotIndex) {
 }
 
 function processPassiveDraws(now) {
-  if (!_gameState || _gameState.gamePhase !== 'playing') return;
+  if (!_gameState || !isPlayingPhase(_gameState)) return;
   for (const player of Object.values(_gameState.players)) {
     if (!isPlayerActive(player)) continue;
     if (!canDrawIntoHand(player)) {
@@ -2790,7 +2790,7 @@ const SURVIVE_REGULAR_TYPES = ['grunt', 'skirmisher'];
  */
 function updateSurviveSpawns(now = Date.now()) {
   const run = _gameState.run;
-  if (!run || run.status !== 'playing' || _gameState.gamePhase !== 'playing') return;
+  if (!run || run.status !== 'playing' || !isPlayingPhase(_gameState)) return;
 
   const objective = run.objective;
   if (!objective || objective.type !== 'survive') return;
@@ -3326,7 +3326,7 @@ function giveUpRun() {
   if (!_gameState || !_gameState._lobbyId) {
     throw new Error('giveUpRun requires lobby context');
   }
-  if (_gameState.gamePhase !== 'playing' || !_gameState.run || _gameState.run.status === 'suspended') {
+  if (!isPlayingPhase(_gameState) || !_gameState.run || _gameState.run.status === 'suspended') {
     return { ok: false, reason: 'no_active_run' };
   }
 
