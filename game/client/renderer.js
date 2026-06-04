@@ -2645,22 +2645,70 @@ export function applyRevealHighlight(enemyId, enemy) {
 
 // ── Variant marker (elite enemy badge) ──
 
-const VARIANT_MARKER_COLOR = 0xc026d3; // magenta — distinct from amber reveal/yellow lock-on
+/** @type {Record<string, { badgeColor: number, tint: number | null, tintIntensity?: number }>} */
+const VARIANT_VISUALS = {
+	test: {
+		badgeColor: 0xc026d3, // magenta — distinct from amber reveal/yellow lock-on
+		tint: null,
+	},
+	frenzied: {
+		badgeColor: 0xf97316, // warm orange badge
+		tint: 0xe85d04,
+		tintIntensity: 0.42,
+	},
+};
+
+const DEFAULT_VARIANT_VISUALS = VARIANT_VISUALS.test;
+
+function getVariantVisuals(variantId) {
+	return VARIANT_VISUALS[variantId] || DEFAULT_VARIANT_VISUALS;
+}
+
+function syncVariantMarkerAppearance(marker, variantId) {
+	const { badgeColor } = getVariantVisuals(variantId);
+	marker.material.color.setHex(badgeColor);
+	marker.material.emissive.setHex(badgeColor);
+}
 
 /**
  * Build the floating badge shown above a variant ("elite") enemy: a small
  * emissive diamond, kept separate from the enemy mesh so it never collides with
  * the windup/reveal emissive bookkeeping on the enemy material.
+ * @param {string} variantId
  * @returns {THREE.Mesh}
  */
-function createVariantMarker() {
+function createVariantMarker(variantId) {
+	const { badgeColor } = getVariantVisuals(variantId);
 	const geo = new THREE.OctahedronGeometry(0.22);
 	const mat = new THREE.MeshStandardMaterial({
-		color: VARIANT_MARKER_COLOR,
-		emissive: VARIANT_MARKER_COLOR,
+		color: badgeColor,
+		emissive: badgeColor,
 		emissiveIntensity: 0.9,
 	});
 	return new THREE.Mesh(geo, mat);
+}
+
+/**
+ * Apply or remove a frenzied (etc.) emissive body tint on the enemy mesh.
+ * Uses `_origEmissive` bookkeeping; call before `applyRevealHighlight` so reveal wins.
+ * @param {string} enemyId
+ * @param {object} enemy - { variant }
+ */
+export function applyVariantTint(enemyId, enemy) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.material || !mesh.material.emissive) return;
+	if (enemy?.revealedUntil && Date.now() < enemy.revealedUntil) return;
+	if (windupFlashing.has(enemyId)) return;
+
+	const visuals = enemy?.variant ? getVariantVisuals(enemy.variant) : null;
+	if (visuals?.tint != null) {
+		mesh.material.emissive.set(visuals.tint);
+		mesh.material.emissiveIntensity = visuals.tintIntensity ?? 0.35;
+	} else {
+		mesh.material.emissive.set(mesh._origEmissive || 0x000000);
+		mesh.material.emissiveIntensity =
+			(mesh._origEmissiveIntensity != null ? mesh._origEmissiveIntensity : 0);
+	}
 }
 
 /**
@@ -2674,8 +2722,10 @@ function createVariantMarker() {
 export function applyVariantMarker(enemyId, enemy) {
 	if (enemy && enemy.variant) {
 		if (!variantMarkerMeshes[enemyId]) {
-			variantMarkerMeshes[enemyId] = createVariantMarker();
+			variantMarkerMeshes[enemyId] = createVariantMarker(enemy.variant);
 			scene.add(variantMarkerMeshes[enemyId]);
+		} else {
+			syncVariantMarkerAppearance(variantMarkerMeshes[enemyId], enemy.variant);
 		}
 		const halfHeight = enemyMeshHalfHeight(enemy.type);
 		const marker = variantMarkerMeshes[enemyId];
@@ -4239,6 +4289,9 @@ export function animate(timestamp) {
 
 			// ── Reveal highlight (Flare Beacon) ──
 			applyRevealHighlight(enemy.id, enemy);
+
+			// ── Variant body tint (after reveal so Flare Beacon wins) ──
+			applyVariantTint(enemy.id, enemy);
 
 			// ── Variant marker (elite enemy badge) ──
 			applyVariantMarker(enemy.id, enemy);
