@@ -316,6 +316,18 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'variant-leeching') {
+      // Spawn one leeching grunt beside a plain grunt for side-by-side client QA.
+      // The same state is reachable when applyVariant rolls leeching on spawn.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const leeching = spawnEnemy(player.x + 3, player.z, 'grunt');
+      leeching.variant = 'leeching';
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;

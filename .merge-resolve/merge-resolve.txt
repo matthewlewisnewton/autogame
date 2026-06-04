@@ -1,6 +1,13 @@
-`LOGBOOK.md` is resolved with both sides kept in the usual reverse-chronological order:
+Merge conflicts are resolved. Both tickets coexist:
 
-1. **v0.177 — 162-cleanup-split-usecard-socket-handler** (this ticket’s review entry), with `## Remaining gaps` → `None.`
-2. **v0.176 — 163-cleanup-dedupe-card-defs-server-client** (landed on `main`), with its full acceptance-criteria sections and `## Remaining gaps` → `None.`
+**`game/server/enemyVariants.js`** — Registry includes `test`, `warded` (shield on apply), and `leeching` (`applyLeechHeal`).
 
-All conflict markers are removed from `LOGBOOK.md`. The harness can finish the merge.
+**`game/server/debugScenarios.js` & `game/server/index.js`** — Both debug scenarios are wired:
+- `warded-enemy` — spawns shielded warded grunt + plain grunt
+- `variant-leeching` — spawns leeching grunt + plain grunt
+
+**`game/client/renderer.js`** — Unified badge colors in `VARIANT_BADGE_COLORS` (`warded` cyan, `leeching` teal, default magenta). `variantMarkerColor()` delegates to `variantBadgeColor()` for backward compatibility. Marker creation uses the leeching branch’s `badgeColor` API with the hex-change guard.
+
+**`LOGBOOK.md`** — Both review entries kept in order (v0.179 leeching, then v0.181 warded).
+
+All conflict markers are removed. Tests: **75 files, 1690 tests passed**. The harness can commit and finish the merge.

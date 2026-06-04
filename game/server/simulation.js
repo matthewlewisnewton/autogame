@@ -23,6 +23,7 @@ const {
   COOLDOWN_MS
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
+const { applyLeechHeal } = require('./enemyVariants');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -1658,6 +1659,9 @@ function damagePlayer(playerId, amount, options = {}) {
   if (remaining <= 0) return null;
 
   player.hp = Math.max(0, player.hp - remaining);
+  if (options.attackerEnemyId) {
+    applyLeechHeal(options.attackerEnemyId, remaining, _gameState.enemies);
+  }
   const mirrorResult = triggerMirrorWard(playerId, remaining, options.attackerEnemyId);
 
   if (player.hp <= 0 && !player.dead) {
