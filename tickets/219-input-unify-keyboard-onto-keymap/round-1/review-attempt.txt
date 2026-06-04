@@ -1,0 +1,5 @@
+Wrote the final review to `tickets/219-input-unify-keyboard-onto-keymap/round-1/review.md`.
+
+Verdict is `FAIL`. Runtime capture was healthy, but I found two blocking input regressions and wrote the remediation list to `tickets/219-input-unify-keyboard-onto-keymap/round-1/gaps.md`.
+
+No `nits.md` was created because I did not identify any non-blocking nits worth filing.

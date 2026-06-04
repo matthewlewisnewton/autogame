@@ -1,0 +1,13 @@
+Remediation round 2 adds two sub-tickets for the open gaps in `review-feedback.md`. Round-1 sub-tickets `01`–`03` all have `.passed` markers and were left untouched; there were no failed folders to retire.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/219-input-unify-keyboard-onto-keymap/tickets/219-input-unify-keyboard-onto-keymap/subtickets/04-merge-keyboard-gamepad-movement/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/219-input-unify-keyboard-onto-keymap/tickets/219-input-unify-keyboard-onto-keymap/subtickets/05-movement-keyup-clears-typing-target/ticket.md`
+
+| # | Gap | Scope |
+|---|-----|--------|
+| **04** | Gamepad early-return drops WASD | Merge vectors in `getMovementDirection()` via `mergeMovementVectors()` + test |
+| **05** | Movement keyup blocked in inputs | Clear movement `keyState` on keyup regardless of typing target; keep keydown guard + test |
+
+Both use **Verification: code** (behavior + regression tests, not screenshot-only).
