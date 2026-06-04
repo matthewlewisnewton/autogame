@@ -144,6 +144,13 @@ function applyDebugScenario(socket, name) {
       if (!player.selectedDeck.includes(instance.instanceId)) {
         player.selectedDeck.push(instance.instanceId);
       }
+      // Sync the modified inventory/deck to the client so __AUTOGAME_HARNESS_STATE__
+      // reflects the new skeleton_knight instance for the smoke test.
+      socket.emit('deckUpdate', {
+        selectedDeck: player.selectedDeck,
+        inventory: player.inventory,
+        ownedCards: player.ownedCards,
+      });
       return { ok: true, scenario: name };
     }
 
