@@ -1,0 +1,62 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/enemy_variants.test.js (9 tests) 38ms
+ ✓ |server| server/test/warded_variant.test.js (9 tests) 16ms
+ ✓ |server| server/test/leeching_variant.test.js (12 tests) 41ms
+stdout | server/test/volatile_explosion.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/frenzied_variant.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > damages a nearby player but spares one beyond the radius
+[loot] magic stone drop id=6800614e-2993-45b9-b96c-bec881a89253 value=20 at (0.0, 0.0)
+[loot] variant bonus magic stone drop id=92df9d64-e697-4c91-888b-33d0f154219e value=10 at (0.0, 0.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > damages nearby minions and living enemies within the radius
+[loot] magic stone drop id=65dfab8e-d685-4e95-ac9e-bee8e0fc1400 value=20 at (0.0, 0.0)
+[loot] variant bonus magic stone drop id=9ac9c777-40a0-4b59-871e-d89926cba94e value=10 at (0.0, 0.0)
+[loot] currency drop id=61f7c5a2-d39e-4256-9328-ff45cda86756 value=10 at (0.0, 0.0)
+
+stdout | server/test/card_registry.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > records the detonation on the per-lobby pending queue
+[loot] magic stone drop id=5b3b9eb2-70b2-449b-8b1a-074533157404 value=20 at (3.0, -4.0)
+[loot] variant bonus magic stone drop id=7559d1ca-6f45-49f9-bf92-81f65c54e21b value=10 at (3.0, -4.0)
+[loot] currency drop id=e0393b69-a1c7-4320-babf-c376387a0ee5 value=15 at (3.0, -4.0)
+
+stdout | server/test/volatile_explosion.test.js > volatile enemy on-death explosion > does not explode or queue anything for a non-volatile enemy death
+[loot] magic stone drop id=af9c188e-29a1-4c06-a90b-31c54f86080a value=20 at (0.0, 0.0)
+[loot] currency drop id=e2bf25d7-e34c-45b8-9bad-3edae298ae51 value=15 at (0.0, 0.0)
+
+ ✓ |server| server/test/volatile_explosion.test.js (5 tests) 18ms
+ ✓ |server| server/test/frenzied_variant.test.js (6 tests) 16ms
+ ✓ |server| server/test/card_registry.test.js (5 tests) 9ms
+stdout | server/test/new_card_pack.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+ ✓ |server| server/test/new_card_pack.test.js (26 tests) 18ms
+
+ Test Files  7 passed (7)
+      Tests  72 passed (72)
+   Start at  14:28:35
+   Duration  1.98s (transform 8ms, setup 0ms, collect 2.03s, tests 156ms, environment 8ms, prepare 1.99s)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   33.53 |    42.85 |    5.88 |   33.53 |                            
+ index.js |   33.53 |    42.85 |    5.88 |   33.53 | ...-616,625-1929,1933-1934 
+----------|---------|----------|---------|---------|----------------------------

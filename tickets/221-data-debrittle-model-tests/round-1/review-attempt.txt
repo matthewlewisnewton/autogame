@@ -1,0 +1,27 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote [review.md](tickets/221-data-debrittle-model-tests/round-1/review.md) and [nits.md](tickets/221-data-debrittle-model-tests/round-1/nits.md). No `gaps.md` (FAIL-only).
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: clean (no page errors / fatals)
+- Game reached playing state with movement and dodge in capture probes
+
+### Acceptance criteria
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | `pickVariant(rng, ids)` seam; warded tests assert effect, not RNG→index | Met |
+| 2 | New variants don’t break warded tests (data-only add) | Met for ticket pain point |
+| 3 | Drop `toHaveLength(42)` from combat helper; split identity to `card_registry.test.js` | Met |
+| 4 | Suite green | Met (`test:quick` 1728/1728; round-1 coverage log 72/72) |
+
+### Changes (4 commits since `38f3440`)
+- `pickVariant` extracted in `enemyVariants.js`
+- `warded_variant.test.js` uses explicit `variant` + `apply` instead of `seqRng([0.01, 0.5])`
+- `card_registry.test.js` added with `>= 42` floor check
+- `new_card_pack.test.js` trimmed to combat-helper tests only
+
+### Nits (non-blocking)
+Unused `pickVariant` import, remaining `toHaveLength(42)` in other files, `enemy_variants.test.js` still couples to index-0 `'test'`, optional `pickVariant` unit tests — tracked in `nits.md`.

@@ -1,0 +1,11 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/221-data-debrittle-model-tests/game/data
+Server listening on port 3004
+Player connected: socket=EC1FkG5zmJnH9QKWAAAB, playerId=d1446fea-fc76-4fad-8438-57396360c572
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=Tjro_Rla18O7A3G6AAAD, playerId=0c51b1fd-1481-4485-ad94-a753c492f6f7
+Player disconnected: EC1FkG5zmJnH9QKWAAAB
+Player disconnected: Tjro_Rla18O7A3G6AAAD

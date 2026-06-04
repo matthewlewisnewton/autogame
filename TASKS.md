@@ -84,3 +84,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [224-cleanup-data-derive-shop-pool-from-defs](tickets/224-cleanup-data-derive-shop-pool-from-defs/)
 - [ ] [226-cleanup-data-centralize-enemy-construction-and-consts](tickets/226-cleanup-data-centralize-enemy-construction-and-consts/)
 - [ ] [227-cleanup-data-objective-registry](tickets/227-cleanup-data-objective-registry/)
+- [ ] [228-cleanup-data-debrittle-model-tests](tickets/228-cleanup-data-debrittle-model-tests/)

@@ -3513,3 +3513,26 @@ No new or changed debug scenario was introduced by this ticket. The capture used
 
 None.
 
+
+## v0.201 — 221-data-debrittle-model-tests  (2026-06-04 14:32:23)
+
+- **Debug scenarios**: Ticket did not add or change `?debugScenario=` entries; capture used normal lobby → ready → play flow.
+
+---
+
+## Code quality
+
+- `pickVariant` is documented, exported, and used in one place — clear seam for future test stubs.
+- `warded_variant.test.js` imports `pickVariant` but does not use it (dead import); harmless at runtime, minor cleanup nit.
+- No dead production code introduced.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime is healthy; all four acceptance criteria are satisfied for the scope of this ticket.
+
+## Nits (non-blocking)
+
+See `nits.md` for backlog items: unused import, remaining `toHaveLength(42)` copies, `enemy_variants` index-0 `test` coupling, optional `pickVariant` unit tests.
+

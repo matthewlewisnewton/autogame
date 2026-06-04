@@ -1,0 +1,20 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Sub-tickets created:
+
+```
+tickets/221-data-debrittle-model-tests/subtickets/01-extract-pickvariant-seam/ticket.md
+tickets/221-data-debrittle-model-tests/subtickets/02-fix-warded-variant-test/ticket.md
+tickets/221-data-debrittle-model-tests/subtickets/03-relax-carddefs-length/ticket.md
+tickets/221-data-debrittle-model-tests/subtickets/04-split-card-identity-tests/ticket.md
+```
+
+**Breakdown:**
+
+| # | Sub-ticket | What it does | Dependency |
+|---|------------|-------------|------------|
+| 01 | Extract `pickVariant(rng, ids)` seam | Pulls the RNG→index pick out of `applyVariant` into a testable function | — |
+| 02 | Fix `warded_variant.test.js` index fragility | Replaces `seqRng([0.01, 0.5])` → "index 2 of 5" with explicit variant selection | 01 |
+| 03 | Relax `CARD_DEFS` length assertion | `toHaveLength(42)` → `>= 42` floor check | — |
+| 04 | Split card identity tests | Moves per-card existence/type/stats out of 567-line `new_card_pack.test.js` into `card_registry.test.js` | 03 |
+
+All four are `code` verification — they concern test structure, function existence, and assertion logic, not visual rendering.
