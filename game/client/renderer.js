@@ -2529,6 +2529,7 @@ export function createEnemyMesh(type) {
 
 	const mat = new THREE.MeshStandardMaterial(matProps);
 	const mesh = new THREE.Mesh(geo, mat);
+	mesh._origColor = def.color;
 	mesh._origEmissive = def.emissive != null ? def.emissive : 0x000000;
 	mesh._origEmissiveIntensity = def.emissiveIntensity != null ? def.emissiveIntensity : 0;
 	attachRegistryModel(type, mesh);
@@ -2643,21 +2644,60 @@ export function applyRevealHighlight(enemyId, enemy) {
 	}
 }
 
-// ── Variant marker (elite enemy badge) ──
+// ── Variant visuals (body tint + floating badge) ──
+
+/** Cool cyan body tint for warded enemies — distinct from grunt/skirmisher/miniboss palettes. */
+export const WARDED_TINT = 0x22d3ee;
 
 const VARIANT_MARKER_COLOR = 0xc026d3; // magenta — distinct from amber reveal/yellow lock-on
+
+/** Per-variant badge colors; unknown variants use VARIANT_MARKER_COLOR. */
+export const VARIANT_MARKER_COLORS = {
+	warded: 0x22d3ee,
+};
+
+/**
+ * Resolve the floating variant badge color for a variant id.
+ * @param {string} [variant]
+ * @returns {number}
+ */
+export function variantMarkerColor(variant) {
+	if (variant && VARIANT_MARKER_COLORS[variant] != null) {
+		return VARIANT_MARKER_COLORS[variant];
+	}
+	return VARIANT_MARKER_COLOR;
+}
+
+/**
+ * Apply or clear the warded body tint on an enemy mesh (color channel only;
+ * windup/reveal flashes continue to use emissive on the same material).
+ * @param {string} enemyId
+ * @param {object} enemy - { variant }
+ */
+export function applyEnemyVariantTint(enemyId, enemy) {
+	const mesh = enemiesMeshes[enemyId];
+	if (!mesh || !mesh.material || !mesh.material.color) return;
+
+	if (enemy && enemy.variant === 'warded') {
+		mesh.material.color.setHex(WARDED_TINT);
+	} else if (mesh._origColor != null) {
+		mesh.material.color.setHex(mesh._origColor);
+	}
+}
 
 /**
  * Build the floating badge shown above a variant ("elite") enemy: a small
  * emissive diamond, kept separate from the enemy mesh so it never collides with
  * the windup/reveal emissive bookkeeping on the enemy material.
+ * @param {string} variant
  * @returns {THREE.Mesh}
  */
-function createVariantMarker() {
+function createVariantMarker(variant) {
+	const markerColor = variantMarkerColor(variant);
 	const geo = new THREE.OctahedronGeometry(0.22);
 	const mat = new THREE.MeshStandardMaterial({
-		color: VARIANT_MARKER_COLOR,
-		emissive: VARIANT_MARKER_COLOR,
+		color: markerColor,
+		emissive: markerColor,
 		emissiveIntensity: 0.9,
 	});
 	return new THREE.Mesh(geo, mat);
@@ -2673,9 +2713,14 @@ function createVariantMarker() {
  */
 export function applyVariantMarker(enemyId, enemy) {
 	if (enemy && enemy.variant) {
+		const markerColor = variantMarkerColor(enemy.variant);
 		if (!variantMarkerMeshes[enemyId]) {
-			variantMarkerMeshes[enemyId] = createVariantMarker();
+			variantMarkerMeshes[enemyId] = createVariantMarker(enemy.variant);
 			scene.add(variantMarkerMeshes[enemyId]);
+		} else {
+			const mat = variantMarkerMeshes[enemyId].material;
+			mat.color.setHex(markerColor);
+			mat.emissive.setHex(markerColor);
 		}
 		const halfHeight = enemyMeshHalfHeight(enemy.type);
 		const marker = variantMarkerMeshes[enemyId];
@@ -4239,6 +4284,9 @@ export function animate(timestamp) {
 
 			// ── Reveal highlight (Flare Beacon) ──
 			applyRevealHighlight(enemy.id, enemy);
+
+			// ── Variant body tint (warded cyan; others use type default) ──
+			applyEnemyVariantTint(enemy.id, enemy);
 
 			// ── Variant marker (elite enemy badge) ──
 			applyVariantMarker(enemy.id, enemy);
