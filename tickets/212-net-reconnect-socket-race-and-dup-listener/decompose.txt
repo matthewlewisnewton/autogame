@@ -1,0 +1,15 @@
+Broke the top-level ticket into **3 sub-tickets** (two independent fixes + one regression test that depends on the server fix):
+
+1. **01-evict-prior-socket-helper** — Server-side race fix: `excludeSocketId` on lookup, shared eviction helper, assign `socket.playerId` only after evicting stale sockets.
+2. **02-remove-duplicate-quest-error-listener** — Client fix: remove the duplicate `questError` handler (independent of 01).
+3. **03-dual-socket-race-test** — Integration test for duplicate-tab / dual-socket reconnect (depends on 01).
+
+All use **Verification: code** (behavior, structure, and test assertions — not purely visual).
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/212-net-reconnect-socket-race-and-dup-listener/tickets/212-net-reconnect-socket-race-and-dup-listener/subtickets/01-evict-prior-socket-helper/
+/home/matt/workspace/.autogame-worktrees/212-net-reconnect-socket-race-and-dup-listener/tickets/212-net-reconnect-socket-race-and-dup-listener/subtickets/02-remove-duplicate-quest-error-listener/
+/home/matt/workspace/.autogame-worktrees/212-net-reconnect-socket-race-and-dup-listener/tickets/212-net-reconnect-socket-race-and-dup-listener/subtickets/03-dual-socket-race-test/
+```

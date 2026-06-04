@@ -1,0 +1,17 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote the full assessment to `tickets/212-net-reconnect-socket-race-and-dup-listener/round-1/review.md`.
+
+### Runtime
+- `metrics.json`: `ok: true`, empty `pageerrors`
+- `console.log`: clean (no page errors or fatals)
+- Smoke capture reached lobby → gameplay → dodge successfully
+
+### Acceptance criteria
+1. **`findSocketByPlayerId` + eviction helper** — `excludeSocketId` added; `socket.playerId` assigned after the resume block; `evictPriorSocketForPlayer` centralized and used via `reconnectPlayerToLobby` (resume block + drop-in join).
+2. **Duplicate `questError` listener** — removed; one handler remains at `main.js:1258`.
+3. **Dual-socket-race test** — `dual_socket_race.test.js` added next to `jwt_recovery.test.js`; passes in harness and locally (1762 tests).
+
+No blocking gaps — `gaps.md` was not created. No nits worth filing — `nits.md` was not created.

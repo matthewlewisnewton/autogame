@@ -3710,3 +3710,26 @@ None blocking. All acceptance criteria are satisfied; captured run is healthy; t
 
 ---
 
+
+## v0.206 — 212-net-reconnect-socket-race-and-dup-listener  (2026-06-04 16:10:16)
+
+
+- Localized server/client networking correctness fix; no changes to gameplay loop, combat, or lobby phase policy.
+- No new debug scenarios added — nothing to gate-check.
+- Aligns with design doc networking expectations (JWT auth, lobby drop-in/rejoin) without altering documented player flows.
+
+## Code quality
+
+- Fix is minimal and targeted (50 lines changed in `index.js`, 5 removed in `client/main.js`).
+- No dead code introduced; helper is used on the reconnect path that resume-on-connect shares.
+- No browser console defects in capture.
+- Changed-file coverage (`index.js` ~89%) is adequate for this scope; new paths exercised by unit + integration tests.
+
+## Debug scenarios
+
+Not applicable — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Remaining gaps
+
+None. All three acceptance criteria are fully satisfied, runtime capture is clean, and regression tests pass.
+
