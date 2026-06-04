@@ -30,6 +30,7 @@ import {
 	ENTITY_RADIUS,
 	computeWalkableAABBs,
 } from '../index.js';
+import { SHOP_CARD_POOL } from '../config.js';
 
 function resetState() {
 	Object.assign(gameState, createGameState());
@@ -83,6 +84,21 @@ describe('new card pack definitions', () => {
 		expect(CARD_DEFS.arcane_bolt.type).toBe('weapon');
 		expect(CARD_DEFS.skeleton_knight.type).toBe('creature');
 		expect(CARD_DEFS.storm_eagle.type).toBe('creature');
+	});
+
+	it('defines Permafrost Lance with correct spell stats', () => {
+		expect(CARD_DEFS.permafrost_lance).toMatchObject({
+			type: 'spell',
+			magicStoneCost: 30,
+			damage: 8,
+			radius: 6,
+			freezeDurationMs: 2000,
+			effect: 'frost_nova',
+		});
+	});
+
+	it('includes Permafrost Lance in the shop card pool', () => {
+		expect(SHOP_CARD_POOL).toContain('permafrost_lance');
 	});
 });
 
@@ -229,6 +245,16 @@ describe('new card combat helpers', () => {
 		expect(hits[0].frozenShatter).toBe(true);
 		expect(gameState.enemies[1].hp).toBe(100 - def.damage);
 		expect(hits[1].frozenShatter).toBeUndefined();
+	});
+
+	it('Permafrost Lance freezes enemy in range with its specific radius and damage', () => {
+		gameState.enemies = [{ id: 'e1', type: 'grunt', x: 3, z: 0, hp: 40 }];
+		const def = CARD_DEFS.permafrost_lance;
+		const hits = applyFreezeInRadius(0, 0, def.radius, def.freezeDurationMs, def.damage);
+		expect(hits).toHaveLength(1);
+		expect(hits[0].enemyId).toBe('e1');
+		expect(gameState.enemies[0].hp).toBe(40 - def.damage);
+		expect(isEnemyFrozen(gameState.enemies[0])).toBe(true);
 	});
 
 	it('Restoration Beacon restores player HP up to max', () => {

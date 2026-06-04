@@ -163,6 +163,17 @@ describe('CARD_DEFS', () => {
 			type: 'spell',
 			effect: 'frost_nova',
 		});
+		expect(CARD_DEFS.permafrost_lance).toMatchObject({
+			id: 'permafrost_lance',
+			name: 'Permafrost Lance',
+			type: 'spell',
+			magicStoneCost: 30,
+			effect: 'frost_nova',
+		});
+		expect(CARD_ACCENT_STYLE.permafrost_lance).toMatchObject({
+			color: '#67e8f9',
+			icon: '❄',
+		});
 		expect(CARD_DEFS.glacier_collapse).toMatchObject({
 			id: 'glacier_collapse',
 			name: 'Glacier Rupture',
