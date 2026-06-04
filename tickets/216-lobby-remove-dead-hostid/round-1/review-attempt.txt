@@ -1,0 +1,19 @@
+## Senior review complete
+
+Wrote **`tickets/216-lobby-remove-dead-hostid/round-1/review.md`** and **`nits.md`**. No **`gaps.md`** (PASS only).
+
+### Runtime health
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: no `pageerror` / `[fatal]`; only benign Vite lines, 409 on duplicate harness auth, and scene init
+- Capture reached two-player lobby → deploy → dungeon with movement/dodge probes
+
+### Acceptance criteria
+1. **`hostId` removal** — Fully removed from `lobbies.js`, `lobbySummary`, and `createLobby` signature/call site; no `hostId` anywhere under `game/`; docs aligned with open-to-any-member quest selection.
+2. **Tests green** — `lobbies.test.js` (13/13) and `server.test.js` (361/361) pass; round-1 `coverage.log` reports 935/935 on the changed-files run. Full `test:quick` can flake on unrelated MS-regen timing tests; those are not introduced by this ticket.
+
+### Verdict
+
+**VERDICT: PASS**
+
+### Nits (non-blocking)
+Backlog nit for suite-wide flaky `magicStones` exact-equality assertions (`integration.test.js`, remaining `field_medic_kit`, `loot_magnet`).

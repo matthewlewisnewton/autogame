@@ -3643,3 +3643,26 @@ PASS. The implementation is appropriately scoped: shared JSON owns static data, 
 
 No blocking gaps.
 
+
+## v0.202 — 216-lobby-remove-dead-hostid  (2026-06-04 14:40:58)
+
+- No dangling `hostChanged` comments, partial migrations, or dead branches.
+- `removePlayerFromLobby` still deletes empty lobbies and cleans minions/trades on leave.
+
+## Debug scenarios
+
+No new or modified `?debugScenario=` shortcuts. N/A.
+
+## Integration notes
+
+Branch `auto/216-lobby-remove-dead-hostid` has two implementation commits on baseline `9134e7d`:
+
+1. `a8af6b3` — server model + tests (+ `field_medic_kit` MS assertion hardening)
+2. `f5d5ef9` — doc alignment
+
+Capture exercised the normal lobby create/join/ready/deploy path (not a debug shortcut), which is the right holistic check for this cleanup.
+
+## Remaining gaps
+
+None. Runtime capture is clean and both acceptance criteria are satisfied.
+
