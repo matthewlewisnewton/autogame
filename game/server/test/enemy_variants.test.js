@@ -20,6 +20,19 @@ describe('enemy variant registry', () => {
     // No-op behavior in this ticket: no apply function wired up yet.
     expect(VARIANT_DEFS.test.apply).toBeNull();
   });
+
+  it('exposes a frenzied no-op variant with bonus-drop loot', () => {
+    expect(VARIANT_DEFS.frenzied).toBeDefined();
+    expect(VARIANT_DEFS.frenzied.id).toBe('frenzied');
+    expect(typeof VARIANT_DEFS.frenzied.name).toBe('string');
+    expect(VARIANT_DEFS.frenzied.name.length).toBeGreaterThan(0);
+    expect(VARIANT_DEFS.frenzied.apply).toBeNull();
+    expect(VARIANT_DEFS.frenzied.bonusDrop).toEqual({
+      card: true,
+      magicStone: 15,
+    });
+    expect(Object.keys(VARIANT_DEFS)).toContain('frenzied');
+  });
 });
 
 describe('applyVariant', () => {
@@ -122,6 +135,17 @@ describe('applyVariant', () => {
     expect(enemy.maxHp).toBe(100);
     expect(enemy.hp).toBe(100);
     expect(enemy.atk).toBe(7);
+  });
+
+  it('tags frenzied at high tier without mutating grunt HP', () => {
+    expect(VARIANT_DEFS.frenzied.apply).toBeNull();
+    const gruntHp = 80;
+    const enemy = { type: 'grunt', maxHp: gruntHp, hp: gruntHp };
+    // First draw tags; second draw picks index 1 (frenzied) when two variants exist.
+    applyVariant(enemy, 1, seqRng([0.01, 0.75]));
+    expect(enemy.variant).toBe('frenzied');
+    expect(enemy.maxHp).toBe(gruntHp);
+    expect(enemy.hp).toBe(gruntHp);
   });
 
   it('produces a deterministic outcome for a fixed seed at high tier', () => {

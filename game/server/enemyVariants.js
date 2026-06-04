@@ -18,6 +18,14 @@ const VARIANT_DEFS = {
     // the value of an additional magic-stone loot entry beyond the normal drop.
     bonusDrop: { card: true, magicStone: 15 },
   },
+  frenzied: {
+    id: 'frenzied',
+    name: 'Frenzied',
+    // Spawn-time no-op until sub-ticket 02 wires enrage runtime behavior.
+    apply: null,
+    // Same bonus-drop magnitudes as `test` (extra card + 15 magic stone).
+    bonusDrop: { card: true, magicStone: 15 },
+  },
 };
 
 // Base chance that any single enemy rolls a variant, before tier scaling.
