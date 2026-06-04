@@ -22,6 +22,7 @@
   "arcane_bolt": { "id": "arcane_bolt", "name": "Arcane Bolt", "type": "weapon", "charges": 4 },
   "frost_nova": { "id": "frost_nova", "name": "Cryo Burst", "type": "spell", "charges": 1 },
   "glacier_collapse": { "id": "glacier_collapse", "name": "Glacier Rupture", "type": "spell", "charges": 1 },
+  "permafrost_lance": { "id": "permafrost_lance", "name": "Permafrost Lance", "type": "spell", "charges": 1 },
   "healing_font": { "id": "healing_font", "name": "Restoration Beacon", "type": "spell", "charges": 1 },
   "divine_grace": { "id": "divine_grace", "name": "Sanctum Pulse", "type": "spell", "charges": 1 },
   "skeleton_knight": { "id": "skeleton_knight", "name": "Necroframe Knight", "type": "creature", "charges": 1 },
