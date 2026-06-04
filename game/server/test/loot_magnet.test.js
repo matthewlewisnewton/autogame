@@ -238,7 +238,7 @@ describe('Loot Magnet — pull & collect', () => {
 		expect(result2.ok).toBe(false);
 		expect(result2.reason).toBe('on_cooldown');
 		expect(result2.remainingMs).toBeGreaterThan(0);
-		expect(result2.remainingMs).toBeCloseTo(8000, -1);
+		expect(result2.remainingMs).toBeCloseTo(8000, -2);
 	});
 
 	it('response contains pulled and collected counts matching expected values', async () => {

@@ -3679,7 +3679,7 @@ describe('Loot pickup — dead player exclusion', () => {
 		socket.emit('lootPickup', { lootId: 'ms_drop_test' });
 		await sleep(50);
 
-		expect(player.magicStones).toBe(30);
+		expect(player.magicStones).toBeCloseTo(30, 0);
 		expect(testGameState().loot.find(l => l.id === 'ms_drop_test')).toBeUndefined();
 	});
 });

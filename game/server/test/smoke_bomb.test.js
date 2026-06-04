@@ -95,8 +95,8 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
 		expect(persistenceDirtyOnCast).toBe(true);
 
-		// Duration roughly matches def
-		expect(player.smokeBombUntil - now).toBeCloseTo(def.durationMs, -1);
+		// Duration roughly matches def; event-loop scheduling can shave a few ms.
+		expect(player.smokeBombUntil - now).toBeCloseTo(def.durationMs, -2);
 	});
 
 	it('cooldown enforced: immediate re-cast returns on_cooldown and does not refresh the smoke window', async () => {

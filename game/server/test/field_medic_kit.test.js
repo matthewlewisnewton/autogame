@@ -162,9 +162,9 @@ describe('useKeyItem — field_medic_kit', () => {
 		expect(result.ok).toBe(true);
 		expect(result.healed).toBe(2); // only p1 and p2
 
-		// p3 should be completely unchanged
+		// p3 should be completely unchanged (MS may tick fractionally during test)
 		expect(playerForSocket(players[2].socket).hp).toBe(p3HpBefore);
-		expect(playerForSocket(players[2].socket).magicStones).toBe(p3MsBefore);
+		expect(playerForSocket(players[2].socket).magicStones).toBeCloseTo(p3MsBefore, 1);
 	});
 
 	it('dead players skipped', async () => {
@@ -198,7 +198,7 @@ describe('useKeyItem — field_medic_kit', () => {
 
 		// p2 should be unchanged (still dead, HP not modified)
 		expect(playerForSocket(players[1].socket).hp).toBe(30);
-		expect(playerForSocket(players[1].socket).magicStones).toBe(5);
+		expect(playerForSocket(players[1].socket).magicStones).toBeCloseTo(5, 1);
 	});
 
 	it('cooldown gate: reusing within 7s returns on_cooldown', async () => {

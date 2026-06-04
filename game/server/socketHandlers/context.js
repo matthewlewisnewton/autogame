@@ -18,6 +18,9 @@ function buildSocketContext(socket, identity, helpers) {
     ensureShopOffer,
     withLobbyContext,
     broadcastLobbyList,
+    getLobbyForSocket,
+    isDebugScenarioAllowed,
+    applyDebugScenario,
   } = helpers;
 
   return {
@@ -40,6 +43,9 @@ function buildSocketContext(socket, identity, helpers) {
     ensureShopOffer,
     withLobbyContext,
     broadcastLobbyList,
+    getLobbyForSocket,
+    isDebugScenarioAllowed,
+    applyDebugScenario,
   };
 }
 

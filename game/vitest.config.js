@@ -59,6 +59,8 @@ export default defineConfig({
 			include: [
 				'server/index.js',
 				'server/socketHandlers/run.js',
+				'server/socketHandlers/trade.js',
+				'server/socketHandlers/session.js',
 				'server/progression.js',
 				'server/simulation.js',
 				'client/cards.js',
