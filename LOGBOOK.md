@@ -3421,3 +3421,26 @@ PASS. The implementation fits the design document's spell-card model: a single-u
 
 None.
 
+
+## v0.194 — 224-data-unify-game-state-factories  (2026-06-04 12:36:04)
+
+## Debug scenarios
+
+This ticket did not add or modify any `?debugScenario=` shortcuts. Capture probes show `debugScenario: null` throughout normal lobby → deploy flow. N/A for the debug-scenario checklist.
+
+---
+
+## Integration / holistic notes
+
+The original defect was **latent**: lobby paths missing three fields would throw or misbehave only when combat code touched `enchantments`, `lobby`, or `_pendingVolatileExplosions`. The capture exercises the real integration path (multi-player lobby create/join, ready, dungeon deploy, movement, key item) on state created via `createLobby()` → `createLobbyGameState()`, which is stronger proof than the unit test alone.
+
+Sub-ticket artifacts under `tickets/224-data-unify-game-state-factories/subtickets/` document the intended split; implementation matches both subtickets.
+
+---
+
+## Remaining gaps
+
+None blocking. Runtime capture is clean, both acceptance criteria are fully satisfied, and the refactor is minimal and correct.
+
+---
+
