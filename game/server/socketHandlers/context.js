@@ -9,6 +9,15 @@ function buildSocketContext(socket, identity, helpers) {
     findSocketByPlayerId,
     savePlayerData,
     io,
+    lobbies,
+    joinPlayerToLobby,
+    reconnectPlayerToLobby,
+    leaveLobbyForSocket,
+    softDisconnectPlayerFromLobby,
+    applyLayoutForQuest,
+    ensureShopOffer,
+    withLobbyContext,
+    broadcastLobbyList,
   } = helpers;
 
   return {
@@ -22,6 +31,15 @@ function buildSocketContext(socket, identity, helpers) {
     findSocketByPlayerId,
     savePlayerData,
     io,
+    lobbies,
+    joinPlayerToLobby,
+    reconnectPlayerToLobby,
+    leaveLobbyForSocket,
+    softDisconnectPlayerFromLobby,
+    applyLayoutForQuest,
+    ensureShopOffer,
+    withLobbyContext,
+    broadcastLobbyList,
   };
 }
 

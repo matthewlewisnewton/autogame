@@ -1,7 +1,9 @@
-// Socket handler registration — handlers are extracted into submodules in later slices.
+// Socket handler registration — handlers are extracted into submodules per slice.
 
-function registerAllSocketHandlers(_socket, _ctx) {
-  // Stub: register calls will be added in subtickets 02–06.
+const lobby = require('./lobby');
+
+function registerAllSocketHandlers(socket, ctx) {
+  lobby.register(socket, ctx);
 }
 
 module.exports = { registerAllSocketHandlers };
