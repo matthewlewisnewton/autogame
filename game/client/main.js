@@ -1362,11 +1362,6 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
-	s.on('questError', (data) => {
-		if (!data || !data.reason) return;
-		showQuestError(data.reason);
-	});
-
 	s.on('startGame', () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
