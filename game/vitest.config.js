@@ -58,6 +58,7 @@ export default defineConfig({
 			reportsDirectory: './coverage',
 			include: [
 				'server/index.js',
+				'server/socketHandlers/run.js',
 				'server/progression.js',
 				'server/simulation.js',
 				'client/cards.js',
