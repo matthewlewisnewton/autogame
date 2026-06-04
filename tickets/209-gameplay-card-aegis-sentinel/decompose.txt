@@ -1,0 +1,17 @@
+Planned **3 sub-tickets** (dependency order) for the Aegis Sentinel card. No existing `subtickets/` folders were present, so nothing was deleted or skipped.
+
+### Breakdown
+
+| # | Focus | Why separate |
+|---|--------|----------------|
+| **01** | Shared identity, server/client `CARD_DEFS`, shop pool | Static registration; verifiable without cast logic |
+| **02** | `cardEffects.js` astral_shield path + `simulation.js` minion AI | Creature type must reach the spell branch; taunt + zero-damage wall |
+| **03** | Vitest + client catalog parity | Depends on 01–02; keeps “full suite green” in one pass |
+
+All three use **`## Verification: code`** (definitions, handlers, taunt/simulation, and tests — not screenshot-only UI).
+
+### Created paths
+
+- `/home/matt/workspace/.autogame-worktrees/209-gameplay-card-aegis-sentinel/tickets/209-gameplay-card-aegis-sentinel/subtickets/01-aegis-card-registration/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/209-gameplay-card-aegis-sentinel/tickets/209-gameplay-card-aegis-sentinel/subtickets/02-aegis-cast-shield-taunt/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/209-gameplay-card-aegis-sentinel/tickets/209-gameplay-card-aegis-sentinel/subtickets/03-aegis-sentinel-tests/ticket.md`
