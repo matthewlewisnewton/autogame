@@ -1,0 +1,12 @@
+[users] Loaded 1 user record(s) from /home/matt/workspace/.autogame-worktrees/172-gameplay-enemy-variant-warded/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/172-gameplay-enemy-variant-warded/game/data
+Server listening on port 3001
+Player connected: socket=W43q9klG50olcHMDAAAB, playerId=5e6fc259-e970-4856-bbb4-e2c4f574c683
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=B7J2AX5K9wjYZ13IAAAD, playerId=812ae103-e497-43cd-a011-b95e70bf7863
+[loot] spawned id=4f37f47b-a38d-435a-bd48-39961e3a3e49 value=5
+Player disconnected: W43q9klG50olcHMDAAAB
+Player disconnected: B7J2AX5K9wjYZ13IAAAD

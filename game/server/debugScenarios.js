@@ -39,6 +39,7 @@ const {
 } = require('./progression');
 const { unlockHat: unlockHatForAccount } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
+const { VARIANT_DEFS } = require('./enemyVariants');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -326,6 +327,31 @@ function applyDebugScenario(socket, name) {
         if (replaceSlot >= 0) {
           player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 5, remainingCharges: 5, grind: 0 };
         }
+      }
+    } else if (name === 'warded-enemy') {
+      // Warded grunt with shield beside a plain grunt for side-by-side QA. Same
+      // state is reachable via combat spawn + applyVariant rolling warded at tier > 0.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const warded = spawnEnemy(player.x + 3, player.z, 'grunt');
+      warded.variant = 'warded';
+      VARIANT_DEFS.warded.apply(warded);
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
+    } else if (name === 'variant-leeching') {
+      // Spawn one leeching grunt beside a plain grunt for side-by-side client QA.
+      // The same state is reachable when applyVariant rolls leeching on spawn.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const leeching = spawnEnemy(player.x + 3, player.z, 'grunt');
+      leeching.variant = 'leeching';
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
       }
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;

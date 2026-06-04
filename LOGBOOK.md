@@ -3248,6 +3248,42 @@ PASS. This ticket did not add or change any `?debugScenario=NAME` shortcut. The 
 None.
 
 
+## v0.179 — 173-gameplay-enemy-variant-leeching  (2026-06-03 21:36:48)
+
+
+`metrics.json` is present with `ok: true`, the captured clients reached `phase: "playing"` with an initialized scene and canvas, and `pageerrors` is empty. `pageerrors.json` is also empty. `console.log` has only Vite connection lines and 409 resource responses from the harness flow; there are no `pageerror` or `[fatal]` entries from game code. Server/client logs show the dev servers started, players connected, and no game-code crash.
+
+The round folder does not contain the PNG screenshot files named in `metrics.json`, so this review relies on the structured probes and logs for the captured run. The probes still demonstrate the normal lobby-to-dungeon flow, movement, player damage, enemy presence, and HUD state without runtime errors.
+
+## Acceptance criteria findings
+
+- Leeching-tagged enemy healing: PASS. `game/server/enemyVariants.js` defines `LEECH_FRACTION = 0.25`, a `leeching` variant entry, and `applyLeechHeal()`, which heals only living Leeching attackers by `floor(leechFraction * damageDealt)` and caps at `maxHp`. `game/server/simulation.js` calls this helper after `damagePlayer()` actually subtracts the post-mitigation `remaining` HP, so invulnerability, barrier blocks, one-hit absorbs, and fully absorbed shield damage do not leech.
+- Server test coverage: PASS. `game/server/test/leeching_variant.test.js` covers the registry entry, base heal amount, max-HP cap, non-Leeching/no-attacker cases, invulnerability, one-hit shield absorb, block mitigation, and barrier prevention. The coverage log reports `48 passed` test files and `1234 passed` tests, including `server/test/leeching_variant.test.js`.
+- Distinct client tint/badge: PASS. `game/client/renderer.js` maps `leeching` to a teal badge color distinct from the existing magenta default and applies a subtle teal emissive tint only when the enemy is Leeching. Non-Leeching variants keep the default badge and no mesh tint. The tint path restores `_origEmissive` / `_origEmissiveIntensity` when no tint applies, and stale marker cleanup still runs with the enemy disposal path.
+- Debug scenario behavior: PASS. `variant-leeching` is registered in the existing debug scenario allowlists and is only reachable through the `debugScenario` socket handler, which is gated by `isDebugScenarioAllowed()`. The scenario mirrors `variant-enemy` by spawning one Leeching grunt next to one plain grunt for QA, while normal gameplay can still reach Leeching enemies through `spawnEnemy()` -> `applyVariant()` in tiered combat spawning. It does not bypass combat damage, persistence, net replication, or server validation paths for the real leech behavior.
+
+## Design and regression review
+
+The implementation is consistent with the existing enemy-variant registry and combat architecture. It reuses the central `damagePlayer()` path instead of duplicating heal logic at individual enemy attack sites, leaves the foundation requirements intact, and does not alter core client/server connection, movement, and rendering setup. The captured fallback smoke run confirms the game still starts, connects, enters a dungeon, renders the scene, and processes movement/combat-adjacent state.
+
+## v0.181 — 172-gameplay-enemy-variant-warded  (2026-06-03 21:54:57)
+
+
+### Warded-tagged enemy spawns with a shield
+PASS. The live code registers `VARIANT_DEFS.warded` with an `apply()` hook that initializes `maxShieldHp` and `shieldHp` from the enemy's base HP, without changing base HP. Normal combat spawning routes through `spawnEnemy(..., { tier, rng })`, and `applyVariant()` can select `warded` for encounter-tiered combat spawns, so the state is reachable through normal gameplay. The added `warded-enemy` debug scenario is gated through the existing debug-scenario path, is URL/socket debug-only, and mirrors a normally reachable rolled warded enemy for deterministic QA.
+
+### Shield absorbs damage before HP drops
+PASS. Enemy damage is centralized through `damageEnemy()`, which drains `shieldHp` first, overflows remaining damage into HP, clamps shield/HP at zero, and reports kills only when HP reaches zero. The implementation replaced direct enemy HP subtraction across cone, radial, projectile, returning projectile, freeze/shatter, echo, mirror-ward, enchantment, and minion damage paths, so shield absorption is consistently applied across current combat sources. Server coverage includes the shield-first behavior, overflow behavior, unshielded behavior, and kill reporting.
+
+### Shield state is visible client-side
+PASS. Enemy state snapshots send the full enemy objects, including `shieldHp`, `maxShieldHp`, and `variant`. The renderer adds a cyan shield bar above shielded enemies while shield HP is positive, updates its scale from `shieldHp / maxShieldHp`, and disposes it when depleted or when the enemy is removed. Warded enemies also receive a distinct cyan body tint and cyan variant badge; non-warded variants retain the existing marker behavior.
+
+### Server test coverage
+PASS. `coverage.log` shows the full vitest run passing: 50 test files and 1240 tests passed. Relevant added coverage includes `server/test/warded_variant.test.js`, `server/test/debug-scenarios.test.js`, `client/test/renderer-variant.test.js`, and `client/test/renderer-shield-bar.test.js`.
+
+### Design and foundation consistency
+PASS. The feature extends the existing enemy-variant registry and combat loop without changing lobby, connection, movement, or rendering foundations. The captured smoke run confirms multiplayer lobby entry, ready transition, WebSocket state, movement, canvas rendering, and key-item cooldown HUD still work.
+
 ## v0.182 — 170-gameplay-enemy-variant-volatile  (2026-06-03 21:58:57)
 
 ### Covered by a server test

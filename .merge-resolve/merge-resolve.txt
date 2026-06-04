@@ -1,6 +1,21 @@
-`LOGBOOK.md` is resolved with both sides kept in the usual reverse-chronological order:
+Merge conflicts are resolved so **volatile** (ticket 170) and **warded/leeching** (main) coexist.
 
-1. **v0.177 — 162-cleanup-split-usecard-socket-handler** (this ticket’s review entry), with `## Remaining gaps` → `None.`
-2. **v0.176 — 163-cleanup-dedupe-card-defs-server-client** (landed on `main`), with its full acceptance-criteria sections and `## Remaining gaps` → `None.`
+### `game/server/enemyVariants.js`
+Registry now includes all four gameplay variants: `test`, `volatile`, `warded`, and `leeching`.
 
-All conflict markers are removed from `LOGBOOK.md`. The harness can finish the merge.
+### `game/server/index.js`
+`DEBUG_SCENARIOS` and `DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN` list all three debug shortcuts: `volatile-enemy`, `warded-enemy`, and `variant-leeching`.
+
+### `game/server/debugScenarios.js`
+Three separate `else if` branches, each with full setup:
+- **volatile-enemy** — 1 HP volatile grunt + charged weapon for kill QA
+- **warded-enemy** — shielded warded grunt via `VARIANT_DEFS.warded.apply`
+- **variant-leeching** — leeching grunt beside a plain grunt
+
+### `game/client/renderer.js`
+Merged onto main’s `VARIANT_BADGE_COLORS` / `applyEnemyVariantTint` / `applyVariantEmissiveTint` pattern; added `volatile: 0xf97316` to badge colors and `VARIANT_MARKER_COLORS`. Removed the broken stray `}` and duplicate badge-sync logic.
+
+### `LOGBOOK.md`
+Kept review entries in version order: v0.179 (leeching), v0.181 (warded), v0.182 (volatile).
+
+All conflict markers are gone. `pnpm test:quick` passed: **76 files, 1695 tests**. The harness can commit and finish the merge.

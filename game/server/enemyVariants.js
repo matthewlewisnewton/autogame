@@ -4,6 +4,9 @@
 // stats/AI). Follow-up tickets 170–173 extend VARIANT_DEFS with real effects
 // without touching the applyVariant seam below.
 
+// Fraction of player HP actually removed that a Leeching attacker heals (floor).
+const LEECH_FRACTION = 0.25;
+
 // Registry: variant id → definition. Each def carries at least `id`, a human
 // `name`, and an `apply` placeholder for future stat/AI behavior (null = no-op).
 const VARIANT_DEFS = {
@@ -30,6 +33,23 @@ const VARIANT_DEFS = {
     radius: 5,
     damage: 20,
     bonusDrop: { magicStone: 10 },
+  },
+  warded: {
+    id: 'warded',
+    name: 'Warded',
+    apply(enemy) {
+      const maxShieldHp = Math.max(20, Math.round((enemy.maxHp || enemy.hp || 0) * 0.4));
+      enemy.maxShieldHp = maxShieldHp;
+      enemy.shieldHp = maxShieldHp;
+    },
+    bonusDrop: { card: true, magicStone: 20 },
+  },
+  leeching: {
+    id: 'leeching',
+    name: 'Leeching',
+    apply: null,
+    leechFraction: LEECH_FRACTION,
+    bonusDrop: { card: true, magicStone: 15 },
   },
 };
 
@@ -94,10 +114,37 @@ function getVariantBonusDrop(enemy) {
   return def && def.bonusDrop ? def.bonusDrop : null;
 }
 
+/**
+ * Heal a Leeching attacker for floor(leechFraction * damageDealt) HP, capped at
+ * maxHp. `damageDealt` is the amount actually applied to the player (post-
+ * mitigation), not the raw incoming hit. No-op when the attacker is missing,
+ * dead, or not Leeching-tagged, or when damageDealt <= 0.
+ *
+ * @returns {number} HP actually restored (0 when no heal).
+ */
+function applyLeechHeal(attackerEnemyId, damageDealt, enemies) {
+  if (!attackerEnemyId || damageDealt <= 0 || !Array.isArray(enemies)) return 0;
+
+  const enemy = enemies.find((e) => e.id === attackerEnemyId && e.hp > 0);
+  if (!enemy || enemy.variant !== 'leeching') return 0;
+
+  const def = VARIANT_DEFS.leeching;
+  const fraction = def?.leechFraction ?? LEECH_FRACTION;
+  const heal = Math.floor(fraction * damageDealt);
+  if (heal <= 0) return 0;
+
+  const cap = Number.isFinite(enemy.maxHp) ? enemy.maxHp : enemy.hp + heal;
+  const before = enemy.hp;
+  enemy.hp = Math.min(cap, enemy.hp + heal);
+  return enemy.hp - before;
+}
+
 module.exports = {
   VARIANT_DEFS,
+  LEECH_FRACTION,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
   applyVariant,
   getVariantBonusDrop,
+  applyLeechHeal,
 };
