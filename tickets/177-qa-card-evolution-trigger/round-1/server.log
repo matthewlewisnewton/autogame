@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/177-qa-card-evolution-trigger/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/177-qa-card-evolution-trigger/game/data
+Server listening on port 3004
+Player connected: socket=-smoml3t-aD-mm8xAAAB, playerId=b9f51969-aafa-4fb3-8c01-7190edf62e3b
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=plHMvYBeBRGB_UA1AAAD, playerId=bd6e902d-549a-4be5-b0f3-644a58d1be43
+Player disconnected: -smoml3t-aD-mm8xAAAB
+Player disconnected: plHMvYBeBRGB_UA1AAAD
