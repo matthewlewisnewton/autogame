@@ -3620,3 +3620,26 @@ PASS. The implementation is appropriately scoped: shared JSON owns static data, 
 
 No blocking gaps.
 
+
+## v0.204 — 214-lobby-clear-ready-on-disconnect  (2026-06-04 14:54:00)
+
+| 02-gate-check-all-ready-on-connected | `checkAllReady` connected + stale-ready guards |
+| 03-test-ready-then-disconnect-no-start | Integration + unit regression |
+| 04-pass-harness-game-port-to-vite | Capture infra (not ticket AC, supports QA) |
+
+No gaps between sub-tickets; holistic behavior matches top-level AC.
+
+---
+
+## Visual / capture notes
+
+Fallback capture plan exercised full lobby → deploy → gameplay smoke (not a dedicated “ready then disconnect” screenshot). Behavioral proof for the bug fix is in automated tests; capture confirms no regression in normal two-player deploy and play.
+
+---
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied; captured run is healthy; tests pass.
+
+---
+

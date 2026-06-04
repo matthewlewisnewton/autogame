@@ -1,0 +1,20 @@
+## Review complete
+
+Wrote **`tickets/214-lobby-clear-ready-on-disconnect/round-2/review.md`**.
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`, no harness failure
+- `console.log`: no `pageerror` / `[fatal]` lines (only Vite + benign 409s)
+- Capture reached lobby → deploy → playing with movement/dodge probes
+
+### Acceptance criteria
+| # | Criterion | Status |
+|---|-----------|--------|
+| 1 | Clear `ready` in `softDisconnectPlayerFromLobby` | Met (`index.js`) |
+| 2 | Gate `checkAllReady` on connected + ≥1 connected | Met (`progression.js`) |
+| 3 | Ready-then-disconnect tests | Met (`integration.test.js` + `server.test.js`; 930/930 in `coverage.log`) |
+
+### Verdict
+**`VERDICT: PASS`** — no `gaps.md` (FAIL-only). No `nits.md` (nothing worth a backlog ticket).
+
+The fix is small and targeted: clear `ready` on soft disconnect, require all **connected** players to be ready (with a stale-ready guard), and regression tests in the disconnect integration suite. Normal two-player deploy still works in capture; the disconnect bug is covered by tests.
