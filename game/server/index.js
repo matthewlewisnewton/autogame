@@ -302,6 +302,7 @@ const debugScenarios = require('./debugScenarios');
 
 const { buildSocketContext } = require('./socketHandlers/context');
 const lifecycle = require('./socketHandlers/lifecycle');
+const lobbyHandlers = require('./socketHandlers/lobby');
 const socketHelpers = require('./socketHandlers/helpers');
 
 const _lobbyContextStack = [];
@@ -1160,63 +1161,18 @@ function startServer(port) {
       getLobbyForPlayer: lobbies.getLobbyForPlayer.bind(lobbies),
       softDisconnectPlayerFromLobby,
       removeSession: lobbies.removeSession.bind(lobbies),
+      lobbies,
+      withLobbyContext,
+      applyLayoutForQuest,
+      ensureShopOffer,
+      joinPlayerToLobby,
+      reconnectPlayerToLobby,
+      joinLobbyWithPhasePolicy,
+      leaveLobbyForSocket,
+      buildSessionFromPlayer,
     });
     lifecycle.register(socket, ctx);
-
-    socket.on('listLobbies', () => {
-      socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-    });
-
-    socket.on('createLobby', (data) => {
-      if (lobbies.getLobbyForPlayer(playerId)) {
-        socket.emit('lobbyError', { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobby = lobbies.createLobby(data && data.name);
-      withLobbyContext(lobby, () => {
-        applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
-        ensureShopOffer();
-      });
-      joinPlayerToLobby(socket, lobby);
-    });
-
-    socket.on('joinLobby', (data) => {
-      const existingLobby = lobbies.getLobbyForPlayer(playerId);
-      if (existingLobby) {
-        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-        const player = existingLobby.state.players[playerId];
-        if (player && player.connected === false && lobbyId === existingLobby.id) {
-          reconnectPlayerToLobby(socket, existingLobby);
-          return;
-        }
-        socket.emit('lobbyError', { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-      if (!lobbyId) {
-        socket.emit('lobbyError', { reason: 'Missing lobbyId' });
-        return;
-      }
-      const lobby = lobbies.getLobbyById(lobbyId);
-      if (!lobby) {
-        socket.emit('lobbyError', { reason: 'Lobby not found' });
-        return;
-      }
-      joinLobbyWithPhasePolicy(socket, lobby);
-    });
-
-    socket.on('leaveLobby', () => {
-      if (!lobbies.getLobbyForPlayer(playerId)) {
-        socket.emit('lobbyError', { reason: 'Not in a lobby' });
-        return;
-      }
-      leaveLobbyForSocket(socket);
-      const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
-      lobbies.registerSession(playerId, session);
-      socket.emit('lobbyLeft', {
-        lobbies: lobbies.listLobbySummaries(),
-      });
-    });
+    lobbyHandlers.register(socket, ctx);
 
   socket.on('move', (data) => {
     withLobbyFromSocket(socket, (state) => {

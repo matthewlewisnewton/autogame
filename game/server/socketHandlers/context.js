@@ -21,6 +21,15 @@ function buildSocketContext(socket, session, helpers) {
     getLobbyForPlayer: helpers.getLobbyForPlayer,
     softDisconnectPlayerFromLobby: helpers.softDisconnectPlayerFromLobby,
     removeSession: helpers.removeSession,
+    lobbies: helpers.lobbies,
+    withLobbyContext: helpers.withLobbyContext,
+    applyLayoutForQuest: helpers.applyLayoutForQuest,
+    ensureShopOffer: helpers.ensureShopOffer,
+    joinPlayerToLobby: helpers.joinPlayerToLobby,
+    reconnectPlayerToLobby: helpers.reconnectPlayerToLobby,
+    joinLobbyWithPhasePolicy: helpers.joinLobbyWithPhasePolicy,
+    leaveLobbyForSocket: helpers.leaveLobbyForSocket,
+    buildSessionFromPlayer: helpers.buildSessionFromPlayer,
   };
 }
 
