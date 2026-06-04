@@ -13,6 +13,7 @@
 // after both modules are loaded.
 
 const crypto = require('crypto');
+const { isPlayingPhase } = require('./lobbies');
 const { THEME } = require('./theme');
 const {
   TICK_RATE,
@@ -159,7 +160,7 @@ function applyAstralShieldCast(ctx) {
 // Dispatch a useCard event. Called from socket.on('useCard') inside the active
 // lobby context (gameState already pointed at lobby.state by withLobbyContext).
 function handleUseCard(socket, state, lobby, data) {
-    if (state.gamePhase !== 'playing') return;
+    if (!isPlayingPhase(state)) return;
     if (!state.run || state.run.status !== 'playing') return;
 
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;

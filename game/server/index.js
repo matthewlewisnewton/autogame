@@ -66,6 +66,8 @@ const {
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
   MAX_HAND_SLOTS,
 } = require('./config');
+const lobbies = require('./lobbies');
+const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 
 const app = express();
 const server = http.createServer(app);
@@ -77,32 +79,8 @@ const io = new Server(server, {
 });
 server.setMaxListeners(0);
 
-// Game state factory — used by tests to get a fresh state
-function createGameState() {
-  return {
-    players: {},
-    enemies: [],
-    minions: [],
-    loot: [],
-    areaEffects: [],
-    enchantments: [],
-    lobby: [],
-    gamePhase: 'lobby',
-    selectedQuestId: DEFAULT_QUEST_ID,
-    pendingTrades: {},
-    shopOffer: null,
-    telepipe: null,
-    suspendedCheckpoint: null,
-    // Pending Echo Strike packets ({ attackerId, targets:[{enemyId,damage}], applyAt }),
-    // applied on a later tick by simulation.processPendingEchoes().
-    pendingEchoes: [],
-    // Per-tick queue of minion cardUsed payloads; flushed after updateMinions each tick.
-    _pendingMinionBreaths: [],
-    // Per-tick queue of volatile-enemy detonations ({ x, z, radius }); drained
-    // in runGameLoopTick to emit 'volatileExplosion' to the lobby room.
-    _pendingVolatileExplosions: [],
-  };
-}
+// Game state factory — shared with lobbies.js to keep the canonical shape in one place
+const { createGameState } = require('./game-state');
 
 // Game state (module-level singleton used by production)
 const gameState = createGameState();
@@ -182,7 +160,6 @@ const {
 } = require('./simulation');
 
 const progression = require('./progression');
-const lobbies = require('./lobbies');
 const {
   CARD_DEFS,
   getCardDef,
@@ -601,8 +578,8 @@ function shouldSkipDefaultEnemySpawn(state) {
 
 function enterPlayingPhase(lobby) {
   const state = lobby.state;
-  if (state.gamePhase !== 'playing') {
-    state.gamePhase = 'playing';
+  if (!isPlayingPhase(state)) {
+    lobbies.setPhase(lobby, PHASES.PLAYING);
     for (const player of Object.values(state.players)) {
       if (!player.hand || player.hand.length === 0) {
         createDrawDeckFromSelectedDeck(player);
@@ -763,6 +740,33 @@ function initializePlayerForActiveRun(player) {
   player.anchorSpeedMultiplier = 1;
 }
 
+/**
+ * Drop-in policy for mid-run lobby joins. When true, joinLobby permits
+ * joinPlayerToLobby with drop-in setup (see joinLobbyWithPhasePolicy).
+ */
+function allowDropInJoin(lobby) {
+  return isPlayingPhase(lobby.state);
+}
+
+/** Active-run join setup; only called from the playing-phase drop-in path. */
+function handleDropInJoin(socket, lobby) {
+  const player = lobby.state.players[socket.playerId];
+  if (!player) return;
+  withLobbyContext(lobby, () => initializePlayerForActiveRun(player));
+}
+
+function joinLobbyWithPhasePolicy(socket, lobby) {
+  if (isPlayingPhase(lobby.state)) {
+    if (!allowDropInJoin(lobby)) {
+      socket.emit('lobbyError', { reason: 'Drop-in not allowed for this lobby' });
+      return;
+    }
+    joinPlayerToLobby(socket, lobby, { dropIn: true });
+    return;
+  }
+  joinPlayerToLobby(socket, lobby);
+}
+
 function emitLobbyJoined(socket, lobby) {
   const state = lobby.state;
   const player = state.players[socket.playerId];
@@ -788,7 +792,7 @@ function emitLobbyJoined(socket, lobby) {
   broadcastLobbyUpdate(lobby);
 }
 
-function joinPlayerToLobby(socket, lobby) {
+function joinPlayerToLobby(socket, lobby, options = {}) {
   const playerId = socket.playerId;
   const state = lobby.state;
   const savedData = loadSavedPlayerData(playerId);
@@ -820,12 +824,12 @@ function joinPlayerToLobby(socket, lobby) {
     if (!Array.isArray(player.debuffs)) player.debuffs = [];
   }
 
-  if (state.gamePhase === 'lobby') {
+  if (isLobbyPhase(state)) {
     revivePlayerInLobby(state.players[playerId]);
   }
 
-  if (state.gamePhase === 'playing') {
-    withLobbyContext(lobby, () => initializePlayerForActiveRun(state.players[playerId]));
+  if (options.dropIn) {
+    handleDropInJoin(socket, lobby);
   }
 
   const player = state.players[playerId];
@@ -889,7 +893,7 @@ function softDisconnectPlayerFromLobby(socket) {
     player.inputDx = 0;
     player.inputDz = 0;
 
-    if (lobby.state.gamePhase === 'playing') {
+    if (isPlayingPhase(lobby.state)) {
       checkRunTerminalState();
     } else {
       broadcastLobbyUpdate(lobby);
@@ -924,7 +928,7 @@ function evictDisconnectedPlayers() {
 
       if (result && !result.deleted) {
         withLobbyContext(lobby, () => {
-          if (lobby.state.gamePhase === 'playing') {
+          if (isPlayingPhase(lobby.state)) {
             checkRunTerminalState();
           } else {
             broadcastLobbyUpdate(lobby);
@@ -955,7 +959,7 @@ function leaveLobbyForSocket(socket) {
 
   if (result && !result.deleted) {
     withLobbyContext(lobby, () => {
-      if (lobby.state.gamePhase === 'playing') {
+      if (isPlayingPhase(lobby.state)) {
         checkRunTerminalState();
       } else {
         broadcastLobbyUpdate(lobby);
@@ -980,7 +984,7 @@ function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
     withLobbyContext(lobby, () => {
       const state = lobby.state;
-      if (state.gamePhase === 'playing') {
+      if (isPlayingPhase(state)) {
         applyPlayerMovement();
         checkTelepipeProximity();
         flushDirtyPlayerSaves();
@@ -1178,7 +1182,7 @@ function startServer(port) {
         socket.emit('lobbyError', { reason: 'Lobby not found' });
         return;
       }
-      joinPlayerToLobby(socket, lobby);
+      joinLobbyWithPhasePolicy(socket, lobby);
     });
 
     socket.on('leaveLobby', () => {
@@ -1204,7 +1208,7 @@ function startServer(port) {
 
   socket.on('move', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'playing') return;
+    if (!isPlayingPhase(state)) return;
 
     const player = state.players[socket.playerId];
 
@@ -1259,7 +1263,7 @@ function startServer(port) {
 
   socket.on('discardCard', (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
-    if (state.gamePhase !== 'playing') return;
+    if (!isPlayingPhase(state)) return;
     if (!state.run || state.run.status !== 'playing') return;
     if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
 
@@ -1278,7 +1282,7 @@ function startServer(port) {
 
   socket.on('selectQuest', (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     if (state.suspendedCheckpoint) {
       socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
@@ -1328,7 +1332,7 @@ function startServer(port) {
 
     player.ready = !!ready;
     broadcastLobbyUpdate(lobby);
-    if (state.gamePhase === 'lobby') {
+    if (isLobbyPhase(state)) {
       checkAllReady();
     }
     });
@@ -1350,7 +1354,7 @@ function startServer(port) {
   socket.on('giveUp', () => {
     withLobbyFromSocket(socket, (state) => {
       try {
-        if (state.gamePhase !== 'playing' || !state.run || state.run.status === 'suspended') {
+        if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
           socket.emit('runError', { reason: 'No active run' });
           return;
         }
@@ -1398,7 +1402,7 @@ function startServer(port) {
 
   socket.on('deckAddCard', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1460,7 +1464,7 @@ function startServer(port) {
 
   socket.on('equipKeyItem', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') {
+    if (!isLobbyPhase(state)) {
       socket.emit('keyItemError', { reason: 'not_in_lobby' });
       return;
     }
@@ -1495,7 +1499,7 @@ function startServer(port) {
 
   socket.on('deckRemoveCard', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1541,7 +1545,7 @@ function startServer(port) {
 
   socket.on('evolveCard', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1570,7 +1574,7 @@ function startServer(port) {
 
   socket.on('sellCard', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1606,7 +1610,7 @@ function startServer(port) {
 
   socket.on('buyShopCard', () => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1629,7 +1633,7 @@ function startServer(port) {
 
   socket.on('unlockHat', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1659,11 +1663,23 @@ function startServer(port) {
       return;
     }
 
-    // Record the unlock on the account. If persistence fails, refund the
-    // currency so currency and unlockedHats stay consistent.
+    // Persist deducted currency before recording the hat on the account.
+    // Safe ordering: currency first, hat second — a crash after this save but
+    // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
+    // instead of unlocked-but-not-charged (free-hat exploit).
+    const saved = savePlayerData(socket.playerId);
+    if (!saved) {
+      player.currency += result.cost;
+      socket.emit('hatError', { reason: 'Failed to save progress' });
+      return;
+    }
+
     const unlockResult = unlockHatForAccount(player.accountId, hatId);
     if (!unlockResult.ok) {
+      // Refund in memory and re-save so disk matches RAM; otherwise the first
+      // save would leave deducted currency on disk without a hat unlock.
       player.currency += result.cost;
+      savePlayerData(socket.playerId);
       socket.emit('hatError', { reason: unlockResult.reason });
       return;
     }
@@ -1678,7 +1694,7 @@ function startServer(port) {
 
   socket.on('medicHeal', () => {
     withLobbyFromSocket(socket, (state) => {
-      if (state.gamePhase !== 'lobby') {
+      if (!isLobbyPhase(state)) {
         socket.emit('medicError', { reason: 'not_in_lobby' });
         return;
       }
@@ -1701,7 +1717,7 @@ function startServer(port) {
 
   socket.on('grindCard', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -1732,7 +1748,7 @@ function startServer(port) {
 
   socket.on('offerCardTrade', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player || !data) return;
@@ -1780,7 +1796,7 @@ function startServer(port) {
 
   socket.on('respondCardTrade', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (state.gamePhase !== 'lobby') return;
+    if (!isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
     if (!player || !data) return;

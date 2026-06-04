@@ -1,9 +1,13 @@
 Merge conflicts are resolved in both files.
 
-**`TASKS.md`** — Kept both cleanup backlog entries (main’s `224-cleanup-data-derive-shop-pool-from-defs` and this ticket’s `226-cleanup-data-centralize-enemy-construction-and-consts`), in ticket-number order.
+### `game/server/progression.js`
+Kept **both** import groups:
+- Ticket: `cardStats.json` and `cardEconomy.json` (`CARD_STATS`, `EVOLUTION_TRANSFORMS`, `CARD_SELL_VALUES`)
+- Main: `PHASES`, `setGamePhase`, `isLobbyPhase`, `isPlayingPhase` from `./lobbies`
 
-**`LOGBOOK.md`** — Kept both version entries in descending version order:
-- **v0.191** — ticket 225 (enemy construction centralization), with its own “Remaining gaps” section
-- **v0.190** — ticket 223 (shop pool derived from card defs), with its own “Remaining gaps” section
+`getObjectiveDef` from `./objectives` was already present above the conflict. Syntax check passes.
 
-All conflict markers are removed. The harness can continue the merge/rebase.
+### `LOGBOOK.md`
+Merged chronologically: **v0.195** (input keymap), **v0.196** (lobby phase machine), **v0.197** (hat unlock ordering), then **v0.198** (card def drift).
+
+All conflict markers are removed. The harness can commit and finish the merge.

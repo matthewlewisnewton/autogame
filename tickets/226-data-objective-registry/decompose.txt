@@ -1,0 +1,15 @@
+Broke the top-level ticket into **4 sub-tickets** (dependency order), all using **code** verification. No prior `subtickets/` folders existed, so numbering starts at `01`.
+
+| # | Focus |
+|---|--------|
+| **01** | New `objectives.js` registry; wire `createRunState` + `isRunObjectiveComplete` |
+| **02** | Progress/clamp/record/sync via registry hooks |
+| **03** | Spawn pipeline + `updateSurviveSpawns` via registry hooks |
+| **04** | Extensibility test, `QUEST_DEFS` ↔ registry alignment, straggler `if` cleanup |
+
+### Sub-ticket folder paths created
+
+- `/home/matt/workspace/.autogame-worktrees/226-data-objective-registry/tickets/226-data-objective-registry/subtickets/01-objective-registry-module/`
+- `/home/matt/workspace/.autogame-worktrees/226-data-objective-registry/tickets/226-data-objective-registry/subtickets/02-progress-via-registry/`
+- `/home/matt/workspace/.autogame-worktrees/226-data-objective-registry/tickets/226-data-objective-registry/subtickets/03-spawn-via-registry/`
+- `/home/matt/workspace/.autogame-worktrees/226-data-objective-registry/tickets/226-data-objective-registry/subtickets/04-registry-extensibility/`

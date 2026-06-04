@@ -10,6 +10,7 @@
 // dungeon / progression) via direct require; the one index.js-local handle the
 // handler needs (io) is supplied via setCallbacks() after both modules load.
 
+const { isPlayingPhase } = require('./lobbies');
 const {
   MAX_HP,
   MAX_MAGIC_STONES,
@@ -50,7 +51,7 @@ function setCallbacks(deps) {
 // active lobby context (gameState already pointed at lobby.state by
 // withLobbyContext).
 function handleUseKeyItem(socket, state, lobby, data) {
-    if (state.gamePhase !== 'playing') {
+    if (!isPlayingPhase(state)) {
       socket.emit('keyItemUsed', { ok: false, reason: 'not_in_dungeon' });
       return;
     }

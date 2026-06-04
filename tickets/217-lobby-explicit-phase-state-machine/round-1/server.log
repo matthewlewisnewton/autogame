@@ -1,0 +1,12 @@
+[users] Loaded 5 user record(s) from /home/matt/workspace/.autogame-worktrees/217-lobby-explicit-phase-state-machine/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/217-lobby-explicit-phase-state-machine/game/data
+Server listening on port 3002
+Player connected: socket=l1oWciSnZN5bGV1FAAAB, playerId=9b902316-2a03-4ba5-bb2b-36744f72fcba
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=RZRuJ6s-IvC0Z4HOAAAD, playerId=a6d4f8c6-5ac6-4e66-a53c-0b5d64d3f067
+[loot] spawned id=39b750a1-efd1-4703-bdf3-67ae88d04be4 value=5
+Player disconnected: l1oWciSnZN5bGV1FAAAB
+Player disconnected: RZRuJ6s-IvC0Z4HOAAAD

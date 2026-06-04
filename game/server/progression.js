@@ -50,6 +50,7 @@ const {
 } = require('./simulation');
 const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
 const { getQuest, getSelectedQuest } = require('./quests');
+const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -60,6 +61,7 @@ const {
   evolutionTransforms: EVOLUTION_TRANSFORMS,
   cardSellValues: CARD_SELL_VALUES,
 } = require('../shared/cardEconomy.json');
+const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -388,7 +390,7 @@ function revivePlayerInLobby(player) {
 }
 
 function healAtMedic(playerId) {
-  if (!_gameState || _gameState.gamePhase !== 'lobby') {
+  if (!_gameState || !isLobbyPhase(_gameState)) {
     return { ok: false, reason: 'not_in_lobby' };
   }
 
@@ -783,14 +785,16 @@ function persistenceKey(playerId) {
 }
 
 function savePlayerData(playerId) {
-  if (!provider) return;
+  if (!provider) return true;
   const player = _gameState.players[playerId];
-  if (!player) return;
+  if (!player) return true;
   try {
     const key = persistenceKey(playerId);
     provider.savePlayer(key, extractPersistentData(player));
+    return true;
   } catch (err) {
     console.error(`[persistence] savePlayerData failed for ${playerId}:`, err.message);
+    return false;
   }
 }
 
@@ -806,50 +810,10 @@ function saveAllPlayers() {
 
 function createRunState() {
   const quest = getSelectedQuest(_gameState);
-
-  if (quest.objectiveType === 'collect_items') {
-    const totalItems = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
-    return {
-      id: crypto.randomUUID(),
-      status: 'playing',
-      questId: quest.id,
-      questName: quest.name,
-      questDescription: quest.description,
-      rewardCurrency: quest.rewardCurrency,
-      objective: {
-        type: 'collect_items',
-        label: `${quest.name}: recover ${totalItems} prisms`,
-        totalItems,
-        collectedItems: 0,
-      },
-      startedAt: Date.now()
-    };
+  const def = getObjectiveDef(quest.objectiveType);
+  if (!def) {
+    throw new Error(`Unknown objective type: ${quest.objectiveType}`);
   }
-
-  if (quest.objectiveType === 'survive') {
-    const totalSpawns = Number.isFinite(quest.totalSpawns) ? quest.totalSpawns : 1;
-    const minibossCount = Number.isFinite(quest.minibossCount) ? quest.minibossCount : 0;
-    return {
-      id: crypto.randomUUID(),
-      status: 'playing',
-      questId: quest.id,
-      questName: quest.name,
-      questDescription: quest.description,
-      rewardCurrency: quest.rewardCurrency,
-      objective: {
-        type: 'survive',
-        label: `${quest.name}: outlast and defeat all ${totalSpawns} attackers`,
-        totalSpawns,
-        minibossCount,
-        spawnedEnemies: 0,
-        defeatedEnemies: 0,
-        totalEnemies: totalSpawns,
-      },
-      startedAt: Date.now()
-    };
-  }
-
-  const objectiveLabel = `${quest.name}: ${quest.description}`;
 
   return {
     id: crypto.randomUUID(),
@@ -858,12 +822,7 @@ function createRunState() {
     questName: quest.name,
     questDescription: quest.description,
     rewardCurrency: quest.rewardCurrency,
-    objective: {
-      type: 'defeat_enemies',
-      label: objectiveLabel,
-      totalEnemies: _gameState.enemies.length,
-      defeatedEnemies: 0
-    },
+    objective: def.createObjective(quest, { enemyCount: _gameState.enemies.length }),
     startedAt: Date.now()
   };
 }
@@ -1100,41 +1059,44 @@ function claimCardReward(playerId, cardId) {
 }
 
 function clampObjectiveProgress(run) {
-  if (run.objective.type === 'collect_items') {
-    run.objective.collectedItems = Math.min(run.objective.collectedItems, run.objective.totalItems);
+  if (!run?.objective) return;
+  const def = getObjectiveDef(run.objective.type);
+  if (def?.clampProgress) {
+    def.clampProgress(run);
     return;
   }
-  run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
+  if (run.objective.totalEnemies != null && run.objective.defeatedEnemies != null) {
+    run.objective.defeatedEnemies = Math.min(run.objective.defeatedEnemies, run.objective.totalEnemies);
+  }
 }
 
 function syncRunObjectiveToEnemies() {
-  if (!_gameState.run || _gameState.run.objective.type !== 'defeat_enemies') return;
-  _gameState.run.objective.totalEnemies = _gameState.enemies.length;
-  clampObjectiveProgress(_gameState.run);
+  if (!_gameState.run) return;
+  const def = getObjectiveDef(_gameState.run.objective.type);
+  if (!def?.syncToEnemyCount) return;
+  def.syncToEnemyCount(_gameState.run, _gameState.enemies.length);
 }
 
 function recordEnemyDefeated(count = 1) {
   if (!_gameState.run) return;
-  const type = _gameState.run.objective.type;
-  if (type !== 'defeat_enemies' && type !== 'survive') return;
-  _gameState.run.objective.defeatedEnemies += count;
-  clampObjectiveProgress(_gameState.run);
+  const def = getObjectiveDef(_gameState.run.objective.type);
+  if (!def?.onEnemyDefeated) return;
+  def.onEnemyDefeated(_gameState.run, count);
 }
 
 function recordCrystalCollected(count = 1) {
-  if (!_gameState.run || _gameState.run.objective.type !== 'collect_items') return;
-  _gameState.run.objective.collectedItems += count;
-  clampObjectiveProgress(_gameState.run);
+  if (!_gameState.run) return;
+  const def = getObjectiveDef(_gameState.run.objective.type);
+  if (!def?.onCrystalCollected) return;
+  def.onCrystalCollected(_gameState.run, count);
 }
 
 function isRunObjectiveComplete(objective) {
-  if (objective.type === 'collect_items') {
-    return objective.collectedItems >= objective.totalItems;
+  const def = getObjectiveDef(objective.type);
+  if (!def) {
+    throw new Error(`Unknown objective type: ${objective.type}`);
   }
-  if (objective.type === 'survive') {
-    return objective.defeatedEnemies >= objective.totalSpawns;
-  }
-  return objective.defeatedEnemies >= objective.totalEnemies;
+  return def.isComplete(objective);
 }
 
 function buildRunSummary(status) {
@@ -1227,7 +1189,7 @@ function buildPlayerRewardSummary(playerId) {
 /** Non-mutating preview of rewards if the player returns to guild with the current run state. */
 function previewReturnRewards(playerId) {
   const player = _gameState.players[playerId];
-  if (!player || !_gameState.run || _gameState.gamePhase !== 'playing' || !_gameState.run.objective) {
+  if (!player || !_gameState.run || !isPlayingPhase(_gameState) || !_gameState.run.objective) {
     return null;
   }
 
@@ -1713,7 +1675,7 @@ function discardHandSlot(player, slotIndex) {
 }
 
 function processPassiveDraws(now) {
-  if (!_gameState || _gameState.gamePhase !== 'playing') return;
+  if (!_gameState || !isPlayingPhase(_gameState)) return;
   for (const player of Object.values(_gameState.players)) {
     if (!isPlayerActive(player)) continue;
     if (!canDrawIntoHand(player)) {
@@ -2362,15 +2324,24 @@ function roomTierAt(layout, x, z) {
   return 0;
 }
 
+function buildObjectiveSpawnCtx() {
+  return {
+    spawnEnemy,
+    pickEnemySpawnPosition,
+    roomTierAt,
+    randomWanderTarget,
+    spawnCrystals,
+    mulberry32,
+  };
+}
+
 function spawnCombatEnemies(layout, rng, quest) {
-  // `survive` runs spawn their enemies gradually over the encounter via the
-  // tick-driven updateSurviveSpawns() spawner, so skip the up-front bulk spawn
-  // and let the staggered spawner be the sole source of survive enemies.
-  if (quest.objectiveType === 'survive') return;
+  const def = getObjectiveDef(quest.objectiveType);
+  if (def?.skipBulkCombatSpawn?.(quest)) return;
 
   const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
-  const preferNearest = quest.objectiveType === 'collect_items';
+  const preferNearest = def?.preferNearestEnemySpawns?.(quest) ?? false;
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
 
   for (let i = 0; i < enemyCount; i++) {
@@ -2388,58 +2359,16 @@ function spawnCombatEnemies(layout, rng, quest) {
   }
 }
 
-// Interval (ms) between staggered survive spawns. The first enemy spawns on the
-// first tick the run is playing; each subsequent enemy waits this long.
-const SURVIVE_SPAWN_INTERVAL_MS = 3000;
-
-// Regular (non-miniboss) enemy types used by the staggered survive spawner,
-// cycled in order for the non-miniboss portion of the wave.
-const SURVIVE_REGULAR_TYPES = ['grunt', 'skirmisher'];
-
 /**
- * Tick-driven spawner for `survive` runs: while the objective still has enemies
- * left to spawn, releases the next attacker on a throttled interval. Across the
- * full encounter exactly `minibossCount` of the spawned enemies are minibosses
- * (the final spawns of the wave) and the rest are regular types. Reuses the
- * combat spawner's position picker and spawnEnemy() path. No-op for anything
- * that isn't a `playing` `survive` run.
+ * Tick-driven spawner for objective types that stagger enemy release (e.g.
+ * `survive`). Delegates to the objective registry's `tickSpawns` hook.
  */
 function updateSurviveSpawns(now = Date.now()) {
   const run = _gameState.run;
-  if (!run || run.status !== 'playing' || _gameState.gamePhase !== 'playing') return;
-
-  const objective = run.objective;
-  if (!objective || objective.type !== 'survive') return;
-
-  const total = objective.totalSpawns;
-  if (!(objective.spawnedEnemies < total)) return;
-
-  // Throttle on a stored timestamp; the very first spawn fires immediately.
-  const last = Number.isFinite(objective.lastSpawnAt) ? objective.lastSpawnAt : 0;
-  if (last !== 0 && now - last < SURVIVE_SPAWN_INTERVAL_MS) return;
-
-  const layout = _gameState.layout;
-  const seed = _gameState.layoutSeed || 42;
-  const index = objective.spawnedEnemies;
-  // Seed per spawn so placement is deterministic for a given seed/index.
-  const rng = mulberry32(seed + 2000 + index);
-
-  const minibossCount = Number.isFinite(objective.minibossCount) ? objective.minibossCount : 0;
-  // The final `minibossCount` spawns of the wave are minibosses.
-  const isMiniboss = index >= total - minibossCount;
-  const type = isMiniboss
-    ? 'miniboss'
-    : SURVIVE_REGULAR_TYPES[index % SURVIVE_REGULAR_TYPES.length];
-
-  const pos = pickEnemySpawnPosition(layout, rng, false, index, total);
-  const enemy = spawnEnemy(pos.x, pos.z, type, undefined, {
-    tier: roomTierAt(layout, pos.x, pos.z),
-    rng,
-  });
-  enemy.wanderTarget = randomWanderTarget();
-
-  objective.spawnedEnemies += 1;
-  objective.lastSpawnAt = now;
+  if (!run?.objective || !isPlayingPhase(_gameState)) return;
+  const def = getObjectiveDef(run.objective.type);
+  if (!def?.tickSpawns) return;
+  def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
 }
 
 function spawnLoot(layout, rng) {
@@ -2500,10 +2429,11 @@ function spawnEnemies() {
   const seed = _gameState.layoutSeed || 42;
   const rng = mulberry32(seed + 1000);
   const quest = getSelectedQuest(_gameState);
+  const def = getObjectiveDef(quest.objectiveType);
+  const spawnCtx = buildObjectiveSpawnCtx();
 
-  if (quest.objectiveType === 'collect_items') {
-    const crystalCount = Number.isFinite(quest.itemCount) ? quest.itemCount : 1;
-    spawnCrystals(layout, rng, crystalCount);
+  if (def?.spawnQuestEntities) {
+    def.spawnQuestEntities(layout, rng, quest, _gameState, spawnCtx);
   }
 
   spawnCombatEnemies(layout, rng, quest);
@@ -2636,7 +2566,7 @@ function suspendRunToLobby() {
   _gameState.run.status = 'suspended';
   resetTransientRunState();
   _gameState.telepipe = null;
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -2736,7 +2666,7 @@ function abandonSuspendedRun() {
 
   clearSuspendedRunData();
   delete _gameState.run;
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -2892,7 +2822,7 @@ function returnPlayersToLobby() {
   clearSuspendedRunData();
   resetTransientRunState();
 
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
   delete _gameState.run;
 
   const spawn = firstRoomPosition();
@@ -2942,14 +2872,14 @@ function giveUpRun() {
   if (!_gameState || !_gameState._lobbyId) {
     throw new Error('giveUpRun requires lobby context');
   }
-  if (_gameState.gamePhase !== 'playing' || !_gameState.run || _gameState.run.status === 'suspended') {
+  if (!isPlayingPhase(_gameState) || !_gameState.run || _gameState.run.status === 'suspended') {
     return { ok: false, reason: 'no_active_run' };
   }
 
   clearSuspendedRunData();
   resetTransientRunState();
 
-  _gameState.gamePhase = 'lobby';
+  setGamePhase(_gameState, PHASES.LOBBY);
   delete _gameState.run;
 
   const spawn = firstRoomPosition();
@@ -3005,7 +2935,7 @@ function giveUpRun() {
 function checkAllReady() {
   const all = Object.values(_gameState.players);
   if (all.length > 0 && all.every(p => p.ready)) {
-    _gameState.gamePhase = 'playing';
+    setGamePhase(_gameState, PHASES.PLAYING);
 
     if (_gameState.suspendedCheckpoint) {
       restoreRunCheckpoint();

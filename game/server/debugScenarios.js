@@ -42,6 +42,7 @@ const {
 const { unlockHat: unlockHatForAccount } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
+const { PHASES, setPhase } = require('./lobbies');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -98,7 +99,7 @@ function applyDebugScenario(socket, name) {
       // Stay in the lobby with enough currency to unlock any catalog hat,
       // so the unlockHat flow can be exercised without grinding runs first.
       // The same state is reachable normally by earning currency in dungeons.
-      state.gamePhase = 'lobby';
+      setPhase(lobby, PHASES.LOBBY);
       player.ready = false;
       player.hp = MAX_HP;
       player.currency = Math.max(player.currency || 0, 1000);
@@ -113,7 +114,7 @@ function applyDebugScenario(socket, name) {
       // `unlockedHats` lets the client refresh its cached owned set. The same
       // owned state is reachable normally by earning currency and unlocking hats
       // via the unlock/shop flow.
-      state.gamePhase = 'lobby';
+      setPhase(lobby, PHASES.LOBBY);
       player.ready = false;
       player.hp = MAX_HP;
       // Leave the last catalog hat locked so both owned and locked entries show.
@@ -132,7 +133,7 @@ function applyDebugScenario(socket, name) {
       // exercised without grinding runs first. The same state is reachable
       // normally by leveling a skeleton_knight through +10 defeats and then
       // evolving it in the deck editor.
-      state.gamePhase = 'lobby';
+      setPhase(lobby, PHASES.LOBBY);
       player.ready = false;
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;

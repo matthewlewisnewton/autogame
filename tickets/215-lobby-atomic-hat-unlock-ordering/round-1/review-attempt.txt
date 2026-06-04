@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/215-lobby-atomic-hat-unlock-ordering/round-1/review.md`.
+
+Verdict is `FAIL`. Runtime capture was clean, but the persistence fix is not robust: `savePlayerData()` swallows progress-write failures, so `unlockHat` can still persist the account hat unlock after currency failed to persist.
+
+Also wrote the blocking remediation to `tickets/215-lobby-atomic-hat-unlock-ordering/round-1/gaps.md`. No nits file created.

@@ -13,11 +13,14 @@ import {
 	ACTIONS
 } from '../input.js';
 import { mockGamepad, clearMockGamepads, installGamepadMock, uninstallGamepadMock } from './gamepad-mock.js';
+import { resetGamepadState } from '../gamepad.js';
+import { LOCK_ON_GAMEPAD_BUTTON } from '../config.js';
 import { patchSettings, getDefaultSettings, getSettings } from '../settings.js';
 
 describe('input.js', () => {
 	beforeEach(() => {
 		resetInputState();
+		resetGamepadState();
 		installGamepadMock();
 		clearMockGamepads();
 		patchSettings(getDefaultSettings());
@@ -37,6 +40,25 @@ describe('input.js', () => {
 		const dir = getMovementDirection();
 		expect(dir.mag).toBeGreaterThan(0);
 		expect(dir.dz).toBeLessThan(0);
+		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
+	});
+
+	it('movement keyup clears keyState when focus is in a typing target', () => {
+		initInput({});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+		expect(getMovementDirection().mag).toBeGreaterThan(0);
+
+		const input = document.createElement('input');
+		document.body.appendChild(input);
+		input.focus();
+
+		const keyup = new KeyboardEvent('keyup', { key: 'w', bubbles: true });
+		Object.defineProperty(keyup, 'target', { value: input, enumerable: true });
+		window.dispatchEvent(keyup);
+
+		expect(getMovementDirection().mag).toBe(0);
+
+		input.remove();
 		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
 	});
 
@@ -60,6 +82,28 @@ describe('input.js', () => {
 		const dir = getMovementDirection();
 		expect(dir.mag).toBeGreaterThan(0);
 		expect(dir.dz).toBeLessThan(0);
+	});
+
+	it('merges keyboard and gamepad movement when both are active', () => {
+		initInput({});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'w' }));
+		mockGamepad(0, { axes: [0.9, 0, 0, 0], buttons: [] });
+
+		const merged = getMovementDirection();
+
+		resetInputState();
+		installGamepadMock();
+		mockGamepad(0, { axes: [0.9, 0, 0, 0], buttons: [] });
+		const stickOnly = getMovementDirection();
+
+		expect(merged.mag).toBeGreaterThan(0);
+		expect(merged.dz).toBeLessThan(0);
+		expect(merged.dx).toBeGreaterThan(0);
+		expect(merged.dx).not.toBeCloseTo(stickOnly.dx, 5);
+		expect(merged.dz).not.toBeCloseTo(stickOnly.dz, 5);
+		expect(Math.hypot(merged.dx, merged.dz)).toBeLessThanOrEqual(1.0001);
+
+		window.dispatchEvent(new KeyboardEvent('keyup', { key: 'w' }));
 	});
 
 	it('default gamepad buttons 0–5 trigger hand slots 0–5', () => {
@@ -198,6 +242,51 @@ describe('input.js', () => {
 		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
 		pollInput();
 		expect(onUseSlot).not.toHaveBeenCalled();
+	});
+
+	it('keyboard Z triggers onLockOn when gameplay actions are enabled', () => {
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z' }));
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+	});
+
+	it('keyboard Z does not trigger onLockOn when gameplay actions are disabled', () => {
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => false,
+		});
+		window.dispatchEvent(new KeyboardEvent('keydown', { key: 'z' }));
+		expect(onLockOn).not.toHaveBeenCalled();
+	});
+
+	it('gamepad lock-on edge triggers onLockOn', () => {
+		const onLockOn = vi.fn();
+		initInput({
+			onLockOn,
+			canUseGameActions: () => true,
+		});
+		const buttons = Array(16).fill({ pressed: false, value: 0 });
+		buttons[LOCK_ON_GAMEPAD_BUTTON] = { pressed: true, value: 1 };
+		mockGamepad(0, { buttons, axes: [0, 0, 0, 0] });
+		pollInput();
+		expect(onLockOn).toHaveBeenCalledTimes(1);
+		onLockOn.mockClear();
+		pollInput();
+		expect(onLockOn).not.toHaveBeenCalled();
+	});
+
+	it('exposes lockOn and dodge action labels', () => {
+		expect(getActionLabels()).toMatchObject({
+			lockOn: 'Lock on',
+			dodge: 'Dodge',
+		});
+		expect(ACTIONS.lockOn).toBe('lockOn');
+		expect(ACTIONS.dodge).toBe('dodge');
 	});
 
 	it('exposes labels and defaults for all six hand slots', () => {
