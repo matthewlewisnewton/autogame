@@ -314,6 +314,20 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x, z: e.z };
       }
+    } else if (name === 'variant-frenzied-low-hp') {
+      // Frenzied grunt below 50% HP so frenzied-active chase/windup boost is on.
+      // Same state is reachable when applyVariant rolls frenzied and combat drops HP.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const frenzied = spawnEnemy(player.x + 3, player.z, 'grunt');
+      frenzied.variant = 'frenzied';
+      frenzied.maxHp = frenzied.hp;
+      frenzied.hp = Math.floor(frenzied.maxHp * 0.4);
+      spawnEnemy(player.x - 3, player.z, 'grunt');
+      for (const e of state.enemies) {
+        e.wanderTarget = { x: e.x, z: e.z };
+      }
     } else if (name === 'spawner-active') {
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;

@@ -7,6 +7,11 @@
 // Fraction of player HP actually removed that a Leeching attacker heals (floor).
 const LEECH_FRACTION = 0.25;
 
+// Frenzied: chase/windup boost only while hp is strictly below this fraction of maxHp.
+const FRENZIED_HP_THRESHOLD = 0.5;
+// Multiplier applied to chaseSpeed; attackWindupMs is divided by the same factor.
+const FRENZIED_SPEED_MULT = 1.5;
+
 // Registry: variant id → definition. Each def carries at least `id`, a human
 // `name`, and an `apply` placeholder for future stat/AI behavior (null = no-op).
 const VARIANT_DEFS = {
@@ -26,6 +31,14 @@ const VARIANT_DEFS = {
     name: 'Leeching',
     apply: null,
     leechFraction: LEECH_FRACTION,
+    bonusDrop: { card: true, magicStone: 15 },
+  },
+  frenzied: {
+    id: 'frenzied',
+    name: 'Frenzied',
+    apply: null,
+    hpThreshold: FRENZIED_HP_THRESHOLD,
+    speedMult: FRENZIED_SPEED_MULT,
     bonusDrop: { card: true, magicStone: 15 },
   },
 };
@@ -116,12 +129,44 @@ function applyLeechHeal(attackerEnemyId, damageDealt, enemies) {
   return enemy.hp - before;
 }
 
+/**
+ * True when a living Frenzied enemy is below its HP threshold (dynamic per tick).
+ */
+function isFrenziedActive(enemy) {
+  if (!enemy || enemy.variant !== 'frenzied' || enemy.hp <= 0) return false;
+  const maxHp = Number.isFinite(enemy.maxHp) ? enemy.maxHp : 0;
+  if (maxHp <= 0) return false;
+  const threshold = VARIANT_DEFS.frenzied?.hpThreshold ?? FRENZIED_HP_THRESHOLD;
+  return enemy.hp < maxHp * threshold;
+}
+
+/**
+ * Effective chase speed and attack wind-up from base ENEMY_DEFS stats and current HP.
+ * Does not mutate the enemy; boost applies only while isFrenziedActive(enemy).
+ */
+function getEffectiveEnemyCombatStats(enemy, baseDef) {
+  const chaseSpeed = baseDef?.chaseSpeed ?? 0;
+  const attackWindupMs = baseDef?.attackWindupMs ?? 0;
+  if (!isFrenziedActive(enemy)) {
+    return { chaseSpeed, attackWindupMs };
+  }
+  const mult = VARIANT_DEFS.frenzied?.speedMult ?? FRENZIED_SPEED_MULT;
+  return {
+    chaseSpeed: chaseSpeed * mult,
+    attackWindupMs: Math.max(1, Math.floor(attackWindupMs / mult)),
+  };
+}
+
 module.exports = {
   VARIANT_DEFS,
   LEECH_FRACTION,
+  FRENZIED_HP_THRESHOLD,
+  FRENZIED_SPEED_MULT,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
   applyVariant,
   getVariantBonusDrop,
   applyLeechHeal,
+  isFrenziedActive,
+  getEffectiveEnemyCombatStats,
 };
