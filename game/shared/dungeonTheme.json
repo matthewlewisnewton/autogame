@@ -26,6 +26,15 @@
       "accent": "#22d3ee",
       "floorRoughness": 0.8,
       "wallRoughness": 0.7
+    },
+    "open-plaza": {
+      "floor": "#b8a078",
+      "wall": "#9a8268",
+      "passageFloor": "#a89070",
+      "passageWall": "#8a7258",
+      "accent": "#e8a317",
+      "floorRoughness": 0.85,
+      "wallRoughness": 0.75
     }
   },
   "roleTints": {

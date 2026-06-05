@@ -4407,6 +4407,27 @@ PASS. This ticket did not add or change any `?debugScenario=` shortcut. The capt
 
 None.
 
+## v0.250 — 247-plaza-arena-identity  (2026-06-05 06:43:14)
+
+### Varied Cover Types And Real Platform Height
+
+PASS. The plaza now has three raised platform patches with non-flat `floorCorners`, and `sampleFloorY()` returns raised heights on them. Cover includes pillars, broken walls, barricades, and crate stacks, with AABB colliders matching the server/player collision footprint. Spawn and loot helpers use cover-aware placement for open-floor layouts, so entities do not appear inside cover.
+
+### Verticality / Hazards
+
+PASS. The plaza includes shallow pit hazards outside the spawn-clear zone and clear of cover/platform footprints. They render as visual recesses and intentionally do not affect collision or `sampleFloorY()`, matching the ticket’s optional hazards scope.
+
+### Design And Foundation Consistency
+
+PASS. The changes stay within the existing quest/layout architecture: `arena_trials` and `endless_siege` select `layoutProfile: 'open-plaza'`, `applyLayoutForQuest()` routes that through `generateLayout()`, and existing multiplayer movement, WebSocket connection, and 3D rendering foundations remain intact. No development debug scenario was added or changed for this ticket.
+
+### Code Quality And Tests
+
+PASS. The implementation is deterministic, scoped to dungeon generation/rendering/theme data, and includes server/client tests for generated layout shape, decor/marking rendering, collider behavior, platform sampling, hazards, and open-plaza entity spawning. The latest coverage run reports 33 test files passed and 960 tests passed.
+
+## Remaining gaps
+
+No blocking gaps.
 
 ## v0.251 — 251-enemy-display-metadata  (2026-06-05 07:12:07)
 

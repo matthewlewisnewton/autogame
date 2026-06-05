@@ -3,6 +3,8 @@ import {
 	buildDungeon,
 	buildDoorwayMarkers,
 	buildLandmarkMesh,
+	buildPerimeterDecorMesh,
+	buildFloorMarkingMesh,
 	buildWallColliders,
 	buildPassageFloorSpec,
 	isUniformFloor,
@@ -19,6 +21,7 @@ import {
 	SPIRE_SUMMIT_BEACON_TAG,
 	SPIRE_EDGE_HAZARD_TAG,
 	buildSpireEdgeHazardMesh,
+	buildCoverMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
@@ -83,6 +86,14 @@ describe('profile material palette', () => {
 		expect(open.treasureFloor).not.toBe(open.floor);
 		expect(crowded.startFloor).not.toBe(crowded.floor);
 		expect(open.startFloor).not.toBe(crowded.startFloor);
+	});
+
+	it('resolves open-plaza profile palette (warm stone + amber accent)', () => {
+		const plaza = getProfileMaterialColors('open-plaza');
+		const legacy = getProfileMaterialColors('default');
+		expect(plaza).not.toEqual(legacy);
+		expect(plaza.floor).toBe(0xb8a078);
+		expect(plaza.wall).toBe(0x9a8268);
 	});
 
 	it('buildDungeon meshes use different combat-floor colors for open vs crowded (same seed)', () => {
@@ -417,19 +428,28 @@ describe('open-plaza cover & platforms', () => {
 	// one on the flat floor), and one gently sloped platform.
 	function plazaLayout() {
 		return {
+			profile: 'open-plaza',
 			rooms: [{
 				x: 0, z: 0, width: 40, depth: 40, role: 'start', walls: [],
 				floorCorners: { yNW: DEFAULT_FLOOR_Y, yNE: DEFAULT_FLOOR_Y, ySE: DEFAULT_FLOOR_Y, ySW: DEFAULT_FLOOR_Y },
 			}],
 			passages: [],
 			platforms: [
-				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
+				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.3, yNE: 1.6, ySE: 1.7, ySW: 1.4 } },
 			],
 			cover: [
-				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },       // on platform
-				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },     // on flat floor
+				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+				{ x: 8, z: -8, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+				{ x: -8, z: 8, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
 			],
 		};
+	}
+
+	function coverGroupAt(scene, c) {
+		return scene.added.find(
+			o => o.userData?.coverType === c.type && o.position.x === c.x && o.position.z === c.z,
+		);
 	}
 
 	it('buildWallColliders emits one AABB per cover piece with the correct footprint', () => {
@@ -448,33 +468,59 @@ describe('open-plaza cover & platforms', () => {
 		}
 	});
 
-	it('buildDungeon returns one mesh per cover piece and per platform', () => {
+	it('buildDungeon returns platform meshes plus one child mesh per cover primitive', () => {
 		const layout = plazaLayout();
-		const result = buildDungeon(mockScene(), layout);
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+		const coverChildCount = layout.cover.reduce((n, c) => n + coverGroupAt(scene, c).children.length, 0);
 
-		// ground(1) + plaza floor(1) + platform(1) + 2 cover = 5 meshes
-		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + layout.cover.length);
+		// ground(1) + plaza floor(1) + platform(1) + cover primitives
+		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + coverChildCount);
 	});
 
-	it('rests each cover box on the floor: base at sampleFloorY, centered at floorY + height/2', () => {
+	it('buildCoverMesh uses distinct child counts for barricade and crate_stack', () => {
+		const mat = wallMaterial;
+		expect(buildCoverMesh({ type: 'pillar', width: 1.6, depth: 1.6, height: 3 }, mat).children.length).toBe(1);
+		expect(buildCoverMesh({ type: 'broken_wall', width: 4, depth: 1.2, height: 1 }, mat).children.length).toBe(1);
+		expect(buildCoverMesh({ type: 'barricade', width: 3.5, depth: 1, height: 1.1 }, mat).children.length).toBe(2);
+		expect(buildCoverMesh({ type: 'crate_stack', width: 1.8, depth: 1.8, height: 2.2 }, mat).children.length).toBe(3);
+	});
+
+	it('rests each cover group on sampleFloorY with its top near floorY + height', () => {
 		const layout = plazaLayout();
-		const result = buildDungeon(mockScene(), layout);
+		const scene = mockScene();
+		buildDungeon(scene, layout);
 
 		for (const c of layout.cover) {
-			const floorY = sampleFloorY(layout, c.x, c.z);
-			// Match the cover box by its (x, z) and box height — the platform mesh
-			// can share a pillar's (x, z) but uses a thin sloped-floor geometry.
-			const mesh = result.meshes.find(m =>
-				m.position.x === c.x && m.position.z === c.z &&
-				m.geometry.parameters && m.geometry.parameters.height === c.height
+			const floorY = resolveFloorY(sampleFloorY(layout, c.x, c.z));
+			const group = coverGroupAt(scene, c);
+			expect(group).toBeDefined();
+			expect(group.position.y).toBeCloseTo(floorY, 4);
+			const topY = group.position.y + Math.max(
+				...group.children.map(m => m.position.y + m.geometry.parameters.height / 2),
 			);
-			expect(mesh).toBeDefined();
-			expect(mesh.position.y).toBeCloseTo(floorY + c.height / 2, 4);
+			expect(topY).toBeCloseTo(floorY + c.height, 3);
 		}
 
-		// The pillar standing on the platform sits higher than the floor cover.
-		const onPlatform = sampleFloorY(layout, -9, -9);
-		expect(onPlatform).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(sampleFloorY(layout, -9, -9)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+	});
+
+	it('generated open-plaza layout renders distinct cover footprints per type', () => {
+		const layout = generateLayout(123, 'open-plaza');
+		const scene = mockScene();
+		buildDungeon(scene, layout);
+
+		const byType = new Map();
+		for (const c of layout.cover) {
+			const group = coverGroupAt(scene, c);
+			expect(group).toBeDefined();
+			byType.set(c.type, group);
+		}
+		expect(byType.get('barricade').children.length).toBe(2);
+		expect(byType.get('crate_stack').children.length).toBe(3);
+		const barricadeWidths = byType.get('barricade').children.map(m => m.geometry.parameters.width);
+		const pillarWidths = byType.get('pillar').children.map(m => m.geometry.parameters.width);
+		expect(barricadeWidths.some(w => w > Math.max(...pillarWidths))).toBe(true);
 	});
 
 	it('renders existing room/passage layouts unchanged when cover/platforms are absent', () => {
@@ -483,6 +529,42 @@ describe('open-plaza cover & platforms', () => {
 		// ground(1) + room floor(1) = 2 meshes; no extra cover/platform geometry.
 		expect(result.meshes.length).toBe(2);
 		expect(buildWallColliders(layout).length).toBe(0);
+	});
+});
+
+describe('open-plaza profile hazards & platforms', () => {
+	it('buildDungeon creates one recessed mesh per pit hazard', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+		expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+
+		const result = buildDungeon(mockScene(), layout);
+		const pitMeshes = result.meshes.filter(m =>
+			m.geometry?.parameters &&
+			layout.hazards.some(h =>
+				h.type === 'pit' &&
+				m.geometry.parameters.width === h.width &&
+				m.geometry.parameters.depth === h.depth &&
+				m.geometry.parameters.height === (h.pitDepth ?? 0.12)
+			)
+		);
+		expect(pitMeshes.length).toBe(layout.hazards.length);
+	});
+
+	it('recesses each pit slightly below the sampled floor surface', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const h of layout.hazards) {
+			const floorY = resolveFloorY(sampleFloorY(layout, h.x, h.z));
+			const recess = h.pitDepth ?? 0.12;
+			const mesh = result.meshes.find(m =>
+				m.position.x === h.x && m.position.z === h.z &&
+				m.geometry?.parameters?.height === recess
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY - recess / 2, 4);
+		}
 	});
 });
 
@@ -992,6 +1074,13 @@ describe('profile landmark rendering', () => {
 			expect(group.userData.landmarkType).toBe(type);
 			expect(group.children.length).toBeGreaterThan(0);
 		}
+		const plaza = getProfileMaterials('open-plaza');
+		const dais = buildLandmarkMesh('arena_dais', plaza);
+		expect(dais).toBeInstanceOf(THREE.Group);
+		expect(dais.userData.landmarkType).toBe('arena_dais');
+		expect(dais.children.length).toBeGreaterThan(0);
+		expect(dais.children.every(c => c.geometry)).toBe(true);
+		expect(dais.children.some(c => c.material === plaza.accent)).toBe(true);
 	});
 
 	it('buildDungeon adds one landmark group per server landmark entry', () => {
@@ -1010,11 +1099,187 @@ describe('profile landmark rendering', () => {
 		}
 	});
 
+	it('buildDungeon on open-plaza layout emits one arena_dais landmark group', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.landmarks).toHaveLength(1);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType === 'arena_dais');
+		expect(landmarkGroups).toHaveLength(1);
+		expect(landmarkGroups[0].position.x).toBe(0);
+		expect(landmarkGroups[0].position.z).toBe(0);
+		const trackedInMeshes = meshes.filter(m =>
+			landmarkGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(landmarkGroups[0].children.length);
+	});
+
 	it('buildWallColliders ignores landmarks (visual-only, no collision)', () => {
 		const layout = generateLayout(42, 'crowded');
 		expect(layout.landmarks.length).toBeGreaterThan(0);
 		const withLandmarks = buildWallColliders(layout);
 		const withoutLandmarks = buildWallColliders({ ...layout, landmarks: [] });
 		expect(withLandmarks).toEqual(withoutLandmarks);
+	});
+});
+
+describe('open-plaza perimeter decor', () => {
+	function minimalPlazaWithDecor(perimeterDecor) {
+		return {
+			profile: 'open-plaza',
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				role: 'start',
+				walls: [
+					{ x: 0, z: -16, length: 32, axis: 'x' },
+					{ x: 0, z: 16, length: 32, axis: 'x' },
+					{ x: -16, z: 0, length: 32, axis: 'z' },
+					{ x: 16, z: 0, length: 32, axis: 'z' },
+				],
+			}],
+			passages: [],
+			perimeterDecor,
+		};
+	}
+
+	it('buildPerimeterDecorMesh sets decorType and accent child on arena_banner', () => {
+		const materials = getProfileMaterials('open-plaza');
+		const banner = buildPerimeterDecorMesh('arena_banner', materials);
+		expect(banner).toBeInstanceOf(THREE.Group);
+		expect(banner.userData.decorType).toBe('arena_banner');
+		expect(banner.children.length).toBeGreaterThan(0);
+		expect(banner.children.some(c => c.material === materials.accent)).toBe(true);
+		const tier = buildPerimeterDecorMesh('arena_tier', materials);
+		expect(tier.userData.decorType).toBe('arena_tier');
+		expect(tier.children.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it('buildDungeon emits one decor group per perimeterDecor entry', () => {
+		const decor = [
+			{ type: 'arena_banner', x: -9, z: -14, wall: 'north', yaw: 0 },
+			{ type: 'arena_tier', x: 9, z: 14, wall: 'south', yaw: Math.PI },
+			{ type: 'arena_tier', x: -14, z: -9, wall: 'west', yaw: Math.PI / 2 },
+			{ type: 'arena_banner', x: 14, z: 9, wall: 'east', yaw: -Math.PI / 2 },
+		];
+		const layout = minimalPlazaWithDecor(decor);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const decorGroups = scene.added.filter(o => o.userData?.decorType);
+		expect(decorGroups).toHaveLength(decor.length);
+		const bannerGroup = decorGroups.find(g => g.userData.decorType === 'arena_banner');
+		expect(bannerGroup.children.some(c => c.material === getProfileMaterials('open-plaza').accent)).toBe(true);
+		const trackedInMeshes = meshes.filter(m =>
+			decorGroups.some(g => g.children.includes(m))
+		).length;
+		const childCount = decorGroups.reduce((n, g) => n + g.children.length, 0);
+		expect(trackedInMeshes).toBe(childCount);
+	});
+
+	it('buildDungeon on generated open-plaza includes perimeter decor groups', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.perimeterDecor?.length).toBeGreaterThanOrEqual(8);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const decorGroups = scene.added.filter(o => o.userData?.decorType);
+		expect(decorGroups.length).toBe(layout.perimeterDecor.length);
+		const trackedInMeshes = meshes.filter(m =>
+			decorGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(
+			layout.perimeterDecor.reduce((n, d) => {
+				const g = decorGroups.find(o => o.userData.decorType === d.type
+					&& Math.abs(o.position.x - d.x) < 1e-6 && Math.abs(o.position.z - d.z) < 1e-6);
+				return n + (g ? g.children.length : 0);
+			}, 0)
+		);
+	});
+
+	it('layouts without perimeterDecor render unchanged (no decor groups)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.perimeterDecor).toBeUndefined();
+		const scene = mockScene();
+		buildDungeon(scene, layout);
+		expect(scene.added.filter(o => o.userData?.decorType)).toHaveLength(0);
+	});
+
+	it('buildWallColliders ignores perimeter decor', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const withDecor = buildWallColliders(layout);
+		const withoutDecor = buildWallColliders({ ...layout, perimeterDecor: [] });
+		expect(withDecor).toEqual(withoutDecor);
+	});
+});
+
+describe('open-plaza center ring floor markings', () => {
+	function minimalPlazaLayout(floorMarkings) {
+		return {
+			profile: 'open-plaza',
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				role: 'start',
+				walls: [
+					{ x: 0, z: -16, length: 32, axis: 'x' },
+					{ x: 0, z: 16, length: 32, axis: 'x' },
+					{ x: -16, z: 0, length: 32, axis: 'z' },
+					{ x: 16, z: 0, length: 32, axis: 'z' },
+				],
+			}],
+			passages: [],
+			floorMarkings,
+		};
+	}
+
+	it('buildFloorMarkingMesh returns a flat RingGeometry mesh with accent material', () => {
+		const materials = getProfileMaterials('open-plaza');
+		const marking = { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 };
+		const mesh = buildFloorMarkingMesh(marking, materials);
+		expect(mesh).toBeInstanceOf(THREE.Mesh);
+		expect(mesh.geometry).toBeInstanceOf(THREE.RingGeometry);
+		expect(mesh.material).toBe(materials.accent);
+		expect(mesh.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(mesh.userData.floorMarkingType).toBe('center_ring');
+	});
+
+	it('buildDungeon emits one ring mesh per floor marking near DEFAULT_FLOOR_Y', () => {
+		const layout = minimalPlazaLayout([
+			{ type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
+		]);
+		const materials = getProfileMaterials('open-plaza');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const ringMeshes = meshes.filter(m => m.userData?.floorMarkingType === 'center_ring');
+		expect(ringMeshes).toHaveLength(1);
+		expect(ringMeshes[0].material).toBe(materials.accent);
+		expect(ringMeshes[0].position.x).toBe(0);
+		expect(ringMeshes[0].position.z).toBe(0);
+		expect(ringMeshes[0].position.y).toBeCloseTo(DEFAULT_FLOOR_Y + 0.02, 5);
+	});
+
+	it('buildDungeon on generated open-plaza includes center ring marking meshes', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.floorMarkings?.length).toBeGreaterThanOrEqual(1);
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const ringMeshes = meshes.filter(m => m.userData?.floorMarkingType === 'center_ring');
+		expect(ringMeshes.length).toBe(layout.floorMarkings.length);
+	});
+
+	it('layouts without floorMarkings render unchanged (no ring meshes)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.floorMarkings).toBeUndefined();
+		const { meshes } = buildDungeon(mockScene(), layout);
+		expect(meshes.filter(m => m.userData?.floorMarkingType === 'center_ring')).toHaveLength(0);
+	});
+
+	it('buildWallColliders ignores floor markings', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const withMarkings = buildWallColliders(layout);
+		const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
+		expect(withMarkings).toEqual(withoutMarkings);
 	});
 });

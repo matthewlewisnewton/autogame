@@ -1,10 +1,6 @@
-`LOGBOOK.md` is resolved. The conflict was two competing tails after v0.240: **main** had review entries for v0.246 (booth shop), v0.247 (quest booth), and v0.248 (hub polish); the **ticket branch** had v0.249 (paid appearance change).
+Resolved the `LOGBOOK.md` conflict by keeping **both** logbook entries in chronological order:
 
-The merged file keeps both, in version order:
+1. **v0.250 — 247-plaza-arena-identity** (from `main`) — plaza arena cover, verticality, hazards, and tests
+2. **v0.251 — 251-enemy-display-metadata** (from this ticket) — enemy display metadata review notes
 
-- **v0.246** — 235-booth-shop  
-- **v0.247** — 234-booth-quest-counter  
-- **v0.248** — 242-hub-polish  
-- **v0.249** — 240-paid-appearance-change (full ticket review text preserved)
-
-Each main-side entry keeps its own per-ticket “Remaining gaps” where it had one; the file ends with a single **Remaining gaps: None.** All conflict markers are removed. The harness can continue the merge/rebase from here.
+They sit after the existing v0.249 entry, matching the file’s ascending version order. All conflict markers are removed; the file is ready for the harness to commit and finish the merge.
