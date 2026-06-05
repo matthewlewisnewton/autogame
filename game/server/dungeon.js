@@ -90,12 +90,12 @@ const LAYOUT_PROFILES = {
 const SUNKEN_CANYON = {
   plateauSize: 13,
   canyonSize: OPEN_PLAZA.size, // 32 × 32 ⇒ ≥ 4× default room area
-  rampWidth: 4,
+  rampWidth: 6,
   rampDepth: 24,
   yDrop: 10,                  // plateau Y − canyon Y (≥ 8 required)
   spawnClearRadius: 6,
   interiorMargin: OPEN_PLAZA.interiorMargin,
-  rampXOffsets: [-3.5, 0, 3.5], // west / centre / east bridge positions
+  rampXOffsets: [-6, 0, 6], // west / centre / east; width 6 ⇒ footprints [-9,-3], [-3,3], [3,9]
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
@@ -731,14 +731,12 @@ function generateSunkenCanyon(seed) {
   const plateauZ = rampNorthZ - plateauHalf;
   const plateauSouthZ = plateauZ + plateauHalf;
 
-  // Pick 2 or 3 ramp bridges at distinct X offsets.
+  // Pick 2 or 3 ramp bridges at distinct X offsets (always west/centre/east pool).
   const numRamps = 2 + Math.floor(rng() * 2);
-  const offsetPool = [...rampXOffsets];
-  for (let i = offsetPool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [offsetPool[i], offsetPool[j]] = [offsetPool[j], offsetPool[i]];
-  }
-  const rampCenters = offsetPool.slice(0, numRamps);
+  const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
+  const rampCenters = numRamps === 2
+    ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
+    : sortedOffsets;
   const rampHalfW = rampWidth / 2;
   const rampIntervals = rampCenters.map(cx => ({
     cx,
