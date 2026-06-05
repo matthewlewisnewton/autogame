@@ -15,6 +15,9 @@ const VALID_PHASE_TRANSITIONS = Object.freeze({
   cleared: [],
 });
 
+/** World-unit radius for proximity activation around `run.encounter.spawnAnchor`. */
+const ENCOUNTER_TRIGGER_RADIUS = 8;
+
 function normalizeSpawnAnchor(spawnAnchor) {
   if (
     !spawnAnchor ||
@@ -83,14 +86,94 @@ function isEncounterCleared(run) {
   return run?.encounter?.phase === ENCOUNTER_PHASES.CLEARED;
 }
 
+function isEncounterDormant(run) {
+  return run?.encounter?.phase === ENCOUNTER_PHASES.DORMANT;
+}
+
+function ensureEncounterSpawnAnchor(run, enemies) {
+  const encounter = run?.encounter;
+  if (!encounter || encounter.spawnAnchor) return;
+  const bossId = encounter.bossEnemyId;
+  if (!bossId || !Array.isArray(enemies)) return;
+  const boss = enemies.find((e) => e.id === bossId);
+  if (boss && Number.isFinite(boss.x) && Number.isFinite(boss.z)) {
+    encounter.spawnAnchor = { x: boss.x, z: boss.z };
+  }
+}
+
+function resolveEncounterAnchor(run, gameState) {
+  const configured = normalizeSpawnAnchor(run?.encounter?.spawnAnchor);
+  if (configured) return configured;
+  const bossId = getEncounterBossId(run);
+  if (!bossId) return null;
+  const boss = gameState?.enemies?.find((e) => e.id === bossId);
+  if (!boss || !Number.isFinite(boss.x) || !Number.isFinite(boss.z)) return null;
+  return { x: boss.x, z: boss.z };
+}
+
+function areAllNonBossEnemiesDefeated(gameState, bossId) {
+  if (!bossId || !Array.isArray(gameState?.enemies)) return false;
+  return !gameState.enemies.some((e) => e.id !== bossId && e.hp > 0);
+}
+
+function isPlayerNearEncounterAnchor(gameState, anchor, radius) {
+  if (!anchor) return false;
+  for (const player of Object.values(gameState.players || {})) {
+    if (!player || player.dead || player.extracted) continue;
+    const dist = Math.hypot(player.x - anchor.x, player.z - anchor.z);
+    if (dist <= radius) return true;
+  }
+  return false;
+}
+
+function clearNonBossEnemies(gameState, bossId) {
+  if (!bossId || !Array.isArray(gameState?.enemies)) return;
+  gameState.enemies = gameState.enemies.filter((e) => e.id === bossId);
+}
+
+/**
+ * While dormant, transitions to active + locked when all non-boss enemies are
+ * defeated or any active player enters the trigger radius around spawnAnchor.
+ */
+function tryActivateEncounter(gameState) {
+  const run = gameState?.run;
+  if (!run || run.status !== 'playing' || !isEncounterDormant(run)) return false;
+
+  const bossId = getEncounterBossId(run);
+  if (!bossId) return false;
+  const boss = gameState.enemies?.find((e) => e.id === bossId);
+  if (!boss || boss.hp <= 0) return false;
+
+  const anchor = resolveEncounterAnchor(run, gameState);
+  const addsCleared = areAllNonBossEnemiesDefeated(gameState, bossId);
+  const playerNear = isPlayerNearEncounterAnchor(
+    gameState,
+    anchor,
+    ENCOUNTER_TRIGGER_RADIUS,
+  );
+  if (!addsCleared && !playerNear) return false;
+
+  activateEncounter(run);
+  lockEncounter(run);
+  if (anchor && !run.encounter.spawnAnchor) {
+    run.encounter.spawnAnchor = { x: anchor.x, z: anchor.z };
+  }
+  clearNonBossEnemies(gameState, bossId);
+  return true;
+}
+
 module.exports = {
   ENCOUNTER_PHASES,
+  ENCOUNTER_TRIGGER_RADIUS,
   createEncounterState,
   setEncounterBoss,
   activateEncounter,
   lockEncounter,
   clearEncounter,
   isEncounterLocked,
+  isEncounterDormant,
   getEncounterBossId,
   isEncounterCleared,
+  ensureEncounterSpawnAnchor,
+  tryActivateEncounter,
 };

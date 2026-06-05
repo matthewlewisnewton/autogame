@@ -35,6 +35,7 @@ const {
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
+const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -1970,6 +1971,9 @@ function updateEnemies() {
 
 	const dt = 1 / TICK_RATE;
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
+	const encounterBossId = getEncounterBossId(_gameState.run);
+	const encounterDormant = isEncounterDormant(_gameState.run);
+	const encounterLocked = isEncounterLocked(_gameState.run);
 
 	for (const enemy of _gameState.enemies) {
 		ensureEnemyCombatStats(enemy);
@@ -1979,6 +1983,12 @@ function updateEnemies() {
 		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
+			continue;
+		}
+
+		if (encounterDormant && encounterBossId && enemy.id === encounterBossId) {
+			enemy.state = 'idle';
+			enemy.attackState = 'idle';
 			continue;
 		}
 
@@ -2030,7 +2040,7 @@ function updateEnemies() {
 		}
 
 		// ── Spawner: periodically spawn adds ──
-		if (enemy.type === 'spawner' && enemy.hp > 0) {
+		if (enemy.type === 'spawner' && enemy.hp > 0 && !encounterLocked) {
 			const spawnInterval = enemy.spawnIntervalMs || 4000;
 			const spawnMaxAlive = enemy.spawnMaxAlive || 3;
 			const spawnType = enemy.spawnType || 'skirmisher';

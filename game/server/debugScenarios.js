@@ -403,6 +403,14 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestId = 'crystal_rescue';
     }
 
+    if (name === 'stage-boss-dormant') {
+      // Open-plaza layout for a dormant stage-boss encounter with adds. Reachable
+      // when a stage_boss quest tier deploys (sub-ticket 05); shortcut for QA.
+      state.selectedQuestId = 'arena_trials';
+      state.selectedQuestTier = 1;
+      applyLayoutForQuest(state, 'arena_trials', 1);
+    }
+
     player.ready = true;
     player.x = spawn.x;
     player.z = spawn.z;
@@ -1194,6 +1202,32 @@ function applyDebugScenario(socket, name) {
       player.rallyUntil = 0;
       player.rallySpeedMultiplier = 1;
       state.enemies = [];
+    } else if (name === 'stage-boss-dormant') {
+      const { createEncounterState, setEncounterBoss } = require('./encounters');
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const dais = state.layout?.landmarks?.find((lm) => lm.type === 'arena_dais');
+      const anchor = dais
+        ? { x: dais.x, z: dais.z }
+        : { x: spawn.x, z: spawn.z };
+      state.run.objective = {
+        type: 'stage_boss',
+        label: 'Arena Trials: defeat the stage warden',
+        bossDefeated: false,
+        addCount: 2,
+      };
+      state.run.encounter = createEncounterState({ spawnAnchor: anchor });
+      state.enemies = [];
+      const boss = spawnEnemy(anchor.x, anchor.z, 'miniboss');
+      boss.wanderTarget = { x: anchor.x, z: anchor.z };
+      setEncounterBoss(state.run, boss.id);
+      const addA = spawnEnemy(anchor.x + 6, anchor.z + 2, 'grunt');
+      addA.wanderTarget = { x: addA.x, z: addA.z };
+      const addB = spawnEnemy(anchor.x - 6, anchor.z - 2, 'skirmisher');
+      addB.wanderTarget = { x: addB.x, z: addB.z };
+      player.x = anchor.x + 30;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     } else if (name === 'cinder-snare-ready') {
       // Playing phase with Cinder Snare in hand, full Magic Stones, and a grunt
       // wandering nearby so QA can drop the trap and watch an enemy walk into it

@@ -77,7 +77,13 @@ const {
   cardSellValues: CARD_SELL_VALUES,
 } = require('../shared/cardEconomy.json');
 const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
-const { createEncounterState, setEncounterBoss } = require('./encounters');
+const {
+  createEncounterState,
+  setEncounterBoss,
+  ensureEncounterSpawnAnchor,
+  isEncounterLocked,
+  tryActivateEncounter,
+} = require('./encounters');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -921,6 +927,9 @@ function startDungeonRun() {
   if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
     setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
     delete _gameState._pendingEncounterBossId;
+  }
+  if (_gameState.run.encounter) {
+    ensureEncounterSpawnAnchor(_gameState.run, _gameState.enemies);
   }
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
@@ -2481,9 +2490,15 @@ function spawnCombatEnemies(layout, rng, quest) {
 function updateSurviveSpawns(now = Date.now()) {
   const run = _gameState.run;
   if (!run?.objective || !isPlayingPhase(_gameState)) return;
+  if (isEncounterLocked(run)) return;
   const def = getObjectiveDef(run.objective.type);
   if (!def?.tickSpawns) return;
   def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
+}
+
+function updateEncounterTriggers() {
+  if (!isPlayingPhase(_gameState)) return;
+  tryActivateEncounter(_gameState);
 }
 
 function spawnLoot(layout, rng) {
@@ -3276,6 +3291,7 @@ module.exports = {
   spawnCrystals,
   spawnEnemies,
   updateSurviveSpawns,
+  updateEncounterTriggers,
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,

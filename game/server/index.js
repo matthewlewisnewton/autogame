@@ -291,6 +291,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   updateSurviveSpawns,
+  updateEncounterTriggers,
   spawnLoot,
   spawnCrystals,
   recordCrystalCollected,
@@ -512,6 +513,7 @@ const DEBUG_SCENARIOS = new Set([
   'training-caverns-tier-2',
   'crystal-rescue-tier-2',
   'spire-ascent-tier-2',
+  'stage-boss-dormant',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -678,6 +680,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'training-caverns-tier-2',
   'crystal-rescue-tier-2',
   'spire-ascent-tier-2',
+  'stage-boss-dormant',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -1246,6 +1249,7 @@ function runGameLoopTick() {
           flushDirtyPlayerSaves();
           updateEnemies();
           updateMinions();
+          updateEncounterTriggers();
           updateSurviveSpawns();
 
           const now = Date.now();
