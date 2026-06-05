@@ -82,7 +82,7 @@ let tmpUserFile;
 let tmpDataDir;
 
 beforeEach(async () => {
-	tmpUserFile = path.join(os.tmpdir(), `account-test-users-${Date.now()}.json`);
+	tmpUserFile = path.join(os.tmpdir(), `account-test-users-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2)}.json`);
 	tmpDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'account-test-data-'));
 	process.env.PERSISTENCE_PATH = tmpDataDir;
 	setTestFilePath(tmpUserFile);
