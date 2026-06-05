@@ -60,6 +60,17 @@ const QUEST_DEFS = {
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
       },
+      2: {
+        tier: 2,
+        name: 'Arena Trials — Tier II',
+        description: 'Face the rigid trial grounds where every warden bears a twisted mark.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 15,
+        layoutProfile: 'open-plaza',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'arena_trials', tier: 1 },
+      },
     },
   },
   canyon_descent: {

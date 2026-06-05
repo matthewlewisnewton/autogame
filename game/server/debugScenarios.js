@@ -807,6 +807,35 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'arena-trials-tier-2') {
+      // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
+      // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that lobby state.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const questId = 'arena_trials';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      const plazaSpawn = firstRoomPosition();
+      player.x = plazaSpawn.x;
+      player.z = plazaSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     } else if (name === 'sunken-canyon') {
       // Canyon Descent quest with band-aware spawns — same state as deploying into
       // canyon_descent normally; shortcut for QA (enemies, layout, plateau spawn).

@@ -55,7 +55,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 1);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 2);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -64,7 +64,16 @@ describe('quest tier catalog', () => {
     });
     expect(trainingTier2.objectiveSummary).toContain('5');
     expect(trainingTier2.rewardSummary).toContain('10');
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(1);
+    const arenaTier2 = variants.find(
+      (v) => v.questId === 'arena_trials' && v.tier === 2
+    );
+    expect(arenaTier2).toMatchObject({
+      questId: 'arena_trials',
+      tier: 2,
+      isTier2: true,
+      unlockRequires: { questId: 'arena_trials', tier: 1 },
+    });
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(2);
   });
 
   it('layout profile and seed accept tier for future divergence', () => {
@@ -85,6 +94,11 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'default',
     });
+    expect(getLayoutGenerationOptions('arena_trials', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
+    });
+    expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
     expect(getLayoutGenerationOptions('missing_quest', 1)).toEqual({
       slopes: true,
       layoutMode: 'default',

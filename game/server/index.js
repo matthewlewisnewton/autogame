@@ -505,6 +505,7 @@ const DEBUG_SCENARIOS = new Set([
   'deck-viewer-instances',
   'cinder-snare-ready',
   'quest-tier-2-unlocked',
+  'arena-trials-tier-2',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
