@@ -1201,57 +1201,6 @@ function startServer(port) {
     };
     registerLobbyHandlers(socket, ctx);
 
-    socket.on('createLobby', (data) => {
-      if (lobbies.getLobbyForPlayer(playerId)) {
-        socket.emit('lobbyError', { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobby = lobbies.createLobby(data && data.name);
-      withLobbyContext(lobby, () => {
-        applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
-        ensureShopOffer();
-      });
-      joinPlayerToLobby(socket, lobby);
-    });
-
-    socket.on('joinLobby', (data) => {
-      const existingLobby = lobbies.getLobbyForPlayer(playerId);
-      if (existingLobby) {
-        const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-        const player = existingLobby.state.players[playerId];
-        if (player && player.connected === false && lobbyId === existingLobby.id) {
-          reconnectPlayerToLobby(socket, existingLobby);
-          return;
-        }
-        socket.emit('lobbyError', { reason: 'Already in a lobby' });
-        return;
-      }
-      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
-      if (!lobbyId) {
-        socket.emit('lobbyError', { reason: 'Missing lobbyId' });
-        return;
-      }
-      const lobby = lobbies.getLobbyById(lobbyId);
-      if (!lobby) {
-        socket.emit('lobbyError', { reason: 'Lobby not found' });
-        return;
-      }
-      joinLobbyWithPhasePolicy(socket, lobby);
-    });
-
-    socket.on('leaveLobby', () => {
-      if (!lobbies.getLobbyForPlayer(playerId)) {
-        socket.emit('lobbyError', { reason: 'Not in a lobby' });
-        return;
-      }
-      leaveLobbyForSocket(socket);
-      const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
-      lobbies.registerSession(playerId, session);
-      socket.emit('lobbyLeft', {
-        lobbies: lobbies.listLobbySummaries(),
-      });
-    });
-
   socket.on('move', (data) => {
     withLobbyFromSocket(socket, (state) => {
     if (!isPlayingPhase(state)) return;
