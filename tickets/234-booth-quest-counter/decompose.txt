@@ -1,0 +1,8 @@
+I've broken the top-level ticket into two focused, dependency-ordered sub-tickets. The `quest` booth anchor and the 233 booth primitive (`boothInteract` → `boothAction` → `booth:action` window event) already exist, so the work is purely client-side wiring that mirrors the established launch/character booth pattern.
+
+Created sub-ticket folders:
+
+- `/home/matt/workspace/.autogame-worktrees/234-booth-quest-counter/tickets/234-booth-quest-counter/subtickets/01-quest-booth-open/ticket.md` — new `questBooth.js` helper + a `booth:action` listener in main.js that opens the existing inline quest panel (`#quest-board`, where `selectQuest` already works); keeps the 2D quest menu working; unit tests. **code** verification.
+- `/home/matt/workspace/.autogame-worktrees/234-booth-quest-counter/tickets/234-booth-quest-counter/subtickets/02-quest-booth-debug-hook/ticket.md` — extends `requestBoothDebugOpen()` to handle `?booth=quest`, gated to localhost like `?booth=character`, opening the quest panel once on lobby join; tests. **code** verification.
+
+Both are `code` (they verify a helper/handler existing, phase gating, the localhost debug gate, and that the existing `selectQuest` path is untouched — none of which screenshot QA can see). Sub-ticket 02 depends on 01 (`openQuestPanel()` / `questBooth.js`). Together they cover all four acceptance criteria of the top-level ticket (booth opens panel + selectQuest, `?booth=quest` debug hook, 2D menu still works, tests).

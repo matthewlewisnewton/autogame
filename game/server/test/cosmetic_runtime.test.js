@@ -13,7 +13,8 @@ import {
 	server as httpServer,
 	clearAllTimers,
 } from '../index.js';
-import { connectAndJoinLobby, setServerUsersFilePath, clearServerUsers } from './helpers.js';
+import { connectAndJoinLobby, setServerUsersFilePath, clearServerUsers, waitForEvent } from './helpers.js';
+import { APPEARANCE_CHANGE_COST } from '../config.js';
 
 const require = createRequire(import.meta.url);
 import { DEFAULT_COSMETIC, PROPORTION_KEYS } from '../cosmetic.js';
@@ -162,8 +163,11 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 
 	it('PATCH profile cosmetic syncs an existing live player record and snapshot', async () => {
 		const { gameState: liveState, setGameState, stateSnapshot, buildPlayerRecord: buildPlayer } = require('../index.js');
+		const { PHASES } = require('../lobbies.js');
 		const { accountId, token } = await registerUser(baseUrl, 'dave');
 		liveState.players[accountId] = buildPlayer(accountId, accountId, 'dave', null);
+		// PATCH appearance fields are blocked only for live lobby-hub players.
+		liveState.gamePhase = PHASES.PLAYING;
 		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
 
 		await patchCosmetic(baseUrl, token, customCosmetic);
@@ -177,17 +181,20 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
 	});
 
-	it('PATCH profile cosmetic syncs a joined lobby player for the next snapshot', async () => {
+	it('applyAppearanceChange syncs a joined lobby player for the next snapshot', async () => {
 		const { setGameState, stateSnapshot } = require('../index.js');
 		const { getLobbyById } = require('../lobbies.js');
-		const { accountId, token } = await registerUser(baseUrl, 'erin');
-		const { lobbyId } = await connectAndJoinLobby(baseUrl, accountId);
+		const { accountId } = await registerUser(baseUrl, 'erin');
+		const { socket, lobbyId } = await connectAndJoinLobby(baseUrl, accountId);
 
 		const lobby = getLobbyById(lobbyId);
 		expect(lobby).not.toBeNull();
 		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
 
-		await patchCosmetic(baseUrl, token, customCosmetic);
+		lobby.state.players[accountId].currency = APPEARANCE_CHANGE_COST + 50;
+		const changedPromise = waitForEvent(socket, 'appearanceChanged');
+		socket.emit('applyAppearanceChange', { cosmetic: customCosmetic });
+		await changedPromise;
 
 		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
 		expect(lobby.state.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
@@ -196,5 +203,7 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		setGameState(lobby.state);
 		const snapshot = stateSnapshot();
 		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
+
+		socket.disconnect();
 	});
 });

@@ -5,7 +5,8 @@ const jwt = require('jsonwebtoken');
 const { verifyToken } = require('./auth');
 const { findUserByAccountId, updateProfile } = require('./users');
 const { getSettings, updateSettings } = require('./settings');
-const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES } = require('./cosmetic');
+const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES, validateCosmetic, backfillCosmetic } = require('./cosmetic');
+const { hasAppearanceFieldChanges } = require('../shared/cosmeticAppearance.js');
 
 const router = Router();
 const JWT_EXPIRATION = '24h';
@@ -76,6 +77,26 @@ router.patch('/me/profile', (req, res) => {
 	const { username, email, cosmetic } = req.body || {};
 	if (username === undefined && email === undefined && cosmetic === undefined) {
 		return res.status(400).json({ error: 'No profile fields to update' });
+	}
+
+	if (cosmetic !== undefined) {
+		const { hasLiveLobbyPlayerForAccount } = require('./index');
+		if (hasLiveLobbyPlayerForAccount(req.accountId)) {
+			const user = findUserByAccountId(req.accountId);
+			const validation = validateCosmetic(cosmetic);
+			if (validation.ok && user) {
+				const base = backfillCosmetic(user.cosmetic);
+				const value = validation.value;
+				const merged = value.proportions
+					? { ...base, ...value, proportions: { ...base.proportions, ...value.proportions } }
+					: { ...base, ...value };
+				if (hasAppearanceFieldChanges(base, merged)) {
+					return res.status(400).json({
+						error: 'Appearance changes in lobby must use applyAppearanceChange',
+					});
+				}
+			}
+		}
 	}
 
 	const result = updateProfile(req.accountId, { username, email, cosmetic });

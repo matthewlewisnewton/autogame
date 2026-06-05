@@ -20,6 +20,16 @@ def test_server_cmdline_without_game_prefix_matches():
     assert _is_harness_game_proc("node server/index.js")
 
 
+def test_server_cmdline_bare_index_js_matches():
+    # Leftover from `pnpm -C server run dev` / nodemon (cwd=game/server/).
+    # Ticket 242 infra escalation: absolute-node form held :3000 because the
+    # cmdline is `/…/bin/node index.js` with no `server/` segment.
+    assert _is_harness_game_proc("node index.js")
+    assert _is_harness_game_proc(
+        "/home/matt/.nvm/versions/node/v22.18.0/bin/node index.js"
+    )
+
+
 def test_server_cmdline_absolute_path_matches():
     assert _is_harness_game_proc(
         "node /home/matt/workspace/autogame/game/server/index.js"

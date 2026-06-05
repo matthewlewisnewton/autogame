@@ -4322,6 +4322,91 @@ The implementation is server-side only and does not alter the documented lobby/d
 
 No blocking gaps found.
 
+## v0.246 — 235-booth-shop  (2026-06-05 05:37:49)
+
+   - PASS. `registerShopBoothListener()` opens the existing lobby card shop via `showGameLobby()`, `setLobbyTab('shop')`, and `renderCardShop()`, so it reuses the same 2D shop panel rather than introducing a parallel UI.
+   - PASS. Buy and sell continue through the existing socket events and progression functions. `buyShopCard` now has a client button listener and a lobby-gated server handler that refreshes offers and emits `cardInventoryUpdate`; `sellCard` remains lobby-gated and updates inventory/currency.
+
+2. `?booth=shop` hook.
+   - PASS. The hook is localhost-only, one-shot, and runs from the lobby/hub update path. It uses the same `openShopBooth()` path as booth interaction and does not bypass server-side buy/sell validation or persistence.
+
+3. 2D shop still works.
+   - PASS. The existing shop tab click handler still calls `setLobbyTab('shop')`; the shared `renderCardShop()` and buy/sell socket paths are used by both the 2D tab and the booth shortcut. Lobby updates also refresh `shopOffer` while the shop tab is open.
+
+4. Test.
+   - PASS. `coverage.log` shows all visible Vitest coverage checks passing: 7 test files, 198 tests. The added `client/test/boothShop.test.js` covers booth opening plus buy/sell emits, and `client/test/boothShopDebug.test.js` covers localhost gating and one-shot behavior.
+
+## Design and foundation consistency
+
+PASS. The change fits the documented lobby economy loop: players can buy and sell cards back in the lobby, while dungeon rendering, WebSocket connection, player visualization, and movement synchronization remain intact in the captured run. No regression to the 3D/server-client foundation was found.
+
+## Remaining gaps
+
+None.
+
+## v0.247 — 234-booth-quest-counter  (2026-06-05 05:38:50)
+
+
+### `selectQuest` works from the booth-opened panel
+PASS. `openQuestPanel()` only scrolls `#quest-board-wrapper` into view and does not create a second quest UI. The existing `renderQuestBoardState()` callback still emits `socket.emit('selectQuest', { questId, tier: tier ?? 1 })`, so selecting from the visible quest board uses the same flow as before.
+
+### `?booth=quest` debug hook
+PASS. `requestBoothDebugOpen()` now accepts `quest` alongside `character`, keeps the existing localhost gate (`debugScenarioAllowed`), requires lobby phase, and uses `boothDebugRequested` to fire at most once per session. It opens the same `openQuestPanel()` path rather than bypassing server quest-selection behavior. No development debug scenario was added, so there is no scenario shortcut that could replace normal gameplay.
+
+### 2D quest menu remains intact
+PASS. The always-present inline quest board remains the selection surface, and the implementation only focuses it. No server, quest data, or quest board rendering changes were made.
+
+### Tests and coverage
+PASS. `coverage.log` shows the captured verification run passed: 5 test files, 198 tests. The new `game/client/test/questBooth.test.js` covers the pure helper, event listener behavior, non-lobby rejection, localhost debug gating, one-shot behavior, and unchanged `?booth=character`/absent-param behavior.
+
+### Design and foundation consistency
+PASS. The change stays within the documented lobby flow where players manage decks and select quests before deployment. It does not regress the foundation requirements for 3D rendering, socket connection, multiplayer visualization, or movement synchronization; the captured run exercised lobby, deployment, movement, and gameplay without runtime errors.
+
+## Remaining gaps
+
+None.
+
+
+## v0.248 — 242-hub-polish  (2026-06-05 06:12:09)
+
+1. Booths labeled/signed: PASS. The live implementation adds `game/client/boothSigns.js` and wires it through `buildDungeon()` only when `layout.profile === 'hub'` and `layout.boothAnchors` exists. It builds one kiosk plus one floating label sprite for each known generated hub booth anchor, using the same display names as the interaction prompts. The focused unit tests cover the generated six-anchor hub, label text, positioning, invalid anchors, and missing anchors. The latest `01-initial.png` capture also shows visible hub labels including `Shop` and `Launch Bay`.
+
+2. Interaction prompts: PASS. The existing prompt path is still intact and normal-gameplay gated by actual hub proximity, not a debug shortcut: `renderer.js` computes the current booth only for hub layouts with booth anchors, `main.js` wires the transition callback into `updateBoothPrompt()`, and the interact key/click path emits `boothInteract` for the in-range booth. Existing tests cover prompt text, enter/exit visibility, non-hub clearing, and interact emission.
+
+3. Nameplates over other players: PASS. The live renderer creates canvas-sprite nameplates from remote player usernames, positions them above remote avatars each frame, and disposes them when players leave. Hub presence tests cover building and moving remote lobby avatars through normal hub presence updates; the captured two-player run also shows player labels in the rendered scene without runtime errors.
+
+4. Visual review: PASS. The latest rescue capture is a fallback smoke plan rather than a hub-specific full booth walkthrough, but it includes a hub lobby screenshot with visible booth labels and then proves the game transitions into active dungeon play. Combined with the previously passing visual QA for the sub-tickets and the live code/tests above, I do not see a blocking visual or integration gap.
+
+## Design and requirements consistency
+
+PASS. The changes stay within the lobby/squad hub part of the design loop and do not alter dungeon objectives, combat, loot, persistence, or networking invariants. The foundation requirements remain satisfied by the clean capture: the 3D scene renders, the client connects to the server, players are visualized, and movement/deploy flow continues to work.
+
+## Code quality
+
+PASS. The new signage code is scoped to hub layouts, handles missing or unknown anchors safely, avoids per-rebuild texture churn by caching sign materials, and is covered by focused tests. No debug scenario was added or changed for this ticket. `coverage.log` was not present in the rescue-review directory, so there was no changed-file coverage report to inspect.
+
+## v0.249 — 240-paid-appearance-change  (2026-06-05 06:37:15)
+
+
+### Price in config
+PASS. The appearance fee is configured as `APPEARANCE_CHANGE_COST` on both server and client config paths and is used by the server charge helper and client confirm/cost label.
+
+### Client confirm dialog
+PASS. The character booth shows a paid-save confirmation only when body/color/model/proportion appearance fields differ from the saved account cosmetic. Hat-only changes skip the paid confirmation and remain free. Connected booth saves emit `applyAppearanceChange` instead of the legacy profile PATCH path, and socket errors re-enable the save UI with a visible message.
+
+### Tests, insufficient funds, and crash safety
+PASS. The new server tests cover successful paid charge, insufficient funds, hat-only free changes, profile-route blocking for live lobby appearance edits, persistence ordering, currency-save failure, and simulated crash/update failure cases. Client tests cover the confirmation flow, socket emission, error recovery, cost label, and hat-only behavior. The recorded coverage run passed: 91 test files, 1569 tests.
+
+### Design and requirements consistency
+PASS. The implementation fits the existing lobby/economy loop in `game/docs/design.md`: booth appearance edits use persistent account cosmetics and currency without disturbing dungeon combat, lobby flow, WebSocket connectivity, or movement synchronization. The smoke capture confirms no regression to the foundational requirements.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. The capture used normal auth/lobby/ready/gameplay flow.
+
+## Remaining gaps
+
+None.
+
 ## v0.250 — 247-plaza-arena-identity  (2026-06-05 06:43:14)
 
 ### Varied Cover Types And Real Platform Height

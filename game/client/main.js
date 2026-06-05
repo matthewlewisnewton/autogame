@@ -56,6 +56,7 @@ import {
 	MAX_HP,
 	MAX_MS,
 	MEDIC_HEAL_COST,
+	APPEARANCE_CHANGE_COST,
 	MOVE_SPEED,
 	TICK_RATE,
 	VARIANT_CODEX_DATA,
@@ -69,6 +70,7 @@ import {
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
+	setAccountCosmetic,
 	getHatCatalog,
 	setUnlockedHats,
 } from './settings.js';
@@ -82,6 +84,9 @@ import {
 	closeCharacterBooth,
 	rebuildBoothHatList,
 	showBoothCosmeticError,
+	handleAppearanceChanged,
+	handleAppearanceError,
+	isCharacterBoothOpen,
 } from './characterBooth.js';
 import {
 	initControllerCalibration,
@@ -163,7 +168,9 @@ import {
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
+import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
+import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -174,6 +181,7 @@ const statusEl = document.getElementById('status');
 const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
+const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
@@ -854,6 +862,7 @@ function applyLobbyJoinedData(data) {
 	requestDebugScenario();
 	renderHubScene();
 	requestDebugBoothOpen();
+	requestDebugShopBoothOpen();
 	updateObjectiveHud();
 }
 
@@ -1016,11 +1025,28 @@ const requestDebugBoothOpen = createRequestDebugBoothOpener({
 	openDeckBooth,
 	deps: deckBoothDeps,
 });
+const shopBoothDeps = { showGameLobby, setLobbyTab, renderCardShop };
+registerShopBoothListener(shopBoothDeps);
+const requestDebugShopBoothOpen = createRequestDebugShopBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openShopBooth,
+	deps: shopBoothDeps,
+});
 window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 	const boothId = ev.detail && ev.detail.boothId;
 	if (boothId !== 'character') return;
 	if (!gameState || gameState.gamePhase !== 'lobby') return;
 	openCharacterBooth();
+});
+
+// Quest booth: reveal/focus the existing inline quest panel (#quest-board).
+// No second quest UI is introduced — openQuestPanel just scrolls the wrapper
+// into view; selection still flows through renderQuestBoardState's handler.
+window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
+	if (!isQuestBoothAction(ev.detail)) return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	openQuestPanel();
 });
 
 // Context bundle handed to per-card renderers — declared once so the
@@ -1634,6 +1660,39 @@ function bindSocketHandlers(s) {
 		showBoothCosmeticError(message);
 	});
 
+	s.on('appearanceChanged', (data) => {
+		if (!data) return;
+		if (data.cosmetic) {
+			setAccountCosmetic(data.cosmetic);
+		}
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			updateCurrencyHud(myCurrency);
+			if (myId && gameState?.players?.[myId]) {
+				gameState.players[myId].currency = data.currency;
+			}
+		}
+		if (data.cosmetic && myId && gameState?.players?.[myId]) {
+			gameState.players[myId].cosmetic = getAccountCosmetic();
+			setGameStateRef(gameState);
+		}
+		handleAppearanceChanged();
+	});
+
+	s.on('appearanceError', (data) => {
+		const reason = data && data.reason ? data.reason : 'Appearance save failed';
+		let message = reason;
+		if (reason === 'insufficient_gold' || /not enough/i.test(reason)) {
+			message = /need \d+/i.test(reason)
+				? reason
+				: `Not enough money (need ${formatCurrencyPrice(APPEARANCE_CHANGE_COST)})`;
+		}
+		if (isCharacterBoothOpen()) {
+			showBoothCosmeticError(message);
+			handleAppearanceError();
+		}
+	});
+
 	s.on('tradeOffer', (data) => {
 		if (!data || !data.tradeId) return;
 		pendingTradeOffer = data;
@@ -1672,6 +1731,10 @@ function bindSocketHandlers(s) {
 		}
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
 			applyQuestBoardFromPayload(data);
+		}
+		if ('shopOffer' in data && gameState) {
+			gameState.shopOffer = data.shopOffer;
+			if (activeLobbyTab === 'shop') renderCardShop();
 		}
 	});
 
@@ -1923,6 +1986,15 @@ function applyQuestLayoutFromServer(data) {
 	}
 }
 
+// Reveal/focus the existing inline quest panel when the hub quest booth fires.
+// The inline #quest-board stays the selection surface (see renderQuestBoardState
+// below); this only brings the wrapper into view. Guarded to the lobby phase.
+function openQuestPanel() {
+	if (gameState?.gamePhase !== 'lobby') return;
+	// jsdom lacks scrollIntoView, so guard defensively for tests.
+	questBoardWrapperEl?.scrollIntoView?.({ block: 'nearest' });
+}
+
 function renderQuestBoardState() {
 	renderQuestBoard(
 		questBoardEl,
@@ -1957,13 +2029,20 @@ function requestDebugScenario() {
 }
 
 window.__openDeckBoothForTest = openDeckBooth;
+window.__openShopBoothForTest = openShopBooth;
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
-/** Localhost-only `?booth=character` — open the character booth once in hub lobby. */
+window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
+/** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
-	if (boothDebugParam !== 'character' || !debugScenarioAllowed || boothDebugRequested) return;
+	if (!debugScenarioAllowed || boothDebugRequested) return;
+	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest') return;
 	if (!gameState || gameState.gamePhase !== 'lobby') return;
 	boothDebugRequested = true;
-	openCharacterBooth();
+	if (boothDebugParam === 'quest') {
+		openQuestPanel();
+	} else {
+		openCharacterBooth();
+	}
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
@@ -3341,6 +3420,15 @@ if (document.getElementById('lobby-tab-forge')) {
 if (document.getElementById('lobby-tab-shop')) {
 	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
 }
+const buyShopCardBtnEl = document.getElementById('buy-shop-card-btn');
+if (buyShopCardBtnEl) {
+	buyShopCardBtnEl.addEventListener('click', () => {
+		if (!socket || !socket.connected) return;
+		const offer = gameState && gameState.shopOffer;
+		if (!offer || !offer.cardId) return;
+		socket.emit('buyShopCard');
+	});
+}
 	if (document.getElementById('lobby-tab-economy')) {
 	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
 }
@@ -4375,6 +4463,9 @@ window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
 window.openCharacterBooth = openCharacterBooth;
 window.closeCharacterBooth = closeCharacterBooth;
+window.openQuestPanel = openQuestPanel;
+// Test hook: exercise the `?booth=` debug open path (localhost gate + once-per-session).
+window.__requestBoothDebugOpenForTest = requestBoothDebugOpen;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;

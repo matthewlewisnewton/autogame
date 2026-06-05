@@ -14,9 +14,20 @@ from harness.steps.screenshot import capture
 from harness.workspace.ports import PortAllocation
 
 
-_INFRA_SIGNATURES = {
-    "vite_eaddrinuse": ("EADDRINUSE", "Port 5173 is already in use", "address already in use"),
+# Per-log signatures: server patterns are checked only in server.log and vite
+# patterns only in client.log so a generic "EADDRINUSE" in server.log is not
+# misclassified as vite_eaddrinuse (ticket 242 infra escalation).
+_INFRA_SIGNATURES: dict[str, tuple[str, ...]] = {
     "server_eaddrinuse": ("listen EADDRINUSE", "address already in use :::3000"),
+    "vite_eaddrinuse": (
+        "Port 5173 is already in use",
+        "EADDRINUSE",
+        "already in use :::5173",
+    ),
+}
+_LOG_KIND_FOR_SIGNATURE = {
+    "server_eaddrinuse": "server",
+    "vite_eaddrinuse": "client",
 }
 
 
@@ -38,10 +49,19 @@ def _diagnose_servers_did_not_start(dir: Path, ports: PortAllocation) -> dict:
             diag[f"{name}_log_tail"] = "<unreadable>"
             continue
         diag[f"{name}_log_tail"] = "\n".join(text.splitlines()[-30:])
-        for kind, sigs in _INFRA_SIGNATURES.items():
-            if any(s in text for s in sigs):
-                diag["detected"].append(kind)
-                break
+    for kind, sigs in _INFRA_SIGNATURES.items():
+        log_name = _LOG_KIND_FOR_SIGNATURE.get(kind)
+        if log_name is None:
+            continue
+        p = dir / f"{log_name}.log"
+        if not p.exists():
+            continue
+        try:
+            text = p.read_text(errors="replace")
+        except OSError:
+            continue
+        if any(s in text for s in sigs):
+            diag["detected"].append(kind)
     diag["port_holders"] = {
         str(ports.vite): [
             {"pid": pid, "cmdline": cmd[:200]}
