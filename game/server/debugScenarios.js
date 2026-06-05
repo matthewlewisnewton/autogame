@@ -764,6 +764,14 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
       }
+    } else if (name === 'annex-overseer-ready') {
+      // Spawn an Annex Overseer beside the player for rooms-boss QA. Reachable
+      // normally once training-caverns tier-2 stage boss wiring lands (sub-ticket 03).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
+      overseer.wanderTarget = { x: overseer.x, z: overseer.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is

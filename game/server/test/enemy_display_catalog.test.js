@@ -16,7 +16,7 @@ import fs from 'fs';
 
 const require = createRequire(import.meta.url);
 
-const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'spawner'];
+const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'spawner'];
 const VARIANT_IDS = ['test', 'volatile', 'warded', 'leeching', 'frenzied'];
 
 const COMBAT_ONLY_KEYS = [
@@ -29,7 +29,7 @@ const COMBAT_ONLY_KEYS = [
 ];
 
 describe('buildEnemyDisplayCatalog', () => {
-  it('includes all four enemy types with display fields', () => {
+  it('includes all enemy types with display fields', () => {
     const catalog = buildEnemyDisplayCatalog();
     expect(Object.keys(catalog.types).sort()).toEqual([...ENEMY_TYPES].sort());
     for (const type of ENEMY_TYPES) {

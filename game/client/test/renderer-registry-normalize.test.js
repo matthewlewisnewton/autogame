@@ -13,6 +13,7 @@ describe('getRegistryTargetFootprint()', () => {
 		expect(getRegistryTargetFootprint('grunt')).toEqual({ targetHeight: 1 });
 		expect(getRegistryTargetFootprint('skirmisher')).toEqual({ targetHeight: 0.6 });
 		expect(getRegistryTargetFootprint('miniboss')).toEqual({ targetHeight: 1.8 });
+		expect(getRegistryTargetFootprint('annex_overseer')).toEqual({ targetHeight: 2 });
 	});
 
 	it('uses diameter for octahedron enemies', () => {
@@ -39,6 +40,7 @@ describe('getRegistryHostVerticalOffset()', () => {
 		expect(getRegistryHostVerticalOffset('grunt')).toBe(enemyMeshHalfHeight('grunt'));
 		expect(getRegistryHostVerticalOffset('skirmisher')).toBe(enemyMeshHalfHeight('skirmisher'));
 		expect(getRegistryHostVerticalOffset('miniboss')).toBe(enemyMeshHalfHeight('miniboss'));
+		expect(getRegistryHostVerticalOffset('annex_overseer')).toBe(enemyMeshHalfHeight('annex_overseer'));
 		expect(getRegistryHostVerticalOffset('spawner')).toBe(enemyMeshHalfHeight('spawner'));
 	});
 

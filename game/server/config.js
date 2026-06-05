@@ -58,6 +58,7 @@ const ENEMY_CARD_DROPS = {
   skirmisher: 'flame_blade',
   drake: 'dungeon_drake',
   miniboss: 'dungeon_drake',
+  annex_overseer: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -68,6 +69,7 @@ const ENEMY_MS_DROPS = {
   skirmisher: 15,
   drake: 30,
   miniboss: 50,
+  annex_overseer: 50,
   spawner: 25,
 };
 

@@ -517,6 +517,7 @@ const DEBUG_SCENARIOS = new Set([
   'spire-ascent-tier-2',
   'stage-boss-dormant',
   'stage-boss-active',
+  'annex-overseer-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -686,6 +687,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'spire-ascent-tier-2',
   'stage-boss-dormant',
   'stage-boss-active',
+  'annex-overseer-ready',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {

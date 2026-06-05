@@ -4819,11 +4819,12 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss, spawner keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, spawner keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
 		expect(ENEMY_DEFS).toHaveProperty('miniboss');
+		expect(ENEMY_DEFS).toHaveProperty('annex_overseer');
 		expect(ENEMY_DEFS).toHaveProperty('spawner');
 	});
 
@@ -4867,7 +4868,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
 	});
 
-	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'spawner'];
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'spawner'];
 	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
 
 	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
@@ -4948,8 +4949,9 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'grunt')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'skirmisher')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
+		expect(() => spawnEnemy(0, 0, 'annex_overseer')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
-		expect(gameState.enemies.length).toBe(4);
+		expect(gameState.enemies.length).toBe(5);
 	});
 });
 

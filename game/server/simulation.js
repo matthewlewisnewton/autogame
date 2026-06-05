@@ -892,6 +892,13 @@ const ENEMY_DEFS = {
 		hp: 300, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
 	},
+	annex_overseer: {
+		name: 'Annex Overseer',
+		description: 'Room guardian with a radial shockwave — area denial over reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 320, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1400,
+		attackStyle: 'radial', attackRange: 3.5,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',

@@ -2177,7 +2177,7 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // Difficulty scaling: minibosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (type === 'miniboss') {
+  if (type === 'miniboss' || type === 'annex_overseer') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);
