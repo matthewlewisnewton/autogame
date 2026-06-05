@@ -1,0 +1,6 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:error] Failed to load resource: the server responded with a status of 409 (Conflict)
+[A:log] [initScene] Initializing Three.js scene...
+[A:log] [debugScenario] applied telepipe-ready
+[A:log] [run] suspended: Initiate Vault

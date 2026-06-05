@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/271-telepipe-hub-suspend-resume-integration/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/271-telepipe-hub-suspend-resume-integration/game/data
+Server listening on port 3000
+Player connected: socket=-0cSCArm23iAYogoAAAB, playerId=8d7fe683-5ac3-4b69-b7d2-39819472dc3e
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=af3e9082-6399-4e21-bc62-8591eff7a0a6 value=19
+[telepipe] placed at (-9.0, 27.0) by 8d7fe683-5ac3-4b69-b7d2-39819472dc3e
+[telepipe] player 8d7fe683-5ac3-4b69-b7d2-39819472dc3e extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+Player disconnected: -0cSCArm23iAYogoAAAB

@@ -39,6 +39,7 @@ const {
   checkRunTerminalState,
   stateSnapshot,
   assignRunSpawnPositions,
+  suspendRunToLobby,
 } = require('./progression');
 const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
@@ -279,6 +280,60 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'extracted-in-hub') {
+      // Partial extract: the local player has stepped through the Telepipe and is
+      // standing in the walkable hub while the run stays in `playing` (as it
+      // would with squadmates still in the dungeon). Marking the player
+      // `extracted` while the run status remains 'playing' drives the client's
+      // `isExtracted && gamePhase === 'playing'` branch every stateUpdate, so the
+      // extracted-in-hub render path can be verified without a second player.
+      // The same state is reachable normally by extracting in a multiplayer run
+      // while a squadmate remains in the dungeon. Enemies are cleared so the lone
+      // extracted player can't trip a terminal/suspend transition.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.telepipe = { x: player.x, z: player.z, placedAt: Date.now() };
+      player.extracted = true;
+      player.inputActive = false;
+      player.inputDx = 0;
+      player.inputDz = 0;
+    } else if (name === 'suspended-run-hub') {
+      // Stand in the walkable hub on top of a suspended run so the distinct
+      // Resume affordance (vs. the new-mission Deploy) can be verified without
+      // playing a full run then extracting the whole squad through a Telepipe.
+      // We spend magic stones, drain a hand card's charges, and advance the
+      // objective before capturing the checkpoint so the resume round-trip has
+      // visibly non-default values to preserve. The SAME suspended-lobby state
+      // is reachable normally by deploying, placing a Telepipe, and extracting
+      // every squadmate through it, which suspends the run to the hub.
+      player.hp = MAX_HP;
+      // A clearly-spent stone count (well under the run-start total) so resume
+      // visibly preserves the partial bar rather than refilling it.
+      player.magicStones = 15;
+      const weaponSlot = player.hand.findIndex(c => c && c.type === 'weapon');
+      if (weaponSlot >= 0) {
+        const card = player.hand[weaponSlot];
+        card.charges = card.charges ?? 5;
+        card.remainingCharges = Math.max(1, Math.min(2, card.charges - 1));
+      } else {
+        const replaceSlot = player.hand.findIndex(c => c);
+        if (replaceSlot >= 0) {
+          player.hand[replaceSlot] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', damage: 17, charges: 5, remainingCharges: 2 };
+        }
+      }
+      const objective = state.run && state.run.objective;
+      if (objective) {
+        if (objective.type === 'defeat_enemies' && objective.totalEnemies > 1) {
+          objective.defeatedEnemies = 1;
+        } else if (objective.type === 'collect_items' && objective.totalItems > 1) {
+          objective.collectedItems = 1;
+        }
+      }
+      // Capture the checkpoint and drop the squad into the hub lobby with the
+      // suspended-run banner + Resume control showing.
+      suspendRunToLobby();
+      return { ok: true, scenario: name };
     } else if (name === 'deck-viewer-instances') {
       // Enter a normal run whose draw pile is built entirely from owned-card
       // *instances* — the deck/selectedDeck store inventory instance IDs rather

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { resetHandState, canUseSlot, hand, slotCooldowns } from '../hand.js';
+import { resetHandState, canUseSlot, hand, slotCooldowns, deck, setDrawPile } from '../hand.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const styleCss = fs.readFileSync(path.join(__dirname, '..', 'style.css'), 'utf8');
@@ -440,6 +440,115 @@ describe('Photon Forge UI', () => {
 		expect(document.querySelector('[data-instance-id="sword-1"]')).toBe(selectedTile);
 		expect(selectedTile.classList.contains('selected')).toBe(true);
 		expect(window.__getLobbyTabState().selectedForgeInstanceId).toBe('sword-1');
+	});
+});
+
+describe('cold state reconciliation', () => {
+	beforeEach(() => {
+		resetHandState();
+		const requiredIds = [
+			'status', 'vanguard-hud', 'character-id', 'player-level',
+			'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+			'currency-display', 'objective-hud', 'ui', 'card-hand', 'deck-stack',
+			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
+			'summary-rewards-cards', 'summary-card-choices', 'return-to-lobby-btn',
+			'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
+		];
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('slim playing stateUpdate without cold fields keeps local hand and collection', async () => {
+		await import('../main.js');
+
+		const mockInventory = [
+			{ instanceId: 'sword-1', cardId: 'iron_sword', grind: 0, level: 1 },
+		];
+		const ownedCards = { iron_sword: 1 };
+		window.__setDeckState(['sword-1'], ownedCards, mockInventory, 50);
+		setDrawPile(['flame_blade', 'battle_familiar']);
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 3, remainingCharges: 2 };
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { objective: { defeatedEnemies: 0, totalEnemies: 3 } },
+			players: {
+				p1: {
+					hp: 80,
+					magicStones: 40,
+					currency: 50,
+					x: 0,
+					z: 0,
+				},
+			},
+		}, 'p1');
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: { objective: { defeatedEnemies: 1, totalEnemies: 3 } },
+			players: {
+				p1: {
+					hp: 75,
+					magicStones: 35,
+					currency: 50,
+					x: 1,
+					z: 0,
+				},
+			},
+		});
+
+		expect(hand[0]?.id).toBe('iron_sword');
+		expect(deck).toEqual(['flame_blade', 'battle_familiar']);
+		expect(window.__deckStateForTest().inventory).toEqual([
+			{ instanceId: 'sword-1', cardId: 'iron_sword' },
+		]);
+	});
+
+	it('deckUpdate applies in-run hand and draw-pile changes', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: { objective: { defeatedEnemies: 0, totalEnemies: 3 } },
+			players: {
+				p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 },
+			},
+		}, 'p1');
+		setDrawPile(['iron_sword', 'flame_blade']);
+		hand[0] = { id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon', charges: 3, remainingCharges: 3 };
+
+		window.__triggerSocketEvent('deckUpdate', {
+			hand: [null, { id: 'battle_familiar', name: 'Signal Familiar', type: 'spell', charges: 1, remainingCharges: 1 }],
+			deck: ['dungeon_drake'],
+			desperationDeck: ['rusty_shiv'],
+			inDesperation: false,
+			nextDrawAt: Date.now() + 5000,
+		});
+
+		expect(hand[0]).toBeNull();
+		expect(hand[1]?.id).toBe('battle_familiar');
+		expect(deck).toEqual(['dungeon_drake']);
+		expect(document.querySelector('.card-slot[data-slot-index="1"] .card-name')?.textContent).toBe('Signal Familiar');
 	});
 });
 

@@ -1,0 +1,9 @@
+Broke ticket 275 into **2 sub-tickets** in dependency order, following the deck/trade handler extraction pattern. The work is small (three handlers, ~40 lines in `lobbyHandlers.js`), so a scaffold pass plus a completion pass is enough.
+
+**Sub-tickets created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/275-socketHandlers-extract-keyitem/tickets/275-socketHandlers-extract-keyitem/subtickets/01-keyitem-handlers-scaffold/ticket.md` — Create `keyItemHandlers.js`, wire it from `lobbyHandlers`, move `listKeyItems`.
+
+2. `/home/matt/workspace/.autogame-worktrees/275-socketHandlers-extract-keyitem/tickets/275-socketHandlers-extract-keyitem/subtickets/02-equip-use-keyitem-handlers/ticket.md` — Move `equipKeyItem` and `useKeyItem`, clean up `lobbyHandlers.js` imports and comments.
+
+Both use **code** verification (`pnpm test:quick` plus existing key-item test coverage). No existing sub-ticket folders needed cleanup.

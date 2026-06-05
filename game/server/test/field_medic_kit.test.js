@@ -164,7 +164,10 @@ describe('useKeyItem — field_medic_kit', () => {
 
 		// p3 should be unchanged (HP exact; MS may tick regen by a fraction)
 		expect(playerForSocket(players[2].socket).hp).toBe(p3HpBefore);
-		expect(playerForSocket(players[2].socket).magicStones).toBeCloseTo(p3MsBefore, 1);
+		const p3MsAfter = playerForSocket(players[2].socket).magicStones;
+		// Out-of-range player must not receive the +3 MS restore; only ambient regen may apply.
+		expect(p3MsAfter).toBeLessThan(p3MsBefore + 1);
+		expect(p3MsAfter).toBeCloseTo(p3MsBefore, 1);
 	});
 
 	it('dead players skipped', async () => {

@@ -1,7 +1,18 @@
-`LOGBOOK.md` is resolved.
+Merge conflicts are resolved. Summary:
 
-The conflict was two new logbook entries that both landed after v0.224:
-- **main**: v0.225 — `230-hub-client-render` (hub client render)
-- **branch**: v0.226 — `274-socketHandlers-extract-trade` (trade handler extraction)
+### `game/server/test/field_medic_kit.test.js`
+Combined both sides of the out-of-range MS assertion:
+- **From main:** `p3MsAfter` variable, comment that out-of-range players must not get the +3 kit restore, and `toBeLessThan(p3MsBefore + 1)`
+- **From ticket (238/06):** `toBeCloseTo(p3MsBefore, 1)` to tolerate ambient regen tick noise
 
-Both entries are kept in version order (v0.225, then v0.226). All conflict markers are removed. The harness can finish the merge.
+All 7 tests in that file pass.
+
+### `LOGBOOK.md`
+Kept all log entries in main’s order, then appended the ticket entry:
+- v0.229 (275-socketHandlers-extract-keyitem)
+- v0.228 (211-net-slim-per-tick-state-broadcast)
+- v0.230 (231-hub-lobby-phase-movement)
+- v0.231 (271-telepipe-hub-suspend-resume-integration)
+- v0.232 (238-avatar-cosmetic-render) — ticket review entry
+
+No conflict markers remain. The harness can commit and finish the merge.

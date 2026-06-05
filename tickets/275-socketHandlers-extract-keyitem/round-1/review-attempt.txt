@@ -1,0 +1,5 @@
+Wrote `tickets/275-socketHandlers-extract-keyitem/round-1/review.md`.
+
+Verdict: `VERDICT: PASS`
+
+No `gaps.md` or `nits.md` created.

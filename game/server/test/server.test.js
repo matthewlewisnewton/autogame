@@ -98,6 +98,7 @@ import {
 	isPlayerOutOfCards,
 	validateUseCardHand,
 	stateSnapshot,
+	hotStateSnapshot,
 	addMagicStones,
 	restoreCardCharges,
 	restoreHandCharges,
@@ -134,8 +135,16 @@ import {
 	isEntityPositionBlocked,
 	moveEntityToward,
 	MINION_FOLLOW_DISTANCE,
-	MINION_FOLLOW_SPEED
+	MINION_FOLLOW_SPEED,
+	HUB_LAYOUT,
+	isInsideDungeon,
 } from '../index.js';
+import {
+	hubSpawnPosition,
+	buildHubMovementContext,
+	computeDungeonBounds,
+} from '../simulation.js';
+import { sampleFloorY, resolveFloorY } from '../dungeon.js';
 
 const { createLobby, resetAllLobbies } = require('../lobbies.js');
 const { VARIANT_DEFS } = require('../enemyVariants.js');
@@ -221,6 +230,62 @@ describe('runGameLoopTick()', () => {
 
 		expect(emitSpy).not.toHaveBeenCalled();
 		expect(toSpy).not.toHaveBeenCalled();
+	});
+
+	it('tick-emitted stateUpdate omits per-player cold fields', () => {
+		const lobby = setupLobby('playing');
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 1, flame_blade: 1 });
+		lobby.state.players['p1'] = {
+			x: 1,
+			y: 0.5,
+			z: 2,
+			rotation: 0.5,
+			hp: 80,
+			dead: false,
+			ready: true,
+			magicStones: 40,
+			currency: 15,
+			deck: ['iron_sword'],
+			hand: [{ id: 'flame_blade', name: 'Flame Blade', type: 'weapon', charges: 1, remainingCharges: 1 }],
+			desperationDeck: ['rusty_shiv'],
+			inDesperation: false,
+			nextDrawAt: Date.now() + 5000,
+			inventory,
+			selectedDeck: inventory.map((instance) => instance.instanceId),
+			ownedCards: { iron_sword: 1, flame_blade: 1 },
+			runRewards: { currency: 5, cards: [] },
+			currencyEarnedThisRun: 3,
+			debugScenario: 'summon-low-mana',
+			pendingSummons: new Set(),
+			lastActivity: Date.now(),
+		};
+
+		const roomEmit = vi.fn();
+		vi.spyOn(serverIo, 'to').mockReturnValue({ emit: roomEmit });
+
+		expect(runGameLoopTick()).toBe(true);
+
+		expect(serverIo.to).toHaveBeenCalledWith(lobby.id);
+		const snapshot = roomEmit.mock.calls.find(([event]) => event === 'stateUpdate')?.[1];
+		expect(snapshot).toBeDefined();
+		const player = snapshot.players['p1'];
+		expect(player).toBeDefined();
+		expect(player.x).toBe(1);
+		expect(player.y).toBe(0.5);
+		expect(player.z).toBe(2);
+		expect(player.hp).toBe(80);
+		expect(player.deck).toBeUndefined();
+		expect(player.hand).toBeUndefined();
+		expect(player.inventory).toBeUndefined();
+		expect(player.desperationDeck).toBeUndefined();
+		expect(player.ownedCards).toBeUndefined();
+		expect(player.selectedDeck).toBeUndefined();
+		expect(player.runRewards).toBeUndefined();
+		expect(player.currencyEarnedThisRun).toBeUndefined();
+		expect(player.returnRewardsPreview).toBeUndefined();
+		expect(player.inDesperation).toBeUndefined();
+		expect(player.nextDrawAt).toBeUndefined();
+		expect(player.debugScenario).toBeUndefined();
 	});
 });
 
@@ -2899,6 +2964,21 @@ describe('run state', () => {
 			expect(result.ok).toBe(true);
 			expect(gameState.suspendedCheckpoint).toBeUndefined();
 			expect(gameState.run).toBeUndefined();
+			expect(gameState.gamePhase).toBe('lobby');
+
+			const spawn = hubSpawnPosition(HUB_LAYOUT);
+			const hubCtx = buildHubMovementContext(HUB_LAYOUT);
+			const bounds = computeDungeonBounds(HUB_LAYOUT);
+			for (const player of Object.values(gameState.players)) {
+				expect(player.x).toBe(spawn.x);
+				expect(player.z).toBe(spawn.z);
+				expect(player.y).toBe(resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z)));
+				expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
+				expect(player.x).toBeLessThanOrEqual(bounds.maxX);
+				expect(player.z).toBeGreaterThanOrEqual(bounds.minZ);
+				expect(player.z).toBeLessThanOrEqual(bounds.maxZ);
+				expect(isInsideDungeon(player.x, player.z, hubCtx)).toBe(true);
+			}
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();
@@ -4588,7 +4668,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(p.currency).toBe(25);
 		expect(p.deck).toEqual(['iron_sword', 'flame_blade']);
 		expect(p.selectedDeck).toEqual(inventory.map((instance) => instance.instanceId));
-		expect(p.inventory).toEqual(inventory);
+		expect(p.inventory).toBe(inventory);
 		expect(p.ownedCards).toEqual({ iron_sword: 2, flame_blade: 1 });
 		expect(p.runRewards).toEqual({ currency: 10, cards: [] });
 		expect(p.currencyEarnedThisRun).toBe(5);
@@ -4599,12 +4679,140 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(p.ready).toBe(false);
 	});
 
-	it('returns independent objects per call (no shared mutation)', () => {
+	it('returns independent player objects per call (no shared mutation)', () => {
 		addPlayer('p1');
 		const a = stateSnapshot();
 		const b = stateSnapshot();
 		a.players['p1'].hp = 0;
 		expect(b.players['p1'].hp).toBe(100);
+	});
+
+	it('reuses the same inventory array reference across consecutive snapshots when unchanged', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 1 });
+		addPlayer('p1', { inventory });
+		const a = stateSnapshot();
+		const b = stateSnapshot();
+		expect(a.players['p1'].inventory).toBe(inventory);
+		expect(b.players['p1'].inventory).toBe(inventory);
+		expect(a.players['p1'].inventory).toBe(b.players['p1'].inventory);
+	});
+});
+
+describe('hotStateSnapshot() — slim per-tick payload', () => {
+	const COLD_PLAYER_FIELDS = [
+		'deck',
+		'desperationDeck',
+		'hand',
+		'ownedCards',
+		'inventory',
+		'selectedDeck',
+		'runRewards',
+		'currencyEarnedThisRun',
+		'returnRewardsPreview',
+		'inDesperation',
+		'nextDrawAt',
+		'debugScenario',
+	];
+
+	beforeEach(() => {
+		resetState();
+		gameState.layoutSeed = 42;
+		if (!gameState.layout) gameState.layout = { rooms: [{ x: 0, z: 0, width: 10, depth: 10 }] };
+		if (!gameState.dungeonBounds) gameState.dungeonBounds = { minX: -10, maxX: 10, minZ: -10, maxZ: 10 };
+	});
+
+	it('includes hot player fields and world fields', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 1 });
+		addPlayer('p1', {
+			hp: 75,
+			magicStones: 30,
+			currency: 25,
+			deck: ['iron_sword'],
+			hand: [{ id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 1, remainingCharges: 1 }],
+			inventory,
+			selectedDeck: inventory.map((instance) => instance.instanceId),
+			ownedCards: { iron_sword: 1 },
+			runRewards: { currency: 10, cards: [] },
+			currencyEarnedThisRun: 5,
+			debugScenario: 'summon-low-mana',
+			username: 'HotPlayer',
+		});
+		gameState.enemies = [{ id: 'e1', x: 5, z: 5, hp: 50 }];
+		gameState.minions = [{ id: 'm1', x: 0, z: 0, hp: 50, ttl: 30, ownerId: 'p1' }];
+		gameState.loot = [{ id: 'l1', x: 3, z: 3, value: 10 }];
+		gameState.gamePhase = 'playing';
+		gameState.run = { id: 'run-1', status: 'playing' };
+		gameState.lobby = [];
+
+		const snapshot = hotStateSnapshot();
+		const p = snapshot.players['p1'];
+
+		expect(p).toEqual(expect.objectContaining({
+			x: 0,
+			y: 0.5,
+			z: 0,
+			rotation: 0,
+			hp: 75,
+			dead: false,
+			ready: false,
+			magicStones: 30,
+			currency: 25,
+			extracted: false,
+			equippedKeyItemId: 'dodge_roll',
+			keyItemCooldownRemaining: 0,
+			overclockChargesRemaining: 0,
+			isInvulnerable: false,
+			isBlocking: false,
+			blockingUntil: 0,
+			blockingYaw: 0,
+			barrierDomeUntil: 0,
+			barrierDomeRadius: 0,
+			smokeBombUntil: 0,
+			smokeBombRadius: 0,
+			smokeBombX: 0,
+			smokeBombZ: 0,
+			cosmetic: { ...DEFAULT_COSMETIC },
+			username: 'HotPlayer',
+		}));
+		for (const field of COLD_PLAYER_FIELDS) {
+			expect(p[field]).toBeUndefined();
+		}
+		expect(snapshot.enemies).toEqual(gameState.enemies);
+		expect(snapshot.minions).toEqual(gameState.minions);
+		expect(snapshot.loot).toEqual(gameState.loot);
+		expect(snapshot.gamePhase).toBe('playing');
+		expect(snapshot.run).toEqual(gameState.run);
+		expect(snapshot.layoutSeed).toBe(42);
+		expect(snapshot.lobby).toEqual([]);
+		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
+		expect(snapshot).toHaveProperty('shopOffer');
+		expect(snapshot).toHaveProperty('suspendedRunSummary');
+	});
+
+	it('full stateSnapshot still includes cold fields', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 1 });
+		addPlayer('p1', {
+			deck: ['iron_sword'],
+			hand: [{ id: 'iron_sword', name: 'Iron Sword', type: 'weapon', charges: 1, remainingCharges: 1 }],
+			inventory,
+			selectedDeck: inventory.map((instance) => instance.instanceId),
+			ownedCards: { iron_sword: 1 },
+			runRewards: { currency: 10, cards: [] },
+			currencyEarnedThisRun: 5,
+			debugScenario: 'summon-low-mana',
+		});
+
+		const snapshot = stateSnapshot();
+		const p = snapshot.players['p1'];
+
+		expect(p.deck).toEqual(['iron_sword']);
+		expect(p.hand).toHaveLength(1);
+		expect(p.inventory).toBe(inventory);
+		expect(p.selectedDeck).toEqual(inventory.map((instance) => instance.instanceId));
+		expect(p.ownedCards).toEqual({ iron_sword: 1 });
+		expect(p.runRewards).toEqual({ currency: 10, cards: [] });
+		expect(p.currencyEarnedThisRun).toBe(5);
+		expect(p.debugScenario).toBe('summon-low-mana');
 	});
 });
 
@@ -5169,7 +5377,8 @@ describe('Spawner periodic spawn', () => {
 
 		const add = gameState.enemies[1];
 		const dist = Math.hypot(add.x - 0, add.z - 0);
-		expect(dist).toBeLessThanOrEqual(3);
+		// ~3 units; allow tiny float slack from nearbySpawnPosition
+		expect(dist).toBeLessThanOrEqual(3.01);
 	});
 
 	it('spawnEnemy sets lastSpawnTime on spawner type', () => {
