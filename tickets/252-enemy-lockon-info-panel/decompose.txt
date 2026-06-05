@@ -1,0 +1,17 @@
+Broke ticket **252-enemy-lockon-info-panel** into **3 sub-tickets** in dependency order:
+
+1. **Data layer** — server sends `enemyDisplayCatalog` on init; client pure model builder + tests  
+2. **UI shell** — `#lock-on-info-panel` markup and HUD styling (hidden by default)  
+3. **Runtime** — renderer sync while locked, hide on unlock/death, live HP updates + tests  
+
+All use **Verification: code** (structure, handlers, state, and tests — not pixel-only visual QA).
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/252-enemy-lockon-info-panel/tickets/252-enemy-lockon-info-panel/subtickets/01-enemy-display-catalog-and-panel-model/
+/home/matt/workspace/.autogame-worktrees/252-enemy-lockon-info-panel/tickets/252-enemy-lockon-info-panel/subtickets/02-lock-on-info-panel-dom-and-styles/
+/home/matt/workspace/.autogame-worktrees/252-enemy-lockon-info-panel/tickets/252-enemy-lockon-info-panel/subtickets/03-lock-on-info-panel-runtime-sync/
+```
+
+Also wrote `decompose.txt` at the ticket root summarizing the breakdown. No prior sub-ticket folders existed, so nothing was deleted or skipped.

@@ -4451,3 +4451,26 @@ This ticket did not add or change any `?debugScenario=` shortcuts. No gating or 
 
 None. All acceptance criteria are met; the game starts and runs cleanly in capture; tests pass.
 
+
+## v0.254 — 252-enemy-lockon-info-panel  (2026-06-05 07:55:30)
+
+### Hides when unlocked
+
+PASS. The renderer only supplies an enemy to the panel when the current phase is `playing` and lock-on is active. It refreshes the panel when leaving gameplay, when the local player is dead, and each frame after lock-on state updates; `syncLockOnInfoPanel()` hides the panel when no model can be built. Focused tests cover the unlocked/missing-target hide path.
+
+### Test coverage
+
+PASS. The ticket adds focused unit/integration coverage for the server display catalog and the client panel model/DOM sync. `coverage.log` shows the full Vitest run passed: 82 test files and 1351 tests passed. The lock-on panel test file specifically passed 9 tests.
+
+## Design and requirements consistency
+
+PASS. The change is HUD-only and does not alter the core lobby/dungeon/combat loop, server-client architecture, rendering startup, movement synchronization, or multiplayer state replication described in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke flow confirms the game still reaches lobby and active gameplay with two connected players, canvas rendering, movement, enemies, and HUD updates.
+
+## Code quality
+
+PASS. The implementation keeps display metadata centralized on the server, uses a small client-side formatter/model builder, and wires the panel through existing renderer lock-on state instead of adding a parallel targeting system. No debug scenario was added or changed for this ticket, so the debug-scenario shortcut checks are not applicable.
+
+## Remaining gaps
+
+None.
+
