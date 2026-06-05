@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import config from '../config.js';
+import { getLayoutGenerationOptions } from '../quests.js';
 import {
 	mulberry32,
 	generateLayout,
@@ -12,8 +13,9 @@ import {
 
 const SEED = 123;
 
-function sunkenCanyonLayout(seed = SEED) {
-	return generateLayout(seed, 'sunken-canyon');
+function sunkenCanyonLayout(seed = SEED, tier = 1) {
+	const options = getLayoutGenerationOptions('canyon_descent', tier);
+	return generateLayout(seed, 'sunken-canyon', options);
 }
 
 function roomAt(layout, x, z) {
@@ -87,5 +89,32 @@ describe('sunken-canyon quest spawns', () => {
 		expect(gameState.loot.length).toBe(1);
 		expect(bandAt(layout, gameState.loot[0])).toBe('canyon');
 		vi.restoreAllMocks();
+	});
+
+	it('getLayoutGenerationOptions uses rigid mode for canyon_descent Tier 2 only', () => {
+		expect(getLayoutGenerationOptions('canyon_descent', 1)).toEqual({
+			slopes: true,
+			layoutMode: 'default',
+		});
+		expect(getLayoutGenerationOptions('canyon_descent', 2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+	});
+
+	it('Tier 2 rigid layout preserves band spawn rules', () => {
+		gameState.selectedQuestId = 'canyon_descent';
+		gameState.selectedQuestTier = 2;
+		gameState.layout = sunkenCanyonLayout(SEED, 2);
+		gameState.layoutSeed = SEED;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.run = { questTier: 2 };
+		spawnEnemies();
+		expect(gameState.enemies.length).toBe(6);
+		const bands = gameState.enemies.map(e => bandAt(gameState.layout, e));
+		expect(bands.filter(b => b === 'plateau').length).toBeGreaterThanOrEqual(1);
+		expect(bands.filter(b => b === 'canyon').length).toBeGreaterThan(gameState.enemies.length / 2);
+		expect(bands.some(b => b === 'ramp')).toBe(false);
 	});
 });
