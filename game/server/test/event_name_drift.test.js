@@ -2,18 +2,23 @@
 //
 // PURPOSE
 // -------
-// Sub-tickets 01 and 02 routed every server/client socket call site through the
-// shared registry so the wire vocabulary lives in exactly one place. This test
-// is the safety net that keeps it that way: it statically scans the first
-// argument of every `.emit(...)` / `.on(...)` call site and fails if anyone
-// reintroduces a raw gameplay event-name string literal instead of an
-// `EVENTS.<name>` reference, or if the registry drifts out of sync with usage.
+// Sub-tickets 01, 02, 04 and 05 routed every server/client socket call site
+// through the shared registry so the wire vocabulary lives in exactly one place.
+// This test is the safety net that keeps it that way: it statically scans the
+// first argument of every `.emit(...)` / `.on(...)` / `.once(...)` / `.off(...)`
+// call site, AND any raw literal assigned to an `event` field/parameter (the
+// dynamic-emit paths, e.g. `phaseMismatch: { event: 'keyItemError' }` or an
+// `event = 'questUpdate'` default), and fails if anyone reintroduces a raw
+// gameplay event-name string literal instead of an `EVENTS.<name>` reference, or
+// if the registry drifts out of sync with usage.
 //
 // INVARIANTS ENFORCED (drift is caught in BOTH directions)
-//   1. No raw gameplay literals: every `.emit(`/`.on(` first argument is either
-//      an `EVENTS.<name>` reference or one of the explicitly allowlisted non-game
-//      lifecycle names below. A bare string literal that is not on the allowlist
-//      (e.g. `socket.emit('typoEvent', ...)`) fails invariant 1.
+//   1. No raw gameplay literals: every `.emit(`/`.on(`/`.once(`/`.off(` first
+//      argument — and every raw literal feeding an `event:`/`event =`
+//      dynamic-emit slot — is either an `EVENTS.<name>` reference or one of the
+//      explicitly allowlisted non-game lifecycle names below. A bare string
+//      literal that is not on the allowlist (e.g. `socket.emit('typoEvent', ...)`
+//      or `{ event: 'typoEvent' }`) fails invariant 1.
 //   2. No dangling references: every `EVENTS.<name>` used at a call site resolves
 //      to a key that actually exists in events.json. A typo'd constant
 //      (e.g. `EVENTS.cardUesd`) fails invariant 2.
@@ -82,10 +87,18 @@ const SCANNED_FILES = [
 	'client/characterBooth.js',
 ];
 
-// Match a `.emit(` / `.on(` call site and capture the first-argument token up to
-// the first comma or closing paren. Whitespace between the dot-call and the
-// open paren / first arg is tolerated.
-const CALL_SITE_RE = /\.(emit|on)\s*\(\s*([^,)\s][^,)]*)/g;
+// Match a `.emit(` / `.on(` / `.once(` / `.off(` call site and capture the
+// first-argument token up to the first comma or closing paren. Whitespace
+// between the dot-call and the open paren / first arg is tolerated. `.once`/`.off`
+// are the listener-helper paths that sub-ticket 05 routed through the registry.
+const CALL_SITE_RE = /\.(emit|on|once|off)\s*\(\s*([^,)\s][^,)]*)/g;
+// Match a raw string literal assigned to an `event` field or parameter — the
+// dynamic-emit slots sub-ticket 04 routed through the registry (e.g.
+// `phaseMismatch: { event: 'keyItemError' }` or an `event = 'questUpdate'`
+// default). `\b` keeps it from matching identifiers that merely end in "event"
+// (e.g. `someEvent:`), and only a *literal* RHS is captured — an
+// `event: EVENTS.questUpdate` reference is intentionally left alone.
+const EVENT_ASSIGN_RE = /\bevent\s*[:=]\s*(['"`][^'"`]+['"`])/g;
 const STRING_LITERAL_RE = /^(['"`])(.*)\1$/;
 const REGISTRY_REF_RE = /^EVENTS\.([A-Za-z_$][\w$]*)$/;
 
@@ -120,6 +133,23 @@ function classifyCallSites(source) {
 	return { literals, refs, dynamic };
 }
 
+/**
+ * Find raw string literals assigned to an `event` field/parameter in `source`
+ * (the dynamic-emit slots). Returns the inner (unquoted) literal values.
+ * `event: EVENTS.<name>` references contain no string literal, so they never
+ * match and are correctly ignored.
+ */
+function classifyEventAssignments(source) {
+	const literals = [];
+	let m;
+	EVENT_ASSIGN_RE.lastIndex = 0;
+	while ((m = EVENT_ASSIGN_RE.exec(source)) !== null) {
+		const lit = STRING_LITERAL_RE.exec(m[1].trim());
+		if (lit) literals.push(lit[2]);
+	}
+	return literals;
+}
+
 function scanAll() {
 	const rawLiterals = []; // { file, name }
 	const refNames = []; // { file, name }
@@ -128,6 +158,8 @@ function scanAll() {
 		const { literals, refs } = classifyCallSites(source);
 		for (const name of literals) rawLiterals.push({ file: rel, name });
 		for (const name of refs) refNames.push({ file: rel, name });
+		// Second pass: raw literals feeding `event:`/`event =` dynamic-emit slots.
+		for (const name of classifyEventAssignments(source)) rawLiterals.push({ file: rel, name });
 	}
 	return { rawLiterals, refNames };
 }
@@ -145,7 +177,8 @@ describe('shared event-name registry drift guard', () => {
 		const offenders = rawLiterals.filter((e) => !LIFECYCLE_ALLOWLIST.has(e.name));
 		expect(
 			offenders,
-			`Raw event-name literal(s) found at .emit/.on call sites. Use the shared ` +
+			`Raw event-name literal(s) found at .emit/.on/.once/.off call sites or ` +
+				`event:/event= dynamic-emit slots. Use the shared ` +
 				`registry (EVENTS.<name>) instead, or add a genuine lifecycle name to ` +
 				`LIFECYCLE_ALLOWLIST:\n` +
 				offenders.map((o) => `  ${o.file}: '${o.name}'`).join('\n'),
@@ -178,6 +211,21 @@ describe('shared event-name registry drift guard', () => {
 		const badLiteral = classifyCallSites(`socket.emit('typoEvent', payload);`);
 		const lit1 = badLiteral.literals.filter((n) => !LIFECYCLE_ALLOWLIST.has(n));
 		expect(lit1).toEqual(['typoEvent']);
+
+		// Invariant 1 — a raw literal in a `.once`/`.off` listener helper (the
+		// paths sub-ticket 05 routed through the registry) also trips.
+		const badOnce = classifyCallSites(`socket.once('typoEvent', cb);`);
+		expect(badOnce.literals.filter((n) => !LIFECYCLE_ALLOWLIST.has(n))).toEqual(['typoEvent']);
+		const badOff = classifyCallSites(`socket.off('typoEvent', cb);`);
+		expect(badOff.literals.filter((n) => !LIFECYCLE_ALLOWLIST.has(n))).toEqual(['typoEvent']);
+
+		// Invariant 1 — a raw literal feeding an `event:` field or an `event =`
+		// default (the dynamic-emit slots sub-ticket 04 routed through the
+		// registry) also trips.
+		expect(classifyEventAssignments(`phaseMismatch: { event: 'typoEvent' }`)).toEqual(['typoEvent']);
+		expect(classifyEventAssignments(`function f(event = 'typoEvent') {}`)).toEqual(['typoEvent']);
+		// ...but an `event: EVENTS.<name>` reference is left alone (no raw literal).
+		expect(classifyEventAssignments(`phaseMismatch: { event: EVENTS.keyItemError }`)).toEqual([]);
 
 		// ...but an allowlisted lifecycle literal does NOT trip invariant 1.
 		const okLiteral = classifyCallSites(`socket.on('disconnect', cb);`);
