@@ -160,12 +160,15 @@ export const MASTER_VOLUME = 0.18;
 
 /** Sound effect parameters per event type */
 export const SOUND_CONFIG = {
-	card:           { freq: 600, duration: 0.1, gain: 0.35 },
-	enemyHit:       { freq: 300, duration: 0.15, gain: 0.3 },
-	playerDamage:   { freq: 200, duration: 0.2, gain: 0.35 },
-	loot:           { freq: 800, duration: 0.08, gain: 0.25 },
-	victory:        { notes: [{ freq: 500, duration: 0.15, gain: 0.3 }, { freq: 700, duration: 0.15, gain: 0.3 }] },
-	failure:        { notes: [{ freq: 400, duration: 0.2, gain: 0.3 }, { freq: 250, duration: 0.2, gain: 0.3 }] },
+	card:             { freq: 600, duration: 0.1, gain: 0.35 },
+	enemyHit:         { freq: 300, duration: 0.15, gain: 0.3 },
+	playerDamage:     { freq: 200, duration: 0.2, gain: 0.35 },
+	loot:             { freq: 800, duration: 0.08, gain: 0.25 },
+	victory:          { notes: [{ freq: 500, duration: 0.15, gain: 0.3 }, { freq: 700, duration: 0.15, gain: 0.3 }] },
+	failure:          { notes: [{ freq: 400, duration: 0.2, gain: 0.3 }, { freq: 250, duration: 0.2, gain: 0.3 }] },
+	volatileExplosion: { freq: 80, duration: 0.5, gain: 0.25 },
+	leechHeal:        { freq: 900, duration: 0.2, gain: 0.2 },
+	shieldBreak:      { freq: 150, duration: 0.15, gain: 0.35 },
 };
 
 // ── Hand ──

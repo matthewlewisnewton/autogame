@@ -1117,10 +1117,21 @@ function bindSocketHandlers(s) {
 		if (!data || !getScene()) return;
 		const { x, z, radius } = data;
 		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		playSound('volatileExplosion');
 		rendererSpawnVolatileExplosionEffect(
 			{ x, z },
 			Number.isFinite(radius) ? radius : 5,
 		);
+	});
+
+	s.on('leechHeal', (data) => {
+		if (!data) return;
+		playSound('leechHeal');
+	});
+
+	s.on('shieldBreak', (data) => {
+		if (!data) return;
+		playSound('shieldBreak');
 	});
 
 	s.on('cardError', (data) => {

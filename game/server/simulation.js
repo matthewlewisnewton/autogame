@@ -1654,6 +1654,9 @@ function damageEnemy(enemy, amount) {
     remaining -= absorbed;
     if (enemy.shieldHp <= 0) {
       enemy.shieldHp = 0;
+      if (_gameState?._pendingShieldBreaks !== undefined) {
+        _gameState._pendingShieldBreaks.push({ enemyId: enemy.id });
+      }
     }
   }
 
@@ -1742,7 +1745,11 @@ function damagePlayer(playerId, amount, options = {}) {
 
   player.hp = Math.max(0, player.hp - remaining);
   if (options.attackerEnemyId) {
-    applyLeechHeal(options.attackerEnemyId, remaining, _gameState.enemies);
+    const healed = applyLeechHeal(options.attackerEnemyId, remaining, _gameState.enemies);
+    if (healed > 0) {
+      if (!_gameState._pendingLeechHeals) _gameState._pendingLeechHeals = [];
+      _gameState._pendingLeechHeals.push({ enemyId: options.attackerEnemyId });
+    }
   }
   const mirrorResult = triggerMirrorWard(playerId, remaining, options.attackerEnemyId);
 

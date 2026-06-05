@@ -1050,6 +1050,20 @@ function runGameLoopTick() {
           state._pendingVolatileExplosions.length = 0;
         }
 
+        if (state._pendingLeechHeals?.length) {
+          for (const record of state._pendingLeechHeals) {
+            io.to(lobby.id).emit('leechHeal', record);
+          }
+          state._pendingLeechHeals.length = 0;
+        }
+
+        if (state._pendingShieldBreaks?.length) {
+          for (const record of state._pendingShieldBreaks) {
+            io.to(lobby.id).emit('shieldBreak', record);
+          }
+          state._pendingShieldBreaks.length = 0;
+        }
+
         regenMagicStones();
 
         state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);

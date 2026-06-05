@@ -33,6 +33,12 @@ function createGameState() {
     // Per-tick queue of volatile-enemy detonations ({ x, z, radius }); drained
     // in runGameLoopTick to emit 'volatileExplosion' to the lobby room.
     _pendingVolatileExplosions: [],
+    // Per-tick queue of leech-heal audio cues ({ enemyId }); drained in
+    // runGameLoopTick to emit 'leechHeal' to the lobby room.
+    _pendingLeechHeals: [],
+    // Per-tick queue of shield-break audio cues ({ enemyId }); drained in
+    // runGameLoopTick to emit 'shieldBreak' to the lobby room.
+    _pendingShieldBreaks: [],
   };
 }
 
