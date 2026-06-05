@@ -538,6 +538,16 @@ function showExtractedLobbyOverlay() {
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
+	// Switch the rendered scene from the dungeon to the walkable hub so the
+	// extracted player stands in the hub ship-interior rather than on the old
+	// dungeon geometry. Only rebuild when not already showing the hub: during a
+	// partial extract the server stays in `playing` and keeps emitting
+	// stateUpdates, so re-rendering every tick would rebuild geometry and snap
+	// the avatar back to the hub spawn. Degrades gracefully to the prior flat
+	// overlay when no hub layout is available or the scene isn't initialized.
+	if (renderedSceneProfile !== 'hub' && hubLayout && isSceneInitialized()) {
+		renderHubScene();
+	}
 	showGameLobby();
 	setDeployButtonVisible(false);
 	if (suspendedRunBannerEl) {
@@ -1005,18 +1015,21 @@ function bindSocketHandlers(s) {
 		}
 		gameState = state;
 		setGameStateRef(state);
-		// During the lobby the renderer shows the hub, so floor sampling for the
-		// local avatar must use the hub layout; in a run it uses the quest layout.
-		const activeLayout = (state.gamePhase === 'lobby' && hubLayout) ? hubLayout : currentLayout;
+		const me = myId && gameState.players ? gameState.players[myId] : null;
+		const isExtracted = !!(me && me.extracted);
+		// The renderer shows the hub during the lobby, and also while the local
+		// player is extracted into the hub mid-run (server still 'playing'), so
+		// floor sampling for the local avatar must use the hub layout in both
+		// cases; an active in-dungeon run uses the quest layout.
+		const inHubScene = state.gamePhase === 'lobby' || isExtracted;
+		const activeLayout = (inHubScene && hubLayout) ? hubLayout : currentLayout;
 		if (gameState && activeLayout) gameState.layout = activeLayout;
 		updateLevelSettingsBtnVisibility();
 		if (isLevelSettingsOpen()) syncLevelSettingsRewards();
 
-		const me = myId && gameState.players ? gameState.players[myId] : null;
 		const collectionChanged = syncLocalCollectionState(me);
 		const enteringLobby = previousPhase !== 'lobby' && state.gamePhase === 'lobby';
 		const enteringPlaying = previousPhase !== 'playing' && state.gamePhase === 'playing';
-		const isExtracted = !!(me && me.extracted);
 
 		if (isExtracted && state.gamePhase === 'playing') {
 			showExtractedLobbyOverlay();

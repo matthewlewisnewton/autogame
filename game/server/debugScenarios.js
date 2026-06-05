@@ -279,6 +279,24 @@ function applyDebugScenario(socket, name) {
     } else if (name === 'combat-damaged-player') {
       player.hp = 25;
       player.magicStones = MAX_MAGIC_STONES;
+    } else if (name === 'extracted-in-hub') {
+      // Partial extract: the local player has stepped through the Telepipe and is
+      // standing in the walkable hub while the run stays in `playing` (as it
+      // would with squadmates still in the dungeon). Marking the player
+      // `extracted` while the run status remains 'playing' drives the client's
+      // `isExtracted && gamePhase === 'playing'` branch every stateUpdate, so the
+      // extracted-in-hub render path can be verified without a second player.
+      // The same state is reachable normally by extracting in a multiplayer run
+      // while a squadmate remains in the dungeon. Enemies are cleared so the lone
+      // extracted player can't trip a terminal/suspend transition.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.telepipe = { x: player.x, z: player.z, placedAt: Date.now() };
+      player.extracted = true;
+      player.inputActive = false;
+      player.inputDx = 0;
+      player.inputDz = 0;
     } else if (name === 'deck-viewer-instances') {
       // Enter a normal run whose draw pile is built entirely from owned-card
       // *instances* — the deck/selectedDeck store inventory instance IDs rather
