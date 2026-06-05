@@ -425,15 +425,17 @@ function applyDebugScenario(socket, name) {
 
       state.enemies = [];
       state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
       spawnEnemies();
-      syncRunObjectiveToEnemies();
+      startDungeonRun();
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -475,8 +477,10 @@ function applyDebugScenario(socket, name) {
 
       state.enemies = [];
       state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
       spawnEnemies();
-      syncRunObjectiveToEnemies();
+      startDungeonRun();
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

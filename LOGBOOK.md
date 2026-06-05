@@ -4749,6 +4749,64 @@ PASS. The implementation stays consistent with the documented lobby -> dungeon -
 
 PASS. The round coverage log shows `110` test files and `1868` tests passing. New and updated tests cover quest catalog exposure, Tier-2 unlock, rigid vault layout, boss/support spawn placement, encounter activation/completion, Annex Overseer stats/radial behavior, drops, client quest copy, model/display registry, and the Tier-2 debug shortcut.
 
+## v0.271 — 260-miniboss-open-plaza  (2026-06-05 13:17:35)
+
+
+### Debug scenarios
+
+PASS. This ticket did not add a new URL debug scenario, but it changed the expected behavior of the existing `arena-trials-tier-2` and stage-boss debug paths by changing the underlying Tier-2 boss type. The scenarios remain debug-only via `?debugScenario`/localhost socket paths, and the server comments plus tests trace the normal path: clear Arena Trials Tier 1, unlock Tier 2, deploy, activate the encounter, and defeat the stage boss. They use the same quest, layout, spawn, encounter, and run-completion systems as normal gameplay.
+
+### Design and requirements consistency
+
+PASS. The change stays within the documented lobby-to-dungeon action-RPG loop and does not alter foundational rendering, WebSocket connection, multiplayer visualization, or movement synchronization requirements. It reuses the existing stage-boss and reward systems instead of creating a parallel completion path.
+
+## Verification
+
+- Captured run: `metrics.json` ok, no page errors; no fatal console output.
+- Harness coverage log: 71 test files / 1434 tests passed with coverage visibility enabled.
+- Additional focused check: `pnpm exec vitest run server/test/arena_trials_tier2.test.js client/test/renderer-registry-normalize.test.js client/test/models-registry.test.js --coverage.enabled=false` passed 3 files / 38 tests.
+- An ad hoc `pnpm test -- --run ...` invocation also ran the full suite and all 2342 tests passed, but exited nonzero only because global coverage thresholds were active for that command.
+
+## v0.270 — 262-miniboss-spire-ascent  (2026-06-05 13:10:34)
+
+- Defeat completion and rewards are wired through the shared stage-boss flow. `spawnEnemies()` delegates to the objective registry, `startDungeonRun()` wires the pending boss ID into `run.encounter`, `updateEncounterTriggers()` runs every gameplay tick, and boss defeat marks the objective complete so `checkRunTerminalState()` grants normal victory rewards and emits `runComplete`.
+- Visual/contract presentation is consistent enough for the ticket: quest-board summaries use spire-specific "summit warden" copy, and the client has a distinct fallback procedural color/scale/telegraph for `spire_warden`.
+
+## Design and foundation consistency
+
+The implementation fits the existing action-RPG loop in `game/docs/design.md`: players unlock/deploy into a dungeon quest, fight enemies, and receive loot/economy rewards on completion. It also preserves the foundation requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects client/server over sockets, visualizes multiplayer players, and accepts synchronized movement.
+
+## Debug scenarios
+
+The changed `spire-ascent-tier-2` debug scenario remains behind the explicit `debugScenario` socket path. The same state is reachable normally by clearing Spire Ascent Tier 1, unlocking Tier 2, selecting the Tier-2 spire quest, and deploying. The scenario uses the normal quest/layout selection, `enterPlayingPhase()`, `spawnEnemies()`, and `startDungeonRun()` path, so it does not bypass encounter wiring, objective creation, or reward/completion invariants.
+
+## Verification reviewed
+
+- `git diff 7c38c21338fe7d884c07984c926971ad4efbdf92 HEAD` and `git log --oneline 7c38c21338fe7d884c07984c926971ad4efbdf92..HEAD` were inspected.
+- `coverage.log` reports `83 passed` test files and `1630 passed` tests. Relevant suites include `spire_ascent_tier2.test.js`, `spire_ascent_spawn.test.js`, `spire_warden.test.js`, `debug-scenarios.test.js`, `quests.test.js`, `dungeon.test.js`, and related stage-boss tests.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+## v0.269 — 261-miniboss-sunken-canyon  (2026-06-05 12:47:59)
+
+### Defeat completes and rewards
+
+PASS. The stage-boss flow uses the existing encounter state machine: spawn wires `bossEnemyId`, `startDungeonRun()` attaches the encounter state, `tryActivateEncounter()` activates/locks the fight when players reach the anchor or clear adds, and `onStageBossDefeated()` marks the objective complete. The canyon Tier 2 test covers active boss defeat through `removeDeadEnemies()`, `cleanupAfterDamage()`, and `checkRunTerminalState()`, ending in `run.status === 'victory'`. Reward currency remains on the quest definition and the existing victory reward path grants quest rewards for completed runs.
+
+### Test coverage
+
+PASS. The ticket adds focused coverage for canyon Tier 2 catalog data, objective copy, rigid layout behavior, boss/add spawn placement, encounter activation, boss-defeat victory, Tier 1-to-Tier 2 unlock persistence, Tier 2 gating, debug scenario parity, and quest-board copy. The recorded coverage run passed: 25 test files and 883 tests.
+
+## Design and foundation consistency
+
+PASS. The change fits the design's dungeon/loot combat loop and uses the existing card-combat, lobby quest, objective, and encounter architecture. It preserves the foundational requirements: the captured run renders a 3D scene, connects to the server, shows multiplayer gameplay state, and still exercises movement/dodge in the live capture before the canyon stage transition.
+
+## Debug scenarios
+
+PASS. The changed `canyon-descent-tier-2` debug scenario remains behind the existing debug-scenario event and environment/localhost gate. It is a shortcut to a state that is reachable through normal gameplay: clear Canyon Descent Tier 1, unlock Tier 2, select the Tier 2 quest, and deploy. The scenario follows the same core invariants as normal deployment by applying the quest layout, entering play, spawning enemies, calling `startDungeonRun()`, emitting normal quest/state updates, and not bypassing the server encounter/objective machinery.
+
 ## Remaining gaps
 
 None.

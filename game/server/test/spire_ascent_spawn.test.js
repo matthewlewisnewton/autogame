@@ -160,11 +160,15 @@ describe('spire-ascent quest spawns', () => {
 		expect(getLayoutGenerationOptions('spire_ascent', 2).layoutMode).toBe('rigid');
 	});
 
-	it('Tier 2 deploy spawns full enemy count on spire tiers', () => {
+	it('Tier 2 deploy spawns adds plus dormant summit boss on spire tiers', () => {
 		deploySpire(SEED, 2);
-		expect(gameState.enemies.length).toBe(getQuest('spire_ascent', 2).enemyCount);
+		const tier2Quest = getQuest('spire_ascent', 2);
+		const addCount = tier2Quest.encounter.addCount;
+		const adds = gameState.enemies.filter((e) => e.type !== 'spire_warden');
+		expect(adds.length).toBe(addCount);
+		expect(gameState.enemies.some((e) => e.type === 'spire_warden')).toBe(true);
 		const maxTier = maxTierIndex(gameState.layout);
-		const tiers = gameState.enemies.map(e => tierAt(gameState.layout, e));
+		const tiers = adds.map(e => tierAt(gameState.layout, e));
 		expect(tiers.filter(t => t === 0).length).toBeGreaterThanOrEqual(1);
 		expect(tiers.filter(t => t === maxTier).length).toBeGreaterThanOrEqual(1);
 	});

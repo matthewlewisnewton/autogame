@@ -899,6 +899,20 @@ const ENEMY_DEFS = {
 		hp: 320, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1400,
 		attackStyle: 'radial', attackRange: 3.5,
 	},
+	arena_champion: {
+		name: 'Plaza Sovereign',
+		description: 'Crowned warlord of the open plaza; strikes harder and reaches farther than any vault warden.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 500, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
+		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
+	},
+	spire_warden: {
+		name: 'Summit Warden',
+		description: 'Spire summit guardian with crushing reach and tide-like pressure.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',

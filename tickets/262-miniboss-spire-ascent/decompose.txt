@@ -1,0 +1,12 @@
+Created **3 sub-tickets** in dependency order (258 framework is already in the codebase; these add spire-specific pieces and wire-up):
+
+1. `/home/matt/workspace/.autogame-worktrees/262-miniboss-spire-ascent/tickets/262-miniboss-spire-ascent/subtickets/01-spire-summit-landmark/ticket.md`  
+   — `spire_summit` landmark on the treasure tier for boss spawn anchoring
+
+2. `/home/matt/workspace/.autogame-worktrees/262-miniboss-spire-ascent/tickets/262-miniboss-spire-ascent/subtickets/02-summit-warden-enemy/ticket.md`  
+   — Distinct `spire_warden` enemy type (stats, drops, HP scaling, display)
+
+3. `/home/matt/workspace/.autogame-worktrees/262-miniboss-spire-ascent/tickets/262-miniboss-spire-ascent/subtickets/03-spire-tier2-stage-boss-wireup/ticket.md`  
+   — `spire_ascent` Tier 2 `stage_boss` quest wiring, HUD copy, debug scenario, and end-to-end tests (mirrors `arena_trials` Tier 2 from ticket 258)
+
+All use **Verification: code** — every acceptance criterion is testable via diff + logs, not screenshot-only.

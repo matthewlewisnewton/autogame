@@ -95,8 +95,10 @@ describe('quest tier catalog', () => {
       questId: 'spire_ascent',
       tier: 2,
       isTier2: true,
+      objectiveType: 'stage_boss',
       unlockRequires: { questId: 'spire_ascent', tier: 1 },
     });
+    expect(spireTier2.objectiveSummary).toContain('summit warden');
     const crystalTier2 = variants.find(
       (v) => v.questId === 'crystal_rescue' && v.tier === 2
     );
@@ -115,8 +117,10 @@ describe('quest tier catalog', () => {
       questId: 'canyon_descent',
       tier: 2,
       isTier2: true,
+      objectiveType: 'stage_boss',
       unlockRequires: { questId: 'canyon_descent', tier: 1 },
     });
+    expect(canyonTier2.objectiveSummary).toContain('canyon warden');
     expect(getQuest('canyon_descent', 2).layoutProfile).toBe('sunken-canyon');
     expect(getQuest('canyon_descent', 2).layoutMode).toBe('rigid');
     expect(variants.filter((v) => v.isTier2)).toHaveLength(5);

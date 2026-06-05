@@ -71,7 +71,11 @@
     "defeatTrialWarden": "Defeat the trial warden",
     "defeatTrialWardenWithSupports": "Defeat the trial warden and {addCount} supports",
     "defeatAnnexOverseer": "Defeat the annex overseer",
-    "defeatAnnexOverseerWithSupports": "Defeat the annex overseer and {addCount} supports"
+    "defeatAnnexOverseerWithSupports": "Defeat the annex overseer and {addCount} supports",
+    "defeatSummitWarden": "Defeat the summit warden",
+    "defeatSummitWardenWithSupports": "Defeat the summit warden and {addCount} supports",
+    "defeatCanyonWarden": "Defeat the canyon warden",
+    "defeatCanyonWardenWithSupports": "Defeat the canyon warden and {addCount} supports"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",

@@ -1662,6 +1662,7 @@ describe('enemy magic stone drops and discard', () => {
 	it('getEnemyMagicStoneDrop returns type-specific values', () => {
 		expect(getEnemyMagicStoneDrop({ type: 'grunt' })).toBe(20);
 		expect(getEnemyMagicStoneDrop({ type: 'miniboss' })).toBe(50);
+		expect(getEnemyMagicStoneDrop({ type: 'spire_warden' })).toBe(55);
 		expect(getEnemyMagicStoneDrop({ type: 'unknown' })).toBe(15);
 	});
 
@@ -3617,6 +3618,7 @@ describe('run state', () => {
 			expect(getEnemyCardDrop({ type: 'grunt' })).toBe('iron_sword');
 			expect(getEnemyCardDrop({ type: 'drake' })).toBe('dungeon_drake');
 			expect(getEnemyCardDrop({ type: 'miniboss' })).toBe('dungeon_drake');
+			expect(getEnemyCardDrop({ type: 'spire_warden' })).toBe('dungeon_drake');
 		});
 
 		it('prefers instance cardDrop override over type mapping', () => {
@@ -4819,12 +4821,14 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, spawner keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
 		expect(ENEMY_DEFS).toHaveProperty('miniboss');
 		expect(ENEMY_DEFS).toHaveProperty('annex_overseer');
+		expect(ENEMY_DEFS).toHaveProperty('arena_champion');
+		expect(ENEMY_DEFS).toHaveProperty('spire_warden');
 		expect(ENEMY_DEFS).toHaveProperty('spawner');
 	});
 
@@ -4856,6 +4860,17 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.miniboss.attackRange).toBe(5);
 	});
 
+	it('spire_warden has distinct summit-boss stat values', () => {
+		expect(ENEMY_DEFS.spire_warden.name).toBe('Summit Warden');
+		expect(ENEMY_DEFS.spire_warden.hp).toBeGreaterThan(ENEMY_DEFS.miniboss.hp);
+		expect(ENEMY_DEFS.spire_warden.attackDamage).toBeGreaterThan(ENEMY_DEFS.miniboss.attackDamage);
+		expect(ENEMY_DEFS.spire_warden.attackRange).toBeGreaterThan(ENEMY_DEFS.miniboss.attackRange);
+		expect(ENEMY_DEFS.spire_warden.chaseSpeed).toBe(1.0);
+		expect(ENEMY_DEFS.spire_warden.wanderSpeed).toBe(0.5);
+		expect(ENEMY_DEFS.spire_warden.attackWindupMs).toBe(1400);
+		expect(ENEMY_DEFS.spire_warden.attackStyle).toBe('cone');
+	});
+
 	it('spawner has correct stat and spawning fields', () => {
 		expect(ENEMY_DEFS.spawner.hp).toBe(120);
 		expect(ENEMY_DEFS.spawner.chaseSpeed).toBe(1.8);
@@ -4868,7 +4883,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
 	});
 
-	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'spawner'];
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner'];
 	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
 
 	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
@@ -4950,8 +4965,9 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'skirmisher')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'miniboss')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'annex_overseer')).not.toThrow();
+		expect(() => spawnEnemy(0, 0, 'spire_warden')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
-		expect(gameState.enemies.length).toBe(5);
+		expect(gameState.enemies.length).toBe(6);
 	});
 });
 

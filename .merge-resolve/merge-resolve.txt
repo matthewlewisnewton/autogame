@@ -1,9 +1,16 @@
-Resolved the `LOGBOOK.md` conflict by combining both sides in chronological version order:
+All merge conflicts are resolved. Both sides’ intent is preserved:
 
-1. **v0.264** — 241-free-hat-swap (from `main`)
-2. **v0.265** — 256-level2-sunken-canyon (from `main`)
-3. **v0.266** — 243-retire-2d-lobby-menus (from `main`)
-4. **v0.267** — 213-net-shared-event-name-constants (from `main`)
-5. **v0.268** — 258-miniboss-encounter-framework (from the ticket branch)
+**Enemy registries** (`models.js`, `renderer.js`, `config.js`, `simulation.js`) — All three stage-boss types are registered:
+- `annex_overseer` (Training Caverns / vault)
+- `arena_champion` (Open Plaza)
+- `spire_warden` (Spire Ascent)
 
-All conflict markers are removed. The logbook now records every ticket that landed on `main` since v0.261, with the miniboss encounter framework entry last. The harness can proceed with commit and merge.
+**Objective copy** (`theme.json`, `questBoard.js`, `quests.js`) — Stage-boss summaries route by quest (`spire_ascent`, `canyon_descent`) and by `bossType` (`annex_overseer`), with trial-warden as the default.
+
+**Progression** — Party-size HP scaling applies to `miniboss`, `annex_overseer`, and `spire_warden`.
+
+**Tests** — Registry, renderer, quest-board, enemy-display, and server `ENEMY_DEFS` tests cover all boss types.
+
+**LOGBOOK.md** — v0.272 (this ticket) is kept above v0.271/v0.270/v0.269 from main.
+
+Focused validation: 62 tests passed across the merged files; `theme.json` is valid. No conflict markers remain in the listed files. The harness can commit and complete the merge.

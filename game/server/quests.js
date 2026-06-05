@@ -96,7 +96,7 @@ const QUEST_DEFS = {
         layoutMode: 'rigid',
         unlockRequires: { questId: 'arena_trials', tier: 1 },
         encounter: {
-          bossType: 'miniboss',
+          bossType: 'arena_champion',
           landmark: 'arena_dais',
           addCount: 4,
         },
@@ -124,12 +124,16 @@ const QUEST_DEFS = {
         name: 'Canyon Descent — Tier II',
         description:
           'Purge the fixed canyon descent where marked hostiles lurk on plateau and floor alike.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'canyon_descent', tier: 1 },
+        encounter: {
+          bossType: 'miniboss',
+          landmark: 'canyon_monolith',
+          addCount: 4,
+        },
       },
     },
   },
@@ -154,12 +158,16 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Spire Ascent — Tier II',
         description: 'Ascend the fixed spire where marked hostiles bear twisted power on every tier.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        encounter: {
+          bossType: 'spire_warden',
+          landmark: 'spire_summit',
+          addCount: 5,
+        },
       },
     },
   },
@@ -261,6 +269,25 @@ function formatObjectiveSummary(quest) {
   if (quest.objectiveType === 'stage_boss') {
     const encounter = getEncounterConfig(quest);
     const addCount = encounter?.addCount ?? 0;
+    const questId = quest.questId || quest.id;
+    if (questId === 'spire_ascent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatSummitWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatSummitWarden;
+    }
+    if (questId === 'canyon_descent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatCanyonWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatCanyonWarden;
+    }
     const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {
       const template = annexOverseer

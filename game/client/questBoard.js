@@ -27,6 +27,25 @@ export function formatObjectiveSummary(quest) {
 
 	if (quest.objectiveType === 'stage_boss') {
 		const addCount = quest.encounter?.addCount ?? 0;
+		const questId = quest.questId || quest.id;
+		if (questId === 'spire_ascent') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatSummitWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatSummitWarden;
+		}
+		if (questId === 'canyon_descent') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatCanyonWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatCanyonWarden;
+		}
 		const annexOverseer = quest.encounter?.bossType === 'annex_overseer';
 		if (addCount > 0) {
 			const template = annexOverseer

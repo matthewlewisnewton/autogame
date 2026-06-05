@@ -2427,7 +2427,8 @@ function buildSpireEdgeHazards(tiers) {
  * In `layoutMode: 'default'`, tier count (3–5) and tier width/depth (12–15)
  * are seed-driven. In `layoutMode: 'rigid'`, those values are fixed.
  *
- * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent' }.
+ * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent',
+ *   edgeHazards, landmarks: [{ type: 'spire_summit', x, z }] }.
  */
 function generateSpireAscent(seed, options = {}) {
   const layoutMode = normalizeLayoutMode(options.layoutMode);
@@ -2554,6 +2555,7 @@ function generateSpireAscent(seed, options = {}) {
   }
 
   const edgeHazards = buildSpireEdgeHazards(tiers);
+  const treasureRoom = tiers[tierCount - 1];
 
   return {
     rooms,
@@ -2562,6 +2564,7 @@ function generateSpireAscent(seed, options = {}) {
     cellSpacing: Math.max(tierWidth, totalSpan),
     profile: 'spire-ascent',
     edgeHazards,
+    landmarks: [{ x: treasureRoom.x, z: treasureRoom.z, type: 'spire_summit' }],
   };
 }
 

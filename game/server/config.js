@@ -59,6 +59,8 @@ const ENEMY_CARD_DROPS = {
   drake: 'dungeon_drake',
   miniboss: 'dungeon_drake',
   annex_overseer: 'dungeon_drake',
+  arena_champion: 'dungeon_drake',
+  spire_warden: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -70,6 +72,8 @@ const ENEMY_MS_DROPS = {
   drake: 30,
   miniboss: 50,
   annex_overseer: 50,
+  arena_champion: 70,
+  spire_warden: 55,
   spawner: 25,
 };
 

@@ -2174,10 +2174,10 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
   const rollTier = resolveVariantRollTier(questTier, encounterTier);
   applyVariant(enemy, rollTier, opts.rng);
-  // Difficulty scaling: minibosses get more HP the larger the party is at spawn.
+  // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
-  if (type === 'miniboss' || type === 'annex_overseer') {
+  if (type === 'miniboss' || type === 'annex_overseer' || type === 'spire_warden') {
     const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
     enemy.hp = Math.round(enemy.hp * factor);
     enemy.maxHp = Math.round(enemy.maxHp * factor);

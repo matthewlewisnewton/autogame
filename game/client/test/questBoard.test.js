@@ -93,6 +93,40 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the annex overseer');
 	});
+
+	it('summarizes spire_ascent stage-boss quests with summit warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				id: 'spire_ascent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 5 },
+			}),
+		).toBe('Defeat the summit warden and 5 supports');
+		expect(
+			formatObjectiveSummary({
+				questId: 'spire_ascent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the summit warden');
+	});
+
+	it('summarizes canyon_descent stage-boss quests with canyon warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				questId: 'canyon_descent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 4 },
+			}),
+		).toBe('Defeat the canyon warden and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				questId: 'canyon_descent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the canyon warden');
+	});
 });
 
 describe('formatRewardSummary()', () => {
