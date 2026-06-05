@@ -681,6 +681,16 @@ canvas {
   cursor: not-allowed;
 }
 
+.lobby-list-item .lobby-full-btn {
+  background: #475569;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.lobby-list-item .lobby-full-btn:disabled {
+  opacity: 0.7;
+}
+
 #lobby-browser-error {
   color: #f87171;
   font-size: 14px;

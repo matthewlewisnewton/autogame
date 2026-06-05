@@ -4,6 +4,11 @@
 
 import sharedConstants from '../shared/constants.json' with { type: 'json' };
 
+// ── Lobby ──
+
+/** Maximum players allowed in a single lobby — matches server MAX_LOBBY_PLAYERS */
+export const MAX_LOBBY_PLAYERS = 16;
+
 // ── Deck ──
 
 /** Minimum number of cards required in a deck to ready up */

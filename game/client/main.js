@@ -53,6 +53,7 @@ import {
 	DECK_MIN_SIZE,
 	DECK_MAX_SIZE,
 	MAX_HP,
+	MAX_LOBBY_PLAYERS,
 	MAX_MS,
 	MEDIC_HEAL_COST,
 	MOVE_SPEED,
@@ -574,14 +575,19 @@ function renderLobbyList(lobbySummaries) {
 		meta.appendChild(name);
 		meta.appendChild(details);
 
+		const isFull = (lobby.playerCount || 0) >= MAX_LOBBY_PLAYERS;
 		const joinBtn = document.createElement('button');
 		joinBtn.type = 'button';
-		joinBtn.className = 'join-lobby-btn';
+		joinBtn.className = isFull ? 'join-lobby-btn lobby-full-btn' : 'join-lobby-btn';
 		joinBtn.dataset.joinMode = lobby.gamePhase === 'playing' ? 'drop-in' : 'join';
-		joinBtn.textContent = lobby.gamePhase === 'playing' ? 'Drop In' : 'Join';
-		joinBtn.addEventListener('click', () => {
-			if (socket) socket.emit('joinLobby', { lobbyId: lobby.id });
-		});
+		joinBtn.textContent = isFull ? 'Full' : (lobby.gamePhase === 'playing' ? 'Drop In' : 'Join');
+		if (isFull) {
+			joinBtn.disabled = true;
+		} else {
+			joinBtn.addEventListener('click', () => {
+				if (socket) socket.emit('joinLobby', { lobbyId: lobby.id });
+			});
+		}
 
 		item.appendChild(meta);
 		item.appendChild(joinBtn);
