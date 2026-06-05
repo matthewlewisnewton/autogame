@@ -3778,3 +3778,26 @@ PASS with a validation caveat. The implementation is cohesive and scoped to vari
 
 None.
 
+
+## v0.213 — 265-sec-debug-gate-no-header-spoof  (2026-06-04 21:24:07)
+
+- No browser console errors in capture.
+- `ALLOW_DEBUG_SCENARIOS=1` still bypasses address checks for CI/integration tests — intentional per ticket wording (“and/or explicit env”).
+
+---
+
+## Debug scenario policy (informational)
+
+No new debug scenarios were introduced. Existing scenarios remain behind:
+
+- Server: `isDebugScenarioAllowed(socket)` on every `debugScenario` emit.
+- Client: `?debugScenario=` URL param + localhost hostname guard before auto-request.
+
+Normal gameplay (lobby → ready → dungeon) was exercised in capture without using a debug shortcut.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and tests cover the spoof vector described in the ticket.
+
