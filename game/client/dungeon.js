@@ -573,6 +573,47 @@ export function buildLandmarkMesh(type, materials) {
 }
 
 /**
+ * Build visual-only perimeter decor for the open-plaza arena (banner pole or tiered seats).
+ *
+ * @param {'arena_banner' | 'arena_tier'} type
+ * @param {{ wall: THREE.Material, accent: THREE.Material }} materials
+ * @returns {THREE.Group}
+ */
+export function buildPerimeterDecorMesh(type, materials) {
+	const group = new THREE.Group();
+	group.userData.decorType = type;
+	const { wall, accent } = materials;
+
+	const addMesh = (geo, mat, x, y, z, rotY = 0) => {
+		const mesh = new THREE.Mesh(geo, mat);
+		mesh.position.set(x, y, z);
+		if (rotY) mesh.rotation.y = rotY;
+		group.add(mesh);
+	};
+
+	switch (type) {
+		case 'arena_banner': {
+			addMesh(new THREE.CylinderGeometry(0.09, 0.11, 3.6, 8), wall, 0, 1.8, 0);
+			const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.9), accent);
+			flag.position.set(0.7, 2.9, 0);
+			flag.userData.decorAccent = true;
+			group.add(flag);
+			break;
+		}
+		case 'arena_tier': {
+			addMesh(new THREE.BoxGeometry(2.6, 0.32, 1.1), wall, 0, 0.16, -0.35);
+			addMesh(new THREE.BoxGeometry(2.6, 0.32, 0.95), wall, 0, 0.48, -0.12);
+			addMesh(new THREE.BoxGeometry(2.6, 0.32, 0.8), wall, 0, 0.8, 0.1);
+			break;
+		}
+		default:
+			break;
+	}
+
+	return group;
+}
+
+/**
  * Build a visual-only floor marking mesh (no collision).
  *
  * @param {{ type: string, innerRadius?: number, outerRadius?: number }} marking
@@ -742,6 +783,18 @@ export function buildDungeon(scene, layout) {
 		for (const marker of buildDoorwayMarkers(room, layout, profileMaterials)) {
 			scene.add(marker);
 			meshes.push(marker);
+		}
+	}
+
+	// ── Open-plaza perimeter decor (visual only; after perimeter walls) ──
+	for (const d of layout.perimeterDecor || []) {
+		const decorGroup = buildPerimeterDecorMesh(d.type, profileMaterials);
+		const floorY = resolveFloorY(sampleFloorY(layout, d.x, d.z));
+		decorGroup.position.set(d.x, floorY, d.z);
+		if (d.yaw != null) decorGroup.rotation.y = d.yaw;
+		scene.add(decorGroup);
+		for (const child of decorGroup.children) {
+			meshes.push(child);
 		}
 	}
 

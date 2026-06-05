@@ -1239,6 +1239,36 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest 
   };
 }
 
+/** Inset from each perimeter wall plane for arena banner/tier decor (visual only). */
+const PERIMETER_DECOR_INSET = 2;
+
+/**
+ * Deterministic colosseum dressing along the open-plaza perimeter: banner poles
+ * and tiered seating blocks just inside each wall (no RNG).
+ *
+ * @param {number} half - half-width of the plaza (OPEN_PLAZA.size / 2)
+ * @returns {Array<{ type: string, x: number, z: number, yaw?: number, wall: string }>}
+ */
+function placeOpenPlazaPerimeterDecor(half) {
+  const inset = PERIMETER_DECOR_INSET;
+  const inner = half - inset;
+  const along = [-9, 9];
+
+  /** @type {Array<{ type: string, x: number, z: number, yaw?: number, wall: string }>} */
+  const decor = [];
+
+  for (const x of along) {
+    decor.push({ type: 'arena_banner', x, z: -inner, wall: 'north', yaw: 0 });
+    decor.push({ type: 'arena_tier', x, z: inner, wall: 'south', yaw: Math.PI });
+  }
+  for (const z of along) {
+    decor.push({ type: 'arena_tier', x: -inner, z, wall: 'west', yaw: Math.PI / 2 });
+    decor.push({ type: 'arena_banner', x: inner, z, wall: 'east', yaw: -Math.PI / 2 });
+  }
+
+  return decor;
+}
+
 /**
  * Build the open-plaza arena: one large walkable room bounded by four solid
  * perimeter walls, with scattered cover pieces and a couple of gently sloped
@@ -1321,6 +1351,7 @@ function generateOpenPlaza(seed) {
       { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
     ],
     landmarks: [{ x: 0, z: 0, type: 'arena_dais' }],
+    perimeterDecor: placeOpenPlazaPerimeterDecor(half),
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: size,
     profile: 'open-plaza',

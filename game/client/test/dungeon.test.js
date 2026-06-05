@@ -3,6 +3,7 @@ import {
 	buildDungeon,
 	buildDoorwayMarkers,
 	buildLandmarkMesh,
+	buildPerimeterDecorMesh,
 	buildFloorMarkingMesh,
 	buildWallColliders,
 	buildPassageFloorSpec,
@@ -1047,6 +1048,96 @@ describe('profile landmark rendering', () => {
 		const withLandmarks = buildWallColliders(layout);
 		const withoutLandmarks = buildWallColliders({ ...layout, landmarks: [] });
 		expect(withLandmarks).toEqual(withoutLandmarks);
+	});
+});
+
+describe('open-plaza perimeter decor', () => {
+	function minimalPlazaWithDecor(perimeterDecor) {
+		return {
+			profile: 'open-plaza',
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				role: 'start',
+				walls: [
+					{ x: 0, z: -16, length: 32, axis: 'x' },
+					{ x: 0, z: 16, length: 32, axis: 'x' },
+					{ x: -16, z: 0, length: 32, axis: 'z' },
+					{ x: 16, z: 0, length: 32, axis: 'z' },
+				],
+			}],
+			passages: [],
+			perimeterDecor,
+		};
+	}
+
+	it('buildPerimeterDecorMesh sets decorType and accent child on arena_banner', () => {
+		const materials = getProfileMaterials('open-plaza');
+		const banner = buildPerimeterDecorMesh('arena_banner', materials);
+		expect(banner).toBeInstanceOf(THREE.Group);
+		expect(banner.userData.decorType).toBe('arena_banner');
+		expect(banner.children.length).toBeGreaterThan(0);
+		expect(banner.children.some(c => c.material === materials.accent)).toBe(true);
+		const tier = buildPerimeterDecorMesh('arena_tier', materials);
+		expect(tier.userData.decorType).toBe('arena_tier');
+		expect(tier.children.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it('buildDungeon emits one decor group per perimeterDecor entry', () => {
+		const decor = [
+			{ type: 'arena_banner', x: -9, z: -14, wall: 'north', yaw: 0 },
+			{ type: 'arena_tier', x: 9, z: 14, wall: 'south', yaw: Math.PI },
+			{ type: 'arena_tier', x: -14, z: -9, wall: 'west', yaw: Math.PI / 2 },
+			{ type: 'arena_banner', x: 14, z: 9, wall: 'east', yaw: -Math.PI / 2 },
+		];
+		const layout = minimalPlazaWithDecor(decor);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const decorGroups = scene.added.filter(o => o.userData?.decorType);
+		expect(decorGroups).toHaveLength(decor.length);
+		const bannerGroup = decorGroups.find(g => g.userData.decorType === 'arena_banner');
+		expect(bannerGroup.children.some(c => c.material === getProfileMaterials('open-plaza').accent)).toBe(true);
+		const trackedInMeshes = meshes.filter(m =>
+			decorGroups.some(g => g.children.includes(m))
+		).length;
+		const childCount = decorGroups.reduce((n, g) => n + g.children.length, 0);
+		expect(trackedInMeshes).toBe(childCount);
+	});
+
+	it('buildDungeon on generated open-plaza includes perimeter decor groups', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.perimeterDecor?.length).toBeGreaterThanOrEqual(8);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const decorGroups = scene.added.filter(o => o.userData?.decorType);
+		expect(decorGroups.length).toBe(layout.perimeterDecor.length);
+		const trackedInMeshes = meshes.filter(m =>
+			decorGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(
+			layout.perimeterDecor.reduce((n, d) => {
+				const g = decorGroups.find(o => o.userData.decorType === d.type
+					&& Math.abs(o.position.x - d.x) < 1e-6 && Math.abs(o.position.z - d.z) < 1e-6);
+				return n + (g ? g.children.length : 0);
+			}, 0)
+		);
+	});
+
+	it('layouts without perimeterDecor render unchanged (no decor groups)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.perimeterDecor).toBeUndefined();
+		const scene = mockScene();
+		buildDungeon(scene, layout);
+		expect(scene.added.filter(o => o.userData?.decorType)).toHaveLength(0);
+	});
+
+	it('buildWallColliders ignores perimeter decor', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const withDecor = buildWallColliders(layout);
+		const withoutDecor = buildWallColliders({ ...layout, perimeterDecor: [] });
+		expect(withDecor).toEqual(withoutDecor);
 	});
 });
 

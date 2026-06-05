@@ -1546,6 +1546,37 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(withLandmark).toEqual(withoutLandmark);
   });
 
+  it('includes ≥ 8 perimeter decor entries of allowed types, ≥ 2 per wall, inside interior margin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const half = layout.rooms[0].width / 2;
+    const margin = 2;
+    const allowed = ['arena_banner', 'arena_tier'];
+    const walls = ['north', 'south', 'east', 'west'];
+
+    expect(Array.isArray(layout.perimeterDecor)).toBe(true);
+    expect(layout.perimeterDecor.length).toBeGreaterThanOrEqual(8);
+
+    for (const d of layout.perimeterDecor) {
+      expect(allowed).toContain(d.type);
+      expect(walls).toContain(d.wall);
+      expect(Math.abs(d.x)).toBeLessThanOrEqual(half - margin);
+      expect(Math.abs(d.z)).toBeLessThanOrEqual(half - margin);
+    }
+
+    for (const wall of walls) {
+      const onWall = layout.perimeterDecor.filter(d => d.wall === wall);
+      expect(onWall.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('perimeter decor does not affect wall colliders or wall gaps', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withDecor = buildWallColliders(layout);
+    const withoutDecor = buildWallColliders({ ...layout, perimeterDecor: [] });
+    expect(withDecor).toEqual(withoutDecor);
+    expect(layout.rooms[0].walls.length).toBe(4);
+  });
+
   it('cover footprints become wall colliders (player cannot walk through cover)', () => {
     const layout = generateLayout(123, 'open-plaza');
     const colliders = buildWallColliders(layout);
