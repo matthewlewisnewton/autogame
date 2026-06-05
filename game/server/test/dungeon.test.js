@@ -2324,6 +2324,73 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
       expect(spireReachableFromStart(layout)).toBe(true);
     }
   });
+
+  describe('rigid layoutMode', () => {
+    it('unknown layoutMode values fall back to default tier variation', () => {
+      const tierCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'chaotic' });
+        tierCounts.add(roomsByBand(layout, 'tier').length);
+      }
+      expect(tierCounts.size).toBeGreaterThan(1);
+    });
+
+    it('rigid mode produces identical rooms and edgeHazards across different seeds', () => {
+      const seeds = [1, 42, 123, 777, 9999];
+      const layouts = seeds.map((seed) =>
+        generateLayout(seed, 'spire-ascent', { layoutMode: 'rigid' })
+      );
+      for (let i = 1; i < layouts.length; i++) {
+        expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+        expect(layouts[i].edgeHazards).toEqual(layouts[0].edgeHazards);
+      }
+    });
+
+    it('rigid mode still satisfies spire-ascent structural invariants', () => {
+      const layout = generateLayout(123, 'spire-ascent', { layoutMode: 'rigid' });
+      expect(layout.profile).toBe('spire-ascent');
+
+      const tiers = tiersByIndex(layout);
+      expect(tiers.length).toBe(4);
+      expect(roomsByBand(layout, 'ramp').length).toBe(tiers.length - 1);
+
+      expect(tiers[0].role).toBe('start');
+      expect(tiers[tiers.length - 1].role).toBe('treasure');
+      for (let i = 1; i < tiers.length - 1; i++) {
+        expect(tiers[i].role).toBe('combat');
+      }
+
+      expect(tiers[0].tierXOffset).toBe(0);
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].x).not.toBe(tiers[i - 1].x);
+      }
+
+      const combatTiers = tiers.filter((t) => t.role === 'combat');
+      expect(layout.edgeHazards.length).toBe(combatTiers.length);
+      expect(spireReachableFromStart(layout)).toBe(true);
+    });
+
+    it('default mode still varies tier count across seeds', () => {
+      const tierCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'default' });
+        tierCounts.add(roomsByBand(layout, 'tier').length);
+      }
+      expect(tierCounts.size).toBeGreaterThan(1);
+    });
+
+    it('rigid and default modes can diverge for the same seed', () => {
+      const rigid = generateLayout(123, 'spire-ascent', { layoutMode: 'rigid' });
+      const def = generateLayout(123, 'spire-ascent', { layoutMode: 'default' });
+      const rigidAgain = generateLayout(9999, 'spire-ascent', { layoutMode: 'rigid' });
+      expect(rigid.rooms).toEqual(rigidAgain.rooms);
+      expect(rigid.edgeHazards).toEqual(rigidAgain.edgeHazards);
+      const geometryDiffers =
+        JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+        JSON.stringify(rigid.edgeHazards) !== JSON.stringify(def.edgeHazards);
+      expect(geometryDiffers).toBe(true);
+    });
+  });
 });
 
 // ── hub ship-interior layout ──

@@ -140,6 +140,10 @@ const SPIRE_ASCENT = {
   minRampSlope: 0.2,
   edgeHazardStripWidth: 1.2,
   edgeHazardEndPadding: 0.5,
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidTierCount: 4,
+  rigidTierWidth: 14,
+  rigidTierDepth: 14,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -186,7 +190,7 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     return generateSunkenCanyon(seed);
   }
   if (profile === 'spire-ascent') {
-    return generateSpireAscent(seed);
+    return generateSpireAscent(seed, options);
   }
   if (profile === 'hub') {
     return generateHub(seed);
@@ -1951,10 +1955,13 @@ function buildSpireEdgeHazards(tiers) {
  * linked by one sloped ramp room. Bottom tier (high +Z) is start; top tier
  * (low −Z) is treasure.
  *
+ * In `layoutMode: 'default'`, tier count (3–5) and tier width/depth (12–15)
+ * are seed-driven. In `layoutMode: 'rigid'`, those values are fixed.
+ *
  * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent' }.
  */
-function generateSpireAscent(seed) {
-  const rng = mulberry32(seed);
+function generateSpireAscent(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const {
     tierMinSize,
     tierMaxSize,
@@ -1963,17 +1970,30 @@ function generateSpireAscent(seed) {
     rampDepth,
     minTotalRise,
     minRampSlope,
+    rigidTierCount,
+    rigidTierWidth,
+    rigidTierDepth,
   } = SPIRE_ASCENT;
 
-  const tierCount = 3 + Math.floor(rng() * 3);
+  let tierCount;
+  let tierWidth;
+  let tierDepth;
+  if (layoutMode === 'rigid') {
+    tierCount = rigidTierCount;
+    tierWidth = rigidTierWidth;
+    tierDepth = rigidTierDepth;
+  } else {
+    const rng = mulberry32(seed);
+    tierCount = 3 + Math.floor(rng() * 3);
+    const tierSpan = tierMaxSize - tierMinSize + 1;
+    tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
+    tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
+  }
+
   const yStep = minTotalRise / (tierCount - 1);
   if (yStep / rampDepth < minRampSlope) {
     throw new Error('SPIRE_ASCENT rampDepth too large for minRampSlope');
   }
-
-  const tierSpan = tierMaxSize - tierMinSize + 1;
-  const tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
-  const tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
   const halfTierD = tierDepth / 2;
   const halfRampD = rampDepth / 2;
 
