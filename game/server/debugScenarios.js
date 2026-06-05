@@ -753,6 +753,37 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'open-verticality') {
+      // Crystal Rescue open grid with platforms, pits, and slopes — same layout
+      // profile as deploying into crystal_rescue with slopes enabled; shortcut
+      // places the player beside a platform/hazard for fast visual QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'crystal_rescue';
+      const seed = state.layoutSeed || questLayoutSeed('crystal_rescue');
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'open', { slopes: true });
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const anchor =
+        (state.layout.platforms && state.layout.platforms[0]) ||
+        (state.layout.hazards && state.layout.hazards[0]);
+      if (anchor) {
+        player.x = anchor.x + 2;
+        player.z = anchor.z + 2;
+      } else {
+        const startRoom = state.layout.rooms.find(r => r.role === 'start');
+        if (startRoom) {
+          player.x = startRoom.x;
+          player.z = startRoom.z;
+        }
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'open-plaza-arena') {
       // Load the open-plaza arena (the arena_trials quest layout) for visual /
       // collision verification. Reachable normally by selecting the arena_trials

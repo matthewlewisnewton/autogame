@@ -4119,10 +4119,6 @@ PASS. The implementation preserves the documented lobby/dungeon loop and does no
 
 PASS. This ticket did not add or modify any debug-scenario implementation. Existing debug-scenario code remains gated through the localhost-only `?debugScenario=` path and is not part of normal gameplay.
 
-## Remaining gaps
-
-None.
-
 ## v0.233 — 276-socketHandlers-extract-run-and-cleanup  (2026-06-05 03:10:46)
 
 `grep "socket.on("` over `game/server/index.js` returns **nothing** — the connection
@@ -4144,6 +4140,72 @@ the `game/docs/requirements.md` foundation. No debug scenarios were added or cha
 
 None. The refactor is behavior-preserving, fully wired, and the captured run plus the full
 test suite confirm it.
+
+## v0.234 — 269-lobby-enforce-max-players-cap  (2026-06-05 03:28:36)
+
+- No changes to client, simulation, or spawn logic — low regression risk.
+- No new debug scenarios added; nothing to audit on that axis.
+- `requirements.md` foundation (connect, render, move) unaffected; capture confirms normal play still works.
+
+---
+
+## Code quality
+
+- Minimal, focused diff: one config constant + one guard in the single join entry point.
+- Cap check is synchronous before player insertion; Node's single-threaded handler model prevents a TOCTOU race within one server process.
+- Tests are thorough for this scope; they duplicate local socket helpers rather than importing shared ones (see nits).
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied and the captured run is clean.
+
+---
+
+## v0.236 — 233-booth-interaction-primitive  (2026-06-05 03:44:18)
+
+The captured game run is healthy. `metrics.json` reports `"ok": true`, includes a normal lobby-to-gameplay smoke capture, and has `pageerrors: []`. `console.log` contains only Vite connection messages and scene initialization, with no `pageerror` or `[fatal]` entries from game code. Server/client logs show the dev servers started and the two-player capture completed; the only client warnings are benign THREE.Clock deprecation warnings.
+
+## Acceptance criteria findings
+
+1. Interaction-zone primitive: PASS. The implementation adds a shared `findBoothInRange()` primitive with a bounded booth radius and uses it on the server in `boothInteract` to validate the current lobby phase, booth id, and authoritative player position before emitting `{ boothId, action: boothId }`. This satisfies proximity detection at booth anchors and named action dispatch without trusting the client.
+
+2. Client prompt when in range: PASS. The renderer recomputes the current hub booth each frame from the hub layout anchors, clears it outside the hub, and notifies `main.js` on enter/exit transitions. `boothPrompt.js` shows a named prompt for known booth ids, hides it out of range, and supports both the interact key and prompt click as dispatch paths.
+
+3. Test coverage for zone enter/exit and action dispatch: PASS. `server/test/boothZones.test.js` covers zone enter, zone exit, nearest-booth behavior, malformed inputs, successful `boothAction`, and rejection paths. `client/test/boothPrompt.test.js` covers prompt enter/exit, clearing outside hub layouts, interact emit/no-op behavior, and the `booth:action` hook. The captured `coverage.log` reports 65 test files and 1359 tests passing.
+
+## Design and regression check
+
+The change fits the design: booth interactions live in the hub/lobby layer and do not alter the dungeon/combat loop. The foundational requirements still hold in the captured run: the 3D scene initializes, both clients connect over WebSockets, two players enter gameplay, movement works, and the run UI remains functional.
+
+No development debug scenario was added or changed for this ticket, so the debug-scenario shortcut checks do not apply.
+
+## Remaining gaps
+
+None.
+
+## v0.237 — 249-rooms-distinctness-identity  (2026-06-05 04:10:22)
+
+**1-2 landmark props per profile: PASS.** `game/server/dungeon.js` places deterministic profile-specific landmarks for `crowded` (`reactor_coil`, `pipe_stack`) and `open` (`sand_spire`, `sun_arch`) in non-start rooms while avoiding cover, hazards, and doorway clear zones. `game/client/dungeon.js` renders each landmark as a composed visual prop and keeps it visual-only, so it does not introduce collision regressions.
+
+**Differentiate crowded vs default structurally: PASS.** The `crowded` profile uses tighter spacing, more rooms, and deterministic interior cover in combat rooms. Cover placement rejects doorway blockers, overlaps, and partitions, then becomes server/client wall collision, which gives the crowded profile a materially different play space rather than only a palette swap.
+
+**Hazards/verticality for the open profile: PASS.** `crystal_rescue` is wired to the normal `open` profile, and normal deployment goes through `applyLayoutForQuest()`, which generates that layout with slopes enabled. The open layout adds raised platforms, sparse cover, shallow pit visuals, and at least two ramp rooms when room count allows. The `open-verticality` debug scenario is gated by the existing debug-scenario path and mirrors the same `crystal_rescue` open layout instead of substituting an unreachable state.
+
+**Doorway markers in large rooms: PASS.** `buildDoorwayMarkers()` only marks connected passage gaps on rooms at or above the large-room threshold, uses the active profile accent material, and places markers at sampled floor height. This covers open-profile large rooms while avoiding false markers in small rooms.
+
+## Design and foundation consistency
+
+The implementation is consistent with `game/docs/design.md`: room floor geometry continues to use `floorCorners`/`sampleFloorY()`, server movement snaps player Y to the sampled floor, and the new visual geometry follows the existing layout contract. It does not regress the foundation requirements: the captured run renders a 3D scene, connects through the server/client architecture, shows multiplayer state, and movement/dodge updates remain live.
+
+## Code quality and validation
+
+The implementation is cohesive and covered by focused server/client tests for palette resolution, profile structure, crowded cover reachability/collision, open platforms/hazards, doorway markers, landmarks, and traversability across seeds. The provided coverage run reports `68` test files and `1461` tests passing.
+
+## Remaining gaps
+
+None.
 
 ## v0.238 — 246-spire-tower-identity  (2026-06-05 04:28:30)
 

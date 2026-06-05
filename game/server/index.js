@@ -484,6 +484,7 @@ const DEBUG_SCENARIOS = new Set([
   'smoke-bomb-ready',
   'rally-cry-ready',
   'open-plaza-arena',
+  'open-verticality',
   'sunken-canyon',
   'sunken-canyon-stage',
   'spire-ascent',
@@ -1321,6 +1322,7 @@ function startServer(port) {
       applyDebugScenario,
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
+      hubLayout: HUB_LAYOUT,
     };
     lobbyHandlers.register(socket, ctx);
 

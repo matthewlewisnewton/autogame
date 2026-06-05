@@ -32,6 +32,7 @@ export const ACTIONS = {
 	useKeyItem: 'useKeyItem',
 	lockOn: 'lockOn',
 	dodge: 'dodge',
+	interact: 'interact',
 };
 
 const DEFAULT_KEYBOARD = {
@@ -49,6 +50,7 @@ const DEFAULT_KEYBOARD = {
 	useKeyItem: ['e'],
 	lockOn: ['z'],
 	dodge: [],
+	interact: ['f'],
 };
 
 /** Lowercase keys claimed by non-remappable DEFAULT_KEYBOARD actions (excludes useKeyItem). */
@@ -84,13 +86,13 @@ const keyState = {
 	moveRight: false
 };
 
-/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, canUseGameActions?: () => boolean }} */
+/** @type {{ onUseSlot?: (n: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} */
 let callbacks = {};
 let listenersAdded = false;
 const prevGamepadButtons = new Map();
 
 /**
- * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, canUseGameActions?: () => boolean }} opts
+ * @param {{ onMove?: never, onUseSlot?: (slot: number) => void, onToggleDeck?: () => void, onUseKeyItem?: () => void, onLockOn?: () => void, onInteract?: () => void, canUseGameActions?: () => boolean }} opts
  */
 export function initInput(opts = {}) {
 	callbacks = opts;
@@ -121,6 +123,13 @@ function onKeyDown(e) {
 		if (!matchedKeys.includes(key)) continue;
 		if (action.startsWith('move')) {
 			keyState[action] = true;
+			return;
+		}
+		// Interact fires in the hub/lobby phase, so it is intentionally NOT gated
+		// behind canUseGameActions the way hand slots / key-item are.
+		if (action === 'interact') {
+			e.preventDefault();
+			callbacks.onInteract?.();
 			return;
 		}
 		if (!callbacks.canUseGameActions || !callbacks.canUseGameActions()) continue;
@@ -293,6 +302,7 @@ export function getActionLabels() {
 		useKeyItem: 'Use key item',
 		lockOn: 'Lock on',
 		dodge: 'Dodge',
+		interact: 'Interact',
 	};
 }
 

@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/game/data
+Server listening on port 3002
+Player connected: socket=bhwsUJPuKskwHaG4AAAB, playerId=844fe469-bd01-4a7d-9904-f88f9c1ba427
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=cjlNNeoE_lUWRdPMAAAD, playerId=0085ad00-e804-4c4d-8a07-941ff012bbd8
+[loot] spawned id=97f960af-1c4c-4c86-b431-67f7ef625cbb value=8
+Player disconnected: bhwsUJPuKskwHaG4AAAB
+Player disconnected: cjlNNeoE_lUWRdPMAAAD

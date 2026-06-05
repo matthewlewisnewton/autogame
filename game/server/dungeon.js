@@ -373,7 +373,11 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     // Pick 1-2 rooms to become ramps (RNG-driven, deterministic per seed).
     // Skip the start room (index 0) so the spawn area stays flat.
     const candidates = rooms.map((r, i) => i).filter(i => i > 0);
-    const numRamps = Math.min(1 + Math.floor(rng() * 2), candidates.length);
+    let numRamps = Math.min(1 + Math.floor(rng() * 2), candidates.length);
+    // Open profile biases toward more verticality when the dungeon is large enough.
+    if (profile === 'open' && rooms.length > 3) {
+      numRamps = Math.min(Math.max(2, numRamps), candidates.length);
+    }
     for (let i = candidates.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
@@ -428,13 +432,617 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     ? profile
     : 'default';
 
-  return {
+  const layout = {
     rooms,
     passages: passageObjects,
     passageWidth,
     cellSpacing,
     profile: profileName,
   };
+
+  if (profile === 'crowded') {
+    decorateCrowdedLayout(layout, rng);
+  }
+
+  if (profile === 'open') {
+    decorateOpenLayout(layout, rng, options);
+  }
+
+  return layout;
+}
+
+// ── Crowded interior cover ──
+
+const CROWDED_COVER_MARGIN = 2;
+const CROWDED_DOORWAY_DEPTH = 3;
+
+const CROWDED_COVER_TYPES = [
+  { width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+  { width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+  { width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+];
+
+function isRoomSloped(room) {
+  const { yNW, yNE, ySE, ySW } = room.floorCorners;
+  return yNW !== yNE || yNE !== ySE || ySE !== ySW;
+}
+
+/**
+ * Derive doorway clear-zone footprints from split wall segments on each edge.
+ * Each zone is a { x, z, width, depth } rectangle extending inward from the gap.
+ */
+function roomDoorwayZones(room, passageWidth) {
+  const halfW = room.width / 2;
+  const halfD = room.depth / 2;
+  const zones = [];
+  const gapW = passageWidth + 0.5;
+  const depth = CROWDED_DOORWAY_DEPTH;
+
+  const xWalls = room.walls.filter(w => w.axis === 'x');
+  const zWalls = room.walls.filter(w => w.axis === 'z');
+
+  const northZ = room.z - halfD;
+  const southZ = room.z + halfD;
+  const westX = room.x - halfW;
+  const eastX = room.x + halfW;
+
+  const hasGapOnEdge = (walls, coordKey, edgeVal) =>
+    walls.filter(w => Math.abs(w[coordKey] - edgeVal) < 0.01).length >= 2;
+
+  if (hasGapOnEdge(xWalls, 'z', northZ)) {
+    zones.push({ x: room.x, z: northZ + depth / 2, width: gapW, depth });
+  }
+  if (hasGapOnEdge(xWalls, 'z', southZ)) {
+    zones.push({ x: room.x, z: southZ - depth / 2, width: gapW, depth });
+  }
+  if (hasGapOnEdge(zWalls, 'x', westX)) {
+    zones.push({ x: westX + depth / 2, z: room.z, width: depth, depth: gapW });
+  }
+  if (hasGapOnEdge(zWalls, 'x', eastX)) {
+    zones.push({ x: eastX - depth / 2, z: room.z, width: depth, depth: gapW });
+  }
+
+  return zones;
+}
+
+/**
+ * Grid flood-fill from a room centre over the interior, treating cover
+ * footprints as blocked. Returns true when every open cell is reachable.
+ */
+function roomFullyReachable(room, cover, margin = CROWDED_COVER_MARGIN) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return cover.length === 0;
+
+  const step = 0.5;
+  const cellsX = Math.floor((halfW * 2) / step);
+  const cellsZ = Math.floor((halfD * 2) / step);
+  const cellX = i => room.x - halfW + (i + 0.5) * step;
+  const cellZ = j => room.z - halfD + (j + 0.5) * step;
+  const isBlocked = (x, z) =>
+    cover.some(c =>
+      x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+      z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+    );
+
+  const startI = Math.floor(halfW / step);
+  const startJ = Math.floor(halfD / step);
+  if (isBlocked(cellX(startI), cellZ(startJ))) return false;
+
+  const seen = new Uint8Array(cellsX * cellsZ);
+  const idx = (i, j) => j * cellsX + i;
+  const queue = [[startI, startJ]];
+  seen[idx(startI, startJ)] = 1;
+  let reached = 0;
+  while (queue.length > 0) {
+    const [i, j] = queue.pop();
+    reached++;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+      if (seen[idx(ni, nj)]) continue;
+      if (isBlocked(cellX(ni), cellZ(nj))) continue;
+      seen[idx(ni, nj)] = 1;
+      queue.push([ni, nj]);
+    }
+  }
+
+  let open = 0;
+  for (let j = 0; j < cellsZ; j++) {
+    for (let i = 0; i < cellsX; i++) {
+      if (!isBlocked(cellX(i), cellZ(j))) open++;
+    }
+  }
+  return reached === open;
+}
+
+function acceptsCoverCandidate(cand, room, cover, doorwayZones, margin) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (Math.abs(cand.x - room.x) + cand.width / 2 > halfW) return false;
+  if (Math.abs(cand.z - room.z) + cand.depth / 2 > halfD) return false;
+  if (doorwayZones.some(z => footprintsOverlap(cand, z, 0.25))) return false;
+  if (cover.some(c => footprintsOverlap(cand, c, 0.5))) return false;
+  if (!roomFullyReachable(room, [...cover, cand], margin)) return false;
+  return true;
+}
+
+/**
+ * Greedily place 1–3 cover candidates inside a combat room AABB, rejecting
+ * overlaps, doorway-blocking positions, and layouts that partition the interior.
+ */
+function scatterCoverInRoom(rng, room, { targetCount = 2, margin = CROWDED_COVER_MARGIN, passageWidth = PASSAGE_WIDTH }) {
+  if (isRoomSloped(room)) return [];
+
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 1 || halfD <= 1) return [];
+
+  const doorwayZones = roomDoorwayZones(room, passageWidth);
+  const cover = [];
+  const goal = Math.max(1, Math.min(3, targetCount));
+
+  const candidatePool = [];
+  const gridSteps = [-0.65, -0.35, 0.35, 0.65];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      const base = CROWDED_COVER_TYPES[Math.floor(rng() * CROWDED_COVER_TYPES.length)];
+      candidatePool.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        width: base.width,
+        depth: base.depth,
+        height: base.height,
+        type: base.type,
+      });
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    const base = CROWDED_COVER_TYPES[Math.floor(rng() * CROWDED_COVER_TYPES.length)];
+    candidatePool.push({
+      x: room.x + (rng() * 2 - 1) * halfW * 0.85,
+      z: room.z + (rng() * 2 - 1) * halfD * 0.85,
+      width: base.width,
+      depth: base.depth,
+      height: base.height,
+      type: base.type,
+    });
+  }
+
+  for (let i = candidatePool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidatePool[i], candidatePool[j]] = [candidatePool[j], candidatePool[i]];
+  }
+
+  for (const cand of candidatePool) {
+    if (cover.length >= goal) break;
+    if (!acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) continue;
+    cover.push({
+      x: cand.x, z: cand.z,
+      width: cand.width, depth: cand.depth, height: cand.height,
+      type: cand.type,
+    });
+  }
+
+  // Guarantee at least one piece when the room is flat and large enough.
+  if (cover.length === 0) {
+    const pillar = CROWDED_COVER_TYPES[0];
+    const fallbacks = [
+      { x: room.x - halfW * 0.55, z: room.z - halfD * 0.55 },
+      { x: room.x + halfW * 0.55, z: room.z - halfD * 0.55 },
+      { x: room.x - halfW * 0.55, z: room.z + halfD * 0.55 },
+      { x: room.x + halfW * 0.55, z: room.z + halfD * 0.55 },
+      { x: room.x, z: room.z - halfD * 0.45 },
+      { x: room.x, z: room.z + halfD * 0.45 },
+    ];
+    for (const pos of fallbacks) {
+      const cand = { ...pos, ...pillar };
+      if (acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) {
+        cover.push(cand);
+        break;
+      }
+    }
+  }
+
+  return cover;
+}
+
+/**
+ * Scatter interior cover into every combat room on a crowded grid layout.
+ */
+function decorateCrowdedLayout(layout, rng) {
+  const cover = [];
+  for (const room of layout.rooms) {
+    if (room.role !== 'combat') continue;
+    const targetCount = 1 + Math.floor(rng() * 3);
+    cover.push(...scatterCoverInRoom(rng, room, {
+      targetCount,
+      margin: CROWDED_COVER_MARGIN,
+      passageWidth: layout.passageWidth,
+    }));
+  }
+  layout.cover = cover;
+  layout.landmarks = placeLandmarks(layout, rng, 'crowded');
+  return layout;
+}
+
+// ── Profile landmark props ──
+
+const LANDMARK_TYPES = {
+  crowded: ['reactor_coil', 'pipe_stack'],
+  open: ['sand_spire', 'sun_arch'],
+};
+
+const LANDMARK_FOOTPRINTS = {
+  reactor_coil: { width: 2.4, depth: 2.4 },
+  pipe_stack: { width: 2.0, depth: 2.8 },
+  sand_spire: { width: 2.2, depth: 2.2 },
+  sun_arch: { width: 3.2, depth: 1.6 },
+};
+
+const LANDMARK_MARGIN = 2.5;
+
+function landmarkFootprint(type, x, z) {
+  const fp = LANDMARK_FOOTPRINTS[type];
+  return { x, z, width: fp.width, depth: fp.depth };
+}
+
+function acceptsLandmarkCandidate(cand, room, blocked, doorwayZones, margin = LANDMARK_MARGIN) {
+  const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return false;
+  if (Math.abs(fp.x - room.x) + fp.width / 2 > halfW) return false;
+  if (Math.abs(fp.z - room.z) + fp.depth / 2 > halfD) return false;
+  if (doorwayZones.some(z => footprintsOverlap(fp, z, 0.25))) return false;
+  if (blocked.some(b => footprintsOverlap(fp, b, 0.5))) return false;
+  return true;
+}
+
+function tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, existingLandmarks) {
+  const doorwayZones = roomDoorwayZones(room, layout.passageWidth);
+  const margin = LANDMARK_MARGIN;
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const allBlocked = [...blocked, ...existingLandmarks.map(lm => landmarkFootprint(lm.type, lm.x, lm.z))];
+  const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+  const candidates = [];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      candidates.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        type,
+        yaw: Math.floor(rng() * 4) * (Math.PI / 2),
+      });
+    }
+  }
+  for (let i = 0; i < 12; i++) {
+    candidates.push({
+      x: room.x + (rng() * 2 - 1) * halfW * 0.8,
+      z: room.z + (rng() * 2 - 1) * halfD * 0.8,
+      type,
+      yaw: rng() * Math.PI * 2,
+    });
+  }
+  shuffleInPlace(candidates, rng);
+
+  for (const cand of candidates) {
+    if (!acceptsLandmarkCandidate(cand, room, allBlocked, doorwayZones, margin)) continue;
+    return cand;
+  }
+  return null;
+}
+
+/**
+ * Place 1–2 deterministic landmark props in non-start rooms (combat/treasure preferred).
+ */
+function placeLandmarks(layout, rng, profile) {
+  const types = LANDMARK_TYPES[profile];
+  if (!types) return [];
+
+  const hostRooms = layout.rooms.filter(r => r.role !== 'start' && !isRoomSloped(r));
+  const preferred = hostRooms.filter(r => r.role === 'combat' || r.role === 'treasure');
+  const pool = preferred.length > 0 ? preferred : hostRooms;
+  if (pool.length === 0) return [];
+
+  const blocked = [
+    ...(layout.cover || []),
+    ...(layout.platforms || []),
+    ...(layout.hazards || []),
+  ];
+
+  const shuffled = [...pool];
+  shuffleInPlace(shuffled, rng);
+  const goal = Math.min(1 + Math.floor(rng() * 2), shuffled.length);
+
+  const landmarks = [];
+  for (let i = 0; i < goal; i++) {
+    const room = shuffled[i];
+    const type = types[Math.floor(rng() * types.length)];
+    const placed = tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, landmarks);
+    if (placed) {
+      landmarks.push(placed);
+      blocked.push(landmarkFootprint(placed.type, placed.x, placed.z));
+    }
+  }
+
+  if (landmarks.length === 0) {
+    for (const room of shuffled) {
+      for (const type of types) {
+        const placed = tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, landmarks);
+        if (placed) {
+          landmarks.push(placed);
+          break;
+        }
+      }
+      if (landmarks.length > 0) break;
+    }
+  }
+
+  return landmarks;
+}
+
+// ── Open profile verticality & hazards ──
+
+const OPEN_DECOR_MARGIN = 2;
+const OPEN_SPAWN_CLEAR = 5;
+const OPEN_PLATFORM_MAX_RISE = 1.5;
+const OPEN_HAZARD_RECESS = 0.12;
+const OPEN_LOW_COVER = { width: 1.6, depth: 1.6, height: 1.0, type: 'pillar' };
+
+function shuffleInPlace(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function awayFromRoomCenter(room, x, z, radius) {
+  return Math.hypot(x - room.x, z - room.z) >= radius;
+}
+
+function footprintInsideRoom(room, fp, margin = OPEN_DECOR_MARGIN) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  return (
+    Math.abs(fp.x - room.x) + fp.width / 2 <= halfW + 1e-6 &&
+    Math.abs(fp.z - room.z) + fp.depth / 2 <= halfD + 1e-6
+  );
+}
+
+function makePlatformCorners(rng, baseRise) {
+  const spread = 0.35;
+  const corners = {
+    yNW: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+    yNE: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+    ySE: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+    ySW: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+  };
+  const heights = [corners.yNW, corners.yNE, corners.ySE, corners.ySW];
+  const minY = Math.min(...heights);
+  const maxY = Math.max(...heights);
+  if (maxY - minY > 0.5) {
+    const mid = (minY + maxY) / 2;
+    corners.yNW = corners.yNE = corners.ySE = corners.ySW = mid;
+  }
+  return corners;
+}
+
+function acceptsOpenFootprint(fp, room, blocked, doorwayZones) {
+  if (!footprintInsideRoom(room, fp)) return false;
+  if (!awayFromRoomCenter(room, fp.x, fp.z, OPEN_SPAWN_CLEAR)) return false;
+  if (doorwayZones.some(z => footprintsOverlap(fp, z, 0.25))) return false;
+  if (blocked.some(b => footprintsOverlap(fp, b, 0.5))) return false;
+  return true;
+}
+
+function placeOpenPlatforms(rng, combatRooms, passageWidth) {
+  const platforms = [];
+  if (combatRooms.length === 0) return platforms;
+
+  const pool = [...combatRooms];
+  shuffleInPlace(pool, rng);
+  const count = Math.min(1 + Math.floor(rng() * 2), pool.length);
+
+  for (let i = 0; i < count; i++) {
+    const room = pool[i];
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 1;
+    const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 1;
+    const patchW = Math.min(room.width * 0.45, 10);
+    const patchD = Math.min(room.depth * 0.45, 10);
+    const baseRise = 0.6 + rng() * (OPEN_PLATFORM_MAX_RISE - 0.6);
+
+    const offsets = [
+      { tx: 0.45, tz: 0.45 }, { tx: -0.45, tz: 0.45 },
+      { tx: 0.45, tz: -0.45 }, { tx: -0.45, tz: -0.45 },
+      { tx: 0, tz: 0.5 }, { tx: 0, tz: -0.5 },
+    ];
+    shuffleInPlace(offsets, rng);
+
+    for (const { tx, tz } of offsets) {
+      const fp = {
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        width: patchW,
+        depth: patchD,
+      };
+      if (!acceptsOpenFootprint(fp, room, platforms, doorwayZones)) continue;
+      platforms.push({
+        ...fp,
+        floorCorners: makePlatformCorners(rng, baseRise),
+      });
+      break;
+    }
+  }
+
+  // Guarantee at least one raised patch when combat rooms exist.
+  if (platforms.length === 0) {
+    const guaranteed = guaranteeOpenPlatform(rng, combatRooms, passageWidth, platforms);
+    if (guaranteed) platforms.push(guaranteed);
+  }
+
+  return platforms;
+}
+
+function guaranteeOpenPlatform(rng, combatRooms, passageWidth, blocked = []) {
+  for (const room of combatRooms) {
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    for (const size of [8, 6, 5, 4]) {
+      const halfW = room.width / 2 - OPEN_DECOR_MARGIN - size / 2;
+      const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - size / 2;
+      if (halfW <= 0 || halfD <= 0) continue;
+      for (const tx of [-0.55, 0.55, 0]) {
+        for (const tz of [-0.55, 0.55, 0]) {
+          const fp = {
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: size,
+            depth: size,
+          };
+          if (!acceptsOpenFootprint(fp, room, blocked, doorwayZones)) continue;
+          return {
+            ...fp,
+            floorCorners: makePlatformCorners(rng, 0.8),
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function placeOpenHazards(rng, combatRooms, passageWidth, blocked) {
+  const hazards = [];
+  if (combatRooms.length === 0) return hazards;
+
+  const goal = Math.min(1 + Math.floor(rng() * 2), combatRooms.length);
+  const pool = [...combatRooms];
+  shuffleInPlace(pool, rng);
+
+  const pitSizes = [
+    { width: 3.5, depth: 3.5 },
+    { width: 4.0, depth: 2.5 },
+    { width: 2.5, depth: 4.0 },
+  ];
+
+  for (let i = 0; i < goal && hazards.length < goal; i++) {
+    const room = pool[i % pool.length];
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 1;
+    const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 1;
+    const size = pitSizes[Math.floor(rng() * pitSizes.length)];
+
+    const candidates = [];
+    for (let t = 0; t < 12; t++) {
+      candidates.push({
+        x: room.x + (rng() * 2 - 1) * halfW * 0.75,
+        z: room.z + (rng() * 2 - 1) * halfD * 0.75,
+        width: size.width,
+        depth: size.depth,
+        type: 'pit',
+        pitDepth: OPEN_HAZARD_RECESS,
+      });
+    }
+
+    for (const cand of candidates) {
+      const allBlocked = [...blocked, ...hazards];
+      if (!acceptsOpenFootprint(cand, room, allBlocked, doorwayZones)) continue;
+      hazards.push(cand);
+      break;
+    }
+  }
+
+  // Guarantee at least one pit when combat rooms exist.
+  if (hazards.length === 0) {
+    for (const room of combatRooms) {
+      const doorwayZones = roomDoorwayZones(room, passageWidth);
+      const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 2;
+      const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 2;
+      if (halfW <= 0 || halfD <= 0) continue;
+      for (const tx of [-0.5, 0.5, 0.55, -0.55]) {
+        for (const tz of [-0.5, 0.5, 0.55, -0.55]) {
+          const cand = {
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: 3.0,
+            depth: 3.0,
+            type: 'pit',
+            pitDepth: OPEN_HAZARD_RECESS,
+          };
+          if (!acceptsOpenFootprint(cand, room, blocked, doorwayZones)) continue;
+          hazards.push(cand);
+          break;
+        }
+        if (hazards.length > 0) break;
+      }
+      if (hazards.length > 0) break;
+    }
+  }
+
+  return hazards;
+}
+
+function placeOpenCover(rng, combatRooms, passageWidth, blocked, goal) {
+  const cover = [];
+  if (goal <= 0 || combatRooms.length === 0) return cover;
+
+  const pool = [...combatRooms];
+  shuffleInPlace(pool, rng);
+
+  for (const room of pool) {
+    if (cover.length >= goal) break;
+    const pieces = scatterCoverInRoom(rng, room, {
+      targetCount: 1,
+      margin: OPEN_DECOR_MARGIN,
+      passageWidth,
+    });
+    for (const piece of pieces) {
+      if (cover.length >= goal) break;
+      if (blocked.some(b => footprintsOverlap(piece, b, 0.5))) continue;
+      cover.push(piece);
+    }
+  }
+
+  return cover;
+}
+
+/**
+ * Dress sparse open grid layouts with raised platforms, shallow pit hazards,
+ * and light cover scatter. Invoked only for the `open` profile.
+ */
+function decorateOpenLayout(layout, rng, options = {}) {
+  const combatRooms = layout.rooms.filter(r => r.role === 'combat');
+  const passageWidth = layout.passageWidth;
+
+  const platforms = placeOpenPlatforms(rng, combatRooms, passageWidth);
+  const hazards = placeOpenHazards(rng, combatRooms, passageWidth, platforms);
+  const coverGoal = Math.floor(rng() * 3); // 0–2 total across the layout
+  const cover = placeOpenCover(rng, combatRooms, passageWidth, [...platforms, ...hazards], coverGoal);
+
+  // Optional low cover centred on a platform when both exist.
+  if (platforms.length > 0 && cover.length < 2) {
+    const platform = platforms[0];
+    const lowCover = {
+      x: platform.x,
+      z: platform.z,
+      ...OPEN_LOW_COVER,
+    };
+    if (!hazards.some(h => footprintsOverlap(lowCover, h, 0.5))) {
+      cover.push(lowCover);
+    }
+  }
+
+  layout.platforms = platforms;
+  layout.hazards = hazards;
+  layout.cover = cover;
+  layout.landmarks = placeLandmarks(layout, rng, 'open');
+  return layout;
 }
 
 // ── Open Plaza Arena Generation ──
@@ -1392,6 +2000,14 @@ module.exports = {
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
+  scatterCoverInRoom,
+  decorateCrowdedLayout,
+  decorateOpenLayout,
+  placeLandmarks,
+  LANDMARK_TYPES,
+  LANDMARK_FOOTPRINTS,
+  roomDoorwayZones,
+  roomFullyReachable,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,

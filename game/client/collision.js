@@ -18,6 +18,18 @@ export {
 	_resolveFloorY as resolveFloorY,
 };
 
+// ── Booth Proximity Zones (re-exported from shared module) ──
+
+import {
+	findBoothInRange as _findBoothInRange,
+	BOOTH_INTERACT_RADIUS as _BOOTH_INTERACT_RADIUS,
+} from '../shared/boothZones.esm.js';
+
+export {
+	_findBoothInRange as findBoothInRange,
+	_BOOTH_INTERACT_RADIUS as BOOTH_INTERACT_RADIUS,
+};
+
 /**
  * Compute the axis-aligned bounding box for a wall segment.
  *

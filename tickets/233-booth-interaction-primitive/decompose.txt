@@ -1,0 +1,13 @@
+I've broken the top-level ticket into two focused, dependency-ordered sub-tickets. Created sub-ticket folders:
+
+- `/home/matt/workspace/.autogame-worktrees/233-booth-interaction-primitive/tickets/233-booth-interaction-primitive/subtickets/01-zone-primitive-server/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/233-booth-interaction-primitive/tickets/233-booth-interaction-primitive/subtickets/02-client-prompt-interact/ticket.md`
+
+**How the split maps to the ticket's ACs:**
+
+- **01 — Booth-zone primitive + server handler:** A shared `findBoothInRange` proximity primitive (dual ESM/CJS, mirroring the existing `floorSampling` pattern) plus an authoritative `boothInteract` socket handler that validates the player's real position against the hub's already-existing `boothAnchors` (quest/launch/shop/deck/character/hats) and emits a named `boothAction`. Covers AC#1 (proximity → named action event) and AC#3's zone enter/exit + dispatch tests.
+- **02 — Client prompt + interact input:** New `interact` action/key (`f`), in-range detection in the render loop reusing the shared primitive, an on-screen prompt that names the booth, key/click emit of `boothInteract`, and a single `boothAction` dispatch hook for future booths. Covers AC#2 (client prompt in range) and the client-side enter/exit/dispatch tests.
+
+Both are `code` verification — they involve handlers, socket events, server-state validation, a shared module, and a dispatch hook, none of which a single happy-path screenshot run could confirm. 02 depends on 01's shared module + server handler, hence the ordering.
+
+No existing sub-ticket folders were present, so nothing needed retiring.

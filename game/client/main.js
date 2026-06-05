@@ -147,7 +147,10 @@ import {
 	triggerLootMagnetVFX,
 	getPhaseStepTargetId,
 	applyLockOnPress,
+	emitBoothInteract,
+	setBoothInRangeListener,
 } from './renderer.js';
+import { updateBoothPrompt, dispatchBoothAction } from './boothPrompt.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -155,6 +158,7 @@ import {
 } from './cosmetic-preview.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
+const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questErrorEl = document.getElementById('quest-error');
@@ -910,8 +914,20 @@ initInput({
 		}
 	},
 	onLockOn: () => applyLockOnPress(),
+	// Hub booth interaction — not gated behind canUseGameActions so it fires in
+	// the lobby phase. No-op when no booth is in range.
+	onInteract: () => emitBoothInteract(),
 	canUseGameActions,
 });
+
+// Show/hide the booth prompt as the renderer reports the local player entering
+// or leaving a hub booth zone (fires only on transitions).
+setBoothInRangeListener((boothId) => updateBoothPrompt(boothPromptEl, boothId));
+
+// Clicking the prompt is an alternative to pressing the interact key.
+if (boothPromptEl) {
+	boothPromptEl.addEventListener('click', () => emitBoothInteract());
+}
 
 // Context bundle handed to per-card renderers — declared once so the
 // cardUsed handler does not re-allocate it on every event. `myId` is read
@@ -1294,6 +1310,19 @@ function bindSocketHandlers(s) {
 			if (slot) slot.classList.add('no-ms');
 		}
 		lastUsedSlot = -1;
+	});
+
+	s.on('boothAction', (data) => {
+		// Single dispatch hook: later booth tickets subscribe to the
+		// `booth:action` window event instead of re-touching this primitive.
+		if (!data || !data.boothId) return;
+		dispatchBoothAction(data);
+	});
+
+	s.on('boothError', (data) => {
+		// Booth interactions are best-effort: log and ignore so a rejected
+		// interaction never disrupts the prompt or crashes the client.
+		console.log(`[boothError] ${data && data.reason ? data.reason : 'unknown'}`);
 	});
 
 	s.on('deckUpdate', (data) => {
