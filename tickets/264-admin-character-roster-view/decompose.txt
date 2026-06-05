@@ -1,0 +1,13 @@
+I broke the top-level ticket into 2 sub-tickets in dependency order:
+
+**01 — Admin roster data aggregation** (`code`)
+The data layer: a `getAllUsers()` export (passwordHash stripped) plus a new `adminRoster.js` with `buildAdminRoster()` that joins account records (username, cosmetic, unlocked/equipped hats, quest-tier/level-2 unlocks) with each account's persisted character data (currency, deck, owned cards) via the storage provider, degrading to safe defaults when no persisted record exists. Unit-tested.
+
+**02 — Password-gated /admin view route** (`code`)
+The standalone read-only `GET /admin` HTML page, rendering the roster from `buildAdminRoster()`. Gated by its own `ADMIN_PASSWORD` env (query param or `X-Admin-Password` header), denied on wrong/missing password and when the env is unconfigured, independent of player JWT auth, with HTML escaping. HTTP-tested.
+
+Both verify via `code` QA: the ACs are about route gating, server logic, structure existence, error paths, and tests — none are pure pixel-look checks.
+
+Sub-ticket folders created:
+- `/home/matt/workspace/.autogame-worktrees/264-admin-character-roster-view/tickets/264-admin-character-roster-view/subtickets/01-admin-roster-aggregation/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/264-admin-character-roster-view/tickets/264-admin-character-roster-view/subtickets/02-admin-view-route/ticket.md`

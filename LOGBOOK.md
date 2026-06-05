@@ -3884,3 +3884,26 @@ PASS. The implementation is small and follows the existing server module boundar
 ## Remaining gaps
 
 None.
+
+## v0.219 — 264-admin-character-roster-view  (2026-06-04 22:36:34)
+
+### Not reachable by normal players / independent from player auth
+
+PASS. The route is mounted at root as `/admin`, outside `/api` account routes and outside player JWT auth. Tests verify a valid player JWT alone does not grant access. HTML output escapes account-derived strings, so malicious usernames cannot inject markup into the admin page.
+
+### Consistency with design and requirements
+
+PASS. The implementation is isolated to server-side admin inspection and does not alter the documented lobby, dungeon, combat, persistence, multiplayer, or movement foundations. The captured smoke run still reaches lobby and gameplay, connects two clients over WebSockets, renders a canvas, and supports movement/dodge probes.
+
+### Tests and coverage
+
+PASS. Coverage log shows the suite completed successfully: 50 test files passed and 1071 tests passed. New focused tests cover roster aggregation, password gating, JWT isolation, data denial on unauthorized requests, and HTML escaping.
+
+### Debug scenarios
+
+Not applicable. This ticket did not add or change a `?debugScenario=...` shortcut.
+
+## Remaining gaps
+
+None.
+
