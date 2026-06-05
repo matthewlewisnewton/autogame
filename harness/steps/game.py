@@ -216,7 +216,7 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
     server_log = (logdir / "server.log").open("wb")
     server_proc = subprocess.Popen(
         ["node", "game/server/index.js"],
-        env={**os.environ, "PORT": str(ports.game_server)},
+        env={**os.environ, "PORT": str(ports.game_server), "ALLOW_DEV_AUTH": "1"},
         stdin=subprocess.DEVNULL, stdout=server_log, stderr=subprocess.STDOUT,
         start_new_session=True,
     )
