@@ -152,6 +152,53 @@ const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	roughness: 0.4,
 });
 
+/** userData.dungeonTag on spire-ascent summit beacon meshes (client tests). */
+export const SPIRE_SUMMIT_BEACON_TAG = 'spireSummitBeacon';
+
+const summitBeaconShaftMaterial = new THREE.MeshStandardMaterial({
+	color: 0xe0f2fe,
+	emissive: 0x38bdf8,
+	emissiveIntensity: 1.2,
+	roughness: 0.35,
+	metalness: 0.15,
+});
+
+const summitBeaconCapMaterial = new THREE.MeshStandardMaterial({
+	color: 0xfef9c3,
+	emissive: 0xfacc15,
+	emissiveIntensity: 1.5,
+	roughness: 0.25,
+	metalness: 0.1,
+});
+
+/**
+ * Taller emissive summit beacon for spire-ascent treasure tiers — visible goal
+ * from lower tiers. Returns shaft + cap meshes; shaft carries an optional glow light.
+ */
+export function buildSpireSummitBeacon(room, layout) {
+	const floorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
+	const shaftHeight = 3.2;
+	const capHeight = 0.55;
+
+	const shaftGeo = new THREE.CylinderGeometry(0.35, 0.48, shaftHeight, 10);
+	const shaft = new THREE.Mesh(shaftGeo, summitBeaconShaftMaterial);
+	shaft.position.set(room.x, floorY + shaftHeight / 2, room.z);
+	shaft.userData.dungeonTag = SPIRE_SUMMIT_BEACON_TAG;
+	shaft.userData.beaconPart = 'shaft';
+
+	const glow = new THREE.PointLight(0x7dd3fc, 1.4, 20, 1.6);
+	glow.position.set(0, shaftHeight / 2 + 0.4, 0);
+	shaft.add(glow);
+
+	const capGeo = new THREE.CylinderGeometry(0.18, 0.42, capHeight, 10);
+	const cap = new THREE.Mesh(capGeo, summitBeaconCapMaterial);
+	cap.position.set(room.x, floorY + shaftHeight + capHeight / 2, room.z);
+	cap.userData.dungeonTag = SPIRE_SUMMIT_BEACON_TAG;
+	cap.userData.beaconPart = 'cap';
+
+	return [shaft, cap];
+}
+
 /**
  * Check whether a room's floorCorners are uniform (flat floor).
  * Returns true if floorCorners is absent or all four values are equal.
@@ -349,14 +396,21 @@ export function buildDungeon(scene, layout) {
 		scene.add(floorMesh);
 		meshes.push(floorMesh);
 
-		// Treasure room marker: glowing gold pillar at room center
+		// Treasure room marker: summit beacon on spire-ascent, gold pillar elsewhere
 		if (room.role === 'treasure') {
-			const treasureFloorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
-			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
-			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
-			marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
-			scene.add(marker);
-			meshes.push(marker);
+			if (layout.profile === 'spire-ascent') {
+				for (const beaconMesh of buildSpireSummitBeacon(room, layout)) {
+					scene.add(beaconMesh);
+					meshes.push(beaconMesh);
+				}
+			} else {
+				const treasureFloorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
+				const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
+				const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
+				marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
+				scene.add(marker);
+				meshes.push(marker);
+			}
 		}
 
 		// Room walls

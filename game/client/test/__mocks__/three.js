@@ -225,6 +225,7 @@ export const THREE = {
 	Clock: stubClass('Clock'),
 	AmbientLight: stubClass('AmbientLight'),
 	DirectionalLight: stubClass('DirectionalLight'),
+	PointLight: stubClass('PointLight'),
 	WebGLRenderer: stubClass('WebGLRenderer'),
 	BoxGeometry: stubClass('BoxGeometry'),
 	SphereGeometry: stubClass('SphereGeometry'),
@@ -306,6 +307,7 @@ export const Color = THREE.Color;
 export const Clock = THREE.Clock;
 export const AmbientLight = THREE.AmbientLight;
 export const DirectionalLight = THREE.DirectionalLight;
+export const PointLight = THREE.PointLight;
 export const WebGLRenderer = THREE.WebGLRenderer;
 export const BoxGeometry = THREE.BoxGeometry;
 export const SphereGeometry = THREE.SphereGeometry;

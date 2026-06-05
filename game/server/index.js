@@ -477,6 +477,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon-stage',
   'spire-ascent',
   'spire-ascent-stage',
+  'spire-summit-beacon',
   'hat-shop-currency',
   'hats-unlocked',
   'evolution-ready',

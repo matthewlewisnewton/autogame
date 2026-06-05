@@ -705,6 +705,27 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'spire-summit-beacon') {
+      // Spire-ascent layout with the player at the summit treasure tier beside the
+      // beacon — same state as climbing spire_ascent normally; shortcut for beacon QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const summitRoom = state.layout.rooms.find(r => r.role === 'treasure');
+      if (summitRoom) {
+        player.x = summitRoom.x;
+        player.z = summitRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'open-plaza-arena') {
       // Load the open-plaza arena (the arena_trials quest layout) for visual /
       // collision verification. Reachable normally by selecting the arena_trials
