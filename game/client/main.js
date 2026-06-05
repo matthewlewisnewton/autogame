@@ -136,6 +136,8 @@ import {
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
 	disposeOne as rendererDisposeOne,
 	disposeAllLootMeshes as rendererDisposeAllLootMeshes,
+	disposeAvatar as rendererDisposeAvatar,
+	disposeNameplate as rendererDisposeNameplate,
 	getActiveEffects,
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
@@ -672,6 +674,60 @@ function renderLobbyList(lobbySummaries) {
 	}
 }
 
+/** Remove a remote player's avatar mesh and username nameplate from the scene. */
+function removeRemotePlayerVisuals(playerId) {
+	const maps = getMeshMaps();
+	const sc = getScene();
+	if (maps.playersMeshes[playerId]) {
+		if (sc) sc.remove(maps.playersMeshes[playerId]);
+		rendererDisposeAvatar(maps.playersMeshes[playerId]);
+		delete maps.playersMeshes[playerId];
+	}
+	rendererDisposeNameplate(playerId);
+}
+
+/**
+ * Merge hub-presence entries into `gameState.players` during the lobby phase.
+ * Remote players are server-authoritative for position/rotation/cosmetic;
+ * the local player keeps client-predicted movement fields.
+ */
+function applyHubPresence(presence, opts = {}) {
+	if (!presence || !gameState || gameState.gamePhase !== 'lobby') return;
+
+	const removedPlayerIds = opts.removedPlayerIds || [];
+	for (const id of removedPlayerIds) {
+		if (id === myId) continue;
+		if (gameState.players[id]) delete gameState.players[id];
+		removeRemotePlayerVisuals(id);
+	}
+
+	const entries = presence.entries || {};
+	for (const [id, entry] of Object.entries(entries)) {
+		if (!entry) continue;
+		if (id === myId) {
+			const local = gameState.players[id];
+			if (!local) continue;
+			if (entry.cosmetic) local.cosmetic = entry.cosmetic;
+			if (entry.username) local.username = entry.username;
+			continue;
+		}
+
+		if (!gameState.players[id]) {
+			gameState.players[id] = { id, hp: 100, dead: false };
+		}
+		const player = gameState.players[id];
+		player.x = entry.x;
+		player.y = entry.y ?? player.y ?? 0.5;
+		player.z = entry.z;
+		if (Number.isFinite(entry.rotation)) player.rotation = entry.rotation;
+		if (entry.cosmetic) player.cosmetic = entry.cosmetic;
+		if (entry.username) player.username = entry.username;
+		player.connected = entry.connected !== false;
+	}
+
+	setGameStateRef(gameState);
+}
+
 /**
  * Render the hub geometry for the lobby phase and spawn the local avatar at the
  * hub's `role: 'start'` spawn. Initializes the scene on first entry, otherwise
@@ -709,6 +765,7 @@ function applyLobbyJoinedData(data) {
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
+	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	mySelectedDeck = data.selectedDeck || [];
 	myInventory = Array.isArray(data.inventory) ? data.inventory : null;
@@ -1267,12 +1324,12 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on('playerDisconnected', (id) => {
-		const maps = getMeshMaps();
-		if (maps.playersMeshes[id]) {
-			const sc = getScene();
-			if (sc) sc.remove(maps.playersMeshes[id]);
-			delete maps.playersMeshes[id];
-		}
+		removeRemotePlayerVisuals(id);
+	});
+
+	s.on('hubPresenceUpdate', (data) => {
+		if (!data || !gameState || gameState.gamePhase !== 'lobby') return;
+		applyHubPresence(data.presence, { removedPlayerIds: data.removedPlayerIds });
 	});
 
 	s.on('cardUsed', (data) => {
@@ -4411,6 +4468,7 @@ window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
+window.applyHubPresence = applyHubPresence;
 window.showRegisterForm = showRegisterForm;
 window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
