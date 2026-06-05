@@ -1317,6 +1317,9 @@ function generateOpenPlaza(seed) {
     passages: [],
     cover,
     platforms,
+    floorMarkings: [
+      { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
+    ],
     landmarks: [{ x: 0, z: 0, type: 'arena_dais' }],
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: size,

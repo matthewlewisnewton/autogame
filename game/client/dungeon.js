@@ -573,6 +573,23 @@ export function buildLandmarkMesh(type, materials) {
 }
 
 /**
+ * Build a visual-only floor marking mesh (no collision).
+ *
+ * @param {{ type: string, innerRadius?: number, outerRadius?: number }} marking
+ * @param {{ accent: THREE.Material }} materials
+ * @returns {THREE.Mesh | null}
+ */
+export function buildFloorMarkingMesh(marking, materials) {
+	if (marking.type !== 'center_ring') return null;
+	const geo = new THREE.RingGeometry(marking.innerRadius, marking.outerRadius, 64);
+	const mesh = new THREE.Mesh(geo, materials.accent);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.userData.floorMarking = true;
+	mesh.userData.floorMarkingType = 'center_ring';
+	return mesh;
+}
+
+/**
  * Passage floor geometry should cover only the corridor gap between room edges.
  * Full center-to-center strips overlap room floors and z-fight at doorways.
  */
@@ -743,6 +760,16 @@ export function buildDungeon(scene, layout) {
 		const { mesh } = buildSlopedFloor(platform, profilePassageFloorMaterial);
 		scene.add(mesh);
 		meshes.push(mesh);
+	}
+
+	// ── Build floor markings (visual-only duel focal ring, etc.) ──
+	for (const marking of layout.floorMarkings || []) {
+		const markingMesh = buildFloorMarkingMesh(marking, profileMaterials);
+		if (!markingMesh) continue;
+		const floorY = resolveFloorY(sampleFloorY(layout, marking.x, marking.z));
+		markingMesh.position.set(marking.x, floorY + 0.02, marking.z);
+		scene.add(markingMesh);
+		meshes.push(markingMesh);
 	}
 
 	// ── Build open-plaza cover pieces ──

@@ -1514,6 +1514,31 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(layout.landmarks).toEqual([{ x: 0, z: 0, type: 'arena_dais' }]);
   });
 
+  it('includes a center_ring floor marking inside the spawn-clear radius', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(Array.isArray(layout.floorMarkings)).toBe(true);
+    expect(layout.floorMarkings.length).toBeGreaterThanOrEqual(1);
+    const ring = layout.floorMarkings.find(m => m.type === 'center_ring');
+    expect(ring).toBeDefined();
+    expect(ring.x).toBe(0);
+    expect(ring.z).toBe(0);
+    expect(ring.innerRadius).toBeGreaterThan(0);
+    expect(ring.outerRadius).toBeGreaterThan(ring.innerRadius);
+    const spawnClearRadius = 6;
+    expect(ring.outerRadius).toBeLessThanOrEqual(spawnClearRadius);
+    const maxExtent = Math.hypot(ring.x, ring.z) + ring.outerRadius;
+    expect(maxExtent).toBeLessThanOrEqual(spawnClearRadius);
+  });
+
+  it('floor markings do not affect wall colliders or sampleFloorY at origin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withMarkings = buildWallColliders(layout);
+    const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
+    expect(withMarkings).toEqual(withoutMarkings);
+    expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY({ ...layout, floorMarkings: [] }, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+  });
+
   it('landmarks do not affect wall colliders', () => {
     const layout = generateLayout(123, 'open-plaza');
     const withLandmark = buildWallColliders(layout);

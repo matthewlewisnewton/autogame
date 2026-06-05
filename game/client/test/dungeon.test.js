@@ -3,6 +3,7 @@ import {
 	buildDungeon,
 	buildDoorwayMarkers,
 	buildLandmarkMesh,
+	buildFloorMarkingMesh,
 	buildWallColliders,
 	buildPassageFloorSpec,
 	isUniformFloor,
@@ -1046,5 +1047,76 @@ describe('profile landmark rendering', () => {
 		const withLandmarks = buildWallColliders(layout);
 		const withoutLandmarks = buildWallColliders({ ...layout, landmarks: [] });
 		expect(withLandmarks).toEqual(withoutLandmarks);
+	});
+});
+
+describe('open-plaza center ring floor markings', () => {
+	function minimalPlazaLayout(floorMarkings) {
+		return {
+			profile: 'open-plaza',
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				role: 'start',
+				walls: [
+					{ x: 0, z: -16, length: 32, axis: 'x' },
+					{ x: 0, z: 16, length: 32, axis: 'x' },
+					{ x: -16, z: 0, length: 32, axis: 'z' },
+					{ x: 16, z: 0, length: 32, axis: 'z' },
+				],
+			}],
+			passages: [],
+			floorMarkings,
+		};
+	}
+
+	it('buildFloorMarkingMesh returns a flat RingGeometry mesh with accent material', () => {
+		const materials = getProfileMaterials('open-plaza');
+		const marking = { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 };
+		const mesh = buildFloorMarkingMesh(marking, materials);
+		expect(mesh).toBeInstanceOf(THREE.Mesh);
+		expect(mesh.geometry).toBeInstanceOf(THREE.RingGeometry);
+		expect(mesh.material).toBe(materials.accent);
+		expect(mesh.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(mesh.userData.floorMarkingType).toBe('center_ring');
+	});
+
+	it('buildDungeon emits one ring mesh per floor marking near DEFAULT_FLOOR_Y', () => {
+		const layout = minimalPlazaLayout([
+			{ type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
+		]);
+		const materials = getProfileMaterials('open-plaza');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const ringMeshes = meshes.filter(m => m.userData?.floorMarkingType === 'center_ring');
+		expect(ringMeshes).toHaveLength(1);
+		expect(ringMeshes[0].material).toBe(materials.accent);
+		expect(ringMeshes[0].position.x).toBe(0);
+		expect(ringMeshes[0].position.z).toBe(0);
+		expect(ringMeshes[0].position.y).toBeCloseTo(DEFAULT_FLOOR_Y + 0.02, 5);
+	});
+
+	it('buildDungeon on generated open-plaza includes center ring marking meshes', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.floorMarkings?.length).toBeGreaterThanOrEqual(1);
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const ringMeshes = meshes.filter(m => m.userData?.floorMarkingType === 'center_ring');
+		expect(ringMeshes.length).toBe(layout.floorMarkings.length);
+	});
+
+	it('layouts without floorMarkings render unchanged (no ring meshes)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.floorMarkings).toBeUndefined();
+		const { meshes } = buildDungeon(mockScene(), layout);
+		expect(meshes.filter(m => m.userData?.floorMarkingType === 'center_ring')).toHaveLength(0);
+	});
+
+	it('buildWallColliders ignores floor markings', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const withMarkings = buildWallColliders(layout);
+		const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
+		expect(withMarkings).toEqual(withoutMarkings);
 	});
 });
