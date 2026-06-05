@@ -77,6 +77,7 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const { syncHubPresenceFromLobby } = require('./hubPresence');
 
 const app = express();
 // Harness readiness probe — same HTTP server as Socket.IO; no auth required.
@@ -1129,6 +1130,7 @@ function runGameLoopTick() {
       const state = lobby.state;
       if (isLobbyPhase(state)) {
         applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+        syncHubPresenceFromLobby(lobby);
         flushDirtyPlayerSaves();
       } else if (isPlayingPhase(state)) {
         applyPlayerMovement(state, buildMovementContext(state));

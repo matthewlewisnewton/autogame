@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { createGameState } = require('./game-state');
+const { createEmptyHubPresence } = require('./hubPresence');
 
 /** @typedef {import('./index').GameState} GameState */
 
@@ -181,6 +182,7 @@ function createLobby(name) {
     id,
     name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 48) : `Lobby ${id}`,
     state: createLobbyGameState(),
+    hubPresence: createEmptyHubPresence(),
     createdAt: Date.now(),
   };
   lobbies.set(id, lobby);
