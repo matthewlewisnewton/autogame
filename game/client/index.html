@@ -350,6 +350,88 @@
         </div>
       </div>
     </div>
+    <div id="character-booth-overlay" class="hidden">
+      <div id="character-booth-modal">
+        <button type="button" class="settings-close" id="character-booth-close-btn" aria-label="Close character booth">&times;</button>
+        <h2>Character</h2>
+        <div class="settings-section" id="character-booth-section">
+          <div class="settings-field cosmetic-preview-field">
+            Preview
+            <canvas id="character-booth-preview-canvas" class="cosmetic-preview-canvas" width="180" height="180" aria-label="Live avatar preview"></canvas>
+          </div>
+          <div class="settings-field">
+            Body color
+            <div id="character-booth-body-swatches" class="cosmetic-swatches" role="group" aria-label="Body color"></div>
+          </div>
+          <div class="settings-field">
+            Accent color
+            <div id="character-booth-accent-swatches" class="cosmetic-swatches" role="group" aria-label="Accent color"></div>
+          </div>
+          <label class="settings-field" for="character-booth-shape-select">
+            Body shape
+            <select id="character-booth-shape-select">
+              <option value="box">Box</option>
+              <option value="cylinder">Cylinder</option>
+              <option value="cone">Cone</option>
+              <option value="capsule">Capsule</option>
+            </select>
+          </label>
+          <div class="settings-field">
+            Hat
+            <div id="character-booth-hat-list" class="cosmetic-hat-list" role="group" aria-label="Hat"></div>
+          </div>
+          <div class="settings-field">
+            Proportions
+            <div id="character-booth-proportions" class="cosmetic-proportions" role="group" aria-label="Body proportions">
+              <label class="settings-field" for="character-booth-prop-height">
+                Height
+                <div class="calibration-slider-row">
+                  <input type="range" id="character-booth-prop-height" data-prop="height" min="0.8" max="1.2" step="0.01" value="1.0" />
+                  <span id="character-booth-prop-height-value" class="calibration-value">1.00</span>
+                </div>
+              </label>
+              <label class="settings-field" for="character-booth-prop-headSize">
+                Head size
+                <div class="calibration-slider-row">
+                  <input type="range" id="character-booth-prop-headSize" data-prop="headSize" min="0.7" max="1.3" step="0.01" value="1.0" />
+                  <span id="character-booth-prop-headSize-value" class="calibration-value">1.00</span>
+                </div>
+              </label>
+              <label class="settings-field" for="character-booth-prop-torsoWidth">
+                Torso width
+                <div class="calibration-slider-row">
+                  <input type="range" id="character-booth-prop-torsoWidth" data-prop="torsoWidth" min="0.7" max="1.3" step="0.01" value="1.0" />
+                  <span id="character-booth-prop-torsoWidth-value" class="calibration-value">1.00</span>
+                </div>
+              </label>
+              <label class="settings-field" for="character-booth-prop-armLength">
+                Arm length
+                <div class="calibration-slider-row">
+                  <input type="range" id="character-booth-prop-armLength" data-prop="armLength" min="0.8" max="1.2" step="0.01" value="1.0" />
+                  <span id="character-booth-prop-armLength-value" class="calibration-value">1.00</span>
+                </div>
+              </label>
+              <label class="settings-field" for="character-booth-prop-legLength">
+                Leg length
+                <div class="calibration-slider-row">
+                  <input type="range" id="character-booth-prop-legLength" data-prop="legLength" min="0.8" max="1.2" step="0.01" value="1.0" />
+                  <span id="character-booth-prop-legLength-value" class="calibration-value">1.00</span>
+                </div>
+              </label>
+              <label class="settings-field" for="character-booth-prop-shoulderWidth">
+                Shoulder width
+                <div class="calibration-slider-row">
+                  <input type="range" id="character-booth-prop-shoulderWidth" data-prop="shoulderWidth" min="0.7" max="1.3" step="0.01" value="1.0" />
+                  <span id="character-booth-prop-shoulderWidth-value" class="calibration-value">1.00</span>
+                </div>
+              </label>
+            </div>
+          </div>
+          <p id="character-booth-cosmetic-error" class="account-error" hidden></p>
+          <button type="button" id="character-booth-save-btn">Save character</button>
+        </div>
+      </div>
+    </div>
     <div id="settings-overlay" class="hidden">
       <div id="settings-modal">
         <button type="button" class="settings-close" id="settings-close-btn" aria-label="Close settings">&times;</button>

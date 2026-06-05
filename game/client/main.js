@@ -69,11 +69,20 @@ import {
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
-	getUnlockedHats,
 	getHatCatalog,
 	setUnlockedHats,
-	PROPORTION_RANGES,
 } from './settings.js';
+import {
+	createCosmeticSelection,
+	createCosmeticForm,
+} from './cosmeticForm.js';
+import {
+	initCharacterBooth,
+	openCharacterBooth,
+	closeCharacterBooth,
+	rebuildBoothHatList,
+	showBoothCosmeticError,
+} from './characterBooth.js';
 import {
 	initControllerCalibration,
 	startControllerCalibration,
@@ -696,6 +705,7 @@ function renderHubScene() {
 	const spawn = getSpawnPosition();
 	setPlayerPosition(spawn.x, spawn.z);
 	setGamePhase('lobby');
+	requestBoothDebugOpen();
 	return true;
 }
 
@@ -845,7 +855,9 @@ function getCardSlotEl(slotIndex) {
 
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+const boothDebugParam = new URLSearchParams(window.location.search).get('booth');
 let debugScenarioRequested = false;
+let boothDebugRequested = false;
 let debugScenarioResult = null;
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
@@ -929,6 +941,13 @@ setBoothInRangeListener((boothId) => updateBoothPrompt(boothPromptEl, boothId));
 if (boothPromptEl) {
 	boothPromptEl.addEventListener('click', () => emitBoothInteract());
 }
+
+window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
+	const boothId = ev.detail && ev.detail.boothId;
+	if (boothId !== 'character') return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	openCharacterBooth();
+});
 
 // Context bundle handed to per-card renderers — declared once so the
 // cardUsed handler does not re-allocate it on every event. `myId` is read
@@ -1530,11 +1549,14 @@ function bindSocketHandlers(s) {
 			myCurrency = data.currency;
 			updateCurrencyHud(myCurrency);
 		}
-		buildHatList();
+		accountCosmeticForm.rebuildHatList();
+		rebuildBoothHatList();
 	});
 
 	s.on('hatError', (data) => {
-		showCosmeticError(data && data.reason ? data.reason : 'Unlock failed');
+		const message = data && data.reason ? data.reason : 'Unlock failed';
+		showCosmeticError(message);
+		showBoothCosmeticError(message);
 	});
 
 	s.on('tradeOffer', (data) => {
@@ -1857,6 +1879,14 @@ function requestDebugScenario() {
 	if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
 	debugScenarioRequested = true;
 	socket.emit('debugScenario', { name: debugScenario });
+}
+
+/** Localhost-only `?booth=character` — open the character booth once in hub lobby. */
+function requestBoothDebugOpen() {
+	if (boothDebugParam !== 'character' || !debugScenarioAllowed || boothDebugRequested) return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	boothDebugRequested = true;
+	openCharacterBooth();
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
@@ -3551,213 +3581,48 @@ function syncAccountForm() {
 
 // ── Character customization ──
 
-// Preset palettes of #RRGGBB swatches offered in the customization panel.
-// Defined client-side only; the server validates any #RRGGBB value, not a
-// fixed list. The first body-color entry mirrors the server default cosmetic.
-const BODY_COLOR_PALETTE = [
-	'#4f9dde', '#ef4444', '#22c55e', '#a855f7',
-	'#f97316', '#14b8a6', '#e2e8f0', '#1e293b',
-];
-const ACCENT_COLOR_PALETTE = [
-	'#f2c94c', '#ffffff', '#ef4444', '#22d3ee',
-	'#a855f7', '#f97316', '#84cc16', '#0f172a',
-];
+// Shared in-progress selection for Account and character-booth overlays.
+const cosmeticSelection = createCosmeticSelection();
 
-// In-progress selection while the panel is open; persisted on Save.
-const cosmeticSelection = {
-	bodyColor: '',
-	accentColor: '',
-	bodyShape: 'box',
-	hat: 'none',
-	proportions: Object.fromEntries(Object.keys(PROPORTION_RANGES).map((k) => [k, 1.0])),
-};
+const accountCosmeticForm = createCosmeticForm({
+	elements: {
+		bodySwatches: cosmeticBodySwatchesEl,
+		accentSwatches: cosmeticAccentSwatchesEl,
+		shapeSelect: cosmeticShapeSelectEl,
+		hatList: cosmeticHatListEl,
+		proportions: cosmeticProportionsEl,
+		errorEl: cosmeticErrorEl,
+	},
+	selection: cosmeticSelection,
+	onPreviewChange: refreshCosmeticPreview,
+	getCurrency: () => myCurrency,
+	onUnlockHat: (hatId) => {
+		const hat = getHatCatalog().find((h) => h.id === hatId);
+		if (!hat || myCurrency < hat.price) return;
+		if (!socket || !socket.connected) return;
+		socket.emit('unlockHat', { hatId });
+	},
+	proportionIdPrefix: 'cosmetic-prop',
+});
 
 function showCosmeticError(message) {
-	if (!cosmeticErrorEl) return;
-	if (message) {
-		cosmeticErrorEl.textContent = message;
-		cosmeticErrorEl.hidden = false;
-	} else {
-		cosmeticErrorEl.textContent = '';
-		cosmeticErrorEl.hidden = true;
-	}
+	accountCosmeticForm.showError(message);
 }
-
-/**
- * Build the swatch buttons for a palette into a container, wiring each to set
- * the given selection field and refresh the selected-state highlight.
- * @param {HTMLElement|null} container
- * @param {string[]} palette
- * @param {'bodyColor'|'accentColor'} field
- */
-function buildCosmeticSwatches(container, palette, field) {
-	if (!container) return;
-	container.innerHTML = '';
-	for (const color of palette) {
-		const btn = document.createElement('button');
-		btn.type = 'button';
-		btn.className = 'cosmetic-swatch';
-		btn.style.backgroundColor = color;
-		btn.dataset.color = color;
-		btn.title = color;
-		btn.setAttribute('aria-label', color);
-		btn.addEventListener('click', () => {
-			cosmeticSelection[field] = color;
-			refreshSwatchSelection(container, color);
-			refreshCosmeticPreview();
-		});
-		container.appendChild(btn);
-	}
-}
-
-function refreshSwatchSelection(container, color) {
-	if (!container) return;
-	const target = String(color).toLowerCase();
-	for (const btn of container.querySelectorAll('.cosmetic-swatch')) {
-		const isSel = (btn.dataset.color || '').toLowerCase() === target;
-		btn.classList.toggle('selected', isSel);
-	}
-}
-
-// Build the swatches once at startup; selection state is synced per-open.
-buildCosmeticSwatches(cosmeticBodySwatchesEl, BODY_COLOR_PALETTE, 'bodyColor');
-buildCosmeticSwatches(cosmeticAccentSwatchesEl, ACCENT_COLOR_PALETTE, 'accentColor');
-
-/**
- * Render one entry per catalog hat into the hat-list container, marking each as
- * owned vs locked and the equipped/selected entry. Clicking an owned entry sets
- * it as the in-progress equipped hat and refreshes the live preview. Locked
- * entries show their price and an Unlock control that spends currency via the
- * server `unlockHat` flow (disabled when the player cannot afford the hat).
- */
-function buildHatList() {
-	if (!cosmeticHatListEl) return;
-	const catalog = getHatCatalog();
-	const unlocked = getUnlockedHats();
-	cosmeticHatListEl.innerHTML = '';
-	for (const hat of catalog) {
-		const owned = unlocked.includes(hat.id);
-		// Owned entries are clickable buttons (equip); locked entries are static
-		// rows that contain their own Unlock <button> (no nested buttons).
-		const row = document.createElement(owned ? 'button' : 'div');
-		if (owned) row.type = 'button';
-		row.className = 'cosmetic-hat';
-		row.dataset.hatId = hat.id;
-		row.classList.toggle('owned', owned);
-		row.classList.toggle('locked', !owned);
-
-		const name = document.createElement('span');
-		name.className = 'cosmetic-hat-name';
-		name.textContent = hat.name;
-		row.appendChild(name);
-
-		const status = document.createElement('span');
-		status.className = 'cosmetic-hat-status';
-		status.textContent = owned ? 'Owned' : `Locked · ${hat.price}`;
-		row.appendChild(status);
-
-		if (owned) {
-			row.addEventListener('click', () => {
-				cosmeticSelection.hat = hat.id;
-				refreshHatList();
-				refreshCosmeticPreview();
-			});
-		} else {
-			const affordable = myCurrency >= hat.price;
-			const unlockBtn = document.createElement('button');
-			unlockBtn.type = 'button';
-			unlockBtn.className = 'cosmetic-hat-unlock';
-			unlockBtn.textContent = 'Unlock';
-			unlockBtn.disabled = !affordable;
-			if (!affordable) unlockBtn.setAttribute('aria-disabled', 'true');
-			unlockBtn.addEventListener('click', () => {
-				if (myCurrency < hat.price) return;
-				if (!socket || !socket.connected) return;
-				socket.emit('unlockHat', { hatId: hat.id });
-			});
-			row.appendChild(unlockBtn);
-		}
-		cosmeticHatListEl.appendChild(row);
-	}
-	refreshHatList();
-}
-
-/** Update the equipped/selected highlight on the rendered hat entries. */
-function refreshHatList() {
-	if (!cosmeticHatListEl) return;
-	for (const btn of cosmeticHatListEl.querySelectorAll('.cosmetic-hat')) {
-		btn.classList.toggle('selected', btn.dataset.hatId === cosmeticSelection.hat);
-	}
-}
-
-/** Clamp a numeric proportion value into the configured range for `key`. */
-function clampProportion(key, value) {
-	const range = PROPORTION_RANGES[key];
-	if (!range) return value;
-	const num = Number(value);
-	if (!Number.isFinite(num)) return 1.0;
-	return Math.max(range.min, Math.min(range.max, num));
-}
-
-// Cache of proportion-slider elements (keyed by proportion key) plus their value
-// readout spans, populated once when the controls are wired.
-/** @type {Map<string, { input: HTMLInputElement, value: HTMLElement|null }>} */
-const cosmeticPropEls = new Map();
-
-/**
- * Wire each proportion range slider: configure its min/max/step from
- * `PROPORTION_RANGES` and attach an input handler that clamps and writes
- * `cosmeticSelection.proportions[key]`, updates the readout, and refreshes the
- * live preview. Called once at startup.
- */
-function buildProportionSliders() {
-	if (!cosmeticProportionsEl) return;
-	const sliders = cosmeticProportionsEl.querySelectorAll('input[type="range"][data-prop]');
-	for (const input of sliders) {
-		const key = input.dataset.prop;
-		const range = PROPORTION_RANGES[key];
-		if (!range) continue;
-		input.min = String(range.min);
-		input.max = String(range.max);
-		input.step = '0.01';
-		const valueEl = document.getElementById(`cosmetic-prop-${key}-value`);
-		cosmeticPropEls.set(key, { input, value: valueEl });
-		input.addEventListener('input', () => {
-			const clamped = clampProportion(key, input.value);
-			cosmeticSelection.proportions[key] = clamped;
-			if (valueEl) valueEl.textContent = clamped.toFixed(2);
-			refreshCosmeticPreview();
-		});
-	}
-}
-
-/** Set every proportion slider position + readout from `cosmeticSelection`. */
-function refreshProportionSliders() {
-	for (const [key, { input, value }] of cosmeticPropEls) {
-		const val = clampProportion(key, cosmeticSelection.proportions[key]);
-		cosmeticSelection.proportions[key] = val;
-		input.value = String(val);
-		if (value) value.textContent = val.toFixed(2);
-	}
-}
-
-// Wire the sliders once at startup; positions are synced per-open.
-buildProportionSliders();
 
 function syncCosmeticForm() {
-	const cosmetic = getAccountCosmetic();
-	cosmeticSelection.bodyColor = cosmetic.bodyColor;
-	cosmeticSelection.accentColor = cosmetic.accentColor;
-	cosmeticSelection.bodyShape = cosmetic.bodyShape;
-	cosmeticSelection.hat = cosmetic.hat;
-	cosmeticSelection.proportions = { ...cosmetic.proportions };
-	refreshSwatchSelection(cosmeticBodySwatchesEl, cosmetic.bodyColor);
-	refreshSwatchSelection(cosmeticAccentSwatchesEl, cosmetic.accentColor);
-	if (cosmeticShapeSelectEl) cosmeticShapeSelectEl.value = cosmetic.bodyShape;
-	refreshProportionSliders();
-	buildHatList();
-	showCosmeticError('');
+	accountCosmeticForm.syncFromAccount(getAccountCosmetic);
 }
+
+initCharacterBooth({
+	selection: cosmeticSelection,
+	patchProfile,
+	getAccountCosmetic,
+	getGameState: () => gameState,
+	getMyId: () => myId,
+	setGameStateRef,
+	getSocket: () => socket,
+	getCurrency: () => myCurrency,
+});
 
 // Rebuild the live preview avatar from the current (unsaved) selection. No-op
 // when the preview is closed.
@@ -3858,13 +3723,6 @@ if (accountSaveBtnEl) {
 			createSocket(result.token);
 		}
 		closeAccountOverlay();
-	});
-}
-
-if (cosmeticShapeSelectEl) {
-	cosmeticShapeSelectEl.addEventListener('change', () => {
-		cosmeticSelection.bodyShape = cosmeticShapeSelectEl.value;
-		refreshCosmeticPreview();
 	});
 }
 
@@ -4438,6 +4296,8 @@ window.openLevelSettingsOverlay = openLevelSettingsOverlay;
 window.closeLevelSettingsOverlay = closeLevelSettingsOverlay;
 window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
+window.openCharacterBooth = openCharacterBooth;
+window.closeCharacterBooth = closeCharacterBooth;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;

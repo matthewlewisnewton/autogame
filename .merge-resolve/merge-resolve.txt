@@ -1,14 +1,13 @@
-Merge conflicts are resolved in both files.
+Merge conflicts are resolved. Summary:
 
-### `game/server/simulation.js`
-Combined the config imports from both sides:
-- **Ticket (270):** `DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER`, `difficultyScaleFactor`, `runPlayerCount` — used for live party-size enemy damage scaling at strike resolution
-- **Main:** `SPIRE_EDGE_HAZARD_DAMAGE`, `SPIRE_EDGE_HAZARD_COOLDOWN_MS` — used by the spire edge hazard logic already present in the file
+### `game/client/main.js`
+Kept the branch’s `launchBooth.js` import alongside the character-booth imports already merged from `main` (`characterBooth.js`, `cosmeticForm.js`, etc.). Both booth flows stay wired in one file.
 
 ### `LOGBOOK.md`
-Kept all three review entries in chronological order:
-1. **v0.237** — 249-rooms-distinctness-identity (main)
-2. **v0.238** — 246-spire-tower-identity (main)
-3. **v0.240** — 270-difficulty-scale-with-player-count (ticket)
+Combined both review sections in version order:
+- **v0.242** — 237-booth-mission-launch (launch ready-up)
+- **v0.241** — 239-booth-character-editor (character editor booth)
 
-All conflict markers are removed. The targeted test run passed (71 files, 1393 tests). The harness can proceed with commit and merge completion.
+Single “Remaining gaps: None.” at the end.
+
+All conflict markers are removed. `launchBooth.test.js` (9) and `characterBooth.test.js` (8) pass. The harness can commit and finish the merge.
