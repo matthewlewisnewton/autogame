@@ -215,6 +215,7 @@ async function main() {
 	spawnChild('server', 'node', ['index.js'], {
 		PORT: String(SERVER_PORT),
 		ALLOW_DEBUG_SCENARIOS: '1',
+		ALLOW_DEV_AUTH: '1',
 	});
 	await waitForHttp(`${SERVER_URL}/api/login`, { timeout: 30000 });
 	console.log(`server up on ${SERVER_URL}`);

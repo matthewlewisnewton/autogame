@@ -138,7 +138,7 @@ async function main() {
 	launch(process.execPath, ['index.js'], {
 		cwd: SERVER_DIR,
 		tag: 'server',
-		env: { ...process.env, PORT: String(serverPort), ALLOW_DEBUG_SCENARIOS: '1', PERSISTENCE_BACKEND: 'memory' },
+		env: { ...process.env, PORT: String(serverPort), ALLOW_DEBUG_SCENARIOS: '1', ALLOW_DEV_AUTH: '1', PERSISTENCE_BACKEND: 'memory' },
 	});
 	await waitForHttp(`${SERVER_URL}/api/me`, { timeout: 30000 });
 	console.log('✓ server up');
