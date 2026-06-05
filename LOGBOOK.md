@@ -3925,3 +3925,26 @@ Pass. The change is scoped to the intended server socket-handler extraction. The
 
 None.
 
+
+## v0.224 — 273-socketHandlers-extract-deck  (2026-06-05 00:30:57)
+
+Behavior appears preserved. The extracted code continues to enforce lobby-only deck/shop/trade operations, normalizes inventory before deck mutations, validates selected decks before readying, persists successful deck/inventory/trade changes, and leaves run-lifecycle/gameplay handlers in `lobbyHandlers.js`.
+
+Tests are green. I ran `pnpm test:quick` from `game/`; it passed with 91 test files and 1,837 tests.
+
+## Design And Requirements
+
+PASS. The change is a server-side organization refactor and does not alter the documented core loop, card combat model, lobby flow, dungeon entry, rendering, websocket connectivity, multiplayer visualization, or WASD movement synchronization. The captured run also exercises the lobby browser/squad flow through gameplay without regressions.
+
+## Debug Scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. The capture used the fallback smoke path with `debugScenario: null`, so normal gameplay remains the exercised path.
+
+## Code Quality
+
+PASS. The new module keeps deck/shop/trade concerns out of the larger lobby handler file without adding circular imports. `git diff --check` reported no whitespace errors. I did not find dead duplicate handler registrations, missing exports, missing context wiring, or runtime console failures attributable to the ticket.
+
+## Remaining gaps
+
+None.
+
