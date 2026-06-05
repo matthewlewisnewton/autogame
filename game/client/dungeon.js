@@ -250,6 +250,97 @@ function resolveSpireRoomMaterials(room, layout, tierCount) {
 	return null;
 }
 
+// ── Sunken-canyon band floor materials (plateau / ramp / canyon) ──
+
+const sunkenCanyonBandMaterialsCache = new Map();
+const sunkenCanyonRoleFloorCache = new Map();
+
+function sunkenCanyonThemeEntry() {
+	return dungeonTheme.profiles['sunken-canyon'];
+}
+
+function sunkenCanyonPlateauFloorHex() {
+	const entry = sunkenCanyonThemeEntry();
+	return parseHex(entry.plateauFloor ?? entry.floor);
+}
+
+function sunkenCanyonCanyonFloorHex() {
+	const entry = sunkenCanyonThemeEntry();
+	return parseHex(entry.canyonFloor ?? entry.floor);
+}
+
+/**
+ * Hex color for a sunken-canyon vertical band floor (tests).
+ *
+ * @param {'plateau'|'canyon'|'ramp'|string} band
+ * @param {number} [yT] - 0 = plateau hue, 1 = canyon hue (ramps)
+ */
+export function getSunkenCanyonBandFloorHex(band, yT = 0.5) {
+	const plateauHex = sunkenCanyonPlateauFloorHex();
+	const canyonHex = sunkenCanyonCanyonFloorHex();
+	if (band === 'plateau') return plateauHex;
+	if (band === 'canyon') return canyonHex;
+	const t = band === 'ramp' ? yT : 0.5;
+	return lerpColorHex(plateauHex, canyonHex, t);
+}
+
+/**
+ * Cached floor material for a sunken-canyon vertical band.
+ *
+ * @param {'plateau'|'canyon'|'ramp'|string} band
+ * @param {number} [yT] - ramp lerp factor (0 = plateau, 1 = canyon)
+ */
+export function getSunkenCanyonBandMaterials(band, yT = 0.5) {
+	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'canyon');
+	if (!sunkenCanyonBandMaterialsCache.has(cacheKey)) {
+		const entry = sunkenCanyonThemeEntry();
+		const floorRoughness = entry.floorRoughness ?? 0.85;
+		const floorHex = getSunkenCanyonBandFloorHex(band, yT);
+		sunkenCanyonBandMaterialsCache.set(cacheKey, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: floorRoughness }),
+		});
+	}
+	return sunkenCanyonBandMaterialsCache.get(cacheKey);
+}
+
+function inferSunkenCanyonRampYT(room, layout) {
+	const fc = room.floorCorners;
+	if (!fc) return 0.5;
+
+	const avgY = (fc.yNW + fc.yNE + fc.ySE + fc.ySW) / 4;
+	const plateauRoom = layout.rooms.find(r => r.band === 'plateau');
+	const canyonRoom = layout.rooms.find(r => r.band === 'canyon');
+	const yHigh = plateauRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+	const yLow = canyonRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+	if (Math.abs(yHigh - yLow) < 0.001) return 0.5;
+	return (avgY - yHigh) / (yLow - yHigh);
+}
+
+function getSunkenCanyonRoleFloorMaterial(band, yT, role) {
+	const cacheKey = `role-${band}-${role}-${band === 'ramp' ? Math.round(yT * 100) : ''}`;
+	if (!sunkenCanyonRoleFloorCache.has(cacheKey)) {
+		const entry = sunkenCanyonThemeEntry();
+		const floorRoughness = entry.floorRoughness ?? 0.85;
+		const baseHex = getSunkenCanyonBandFloorHex(band, yT);
+		const tint = dungeonTheme.roleTints[role];
+		const color = tint ? tintHex(baseHex, tint.color, tint.mix) : baseHex;
+		sunkenCanyonRoleFloorCache.set(cacheKey, new THREE.MeshStandardMaterial({
+			color,
+			roughness: floorRoughness,
+		}));
+	}
+	return sunkenCanyonRoleFloorCache.get(cacheKey);
+}
+
+function resolveSunkenCanyonRoomFloorMaterial(room, layout) {
+	const band = room.band ?? 'canyon';
+	const yT = band === 'ramp' ? inferSunkenCanyonRampYT(room, layout) : 0.5;
+	if (room.role === 'start' || room.role === 'treasure') {
+		return getSunkenCanyonRoleFloorMaterial(band, yT, room.role);
+	}
+	return getSunkenCanyonBandMaterials(band, yT).floor;
+}
+
 // Treasure room marker material (emissive gold pillar)
 const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	color: 0xffd700,
@@ -653,12 +744,20 @@ export function buildDungeon(scene, layout) {
 
 	// ── Build rooms ──
 	const isSpireAscent = layout.profile === 'spire-ascent';
+	const isSunkenCanyon = layout.profile === 'sunken-canyon';
 	const spireTierCount = isSpireAscent ? getSpireTierCount(layout) : 0;
 
 	for (const room of layout.rooms) {
 		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
-		// Pick floor material: spire tier/ramp tints, else profile role-based fallback
-		const floorMat = spireMats?.floor ?? (roleFloors[room.role] || profileFloorMaterial);
+		// Pick floor material: spire tier/ramp, sunken-canyon band tints, else profile role fallback
+		let floorMat;
+		if (spireMats) {
+			floorMat = spireMats.floor;
+		} else if (isSunkenCanyon) {
+			floorMat = resolveSunkenCanyonRoomFloorMaterial(room, layout);
+		} else {
+			floorMat = roleFloors[room.role] || profileFloorMaterial;
+		}
 		const roomWallMat = spireMats?.wall ?? profileWallMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped

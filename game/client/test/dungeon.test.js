@@ -12,6 +12,8 @@ import {
 	wallMaterial,
 	getProfileMaterials,
 	getProfileMaterialColors,
+	getSunkenCanyonBandFloorHex,
+	getSunkenCanyonBandMaterials,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
@@ -71,9 +73,22 @@ describe('profile material palette', () => {
 	});
 
 	it('falls back to the legacy default palette for unknown profiles', () => {
-		const unknown = getProfileMaterialColors('sunken-canyon');
+		const unknown = getProfileMaterialColors('not-a-real-profile');
 		const legacy = getProfileMaterialColors('default');
 		expect(unknown).toEqual(legacy);
+	});
+
+	it('defines muted green/grey open-plaza and sunken-canyon palettes (not open sand or crowded metal)', () => {
+		const plaza = getProfileMaterialColors('open-plaza');
+		const canyon = getProfileMaterialColors('sunken-canyon');
+		const open = getProfileMaterialColors('open');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(plaza.floor).toBe(0x4a5f4a);
+		expect(canyon.floor).toBe(0x2f3d35);
+		expect(plaza.floor).not.toBe(open.floor);
+		expect(canyon.floor).not.toBe(crowded.floor);
+		expect(getSunkenCanyonBandFloorHex('plateau')).toBe(0x4a5f4a);
+		expect(getSunkenCanyonBandFloorHex('canyon')).toBe(0x2f3d35);
 	});
 
 	it('derives role floor tints from the active profile base', () => {
@@ -653,6 +668,56 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		expect(result.meshes.length).toBeGreaterThanOrEqual(
 			1 + layout.rooms.length + layout.cover.length + 1
 		);
+	});
+
+	it('assigns three distinct band floor colors for plateau, ramp, and canyon rooms', () => {
+		const layout = sunkenCanyonFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const ramp = layout.rooms.find(r => r.band === 'ramp');
+		const canyon = layout.rooms.find(r => r.band === 'canyon');
+
+		const plateauFloor = findRoomFloorMesh(result.meshes, plateau);
+		const rampFloor = result.meshes.find(m =>
+			m.geometry?.parameters?.height === 0.1 &&
+			Math.abs(m.position.x - ramp.x) < 0.01 &&
+			Math.abs(m.position.z - ramp.z) < 0.01
+		);
+		const canyonFloor = findRoomFloorMesh(result.meshes, canyon);
+
+		expect(plateauFloor).toBeDefined();
+		expect(rampFloor).toBeDefined();
+		expect(canyonFloor).toBeDefined();
+
+		const plateauHex = plateauFloor.material.color.getHex();
+		const rampHex = rampFloor.material.color.getHex();
+		const canyonHex = canyonFloor.material.color.getHex();
+
+		expect(plateauHex).not.toBe(canyonHex);
+		expect(rampHex).not.toBe(plateauHex);
+		expect(rampHex).not.toBe(canyonHex);
+	});
+
+	it('server-generated seed 42: start (plateau) and treasure (canyon) floors differ', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		const startRoom = layout.rooms.find(r => r.role === 'start');
+		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
+		expect(startRoom?.band).toBe('plateau');
+		expect(treasureRoom?.band).toBe('canyon');
+
+		const result = buildDungeon(mockScene(), layout);
+		const startFloor = findRoomFloorMesh(result.meshes, startRoom);
+		const treasureFloor = findRoomFloorMesh(result.meshes, treasureRoom);
+		expect(startFloor).toBeDefined();
+		expect(treasureFloor).toBeDefined();
+		expect(startFloor.material.color.getHex()).not.toBe(treasureFloor.material.color.getHex());
+	});
+
+	it('caches sunken-canyon band materials as singletons', () => {
+		const a = getSunkenCanyonBandMaterials('plateau');
+		const b = getSunkenCanyonBandMaterials('plateau');
+		expect(a.floor).toBe(b.floor);
+		expect(a.floor.color.getHex()).toBe(getSunkenCanyonBandFloorHex('plateau'));
 	});
 });
 
