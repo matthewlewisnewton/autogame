@@ -58,8 +58,6 @@ const LIFECYCLE_ALLOWLIST = new Set([
 	'disconnect',
 	'connect_error',
 	'error',
-	'heartbeat',
-	'heartbeat_ack',
 	'uncaughtException',
 	'unhandledRejection',
 	// Socket.IO client *manager* (`socket.io.on(...)`) reconnection lifecycle.
