@@ -12,6 +12,8 @@ import {
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
+  DEFAULT_LAYOUT_PROFILE,
+  normalizeLayoutProfile,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
@@ -852,6 +854,27 @@ describe('layout profiles', () => {
     expect(open.passageWidth).toBe(LAYOUT_PROFILES.open.passageWidth);
     expect(open.cellSpacing).toBe(LAYOUT_PROFILES.open.cellSpacing);
     expect(open.profile).toBe('open');
+  });
+
+  it("'default' string alias resolves to DEFAULT_LAYOUT_PROFILE, not crowded", () => {
+    const normalized = normalizeLayoutProfile('default');
+    expect(normalized.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+    expect(normalized.cellSpacing).not.toBe(LAYOUT_PROFILES.crowded.cellSpacing);
+    expect(normalized.targetRoomFraction).toBe(DEFAULT_LAYOUT_PROFILE.targetRoomFraction);
+
+    const layout = generateLayout(42, 'default');
+    expect(layout.profile).toBe('default');
+    expect(layout.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+
+    const crowded = generateLayout(42, 'crowded');
+    expect(layout.cellSpacing).not.toBe(crowded.cellSpacing);
+    expect(layout.rooms.length).not.toBe(crowded.rooms.length);
+  });
+
+  it('accepts DEFAULT_LAYOUT_PROFILE object unchanged', () => {
+    const layout = generateLayout(42, DEFAULT_LAYOUT_PROFILE);
+    expect(layout.profile).toBe('default');
+    expect(layout.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
   });
 });
 

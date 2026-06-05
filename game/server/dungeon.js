@@ -61,6 +61,9 @@ const HUB = {
 };
 
 const LAYOUT_PROFILES = {
+  default: {
+    ...DEFAULT_LAYOUT_PROFILE,
+  },
   crowded: {
     ...DEFAULT_LAYOUT_PROFILE,
     targetRoomFraction: 0.65,
