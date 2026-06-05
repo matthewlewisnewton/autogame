@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { createRequire } from 'module';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -12,6 +13,9 @@ import {
 	server as httpServer,
 	clearAllTimers,
 } from '../index.js';
+import { connectAndJoinLobby } from './helpers.js';
+
+const require = createRequire(import.meta.url);
 import { DEFAULT_COSMETIC, PROPORTION_KEYS } from '../cosmetic.js';
 import { clearUsers, setTestFilePath } from '../users.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
@@ -160,5 +164,43 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		expect(snapshot.players['p5'].cosmetic.bodyShape).toBe('capsule');
 		expect(snapshot.players['p5'].cosmetic.bodyColor).toBe('#00ff00');
 		expect(snapshot.players['p5'].cosmetic.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
+	});
+
+	it('PATCH profile cosmetic syncs an existing live player record and snapshot', async () => {
+		const { gameState: liveState, setGameState, stateSnapshot, buildPlayerRecord: buildPlayer } = require('../index.js');
+		const { accountId, token } = await registerUser(baseUrl, 'dave');
+		liveState.players[accountId] = buildPlayer(accountId, accountId, 'dave', null);
+		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
+
+		await patchCosmetic(baseUrl, token, customCosmetic);
+
+		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
+		expect(liveState.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
+		expect(liveState.players[accountId].cosmetic.proportions.height).toBe(customCosmetic.proportions.height);
+
+		setGameState(liveState);
+		const snapshot = stateSnapshot();
+		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
+	});
+
+	it('PATCH profile cosmetic syncs a joined lobby player for the next snapshot', async () => {
+		const { setGameState, stateSnapshot } = require('../index.js');
+		const { getLobbyById } = require('../lobbies.js');
+		const { accountId, token } = await registerUser(baseUrl, 'erin');
+		const { lobbyId } = await connectAndJoinLobby(baseUrl, accountId);
+
+		const lobby = getLobbyById(lobbyId);
+		expect(lobby).not.toBeNull();
+		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
+
+		await patchCosmetic(baseUrl, token, customCosmetic);
+
+		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
+		expect(lobby.state.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
+		expect(lobby.state.players[accountId].cosmetic.proportions.height).toBe(customCosmetic.proportions.height);
+
+		setGameState(lobby.state);
+		const snapshot = stateSnapshot();
+		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
 	});
 });
