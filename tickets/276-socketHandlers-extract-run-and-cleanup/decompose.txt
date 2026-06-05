@@ -1,0 +1,21 @@
+Broke ticket **276** into **4 sub-tickets** in dependency order. Each is independently implementable and uses **code** verification (structural/handler changes, not pixel-level UI).
+
+### Sub-ticket breakdown
+
+| # | Focus |
+|---|--------|
+| **01** | Scaffold `runHandlers.js`; extract lifecycle handlers (`returnToLobby`, `giveUp`, `abandonRun`, `claimCardReward`) |
+| **02** | Move playing-phase handlers (`move`, `useCard`, `discardCard`, `lootPickup`) into `runHandlers.js` |
+| **03** | Remove dead `buyShopCard` / `listKeyItems` socket handlers and their socket-level tests |
+| **04** | Extract `notifyPlayerRemoved()` to dedupe the three leave-broadcast blocks in `index.js` |
+
+The connection handler in `index.js` is already thin (ctx + `lobbyHandlers.register`); sub-tickets **01** and **02** complete the handler extraction so `lobbyHandlers.js` only orchestrates lobby-specific concerns and delegates run logic to `runHandlers.js`.
+
+### Created sub-ticket paths
+
+```
+/home/matt/workspace/.autogame-worktrees/276-socketHandlers-extract-run-and-cleanup/tickets/276-socketHandlers-extract-run-and-cleanup/subtickets/01-run-handlers-scaffold-lifecycle/ticket.md
+/home/matt/workspace/.autogame-worktrees/276-socketHandlers-extract-run-and-cleanup/tickets/276-socketHandlers-extract-run-and-cleanup/subtickets/02-playing-phase-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/276-socketHandlers-extract-run-and-cleanup/tickets/276-socketHandlers-extract-run-and-cleanup/subtickets/03-remove-dead-shop-keyitem-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/276-socketHandlers-extract-run-and-cleanup/tickets/276-socketHandlers-extract-run-and-cleanup/subtickets/04-notify-player-removed/ticket.md
+```

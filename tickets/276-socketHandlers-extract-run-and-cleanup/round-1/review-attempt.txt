@@ -1,0 +1,13 @@
+**VERDICT: PASS**
+
+This is a clean, behavior-preserving server-side refactor that fully satisfies every clause of the ticket's acceptance criteria.
+
+**Runtime health:** The capture is clean — `metrics.json` has `"ok": true`, `"pageerrors": []`, no `harness_failure`, and probes confirm a live two-player gameplay session (movement + dodge cooldown replicated to HUD). 984/984 tests pass.
+
+**Per-criterion:**
+- **Handlers moved** — all 8 run/playing-phase handlers (`returnToLobby`, `giveUp`, `abandonRun`, `claimCardReward`, `move`, `useCard`, `discardCard`, `lootPickup`) relocated verbatim to `runHandlers.js`.
+- **Dead handlers removed** — `buyShopCard`/`listKeyItems` socket handlers deleted; verified zero remaining references; their progression functions (still tested) correctly left intact; only the matching dead socket-handler tests were removed.
+- **Leave-broadcast deduped** — three copy-pasted blocks collapsed into `notifyPlayerRemoved()`, with the soft-disconnect / evict / leave distinctions (and the `result.deleted` guard) preserved exactly.
+- **Connection closure thin** — `grep socket.on(` over `index.js` returns nothing; the closure just builds `ctx` and calls `register`, with the now-unused `getUnlockedKeyItems` dropped from `ctx`.
+
+No blocking gaps and no genuine nits, so I did not write `gaps.md` or `nits.md`. Review written to `round-1/review.md`.

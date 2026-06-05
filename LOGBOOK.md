@@ -4055,3 +4055,26 @@ The branch includes focused server and client tests for the new split: tick payl
 ## Remaining gaps
 
 No blocking gaps remain for this ticket.
+
+## v0.233 — 276-socketHandlers-extract-run-and-cleanup  (2026-06-05 03:10:46)
+
+`grep "socket.on("` over `game/server/index.js` returns **nothing** — the connection
+handler now only builds the `ctx` object and calls `lobbyHandlers.register(socket, ctx)`
+(plus reconnect/init bookkeeping). `getUnlockedKeyItems` was correctly dropped from `ctx`
+since `keyItemHandlers` no longer needs it.
+
+### "Tests green" — MET
+984/984 tests pass, including the `move`/`dodge`/`lootPickup` integration paths that
+exercise the relocated handlers.
+
+### Design / requirements consistency
+Pure server-side socket-handler refactor; no change to `game/docs/design.md` behavior or
+the `game/docs/requirements.md` foundation. No debug scenarios were added or changed
+(`debugScenario: null`, `debugScenarioAllowed: true` in probes; the existing
+`debugScenario` handler stays gated in `lobbyHandlers.js`).
+
+## Remaining gaps
+
+None. The refactor is behavior-preserving, fully wired, and the captured run plus the full
+test suite confirm it.
+
