@@ -50,7 +50,7 @@ const {
 } = require('./simulation');
 const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
 const { getQuest, getSelectedQuest, DEFAULT_QUEST_TIER } = require('./quests');
-const { unlockQuestTier } = require('./users');
+const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -2958,6 +2958,22 @@ function checkAllReady() {
   const allConnectedReady = connectedPlayers.length > 0 && connectedPlayers.every(p => p.ready);
   const noStaleDisconnectReady = all.every(p => p.connected !== false || !p.ready);
   if (allConnectedReady && noStaleDisconnectReady) {
+    const selectedTier = _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+    if (selectedTier >= 2) {
+      const questId = _gameState.selectedQuestId;
+      let clearedAny = false;
+      for (const player of connectedPlayers) {
+        if (player.ready && !isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+          player.ready = false;
+          clearedAny = true;
+        }
+      }
+      if (clearedAny) {
+        _broadcastLobbyUpdate();
+        return;
+      }
+    }
+
     setGamePhase(_gameState, PHASES.PLAYING);
 
     if (_gameState.suspendedCheckpoint) {

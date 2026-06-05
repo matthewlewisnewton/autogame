@@ -160,3 +160,127 @@ describe('quest tier gating (socket + persistence)', () => {
 		expect(testGameState().selectedQuestTier ?? 1).toBe(1);
 	});
 });
+
+describe('Tier 2 squad ready/deploy gate', () => {
+	let tmpFile;
+	let baseUrl;
+
+	beforeEach(async () => {
+		tmpFile = path.join(
+			os.tmpdir(),
+			`quest-tier-deploy-gate-${Date.now()}-${Math.random().toString(36).slice(2)}.json`,
+		);
+		users.setTestFilePath(tmpFile);
+		users.clearUsers();
+		baseUrl = await startTestServer();
+		setTestProvider(new InMemoryProvider());
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		setTestProvider(null);
+		try {
+			fs.unlinkSync(tmpFile);
+		} catch {}
+		try {
+			fs.unlinkSync(tmpFile + '.tmp');
+		} catch {}
+	});
+
+	async function connectTwoClients(accountIdA, accountIdB) {
+		const first = await connectClient(baseUrl, accountIdA, { name: 'Tier Deploy Room' });
+		const second = await connectClient(baseUrl, accountIdB, { joinLobbyId: first.lobbyId });
+		return { socketA: first.socket, socketB: second.socket };
+	}
+
+	it('rejects ready for a locked squad member and does not start deploy', async () => {
+		users.createUser('unlock_holder', 'testpass');
+		users.createUser('still_locked', 'testpass');
+		const accountA = users.findUserByUsername('unlock_holder').accountId;
+		const accountB = users.findUserByUsername('still_locked').accountId;
+		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+
+		const { socketA, socketB } = await connectTwoClients(accountA, accountB);
+
+		const tier2Promise = waitForQuestSelection(socketA, QUEST_ID, TIER_2);
+		socketA.emit('selectQuest', { questId: QUEST_ID, tier: TIER_2 });
+		await tier2Promise;
+
+		let startGameFired = false;
+		socketA.on('startGame', () => { startGameFired = true; });
+		socketB.on('startGame', () => { startGameFired = true; });
+
+		const errorPromise = waitForEvent(socketB, 'questError');
+		socketB.emit('playerReady', true);
+		const err = await errorPromise;
+
+		expect(err.reason).toBe('tier_locked');
+		expect(testGameState().players[accountB].ready).toBe(false);
+		expect(testGameState().gamePhase).toBe('lobby');
+
+		await new Promise((resolve) => setTimeout(resolve, 200));
+		expect(startGameFired).toBe(false);
+
+		socketA.disconnect();
+		socketB.disconnect();
+	});
+
+	it('starts Tier 2 run when every connected player has the tier unlock', async () => {
+		users.createUser('tier2_a', 'testpass');
+		users.createUser('tier2_b', 'testpass');
+		const accountA = users.findUserByUsername('tier2_a').accountId;
+		const accountB = users.findUserByUsername('tier2_b').accountId;
+		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+		users.unlockQuestTier(accountB, QUEST_ID, TIER_2);
+
+		const { socketA, socketB } = await connectTwoClients(accountA, accountB);
+
+		const tier2Promise = waitForQuestSelection(socketA, QUEST_ID, TIER_2);
+		socketA.emit('selectQuest', { questId: QUEST_ID, tier: TIER_2 });
+		await tier2Promise;
+
+		const startGameA = waitForEvent(socketA, 'startGame');
+		const startGameB = waitForEvent(socketB, 'startGame');
+		socketA.emit('playerReady', true);
+		socketB.emit('playerReady', true);
+		await startGameA;
+		await startGameB;
+
+		const state = testGameState();
+		expect(state.run.questId).toBe(QUEST_ID);
+		expect(state.run.questTier).toBe(TIER_2);
+
+		socketA.disconnect();
+		socketB.disconnect();
+	});
+
+	it('checkAllReady aborts when a ready player lacks Tier 2 unlock', async () => {
+		users.createUser('unlock_holder', 'testpass');
+		users.createUser('still_locked', 'testpass');
+		const accountA = users.findUserByUsername('unlock_holder').accountId;
+		const accountB = users.findUserByUsername('still_locked').accountId;
+		users.unlockQuestTier(accountA, QUEST_ID, TIER_2);
+
+		const { socketA, socketB } = await connectTwoClients(accountA, accountB);
+
+		const tier2Promise = waitForQuestSelection(socketA, QUEST_ID, TIER_2);
+		socketA.emit('selectQuest', { questId: QUEST_ID, tier: TIER_2 });
+		await tier2Promise;
+
+		const progression = require('../progression');
+		runSimulationInPrimaryLobby(() => {
+			const state = testGameState();
+			state.players[accountA].ready = true;
+			state.players[accountB].ready = true;
+			progression.checkAllReady();
+		});
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('lobby');
+		expect(state.players[accountB].ready).toBe(false);
+		expect(state.run).toBeUndefined();
+
+		socketA.disconnect();
+		socketB.disconnect();
+	});
+});

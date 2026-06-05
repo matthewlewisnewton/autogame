@@ -1417,6 +1417,17 @@ function startServer(port) {
   socket.on('playerReady', (ready) => {
     withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
+      const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+      if (selectedTier >= 2) {
+        const questId = state.selectedQuestId;
+        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+          player.ready = false;
+          socket.emit('questError', { reason: 'tier_locked' });
+          broadcastLobbyUpdate(lobby);
+          return;
+        }
+      }
+
       normalizePlayerInventory(player);
       const result = validateDeck(player.selectedDeck, player.inventory);
       if (!result.valid) {
