@@ -83,6 +83,11 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  // Hub ship-interior is handled by generateHub() — see that branch.
+  hub: {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: OPEN_PLAZA.size,
+  },
 };
 
 // Sunken-canyon stage tuning. Plateau (north / high Y) overlooks a large canyon
@@ -109,6 +114,15 @@ const SPIRE_ASCENT = {
   rampDepth: 8,
   minTotalRise: 10,
   minRampSlope: 0.2,
+};
+
+// Hub ship-interior: three compact zone rooms (operations / commerce / salon) in a T
+// arrangement with booth anchor points for lobby UI placement.
+const HUB = {
+  zoneWidth: 12,
+  zoneDepth: 12,
+  passageWidth: PASSAGE_WIDTH,
+  anchorInset: 3, // centre-to-centre offset from room centre (pairs ≥ 6 units apart)
 };
 
 function normalizeLayoutProfile(profile) {
@@ -144,6 +158,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   if (profile === 'spire-ascent') {
     return generateSpireAscent(seed);
+  }
+  if (profile === 'hub') {
+    return generateHub(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
@@ -560,6 +577,33 @@ function buildHorizontalWallWithGaps(z, roomX, totalLength, gapCenters, gapWidth
 }
 
 /**
+ * Build wall segments along a vertical (axis 'z') edge, leaving open gaps at
+ * the given centre positions.
+ */
+function buildVerticalWallWithGaps(x, roomZ, totalLength, gapCenters, gapWidth) {
+  const walls = [];
+  const northEdge = roomZ - totalLength / 2;
+  const southEdge = roomZ + totalLength / 2;
+  const gaps = gapCenters
+    .map(cz => ({ north: cz - gapWidth / 2, south: cz + gapWidth / 2 }))
+    .sort((a, b) => a.north - b.north);
+
+  let cursor = northEdge;
+  for (const gap of gaps) {
+    if (gap.north > cursor + 0.01) {
+      const segLen = gap.north - cursor;
+      walls.push({ x, z: cursor + segLen / 2, length: segLen, axis: 'z' });
+    }
+    cursor = Math.max(cursor, gap.south);
+  }
+  if (cursor < southEdge - 0.01) {
+    const segLen = southEdge - cursor;
+    walls.push({ x, z: cursor + segLen / 2, length: segLen, axis: 'z' });
+  }
+  return walls;
+}
+
+/**
  * Build a sloped ramp room bridging two elevation bands along one axis.
  * Exported for reuse by spire-ascent work (ticket 136).
  *
@@ -841,6 +885,140 @@ function generateSunkenCanyon(seed) {
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: canyonSize,
     profile: 'sunken-canyon',
+  };
+}
+
+// ── Hub Ship-Interior Stage Generation ──
+
+/**
+ * Flat floor corners at DEFAULT_FLOOR_Y for a hub zone room.
+ */
+function hubFlatFloorCorners() {
+  return {
+    yNW: DEFAULT_FLOOR_Y,
+    yNE: DEFAULT_FLOOR_Y,
+    ySE: DEFAULT_FLOOR_Y,
+    ySW: DEFAULT_FLOOR_Y,
+  };
+}
+
+/**
+ * Build the hub ship-interior stage: three compact zone rooms in a T arrangement
+ * (operations centre, commerce west, salon north) linked by passages.
+ * Booth anchors are placed at stable offsets inside each zone.
+ *
+ * Returns { rooms, passages, boothAnchors, passageWidth, cellSpacing,
+ *           profile: 'hub' }.
+ */
+function generateHub(seed) {
+  const rng = mulberry32(seed);
+  const { zoneWidth, zoneDepth, passageWidth, anchorInset } = HUB;
+
+  // Optional per-seed size jitter (shared by all three zones); centres stay spaced by width.
+  const widthJitter = Math.floor(rng() * 5);
+  const depthJitter = Math.floor(rng() * 5);
+  const width = Math.min(16, Math.max(10, zoneWidth + widthJitter - 2));
+  const depth = Math.min(16, Math.max(10, zoneDepth + depthJitter - 2));
+  const roomSpan = width;
+  const hw = width / 2;
+  const hd = depth / 2;
+
+  const operations = {
+    x: 0,
+    z: 0,
+    width,
+    depth,
+    floorCorners: hubFlatFloorCorners(),
+    band: 'operations',
+    role: 'start',
+    spawnWeight: 0,
+    encounterTier: 0,
+  };
+
+  const commerce = {
+    x: -roomSpan,
+    z: 0,
+    width,
+    depth,
+    floorCorners: hubFlatFloorCorners(),
+    band: 'commerce',
+    role: 'connector',
+    spawnWeight: 0,
+    encounterTier: 0,
+  };
+
+  const salon = {
+    x: 0,
+    z: -roomSpan,
+    width,
+    depth,
+    floorCorners: hubFlatFloorCorners(),
+    band: 'salon',
+    role: 'connector',
+    spawnWeight: 0,
+    encounterTier: 0,
+  };
+
+  const gapW = passageWidth;
+
+  operations.walls = [
+    ...buildHorizontalWallWithGaps(operations.z - hd, operations.x, width, [operations.x], gapW),
+    { x: operations.x, z: operations.z + hd, length: width, axis: 'x' },
+    ...buildVerticalWallWithGaps(operations.x - hw, operations.z, depth, [operations.z], gapW),
+    { x: operations.x + hw, z: operations.z, length: depth, axis: 'z' },
+  ];
+
+  commerce.walls = [
+    { x: commerce.x, z: commerce.z - hd, length: width, axis: 'x' },
+    { x: commerce.x, z: commerce.z + hd, length: width, axis: 'x' },
+    { x: commerce.x - hw, z: commerce.z, length: depth, axis: 'z' },
+    ...buildVerticalWallWithGaps(commerce.x + hw, commerce.z, depth, [commerce.z], gapW),
+  ];
+
+  salon.walls = [
+    { x: salon.x, z: salon.z - hd, length: width, axis: 'x' },
+    ...buildHorizontalWallWithGaps(salon.z + hd, salon.x, width, [salon.x], gapW),
+    { x: salon.x - hw, z: salon.z, length: depth, axis: 'z' },
+    { x: salon.x + hw, z: salon.z, length: depth, axis: 'z' },
+  ];
+
+  const passages = [
+    {
+      x1: operations.x,
+      z1: operations.z,
+      x2: commerce.x,
+      z2: commerce.z,
+      walls: [],
+      corridorLength: 0,
+    },
+    {
+      x1: operations.x,
+      z1: operations.z,
+      x2: salon.x,
+      z2: salon.z,
+      walls: [],
+      corridorLength: 0,
+    },
+  ];
+
+  const boothAnchors = {
+    quest: { x: operations.x - anchorInset, z: operations.z },
+    launch: { x: operations.x + anchorInset, z: operations.z },
+    shop: { x: commerce.x, z: commerce.z - anchorInset },
+    deck: { x: commerce.x, z: commerce.z + anchorInset },
+    character: { x: salon.x - anchorInset, z: salon.z },
+    hats: { x: salon.x + anchorInset, z: salon.z },
+  };
+
+  const cellSpacing = roomSpan + width;
+
+  return {
+    rooms: [operations, commerce, salon],
+    passages,
+    boothAnchors,
+    passageWidth,
+    cellSpacing,
+    profile: 'hub',
   };
 }
 
@@ -1132,6 +1310,7 @@ module.exports = {
   generateOpenPlaza,
   generateSunkenCanyon,
   generateSpireAscent,
+  generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
   buildAdjacencyMap,

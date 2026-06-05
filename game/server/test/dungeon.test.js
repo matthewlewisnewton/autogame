@@ -1598,3 +1598,172 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     expect(a).toEqual(b);
   });
 });
+
+// ── hub ship-interior stage layout ──
+
+describe("generateLayout(seed, 'hub')", () => {
+  const BOOTH_KEYS = ['quest', 'launch', 'shop', 'deck', 'character', 'hats'];
+  const ZONE_BANDS = ['operations', 'commerce', 'salon'];
+
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter(r => r.band === band);
+  }
+
+  function roomAABB(room) {
+    const hw = room.width / 2;
+    const hd = room.depth / 2;
+    return {
+      minX: room.x - hw,
+      maxX: room.x + hw,
+      minZ: room.z - hd,
+      maxZ: room.z + hd,
+    };
+  }
+
+  function pointInRoom(room, x, z) {
+    const { minX, maxX, minZ, maxZ } = roomAABB(room);
+    return x >= minX && x <= maxX && z >= minZ && z <= maxZ;
+  }
+
+  function layoutFootprintArea(layout) {
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (const room of layout.rooms) {
+      const box = roomAABB(room);
+      minX = Math.min(minX, box.minX);
+      maxX = Math.max(maxX, box.maxX);
+      minZ = Math.min(minZ, box.minZ);
+      maxZ = Math.max(maxZ, box.maxZ);
+    }
+    return (maxX - minX) * (maxZ - minZ);
+  }
+
+  function passageTouchesRoom(passage, room) {
+    const eps = 0.01;
+    const atStart =
+      Math.abs(passage.x1 - room.x) < eps && Math.abs(passage.z1 - room.z) < eps;
+    const atEnd =
+      Math.abs(passage.x2 - room.x) < eps && Math.abs(passage.z2 - room.z) < eps;
+    return atStart || atEnd;
+  }
+
+  it('returns profile hub with exactly three zone rooms and boothAnchors', () => {
+    const layout = generateLayout(42, 'hub');
+    expect(layout.profile).toBe('hub');
+    expect(layout.rooms.length).toBe(3);
+    for (const band of ZONE_BANDS) {
+      expect(roomsByBand(layout, band).length).toBe(1);
+    }
+    expect(layout.boothAnchors).toBeDefined();
+    expect(Object.keys(layout.boothAnchors).sort()).toEqual([...BOOTH_KEYS].sort());
+  });
+
+  it('each zone is compact (10–16 units) and total footprint is smaller than open-plaza', () => {
+    const layout = generateLayout(42, 'hub');
+    for (const room of layout.rooms) {
+      expect(room.width).toBeGreaterThanOrEqual(10);
+      expect(room.width).toBeLessThanOrEqual(16);
+      expect(room.depth).toBeGreaterThanOrEqual(10);
+      expect(room.depth).toBeLessThanOrEqual(16);
+    }
+    const plaza = generateLayout(42, 'open-plaza');
+    const canyon = generateLayout(42, 'sunken-canyon');
+    const hubArea = layoutFootprintArea(layout);
+    expect(hubArea).toBeLessThan(plaza.rooms[0].width * plaza.rooms[0].depth);
+    expect(hubArea).toBeLessThan(
+      roomsByBand(canyon, 'canyon')[0].width * roomsByBand(canyon, 'canyon')[0].depth
+    );
+  });
+
+  it('all zone floors are flat at DEFAULT_FLOOR_Y', () => {
+    const layout = generateLayout(42, 'hub');
+    for (const room of layout.rooms) {
+      const fc = room.floorCorners;
+      expect(fc.yNW).toBe(DEFAULT_FLOOR_Y);
+      expect(fc.yNE).toBe(DEFAULT_FLOOR_Y);
+      expect(fc.ySE).toBe(DEFAULT_FLOOR_Y);
+      expect(fc.ySW).toBe(DEFAULT_FLOOR_Y);
+    }
+  });
+
+  it('passages connect every zone (fully connected graph)', () => {
+    const layout = generateLayout(42, 'hub');
+    expect(layout.passages.length).toBeGreaterThanOrEqual(2);
+    const adj = buildAdjacencyMap(layout);
+    const dist = bfsDistances(adj, 0);
+    expect(dist.every(d => Number.isFinite(d))).toBe(true);
+    expect(dist.filter(d => d < Infinity).length).toBe(layout.rooms.length);
+  });
+
+  it('passage endpoints touch the correct zone rooms', () => {
+    const layout = generateLayout(42, 'hub');
+    const operations = roomsByBand(layout, 'operations')[0];
+    const commerce = roomsByBand(layout, 'commerce')[0];
+    const salon = roomsByBand(layout, 'salon')[0];
+
+    const opsCommerce = layout.passages.find(
+      p => passageTouchesRoom(p, operations) && passageTouchesRoom(p, commerce)
+    );
+    const opsSalon = layout.passages.find(
+      p => passageTouchesRoom(p, operations) && passageTouchesRoom(p, salon)
+    );
+    expect(opsCommerce).toBeDefined();
+    expect(opsSalon).toBeDefined();
+  });
+
+  it('booth anchors lie inside the correct zone AABBs', () => {
+    const layout = generateLayout(42, 'hub');
+    const operations = roomsByBand(layout, 'operations')[0];
+    const commerce = roomsByBand(layout, 'commerce')[0];
+    const salon = roomsByBand(layout, 'salon')[0];
+    const a = layout.boothAnchors;
+
+    expect(pointInRoom(operations, a.quest.x, a.quest.z)).toBe(true);
+    expect(pointInRoom(operations, a.launch.x, a.launch.z)).toBe(true);
+    expect(pointInRoom(commerce, a.shop.x, a.shop.z)).toBe(true);
+    expect(pointInRoom(commerce, a.deck.x, a.deck.z)).toBe(true);
+    expect(pointInRoom(salon, a.character.x, a.character.z)).toBe(true);
+    expect(pointInRoom(salon, a.hats.x, a.hats.z)).toBe(true);
+  });
+
+  it('booth pairs in the same zone are separated by at least 2 units', () => {
+    const layout = generateLayout(42, 'hub');
+    const a = layout.boothAnchors;
+    const dist = (p, q) => Math.hypot(p.x - q.x, p.z - q.z);
+
+    expect(dist(a.quest, a.launch)).toBeGreaterThanOrEqual(2);
+    expect(dist(a.shop, a.deck)).toBeGreaterThanOrEqual(2);
+    expect(dist(a.character, a.hats)).toBeGreaterThanOrEqual(2);
+  });
+
+  it('assigns explicit roles: operations=start, commerce and salon=connector spawnWeight 0', () => {
+    const layout = generateLayout(42, 'hub');
+    const operations = roomsByBand(layout, 'operations')[0];
+    const commerce = roomsByBand(layout, 'commerce')[0];
+    const salon = roomsByBand(layout, 'salon')[0];
+
+    expect(operations.role).toBe('start');
+    expect(operations.spawnWeight).toBe(0);
+    expect(commerce.role).toBe('connector');
+    expect(commerce.spawnWeight).toBe(0);
+    expect(salon.role).toBe('connector');
+    expect(salon.spawnWeight).toBe(0);
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts including boothAnchors', () => {
+    const a = generateLayout(2024, 'hub');
+    const b = generateLayout(2024, 'hub');
+    expect(a).toEqual(b);
+  });
+
+  it('hub layout is walkable from operations spawn through all zones', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'hub');
+      const colliders = buildWallColliders(layout);
+      const aabbs = computeWalkableAABBs(layout);
+      expect(countReachableRooms(layout, aabbs, colliders)).toBe(layout.rooms.length);
+    }
+  });
+});
