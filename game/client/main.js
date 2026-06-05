@@ -150,7 +150,8 @@ import {
 	emitBoothInteract,
 	setBoothInRangeListener,
 } from './renderer.js';
-import { updateBoothPrompt, dispatchBoothAction } from './boothPrompt.js';
+import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
+import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID } from './launchBooth.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -1049,6 +1050,13 @@ function bindSocketHandlers(s) {
 	s.on('lobbyJoined', (data) => {
 		showLobbyBrowserError('');
 		applyLobbyJoinedData(data);
+		// Debug hook: ?booth=launch readies up automatically on a lobby join so a
+		// run can be launched without walking to the Launch Bay booth. Guarded to
+		// the lobby phase so it never fires when dropping into an in-progress run.
+		const inLobbyPhase = data && data.state && data.state.gamePhase === 'lobby';
+		if (inLobbyPhase && getBoothDebugHook(window.location.search) === LAUNCH_BOOTH_ID) {
+			launchBoothReadyUp();
+		}
 	});
 
 	s.on('lobbyLeft', (data) => {
@@ -3938,6 +3946,24 @@ readyBtn.addEventListener('click', () => {
 	// resumes the checkpointed run while suspended and launches fresh otherwise.
 	socket.emit('playerReady', isReady);
 	syncReadyButtonRole();
+});
+
+// Ready the local player up through the SAME path as #ready-btn / #resume-run-btn:
+// set the shared isReady flag, emit playerReady(true) — which the server's
+// checkAllReady gate routes to startGame once the whole party is ready — and
+// resync the button labels. The Launch Bay booth and the ?booth=launch debug
+// hook both call this; no new socket event is introduced.
+function launchBoothReadyUp() {
+	isReady = true;
+	socket.emit('playerReady', true);
+	syncReadyButtonRole();
+}
+
+// The hub Launch Bay booth's first subscriber: when the player interacts with
+// the `launch` booth (server emits boothAction → main.js re-dispatches it as the
+// `booth:action` window event), ready up exactly as the 2D Ready button does.
+window.addEventListener(BOOTH_ACTION_EVENT, (e) => {
+	if (isLaunchBoothAction(e.detail)) launchBoothReadyUp();
 });
 
 // ── Mute toggle ──
