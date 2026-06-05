@@ -599,13 +599,7 @@ function isDebugScenarioAllowed(socket) {
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  const origin = socket.handshake.headers.origin || '';
-  const host = socket.handshake.headers.host || '';
-  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');
-  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin);
-  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
-
-  return localAddress || localOrigin || localHost;
+  return address === '::1' || address === '127.0.0.1' || address.endsWith('.127.0.0.1');
 }
 
 function ensureNearbyEnemy(state, x, z) {
@@ -867,7 +861,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   const playerId = explicitPlayerId ?? socket.playerId;
   const player = state.players[playerId];
   if (!player) return;
-  withLobbyContext(lobby, () => ensureShopOffer());
+  withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
 
   socket.emit('lobbyJoined', {
     lobbyId: lobby.id,
@@ -1455,7 +1449,7 @@ function startServer(port) {
 
     if (!state.run) return;
 
-    returnPlayersToLobby();
+    returnPlayersToLobby(state);
     });
   });
 
@@ -1466,7 +1460,7 @@ function startServer(port) {
           socket.emit('runError', { reason: 'No active run' });
           return;
         }
-        const result = giveUpRun();
+        const result = giveUpRun(state);
         if (!result.ok) {
           socket.emit('runError', { reason: result.reason || 'Cannot give up' });
           return;
@@ -1485,7 +1479,7 @@ function startServer(port) {
         socket.emit('runError', { reason: 'No suspended expedition' });
         return;
       }
-      abandonSuspendedRun();
+      abandonSuspendedRun(state);
     });
   });
 
@@ -1496,7 +1490,7 @@ function startServer(port) {
     if (!state.run || state.run.status === 'playing') return;
     if (!data || typeof data.cardId !== 'string') return;
 
-    const result = claimCardReward(socket.playerId, data.cardId);
+    const result = claimCardReward(socket.playerId, data.cardId, state);
     if (!result.ok) return;
 
     savePlayerData(socket.playerId);
@@ -1772,7 +1766,7 @@ function startServer(port) {
       requirePhase: 'lobby',
       phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
     }, (state, lobby, player) => {
-      const result = healAtMedic(socket.playerId);
+      const result = healAtMedic(socket.playerId, state);
       if (!result.ok) {
         socket.emit('medicError', { reason: result.reason });
         return;
@@ -2251,6 +2245,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // Auth
     verifyToken,
     getJWTSecret,
+    // Debug gate
+    isDebugScenarioAllowed,
     // Quests
     QUEST_DEFS,
     DEFAULT_QUEST_ID,

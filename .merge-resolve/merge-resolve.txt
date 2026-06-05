@@ -1,15 +1,12 @@
-Merge conflicts are resolved. Summary:
+**`LOGBOOK.md` is resolved** — all conflict markers are gone.
 
-### `TASKS.md`
-Both cleanup backlog lines are kept: `228-cleanup-lobby-remove-dead-hostid` (main) and `228-cleanup-data-debrittle-model-tests` (ticket).
+The conflict was at the end of the log after the v0.210 entry. **Main** had added review entries for v0.212 (thread lobby state), v0.213 (debug gate), and v0.215 (canyon walkability) while the branch was in flight. **The branch** had added v0.216 (Tier 2 tier-framework unlock).
 
-### `LOGBOOK.md`
-Main’s review entries (v0.202–v0.206) are preserved in version order, with the ticket’s v0.207 debrittle entry appended last.
+The merged tail keeps **all four entries** in timestamp order after v0.210:
 
-### `game/client/test/cards.test.js` & `game/server/test/card_acquisition.test.js`
-Ticket intent kept: `>= 42` card-count checks instead of hardcoded `toHaveLength(43)` so new cards on main don’t break these tests.
+1. **v0.212** — scaling thread lobby state  
+2. **v0.213** — debug gate / no header spoof  
+3. **v0.215** — canyon walkability fixes  
+4. **v0.216** — level-2 tier framework unlock (ticket), including its `## Remaining gaps` section  
 
-### `game/server/test/new_card_pack.test.js`
-Ticket intent kept: the `new card pack definitions` block stays removed from this file. Main’s Permafrost Lance / shop-pool coverage already lives in `new_card_pack_definitions.test.js` (with debrittled `>= 42` assertions).
-
-All conflict markers are gone from the five files. Targeted tests (57) pass; the harness will run the full suite next.
+Each section retains its own closing “Remaining gaps” block, matching the structure on both sides. No other conflicted files remain in the worktree. The harness can commit and finish the merge.

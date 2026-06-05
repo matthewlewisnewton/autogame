@@ -350,14 +350,14 @@ function isValidShopOffer(offer) {
   return !!(offer && typeof offer.cardId === 'string' && CARD_DEFS[offer.cardId]);
 }
 
-function refreshShopOffer() {
-  if (!_gameState) return null;
+function refreshShopOffer(state = _gameState) {
+  if (!state) return null;
   const seed = Math.floor(Math.random() * 2147483647);
   let offer = pickShopOffer(seed);
   if (!offer) {
     const fallbackId = SHOP_CARD_POOL[0];
     if (!fallbackId) {
-      _gameState.shopOffer = null;
+      state.shopOffer = null;
       return null;
     }
     const def = CARD_DEFS[fallbackId];
@@ -368,16 +368,16 @@ function refreshShopOffer() {
       type: def.type
     };
   }
-  _gameState.shopOffer = offer;
-  return _gameState.shopOffer;
+  state.shopOffer = offer;
+  return state.shopOffer;
 }
 
-function ensureShopOffer() {
-  if (!_gameState) return null;
-  if (!isValidShopOffer(_gameState.shopOffer)) {
-    refreshShopOffer();
+function ensureShopOffer(state = _gameState) {
+  if (!state) return null;
+  if (!isValidShopOffer(state.shopOffer)) {
+    refreshShopOffer(state);
   }
-  return _gameState.shopOffer;
+  return state.shopOffer;
 }
 
 /** Restore minimal HP when returning to the lobby ship after death or wipe. */
@@ -390,12 +390,12 @@ function revivePlayerInLobby(player) {
   }
 }
 
-function healAtMedic(playerId) {
-  if (!_gameState || !isLobbyPhase(_gameState)) {
+function healAtMedic(playerId, state = _gameState) {
+  if (!state || !isLobbyPhase(state)) {
     return { ok: false, reason: 'not_in_lobby' };
   }
 
-  const player = _gameState.players[playerId];
+  const player = state.players[playerId];
   if (!player) {
     return { ok: false, reason: 'invalid_player' };
   }
@@ -1011,8 +1011,8 @@ function spawnCurrencyDrop(enemy) {
   console.log(`[loot] currency drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
 }
 
-function buildCardChoices(playerId) {
-  const player = _gameState.players[playerId];
+function buildCardChoices(playerId, state = _gameState) {
+  const player = state.players[playerId];
   if (!player || !Array.isArray(player.runCardDropIds)) return [];
 
   const uniqueIds = [];
@@ -1033,8 +1033,8 @@ function buildCardChoices(playerId) {
   });
 }
 
-function claimCardReward(playerId, cardId) {
-  const player = _gameState.players[playerId];
+function claimCardReward(playerId, cardId, state = _gameState) {
+  const player = state.players[playerId];
   if (!player || typeof cardId !== 'string') {
     return { ok: false, reason: 'invalid' };
   }
@@ -2667,23 +2667,23 @@ function checkTelepipeProximity() {
   }
 }
 
-function abandonSuspendedRun() {
-  if (!_gameState.suspendedCheckpoint) {
+function abandonSuspendedRun(state = _gameState) {
+  if (!state.suspendedCheckpoint) {
     return { ok: false, reason: 'no_checkpoint' };
   }
 
   clearSuspendedRunData();
-  delete _gameState.run;
-  setGamePhase(_gameState, PHASES.LOBBY);
+  delete state.run;
+  setGamePhase(state, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
-  for (const player of Object.values(_gameState.players)) {
+  for (const player of Object.values(state.players)) {
     revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     player.hand = [];
     player.deck = [];
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -2692,7 +2692,7 @@ function abandonSuspendedRun() {
 
   refreshShopOffer();
 
-  for (const playerId of Object.keys(_gameState.players)) {
+  for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
   }
 
@@ -2834,20 +2834,20 @@ function stateSnapshot() {
   };
 }
 
-function returnPlayersToLobby() {
-  if (!_gameState || !_gameState._lobbyId) {
+function returnPlayersToLobby(state = _gameState) {
+  if (!state || !state._lobbyId) {
     throw new Error('returnPlayersToLobby requires lobby context');
   }
 
   clearSuspendedRunData();
   resetTransientRunState();
 
-  setGamePhase(_gameState, PHASES.LOBBY);
-  delete _gameState.run;
+  setGamePhase(state, PHASES.LOBBY);
+  delete state.run;
 
   const spawn = firstRoomPosition();
-  for (const playerId of Object.keys(_gameState.players)) {
-    const player = _gameState.players[playerId];
+  for (const playerId of Object.keys(state.players)) {
+    const player = state.players[playerId];
     const preservedCurrency = player.currency;
     const preservedInventory = player.inventory;
     const preservedOwnedCards = player.ownedCards || inventoryToOwnedCards(player.inventory);
@@ -2858,7 +2858,7 @@ function returnPlayersToLobby() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     player.currency = preservedCurrency;
     player.inventory = preservedInventory;
     player.ownedCards = preservedOwnedCards;
@@ -2873,11 +2873,11 @@ function returnPlayersToLobby() {
 
   refreshShopOffer();
 
-  if (_gameState._pendingMinionBreaths?.length) {
-    _gameState._pendingMinionBreaths.length = 0;
+  if (state._pendingMinionBreaths?.length) {
+    state._pendingMinionBreaths.length = 0;
   }
 
-  for (const playerId of Object.keys(_gameState.players)) {
+  for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
   }
 
@@ -2888,23 +2888,23 @@ function returnPlayersToLobby() {
   _broadcastLobbyUpdate();
 }
 
-function giveUpRun() {
-  if (!_gameState || !_gameState._lobbyId) {
+function giveUpRun(state = _gameState) {
+  if (!state || !state._lobbyId) {
     throw new Error('giveUpRun requires lobby context');
   }
-  if (!isPlayingPhase(_gameState) || !_gameState.run || _gameState.run.status === 'suspended') {
+  if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
     return { ok: false, reason: 'no_active_run' };
   }
 
   clearSuspendedRunData();
   resetTransientRunState();
 
-  setGamePhase(_gameState, PHASES.LOBBY);
-  delete _gameState.run;
+  setGamePhase(state, PHASES.LOBBY);
+  delete state.run;
 
   const spawn = firstRoomPosition();
-  for (const playerId of Object.keys(_gameState.players)) {
-    const player = _gameState.players[playerId];
+  for (const playerId of Object.keys(state.players)) {
+    const player = state.players[playerId];
     const earned = player.currencyEarnedThisRun || 0;
     if (earned > 0) {
       player.currency = Math.max(0, (player.currency || 0) - earned);
@@ -2915,7 +2915,7 @@ function giveUpRun() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     player.currencyEarnedThisRun = 0;
     player.runRewards = null;
     player.hand = [];
@@ -2934,14 +2934,14 @@ function giveUpRun() {
     player.overclockChargesRemaining = 0;
   }
 
-  for (const playerId of Object.keys(_gameState.players)) {
+  for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
   }
 
   refreshShopOffer();
 
-  if (_gameState._pendingMinionBreaths?.length) {
-    _gameState._pendingMinionBreaths.length = 0;
+  if (state._pendingMinionBreaths?.length) {
+    state._pendingMinionBreaths.length = 0;
   }
 
   const io = getIoTarget();

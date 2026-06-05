@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Both existing sub-tickets are **correctly scoped** and **already implemented**:
+
+- **01-remove-header-checks** — properly removes Origin/Host header checks, gates on peer address + env. Verification: `code`. ✅
+- **02-test-header-spoof-rejected** — properly tests spoofed headers are rejected + loopback regression. Verification: `code`. ✅
+
+The review confirms both sub-tickets **meet their acceptance criteria** in code. The round-1 failure was a **harness capture infrastructure issue** (Vite proxy ECONNREFUSED), explicitly noted as "not game code" with the fix being "re-run capture after clearing port/proxy issues."
+
+The review-feedback.md states: **"Do NOT modify `game/` for this gap; code review and vitest already satisfy the ticket criteria."**
+
+**Conclusion: No new sub-tickets needed.** The only open gap is a harness infrastructure re-capture, which doesn't correspond to any game code work. The existing sub-tickets 01 and 02 fully cover the top-level ticket's acceptance criteria and should simply be re-run once the harness operator resolves the port/proxy issue.

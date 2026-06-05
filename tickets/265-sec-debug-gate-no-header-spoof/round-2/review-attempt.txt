@@ -1,0 +1,19 @@
+## Review complete
+
+Full write-up: `tickets/265-sec-debug-gate-no-header-spoof/round-2/review.md`
+
+### Runtime health
+- `metrics.json`: `"ok": true`, empty `pageerrors`
+- `console.log`: clean (no page errors or fatals)
+- Smoke capture: lobby → gameplay → movement/dodge succeeded
+
+### Acceptance criteria
+- **Origin/Host removed** — `isDebugScenarioAllowed()` only uses env flags (`ALLOW_DEBUG_SCENARIOS`, `NODE_ENV=production`) and `socket.handshake.address` loopback checks
+- **Spoof test added** — `game/server/test/debug-gate.test.js` (6 cases) rejects non-loopback peers with localhost-looking headers; all passed in capture
+
+### Scope
+Two commits on `game/server/index.js` + new tests. No new debug scenarios; server gate remains authoritative over client `?debugScenario=` UI.
+
+No `gaps.md` or `nits.md` (PASS, no blocking issues or backlog-worthy nits).
+
+**VERDICT: PASS**
