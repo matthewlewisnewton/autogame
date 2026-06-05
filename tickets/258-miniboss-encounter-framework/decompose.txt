@@ -1,0 +1,19 @@
+Broke ticket **258** into **5 sub-tickets** (no prior subtickets existed). All use **Verification: code** because acceptance criteria cover server state, spawn logic, rewards, and tests—not purely visual rendering.
+
+| # | Focus |
+|---|--------|
+| **01** | `bossEncounter.js` module + `run.encounter` state on run start |
+| **02** | Spawn stage boss via `spawnEnemy` (270 HP scaling), lock ambient spawns |
+| **03** | Triggers: `deploy` (open-plaza) and `enter_room` (multi-room) |
+| **04** | Boss defeat → rewards, optional unlock hook, victory/objective |
+| **05** | `arena_trials` Tier 2 reference + debug scenario + E2E tests |
+
+Per-player miniboss HP scaling is **not** reimplemented; sub-ticket **02** routes the stage boss through existing `spawnEnemy` scaling from ticket **270**.
+
+**Created sub-ticket folder paths:**
+
+1. `/home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/tickets/258-miniboss-encounter-framework/subtickets/01-encounter-state-module`
+2. `/home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/tickets/258-miniboss-encounter-framework/subtickets/02-spawn-stage-boss-and-lock-spawns`
+3. `/home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/tickets/258-miniboss-encounter-framework/subtickets/03-encounter-trigger`
+4. `/home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/tickets/258-miniboss-encounter-framework/subtickets/04-defeat-reward-unlock-hook`
+5. `/home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/tickets/258-miniboss-encounter-framework/subtickets/05-arena-trials-tier2-boss-reference`

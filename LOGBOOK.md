@@ -4562,3 +4562,26 @@ Round-1 capture used the fallback full-flow smoke plan (lobby → gameplay → m
 
 None. The security fix is in place at both equip entry points, automated tests cover locked-hat rejection on profile update and lobby appearance change, the game starts and runs cleanly in capture, and vitest passes.
 
+
+## v0.262 — 258-miniboss-encounter-framework  (2026-06-05 09:29:39)
+
+PASS. Miniboss HP scaling is centralized in `spawnEnemy()` and applies to all miniboss spawns, including stage bosses, using the existing `DIFFICULTY_MINIBOSS_HP_PER_PLAYER` factor. Tests cover baseline 1-4 player HP and increased HP for larger parties.
+
+### Tests
+
+PASS. The coverage run completed successfully: 75 test files passed and 1342 tests passed. New coverage includes encounter state, spawn/lock behavior, deploy and room-entry triggers, defeat rewards/unlocks, checkpoint preservation, the `arena_trials` Tier 2 reference fight, account-unlocked normal deploy, and debug scenario behavior.
+
+### Design / requirements consistency
+
+PASS. The implementation stays server-authoritative, preserves the multiplayer lobby-to-dungeon flow, uses existing quest tiers/objective plumbing, and does not regress the foundational requirements for 3D rendering, WebSocket connectivity, player visualization, or synchronized movement. The new encounter system is consistent with the design direction of quest-based dungeon objectives and combat progression.
+
+### Debug scenarios
+
+PASS. The new `arena-trials-tier-2`, `stage-boss-active`, and `stage-boss-low-hp` shortcuts are reachable only through the existing debug scenario socket path, which is gated by `ALLOW_DEBUG_SCENARIOS`, non-production localhost access, and the URL/debug scenario entry flow. `arena-trials-tier-2` mirrors the normal path by selecting `arena_trials` Tier 2, applying the quest layout, entering playing phase, and letting the deploy trigger start the encounter. The shortcut also documents and preserves normal reachability: clear Arena Trials Tier 1, unlock Tier 2, select the tier, and deploy.
+
+`stage-boss-active` and `stage-boss-low-hp` are QA shortcuts into the active or near-clear fight state. They do not replace the normal Tier 2 deploy path, which is separately implemented and tested; the low-HP variant only shortens the damage phase while still exercising the real defeat, cleanup, objective completion, and reward flow.
+
+## Remaining gaps
+
+None.
+
