@@ -1,0 +1,12 @@
+Broke ticket **263** into **3 sub-tickets** in dependency order:
+
+1. `/home/matt/workspace/.autogame-worktrees/263-debug-unlimited-health-godmode/tickets/263-debug-unlimited-health-godmode/subtickets/01-server-godmode-damage-immunity/ticket.md`  
+   Server `debugGodmode` flag + `damagePlayer()` immunity + unit tests.
+
+2. `/home/matt/workspace/.autogame-worktrees/263-debug-unlimited-health-godmode/tickets/263-debug-unlimited-health-godmode/subtickets/02-server-godmode-socket-gate/ticket.md`  
+   Gated `toggleDebugGodmode` socket handler using `isDebugScenarioAllowed()` + integration/gate tests.
+
+3. `/home/matt/workspace/.autogame-worktrees/263-debug-unlimited-health-godmode/tickets/263-debug-unlimited-health-godmode/subtickets/03-client-godmode-toggle/ticket.md`  
+   Client Shift+G toggle, result handling, test hooks, and client unit test.
+
+All three use **Verification: code** (handlers, damage behavior, gates, and tests — not screenshot-only checks). No existing sub-ticket folders were present, so nothing was deleted or renumbered.

@@ -1,0 +1,11 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/263-debug-unlimited-health-godmode/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/263-debug-unlimited-health-godmode/game/data
+Server listening on port 3002
+Player connected: socket=V9W9YuiteCp4Ibg1AAAB, playerId=5b11b3d4-cb13-43a1-9452-2e20eb85e3ca
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Ayb1D0ho_anCOfbiAAAD, playerId=0966766a-e3ec-4837-80ef-06016c349d45
+Player disconnected: V9W9YuiteCp4Ibg1AAAB
+Player disconnected: Ayb1D0ho_anCOfbiAAAD
