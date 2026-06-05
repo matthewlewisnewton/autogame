@@ -24,7 +24,7 @@ describe('quest tier catalog', () => {
   it('returns null for invalid quest or tier pairs', () => {
     expect(getQuest('missing_quest')).toBeNull();
     expect(getQuest('training_caverns', 3)).toBeNull();
-    expect(getQuest('canyon_descent', 2)).toBeNull();
+    expect(getQuest('endless_siege', 2)).toBeNull();
   });
 
   it('exposes training_caverns tier 2 with rigid crowded layout and unlock metadata', () => {
@@ -67,7 +67,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 4);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 5);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -105,7 +105,18 @@ describe('quest tier catalog', () => {
     });
     expect(crystalTier2.objectiveSummary).toContain('5');
     expect(crystalTier2.rewardSummary).toContain('18');
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(4);
+    const canyonTier2 = variants.find(
+      (v) => v.questId === 'canyon_descent' && v.tier === 2
+    );
+    expect(canyonTier2).toMatchObject({
+      questId: 'canyon_descent',
+      tier: 2,
+      isTier2: true,
+      unlockRequires: { questId: 'canyon_descent', tier: 1 },
+    });
+    expect(getQuest('canyon_descent', 2).layoutProfile).toBe('sunken-canyon');
+    expect(getQuest('canyon_descent', 2).layoutMode).toBe('rigid');
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(5);
   });
 
   it('layout profile and seed accept tier for future divergence', () => {
@@ -150,6 +161,15 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'rigid',
     });
+    expect(getLayoutGenerationOptions('canyon_descent', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('canyon_descent', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
+    });
+    expect(isValidQuestSelection('canyon_descent', 2)).toBe(true);
     expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
     expect(isValidQuestSelection('spire_ascent', 2)).toBe(true);
     expect(isValidQuestSelection('crystal_rescue', 2)).toBe(true);

@@ -512,6 +512,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-tier-2',
   'training-caverns-tier-2',
   'crystal-rescue-tier-2',
+  'canyon-descent-tier-2',
   'spire-ascent-tier-2',
 ]);
 
@@ -678,6 +679,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-tier-2',
   'training-caverns-tier-2',
   'crystal-rescue-tier-2',
+  'canyon-descent-tier-2',
   'spire-ascent-tier-2',
 ]);
 

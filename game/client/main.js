@@ -51,7 +51,6 @@ import {
 	getReservedKeys,
 } from './input.js';
 import {
-	DECK_MIN_SIZE,
 	DECK_MAX_SIZE,
 	MAX_HP,
 	MAX_MS,
@@ -71,13 +70,9 @@ import {
 	getAccountProfile,
 	getAccountCosmetic,
 	setAccountCosmetic,
-	getHatCatalog,
 	setUnlockedHats,
 } from './settings.js';
-import {
-	createCosmeticSelection,
-	createCosmeticForm,
-} from './cosmeticForm.js';
+import { createCosmeticSelection } from './cosmeticForm.js';
 import {
 	initCharacterBooth,
 	openCharacterBooth,
@@ -173,11 +168,6 @@ import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener
 import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
-import {
-	openPreview as openCosmeticPreview,
-	updatePreview as updateCosmeticPreview,
-	closePreview as closeCosmeticPreview,
-} from './cosmetic-preview.js';
 import eventsCatalog from '../shared/events.json' with { type: 'json' };
 
 const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
@@ -189,7 +179,6 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
-const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
 const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
@@ -220,14 +209,6 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
-const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches');
-const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
-const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
-const cosmeticHatListEl = document.getElementById('cosmetic-hat-list');
-const cosmeticProportionsEl = document.getElementById('cosmetic-proportions');
-const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
-const cosmeticErrorEl = document.getElementById('cosmetic-error');
-const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 const attackReticleEl = document.getElementById('attack-reticle');
@@ -388,6 +369,9 @@ function showLobbyBrowser() {
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	// Quest board only appears via the quest booth, so keep it hidden each time
+	// the lobby is (re)shown.
+	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
 	applyLobbyThemeLabels();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
@@ -536,58 +520,36 @@ function isRunSuspended() {
 }
 
 /**
- * Sync #ready-btn's label + styling to its current role. While a run is
- * suspended the single launch button doubles as the Resume control — this is
- * also the affordance the harness telepipe capture clicks to resume — so it
- * reads "Resume…" and carries `.resuming`; otherwise it is the new-mission
- * Deploy button.
+ * Sync the #resume-run-btn label to its current role. Fresh deploy and ready-up
+ * now happen only through the hub Launch Bay booth (the 2D #ready-btn is
+ * retired); the dedicated #resume-run-btn is the on-screen resume affordance
+ * shown while a run is suspended, so it always carries the "Resume…" label.
  */
 function syncReadyButtonRole() {
-	const suspended = isRunSuspended();
 	// The dedicated #resume-run-btn is only ever shown while suspended, so it
 	// always carries the "Resume…" theme label rather than the static HTML text.
 	if (resumeRunBtn) {
 		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
 	}
-	if (!readyBtn) return;
-	if (suspended) {
-		readyBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
-	} else {
-		readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
-	}
-	readyBtn.classList.toggle('resuming', suspended);
 }
 
 function setDeployButtonVisible(visible) {
-	// While a run is suspended #resume-run-btn is the dedicated, distinct resume
-	// affordance shown to the player; #ready-btn also stays visible+enabled and
-	// wired to the same resume path (the harness telepipe capture clicks
-	// #ready-btn to resume). Outside suspension #resume-run-btn is hidden.
+	// Fresh deploy / ready-up is handled by the hub Launch Bay booth, so there is
+	// no longer a 2D deploy button to show or hide. While a run is suspended
+	// #resume-run-btn is the dedicated resume affordance; it is hidden otherwise.
+	// `visible` is retained for call-site symmetry with the play↔lobby transitions.
 	const suspended = isRunSuspended();
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	if (!readyBtn) return;
-	const show = visible || suspended;
-	readyBtn.hidden = !show;
-	if (!show) {
-		readyBtn.disabled = true;
-	} else if (suspended) {
-		readyBtn.disabled = false;
-	}
 	syncReadyButtonRole();
 }
 
 function renderSuspendedRunBanner(state) {
 	const summary = state && state.suspendedRunSummary;
 	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
-	// While suspended #resume-run-btn is the dedicated resume affordance, and
-	// #ready-btn also stays visible+enabled wired to the same resume path (the
-	// harness capture clicks #ready-btn to resume); syncReadyButtonRole applies
-	// the "Resume…" labels + .resuming styling to both.
+	// While suspended #resume-run-btn is the dedicated resume affordance; resuming
+	// the run itself goes through the launch booth ready-up path the same as a
+	// fresh deploy. syncReadyButtonRole applies the "Resume…" label.
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	if (suspended && readyBtn) {
-		readyBtn.hidden = false;
-		readyBtn.disabled = false;
-	}
 	syncReadyButtonRole();
 	if (!suspendedRunBannerEl) return;
 	if (suspended) {
@@ -1392,8 +1354,11 @@ function bindSocketHandlers(s) {
 			// this field, so normal gameplay is unaffected.
 			if (Array.isArray(data.unlockedHats)) {
 				setUnlockedHats(data.unlockedHats);
-				if (accountOverlayEl && !accountOverlayEl.classList.contains('hidden')) {
-					syncCosmeticForm();
+				// Mirror the `hatUnlocked` handler: when the character booth is open
+				// (e.g. via the `?booth=hatswap` debug hook), rebuild its hat list so
+				// the newly-unlocked hats appear as selectable (owned) entries.
+				if (isCharacterBoothOpen()) {
+					rebuildBoothHatList();
 				}
 			}
 		} else if (data && data.reason) {
@@ -1667,13 +1632,11 @@ function bindSocketHandlers(s) {
 			myCurrency = data.currency;
 			updateCurrencyHud(myCurrency);
 		}
-		accountCosmeticForm.rebuildHatList();
 		rebuildBoothHatList();
 	});
 
 	s.on(SERVER_TO_CLIENT.HAT_ERROR, (data) => {
 		const message = data && data.reason ? data.reason : 'Unlock failed';
-		showCosmeticError(message);
 		showBoothCosmeticError(message);
 	});
 
@@ -1742,7 +1705,6 @@ function bindSocketHandlers(s) {
 				syncReadyButtonRole();
 				if (gameState && gameState.gamePhase === 'lobby') {
 					setDeployButtonVisible(true);
-					readyBtn.disabled = false;
 				}
 			}
 		}
@@ -2010,6 +1972,8 @@ function applyQuestLayoutFromServer(data) {
 // below); this only brings the wrapper into view. Guarded to the lobby phase.
 function openQuestPanel() {
 	if (gameState?.gamePhase !== 'lobby') return;
+	// The wrapper is hidden by default; the booth is what reveals it.
+	questBoardWrapperEl?.classList.remove('hidden');
 	// jsdom lacks scrollIntoView, so guard defensively for tests.
 	questBoardWrapperEl?.scrollIntoView?.({ block: 'nearest' });
 }
@@ -2071,14 +2035,28 @@ window.__openDeckBoothForTest = openDeckBooth;
 window.__openShopBoothForTest = openShopBooth;
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
 window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
+// Capture/test hook: ready up via the launch-booth path (no new socket event).
+// Routes through the shared launchBoothReadyUp() so the capture's readyAll step
+// reaches the playing phase without re-introducing the retired 2D #ready-btn.
+// Idempotent — launchBoothReadyUp() bails when the player is already ready.
+window.__launchReadyUpForTest = () => launchBoothReadyUp();
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
-	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest') return;
+	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest' && boothDebugParam !== 'hatswap') return;
 	if (!gameState || gameState.gamePhase !== 'lobby') return;
 	boothDebugRequested = true;
 	if (boothDebugParam === 'quest') {
 		openQuestPanel();
+	} else if (boothDebugParam === 'hatswap') {
+		// Debug shortcut: unlock the catalog hats (via the existing
+		// `hats-unlocked` scenario) and open the character booth so the free
+		// unlocked-hat swap can be exercised directly. The booth's hat list is
+		// rebuilt when the scenario result arrives (see debugScenarioResult).
+		if (socket && socket.connected) {
+			socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name: 'hats-unlocked' });
+		}
+		openCharacterBooth();
 	} else {
 		openCharacterBooth();
 	}
@@ -2811,7 +2789,6 @@ const tradeOfferSelectEl = document.getElementById('trade-offer-select');
 const tradeRequestSelectEl = document.getElementById('trade-request-select');
 const offerTradeBtn = document.getElementById('offer-trade-btn');
 const deckEditorEl = document.getElementById('deck-editor');
-const lobbyTabDeckBtn = document.getElementById('lobby-tab-deck');
 const lobbyTabForgeBtn = document.getElementById('lobby-tab-forge');
 const photonForgeEl = document.getElementById('photon-forge');
 const forgeInventoryGridEl = document.getElementById('forge-inventory-grid');
@@ -2820,7 +2797,7 @@ const forgeSelectedMetaEl = document.getElementById('forge-selected-meta');
 const forgeStatRowsEl = document.getElementById('forge-stat-rows');
 const forgeErrorEl = document.getElementById('forge-error');
 
-let activeLobbyTab = 'deck';
+let activeLobbyTab = 'forge';
 let selectedForgeInstanceId = null;
 
 function getDeckInventory() {
@@ -2945,14 +2922,6 @@ function renderDeckEditor() {
 	}
 
 	deckSizeDisplayEl.textContent = `${mySelectedDeck.length}/${DECK_MAX_SIZE}`;
-
-	if (mySelectedDeck.length < DECK_MIN_SIZE) {
-		readyBtn.classList.add('deck-invalid');
-		readyBtn.disabled = true;
-	} else {
-		readyBtn.classList.remove('deck-invalid');
-		readyBtn.disabled = false;
-	}
 
 	deckErrorEl.style.display = 'none';
 	deckErrorEl.textContent = '';
@@ -3252,9 +3221,7 @@ function setLobbyTab(tab) {
 	const cardEconomy = document.getElementById('card-economy');
 	const guildMedic = document.getElementById('guild-medic');
 	const keyItemLoadout = document.getElementById('key-item-loadout');
-	const deckTabBtn = document.getElementById('lobby-tab-deck');
 	const forgeTabBtn = document.getElementById('lobby-tab-forge');
-	const shopTabBtn = document.getElementById('lobby-tab-shop');
 	const economyTabBtn = document.getElementById('lobby-tab-economy');
 	const medicTabBtn = document.getElementById('lobby-tab-medic');
 	const keyItemsTabBtn = document.getElementById('lobby-tab-keyitems');
@@ -3264,9 +3231,7 @@ function setLobbyTab(tab) {
 	if (cardEconomy) cardEconomy.classList.toggle('hidden', activeLobbyTab !== 'economy');
 	if (guildMedic) guildMedic.classList.toggle('hidden', activeLobbyTab !== 'medic');
 	if (keyItemLoadout) keyItemLoadout.classList.toggle('hidden', activeLobbyTab !== 'keyitems');
-	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
 	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
-	if (shopTabBtn) shopTabBtn.classList.toggle('active', activeLobbyTab === 'shop');
 	if (economyTabBtn) economyTabBtn.classList.toggle('active', activeLobbyTab === 'economy');
 	if (medicTabBtn) medicTabBtn.classList.toggle('active', activeLobbyTab === 'medic');
 	if (keyItemsTabBtn) keyItemsTabBtn.classList.toggle('active', activeLobbyTab === 'keyitems');
@@ -3460,14 +3425,8 @@ function renderPhotonForge() {
 	showForgeError('');
 }
 
-if (document.getElementById('lobby-tab-deck')) {
-	document.getElementById('lobby-tab-deck').addEventListener('click', () => setLobbyTab('deck'));
-}
 if (document.getElementById('lobby-tab-forge')) {
 	document.getElementById('lobby-tab-forge').addEventListener('click', () => setLobbyTab('forge'));
-}
-if (document.getElementById('lobby-tab-shop')) {
-	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
 }
 const buyShopCardBtnEl = document.getElementById('buy-shop-card-btn');
 if (buyShopCardBtnEl) {
@@ -3804,37 +3763,8 @@ function syncAccountForm() {
 
 // ── Character customization ──
 
-// Shared in-progress selection for Account and character-booth overlays.
+// Shared in-progress selection for the character-booth overlay.
 const cosmeticSelection = createCosmeticSelection();
-
-const accountCosmeticForm = createCosmeticForm({
-	elements: {
-		bodySwatches: cosmeticBodySwatchesEl,
-		accentSwatches: cosmeticAccentSwatchesEl,
-		shapeSelect: cosmeticShapeSelectEl,
-		hatList: cosmeticHatListEl,
-		proportions: cosmeticProportionsEl,
-		errorEl: cosmeticErrorEl,
-	},
-	selection: cosmeticSelection,
-	onPreviewChange: refreshCosmeticPreview,
-	getCurrency: () => myCurrency,
-	onUnlockHat: (hatId) => {
-		const hat = getHatCatalog().find((h) => h.id === hatId);
-		if (!hat || myCurrency < hat.price) return;
-		if (!socket || !socket.connected) return;
-		socket.emit(CLIENT_TO_SERVER.UNLOCK_HAT, { hatId });
-	},
-	proportionIdPrefix: 'cosmetic-prop',
-});
-
-function showCosmeticError(message) {
-	accountCosmeticForm.showError(message);
-}
-
-function syncCosmeticForm() {
-	accountCosmeticForm.syncFromAccount(getAccountCosmetic);
-}
 
 initCharacterBooth({
 	selection: cosmeticSelection,
@@ -3847,27 +3777,14 @@ initCharacterBooth({
 	getCurrency: () => myCurrency,
 });
 
-// Rebuild the live preview avatar from the current (unsaved) selection. No-op
-// when the preview is closed.
-function refreshCosmeticPreview() {
-	updateCosmeticPreview({ ...cosmeticSelection });
-}
-
 function openAccountOverlay() {
 	syncAccountForm();
-	syncCosmeticForm();
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
-	// Spin up the self-contained preview from the synced selection. Done after
-	// unhiding so the canvas has a layout size to read.
-	openCosmeticPreview(cosmeticPreviewCanvasEl, { ...cosmeticSelection });
 }
 
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
-	showCosmeticError('');
-	// Stop the render loop and release the preview's Three.js resources.
-	closeCosmeticPreview();
 }
 
 function openLevelSettingsOverlay() {
@@ -3949,34 +3866,6 @@ if (accountSaveBtnEl) {
 	});
 }
 
-if (cosmeticSaveBtnEl) {
-	cosmeticSaveBtnEl.addEventListener('click', async () => {
-		const cosmetic = {
-			bodyColor: cosmeticSelection.bodyColor,
-			accentColor: cosmeticSelection.accentColor,
-			bodyShape: cosmeticSelection.bodyShape,
-			hat: cosmeticSelection.hat,
-			proportions: { ...cosmeticSelection.proportions },
-		};
-		showCosmeticError('');
-		cosmeticSaveBtnEl.disabled = true;
-		const result = await patchProfile({ cosmetic });
-		cosmeticSaveBtnEl.disabled = false;
-
-		if (result.error) {
-			showCosmeticError(result.error);
-			return;
-		}
-		// Re-sync from the cache (now updated by patchProfile) so the controls
-		// reflect the persisted value.
-		syncCosmeticForm();
-		if (myId && gameState?.players?.[myId]) {
-			gameState.players[myId].cosmetic = getAccountCosmetic();
-			setGameStateRef(gameState);
-		}
-	});
-}
-
 // ── Toast helper ──
 
 function showCardErrorToast(message) {
@@ -4020,22 +3909,15 @@ function renderPlayerList(players) {
 	}
 }
 
-readyBtn.addEventListener('click', () => {
-	isReady = !isReady;
-	// Emitting playerReady routes to the resume path in the server's
-	// checkAllReady gate when a suspendedCheckpoint exists, so the same button
-	// resumes the checkpointed run while suspended and launches fresh otherwise.
-	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, isReady);
-	syncReadyButtonRole();
-});
-
-// Ready the local player up through the SAME path as #ready-btn / #resume-run-btn:
-// set the shared isReady flag, emit playerReady(true) — which the server's
-// checkAllReady gate routes to startGame once the whole party is ready — and
-// resync the button labels. The Launch Bay booth and the ?booth=launch debug
-// hook both call this; no new socket event is introduced. Idempotent: a second
-// booth touch or a repeated lobbyJoined (reconnect) does NOT re-emit, since we
-// bail out early when the player is already ready.
+// Ready the local player up through the SAME path as #resume-run-btn: set the
+// shared isReady flag, emit playerReady(true) — which the server's checkAllReady
+// gate routes to startGame once the whole party is ready, or to resume when a
+// suspendedCheckpoint exists, so this single path covers both a fresh deploy and
+// a suspended-run resume sortie that the retired #ready-btn used to serve. The
+// Launch Bay booth and the ?booth=launch debug hook both call this; no new
+// socket event is introduced. Idempotent: a second booth touch or a repeated
+// lobbyJoined (reconnect) does NOT re-emit, since we bail out early when the
+// player is already ready.
 function launchBoothReadyUp() {
 	if (!shouldLaunchReadyUp(isReady)) return;
 	isReady = true;
@@ -4387,11 +4269,11 @@ if (abandonRunBtn) {
 }
 
 // #resume-run-btn is the dedicated, distinct resume affordance shown while a run
-// is suspended. It re-enters the run through the SAME path as #ready-btn: emit
-// playerReady(true), which the server's checkAllReady gate routes to
-// restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It sets
-// the shared isReady flag (so it can't desync from #ready-btn) and resyncs both
-// labels via syncReadyButtonRole. No separate fresh-launch / resume socket event.
+// is suspended. It re-enters the run through the SAME path as the launch booth
+// ready-up: emit playerReady(true), which the server's checkAllReady gate routes
+// to restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It
+// sets the shared isReady flag and resyncs the label via syncReadyButtonRole. No
+// separate fresh-launch / resume socket event.
 if (resumeRunBtn) {
 	resumeRunBtn.addEventListener('click', () => {
 		isReady = true;
@@ -4547,10 +4429,14 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
 	const deckEditorEl = document.getElementById('deck-editor');
 	const deckEditorVisible = !!deckEditorEl && !deckEditorEl.classList.contains('hidden');
-	const readyBtnEl = document.getElementById('ready-btn');
-	const readyBtnUsable = !!readyBtnEl
-		&& !readyBtnEl.disabled
-		&& getComputedStyle(readyBtnEl).pointerEvents !== 'none';
+	// The 2D #ready-btn is retired; fresh deploy / resume now happen through the
+	// hub Launch Bay booth. While a run is suspended #resume-run-btn is the
+	// dedicated on-screen resume affordance, so capture can watch its usability.
+	const resumeBtnEl = document.getElementById('resume-run-btn');
+	const resumeBtnUsable = !!resumeBtnEl
+		&& !resumeBtnEl.classList.contains('hidden')
+		&& !resumeBtnEl.disabled
+		&& getComputedStyle(resumeBtnEl).pointerEvents !== 'none';
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
@@ -4601,7 +4487,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
 		deckEditorVisible,
-		readyBtnUsable,
+		resumeBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',

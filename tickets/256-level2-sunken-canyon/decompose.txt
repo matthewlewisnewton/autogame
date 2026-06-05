@@ -1,0 +1,13 @@
+Broke ticket **256-level2-sunken-canyon** into two sub-tickets (same pattern as spire/rooms level-2 work): rigid `sunken-canyon` layout first, then full `canyon_descent` Tier 2 wiring. No existing sub-tickets were present, so nothing was deleted or skipped.
+
+**Sub-ticket folders created:**
+
+- `/home/matt/workspace/.autogame-worktrees/256-level2-sunken-canyon/tickets/256-level2-sunken-canyon/subtickets/01-sunken-canyon-rigid-layout-mode`
+- `/home/matt/workspace/.autogame-worktrees/256-level2-sunken-canyon/tickets/256-level2-sunken-canyon/subtickets/02-canyon-descent-tier2-end-to-end`
+
+| # | Scope |
+|---|--------|
+| **01** | Thread `layoutMode: 'rigid'` through `generateSunkenCanyon` — fixed ramps, ordered cover, fixed monolith; dungeon tests only. |
+| **02** | `canyon_descent` Tier 2 catalog, deploy, variants, unlock, `canyon-descent-tier-2` debug scenario, and tier2 test suite. |
+
+Both use **Verification: code** (structure, handlers, variant rolls, and tests — not screenshot-only checks).

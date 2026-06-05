@@ -12,8 +12,6 @@ const LOBBY_PANEL_IDS = [
 ];
 
 const LOBBY_TAB_IDS = [
-	'lobby-tab-deck',
-	'lobby-tab-shop',
 	'lobby-tab-forge',
 	'lobby-tab-economy',
 	'lobby-tab-medic',
@@ -25,7 +23,7 @@ function ensureLobbyDom() {
 		'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 		'currency-display', 'objective-hud', 'ui', 'card-hand',
-		'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+		'lobby', 'lobby-browser', 'lobby-player-list',
 		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 		'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 		'summary-rewards-cards', 'return-to-lobby-btn',
@@ -38,7 +36,7 @@ function ensureLobbyDom() {
 	];
 	for (const id of requiredIds) {
 		if (!document.getElementById(id)) {
-			const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' ||
+			const el = (id === 'return-to-lobby-btn' ||
 				id.endsWith('-btn') || id.startsWith('lobby-tab-'))
 				? document.createElement('button')
 				: document.createElement('div');
@@ -98,7 +96,6 @@ describe('deck booth via booth:action', () => {
 		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('guild-medic').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('key-item-loadout').classList.contains('hidden')).toBe(true);
-		expect(document.getElementById('lobby-tab-deck').classList.contains('active')).toBe(true);
 	});
 
 	it('populates the deck editor and deck-add still emits deckAddCard', async () => {

@@ -1,8 +1,12 @@
-Conflict resolved in `LOGBOOK.md`.
+Merge conflicts are resolved in both files. Summary:
 
-Both sides are kept and ordered chronologically after the existing v0.257 entry:
+### `game/client/main.js`
+- **Imports:** Kept the ticket’s `events.json` catalog (`SERVER_TO_CLIENT` / `CLIENT_TO_SERVER`); dropped the retired `cosmetic-preview.js` import from the account overlay (removed on main by #243).
+- **Account cosmetic form:** Removed the `accountCosmeticForm` block; customization stays in the character booth only (main’s #243 intent).
+- **Ready button:** Removed the `#ready-btn` listener; kept main’s booth-only `launchBoothReadyUp()` path with `CLIENT_TO_SERVER.PLAYER_READY` (ticket’s constants + main’s retired 2D ready button).
+- **Hat-swap hook:** Updated main’s new `?booth=hatswap` emit to `CLIENT_TO_SERVER.DEBUG_SCENARIO` so it passes the ticket’s drift guard (the only uncatalogued literal left after the merge).
 
-1. **v0.258 — 263-debug-unlimited-health-godmode** (from `main`, 08:25:20) — godmode debug toggle review
-2. **v0.261 — 255-level2-rooms** (from the branch, 09:11:14) — rigid layout mode, training caverns/crystal rescue Tier 2 wiring
+### `LOGBOOK.md`
+- Merged all version entries in order: **v0.264** (hat swap), **v0.265** (sunken canyon), **v0.266** (retire 2D lobby menus), **v0.267** (shared event constants).
 
-All conflict markers are removed. The harness can proceed with the merge commit.
+All conflict markers are removed; `main.js` passes syntax check. The harness can commit and run the full test suite.
