@@ -30,6 +30,113 @@ export const passageFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d
 const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, roughness: 0.7 });
 export const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
 
+// Spire-ascent summit tints — lighter/cooler slate derived from the base dungeon palette
+const SPIRE_SUMMIT_FLOOR_HEX = 0x64748b;
+const SPIRE_SUMMIT_WALL_HEX = 0x7c8fa3;
+
+const spireTierMaterialsCache = new Map();
+const spireRampMaterialsCache = new Map();
+
+function materialColorHex(material) {
+	return typeof material.color.getHex === 'function'
+		? material.color.getHex()
+		: material.color;
+}
+
+function lerpColorHex(fromHex, toHex, t) {
+	const fr = (fromHex >> 16) & 0xff;
+	const fg = (fromHex >> 8) & 0xff;
+	const fb = fromHex & 0xff;
+	const tr = (toHex >> 16) & 0xff;
+	const tg = (toHex >> 8) & 0xff;
+	const tb = toHex & 0xff;
+	const r = Math.round(fr + (tr - fr) * t);
+	const g = Math.round(fg + (tg - fg) * t);
+	const b = Math.round(fb + (tb - fb) * t);
+	return (r << 16) | (g << 8) | b;
+}
+
+/**
+ * Cached floor/wall materials for a spire-ascent tier. Tier 0 matches the base
+ * dungeon slate; the highest tier lerps toward the summit palette.
+ */
+export function getSpireAscentTierMaterials(tierIndex, tierCount) {
+	const key = `t-${tierCount}-${tierIndex}`;
+	if (!spireTierMaterialsCache.has(key)) {
+		const t = tierCount <= 1 ? 0 : tierIndex / (tierCount - 1);
+		const floorHex = lerpColorHex(materialColorHex(floorMaterial), SPIRE_SUMMIT_FLOOR_HEX, t);
+		const wallHex = lerpColorHex(materialColorHex(wallMaterial), SPIRE_SUMMIT_WALL_HEX, t);
+		spireTierMaterialsCache.set(key, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: 0.8 }),
+			wall: new THREE.MeshStandardMaterial({ color: wallHex, roughness: 0.7 }),
+		});
+	}
+	return spireTierMaterialsCache.get(key);
+}
+
+/**
+ * Cached floor/wall materials for a spire-ascent ramp between two tier indices.
+ */
+export function getSpireAscentRampMaterials(fromTierIndex, toTierIndex, tierCount) {
+	const lo = Math.min(fromTierIndex, toTierIndex);
+	const hi = Math.max(fromTierIndex, toTierIndex);
+	const key = `r-${tierCount}-${lo}-${hi}`;
+	if (!spireRampMaterialsCache.has(key)) {
+		const fromMats = getSpireAscentTierMaterials(lo, tierCount);
+		const toMats = getSpireAscentTierMaterials(hi, tierCount);
+		const floorHex = lerpColorHex(materialColorHex(fromMats.floor), materialColorHex(toMats.floor), 0.5);
+		const wallHex = lerpColorHex(materialColorHex(fromMats.wall), materialColorHex(toMats.wall), 0.5);
+		spireRampMaterialsCache.set(key, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: 0.8 }),
+			wall: new THREE.MeshStandardMaterial({ color: wallHex, roughness: 0.7 }),
+		});
+	}
+	return spireRampMaterialsCache.get(key);
+}
+
+function getSpireTierCount(layout) {
+	const tiers = layout.rooms.filter(r => r.band === 'tier');
+	if (tiers.length === 0) return 1;
+	return Math.max(...tiers.map(r => r.tierIndex ?? 0)) + 1;
+}
+
+function inferSpireRampTierIndices(room, layout) {
+	const fc = room.floorCorners;
+	if (!fc) return { from: 0, to: 1 };
+
+	const yLow = Math.min(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+	const yHigh = Math.max(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+	const tierRooms = layout.rooms.filter(r => r.band === 'tier' && r.tierIndex != null);
+
+	function yToTier(y) {
+		for (const t of tierRooms) {
+			const ty = t.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+			if (Math.abs(ty - y) < 0.001) return t.tierIndex;
+		}
+		const sorted = [...tierRooms].sort(
+			(a, b) => (a.floorCorners?.yNW ?? DEFAULT_FLOOR_Y) - (b.floorCorners?.yNW ?? DEFAULT_FLOOR_Y)
+		);
+		for (const t of sorted) {
+			const ty = t.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+			if (Math.abs(ty - y) < 0.001) return t.tierIndex;
+		}
+		return 0;
+	}
+
+	return { from: yToTier(yLow), to: yToTier(yHigh) };
+}
+
+function resolveSpireRoomMaterials(room, layout, tierCount) {
+	if (room.band === 'tier' && room.tierIndex != null) {
+		return getSpireAscentTierMaterials(room.tierIndex, tierCount);
+	}
+	if (room.band === 'ramp') {
+		const { from, to } = inferSpireRampTierIndices(room, layout);
+		return getSpireAscentRampMaterials(from, to, tierCount);
+	}
+	return null;
+}
+
 // Role-specific floor materials (shared across rooms to avoid per-room allocation)
 const roleFloorMaterials = {
 	start: new THREE.MeshStandardMaterial({ color: 0x3a5a3a, roughness: 0.8 }),
@@ -220,9 +327,14 @@ export function buildDungeon(scene, layout) {
 	const spawnPosition = spawnRoom ? { x: spawnRoom.x, z: spawnRoom.z } : { x: 0, z: 0 };
 
 	// ── Build rooms ──
+	const isSpireAscent = layout.profile === 'spire-ascent';
+	const spireTierCount = isSpireAscent ? getSpireTierCount(layout) : 0;
+
 	for (const room of layout.rooms) {
-		// Pick floor material based on room role (graceful fallback to default)
-		const floorMat = roleFloorMaterials[room.role] || floorMaterial;
+		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
+		// Pick floor material: spire tier/ramp tints, else role-based fallback
+		const floorMat = spireMats?.floor ?? (roleFloorMaterials[room.role] || floorMaterial);
+		const roomWallMat = spireMats?.wall ?? wallMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped
 		let floorMesh;
@@ -263,7 +375,7 @@ export function buildDungeon(scene, layout) {
 			}
 
 			const wallBaseY = resolveFloorY(sampleFloorY(layout, wallX, wallZ));
-			const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
+			const wallMesh = new THREE.Mesh(wallGeo, roomWallMat);
 			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);

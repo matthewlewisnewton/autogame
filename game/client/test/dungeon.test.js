@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT, PASSAGE_WALL_HEIGHT } from '../dungeon.js';
+import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, floorMaterial, wallMaterial, FLOOR_Y, WALL_HEIGHT, PASSAGE_WALL_HEIGHT } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -528,6 +528,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 			rooms: [
 				{
 					x: 0, z: 20, width: tierW, depth: tierD, role: 'start', walls: [], band: 'tier',
+					tierIndex: 0,
 					floorCorners: { yNW: yBottom, yNE: yBottom, ySE: yBottom, ySW: yBottom },
 				},
 				{
@@ -536,6 +537,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 				},
 				{
 					x: 0, z: 4, width: tierW, depth: tierD, role: 'combat', walls: [], band: 'tier',
+					tierIndex: 1,
 					floorCorners: { yNW: yMid, yNE: yMid, ySE: yMid, ySW: yMid },
 				},
 				{
@@ -544,11 +546,19 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 				},
 				{
 					x: 0, z: -12, width: tierW, depth: tierD, role: 'treasure', walls: [], band: 'tier',
+					tierIndex: 2,
 					floorCorners: { yNW: yTop, yNE: yTop, ySE: yTop, ySW: yTop },
 				},
 			],
 			passages: [],
 		};
+	}
+
+	function findRoomFloorMesh(meshes, room) {
+		return meshes.find(m =>
+			m.position.x === room.x && m.position.z === room.z &&
+			m.geometry?.parameters?.height === 0.1
+		);
 	}
 
 	it('buildDungeon emits ground + one floor per room + treasure marker', () => {
@@ -611,5 +621,51 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 		expect(yTreasure - yBottom).toBeGreaterThanOrEqual(8);
 		expect(marker.position.y).toBeGreaterThan(yBottom + 8);
 		expect(marker.position.y).toBeCloseTo(yTreasure + 0.75, 4);
+	});
+
+	it('assigns distinct tier floor colors from bottom to summit', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const bottom = layout.rooms.find(r => r.tierIndex === 0);
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		const bottomFloor = findRoomFloorMesh(result.meshes, bottom);
+		const topFloor = findRoomFloorMesh(result.meshes, top);
+		expect(bottomFloor).toBeDefined();
+		expect(topFloor).toBeDefined();
+		expect(bottomFloor.material.color.getHex()).not.toBe(topFloor.material.color.getHex());
+		expect(bottomFloor.material.color.getHex()).toBe(floorMaterial.color.getHex());
+	});
+
+	it('uses ramp floor colors interpolated between adjacent tiers', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const bottom = layout.rooms.find(r => r.tierIndex === 0);
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		const ramp = layout.rooms.find(r => r.band === 'ramp' && r.floorCorners.yNW === DEFAULT_FLOOR_Y + 5 && r.floorCorners.ySE === DEFAULT_FLOOR_Y);
+		const bottomHex = findRoomFloorMesh(result.meshes, bottom).material.color.getHex();
+		const topHex = findRoomFloorMesh(result.meshes, top).material.color.getHex();
+		const rampHex = findRoomFloorMesh(result.meshes, ramp).material.color.getHex();
+		expect(rampHex).not.toBe(bottomHex);
+		expect(rampHex).not.toBe(topHex);
+	});
+
+	it('uses tier-matched wall materials instead of the global default on tiers', () => {
+		const layout = spireAscentFixture();
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		top.walls = [{ axis: 'x', x: top.x, z: top.z - top.depth / 2, length: top.width }];
+		const result = buildDungeon(mockScene(), layout);
+		const wallMesh = result.meshes.find(m =>
+			m.position.x === top.walls[0].x && m.position.z === top.walls[0].z &&
+			m.geometry?.parameters?.height === WALL_HEIGHT
+		);
+		expect(wallMesh).toBeDefined();
+		expect(wallMesh.material.color.getHex()).not.toBe(wallMaterial.color.getHex());
+	});
+
+	it('leaves non-spire layouts on shared default materials', () => {
+		const layout = { rooms: [room(0, 0, { walls: [] })], passages: [] };
+		const result = buildDungeon(mockScene(), layout);
+		const floor = result.meshes[1];
+		expect(floor.material).toBe(floorMaterial);
 	});
 });
