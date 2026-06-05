@@ -1222,6 +1222,13 @@ describe('profile landmark rendering', () => {
 		expect(dais.children.length).toBeGreaterThan(0);
 		expect(dais.children.every(c => c.geometry)).toBe(true);
 		expect(dais.children.some(c => c.material === plaza.accent)).toBe(true);
+		const vaultDais = buildLandmarkMesh('vault_dais', crowded);
+		expect(vaultDais).toBeInstanceOf(THREE.Group);
+		expect(vaultDais.userData.landmarkType).toBe('vault_dais');
+		expect(vaultDais.children.length).toBeGreaterThan(0);
+		expect(vaultDais.children.filter(c => c.material === crowded.accent).length).toBeGreaterThanOrEqual(3);
+		const vaultMaxY = Math.max(...vaultDais.children.map(c => c.position.y + (c.geometry?.parameters?.height ?? 0) / 2));
+		expect(vaultMaxY).toBeGreaterThan(1.4);
 	});
 
 	it('buildDungeon adds one landmark group per server landmark entry', () => {
@@ -1249,6 +1256,22 @@ describe('profile landmark rendering', () => {
 		expect(landmarkGroups).toHaveLength(1);
 		expect(landmarkGroups[0].position.x).toBe(0);
 		expect(landmarkGroups[0].position.z).toBe(0);
+		const trackedInMeshes = meshes.filter(m =>
+			landmarkGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(landmarkGroups[0].children.length);
+	});
+
+	it('buildDungeon on rigid crowded layout emits one vault_dais landmark group', () => {
+		const layout = generateLayout(123, 'crowded', { layoutMode: 'rigid' });
+		expect(layout.landmarks).toHaveLength(1);
+		expect(layout.landmarks[0].type).toBe('vault_dais');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType === 'vault_dais');
+		expect(landmarkGroups).toHaveLength(1);
+		expect(landmarkGroups[0].position.x).toBe(layout.landmarks[0].x);
+		expect(landmarkGroups[0].position.z).toBe(layout.landmarks[0].z);
 		const trackedInMeshes = meshes.filter(m =>
 			landmarkGroups.some(g => g.children.includes(m))
 		).length;

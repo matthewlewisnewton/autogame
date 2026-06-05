@@ -1328,7 +1328,7 @@ describe("generateLayout(seed, 'open') verticality & hazards", () => {
 // ── crowded rigid layoutMode ──
 
 describe("generateLayout(seed, 'crowded') rigid layoutMode", () => {
-  const CROWDED_TYPES = ['reactor_coil', 'pipe_stack'];
+  const RIGID_LANDMARK_TYPE = 'vault_dais';
   const MARGIN = 2;
 
   function combatRooms(layout) {
@@ -1396,11 +1396,69 @@ describe("generateLayout(seed, 'crowded') rigid layoutMode", () => {
       expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
       expect(roomReachability(room, coverInRoom(layout.cover, room))).toBe(true);
     }
+    expect(layout.landmarks).toHaveLength(1);
+    expect(layout.landmarks[0].type).toBe(RIGID_LANDMARK_TYPE);
+  }
+
+  function vaultDaisFootprint(lm) {
+    return { x: lm.x, z: lm.z, width: 2.4, depth: 2.4 };
+  }
+
+  function landmarkHostRoom(layout, lm) {
+    return layout.rooms.find(r =>
+      Math.abs(lm.x - r.x) <= r.width / 2 + 1e-6 &&
+      Math.abs(lm.z - r.z) <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  it('places exactly one vault_dais in the last sorted combat room (seed 123)', () => {
+    const layout = generateLayout(123, 'crowded', { layoutMode: 'rigid' });
+    expect(layout.landmarks).toHaveLength(1);
+    const lm = layout.landmarks[0];
+    expect(lm).toMatchObject({
+      type: RIGID_LANDMARK_TYPE,
+      yaw: 0,
+    });
+    expect(typeof lm.x).toBe('number');
+    expect(typeof lm.z).toBe('number');
+
+    const combatRooms = layout.rooms
+      .filter(r => r.role === 'combat')
+      .sort((a, b) => a.x - b.x || a.z - b.z);
+    const hostRoom = combatRooms[combatRooms.length - 1];
+    const landmarkRoom = landmarkHostRoom(layout, lm);
+    expect(landmarkRoom).toBe(hostRoom);
+    expect(landmarkRoom.role).toBe('combat');
+    expect(landmarkRoom.role).not.toBe('start');
+
+    const fp = vaultDaisFootprint(lm);
+    for (const c of layout.cover) {
+      expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+    }
+  });
+
+  it('vault_dais placement is deterministic across seeds in rigid mode', () => {
+    const ref = generateLayout(123, 'crowded', { layoutMode: 'rigid' }).landmarks;
+    for (const seed of [1, 42, 777, 9999]) {
+      expect(generateLayout(seed, 'crowded', { layoutMode: 'rigid' }).landmarks).toEqual(ref);
+    }
+  });
+
+  it('default crowded layouts still use decorative reactor_coil and pipe_stack only', () => {
+    const layout = generateLayout(123, 'crowded', { layoutMode: 'default' });
+    const decorativeTypes = ['reactor_coil', 'pipe_stack'];
     expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
     for (const lm of layout.landmarks) {
-      expect(CROWDED_TYPES).toContain(lm.type);
+      expect(decorativeTypes).toContain(lm.type);
     }
-  }
+  });
 
   it('unknown layoutMode values fall back to default scatter behavior', () => {
     const withDefault = generateLayout(123, 'crowded', { layoutMode: 'default' });

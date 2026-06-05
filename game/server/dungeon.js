@@ -825,7 +825,10 @@ function decorateCrowdedLayout(layout, rng, options = {}) {
   }
   layout.cover = cover;
   layout.landmarks = layoutMode === 'rigid'
-    ? placeLandmarksOrdered(layout, 'crowded', rigid.landmarkCount)
+    ? (() => {
+        const vault = placeVaultDaisRigid(layout);
+        return vault ? [vault] : [];
+      })()
     : placeLandmarks(layout, rng, 'crowded');
   return layout;
 }
@@ -843,6 +846,7 @@ const LANDMARK_FOOTPRINTS = {
   sand_spire: { width: 2.2, depth: 2.2 },
   sun_arch: { width: 3.2, depth: 1.6 },
   canyon_monolith: { width: 2.0, depth: 2.0 },
+  vault_dais: { width: 2.4, depth: 2.4 },
 };
 
 const LANDMARK_MARGIN = 2.5;
@@ -1022,6 +1026,24 @@ function placeLandmarksOrdered(layout, profile, goal = 1) {
   }
 
   return landmarks;
+}
+
+/**
+ * Place one vault_dais in the last sorted non-start combat room (rigid crowded only).
+ */
+function placeVaultDaisRigid(layout) {
+  const combatRooms = layout.rooms
+    .filter(r => r.role === 'combat' && !isRoomSloped(r))
+    .sort((a, b) => a.x - b.x || a.z - b.z);
+  if (combatRooms.length === 0) return null;
+
+  const room = combatRooms[combatRooms.length - 1];
+  const blocked = [
+    ...(layout.cover || []),
+    ...(layout.platforms || []),
+    ...(layout.hazards || []),
+  ];
+  return tryPlaceLandmarkInRoomOrdered(room, 'vault_dais', layout, blocked, []);
 }
 
 /**

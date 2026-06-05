@@ -638,7 +638,7 @@ export function buildDoorwayMarkers(room, layout, materials) {
 /**
  * Build a composed landmark prop (visual only — no collision).
  *
- * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch | canyon_monolith | arena_dais
+ * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch | canyon_monolith | arena_dais | vault_dais
  * @param {{ wall: THREE.Material, accent: THREE.Material }} materials
  * @returns {THREE.Group}
  */
@@ -698,6 +698,15 @@ export function buildLandmarkMesh(type, materials) {
 			addMesh(new THREE.CylinderGeometry(1.15, 1.15, 0.12, 6), accent, 0, 0.71, 0);
 			addMesh(new THREE.TorusGeometry(1.3, 0.07, 6, 24), accent, 0, 0.8, 0, Math.PI / 2);
 			addMesh(new THREE.CylinderGeometry(0.3, 0.2, 0.18, 6), accent, 0, 0.92, 0);
+			break;
+		}
+		case 'vault_dais': {
+			addMesh(new THREE.CylinderGeometry(2.05, 2.25, 0.2, 6), wall, 0, 0.1, 0);
+			addMesh(new THREE.CylinderGeometry(1.55, 1.75, 0.16, 6), wall, 0, 0.28, 0);
+			addMesh(new THREE.CylinderGeometry(0.75, 0.95, 0.55, 8), wall, 0, 0.64, 0);
+			addMesh(new THREE.TorusGeometry(1.0, 0.11, 8, 18), accent, 0, 1.02, 0, Math.PI / 2);
+			addMesh(new THREE.CylinderGeometry(0.28, 0.18, 0.4, 6), accent, 0, 1.32, 0);
+			addMesh(new THREE.OctahedronGeometry(0.22), accent, 0, 1.62, 0);
 			break;
 		}
 		default:
