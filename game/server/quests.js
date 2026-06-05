@@ -7,6 +7,10 @@ const QUEST_DEFS = {
     enemyCount: 5,
     rewardCurrency: 10,
     layoutProfile: 'crowded',
+    enemyPool: [
+      { type: 'grunt', weight: 3 },
+      { type: 'skirmisher', weight: 2 },
+    ],
   },
   crystal_rescue: {
     id: 'crystal_rescue',
@@ -17,6 +21,10 @@ const QUEST_DEFS = {
     enemyCount: 4,
     rewardCurrency: 12,
     layoutProfile: 'open',
+    enemyPool: [
+      { type: 'skirmisher', weight: 3 },
+      { type: 'grunt', weight: 2 },
+    ],
   },
   arena_trials: {
     id: 'arena_trials',
@@ -26,6 +34,11 @@ const QUEST_DEFS = {
     enemyCount: 6,
     rewardCurrency: 15,
     layoutProfile: 'open-plaza',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+      { type: 'miniboss', weight: 1 },
+    ],
   },
   canyon_descent: {
     id: 'canyon_descent',
@@ -35,6 +48,11 @@ const QUEST_DEFS = {
     enemyCount: 6,
     rewardCurrency: 14,
     layoutProfile: 'sunken-canyon',
+    enemyPool: [
+      { type: 'skirmisher', weight: 2 },
+      { type: 'grunt', weight: 2 },
+      { type: 'miniboss', weight: 1 },
+    ],
   },
   spire_ascent: {
     id: 'spire_ascent',
@@ -44,6 +62,12 @@ const QUEST_DEFS = {
     enemyCount: 6,
     rewardCurrency: 16,
     layoutProfile: 'spire-ascent',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 1 },
+      { type: 'miniboss', weight: 1 },
+      { type: 'spawner', weight: 2 },
+    ],
   },
   endless_siege: {
     id: 'endless_siege',
@@ -54,6 +78,10 @@ const QUEST_DEFS = {
     minibossCount: 2,
     rewardCurrency: 20,
     layoutProfile: 'open-plaza',
+    enemyPool: [
+      { type: 'grunt', weight: 2 },
+      { type: 'skirmisher', weight: 2 },
+    ],
   },
 };
 
@@ -93,6 +121,26 @@ function getLayoutProfileForQuest(questId) {
   return (quest && quest.layoutProfile) || QUEST_DEFS.training_caverns.layoutProfile;
 }
 
+// Returns the enemy spawn pool for a quest, falling back to the default quest's
+// pool for an unknown/invalid quest id.
+function getEnemyPool(questId) {
+  const quest = getQuest(questId);
+  return (quest && quest.enemyPool) || QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool;
+}
+
+// Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
+// weights. Deterministic for a given `rng` (defaults to Math.random).
+function pickWeightedEnemyType(pool, rng = Math.random) {
+  const total = pool.reduce((sum, entry) => sum + entry.weight, 0);
+  let roll = rng() * total;
+  for (const entry of pool) {
+    roll -= entry.weight;
+    if (roll < 0) return entry.type;
+  }
+  // Floating-point fallback: return the last entry's type.
+  return pool[pool.length - 1].type;
+}
+
 module.exports = {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
@@ -102,5 +150,7 @@ module.exports = {
   listQuests,
   getSelectedQuest,
   getLayoutProfileForQuest,
-  buildQuestUpdatePayload
+  buildQuestUpdatePayload,
+  getEnemyPool,
+  pickWeightedEnemyType
 };
