@@ -834,6 +834,30 @@ canvas {
   box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.35);
 }
 
+.quest-card.quest-card-locked {
+  cursor: not-allowed;
+  opacity: 0.55;
+  border-color: rgba(100, 116, 139, 0.25);
+}
+
+.quest-card.quest-card-locked:hover {
+  border-color: rgba(100, 116, 139, 0.35);
+  background: rgba(15, 23, 42, 0.6);
+}
+
+.quest-tier-badge {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  pointer-events: none;
+}
+
+.quest-card.selected .quest-tier-badge {
+  color: #93c5fd;
+}
+
 .quest-name {
   font-size: 15px;
   font-weight: 700;

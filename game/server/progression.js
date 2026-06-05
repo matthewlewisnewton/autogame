@@ -2504,6 +2504,7 @@ function buildSuspendedRunSummary(checkpoint) {
   if (!checkpoint || !checkpoint.run) return null;
   return {
     questId: checkpoint.run.questId,
+    questTier: checkpoint.run.questTier ?? DEFAULT_QUEST_TIER,
     questName: checkpoint.run.questName,
     objective: { ...checkpoint.run.objective },
   };
