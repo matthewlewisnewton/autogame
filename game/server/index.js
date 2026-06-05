@@ -2240,6 +2240,7 @@ if (typeof module !== 'undefined' && module.exports) {
     savePlayerData,
     saveAllPlayers,
     setTestProvider,
+    getProvider,
     persistenceKey,
     get provider() { return getProvider(); },
     // Auth

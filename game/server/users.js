@@ -428,6 +428,21 @@ function unlockQuestTier(accountId, questId, tier) {
 }
 
 /**
+ * Return a snapshot of every in-memory account record as shallow copies.
+ * The copies are detached from the live Map values so callers (e.g. the admin
+ * roster) cannot mutate stored accounts. The bcrypt `passwordHash` is stripped
+ * so it never leaks into read-only views.
+ *
+ * @returns {object[]}
+ */
+function getAllUsers() {
+	return Array.from(users.values()).map((record) => {
+		const { passwordHash, ...rest } = record;
+		return { ...rest };
+	});
+}
+
+/**
  * Clear all users from the in-memory store (test-only).
  */
 function clearUsers() {
@@ -470,6 +485,7 @@ module.exports = {
 	isQuestTierUnlocked,
 	unlockQuestTier,
 	normalizeEmail,
+	getAllUsers,
 	clearUsers,
 	loadUsers,
 	saveUsers,
