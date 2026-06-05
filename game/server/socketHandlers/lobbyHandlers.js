@@ -17,7 +17,7 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
 } = require('../quests');
-const { isPlayingPhase } = require('../lobbies');
+const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
 const { backfillUnlockedHats } = require('../cosmetic');
 const keyItemEffects = require('../keyItemEffects');
@@ -345,13 +345,15 @@ function register(socket, ctx) {
 
   socket.on('move', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (!isPlayingPhase(state)) return;
+    if (!isPlayingPhase(state) && !isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
 
     if (!player) return;
-    if (player.dead) return;
-    if (player.extracted) return;
+    if (isPlayingPhase(state)) {
+      if (player.dead) return;
+      if (player.extracted) return;
+    }
     if (player.connected === false) return;
 
     if (!data || typeof data !== 'object' || Array.isArray(data) ||

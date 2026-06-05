@@ -40,7 +40,9 @@ import {
 	DISCONNECT_GRACE_MS,
 	runGameLoopTick,
 	processPassiveDraws,
+	HUB_LAYOUT,
 } from '../index.js';
+import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
 import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
@@ -322,7 +324,11 @@ async function closeServer() {
 }
 
 function firstRoomSpawn() {
-	const first = testGameState().layout.rooms[0];
+	const state = testGameState();
+	if (state.gamePhase === 'lobby') {
+		return hubSpawnPosition(HUB_LAYOUT);
+	}
+	const first = state.layout.rooms[0];
 	return { x: first.x, z: first.z };
 }
 
@@ -524,6 +530,22 @@ describe('Socket Integration — Move Event', () => {
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
 		await closeServer();
+	});
+
+	it('lobby phase move stores input and integrates against HUB_LAYOUT', async () => {
+		expect(testGameState().gamePhase).toBe('lobby');
+		const player = testGameState().players[socket._playerId];
+		const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+		expect(player.x).toBeCloseTo(hubSpawn.x, 1);
+		expect(player.z).toBeCloseTo(hubSpawn.z, 1);
+
+		const xBefore = player.x;
+		socket.emit('move', { dx: 1, dz: 0, rotation: 0, sequence: 1 });
+		await sleep(120);
+
+		expect(player.inputDx).toBe(1);
+		expect(player.inputActive).toBe(true);
+		expect(player.x).toBeGreaterThan(xBefore);
 	});
 
 	it('emits move and server broadcasts stateUpdate with new position', async () => {

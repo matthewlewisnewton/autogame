@@ -29,7 +29,7 @@ const {
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
-const { isPlayingPhase } = require('./lobbies');
+const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -124,6 +124,31 @@ function buildMovementContext(state) {
     dungeonBounds: state.dungeonBounds,
     colliders: buildWallColliders(state.layout),
   };
+}
+
+/**
+ * Lobby-phase movement context from the shared hub layout (not quest preview layout).
+ */
+function buildHubMovementContext(hubLayout) {
+  if (!hubLayout) return null;
+  return {
+    layout: hubLayout,
+    walkableAABBs: computeWalkableAABBs(hubLayout),
+    dungeonBounds: computeDungeonBounds(hubLayout),
+    colliders: buildWallColliders(hubLayout),
+  };
+}
+
+/**
+ * Hub start-room center — matches the client hub spawn (role: 'start').
+ */
+function hubSpawnPosition(hubLayout) {
+  if (!hubLayout || !hubLayout.rooms || hubLayout.rooms.length === 0) {
+    return { x: 0, z: 0 };
+  }
+  const startRoom = hubLayout.rooms.find((r) => r.role === 'start');
+  const room = startRoom || hubLayout.rooms[0];
+  return { x: room.x, z: room.z };
 }
 
 function resolveMovementContext(movementContext) {
@@ -344,15 +369,19 @@ function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, movementContextOrColl
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
  */
 function applyPlayerMovement(state, movementContext = buildMovementContext(state)) {
-  if (!state || !isPlayingPhase(state) || !movementContext) return;
+  if (!state || !movementContext) return;
+  const inPlaying = isPlayingPhase(state);
+  const inLobby = isLobbyPhase(state);
+  if (!inPlaying && !inLobby) return;
 
   const ctx = resolveMovementContext(movementContext);
   const step = MOVE_SPEED / TICK_RATE;
   const now = Date.now();
 
   for (const [playerId, player] of Object.entries(state.players)) {
-    if (!player || player.dead || player.extracted) continue;
+    if (!player) continue;
     if (player.connected === false) continue;
+    if (inPlaying && (player.dead || player.extracted)) continue;
     if (!player.inputActive) continue;
     if (now - (player.lastInputTime || 0) > INPUT_STALE_MS) {
       player.inputActive = false;
@@ -2397,6 +2426,8 @@ module.exports = {
   rebuildWallColliders,
   getWallColliders,
   buildMovementContext,
+  buildHubMovementContext,
+  hubSpawnPosition,
   wallAABB,
   checkWallCollision,
   resolveWallCollision,

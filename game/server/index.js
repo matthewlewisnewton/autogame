@@ -122,6 +122,8 @@ const {
   checkSweptCollision,
   tryPlayerMove,
   buildMovementContext,
+  buildHubMovementContext,
+  hubSpawnPosition,
   applyPlayerMovement,
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
@@ -926,7 +928,12 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   }
 
   if (isLobbyPhase(state)) {
-    revivePlayerInLobby(state.players[playerId]);
+    const lobbyPlayer = state.players[playerId];
+    revivePlayerInLobby(lobbyPlayer);
+    const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+    lobbyPlayer.x = hubSpawn.x;
+    lobbyPlayer.z = hubSpawn.z;
+    lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
   }
 
   if (options.dropIn) {
@@ -1083,7 +1090,10 @@ function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
     withLobbyContext(lobby, () => {
       const state = lobby.state;
-      if (isPlayingPhase(state)) {
+      if (isLobbyPhase(state)) {
+        applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+        flushDirtyPlayerSaves();
+      } else if (isPlayingPhase(state)) {
         applyPlayerMovement(state, buildMovementContext(state));
         checkTelepipeProximity();
         flushDirtyPlayerSaves();
