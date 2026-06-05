@@ -104,6 +104,7 @@ import {
 	getMsBarTier,
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
+import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 
 // ── Renderer module imports ──
 import {
@@ -165,6 +166,7 @@ import {
 	applyLockOnPress,
 	emitBoothInteract,
 	setBoothInRangeListener,
+	setEnemyDisplayCatalogGetter,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
@@ -1147,6 +1149,7 @@ function bindSocketHandlers(s) {
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
 		keyItemDefs = data.keyItemDefs || {};
+		enemyDisplayCatalog = data.enemyDisplayCatalog || null;
 		renderDeckEditor();
 
 		if (data.accountId) {
@@ -1877,6 +1880,8 @@ let myInventory = null;
 let myOwnedCards = {};
 let lastEvolutionResult = null;
 let keyItemDefs = {};
+let enemyDisplayCatalog = null;
+setEnemyDisplayCatalogGetter(() => enemyDisplayCatalog);
 let availableQuests = [];
 let questVariants = [];
 let unlockedQuestTiers = {};
@@ -2299,7 +2304,15 @@ function updateObjectiveHud() {
 	if (gameState && gameState.gamePhase === 'playing' && run && run.objective) {
 		const obj = run.objective;
 		const title = formatQuestTierLabel(run.questName, run.questTier ?? 1);
-		objectiveHudEl.textContent = `${title}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
+		let progress = '';
+		if (obj.type === 'collect_items') {
+			progress = THEME.objectives.collectPrismsProgress
+				.replace('{collected}', String(obj.collectedItems ?? 0))
+				.replace('{total}', String(obj.totalItems ?? 0));
+		} else if (obj.type === 'defeat_enemies') {
+			progress = `Purged ${obj.defeatedEnemies ?? 0} / ${obj.totalEnemies ?? 0} hostiles`;
+		}
+		objectiveHudEl.textContent = progress ? `${title}\n${progress}` : title;
 		objectiveHudEl.style.display = 'block';
 	} else {
 		objectiveHudEl.style.display = 'none';
@@ -4374,6 +4387,9 @@ window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
+window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
+window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
+window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);

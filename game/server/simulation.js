@@ -374,8 +374,10 @@ function circleIntersectsAABB(px, pz, aabb, radius = PLAYER_RADIUS) {
     && pz + radius > aabb.minZ && pz - radius < aabb.maxZ;
 }
 
-function findSpireEdgeHazardAt(layout, x, z, radius = PLAYER_RADIUS) {
-  if (!layout || layout.profile !== 'spire-ascent') return null;
+function findEdgeHazardAt(layout, x, z, radius = PLAYER_RADIUS) {
+  if (!layout) return null;
+  const profile = layout.profile;
+  if (profile !== 'spire-ascent' && profile !== 'sunken-canyon') return null;
   const hazards = layout.edgeHazards;
   if (!hazards || hazards.length === 0) return null;
 
@@ -385,23 +387,48 @@ function findSpireEdgeHazardAt(layout, x, z, radius = PLAYER_RADIUS) {
   return null;
 }
 
+/** @deprecated alias — use findEdgeHazardAt */
+const findSpireEdgeHazardAt = findEdgeHazardAt;
+
 /**
- * Snap a player off an edge-hazard strip toward tier centre and apply chip damage.
+ * Snap a player off an edge-hazard strip toward safe interior and apply chip damage.
  * Returns true when a hazard was resolved.
  */
-function applySpireEdgeHazardResponse(playerId, player, layout) {
-  const hazard = findSpireEdgeHazardAt(layout, player.x, player.z);
+function applyEdgeHazardResponse(playerId, player, layout) {
+  const hazard = findEdgeHazardAt(layout, player.x, player.z);
   if (!hazard) return false;
 
-  const tier = layout.rooms.find((r) => r.band === 'tier' && r.tierIndex === hazard.tierIndex);
-  if (!tier) return false;
+  if (layout.profile === 'spire-ascent') {
+    const tier = layout.rooms.find((r) => r.band === 'tier' && r.tierIndex === hazard.tierIndex);
+    if (!tier) return false;
 
-  const halfW = tier.width / 2;
-  const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
-  if (hazard.side === 'east') {
-    player.x = tier.x + halfW - safeInset;
+    const halfW = tier.width / 2;
+    const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+    if (hazard.side === 'east') {
+      player.x = tier.x + halfW - safeInset;
+    } else {
+      player.x = tier.x - halfW + safeInset;
+    }
+  } else if (layout.profile === 'sunken-canyon') {
+    const plateau = layout.rooms.find((r) => r.band === 'plateau');
+    if (!plateau) return false;
+
+    const halfW = plateau.width / 2;
+    const halfD = plateau.depth / 2;
+    if (hazard.side === 'south') {
+      const safeInset = (hazard.maxZ - hazard.minZ) + PLAYER_RADIUS + 0.15;
+      player.z = plateau.z + halfD - safeInset;
+    } else if (hazard.side === 'west') {
+      const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+      player.x = plateau.x - halfW + safeInset;
+    } else if (hazard.side === 'east') {
+      const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+      player.x = plateau.x + halfW - safeInset;
+    } else {
+      return false;
+    }
   } else {
-    player.x = tier.x - halfW + safeInset;
+    return false;
   }
 
   const now = Date.now();
@@ -412,6 +439,9 @@ function applySpireEdgeHazardResponse(playerId, player, layout) {
 
   return true;
 }
+
+/** @deprecated alias — use applyEdgeHazardResponse */
+const applySpireEdgeHazardResponse = applyEdgeHazardResponse;
 
 /**
  * Apply one tick of movement for all players with active input.
@@ -468,8 +498,8 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
       }
     }
 
-    if (inPlaying && ctx.layout?.profile === 'spire-ascent') {
-      if (applySpireEdgeHazardResponse(playerId, player, ctx.layout)) {
+    if (inPlaying && (ctx.layout?.profile === 'spire-ascent' || ctx.layout?.profile === 'sunken-canyon')) {
+      if (applyEdgeHazardResponse(playerId, player, ctx.layout)) {
         player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
         player.persistenceDirty = true;
       }
@@ -841,18 +871,30 @@ function randomWanderTarget() {
 
 const ENEMY_DEFS = {
 	grunt: {
+		name: 'Bulkhead Drone',
+		description: 'Slow, durable radial attacker.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed'],
 		hp: 100, chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800,
 		attackStyle: 'radial',
 	},
 	skirmisher: {
+		name: 'Phase Stalker',
+		description: 'Fast cone striker.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed'],
 		hp: 40, chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6, attackWindupMs: 500,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
 	},
 	miniboss: {
+		name: 'Vault Warden',
+		description: 'Heavy cone boss with extended reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 300, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
 	},
 	spawner: {
+		name: 'Brood Node',
+		description: 'Radial attacker that periodically summons skirmishers.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'spawnIntervalMs', 'spawnType'],
 		hp: 120, chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8, attackWindupMs: 900,
 		attackStyle: 'radial',
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
@@ -908,7 +950,7 @@ function isPlayerInEnemyAttack(enemy, target) {
 function ensureEnemyCombatStats(enemy) {
 	if (enemy.chaseSpeed !== undefined) return;
 	const def = enemyDefFor(enemy.type);
-	const { hp, ...statFields } = def;
+	const { hp, name, description, surfacedStats, ...statFields } = def;
 	Object.assign(enemy, statFields);
 }
 
@@ -2499,6 +2541,8 @@ module.exports = {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  applyEdgeHazardResponse,
+  findEdgeHazardAt,
   applySpireEdgeHazardResponse,
   findSpireEdgeHazardAt,
   circleIntersectsAABB,

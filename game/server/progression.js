@@ -2122,7 +2122,7 @@ function restoreHandCharges(player, amount, options = {}) {
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   const def = enemyDefFor(type);
-  const { hp, ...statFieldsFromDef } = def;
+  const { hp, name, description, surfacedStats, ...statFieldsFromDef } = def;
   const enemy = {
     id: crypto.randomUUID(),
     x,

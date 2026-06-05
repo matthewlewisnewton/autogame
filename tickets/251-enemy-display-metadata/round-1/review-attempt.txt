@@ -1,0 +1,19 @@
+## Review complete
+
+**Verdict: PASS**
+
+Wrote:
+- [`tickets/251-enemy-display-metadata/round-1/review.md`](tickets/251-enemy-display-metadata/round-1/review.md)
+- [`tickets/251-enemy-display-metadata/round-1/nits.md`](tickets/251-enemy-display-metadata/round-1/nits.md) (2 non-blocking follow-ups)
+
+No `gaps.md` — nothing blocking.
+
+### Summary
+
+**Runtime:** Game ran cleanly. `metrics.json` has `"ok": true`, empty `pageerrors`, and `console.log` has no page errors or fatals. Smoke capture reached live dungeon gameplay.
+
+**Acceptance criteria:** All four `ENEMY_DEFS` types and all five `VARIANT_DEFS` variants have display name, one-line description, and `surfacedStats`. Vitest covers shape validation and confirms `spawnEnemy` does not copy display fields onto live enemies. Both spread paths (`spawnEnemy`, `ensureEnemyCombatStats`) strip display-only keys. 882 harness tests + 2114 quick-suite tests pass.
+
+**Scope:** Metadata-only server change; no combat regressions, no debug scenarios added, aligned with design doc intent as a lock-on panel prerequisite.
+
+**Nits filed (non-blocking):** Hardcoded enemy-type list in tests vs dynamic `Object.keys`; missing direct test for `ensureEnemyCombatStats` display-field exclusion.

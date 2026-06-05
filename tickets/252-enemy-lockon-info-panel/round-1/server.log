@@ -1,0 +1,11 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/252-enemy-lockon-info-panel/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/252-enemy-lockon-info-panel/game/data
+Server listening on port 3002
+Player connected: socket=XNNS9mtz6G-Q87_1AAAB, playerId=e8715f32-b31d-4522-bece-80712490c973
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=5LCv3Oh-vNpISJzTAAAD, playerId=0cec77eb-7c98-4f8b-af44-71ef807591ef
+Player disconnected: XNNS9mtz6G-Q87_1AAAB
+Player disconnected: 5LCv3Oh-vNpISJzTAAAD

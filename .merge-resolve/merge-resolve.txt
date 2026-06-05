@@ -1,13 +1,16 @@
 Merge conflicts are resolved in both files.
 
-### `TASKS.md`
-Kept **both** cleanup backlog entries:
-- `279-cleanup-plaza-arena-identity` (this ticket)
-- `279-cleanup-booth-quest-counter` (landed on main)
+### `game/server/dungeon.js`
+Kept **both** feature sets in order:
+1. **Ticket (254):** `OPEN_PLAZA_RIGID_HAZARDS` and `placeOpenPlazaHazardsRigid()` for deterministic open-plaza rigid layout mode
+2. **Main:** `buildSunkenCanyonCliffLips()` and `buildSunkenCanyonCliffHazards()` for sunken-canyon cliff lips and plateau hazard bands
+
+Removed the stray extra `}` that came from the conflict. `node --check` passes.
 
 ### `LOGBOOK.md`
-Combined both sides in version order:
-- **v0.246–v0.249** from main (booth shop, quest counter, hub polish, paid appearance change)
-- **v0.250** from this branch (`247-plaza-arena-identity` review entry)
+Combined log entries in version order:
+- **v0.251–v0.254** from `main` (enemy display, canyon verticality, rooms HUD, lock-on panel)
+- **v0.255** from the ticket branch (level-2 mechanics reference)
+- Final **Remaining gaps: None** at the end
 
-All conflict markers are removed. The harness can commit and finish the merge.
+No conflict markers remain in either file. The harness can commit and run the test suite.

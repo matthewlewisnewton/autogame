@@ -35,6 +35,17 @@
       "accent": "#e8a317",
       "floorRoughness": 0.85,
       "wallRoughness": 0.75
+    },
+    "sunken-canyon": {
+      "floor": "#2f3d35",
+      "plateauFloor": "#4a5f4a",
+      "canyonFloor": "#2f3d35",
+      "wall": "#3a4d42",
+      "passageFloor": "#35453a",
+      "passageWall": "#2e3b32",
+      "accent": "#6a9a6a",
+      "floorRoughness": 0.85,
+      "wallRoughness": 0.75
     }
   },
   "roleTints": {

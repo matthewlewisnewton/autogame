@@ -1,0 +1,30 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- `tickets/248-rooms-objective-hud-and-default-profile-bugs/round-1/review.md`
+- `tickets/248-rooms-objective-hud-and-default-profile-bugs/round-1/nits.md` (non-blocking follow-ups only)
+- No `gaps.md` (FAIL-only)
+
+### Runtime
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: clean (no page errors or fatals)
+- Game reached `playing` with objective HUD showing `Purged 0 / 5 hostiles` for the default defeat-enemies run
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| **(a)** Objective HUD branches on `obj.type`; `collect_items` uses prism progress | Met — `updateObjectiveHud()` + client vitest |
+| **(b)** `'default'` profile resolves to `DEFAULT_LAYOUT_PROFILE` | Met — `LAYOUT_PROFILES.default` + server vitest |
+
+### Tests
+- Re-ran `pnpm test:quick`: **2162/2162 passed**
+- `coverage.log` had one unrelated flaky spawner distance test in a partial harness run; not ticket-related
+
+### Debug scenario
+`collect-prisms-progress` is correctly gated (localhost URL param + server loopback check), reachable via normal `crystal_rescue` play, and does not skip core run startup.
+
+### Nits (non-blocking)
+1. No server integration test for `collect-prisms-progress`
+2. `survive` objectives show title only in the HUD (no progress line)

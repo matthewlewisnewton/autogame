@@ -1,0 +1,17 @@
+Broke ticket **245-canyon-verticality-identity** into **5** sub-tickets (no prior subtickets existed). All use **Verification: code** because every criterion is checkable via layout data, materials, handlers, and tests — not screenshot-only rendering.
+
+| # | Focus |
+|---|--------|
+| 01 | Green/grey `sunken-canyon` theme + band-tinted plateau vs canyon vs ramp floors |
+| 02 | Server `cliffLips` + client emissive strips at ramp mouths |
+| 03 | Deterministic `canyon_monolith` landmark on the canyon floor |
+| 04 | Profile-gated lower camera follow height (~10u drop feel) |
+| 05 | Optional plateau rim `edgeHazards` (gameplay + warning strips, ramp gaps preserved) |
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/tickets/245-canyon-verticality-identity/subtickets/01-canyon-band-floor-materials/`
+- `/home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/tickets/245-canyon-verticality-identity/subtickets/02-cliff-lip-descent-markers/`
+- `/home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/tickets/245-canyon-verticality-identity/subtickets/03-canyon-monolith-landmark/`
+- `/home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/tickets/245-canyon-verticality-identity/subtickets/04-sunken-canyon-camera-height/`
+- `/home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/tickets/245-canyon-verticality-identity/subtickets/05-plateau-cliff-hazard-band/`

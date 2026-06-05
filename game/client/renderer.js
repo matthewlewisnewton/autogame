@@ -51,7 +51,7 @@ import {
 	MAX_ELAPSED_MS,
 	TICK_RATE,
 	CAMERA_DISTANCE,
-	CAMERA_HEIGHT,
+	getCameraFollowHeight,
 	CAMERA_YAW_SENSITIVITY,
 	ENEMY_ATTACK_RANGE,
 	MAX_HP,
@@ -83,6 +83,7 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
+import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
 
@@ -137,6 +138,10 @@ let lockOnReleaseLookAt = null;
 let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
+/** @type {(() => object | null) | null} */
+let enemyDisplayCatalogGetter = null;
+/** @type {{ panelEl: HTMLElement, nameEl: HTMLElement, variantEl: HTMLElement, hpEl: HTMLElement, statsEl: HTMLElement, descEl: HTMLElement } | null} */
+let lockOnInfoPanelDom = null;
 
 // ── Booth proximity (hub lobby) ──
 // The booth id the local player currently stands within, recomputed each frame
@@ -920,8 +925,9 @@ function syncFacingToServer() {
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
+	const followHeight = getCameraFollowHeight(currentLayoutProfile);
 	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
-	const targetY = playerY + CAMERA_HEIGHT;
+	const targetY = playerY + followHeight;
 	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
 
 	if (lockOnReleaseLookAt) {
@@ -974,6 +980,46 @@ export function setMyId(id) {
  */
 export function setSocketRef(s) {
 	socketRef = s;
+}
+
+/**
+ * Provide a getter for the server enemy display catalog (set from main.js).
+ * @param {() => object | null} getter
+ */
+export function setEnemyDisplayCatalogGetter(getter) {
+	enemyDisplayCatalogGetter = getter;
+}
+
+function getLockOnInfoPanelDom() {
+	if (lockOnInfoPanelDom) return lockOnInfoPanelDom;
+	const panelEl = document.getElementById('lock-on-info-panel');
+	if (!panelEl) return null;
+	lockOnInfoPanelDom = {
+		panelEl,
+		nameEl: document.getElementById('lock-on-target-name'),
+		variantEl: document.getElementById('lock-on-target-variant'),
+		hpEl: document.getElementById('lock-on-target-hp'),
+		statsEl: document.getElementById('lock-on-target-stats'),
+		descEl: document.getElementById('lock-on-target-description'),
+	};
+	return lockOnInfoPanelDom;
+}
+
+function refreshLockOnInfoPanel() {
+	const dom = getLockOnInfoPanelDom();
+	if (!dom) return;
+
+	const showPanel = currentGamePhase === 'playing' && isLockOnActive();
+	const enemy = showPanel
+		? findEnemyById(gameStateRef?.enemies, getLockedEnemyId())
+		: null;
+	const catalog = enemyDisplayCatalogGetter ? enemyDisplayCatalogGetter() : null;
+
+	syncLockOnInfoPanel({
+		...dom,
+		enemy,
+		catalog,
+	});
 }
 
 /**
@@ -1315,9 +1361,10 @@ export function initScene(layout, spawnPos) {
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
 	cameraYaw = 0;
+	const initialFollowHeight = getCameraFollowHeight(layout?.profile);
 	camera.position.set(
 		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		CAMERA_HEIGHT,
+		initialFollowHeight,
 		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
 	);
 	const spawnFloorY = layout
@@ -1461,6 +1508,9 @@ export function setGamePhase(phase) {
 	if (renderer?.domElement) {
 		renderer.domElement.style.pointerEvents = phase === 'playing' ? 'auto' : 'none';
 	}
+	if (phase !== 'playing') {
+		refreshLockOnInfoPanel();
+	}
 }
 
 // ── Player movement ──
@@ -1479,6 +1529,7 @@ export function updateMyPlayer(delta) {
 		clearAllLockOnState();
 		lockOnToTarget = null;
 		lockOnReleaseLookAt = null;
+		refreshLockOnInfoPanel();
 		return;
 	}
 
@@ -1490,6 +1541,8 @@ export function updateMyPlayer(delta) {
 		cameraYaw,
 		playerRotation,
 	);
+
+	refreshLockOnInfoPanel();
 
 	if (lockState.locked) {
 		playerRotation = lockState.playerRotation;

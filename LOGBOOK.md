@@ -4429,6 +4429,94 @@ PASS. The implementation is deterministic, scoped to dungeon generation/renderin
 
 No blocking gaps.
 
+## v0.251 — 251-enemy-display-metadata  (2026-06-05 07:12:07)
+
+- Minimal, focused diff (~150 lines across 2 commits).
+- Copy is thematic and distinct per type/variant.
+- `surfacedStats` selections are sensible for each role (spawner includes spawn keys; miniboss includes `attackRange`; frenzied surfaces enrage multipliers).
+- No dead code, no client-side leakage, no new console errors.
+- `ENEMY_DEFS` remains exported from `simulation.js` / `index.js` for server-side and test consumers — appropriate for the stated prerequisite role.
+
+---
+
+## Debug scenarios
+
+**Finding: N/A — no new or modified debug scenarios**
+
+This ticket did not add or change any `?debugScenario=` shortcuts. No gating or normal-path bypass review required.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game starts and runs cleanly in capture; tests pass.
+
+## v0.252 — 245-canyon-verticality-identity  (2026-06-05 07:13:32)
+
+### Optional cliff hazard band
+
+Satisfied. The layout emits `edgeHazards` along plateau cliff segments between ramp mouths, plus side flanks when central ramps consume the south rim. Server movement detects the hazard band for `sunken-canyon`, applies chip damage, and snaps players back toward safe plateau interior. Client rendering draws the hazard strips with emissive warning materials. Tests cover hazard placement, reachability preservation, rendering, and movement response.
+
+### Debug scenario gating and normal reachability
+
+Satisfied. The added `sunken-canyon-stage` shortcut is reachable only through the debug-scenario socket path, and `isDebugScenarioAllowed` gates it to explicit debug env or loopback non-production addresses. The same end-state is reachable through normal gameplay via the `canyon_descent` quest, whose tier uses `layoutProfile: 'sunken-canyon'` and flows through `applyLayoutForQuest`, normal run start, spawn, collision, and enemy spawning. The shortcut reuses `generateLayout(seed, 'sunken-canyon')`, recomputes bounds/walkable AABBs/colliders, and emits the standard quest update; it does not bypass persistent progression or combat invariants beyond providing a QA jump into an otherwise normal layout state.
+
+## Design and requirements consistency
+
+The implementation fits the design document's modular dungeon and floor-height model: generated rooms carry `floorCorners`, server movement samples floor height with `sampleFloorY`, and client rendering uses the same layout data for floors, walls, cover, and landmarks. It does not regress the foundation requirements: the captured game renders a 3D scene, connects through the server-client architecture, shows multiplayer state, and movement continues to update during the smoke flow.
+
+## Code quality and verification
+
+The implementation is cohesive and covered by focused tests across server layout generation, client rendering/materials, movement hazard handling, camera height selection, and debug-gate behavior. The coverage run completed with 93 test files and 1742 tests passing. Coverage logs include unrelated expected/handled model-loading messages from tests and a simulated persistence failure, not ticket-blocking runtime defects.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+
+## v0.253 — 248-rooms-objective-hud-and-default-profile-bugs  (2026-06-05 07:38:35)
+
+| Does not weaken invariants | Acceptable — still runs deck validation and full run start; only patches `collectedItems` on an active `collect_items` run for HUD QA (same pattern as `quest-objective-near-complete`). Does not skip net replication or persistence paths used in normal play. |
+
+No blocking issues with the debug shortcut.
+
+---
+
+## Code quality
+
+- Changes are minimal and follow existing patterns (theme strings, `LAYOUT_PROFILES` structure, debug scenario conventions).
+- No dead code introduced; the previously dead `'default'` alias is now wired correctly.
+- No browser page errors or console fatals in capture.
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are met with targeted tests; the captured run proves the game loads and plays cleanly.
+
+---
+
+## v0.254 — 252-enemy-lockon-info-panel  (2026-06-05 07:55:30)
+
+### Hides when unlocked
+
+PASS. The renderer only supplies an enemy to the panel when the current phase is `playing` and lock-on is active. It refreshes the panel when leaving gameplay, when the local player is dead, and each frame after lock-on state updates; `syncLockOnInfoPanel()` hides the panel when no model can be built. Focused tests cover the unlocked/missing-target hide path.
+
+### Test coverage
+
+PASS. The ticket adds focused unit/integration coverage for the server display catalog and the client panel model/DOM sync. `coverage.log` shows the full Vitest run passed: 82 test files and 1351 tests passed. The lock-on panel test file specifically passed 9 tests.
+
+## Design and requirements consistency
+
+PASS. The change is HUD-only and does not alter the core lobby/dungeon/combat loop, server-client architecture, rendering startup, movement synchronization, or multiplayer state replication described in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke flow confirms the game still reaches lobby and active gameplay with two connected players, canvas rendering, movement, enemies, and HUD updates.
+
+## Code quality
+
+PASS. The implementation keeps display metadata centralized on the server, uses a small client-side formatter/model builder, and wires the panel through existing renderer lock-on state instead of adding a parallel targeting system. No debug scenario was added or changed for this ticket, so the debug-scenario shortcut checks are not applicable.
+
+## Remaining gaps
+
+None.
 
 ## v0.255 — 254-level2-mechanics-and-reference  (2026-06-05 07:58:43)
 

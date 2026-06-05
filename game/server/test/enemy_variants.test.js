@@ -16,6 +16,36 @@ function seqRng(values) {
   return () => values[i++ % values.length];
 }
 
+const DISPLAY_ONLY_KEYS = ['id', 'name', 'description', 'surfacedStats', 'apply'];
+
+// Runtime enemy fields set by apply() rather than static registry keys.
+const COMPOSITE_SURFACED_STATS = {
+  warded: ['shieldHp', 'maxShieldHp'],
+};
+
+describe('VARIANT_DEFS display metadata', () => {
+  for (const id of Object.keys(VARIANT_DEFS)) {
+    it(`${id} has non-empty name, description, and valid surfacedStats`, () => {
+      const def = VARIANT_DEFS[id];
+      expect(typeof def.name).toBe('string');
+      expect(def.name.length).toBeGreaterThan(0);
+
+      expect(typeof def.description).toBe('string');
+      expect(def.description.length).toBeGreaterThan(0);
+
+      expect(Array.isArray(def.surfacedStats)).toBe(true);
+      expect(def.surfacedStats.length).toBeGreaterThan(0);
+
+      const composite = new Set(COMPOSITE_SURFACED_STATS[id] ?? []);
+      const statKeys = Object.keys(def).filter((k) => !DISPLAY_ONLY_KEYS.includes(k));
+      for (const statKey of def.surfacedStats) {
+        expect(typeof statKey).toBe('string');
+        expect(composite.has(statKey) || statKeys.includes(statKey)).toBe(true);
+      }
+    });
+  }
+});
+
 describe('enemy variant registry', () => {
   it('exposes a trivial no-op test variant', () => {
     expect(VARIANT_DEFS.test).toBeDefined();
