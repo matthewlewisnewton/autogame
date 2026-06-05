@@ -49,7 +49,7 @@ const {
   spawnVolatileExplosion
 } = require('./simulation');
 const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
-const { getQuest, getSelectedQuest } = require('./quests');
+const { getQuest, getSelectedQuest, getEnemyPool, pickWeightedEnemyType } = require('./quests');
 const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -2339,13 +2339,17 @@ function spawnCombatEnemies(layout, rng, quest) {
   const def = getObjectiveDef(quest.objectiveType);
   if (def?.skipBulkCombatSpawn?.(quest)) return;
 
-  const spawnTypes = ['skirmisher', 'skirmisher', 'grunt', 'miniboss', 'spawner'];
-  const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : spawnTypes.length;
+  // Draw each enemy's type from the quest's per-level pool so each level spawns
+  // only its thematically-appropriate enemies (and level-exclusive types like
+  // `spawner` never leak into other levels). Uses the run's seeded `rng` so
+  // type selection stays deterministic for a given seed.
+  const enemyPool = getEnemyPool(quest.id);
+  const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : enemyPool.length;
   const preferNearest = def?.preferNearestEnemySpawns?.(quest) ?? false;
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
 
   for (let i = 0; i < enemyCount; i++) {
-    const type = spawnTypes[i % spawnTypes.length];
+    const type = pickWeightedEnemyType(enemyPool, rng);
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
     // Variant seam (centralized in spawnEnemy): scale the roll by the spawn

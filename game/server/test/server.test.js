@@ -4761,19 +4761,20 @@ describe('spawnEnemies() mixed pack', () => {
 		resetGameState();
 	});
 
-	it('produces 5 enemies: 2 skirmishers, 1 grunt, 1 miniboss, 1 spawner', () => {
+	it('produces quest.enemyCount enemies drawn from the default quest pool', () => {
 		gameState.enemies = [];
 		spawnEnemies();
-		expect(gameState.enemies.length).toBe(5);
+		// Bulk spawning now draws each type from the selected quest's enemyPool.
+		const quest = QUEST_DEFS[DEFAULT_QUEST_ID];
+		expect(gameState.enemies.length).toBe(quest.enemyCount);
 
-		const counts = { skirmisher: 0, grunt: 0, miniboss: 0, spawner: 0 };
+		const allowed = new Set(quest.enemyPool.map(entry => entry.type));
 		for (const e of gameState.enemies) {
-			counts[e.type] = (counts[e.type] || 0) + 1;
+			expect(allowed.has(e.type)).toBe(true);
 		}
-		expect(counts.skirmisher).toBe(2);
-		expect(counts.grunt).toBe(1);
-		expect(counts.miniboss).toBe(1);
-		expect(counts.spawner).toBe(1);
+		// training_caverns has no miniboss/spawner in its pool, so neither leaks in.
+		expect(gameState.enemies.some(e => e.type === 'miniboss')).toBe(false);
+		expect(gameState.enemies.some(e => e.type === 'spawner')).toBe(false);
 	});
 
 	it('spawns crystals and combat enemies for crystal rescue', () => {

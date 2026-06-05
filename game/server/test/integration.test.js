@@ -4120,7 +4120,7 @@ describe('spawner spawns skirmishers (integration)', () => {
 	});
 
 	it('no regression: grunt and miniboss enemies still present and unaffected', async () => {
-		// Enter playing phase via summon-ready (uses spawnEnemies which spawns mixed types)
+		// Enter playing phase via summon-ready.
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'summon-ready' });
 
@@ -4129,7 +4129,24 @@ describe('spawner spawns skirmishers (integration)', () => {
 
 		await waitForEvent(socket, 'stateUpdate');
 
-		// Verify grunt and miniboss exist in the initial spawn
+		// Inject a grunt and a miniboss directly. Bulk spawning now draws types
+		// from the quest's enemy pool, so the default quest no longer guarantees
+		// a miniboss — this test is about the spawner not affecting *other* enemy
+		// types, so we place them deterministically rather than relying on a draw.
+		const grunt = {
+			id: 'test-grunt', x: 5, z: 5, type: 'grunt',
+			hp: ENEMY_DEFS.grunt.hp, maxHp: ENEMY_DEFS.grunt.hp,
+			state: 'idle', attackState: 'idle', wanderTarget: { x: 5, z: 5 },
+		};
+		const miniboss = {
+			id: 'test-miniboss', x: -5, z: -5, type: 'miniboss',
+			hp: ENEMY_DEFS.miniboss.hp, maxHp: ENEMY_DEFS.miniboss.hp,
+			state: 'idle', attackState: 'idle', wanderTarget: { x: -5, z: -5 },
+		};
+		runSimulationInPrimaryLobby((state) => {
+			state.enemies = [grunt, miniboss];
+		});
+
 		const grunts = testGameState().enemies.filter(e => e.type === 'grunt');
 		const minibosses = testGameState().enemies.filter(e => e.type === 'miniboss');
 		expect(grunts.length).toBeGreaterThanOrEqual(1);

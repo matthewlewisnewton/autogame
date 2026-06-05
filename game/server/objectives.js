@@ -5,6 +5,8 @@
  * Quests reference the type via quest.objectiveType in quests.js; progression
  * dispatches through getObjectiveDef — no type switches elsewhere.
  */
+const { getEnemyPool, pickWeightedEnemyType } = require('./quests');
+
 function clampDefeatedEnemies(objective) {
   objective.defeatedEnemies = Math.min(objective.defeatedEnemies, objective.totalEnemies);
 }
@@ -117,9 +119,17 @@ const OBJECTIVE_DEFS = {
       const minibossCount = Number.isFinite(objective.minibossCount) ? objective.minibossCount : 0;
       // The final `minibossCount` spawns of the wave are minibosses.
       const isMiniboss = index >= total - minibossCount;
+      // Draw the regular (non-miniboss) type from the quest's pool (minus
+      // `miniboss`, which is governed by `minibossCount`). Fall back to the
+      // legacy cycle if the filtered pool is empty.
+      const regularPool = Array.isArray(objective.enemyPool)
+        ? objective.enemyPool.filter((entry) => entry.type !== 'miniboss')
+        : [];
       const type = isMiniboss
         ? 'miniboss'
-        : SURVIVE_REGULAR_TYPES[index % SURVIVE_REGULAR_TYPES.length];
+        : (regularPool.length > 0
+          ? pickWeightedEnemyType(regularPool, rng)
+          : SURVIVE_REGULAR_TYPES[index % SURVIVE_REGULAR_TYPES.length]);
 
       const pos = ctx.pickEnemySpawnPosition(layout, rng, false, index, total);
       const enemy = ctx.spawnEnemy(pos.x, pos.z, type, undefined, {
@@ -139,6 +149,8 @@ const OBJECTIVE_DEFS = {
         label: `${quest.name}: outlast and defeat all ${totalSpawns} attackers`,
         totalSpawns,
         minibossCount,
+        // Snapshot the quest's pool so staggered regular spawns draw from it.
+        enemyPool: getEnemyPool(quest.id),
         spawnedEnemies: 0,
         defeatedEnemies: 0,
         totalEnemies: totalSpawns,
