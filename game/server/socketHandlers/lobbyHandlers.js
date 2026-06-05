@@ -22,9 +22,7 @@ const {
 const { isPlayingPhase } = require('../lobbies');
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
 const { backfillUnlockedHats } = require('../cosmetic');
-const keyItemEffects = require('../keyItemEffects');
 const {
-  getKeyItemDef,
   unlockHatForPlayer,
   healAtMedic,
   assignRunSpawnPositions,
@@ -166,36 +164,6 @@ function register(socket, ctx) {
   deckHandlers.register(socket, ctx);
   tradeHandlers.register(socket, ctx);
   keyItemHandlers.register(socket, ctx);
-
-  socket.on('equipKeyItem', (data) => {
-    withLobbyPlayer(socket, {
-      requirePhase: 'lobby',
-      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
-    }, (state, lobby, player) => {
-    const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
-    if (!keyItemId) {
-      socket.emit('keyItemError', { reason: 'missing_key_item_id' });
-      return;
-    }
-
-    const def = getKeyItemDef(keyItemId);
-    if (!def) {
-      socket.emit('keyItemError', { reason: 'unknown_item' });
-      return;
-    }
-
-    player.equippedKeyItemId = keyItemId;
-    savePlayerData(socket.playerId);
-
-    socket.emit('keyItemEquipped', { keyItemId });
-    });
-  });
-
-  socket.on('useKeyItem', (data) => {
-    withLobbyFromSocket(socket, (state, lobby) => {
-      keyItemEffects.handleUseKeyItem(socket, state, lobby, data);
-    });
-  });
 
   socket.on('unlockHat', (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
