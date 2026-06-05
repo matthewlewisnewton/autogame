@@ -1280,6 +1280,7 @@ function runGameLoopTick() {
 
 function startServer(port) {
   ensureHttpErrorLogger();
+  _harnessReady = false;
 
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
   initAuth();
@@ -1304,13 +1305,6 @@ function startServer(port) {
     // player JWT auth). GET-only — no mutation routes are mounted under /admin.
     app.get('/admin', requireAdminPassword, adminHandler);
     _routesMounted = true;
-  }
-
-  const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
-  if (!server.listening) {
-    server.listen(listenPort, () => {
-      console.log(`Server listening on port ${listenPort}`);
-    });
   }
 
   // In test mode, clear the in-memory users Map to prevent contamination
@@ -1376,6 +1370,7 @@ function startServer(port) {
   }
 
   io.on('connection', (socket) => {
+    try {
     patchSocketOn(socket);
 
     // ── JWT authentication (required) ──
@@ -1455,9 +1450,25 @@ function startServer(port) {
     });
 
     broadcastLobbyList();
+    } catch (err) {
+      console.error('[socket:connection] setup error:', err && err.stack ? err.stack : err);
+      try {
+        socket.disconnect(true);
+      } catch (_) {
+        // ignore secondary disconnect errors
+      }
+    }
   });
 
-  _harnessReady = true;
+  const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
+  if (!server.listening) {
+    server.listen(listenPort, () => {
+      _harnessReady = true;
+      console.log(`Server listening on port ${listenPort}`);
+    });
+  } else {
+    _harnessReady = true;
+  }
 }
 
 // Only start the HTTP server when run directly (not when required by tests)

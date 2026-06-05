@@ -26,22 +26,45 @@ export function isHarnessCapture(env = process.env, loadedEnv = {}) {
 	return Boolean(env.HARNESS_GAME_PORT || loadedEnv.HARNESS_GAME_PORT);
 }
 
-export async function waitForGameServerReady(
+export async function probeGameServerHealthz(
 	target,
-	{ timeoutMs = 90000, intervalMs = 200, fetchImpl = globalThis.fetch } = {}
+	fetchImpl = globalThis.fetch
 ) {
 	const url = `${target}/healthz`;
+	try {
+		const res = await fetchImpl(url, { signal: AbortSignal.timeout(1000) });
+		if (!res.ok) return false;
+		const body = await res.json().catch(() => null);
+		return body?.ok === true;
+	} catch {
+		return false;
+	}
+}
+
+export async function waitForGameServerReady(
+	target,
+	{
+		timeoutMs = 90000,
+		intervalMs = 200,
+		stableProbes = 3,
+		stableGapMs = 250,
+		fetchImpl = globalThis.fetch,
+	} = {}
+) {
 	const deadline = Date.now() + timeoutMs;
 	while (Date.now() < deadline) {
-		try {
-			const res = await fetchImpl(url, { signal: AbortSignal.timeout(1000) });
-			if (res.ok) {
-				const body = await res.json().catch(() => null);
-				if (body?.ok === true) return true;
+		let streak = 0;
+		while (streak < stableProbes && Date.now() < deadline) {
+			if (!(await probeGameServerHealthz(target, fetchImpl))) {
+				streak = 0;
+				break;
 			}
-		} catch {
-			// Backend still booting or not yet listening.
+			streak += 1;
+			if (streak < stableProbes) {
+				await new Promise((resolve) => setTimeout(resolve, stableGapMs));
+			}
 		}
+		if (streak >= stableProbes) return true;
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 	}
 	return false;
