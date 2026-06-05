@@ -142,6 +142,7 @@ function stubClass(name) {
 		return this;
 	};
 	C.prototype.setSize = function() {};
+	C.prototype.setPixelRatio = function() {};
 	C.prototype.render = function() {};
 	C.prototype.updateProjectionMatrix = function() {};
 	C.prototype.getDelta = function() { return 0.016; };
