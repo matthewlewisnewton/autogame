@@ -92,7 +92,7 @@ const QUEST_DEFS = {
         layoutMode: 'rigid',
         unlockRequires: { questId: 'arena_trials', tier: 1 },
         encounter: {
-          bossType: 'miniboss',
+          bossType: 'arena_champion',
           landmark: 'arena_dais',
           addCount: 4,
         },

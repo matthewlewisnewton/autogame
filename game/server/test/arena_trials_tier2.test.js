@@ -44,6 +44,8 @@ import { InMemoryProvider } from '../providers.js';
 
 const require = createRequire(import.meta.url);
 const users = require('../users.js');
+const { enemyDefFor } = require('../simulation.js');
+const { ENEMY_MS_DROPS, ENEMY_CARD_DROPS } = require('../config.js');
 
 const QUEST_ID = 'arena_trials';
 const TIER_1 = 1;
@@ -117,6 +119,33 @@ function activateEncounterForTest(state) {
   tryActivateEncounter(state);
 }
 
+describe('arena_champion boss type and reward', () => {
+  it('defines arena_champion distinct from the generic miniboss', () => {
+    const champion = enemyDefFor('arena_champion');
+    const miniboss = enemyDefFor('miniboss');
+    expect(champion).toBeDefined();
+    expect(champion.name).toBe('Plaza Sovereign');
+    expect(typeof champion.description).toBe('string');
+    expect(champion.description.length).toBeGreaterThan(0);
+    expect(champion.hp).toBeGreaterThan(miniboss.hp);
+    expect(champion.hp).toBeGreaterThan(300);
+    expect(champion.attackDamage).toBeGreaterThan(miniboss.attackDamage);
+    expect(champion.attackStyle).toBeDefined();
+    expect(champion.attackRange).toBeDefined();
+    expect(champion.chaseSpeed).toBeDefined();
+  });
+
+  it('does not throw when resolving the arena_champion def', () => {
+    expect(() => enemyDefFor('arena_champion')).not.toThrow();
+  });
+
+  it('grants a magic-stone reward strictly greater than the miniboss reward', () => {
+    expect(ENEMY_MS_DROPS.arena_champion).toBeGreaterThan(ENEMY_MS_DROPS.miniboss);
+    expect(ENEMY_MS_DROPS.miniboss).toBe(50);
+    expect(ENEMY_CARD_DROPS.arena_champion).toBeDefined();
+  });
+});
+
 describe('arena_trials Tier 2 catalog and layout', () => {
   it('exposes Tier 2 in listQuestVariants with unlock metadata and stage-boss objective', () => {
     const tier2 = listQuestVariants().find(
@@ -133,7 +162,7 @@ describe('arena_trials Tier 2 catalog and layout', () => {
     expect(tier2.objectiveSummary).toContain('trial warden');
     expect(isValidQuestSelection(QUEST_ID, TIER_2)).toBe(true);
     expect(getEncounterConfig(getQuest(QUEST_ID, TIER_2))).toMatchObject({
-      bossType: 'miniboss',
+      bossType: 'arena_champion',
       landmark: 'arena_dais',
       addCount: ADD_COUNT,
     });
@@ -213,21 +242,22 @@ describe('arena_trials Tier 2 deploy spawns', () => {
 
   it('places Tier 2 adds on walkable floor clear of cover', () => {
     const layout = deployArenaTier(TIER_2);
-    const adds = gameState.enemies.filter((e) => e.type !== 'miniboss');
+    const adds = gameState.enemies.filter((e) => e.type !== 'arena_champion');
     expect(adds.length).toBe(ADD_COUNT);
+    expect(adds.every((e) => e.type !== 'miniboss')).toBe(true);
     for (const enemy of adds) {
       assertOnFloor(layout, enemy);
     }
   });
 
-  it('spawns dormant miniboss on arena_dais with encounter wiring after run open', () => {
+  it('spawns dormant arena_champion on arena_dais with encounter wiring after run open', () => {
     resetGameState();
     const layout = deployArenaTierStageBoss(TIER_2);
     const dais = layout.landmarks.find((lm) => lm.type === 'arena_dais');
     const boss = bossEnemy(gameState);
 
     expect(gameState.enemies).toHaveLength(1 + ADD_COUNT);
-    expect(boss.type).toBe('miniboss');
+    expect(boss.type).toBe('arena_champion');
     expect(boss.x).toBe(dais.x);
     expect(boss.z).toBe(dais.z);
     expect(gameState.run.objective.type).toBe('stage_boss');
