@@ -1,0 +1,5 @@
+Wrote `tickets/235-booth-shop/round-1/review.md` with final verdict:
+
+`VERDICT: PASS`
+
+No blocking gaps found, so I did not create `gaps.md`. No genuine nits found, so I did not create `nits.md`.

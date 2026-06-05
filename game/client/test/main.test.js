@@ -2822,6 +2822,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 		const expectedEvents = [
 			'connect', 'disconnect', 'init', 'stateUpdate',
 			'heartbeat_ack', 'debugScenarioResult', 'playerDisconnected',
+			'hubPresenceUpdate',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
 		];
@@ -2862,6 +2863,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 		const expectedSocketEvents = [
 			'connect', 'disconnect', 'connect_error', 'init', 'stateUpdate',
 			'heartbeat_ack', 'debugScenarioResult', 'playerDisconnected',
+			'hubPresenceUpdate',
 			'cardUsed', 'cardError', 'deckUpdate', 'deckError',
 			'lobbyUpdate', 'startGame', 'runComplete', 'runFailed',
 		];

@@ -77,6 +77,12 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const {
+  syncHubPresenceFromLobby,
+  getHubPresenceSnapshot,
+  emitHubPresenceUpdate,
+  syncAndEmitHubPresenceIfChanged,
+} = require('./hubPresence');
 
 const app = express();
 // Harness readiness probe — same HTTP server as Socket.IO; no auth required.
@@ -317,6 +323,7 @@ const {
 // once io and the index.js-local helpers it needs are defined.
 const cardEffects = require('./cardEffects');
 const lobbyHandlers = require('./socketHandlers/lobbyHandlers');
+const { patchSocketOn } = require('./socketSafe');
 
 // Key-item dispatch lives in its own module; wired up via setCallbacks() below
 // once io is defined.
@@ -409,10 +416,10 @@ function clearAllTimers() {
 
 function restartBackgroundTimers() {
   if (_intervals.length > 0) return;
-  _intervals.push(setInterval(runGameLoopTick, 1000 / TICK_RATE));
-  _intervals.push(setInterval(cleanupStalePlayersInAllLobbies, STALE_CLEANUP_INTERVAL_MS));
-  _intervals.push(setInterval(evictDisconnectedPlayers, STALE_CLEANUP_INTERVAL_MS));
-  _intervals.push(setInterval(saveAllPlayersInAllLobbies, PERIODIC_SAVE_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('gameLoop', runGameLoopTick), 1000 / TICK_RATE));
+  _intervals.push(setInterval(safeIntervalTick('staleCleanup', cleanupStalePlayersInAllLobbies), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('evictDisconnected', evictDisconnectedPlayers), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('periodicSave', saveAllPlayersInAllLobbies), PERIODIC_SAVE_INTERVAL_MS));
 }
 
 function cleanupStalePlayersInAllLobbies() {
@@ -703,6 +710,41 @@ function findSacrificeTarget(playerId, x, z, radius) {
     })[0] || null;
 }
 
+// Log HTTP listen/runtime errors instead of letting them become fatal
+// 'error' events when no listener is attached (e.g. EADDRINUSE on boot).
+let _httpErrorLoggerInstalled = false;
+
+function ensureHttpErrorLogger() {
+  if (_httpErrorLoggerInstalled) return;
+  _httpErrorLoggerInstalled = true;
+  server.on('error', (err) => {
+    console.error('[server] HTTP server error:', err);
+  });
+}
+
+/**
+ * When run as the main module, log fatal-async errors but keep serving.
+ * Tests that require('./index') are unaffected.
+ */
+function installMainProcessErrorHandlers() {
+  process.on('uncaughtException', (err) => {
+    console.error('[server] uncaughtException:', err && err.stack ? err.stack : err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[server] unhandledRejection:', reason);
+  });
+}
+
+function safeIntervalTick(label, fn) {
+  return () => {
+    try {
+      fn();
+    } catch (err) {
+      console.error(`[interval:${label}]`, err && err.stack ? err.stack : err);
+    }
+  };
+}
+
 // Track whether Express routes have been mounted — prevents stacking
 // on repeated startServer() calls (tests call startServer in beforeEach).
 let _routesMounted = false;
@@ -919,7 +961,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   if (!player) return;
   withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
 
-  socket.emit('lobbyJoined', {
+  const joinedPayload = {
     lobbyId: lobby.id,
     lobbyName: lobby.name,
     id: playerId,
@@ -935,7 +977,17 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     ownedCards: player.ownedCards,
     shopOffer: state.shopOffer,
     ...buildQuestUpdatePayload(state, player.accountId),
-  });
+  };
+  if (isLobbyPhase(state)) {
+    try {
+      syncHubPresenceFromLobby(lobby);
+      joinedPayload.hubPresence = getHubPresenceSnapshot(lobby);
+    } catch (err) {
+      console.error('[hubPresence] lobbyJoined snapshot failed for lobby', lobby.id, err);
+      joinedPayload.hubPresence = { schemaVersion: 1, entries: {}, revision: 0 };
+    }
+  }
+  socket.emit('lobbyJoined', joinedPayload);
 
   broadcastLobbyUpdate(lobby);
 }
@@ -994,6 +1046,13 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby);
+  if (isLobbyPhase(state)) {
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] join broadcast failed for lobby', lobby.id, err);
+    }
+  }
 }
 
 function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
@@ -1016,6 +1075,13 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby, playerId);
+  if (isLobbyPhase(lobby.state)) {
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
+    }
+  }
   io.to(lobby.id).emit('playerReconnected', playerId);
   broadcastLobbyList();
   return true;
@@ -1034,6 +1100,16 @@ function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false }
       checkRunTerminalState();
     } else {
       broadcastLobbyUpdate(lobby);
+      if (isLobbyPhase(lobby.state) && playerId) {
+        try {
+          syncHubPresenceFromLobby(lobby);
+          emitHubPresenceUpdate(io, lobby, {
+            removedPlayerIds: [playerId],
+          });
+        } catch (err) {
+          console.error('[hubPresence] leave/disconnect broadcast failed for lobby', lobby.id, err);
+        }
+      }
     }
   });
 }
@@ -1125,63 +1201,70 @@ function resolveAttackRotation(player, data) {
 
 function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
-    withLobbyContext(lobby, () => {
-      const state = lobby.state;
-      if (isLobbyPhase(state)) {
-        applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
-        flushDirtyPlayerSaves();
-      } else if (isPlayingPhase(state)) {
-        applyPlayerMovement(state, buildMovementContext(state));
-        checkTelepipeProximity();
-        flushDirtyPlayerSaves();
-        updateEnemies();
-        updateMinions();
-        updateSurviveSpawns();
+    try {
+      withLobbyContext(lobby, () => {
+        const state = lobby.state;
+        if (isLobbyPhase(state)) {
+          applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+          syncAndEmitHubPresenceIfChanged(io, lobby);
+          flushDirtyPlayerSaves();
+        } else if (isPlayingPhase(state)) {
+          applyPlayerMovement(state, buildMovementContext(state));
+          checkTelepipeProximity();
+          flushDirtyPlayerSaves();
+          updateEnemies();
+          updateMinions();
+          updateSurviveSpawns();
 
-        const now = Date.now();
-        processPassiveDraws(now);
+          const now = Date.now();
+          processPassiveDraws(now);
 
-        if (state._pendingMinionBreaths?.length) {
-          for (const event of state._pendingMinionBreaths) {
-            io.to(lobby.id).emit('cardUsed', event);
+          if (state._pendingMinionBreaths?.length) {
+            for (const event of state._pendingMinionBreaths) {
+              io.to(lobby.id).emit('cardUsed', event);
+            }
+            state._pendingMinionBreaths.length = 0;
           }
-          state._pendingMinionBreaths.length = 0;
+
+          if (state._pendingVolatileExplosions?.length) {
+            for (const record of state._pendingVolatileExplosions) {
+              io.to(lobby.id).emit('volatileExplosion', record);
+            }
+            state._pendingVolatileExplosions.length = 0;
+          }
+
+          if (state._pendingLeechHeals?.length) {
+            for (const record of state._pendingLeechHeals) {
+              io.to(lobby.id).emit('leechHeal', record);
+            }
+            state._pendingLeechHeals.length = 0;
+          }
+
+          if (state._pendingShieldBreaks?.length) {
+            for (const record of state._pendingShieldBreaks) {
+              io.to(lobby.id).emit('shieldBreak', record);
+            }
+            state._pendingShieldBreaks.length = 0;
+          }
+
+          regenMagicStones();
+
+          state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
 
-        if (state._pendingVolatileExplosions?.length) {
-          for (const record of state._pendingVolatileExplosions) {
-            io.to(lobby.id).emit('volatileExplosion', record);
-          }
-          state._pendingVolatileExplosions.length = 0;
-        }
-
-        if (state._pendingLeechHeals?.length) {
-          for (const record of state._pendingLeechHeals) {
-            io.to(lobby.id).emit('leechHeal', record);
-          }
-          state._pendingLeechHeals.length = 0;
-        }
-
-        if (state._pendingShieldBreaks?.length) {
-          for (const record of state._pendingShieldBreaks) {
-            io.to(lobby.id).emit('shieldBreak', record);
-          }
-          state._pendingShieldBreaks.length = 0;
-        }
-
-        regenMagicStones();
-
-        state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
-      }
-
-      const snapshot = hotStateSnapshot();
-      io.to(lobby.id).emit('stateUpdate', snapshot);
-    });
+        const snapshot = hotStateSnapshot();
+        io.to(lobby.id).emit('stateUpdate', snapshot);
+      });
+    } catch (err) {
+      console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);
+    }
   }
   return true;
 }
 
 function startServer(port) {
+  ensureHttpErrorLogger();
+
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
   initAuth();
 
@@ -1277,6 +1360,8 @@ function startServer(port) {
   }
 
   io.on('connection', (socket) => {
+    patchSocketOn(socket);
+
     // ── JWT authentication (required) ──
     // JWT validation is performed by the io.use() middleware above.
     // Failed auth triggers a client-side connect_error (not connect → disconnect),
@@ -1360,6 +1445,7 @@ function startServer(port) {
 
 // Only start the HTTP server when run directly (not when required by tests)
 if (require.main === module) {
+  installMainProcessErrorHandlers();
   startServer();
 }
 

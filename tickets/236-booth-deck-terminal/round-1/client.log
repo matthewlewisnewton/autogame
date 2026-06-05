@@ -1,0 +1,33 @@
+[vite] Proxying /api and /socket.io → http://127.0.0.1:3001
+[vite] Game server ready at http://127.0.0.1:3001
+
+  VITE v8.0.13  ready in 136 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+4:51:55 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+4:52:01 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+4:52:04 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6jgb3yk
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:04 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6jqf34e
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:06 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6kz0j3w
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:06 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6llj5ou
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:10 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6om56yg
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:10 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6oqkobf
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:15 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6slmymy
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+4:52:16 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6sp6xyx
+Error: connect ECONNREFUSED 127.0.0.1:3001
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)

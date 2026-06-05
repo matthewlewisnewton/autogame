@@ -145,6 +145,8 @@ import {
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
 	disposeOne as rendererDisposeOne,
 	disposeAllLootMeshes as rendererDisposeAllLootMeshes,
+	disposeAvatar as rendererDisposeAvatar,
+	disposeNameplate as rendererDisposeNameplate,
 	getActiveEffects,
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
@@ -160,6 +162,8 @@ import {
 	setBoothInRangeListener,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
+import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
+import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
 import {
@@ -684,6 +688,64 @@ function renderLobbyList(lobbySummaries) {
 	}
 }
 
+/** Remove a remote player's avatar mesh and username nameplate from the scene. */
+function removeRemotePlayerVisuals(playerId) {
+	const maps = getMeshMaps();
+	const sc = getScene();
+	if (maps.playersMeshes[playerId]) {
+		if (sc) sc.remove(maps.playersMeshes[playerId]);
+		rendererDisposeAvatar(maps.playersMeshes[playerId]);
+		delete maps.playersMeshes[playerId];
+	}
+	rendererDisposeNameplate(playerId);
+}
+
+/**
+ * Merge hub-presence entries into `gameState.players` during the lobby phase.
+ * Remote players are server-authoritative for position/rotation/cosmetic;
+ * the local player keeps client-predicted movement fields.
+ */
+function applyHubPresence(presence, opts = {}) {
+	if (!presence || !gameState || gameState.gamePhase !== 'lobby') return;
+
+	const removedPlayerIds = Array.isArray(opts.removedPlayerIds) ? opts.removedPlayerIds : [];
+	for (const id of removedPlayerIds) {
+		if (!id || id === myId) continue;
+		if (gameState.players[id]) delete gameState.players[id];
+		removeRemotePlayerVisuals(id);
+	}
+
+	const rawEntries = presence.entries;
+	const entries = (rawEntries && typeof rawEntries === 'object' && !Array.isArray(rawEntries))
+		? rawEntries
+		: {};
+	for (const [id, entry] of Object.entries(entries)) {
+		if (!id || !entry || typeof entry !== 'object') continue;
+		if (id === myId) {
+			const local = gameState.players[id];
+			if (!local) continue;
+			if (entry.cosmetic) local.cosmetic = entry.cosmetic;
+			if (entry.username) local.username = entry.username;
+			continue;
+		}
+
+		if (!gameState.players[id]) {
+			gameState.players[id] = { id, hp: 100, dead: false };
+		}
+		const player = gameState.players[id];
+		if (Number.isFinite(entry.x)) player.x = entry.x;
+		if (Number.isFinite(entry.y)) player.y = entry.y;
+		else if (player.y == null) player.y = 0.5;
+		if (Number.isFinite(entry.z)) player.z = entry.z;
+		if (Number.isFinite(entry.rotation)) player.rotation = entry.rotation;
+		if (entry.cosmetic) player.cosmetic = entry.cosmetic;
+		if (entry.username) player.username = entry.username;
+		player.connected = entry.connected !== false;
+	}
+
+	setGameStateRef(gameState);
+}
+
 /**
  * Render the hub geometry for the lobby phase and spawn the local avatar at the
  * hub's `role: 'start'` spawn. Initializes the scene on first entry, otherwise
@@ -714,7 +776,6 @@ function renderHubScene() {
 function applyLobbyJoinedData(data) {
 	myId = data.id;
 	rendererSetMyId(data.id);
-	setGameStateRef(gameState);
 	if (data.playerId) {
 		try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
 	}
@@ -722,6 +783,7 @@ function applyLobbyJoinedData(data) {
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
+	setGameStateRef(gameState);
 
 	mySelectedDeck = data.selectedDeck || [];
 	myInventory = Array.isArray(data.inventory) ? data.inventory : null;
@@ -744,6 +806,8 @@ function applyLobbyJoinedData(data) {
 	}
 
 	showGameLobby();
+
+	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	const receivedSeed = data.layoutSeed;
 	const joinPhase = data.state && data.state.gamePhase;
@@ -792,6 +856,8 @@ function applyLobbyJoinedData(data) {
 	if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 	requestDebugScenario();
 	renderHubScene();
+	requestDebugBoothOpen();
+	requestDebugShopBoothOpen();
 	updateObjectiveHud();
 }
 
@@ -861,6 +927,8 @@ const boothDebugParam = new URLSearchParams(window.location.search).get('booth')
 let debugScenarioRequested = false;
 let boothDebugRequested = false;
 let debugScenarioResult = null;
+const debugBooth = new URLSearchParams(window.location.search).get('booth');
+const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
@@ -944,6 +1012,22 @@ if (boothPromptEl) {
 	boothPromptEl.addEventListener('click', () => emitBoothInteract());
 }
 
+const deckBoothDeps = { showGameLobby, setLobbyTab, renderDeckEditor };
+registerDeckBoothListener(deckBoothDeps);
+const requestDebugBoothOpen = createRequestDebugBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openDeckBooth,
+	deps: deckBoothDeps,
+});
+const shopBoothDeps = { showGameLobby, setLobbyTab, renderCardShop };
+registerShopBoothListener(shopBoothDeps);
+const requestDebugShopBoothOpen = createRequestDebugShopBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openShopBooth,
+	deps: shopBoothDeps,
+});
 window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 	const boothId = ev.detail && ev.detail.boothId;
 	if (boothId !== 'character') return;
@@ -1305,12 +1389,13 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on('playerDisconnected', (id) => {
-		const maps = getMeshMaps();
-		if (maps.playersMeshes[id]) {
-			const sc = getScene();
-			if (sc) sc.remove(maps.playersMeshes[id]);
-			delete maps.playersMeshes[id];
-		}
+		removeRemotePlayerVisuals(id);
+	});
+
+	s.on('hubPresenceUpdate', (data) => {
+		if (!data || !gameState || gameState.gamePhase !== 'lobby') return;
+		if (!data.presence) return;
+		applyHubPresence(data.presence, { removedPlayerIds: data.removedPlayerIds });
 	});
 
 	s.on('cardUsed', (data) => {
@@ -1609,6 +1694,10 @@ function bindSocketHandlers(s) {
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
 			applyQuestBoardFromPayload(data);
 		}
+		if ('shopOffer' in data && gameState) {
+			gameState.shopOffer = data.shopOffer;
+			if (activeLobbyTab === 'shop') renderCardShop();
+		}
 	});
 
 	s.on('questUpdate', (data) => {
@@ -1901,6 +1990,10 @@ function requestDebugScenario() {
 	socket.emit('debugScenario', { name: debugScenario });
 }
 
+window.__openDeckBoothForTest = openDeckBooth;
+window.__openShopBoothForTest = openShopBooth;
+window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
+window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
@@ -3289,6 +3382,15 @@ if (document.getElementById('lobby-tab-forge')) {
 if (document.getElementById('lobby-tab-shop')) {
 	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
 }
+const buyShopCardBtnEl = document.getElementById('buy-shop-card-btn');
+if (buyShopCardBtnEl) {
+	buyShopCardBtnEl.addEventListener('click', () => {
+		if (!socket || !socket.connected) return;
+		const offer = gameState && gameState.shopOffer;
+		if (!offer || !offer.cardId) return;
+		socket.emit('buyShopCard');
+	});
+}
 	if (document.getElementById('lobby-tab-economy')) {
 	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
 }
@@ -4330,6 +4432,7 @@ window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
+window.applyHubPresence = applyHubPresence;
 window.showRegisterForm = showRegisterForm;
 window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
@@ -4343,6 +4446,12 @@ window.__connectionState = () => connectionState;
 window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const me = gameState && myId ? gameState.players[myId] : null;
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
+	const deckEditorEl = document.getElementById('deck-editor');
+	const deckEditorVisible = !!deckEditorEl && !deckEditorEl.classList.contains('hidden');
+	const readyBtnEl = document.getElementById('ready-btn');
+	const readyBtnUsable = !!readyBtnEl
+		&& !readyBtnEl.disabled
+		&& getComputedStyle(readyBtnEl).pointerEvents !== 'none';
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
@@ -4391,6 +4500,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		deckEditorVisible,
+		readyBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',

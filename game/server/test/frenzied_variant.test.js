@@ -352,20 +352,25 @@ describe('frenzied telegraph in updateEnemies()', () => {
   });
 
   it('enrageTelegraphUntil is set on enemy after crossing HP threshold', () => {
-    addPlayer('p1', { x: 0, z: 0, dead: false });
-    const startDist = DETECTION_RADIUS - 1;
-    // Start above threshold
-    gameState.enemies.push(
-      makeChasingGrunt({ id: 'e1', variant: 'frenzied', hp: 60, maxHp: 100, x: startDist }),
-    );
-    updateEnemies();
-    expect(gameState.enemies[0].enrageTelegraphUntil).toBeUndefined();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2000, 0, 1));
+    try {
+      addPlayer('p1', { x: 0, z: 0, dead: false });
+      const startDist = DETECTION_RADIUS - 1;
+      // Start above threshold
+      gameState.enemies.push(
+        makeChasingGrunt({ id: 'e1', variant: 'frenzied', hp: 60, maxHp: 100, x: startDist }),
+      );
+      updateEnemies();
+      expect(gameState.enemies[0].enrageTelegraphUntil).toBeUndefined();
 
-    // Drop below threshold
-    gameState.enemies[0].hp = 49;
-    const before = Date.now();
-    updateEnemies();
-    expect(gameState.enemies[0].enrageTelegraphUntil).toBeGreaterThanOrEqual(before);
-    expect(gameState.enemies[0].enrageTelegraphUntil).toBeLessThanOrEqual(before + FRENZIED_TELEGRAPH_MS);
+      // Drop below threshold — frozen clock so Date.now() matches inside updateEnemies()
+      gameState.enemies[0].hp = 49;
+      const before = Date.now();
+      updateEnemies();
+      expect(gameState.enemies[0].enrageTelegraphUntil).toBe(before + FRENZIED_TELEGRAPH_MS);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

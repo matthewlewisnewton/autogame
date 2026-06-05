@@ -1,0 +1,7 @@
+Remediation round 2 had **one open gap** in `review-feedback.md`: the top-level capture failed because the game server on port 3001 stopped listening after two players connected (`ECONNREFUSED` / 502, `capture_failed`). Sub-tickets **01** and **02** were left as-is (deck booth + `?booth=deck` hook; round-1 review passed them at code level). No `.passed` markers exist yet, and nothing was mis-scoped enough to retire.
+
+**New sub-ticket created:**
+
+- `/home/matt/workspace/.autogame-worktrees/236-booth-deck-terminal/tickets/236-booth-deck-terminal/subtickets/03-capture-server-stays-up/`
+
+**Scope:** Keep the Node game server alive through harness capture (lobby → ready → playing), with defensive error logging in `game/server/index.js` and a small client check in `game/client/main.js` so socket drops / lobby UI do not block `readyAll`. Verification is **code** (logs, `metrics.json`, harness state — not screenshots).

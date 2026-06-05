@@ -1,13 +1,11 @@
 Merge conflicts are resolved. Summary:
 
-### `game/client/main.js`
-Kept the branch’s `launchBooth.js` import alongside the character-booth imports already merged from `main` (`characterBooth.js`, `cosmeticForm.js`, etc.). Both booth flows stay wired in one file.
+**`TASKS.md`** — Kept both cleanup tickets from each side:
+- `278-cleanup-booth-deck-terminal` (from `main`)
+- `279-cleanup-booth-quest-counter` (from this branch)
 
-### `LOGBOOK.md`
-Combined both review sections in version order:
-- **v0.242** — 237-booth-mission-launch (launch ready-up)
-- **v0.241** — 239-booth-character-editor (character editor booth)
+**`game/client/main.js`** — Combined both intents:
+- **From `main`:** Deck/shop test hooks (`__openDeckBoothForTest`, `__openShopBoothForTest`, `__requestDebugBoothOpenForTest`, `__requestDebugShopBoothOpenForTest`)
+- **From this branch:** Generalized `?booth=<id>` comment and `requestBoothDebugOpen()` support for both `character` and `quest` (opening `openQuestPanel()` for quest)
 
-Single “Remaining gaps: None.” at the end.
-
-All conflict markers are removed. `launchBooth.test.js` (9) and `characterBooth.test.js` (8) pass. The harness can commit and finish the merge.
+The rest of the file was already merged (quest booth wiring, deck/shop imports, `window.__requestBoothDebugOpenForTest` at the bottom). All conflict markers are removed; the harness can commit and run tests.
