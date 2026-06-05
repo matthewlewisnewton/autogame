@@ -5,6 +5,7 @@
       "wall": "#475569",
       "passageFloor": "#2d3a4a",
       "passageWall": "#3d4f63",
+      "accent": "#38bdf8",
       "floorRoughness": 0.8,
       "wallRoughness": 0.7
     },
@@ -13,6 +14,7 @@
       "wall": "#a08860",
       "passageFloor": "#b89868",
       "passageWall": "#8a7550",
+      "accent": "#f59e0b",
       "floorRoughness": 0.85,
       "wallRoughness": 0.75
     },
@@ -21,6 +23,7 @@
       "wall": "#1a2230",
       "passageFloor": "#232d3c",
       "passageWall": "#151c28",
+      "accent": "#22d3ee",
       "floorRoughness": 0.8,
       "wallRoughness": 0.7
     }
