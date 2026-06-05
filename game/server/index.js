@@ -658,7 +658,10 @@ function enterPlayingPhase(lobby) {
       spawnEnemies();
     }
     startDungeonRun();
-    io.to(lobby.id).emit('startGame');
+    io.to(lobby.id).emit('startGame', {
+      layout: state.layout,
+      layoutSeed: state.layoutSeed,
+    });
     broadcastLobbyList();
   }
 }

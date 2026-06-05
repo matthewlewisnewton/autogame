@@ -3001,7 +3001,10 @@ function checkAllReady() {
       restoreRunCheckpoint();
       const io = getIoTarget();
       if (io) {
-        io.emit('startGame');
+        io.emit('startGame', {
+          layout: _gameState.layout,
+          layoutSeed: _gameState.layoutSeed,
+        });
         io.emit('stateUpdate', stateSnapshot());
       }
       return;
@@ -3027,7 +3030,10 @@ function checkAllReady() {
     startDungeonRun();
     const io = getIoTarget();
     if (io) {
-      io.emit('startGame');
+      io.emit('startGame', {
+        layout: _gameState.layout,
+        layoutSeed: _gameState.layoutSeed,
+      });
       io.emit('stateUpdate', stateSnapshot());
     }
   }

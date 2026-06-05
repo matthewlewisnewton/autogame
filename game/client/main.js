@@ -447,8 +447,40 @@ function syncLevelSettingsRewards() {
 	}
 }
 
+/** Snap local avatar to server lobby coordinates after hub geometry is active. */
+function snapLocalPlayerToServerPosition(state) {
+	const me = myId && state?.players ? state.players[myId] : null;
+	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
+		setPlayerPosition(me.x, me.z);
+	}
+}
+
+/** Rebuild hub walkable geometry when returning from a dungeon run. */
+function restoreHubLobbyScene(state) {
+	const hubLayout = (state && state.layout) || currentLayout;
+	if (!hubLayout || hubLayout.profile !== 'hub' || !isSceneInitialized()) return;
+
+	currentLayout = hubLayout;
+	if (gameState) gameState.layout = hubLayout;
+	if (state?.layoutSeed !== undefined) {
+		currentLayoutSeed = state.layoutSeed;
+	}
+
+	rebuildDungeonLayout(hubLayout);
+	snapLocalPlayerToServerPosition(state);
+}
+
+/** Prefer authoritative server spawn coordinates when entering the hub lobby. */
+function resolveLobbySpawnPosition(state) {
+	const me = myId && state?.players ? state.players[myId] : null;
+	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
+		return { x: me.x, z: me.z };
+	}
+	return getSpawnPosition();
+}
+
 /** Switch UI from in-dungeon play back to the guild lobby. */
-function returnToGuildLobby(state, { refreshCollection = false } = {}) {
+function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = false } = {}) {
 	closeLevelSettingsOverlay();
 	showLevelSettingsError('');
 	if (giveUpBtnEl) giveUpBtnEl.disabled = false;
@@ -487,6 +519,10 @@ function returnToGuildLobby(state, { refreshCollection = false } = {}) {
 			});
 		}
 		renderSuspendedRunBanner(state);
+	}
+
+	if (rebuildHub) {
+		restoreHubLobbyScene(state);
 	}
 }
 
@@ -663,9 +699,16 @@ function applyLobbyJoinedData(data) {
 		showCardHand();
 		setDeckStackVisible(true);
 		initHand();
-		rendererInitScene(currentLayout, getSpawnPosition());
+		rendererInitScene(currentLayout, resolveRunSpawnPosition());
 		updateObjectiveHud();
 		setGamePhase('playing');
+		return;
+	}
+
+	if (data.state && data.state.gamePhase === 'lobby' && !isSceneInitialized()) {
+		setGamePhase('lobby');
+		rendererInitScene(currentLayout, resolveLobbySpawnPosition(data.state));
+		updateObjectiveHud();
 		return;
 	}
 
@@ -972,7 +1015,10 @@ function bindSocketHandlers(s) {
 		if (isExtracted && state.gamePhase === 'playing') {
 			showExtractedLobbyOverlay();
 		} else if (state.gamePhase === 'lobby') {
-			returnToGuildLobby(state, { refreshCollection: enteringLobby || collectionChanged });
+			returnToGuildLobby(state, {
+				refreshCollection: enteringLobby || collectionChanged,
+				rebuildHub: enteringLobby,
+			});
 		} else if (me) {
 			syncVanguardHud(me, state.gamePhase);
 		}
@@ -1395,7 +1441,7 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
-	s.on('startGame', () => {
+	s.on('startGame', (data) => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
@@ -1403,14 +1449,18 @@ function bindSocketHandlers(s) {
 		showCardHand();
 		setDeckStackVisible(true);
 		updateObjectiveHud();
+		const deployLayout = applyDeployLayoutFromServer(data);
 		if (!isSceneInitialized()) {
 			initHand();
-			rendererInitScene(currentLayout, resolveRunSpawnPosition());
+			rendererInitScene(deployLayout, resolveRunSpawnPosition());
 			setGamePhase('playing');
 			updateLevelSettingsBtnVisibility();
 			return;
 		}
 		initHand();
+		if (deployLayout) {
+			rebuildDungeonLayout(deployLayout);
+		}
 		const spawnPos = resolveRunSpawnPosition();
 		setPlayerPosition(spawnPos.x, spawnPos.z);
 		setPlayerRotation(0);
@@ -1455,7 +1505,7 @@ function bindSocketHandlers(s) {
 			delete gameState.run;
 		}
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
-		returnToGuildLobby(gameState, { refreshCollection: true });
+		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
 	});
 
 	if (giveUpBtnEl) {
@@ -1585,7 +1635,23 @@ function resolveRunSpawnPosition() {
 	return getSpawnPosition();
 }
 
-/** Apply quest layout from server and rebuild dungeon geometry when the quest changes. */
+/** Apply quest dungeon layout from server startGame payload after lobby deploy. */
+function applyDeployLayoutFromServer(data) {
+	if (data?.layout) {
+		currentLayout = data.layout;
+		if (gameState) gameState.layout = currentLayout;
+		if (data.layoutSeed !== undefined) {
+			currentLayoutSeed = data.layoutSeed;
+		}
+		return currentLayout;
+	}
+	if (currentLayout && currentLayout.profile !== 'hub') {
+		return currentLayout;
+	}
+	return null;
+}
+
+/** Apply quest layout from server; rebuild meshes only outside the lobby phase. */
 function applyQuestLayoutFromServer(data) {
 	if (!data || !data.layout) return;
 
@@ -1595,17 +1661,15 @@ function applyQuestLayoutFromServer(data) {
 		currentLayoutSeed = data.layoutSeed;
 	}
 
+	if (gameState?.gamePhase === 'lobby') {
+		return;
+	}
+
 	if (isSceneInitialized()) {
 		rebuildDungeonLayout(currentLayout);
 	}
 
-	const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
-	if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
-		setPlayerPosition(me.x, me.z);
-	} else {
-		const spawn = getSpawnPosition();
-		setPlayerPosition(spawn.x, spawn.z);
-	}
+	snapLocalPlayerToServerPosition(gameState);
 }
 
 function renderQuestBoardState() {
@@ -4132,6 +4196,7 @@ window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
+window.applyQuestLayoutFromServer = applyQuestLayoutFromServer;
 window.showRegisterForm = showRegisterForm;
 window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;

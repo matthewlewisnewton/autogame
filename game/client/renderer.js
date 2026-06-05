@@ -1148,7 +1148,8 @@ export function initScene(layout, spawnPos) {
 	renderer = new THREE.WebGLRenderer({ antialias: true });
 	renderer.setSize(window.innerWidth, window.innerHeight);
 	document.body.appendChild(renderer.domElement);
-	renderer.domElement.style.pointerEvents = currentGamePhase === 'playing' ? 'auto' : 'none';
+	renderer.domElement.style.pointerEvents =
+		currentGamePhase === 'playing' || currentGamePhase === 'lobby' ? 'auto' : 'none';
 
 	// Lighting
 	const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -1262,7 +1263,8 @@ let currentGamePhase = 'lobby';
 export function setGamePhase(phase) {
 	currentGamePhase = phase;
 	if (renderer?.domElement) {
-		renderer.domElement.style.pointerEvents = phase === 'playing' ? 'auto' : 'none';
+		renderer.domElement.style.pointerEvents =
+			phase === 'playing' || phase === 'lobby' ? 'auto' : 'none';
 	}
 }
 
