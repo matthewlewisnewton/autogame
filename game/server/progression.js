@@ -123,6 +123,12 @@ function buildPlayerDeckUpdatePayload(player, extra = {}) {
   if (player.runRewards != null) {
     payload.runRewards = player.runRewards;
   }
+  if (player.id) {
+    const preview = previewReturnRewards(player.id);
+    if (preview != null) {
+      payload.returnRewardsPreview = preview;
+    }
+  }
   return payload;
 }
 

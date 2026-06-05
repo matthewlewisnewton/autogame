@@ -1391,6 +1391,10 @@ describe('Socket Integration — in-run deckUpdate', () => {
 		expect(typeof deckUpdate.inDesperation).toBe('boolean');
 		expect(deckUpdate).toHaveProperty('desperationDeck');
 		expect(deckUpdate).toHaveProperty('nextDrawAt');
+		expect(deckUpdate.returnRewardsPreview).toEqual(expect.objectContaining({
+			lootCurrency: expect.any(Number),
+			objectiveComplete: expect.any(Boolean),
+		}));
 	});
 
 	it('does not emit in-run deckUpdate to other players in the lobby', async () => {
@@ -4476,7 +4480,7 @@ describe('Fixed tick movement — no elapsed teleport', () => {
 
 // ── Hand Reconciliation ──
 
-describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
+describe('Hand reconciliation — remainingCharges via deckUpdate', () => {
 	let baseUrl, socket;
 
 	beforeEach(async () => {
@@ -4489,7 +4493,7 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 		await closeServer();
 	});
 
-	it('server corrections to remainingCharges are reflected in the client stateUpdate payload', async () => {
+	it('server corrections to remainingCharges are reflected in deckUpdate after card play', async () => {
 		// Enter playing phase
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'summon-ready' });
@@ -4515,26 +4519,43 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		});
 
-		// Listen for stateUpdate after card use — it should contain the corrected remainingCharges
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		player.hand[weaponSlot].remainingCharges = 1;
 
+		const deckUpdatePromise = waitForEvent(socket, 'deckUpdate');
 		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		const deckUpdate = await deckUpdatePromise;
 
-		const stateUpdate = await stateUpdatePromise;
-
-		// Verify the stateUpdate contains the player's hand with updated remainingCharges
-		expect(stateUpdate.players).toBeDefined();
-		expect(stateUpdate.players[socket._playerId]).toBeDefined();
-		expect(stateUpdate.players[socket._playerId].hand).toBeDefined();
-		const handInPayload = stateUpdate.players[socket._playerId].hand;
-		const updatedCard = handInPayload[weaponSlot];
-		expect(updatedCard).toBeDefined();
-		expect(updatedCard.id).toBe(weaponCard.id);
-		// remainingCharges should have decreased by 1 (server correction)
-		expect(updatedCard.remainingCharges).toBe(chargesBefore - 1);
+		expect(Array.isArray(deckUpdate.hand)).toBe(true);
+		expect(deckUpdate.hand[weaponSlot]).toBeNull();
 
 		// Also verify the server gameState reflects the same
-		expect(player.hand[weaponSlot].remainingCharges).toBe(chargesBefore - 1);
+		expect(player.hand[weaponSlot]).toBeNull();
+		expect(chargesBefore).toBeGreaterThan(0);
+	});
+
+	it('tick stateUpdate omits cold deck fields while server state retains them', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		expect(Array.isArray(player.hand)).toBe(true);
+		expect(player.hand.some((card) => card)).toBe(true);
+
+		const tickUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const tickUpdate = await tickUpdatePromise;
+		const tickPlayer = tickUpdate.players[socket._playerId];
+
+		expect(tickPlayer).toBeDefined();
+		expect(tickPlayer.hand).toBeUndefined();
+		expect(tickPlayer.deck).toBeUndefined();
+		expect(tickPlayer.inventory).toBeUndefined();
+		expect(tickPlayer.returnRewardsPreview).toBeUndefined();
+
+		const authoritative = testGameState().players[socket._playerId];
+		expect(Array.isArray(authoritative.hand)).toBe(true);
+		expect(authoritative.hand.some((card) => card)).toBe(true);
 	});
 });
 
