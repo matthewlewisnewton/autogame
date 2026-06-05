@@ -1,0 +1,13 @@
+Created **2** remediation sub-tickets for the single open gap in `review-feedback.md`. Sub-tickets `01`–`04` all have `.passed` markers and were left untouched.
+
+**New sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/253-level2-tier-framework-unlock/tickets/253-level2-tier-framework-unlock/subtickets/05-per-account-quest-unlock-payloads`
+2. `/home/matt/workspace/.autogame-worktrees/253-level2-tier-framework-unlock/tickets/253-level2-tier-framework-unlock/subtickets/06-tier2-squad-ready-deploy-gate`
+
+**Split rationale:**
+
+- **05** — Per-account unlock propagation: fixes cross-client unlock-map leakage on `selectQuest`/`lobbyUpdate`, and stale UI after Tier-1 victory + return-to-lobby.
+- **06** — Squad enforcement: blocks locked players from readying/deploying into a Tier-2 run another player selected.
+
+Both use **code** verification (socket payloads, multi-player gating, tests) — not visual QA.

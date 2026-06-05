@@ -3778,3 +3778,26 @@ PASS with a validation caveat. The implementation is cohesive and scoped to vari
 
 None.
 
+
+## v0.216 — 253-level2-tier-framework-unlock  (2026-06-04 21:48:29)
+
+- `client/test/questBoard.test.js`
+
+The same coverage run contains one failure in `server/test/field_medic_kit.test.js` due to a 0.005000000000000782 vs 0.005 floating-point tolerance on Magic Stone regen. That test file and key-item medic path were not part of this ticket; I do not consider it a blocking gap for the Tier 2 unlock framework.
+
+## Design and requirements consistency
+
+Pass. The implementation stays within the documented lobby-to-dungeon core loop: quest selection happens in the lobby, deploy starts the selected run, and run completion returns rewards/progression. It does not regress the baseline requirements: captured probes show WebSocket connection, multiplayer lobby state, scene initialization, canvas rendering, gameplay entry, and movement/key-item interaction.
+
+## Debug scenarios
+
+Pass. The new `quest-tier-2-unlocked` debug shortcut is reachable only through the existing debug scenario path, with both client localhost gating and server-side debug-scenario gating. It does not replace normal gameplay: the equivalent state is still reached by clearing Tier 1, which calls the normal victory/unlock persistence path. The shortcut writes the same persisted account unlock and then uses normal quest selection/layout payload plumbing.
+
+## Code quality
+
+Pass. The tier plumbing is cohesive and server-authoritative: catalog validation, per-account persistence, per-socket payloads, selection validation, deploy gating, run summary/checkpoint tier propagation, and UI rendering all use the same tier fields. I did not find dead code, broken imports, console-debug leftovers, or obvious bypasses in the changed game files.
+
+## Remaining gaps
+
+None.
+
