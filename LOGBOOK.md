@@ -4033,3 +4033,26 @@ The branch includes focused server and client tests for the new split: tick payl
 
 No blocking gaps remain for this ticket.
 
+
+## v0.234 — 269-lobby-enforce-max-players-cap  (2026-06-05 03:28:36)
+
+- No changes to client, simulation, or spawn logic — low regression risk.
+- No new debug scenarios added; nothing to audit on that axis.
+- `requirements.md` foundation (connect, render, move) unaffected; capture confirms normal play still works.
+
+---
+
+## Code quality
+
+- Minimal, focused diff: one config constant + one guard in the single join entry point.
+- Cap check is synchronous before player insertion; Node's single-threaded handler model prevents a TOCTOU race within one server process.
+- Tests are thorough for this scope; they duplicate local socket helpers rather than importing shared ones (see nits).
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied and the captured run is clean.
+
+---
+

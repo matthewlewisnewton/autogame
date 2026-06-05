@@ -1,0 +1,25 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Wrote:
+- [`tickets/269-lobby-enforce-max-players-cap/round-1/review.md`](tickets/269-lobby-enforce-max-players-cap/round-1/review.md)
+- [`tickets/269-lobby-enforce-max-players-cap/round-1/nits.md`](tickets/269-lobby-enforce-max-players-cap/round-1/nits.md) (non-blocking follow-ups)
+
+No `gaps.md` — nothing blocking.
+
+### Runtime
+- `metrics.json`: `ok: true`, `pageerrors: []`
+- `console.log`: no pageerrors or fatal errors; capture reached squad lobby and dungeon gameplay
+
+### Acceptance criteria
+All met:
+- `MAX_PLAYERS = 16` in `game/server/config.js`
+- Full lobbies reject with `lobbyError({ reason: 'Lobby is full' })` before phase policy (lobby + drop-in)
+- Tests cover reject-at-16, accept-at-15, explicit leave freeing a slot, disconnect + grace eviction freeing a slot, and playing-phase drop-in rejection
+- 659 server tests pass
+
+### Notes
+- Ticket **goal** mentions auto-routing on full lobby — not implemented and **not** in acceptance criteria; logged as a nit
+- Spawn mod-4 logic unchanged (`assignRunSpawnPositions` with 4 offsets)
+- No new debug scenarios; no regressions observed in capture or tests
