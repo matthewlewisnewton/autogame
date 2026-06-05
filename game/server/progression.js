@@ -2735,14 +2735,14 @@ function abandonSuspendedRun(state = _gameState) {
   delete state.run;
   setGamePhase(state, PHASES.LOBBY);
 
-  const spawn = firstRoomPosition();
+  const spawn = hubSpawnPosition(HUB_LAYOUT);
   for (const player of Object.values(state.players)) {
     revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
     player.hand = [];
     player.deck = [];
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);

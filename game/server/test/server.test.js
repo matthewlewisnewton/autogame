@@ -135,8 +135,16 @@ import {
 	isEntityPositionBlocked,
 	moveEntityToward,
 	MINION_FOLLOW_DISTANCE,
-	MINION_FOLLOW_SPEED
+	MINION_FOLLOW_SPEED,
+	HUB_LAYOUT,
+	isInsideDungeon,
 } from '../index.js';
+import {
+	hubSpawnPosition,
+	buildHubMovementContext,
+	computeDungeonBounds,
+} from '../simulation.js';
+import { sampleFloorY, resolveFloorY } from '../dungeon.js';
 
 const { createLobby, resetAllLobbies } = require('../lobbies.js');
 const { VARIANT_DEFS } = require('../enemyVariants.js');
@@ -2956,6 +2964,21 @@ describe('run state', () => {
 			expect(result.ok).toBe(true);
 			expect(gameState.suspendedCheckpoint).toBeUndefined();
 			expect(gameState.run).toBeUndefined();
+			expect(gameState.gamePhase).toBe('lobby');
+
+			const spawn = hubSpawnPosition(HUB_LAYOUT);
+			const hubCtx = buildHubMovementContext(HUB_LAYOUT);
+			const bounds = computeDungeonBounds(HUB_LAYOUT);
+			for (const player of Object.values(gameState.players)) {
+				expect(player.x).toBe(spawn.x);
+				expect(player.z).toBe(spawn.z);
+				expect(player.y).toBe(resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z)));
+				expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
+				expect(player.x).toBeLessThanOrEqual(bounds.maxX);
+				expect(player.z).toBeGreaterThanOrEqual(bounds.minZ);
+				expect(player.z).toBeLessThanOrEqual(bounds.maxZ);
+				expect(isInsideDungeon(player.x, player.z, hubCtx)).toBe(true);
+			}
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();
