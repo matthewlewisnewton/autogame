@@ -11,6 +11,7 @@
 //   - main.js calls mesh-sync helpers (syncLootMeshes, disposeStaleMeshes) as needed
 
 import * as THREE from 'three';
+import EVENTS from '../shared/events.json' with { type: 'json' };
 import { clampDelta } from './delta.js';
 import {
 	buildDungeon,
@@ -911,7 +912,7 @@ function syncFacingToServer() {
 		return;
 	}
 	lastEmittedRotation = playerRotation;
-	socketRef.emit('move', { dx: 0, dz: 0, rotation: playerRotation });
+	socketRef.emit(EVENTS.move, { dx: 0, dz: 0, rotation: playerRotation });
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
@@ -1231,7 +1232,7 @@ function tryEmitLootPickup(loot, now) {
 	const last = lootPickupAttempts.get(loot.id) || 0;
 	if (now - last < LOOT_PICKUP_RETRY_MS) return;
 	lootPickupAttempts.set(loot.id, now);
-	socketRef.emit('lootPickup', { lootId: loot.id });
+	socketRef.emit(EVENTS.lootPickup, { lootId: loot.id });
 }
 
 /**
@@ -1269,7 +1270,7 @@ export function setBoothInRangeListener(cb) {
  */
 export function emitBoothInteract() {
 	if (!socketRef || !currentBoothInRange) return null;
-	socketRef.emit('boothInteract', { boothId: currentBoothInRange });
+	socketRef.emit(EVENTS.boothInteract, { boothId: currentBoothInRange });
 	return currentBoothInRange;
 }
 
@@ -1548,7 +1549,7 @@ export function updateMyPlayer(delta) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
 			lastEmittedRotation = moveRotation;
-			socketRef.emit('move', {
+			socketRef.emit(EVENTS.move, {
 				dx: dirX,
 				dz: dirZ,
 				rotation: moveRotation,

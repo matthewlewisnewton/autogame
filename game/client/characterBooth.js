@@ -3,6 +3,7 @@
 // Booth anchor interaction wiring lands in a later sub-ticket; this module
 // exposes open/close lifecycle and test hooks.
 
+import EVENTS from '../shared/events.json' with { type: 'json' };
 import {
 	openPreview,
 	updatePreview,
@@ -82,7 +83,7 @@ export function initCharacterBooth({
 			if (!socket || !socket.connected) return;
 			const hat = getHatCatalog().find((h) => h.id === hatId);
 			if (!hat || getCurrency() < hat.price) return;
-			socket.emit('unlockHat', { hatId });
+			socket.emit(EVENTS.unlockHat, { hatId });
 		},
 		proportionIdPrefix: 'character-booth-prop',
 	});
