@@ -97,16 +97,29 @@ const CALL_SITE_RE = /\.(emit|on|once|off)\s*\(\s*([^,)\s][^,)]*)/g;
 // (e.g. `someEvent:`), and only a *literal* RHS is captured — an
 // `event: EVENTS.questUpdate` reference is intentionally left alone.
 const EVENT_ASSIGN_RE = /\bevent\s*[:=]\s*(['"`][^'"`]+['"`])/g;
+// Companion to EVENT_ASSIGN_RE for the *reference* form: a dynamic-emit slot
+// whose RHS is `EVENTS.<name>` (e.g. `phaseMismatch: { event: EVENTS.keyItemError }`).
+// EVENT_ASSIGN_RE only captures raw literals, so without this the embedded
+// registry reference would never reach invariants 2/3.
+const EVENT_ASSIGN_REF_RE = /\bevent\s*[:=]\s*EVENTS\.([A-Za-z_$][\w$]*)/g;
 const STRING_LITERAL_RE = /^(['"`])(.*)\1$/;
 const REGISTRY_REF_RE = /^EVENTS\.([A-Za-z_$][\w$]*)$/;
+// Global passes used to look *inside* a dynamic first-argument expression
+// (e.g. the ternary `cond ? EVENTS.runComplete : EVENTS.runFailed`): pull out
+// every embedded `EVENTS.<name>` reference and every raw string literal so a
+// typo'd member or a literal hidden inside a ternary still trips the guard.
+const EMBEDDED_REF_RE = /EVENTS\.([A-Za-z_$][\w$]*)/g;
+const EMBEDDED_LITERAL_RE = /(['"`])([^'"`]*)\1/g;
 
 /**
  * Classify every `.emit`/`.on` first argument found in `source`.
  * Returns { literals: string[], refs: string[], dynamic: string[] }.
- *   literals — raw string-literal first args (the value inside the quotes)
- *   refs     — `EVENTS.<name>` member names
- *   dynamic  — anything else (variables/expressions); intentionally ignored,
- *              since a non-literal cannot be a stray raw event-name string.
+ *   literals — raw string-literal first args (the value inside the quotes),
+ *              including raw literals embedded inside a dynamic expression
+ *   refs     — `EVENTS.<name>` member names, including every reference embedded
+ *              inside a dynamic expression
+ *   dynamic  — the remaining dynamic expression text (kept for diagnostics);
+ *              embedded refs/literals are extracted above, not swallowed here.
  */
 function classifyCallSites(source) {
 	const literals = [];
@@ -126,26 +139,52 @@ function classifyCallSites(source) {
 			refs.push(ref[1]);
 			continue;
 		}
+		// Dynamic expression (e.g. a ternary like
+		// `status === 'victory' ? EVENTS.runComplete : EVENTS.runFailed`).
+		// Don't drop it on the floor: extract every embedded `EVENTS.<name>`
+		// reference and every raw string literal so a typo'd member trips
+		// invariant 2 and a literal hidden inside the expression trips invariant 1.
+		let r;
+		EMBEDDED_REF_RE.lastIndex = 0;
+		while ((r = EMBEDDED_REF_RE.exec(arg)) !== null) refs.push(r[1]);
+		// For literals, only scan the value region of a ternary (everything after
+		// the first `?`). The event name is always a value branch, never the
+		// condition — so a comparison operand like the `'victory'` in
+		// `status === 'victory' ? ...` is correctly NOT treated as an event-name
+		// literal, while a literal branch such as `cond ? 'typoEvent' : ...` is.
+		// A non-ternary expression has no `?`, so its whole text is scanned.
+		const q = arg.indexOf('?');
+		const litScope = q === -1 ? arg : arg.slice(q + 1);
+		let s;
+		EMBEDDED_LITERAL_RE.lastIndex = 0;
+		while ((s = EMBEDDED_LITERAL_RE.exec(litScope)) !== null) literals.push(s[2]);
 		dynamic.push(arg);
 	}
 	return { literals, refs, dynamic };
 }
 
 /**
- * Find raw string literals assigned to an `event` field/parameter in `source`
- * (the dynamic-emit slots). Returns the inner (unquoted) literal values.
- * `event: EVENTS.<name>` references contain no string literal, so they never
- * match and are correctly ignored.
+ * Classify `event` field/parameter assignments in `source` (the dynamic-emit
+ * slots). Returns { literals: string[], refs: string[] }:
+ *   literals — inner (unquoted) values of raw string literals (e.g.
+ *              `phaseMismatch: { event: 'keyItemError' }`), which trip invariant 1.
+ *   refs     — `EVENTS.<name>` members fed into an `event:`/`event =` slot (e.g.
+ *              `phaseMismatch: { event: EVENTS.keyItemError }`), which must
+ *              resolve through invariants 2 and 3 just like a call-site reference.
  */
 function classifyEventAssignments(source) {
 	const literals = [];
+	const refs = [];
 	let m;
 	EVENT_ASSIGN_RE.lastIndex = 0;
 	while ((m = EVENT_ASSIGN_RE.exec(source)) !== null) {
 		const lit = STRING_LITERAL_RE.exec(m[1].trim());
 		if (lit) literals.push(lit[2]);
 	}
-	return literals;
+	let r;
+	EVENT_ASSIGN_REF_RE.lastIndex = 0;
+	while ((r = EVENT_ASSIGN_REF_RE.exec(source)) !== null) refs.push(r[1]);
+	return { literals, refs };
 }
 
 function scanAll() {
@@ -156,8 +195,11 @@ function scanAll() {
 		const { literals, refs } = classifyCallSites(source);
 		for (const name of literals) rawLiterals.push({ file: rel, name });
 		for (const name of refs) refNames.push({ file: rel, name });
-		// Second pass: raw literals feeding `event:`/`event =` dynamic-emit slots.
-		for (const name of classifyEventAssignments(source)) rawLiterals.push({ file: rel, name });
+		// Second pass: `event:`/`event =` dynamic-emit slots — raw literals trip
+		// invariant 1, embedded `EVENTS.<name>` refs flow into invariants 2/3.
+		const assigned = classifyEventAssignments(source);
+		for (const name of assigned.literals) rawLiterals.push({ file: rel, name });
+		for (const name of assigned.refs) refNames.push({ file: rel, name });
 	}
 	return { rawLiterals, refNames };
 }
@@ -220,10 +262,13 @@ describe('shared event-name registry drift guard', () => {
 		// Invariant 1 — a raw literal feeding an `event:` field or an `event =`
 		// default (the dynamic-emit slots sub-ticket 04 routed through the
 		// registry) also trips.
-		expect(classifyEventAssignments(`phaseMismatch: { event: 'typoEvent' }`)).toEqual(['typoEvent']);
-		expect(classifyEventAssignments(`function f(event = 'typoEvent') {}`)).toEqual(['typoEvent']);
-		// ...but an `event: EVENTS.<name>` reference is left alone (no raw literal).
-		expect(classifyEventAssignments(`phaseMismatch: { event: EVENTS.keyItemError }`)).toEqual([]);
+		expect(classifyEventAssignments(`phaseMismatch: { event: 'typoEvent' }`).literals).toEqual(['typoEvent']);
+		expect(classifyEventAssignments(`function f(event = 'typoEvent') {}`).literals).toEqual(['typoEvent']);
+		// ...but an `event: EVENTS.<name>` reference produces no raw literal — it is
+		// instead collected as a registry reference for invariants 2/3.
+		const eventRef = classifyEventAssignments(`phaseMismatch: { event: EVENTS.keyItemError }`);
+		expect(eventRef.literals).toEqual([]);
+		expect(eventRef.refs).toEqual(['keyItemError']);
 
 		// ...but an allowlisted lifecycle literal does NOT trip invariant 1.
 		const okLiteral = classifyCallSites(`socket.on('disconnect', cb);`);
@@ -233,6 +278,30 @@ describe('shared event-name registry drift guard', () => {
 		const badRef = classifyCallSites(`io.emit(EVENTS.cardUesd, snapshot);`);
 		const dangling = badRef.refs.filter((n) => !Object.prototype.hasOwnProperty.call(registry, n));
 		expect(dangling).toEqual(['cardUesd']);
+
+		// Invariant 2 (dynamic) — a typo'd member inside a ternary emit is no longer
+		// silently classified as `dynamic`; both branches are extracted and the
+		// bogus one surfaces as a dangling reference.
+		const badTernary = classifyCallSites(`io.emit(cond ? EVENTS.runComplete : EVENTS.runFaild, x)`);
+		expect(badTernary.refs).toEqual(['runComplete', 'runFaild']);
+		expect(badTernary.refs.filter((n) => !Object.prototype.hasOwnProperty.call(registry, n))).toEqual([
+			'runFaild',
+		]);
+
+		// Invariant 1 (dynamic) — a raw literal hidden inside a ternary emit is
+		// extracted and trips invariant 1, while the legitimate `EVENTS.<name>`
+		// branch is collected as a reference.
+		const literalTernary = classifyCallSites(`io.emit(cond ? 'typoEvent' : EVENTS.runFailed, x)`);
+		expect(literalTernary.literals.filter((n) => !LIFECYCLE_ALLOWLIST.has(n))).toEqual(['typoEvent']);
+		expect(literalTernary.refs).toEqual(['runFailed']);
+
+		// Invariant 2 (dynamic event-slot) — a typo'd member fed into an
+		// `event: EVENTS.<name>` dynamic-emit slot surfaces as a dangling reference.
+		const badEventSlot = classifyEventAssignments(`phaseMismatch: { event: EVENTS.medicErrr }`);
+		expect(badEventSlot.refs).toEqual(['medicErrr']);
+		expect(badEventSlot.refs.filter((n) => !Object.prototype.hasOwnProperty.call(registry, n))).toEqual([
+			'medicErrr',
+		]);
 
 		// Invariant 3 — a registry name nobody references is detected as dead.
 		const used = new Set(['init', 'stateUpdate']);
