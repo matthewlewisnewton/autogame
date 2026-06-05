@@ -1084,8 +1084,11 @@ function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
     withLobbyContext(lobby, () => {
       const state = lobby.state;
-      if (isPlayingPhase(state)) {
-        applyPlayerMovement();
+      if (isLobbyPhase(state)) {
+        applyPlayerMovement(state);
+        flushDirtyPlayerSaves();
+      } else if (isPlayingPhase(state)) {
+        applyPlayerMovement(state);
         checkTelepipeProximity();
         flushDirtyPlayerSaves();
         updateEnemies();
@@ -1303,7 +1306,7 @@ function startServer(port) {
 
   socket.on('move', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (!isPlayingPhase(state)) return;
+    if (!isLobbyPhase(state) && !isPlayingPhase(state)) return;
 
     const player = state.players[socket.playerId];
 

@@ -29,7 +29,7 @@ const {
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
-const { isPlayingPhase } = require('./lobbies');
+const { isLobbyPhase, isPlayingPhase } = require('./lobbies');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -295,14 +295,14 @@ function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, colliders = getWallCo
  * Apply one tick of movement for all players with active input.
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
  */
-function applyPlayerMovement() {
-  if (!_gameState || !isPlayingPhase(_gameState)) return;
+function applyPlayerMovement(state = _gameState) {
+  if (!state || !(isLobbyPhase(state) || isPlayingPhase(state))) return;
 
   const step = MOVE_SPEED / TICK_RATE;
   const colliders = getWallColliders();
   const now = Date.now();
 
-  for (const [playerId, player] of Object.entries(_gameState.players)) {
+  for (const [playerId, player] of Object.entries(state.players)) {
     if (!player || player.dead || player.extracted) continue;
     if (player.connected === false) continue;
     if (!player.inputActive) continue;
@@ -330,7 +330,7 @@ function applyPlayerMovement() {
     const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, colliders);
     player.x = result.x;
     player.z = result.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, result.x, result.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, result.x, result.z));
     if (Number.isFinite(player.inputRotation)) {
       player.rotation = player.inputRotation;
     }
