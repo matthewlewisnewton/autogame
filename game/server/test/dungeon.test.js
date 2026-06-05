@@ -2319,6 +2319,80 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       expect(canyonReachableFromPlateau(layout)).toBe(true);
     }
   });
+
+  describe('rigid layoutMode', () => {
+    it('unknown layoutMode values fall back to default scatter behavior', () => {
+      const withDefault = generateLayout(123, 'sunken-canyon', { layoutMode: 'default' });
+      const withUnknown = generateLayout(123, 'sunken-canyon', { layoutMode: 'chaotic' });
+      expect(withUnknown.rooms).toEqual(withDefault.rooms);
+      expect(withUnknown.cover).toEqual(withDefault.cover);
+      expect(withUnknown.landmarks).toEqual(withDefault.landmarks);
+    });
+
+    it('rigid mode produces identical structural fields across different seeds', () => {
+      const seeds = [1, 42, 123, 777, 9999];
+      const layouts = seeds.map((seed) =>
+        generateLayout(seed, 'sunken-canyon', { layoutMode: 'rigid' })
+      );
+      for (let i = 1; i < layouts.length; i++) {
+        expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+        expect(layouts[i].cover).toEqual(layouts[0].cover);
+        expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+        expect(layouts[i].cliffLips).toEqual(layouts[0].cliffLips);
+        expect(layouts[i].edgeHazards).toEqual(layouts[0].edgeHazards);
+      }
+    });
+
+    it('rigid mode still satisfies sunken-canyon structural and reachability assertions', () => {
+      const layout = generateLayout(123, 'sunken-canyon', { layoutMode: 'rigid' });
+      expect(layout.profile).toBe('sunken-canyon');
+
+      const ramps = roomsByBand(layout, 'ramp');
+      expect(ramps.length).toBe(5);
+
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const canyon = roomsByBand(layout, 'canyon')[0];
+      expect(plateau.role).toBe('start');
+      expect(canyon.role).toBe('treasure');
+      for (const ramp of ramps) {
+        expect(ramp.role).toBe('connector');
+        expect(ramp.spawnWeight).toBe(0);
+      }
+
+      expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0].type).toBe('canyon_monolith');
+      expect(outsideSpawnClear(layout.landmarks[0], canyon)).toBe(true);
+
+      expect(layout.cliffLips.length).toBe(ramps.length);
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      expect(canyonReachableFromPlateau(layout)).toBe(true);
+    });
+
+    it('default mode still varies ramp count across seeds', () => {
+      const rampCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'sunken-canyon', { layoutMode: 'default' });
+        rampCounts.add(roomsByBand(layout, 'ramp').length);
+      }
+      expect(rampCounts.has(4)).toBe(true);
+      expect(rampCounts.has(5)).toBe(true);
+    });
+
+    it('rigid and default modes can diverge for the same seed', () => {
+      const rigid = generateLayout(123, 'sunken-canyon', { layoutMode: 'rigid' });
+      const def = generateLayout(123, 'sunken-canyon', { layoutMode: 'default' });
+      const rigidAgain = generateLayout(9999, 'sunken-canyon', { layoutMode: 'rigid' });
+      expect(rigid.rooms).toEqual(rigidAgain.rooms);
+      expect(rigid.cover).toEqual(rigidAgain.cover);
+      expect(rigid.landmarks).toEqual(rigidAgain.landmarks);
+      const geometryDiffers =
+        JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+        JSON.stringify(rigid.cover) !== JSON.stringify(def.cover) ||
+        JSON.stringify(rigid.landmarks) !== JSON.stringify(def.landmarks);
+      expect(geometryDiffers).toBe(true);
+    });
+  });
 });
 
 // ── spire-ascent stage layout ──

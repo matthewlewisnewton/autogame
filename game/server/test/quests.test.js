@@ -150,6 +150,10 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'rigid',
     });
+    expect(getLayoutGenerationOptions('canyon_descent', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
     expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
     expect(isValidQuestSelection('spire_ascent', 2)).toBe(true);
     expect(isValidQuestSelection('crystal_rescue', 2)).toBe(true);
