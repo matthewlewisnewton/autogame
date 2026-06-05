@@ -1,7 +1,8 @@
 // ── Lobby Socket Handlers ──
 // Registers lobby-browser, run-lifecycle, and playing-phase socket.on handlers
 // that previously lived inline in the io.on('connection') closure in index.js.
-// Deck/shop/trade/inventory handlers live in deckHandlers.js.
+// Deck/shop/inventory handlers live in deckHandlers.js.
+// Trade handlers live in tradeHandlers.js.
 //
 // ── Circular-dependency resolution ──
 // This module must NOT require('./index') (circular). Per-connection identity
@@ -10,6 +11,7 @@
 
 const { LOOT_PICKUP_RADIUS } = require('../config');
 const deckHandlers = require('./deckHandlers');
+const tradeHandlers = require('./tradeHandlers');
 const {
   DEFAULT_QUEST_TIER,
   isValidQuestSelection,
@@ -171,6 +173,7 @@ function register(socket, ctx) {
   });
 
   deckHandlers.register(socket, ctx);
+  tradeHandlers.register(socket, ctx);
 
   socket.on('equipKeyItem', (data) => {
     withLobbyPlayer(socket, {
