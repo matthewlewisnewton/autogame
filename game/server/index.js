@@ -455,6 +455,7 @@ const DEBUG_SCENARIOS = new Set([
   'quest-objective-near-complete',
   'telepipe-ready',
   'extracted-in-hub',
+  'suspended-run-hub',
   'sloped-dungeon',
   'key-item-cooldown',
   'medic-kit-ready',

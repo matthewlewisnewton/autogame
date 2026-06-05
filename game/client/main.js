@@ -160,6 +160,7 @@ const questBoardEl = document.getElementById('quest-board');
 const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
+const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const lobbyEl = document.getElementById('lobby');
 const lobbyBrowserEl = document.getElementById('lobby-browser');
@@ -498,18 +499,36 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	}
 }
 
+/** True when the squad is sitting in the lobby on top of a suspended run. */
+function isRunSuspended() {
+	return !!(gameState && gameState.gamePhase === 'lobby' && gameState.suspendedRunSummary);
+}
+
 function setDeployButtonVisible(visible) {
+	// While a run is suspended the dedicated Resume control stands in for the
+	// new-mission Deploy button, so the two launch paths stay unambiguous.
+	const suspended = isRunSuspended();
+	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
 	if (!readyBtn) return;
-	readyBtn.hidden = !visible;
-	if (!visible) {
+	const showDeploy = visible && !suspended;
+	readyBtn.hidden = !showDeploy;
+	if (!showDeploy) {
 		readyBtn.disabled = true;
 	}
 }
 
 function renderSuspendedRunBanner(state) {
-	if (!suspendedRunBannerEl) return;
 	const summary = state && state.suspendedRunSummary;
-	if (state && state.gamePhase === 'lobby' && summary) {
+	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
+	// The Resume control is the only launch affordance while suspended; hide the
+	// new-mission Deploy button so resuming and launching fresh never collide.
+	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
+	if (suspended && readyBtn) {
+		readyBtn.hidden = true;
+		readyBtn.disabled = true;
+	}
+	if (!suspendedRunBannerEl) return;
+	if (suspended) {
 		const objective = summary.objective;
 		let progress = '';
 		if (objective && objective.type === 'collect_items') {
@@ -1441,6 +1460,9 @@ function bindSocketHandlers(s) {
 			if (me) {
 				isReady = me.ready;
 				readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
+				if (resumeRunBtn) {
+					resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
+				}
 				if (gameState && gameState.gamePhase === 'lobby') {
 					setDeployButtonVisible(true);
 					readyBtn.disabled = false;
@@ -1528,6 +1550,10 @@ function bindSocketHandlers(s) {
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
+			// Abandoning clears the checkpoint, so drop the suspended summary that
+			// drives the Resume affordance and fall back to the normal lobby flow
+			// with the new-mission Deploy button visible again.
+			delete gameState.suspendedRunSummary;
 		}
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
@@ -4093,6 +4119,18 @@ returnToLobbyBtn.addEventListener('click', () => {
 if (abandonRunBtn) {
 	abandonRunBtn.addEventListener('click', () => {
 		socket.emit('abandonRun');
+	});
+}
+
+if (resumeRunBtn) {
+	resumeRunBtn.textContent = THEME.run.resumeSortie;
+	// Resuming reuses the proven all-ready server gate: emitting `playerReady`
+	// routes to the resume path in `checkAllReady` because a `suspendedCheckpoint`
+	// exists, so the squad re-enters the checkpointed run rather than a fresh one.
+	resumeRunBtn.addEventListener('click', () => {
+		isReady = !isReady;
+		socket.emit('playerReady', isReady);
+		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
 	});
 }
 

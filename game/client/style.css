@@ -938,6 +938,24 @@ canvas {
   background: #334155;
 }
 
+/* Resume control — visually distinct from the blue new-mission Deploy so the
+   two launch paths read as separate affordances while a run is suspended. */
+#resume-run-btn {
+  padding: 12px 32px;
+  font-size: 16px;
+  font-weight: 700;
+  border: 1px solid rgba(34, 211, 238, 0.55);
+  border-radius: 8px;
+  background-color: #0e7490;
+  color: #ecfeff;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+#resume-run-btn:hover {
+  background-color: #0891b2;
+}
+
 /* ── Vanguard HUD (PSO-inspired) ── */
 
 #vanguard-hud {
