@@ -1,0 +1,25 @@
+Broke the top-level ticket into **6 sub-tickets** (dependency order: scaffold → browser → lobby deck/shop → lobby quest/trade → run phase → disconnect/cleanup). No prior `subtickets/` folders existed, so nothing was deleted.
+
+**Plan summary**
+
+| # | Focus |
+|---|--------|
+| 01 | `lobbyHandlers.js` scaffold + `ctx` + `listLobbies` / `listKeyItems` |
+| 02 | `createLobby`, `joinLobby`, `leaveLobby` |
+| 03 | Lobby-phase deck/shop/grind/evolve/hat handlers |
+| 04 | Quest, ready, key item, medic, trade handlers |
+| 05 | Run/playing handlers (`move`, cards, run lifecycle, loot, key item use) |
+| 06 | `disconnect` + verify extraction complete; `heartbeat` / `debugScenario` stay in `index.js` |
+
+All use **Verification: code**.
+
+**Created sub-ticket paths**
+
+```
+/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/01-lobby-handlers-scaffold/ticket.md
+/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/02-lobby-browser-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/03-lobby-phase-deck-shop-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/04-lobby-phase-quest-ready-trade-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/05-run-phase-handlers/ticket.md
+/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/06-disconnect-and-connection-cleanup/ticket.md
+```

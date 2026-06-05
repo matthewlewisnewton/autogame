@@ -1,0 +1,5 @@
+Wrote `tickets/272-socketHandlers-extract-lobby/round-1/review.md`.
+
+Final verdict: `VERDICT: PASS`
+
+No blocking gaps or nits found, so I did not create `gaps.md` or `nits.md`.

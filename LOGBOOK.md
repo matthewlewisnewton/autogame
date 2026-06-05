@@ -3778,3 +3778,26 @@ PASS with a validation caveat. The implementation is cohesive and scoped to vari
 
 None.
 
+
+## v0.214 — 272-socketHandlers-extract-lobby  (2026-06-04 21:30:02)
+
+PASS. The live code preserves the previous connection flow: JWT identity and session setup happen in `index.js`, `socket.playerId` is assigned before any client event can be handled, debug scenarios and heartbeat remain outside the extracted lobby module, and resume/reconnect/init/broadcast ordering remains in the connection handler. The extracted handlers continue to route stateful operations through `withLobbyFromSocket`, `withLobbyPlayer`, and `withLobbyContext`, preserving lobby-specific game state switching for progression and simulation helpers.
+
+The capture exercised the main integrated path covered by this refactor: auth, lobby creation/join, both players readying, transition into gameplay, movement, dodge/key item cooldown state, and disconnect cleanup. The probe data confirms `phase: "playing"`, two players, an initialized scene/canvas, synchronized gameplay state, and key item cooldown behavior.
+
+### Server Test Suite
+
+PASS. The latest coverage artifact reports `42 passed (42)` test files and `942 passed (942)` tests. The exercised suite includes broad socket integration coverage for lobby creation/join, ready transitions, quest selection, drop-in, deck handlers, loot pickup, disconnect behavior, persistence save triggers, key items, and debug scenarios.
+
+### Design And Requirements Consistency
+
+PASS. The change is architectural and behavior-preserving: it keeps the design's lobby browser, squad lobby, ready/deploy, dungeon, drop-in, and multiplayer socket flow intact. It does not regress the foundation requirements for Three.js rendering, server-client WebSocket connectivity, player visualization, or movement synchronization; the captured run specifically demonstrates connected multiplayer gameplay, canvas presence, and movement/key item state updates.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or change any development debug scenario. Existing debug scenario handling remains registered through the `debugScenario` URL/socket path in `index.js`, separate from normal lobby/run handlers, so the extraction does not introduce a new QA shortcut or weaken normal gameplay reachability.
+
+## Remaining gaps
+
+None.
+
