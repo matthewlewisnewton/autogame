@@ -663,6 +663,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'minion-combat',
   'run-exhausted',
   'quest-objective-near-complete',
+  'arena-trials-tier-2',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
