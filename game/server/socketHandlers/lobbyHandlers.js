@@ -1,6 +1,7 @@
 // ── Lobby Socket Handlers ──
-// Registers lobby-browser, run-lifecycle, and playing-phase socket.on handlers
-// that previously lived inline in the io.on('connection') closure in index.js.
+// Registers lobby-browser and playing-phase socket.on handlers that previously
+// lived inline in the io.on('connection') closure in index.js.
+// Run-lifecycle handlers live in runHandlers.js.
 // Deck/shop/inventory handlers live in deckHandlers.js.
 // Trade handlers live in tradeHandlers.js.
 // Key-item handlers live in keyItemHandlers.js.
@@ -14,6 +15,7 @@ const { LOOT_PICKUP_RADIUS } = require('../config');
 const deckHandlers = require('./deckHandlers');
 const tradeHandlers = require('./tradeHandlers');
 const keyItemHandlers = require('./keyItemHandlers');
+const runHandlers = require('./runHandlers');
 const {
   DEFAULT_QUEST_TIER,
   isValidQuestSelection,
@@ -52,10 +54,6 @@ function register(socket, ctx) {
     broadcastLobbyUpdate,
     emitQuestPayloadToLobby,
     io,
-    returnPlayersToLobby,
-    giveUpRun,
-    abandonSuspendedRun,
-    claimCardReward,
     cardEffects,
     applyDebugScenario,
     isDebugScenarioAllowed,
@@ -164,6 +162,7 @@ function register(socket, ctx) {
   deckHandlers.register(socket, ctx);
   tradeHandlers.register(socket, ctx);
   keyItemHandlers.register(socket, ctx);
+  runHandlers.register(socket, ctx);
 
   socket.on('unlockHat', (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
@@ -238,68 +237,6 @@ function register(socket, ctx) {
         cost: result.cost,
       });
       io.to(state._lobbyId).emit('stateUpdate', stateSnapshot());
-    });
-  });
-
-  socket.on('returnToLobby', () => {
-    withLobbyFromSocket(socket, (state) => {
-    if (state.run && state.run.status === 'playing') {
-      socket.emit('runError', { reason: 'Run still in progress' });
-      return;
-    }
-
-    if (!state.run) return;
-
-    returnPlayersToLobby(state);
-    });
-  });
-
-  socket.on('giveUp', () => {
-    withLobbyFromSocket(socket, (state) => {
-      try {
-        if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
-          socket.emit('runError', { reason: 'No active run' });
-          return;
-        }
-        const result = giveUpRun(state);
-        if (!result.ok) {
-          socket.emit('runError', { reason: result.reason || 'Cannot give up' });
-          return;
-        }
-        socket.emit('runAbandoned');
-      } catch (err) {
-        console.error('[giveUp] failed:', err);
-        socket.emit('runError', { reason: 'Give up failed' });
-      }
-    });
-  });
-
-  socket.on('abandonRun', () => {
-    withLobbyFromSocket(socket, (state) => {
-      if (!state.suspendedCheckpoint) {
-        socket.emit('runError', { reason: 'No suspended expedition' });
-        return;
-      }
-      abandonSuspendedRun(state);
-    });
-  });
-
-  socket.on('claimCardReward', (data) => {
-    withLobbyFromSocket(socket, (state) => {
-    const player = state.players[socket.playerId];
-    if (!player) return;
-    if (!state.run || state.run.status === 'playing') return;
-    if (!data || typeof data.cardId !== 'string') return;
-
-    const result = claimCardReward(socket.playerId, data.cardId, state);
-    if (!result.ok) return;
-
-    savePlayerData(socket.playerId);
-    socket.emit('cardRewardClaimed', {
-      cardId: result.cardId,
-      ownedCards: result.ownedCards,
-      inventory: result.inventory,
-    });
     });
   });
 
