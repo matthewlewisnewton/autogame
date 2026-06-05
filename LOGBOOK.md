@@ -4407,3 +4407,26 @@ PASS. This ticket did not add or change any `?debugScenario=` shortcut. The capt
 
 None.
 
+
+## v0.251 — 251-enemy-display-metadata  (2026-06-05 07:12:07)
+
+- Minimal, focused diff (~150 lines across 2 commits).
+- Copy is thematic and distinct per type/variant.
+- `surfacedStats` selections are sensible for each role (spawner includes spawn keys; miniboss includes `attackRange`; frenzied surfaces enrage multipliers).
+- No dead code, no client-side leakage, no new console errors.
+- `ENEMY_DEFS` remains exported from `simulation.js` / `index.js` for server-side and test consumers — appropriate for the stated prerequisite role.
+
+---
+
+## Debug scenarios
+
+**Finding: N/A — no new or modified debug scenarios**
+
+This ticket did not add or change any `?debugScenario=` shortcuts. No gating or normal-path bypass review required.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game starts and runs cleanly in capture; tests pass.
+
