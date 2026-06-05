@@ -159,7 +159,7 @@ import {
 	emitBoothInteract,
 	setBoothInRangeListener,
 } from './renderer.js';
-import { updateBoothPrompt, dispatchBoothAction } from './boothPrompt.js';
+import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -704,6 +704,7 @@ function renderHubScene() {
 	const spawn = getSpawnPosition();
 	setPlayerPosition(spawn.x, spawn.z);
 	setGamePhase('lobby');
+	requestBoothDebugOpen();
 	return true;
 }
 
@@ -853,7 +854,9 @@ function getCardSlotEl(slotIndex) {
 
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+const boothDebugParam = new URLSearchParams(window.location.search).get('booth');
 let debugScenarioRequested = false;
+let boothDebugRequested = false;
 let debugScenarioResult = null;
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
@@ -937,6 +940,13 @@ setBoothInRangeListener((boothId) => updateBoothPrompt(boothPromptEl, boothId));
 if (boothPromptEl) {
 	boothPromptEl.addEventListener('click', () => emitBoothInteract());
 }
+
+window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
+	const boothId = ev.detail && ev.detail.boothId;
+	if (boothId !== 'character') return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	openCharacterBooth();
+});
 
 // Context bundle handed to per-card renderers — declared once so the
 // cardUsed handler does not re-allocate it on every event. `myId` is read
@@ -1861,6 +1871,14 @@ function requestDebugScenario() {
 	if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
 	debugScenarioRequested = true;
 	socket.emit('debugScenario', { name: debugScenario });
+}
+
+/** Localhost-only `?booth=character` — open the character booth once in hub lobby. */
+function requestBoothDebugOpen() {
+	if (boothDebugParam !== 'character' || !debugScenarioAllowed || boothDebugRequested) return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	boothDebugRequested = true;
+	openCharacterBooth();
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
