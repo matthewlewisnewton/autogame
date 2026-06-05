@@ -61,6 +61,7 @@ const {
   STALE_CLEANUP_INTERVAL_MS,
   PERIODIC_SAVE_INTERVAL_MS,
   VICTORY_REWARD_ROTATION,
+  MAX_LOBBY_PLAYERS,
   PORTAL_RADIUS,
   PORTAL_PLACEMENT_GRACE_MS,
   MAX_GROUND_ENCHANTMENTS_PER_PLAYER,
@@ -791,6 +792,12 @@ function handleDropInJoin(socket, lobby) {
 }
 
 function joinLobbyWithPhasePolicy(socket, lobby) {
+  const connectedCount = Object.values(lobby.state.players).filter(p => p.connected).length;
+  if (connectedCount >= MAX_LOBBY_PLAYERS) {
+    socket.emit('lobbyError', { reason: 'Lobby is full' });
+    return;
+  }
+
   if (isPlayingPhase(lobby.state)) {
     if (!allowDropInJoin(lobby)) {
       socket.emit('lobbyError', { reason: 'Drop-in not allowed for this lobby' });
