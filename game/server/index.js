@@ -77,7 +77,7 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
-const { syncHubPresencePlayer } = require('./hubPresence');
+const { syncHubPresencePlayer, broadcastHubPresence } = require('./hubPresence');
 
 const app = express();
 const server = http.createServer(app);
@@ -967,6 +967,7 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
     lobbyPlayer.z = hubSpawn.z;
     lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
     syncHubPresencePlayer(lobby, playerId);
+    broadcastHubPresence(io, lobby);
   }
 
   if (options.dropIn) {
@@ -1022,6 +1023,9 @@ function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false }
       checkRunTerminalState();
     } else {
       broadcastLobbyUpdate(lobby);
+      if (isLobbyPhase(lobby.state)) {
+        broadcastHubPresence(io, lobby);
+      }
     }
   });
 }
@@ -1122,6 +1126,7 @@ function runGameLoopTick() {
             syncHubPresencePlayer(lobby, playerId);
           }
         }
+        broadcastHubPresence(io, lobby);
         flushDirtyPlayerSaves();
       } else if (isPlayingPhase(state)) {
         applyPlayerMovement(state, buildMovementContext(state));

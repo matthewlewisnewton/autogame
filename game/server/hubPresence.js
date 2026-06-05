@@ -94,10 +94,22 @@ function buildHubPresencePayload(lobby, viewerPlayerId) {
   };
 }
 
+/**
+ * Emit `hubPresenceUpdate` to every socket in the lobby room.
+ * @param {import('socket.io').Server} io
+ * @param {{ id: string, hubPresence?: { revision: number, players: Record<string, object> } }} lobby
+ */
+function broadcastHubPresence(io, lobby) {
+  if (!lobby?.id) return;
+  const payload = buildHubPresencePayload(lobby, null);
+  io.to(lobby.id).emit('hubPresenceUpdate', payload);
+}
+
 module.exports = {
   createEmptyHubPresence,
   buildHubPresenceEntry,
   syncHubPresencePlayer,
   removeHubPresencePlayer,
   buildHubPresencePayload,
+  broadcastHubPresence,
 };
