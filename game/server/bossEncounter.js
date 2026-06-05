@@ -7,7 +7,7 @@
  *
  * @typedef {Object} StageBossEncounterConfig
  * @property {string} bossType - Enemy type key (e.g. `'miniboss'`) passed to spawnEnemy.
- * @property {'deploy'|'room_enter'|string} trigger - When the encounter should activate.
+ * @property {'deploy'|'enter_room'|'room_enter'|string} trigger - When the encounter should activate.
  * @property {string} [roomRole] - Dungeon room role for boss spawn (e.g. `'combat'`).
  * @property {number} [rewardCurrencyBonus] - Extra run currency granted on boss clear.
  * @property {{ questId: string, tier: number }} [unlockOnClear] - Quest tier unlocked on clear.
@@ -182,6 +182,83 @@ function isOpenFloorLayout(layout) {
          roomsByRole(layout, 'treasure').length === 0;
 }
 
+/**
+ * True when point (x, z) lies inside any layout room with the given role.
+ *
+ * @param {object|null|undefined} layout
+ * @param {number} x
+ * @param {number} z
+ * @param {string} role
+ * @returns {boolean}
+ */
+function playerInRoomWithRole(layout, x, z, role) {
+  if (!layout || typeof role !== 'string' || role.length === 0) {
+    return false;
+  }
+  for (const room of roomsByRole(layout, role)) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    if (x >= room.x - halfW && x <= room.x + halfW &&
+        z >= room.z - halfD && z <= room.z + halfD) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const ROOM_ENTRY_TRIGGERS = new Set(['enter_room', 'room_enter']);
+
+/**
+ * Promote a pending stage-boss encounter to active when its trigger condition
+ * is met. Returns true when the encounter was started (pending → active once).
+ *
+ * @param {object} gameState
+ * @param {object} [opts]
+ * @param {object} opts.spawnCtx - Passed through to {@link startStageBossEncounter}.
+ * @param {(player: object) => boolean} [opts.isPlayerActive]
+ * @returns {boolean}
+ */
+function tryStartStageBossEncounter(gameState, opts = {}) {
+  const run = gameState?.run;
+  if (!run?.encounter || run.encounter.status !== 'pending') {
+    return false;
+  }
+
+  const { spawnCtx, isPlayerActive } = opts;
+  if (!spawnCtx || typeof spawnCtx.spawnEnemy !== 'function') {
+    return false;
+  }
+
+  const trigger = run.encounter.trigger;
+  let shouldStart = false;
+
+  if (trigger === 'deploy') {
+    shouldStart = true;
+  } else if (ROOM_ENTRY_TRIGGERS.has(trigger)) {
+    const role = run.encounter.roomRole;
+    if (typeof role !== 'string' || role.length === 0) {
+      return false;
+    }
+    const isActive = typeof isPlayerActive === 'function'
+      ? isPlayerActive
+      : (player) => player && !player.dead && !player.extracted;
+    const players = Object.values(gameState.players || {});
+    shouldStart = players.some(
+      (player) => isActive(player) &&
+        playerInRoomWithRole(gameState.layout, player.x, player.z, role),
+    );
+  } else {
+    return false;
+  }
+
+  if (!shouldStart) {
+    return false;
+  }
+
+  startStageBossEncounter(gameState, spawnCtx);
+  return true;
+}
+
 function randomPositionInRoom(room, rng) {
   const SPAWN_PADDING = 1;
   const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
@@ -315,4 +392,6 @@ module.exports = {
   resolveStageBossSpawnPosition,
   clearNonBossEnemiesOnEncounterStart,
   startStageBossEncounter,
+  playerInRoomWithRole,
+  tryStartStageBossEncounter,
 };

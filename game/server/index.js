@@ -291,6 +291,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   buildObjectiveSpawnCtx,
+  tickStageBossEncounter,
   updateSurviveSpawns,
   spawnLoot,
   spawnCrystals,
@@ -1238,6 +1239,7 @@ function runGameLoopTick() {
           flushDirtyPlayerSaves();
         } else if (isPlayingPhase(state)) {
           applyPlayerMovement(state, buildMovementContext(state));
+          tickStageBossEncounter();
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();
@@ -1525,6 +1527,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnEnemy,
     spawnEnemies,
     buildObjectiveSpawnCtx,
+    tickStageBossEncounter,
     updateSurviveSpawns,
     firstRoomPosition,
     pickFloorSpawnPosition,

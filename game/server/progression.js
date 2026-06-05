@@ -71,6 +71,7 @@ const {
   isEncounterLocked,
   getEncounterConfig,
   startStageBossEncounter,
+  tryStartStageBossEncounter,
 } = require('./bossEncounter');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -924,6 +925,31 @@ function startDungeonRun() {
     p.pendingCardChoices = null;
     p.claimedCardRewardId = null;
   }
+  if (tryStartStageBossEncounter(_gameState, {
+    spawnCtx: buildObjectiveSpawnCtx(),
+    isPlayerActive,
+  })) {
+    syncRunObjectiveToEnemies();
+  }
+}
+
+/**
+ * Playing-phase hook: activate room-entry encounters after player movement.
+ *
+ * @returns {boolean} true when a pending encounter was promoted to active
+ */
+function tickStageBossEncounter() {
+  if (!_gameState || !isPlayingPhase(_gameState)) {
+    return false;
+  }
+  if (tryStartStageBossEncounter(_gameState, {
+    spawnCtx: buildObjectiveSpawnCtx(),
+    isPlayerActive,
+  })) {
+    syncRunObjectiveToEnemies();
+    return true;
+  }
+  return false;
 }
 
 function applyTelepipeReadyHand(player) {
@@ -3306,4 +3332,6 @@ module.exports = {
   buildPlayerDeckUpdatePayload,
   buildObjectiveSpawnCtx,
   startStageBossEncounter,
+  tryStartStageBossEncounter,
+  tickStageBossEncounter,
 };
