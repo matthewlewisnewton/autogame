@@ -2031,6 +2031,11 @@ window.__openDeckBoothForTest = openDeckBooth;
 window.__openShopBoothForTest = openShopBooth;
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
 window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
+// Capture/test hook: ready up via the launch-booth path (no new socket event).
+// Routes through the shared launchBoothReadyUp() so the capture's readyAll step
+// reaches the playing phase without re-introducing the retired 2D #ready-btn.
+// Idempotent — launchBoothReadyUp() bails when the player is already ready.
+window.__launchReadyUpForTest = () => launchBoothReadyUp();
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
