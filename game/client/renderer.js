@@ -877,6 +877,7 @@ export function getRenderer() {
 export function getMeshMaps() {
 	return {
 		playersMeshes,
+		playerNameplates,
 		enemiesMeshes,
 		enemyHealthBars,
 		enemyShieldBars,
@@ -4267,7 +4268,15 @@ export function animate(timestamp) {
 			}
 		}
 
-		// ── Clean up nameplates for players who left ──
+		// ── Clean up avatars and nameplates for players who left ──
+		for (const id of Object.keys(playersMeshes)) {
+			if (!gs.players[id]) {
+				disposeAvatar(playersMeshes[id]);
+				scene.remove(playersMeshes[id]);
+				delete playersMeshes[id];
+				delete previousPlayerHp[id];
+			}
+		}
 		for (const id of Object.keys(playerNameplates)) {
 			if (!gs.players[id]) {
 				disposeNameplate(id);

@@ -778,6 +778,42 @@ function applyLobbyJoinedData(data) {
 	updateObjectiveHud();
 }
 
+/**
+ * Merge a lobby-phase `hubPresenceUpdate` into gameState.players: position,
+ * rotation, cosmetic, and username from the payload without discarding other
+ * per-player fields. Players absent from the payload are removed. No-ops while
+ * in-run so dungeon `stateUpdate` stays authoritative.
+ * @param {{ players?: Record<string, object> }} payload
+ */
+function applyHubPresenceUpdate(payload) {
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	if (!payload || !payload.players || typeof payload.players !== 'object') return;
+
+	if (!gameState.players) gameState.players = {};
+
+	const presenceIds = new Set(Object.keys(payload.players));
+	for (const id of Object.keys(gameState.players)) {
+		if (!presenceIds.has(id)) {
+			delete gameState.players[id];
+		}
+	}
+
+	for (const [id, entry] of Object.entries(payload.players)) {
+		if (!entry || typeof entry !== 'object') continue;
+		const existing = gameState.players[id] || {};
+		const merged = { ...existing };
+		if (entry.x !== undefined) merged.x = entry.x;
+		if (entry.y !== undefined) merged.y = entry.y;
+		if (entry.z !== undefined) merged.z = entry.z;
+		if (entry.rotation !== undefined) merged.rotation = entry.rotation;
+		if (entry.cosmetic !== undefined) merged.cosmetic = entry.cosmetic;
+		if (entry.username !== undefined) merged.username = entry.username;
+		gameState.players[id] = merged;
+	}
+
+	setGameStateRef(gameState);
+}
+
 /** Show the registration form and hide the login form. */
 function showRegisterForm() {
 	if (registerFormEl) registerFormEl.classList.remove('hidden');
@@ -1034,6 +1070,8 @@ function bindSocketHandlers(s) {
 		showLobbyBrowserError('');
 		applyLobbyJoinedData(data);
 	});
+
+	s.on('hubPresenceUpdate', applyHubPresenceUpdate);
 
 	s.on('lobbyLeft', (data) => {
 		gameState = null;
