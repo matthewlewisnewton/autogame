@@ -58,7 +58,7 @@ function stubClass(name) {
 				Object.assign(this, args[0]);
 			}
 			// Geometry constructors — store parameters so tests can inspect them
-			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CircleGeometry', 'EdgesGeometry', 'CylinderGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'BufferGeometry'];
+			const geoNames = ['ConeGeometry', 'BoxGeometry', 'SphereGeometry', 'RingGeometry', 'CircleGeometry', 'EdgesGeometry', 'CylinderGeometry', 'TorusGeometry', 'PlaneGeometry', 'IcosahedronGeometry', 'OctahedronGeometry', 'BufferGeometry'];
 			if (geoNames.includes(name)) {
 				this.parameters = {};
 				if (name === 'ConeGeometry') {
@@ -75,6 +75,8 @@ function stubClass(name) {
 					this.parameters = { geometry: args[0] };
 				} else if (name === 'CylinderGeometry') {
 					this.parameters = { radiusTop: args[0], radiusBottom: args[1], height: args[2], radialSegments: args[3] };
+				} else if (name === 'TorusGeometry') {
+					this.parameters = { radius: args[0], tube: args[1], radialSegments: args[2], tubularSegments: args[3], arc: args[4] };
 				} else if (name === 'PlaneGeometry') {
 					this.parameters = { width: args[0], height: args[1] };
 				} else if (name === 'IcosahedronGeometry') {
@@ -174,6 +176,33 @@ function expandBoxFromNode(node, min, max, parentScale = { x: 1, y: 1, z: 1 }) {
 	}
 }
 
+function makeColor(hex = 0xffffff) {
+	const c = {
+		r: ((hex >> 16) & 0xff) / 255,
+		g: ((hex >> 8) & 0xff) / 255,
+		b: (hex & 0xff) / 255,
+		getHex() {
+			const r = Math.round(this.r * 255);
+			const g = Math.round(this.g * 255);
+			const b = Math.round(this.b * 255);
+			return (r << 16) | (g << 8) | b;
+		},
+		setHex(value) {
+			this.r = ((value >> 16) & 0xff) / 255;
+			this.g = ((value >> 8) & 0xff) / 255;
+			this.b = (value & 0xff) / 255;
+			return this;
+		},
+		lerp(target, t) {
+			this.r += (target.r - this.r) * t;
+			this.g += (target.g - this.g) * t;
+			this.b += (target.b - this.b) * t;
+			return this;
+		},
+	};
+	return c;
+}
+
 export const THREE = {
 	Scene: stubClass('Scene'),
 	PerspectiveCamera: stubClass('PerspectiveCamera'),
@@ -221,10 +250,22 @@ export const THREE = {
 			return target;
 		}
 	},
-	Color: stubClass('Color'),
+	Color: class Color {
+		constructor(hex = 0xffffff) {
+			Object.assign(this, makeColor(hex));
+		}
+	},
+	Fog: class Fog {
+		constructor(color, near, far) {
+			this.color = makeColor(typeof color === 'number' ? color : 0xffffff);
+			this.near = near;
+			this.far = far;
+		}
+	},
 	Clock: stubClass('Clock'),
 	AmbientLight: stubClass('AmbientLight'),
 	DirectionalLight: stubClass('DirectionalLight'),
+	PointLight: stubClass('PointLight'),
 	WebGLRenderer: stubClass('WebGLRenderer'),
 	BoxGeometry: stubClass('BoxGeometry'),
 	SphereGeometry: stubClass('SphereGeometry'),
@@ -232,6 +273,7 @@ export const THREE = {
 	CircleGeometry: stubClass('CircleGeometry'),
 	EdgesGeometry: stubClass('EdgesGeometry'),
 	CylinderGeometry: stubClass('CylinderGeometry'),
+	TorusGeometry: stubClass('TorusGeometry'),
 	ConeGeometry: stubClass('ConeGeometry'),
 	PlaneGeometry: stubClass('PlaneGeometry'),
 	IcosahedronGeometry: stubClass('IcosahedronGeometry'),
@@ -306,6 +348,7 @@ export const Color = THREE.Color;
 export const Clock = THREE.Clock;
 export const AmbientLight = THREE.AmbientLight;
 export const DirectionalLight = THREE.DirectionalLight;
+export const PointLight = THREE.PointLight;
 export const WebGLRenderer = THREE.WebGLRenderer;
 export const BoxGeometry = THREE.BoxGeometry;
 export const SphereGeometry = THREE.SphereGeometry;
@@ -313,6 +356,7 @@ export const RingGeometry = THREE.RingGeometry;
 export const CircleGeometry = THREE.CircleGeometry;
 export const EdgesGeometry = THREE.EdgesGeometry;
 export const CylinderGeometry = THREE.CylinderGeometry;
+export const TorusGeometry = THREE.TorusGeometry;
 export const ConeGeometry = THREE.ConeGeometry;
 export const PlaneGeometry = THREE.PlaneGeometry;
 export const IcosahedronGeometry = THREE.IcosahedronGeometry;

@@ -1,0 +1,35 @@
+{
+  "profiles": {
+    "default": {
+      "floor": "#334155",
+      "wall": "#475569",
+      "passageFloor": "#2d3a4a",
+      "passageWall": "#3d4f63",
+      "accent": "#38bdf8",
+      "floorRoughness": 0.8,
+      "wallRoughness": 0.7
+    },
+    "open": {
+      "floor": "#c4a574",
+      "wall": "#a08860",
+      "passageFloor": "#b89868",
+      "passageWall": "#8a7550",
+      "accent": "#f59e0b",
+      "floorRoughness": 0.85,
+      "wallRoughness": 0.75
+    },
+    "crowded": {
+      "floor": "#2a3444",
+      "wall": "#1a2230",
+      "passageFloor": "#232d3c",
+      "passageWall": "#151c28",
+      "accent": "#22d3ee",
+      "floorRoughness": 0.8,
+      "wallRoughness": 0.7
+    }
+  },
+  "roleTints": {
+    "start": { "color": "#3a5a3a", "mix": 0.35 },
+    "treasure": { "color": "#5a5a2a", "mix": 0.4 }
+  }
+}

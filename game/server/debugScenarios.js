@@ -705,6 +705,85 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'spire-summit-beacon') {
+      // Spire-ascent layout with the player at the summit treasure tier beside the
+      // beacon — same state as climbing spire_ascent normally; shortcut for beacon QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const summitRoom = state.layout.rooms.find(r => r.role === 'treasure');
+      if (summitRoom) {
+        player.x = summitRoom.x;
+        player.z = summitRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-mid-tier-hazard') {
+      // Spire-ascent with the player on the first combat tier inside an edge
+      // hazard strip — same layout as spire_ascent; shortcut for hazard QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const hazard = (state.layout.edgeHazards || [])[0];
+      if (hazard) {
+        player.x = (hazard.minX + hazard.maxX) / 2;
+        player.z = (hazard.minZ + hazard.maxZ) / 2;
+      } else {
+        const combatTier = state.layout.rooms.find((r) => r.role === 'combat');
+        if (combatTier) {
+          player.x = combatTier.x;
+          player.z = combatTier.z;
+        }
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'open-verticality') {
+      // Crystal Rescue open grid with platforms, pits, and slopes — same layout
+      // profile as deploying into crystal_rescue with slopes enabled; shortcut
+      // places the player beside a platform/hazard for fast visual QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'crystal_rescue';
+      const seed = state.layoutSeed || questLayoutSeed('crystal_rescue');
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'open', { slopes: true });
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const anchor =
+        (state.layout.platforms && state.layout.platforms[0]) ||
+        (state.layout.hazards && state.layout.hazards[0]);
+      if (anchor) {
+        player.x = anchor.x + 2;
+        player.z = anchor.z + 2;
+      } else {
+        const startRoom = state.layout.rooms.find(r => r.role === 'start');
+        if (startRoom) {
+          player.x = startRoom.x;
+          player.z = startRoom.z;
+        }
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'open-plaza-arena') {
       // Load the open-plaza arena (the arena_trials quest layout) for visual /
       // collision verification. Reachable normally by selecting the arena_trials

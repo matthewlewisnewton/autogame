@@ -211,6 +211,134 @@ const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 // ── Scene init flag ──
 let sceneInitialized = false;
 
+// ── Spire-ascent height atmosphere ──
+/** @type {string|null} */
+let currentLayoutProfile = null;
+/** @type {{ bottomY: number, topY: number }|null} */
+let spireAtmosphereBounds = null;
+
+export const SPIRE_ATMOSPHERE = {
+	baseBackground: 0x0f172a,
+	summitBackground: 0x7ec8e3,
+	baseFogColor: 0x1e293b,
+	summitFogColor: 0xb8e0f0,
+	baseFogNear: 8,
+	baseFogFar: 45,
+	summitFogNear: 28,
+	summitFogFar: 130,
+};
+
+const DEFAULT_SCENE_BACKGROUND = 0x0f172a;
+
+function lerpHexColor(fromHex, toHex, t) {
+	const fr = (fromHex >> 16) & 0xff;
+	const fg = (fromHex >> 8) & 0xff;
+	const fb = fromHex & 0xff;
+	const tr = (toHex >> 16) & 0xff;
+	const tg = (toHex >> 8) & 0xff;
+	const tb = toHex & 0xff;
+	const r = Math.round(fr + (tr - fr) * t);
+	const g = Math.round(fg + (tg - fg) * t);
+	const b = Math.round(fb + (tb - fb) * t);
+	return (r << 16) | (g << 8) | b;
+}
+
+function lerpNumber(a, b, t) {
+	return a + (b - a) * t;
+}
+
+/**
+ * Pure lerp of spire-ascent background/fog for a normalized ascent height (0 = base, 1 = summit).
+ * Exported for unit tests — no scene dependency.
+ *
+ * @param {number} normalizedHeight
+ * @returns {{ background: number, fogColor: number, fogNear: number, fogFar: number }}
+ */
+export function lerpSpireAtmosphere(normalizedHeight) {
+	const t = Math.max(0, Math.min(1, normalizedHeight));
+	return {
+		background: lerpHexColor(SPIRE_ATMOSPHERE.baseBackground, SPIRE_ATMOSPHERE.summitBackground, t),
+		fogColor: lerpHexColor(SPIRE_ATMOSPHERE.baseFogColor, SPIRE_ATMOSPHERE.summitFogColor, t),
+		fogNear: lerpNumber(SPIRE_ATMOSPHERE.baseFogNear, SPIRE_ATMOSPHERE.summitFogNear, t),
+		fogFar: lerpNumber(SPIRE_ATMOSPHERE.baseFogFar, SPIRE_ATMOSPHERE.summitFogFar, t),
+	};
+}
+
+function tierFloorY(room) {
+	return room.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+}
+
+/**
+ * Bottom/top tier floor Y from spire-ascent tier rooms.
+ * @param {object} layout
+ * @returns {{ bottomY: number, topY: number }|null}
+ */
+export function computeSpireAtmosphereBounds(layout) {
+	const tiers = (layout?.rooms ?? []).filter((r) => r.band === 'tier' && r.tierIndex != null);
+	if (tiers.length === 0) return null;
+	const bottom = tiers.reduce((a, b) => (a.tierIndex < b.tierIndex ? a : b));
+	const top = tiers.reduce((a, b) => (a.tierIndex > b.tierIndex ? a : b));
+	return { bottomY: tierFloorY(bottom), topY: tierFloorY(top) };
+}
+
+function normalizedSpireHeight(playerY) {
+	if (!spireAtmosphereBounds) return 0;
+	const { bottomY, topY } = spireAtmosphereBounds;
+	if (topY <= bottomY) return 0;
+	return Math.max(0, Math.min(1, (playerY - bottomY) / (topY - bottomY)));
+}
+
+function applySpireAtmosphereValues(values) {
+	if (!scene) return;
+	scene.background.setHex(values.background);
+	if (!scene.fog) {
+		scene.fog = new THREE.Fog(values.fogColor, values.fogNear, values.fogFar);
+	} else {
+		scene.fog.color.setHex(values.fogColor);
+		scene.fog.near = values.fogNear;
+		scene.fog.far = values.fogFar;
+	}
+}
+
+/**
+ * Restore default stage background and clear fog (hub, lobby, non-spire quests).
+ */
+export function resetAtmosphere() {
+	currentLayoutProfile = null;
+	spireAtmosphereBounds = null;
+	if (!scene) return;
+	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
+	scene.fog = null;
+}
+
+/**
+ * Cache spire tier Y bounds and apply atmosphere for the current player height.
+ * @param {object} layout
+ * @param {number} [playerY]
+ */
+export function initSpireAscentAtmosphere(layout, playerY = DEFAULT_FLOOR_Y) {
+	currentLayoutProfile = 'spire-ascent';
+	spireAtmosphereBounds = computeSpireAtmosphereBounds(layout);
+	updateSpireAscentAtmosphere(playerY, layout);
+}
+
+/**
+ * Interpolate scene background and fog from player height on spire-ascent layouts.
+ * @param {number} playerY
+ * @param {object} [layout]
+ */
+export function updateSpireAscentAtmosphere(playerY, layout) {
+	if (!scene || currentLayoutProfile !== 'spire-ascent') return;
+	if (layout && layout.profile !== 'spire-ascent') {
+		resetAtmosphere();
+		return;
+	}
+	if (!spireAtmosphereBounds && layout) {
+		spireAtmosphereBounds = computeSpireAtmosphereBounds(layout);
+	}
+	applySpireAtmosphereValues(lerpSpireAtmosphere(normalizedSpireHeight(playerY)));
+}
+
 // ── Enemy geometry table ──
 const ENEMY_GEOMETRY = {
 	grunt:      { type: 'cone', radius: 0.5, height: 1, segments: 8, color: 0xdc2626 },
@@ -1180,7 +1308,7 @@ export function initScene(layout, spawnPos) {
 
 	// Scene
 	scene = new THREE.Scene();
-	scene.background = new THREE.Color(0x0f172a);
+	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 
 	// Camera
 	camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
@@ -1221,6 +1349,14 @@ export function initScene(layout, spawnPos) {
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
+	}
+
+	if (layout?.profile === 'spire-ascent') {
+		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initSpireAscentAtmosphere(layout, initFloorY);
+	} else {
+		resetAtmosphere();
+		if (layout?.profile) currentLayoutProfile = layout.profile;
 	}
 
 	// Place player at spawn position
@@ -1302,6 +1438,14 @@ export function rebuildDungeonLayout(layout) {
 	simZ = spawnPosition.z;
 	prevSimX = spawnPosition.x;
 	prevSimZ = spawnPosition.z;
+
+	if (layout.profile === 'spire-ascent') {
+		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initSpireAscentAtmosphere(layout, floorY);
+	} else {
+		resetAtmosphere();
+		if (layout.profile) currentLayoutProfile = layout.profile;
+	}
 }
 
 // ── Game phase ──
@@ -4598,6 +4742,15 @@ export function animate(timestamp) {
 	if (myId != null && playersMeshes[myId]) {
 		const playerPos = playersMeshes[myId].position;
 		updateCameraOrbit(playerPos.x, playerPos.y, playerPos.z, delta);
+	}
+
+	if (gs?.layout?.profile === 'spire-ascent') {
+		const atmosY = myId != null && playersMeshes[myId]
+			? playersMeshes[myId].position.y
+			: camera.position.y;
+		updateSpireAscentAtmosphere(atmosY, gs.layout);
+	} else if (currentLayoutProfile === 'spire-ascent') {
+		resetAtmosphere();
 	}
 
 	// Animate attack visual effects

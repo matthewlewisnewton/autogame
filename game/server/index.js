@@ -79,6 +79,17 @@ const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
 
 const app = express();
+// Harness readiness probe — same HTTP server as Socket.IO; no auth required.
+// Returns 503 until startServer() finishes mounting routes and socket handlers
+// so capture workers never proxy auth/socket traffic to a half-booted server.
+let _harnessReady = false;
+app.get('/healthz', (_req, res) => {
+  if (!_harnessReady) {
+    res.status(503).json({ ok: false });
+    return;
+  }
+  res.status(200).json({ ok: true });
+});
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -473,10 +484,13 @@ const DEBUG_SCENARIOS = new Set([
   'smoke-bomb-ready',
   'rally-cry-ready',
   'open-plaza-arena',
+  'open-verticality',
   'sunken-canyon',
   'sunken-canyon-stage',
   'spire-ascent',
   'spire-ascent-stage',
+  'spire-summit-beacon',
+  'spire-mid-tier-hazard',
   'hat-shop-currency',
   'hats-unlocked',
   'evolution-ready',
@@ -1193,6 +1207,13 @@ function startServer(port) {
     _routesMounted = true;
   }
 
+  const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
+  if (!server.listening) {
+    server.listen(listenPort, () => {
+      console.log(`Server listening on port ${listenPort}`);
+    });
+  }
+
   // In test mode, clear the in-memory users Map to prevent contamination
   // from prior test files sharing the same module instance.  This pairs
   // with setTestFilePath() / clearUsers() called in test beforeEach hooks.
@@ -1334,13 +1355,7 @@ function startServer(port) {
     broadcastLobbyList();
   });
 
-// Server Game Loop
-restartBackgroundTimers();
-
-const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
-server.listen(listenPort, () => {
-  console.log(`Server listening on port ${listenPort}`);
-});
+  _harnessReady = true;
 }
 
 // Only start the HTTP server when run directly (not when required by tests)

@@ -28,7 +28,9 @@ const {
   COOLDOWN_MS,
   DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER,
   difficultyScaleFactor,
-  runPlayerCount
+  runPlayerCount,
+  SPIRE_EDGE_HAZARD_DAMAGE,
+  SPIRE_EDGE_HAZARD_COOLDOWN_MS,
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
@@ -367,6 +369,50 @@ function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, movementContextOrColl
   );
 }
 
+function circleIntersectsAABB(px, pz, aabb, radius = PLAYER_RADIUS) {
+  return px + radius > aabb.minX && px - radius < aabb.maxX
+    && pz + radius > aabb.minZ && pz - radius < aabb.maxZ;
+}
+
+function findSpireEdgeHazardAt(layout, x, z, radius = PLAYER_RADIUS) {
+  if (!layout || layout.profile !== 'spire-ascent') return null;
+  const hazards = layout.edgeHazards;
+  if (!hazards || hazards.length === 0) return null;
+
+  for (const hazard of hazards) {
+    if (circleIntersectsAABB(x, z, hazard, radius)) return hazard;
+  }
+  return null;
+}
+
+/**
+ * Snap a player off an edge-hazard strip toward tier centre and apply chip damage.
+ * Returns true when a hazard was resolved.
+ */
+function applySpireEdgeHazardResponse(playerId, player, layout) {
+  const hazard = findSpireEdgeHazardAt(layout, player.x, player.z);
+  if (!hazard) return false;
+
+  const tier = layout.rooms.find((r) => r.band === 'tier' && r.tierIndex === hazard.tierIndex);
+  if (!tier) return false;
+
+  const halfW = tier.width / 2;
+  const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+  if (hazard.side === 'east') {
+    player.x = tier.x + halfW - safeInset;
+  } else {
+    player.x = tier.x - halfW + safeInset;
+  }
+
+  const now = Date.now();
+  if (!player.lastSpireEdgeHazardMs || now - player.lastSpireEdgeHazardMs >= SPIRE_EDGE_HAZARD_COOLDOWN_MS) {
+    player.lastSpireEdgeHazardMs = now;
+    damagePlayer(playerId, SPIRE_EDGE_HAZARD_DAMAGE);
+  }
+
+  return true;
+}
+
 /**
  * Apply one tick of movement for all players with active input.
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
@@ -385,38 +431,48 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
     if (!player) continue;
     if (player.connected === false) continue;
     if (inPlaying && (player.dead || player.extracted)) continue;
-    if (!player.inputActive) continue;
-    if (now - (player.lastInputTime || 0) > INPUT_STALE_MS) {
+
+    const inputFresh = player.inputActive
+      && now - (player.lastInputTime || 0) <= INPUT_STALE_MS;
+    if (!inputFresh) {
       player.inputActive = false;
-      continue;
     }
 
-    const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
-    if (mag < 1e-8) continue;
+    if (inputFresh) {
+      const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+      if (mag >= 1e-8) {
+        let dx = player.inputDx;
+        let dz = player.inputDz;
+        if (mag > 1) { dx /= mag; dz /= mag; }
 
-    let dx = player.inputDx;
-    let dz = player.inputDz;
-    if (mag > 1) { dx /= mag; dz /= mag; }
+        // Slow movement to 20% while guard_block is active
+        let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+        // rally_cry: boost move speed while the buff is active
+        if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
+        // ground_anchor: slow move speed while the anchor window is active
+        if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
 
-    // Slow movement to 20% while guard_block is active
-    let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
-    // rally_cry: boost move speed while the buff is active
-    if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
-    // ground_anchor: slow move speed while the anchor window is active
-    if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
-
-    const prevX = player.x;
-    const prevZ = player.z;
-    const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
-    player.x = result.x;
-    player.z = result.z;
-    player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
-    if (Number.isFinite(player.inputRotation)) {
-      player.rotation = player.inputRotation;
+        const prevX = player.x;
+        const prevZ = player.z;
+        const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
+        player.x = result.x;
+        player.z = result.z;
+        player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
+        if (Number.isFinite(player.inputRotation)) {
+          player.rotation = player.inputRotation;
+        }
+        player.lastMoveTime = now;
+        if (result.moved || player.x !== prevX || player.z !== prevZ) {
+          player.persistenceDirty = true;
+        }
+      }
     }
-    player.lastMoveTime = now;
-    if (result.moved || player.x !== prevX || player.z !== prevZ) {
-      player.persistenceDirty = true;
+
+    if (inPlaying && ctx.layout?.profile === 'spire-ascent') {
+      if (applySpireEdgeHazardResponse(playerId, player, ctx.layout)) {
+        player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
+        player.persistenceDirty = true;
+      }
     }
   }
 }
@@ -2443,6 +2499,9 @@ module.exports = {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  applySpireEdgeHazardResponse,
+  findSpireEdgeHazardAt,
+  circleIntersectsAABB,
   applyPlayerKnockback,
   applyPlayerMovement,
   flushDirtyPlayerSaves,

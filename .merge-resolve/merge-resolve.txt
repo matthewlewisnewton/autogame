@@ -1,12 +1,14 @@
 Merge conflicts are resolved in both files.
 
-### `game/server/socketHandlers/lobbyHandlers.js`
-- **Imports:** `MAX_PLAYERS` (from main) plus `findBoothInRange` and `isLobbyPhase` (from the booth ticket). Dropped `LOOT_PICKUP_RADIUS` — that belongs in `runHandlers.js` after the socket-handler extraction.
-- **Handlers:** Removed duplicate run/playing handlers (`returnToLobby`, `giveUp`, `move`, `useCard`, etc.) that main already moved to `runHandlers.js` via `runHandlers.register(socket, ctx)`.
-- **Kept:** The ticket’s `boothInteract` handler (after `medicHeal`, before `debugScenario`), with the existing `MAX_PLAYERS` join guard unchanged.
+### `game/server/simulation.js`
+Combined the config imports from both sides:
+- **Ticket (270):** `DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER`, `difficultyScaleFactor`, `runPlayerCount` — used for live party-size enemy damage scaling at strike resolution
+- **Main:** `SPIRE_EDGE_HAZARD_DAMAGE`, `SPIRE_EDGE_HAZARD_COOLDOWN_MS` — used by the spire edge hazard logic already present in the file
 
 ### `LOGBOOK.md`
-- Appended entries in version order: **v0.232** (avatar cosmetics), **v0.233** (run-handler extract), **v0.234** (max-players cap), **v0.236** (booth interaction).
-- All conflict markers removed.
+Kept all three review entries in chronological order:
+1. **v0.237** — 249-rooms-distinctness-identity (main)
+2. **v0.238** — 246-spire-tower-identity (main)
+3. **v0.240** — 270-difficulty-scale-with-player-count (ticket)
 
-Targeted tests (`boothZones.test.js`, `max_players_cap.test.js`) — 19/19 passed. The harness can finish the merge and run the full suite.
+All conflict markers are removed. The targeted test run passed (71 files, 1393 tests). The harness can proceed with commit and merge completion.

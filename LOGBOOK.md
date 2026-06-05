@@ -4185,6 +4185,50 @@ No development debug scenario was added or changed for this ticket, so the debug
 
 None.
 
+## v0.237 — 249-rooms-distinctness-identity  (2026-06-05 04:10:22)
+
+**1-2 landmark props per profile: PASS.** `game/server/dungeon.js` places deterministic profile-specific landmarks for `crowded` (`reactor_coil`, `pipe_stack`) and `open` (`sand_spire`, `sun_arch`) in non-start rooms while avoiding cover, hazards, and doorway clear zones. `game/client/dungeon.js` renders each landmark as a composed visual prop and keeps it visual-only, so it does not introduce collision regressions.
+
+**Differentiate crowded vs default structurally: PASS.** The `crowded` profile uses tighter spacing, more rooms, and deterministic interior cover in combat rooms. Cover placement rejects doorway blockers, overlaps, and partitions, then becomes server/client wall collision, which gives the crowded profile a materially different play space rather than only a palette swap.
+
+**Hazards/verticality for the open profile: PASS.** `crystal_rescue` is wired to the normal `open` profile, and normal deployment goes through `applyLayoutForQuest()`, which generates that layout with slopes enabled. The open layout adds raised platforms, sparse cover, shallow pit visuals, and at least two ramp rooms when room count allows. The `open-verticality` debug scenario is gated by the existing debug-scenario path and mirrors the same `crystal_rescue` open layout instead of substituting an unreachable state.
+
+**Doorway markers in large rooms: PASS.** `buildDoorwayMarkers()` only marks connected passage gaps on rooms at or above the large-room threshold, uses the active profile accent material, and places markers at sampled floor height. This covers open-profile large rooms while avoiding false markers in small rooms.
+
+## Design and foundation consistency
+
+The implementation is consistent with `game/docs/design.md`: room floor geometry continues to use `floorCorners`/`sampleFloorY()`, server movement snaps player Y to the sampled floor, and the new visual geometry follows the existing layout contract. It does not regress the foundation requirements: the captured run renders a 3D scene, connects through the server/client architecture, shows multiplayer state, and movement/dodge updates remain live.
+
+## Code quality and validation
+
+The implementation is cohesive and covered by focused server/client tests for palette resolution, profile structure, crowded cover reachability/collision, open platforms/hazards, doorway markers, landmarks, and traversability across seeds. The provided coverage run reports `68` test files and `1461` tests passing.
+
+## Remaining gaps
+
+None.
+
+## v0.238 — 246-spire-tower-identity  (2026-06-05 04:28:30)
+
+### Optional mid-tier edge hazards
+
+PASS. The implementation adds edge hazard strips only to middle combat tiers, renders them as emissive warning strips, and applies server-side chip damage plus a snap-back toward the safe tier interior during normal movement simulation. Tests cover hazard placement, rendering, damage cooldown, and non-regression of reachability.
+
+### Debug scenarios
+
+PASS. New spire shortcuts are URL/debug entry points only: the client only auto-requests `?debugScenario=...` from localhost-style URLs, and the server rejects debug scenarios in production unless explicitly enabled. The shortcuts reuse `generateLayout(seed, 'spire-ascent')` or the real `spire_ascent` quest path, rebuild movement/collider state, and do not replace the normal gameplay path because `spire_ascent` is present in the normal quest list.
+
+### Design and requirements consistency
+
+PASS. The work remains consistent with the dungeon/core-loop design: spire-ascent is a quest-selectable dungeon layout, movement still follows server-sampled floor heights, and the multiplayer client/server loop is intact. The capture confirms two connected players, lobby-to-playing transition, rendered canvas, movement, and active HUD state, satisfying the foundational graphics, websocket, player visualization, and movement requirements.
+
+### Tests and coverage visibility
+
+PASS. `coverage.log` reports all tests passing: 74 test files and 1479 tests. Coverage thresholds are disabled; the visible report shows broad existing coverage plus focused spire layout, rendering, atmosphere, hazard, and proxy-readiness tests.
+
+## Remaining gaps
+
+None.
+
 ## v0.240 — 270-difficulty-scale-with-player-count  (2026-06-05 04:32:37)
 
 ### Enemy damage tracks live count up and down
