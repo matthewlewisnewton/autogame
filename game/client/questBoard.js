@@ -27,6 +27,16 @@ export function formatObjectiveSummary(quest) {
 
 	if (quest.objectiveType === 'stage_boss') {
 		const addCount = quest.encounter?.addCount ?? 0;
+		const questId = quest.questId || quest.id;
+		if (questId === 'spire_ascent') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatSummitWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatSummitWarden;
+		}
 		if (addCount > 0) {
 			return THEME.objectives.defeatTrialWardenWithSupports.replace(
 				'{addCount}',

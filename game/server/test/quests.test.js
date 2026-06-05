@@ -94,8 +94,10 @@ describe('quest tier catalog', () => {
       questId: 'spire_ascent',
       tier: 2,
       isTier2: true,
+      objectiveType: 'stage_boss',
       unlockRequires: { questId: 'spire_ascent', tier: 1 },
     });
+    expect(spireTier2.objectiveSummary).toContain('summit warden');
     const crystalTier2 = variants.find(
       (v) => v.questId === 'crystal_rescue' && v.tier === 2
     );

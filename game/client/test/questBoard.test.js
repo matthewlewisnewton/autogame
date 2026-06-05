@@ -78,6 +78,23 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the trial warden');
 	});
+
+	it('summarizes spire_ascent stage-boss quests with summit warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				id: 'spire_ascent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 5 },
+			}),
+		).toBe('Defeat the summit warden and 5 supports');
+		expect(
+			formatObjectiveSummary({
+				questId: 'spire_ascent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the summit warden');
+	});
 });
 
 describe('formatRewardSummary()', () => {

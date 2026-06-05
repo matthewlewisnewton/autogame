@@ -150,12 +150,16 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Spire Ascent — Tier II',
         description: 'Ascend the fixed spire where marked hostiles bear twisted power on every tier.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        encounter: {
+          bossType: 'spire_warden',
+          landmark: 'spire_summit',
+          addCount: 5,
+        },
       },
     },
   },
@@ -256,6 +260,16 @@ function formatObjectiveSummary(quest) {
   }
   if (quest.objectiveType === 'stage_boss') {
     const addCount = getEncounterConfig(quest)?.addCount ?? 0;
+    const questId = quest.questId || quest.id;
+    if (questId === 'spire_ascent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatSummitWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatSummitWarden;
+    }
     if (addCount > 0) {
       return THEME.objectives.defeatTrialWardenWithSupports.replace(
         '{addCount}',
