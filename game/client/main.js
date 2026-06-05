@@ -90,6 +90,7 @@ import {
 	getMsBarTier,
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
+import { mergeHubPresenceIntoPlayers } from './hubPresenceMerge.js';
 
 // ── Renderer module imports ──
 import {
@@ -634,10 +635,26 @@ function renderHubScene() {
 	return true;
 }
 
+/**
+ * Merge lobby-scoped hub presence into gameState during the lobby phase.
+ * Remote peers get hot position/cosmetic fields; the local player keeps
+ * prediction/input and cold deck/inventory data untouched.
+ *
+ * @param {{ lobbyId?: string, players?: Record<string, object> }} payload
+ */
+function applyHubPresenceUpdate(payload) {
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	if (!payload || !payload.players) return;
+	if (!gameState.players) gameState.players = {};
+	mergeHubPresenceIntoPlayers(gameState.players, payload.players, myId);
+	const activeLayout = hubLayout || currentLayout;
+	if (activeLayout) gameState.layout = activeLayout;
+	setGameStateRef(gameState);
+}
+
 function applyLobbyJoinedData(data) {
 	myId = data.id;
 	rendererSetMyId(data.id);
-	setGameStateRef(gameState);
 	if (data.playerId) {
 		try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
 	}
@@ -645,6 +662,7 @@ function applyLobbyJoinedData(data) {
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
+	setGameStateRef(gameState);
 
 	mySelectedDeck = data.selectedDeck || [];
 	myInventory = Array.isArray(data.inventory) ? data.inventory : null;
@@ -691,6 +709,7 @@ function applyLobbyJoinedData(data) {
 			if (gameState) gameState.layout = currentLayout;
 			updateObjectiveHud();
 			setGamePhase('playing');
+			setGameStateRef(gameState);
 			return;
 		}
 
@@ -708,6 +727,7 @@ function applyLobbyJoinedData(data) {
 			const spawnPos = getSpawnPosition();
 			setPlayerPosition(spawnPos.x, spawnPos.z);
 		}
+		setGameStateRef(gameState);
 		return;
 	}
 
@@ -975,6 +995,8 @@ function bindSocketHandlers(s) {
 		applyLobbyJoinedData(data);
 	});
 
+	s.on('hubPresenceUpdate', applyHubPresenceUpdate);
+
 	s.on('lobbyLeft', (data) => {
 		gameState = null;
 		setGameStateRef(null);
@@ -1188,6 +1210,11 @@ function bindSocketHandlers(s) {
 	});
 
 	s.on('playerDisconnected', (id) => {
+		if (gameState && gameState.gamePhase === 'lobby' && id !== myId && gameState.players) {
+			delete gameState.players[id];
+			setGameStateRef(gameState);
+			return;
+		}
 		const maps = getMeshMaps();
 		if (maps.playersMeshes[id]) {
 			const sc = getScene();

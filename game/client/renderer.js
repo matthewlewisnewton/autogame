@@ -4105,7 +4105,16 @@ export function animate(timestamp) {
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
-			playersMeshes[id].position.set(pData.x, pData.y || 0.5, pData.z);
+			let remoteY = pData.y;
+			if (currentGamePhase === 'lobby' && !Number.isFinite(remoteY)) {
+				const layout = gs && gs.layout;
+				remoteY = layout
+					? resolveFloorY(sampleFloorY(layout, pData.x, pData.z))
+					: DEFAULT_FLOOR_Y;
+			} else if (!Number.isFinite(remoteY)) {
+				remoteY = 0.5;
+			}
+			playersMeshes[id].position.set(pData.x, remoteY, pData.z);
 			if (Number.isFinite(pData.rotation)) {
 				playersMeshes[id].rotation.y = pData.rotation - Math.PI / 2;
 			}
@@ -4237,7 +4246,16 @@ export function animate(timestamp) {
 			}
 		}
 
-		// ── Clean up nameplates for players who left ──
+		// ── Clean up avatars and nameplates for players who left ──
+		for (const id of Object.keys(playersMeshes)) {
+			if (!gs.players[id]) {
+				disposeAvatar(playersMeshes[id]);
+				scene.remove(playersMeshes[id]);
+				delete playersMeshes[id];
+				if (playerNameplates[id]) disposeNameplate(id);
+			}
+		}
+
 		for (const id of Object.keys(playerNameplates)) {
 			if (!gs.players[id]) {
 				disposeNameplate(id);
