@@ -22,6 +22,11 @@
 //   broadcastLobbyUpdate, checkAllReady, isLobbyPhase, validateDeck, getKeyItemDef,
 //   healAtMedic, offerCardTrade, respondCardTrade, findSocketByPlayerId
 //
+// Run / playing phase (sub-ticket 05):
+//   isPlayingPhase, cardEffects, keyItemEffects, discardCardFromHand, giveUpRun,
+//   returnPlayersToLobby, abandonSuspendedRun, claimCardReward, LOOT_PICKUP_RADIUS,
+//   addMagicStones, recordCrystalCollected, checkRunTerminalState
+//
 // This module must NOT require('./index') (circular). Use ctx or leaf modules.
 
 const { getUnlockedKeyItems } = require('../progression');
@@ -568,6 +573,203 @@ function registerRespondCardTrade(socket, ctx) {
   });
 }
 
+function registerMove(socket, ctx) {
+  socket.on('move', (data) => {
+    ctx.withLobbyFromSocket(socket, (state) => {
+      if (!ctx.isPlayingPhase(state)) return;
+
+      const player = state.players[socket.playerId];
+
+      if (!player) return;
+      if (player.dead) return;
+      if (player.extracted) return;
+      if (player.connected === false) return;
+
+      if (!data || typeof data !== 'object' || Array.isArray(data) ||
+          !Number.isFinite(data.dx) || !Number.isFinite(data.dz) || !Number.isFinite(data.rotation)) {
+        console.warn(`Rejected move from ${socket.id}: invalid payload`);
+        return;
+      }
+
+      if (data.sequence !== undefined) {
+        if (!Number.isInteger(data.sequence) || data.sequence <= 0) {
+          console.warn(`Rejected move from ${socket.id}: invalid sequence`);
+          return;
+        }
+        const lastSeq = player.lastInputSequence || 0;
+        if (data.sequence <= lastSeq) {
+          return;
+        }
+        player.lastInputSequence = data.sequence;
+      }
+
+      const mag = Math.hypot(data.dx, data.dz);
+      if (mag > 1) { data.dx /= mag; data.dz /= mag; }
+
+      if (player) {
+        player.inputDx = data.dx;
+        player.inputDz = data.dz;
+        if (Number.isFinite(data.rotation)) {
+          player.inputRotation = data.rotation;
+          player.rotation = data.rotation;
+        }
+        player.inputActive = mag > 1e-8;
+        player.lastInputTime = Date.now();
+        player.lastActivity = Date.now();
+        player.persistenceDirty = true;
+      }
+    });
+  });
+}
+
+function registerUseCard(socket, ctx) {
+  socket.on('useCard', (data) => {
+    ctx.withLobbyFromSocket(socket, (state, lobby) => {
+      ctx.cardEffects.handleUseCard(socket, state, lobby, data);
+    });
+  });
+}
+
+function registerDiscardCard(socket, ctx) {
+  socket.on('discardCard', (data) => {
+    ctx.withLobbyFromSocket(socket, (state, lobby) => {
+      if (!ctx.isPlayingPhase(state)) return;
+      if (!state.run || state.run.status !== 'playing') return;
+      if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
+
+      const player = state.players[socket.playerId];
+      if (!player || player.dead) return;
+
+      const result = ctx.discardCardFromHand(player, data.slotIndex, data.cardId);
+      if (!result.valid) {
+        socket.emit('cardError', { reason: result.reason });
+        return;
+      }
+
+      ctx.io.to(lobby.id).emit('stateUpdate', ctx.stateSnapshot());
+    });
+  });
+}
+
+function registerReturnToLobby(socket, ctx) {
+  socket.on('returnToLobby', () => {
+    ctx.withLobbyFromSocket(socket, (state) => {
+      if (state.run && state.run.status === 'playing') {
+        socket.emit('runError', { reason: 'Run still in progress' });
+        return;
+      }
+
+      if (!state.run) return;
+
+      ctx.returnPlayersToLobby();
+    });
+  });
+}
+
+function registerGiveUp(socket, ctx) {
+  socket.on('giveUp', () => {
+    ctx.withLobbyFromSocket(socket, (state) => {
+      try {
+        if (!ctx.isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
+          socket.emit('runError', { reason: 'No active run' });
+          return;
+        }
+        const result = ctx.giveUpRun();
+        if (!result.ok) {
+          socket.emit('runError', { reason: result.reason || 'Cannot give up' });
+          return;
+        }
+        socket.emit('runAbandoned');
+      } catch (err) {
+        console.error('[giveUp] failed:', err);
+        socket.emit('runError', { reason: 'Give up failed' });
+      }
+    });
+  });
+}
+
+function registerAbandonRun(socket, ctx) {
+  socket.on('abandonRun', () => {
+    ctx.withLobbyFromSocket(socket, (state) => {
+      if (!state.suspendedCheckpoint) {
+        socket.emit('runError', { reason: 'No suspended expedition' });
+        return;
+      }
+      ctx.abandonSuspendedRun();
+    });
+  });
+}
+
+function registerClaimCardReward(socket, ctx) {
+  socket.on('claimCardReward', (data) => {
+    ctx.withLobbyFromSocket(socket, (state) => {
+      const player = state.players[socket.playerId];
+      if (!player) return;
+      if (!state.run || state.run.status === 'playing') return;
+      if (!data || typeof data.cardId !== 'string') return;
+
+      const result = ctx.claimCardReward(socket.playerId, data.cardId);
+      if (!result.ok) return;
+
+      ctx.savePlayerData(socket.playerId);
+      socket.emit('cardRewardClaimed', {
+        cardId: result.cardId,
+        ownedCards: result.ownedCards,
+        inventory: result.inventory,
+      });
+    });
+  });
+}
+
+function registerUseKeyItem(socket, ctx) {
+  socket.on('useKeyItem', (data) => {
+    ctx.withLobbyFromSocket(socket, (state, lobby) => {
+      ctx.keyItemEffects.handleUseKeyItem(socket, state, lobby, data);
+    });
+  });
+}
+
+function registerLootPickup(socket, ctx) {
+  socket.on('lootPickup', (data) => {
+    ctx.withLobbyFromSocket(socket, (state, lobby) => {
+      if (!data || !data.lootId) return;
+
+      const player = state.players[socket.playerId];
+      if (!player) return;
+      if (player.dead || player.extracted) return;
+
+      const lootIdx = state.loot.findIndex(l => l.id === data.lootId);
+      if (lootIdx === -1) return;
+
+      const loot = state.loot[lootIdx];
+      const dist = Math.hypot(player.x - loot.x, player.z - loot.z);
+
+      if (dist > ctx.LOOT_PICKUP_RADIUS) return;
+
+      const isCrystal = loot.kind === 'crystal';
+      const isMagicStone = loot.kind === 'magic_stone';
+      if (isMagicStone) {
+        ctx.addMagicStones(player, loot.value);
+      } else if (isCrystal) {
+        ctx.recordCrystalCollected(1);
+      } else {
+        player.currency += loot.value;
+        player.currencyEarnedThisRun += loot.value;
+      }
+      state.loot.splice(lootIdx, 1);
+
+      const lootLabel = isCrystal ? ' (crystal)' : isMagicStone ? ' (magic stone)' : '';
+      console.log(`[loot] picked up id=${loot.id}${lootLabel} value=${loot.value} by ${socket.id} (currency=${player.currency}, ms=${player.magicStones})`);
+
+      ctx.savePlayerData(socket.playerId);
+
+      if (isCrystal) {
+        ctx.checkRunTerminalState();
+      }
+    });
+  });
+}
+
 function registerLobbyHandlers(socket, ctx) {
   registerListLobbies(socket, ctx);
   registerListKeyItems(socket, ctx);
@@ -587,6 +789,15 @@ function registerLobbyHandlers(socket, ctx) {
   registerMedicHeal(socket, ctx);
   registerOfferCardTrade(socket, ctx);
   registerRespondCardTrade(socket, ctx);
+  registerMove(socket, ctx);
+  registerUseCard(socket, ctx);
+  registerDiscardCard(socket, ctx);
+  registerReturnToLobby(socket, ctx);
+  registerGiveUp(socket, ctx);
+  registerAbandonRun(socket, ctx);
+  registerClaimCardReward(socket, ctx);
+  registerUseKeyItem(socket, ctx);
+  registerLootPickup(socket, ctx);
 }
 
 module.exports = {
@@ -609,4 +820,13 @@ module.exports = {
   registerMedicHeal,
   registerOfferCardTrade,
   registerRespondCardTrade,
+  registerMove,
+  registerUseCard,
+  registerDiscardCard,
+  registerReturnToLobby,
+  registerGiveUp,
+  registerAbandonRun,
+  registerClaimCardReward,
+  registerUseKeyItem,
+  registerLootPickup,
 };
