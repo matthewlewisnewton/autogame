@@ -537,7 +537,7 @@ function unlockedQuestTiersForLobbyPlayer(state, playerId) {
 }
 
 /** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
-function emitQuestPayloadToLobby(lobby, { event = 'questUpdate', extraFields = {} } = {}) {
+function emitQuestPayloadToLobby(lobby, { event = EVENTS.questUpdate, extraFields = {} } = {}) {
   if (!lobby) return;
   const state = lobby.state;
   const shared = {

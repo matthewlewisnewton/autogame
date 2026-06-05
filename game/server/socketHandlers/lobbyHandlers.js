@@ -224,7 +224,7 @@ function register(socket, ctx) {
   socket.on(EVENTS.medicHeal, () => {
     withLobbyPlayer(socket, {
       requirePhase: 'lobby',
-      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
+      phaseMismatch: { event: EVENTS.medicError, payload: { reason: 'not_in_lobby' } },
     }, (state, lobby, player) => {
       const result = healAtMedic(socket.playerId, state);
       if (!result.ok) {

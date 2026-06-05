@@ -11,7 +11,7 @@ function register(socket, ctx) {
   socket.on(EVENTS.equipKeyItem, (data) => {
     withLobbyPlayer(socket, {
       requirePhase: 'lobby',
-      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
+      phaseMismatch: { event: EVENTS.keyItemError, payload: { reason: 'not_in_lobby' } },
     }, (state, lobby, player) => {
     const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
     if (!keyItemId) {
