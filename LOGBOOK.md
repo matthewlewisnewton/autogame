@@ -4730,3 +4730,26 @@ PASS. The implementation fits the documented lobby-to-dungeon core loop and keep
 ## Debug scenarios
 
 PASS. This ticket added `arena-trials-tier-2`, `stage-boss-dormant`, and `stage-boss-active` shortcuts. They are only reachable through the existing debug scenario socket path, which is gated by `isDebugScenarioAllowed()` and requires the URL/debug harness path to request a named scenario. Normal gameplay reaches the same Tier 2 stage-boss state by clearing Arena Trials Tier 1, unlocking Tier 2, selecting it in the lobby, and deploying. The debug scenarios reuse `applyLayoutForQuest()`, `enterPlayingPhase()`, `spawnEnemies()`, and `startDungeonRun()` so they exercise the same server-side quest, spawn, run, and encounter invariants; `stage-boss-active` only pre-clears adds and lowers boss HP after creating the normal run for QA convenience.
+
+## v0.271 — 260-miniboss-open-plaza  (2026-06-05 13:17:35)
+
+
+### Debug scenarios
+
+PASS. This ticket did not add a new URL debug scenario, but it changed the expected behavior of the existing `arena-trials-tier-2` and stage-boss debug paths by changing the underlying Tier-2 boss type. The scenarios remain debug-only via `?debugScenario`/localhost socket paths, and the server comments plus tests trace the normal path: clear Arena Trials Tier 1, unlock Tier 2, deploy, activate the encounter, and defeat the stage boss. They use the same quest, layout, spawn, encounter, and run-completion systems as normal gameplay.
+
+### Design and requirements consistency
+
+PASS. The change stays within the documented lobby-to-dungeon action-RPG loop and does not alter foundational rendering, WebSocket connection, multiplayer visualization, or movement synchronization requirements. It reuses the existing stage-boss and reward systems instead of creating a parallel completion path.
+
+## Verification
+
+- Captured run: `metrics.json` ok, no page errors; no fatal console output.
+- Harness coverage log: 71 test files / 1434 tests passed with coverage visibility enabled.
+- Additional focused check: `pnpm exec vitest run server/test/arena_trials_tier2.test.js client/test/renderer-registry-normalize.test.js client/test/models-registry.test.js --coverage.enabled=false` passed 3 files / 38 tests.
+- An ad hoc `pnpm test -- --run ...` invocation also ran the full suite and all 2342 tests passed, but exited nonzero only because global coverage thresholds were active for that command.
+
+## Remaining gaps
+
+None.
+
