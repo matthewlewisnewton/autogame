@@ -1,0 +1,35 @@
+[createLobby] #lobby-browser not visible for player A, waiting...
+[createLobby] timeout waiting for #lobby-browser to appear: page.waitForFunction: Timeout 5000ms exceeded.
+[createLobby] failed to fill/create lobby form: locator.fill: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for locator('#create-lobby-name')[22m
+[2m    - locator resolved to <input type="text" maxlength="48" id="create-lobby-name" placeholder="Lobby name (optional)"/>[22m
+[2m    - fill("Test")[22m
+[2m  - attempting fill action[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m    - waiting 20ms[22m
+[2m    2 × waiting for element to be visible, enabled and editable[22m
+[2m      - element is not visible[22m
+[2m    - retrying fill action[22m
+[2m      - waiting 100ms[22m
+[2m    60 × waiting for element to be visible, enabled and editable[22m
+[2m       - element is not visible[22m
+[2m     - retrying fill action[22m
+[2m       - waiting 500ms[22m
+
+{
+  "url": "http://localhost:5173/",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/213-net-shared-event-name-constants/tickets/213-net-shared-event-name-constants/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.",
+  "scenarios": [],
+  "screenshots": [],
+  "probes": [],
+  "error": "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/\nCall log:\n\u001b[2m  - navigating to \"http://localhost:5173/\", waiting until \"load\"\u001b[22m\n",
+  "pageerrors": []
+}

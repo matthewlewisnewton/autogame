@@ -1,0 +1,7 @@
+Review complete. Wrote:
+
+- `tickets/213-net-shared-event-name-constants/round-3/review.md`
+- `tickets/213-net-shared-event-name-constants/round-3/gaps.md`
+- `tickets/213-net-shared-event-name-constants/round-3/nits.md`
+
+Verdict is `VERDICT: FAIL` because the captured run proof is invalid: `metrics.json` has `"ok": false` / `failure_kind: "capture_failed"` and `console.log` is missing. No game code was edited.

@@ -1,0 +1,8 @@
+Wrote the review outputs:
+
+- `tickets/213-net-shared-event-name-constants/round-1/review.md`
+- `tickets/213-net-shared-event-name-constants/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The game capture itself was clean, but the ticket still leaves raw gameplay event strings in server dynamic emit paths and client `.once`/`.off` listeners, and the new drift guard does not catch those cases. No `nits.md` was created.

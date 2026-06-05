@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/213-net-shared-event-name-constants/round-4/review.md`
+- `tickets/213-net-shared-event-name-constants/round-4/gaps.md`
+
+Final verdict: `VERDICT: FAIL`.
+
+The captured game run was healthy, but the drift guard has a blocking acceptance gap: it allowlists `heartbeat` and `heartbeat_ack` even though they are game registry events, so raw socket call sites for those names could pass undetected. No `nits.md` was created because I did not identify separate non-blocking cleanup items.

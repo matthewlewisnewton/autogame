@@ -1,0 +1,7 @@
+Wrote the senior review artifacts:
+
+- `tickets/213-net-shared-event-name-constants/round-2/review.md`
+- `tickets/213-net-shared-event-name-constants/round-2/gaps.md`
+- `tickets/213-net-shared-event-name-constants/round-2/nits.md`
+
+Verdict is `VERDICT: FAIL` because the captured run has `"ok": false` and Playwright hit `net::ERR_CONNECTION_REFUSED` loading `http://localhost:5173/`. Code review found the event-registry implementation itself meets the acceptance criteria; the blocking gap is the missing clean runtime proof. No game code was edited.

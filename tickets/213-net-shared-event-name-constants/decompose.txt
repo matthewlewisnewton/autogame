@@ -1,0 +1,6 @@
+All 9 existing sub-tickets passed (`.passed` markers present), so none are retired. The single open gap is the drift guard's `dynamic` blind spot. I added one new sub-ticket to close it.
+
+**Created:**
+- `/home/matt/workspace/.autogame-worktrees/213-net-shared-event-name-constants/tickets/213-net-shared-event-name-constants/subtickets/10-events-drift-guard-dynamic-expr/ticket.md`
+
+It extends `event_name_drift.test.js` so dynamic emit expressions (the `runComplete`/`runFailed` ternary and `event: EVENTS.<name>` phase-mismatch slots) are no longer swallowed as `dynamic` — embedded `EVENTS.<name>` refs are validated by invariants 2/3 and embedded raw literals trip invariant 1, with new failure-mode assertions proving each path. Verification: `code` (the criteria are about scanner logic, reference-set contents, and test behavior — nothing visual).

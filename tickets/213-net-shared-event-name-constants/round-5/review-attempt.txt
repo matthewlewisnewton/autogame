@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/213-net-shared-event-name-constants/round-5/review.md`.
+
+Verdict is `VERDICT: FAIL` due to a blocking drift-guard gap: the game runs cleanly, but the static test does not validate dynamic server emit expressions such as the `runComplete` / `runFailed` ternary.
+
+Also wrote the standalone remediation to `tickets/213-net-shared-event-name-constants/round-5/gaps.md`. No `nits.md` was created.

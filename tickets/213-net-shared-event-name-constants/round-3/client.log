@@ -1,0 +1,2 @@
+[vite] Proxying /api and /socket.io → http://127.0.0.1:3000
+[vite] Game server ready at http://127.0.0.1:3000
