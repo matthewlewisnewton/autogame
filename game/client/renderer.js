@@ -342,8 +342,7 @@ export function normalizeLoadedRegistryModel(model, footprint) {
  * an async load and swap the cloned model in for the procedural primitive on
  * success. This is fire-and-forget: callers build + return their procedural
  * mesh/group synchronously, and this only mutates it later if/when a model
- * resolves. In this sub-ticket every registry path is null, so the early return
- * always fires and visuals are byte-identical to before.
+ * resolves. Keys with a null/absent registry path are a no-op (procedural stays).
  *
  * Resilience: a null/absent path is a no-op (procedural stays); a rejected or
  * null `loadModel` result leaves the procedural mesh in place and at most logs —
@@ -1402,6 +1401,9 @@ const PROPORTION_MORPH_KEYS = [
 // game/server/cosmetic.js. 'none' (and any unknown id) renders no hat.
 const AVATAR_HAT_IDS = new Set(['none', 'cap', 'wizard', 'crown', 'bandana', 'beanie']);
 
+// Base mesh variant ids, kept in sync with MODEL_IDS in game/server/cosmetic.js.
+const AVATAR_MODEL_IDS = new Set(['player']);
+
 // Per-hat colors, distinct from one another and from the default body/accent.
 const HAT_CAP_COLOR = 0x2e7d32; // forest green
 const HAT_WIZARD_COLOR = 0x5b3a8a; // deep purple
@@ -1691,6 +1693,16 @@ function avatarColorHex(hex, fallbackHex) {
 }
 
 /**
+ * Resolve the MODEL_REGISTRY key for a cosmetic's base mesh variant.
+ * Mirrors server MODEL_IDS validation; unknown/absent ids fall back to 'player'.
+ * @param {*} modelId
+ * @returns {string}
+ */
+function resolveAvatarModelKey(modelId) {
+	return (typeof modelId === 'string' && AVATAR_MODEL_IDS.has(modelId)) ? modelId : 'player';
+}
+
+/**
  * Stable signature string for a cosmetic, used to detect when an avatar needs
  * to be rebuilt. Only the fields that affect geometry/material are included.
  * @param {*} cosmetic
@@ -1702,7 +1714,8 @@ function cosmeticSignature(cosmetic) {
 	const body = (typeof c.bodyColor === 'string' && HEX_COLOR_RE.test(c.bodyColor)) ? c.bodyColor.toLowerCase() : 'default';
 	const accent = (typeof c.accentColor === 'string' && HEX_COLOR_RE.test(c.accentColor)) ? c.accentColor.toLowerCase() : 'default';
 	const hat = AVATAR_HAT_IDS.has(c.hat) ? c.hat : 'none';
-	return `${shape}|${body}|${accent}|${hat}`;
+	const modelKey = resolveAvatarModelKey(c.modelId);
+	return `${shape}|${body}|${accent}|${hat}|${modelKey}`;
 }
 
 /**
@@ -1775,7 +1788,8 @@ export function createPlayerAvatar(cosmetic, isSelf, equippedKeyItemId) {
 	group.userData.baseColor = bodyHex;
 	group.userData.cosmeticKey = cosmeticSignature(c);
 
-	attachRegistryModel('player', group);
+	const modelKey = resolveAvatarModelKey(c.modelId);
+	attachRegistryModel(modelKey, group);
 
 	return group;
 }
