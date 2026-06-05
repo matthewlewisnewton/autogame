@@ -161,6 +161,7 @@ import {
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
+import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import {
 	openPreview as openCosmeticPreview,
@@ -792,6 +793,7 @@ function applyLobbyJoinedData(data) {
 	requestDebugScenario();
 	renderHubScene();
 	requestDebugBoothOpen();
+	requestDebugShopBoothOpen();
 	updateObjectiveHud();
 }
 
@@ -953,6 +955,14 @@ const requestDebugBoothOpen = createRequestDebugBoothOpener({
 	hostname: window.location.hostname,
 	openDeckBooth,
 	deps: deckBoothDeps,
+});
+const shopBoothDeps = { showGameLobby, setLobbyTab, renderCardShop };
+registerShopBoothListener(shopBoothDeps);
+const requestDebugShopBoothOpen = createRequestDebugShopBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openShopBooth,
+	deps: shopBoothDeps,
 });
 window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 	const boothId = ev.detail && ev.detail.boothId;
@@ -1610,6 +1620,10 @@ function bindSocketHandlers(s) {
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
 			applyQuestBoardFromPayload(data);
 		}
+		if ('shopOffer' in data && gameState) {
+			gameState.shopOffer = data.shopOffer;
+			if (activeLobbyTab === 'shop') renderCardShop();
+		}
 	});
 
 	s.on('questUpdate', (data) => {
@@ -1894,7 +1908,9 @@ function requestDebugScenario() {
 }
 
 window.__openDeckBoothForTest = openDeckBooth;
+window.__openShopBoothForTest = openShopBooth;
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
+window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 /** Localhost-only `?booth=character` — open the character booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (boothDebugParam !== 'character' || !debugScenarioAllowed || boothDebugRequested) return;
@@ -3277,6 +3293,15 @@ if (document.getElementById('lobby-tab-forge')) {
 }
 if (document.getElementById('lobby-tab-shop')) {
 	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
+}
+const buyShopCardBtnEl = document.getElementById('buy-shop-card-btn');
+if (buyShopCardBtnEl) {
+	buyShopCardBtnEl.addEventListener('click', () => {
+		if (!socket || !socket.connected) return;
+		const offer = gameState && gameState.shopOffer;
+		if (!offer || !offer.cardId) return;
+		socket.emit('buyShopCard');
+	});
 }
 	if (document.getElementById('lobby-tab-economy')) {
 	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
