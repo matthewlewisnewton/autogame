@@ -4429,3 +4429,26 @@ PASS. The implementation is deterministic, scoped to dungeon generation/renderin
 
 No blocking gaps.
 
+
+## v0.255 — 254-level2-mechanics-and-reference  (2026-06-05 07:58:43)
+
+Satisfied. `coverage.log` shows the full suite passed: 79 files and 1416 tests. New targeted coverage includes `variant_rate_by_quest_tier.test.js`, open-plaza rigid-mode cases in `dungeon.test.js`, `arena_trials_tier2.test.js`, `quests.test.js`, `debug-scenarios.test.js`, and harness proxy readiness tests.
+
+## Design and Requirements Consistency
+
+The implementation stays within the documented lobby/deploy/dungeon loop: Tier-2 quests are surfaced through the quest board, unlock after clearing Tier 1, and deploy through the same run creation, objective, layout, enemy spawn, movement, and persistence systems as normal gameplay. The captured run confirms the foundation requirements remain intact: 3D scene renders, client connects to the server, players are represented, and movement updates in a running multiplayer session.
+
+## Debug Scenario Review
+
+This ticket adds `?debugScenario=arena-trials-tier-2`. It is properly gated behind the existing debug-scenario socket path: the client only requests it from a localhost URL parameter, and the server rejects debug scenarios in production unless explicitly enabled. Normal gameplay does not call this scenario.
+
+The same end state is reachable normally by clearing `arena_trials` Tier 1, selecting the newly unlocked Tier 2 quest, and readying/deploying. The shortcut sets `selectedQuestId`, `selectedQuestTier`, and the Tier-2 layout before `enterPlayingPhase()`, so `startDungeonRun()` snapshots the correct quest/tier metadata. It does not bypass combat or objective invariants after entry: enemies are spawned through the normal `spawnEnemies()` path, run objective sync is called, and state is broadcast through normal lobby/state update channels.
+
+## Code Quality
+
+The changed code is cohesive and uses existing quest, progression, layout, lobby, and debug-scenario patterns. The harness proxy readiness change is narrowly scoped to harness capture env and keeps normal dev proxy behavior unchanged. I did not find dead/broken code, missing exports, obvious race conditions, or console/page errors attributable to the ticket.
+
+## Remaining gaps
+
+None.
+
