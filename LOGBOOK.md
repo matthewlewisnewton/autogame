@@ -3801,3 +3801,26 @@ PASS. This ticket did not add or change any development debug scenario or `?debu
 
 None.
 
+
+## v0.217 — 250-enemy-per-level-spawn-pools  (2026-06-04 22:00:04)
+
+```text
+pnpm exec vitest run --config vitest.config.js server/test/quests-spawn-pools.test.js server/test/enemy-spawn-pools-wiring.test.js
+Test Files  2 passed (2)
+Tests       19 passed (19)
+```
+
+## Design and regression check
+
+PASS. The implementation stays within the existing quest/stage architecture described in `game/docs/design.md`: players still select quests, enter generated dungeon levels, and fight AI enemies to complete objectives. It does not weaken the foundation requirements in `game/docs/requirements.md`; the captured run confirms rendering, WebSocket connection, multiplayer state, and movement remain functional.
+
+No new or changed development debug scenario was introduced by this ticket, so there is no debug-scenario shortcut to validate as part of this review.
+
+## Code quality
+
+PASS. The implementation is small and follows the existing server module boundaries: quest metadata in `quests.js`, spawning in `progression.js`, objective-specific staggered spawning in `objectives.js`, and focused tests under `game/server/test/`. I did not find dead code, broken exports, console-fatal behavior, or integration issues in the live codebase.
+
+## Remaining gaps
+
+None.
+
