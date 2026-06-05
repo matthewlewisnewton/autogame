@@ -8,6 +8,7 @@ const {
   DECK_MAX_SIZE,
   MAX_HP,
   MEDIC_HEAL_COST,
+  APPEARANCE_CHANGE_COST,
   LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
@@ -732,6 +733,31 @@ function grindCard(player, instanceId) {
  * @param {string} hatId
  * @returns {{ ok: true, cost: number, currency: number } | { ok: false, reason: string }}
  */
+/**
+ * Deduct the appearance-change booth fee from a player's currency. Validates
+ * affordability only; persisting the cosmetic is the caller's responsibility.
+ *
+ * @param {object} player
+ * @returns {{ ok: true, cost: number, currency: number } | { ok: false, reason: string }}
+ */
+function chargeAppearanceChangeForPlayer(player) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+
+  const cost = APPEARANCE_CHANGE_COST;
+  const currency = player.currency || 0;
+  if (currency < cost) {
+    return { ok: false, reason: `Not enough ${THEME.currency.short.toLowerCase()} (need ${cost}, have ${currency})` };
+  }
+
+  player.currency = currency - cost;
+
+  return {
+    ok: true,
+    cost,
+    currency: player.currency,
+  };
+}
+
 function unlockHatForPlayer(player, hatId) {
   if (!player) return { ok: false, reason: 'Player not found' };
 
@@ -2096,7 +2122,7 @@ function restoreHandCharges(player, amount, options = {}) {
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   const def = enemyDefFor(type);
-  const { hp, ...statFieldsFromDef } = def;
+  const { hp, name, description, surfacedStats, ...statFieldsFromDef } = def;
   const enemy = {
     id: crypto.randomUUID(),
     x,
@@ -3181,6 +3207,7 @@ module.exports = {
   applyWyrmMinionBreathStats,
   grindCard,
   unlockHatForPlayer,
+  chargeAppearanceChangeForPlayer,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,

@@ -1294,6 +1294,105 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest 
   };
 }
 
+/** Inset from each perimeter wall plane for arena banner/tier decor (visual only). */
+const PERIMETER_DECOR_INSET = 2;
+
+/**
+ * Deterministic colosseum dressing along the open-plaza perimeter: banner poles
+ * and tiered seating blocks just inside each wall (no RNG).
+ *
+ * @param {number} half - half-width of the plaza (OPEN_PLAZA.size / 2)
+ * @returns {Array<{ type: string, x: number, z: number, yaw?: number, wall: string }>}
+ */
+function placeOpenPlazaPerimeterDecor(half) {
+  const inset = PERIMETER_DECOR_INSET;
+  const inner = half - inset;
+  const along = [-9, 9];
+
+  /** @type {Array<{ type: string, x: number, z: number, yaw?: number, wall: string }>} */
+  const decor = [];
+
+  for (const x of along) {
+    decor.push({ type: 'arena_banner', x, z: -inner, wall: 'north', yaw: 0 });
+    decor.push({ type: 'arena_tier', x, z: inner, wall: 'south', yaw: Math.PI });
+  }
+  for (const z of along) {
+    decor.push({ type: 'arena_tier', x: -inner, z, wall: 'west', yaw: Math.PI / 2 });
+    decor.push({ type: 'arena_banner', x: inner, z, wall: 'east', yaw: -Math.PI / 2 });
+  }
+
+  return decor;
+}
+
+/**
+ * Place 1–2 shallow pit hazards on the open-plaza floor. Visual-only recesses;
+ * they do not participate in collision or floor sampling.
+ *
+ * @param {object[]} blocked - platforms and cover footprints to avoid
+ */
+function placeOpenPlazaHazards(rng, half, spawnClear, blocked) {
+  const hazards = [];
+  const interiorMax = half - OPEN_PLAZA.interiorMargin;
+  const goal = 1 + Math.floor(rng() * 2);
+
+  const pitSizes = [
+    { width: 3.5, depth: 3.5 },
+    { width: 4.0, depth: 2.5 },
+    { width: 2.5, depth: 4.0 },
+  ];
+
+  const candidates = [];
+  for (let t = 0; t < 24; t++) {
+    const size = pitSizes[Math.floor(rng() * pitSizes.length)];
+    const span = half - OPEN_PLAZA.interiorMargin - Math.max(size.width, size.depth) / 2 - 0.5;
+    if (span <= 0) continue;
+    candidates.push({
+      x: (rng() * 2 - 1) * span,
+      z: (rng() * 2 - 1) * span,
+      width: size.width,
+      depth: size.depth,
+      type: 'pit',
+      pitDepth: OPEN_HAZARD_RECESS,
+    });
+  }
+
+  for (const cand of candidates) {
+    if (hazards.length >= goal) break;
+    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, 0, 0)) continue;
+    const allBlocked = [...blocked, ...hazards];
+    if (allBlocked.some(b => footprintsOverlap(cand, b, 0.5))) continue;
+    hazards.push(cand);
+  }
+
+  if (hazards.length === 0) {
+    const fallbacks = [
+      { x: 0, z: 11, width: 3.0, depth: 3.0 },
+      { x: 11, z: 0, width: 3.0, depth: 3.0 },
+      { x: -11, z: 0, width: 3.0, depth: 3.0 },
+      { x: 0, z: -11, width: 3.0, depth: 3.0 },
+      { x: -11, z: -5, width: 3.5, depth: 3.5 },
+      { x: 11, z: 5, width: 3.5, depth: 3.5 },
+    ];
+    for (const cand of fallbacks) {
+      const pit = {
+        ...cand,
+        type: 'pit',
+        pitDepth: OPEN_HAZARD_RECESS,
+      };
+      if (Math.abs(pit.x) + pit.width / 2 > interiorMax) continue;
+      if (Math.abs(pit.z) + pit.depth / 2 > interiorMax) continue;
+      if (overlapsSpawnClearAt(pit, spawnClear, 0, 0)) continue;
+      if (blocked.some(b => footprintsOverlap(pit, b, 0.5))) continue;
+      hazards.push(pit);
+      break;
+    }
+  }
+
+  return hazards;
+}
+
 /**
  * Emissive cliff-edge lip AABBs at the high (plateau) mouth of each descent ramp.
  * Strips sit on the plateau just north of the ramp junction — not over walkable ramp centres.
@@ -1408,8 +1507,8 @@ function buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh) {
 
 /**
  * Build the open-plaza arena: one large walkable room bounded by four solid
- * perimeter walls, with scattered cover pieces and a couple of gently sloped
- * platforms. Deterministic for a given seed (uses mulberry32).
+ * perimeter walls, with scattered cover pieces and gently sloped platforms.
+ * Deterministic for a given seed (uses mulberry32).
  *
  * Returns { rooms: [plaza], passages: [], cover, platforms, passageWidth,
  *           cellSpacing, profile: 'open-plaza' }.
@@ -1442,10 +1541,11 @@ function generateOpenPlaza(seed) {
     },
   };
 
-  // Two gently sloped platforms (corner heights differ by ≤ 0.5 units).
+  // Three gently sloped platforms at distinct corners (corner delta ≤ 0.5 each).
   const platforms = [
-    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
-    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.4, yNE: 1.1, ySE: 1.2, ySW: 1.3 } },
+    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.3, yNE: 1.6, ySE: 1.7, ySW: 1.4 } },
+    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.6, yNE: 1.4, ySE: 1.6, ySW: 1.5 } },
+    { x: 9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.6, yNE: 1.5, ySE: 1.7, ySW: 1.5 } },
   ];
 
   // Cover set. Start with one pillar centred on each platform so at least two
@@ -1466,6 +1566,10 @@ function generateOpenPlaza(seed) {
     { x: -9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
     { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: -5, z: -11, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+    { x: 5, z: 11, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+    { x: 11, z: -11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
+    { x: -11, z: 11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
   ];
 
   const allCover = scatterCoverInArena(rng, {
@@ -1479,11 +1583,19 @@ function generateOpenPlaza(seed) {
   cover.length = 0;
   cover.push(...allCover);
 
+  const hazards = placeOpenPlazaHazards(rng, half, spawnClear, [...platforms, ...cover]);
+
   const layout = {
     rooms: [plaza],
     passages: [],
     cover,
+    hazards,
     platforms,
+    floorMarkings: [
+      { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
+    ],
+    landmarks: [{ x: 0, z: 0, type: 'arena_dais' }],
+    perimeterDecor: placeOpenPlazaPerimeterDecor(half),
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: size,
     profile: 'open-plaza',

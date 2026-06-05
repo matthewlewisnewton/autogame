@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/251-enemy-display-metadata/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/251-enemy-display-metadata/game/data
+Server listening on port 3002
+Player connected: socket=xqJyVvQn_Nh34uRzAAAB, playerId=eef651e6-aa9b-4233-bded-be5d087a4d55
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=6FUVkK9J3nHUurrEAAAD, playerId=e895d46b-c40a-4979-8df3-93541b5a9b31
+[loot] spawned id=cbecf974-8627-4c6a-8f23-474854b030cb value=17
+Player disconnected: xqJyVvQn_Nh34uRzAAAB
+Player disconnected: 6FUVkK9J3nHUurrEAAAD

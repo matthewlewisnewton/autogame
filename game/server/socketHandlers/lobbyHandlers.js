@@ -23,10 +23,12 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
 } = require('../quests');
-const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
-const { backfillUnlockedHats } = require('../cosmetic');
+const { hasAppearanceFieldChanges } = require('../../shared/cosmeticAppearance.js');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked, updateProfile } = require('../users');
+const { backfillUnlockedHats, backfillCosmetic, validateCosmetic } = require('../cosmetic');
 const {
   unlockHatForPlayer,
+  chargeAppearanceChangeForPlayer,
   healAtMedic,
   assignRunSpawnPositions,
   stateSnapshot,
@@ -54,6 +56,7 @@ function register(socket, ctx) {
     isDebugScenarioAllowed,
     softDisconnectPlayerFromLobby,
     hubLayout,
+    syncLivePlayerCosmetic,
   } = ctx;
 
   socket.on('listLobbies', () => {
@@ -217,6 +220,102 @@ function register(socket, ctx) {
       currency: player.currency
     });
     savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('applyAppearanceChange', (data) => {
+    const lobby = lobbies.getLobbyForPlayer(playerId);
+    if (!lobby || !isLobbyPhase(lobby.state)) {
+      socket.emit('appearanceError', { reason: 'not_in_lobby' });
+      return;
+    }
+    const player = lobby.state.players[playerId];
+    if (!player) {
+      socket.emit('appearanceError', { reason: 'not_in_lobby' });
+      return;
+    }
+
+    withLobbyContext(lobby, () => {
+      const proposed = data && data.cosmetic;
+      if (!proposed || typeof proposed !== 'object' || Array.isArray(proposed)) {
+        socket.emit('appearanceError', { reason: 'Invalid cosmetic' });
+        return;
+      }
+
+      const account = findUserByAccountId(player.accountId);
+      if (!account) {
+        socket.emit('appearanceError', { reason: 'Account not found' });
+        return;
+      }
+
+      const validation = validateCosmetic(proposed);
+      if (!validation.ok) {
+        socket.emit('appearanceError', { reason: validation.reason });
+        return;
+      }
+
+      if (validation.value.hat !== undefined) {
+        const unlocked = backfillUnlockedHats(account.unlockedHats);
+        if (!unlocked.includes(validation.value.hat)) {
+          socket.emit('appearanceError', { reason: 'Hat is not unlocked for this account' });
+          return;
+        }
+      }
+
+      const base = backfillCosmetic(account.cosmetic);
+      const value = validation.value;
+      const merged = value.proportions
+        ? { ...base, ...value, proportions: { ...base.proportions, ...value.proportions } }
+        : { ...base, ...value };
+      const paidChange = hasAppearanceFieldChanges(base, merged);
+
+      const finishSuccess = (cost) => {
+        const user = findUserByAccountId(player.accountId);
+        syncLivePlayerCosmetic(player.accountId, user.cosmetic);
+        io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+        socket.emit('appearanceChanged', {
+          cosmetic: user.cosmetic,
+          currency: player.currency,
+          cost,
+        });
+        savePlayerData(socket.playerId);
+      };
+
+      if (!paidChange) {
+        const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
+        if (!profileResult.ok) {
+          socket.emit('appearanceError', { reason: profileResult.reason });
+          return;
+        }
+        finishSuccess(0);
+        return;
+      }
+
+      const chargeResult = chargeAppearanceChangeForPlayer(player);
+      if (!chargeResult.ok) {
+        socket.emit('appearanceError', { reason: chargeResult.reason });
+        return;
+      }
+
+      // Safe ordering: currency first, cosmetic second — a crash after this save
+      // but before updateProfile leaves charged-but-not-applied (retryable) instead
+      // of applied-but-not-charged (free-appearance exploit).
+      const saved = savePlayerData(socket.playerId);
+      if (!saved) {
+        player.currency += chargeResult.cost;
+        socket.emit('appearanceError', { reason: 'Failed to save progress' });
+        return;
+      }
+
+      const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
+      if (!profileResult.ok) {
+        player.currency += chargeResult.cost;
+        savePlayerData(socket.playerId);
+        socket.emit('appearanceError', { reason: profileResult.reason });
+        return;
+      }
+
+      finishSuccess(chargeResult.cost);
     });
   });
 

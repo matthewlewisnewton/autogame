@@ -1,6 +1,17 @@
 import { vi } from 'vitest';
 import { THREE } from './__mocks__/three.js';
 
+// ── Stub a 2D canvas context ──
+// jsdom ships without a canvas backend, so HTMLCanvasElement.getContext('2d')
+// throws "Not implemented". Code that draws to an offscreen canvas (nameplates,
+// hub booth signs) only needs a context to call into — a browser always provides
+// one — so hand back a no-op proxy whose every member is a callable stub.
+if (typeof HTMLCanvasElement !== 'undefined') {
+	HTMLCanvasElement.prototype.getContext = function() {
+		return new Proxy({}, { get: () => () => {} });
+	};
+}
+
 // ── Mock socket.io-client ──
 const emitLog = [];
 const handlerLog = {}; // event -> array of callbacks (keyed by "socketId:event")

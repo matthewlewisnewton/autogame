@@ -113,8 +113,8 @@ class TestStopGameSerialPath:
         patterns = stop_seams.pkill_patterns
         # Serial path issues exactly two pkill patterns.
         assert len(patterns) == 2
-        # One targets the game server's index.js cmdline ...
-        assert any("server/index" in p for p in patterns)
+        # One targets the game server's index.js cmdline (incl. bare index.js) ...
+        assert any("index\\.js" in p for p in patterns)
         # ... the other the default-port (5173) vite.
         assert any("vite" in p and "5173" in p for p in patterns)
 

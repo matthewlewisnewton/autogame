@@ -1,0 +1,9 @@
+Broke the top-level ticket into **5 sub-tickets** in dependency order (center focal point → floor markings → perimeter dress → cover/platforms → hazards/verticality). All use **code** verification since every criterion checks layout data, handlers, structure, or behavior—not screenshot-only appearance.
+
+Created sub-ticket folders:
+
+1. `/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/tickets/247-plaza-arena-identity/subtickets/01-center-arena-dais/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/tickets/247-plaza-arena-identity/subtickets/02-center-ring-floor-markings/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/tickets/247-plaza-arena-identity/subtickets/03-perimeter-arena-motif/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/tickets/247-plaza-arena-identity/subtickets/04-varied-cover-platform-height/ticket.md`
+5. `/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/tickets/247-plaza-arena-identity/subtickets/05-pit-hazards-verticality/ticket.md`

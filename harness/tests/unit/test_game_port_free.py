@@ -23,6 +23,7 @@ from harness.steps.game import (
 
 # Reference cmdlines (see ticket Technical Specs).
 SERVER_CMD = "node game/server/index.js"
+SERVER_CMD_BARE = "/home/matt/.nvm/versions/node/v22.18.0/bin/node index.js"
 VITE_CMD = "vite --port 5173 --strictPort"
 VITE_5177_CMD = "vite --port 5177 --strictPort"
 FOREIGN_CMD = "node /srv/other-app/server.js"
@@ -113,6 +114,23 @@ class TestWaitPortFree:
 
         assert wait_port_free(3000, timeout_s=15) is True
         assert kills == [(4242, 9)]
+
+    def test_kills_bare_index_js_holder(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        state = {"bound": True}
+        monkeypatch.setattr(game, "port_in_use", lambda port: state["bound"])
+        monkeypatch.setattr(game, "_port_holders", lambda port: [(490676, SERVER_CMD_BARE)])
+
+        kills: list[tuple[int, int]] = []
+
+        def fake_kill(pid, signal_num=9):
+            kills.append((pid, signal_num))
+            state["bound"] = False
+
+        monkeypatch.setattr(game, "_kill_pid", fake_kill)
+        monkeypatch.setattr(game, "time", FakeClock())
+
+        assert wait_port_free(3000, timeout_s=15) is True
+        assert kills == [(490676, 9)]
 
     def test_returns_false_on_timeout_when_port_stays_bound(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr(game, "port_in_use", lambda port: True)  # never frees

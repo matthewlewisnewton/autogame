@@ -890,6 +890,20 @@ function syncLivePlayerCosmetic(accountId, cosmetic) {
   }
 }
 
+/** True when the account has a connected player record in an active lobby hub phase. */
+function hasLiveLobbyPlayerForAccount(accountId) {
+  if (!accountId) return false;
+  for (const lobby of lobbies._lobbies.values()) {
+    if (!isLobbyPhase(lobby.state)) continue;
+    const player = lobby.state.players[accountId];
+    if (player && player.accountId === accountId) return true;
+  }
+  if (isLobbyPhase(gameState) && gameState.players[accountId]) {
+    return true;
+  }
+  return false;
+}
+
 function buildSessionFromPlayer(player) {
   return {
     playerId: player.id,
@@ -1414,6 +1428,7 @@ function startServer(port) {
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
       hubLayout: HUB_LAYOUT,
+      syncLivePlayerCosmetic,
     };
     lobbyHandlers.register(socket, ctx);
 
@@ -1494,6 +1509,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pickFloorSpawnPosition,
     buildPlayerRecord,
     syncLivePlayerCosmetic,
+    hasLiveLobbyPlayerForAccount,
     createGameState,
     resetGameState,
     gameState,

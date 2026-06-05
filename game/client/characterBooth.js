@@ -10,11 +10,18 @@ import {
 } from './cosmetic-preview.js';
 import { createCosmeticForm } from './cosmeticForm.js';
 import { getHatCatalog } from './settings.js';
+import { APPEARANCE_CHANGE_COST } from './config.js';
+import { hasAppearanceFieldChanges } from '../shared/cosmeticAppearance.esm.js';
+import { formatCurrencyPrice } from './theme.js';
 
 const overlayEl = document.getElementById('character-booth-overlay');
 const closeBtnEl = document.getElementById('character-booth-close-btn');
 const previewCanvasEl = document.getElementById('character-booth-preview-canvas');
 const saveBtnEl = document.getElementById('character-booth-save-btn');
+const confirmEl = document.getElementById('character-booth-confirm');
+const confirmMessageEl = document.getElementById('character-booth-confirm-message');
+const confirmOkBtnEl = document.getElementById('character-booth-confirm-ok');
+const confirmCancelBtnEl = document.getElementById('character-booth-confirm-cancel');
 
 /** @type {ReturnType<typeof createCosmeticForm>|null} */
 let form = null;
@@ -22,6 +29,10 @@ let form = null;
 let selection = null;
 /** @type {boolean} */
 let isOpen = false;
+/** @type {boolean} */
+let saveInFlight = false;
+/** @type {object|null} */
+let pendingCosmetic = null;
 
 /** @type {{
  *   patchProfile: (patch: object) => Promise<{ error?: string }>,
@@ -34,9 +45,72 @@ let isOpen = false;
  * }|null} */
 let deps = null;
 
+function buildCosmeticPayload() {
+	return {
+		bodyColor: selection.bodyColor,
+		accentColor: selection.accentColor,
+		bodyShape: selection.bodyShape,
+		hat: selection.hat,
+		proportions: { ...selection.proportions },
+	};
+}
+
+function isPaidAppearanceChange(cosmetic) {
+	return hasAppearanceFieldChanges(deps.getAccountCosmetic(), cosmetic);
+}
+
+function updateSaveButtonLabel() {
+	if (!saveBtnEl || !selection || !deps) return;
+	const cosmetic = buildCosmeticPayload();
+	if (isPaidAppearanceChange(cosmetic)) {
+		saveBtnEl.textContent = `Save character (${formatCurrencyPrice(APPEARANCE_CHANGE_COST)})`;
+	} else {
+		saveBtnEl.textContent = 'Save character';
+	}
+}
+
 function refreshBoothPreview() {
 	if (!isOpen) return;
 	updatePreview({ ...selection });
+	updateSaveButtonLabel();
+}
+
+function hideConfirm() {
+	pendingCosmetic = null;
+	if (confirmEl) confirmEl.classList.add('hidden');
+}
+
+function showConfirm(cosmetic) {
+	pendingCosmetic = cosmetic;
+	if (confirmMessageEl) {
+		confirmMessageEl.textContent =
+			`Save appearance changes for ${formatCurrencyPrice(APPEARANCE_CHANGE_COST)}?`;
+	}
+	if (confirmEl) confirmEl.classList.remove('hidden');
+}
+
+function setSaveDisabled(disabled) {
+	if (saveBtnEl) saveBtnEl.disabled = disabled;
+	if (confirmOkBtnEl) confirmOkBtnEl.disabled = disabled;
+	if (confirmCancelBtnEl) confirmCancelBtnEl.disabled = disabled && saveInFlight;
+}
+
+function syncSavedCosmeticToGameState() {
+	const myId = deps.getMyId();
+	const gameState = deps.getGameState();
+	if (myId && gameState?.players?.[myId]) {
+		gameState.players[myId].cosmetic = deps.getAccountCosmetic();
+		deps.setGameStateRef(gameState);
+	}
+}
+
+function finishSuccessfulSave() {
+	saveInFlight = false;
+	hideConfirm();
+	setSaveDisabled(false);
+	form.syncFromAccount(deps.getAccountCosmetic);
+	syncSavedCosmeticToGameState();
+	updateSaveButtonLabel();
 }
 
 /**
@@ -98,6 +172,12 @@ export function initCharacterBooth({
 	if (saveBtnEl) {
 		saveBtnEl.addEventListener('click', saveCharacterBooth);
 	}
+	if (confirmOkBtnEl) {
+		confirmOkBtnEl.addEventListener('click', confirmPaidSave);
+	}
+	if (confirmCancelBtnEl) {
+		confirmCancelBtnEl.addEventListener('click', cancelPaidSave);
+	}
 }
 
 /** Rebuild the booth hat list (e.g. after a server hatUnlocked event). */
@@ -110,9 +190,27 @@ export function showBoothCosmeticError(message) {
 	form?.showError(message);
 }
 
+/** Handle a successful `appearanceChanged` socket event while the booth is open. */
+export function handleAppearanceChanged() {
+	if (!isOpen || !deps || !form) return;
+	finishSuccessfulSave();
+}
+
+/** Re-enable save after `appearanceError`; error message is shown by main.js. */
+export function handleAppearanceError() {
+	if (!isOpen) return;
+	saveInFlight = false;
+	hideConfirm();
+	setSaveDisabled(false);
+}
+
 export function openCharacterBooth() {
 	if (!overlayEl || !selection || !deps || !form) return;
 	form.syncFromAccount(deps.getAccountCosmetic);
+	hideConfirm();
+	saveInFlight = false;
+	setSaveDisabled(false);
+	updateSaveButtonLabel();
 	overlayEl.classList.remove('hidden');
 	isOpen = true;
 	openPreview(previewCanvasEl, { ...selection });
@@ -123,37 +221,62 @@ export function closeCharacterBooth() {
 	if (isOpen) {
 		closePreview();
 	}
+	hideConfirm();
+	saveInFlight = false;
+	setSaveDisabled(false);
 	overlayEl.classList.add('hidden');
 	form?.showError('');
 	isOpen = false;
 }
 
-async function saveCharacterBooth() {
-	if (!saveBtnEl || !selection || !deps || !form) return;
-	const cosmetic = {
-		bodyColor: selection.bodyColor,
-		accentColor: selection.accentColor,
-		bodyShape: selection.bodyShape,
-		hat: selection.hat,
-		proportions: { ...selection.proportions },
-	};
+function cancelPaidSave() {
+	if (saveInFlight) return;
+	hideConfirm();
+}
+
+async function confirmPaidSave() {
+	if (!pendingCosmetic || saveInFlight || !deps || !form) return;
+	await emitAppearanceChange(pendingCosmetic);
+}
+
+async function emitAppearanceChange(cosmetic) {
+	const socket = deps.getSocket();
+	if (socket?.connected) {
+		saveInFlight = true;
+		setSaveDisabled(true);
+		form.showError('');
+		socket.emit('applyAppearanceChange', { cosmetic });
+		return;
+	}
+
+	saveInFlight = true;
+	setSaveDisabled(true);
 	form.showError('');
-	saveBtnEl.disabled = true;
 	const result = await deps.patchProfile({ cosmetic });
-	saveBtnEl.disabled = false;
+	saveInFlight = false;
+	setSaveDisabled(false);
 
 	if (result.error) {
 		form.showError(result.error);
 		return;
 	}
 
-	form.syncFromAccount(deps.getAccountCosmetic);
-	const myId = deps.getMyId();
-	const gameState = deps.getGameState();
-	if (myId && gameState?.players?.[myId]) {
-		gameState.players[myId].cosmetic = deps.getAccountCosmetic();
-		deps.setGameStateRef(gameState);
+	finishSuccessfulSave();
+}
+
+async function saveCharacterBooth() {
+	if (!saveBtnEl || !selection || !deps || !form || saveInFlight) return;
+	const cosmetic = buildCosmeticPayload();
+	const paidChange = isPaidAppearanceChange(cosmetic);
+
+	form.showError('');
+
+	if (paidChange) {
+		showConfirm(cosmetic);
+		return;
 	}
+
+	await emitAppearanceChange(cosmetic);
 }
 
 /** Whether the booth overlay is currently open (test/debug helper). */

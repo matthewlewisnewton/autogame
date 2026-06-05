@@ -1,10 +1,18 @@
-`LOGBOOK.md` is conflict-free.
+All four conflicted files are resolved and marker-free. Summary of how each merge was combined:
 
-The conflict was at the end of the file where **main** closed the v0.240 (`270-difficulty-scale-with-player-count`) entry with "No blocking gaps found." and the **235-booth-shop** branch appended the full v0.246 review entry.
+**`game/shared/dungeonTheme.json`**
+- Kept main's warm sandy `open-plaza` palette (`#b8a078` / `#e8a317` accent) from plaza-arena-identity
+- Added the ticket's separate `sunken-canyon` profile with band-specific floor tints
 
-The merged result keeps both:
+**`game/client/dungeon.js`**
+- `buildLandmarkMesh` now supports both landmark types: `canyon_monolith` (ticket) and `arena_dais` (main), each with its own switch case
 
-1. **Main's v0.240 closing** — `## Remaining gaps` → `No blocking gaps found.`
-2. **Ticket's v0.246 entry** — complete booth-shop review (shop booth wiring, `?booth=shop` hook, 2D shop compatibility, tests, design check) ending with `## Remaining gaps` → `None.`
+**`game/client/test/dungeon.test.js`**
+- Imports both `buildCanyonCliffLipMesh` and `buildCoverMesh`
+- Landmark test covers both monolith and dais rendering
+- Updated the palette test to expect main's sandy `open-plaza` floor (`0xb8a078`) while keeping sunken-canyon band assertions (`plateau`/`canyon` hex values)
 
-The file already had main's v0.244 (`232-hub-shared-presence`) entry merged above; no other conflict markers remain. The harness can proceed with commit and tests.
+**`LOGBOOK.md`**
+- Preserved main's v0.247–v0.251 entries, then appended the ticket's v0.252 canyon-verticality-identity entry
+
+Dungeon tests pass (872/872). The harness can commit and complete the merge.

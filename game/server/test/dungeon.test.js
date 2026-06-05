@@ -1447,20 +1447,33 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(area).toBeGreaterThanOrEqual(4 * 182);
   });
 
+  const OPEN_PLAZA_COVER_TYPES = ['pillar', 'broken_wall', 'barricade', 'crate_stack'];
+
   it('has ≥ 6 cover pieces of valid type, fully inside the interior', () => {
     const layout = generateLayout(123, 'open-plaza');
     expect(layout.cover.length).toBeGreaterThanOrEqual(6);
     const half = layout.rooms[0].width / 2;
     for (const c of layout.cover) {
-      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(OPEN_PLAZA_COVER_TYPES).toContain(c.type);
       expect(Math.abs(c.x) + c.width / 2).toBeLessThanOrEqual(half);
       expect(Math.abs(c.z) + c.depth / 2).toBeLessThanOrEqual(half);
     }
   });
 
-  it('has ≥ 2 platforms, each with corner delta ≤ 0.5', () => {
+  it('uses ≥ 3 distinct cover types and includes every candidate-pool type for seed 123', () => {
     const layout = generateLayout(123, 'open-plaza');
-    expect(layout.platforms.length).toBeGreaterThanOrEqual(2);
+    const typesInLayout = new Set(layout.cover.map(c => c.type));
+    expect(typesInLayout.size).toBeGreaterThanOrEqual(3);
+    for (const type of OPEN_PLAZA_COVER_TYPES) {
+      expect(typesInLayout.has(type)).toBe(true);
+    }
+  });
+
+  it('has ≥ 3 platforms at distinct positions, each with corner delta ≤ 0.5', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+    const positions = layout.platforms.map(p => `${p.x},${p.z}`);
+    expect(new Set(positions).size).toBe(layout.platforms.length);
     for (const p of layout.platforms) {
       const ys = [p.floorCorners.yNW, p.floorCorners.yNE, p.floorCorners.ySE, p.floorCorners.ySW];
       expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(0.5 + 1e-9);
@@ -1487,6 +1500,41 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     }
   });
 
+  it('includes ≥ 1 pit hazard outside spawn-clear and clear of cover footprints', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const SPAWN_CLEAR = 6;
+    expect(Array.isArray(layout.hazards)).toBe(true);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      expect(h.pitDepth).toBeGreaterThan(0);
+      const dx = Math.max(Math.abs(h.x) - h.width / 2, 0);
+      const dz = Math.max(Math.abs(h.z) - h.depth / 2, 0);
+      expect(dx * dx + dz * dz).toBeGreaterThanOrEqual(SPAWN_CLEAR * SPAWN_CLEAR);
+      const hitsCover = layout.cover.some(c => {
+        const margin = 0.5;
+        return (
+          Math.abs(h.x - c.x) < (h.width + c.width) / 2 + margin &&
+          Math.abs(h.z - c.z) < (h.depth + c.depth) / 2 + margin
+        );
+      });
+      expect(hitsCover).toBe(false);
+    }
+  });
+
+  it('hazards do not add wall colliders or change sampleFloorY at pit centres', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    for (const h of layout.hazards) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - h.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - h.width) < 1e-6
+      );
+      expect(hit).toBe(false);
+      expect(sampleFloorY(layout, h.x, h.z)).toBe(DEFAULT_FLOOR_Y);
+    }
+  });
+
   it('cover never blocks reachability: every interior cell stays reachable from centre', () => {
     for (const seed of [1, 42, 123, 777, 9999]) {
       const layout = generateLayout(seed, 'open-plaza');
@@ -1498,7 +1546,13 @@ describe("generateLayout(seed, 'open-plaza')", () => {
   it('sampleFloorY returns raised height on a platform and DEFAULT_FLOOR_Y elsewhere', () => {
     const layout = generateLayout(123, 'open-plaza');
     const p = layout.platforms[0];
-    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThan(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+    for (const platform of layout.platforms) {
+      const corners = platform.floorCorners;
+      const maxCorner = Math.max(corners.yNW, corners.yNE, corners.ySE, corners.ySW);
+      expect(maxCorner).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+      expect(sampleFloorY(layout, platform.x, platform.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+    }
     // A point on the open plaza floor away from any platform reads the flat floor.
     expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
   });
@@ -1507,6 +1561,74 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     const a = generateLayout(2024, 'open-plaza');
     const b = generateLayout(2024, 'open-plaza');
     expect(a).toEqual(b);
+  });
+
+  it('returns exactly one arena_dais landmark at the origin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.landmarks).toEqual([{ x: 0, z: 0, type: 'arena_dais' }]);
+  });
+
+  it('includes a center_ring floor marking inside the spawn-clear radius', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(Array.isArray(layout.floorMarkings)).toBe(true);
+    expect(layout.floorMarkings.length).toBeGreaterThanOrEqual(1);
+    const ring = layout.floorMarkings.find(m => m.type === 'center_ring');
+    expect(ring).toBeDefined();
+    expect(ring.x).toBe(0);
+    expect(ring.z).toBe(0);
+    expect(ring.innerRadius).toBeGreaterThan(0);
+    expect(ring.outerRadius).toBeGreaterThan(ring.innerRadius);
+    const spawnClearRadius = 6;
+    expect(ring.outerRadius).toBeLessThanOrEqual(spawnClearRadius);
+    const maxExtent = Math.hypot(ring.x, ring.z) + ring.outerRadius;
+    expect(maxExtent).toBeLessThanOrEqual(spawnClearRadius);
+  });
+
+  it('floor markings do not affect wall colliders or sampleFloorY at origin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withMarkings = buildWallColliders(layout);
+    const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
+    expect(withMarkings).toEqual(withoutMarkings);
+    expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY({ ...layout, floorMarkings: [] }, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+  });
+
+  it('landmarks do not affect wall colliders', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withLandmark = buildWallColliders(layout);
+    const withoutLandmark = buildWallColliders({ ...layout, landmarks: [] });
+    expect(withLandmark).toEqual(withoutLandmark);
+  });
+
+  it('includes ≥ 8 perimeter decor entries of allowed types, ≥ 2 per wall, inside interior margin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const half = layout.rooms[0].width / 2;
+    const margin = 2;
+    const allowed = ['arena_banner', 'arena_tier'];
+    const walls = ['north', 'south', 'east', 'west'];
+
+    expect(Array.isArray(layout.perimeterDecor)).toBe(true);
+    expect(layout.perimeterDecor.length).toBeGreaterThanOrEqual(8);
+
+    for (const d of layout.perimeterDecor) {
+      expect(allowed).toContain(d.type);
+      expect(walls).toContain(d.wall);
+      expect(Math.abs(d.x)).toBeLessThanOrEqual(half - margin);
+      expect(Math.abs(d.z)).toBeLessThanOrEqual(half - margin);
+    }
+
+    for (const wall of walls) {
+      const onWall = layout.perimeterDecor.filter(d => d.wall === wall);
+      expect(onWall.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('perimeter decor does not affect wall colliders or wall gaps', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withDecor = buildWallColliders(layout);
+    const withoutDecor = buildWallColliders({ ...layout, perimeterDecor: [] });
+    expect(withDecor).toEqual(withoutDecor);
+    expect(layout.rooms[0].walls.length).toBe(4);
   });
 
   it('cover footprints become wall colliders (player cannot walk through cover)', () => {

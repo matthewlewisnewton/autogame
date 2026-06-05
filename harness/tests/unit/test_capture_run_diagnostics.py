@@ -42,6 +42,20 @@ class TestDiagnoseServersDidNotStart:
         assert "Port 5173 is already in use" in diag["client_log_tail"]
         assert "Server listening" in diag["server_log_tail"]
 
+    def test_server_eaddrinuse_not_misclassified_as_vite(self, tmp_artifacts, monkeypatch):
+        """Ticket 242: server listen EADDRINUSE must not be tagged vite_eaddrinuse."""
+        monkeypatch.setattr(cr_mod, "_port_holders", lambda port: [])
+        (tmp_artifacts / "client.log").write_text(
+            "[vite] Proxying /api and /socket.io → http://127.0.0.1:3000\n"
+        )
+        (tmp_artifacts / "server.log").write_text(
+            "[server] HTTP server error: Error: listen EADDRINUSE: "
+            "address already in use :::3000\n"
+        )
+        ports = PortAllocation(game_server=3000, vite=5173)
+        diag = cr_mod._diagnose_servers_did_not_start(tmp_artifacts, ports)
+        assert diag["detected"] == ["server_eaddrinuse"]
+
     def test_port_holders_recorded(self, tmp_artifacts, monkeypatch):
         fake_holders = {
             5173: [(82526, "node /home/.../.bin/vite --port 5173 --strictPort")],

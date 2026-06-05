@@ -35,6 +35,9 @@ export const MAX_HP = 100;
 /** Guild medic full-heal cost */
 export const MEDIC_HEAL_COST = 10;
 
+/** Character-booth paid appearance edit cost */
+export const APPEARANCE_CHANGE_COST = 25;
+
 /** Maximum player Magic Stones — synced via shared/constants.json */
 export const MAX_MS = sharedConstants.MAX_MAGIC_STONES;
 export const STARTING_MS = sharedConstants.STARTING_MAGIC_STONES;

@@ -338,6 +338,36 @@ export const THREE = {
 			return this;
 		}
 	},
+	CanvasTexture: class CanvasTexture {
+		constructor(canvas) {
+			this.image = canvas;
+			this.minFilter = null;
+			this.needsUpdate = false;
+		}
+		dispose() {}
+	},
+	SpriteMaterial: class SpriteMaterial {
+		constructor(opts = {}) {
+			Object.assign(this, opts);
+		}
+		dispose() {}
+	},
+	Sprite: class Sprite {
+		constructor(material) {
+			this.isSprite = true;
+			this.material = material;
+			this.userData = {};
+			this.position = {
+				x: 0, y: 0, z: 0,
+				set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+			};
+			this.scale = {
+				x: 1, y: 1, z: 1,
+				set(x, y, z) { this.x = x; this.y = y; this.z = z; return this; },
+			};
+		}
+	},
+	LinearFilter: 1006,
 	DoubleSide: 2,
 };
 
@@ -369,4 +399,8 @@ export const LineBasicMaterial = THREE.LineBasicMaterial;
 export const Mesh = THREE.Mesh;
 export const Group = THREE.Group;
 export const LineSegments = THREE.LineSegments;
+export const CanvasTexture = THREE.CanvasTexture;
+export const SpriteMaterial = THREE.SpriteMaterial;
+export const Sprite = THREE.Sprite;
+export const LinearFilter = THREE.LinearFilter;
 export const DoubleSide = THREE.DoubleSide;
