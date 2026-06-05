@@ -1,6 +1,9 @@
-Resolved `LOGBOOK.md` by keeping **both** sides in version order:
+`LOGBOOK.md` is resolved and marker-free.
 
-1. **From `main`:** v0.224 (273-socketHandlers-extract-deck), v0.225 (230-hub-client-render), v0.226 (274-socketHandlers-extract-trade)
-2. **From the ticket branch:** v0.228 (211-net-slim-per-tick-state-broadcast) appended after those entries
+**What conflicted:** At the end of the file, after the v0.228 (`211-net-slim-per-tick-state-broadcast`) entry. Main had no further content; this branch added the v0.230 (`231-hub-lobby-phase-movement`) review entry.
 
-All conflict markers are removed. The harness can proceed with the merge commit.
+**Resolution:** Kept both sides:
+- **Main:** v0.229 (`275-socketHandlers-extract-keyitem`) and v0.228 entries already present above the conflict
+- **Branch:** Appended the full v0.230 lobby-phase movement logbook entry after v0.228
+
+The file now ends with the ticket’s review notes and has no remaining `<<<<<<<`, `=======`, or `>>>>>>>` markers. The harness can commit and finish the merge.
