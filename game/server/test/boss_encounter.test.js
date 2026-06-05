@@ -29,8 +29,16 @@ const VALID_CONFIG = {
 describe('getEncounterConfig', () => {
   it('returns null for quests without stageBossEncounter', () => {
     expect(getEncounterConfig(getQuest('training_caverns'))).toBeNull();
-    expect(getEncounterConfig(getQuest('arena_trials', 2))).toBeNull();
+    expect(getEncounterConfig(getQuest('arena_trials', 1))).toBeNull();
     expect(getEncounterConfig(null)).toBeNull();
+  });
+
+  it('resolves arena_trials Tier 2 stage-boss config', () => {
+    expect(getEncounterConfig(getQuest('arena_trials', 2))).toEqual({
+      bossType: 'miniboss',
+      trigger: 'deploy',
+      rewardCurrencyBonus: 5,
+    });
   });
 
   it('resolves a valid stageBossEncounter from a quest tier def', () => {

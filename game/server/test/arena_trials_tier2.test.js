@@ -13,6 +13,7 @@ import {
 import { generateLayout, questLayoutSeed } from '../dungeon.js';
 import {
   spawnEnemies,
+  startDungeonRun,
   gameState,
   resetGameState,
   checkRunTerminalState,
@@ -21,6 +22,7 @@ import {
   setTestProvider,
   _timeouts,
 } from '../index.js';
+import { getEncounterConfig, isEncounterLocked, isStageBossEnemy } from '../bossEncounter.js';
 import {
   startTestServer,
   closeServer,
@@ -125,10 +127,10 @@ describe('arena_trials Tier 2 catalog and layout', () => {
   });
 });
 
-describe('arena_trials Tier 2 deploy spawns', () => {
+describe('arena_trials Tier 2 stage-boss deploy', () => {
   beforeEach(() => resetGameState());
 
-  function deployArenaTier(tier, seed = SEED) {
+  function deployArenaTier(tier, seed = SEED, { withRun = false } = {}) {
     const layout = layoutForArenaTier(tier, seed);
     gameState.selectedQuestId = QUEST_ID;
     gameState.selectedQuestTier = tier;
@@ -136,27 +138,41 @@ describe('arena_trials Tier 2 deploy spawns', () => {
     gameState.layoutSeed = seed;
     gameState.enemies = [];
     gameState.loot = [];
-    gameState.run = { questTier: tier };
-    spawnEnemies();
+    gameState.gamePhase = 'playing';
+    if (withRun) {
+      startDungeonRun();
+    } else {
+      gameState.run = { questTier: tier };
+      spawnEnemies();
+    }
   }
 
-  it('places Tier 2 enemies on walkable floor clear of cover', () => {
-    deployArenaTier(TIER_2);
-    expect(gameState.enemies.length).toBe(getQuest(QUEST_ID, TIER_2).enemyCount);
-    for (const enemy of gameState.enemies) {
-      assertOnFloor(gameState.layout, enemy);
-    }
+  it('exposes stageBossEncounter on Tier 2 catalog only', () => {
+    expect(getEncounterConfig(getQuest(QUEST_ID, TIER_1))).toBeNull();
+    expect(getEncounterConfig(getQuest(QUEST_ID, TIER_2))).toMatchObject({
+      bossType: 'miniboss',
+      trigger: 'deploy',
+      rewardCurrencyBonus: 5,
+    });
+    expect(getQuest(QUEST_ID, TIER_2).enemyCount).toBe(0);
   });
 
-  it('tags at least one enemy on Tier 2 under a fixed seed', () => {
-    deployArenaTier(TIER_2, SEED);
-    const tagged = gameState.enemies.filter((e) => e.variant).length;
-    expect(tagged).toBeGreaterThan(0);
+  it('skips bulk mob pack and spawns one stage boss on deploy', () => {
+    deployArenaTier(TIER_2, SEED, { withRun: true });
+    expect(gameState.enemies.length).toBe(1);
+    expect(gameState.run.encounter.status).toBe('active');
+    expect(isEncounterLocked(gameState.run)).toBe(true);
+    const boss = gameState.enemies[0];
+    expect(boss.type).toBe('miniboss');
+    expect(boss.isStageBoss).toBe(true);
+    expect(isStageBossEnemy(boss, gameState.run)).toBe(true);
+    expect(gameState.run.objective.totalEnemies).toBe(1);
+    assertOnFloor(gameState.layout, boss);
   });
 
-  it('leaves all enemies un-tagged on Tier 1 for the same geometry', () => {
+  it('still spawns a full mob pack on Tier 1 with no encounter config', () => {
     deployArenaTier(TIER_1, SEED);
-    expect(gameState.enemies.length).toBeGreaterThan(0);
+    expect(gameState.enemies.length).toBe(getQuest(QUEST_ID, TIER_1).enemyCount);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);
   });
 });

@@ -151,11 +151,11 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'arena-trials-tier-2') {
-      // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
-      // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
-      // deploying; this scenario is a shortcut into that state.
+      // arena_trials Tier 2 stage-boss encounter: rigid open-plaza, one miniboss on
+      // deploy, ambient spawns locked. Quest/tier and layout must be set before
+      // enterPlayingPhase so startDungeonRun snapshots the correct run metadata and
+      // tryStartStageBossEncounter fires on deploy. Reachable normally by clearing
+      // Arena Trials Tier 1, unlocking Tier 2, and deploying; shortcut for harness QA.
       const questId = 'arena_trials';
       const tier = 2;
       unlockQuestTier(player.accountId, questId, tier);
@@ -181,11 +181,6 @@ function applyDebugScenario(socket, name) {
           player.pendingSummons = new Set();
         }
       }
-
-      state.enemies = [];
-      state.loot = [];
-      spawnEnemies();
-      syncRunObjectiveToEnemies();
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

@@ -1,8 +1,7 @@
 // Quest tier defs may optionally include `stageBossEncounter`:
 //   { bossType, trigger, roomRole?, rewardCurrencyBonus?, unlockOnClear? }
-// See game/server/bossEncounter.js for the documented config shape. No tier is
-// wired with a stage boss in this sub-ticket; later sub-tickets attach encounters
-// to specific quest tiers (e.g. arena_trials tier 2).
+// See game/server/bossEncounter.js for the documented config shape.
+// Reference wiring: arena_trials tier 2 (deploy-triggered miniboss).
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -68,13 +67,18 @@ const QUEST_DEFS = {
       2: {
         tier: 2,
         name: 'Arena Trials — Tier II',
-        description: 'Face the rigid trial grounds where every warden bears a twisted mark.',
+        description: 'Face the marked trial warden alone on the rigid trial grounds.',
         objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        enemyCount: 0,
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'arena_trials', tier: 1 },
+        stageBossEncounter: {
+          bossType: 'miniboss',
+          trigger: 'deploy',
+          rewardCurrencyBonus: 5,
+        },
       },
     },
   },
@@ -201,6 +205,9 @@ function formatObjectiveSummary(quest) {
     return `Recover ${quest.itemCount ?? 0} prisms`;
   }
   if (quest.objectiveType === 'defeat_enemies') {
+    if (quest.stageBossEncounter?.bossType) {
+      return 'Defeat the trial warden';
+    }
     return `Neutralize ${quest.enemyCount ?? 0} hostiles`;
   }
   if (quest.objectiveType === 'survive') {
