@@ -477,6 +477,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-failed',
   'run-exhausted',
   'quest-objective-near-complete',
+  'collect-prisms-progress',
   'telepipe-ready',
   'extracted-in-hub',
   'suspended-run-hub',
@@ -495,6 +496,7 @@ const DEBUG_SCENARIOS = new Set([
   'open-verticality',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'sunken-canyon-cliff-hazard',
   'spire-ascent',
   'spire-ascent-stage',
   'spire-summit-beacon',
@@ -634,7 +636,12 @@ function isDebugScenarioAllowed(socket) {
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  return address === '::1' || address === '127.0.0.1' || address.endsWith('.127.0.0.1');
+  return (
+    address === '::1' ||
+    address === '127.0.0.1' ||
+    address.endsWith('.127.0.0.1') ||
+    address.startsWith('::ffff:127.')
+  );
 }
 
 function ensureNearbyEnemy(state, x, z) {

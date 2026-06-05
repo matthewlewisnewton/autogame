@@ -2304,7 +2304,15 @@ function updateObjectiveHud() {
 	if (gameState && gameState.gamePhase === 'playing' && run && run.objective) {
 		const obj = run.objective;
 		const title = formatQuestTierLabel(run.questName, run.questTier ?? 1);
-		objectiveHudEl.textContent = `${title}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
+		let progress = '';
+		if (obj.type === 'collect_items') {
+			progress = THEME.objectives.collectPrismsProgress
+				.replace('{collected}', String(obj.collectedItems ?? 0))
+				.replace('{total}', String(obj.totalItems ?? 0));
+		} else if (obj.type === 'defeat_enemies') {
+			progress = `Purged ${obj.defeatedEnemies ?? 0} / ${obj.totalEnemies ?? 0} hostiles`;
+		}
+		objectiveHudEl.textContent = progress ? `${title}\n${progress}` : title;
 		objectiveHudEl.style.display = 'block';
 	} else {
 		objectiveHudEl.style.display = 'none';

@@ -1,0 +1,12 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/248-rooms-objective-hud-and-default-profile-bugs/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/248-rooms-objective-hud-and-default-profile-bugs/game/data
+Server listening on port 3001
+Player connected: socket=AkUUXJwVanfWepddAAAB, playerId=2c6dd79c-d045-47ac-8ea7-9797e6bc12e4
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=hrFLXfzSazERzUWKAAAD, playerId=b8af6a3a-3f69-4b86-a658-f83d87114235
+[loot] spawned id=dc3fe896-26ca-49e8-82c7-888a6f76544e value=16
+Player disconnected: AkUUXJwVanfWepddAAAB
+Player disconnected: hrFLXfzSazERzUWKAAAD

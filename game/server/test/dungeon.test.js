@@ -12,6 +12,8 @@ import {
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
+  DEFAULT_LAYOUT_PROFILE,
+  normalizeLayoutProfile,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
@@ -852,6 +854,27 @@ describe('layout profiles', () => {
     expect(open.passageWidth).toBe(LAYOUT_PROFILES.open.passageWidth);
     expect(open.cellSpacing).toBe(LAYOUT_PROFILES.open.cellSpacing);
     expect(open.profile).toBe('open');
+  });
+
+  it("'default' string alias resolves to DEFAULT_LAYOUT_PROFILE, not crowded", () => {
+    const normalized = normalizeLayoutProfile('default');
+    expect(normalized.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+    expect(normalized.cellSpacing).not.toBe(LAYOUT_PROFILES.crowded.cellSpacing);
+    expect(normalized.targetRoomFraction).toBe(DEFAULT_LAYOUT_PROFILE.targetRoomFraction);
+
+    const layout = generateLayout(42, 'default');
+    expect(layout.profile).toBe('default');
+    expect(layout.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+
+    const crowded = generateLayout(42, 'crowded');
+    expect(layout.cellSpacing).not.toBe(crowded.cellSpacing);
+    expect(layout.rooms.length).not.toBe(crowded.rooms.length);
+  });
+
+  it('accepts DEFAULT_LAYOUT_PROFILE object unchanged', () => {
+    const layout = generateLayout(42, DEFAULT_LAYOUT_PROFILE);
+    expect(layout.profile).toBe('default');
+    expect(layout.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
   });
 });
 
@@ -1881,6 +1904,125 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       const rampCount = roomsByBand(layout, 'ramp').length;
       expect(rampCount).toBeGreaterThanOrEqual(4);
       expect(rampCount).toBeLessThanOrEqual(5);
+    }
+  });
+
+  it('emits one cliffLip per ramp at plateau high Y, aligned to ramp X centres', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const ramps = roomsByBand(layout, 'ramp');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+
+      expect(Array.isArray(layout.cliffLips)).toBe(true);
+      expect(layout.cliffLips.length).toBe(ramps.length);
+      expect(layout.cliffLips.length).toBeGreaterThanOrEqual(4);
+      expect(layout.cliffLips.length).toBeLessThanOrEqual(5);
+
+      for (const ramp of ramps) {
+        const lip = layout.cliffLips.find(
+          (l) => Math.abs((l.minX + l.maxX) / 2 - ramp.x) < 0.01
+        );
+        expect(lip).toBeDefined();
+        expect(lip.y).toBe(yPlateau);
+        expect(lip.maxX - lip.minX).toBeCloseTo(ramp.width, 4);
+        const rampHalfD = ramp.depth / 2;
+        const rampNorthZ = ramp.z - rampHalfD;
+        expect(lip.maxZ).toBeLessThanOrEqual(rampNorthZ - 0.01);
+      }
+    }
+  });
+
+  function monolithFootprint(lm) {
+    return { x: lm.x, z: lm.z, width: 2.0, depth: 2.0 };
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  function outsideSpawnClear(lm, canyon, radius = 6) {
+    const fp = monolithFootprint(lm);
+    const dx = Math.max(Math.abs(fp.x - canyon.x) - fp.width / 2, 0);
+    const dz = Math.max(Math.abs(fp.z - canyon.z) - fp.depth / 2, 0);
+    return dx * dx + dz * dz >= radius * radius;
+  }
+
+  it('places exactly one canyon_monolith landmark in the canyon band (seed 42)', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    expect(layout.landmarks).toHaveLength(1);
+    const lm = layout.landmarks[0];
+    expect(lm.type).toBe('canyon_monolith');
+    expect(typeof lm.x).toBe('number');
+    expect(typeof lm.z).toBe('number');
+    expect(typeof lm.yaw).toBe('number');
+    expect(Math.abs(lm.x - canyon.x) + monolithFootprint(lm).width / 2).toBeLessThanOrEqual(canyon.width / 2);
+    expect(Math.abs(lm.z - canyon.z) + monolithFootprint(lm).depth / 2).toBeLessThanOrEqual(canyon.depth / 2);
+    expect(outsideSpawnClear(lm, canyon)).toBe(true);
+    const fp = monolithFootprint(lm);
+    for (const c of layout.cover) {
+      expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+    }
+    const floorY = sampleFloorY(layout, lm.x, lm.z);
+    expect(floorY).toBeCloseTo(sampleFloorY(layout, canyon.x, canyon.z), 4);
+  });
+
+  it('canyon monolith placement is deterministic for seed 42', () => {
+    expect(generateLayout(42, 'sunken-canyon').landmarks).toEqual(
+      generateLayout(42, 'sunken-canyon').landmarks
+    );
+  });
+
+  it('emits edgeHazards along plateau south rim between ramp mouths', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const ramps = roomsByBand(layout, 'ramp');
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+      const plateauSouthZ = plateau.z + plateau.depth / 2;
+
+      expect(Array.isArray(layout.edgeHazards)).toBe(true);
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+
+      for (const hazard of layout.edgeHazards) {
+        expect(hazard).toMatchObject({
+          minX: expect.any(Number),
+          maxX: expect.any(Number),
+          minZ: expect.any(Number),
+          maxZ: expect.any(Number),
+          y: yPlateau,
+          side: expect.stringMatching(/^(south|west|east)$/),
+          band: 'plateau',
+        });
+        expect(hazard.maxX - hazard.minX).toBeGreaterThan(0);
+        expect(hazard.maxZ - hazard.minZ).toBeGreaterThan(0);
+
+        if (hazard.side === 'south') {
+          expect(hazard.maxZ).toBeCloseTo(plateauSouthZ, 4);
+          expect(hazard.maxZ - hazard.minZ).toBeLessThanOrEqual(1.5);
+          for (const ramp of ramps) {
+            const rampCenterX = ramp.x;
+            const rampHalfW = ramp.width / 2;
+            const hazardCenterX = (hazard.minX + hazard.maxX) / 2;
+            const overlapsRampMouth =
+              hazardCenterX > rampCenterX - rampHalfW - 0.01 &&
+              hazardCenterX < rampCenterX + rampHalfW + 0.01;
+            expect(overlapsRampMouth).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it('plateau cliff hazards do not reduce canyon reachability', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      expect(canyonReachableFromPlateau(layout)).toBe(true);
     }
   });
 });

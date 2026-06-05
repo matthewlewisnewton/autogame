@@ -251,6 +251,97 @@ function resolveSpireRoomMaterials(room, layout, tierCount) {
 	return null;
 }
 
+// ── Sunken-canyon band floor materials (plateau / ramp / canyon) ──
+
+const sunkenCanyonBandMaterialsCache = new Map();
+const sunkenCanyonRoleFloorCache = new Map();
+
+function sunkenCanyonThemeEntry() {
+	return dungeonTheme.profiles['sunken-canyon'];
+}
+
+function sunkenCanyonPlateauFloorHex() {
+	const entry = sunkenCanyonThemeEntry();
+	return parseHex(entry.plateauFloor ?? entry.floor);
+}
+
+function sunkenCanyonCanyonFloorHex() {
+	const entry = sunkenCanyonThemeEntry();
+	return parseHex(entry.canyonFloor ?? entry.floor);
+}
+
+/**
+ * Hex color for a sunken-canyon vertical band floor (tests).
+ *
+ * @param {'plateau'|'canyon'|'ramp'|string} band
+ * @param {number} [yT] - 0 = plateau hue, 1 = canyon hue (ramps)
+ */
+export function getSunkenCanyonBandFloorHex(band, yT = 0.5) {
+	const plateauHex = sunkenCanyonPlateauFloorHex();
+	const canyonHex = sunkenCanyonCanyonFloorHex();
+	if (band === 'plateau') return plateauHex;
+	if (band === 'canyon') return canyonHex;
+	const t = band === 'ramp' ? yT : 0.5;
+	return lerpColorHex(plateauHex, canyonHex, t);
+}
+
+/**
+ * Cached floor material for a sunken-canyon vertical band.
+ *
+ * @param {'plateau'|'canyon'|'ramp'|string} band
+ * @param {number} [yT] - ramp lerp factor (0 = plateau, 1 = canyon)
+ */
+export function getSunkenCanyonBandMaterials(band, yT = 0.5) {
+	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'canyon');
+	if (!sunkenCanyonBandMaterialsCache.has(cacheKey)) {
+		const entry = sunkenCanyonThemeEntry();
+		const floorRoughness = entry.floorRoughness ?? 0.85;
+		const floorHex = getSunkenCanyonBandFloorHex(band, yT);
+		sunkenCanyonBandMaterialsCache.set(cacheKey, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: floorRoughness }),
+		});
+	}
+	return sunkenCanyonBandMaterialsCache.get(cacheKey);
+}
+
+function inferSunkenCanyonRampYT(room, layout) {
+	const fc = room.floorCorners;
+	if (!fc) return 0.5;
+
+	const avgY = (fc.yNW + fc.yNE + fc.ySE + fc.ySW) / 4;
+	const plateauRoom = layout.rooms.find(r => r.band === 'plateau');
+	const canyonRoom = layout.rooms.find(r => r.band === 'canyon');
+	const yHigh = plateauRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+	const yLow = canyonRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+	if (Math.abs(yHigh - yLow) < 0.001) return 0.5;
+	return (avgY - yHigh) / (yLow - yHigh);
+}
+
+function getSunkenCanyonRoleFloorMaterial(band, yT, role) {
+	const cacheKey = `role-${band}-${role}-${band === 'ramp' ? Math.round(yT * 100) : ''}`;
+	if (!sunkenCanyonRoleFloorCache.has(cacheKey)) {
+		const entry = sunkenCanyonThemeEntry();
+		const floorRoughness = entry.floorRoughness ?? 0.85;
+		const baseHex = getSunkenCanyonBandFloorHex(band, yT);
+		const tint = dungeonTheme.roleTints[role];
+		const color = tint ? tintHex(baseHex, tint.color, tint.mix) : baseHex;
+		sunkenCanyonRoleFloorCache.set(cacheKey, new THREE.MeshStandardMaterial({
+			color,
+			roughness: floorRoughness,
+		}));
+	}
+	return sunkenCanyonRoleFloorCache.get(cacheKey);
+}
+
+function resolveSunkenCanyonRoomFloorMaterial(room, layout) {
+	const band = room.band ?? 'canyon';
+	const yT = band === 'ramp' ? inferSunkenCanyonRampYT(room, layout) : 0.5;
+	if (room.role === 'start' || room.role === 'treasure') {
+		return getSunkenCanyonRoleFloorMaterial(band, yT, room.role);
+	}
+	return getSunkenCanyonBandMaterials(band, yT).floor;
+}
+
 // Treasure room marker material (emissive gold pillar)
 const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	color: 0xffd700,
@@ -264,6 +355,41 @@ export const SPIRE_SUMMIT_BEACON_TAG = 'spireSummitBeacon';
 
 /** userData.dungeonTag on spire-ascent exterior edge hazard warning strips. */
 export const SPIRE_EDGE_HAZARD_TAG = 'spireEdgeHazard';
+
+/** userData.dungeonTag on sunken-canyon plateau cliff-edge lip strips at ramp mouths. */
+export const CANYON_CLIFF_LIP_TAG = 'canyonCliffLip';
+
+const canyonCliffLipMaterial = (() => {
+	const entry = sunkenCanyonThemeEntry();
+	const accentHex = parseHex(entry.accent ?? entry.passageFloor);
+	const warningHex = parseHex(dungeonTheme.roleTints.treasure.color);
+	return new THREE.MeshStandardMaterial({
+		color: accentHex,
+		emissive: warningHex,
+		emissiveIntensity: 1.1,
+		roughness: 0.35,
+		metalness: 0.2,
+	});
+})();
+
+/**
+ * Low emissive warning strip on a sunken-canyon cliff-lip AABB at a ramp mouth.
+ */
+export function buildCanyonCliffLipMesh(lip) {
+	const width = lip.maxX - lip.minX;
+	const depth = lip.maxZ - lip.minZ;
+	const stripHeight = 0.14;
+	const geo = new THREE.BoxGeometry(width, stripHeight, depth);
+	const mesh = new THREE.Mesh(geo, canyonCliffLipMaterial);
+	const floorY = resolveFloorY(lip.y);
+	mesh.position.set(
+		(lip.minX + lip.maxX) / 2,
+		floorY + stripHeight / 2,
+		(lip.minZ + lip.maxZ) / 2,
+	);
+	mesh.userData.dungeonTag = CANYON_CLIFF_LIP_TAG;
+	return mesh;
+}
 
 const edgeHazardStripMaterial = new THREE.MeshStandardMaterial({
 	color: 0x22d3ee,
@@ -512,7 +638,7 @@ export function buildDoorwayMarkers(room, layout, materials) {
 /**
  * Build a composed landmark prop (visual only — no collision).
  *
- * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch | arena_dais
+ * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch | canyon_monolith | arena_dais
  * @param {{ wall: THREE.Material, accent: THREE.Material }} materials
  * @returns {THREE.Group}
  */
@@ -556,6 +682,14 @@ export function buildLandmarkMesh(type, materials) {
 			addMesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), wall, 1.2, 1.2, 0);
 			addMesh(new THREE.TorusGeometry(1.1, 0.18, 8, 24, Math.PI), accent, 0, 2.2, 0);
 			addMesh(new THREE.BoxGeometry(2.8, 0.2, 0.6), accent, 0, 0.1, 0);
+			break;
+		}
+		case 'canyon_monolith': {
+			addMesh(new THREE.BoxGeometry(1.8, 0.35, 1.8), wall, 0, 0.175, 0);
+			addMesh(new THREE.CylinderGeometry(0.85, 1.0, 1.2, 8), wall, 0, 0.95, 0);
+			addMesh(new THREE.BoxGeometry(1.1, 1.0, 1.1), wall, 0, 2.05, 0);
+			addMesh(new THREE.CylinderGeometry(0.45, 0.65, 0.9, 6), wall, 0, 3.0, 0);
+			addMesh(new THREE.BoxGeometry(0.5, 0.25, 0.5), accent, 0, 3.58, 0);
 			break;
 		}
 		case 'arena_dais': {
@@ -786,12 +920,20 @@ export function buildDungeon(scene, layout) {
 
 	// ── Build rooms ──
 	const isSpireAscent = layout.profile === 'spire-ascent';
+	const isSunkenCanyon = layout.profile === 'sunken-canyon';
 	const spireTierCount = isSpireAscent ? getSpireTierCount(layout) : 0;
 
 	for (const room of layout.rooms) {
 		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
-		// Pick floor material: spire tier/ramp tints, else profile role-based fallback
-		const floorMat = spireMats?.floor ?? (roleFloors[room.role] || profileFloorMaterial);
+		// Pick floor material: spire tier/ramp, sunken-canyon band tints, else profile role fallback
+		let floorMat;
+		if (spireMats) {
+			floorMat = spireMats.floor;
+		} else if (isSunkenCanyon) {
+			floorMat = resolveSunkenCanyonRoomFloorMaterial(room, layout);
+		} else {
+			floorMat = roleFloors[room.role] || profileFloorMaterial;
+		}
 		const roomWallMat = spireMats?.wall ?? profileWallMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped
@@ -869,6 +1011,12 @@ export function buildDungeon(scene, layout) {
 		const hazardMesh = buildSpireEdgeHazardMesh(hazard);
 		scene.add(hazardMesh);
 		meshes.push(hazardMesh);
+	}
+
+	for (const lip of layout.cliffLips || []) {
+		const lipMesh = buildCanyonCliffLipMesh(lip);
+		scene.add(lipMesh);
+		meshes.push(lipMesh);
 	}
 
 	// ── Build open-plaza platforms ──

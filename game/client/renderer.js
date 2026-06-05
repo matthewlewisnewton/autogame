@@ -51,7 +51,7 @@ import {
 	MAX_ELAPSED_MS,
 	TICK_RATE,
 	CAMERA_DISTANCE,
-	CAMERA_HEIGHT,
+	getCameraFollowHeight,
 	CAMERA_YAW_SENSITIVITY,
 	ENEMY_ATTACK_RANGE,
 	MAX_HP,
@@ -925,8 +925,9 @@ function syncFacingToServer() {
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
+	const followHeight = getCameraFollowHeight(currentLayoutProfile);
 	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
-	const targetY = playerY + CAMERA_HEIGHT;
+	const targetY = playerY + followHeight;
 	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
 
 	if (lockOnReleaseLookAt) {
@@ -1360,9 +1361,10 @@ export function initScene(layout, spawnPos) {
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
 	cameraYaw = 0;
+	const initialFollowHeight = getCameraFollowHeight(layout?.profile);
 	camera.position.set(
 		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		CAMERA_HEIGHT,
+		initialFollowHeight,
 		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
 	);
 	const spawnFloorY = layout

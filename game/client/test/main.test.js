@@ -4071,3 +4071,92 @@ describe('useKeyItem key capture', () => {
 		expect(toast).toBeUndefined();
 	});
 });
+
+describe('updateObjectiveHud()', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	beforeEach(() => {
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+		const cardHand = document.getElementById('card-hand');
+		if (cardHand && cardHand.querySelectorAll('.card-slot').length === 0) {
+			for (let i = 0; i < 6; i++) {
+				const slot = document.createElement('div');
+				slot.className = 'card-slot';
+				slot.dataset.slotIndex = String(i);
+				cardHand.appendChild(slot);
+			}
+		}
+	});
+
+	it('shows prism progress for collect_items and hides outside playing', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questName: 'Prism Salvage',
+				questTier: 1,
+				objective: {
+					type: 'collect_items',
+					collectedItems: 2,
+					totalItems: 5,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Prism Salvage');
+		expect(hud.textContent).toContain('2/5 prisms');
+		expect(hud.textContent).not.toMatch(/hostiles/i);
+		expect(hud.textContent).not.toContain('undefined');
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'lobby',
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('none');
+	});
+
+	it('shows hostiles progress for defeat_enemies', async () => {
+		await import('../main.js');
+		const hud = document.getElementById('objective-hud');
+
+		window.__triggerSocketEvent('stateUpdate', {
+			gamePhase: 'playing',
+			run: {
+				questName: 'Initiate Vault',
+				questTier: 1,
+				objective: {
+					type: 'defeat_enemies',
+					defeatedEnemies: 1,
+					totalEnemies: 5,
+				},
+			},
+			players: { p1: { hp: 80, magicStones: 40, currency: 0, x: 0, z: 0 } },
+		});
+
+		expect(hud.style.display).toBe('block');
+		expect(hud.textContent).toContain('Initiate Vault');
+		expect(hud.textContent).toContain('Purged 1 / 5 hostiles');
+	});
+});

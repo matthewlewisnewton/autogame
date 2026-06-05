@@ -1,6 +1,9 @@
-Resolved the `LOGBOOK.md` conflict by keeping **both** logbook entries in chronological order:
+`LOGBOOK.md` is resolved. The conflict was two independent logbook appendages competing for the same spot after v0.251.
 
-1. **v0.250 — 247-plaza-arena-identity** (from `main`) — plaza arena cover, verticality, hazards, and tests
-2. **v0.251 — 251-enemy-display-metadata** (from this ticket) — enemy display metadata review notes
+**Resolution:** Combined both sides in version order:
 
-They sit after the existing v0.249 entry, matching the file’s ascending version order. All conflict markers are removed; the file is ready for the harness to commit and finish the merge.
+1. **v0.252** — `245-canyon-verticality-identity` (from `main`)
+2. **v0.253** — `248-rooms-objective-hud-and-default-profile-bugs` (from `main`)
+3. **v0.254** — `252-enemy-lockon-info-panel` (from this ticket’s branch)
+
+All conflict markers are removed. The harness can continue the merge.

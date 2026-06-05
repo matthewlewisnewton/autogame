@@ -14,13 +14,17 @@ import {
 	wallMaterial,
 	getProfileMaterials,
 	getProfileMaterialColors,
+	getSunkenCanyonBandFloorHex,
+	getSunkenCanyonBandMaterials,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
 	PASSAGE_WALL_HEIGHT,
 	SPIRE_SUMMIT_BEACON_TAG,
 	SPIRE_EDGE_HAZARD_TAG,
+	CANYON_CLIFF_LIP_TAG,
 	buildSpireEdgeHazardMesh,
+	buildCanyonCliffLipMesh,
 	buildCoverMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
@@ -74,9 +78,21 @@ describe('profile material palette', () => {
 	});
 
 	it('falls back to the legacy default palette for unknown profiles', () => {
-		const unknown = getProfileMaterialColors('sunken-canyon');
+		const unknown = getProfileMaterialColors('not-a-real-profile');
 		const legacy = getProfileMaterialColors('default');
 		expect(unknown).toEqual(legacy);
+	});
+
+	it('defines sunken-canyon band palettes distinct from open-plaza and crowded profiles', () => {
+		const plaza = getProfileMaterialColors('open-plaza');
+		const canyon = getProfileMaterialColors('sunken-canyon');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(plaza.floor).toBe(0xb8a078);
+		expect(canyon.floor).toBe(0x2f3d35);
+		expect(plaza.floor).not.toBe(canyon.floor);
+		expect(canyon.floor).not.toBe(crowded.floor);
+		expect(getSunkenCanyonBandFloorHex('plateau')).toBe(0x4a5f4a);
+		expect(getSunkenCanyonBandFloorHex('canyon')).toBe(0x2f3d35);
 	});
 
 	it('derives role floor tints from the active profile base', () => {
@@ -736,6 +752,123 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 			1 + layout.rooms.length + layout.cover.length + 1
 		);
 	});
+
+	it('renders one canyon_monolith landmark group on sampleFloorY for seed 42', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.landmarks).toHaveLength(1);
+		expect(layout.landmarks[0].type).toBe('canyon_monolith');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const monolithGroups = scene.added.filter(o => o.userData?.landmarkType === 'canyon_monolith');
+		expect(monolithGroups).toHaveLength(1);
+		const lm = layout.landmarks[0];
+		const floorY = resolveFloorY(sampleFloorY(layout, lm.x, lm.z));
+		expect(monolithGroups[0].position.y).toBeCloseTo(floorY, 4);
+		expect(monolithGroups[0].children.length).toBeGreaterThan(0);
+		expect(meshes.some(m => monolithGroups[0].children.includes(m))).toBe(true);
+	});
+
+	it('assigns three distinct band floor colors for plateau, ramp, and canyon rooms', () => {
+		const layout = sunkenCanyonFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const ramp = layout.rooms.find(r => r.band === 'ramp');
+		const canyon = layout.rooms.find(r => r.band === 'canyon');
+
+		const plateauFloor = findRoomFloorMesh(result.meshes, plateau);
+		const rampFloor = result.meshes.find(m =>
+			m.geometry?.parameters?.height === 0.1 &&
+			Math.abs(m.position.x - ramp.x) < 0.01 &&
+			Math.abs(m.position.z - ramp.z) < 0.01
+		);
+		const canyonFloor = findRoomFloorMesh(result.meshes, canyon);
+
+		expect(plateauFloor).toBeDefined();
+		expect(rampFloor).toBeDefined();
+		expect(canyonFloor).toBeDefined();
+
+		const plateauHex = plateauFloor.material.color.getHex();
+		const rampHex = rampFloor.material.color.getHex();
+		const canyonHex = canyonFloor.material.color.getHex();
+
+		expect(plateauHex).not.toBe(canyonHex);
+		expect(rampHex).not.toBe(plateauHex);
+		expect(rampHex).not.toBe(canyonHex);
+	});
+
+	it('server-generated seed 42: start (plateau) and treasure (canyon) floors differ', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		const startRoom = layout.rooms.find(r => r.role === 'start');
+		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
+		expect(startRoom?.band).toBe('plateau');
+		expect(treasureRoom?.band).toBe('canyon');
+
+		const result = buildDungeon(mockScene(), layout);
+		const startFloor = findRoomFloorMesh(result.meshes, startRoom);
+		const treasureFloor = findRoomFloorMesh(result.meshes, treasureRoom);
+		expect(startFloor).toBeDefined();
+		expect(treasureFloor).toBeDefined();
+		expect(startFloor.material.color.getHex()).not.toBe(treasureFloor.material.color.getHex());
+	});
+
+	it('caches sunken-canyon band materials as singletons', () => {
+		const a = getSunkenCanyonBandMaterials('plateau');
+		const b = getSunkenCanyonBandMaterials('plateau');
+		expect(a.floor).toBe(b.floor);
+		expect(a.floor.color.getHex()).toBe(getSunkenCanyonBandFloorHex('plateau'));
+	});
+
+	function findCliffLipMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === CANYON_CLIFF_LIP_TAG);
+	}
+
+	it('renders emissive cliff lip strips for server-generated sunken-canyon', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.cliffLips.length).toBeGreaterThanOrEqual(4);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const yHigh = resolveFloorY(sampleFloorY(layout, plateau.x, plateau.z));
+		const result = buildDungeon(mockScene(), layout);
+		const lipMeshes = findCliffLipMeshes(result.meshes);
+		expect(lipMeshes.length).toBe(layout.cliffLips.length);
+		for (const mesh of lipMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThanOrEqual(yHigh);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	function findEdgeHazardMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_EDGE_HAZARD_TAG);
+	}
+
+	it('renders emissive edge hazard strips for server-generated sunken-canyon', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const yHigh = resolveFloorY(sampleFloorY(layout, plateau.x, plateau.z));
+		const result = buildDungeon(mockScene(), layout);
+		const hazardMeshes = findEdgeHazardMeshes(result.meshes);
+		expect(hazardMeshes.length).toBe(layout.edgeHazards.length);
+		for (const mesh of hazardMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThanOrEqual(yHigh);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	it('buildCanyonCliffLipMesh tracks lip AABB footprint', () => {
+		const lip = {
+			minX: -3,
+			maxX: 3,
+			minZ: -28.5,
+			maxZ: -27.3,
+			y: DEFAULT_FLOOR_Y + 10,
+		};
+		const mesh = buildCanyonCliffLipMesh(lip);
+		expect(mesh.userData.dungeonTag).toBe(CANYON_CLIFF_LIP_TAG);
+		expect(mesh.position.x).toBeCloseTo(0, 4);
+		expect(mesh.position.z).toBeCloseTo(-27.9, 4);
+	});
 });
 
 describe('spire-ascent floors, ramps & summit beacon', () => {
@@ -1074,6 +1207,14 @@ describe('profile landmark rendering', () => {
 			expect(group.userData.landmarkType).toBe(type);
 			expect(group.children.length).toBeGreaterThan(0);
 		}
+		const canyon = getProfileMaterials('sunken-canyon');
+		const monolith = buildLandmarkMesh('canyon_monolith', canyon);
+		expect(monolith.userData.landmarkType).toBe('canyon_monolith');
+		expect(monolith.children.length).toBeGreaterThan(0);
+		expect(monolith.children.some(c => c.material === canyon.wall)).toBe(true);
+		expect(monolith.children.some(c => c.material === canyon.accent)).toBe(true);
+		const maxChildY = Math.max(...monolith.children.map(c => c.position.y + (c.geometry?.parameters?.height ?? 0) / 2));
+		expect(maxChildY).toBeGreaterThanOrEqual(2.5);
 		const plaza = getProfileMaterials('open-plaza');
 		const dais = buildLandmarkMesh('arena_dais', plaza);
 		expect(dais).toBeInstanceOf(THREE.Group);
