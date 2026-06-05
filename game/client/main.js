@@ -151,6 +151,7 @@ import {
 	setBoothInRangeListener,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction } from './boothPrompt.js';
+import { registerDeckBoothListener } from './boothDeck.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -928,6 +929,12 @@ setBoothInRangeListener((boothId) => updateBoothPrompt(boothPromptEl, boothId));
 if (boothPromptEl) {
 	boothPromptEl.addEventListener('click', () => emitBoothInteract());
 }
+
+registerDeckBoothListener({
+	showGameLobby,
+	setLobbyTab,
+	renderDeckEditor,
+});
 
 // Context bundle handed to per-card renderers — declared once so the
 // cardUsed handler does not re-allocate it on every event. `myId` is read
