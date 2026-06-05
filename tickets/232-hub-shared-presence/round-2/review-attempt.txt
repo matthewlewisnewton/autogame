@@ -1,0 +1,3 @@
+Review complete: `tickets/232-hub-shared-presence/round-2/review.md` ends with `VERDICT: PASS`.
+
+I did not write `gaps.md` because there are no blocking gaps. I did write `nits.md` for one non-blocking docs cleanup: add `hubPresence` to the documented lobby object shape.
