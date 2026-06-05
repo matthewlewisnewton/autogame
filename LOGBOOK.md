@@ -4473,3 +4473,26 @@ The implementation is cohesive and covered by focused tests across server layout
 
 No blocking gaps remain.
 
+
+## v0.253 — 248-rooms-objective-hud-and-default-profile-bugs  (2026-06-05 07:38:35)
+
+| Does not weaken invariants | Acceptable — still runs deck validation and full run start; only patches `collectedItems` on an active `collect_items` run for HUD QA (same pattern as `quest-objective-near-complete`). Does not skip net replication or persistence paths used in normal play. |
+
+No blocking issues with the debug shortcut.
+
+---
+
+## Code quality
+
+- Changes are minimal and follow existing patterns (theme strings, `LAYOUT_PROFILES` structure, debug scenario conventions).
+- No dead code introduced; the previously dead `'default'` alias is now wired correctly.
+- No browser page errors or console fatals in capture.
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are met with targeted tests; the captured run proves the game loads and plays cleanly.
+
+---
+
