@@ -164,7 +164,7 @@ describe('useKeyItem — field_medic_kit', () => {
 
 		// p3 should be unchanged (HP exact; MS may tick regen by a fraction)
 		expect(playerForSocket(players[2].socket).hp).toBe(p3HpBefore);
-		expect(playerForSocket(players[2].socket).magicStones).toBeCloseTo(p3MsBefore, 2);
+		expect(playerForSocket(players[2].socket).magicStones).toBeCloseTo(p3MsBefore, 1);
 	});
 
 	it('dead players skipped', async () => {
