@@ -1,0 +1,20 @@
+{
+  "ok": false,
+  "error": "servers did not start",
+  "harness_failure": {
+    "detected": [
+      "vite_eaddrinuse"
+    ],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3000",
+    "server_log_tail": "[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/242-hub-polish/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/242-hub-polish/game/data\n[server] HTTP server error: Error: listen EADDRINUSE: address already in use :::3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at Server.listen (node:net:2102:7)\n    at startServer (/home/matt/workspace/.autogame-worktrees/242-hub-polish/game/server/index.js:1295:12)\n    at Object.<anonymous> (/home/matt/workspace/.autogame-worktrees/242-hub-polish/game/server/index.js:1449:3)\n    at Module._compile (node:internal/modules/cjs/loader:1688:14)\n    at Object..js (node:internal/modules/cjs/loader:1820:10)\n    at Module.load (node:internal/modules/cjs/loader:1423:32)\n    at Function._load (node:internal/modules/cjs/loader:1246:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14) {\n  code: 'EADDRINUSE',\n  errno: -98,\n  syscall: 'listen',\n  address: '::',\n  port: 3000\n}",
+    "port_holders": {
+      "5173": [],
+      "3000": [
+        {
+          "pid": 490676,
+          "cmdline": "/home/matt/.nvm/versions/node/v22.18.0/bin/node index.js"
+        }
+      ]
+    }
+  }
+}

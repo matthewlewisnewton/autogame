@@ -1,0 +1,24 @@
+I created one focused sub-ticket. Here's my reasoning and the result.
+
+## What I found
+
+The top-level ticket names three hub-polish features. Inspecting the code, **two already exist and are wired + tested**:
+
+- **Interaction prompts** — `client/boothPrompt.js` (`formatBoothPrompt`/`updateBoothPrompt`), the `#booth-prompt` element in `index.html`, styled in `style.css`, wired in `main.js` via `setBoothInRangeListener`/`emitBoothInteract`.
+- **Other-player nameplates** — `createNameplate` in `renderer.js`, applied to remote players in the render loop (lines ~4348–4363).
+
+The **one genuine gap** is booth signage: `buildDungeon` (`client/dungeon.js`) renders rooms/walls/passages/landmarks but draws *nothing* at the six `layout.boothAnchors` (`quest`, `launch`, `shop`, `deck`, `character`, `hats` from `generateHub`). The booths are invisible proximity zones — no kiosk, no label.
+
+So the smallest set that delivers the ticket is a single sub-ticket for the missing signage; the other two ACs are already satisfied by existing code.
+
+## Verification mode
+
+Chose **`code`**, not `visual`. The ACs are structural/logical — a builder module exists, one sign per anchor, text equals `BOOTH_DISPLAY_NAMES`, unknown ids skipped, hub-only gating in `buildDungeon`, meshes pushed for cleanup. Visual QA only screenshots one happy-path run and couldn't confirm any of that; code QA reads the whole diff and tests.
+
+## Sub-ticket created
+
+```
+/home/matt/workspace/.autogame-worktrees/242-hub-polish/tickets/242-hub-polish/subtickets/01-booth-signage/ticket.md
+```
+
+No existing sub-ticket folders to retire (none existed). No `.passed` markers touched.
