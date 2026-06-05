@@ -55,7 +55,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 3);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 4);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -82,7 +82,16 @@ describe('quest tier catalog', () => {
       isTier2: true,
       unlockRequires: { questId: 'spire_ascent', tier: 1 },
     });
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(3);
+    const canyonTier2 = variants.find(
+      (v) => v.questId === 'canyon_descent' && v.tier === 2
+    );
+    expect(canyonTier2).toMatchObject({
+      questId: 'canyon_descent',
+      tier: 2,
+      isTier2: true,
+      unlockRequires: { questId: 'canyon_descent', tier: 1 },
+    });
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(4);
   });
 
   it('layout profile and seed accept tier for future divergence', () => {
@@ -115,8 +124,17 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'rigid',
     });
+    expect(getLayoutGenerationOptions('canyon_descent', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('canyon_descent', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
+    });
     expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
     expect(isValidQuestSelection('spire_ascent', 2)).toBe(true);
+    expect(isValidQuestSelection('canyon_descent', 2)).toBe(true);
     expect(getLayoutGenerationOptions('missing_quest', 1)).toEqual({
       slopes: true,
       layoutMode: 'default',

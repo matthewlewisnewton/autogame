@@ -89,6 +89,17 @@ const QUEST_DEFS = {
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
       },
+      2: {
+        tier: 2,
+        name: 'Canyon Descent — Tier II',
+        description: 'Descend the fixed canyon where marked hostiles lurk on plateau and gorge alike.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 14,
+        layoutProfile: 'sunken-canyon',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'canyon_descent', tier: 1 },
+      },
     },
   },
   spire_ascent: {

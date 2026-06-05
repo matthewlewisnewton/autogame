@@ -9,6 +9,7 @@ import {
 	gameState,
 	resetGameState,
 } from '../index.js';
+import { getLayoutGenerationOptions } from '../quests.js';
 
 const SEED = 123;
 
@@ -66,6 +67,21 @@ describe('sunken-canyon quest spawns', () => {
 		deployCanyon();
 		const second = gameState.enemies.map(e => ({ x: e.x, z: e.z }));
 		expect(second).toEqual(first);
+	});
+
+	it('Tier 2 rigid layout keeps band-aware spawn rules', () => {
+		gameState.selectedQuestId = 'canyon_descent';
+		gameState.selectedQuestTier = 2;
+		gameState.layout = generateLayout(SEED, 'sunken-canyon', getLayoutGenerationOptions('canyon_descent', 2));
+		gameState.layoutSeed = SEED;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.run = { questTier: 2 };
+		spawnEnemies();
+		const bands = gameState.enemies.map(e => bandAt(gameState.layout, e));
+		expect(bands.filter(b => b === 'plateau').length).toBeGreaterThanOrEqual(1);
+		expect(bands.filter(b => b === 'canyon').length).toBeGreaterThan(gameState.enemies.length / 2);
+		expect(bands.some(b => b === 'ramp')).toBe(false);
 	});
 
 	it('places collect-objective crystals only in the canyon band', () => {
