@@ -1,0 +1,16 @@
+The existing `nits.md` already captures the one genuine nit (renderer test stderr noise) accurately, so I'll leave it as-is. Verdict is PASS, so no `gaps.md`.
+
+## Summary
+
+**VERDICT: PASS**
+
+Independently verified `230-hub-client-render`:
+
+- **Runtime health** — `metrics.json` has `ok: true`, empty `pageerrors`, no `harness_failure`; `console.log` shows only normal init lines. Clean run.
+- **AC1 (render hub via existing renderer)** — Server delivers a deterministic `HUB_LAYOUT = generateHub(0)` in `lobbyJoined`; client renders it through the same `rendererInitScene`/`rebuildDungeonLayout` entry points as quest stages, with a `renderedSceneProfile` guard keeping hub/quest geometry from cross-contaminating. `01-initial.png` shows the hub geometry behind the now-transparent lobby overlay.
+- **AC2 (avatar spawns/visible in lobby)** — `renderHubScene()` seats the avatar at the hub start room and the animate loop builds its mesh; unit test asserts `playersMeshes[myId]` exists after a lobby-phase frame.
+- **AC3 (no console errors; walkable)** — Zero console/page errors; `computeWalkableAABBs(hub) > 0` and wall colliders present.
+
+Tests: 1859 passed. The lone failure (`field_medic_kit.test.js`) is a pre-existing magic-stones-regen timing flake — unrelated to this diff and passes on rerun.
+
+No blocking gaps. One non-blocking nit already recorded in `nits.md` (renderer test-stderr noise from `/models/player.glb` under jsdom). No `gaps.md` written, per PASS.

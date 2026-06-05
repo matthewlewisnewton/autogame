@@ -3944,6 +3944,73 @@ Not applicable. This ticket did not add or change a `?debugScenario=` shortcut, 
 None.
 
 
+## v0.224 — 273-socketHandlers-extract-deck  (2026-06-05 00:30:57)
+
+Behavior appears preserved. The extracted code continues to enforce lobby-only deck/shop/trade operations, normalizes inventory before deck mutations, validates selected decks before readying, persists successful deck/inventory/trade changes, and leaves run-lifecycle/gameplay handlers in `lobbyHandlers.js`.
+
+Tests are green. I ran `pnpm test:quick` from `game/`; it passed with 91 test files and 1,837 tests.
+
+## Design And Requirements
+
+PASS. The change is a server-side organization refactor and does not alter the documented core loop, card combat model, lobby flow, dungeon entry, rendering, websocket connectivity, multiplayer visualization, or WASD movement synchronization. The captured run also exercises the lobby browser/squad flow through gameplay without regressions.
+
+## Debug Scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut. The capture used the fallback smoke path with `debugScenario: null`, so normal gameplay remains the exercised path.
+
+## Code Quality
+
+PASS. The new module keeps deck/shop/trade concerns out of the larger lobby handler file without adding circular imports. `git diff --check` reported no whitespace errors. I did not find dead duplicate handler registrations, missing exports, missing context wiring, or runtime console failures attributable to the ticket.
+
+## Remaining gaps
+
+None.
+
+## v0.225 — 230-hub-client-render  (2026-06-05 00:33:03)
+
+## Integration / regression checks
+- Lobby↔run transitions refactored cleanly: lobby-join → hub, run-join/deploy → quest,
+  and `returnToGuildLobby({ rebuildHub })` rebuilds the hub once per return (guarded so
+  it does not fire on every lobby-phase `stateUpdate`). `applyQuestLayoutFromServer` now
+  only caches the selected quest layout during the lobby instead of moving the avatar
+  off the hub floor. All geometry-switch paths set `renderedSceneProfile`.
+- `style.css`: the `#lobby` overlay background dropped its opaque `#0f172a` base so the
+  hub canvas shows through; only sub-1-alpha decorative layers remain, and the title got
+  a text-shadow for legibility. Confirmed visually in `01-initial.png`.
+- Debug scenarios: this ticket adds none. The `sunken-canyon-stage` scenario in the
+  capture is pre-existing and untouched by this diff. The URL parameter remains the only
+  entry point and the normal flow is unaffected.
+- Tests: full suite = 1859 passed. The single failure (`field_medic_kit.test.js`,
+  magic-stones regen `10.005` vs `10`) is a pre-existing floating-point/timing flake —
+  this ticket touches no server simulation/regen code, and the test passes on rerun.
+
+## Remaining gaps
+None blocking. One non-blocking nit (test-stderr noise from the renderer's
+`/models/player.glb` URL parse under jsdom) is recorded in `nits.md`.
+
+
+## v0.226 — 274-socketHandlers-extract-trade  (2026-06-05 00:44:53)
+
+### Trade handlers moved and registered
+
+PASS. `game/server/socketHandlers/tradeHandlers.js` now owns the `offerCardTrade` and `respondCardTrade` socket listeners. `game/server/socketHandlers/deckHandlers.js` no longer registers those listeners or imports their progression helpers, and `game/server/socketHandlers/lobbyHandlers.js` imports and calls `tradeHandlers.register(socket, ctx)` alongside `deckHandlers.register(socket, ctx)`. The extracted handlers preserve the prior event names, lobby-phase gating, `findSocketByPlayerId` notifications, inventory update payloads, and persistence calls.
+
+### Tests green
+
+PASS. I ran `pnpm test:quick` from `game/`; it completed successfully with 92 test files passed and 1854 tests passed. Existing integration coverage still exercises the socket-level trade offer, accept, and reject flows through `offerCardTrade` and `respondCardTrade`.
+
+### Design and requirements consistency
+
+PASS. The change is an internal server socket-handler extraction and does not alter the documented lobby, dungeon, combat, loot, or movement foundations. The captured smoke run still demonstrates the requirements baseline: the game renders, connects frontend to backend over sockets, shows multiplayer state, and synchronizes movement/gameplay.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut or debug scenario implementation.
+
+## Remaining gaps
+
+None.
+
 ## v0.228 — 211-net-slim-per-tick-state-broadcast  (2026-06-05 01:15:06)
 
 ## Acceptance criteria findings

@@ -448,7 +448,7 @@ function syncLevelSettingsRewards() {
 }
 
 /** Switch UI from in-dungeon play back to the guild lobby. */
-function returnToGuildLobby(state, { refreshCollection = false } = {}) {
+function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = false } = {}) {
 	closeLevelSettingsOverlay();
 	showLevelSettingsError('');
 	if (giveUpBtnEl) giveUpBtnEl.disabled = false;
@@ -461,7 +461,15 @@ function returnToGuildLobby(state, { refreshCollection = false } = {}) {
 	clearKeyItemCooldownHud();
 	showGameLobby();
 	setDeployButtonVisible(true);
-	setGamePhase('lobby');
+	// On the play→lobby transition, switch the rendered geometry back to the hub
+	// and re-seat the avatar at the hub spawn. `renderHubScene()` also sets the
+	// lobby game phase. Guarded by `rebuildHub` so this runs once per return, not
+	// on every lobby-phase stateUpdate.
+	if (rebuildHub && isSceneInitialized() && hubLayout) {
+		renderHubScene();
+	} else {
+		setGamePhase('lobby');
+	}
 
 	const me = myId && state?.players ? state.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
@@ -600,6 +608,32 @@ function renderLobbyList(lobbySummaries) {
 	}
 }
 
+/**
+ * Render the hub geometry for the lobby phase and spawn the local avatar at the
+ * hub's `role: 'start'` spawn. Initializes the scene on first entry, otherwise
+ * rebuilds the existing scene to the hub layout. No-op without a hub layout.
+ * Marks `gameState.layout` as the hub so floor sampling for the local avatar
+ * uses the rendered hub geometry, and refreshes the renderer's game-state ref so
+ * the animate loop builds the avatar from `gameState.players[myId]`.
+ */
+function renderHubScene() {
+	if (!hubLayout) return false;
+	if (!isSceneInitialized()) {
+		rendererInitScene(hubLayout, getSpawnPosition());
+	} else if (renderedSceneProfile !== 'hub') {
+		rebuildDungeonLayout(hubLayout);
+	}
+	renderedSceneProfile = 'hub';
+	if (gameState) {
+		gameState.layout = hubLayout;
+		setGameStateRef(gameState);
+	}
+	const spawn = getSpawnPosition();
+	setPlayerPosition(spawn.x, spawn.z);
+	setGamePhase('lobby');
+	return true;
+}
+
 function applyLobbyJoinedData(data) {
 	myId = data.id;
 	rendererSetMyId(data.id);
@@ -609,6 +643,7 @@ function applyLobbyJoinedData(data) {
 	}
 	gameState = data.state;
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
+	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
 
 	mySelectedDeck = data.selectedDeck || [];
@@ -634,14 +669,38 @@ function applyLobbyJoinedData(data) {
 	showGameLobby();
 
 	const receivedSeed = data.layoutSeed;
+	const joinPhase = data.state && data.state.gamePhase;
 
-	if (isSceneInitialized() && receivedSeed !== undefined) {
-		if (receivedSeed !== currentLayoutSeed && currentLayout) {
-			currentLayoutSeed = receivedSeed;
-			rebuildDungeonLayout(currentLayout);
-		} else {
-			currentLayoutSeed = receivedSeed;
+	// Deploying/joining into an in-progress run renders the quest layout; a plain
+	// lobby join renders the hub. Handle the two phases separately so a lobby join
+	// never reuses (or rebuilds into) the quest geometry, and a run join never
+	// deploys the player into the hub geometry.
+	if (joinPhase === 'playing') {
+		const seedChanged = receivedSeed !== undefined && receivedSeed !== currentLayoutSeed;
+		if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
+		requestDebugScenario();
+
+		if (!isSceneInitialized()) {
+			lobbyEl.classList.add('hidden');
+			uiEl.style.display = 'block';
+			showCardHand();
+			setDeckStackVisible(true);
+			initHand();
+			rendererInitScene(currentLayout, getSpawnPosition());
+			renderedSceneProfile = 'quest';
+			if (gameState) gameState.layout = currentLayout;
+			updateObjectiveHud();
+			setGamePhase('playing');
+			return;
 		}
+
+		// Scene already exists — switch geometry to the quest run when it is
+		// currently showing the hub (or the quest seed changed), then reposition.
+		if (currentLayout && (renderedSceneProfile !== 'quest' || seedChanged)) {
+			rebuildDungeonLayout(currentLayout);
+		}
+		renderedSceneProfile = 'quest';
+		if (gameState) gameState.layout = currentLayout;
 		const me = myId && gameState && gameState.players ? gameState.players[myId] : null;
 		if (me && Number.isFinite(me.x) && Number.isFinite(me.z)) {
 			setPlayerPosition(me.x, me.z);
@@ -649,26 +708,13 @@ function applyLobbyJoinedData(data) {
 			const spawnPos = getSpawnPosition();
 			setPlayerPosition(spawnPos.x, spawnPos.z);
 		}
-		requestDebugScenario();
 		return;
 	}
 
-	currentLayoutSeed = receivedSeed;
+	// Lobby phase — render the hub layout and spawn the local avatar inside it.
+	if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 	requestDebugScenario();
-
-	if (data.state && data.state.gamePhase === 'playing') {
-		if (isSceneInitialized()) return;
-		lobbyEl.classList.add('hidden');
-		uiEl.style.display = 'block';
-		showCardHand();
-		setDeckStackVisible(true);
-		initHand();
-		rendererInitScene(currentLayout, getSpawnPosition());
-		updateObjectiveHud();
-		setGamePhase('playing');
-		return;
-	}
-
+	renderHubScene();
 	updateObjectiveHud();
 }
 
@@ -959,7 +1005,10 @@ function bindSocketHandlers(s) {
 		}
 		gameState = state;
 		setGameStateRef(state);
-		if (gameState && currentLayout) gameState.layout = currentLayout;
+		// During the lobby the renderer shows the hub, so floor sampling for the
+		// local avatar must use the hub layout; in a run it uses the quest layout.
+		const activeLayout = (state.gamePhase === 'lobby' && hubLayout) ? hubLayout : currentLayout;
+		if (gameState && activeLayout) gameState.layout = activeLayout;
 		updateLevelSettingsBtnVisibility();
 		if (isLevelSettingsOpen()) syncLevelSettingsRewards();
 
@@ -982,7 +1031,10 @@ function bindSocketHandlers(s) {
 		if (isExtracted && state.gamePhase === 'playing') {
 			showExtractedLobbyOverlay();
 		} else if (state.gamePhase === 'lobby') {
-			returnToGuildLobby(state, { refreshCollection: enteringLobby || collectionChanged });
+			returnToGuildLobby(state, {
+				refreshCollection: enteringLobby || collectionChanged,
+				rebuildHub: enteringLobby,
+			});
 		} else if (me) {
 			syncVanguardHud(me, state.gamePhase);
 		}
@@ -1445,11 +1497,21 @@ function bindSocketHandlers(s) {
 		if (!isSceneInitialized()) {
 			initHand();
 			rendererInitScene(currentLayout, resolveRunSpawnPosition());
+			renderedSceneProfile = 'quest';
+			if (gameState) gameState.layout = currentLayout;
 			setGamePhase('playing');
 			updateLevelSettingsBtnVisibility();
 			return;
 		}
 		initHand();
+		// Deploying from the lobby: switch the rendered geometry from the hub to
+		// the quest run before placing the player at the run spawn, so players
+		// never deploy into the hub geometry.
+		if (currentLayout && renderedSceneProfile !== 'quest') {
+			rebuildDungeonLayout(currentLayout);
+		}
+		renderedSceneProfile = 'quest';
+		if (gameState) gameState.layout = currentLayout;
 		const spawnPos = resolveRunSpawnPosition();
 		setPlayerPosition(spawnPos.x, spawnPos.z);
 		setPlayerRotation(0);
@@ -1494,7 +1556,7 @@ function bindSocketHandlers(s) {
 			delete gameState.run;
 		}
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
-		returnToGuildLobby(gameState, { refreshCollection: true });
+		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
 	});
 
 	if (giveUpBtnEl) {
@@ -1509,7 +1571,7 @@ function bindSocketHandlers(s) {
 			gameState.suspendedRunSummary = summary;
 			gameState.gamePhase = 'lobby';
 		}
-		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary });
+		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary }, { rebuildHub: true });
 	});
 
 	s.on('playerExtracted', (data) => {
@@ -1542,6 +1604,8 @@ const CONNECT_WATCHDOG_MS = 10000;
 let latency = null;
 let currentLayoutSeed = null; // tracks the layout seed we last built from
 let currentLayout = null; // persisted layout from init; stateUpdate omits it
+let hubLayout = null; // hub layout delivered in lobbyJoined; rendered during the lobby phase
+let renderedSceneProfile = null; // 'hub' | 'quest' — which geometry the renderer currently shows
 
 // Deck editor state
 let mySelectedDeck = [];
@@ -1630,13 +1694,23 @@ function applyQuestLayoutFromServer(data) {
 	if (!data || !data.layout) return;
 
 	currentLayout = data.layout;
-	if (gameState) gameState.layout = currentLayout;
 	if (data.layoutSeed !== undefined) {
 		currentLayoutSeed = data.layoutSeed;
 	}
 
+	// In the lobby the hub stays rendered — only cache the freshly selected quest
+	// layout; do not rebuild geometry or move the avatar off the hub floor. The
+	// quest geometry is built when the player deploys (the `startGame` handler).
+	if (gameState && gameState.gamePhase === 'lobby') {
+		if (hubLayout) gameState.layout = hubLayout;
+		return;
+	}
+
+	if (gameState) gameState.layout = currentLayout;
+
 	if (isSceneInitialized()) {
 		rebuildDungeonLayout(currentLayout);
+		renderedSceneProfile = 'quest';
 	}
 
 	const me = myId && gameState && gameState.players ? gameState.players[myId] : null;

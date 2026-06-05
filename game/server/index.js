@@ -23,6 +23,7 @@ const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
   generateLayout,
+  generateHub,
   questLayoutSeed,
   roomsByRole,
   randomRoomPositionByRole,
@@ -36,6 +37,10 @@ const {
   DEFAULT_FLOOR_Y,
   resolveFloorY,
 } = require('./dungeon');
+
+// The hub ship-interior layout is deterministic, so build it once at module
+// load and deliver the same instance to every lobby client (see emitLobbyJoined).
+const HUB_LAYOUT = generateHub(0);
 const {
   TICK_RATE,
   MOVE_SPEED,
@@ -876,6 +881,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     state,
     layoutSeed: state.layoutSeed,
     layout: state.layout,
+    hubLayout: HUB_LAYOUT,
     selectedDeck: player.selectedDeck,
     inventory: player.inventory,
     ownedCards: player.ownedCards,
@@ -1478,6 +1484,8 @@ if (typeof module !== 'undefined' && module.exports) {
     isInsideDungeon,
     tryPlayerMove,
     randomWanderTarget,
+    // Hub layout delivered to lobby clients via lobbyJoined
+    HUB_LAYOUT,
     // Server objects for integration tests
     app,
     server,
