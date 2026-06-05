@@ -12,7 +12,6 @@ import {
 } from './helpers.js';
 import { setTestProvider, checkRunTerminalState, _timeouts } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
-import { questLayoutSeed } from '../dungeon.js';
 
 const require = createRequire(import.meta.url);
 const users = require('../users.js');
@@ -115,7 +114,7 @@ describe('quest tier gating (socket + persistence)', () => {
 		expect(payload.questVariants.some((v) => v.questId === QUEST_ID && v.tier === TIER_2)).toBe(true);
 		expect(payload.unlockedQuestTiers).toEqual({ [QUEST_ID]: [TIER_2] });
 		expect(testGameState().selectedQuestTier).toBe(TIER_2);
-		expect(testGameState().layoutSeed).toBe(questLayoutSeed(QUEST_ID, TIER_2));
+		expect(testGameState().layout.profile).toBe('hub');
 	});
 
 	it('victory on Tier 1 unlocks Tier 2 on disk for in-run players', async () => {

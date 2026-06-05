@@ -74,6 +74,8 @@ let _gameState = null;
 let _getIo = () => null;
 let _broadcastLobbyUpdate = () => {};
 let _rebuildWallColliders = () => {};
+let _applyHubLayout = () => {};
+let _applyLayoutForQuest = () => {};
 let provider = null;
 
 function initProgression(deps) {
@@ -115,6 +117,11 @@ function setBroadcastLobbyUpdate(fn) {
 
 function setRebuildWallColliders(fn) {
   _rebuildWallColliders = fn;
+}
+
+function setLayoutAppliers({ applyHubLayout, applyLayoutForQuest }) {
+  if (applyHubLayout) _applyHubLayout = applyHubLayout;
+  if (applyLayoutForQuest) _applyLayoutForQuest = applyLayoutForQuest;
 }
 
 function setTestProvider(p) {
@@ -2585,6 +2592,7 @@ function suspendRunToLobby() {
   resetTransientRunState();
   _gameState.telepipe = null;
   setGamePhase(_gameState, PHASES.LOBBY);
+  _applyHubLayout(_gameState);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(_gameState.players)) {
@@ -2685,6 +2693,7 @@ function abandonSuspendedRun(state = _gameState) {
   clearSuspendedRunData();
   delete state.run;
   setGamePhase(state, PHASES.LOBBY);
+  _applyHubLayout(state);
 
   const spawn = firstRoomPosition();
   for (const player of Object.values(state.players)) {
@@ -2854,6 +2863,7 @@ function returnPlayersToLobby(state = _gameState) {
 
   setGamePhase(state, PHASES.LOBBY);
   delete state.run;
+  _applyHubLayout(state);
 
   const spawn = firstRoomPosition();
   for (const playerId of Object.keys(state.players)) {
@@ -2911,6 +2921,7 @@ function giveUpRun(state = _gameState) {
 
   setGamePhase(state, PHASES.LOBBY);
   delete state.run;
+  _applyHubLayout(state);
 
   const spawn = firstRoomPosition();
   for (const playerId of Object.keys(state.players)) {
@@ -2996,6 +3007,9 @@ function checkAllReady() {
       return;
     }
 
+    const questId = _gameState.selectedQuestId;
+    const questTier = _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+    _applyLayoutForQuest(_gameState, questId, questTier);
     assignRunSpawnPositions(all);
     for (const player of all) {
       player.extracted = false;
@@ -3025,6 +3039,7 @@ module.exports = {
   getGameState,
   setBroadcastLobbyUpdate,
   setRebuildWallColliders,
+  setLayoutAppliers,
   setTestProvider,
   getProvider,
   CARD_DEFS,

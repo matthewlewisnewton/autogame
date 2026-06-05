@@ -353,6 +353,18 @@ cardEffects.setCallbacks({
 // Wire keyItemEffects with io (the only index.js-local handle its handler needs).
 keyItemEffects.setCallbacks({ io });
 
+const HUB_LAYOUT_SEED = 0;
+
+function applyHubLayout(state) {
+  const seed = HUB_LAYOUT_SEED;
+  state.layoutSeed = seed;
+  state.layout = generateLayout(seed, 'hub');
+  state.dungeonBounds = computeDungeonBounds(state.layout);
+  state.walkableAABBs = computeWalkableAABBs(state.layout);
+  withLobbyContext({ state }, () => rebuildWallColliders());
+  console.log(`[server] Hub layout: seed=${seed}, profile=hub, rooms=${state.layout.rooms.length}`);
+}
+
 function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   const normalizedTier = normalizeQuestTier(tier);
   const profile = getLayoutProfileForQuest(questId, normalizedTier);
@@ -367,12 +379,8 @@ function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   console.log(`[server] Layout for quest "${questId}" tier ${normalizedTier}: seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
 }
 
-// Generate dungeon layout for the default quest at startup (legacy unit-test gameState)
-applyLayoutForQuest(
-  gameState,
-  gameState.selectedQuestId || DEFAULT_QUEST_ID,
-  gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-);
+// Ship-interior hub layout for lobby phase (legacy unit-test gameState singleton).
+applyHubLayout(gameState);
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
 /**
@@ -407,17 +415,15 @@ function saveAllPlayersInAllLobbies() {
 
 /**
  * Reset gameState to a fresh state. Used by integration tests to isolate tests.
- * Regenerates dungeon layout using the quest-derived seed from applyLayoutForQuest.
+ * Regenerates hub layout for lobby-phase test singleton state.
  */
 function resetGameState() {
   _lobbyContextStack.length = 0;
   lobbies.resetAllLobbies();
   const fresh = createGameState();
-  const questId = fresh.selectedQuestId || DEFAULT_QUEST_ID;
-  const questTier = fresh.selectedQuestTier ?? DEFAULT_QUEST_TIER;
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
-  applyLayoutForQuest(gameState, questId, questTier);
+  applyHubLayout(gameState);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
@@ -482,10 +488,13 @@ debugScenarios.setCallbacks({
   enterPlayingPhase,
   ensureNearbyEnemy,
   applyLayoutForQuest,
+  applyHubLayout,
   broadcastLobbyUpdate,
   emitQuestPayloadToLobby,
   DEBUG_SCENARIOS,
 });
+
+progression.setLayoutAppliers({ applyHubLayout, applyLayoutForQuest });
 
 // Helper: build a compact player list for lobbyUpdate payloads
 function lobbyPlayerList(state) {
@@ -889,12 +898,14 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   const savedData = loadSavedPlayerData(playerId);
 
   if (!state.players[playerId]) {
-    state.players[playerId] = buildPlayerRecord(
-      playerId,
-      socket.data.accountId,
-      socket.data.username,
-      savedData,
-    );
+    withLobbyContext(lobby, () => {
+      state.players[playerId] = buildPlayerRecord(
+        playerId,
+        socket.data.accountId,
+        socket.data.username,
+        savedData,
+      );
+    });
   } else {
     const player = state.players[playerId];
     player.username = socket.data.username || player.username;
@@ -1246,11 +1257,7 @@ function startServer(port) {
       }
       const lobby = lobbies.createLobby(data && data.name);
       withLobbyContext(lobby, () => {
-        applyLayoutForQuest(
-          lobby.state,
-          lobby.state.selectedQuestId,
-          lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
-        );
+        applyHubLayout(lobby.state);
         ensureShopOffer();
       });
       joinPlayerToLobby(socket, lobby);
@@ -1395,8 +1402,6 @@ function startServer(port) {
 
     state.selectedQuestId = questId;
     state.selectedQuestTier = tier;
-    applyLayoutForQuest(state, questId, tier);
-    assignRunSpawnPositions(Object.values(state.players));
     emitQuestPayloadToLobby(lobby, {
       extraFields: {
         layoutSeed: state.layoutSeed,
@@ -2034,6 +2039,9 @@ if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     mulberry32,
     generateLayout,
+    HUB_LAYOUT_SEED,
+    applyHubLayout,
+    applyLayoutForQuest,
     damagePlayer,
     damageMinion,
     healPlayer,

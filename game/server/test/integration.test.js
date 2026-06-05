@@ -1776,9 +1776,9 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'canyon_descent', 'spire_ascent', 'endless_siege']);
 		expect(u1.layoutSeed).toBeDefined();
 		expect(u1.layout).toBeDefined();
-		expect(u1.layout.profile).toBe('open');
+		expect(u1.layout.profile).toBe('hub');
 		expect(testGameState().selectedQuestId).toBe('crystal_rescue');
-		expect(testGameState().layout.profile).toBe('open');
+		expect(testGameState().layout.profile).toBe('hub');
 	});
 
 	it('rejects unknown quest ids without changing the selected quest', async () => {
@@ -3622,7 +3622,7 @@ describe('Dungeon layout consistency', () => {
 		await sleep(50);
 	});
 
-	it('after resetGameState() layout seed stays quest-derived for the default quest', async () => {
+	it('after resetGameState() layout seed stays hub-derived for lobby phase', async () => {
 		const client1 = await connectClient(baseUrl);
 		const firstSeed = client1.init.layoutSeed;
 

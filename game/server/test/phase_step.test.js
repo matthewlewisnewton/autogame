@@ -12,7 +12,9 @@ import {
 	connectClient,
 	waitForEvent,
 	playerForSocket,
+	testGameState,
 } from './helpers.js';
+import { _timeouts } from '../index.js';
 
 /**
  * Integration tests for the `phase_step` key item.
@@ -230,6 +232,12 @@ describe('useKeyItem — phase_step', () => {
 
 		// Connect first so the dungeon (and its wall colliders) is active before probing.
 		const players = await connectTwoAndStartRun();
+		const state = testGameState();
+		const sim = require('../simulation');
+		const progression = require('../progression');
+		sim.setGameState(state, _timeouts);
+		progression.setGameState(state);
+
 		const p1 = playerForSocket(players[0].socket);
 		const p2 = playerForSocket(players[1].socket);
 

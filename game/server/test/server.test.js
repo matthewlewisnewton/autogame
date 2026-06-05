@@ -17,6 +17,7 @@ import {
 	buildPlayerRecord,
 	createGameState,
 	resetGameState,
+	applyLayoutForQuest,
 	gameState,
 	runGameLoopTick,
 	cleanupStalePlayers,
@@ -168,6 +169,10 @@ function addPlayer(id, overrides = {}) {
 function firstRoomSpawn() {
 	const first = gameState.layout.rooms[0];
 	return { x: first.x, z: first.z };
+}
+
+function applyDefaultQuestLayout() {
+	applyLayoutForQuest(gameState, DEFAULT_QUEST_ID, 1);
 }
 
 describe('runGameLoopTick()', () => {
@@ -371,8 +376,7 @@ describe('generateLayout(seed)', () => {
 	});
 
 	it('gameState.layout (set by applyLayoutForQuest) contains sloped rooms', () => {
-		// gameState.layout is initialized at module load by applyLayoutForQuest,
-		// which now passes { slopes: true }. Verify the live state reflects this.
+		applyLayoutForQuest(gameState, DEFAULT_QUEST_ID, 1);
 		const hasSlopedRoom = gameState.layout.rooms.some(room => {
 			const fc = room.floorCorners;
 			if (!fc) return false;
@@ -4796,6 +4800,7 @@ describe('spawnEnemy() variant field', () => {
 describe('spawnEnemies() mixed pack', () => {
 	beforeEach(() => {
 		resetGameState();
+		applyDefaultQuestLayout();
 	});
 
 	it('produces quest.enemyCount enemies drawn from the default quest pool', () => {
@@ -5228,7 +5233,10 @@ describe('firstRoomPosition()', () => {
 // ── Role-aware spawning constraints ──
 
 describe('Role-aware spawning constraints', () => {
-	beforeEach(() => resetGameState());
+	beforeEach(() => {
+		resetGameState();
+		applyDefaultQuestLayout();
+	});
 
 	it('enemy spawn positions exclude the start room when combat rooms exist', () => {
 		// spawnEnemies uses roomsByRole('combat') when combat rooms exist
