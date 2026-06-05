@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "  VITE v8.0.13  ready in 136 ms\n\n  \u279c  Local:   http://localhost:5174/\n  \u279c  Network: use --host to expose\n4:51:55 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\n4:52:01 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.\n4:52:04 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6jgb3yk\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:04 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6jqf34e\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:06 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6kz0j3w\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:06 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6llj5ou\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:10 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6om56yg\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:10 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6oqkobf\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:15 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6slmymy\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n4:52:16 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=v6sp6xyx\nError: connect ECONNREFUSED 127.0.0.1:3001\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)",
+    "server_log_tail": "[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/236-booth-deck-terminal/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/236-booth-deck-terminal/game/data\nServer listening on port 3001\nPlayer connected: socket=y3-7qUQiuXLRp09lAAAB, playerId=df1c7a32-a385-40e9-8b03-8c08a0eac471\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\nPlayer connected: socket=wfLeqkKr6Q2zTB7GAAAD, playerId=60ad0ab1-95b6-4e64-9a7c-abce0950e10b",
+    "port_holders": {
+      "5174": [
+        {
+          "pid": 240889,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/236-booth-deck-terminal/game/client/node_modules/.bin/../vite/bin/vite.js --port 5174 --strictPort"
+        }
+      ],
+      "3001": []
+    }
+  }
+}

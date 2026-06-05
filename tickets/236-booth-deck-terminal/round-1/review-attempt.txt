@@ -1,0 +1,7 @@
+Wrote the senior review artifacts:
+
+- `tickets/236-booth-deck-terminal/round-1/review.md`
+- `tickets/236-booth-deck-terminal/round-1/gaps.md`
+- `tickets/236-booth-deck-terminal/round-1/nits.md`
+
+Verdict is `VERDICT: FAIL` because the captured run has `"ok": false` / `failure_kind: "capture_failed"` with repeated socket 502 / `ECONNREFUSED` before timeout. Code-level criteria otherwise looked satisfied, so the blocking gap is the non-clean runtime capture.
