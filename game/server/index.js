@@ -968,6 +968,23 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   return true;
 }
 
+function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false } = {}) {
+  if (emitDisconnect) {
+    io.to(lobby.id).emit('playerDisconnected', playerId);
+  }
+
+  const shouldBroadcast = result === undefined || (result && !result.deleted);
+  if (!shouldBroadcast) return;
+
+  withLobbyContext(lobby, () => {
+    if (isPlayingPhase(lobby.state)) {
+      checkRunTerminalState();
+    } else {
+      broadcastLobbyUpdate(lobby);
+    }
+  });
+}
+
 function softDisconnectPlayerFromLobby(socket) {
   const lobby = getLobbyForSocket(socket);
   if (!lobby) return null;
@@ -990,13 +1007,8 @@ function softDisconnectPlayerFromLobby(socket) {
     player.inputActive = false;
     player.inputDx = 0;
     player.inputDz = 0;
-
-    if (isPlayingPhase(lobby.state)) {
-      checkRunTerminalState();
-    } else {
-      broadcastLobbyUpdate(lobby);
-    }
   });
+  notifyPlayerRemoved(lobby, { playerId, emitDisconnect: false });
   broadcastLobbyList();
   return { lobby, playerId };
 }
@@ -1021,18 +1033,8 @@ function evictDisconnectedPlayers() {
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
-      io.to(lobby.id).emit('playerDisconnected', playerId);
+      notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect: true });
       evictedAny = true;
-
-      if (result && !result.deleted) {
-        withLobbyContext(lobby, () => {
-          if (isPlayingPhase(lobby.state)) {
-            checkRunTerminalState();
-          } else {
-            broadcastLobbyUpdate(lobby);
-          }
-        });
-      }
     }
   }
 
@@ -1053,17 +1055,7 @@ function leaveLobbyForSocket(socket) {
   socket.leave(lobby.id);
 
   const result = lobbies.removePlayerFromLobby(playerId);
-  io.to(lobby.id).emit('playerDisconnected', playerId);
-
-  if (result && !result.deleted) {
-    withLobbyContext(lobby, () => {
-      if (isPlayingPhase(lobby.state)) {
-        checkRunTerminalState();
-      } else {
-        broadcastLobbyUpdate(lobby);
-      }
-    });
-  }
+  notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect: true });
 
   broadcastLobbyList();
   return result;
