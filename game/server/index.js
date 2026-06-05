@@ -290,6 +290,7 @@ const {
   restoreHandCharges,
   spawnEnemy,
   spawnEnemies,
+  buildObjectiveSpawnCtx,
   updateSurviveSpawns,
   spawnLoot,
   spawnCrystals,
@@ -509,6 +510,7 @@ const DEBUG_SCENARIOS = new Set([
   'cinder-snare-ready',
   'quest-tier-2-unlocked',
   'arena-trials-tier-2',
+  'stage-boss-active',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -672,6 +674,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'run-exhausted',
   'quest-objective-near-complete',
   'arena-trials-tier-2',
+  'stage-boss-active',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -1521,6 +1524,7 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnCrystals,
     spawnEnemy,
     spawnEnemies,
+    buildObjectiveSpawnCtx,
     updateSurviveSpawns,
     firstRoomPosition,
     pickFloorSpawnPosition,

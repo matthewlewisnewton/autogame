@@ -1,7 +1,6 @@
 // ── Stage-boss encounter state ──
-// Registry/helpers for quest-tier stage-boss encounters. This sub-ticket only
-// initializes run.encounter and exposes pure state transitions; spawn, trigger,
-// and defeat hooks land in follow-up sub-tickets.
+// Registry/helpers for quest-tier stage-boss encounters: config validation,
+// run.encounter lifecycle, boss spawn placement, and ambient-spawn lock helpers.
 
 /**
  * Optional `stageBossEncounter` on a quest tier definition.
@@ -28,7 +27,12 @@
  * @property {{ questId: string, tier: number }|null} [unlockOnClear]
  */
 
+const { roomsByRole } = require('./dungeon');
+
 const ENCOUNTER_STATUSES = ['pending', 'active', 'cleared'];
+
+/** Seeded RNG offset so boss placement is stable per layout seed. */
+const STAGE_BOSS_SPAWN_RNG_OFFSET = 5000;
 
 function isPlainObject(value) {
   return value != null && typeof value === 'object' && !Array.isArray(value);
@@ -173,6 +177,130 @@ function isStageBossEnemy(enemy, run) {
   return enemy.id === run.encounter.bossEnemyId;
 }
 
+function isOpenFloorLayout(layout) {
+  return roomsByRole(layout, 'combat').length === 0 &&
+         roomsByRole(layout, 'treasure').length === 0;
+}
+
+function randomPositionInRoom(room, rng) {
+  const SPAWN_PADDING = 1;
+  const halfW = Math.max(0, room.width / 2 - SPAWN_PADDING);
+  const halfD = Math.max(0, room.depth / 2 - SPAWN_PADDING);
+  return {
+    x: room.x + (rng() * 2 - 1) * halfW,
+    z: room.z + (rng() * 2 - 1) * halfD,
+  };
+}
+
+/**
+ * Deterministic arena position for the stage boss.
+ * Open-plaza layouts use a seeded floor sample; multi-room layouts use the
+ * first room matching `roomRole` when configured.
+ *
+ * @param {object} layout
+ * @param {StageBossEncounterConfig|object|null|undefined} encounterConfig
+ * @param {() => number} rng
+ * @returns {{ x: number, z: number }}
+ */
+function resolveStageBossSpawnPosition(layout, encounterConfig, rng) {
+  if (!layout) {
+    return { x: 0, z: 0 };
+  }
+
+  if (isOpenFloorLayout(layout)) {
+    const { pickFloorSpawnPosition } = require('./simulation');
+    return pickFloorSpawnPosition(layout, rng);
+  }
+
+  const roomRole = encounterConfig?.roomRole;
+  if (typeof roomRole === 'string' && roomRole.length > 0) {
+    const roleRooms = roomsByRole(layout, roomRole);
+    if (roleRooms.length > 0) {
+      return randomPositionInRoom(roleRooms[0], rng);
+    }
+  }
+
+  const combatRooms = roomsByRole(layout, 'combat');
+  if (combatRooms.length > 0) {
+    return randomPositionInRoom(combatRooms[0], rng);
+  }
+
+  const { pickFloorSpawnPosition } = require('./simulation');
+  return pickFloorSpawnPosition(layout, rng);
+}
+
+/**
+ * Clear ambient enemies before the stage boss spawns so the arena stays clean.
+ * All existing enemies are removed — the boss has not been spawned yet.
+ *
+ * @param {object} gameState
+ */
+function clearNonBossEnemiesOnEncounterStart(gameState) {
+  if (!gameState || !Array.isArray(gameState.enemies)) {
+    return;
+  }
+  gameState.enemies.length = 0;
+}
+
+/**
+ * Activate a pending stage-boss encounter: clear ambient enemies, spawn the
+ * designated boss via `spawnCtx.spawnEnemy`, and record `bossEnemyId`.
+ *
+ * @param {object} gameState
+ * @param {object} spawnCtx
+ * @param {Function} spawnCtx.spawnEnemy
+ * @param {Function} spawnCtx.mulberry32
+ * @param {Function} [spawnCtx.roomTierAt]
+ * @param {Function} [spawnCtx.randomWanderTarget]
+ * @returns {object} spawned stage-boss enemy
+ */
+function startStageBossEncounter(gameState, spawnCtx) {
+  const run = gameState?.run;
+  if (!run?.encounter) {
+    throw new Error('Cannot start stage-boss encounter: run has no encounter state');
+  }
+  if (run.encounter.status !== 'pending') {
+    throw new Error(`Cannot start stage-boss encounter from status "${run.encounter.status}"`);
+  }
+  if (!spawnCtx || typeof spawnCtx.spawnEnemy !== 'function' || typeof spawnCtx.mulberry32 !== 'function') {
+    throw new Error('startStageBossEncounter requires spawnCtx.spawnEnemy and spawnCtx.mulberry32');
+  }
+
+  const encounterConfig = {
+    bossType: run.encounter.bossType,
+    trigger: run.encounter.trigger,
+    roomRole: run.encounter.roomRole ?? undefined,
+  };
+
+  clearNonBossEnemiesOnEncounterStart(gameState);
+
+  const seed = gameState.layoutSeed || 42;
+  const rng = spawnCtx.mulberry32(seed + STAGE_BOSS_SPAWN_RNG_OFFSET);
+  const pos = resolveStageBossSpawnPosition(gameState.layout, encounterConfig, rng);
+
+  setEncounterActive(run);
+
+  const tier = typeof spawnCtx.roomTierAt === 'function'
+    ? spawnCtx.roomTierAt(gameState.layout, pos.x, pos.z)
+    : 0;
+  const boss = spawnCtx.spawnEnemy(pos.x, pos.z, run.encounter.bossType, undefined, {
+    tier,
+    rng,
+    isStageBoss: true,
+  });
+  if (!boss) {
+    throw new Error('Failed to spawn stage boss');
+  }
+
+  boss.isStageBoss = true;
+  run.encounter.bossEnemyId = boss.id;
+  if (typeof spawnCtx.randomWanderTarget === 'function') {
+    boss.wanderTarget = spawnCtx.randomWanderTarget();
+  }
+
+  return boss;
+}
+
 module.exports = {
   ENCOUNTER_STATUSES,
   getStageBossEncounterConfig,
@@ -182,4 +310,9 @@ module.exports = {
   setEncounterActive,
   setEncounterCleared,
   isStageBossEnemy,
+  STAGE_BOSS_SPAWN_RNG_OFFSET,
+  isOpenFloorLayout,
+  resolveStageBossSpawnPosition,
+  clearNonBossEnemiesOnEncounterStart,
+  startStageBossEncounter,
 };

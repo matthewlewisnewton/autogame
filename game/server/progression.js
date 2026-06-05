@@ -66,7 +66,12 @@ const {
 } = require('./quests');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
-const { initRunEncounter } = require('./bossEncounter');
+const {
+  initRunEncounter,
+  isEncounterLocked,
+  getEncounterConfig,
+  startStageBossEncounter,
+} = require('./bossEncounter');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -2124,6 +2129,10 @@ function restoreHandCharges(player, amount, options = {}) {
 }
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
+  if (_gameState?.run && isEncounterLocked(_gameState.run) && !opts.isStageBoss) {
+    return null;
+  }
+
   const def = enemyDefFor(type);
   const { hp, name, description, surfacedStats, ...statFieldsFromDef } = def;
   const enemy = {
@@ -2440,6 +2449,8 @@ function buildObjectiveSpawnCtx() {
 function spawnCombatEnemies(layout, rng, quest) {
   const def = getObjectiveDef(quest.objectiveType);
   if (def?.skipBulkCombatSpawn?.(quest)) return;
+  // Stage-boss tiers deploy without a bulk mob pack; the encounter spawns one boss.
+  if (getEncounterConfig(quest)) return;
 
   // Draw each enemy's type from the quest's per-level pool so each level spawns
   // only its thematically-appropriate enemies (and level-exclusive types like
@@ -2471,6 +2482,7 @@ function spawnCombatEnemies(layout, rng, quest) {
 function updateSurviveSpawns(now = Date.now()) {
   const run = _gameState.run;
   if (!run?.objective || !isPlayingPhase(_gameState)) return;
+  if (isEncounterLocked(run)) return;
   const def = getObjectiveDef(run.objective.type);
   if (!def?.tickSpawns) return;
   def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
@@ -3265,6 +3277,7 @@ module.exports = {
   spawnLoot,
   spawnCrystals,
   spawnEnemies,
+  spawnCombatEnemies,
   updateSurviveSpawns,
   recordCrystalCollected,
   isRunObjectiveComplete,
@@ -3291,4 +3304,6 @@ module.exports = {
   previewReturnRewards,
   emitPlayerDeckUpdate,
   buildPlayerDeckUpdatePayload,
+  buildObjectiveSpawnCtx,
+  startStageBossEncounter,
 };

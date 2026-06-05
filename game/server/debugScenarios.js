@@ -40,7 +40,10 @@ const {
   stateSnapshot,
   assignRunSpawnPositions,
   suspendRunToLobby,
+  buildObjectiveSpawnCtx,
+  startStageBossEncounter,
 } = require('./progression');
+const { initRunEncounter } = require('./bossEncounter');
 const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
@@ -195,6 +198,59 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'stage-boss-active') {
+      // Active stage-boss encounter on the open-plaza arena: one scaled miniboss,
+      // ambient spawns locked. Reachable normally once quest tiers declare
+      // stageBossEncounter and deploy triggers land (sub-ticket 03+); this
+      // scenario is a shortcut into the locked-encounter fight state.
+      const questId = 'arena_trials';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const plazaSpawn = firstRoomPosition();
+      player.x = plazaSpawn.x;
+      player.z = plazaSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      if (state.run) {
+        initRunEncounter(state.run, {
+          stageBossEncounter: {
+            bossType: 'miniboss',
+            trigger: 'deploy',
+            roomRole: 'combat',
+          },
+        });
+        startStageBossEncounter(state, buildObjectiveSpawnCtx());
+        syncRunObjectiveToEnemies();
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'hats-unlocked') {

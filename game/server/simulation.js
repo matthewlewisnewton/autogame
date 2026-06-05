@@ -2033,8 +2033,11 @@ function updateEnemies() {
 			const spawnMaxAlive = enemy.spawnMaxAlive || 3;
 			const spawnType = enemy.spawnType || 'skirmisher';
 			const now = Date.now();
+			const encounterLocked = Boolean(
+				_gameState?.run?.encounter && _gameState.run.encounter.status === 'active',
+			);
 
-			if (now - enemy.lastSpawnTime >= spawnInterval) {
+			if (!encounterLocked && now - enemy.lastSpawnTime >= spawnInterval) {
 				// Count living adds belonging to this spawner
 				const aliveAdds = _gameState.enemies.filter(
 					e => e.spawnedBy === enemy.id && e.hp > 0
@@ -2044,8 +2047,10 @@ function updateEnemies() {
 					// Place add within ~3 units of spawner
 					const addPos = nearbySpawnPosition(enemy.x, enemy.z, 3);
 					const add = _progression().spawnEnemy(addPos.x, addPos.z, spawnType, enemy.id);
-					add.wanderTarget = randomWanderTarget();
-					enemy.lastSpawnTime = now;
+					if (add) {
+						add.wanderTarget = randomWanderTarget();
+						enemy.lastSpawnTime = now;
+					}
 				}
 			}
 		}
