@@ -1598,3 +1598,86 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     expect(a).toEqual(b);
   });
 });
+
+// ── hub ship-interior layout ──
+
+describe("generateLayout(seed, 'hub')", () => {
+  const HUB_ZONES = ['operations', 'commerce', 'salon'];
+  const BOOTH_KEYS = ['quest', 'launch', 'shop', 'deck', 'character', 'hats'];
+  const BOOTH_ZONE = {
+    quest: 'operations',
+    launch: 'operations',
+    shop: 'commerce',
+    deck: 'commerce',
+    character: 'salon',
+    hats: 'salon',
+  };
+
+  function roomByHubZone(layout, zone) {
+    return layout.rooms.filter(r => r.hubZone === zone);
+  }
+
+  function anchorInsideRoom(anchor, room, inset = 1) {
+    const halfW = room.width / 2 - inset;
+    const halfD = room.depth / 2 - inset;
+    return (
+      anchor.x >= room.x - halfW && anchor.x <= room.x + halfW &&
+      anchor.z >= room.z - halfD && anchor.z <= room.z + halfD
+    );
+  }
+
+  function hubReachableFromStart(layout) {
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    return countReachableRooms(layout, aabbs, colliders) === layout.rooms.length;
+  }
+
+  it('has profile hub with three zone rooms and at least two passages', () => {
+    const layout = generateLayout(42, 'hub');
+    expect(layout.profile).toBe('hub');
+    expect(layout.rooms.length).toBe(3);
+    expect(layout.passages.length).toBeGreaterThanOrEqual(2);
+    for (const zone of HUB_ZONES) {
+      expect(roomByHubZone(layout, zone).length).toBe(1);
+    }
+  });
+
+  it('assigns start to operations and spawnWeight 0 to commerce and salon', () => {
+    const layout = generateLayout(42, 'hub');
+    const operations = roomByHubZone(layout, 'operations')[0];
+    const commerce = roomByHubZone(layout, 'commerce')[0];
+    const salon = roomByHubZone(layout, 'salon')[0];
+    expect(operations.role).toBe('start');
+    expect(commerce.spawnWeight).toBe(0);
+    expect(salon.spawnWeight).toBe(0);
+  });
+
+  it('places booth anchors inside the correct zone room with walkable floor', () => {
+    const layout = generateLayout(42, 'hub');
+    expect(layout.boothAnchors).toBeDefined();
+    for (const key of BOOTH_KEYS) {
+      expect(layout.boothAnchors[key]).toBeDefined();
+    }
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    for (const key of BOOTH_KEYS) {
+      const anchor = layout.boothAnchors[key];
+      const room = roomByHubZone(layout, BOOTH_ZONE[key])[0];
+      expect(anchorInsideRoom(anchor, room, 1)).toBe(true);
+      expect(isWalkable(anchor.x, anchor.z, aabbs, colliders)).toBe(true);
+    }
+  });
+
+  it('all zone rooms are reachable from start via walkable floor and passages', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'hub');
+      expect(hubReachableFromStart(layout)).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'hub');
+    const b = generateLayout(2024, 'hub');
+    expect(a).toEqual(b);
+  });
+});
