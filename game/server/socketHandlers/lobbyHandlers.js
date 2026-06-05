@@ -11,6 +11,7 @@
 // and index.js-local helpers are supplied via the ctx object passed to
 // register(socket, ctx) from the connection handler.
 
+const { CLIENT_TO_SERVER } = require('../../shared/events.js');
 const { MAX_PLAYERS } = require('../config');
 const { findBoothInRange } = require('../../shared/boothZones.js');
 const { isLobbyPhase } = require('../lobbies');
@@ -59,11 +60,11 @@ function register(socket, ctx) {
     syncLivePlayerCosmetic,
   } = ctx;
 
-  socket.on('listLobbies', () => {
+  socket.on(CLIENT_TO_SERVER.LIST_LOBBIES, () => {
     socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
   });
 
-  socket.on('createLobby', (data) => {
+  socket.on(CLIENT_TO_SERVER.CREATE_LOBBY, (data) => {
     if (lobbies.getLobbyForPlayer(playerId)) {
       socket.emit('lobbyError', { reason: 'Already in a lobby' });
       return;
@@ -80,7 +81,7 @@ function register(socket, ctx) {
     joinPlayerToLobby(socket, lobby);
   });
 
-  socket.on('joinLobby', (data) => {
+  socket.on(CLIENT_TO_SERVER.JOIN_LOBBY, (data) => {
     const existingLobby = lobbies.getLobbyForPlayer(playerId);
     if (existingLobby) {
       const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
@@ -109,7 +110,7 @@ function register(socket, ctx) {
     joinLobbyWithPhasePolicy(socket, lobby);
   });
 
-  socket.on('leaveLobby', () => {
+  socket.on(CLIENT_TO_SERVER.LEAVE_LOBBY, () => {
     if (!lobbies.getLobbyForPlayer(playerId)) {
       socket.emit('lobbyError', { reason: 'Not in a lobby' });
       return;
@@ -122,7 +123,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('selectQuest', (data) => {
+  socket.on(CLIENT_TO_SERVER.SELECT_QUEST, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (state.suspendedCheckpoint) {
       socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
@@ -167,7 +168,7 @@ function register(socket, ctx) {
   keyItemHandlers.register(socket, ctx);
   runHandlers.register(socket, ctx);
 
-  socket.on('unlockHat', (data) => {
+  socket.on(CLIENT_TO_SERVER.UNLOCK_HAT, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
     if (!hatId) {
@@ -223,7 +224,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('applyAppearanceChange', (data) => {
+  socket.on(CLIENT_TO_SERVER.APPLY_APPEARANCE_CHANGE, (data) => {
     const lobby = lobbies.getLobbyForPlayer(playerId);
     if (!lobby || !isLobbyPhase(lobby.state)) {
       socket.emit('appearanceError', { reason: 'not_in_lobby' });
@@ -319,7 +320,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('medicHeal', () => {
+  socket.on(CLIENT_TO_SERVER.MEDIC_HEAL, () => {
     withLobbyPlayer(socket, {
       requirePhase: 'lobby',
       phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
@@ -339,7 +340,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('boothInteract', (data) => {
+  socket.on(CLIENT_TO_SERVER.BOOTH_INTERACT, (data) => {
     // Booth interactions only exist while in the hub lobby phase. Emit
     // boothError (not lobbyError) for every rejection so the client can
     // listen on a single channel.
@@ -376,7 +377,7 @@ function register(socket, ctx) {
     socket.emit('boothAction', { boothId, action: boothId });
   });
 
-  socket.on('debugScenario', (data) => {
+  socket.on(CLIENT_TO_SERVER.DEBUG_SCENARIO, (data) => {
     const name = data && typeof data.name === 'string' ? data.name : '';
     if (!isDebugScenarioAllowed(socket)) {
       socket.emit('debugScenarioResult', { ok: false, reason: 'Debug scenarios are disabled' });
@@ -387,7 +388,7 @@ function register(socket, ctx) {
     socket.emit('debugScenarioResult', result);
   });
 
-  socket.on('toggleDebugGodmode', () => {
+  socket.on(CLIENT_TO_SERVER.TOGGLE_DEBUG_GODMODE, () => {
     if (!isDebugScenarioAllowed(socket)) {
       socket.emit('debugGodmodeResult', { ok: false, reason: 'Debug godmode is disabled' });
       return;
@@ -399,7 +400,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('heartbeat', (data) => {
+  socket.on(CLIENT_TO_SERVER.HEARTBEAT, (data) => {
     if (!data || !Number.isFinite(data.timestamp)) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
       return;

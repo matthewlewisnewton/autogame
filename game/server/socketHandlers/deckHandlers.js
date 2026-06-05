@@ -1,6 +1,7 @@
 // ── Deck Socket Handlers ──
 // Registers deck edit socket.on handlers extracted from lobbyHandlers.js.
 
+const { CLIENT_TO_SERVER } = require('../../shared/events.js');
 const { DECK_MAX_SIZE } = require('../config');
 const { DEFAULT_QUEST_TIER } = require('../quests');
 const { isLobbyPhase } = require('../lobbies');
@@ -26,7 +27,7 @@ const {
 function register(socket, ctx) {
   const { withLobbyPlayer, broadcastLobbyUpdate } = ctx;
 
-  socket.on('deckAddCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.DECK_ADD_CARD, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     normalizePlayerInventory(player);
 
@@ -84,7 +85,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('deckRemoveCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.DECK_REMOVE_CARD, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     normalizePlayerInventory(player);
 
@@ -126,7 +127,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('evolveCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.EVOLVE_CARD, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
     const result = evolveCard(player, instanceId);
@@ -150,7 +151,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('buyShopCard', () => {
+  socket.on(CLIENT_TO_SERVER.BUY_SHOP_CARD, () => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
       const offer = ensureShopOffer(state);
       const result = buyShopCard(player, offer);
@@ -171,7 +172,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('sellCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.SELL_CARD, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
     const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
@@ -202,7 +203,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('grindCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.GRIND_CARD, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
     const result = grindCard(player, instanceId);
@@ -228,7 +229,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('playerReady', (ready) => {
+  socket.on(CLIENT_TO_SERVER.PLAYER_READY, (ready) => {
     withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
       const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;

@@ -1,6 +1,7 @@
 // ── Trade Socket Handlers ──
 // Registers card trade socket.on handlers extracted from deckHandlers.js.
 
+const { CLIENT_TO_SERVER } = require('../../shared/events.js');
 const {
   offerCardTrade,
   respondCardTrade,
@@ -10,7 +11,7 @@ const {
 function register(socket, ctx) {
   const { withLobbyPlayer, findSocketByPlayerId } = ctx;
 
-  socket.on('offerCardTrade', (data) => {
+  socket.on(CLIENT_TO_SERVER.OFFER_CARD_TRADE, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (!data) return;
 
@@ -55,7 +56,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('respondCardTrade', (data) => {
+  socket.on(CLIENT_TO_SERVER.RESPOND_CARD_TRADE, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (!data) return;
 
