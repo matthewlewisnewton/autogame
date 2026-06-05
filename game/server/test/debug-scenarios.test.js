@@ -95,6 +95,52 @@ describe('debugScenario — quest-objective-near-complete', () => {
 	});
 });
 
+describe('debugScenario — suspended-run-hub', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('drops the squad into the hub lobby on top of a suspended checkpoint', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'suspended-run-hub' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('suspended-run-hub');
+
+		const state = testGameState();
+		// Suspended run: back in the lobby with a checkpoint that drives the
+		// distinct Resume affordance (and the suspended-run banner) in the hub.
+		expect(state.gamePhase).toBe('lobby');
+		expect(state.suspendedCheckpoint).toBeTruthy();
+		expect(state.suspendedCheckpoint.run.status).toBe('playing');
+
+		// The checkpoint carries non-default spent/damaged values to resume into.
+		const playerId = socket._playerId;
+		const saved = state.suspendedCheckpoint.playerStates[playerId];
+		expect(saved.magicStones).toBeLessThan(49);
+		const weapon = saved.hand.find((c) => c && c.type === 'weapon');
+		expect(weapon).toBeTruthy();
+		expect(weapon.remainingCharges).toBeLessThan(weapon.charges);
+	});
+});
+
 describe('debugScenario — warded-enemy', () => {
 	let baseUrl;
 	let prevAllowDebug;

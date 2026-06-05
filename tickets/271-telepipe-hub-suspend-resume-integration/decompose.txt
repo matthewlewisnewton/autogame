@@ -1,0 +1,8 @@
+Created one new sub-ticket. No stale/failed folders to retire — `01`, `02`, and `04` all carry `.passed` markers (and there is no leftover `03` folder; it was retired in an earlier round).
+
+**Sub-ticket created:**
+- `/home/matt/workspace/.autogame-worktrees/271-telepipe-hub-suspend-resume-integration/tickets/271-telepipe-hub-suspend-resume-integration/subtickets/05-show-distinct-resume-affordance/ticket.md`
+
+**Why this closes the open gap:** The round-3 review's sole remaining gap is that `#resume-run-btn` exists in the DOM but is always force-hidden, so `#ready-btn` ends up doing double-duty as the resume control — there is no *distinct* resume affordance. Sub-ticket 05 flips `setDeployButtonVisible()` / `renderSuspendedRunBanner()` to actually **show and wire** `#resume-run-btn` during suspension as the dedicated, distinct, prominently-styled resume control, and removes the new-mission fresh-launch role from the suspended lobby.
+
+The one hard constraint I designed around: the immutable harness telepipe capture (`harness/screenshot.mjs` `readyAll`) clicks `#ready-btn` to resume, and the already-`.passed` sub-ticket 04 explicitly forbids touching `harness/` and requires `#ready-btn` to stay visible+resume-wired while suspended. So the ticket keeps `#ready-btn` as a resume trigger (carrying the resume label, *not* the new-mission Deploy label) for the capture, while making `#resume-run-btn` the distinct user-facing resume entry point the reviewer asked for. Verification is `code` (DOM elements, handlers, visibility logic, and the routed emit are all diff-checkable).

@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/238-avatar-cosmetic-render/round-1/review.md`.
+
+Verdict is `VERDICT: FAIL`: the browser capture runs cleanly, but `coverage.log` is not green, including the new cosmetic runtime profile-sync test failing with a user persistence `ENOENT` during registration.
+
+Also wrote the standalone remediation file to `tickets/238-avatar-cosmetic-render/round-1/gaps.md`. No `nits.md` was created.

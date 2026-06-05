@@ -2,7 +2,7 @@
 // Registers run-lifecycle and playing-phase socket.on handlers extracted from lobbyHandlers.js.
 
 const { LOOT_PICKUP_RADIUS } = require('../config');
-const { isPlayingPhase } = require('../lobbies');
+const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
 const {
   savePlayerData,
   discardCardFromHand,
@@ -87,13 +87,15 @@ function register(socket, ctx) {
 
   socket.on('move', (data) => {
     withLobbyFromSocket(socket, (state) => {
-    if (!isPlayingPhase(state)) return;
+    if (!isPlayingPhase(state) && !isLobbyPhase(state)) return;
 
     const player = state.players[socket.playerId];
 
     if (!player) return;
-    if (player.dead) return;
-    if (player.extracted) return;
+    if (isPlayingPhase(state)) {
+      if (player.dead) return;
+      if (player.extracted) return;
+    }
     if (player.connected === false) return;
 
     if (!data || typeof data !== 'object' || Array.isArray(data) ||

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   applyPlayerMovement,
   applyPlayerKnockback,
+  buildMovementContext,
   setGameState,
   rebuildWallColliders,
   computeWalkableAABBs,
@@ -142,7 +143,7 @@ describe('ground_anchor movement slow', () => {
       anchorSpeedMultiplier: 0.7,
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, buildMovementContext(state));
 
     expect(state.players.p1.x).toBeCloseTo(step * 0.7);
   });
@@ -160,7 +161,7 @@ describe('ground_anchor movement slow', () => {
       anchorSpeedMultiplier: 0.7,
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, buildMovementContext(state));
 
     expect(state.players.p1.x).toBeCloseTo(step);
   });

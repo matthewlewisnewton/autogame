@@ -1,6 +1,17 @@
-Resolved the conflict in `LOGBOOK.md` by keeping **both** log entries in reverse-chronological order:
+Merge conflicts are resolved. Summary:
 
-1. **v0.229 — 275-socketHandlers-extract-keyitem** (branch/ticket) — key-item handler extraction review
-2. **v0.228 — 211-net-slim-per-tick-state-broadcast** (main) — slim per-tick state broadcast review
+### `TASKS.md`
+Kept both cleanup backlog entries: `274-cleanup-telepipe-hub-suspend-resume-integration` (from `main`) and `277-cleanup-socketHandlers-extract-run-and-cleanup` (from the ticket branch).
 
-All conflict markers are removed. The file is ready for the harness to commit and complete the merge.
+### `LOGBOOK.md`
+Merged chronologically: `main` entries for v0.230–v0.232, then the ticket’s v0.233 entry for `276-socketHandlers-extract-run-and-cleanup`.
+
+### `lobbyHandlers.js`
+Kept the ticket’s extraction: run-lifecycle handlers stay delegated to `runHandlers.register()` with no duplicate inline handlers or `isPlayingPhase`/`isLobbyPhase` imports in this file.
+
+### `runHandlers.js` (coherence fix)
+Ported `main`’s lobby-phase movement logic into the extracted `move` handler so hub movement still works after the refactor:
+- Accept moves in both playing and lobby phases
+- Scope dead/extracted checks to playing phase only
+
+All conflict markers are removed. Server test suite: **1325/1325 passed** (including `lobby_hub_movement.test.js`). Ready for the harness to commit and complete the merge.

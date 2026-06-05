@@ -167,6 +167,7 @@ describe('useKeyItem — field_medic_kit', () => {
 		const p3MsAfter = playerForSocket(players[2].socket).magicStones;
 		// Out-of-range player must not receive the +3 MS restore; only ambient regen may apply.
 		expect(p3MsAfter).toBeLessThan(p3MsBefore + 1);
+		expect(p3MsAfter).toBeCloseTo(p3MsBefore, 1);
 	});
 
 	it('dead players skipped', async () => {

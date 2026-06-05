@@ -87,6 +87,10 @@ router.patch('/me/profile', (req, res) => {
 	}
 
 	const user = findUserByAccountId(req.accountId);
+	if (cosmetic !== undefined) {
+		const { syncLivePlayerCosmetic } = require('./index');
+		syncLivePlayerCosmetic(req.accountId, user.cosmetic);
+	}
 	const payload = {
 		username: user.username,
 		email: user.email || null,

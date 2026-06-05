@@ -1,0 +1,3 @@
+1. The required live capture does not complete the suspend-to-hub-to-resume round trip: `metrics.json` is `ok:false` / `failure_kind: "capture_failed"`, and `console.log` times out after `[run] suspended: Initiate Vault` with no resumed-dungeon proof or `[run] checkpoint restored`.
+   Files: game/client/main.js, game/server/socketHandlers/deckHandlers.js, game/server/progression.js
+   Fix: Make the suspended hub resume path reliably drive `Resume sortie`/`playerReady` through `checkAllReady()` to `restoreRunCheckpoint()` in the browser capture, then rerun capture until metrics are `ok:true` and include a resumed-dungeon probe/screenshot preserving MS, card charges, and objective progress.

@@ -11,7 +11,7 @@ import {
 	clearAllTimers,
 	getJWTSecret
 } from '../index.js';
-import { clearUsers, setTestFilePath } from '../users.js';
+import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import { clearAllSettings, resetSettingsPath } from '../settings.js';
 import { PROPORTION_KEYS, PROPORTION_RANGES } from '../cosmetic.js';
@@ -31,7 +31,7 @@ async function startTestServer() {
 		resetGameState();
 		serverIo.removeAllListeners('connection');
 		clearAllTimers();
-		clearUsers();
+		clearServerUsers();
 		startServer(0);
 		httpServer.once('listening', () => {
 			clearTimeout(timeout);
@@ -85,8 +85,8 @@ beforeEach(async () => {
 	tmpUserFile = path.join(os.tmpdir(), `account-test-users-${Date.now()}-${process.pid}-${Math.random().toString(36).slice(2)}.json`);
 	tmpDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'account-test-data-'));
 	process.env.PERSISTENCE_PATH = tmpDataDir;
-	setTestFilePath(tmpUserFile);
-	clearUsers();
+	setServerUsersFilePath(tmpUserFile);
+	clearServerUsers();
 	resetSettingsPath();
 	clearAllSettings();
 	resetAuthSecret();

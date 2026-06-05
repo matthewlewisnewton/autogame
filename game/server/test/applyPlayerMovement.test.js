@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   applyPlayerMovement,
+  buildMovementContext,
   flushDirtyPlayerSaves,
   setGameState,
   setSavePlayerCallback,
@@ -40,6 +41,7 @@ function makePlayer(overrides = {}) {
 describe('applyPlayerMovement()', () => {
   let state;
   let saveSpy;
+  let movementContext;
 
   beforeEach(() => {
     state = createGameState();
@@ -47,6 +49,7 @@ describe('applyPlayerMovement()', () => {
     state.layout = buildOpenLayout();
     state.walkableAABBs = computeWalkableAABBs(state.layout);
     state.dungeonBounds = computeDungeonBounds(state.layout);
+    movementContext = buildMovementContext(state);
     setGameState(state, {});
     rebuildWallColliders();
     saveSpy = vi.fn();
@@ -66,7 +69,7 @@ describe('applyPlayerMovement()', () => {
       lastInputTime: Date.now(),
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     const step = MOVE_SPEED / TICK_RATE;
     expect(state.players.p1.x).toBeCloseTo(step);
@@ -82,7 +85,7 @@ describe('applyPlayerMovement()', () => {
       lastInputTime: Date.now(),
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     const step = MOVE_SPEED / TICK_RATE;
     expect(state.players.p1.x).toBeCloseTo(0.5 * step);
@@ -98,7 +101,7 @@ describe('applyPlayerMovement()', () => {
       lastInputTime: Date.now(),
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     expect(state.players.p1.rotation).toBeCloseTo(Math.PI / 2);
   });
@@ -111,7 +114,7 @@ describe('applyPlayerMovement()', () => {
       lastInputTime: Date.now() - INPUT_STALE_MS - 1,
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     expect(state.players.p1.x).toBe(0);
     expect(state.players.p1.inputActive).toBe(false);
@@ -124,7 +127,7 @@ describe('applyPlayerMovement()', () => {
       rotation: 0,
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     expect(state.players.p1.x).toBe(0);
     expect(state.players.p1.z).toBe(0);
@@ -209,6 +212,7 @@ function buildSlopedLayout() {
 describe('applyPlayerMovement() — slope movement', () => {
   let state;
   let saveSpy;
+  let movementContext;
 
   beforeEach(() => {
     state = createGameState();
@@ -216,6 +220,7 @@ describe('applyPlayerMovement() — slope movement', () => {
     state.layout = buildSlopedLayout();
     state.walkableAABBs = computeWalkableAABBs(state.layout);
     state.dungeonBounds = computeDungeonBounds(state.layout);
+    movementContext = buildMovementContext(state);
     setGameState(state, {});
     rebuildWallColliders();
     saveSpy = vi.fn();
@@ -246,7 +251,7 @@ describe('applyPlayerMovement() — slope movement', () => {
     const step = MOVE_SPEED / TICK_RATE;
     const ticksToEnter = Math.ceil(8 / step) + 4; // enter + 4 more ticks south
     for (let i = 0; i < ticksToEnter; i++) {
-      applyPlayerMovement();
+      applyPlayerMovement(state, movementContext);
     }
 
     const player = state.players.p1;
@@ -281,7 +286,7 @@ describe('applyPlayerMovement() — slope movement', () => {
       lastInputTime: Date.now(),
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     expect(state.players.p1.y).toBe(DEFAULT_FLOOR_Y);
   });
@@ -302,7 +307,7 @@ describe('applyPlayerMovement() — slope movement', () => {
       lastInputTime: Date.now(),
     });
 
-    applyPlayerMovement();
+    applyPlayerMovement(state, movementContext);
 
     const player = state.players.p1;
 

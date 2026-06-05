@@ -1,0 +1,15 @@
+Remediation round 2 only had one open gap from `review-feedback.md`: the full validation suite is not green (3 failing tests). Sub-tickets 01–04 are done (`.passed`); feature work is complete.
+
+Two new sub-tickets target the two failure modes:
+
+| # | Gap | Sub-ticket |
+|---|-----|------------|
+| 05 | ENOENT on `users.json.tmp` + 500s in `cosmetic_runtime` / `account` tests (CJS/ESM dual `users.js` + shared temp file) | `05-race-safe-user-persistence` |
+| 06 | `field_medic_kit` MS `toBeCloseTo` boundary flake (10 vs 10.005) | `06-field-medic-ms-assertion` |
+
+**Created sub-ticket folder paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/238-avatar-cosmetic-render/tickets/238-avatar-cosmetic-render/subtickets/05-race-safe-user-persistence`
+- `/home/matt/workspace/.autogame-worktrees/238-avatar-cosmetic-render/tickets/238-avatar-cosmetic-render/subtickets/06-field-medic-ms-assertion`
+
+Both use **code** verification (`pnpm test` green). No failed sub-ticket folders without `.passed` needed removal.

@@ -12,7 +12,7 @@ import {
 	wallAABB,
 	MAX_MAGIC_STONES,
 } from '../index.js';
-import { setGameState as setSimGameState, processPendingEchoes, updateMinions, applyPlayerMovement } from '../simulation.js';
+import { setGameState as setSimGameState, processPendingEchoes, updateMinions, applyPlayerMovement, buildMovementContext } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import {
 	startTestServer,
@@ -1257,7 +1257,7 @@ describe('useKeyItem — rally_cry', () => {
 		player.inputDx = dirx;
 		player.inputDz = dirz;
 		player.lastInputTime = Date.now();
-		applyPlayerMovement();
+		applyPlayerMovement(state, buildMovementContext(state));
 		const d = Math.hypot(player.x - x0, player.z - z0);
 		player.inputActive = false;
 		player.x = x0;
