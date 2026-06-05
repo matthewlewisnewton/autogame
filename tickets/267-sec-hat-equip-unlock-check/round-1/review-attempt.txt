@@ -1,0 +1,19 @@
+## Review complete
+
+**VERDICT: PASS**
+
+Written to `tickets/267-sec-hat-equip-unlock-check/round-1/review.md`. No `gaps.md` (PASS only). No `nits.md` (nothing worth backlog filing).
+
+### Runtime health
+- `metrics.json`: `"ok": true`, `pageerrors: []`
+- `console.log`: no `pageerror` or `[fatal]` lines
+- Game reached gameplay (movement, dodge cooldown HUD)
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| Hat equip checks `unlockedHats` and rejects otherwise | **Met** — enforced in `updateProfile` and `applyAppearanceChange` |
+| Test for locked-hat rejection | **Met** — unit test (`crown` via `updateProfile`) + integration test (`wizard` via socket) |
+
+### Notable finding
+This branch only **hardened tests** (2 commits). The unlock gate was already in the baseline at `bed247ce` in `users.js` and `lobbyHandlers.js`. The ticket still satisfies its goal: the exploit is closed and both equip paths have automated rejection coverage (68 vitest cases passing in `coverage.log`).

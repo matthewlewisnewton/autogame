@@ -1,0 +1,8 @@
+Split the top-level ticket into **2 sub-tickets** in dependency order: server enforcement first, then test coverage for both equip paths.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/tickets/267-sec-hat-equip-unlock-check/subtickets/01-enforce-hat-unlock-on-profile-equip/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/tickets/267-sec-hat-equip-unlock-check/subtickets/02-test-equip-locked-hat-rejection/ticket.md`
+
+**Rationale:** The exploit is that `validateCosmetic` only checks catalog membership. Sub-ticket 01 adds the unlock gate at the persistence layer (`updateProfile`), which covers both `PATCH /api/me/profile` and `applyAppearanceChange` (which delegates to `updateProfile`). Sub-ticket 02 adds unit and integration tests for locked-hat rejection on both paths. Both use `code` verification since the acceptance criteria are about handlers, rejection reasons, and persisted state — not purely visual rendering.

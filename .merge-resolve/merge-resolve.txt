@@ -1,16 +1,10 @@
-Merge conflicts are resolved in both files.
+**`LOGBOOK.md`** is resolved.
 
-### `game/server/dungeon.js`
-Kept **both** feature sets in order:
-1. **Ticket (254):** `OPEN_PLAZA_RIGID_HAZARDS` and `placeOpenPlazaHazardsRigid()` for deterministic open-plaza rigid layout mode
-2. **Main:** `buildSunkenCanyonCliffLips()` and `buildSunkenCanyonCliffHazards()` for sunken-canyon cliff lips and plateau hazard bands
+Both sides are kept in version order:
 
-Removed the stray extra `}` that came from the conflict. `node --check` passes.
+1. **v0.256 — 267-sec-hat-equip-unlock-check** (from `main`) — hat equip unlock enforcement review  
+2. **v0.257 — 257-level2-spire-ascent** (from this branch) — Spire Ascent Tier 2 review  
 
-### `LOGBOOK.md`
-Combined log entries in version order:
-- **v0.251–v0.254** from `main` (enemy display, canyon verticality, rooms HUD, lock-on panel)
-- **v0.255** from the ticket branch (level-2 mechanics reference)
-- Final **Remaining gaps: None** at the end
+Conflict markers are removed. No other `<<<<<<<` / `=======` / `>>>>>>>` markers remain in the worktree (only decorative `===` lines in unrelated harness docs).
 
-No conflict markers remain in either file. The harness can commit and run the test suite.
+The harness can commit and finish the merge.

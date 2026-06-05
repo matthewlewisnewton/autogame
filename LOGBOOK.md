@@ -4540,6 +4540,27 @@ The changed code is cohesive and uses existing quest, progression, layout, lobby
 
 None.
 
+## v0.256 — 267-sec-hat-equip-unlock-check  (2026-06-05 08:11:21)
+
+- `validateCosmetic` correctly remains catalog-only (ticket goal acknowledged this split).
+
+## Code quality
+
+- Defense-in-depth: unlock checked in both `lobbyHandlers` and `updateProfile` — redundant but safe; a future caller of `updateProfile` alone is still protected.
+- Tests assert persisted state, not just return codes — good coverage of the original exploit (free equip of paid hats).
+- No dead code, no new console errors, no debug scenarios added or modified by this ticket.
+
+## Debug scenarios
+
+Not in scope for this ticket. Existing debug scenarios (e.g. `avatar-wizard-hat`) remain URL-gated dev shortcuts; normal equip flow still goes through unlock + `applyAppearanceChange` / `updateProfile`.
+
+## Harness capture note
+
+Round-1 capture used the fallback full-flow smoke plan (lobby → gameplay → movement/dodge). It does not visually exercise hat customization, but the ticket acceptance criteria are server-side enforcement and automated tests — both are satisfied independently of the capture plan.
+
+## Remaining gaps
+
+None. The security fix is in place at both equip entry points, automated tests cover locked-hat rejection on profile update and lobby appearance change, the game starts and runs cleanly in capture, and vitest passes.
 
 ## v0.257 — 257-level2-spire-ascent  (2026-06-05 08:22:56)
 
