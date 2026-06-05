@@ -1,0 +1,6 @@
+Done. I wrote:
+
+- `tickets/232-hub-shared-presence/round-1/review.md` with final line `VERDICT: PASS`
+- `tickets/232-hub-shared-presence/round-1/nits.md` for a docs-only socket event follow-up
+
+No `gaps.md` was created because there were no blocking gaps. I did not edit game code.

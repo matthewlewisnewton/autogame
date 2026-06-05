@@ -1,0 +1,17 @@
+Broke ticket **232-hub-shared-presence** into **4 sub-tickets** (dependency order), covering lobby-scoped presence state, broadcast, client rendering, and integration tests. All use **code** verification.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/232-hub-shared-presence/tickets/232-hub-shared-presence/subtickets/01-hub-presence-lobby-state/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/232-hub-shared-presence/tickets/232-hub-shared-presence/subtickets/02-hub-presence-broadcast/ticket.md`
+3. `/home/matt/workspace/.autogame-worktrees/232-hub-shared-presence/tickets/232-hub-shared-presence/subtickets/03-client-hub-presence-render/ticket.md`
+4. `/home/matt/workspace/.autogame-worktrees/232-hub-shared-presence/tickets/232-hub-shared-presence/subtickets/04-hub-presence-integration-tests/ticket.md`
+
+**Dependency chain:** `01` → `02` → `03` → `04`
+
+| # | Focus |
+|---|--------|
+| **01** | `lobby.hubPresence` data model + sync hooks (interest-management-ready `buildHubPresencePayload(lobby, viewerPlayerId)`) |
+| **02** | `hubPresenceUpdate` emits on tick / join / leave, scoped to `io.to(lobby.id)` |
+| **03** | Client handler + remote avatar mesh lifecycle (cosmetics, cleanup on leave) |
+| **04** | Two-client integration tests (cosmetics, movement, join, leave) |

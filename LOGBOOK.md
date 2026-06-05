@@ -4166,3 +4166,26 @@ test suite confirm it.
 None. All acceptance criteria are satisfied and the captured run is clean.
 
 ---
+
+## v0.239 — 232-hub-shared-presence  (2026-06-05 04:31:47)
+
+I did not find any global `io.emit` path for hub presence.
+
+### 3. Join and leave update presence correctly
+
+PASS. Lobby creation initializes an empty presence store. Lobby-phase joins sync the joining player's hub spawn position and broadcast the updated payload to existing room members; voluntary `leaveLobby` and `removePlayerFromLobby()` remove the player from `hubPresence` before broadcasting to remaining members. Tests cover join, leave, and movement from two clients.
+
+Soft disconnect behavior remains consistent with the existing design: disconnected players are kept in `lobby.state.players` during the reconnect grace period and are only removed after eviction, so preserving their last presence during that grace window is not a regression.
+
+### 4. Tests
+
+PASS. The captured coverage run reports `68 passed` test files and `1269 passed` tests. New focused tests cover the hub presence module, room-scoped socket broadcasts, two-client integration with cosmetics/movement/join/leave, and client-side remote avatar rendering/cleanup.
+
+## Design and foundation compatibility
+
+PASS. The implementation matches the design's lobby-first multiplayer flow and does not weaken the documented server-client architecture, multiplayer visualization, or movement synchronization requirements. Hub presence runs only in the lobby phase; dungeon `stateUpdate` remains authoritative while playing, and no debug scenario entry points were added or changed.
+
+## Remaining gaps
+
+None.
+
