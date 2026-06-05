@@ -1419,7 +1419,7 @@ function startServer(port) {
     if (!state.run || state.run.status === 'playing') return;
     if (!data || typeof data.cardId !== 'string') return;
 
-    const result = claimCardReward(socket.playerId, data.cardId);
+    const result = claimCardReward(socket.playerId, data.cardId, state);
     if (!result.ok) return;
 
     savePlayerData(socket.playerId);

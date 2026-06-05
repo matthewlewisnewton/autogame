@@ -1009,8 +1009,8 @@ function spawnCurrencyDrop(enemy) {
   console.log(`[loot] currency drop id=${id} value=${value} at (${enemy.x.toFixed(1)}, ${enemy.z.toFixed(1)})`);
 }
 
-function buildCardChoices(playerId) {
-  const player = _gameState.players[playerId];
+function buildCardChoices(playerId, state = _gameState) {
+  const player = state.players[playerId];
   if (!player || !Array.isArray(player.runCardDropIds)) return [];
 
   const uniqueIds = [];
@@ -1031,8 +1031,8 @@ function buildCardChoices(playerId) {
   });
 }
 
-function claimCardReward(playerId, cardId) {
-  const player = _gameState.players[playerId];
+function claimCardReward(playerId, cardId, state = _gameState) {
+  const player = state.players[playerId];
   if (!player || typeof cardId !== 'string') {
     return { ok: false, reason: 'invalid' };
   }
