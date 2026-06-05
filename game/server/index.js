@@ -634,7 +634,12 @@ function isDebugScenarioAllowed(socket) {
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  return address === '::1' || address === '127.0.0.1' || address.endsWith('.127.0.0.1');
+  return (
+    address === '::1' ||
+    address === '127.0.0.1' ||
+    address.endsWith('.127.0.0.1') ||
+    address.startsWith('::ffff:127.')
+  );
 }
 
 function ensureNearbyEnemy(state, x, z) {

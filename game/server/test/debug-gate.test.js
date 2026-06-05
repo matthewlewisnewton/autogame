@@ -64,6 +64,17 @@ describe('isDebugScenarioAllowed header spoofing', () => {
 		expect(isDebugScenarioAllowed(mockSocket)).toBe(true);
 	});
 
+	it('allows socket with IPv4-mapped loopback address (::ffff:127.0.0.1)', () => {
+		const { isDebugScenarioAllowed } = require('../index.js');
+		const mockSocket = {
+			handshake: {
+				address: '::ffff:127.0.0.1',
+				headers: {},
+			},
+		};
+		expect(isDebugScenarioAllowed(mockSocket)).toBe(true);
+	});
+
 	it('rejects socket with public IP even with matching localhost headers', () => {
 		const { isDebugScenarioAllowed } = require('../index.js');
 		const mockSocket = {
@@ -96,6 +107,21 @@ describe('isDebugScenarioAllowed header spoofing', () => {
 		const { isDebugScenarioAllowed } = require('../index.js');
 		const mockSocket = {
 			handshake: {
+				headers: {
+					origin: 'http://localhost:5173',
+					host: 'localhost:5173',
+				},
+			},
+		};
+		expect(isDebugScenarioAllowed(mockSocket)).toBe(false);
+	});
+
+	it('rejects non-loopback peers in production without ALLOW_DEBUG_SCENARIOS', () => {
+		process.env.NODE_ENV = 'production';
+		const { isDebugScenarioAllowed } = require('../index.js');
+		const mockSocket = {
+			handshake: {
+				address: '1.2.3.4',
 				headers: {
 					origin: 'http://localhost:5173',
 					host: 'localhost:5173',
