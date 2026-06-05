@@ -2659,23 +2659,23 @@ function checkTelepipeProximity() {
   }
 }
 
-function abandonSuspendedRun() {
-  if (!_gameState.suspendedCheckpoint) {
+function abandonSuspendedRun(state = _gameState) {
+  if (!state.suspendedCheckpoint) {
     return { ok: false, reason: 'no_checkpoint' };
   }
 
   clearSuspendedRunData();
-  delete _gameState.run;
-  setGamePhase(_gameState, PHASES.LOBBY);
+  delete state.run;
+  setGamePhase(state, PHASES.LOBBY);
 
   const spawn = firstRoomPosition();
-  for (const player of Object.values(_gameState.players)) {
+  for (const player of Object.values(state.players)) {
     revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     player.hand = [];
     player.deck = [];
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -2684,7 +2684,7 @@ function abandonSuspendedRun() {
 
   refreshShopOffer();
 
-  for (const playerId of Object.keys(_gameState.players)) {
+  for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
   }
 
@@ -2814,20 +2814,20 @@ function stateSnapshot() {
   };
 }
 
-function returnPlayersToLobby() {
-  if (!_gameState || !_gameState._lobbyId) {
+function returnPlayersToLobby(state = _gameState) {
+  if (!state || !state._lobbyId) {
     throw new Error('returnPlayersToLobby requires lobby context');
   }
 
   clearSuspendedRunData();
   resetTransientRunState();
 
-  setGamePhase(_gameState, PHASES.LOBBY);
-  delete _gameState.run;
+  setGamePhase(state, PHASES.LOBBY);
+  delete state.run;
 
   const spawn = firstRoomPosition();
-  for (const playerId of Object.keys(_gameState.players)) {
-    const player = _gameState.players[playerId];
+  for (const playerId of Object.keys(state.players)) {
+    const player = state.players[playerId];
     const preservedCurrency = player.currency;
     const preservedInventory = player.inventory;
     const preservedOwnedCards = player.ownedCards || inventoryToOwnedCards(player.inventory);
@@ -2838,7 +2838,7 @@ function returnPlayersToLobby() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     player.currency = preservedCurrency;
     player.inventory = preservedInventory;
     player.ownedCards = preservedOwnedCards;
@@ -2853,11 +2853,11 @@ function returnPlayersToLobby() {
 
   refreshShopOffer();
 
-  if (_gameState._pendingMinionBreaths?.length) {
-    _gameState._pendingMinionBreaths.length = 0;
+  if (state._pendingMinionBreaths?.length) {
+    state._pendingMinionBreaths.length = 0;
   }
 
-  for (const playerId of Object.keys(_gameState.players)) {
+  for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
   }
 
@@ -2868,23 +2868,23 @@ function returnPlayersToLobby() {
   _broadcastLobbyUpdate();
 }
 
-function giveUpRun() {
-  if (!_gameState || !_gameState._lobbyId) {
+function giveUpRun(state = _gameState) {
+  if (!state || !state._lobbyId) {
     throw new Error('giveUpRun requires lobby context');
   }
-  if (!isPlayingPhase(_gameState) || !_gameState.run || _gameState.run.status === 'suspended') {
+  if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
     return { ok: false, reason: 'no_active_run' };
   }
 
   clearSuspendedRunData();
   resetTransientRunState();
 
-  setGamePhase(_gameState, PHASES.LOBBY);
-  delete _gameState.run;
+  setGamePhase(state, PHASES.LOBBY);
+  delete state.run;
 
   const spawn = firstRoomPosition();
-  for (const playerId of Object.keys(_gameState.players)) {
-    const player = _gameState.players[playerId];
+  for (const playerId of Object.keys(state.players)) {
+    const player = state.players[playerId];
     const earned = player.currencyEarnedThisRun || 0;
     if (earned > 0) {
       player.currency = Math.max(0, (player.currency || 0) - earned);
@@ -2895,7 +2895,7 @@ function giveUpRun() {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     player.currencyEarnedThisRun = 0;
     player.runRewards = null;
     player.hand = [];
@@ -2914,14 +2914,14 @@ function giveUpRun() {
     player.overclockChargesRemaining = 0;
   }
 
-  for (const playerId of Object.keys(_gameState.players)) {
+  for (const playerId of Object.keys(state.players)) {
     savePlayerData(playerId);
   }
 
   refreshShopOffer();
 
-  if (_gameState._pendingMinionBreaths?.length) {
-    _gameState._pendingMinionBreaths.length = 0;
+  if (state._pendingMinionBreaths?.length) {
+    state._pendingMinionBreaths.length = 0;
   }
 
   const io = getIoTarget();

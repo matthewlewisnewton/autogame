@@ -1378,7 +1378,7 @@ function startServer(port) {
 
     if (!state.run) return;
 
-    returnPlayersToLobby();
+    returnPlayersToLobby(state);
     });
   });
 
@@ -1389,7 +1389,7 @@ function startServer(port) {
           socket.emit('runError', { reason: 'No active run' });
           return;
         }
-        const result = giveUpRun();
+        const result = giveUpRun(state);
         if (!result.ok) {
           socket.emit('runError', { reason: result.reason || 'Cannot give up' });
           return;
@@ -1408,7 +1408,7 @@ function startServer(port) {
         socket.emit('runError', { reason: 'No suspended expedition' });
         return;
       }
-      abandonSuspendedRun();
+      abandonSuspendedRun(state);
     });
   });
 
