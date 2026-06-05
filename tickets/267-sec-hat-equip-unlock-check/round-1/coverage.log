@@ -1,0 +1,127 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/game
+      Coverage enabled with v8
+
+stdout | server/test/cosmetic.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/game/data/users.json
+
+stdout | server/test/cosmetic.test.js > equipping starter hats on a fresh account > lets a default account equip none, bandana, and beanie without unlocking first
+[users] No existing user file at /tmp/claude-1000/cosmetic-starter-1780672231629-3j2qmkxu0cc.json — starting fresh
+
+stdout | server/test/cosmetic.test.js > equipping starter hats on a fresh account > rejects updateProfile for a locked hat on a fresh account and leaves cosmetic.hat unchanged
+[users] No existing user file at /tmp/claude-1000/cosmetic-starter-1780672231666-fatxhl6bx4h.json — starting fresh
+
+ ✓ |server| server/test/cosmetic.test.js (63 tests) 83ms
+stdout | server/test/apply_appearance_change.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > charges gold and applies a paid appearance change
+[users] No existing user file at /tmp/claude-1000/appearance-users-1780672231792-qwpyvxn4ntr.json — starting fresh
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > charges gold and applies a paid appearance change
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > charges gold and applies a paid appearance change
+Server listening on port 0
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > charges gold and applies a paid appearance change
+Player connected: socket=JGgR9ORKK3SkDOnoAAAB, playerId=73fa8b70-e794-46a8-a161-5e81c7ad78bf
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > charges gold and applies a paid appearance change
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > charges gold and applies a paid appearance change
+Player disconnected: JGgR9ORKK3SkDOnoAAAB
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > emits appearanceError when gold is insufficient
+[users] No existing user file at /tmp/claude-1000/appearance-users-1780672231929-khj0tr1ungd.json — starting fresh
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > emits appearanceError when gold is insufficient
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > emits appearanceError when gold is insufficient
+Server listening on port 0
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > emits appearanceError when gold is insufficient
+Player connected: socket=BxuWScddVLkNOUUkAAAD, playerId=5562d0f2-585d-4845-a8a9-1c07f36275a7
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > emits appearanceError when gold is insufficient
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > emits appearanceError when gold is insufficient
+Player disconnected: BxuWScddVLkNOUUkAAAD
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > applies hat-only changes for free
+[users] No existing user file at /tmp/claude-1000/appearance-users-1780672232017-62xmlbcgg6l.json — starting fresh
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > applies hat-only changes for free
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > applies hat-only changes for free
+Server listening on port 0
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > applies hat-only changes for free
+Player connected: socket=ZBt5BhOSEXHoIMi6AAAF, playerId=d5572786-4030-4e25-a97a-b4e3f75bb663
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > applies hat-only changes for free
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > applies hat-only changes for free
+Player disconnected: ZBt5BhOSEXHoIMi6AAAF
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects a locked hat via applyAppearanceChange without updating live or account cosmetic
+[users] No existing user file at /tmp/claude-1000/appearance-users-1780672232102-axp98r34pp.json — starting fresh
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects a locked hat via applyAppearanceChange without updating live or account cosmetic
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects a locked hat via applyAppearanceChange without updating live or account cosmetic
+Server listening on port 0
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects a locked hat via applyAppearanceChange without updating live or account cosmetic
+Player connected: socket=idiqHjjB8w5jyKiuAAAH, playerId=a1299ce1-5b34-40f2-8db2-136c75191fd0
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects a locked hat via applyAppearanceChange without updating live or account cosmetic
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects a locked hat via applyAppearanceChange without updating live or account cosmetic
+Player disconnected: idiqHjjB8w5jyKiuAAAH
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+[users] No existing user file at /tmp/claude-1000/appearance-users-1780672232186-2x7l8hky0sc.json — starting fresh
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+Server listening on port 0
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+Player connected: socket=AYq-eG43lXpuKCKYAAAJ, playerId=5dd4a3e2-80e3-4b7f-a75c-42f9eca63d6e
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/apply_appearance_change.test.js > applyAppearanceChange socket > rejects PATCH appearance-field updates while in lobby
+Player disconnected: AYq-eG43lXpuKCKYAAAJ
+
+ ✓ |server| server/test/apply_appearance_change.test.js (5 tests) 486ms
+
+ Test Files  2 passed (2)
+      Tests  68 passed (68)
+   Start at  08:10:30
+   Duration  1.59s (transform 2ms, setup 0ms, collect 258ms, tests 569ms, environment 0ms, prepare 163ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   59.36 |    45.53 |   30.61 |   59.36 |                            
+ index.js |   59.36 |    45.53 |   30.61 |   59.36 | ...383,1438-1444,1470-1472 
+----------|---------|----------|---------|---------|----------------------------
