@@ -53,6 +53,7 @@ let enterPlayingPhase = null;
 let ensureNearbyEnemy = null;
 let applyLayoutForQuest = null;
 let broadcastLobbyUpdate = null;
+let emitQuestPayloadToLobby = null;
 let DEBUG_SCENARIOS = null;
 
 function setCallbacks(deps) {
@@ -63,7 +64,19 @@ function setCallbacks(deps) {
   ensureNearbyEnemy = deps.ensureNearbyEnemy;
   applyLayoutForQuest = deps.applyLayoutForQuest;
   broadcastLobbyUpdate = deps.broadcastLobbyUpdate;
+  emitQuestPayloadToLobby = deps.emitQuestPayloadToLobby;
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
+}
+
+function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
+  if (emitQuestPayloadToLobby) {
+    emitQuestPayloadToLobby(lobby, { extraFields });
+    return;
+  }
+  io.to(lobby.id).emit('questUpdate', {
+    ...buildQuestUpdatePayload(state),
+    ...extraFields,
+  });
 }
 
 function applyDebugScenario(socket, name) {
@@ -121,14 +134,16 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestTier = tier;
       applyLayoutForQuest(state, questId, tier);
       assignRunSpawnPositions(Object.values(state.players));
-      const payload = {
-        ...buildQuestUpdatePayload(state, player.accountId),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
-      };
-      io.to(lobby.id).emit('questUpdate', payload);
+      });
       broadcastLobbyUpdate(lobby);
-      return { ok: true, scenario: name, unlockedQuestTiers: payload.unlockedQuestTiers };
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     }
 
     if (name === 'hats-unlocked') {
@@ -587,8 +602,7 @@ function applyDebugScenario(socket, name) {
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
       // Send updated layout to all clients in the lobby
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -610,8 +624,7 @@ function applyDebugScenario(socket, name) {
         player.z = startRoom.z;
       }
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -633,8 +646,7 @@ function applyDebugScenario(socket, name) {
         player.z = startRoom.z;
       }
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -657,8 +669,7 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -676,8 +687,7 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -695,8 +705,7 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });

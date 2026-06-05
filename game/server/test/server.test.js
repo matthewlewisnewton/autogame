@@ -2993,15 +2993,32 @@ describe('run state', () => {
 			const emitCalls = [];
 			const originalTo = serverIo.to;
 			const originalEmit = serverIo.emit;
+			const originalSockets = serverIo.sockets.sockets;
+			const lobbyId = gameState._lobbyId || 'test-lobby';
+
 			serverIo.to = () => ({
 				emit: (event, data) => emitCalls.push({ event, data }),
 			});
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			const mockMap = new Map();
+			for (const playerId of Object.keys(gameState.players)) {
+				const socketId = `mock-${playerId}`;
+				mockMap.set(socketId, {
+					id: socketId,
+					playerId,
+					rooms: new Set([lobbyId]),
+					emit: (event, data) => emitCalls.push({ event, data }),
+				});
+			}
+			serverIo.sockets.sockets = mockMap;
+
 			return {
 				emitCalls,
 				restore: () => {
 					serverIo.to = originalTo;
 					serverIo.emit = originalEmit;
+					serverIo.sockets.sockets = originalSockets;
 				},
 			};
 		}
@@ -3214,15 +3231,32 @@ describe('run state', () => {
 			const emitCalls = [];
 			const originalTo = serverIo.to;
 			const originalEmit = serverIo.emit;
+			const originalSockets = serverIo.sockets.sockets;
+			const lobbyId = gameState._lobbyId || 'test-lobby';
+
 			serverIo.to = () => ({
 				emit: (event, data) => emitCalls.push({ event, data }),
 			});
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			const mockMap = new Map();
+			for (const playerId of Object.keys(gameState.players)) {
+				const socketId = `mock-${playerId}`;
+				mockMap.set(socketId, {
+					id: socketId,
+					playerId,
+					rooms: new Set([lobbyId]),
+					emit: (event, data) => emitCalls.push({ event, data }),
+				});
+			}
+			serverIo.sockets.sockets = mockMap;
+
 			return {
 				emitCalls,
 				restore: () => {
 					serverIo.to = originalTo;
 					serverIo.emit = originalEmit;
+					serverIo.sockets.sockets = originalSockets;
 				},
 			};
 		}

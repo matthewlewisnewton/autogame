@@ -13,10 +13,11 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
   getLayoutProfileForQuest,
+  buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
-const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('./users');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked, getUnlockedQuestTiers } = require('./users');
 const { DEFAULT_COSMETIC, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
@@ -482,6 +483,7 @@ debugScenarios.setCallbacks({
   ensureNearbyEnemy,
   applyLayoutForQuest,
   broadcastLobbyUpdate,
+  emitQuestPayloadToLobby,
   DEBUG_SCENARIOS,
 });
 
@@ -491,6 +493,31 @@ function lobbyPlayerList(state) {
     id,
     ready: p.ready
   }));
+}
+
+function unlockedQuestTiersForLobbyPlayer(state, playerId) {
+  const player = state.players[playerId];
+  if (!player || !player.accountId) return {};
+  return getUnlockedQuestTiers(player.accountId) || {};
+}
+
+/** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
+function emitQuestPayloadToLobby(lobby, { event = 'questUpdate', extraFields = {} } = {}) {
+  if (!lobby) return;
+  const state = lobby.state;
+  const shared = {
+    ...buildSharedQuestUpdatePayload(state),
+    ...extraFields,
+  };
+  for (const socket of io.sockets.sockets.values()) {
+    if (!socket.rooms.has(lobby.id)) continue;
+    const player = state.players[socket.playerId];
+    if (!player) continue;
+    socket.emit(event, {
+      ...shared,
+      unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(state, socket.playerId),
+    });
+  }
 }
 
 // Helper: broadcast lobbyUpdate to clients in a lobby room
@@ -503,25 +530,42 @@ function broadcastLobbyUpdate(lobby) {
     if (!activeState || Object.keys(activeState.players).length === 0) return;
     withLobbyContext({ state: activeState }, () => {
       ensureShopOffer();
-      io.emit('lobbyUpdate', {
+      const shared = {
         players: lobbyPlayerList(activeState),
         gamePhase: activeState.gamePhase,
         shopOffer: activeState.shopOffer,
-        ...buildQuestUpdatePayload(activeState),
-      });
+        ...buildSharedQuestUpdatePayload(activeState),
+      };
+      for (const socket of io.sockets.sockets.values()) {
+        const player = activeState.players[socket.playerId];
+        if (!player) continue;
+        socket.emit('lobbyUpdate', {
+          ...shared,
+          unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(activeState, socket.playerId),
+        });
+      }
     });
     broadcastLobbyList();
     return;
   }
   withLobbyContext(lobby, () => {
     ensureShopOffer();
-    io.to(lobby.id).emit('lobbyUpdate', {
+    const shared = {
       lobbyId: lobby.id,
       players: lobbyPlayerList(lobby.state),
       gamePhase: lobby.state.gamePhase,
       shopOffer: lobby.state.shopOffer,
-      ...buildQuestUpdatePayload(lobby.state)
-    });
+      ...buildSharedQuestUpdatePayload(lobby.state),
+    };
+    for (const socket of io.sockets.sockets.values()) {
+      if (!socket.rooms.has(lobby.id)) continue;
+      const player = lobby.state.players[socket.playerId];
+      if (!player) continue;
+      socket.emit('lobbyUpdate', {
+        ...shared,
+        unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(lobby.state, socket.playerId),
+      });
+    }
   });
   broadcastLobbyList();
 }
@@ -1359,12 +1403,12 @@ function startServer(port) {
     state.selectedQuestTier = tier;
     applyLayoutForQuest(state, questId, tier);
     assignRunSpawnPositions(Object.values(state.players));
-    const payload = {
-      ...buildQuestUpdatePayload(state, player.accountId),
-      layoutSeed: state.layoutSeed,
-      layout: state.layout,
-    };
-    io.to(lobby.id).emit('questUpdate', payload);
+    emitQuestPayloadToLobby(lobby, {
+      extraFields: {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      },
+    });
     io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     broadcastLobbyUpdate(lobby);
     });
