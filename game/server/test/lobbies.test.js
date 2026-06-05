@@ -25,6 +25,7 @@ describe('lobbies module', () => {
     expect(lobby.name).toBe('Test Room');
     expect(lobby.state.gamePhase).toBe(PHASES.LOBBY);
     expect(lobby.state.selectedQuestId).toBe('training_caverns');
+    expect(lobby.state.selectedQuestTier).toBe(1);
     expect(lobby.state._lobbyId).toBe(lobby.id);
   });
 

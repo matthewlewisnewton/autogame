@@ -1,4 +1,4 @@
-const { DEFAULT_QUEST_ID } = require('./quests');
+const { DEFAULT_QUEST_ID, DEFAULT_QUEST_TIER } = require('./quests');
 
 /**
  * Create a fresh game-state object with the canonical shape.
@@ -21,6 +21,7 @@ function createGameState() {
     lobby: [],
     gamePhase: 'lobby',
     selectedQuestId: DEFAULT_QUEST_ID,
+    selectedQuestTier: DEFAULT_QUEST_TIER,
     pendingTrades: {},
     shopOffer: null,
     telepipe: null,

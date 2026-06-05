@@ -49,7 +49,8 @@ const {
   spawnVolatileExplosion
 } = require('./simulation');
 const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
-const { getQuest, getSelectedQuest } = require('./quests');
+const { getQuest, getSelectedQuest, DEFAULT_QUEST_TIER } = require('./quests');
+const { unlockQuestTier } = require('./users');
 const { getObjectiveDef } = require('./objectives');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -819,6 +820,7 @@ function createRunState() {
     id: crypto.randomUUID(),
     status: 'playing',
     questId: quest.id,
+    questTier: quest.tier ?? DEFAULT_QUEST_TIER,
     questName: quest.name,
     questDescription: quest.description,
     rewardCurrency: quest.rewardCurrency,
@@ -1117,6 +1119,7 @@ function buildRunSummary(status) {
     status,
     durationMs: Date.now() - run.startedAt,
     questId: run.questId,
+    questTier: run.questTier ?? DEFAULT_QUEST_TIER,
     questName: run.questName,
     objective: { ...run.objective },
     players,
@@ -1144,7 +1147,7 @@ function grantRunRewards(playerId, summary) {
 
   if (summary.status === 'victory') {
     const quest = _gameState.run && _gameState.run.questId
-      ? getQuest(_gameState.run.questId)
+      ? getQuest(_gameState.run.questId, _gameState.run.questTier)
       : getSelectedQuest(_gameState);
     const currencyBonus = (quest && quest.rewardCurrency) || 10;
     player.currency += currencyBonus;
@@ -1196,7 +1199,9 @@ function previewReturnRewards(playerId) {
   const run = _gameState.run;
   const lootCurrency = player.currencyEarnedThisRun || 0;
   const objectiveComplete = isRunObjectiveComplete(run.objective);
-  const quest = run.questId ? getQuest(run.questId) : getSelectedQuest(_gameState);
+  const quest = run.questId
+    ? getQuest(run.questId, run.questTier)
+    : getSelectedQuest(_gameState);
   const questBonus = (quest && quest.rewardCurrency) || run.rewardCurrency || 10;
 
   const base = {
@@ -2481,6 +2486,7 @@ function captureRunCheckpoint() {
     savedAt: Date.now(),
     run: JSON.parse(JSON.stringify(_gameState.run)),
     selectedQuestId: _gameState.selectedQuestId,
+    selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
     layoutSeed: _gameState.layoutSeed,
     layout: JSON.parse(JSON.stringify(_gameState.layout)),
     dungeonBounds: JSON.parse(JSON.stringify(_gameState.dungeonBounds)),
@@ -2515,6 +2521,7 @@ function restoreRunCheckpoint() {
   _gameState.run = JSON.parse(JSON.stringify(checkpoint.run));
   _gameState.run.status = 'playing';
   _gameState.selectedQuestId = checkpoint.selectedQuestId;
+  _gameState.selectedQuestTier = checkpoint.selectedQuestTier ?? DEFAULT_QUEST_TIER;
   _gameState.layoutSeed = checkpoint.layoutSeed;
   _gameState.layout = JSON.parse(JSON.stringify(checkpoint.layout));
   _gameState.dungeonBounds = JSON.parse(JSON.stringify(checkpoint.dungeonBounds));
@@ -2725,6 +2732,17 @@ function checkRunTerminalState() {
 
   _gameState.run.status = status;
 
+  if (status === 'victory' && (_gameState.run.questTier ?? DEFAULT_QUEST_TIER) === 1) {
+    const questId = _gameState.run.questId;
+    if (questId) {
+      for (const player of Object.values(_gameState.players)) {
+        if (player && player.accountId) {
+          unlockQuestTier(player.accountId, questId, 2);
+        }
+      }
+    }
+  }
+
   for (const p of Object.values(_gameState.players)) {
     p.overclockChargesRemaining = 0;
   }
@@ -2804,6 +2822,7 @@ function stateSnapshot() {
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     selectedQuestId: _gameState.selectedQuestId,
+    selectedQuestTier: _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
     run: _gameState.run,
     dungeonBounds: _gameState.dungeonBounds,
     layoutSeed: _gameState.layoutSeed,

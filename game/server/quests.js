@@ -209,12 +209,20 @@ function getSelectedQuest(gameState) {
   return getQuest(questId, tier) || getQuest(DEFAULT_QUEST_ID, DEFAULT_QUEST_TIER);
 }
 
-function buildQuestUpdatePayload(gameState) {
+function buildQuestUpdatePayload(gameState, playerAccountId) {
   const selectedQuestId = (gameState && gameState.selectedQuestId) || DEFAULT_QUEST_ID;
-  return {
+  const selectedQuestTier = (gameState && gameState.selectedQuestTier) ?? DEFAULT_QUEST_TIER;
+  const payload = {
     selectedQuestId,
+    selectedQuestTier,
     quests: listQuests(),
+    questVariants: listQuestVariants(),
   };
+  if (playerAccountId) {
+    const { getUnlockedQuestTiers } = require('./users');
+    payload.unlockedQuestTiers = getUnlockedQuestTiers(playerAccountId) || {};
+  }
+  return payload;
 }
 
 function getLayoutProfileForQuest(questId, tier) {
@@ -229,6 +237,7 @@ module.exports = {
   DEFAULT_QUEST_TIER,
   isValidQuestId,
   isValidQuestSelection,
+  normalizeQuestTier,
   getQuest,
   getDefaultQuestId,
   listQuests,
