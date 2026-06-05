@@ -2094,16 +2094,16 @@ window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve
 	}
 	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
 	const timer = setTimeout(() => {
-		socket.off('debugScenarioResult', onResult);
+		socket.off(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, onResult);
 		resolve({ ok: false, reason: 'timeout waiting for debugScenarioResult' });
 	}, timeout);
 	function onResult(data) {
 		clearTimeout(timer);
-		socket.off('debugScenarioResult', onResult);
+		socket.off(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, onResult);
 		debugScenarioResult = data || null;
 		resolve(data || { ok: false, reason: 'empty debugScenarioResult' });
 	}
-	socket.once('debugScenarioResult', onResult);
+	socket.once(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, onResult);
 	socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name });
 });
 
@@ -2118,14 +2118,14 @@ window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
 		const timeout = Math.max(1000, Math.min(timeoutMs || 5000, 15000));
 		const cleanup = () => {
 			clearTimeout(timer);
-			socket.off('deckUpdate', onUpdate);
-			socket.off('deckError', onError);
+			socket.off(SERVER_TO_CLIENT.DECK_UPDATE, onUpdate);
+			socket.off(SERVER_TO_CLIENT.DECK_ERROR, onError);
 		};
 		const onUpdate = (data) => { cleanup(); resolve({ ok: true, selectedDeck: data?.selectedDeck || [] }); };
 		const onError = (data) => { cleanup(); resolve({ ok: false, reason: data?.reason || 'deckError' }); };
 		const timer = setTimeout(() => { cleanup(); resolve({ ok: false, reason: 'timeout waiting for deckUpdate' }); }, timeout);
-		socket.once('deckUpdate', onUpdate);
-		socket.once('deckError', onError);
+		socket.once(SERVER_TO_CLIENT.DECK_UPDATE, onUpdate);
+		socket.once(SERVER_TO_CLIENT.DECK_ERROR, onError);
 	});
 	// Empty the current deck one instance at a time.
 	let guard = 0;
@@ -2159,24 +2159,24 @@ window.__evolveCardForTest = (instanceId, timeoutMs) => new Promise((resolve) =>
 	}
 	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
 	const timer = setTimeout(() => {
-		socket.off('cardEvolutionResult', onResult);
-		socket.off('cardEvolutionError', onError);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 		resolve({ ok: false, reason: 'timeout waiting for evolution result' });
 	}, timeout);
 	function onResult(data) {
 		clearTimeout(timer);
-		socket.off('cardEvolutionResult', onResult);
-		socket.off('cardEvolutionError', onError);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 		resolve({ ok: true, instance: data?.instance, fromCardId: data?.fromCardId, toCardId: data?.toCardId });
 	}
 	function onError(data) {
 		clearTimeout(timer);
-		socket.off('cardEvolutionResult', onResult);
-		socket.off('cardEvolutionError', onError);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 		resolve({ ok: false, reason: data?.reason || 'cardEvolutionError' });
 	}
-	socket.once('cardEvolutionResult', onResult);
-	socket.once('cardEvolutionError', onError);
+	socket.once(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+	socket.once(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 	socket.emit(CLIENT_TO_SERVER.EVOLVE_CARD, { instanceId });
 });
 
