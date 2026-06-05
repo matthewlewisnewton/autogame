@@ -4540,3 +4540,26 @@ The changed code is cohesive and uses existing quest, progression, layout, lobby
 
 None.
 
+
+## v0.257 — 257-level2-spire-ascent  (2026-06-05 08:22:56)
+
+### Higher variant rate
+
+PASS. Variant scaling is resolved centrally in `spawnEnemy` from the active `run.questTier` or selected tier plus the spawn room encounter tier. Tier 2 maps to a full roll tier even when encounter tier is 0, while Tier 1 remains effectively untagged. The new tests prove Tier 2 spawns tagged enemies under fixed seeds and Tier 1 stays unchanged on the same seed batch.
+
+### Spire identity
+
+PASS. The implementation keeps spire-specific shape and spawn identity: enemies spawn on walkable spire tier rooms rather than ramp connectors, bottom/top tier coverage is forced, top-tier objective/loot placement remains intact, and the spire-exclusive enemy pool continues to include spawners. The design foundation remains consistent with the documented lobby-to-dungeon flow, server-authenticated multiplayer run state, and movement/collision requirements.
+
+### Debug scenarios
+
+PASS. The added `spire-ascent-tier-2` shortcut is registered only in the debug-scenario allowlist path and is reachable through the URL/socket debug scenario flow, not normal gameplay. It mirrors the normal state by unlocking/selecting the quest tier, applying the Tier-2 layout before entering `playing`, then spawning enemies through the same `spawnEnemies`/`startDungeonRun` path so run metadata and variant rolls match deployment. The same state is reachable normally by clearing Spire Ascent Tier 1, selecting Tier 2, and readying/deploying.
+
+### Tests and coverage
+
+PASS. The recorded `coverage.log` shows the test suite passed: 77 test files and 1424 tests. Relevant coverage includes `spire_ascent_tier2.test.js`, `spire_ascent_spawn.test.js`, `debug-scenarios.test.js`, `quest_tier_gating.test.js`, `quests.test.js`, and `variant_rate_by_quest_tier.test.js`.
+
+## Remaining gaps
+
+None.
+
