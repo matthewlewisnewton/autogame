@@ -637,7 +637,7 @@ export function buildDoorwayMarkers(room, layout, materials) {
 /**
  * Build a composed landmark prop (visual only — no collision).
  *
- * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch
+ * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch | canyon_monolith
  * @param {{ wall: THREE.Material, accent: THREE.Material }} materials
  * @returns {THREE.Group}
  */
@@ -681,6 +681,14 @@ export function buildLandmarkMesh(type, materials) {
 			addMesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), wall, 1.2, 1.2, 0);
 			addMesh(new THREE.TorusGeometry(1.1, 0.18, 8, 24, Math.PI), accent, 0, 2.2, 0);
 			addMesh(new THREE.BoxGeometry(2.8, 0.2, 0.6), accent, 0, 0.1, 0);
+			break;
+		}
+		case 'canyon_monolith': {
+			addMesh(new THREE.BoxGeometry(1.8, 0.35, 1.8), wall, 0, 0.175, 0);
+			addMesh(new THREE.CylinderGeometry(0.85, 1.0, 1.2, 8), wall, 0, 0.95, 0);
+			addMesh(new THREE.BoxGeometry(1.1, 1.0, 1.1), wall, 0, 2.05, 0);
+			addMesh(new THREE.CylinderGeometry(0.45, 0.65, 0.9, 6), wall, 0, 3.0, 0);
+			addMesh(new THREE.BoxGeometry(0.5, 0.25, 0.5), accent, 0, 3.58, 0);
 			break;
 		}
 		default:

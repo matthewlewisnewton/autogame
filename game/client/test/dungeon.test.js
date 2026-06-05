@@ -672,6 +672,21 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		);
 	});
 
+	it('renders one canyon_monolith landmark group on sampleFloorY for seed 42', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.landmarks).toHaveLength(1);
+		expect(layout.landmarks[0].type).toBe('canyon_monolith');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const monolithGroups = scene.added.filter(o => o.userData?.landmarkType === 'canyon_monolith');
+		expect(monolithGroups).toHaveLength(1);
+		const lm = layout.landmarks[0];
+		const floorY = resolveFloorY(sampleFloorY(layout, lm.x, lm.z));
+		expect(monolithGroups[0].position.y).toBeCloseTo(floorY, 4);
+		expect(monolithGroups[0].children.length).toBeGreaterThan(0);
+		expect(meshes.some(m => monolithGroups[0].children.includes(m))).toBe(true);
+	});
+
 	it('assigns three distinct band floor colors for plateau, ramp, and canyon rooms', () => {
 		const layout = sunkenCanyonFixture();
 		const result = buildDungeon(mockScene(), layout);
@@ -1092,6 +1107,14 @@ describe('profile landmark rendering', () => {
 			expect(group.userData.landmarkType).toBe(type);
 			expect(group.children.length).toBeGreaterThan(0);
 		}
+		const canyon = getProfileMaterials('sunken-canyon');
+		const monolith = buildLandmarkMesh('canyon_monolith', canyon);
+		expect(monolith.userData.landmarkType).toBe('canyon_monolith');
+		expect(monolith.children.length).toBeGreaterThan(0);
+		expect(monolith.children.some(c => c.material === canyon.wall)).toBe(true);
+		expect(monolith.children.some(c => c.material === canyon.accent)).toBe(true);
+		const maxChildY = Math.max(...monolith.children.map(c => c.position.y + (c.geometry?.parameters?.height ?? 0) / 2));
+		expect(maxChildY).toBeGreaterThanOrEqual(2.5);
 	});
 
 	it('buildDungeon adds one landmark group per server landmark entry', () => {

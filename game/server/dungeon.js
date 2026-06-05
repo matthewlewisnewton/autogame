@@ -682,6 +682,7 @@ const LANDMARK_FOOTPRINTS = {
   pipe_stack: { width: 2.0, depth: 2.8 },
   sand_spire: { width: 2.2, depth: 2.2 },
   sun_arch: { width: 3.2, depth: 1.6 },
+  canyon_monolith: { width: 2.0, depth: 2.0 },
 };
 
 const LANDMARK_MARGIN = 2.5;
@@ -787,6 +788,54 @@ function placeLandmarks(layout, rng, profile) {
   }
 
   return landmarks;
+}
+
+/**
+ * Place a single tall navigation monolith on the sunken-canyon floor (visual only).
+ * Clears spawn zone and cover footprints; not routed through LANDMARK_TYPES.
+ */
+function placeCanyonMonolith(layout, rng) {
+  const canyon = layout.rooms.find(r => r.band === 'canyon');
+  if (!canyon) return null;
+
+  const type = 'canyon_monolith';
+  const { spawnClearRadius } = SUNKEN_CANYON;
+  const blocked = [...(layout.cover || [])];
+  const doorwayZones = roomDoorwayZones(canyon, layout.passageWidth ?? PASSAGE_WIDTH);
+  const margin = LANDMARK_MARGIN;
+  const halfW = canyon.width / 2 - margin;
+  const halfD = canyon.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+  const candidates = [];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      candidates.push({
+        x: canyon.x + tx * halfW,
+        z: canyon.z + tz * halfD,
+        type,
+        yaw: Math.floor(rng() * 4) * (Math.PI / 2),
+      });
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    candidates.push({
+      x: canyon.x + (rng() * 2 - 1) * halfW * 0.85,
+      z: canyon.z + (rng() * 2 - 1) * halfD * 0.85,
+      type,
+      yaw: rng() * Math.PI * 2,
+    });
+  }
+  shuffleInPlace(candidates, rng);
+
+  for (const cand of candidates) {
+    const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+    if (overlapsSpawnClearAt(fp, spawnClearRadius, canyon.x, canyon.z)) continue;
+    if (!acceptsLandmarkCandidate(cand, canyon, blocked, doorwayZones, margin)) continue;
+    return cand;
+  }
+  return null;
 }
 
 // ── Open profile verticality & hazards ──
@@ -1492,7 +1541,7 @@ function generateSunkenCanyon(seed) {
 
   const cliffLips = buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ);
 
-  return {
+  const layoutBase = {
     rooms: [plateau, ...ramps, canyon],
     passages: [],
     cover,
@@ -1500,6 +1549,13 @@ function generateSunkenCanyon(seed) {
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: canyonSize,
     profile: 'sunken-canyon',
+  };
+
+  const monolith = placeCanyonMonolith(layoutBase, rng);
+
+  return {
+    ...layoutBase,
+    landmarks: monolith ? [monolith] : [],
   };
 }
 

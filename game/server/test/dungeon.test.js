@@ -1787,6 +1787,50 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       }
     }
   });
+
+  function monolithFootprint(lm) {
+    return { x: lm.x, z: lm.z, width: 2.0, depth: 2.0 };
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  function outsideSpawnClear(lm, canyon, radius = 6) {
+    const fp = monolithFootprint(lm);
+    const dx = Math.max(Math.abs(fp.x - canyon.x) - fp.width / 2, 0);
+    const dz = Math.max(Math.abs(fp.z - canyon.z) - fp.depth / 2, 0);
+    return dx * dx + dz * dz >= radius * radius;
+  }
+
+  it('places exactly one canyon_monolith landmark in the canyon band (seed 42)', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    expect(layout.landmarks).toHaveLength(1);
+    const lm = layout.landmarks[0];
+    expect(lm.type).toBe('canyon_monolith');
+    expect(typeof lm.x).toBe('number');
+    expect(typeof lm.z).toBe('number');
+    expect(typeof lm.yaw).toBe('number');
+    expect(Math.abs(lm.x - canyon.x) + monolithFootprint(lm).width / 2).toBeLessThanOrEqual(canyon.width / 2);
+    expect(Math.abs(lm.z - canyon.z) + monolithFootprint(lm).depth / 2).toBeLessThanOrEqual(canyon.depth / 2);
+    expect(outsideSpawnClear(lm, canyon)).toBe(true);
+    const fp = monolithFootprint(lm);
+    for (const c of layout.cover) {
+      expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+    }
+    const floorY = sampleFloorY(layout, lm.x, lm.z);
+    expect(floorY).toBeCloseTo(sampleFloorY(layout, canyon.x, canyon.z), 4);
+  });
+
+  it('canyon monolith placement is deterministic for seed 42', () => {
+    expect(generateLayout(42, 'sunken-canyon').landmarks).toEqual(
+      generateLayout(42, 'sunken-canyon').landmarks
+    );
+  });
 });
 
 // ── spire-ascent stage layout ──
