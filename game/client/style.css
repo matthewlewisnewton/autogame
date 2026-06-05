@@ -3165,3 +3165,81 @@ body[data-phase="lobby"] #objective-hud {
   font-family: 'Roboto Mono', monospace;
   min-width: 60px;
 }
+
+/* ── Variant Codex Overlay ── */
+
+#variant-codex-overlay {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  max-width: 320px;
+  z-index: 90;
+  pointer-events: auto;
+}
+
+#variant-codex-overlay.hidden {
+  display: none;
+}
+
+#variant-codex-panel {
+  padding: 16px 20px;
+  border-radius: 10px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 1px solid rgba(167, 139, 250, 0.35);
+  box-shadow:
+    0 0 20px rgba(88, 28, 135, 0.2),
+    0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+#variant-codex-panel h2 {
+  margin: 0 0 2px;
+  font-size: 17px;
+  color: #e2e8f0;
+}
+
+.variant-codex-hint {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: #64748b;
+}
+
+#variant-codex-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.variant-codex-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.variant-codex-badge {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  margin-top: 3px;
+  box-shadow: 0 0 6px var(--badge-color);
+}
+
+.variant-codex-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.variant-codex-name {
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Exo 2', sans-serif;
+  color: var(--badge-color);
+  line-height: 1.2;
+}
+
+.variant-codex-desc {
+  font-size: 12px;
+  color: #94a3b8;
+  margin: 0;
+  line-height: 1.35;
+}

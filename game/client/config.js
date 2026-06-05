@@ -181,3 +181,33 @@ export const HAND_SLOT_FILL_ORDER = sharedConstants.HAND_SLOT_FILL_ORDER;
 
 /** Passive draw interval (display only; server is authoritative) */
 export const PASSIVE_DRAW_INTERVAL_MS = 5000;
+
+// ── Enemy Variant Codex ──
+
+/** Data for the variant codex HUD overlay (press C to toggle). */
+export const VARIANT_CODEX_DATA = [
+	{
+		id: 'volatile',
+		name: 'Volatile',
+		color: '#f97316', // hot orange — matches renderer VARIANT_BADGE_COLORS
+		description: 'Explodes on death, dealing radial damage',
+	},
+	{
+		id: 'warded',
+		name: 'Warded',
+		color: '#22d3ee', // cyan — matches WARDED_TINT
+		description: 'Protected by a shield that absorbs damage',
+	},
+	{
+		id: 'leeching',
+		name: 'Leeching',
+		color: '#14b8a6', // teal — distinct from warded cyan
+		description: 'Heals for a fraction of damage dealt',
+	},
+	{
+		id: 'frenzied',
+		name: 'Frenzied',
+		color: '#dc2626', // red — distinct from volatile orange
+		description: 'Enrages below 50% HP, gaining speed and attack',
+	},
+];

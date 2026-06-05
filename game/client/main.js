@@ -57,6 +57,7 @@ import {
 	MEDIC_HEAL_COST,
 	MOVE_SPEED,
 	TICK_RATE,
+	VARIANT_CODEX_DATA,
 } from './config.js';
 import {
 	patchSettings,
@@ -245,6 +246,8 @@ function hideCardHand() {
 const deckViewerOverlayEl = document.getElementById('deck-viewer-overlay');
 const deckViewerGridEl = document.getElementById('deck-viewer-grid');
 const deckViewerCountEl = document.getElementById('deck-viewer-count');
+const variantCodexOverlayEl = document.getElementById('variant-codex-overlay');
+const variantCodexListEl = document.getElementById('variant-codex-list');
 const settingsOverlayEl = document.getElementById('settings-overlay');
 const settingsBtnEl = document.getElementById('settings-btn');
 const settingsCloseBtnEl = document.getElementById('settings-close-btn');
@@ -344,6 +347,7 @@ function showLobbyBrowser() {
 	if (lobbyEl) lobbyEl.classList.add('hidden');
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
+	hideVariantCodex();
 	setDeckStackVisible(false);
 	applyLobbyThemeLabels();
 }
@@ -451,6 +455,7 @@ function returnToGuildLobby(state, { refreshCollection = false } = {}) {
 
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (cardHandEl) hideCardHand();
+	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
 	showGameLobby();
@@ -511,6 +516,7 @@ function renderSuspendedRunBanner(state) {
 function showExtractedLobbyOverlay() {
 	if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 	if (cardHandEl) hideCardHand();
+	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
 	showGameLobby();
@@ -855,6 +861,7 @@ function bindSocketHandlers(s) {
 			s.io.disconnect();
 			if (uiEl) uiEl.style.display = 'none';
 			if (cardHandEl) hideCardHand();
+			hideVariantCodex();
 			setDeckStackVisible(false);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
 			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
@@ -2135,6 +2142,62 @@ function hideDeckViewer() {
 	if (deckViewerOverlayEl) deckViewerOverlayEl.classList.add('hidden');
 }
 
+// ── Variant Codex Overlay ──
+
+let variantCodexOpen = false;
+
+function renderVariantCodexList() {
+	if (!variantCodexListEl) return;
+	variantCodexListEl.innerHTML = '';
+	for (const v of VARIANT_CODEX_DATA) {
+		const entry = document.createElement('div');
+		entry.className = 'variant-codex-entry';
+
+		const badge = document.createElement('div');
+		badge.className = 'variant-codex-badge';
+		badge.style.backgroundColor = v.color;
+		badge.style.setProperty('--badge-color', v.color);
+
+		const info = document.createElement('div');
+		info.className = 'variant-codex-info';
+
+		const name = document.createElement('span');
+		name.className = 'variant-codex-name';
+		name.style.setProperty('--badge-color', v.color);
+		name.textContent = v.name;
+
+		const desc = document.createElement('p');
+		desc.className = 'variant-codex-desc';
+		desc.textContent = v.description;
+
+		info.appendChild(name);
+		info.appendChild(desc);
+		entry.appendChild(badge);
+		entry.appendChild(info);
+		variantCodexListEl.appendChild(entry);
+	}
+}
+
+function showVariantCodex() {
+	if (!variantCodexOverlayEl) return;
+	variantCodexOpen = true;
+	variantCodexOverlayEl.classList.remove('hidden');
+	if (!variantCodexListEl.children.length) renderVariantCodexList();
+}
+
+function hideVariantCodex() {
+	variantCodexOpen = false;
+	if (variantCodexOverlayEl) variantCodexOverlayEl.classList.add('hidden');
+}
+
+function toggleVariantCodex() {
+	if (variantCodexOpen) {
+		hideVariantCodex();
+	} else {
+		showVariantCodex();
+	}
+}
+
 for (let i = 0; i < MAX_HAND_SLOTS; i++) {
 	const slot = getCardSlotEl(i);
 	if (!slot) continue;
@@ -3022,6 +3085,20 @@ if (deckViewerOverlayEl) {
 	});
 }
 
+// ── Variant Codex keyboard toggle ──
+window.addEventListener('keydown', (e) => {
+	const key = e.key.toLowerCase();
+	if (key === 'c' && canUseGameActions()) {
+		e.preventDefault();
+		toggleVariantCodex();
+		return;
+	}
+	if (key === 'escape' && variantCodexOpen) {
+		e.preventDefault();
+		hideVariantCodex();
+	}
+});
+
 // ── Auth form event handlers ──
 
 if (showLoginLinkEl) {
@@ -3121,6 +3198,7 @@ function performLogout() {
 	hideAppToolbar();
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
+	hideVariantCodex();
 	setDeckStackVisible(false);
 	if (lobbyEl) lobbyEl.classList.add('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
