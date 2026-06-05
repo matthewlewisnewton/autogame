@@ -1857,6 +1857,8 @@ function damagePlayer(playerId, amount, options = {}) {
 
   if (amount <= 0) return null;
 
+  if (player.debugGodmode) return null;
+
   let remaining = amount;
   const now = Date.now();
 

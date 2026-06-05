@@ -825,6 +825,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     currencyEarnedThisRun: progress.currencyEarnedThisRun,
     selectedDeck: defaultDeck,
     debugScenario: null,
+    debugGodmode: false,
     pendingSummons: new Set(),
     slotCooldowns: [null, null, null, null, null, null],
     nextDrawAt: null,
