@@ -1,5 +1,6 @@
 // Per-account settings — load from server, debounced PATCH, apply to subsystems.
 
+import { APPEARANCE_CHANGE_COST } from './config.js';
 import { setSoundEnabledFromSettings } from './audio.js';
 
 const SOUND_ENABLED_KEY = 'autogame:soundEnabled';
@@ -49,6 +50,8 @@ let cachedCosmetic = { ...DEFAULT_COSMETIC, proportions: defaultProportions() };
 let cachedUnlockedHats = ['none'];
 /** @type {{ id: string, name: string, price: number }[]} Server hat catalog. */
 let cachedHatCatalog = [];
+/** @type {number} Gold cost for in-hub booth appearance edits (from GET /api/me). */
+let cachedAppearanceChangeCost = APPEARANCE_CHANGE_COST;
 let authToken = null;
 let patchTimer = null;
 /** @type {Set<(s: AccountSettings) => void>} */
@@ -91,6 +94,22 @@ export function getAccountProfile() {
  */
 export function getAccountCosmetic() {
 	return normalizeCosmetic(cachedCosmetic);
+}
+
+/**
+ * Replace the cached account cosmetic (e.g. after a charged booth save).
+ * @param {object} cosmetic
+ */
+export function setAccountCosmetic(cosmetic) {
+	cachedCosmetic = normalizeCosmetic(cosmetic);
+}
+
+/**
+ * Gold cost for changing appearance fields at the in-hub character booth.
+ * @returns {number}
+ */
+export function getAppearanceChangeCost() {
+	return cachedAppearanceChangeCost;
 }
 
 /**
@@ -244,6 +263,9 @@ export async function loadAccountSettings(token) {
 	cachedCosmetic = normalizeCosmetic(data.cosmetic);
 	cachedUnlockedHats = normalizeUnlockedHats(data.unlockedHats);
 	cachedHatCatalog = normalizeHatCatalog(data.hatCatalog);
+	if (Number.isFinite(data.appearanceChangeCost) && data.appearanceChangeCost > 0) {
+		cachedAppearanceChangeCost = data.appearanceChangeCost;
+	}
 	cachedSettings = deepMerge(getDefaultSettings(), data.settings || {});
 	await migrateLocalStorageMute();
 	applySettings();

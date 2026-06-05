@@ -109,6 +109,9 @@ function buildCharacterBoothDom() {
 	errorEl.id = 'character-booth-cosmetic-error';
 	errorEl.hidden = true;
 
+	const costHint = document.createElement('p');
+	costHint.id = 'character-booth-appearance-cost-hint';
+
 	const saveBtn = document.createElement('button');
 	saveBtn.id = 'character-booth-save-btn';
 	saveBtn.type = 'button';
@@ -121,6 +124,7 @@ function buildCharacterBoothDom() {
 	modal.appendChild(hatList);
 	modal.appendChild(proportions);
 	modal.appendChild(errorEl);
+	modal.appendChild(costHint);
 	modal.appendChild(saveBtn);
 	overlay.appendChild(modal);
 	document.body.appendChild(overlay);
@@ -207,24 +211,35 @@ describe('character booth overlay (module)', () => {
 		};
 		let gameStateRef = gameState;
 
-		const patchProfile = vi.fn(async ({ cosmetic }) => {
+		const setAccountCosmetic = vi.fn((cosmetic) => {
 			savedCosmetic = {
 				...cosmetic,
 				proportions: { ...cosmetic.proportions },
 			};
-			return {};
 		});
+
+		const confirmMock = vi.fn(() => true);
+		vi.stubGlobal('confirm', confirmMock);
+
+		let lastEmit = null;
+		const socket = {
+			connected: true,
+			emit: vi.fn((event, data) => {
+				lastEmit = { event, data };
+			}),
+		};
 
 		const booth = await import('../characterBooth.js');
 		booth.initCharacterBooth({
 			selection,
-			patchProfile,
 			getAccountCosmetic: () => savedCosmetic,
+			setAccountCosmetic,
 			getGameState: () => gameStateRef,
 			getMyId: () => 'p1',
 			setGameStateRef: (state) => { gameStateRef = state; },
-			getSocket: () => null,
-			getCurrency: () => 0,
+			getSocket: () => socket,
+			getCurrency: () => 100,
+			getAppearanceChangeCost: () => 25,
 			...overrides,
 		});
 
@@ -232,8 +247,20 @@ describe('character booth overlay (module)', () => {
 			...booth,
 			selection,
 			gameState: gameStateRef,
-			patchProfile,
+			setAccountCosmetic,
+			confirmMock,
+			socket,
+			getLastEmit: () => lastEmit,
 			getSavedCosmetic: () => savedCosmetic,
+			applyAppearanceSuccess(cosmetic = savedCosmetic) {
+				booth.handleCharacterBoothAppearanceApplied({
+					cosmetic,
+					currency: 75,
+				});
+			},
+			applyAppearanceFailure(reason = 'Insufficient gold') {
+				booth.handleCharacterBoothAppearanceError(reason);
+			},
 		};
 	}
 
@@ -270,8 +297,17 @@ describe('character booth overlay (module)', () => {
 		expect(isPreviewOpen()).toBe(false);
 	});
 
-	it('save syncs gameState.players[myId].cosmetic after patchProfile succeeds', async () => {
-		const { openCharacterBooth, selection, gameState, patchProfile } = await initBooth();
+	it('paid save confirms then emits applyAppearance and syncs on appearanceApplied', async () => {
+		const {
+			openCharacterBooth,
+			selection,
+			gameState,
+			confirmMock,
+			socket,
+			getLastEmit,
+			applyAppearanceSuccess,
+			setAccountCosmetic,
+		} = await initBooth();
 		const saveBtn = document.getElementById('character-booth-save-btn');
 
 		openCharacterBooth();
@@ -280,7 +316,8 @@ describe('character booth overlay (module)', () => {
 
 		saveBtn.click();
 		await vi.waitFor(() => {
-			expect(patchProfile).toHaveBeenCalledWith({
+			expect(confirmMock).toHaveBeenCalled();
+			expect(socket.emit).toHaveBeenCalledWith('applyAppearance', {
 				cosmetic: expect.objectContaining({
 					bodyColor: '#ef4444',
 					bodyShape: 'cylinder',
@@ -288,8 +325,76 @@ describe('character booth overlay (module)', () => {
 			});
 		});
 
+		expect(getLastEmit()?.event).toBe('applyAppearance');
+		applyAppearanceSuccess({
+			...DEFAULT_COSMETIC,
+			bodyColor: '#ef4444',
+			bodyShape: 'cylinder',
+			proportions: { ...DEFAULT_COSMETIC.proportions },
+		});
+
+		await vi.waitFor(() => {
+			expect(setAccountCosmetic).toHaveBeenCalled();
+		});
 		expect(gameState.players.p1.cosmetic.bodyColor).toBe('#ef4444');
 		expect(gameState.players.p1.cosmetic.bodyShape).toBe('cylinder');
+	});
+
+	it('hat-only save skips confirm and emits applyAppearance without charging UI', async () => {
+		const { openCharacterBooth, selection, confirmMock, socket, applyAppearanceSuccess } = await initBooth();
+		const saveBtn = document.getElementById('character-booth-save-btn');
+
+		openCharacterBooth();
+		selection.hat = 'bandana';
+
+		saveBtn.click();
+		await vi.waitFor(() => {
+			expect(socket.emit).toHaveBeenCalledWith('applyAppearance', {
+				cosmetic: expect.objectContaining({ hat: 'bandana' }),
+			});
+		});
+		expect(confirmMock).not.toHaveBeenCalled();
+
+		applyAppearanceSuccess({
+			...DEFAULT_COSMETIC,
+			hat: 'bandana',
+			proportions: { ...DEFAULT_COSMETIC.proportions },
+		});
+	});
+
+	it('canceling confirm aborts save with no socket emit', async () => {
+		const { openCharacterBooth, selection, confirmMock, socket } = await initBooth();
+		confirmMock.mockReturnValue(false);
+		const saveBtn = document.getElementById('character-booth-save-btn');
+
+		openCharacterBooth();
+		selection.bodyColor = '#ef4444';
+
+		saveBtn.click();
+		await vi.waitFor(() => {
+			expect(confirmMock).toHaveBeenCalled();
+		});
+		expect(socket.emit).not.toHaveBeenCalled();
+	});
+
+	it('appearanceError surfaces in booth error element', async () => {
+		const { openCharacterBooth, selection, applyAppearanceFailure } = await initBooth();
+		const saveBtn = document.getElementById('character-booth-save-btn');
+		const errorEl = document.getElementById('character-booth-cosmetic-error');
+
+		openCharacterBooth();
+		selection.bodyColor = '#ef4444';
+		saveBtn.click();
+
+		await vi.waitFor(() => {
+			expect(saveBtn.disabled).toBe(true);
+		});
+
+		applyAppearanceFailure('Insufficient gold');
+		await vi.waitFor(() => {
+			expect(errorEl.textContent).toBe('Insufficient gold');
+			expect(saveBtn.disabled).toBe(false);
+		});
 	});
 });
 

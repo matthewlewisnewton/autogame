@@ -69,7 +69,9 @@ import {
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
+	getAppearanceChangeCost,
 	getHatCatalog,
+	setAccountCosmetic,
 	setUnlockedHats,
 } from './settings.js';
 import {
@@ -82,6 +84,8 @@ import {
 	closeCharacterBooth,
 	rebuildBoothHatList,
 	showBoothCosmeticError,
+	handleCharacterBoothAppearanceApplied,
+	handleCharacterBoothAppearanceError,
 } from './characterBooth.js';
 import {
 	initControllerCalibration,
@@ -1549,6 +1553,20 @@ function bindSocketHandlers(s) {
 		const message = data && data.reason ? data.reason : 'Unlock failed';
 		showCosmeticError(message);
 		showBoothCosmeticError(message);
+	});
+
+	s.on('appearanceApplied', (data) => {
+		if (!data) return;
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			updateCurrencyHud(myCurrency);
+		}
+		handleCharacterBoothAppearanceApplied(data);
+	});
+
+	s.on('appearanceError', (data) => {
+		const message = data && data.reason ? data.reason : 'Appearance save failed';
+		handleCharacterBoothAppearanceError(message);
 	});
 
 	s.on('tradeOffer', (data) => {
@@ -3607,13 +3625,14 @@ function syncCosmeticForm() {
 
 initCharacterBooth({
 	selection: cosmeticSelection,
-	patchProfile,
 	getAccountCosmetic,
+	setAccountCosmetic,
 	getGameState: () => gameState,
 	getMyId: () => myId,
 	setGameStateRef,
 	getSocket: () => socket,
 	getCurrency: () => myCurrency,
+	getAppearanceChangeCost,
 });
 
 // Rebuild the live preview avatar from the current (unsaved) selection. No-op
