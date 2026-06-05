@@ -3048,6 +3048,14 @@ function giveUpRun(state = _gameState) {
 }
 
 function checkAllReady() {
+  try {
+    checkAllReadyInner();
+  } catch (err) {
+    console.error('[checkAllReady] failed:', err && err.stack ? err.stack : err);
+  }
+}
+
+function checkAllReadyInner() {
   const all = Object.values(_gameState.players);
   const connectedPlayers = all.filter(p => p.connected !== false);
   const allConnectedReady = connectedPlayers.length > 0 && connectedPlayers.every(p => p.ready);

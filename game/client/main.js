@@ -4440,6 +4440,12 @@ window.__connectionState = () => connectionState;
 window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const me = gameState && myId ? gameState.players[myId] : null;
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
+	const deckEditorEl = document.getElementById('deck-editor');
+	const deckEditorVisible = !!deckEditorEl && !deckEditorEl.classList.contains('hidden');
+	const readyBtnEl = document.getElementById('ready-btn');
+	const readyBtnUsable = !!readyBtnEl
+		&& !readyBtnEl.disabled
+		&& getComputedStyle(readyBtnEl).pointerEvents !== 'none';
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
@@ -4488,6 +4494,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		deckEditorVisible,
+		readyBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',
