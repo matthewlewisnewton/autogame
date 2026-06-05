@@ -27,12 +27,13 @@ describe('quest tier catalog', () => {
     expect(getQuest('crystal_rescue', 2)).toBeNull();
   });
 
-  it('exposes training_caverns tier 2 stub with unlock metadata', () => {
+  it('exposes training_caverns tier 2 with rigid crowded layout and unlock metadata', () => {
     const tier2 = getQuest('training_caverns', 2);
     expect(tier2).not.toBeNull();
     expect(tier2.tier).toBe(2);
+    expect(tier2.layoutMode).toBe('rigid');
     expect(tier2.unlockRequires).toEqual({ questId: 'training_caverns', tier: 1 });
-    expect(QUEST_DEFS.training_caverns.tiers[2].tier).toBe(2);
+    expect(QUEST_DEFS.training_caverns.tiers[2].layoutMode).toBe('rigid');
   });
 
   it('validates catalog membership via isValidQuestSelection', () => {
@@ -98,6 +99,10 @@ describe('quest tier catalog', () => {
     expect(getLayoutGenerationOptions('training_caverns', 1)).toEqual({
       slopes: true,
       layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('training_caverns', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
     });
     expect(getLayoutGenerationOptions('arena_trials', 1)).toEqual({
       slopes: true,

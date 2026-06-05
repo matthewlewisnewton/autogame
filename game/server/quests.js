@@ -22,6 +22,7 @@ const QUEST_DEFS = {
         enemyCount: 5,
         rewardCurrency: 10,
         layoutProfile: 'crowded',
+        layoutMode: 'rigid',
         unlockRequires: { questId: 'training_caverns', tier: 1 },
       },
     },
