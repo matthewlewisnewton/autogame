@@ -299,6 +299,7 @@ const keyItemEffects = require('./keyItemEffects');
 // Debug-scenario setup lives in its own module; wired up via setCallbacks()
 // below once io, the index.js-local helpers it needs, and DEBUG_SCENARIOS exist.
 const debugScenarios = require('./debugScenarios');
+const { registerLobbyHandlers } = require('./socketHandlers/lobbyHandlers');
 
 const _lobbyContextStack = [];
 
@@ -1177,19 +1178,28 @@ function startServer(port) {
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
-    socket.on('listLobbies', () => {
-      socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-    });
-
-    socket.on('listKeyItems', () => {
-      const items = getUnlockedKeyItems().map((def) => ({
-        id: def.id,
-        name: def.name,
-        description: def.description,
-        cooldownMs: def.cooldownMs,
-      }));
-      socket.emit('keyItemsListed', { items });
-    });
+    const ctx = {
+      playerId,
+      accountId,
+      username,
+      sessionPlayer,
+      socket,
+      io,
+      lobbies,
+      withLobbyContext,
+      withLobbyFromSocket,
+      withLobbyPlayer,
+      getLobbyForSocket,
+      broadcastLobbyList,
+      applyLayoutForQuest,
+      ensureShopOffer,
+      joinPlayerToLobby,
+      joinLobbyWithPhasePolicy,
+      reconnectPlayerToLobby,
+      leaveLobbyForSocket,
+      buildSessionFromPlayer,
+    };
+    registerLobbyHandlers(socket, ctx);
 
     socket.on('createLobby', (data) => {
       if (lobbies.getLobbyForPlayer(playerId)) {
