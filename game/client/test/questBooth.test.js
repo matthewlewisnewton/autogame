@@ -95,19 +95,21 @@ function ensureMainDom() {
 	}
 }
 
-function stubLocalhostLocation(search = '') {
-	const href = search
-		? `http://localhost:5173/${search.startsWith('?') ? search : `?${search}`}`
-		: 'http://localhost:5173/';
-	const url = new URL(href);
+function stubLocation(hostname, search = '') {
+	const q = search ? (search.startsWith('?') ? search : `?${search}`) : '';
+	const url = new URL(`http://${hostname}:5173/${q}`);
 	vi.stubGlobal('location', {
-		hostname: 'localhost',
-		host: 'localhost:5173',
+		hostname,
+		host: `${hostname}:5173`,
 		protocol: 'http:',
 		search: url.search,
 		href: url.href,
 		pathname: url.pathname,
 	});
+}
+
+function stubLocalhostLocation(search = '') {
+	stubLocation('localhost', search);
 }
 
 describe('quest booth booth:action hook (main.js)', () => {
@@ -158,5 +160,86 @@ describe('quest booth booth:action hook (main.js)', () => {
 
 		window.dispatchEvent(new CustomEvent(BOOTH_ACTION_EVENT, { detail: { boothId: 'quest' } }));
 		expect(wrapper.scrollIntoView).toHaveBeenCalledTimes(1);
+	});
+});
+
+// ── `?booth=quest` debug hook gate (main.js requestBoothDebugOpen) ──
+// Mirrors how debug-gate.test.js checks gating: the localhost-only `?booth=`
+// hook is parsed at module load, so each case stubs `location` before importing
+// main.js and drives the real requestBoothDebugOpen via the test hook.
+describe('?booth=quest debug hook (main.js requestBoothDebugOpen)', () => {
+	beforeEach(() => {
+		vi.resetModules();
+		document.body.innerHTML = '';
+		ensureMainDom();
+		try { localStorage.setItem('autogame_token', 'test-fake-jwt-token'); } catch (_) { /* ignore */ }
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
+	});
+
+	it('opens the quest panel once on localhost and is guarded against re-firing', async () => {
+		stubLocation('127.0.0.1', '?booth=quest');
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+
+		window.__requestBoothDebugOpenForTest();
+		expect(wrapper.scrollIntoView).toHaveBeenCalledTimes(1);
+
+		// boothDebugRequested guard: a second call is a no-op for the session.
+		window.__requestBoothDebugOpenForTest();
+		expect(wrapper.scrollIntoView).toHaveBeenCalledTimes(1);
+	});
+
+	it('does nothing for ?booth=quest on a non-localhost host', async () => {
+		stubLocation('example.com', '?booth=quest');
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+
+		window.__requestBoothDebugOpenForTest();
+		expect(wrapper.scrollIntoView).not.toHaveBeenCalled();
+	});
+
+	it('does not fire before the phase is lobby', async () => {
+		stubLocation('localhost', '?booth=quest');
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'playing', players: { p1: {} } }, 'p1');
+
+		window.__requestBoothDebugOpenForTest();
+		expect(wrapper.scrollIntoView).not.toHaveBeenCalled();
+	});
+
+	it('leaves the quest panel closed for ?booth=character (character hook unchanged)', async () => {
+		stubLocation('localhost', '?booth=character');
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+
+		window.__requestBoothDebugOpenForTest();
+		expect(wrapper.scrollIntoView).not.toHaveBeenCalled();
+	});
+
+	it('opens nothing for an absent ?booth= value', async () => {
+		stubLocation('localhost', '');
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+
+		window.__requestBoothDebugOpenForTest();
+		expect(wrapper.scrollIntoView).not.toHaveBeenCalled();
 	});
 });

@@ -1901,12 +1901,17 @@ function requestDebugScenario() {
 	socket.emit('debugScenario', { name: debugScenario });
 }
 
-/** Localhost-only `?booth=character` — open the character booth once in hub lobby. */
+/** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
-	if (boothDebugParam !== 'character' || !debugScenarioAllowed || boothDebugRequested) return;
+	if (!debugScenarioAllowed || boothDebugRequested) return;
+	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest') return;
 	if (!gameState || gameState.gamePhase !== 'lobby') return;
 	boothDebugRequested = true;
-	openCharacterBooth();
+	if (boothDebugParam === 'quest') {
+		openQuestPanel();
+	} else {
+		openCharacterBooth();
+	}
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
@@ -4319,6 +4324,8 @@ window.closeAccountOverlay = closeAccountOverlay;
 window.openCharacterBooth = openCharacterBooth;
 window.closeCharacterBooth = closeCharacterBooth;
 window.openQuestPanel = openQuestPanel;
+// Test hook: exercise the `?booth=` debug open path (localhost gate + once-per-session).
+window.__requestBoothDebugOpenForTest = requestBoothDebugOpen;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
