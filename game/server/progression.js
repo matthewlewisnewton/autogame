@@ -349,14 +349,14 @@ function isValidShopOffer(offer) {
   return !!(offer && typeof offer.cardId === 'string' && CARD_DEFS[offer.cardId]);
 }
 
-function refreshShopOffer() {
-  if (!_gameState) return null;
+function refreshShopOffer(state = _gameState) {
+  if (!state) return null;
   const seed = Math.floor(Math.random() * 2147483647);
   let offer = pickShopOffer(seed);
   if (!offer) {
     const fallbackId = SHOP_CARD_POOL[0];
     if (!fallbackId) {
-      _gameState.shopOffer = null;
+      state.shopOffer = null;
       return null;
     }
     const def = CARD_DEFS[fallbackId];
@@ -367,16 +367,16 @@ function refreshShopOffer() {
       type: def.type
     };
   }
-  _gameState.shopOffer = offer;
-  return _gameState.shopOffer;
+  state.shopOffer = offer;
+  return state.shopOffer;
 }
 
-function ensureShopOffer() {
-  if (!_gameState) return null;
-  if (!isValidShopOffer(_gameState.shopOffer)) {
-    refreshShopOffer();
+function ensureShopOffer(state = _gameState) {
+  if (!state) return null;
+  if (!isValidShopOffer(state.shopOffer)) {
+    refreshShopOffer(state);
   }
-  return _gameState.shopOffer;
+  return state.shopOffer;
 }
 
 /** Restore minimal HP when returning to the lobby ship after death or wipe. */
@@ -389,12 +389,12 @@ function revivePlayerInLobby(player) {
   }
 }
 
-function healAtMedic(playerId) {
-  if (!_gameState || !isLobbyPhase(_gameState)) {
+function healAtMedic(playerId, state = _gameState) {
+  if (!state || !isLobbyPhase(state)) {
     return { ok: false, reason: 'not_in_lobby' };
   }
 
-  const player = _gameState.players[playerId];
+  const player = state.players[playerId];
   if (!player) {
     return { ok: false, reason: 'invalid_player' };
   }

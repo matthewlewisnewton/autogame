@@ -813,7 +813,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   const playerId = explicitPlayerId ?? socket.playerId;
   const player = state.players[playerId];
   if (!player) return;
-  withLobbyContext(lobby, () => ensureShopOffer());
+  withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
 
   socket.emit('lobbyJoined', {
     lobbyId: lobby.id,
@@ -1695,7 +1695,7 @@ function startServer(port) {
       requirePhase: 'lobby',
       phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
     }, (state, lobby, player) => {
-      const result = healAtMedic(socket.playerId);
+      const result = healAtMedic(socket.playerId, state);
       if (!result.ok) {
         socket.emit('medicError', { reason: result.reason });
         return;
