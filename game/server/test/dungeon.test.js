@@ -1248,8 +1248,8 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     expect(roomsByBand(layout, 'plateau').length).toBe(1);
     expect(roomsByBand(layout, 'canyon').length).toBe(1);
     const ramps = roomsByBand(layout, 'ramp');
-    expect(ramps.length).toBeGreaterThanOrEqual(2);
-    expect(ramps.length).toBeLessThanOrEqual(3);
+    expect(ramps.length).toBeGreaterThanOrEqual(4);
+    expect(ramps.length).toBeLessThanOrEqual(5);
   });
 
   it('has a flat plateau (~12–15 units) and a canyon floor ≥ 4× default room area', () => {
@@ -1339,30 +1339,54 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     }
   });
 
-  it('plateau spawn can reach canyon treasure room center via walkable AABBs', () => {
-    function canReachPoint(fromX, fromZ, toX, toZ, aabbs, colliders) {
-      const tolerance = 1.5;
-      const seen = new Set();
-      const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
-      const queue = [{ x: fromX, z: fromZ }];
-      seen.add(key(fromX, fromZ));
-      const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+  function canReachPoint(fromX, fromZ, toX, toZ, aabbs, colliders) {
+    const tolerance = 1.5;
+    const seen = new Set();
+    const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+    const queue = [{ x: fromX, z: fromZ }];
+    seen.add(key(fromX, fromZ));
+    const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
 
-      for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
-        const { x, z } = queue[qi];
-        if (Math.hypot(x - toX, z - toZ) <= tolerance) return true;
-        for (const [dx, dz] of dirs) {
-          const nx = x + dx;
-          const nz = z + dz;
-          const k = key(nx, nz);
-          if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
-          seen.add(k);
-          queue.push({ x: nx, z: nz });
-        }
+    for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+      const { x, z } = queue[qi];
+      if (Math.hypot(x - toX, z - toZ) <= tolerance) return true;
+      for (const [dx, dz] of dirs) {
+        const nx = x + dx;
+        const nz = z + dz;
+        const k = key(nx, nz);
+        if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+        seen.add(k);
+        queue.push({ x: nx, z: nz });
       }
-      return false;
     }
+    return false;
+  }
 
+  function canyonLateralEdgeProbes(canyon) {
+    const inset = 2;
+    const halfW = canyon.width / 2;
+    const northZ = canyon.z - canyon.depth / 2 + inset;
+    return [
+      { x: canyon.x + (halfW - inset), z: northZ },
+      { x: canyon.x - (halfW - inset), z: northZ },
+    ];
+  }
+
+  function edgeRampCenters(layout) {
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    const ramp = roomsByBand(layout, 'ramp')[0];
+    const canyonHalf = canyon.width / 2;
+    const rampHalfW = ramp.width / 2;
+    const edgeRampX = canyonHalf - 2 - rampHalfW;
+    return [-edgeRampX, edgeRampX];
+  }
+
+  function edgeRampForProbe(canyon, edgeRampCentersList, probeX) {
+    const [westX, eastX] = edgeRampCentersList;
+    return probeX >= canyon.x ? eastX : westX;
+  }
+
+  it('plateau spawn can reach canyon treasure room center via walkable AABBs', () => {
     for (const seed of [1, 42, 123, 777]) {
       const layout = generateLayout(seed, 'sunken-canyon');
       const plateau = roomsByBand(layout, 'plateau')[0];
@@ -1370,6 +1394,25 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       const colliders = buildWallColliders(layout);
       const aabbs = computeWalkableAABBs(layout);
       expect(canReachPoint(plateau.x, plateau.z, canyon.x, canyon.z, aabbs, colliders)).toBe(true);
+    }
+  });
+
+  it('plateau and canyon lateral-edge probes are bidirectionally walkable', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const canyon = roomsByBand(layout, 'canyon')[0];
+      const rampZ = roomsByBand(layout, 'ramp')[0].z;
+      const edgeRamps = edgeRampCenters(layout);
+      const colliders = buildWallColliders(layout);
+      const aabbs = computeWalkableAABBs(layout);
+      for (const probe of canyonLateralEdgeProbes(canyon)) {
+        const edgeRampX = edgeRampForProbe(canyon, edgeRamps, probe.x);
+        expect(canReachPoint(probe.x, probe.z, plateau.x, plateau.z, aabbs, colliders)).toBe(true);
+        expect(canReachPoint(plateau.x, plateau.z, probe.x, probe.z, aabbs, colliders)).toBe(true);
+        expect(canReachPoint(probe.x, probe.z, edgeRampX, rampZ, aabbs, colliders)).toBe(true);
+        expect(canReachPoint(edgeRampX, rampZ, plateau.x, plateau.z, aabbs, colliders)).toBe(true);
+      }
     }
   });
 
@@ -1393,12 +1436,12 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     expect(a).toEqual(b);
   });
 
-  it('ramp count is 2–3 across many seeds', () => {
+  it('ramp count is 4–5 across many seeds (2 edge connectors + 2–3 central)', () => {
     for (let seed = 1; seed <= 30; seed++) {
       const layout = generateLayout(seed, 'sunken-canyon');
       const rampCount = roomsByBand(layout, 'ramp').length;
-      expect(rampCount).toBeGreaterThanOrEqual(2);
-      expect(rampCount).toBeLessThanOrEqual(3);
+      expect(rampCount).toBeGreaterThanOrEqual(4);
+      expect(rampCount).toBeLessThanOrEqual(5);
     }
   });
 });
@@ -1552,6 +1595,89 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
   it('is deterministic: same seed yields deep-equal layouts', () => {
     const a = generateLayout(2024, 'spire-ascent');
     const b = generateLayout(2024, 'spire-ascent');
+    expect(a).toEqual(b);
+  });
+});
+
+// ── hub ship-interior layout ──
+
+describe("generateLayout(seed, 'hub')", () => {
+  const HUB_ZONES = ['operations', 'commerce', 'salon'];
+  const BOOTH_KEYS = ['quest', 'launch', 'shop', 'deck', 'character', 'hats'];
+  const BOOTH_ZONE = {
+    quest: 'operations',
+    launch: 'operations',
+    shop: 'commerce',
+    deck: 'commerce',
+    character: 'salon',
+    hats: 'salon',
+  };
+
+  function roomByHubZone(layout, zone) {
+    return layout.rooms.filter(r => r.hubZone === zone);
+  }
+
+  function anchorInsideRoom(anchor, room, inset = 1) {
+    const halfW = room.width / 2 - inset;
+    const halfD = room.depth / 2 - inset;
+    return (
+      anchor.x >= room.x - halfW && anchor.x <= room.x + halfW &&
+      anchor.z >= room.z - halfD && anchor.z <= room.z + halfD
+    );
+  }
+
+  function hubReachableFromStart(layout) {
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    return countReachableRooms(layout, aabbs, colliders) === layout.rooms.length;
+  }
+
+  it('has profile hub with three zone rooms and at least two passages', () => {
+    const layout = generateLayout(42, 'hub');
+    expect(layout.profile).toBe('hub');
+    expect(layout.rooms.length).toBe(3);
+    expect(layout.passages.length).toBeGreaterThanOrEqual(2);
+    for (const zone of HUB_ZONES) {
+      expect(roomByHubZone(layout, zone).length).toBe(1);
+    }
+  });
+
+  it('assigns start to operations and spawnWeight 0 to commerce and salon', () => {
+    const layout = generateLayout(42, 'hub');
+    const operations = roomByHubZone(layout, 'operations')[0];
+    const commerce = roomByHubZone(layout, 'commerce')[0];
+    const salon = roomByHubZone(layout, 'salon')[0];
+    expect(operations.role).toBe('start');
+    expect(commerce.spawnWeight).toBe(0);
+    expect(salon.spawnWeight).toBe(0);
+  });
+
+  it('places booth anchors inside the correct zone room with walkable floor', () => {
+    const layout = generateLayout(42, 'hub');
+    expect(layout.boothAnchors).toBeDefined();
+    for (const key of BOOTH_KEYS) {
+      expect(layout.boothAnchors[key]).toBeDefined();
+    }
+    const colliders = buildWallColliders(layout);
+    const aabbs = computeWalkableAABBs(layout);
+    for (const key of BOOTH_KEYS) {
+      const anchor = layout.boothAnchors[key];
+      const room = roomByHubZone(layout, BOOTH_ZONE[key])[0];
+      expect(anchorInsideRoom(anchor, room, 1)).toBe(true);
+      expect(isWalkable(anchor.x, anchor.z, aabbs, colliders)).toBe(true);
+    }
+  });
+
+  it('all zone rooms are reachable from start via walkable floor and passages', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'hub');
+      expect(hubReachableFromStart(layout)).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'hub');
+    const b = generateLayout(2024, 'hub');
     expect(a).toEqual(b);
   });
 });

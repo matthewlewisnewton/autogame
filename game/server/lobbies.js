@@ -139,6 +139,7 @@ function lobbySummary(lobby) {
     name: lobby.name,
     gamePhase: lobby.state.gamePhase,
     selectedQuestId: lobby.state.selectedQuestId,
+    selectedQuestTier: lobby.state.selectedQuestTier ?? 1,
     playerCount: Object.keys(lobby.state.players).length,
     players: lobbyPlayerSummaries(lobby),
   };

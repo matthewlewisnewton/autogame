@@ -1,9 +1,14 @@
-Merge conflict in `LOGBOOK.md` is resolved.
+Merge conflicts are resolved. Summary:
 
-**What was conflicting:** Both sides appended a new version entry at the end of the logbook — `main` had **v0.212** (268-scaling-thread-lobby-state-explicitly) and the ticket branch had **v0.213** (265-sec-debug-gate-no-header-spoof).
+### `game/server/index.js`
+Kept the ticket’s extraction pattern: build `ctx`, call `lobbyHandlers.register(socket, ctx)`, then run resume/reconnect logic. Removed main’s inline socket handlers (they belong in the extracted module).
 
-**Resolution:** Kept both entries in ascending version order:
-1. **v0.212** — scaling thread lobby state migration review (from `main`)
-2. **v0.213** — debug gate header-spoof security fix review (from the ticket branch)
+Added `emitQuestPayloadToLobby` to `ctx` so quest-tier payloads from main can flow through the extracted handlers.
 
-All conflict markers are removed; the file is consistent with the rest of the logbook. The harness can proceed with commit and merge.
+### `LOGBOOK.md`
+Combined both sides chronologically: main entries (v0.215–v0.220) followed by the ticket entry (v0.221).
+
+### `game/server/socketHandlers/lobbyHandlers.js` (supporting change)
+Main’s quest-tier behavior (`createLobby`, `selectQuest`, `playerReady`) was only in the conflicted inline handlers. Ported that logic into `lobbyHandlers` so extraction and tier gating coexist. Tier gating tests pass.
+
+All conflict markers are removed; syntax checks and targeted tests (`quest_tier_gating`, `quest_tier_lobby_sync`, `lobbies`) pass. Ready for the harness to commit and run the full suite.

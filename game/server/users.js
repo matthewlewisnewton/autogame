@@ -13,6 +13,7 @@ const {
 	backfillCosmetic,
 	backfillUnlockedHats
 } = require('./cosmetic');
+const { isValidQuestId, isValidQuestSelection } = require('./quests');
 
 let usersFilePath = process.env.USERS_FILE || path.join(__dirname, '..', 'data', 'users.json');
 
@@ -30,6 +31,54 @@ function isValidUsername(username) {
 }
 
 /**
+ * Normalize persisted quest-tier unlock map: quest id → deduped tier numbers ≥ 2.
+ * Tier 1 is never stored (always available). Invalid keys/tiers are dropped.
+ *
+ * @param {Record<string, number[]>|undefined|null} existing
+ * @returns {Record<string, number[]>}
+ */
+function backfillUnlockedQuestTiers(existing) {
+	const out = {};
+	if (!existing || typeof existing !== 'object' || Array.isArray(existing)) {
+		return out;
+	}
+	for (const questId of Object.keys(existing)) {
+		if (!isValidQuestId(questId)) {
+			continue;
+		}
+		const rawTiers = existing[questId];
+		if (!Array.isArray(rawTiers)) {
+			continue;
+		}
+		const tiers = [];
+		const seen = new Set();
+		for (const tier of rawTiers) {
+			const n = Number(tier);
+			if (!Number.isInteger(n) || n < 2) {
+				continue;
+			}
+			if (!isValidQuestSelection(questId, n)) {
+				continue;
+			}
+			if (!seen.has(n)) {
+				seen.add(n);
+				tiers.push(n);
+			}
+		}
+		if (tiers.length > 0) {
+			tiers.sort((a, b) => a - b);
+			out[questId] = tiers;
+		}
+	}
+	return out;
+}
+
+function normalizeUnlockTier(tier) {
+	const n = Number(tier);
+	return Number.isInteger(n) && n > 0 ? n : null;
+}
+
+/**
  * Load existing user records from disk into the in-memory Map.
  * Silently ignores file-not-found errors (first run). Logs other errors.
  * Called automatically at module initialization.
@@ -43,6 +92,7 @@ function loadUsers() {
 			record.cosmetic = backfillCosmetic(record.cosmetic);
 			// Backfill unlocked hats on legacy records (or missing/invalid values).
 			record.unlockedHats = backfillUnlockedHats(record.unlockedHats);
+			record.unlockedQuestTiers = backfillUnlockedQuestTiers(record.unlockedQuestTiers);
 			users.set(record.username, record);
 		}
 		console.log(`[users] Loaded ${users.size} user record(s) from ${usersFilePath}`);
@@ -124,7 +174,8 @@ function createUser(username, plainPassword) {
 		passwordHash,
 		accountId,
 		cosmetic: { ...DEFAULT_COSMETIC },
-		unlockedHats: [...DEFAULT_UNLOCKED_HATS]
+		unlockedHats: [...DEFAULT_UNLOCKED_HATS],
+		unlockedQuestTiers: {}
 	};
 
 	users.set(username, record);
@@ -152,7 +203,8 @@ async function createUserAsync(username, plainPassword) {
 		passwordHash,
 		accountId,
 		cosmetic: { ...DEFAULT_COSMETIC },
-		unlockedHats: [...DEFAULT_UNLOCKED_HATS]
+		unlockedHats: [...DEFAULT_UNLOCKED_HATS],
+		unlockedQuestTiers: {}
 	};
 
 	users.set(username, record);
@@ -299,6 +351,83 @@ function unlockHat(accountId, hatId) {
 }
 
 /**
+ * Return the persisted quest-tier unlock map for an account (tiers ≥ 2 only).
+ *
+ * @param {string} accountId
+ * @returns {Record<string, number[]>|null}
+ */
+function getUnlockedQuestTiers(accountId) {
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return null;
+	}
+	return backfillUnlockedQuestTiers(user.unlockedQuestTiers);
+}
+
+/**
+ * Whether a quest tier is available for an account. Tier 1 is always unlocked
+ * for valid catalog quests; higher tiers require a persisted unlock.
+ *
+ * @param {string} accountId
+ * @param {string} questId
+ * @param {number} tier
+ * @returns {boolean}
+ */
+function isQuestTierUnlocked(accountId, questId, tier) {
+	const normalizedTier = normalizeUnlockTier(tier);
+	if (normalizedTier === null || !isValidQuestSelection(questId, normalizedTier)) {
+		return false;
+	}
+	if (normalizedTier === 1) {
+		return true;
+	}
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return false;
+	}
+	const map = backfillUnlockedQuestTiers(user.unlockedQuestTiers);
+	const tiers = map[questId];
+	return Array.isArray(tiers) && tiers.includes(normalizedTier);
+}
+
+/**
+ * Record a quest tier unlock on an account. Validates catalog ids; tier 1 is
+ * never stored (always available). Idempotent for duplicate unlocks.
+ *
+ * @param {string} accountId
+ * @param {string} questId
+ * @param {number} tier
+ * @returns {{ ok: true, unlockedQuestTiers: Record<string, number[]> } | { ok: false, reason: string }}
+ */
+function unlockQuestTier(accountId, questId, tier) {
+	const user = findUserByAccountId(accountId);
+	if (!user) {
+		return { ok: false, reason: 'Account not found' };
+	}
+	const normalizedTier = normalizeUnlockTier(tier);
+	if (normalizedTier === null || !isValidQuestSelection(questId, normalizedTier)) {
+		return { ok: false, reason: 'Unknown quest or tier' };
+	}
+
+	user.unlockedQuestTiers = backfillUnlockedQuestTiers(user.unlockedQuestTiers);
+
+	if (normalizedTier === 1) {
+		return { ok: true, unlockedQuestTiers: user.unlockedQuestTiers };
+	}
+
+	const existing = user.unlockedQuestTiers[questId] || [];
+	if (!existing.includes(normalizedTier)) {
+		user.unlockedQuestTiers = {
+			...user.unlockedQuestTiers,
+			[questId]: [...existing, normalizedTier].sort((a, b) => a - b)
+		};
+		saveUsers();
+	}
+
+	return { ok: true, unlockedQuestTiers: user.unlockedQuestTiers };
+}
+
+/**
  * Clear all users from the in-memory store (test-only).
  */
 function clearUsers() {
@@ -337,6 +466,9 @@ module.exports = {
 	findUserByEmail,
 	updateProfile,
 	unlockHat,
+	getUnlockedQuestTiers,
+	isQuestTierUnlocked,
+	unlockQuestTier,
 	normalizeEmail,
 	clearUsers,
 	loadUsers,

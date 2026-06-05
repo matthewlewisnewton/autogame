@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { OBJECTIVE_DEFS, getObjectiveDef, isValidObjectiveType } from '../objectives.js';
-import { QUEST_DEFS } from '../quests.js';
+import { listQuests } from '../quests.js';
 
 const FAKE_TYPE = 'test_fake_objective';
 
@@ -55,8 +55,8 @@ describe('OBJECTIVE_DEFS extensibility', () => {
 });
 
 describe('quest objective alignment', () => {
-  it('every QUEST_DEFS objectiveType has a matching OBJECTIVE_DEFS key', () => {
-    for (const quest of Object.values(QUEST_DEFS)) {
+  it('every tier-1 quest objectiveType has a matching OBJECTIVE_DEFS key', () => {
+    for (const quest of listQuests()) {
       expect(
         isValidObjectiveType(quest.objectiveType),
         `quest "${quest.id}" references unregistered objectiveType "${quest.objectiveType}"`

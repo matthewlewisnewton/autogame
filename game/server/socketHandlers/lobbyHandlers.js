@@ -9,9 +9,13 @@
 // register(socket, ctx) from the connection handler.
 
 const { DECK_MAX_SIZE, LOOT_PICKUP_RADIUS } = require('../config');
-const { isValidQuestId, buildQuestUpdatePayload } = require('../quests');
+const {
+  DEFAULT_QUEST_TIER,
+  isValidQuestSelection,
+  normalizeQuestTier,
+} = require('../quests');
 const { isLobbyPhase, isPlayingPhase } = require('../lobbies');
-const { findUserByAccountId, unlockHat: unlockHatForAccount } = require('../users');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
 const { backfillUnlockedHats } = require('../cosmetic');
 const keyItemEffects = require('../keyItemEffects');
 const {
@@ -58,6 +62,7 @@ function register(socket, ctx) {
     withLobbyPlayer,
     withLobbyFromSocket,
     broadcastLobbyUpdate,
+    emitQuestPayloadToLobby,
     findSocketByPlayerId,
     io,
     returnPlayersToLobby,
@@ -91,7 +96,11 @@ function register(socket, ctx) {
     }
     const lobby = lobbies.createLobby(data && data.name);
     withLobbyContext(lobby, () => {
-      applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
+      applyLayoutForQuest(
+        lobby.state,
+        lobby.state.selectedQuestId,
+        lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+      );
       ensureShopOffer();
     });
     joinPlayerToLobby(socket, lobby);
@@ -136,7 +145,7 @@ function register(socket, ctx) {
   });
 
   socket.on('selectQuest', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, _player) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (state.suspendedCheckpoint) {
       socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
       return;
@@ -148,20 +157,28 @@ function register(socket, ctx) {
       return;
     }
 
-    if (!isValidQuestId(questId)) {
-      socket.emit('questError', { reason: `Unknown quest: ${questId}` });
+    const tier = normalizeQuestTier(data && data.tier);
+
+    if (!isValidQuestSelection(questId, tier)) {
+      socket.emit('questError', { reason: `Unknown quest or tier: ${questId} tier ${tier}` });
+      return;
+    }
+
+    if (tier >= 2 && !isQuestTierUnlocked(player.accountId, questId, tier)) {
+      socket.emit('questError', { reason: 'tier_locked' });
       return;
     }
 
     state.selectedQuestId = questId;
-    applyLayoutForQuest(state, questId);
+    state.selectedQuestTier = tier;
+    applyLayoutForQuest(state, questId, tier);
     assignRunSpawnPositions(Object.values(state.players));
-    const payload = {
-      ...buildQuestUpdatePayload(state),
-      layoutSeed: state.layoutSeed,
-      layout: state.layout,
-    };
-    io.to(lobby.id).emit('questUpdate', payload);
+    emitQuestPayloadToLobby(lobby, {
+      extraFields: {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      },
+    });
     io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     broadcastLobbyUpdate(lobby);
     });
@@ -170,6 +187,17 @@ function register(socket, ctx) {
   socket.on('playerReady', (ready) => {
     withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
+      const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+      if (selectedTier >= 2) {
+        const questId = state.selectedQuestId;
+        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+          player.ready = false;
+          socket.emit('questError', { reason: 'tier_locked' });
+          broadcastLobbyUpdate(lobby);
+          return;
+        }
+      }
+
       normalizePlayerInventory(player);
       const result = validateDeck(player.selectedDeck, player.inventory);
       if (!result.valid) {

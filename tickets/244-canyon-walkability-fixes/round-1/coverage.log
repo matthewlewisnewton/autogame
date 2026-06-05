@@ -1,0 +1,83 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/enemy_variants.test.js (9 tests) 13ms
+stdout | server/test/spire_ascent_spawn.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > spawns enemies across bottom, middle, and top tiers (not all on one tier)
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/applyPlayerMovement.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > spawns enemies across bottom, middle, and top tiers (not all on one tier)
+[loot] spawned id=dad664ca-cc55-458e-9d35-6d3837befdaf value=16
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > never places enemies on ramp connector rooms
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > never places enemies on ramp connector rooms
+[loot] spawned id=f8466e01-0d7a-4d22-8181-5254352de61a value=13
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > is deterministic for a fixed seed
+[loot] spawned id=d374c65b-1fbd-4e48-b7eb-7742d786bdeb value=10
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[loot] spawned id=90b5f541-155b-4f0f-9e92-81b02658a2da value=20
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places collect-objective crystals only on the top tier
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places collect-objective crystals only on the top tier
+[crystal] spawned id=43b807f5-6f6f-4a4f-8f3c-71f5c906c3c0 at (2.3, -44.9)
+[crystal] spawned id=d9c82150-185c-4845-91d4-07bff684a583 at (-0.0, -44.4)
+[crystal] spawned id=3981a48d-4cb8-484b-9284-45b54b9e9e22 at (-1.0, -39.0)
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places optional loot on the top tier when spawn chance passes
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places optional loot on the top tier when spawn chance passes
+[loot] spawned id=860e1c43-b60e-4332-890e-1ce483b6d8b9 value=11
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > bottom-tier spawn can reach top-tier treasure center via walkable AABBs
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+
+ ✓ |server| server/test/applyPlayerMovement.test.js (10 tests) 11ms
+ ✓ |server| server/test/spire_ascent_spawn.test.js (7 tests) 57ms
+stdout | server/test/simulation.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+
+ ✓ |server| server/test/simulation.test.js (17 tests) 4ms
+ ✓ |client| client/test/dungeon.test.js (31 tests) 51ms
+ ✓ |server| server/test/sunken_canyon_walkability.test.js (4 tests) 1526ms
+   ✓ sunken-canyon walkability regressions > keeps ramp axis-z wall gaps ≥ 2 * PLAYER_RADIUS for three-ramp seeds 1..30  726ms
+   ✓ sunken-canyon walkability regressions > supports bidirectional plateau ↔ canyon centre and lateral edge probes  513ms
+ ✓ |server| server/test/dungeon.test.js (127 tests) 3196ms
+   ✓ layout traversability > every room is reachable from the start room for many seeds  1584ms
+   ✓ generateLayout(seed, 'sunken-canyon') > ramp count is 4–5 across many seeds (2 edge connectors + 2–3 central)  425ms
+
+ Test Files  7 passed (7)
+      Tests  205 passed (205)
+   Start at  21:32:22
+   Duration  4.03s (transform 40ms, setup 30ms, collect 795ms, tests 4.86s, environment 303ms, prepare 644ms)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   33.15 |       50 |    8.33 |   33.15 |                       
+ client        |   24.87 |       50 |    12.5 |   24.87 |                       
+  collision.js |   24.87 |       50 |    12.5 |   24.87 | ...16,222-230,236-241 
+ server        |   34.02 |       50 |     7.5 |   34.02 |                       
+  index.js     |   34.02 |       50 |     7.5 |   34.02 | ...638-1954,1958-1959 
+---------------|---------|----------|---------|---------|-----------------------

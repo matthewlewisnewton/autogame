@@ -1,0 +1,11 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/250-enemy-per-level-spawn-pools/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/250-enemy-per-level-spawn-pools/game/data
+Server listening on port 3000
+Player connected: socket=I_0dpU2btQiLcePMAAAB, playerId=05423738-9f89-4bf1-bd88-8cdbbe459d5d
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=RpNWjp0POb8o3aouAAAD, playerId=22237747-09f3-4ee5-a928-fbd6c0c0076b
+Player disconnected: I_0dpU2btQiLcePMAAAB
+Player disconnected: RpNWjp0POb8o3aouAAAD

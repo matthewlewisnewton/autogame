@@ -1,0 +1,9 @@
+I broke the top-level ticket into 2 dependency-ordered, code-verifiable sub-tickets.
+
+**Mapping:** "level" → the quest/stage defs in `quests.js`; enemy types live in `ENEMY_DEFS` (simulation.js); spawning happens in `spawnCombatEnemies` (progression.js) and the `survive` `tickSpawns` (objectives.js), both currently using hardcoded type arrays. I kept the design to the four existing enemy types (no new client model registry work) and achieved level-exclusivity by making `spawner` appear only in `spire_ascent`.
+
+**Sub-tickets created:**
+- `tickets/250-enemy-per-level-spawn-pools/subtickets/01-per-level-spawn-pool-table/ticket.md` — adds the per-quest `enemyPool` (`{type, weight}`) data table + `getEnemyPool` / `pickWeightedEnemyType` pure helpers in `quests.js`, with tests asserting pools, weights, `spawner` exclusivity, and deterministic weighted draws.
+- `tickets/250-enemy-per-level-spawn-pools/subtickets/02-wire-spawn-logic-to-pools/ticket.md` — wires `spawnCombatEnemies` and the `survive` `tickSpawns` to draw from the per-level pool via the seeded rng, with tests asserting spawned types stay within each level's pool and exclusives don't leak.
+
+Both are `Verification: code` (they assert structure, exports, server spawn state, weighting/timing — none of which screenshot QA can see). No existing sub-tickets needed retiring (the folder was empty).
