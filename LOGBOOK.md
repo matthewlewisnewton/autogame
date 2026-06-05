@@ -3755,3 +3755,26 @@ None blocking. Runtime is healthy; all five acceptance criteria are satisfied fo
 
 See `nits.md` for follow-up backlog items (unused import, residual `ids[0]` assertion in `server.test.js`).
 
+
+## v0.211 — 210-net-extract-socket-handlers  (2026-06-04 19:08:55)
+
+3. Delete dead `buyShopCard` and `listKeyItems` socket handlers after confirming no client emitter; extract `notifyPlayerRemoved()`.
+
+   Pass. `buyShopCard` remains available as a progression function and unit-tested behavior, but there is no client `socket.emit('buyShopCard')`. `listKeyItems` has no client emitter, and the client receives key-item definitions through `init`. The repeated leave/eviction removal broadcast logic is centralized in `notifyPlayerRemoved(lobby, playerId)`.
+
+4. Preserve behavior and keep the server test suite green.
+
+   Pass. The captured `coverage.log` reports `42 passed` test files and `927 passed` tests. The changed integration/key-item areas are covered by the existing server suite, and the full-flow browser capture exercises lobby creation/joining, ready transition, movement, card UI, and key-item use after the extraction.
+
+## Design and requirements
+The implementation is consistent with the documented client/server architecture and multiplayer lobby-to-dungeon loop. It does not change the core gameplay design, persistence model, movement synchronization, or WebSocket connection requirements; it only decomposes server socket wiring while preserving the existing event surface used by the client.
+
+## Debug scenarios
+No new development debug scenario was added by this ticket. The existing `debugScenario` socket event was moved into `miscHandlers` and remains gated by `isDebugScenarioAllowed(socket)` with the URL/debug path still handled outside normal gameplay.
+
+## Code quality
+The extraction keeps shared state-sensitive progression and simulation calls inside `withLobbyContext`/`withLobbyFromSocket`, which preserves the existing lobby-scoped behavior. The remaining connection-time helpers stay in `index.js`, while per-event logic is now easier to review and less likely to cause merge conflicts. I did not find dead or broken code in the moved handlers, and the live run has no browser exceptions.
+
+## Remaining gaps
+None.
+

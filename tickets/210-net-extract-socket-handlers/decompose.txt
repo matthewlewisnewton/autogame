@@ -1,0 +1,19 @@
+Split the top-level ticket into **5 sub-tickets** in dependency order, matching the ticket’s suggested slices (lobby → deck → keyItem/trade → run) plus an upfront scaffold/cleanup pass.
+
+| # | Focus | Handlers / work |
+|---|--------|-----------------|
+| 01 | Scaffold + cleanup | `ctx` pattern, `notifyPlayerRemoved`, delete dead `buyShopCard`/`listKeyItems` |
+| 02 | Lobby | `listLobbies`, `createLobby`, `joinLobby`, `leaveLobby`, `selectQuest`, `playerReady` |
+| 03 | Deck | `deckAddCard`, `deckRemoveCard`, `evolveCard`, `sellCard`, `grindCard`, `unlockHat`, `medicHeal`, `claimCardReward` |
+| 04 | Key items + trade | `equipKeyItem`, `useKeyItem`, `offerCardTrade`, `respondCardTrade` |
+| 05 | Run + misc + slim connection | `move`, `useCard`, `discardCard`, run lifecycle, `lootPickup`, `debugScenario`, `heartbeat`, `disconnect` |
+
+All use **Verification: code** (structural refactor + test suite; nothing is purely visual).
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/01-socket-handlers-scaffold`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/02-extract-lobby-handlers`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/03-extract-deck-handlers`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/04-extract-keyitem-trade-handlers`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/05-extract-run-misc-handlers`
