@@ -196,6 +196,13 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'collect-prisms-progress') {
+      // Prism Salvage (collect_items) with partial progress for objective-HUD QA.
+      // The same state is reachable by selecting crystal_rescue, deploying, and
+      // collecting prisms in the dungeon.
+      state.selectedQuestId = 'crystal_rescue';
+    }
+
     player.ready = true;
     player.x = spawn.x;
     player.z = spawn.z;
@@ -612,6 +619,16 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
+    } else if (name === 'collect-prisms-progress') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!state.run || state.run.status !== 'playing' || state.run.objective?.type !== 'collect_items') {
+        return { ok: false, reason: 'No active collect_items run for collect-prisms-progress' };
+      }
+      const objective = state.run.objective;
+      const total = Number.isFinite(objective.totalItems) ? objective.totalItems : 3;
+      objective.totalItems = total;
+      objective.collectedItems = Math.min(2, Math.max(0, total - 1));
     } else if (name === 'quest-objective-near-complete') {
       // Leave a defeat_enemies run one trigger away from victory: a single
       // low-HP grunt stands between the player and an objective-complete win.

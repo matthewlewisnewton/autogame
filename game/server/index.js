@@ -476,6 +476,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-failed',
   'run-exhausted',
   'quest-objective-near-complete',
+  'collect-prisms-progress',
   'telepipe-ready',
   'extracted-in-hub',
   'suspended-run-hub',
