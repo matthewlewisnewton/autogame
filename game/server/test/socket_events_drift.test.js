@@ -53,6 +53,8 @@ const EMIT_LITERAL = /\.emit\s*\(\s*['"]([^'"]+)['"]/g;
 const SOCKET_ON_LITERAL = /socket\.on\s*\(\s*['"]([^'"]+)['"]/g;
 const S_ON_LITERAL = /\bs\.on\s*\(\s*['"]([^'"]+)['"]/g;
 const SOCKET_EMIT_LITERAL = /socket\.emit\s*\(\s*['"]([^'"]+)['"]/g;
+const SOCKET_ONCE_LITERAL = /socket\.once\s*\(\s*['"]([^'"]+)['"]/g;
+const SOCKET_OFF_LITERAL = /socket\.off\s*\(\s*['"]([^'"]+)['"]/g;
 
 function scanServerFile(relativePath) {
 	const source = stripComments(readFileSync(join(gameRoot, relativePath), 'utf8'));
@@ -90,6 +92,18 @@ function scanClientMain() {
 		}
 	}
 
+	for (const { line, event } of findLiteralMatches(source, SOCKET_ONCE_LITERAL)) {
+		if (!SOCKET_IO_ALLOWLIST.has(event) && !serverToClient.has(event)) {
+			offenses.push({ file: relativePath, line, event, kind: 'socket.once(' });
+		}
+	}
+
+	for (const { line, event } of findLiteralMatches(source, SOCKET_OFF_LITERAL)) {
+		if (!SOCKET_IO_ALLOWLIST.has(event) && !serverToClient.has(event)) {
+			offenses.push({ file: relativePath, line, event, kind: 'socket.off(' });
+		}
+	}
+
 	return offenses;
 }
 
@@ -101,11 +115,17 @@ function formatOffenses(offenses) {
 
 describe('socket event drift guard', () => {
 	it('flags unregistered string literals in a sample snippet', () => {
-		const sample = "socket.emit('typoEvent', {});\nsocket.on('typoEvent', () => {});";
-		const emitHits = findLiteralMatches(stripComments(sample), EMIT_LITERAL);
-		const onHits = findLiteralMatches(stripComments(sample), SOCKET_ON_LITERAL);
+		const sample =
+			"socket.emit('typoEvent', {});\n" +
+			"socket.on('typoEvent', () => {});\n" +
+			"socket.once('typoEvent', () => {});";
+		const stripped = stripComments(sample);
+		const emitHits = findLiteralMatches(stripped, EMIT_LITERAL);
+		const onHits = findLiteralMatches(stripped, SOCKET_ON_LITERAL);
+		const onceHits = findLiteralMatches(stripped, SOCKET_ONCE_LITERAL);
 		expect(emitHits.some((h) => h.event === 'typoEvent')).toBe(true);
 		expect(onHits.some((h) => h.event === 'typoEvent')).toBe(true);
+		expect(onceHits.some((h) => h.event === 'typoEvent')).toBe(true);
 		expect(clientToServer.has('typoEvent')).toBe(false);
 	});
 
@@ -115,7 +135,7 @@ describe('socket event drift guard', () => {
 		expect(offenses, formatOffenses(offenses)).toEqual([]);
 	});
 
-	it('client main.js only uses catalogued wire strings for s.on( and socket.emit(', () => {
+	it('client main.js only uses catalogued wire strings for s.on(, socket.emit(, socket.once(, and socket.off(', () => {
 		const offenses = scanClientMain();
 		expect(offenses, formatOffenses(offenses)).toEqual([]);
 	});
