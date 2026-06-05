@@ -4730,3 +4730,26 @@ PASS. The implementation fits the documented lobby-to-dungeon core loop and keep
 ## Debug scenarios
 
 PASS. This ticket added `arena-trials-tier-2`, `stage-boss-dormant`, and `stage-boss-active` shortcuts. They are only reachable through the existing debug scenario socket path, which is gated by `isDebugScenarioAllowed()` and requires the URL/debug harness path to request a named scenario. Normal gameplay reaches the same Tier 2 stage-boss state by clearing Arena Trials Tier 1, unlocking Tier 2, selecting it in the lobby, and deploying. The debug scenarios reuse `applyLayoutForQuest()`, `enterPlayingPhase()`, `spawnEnemies()`, and `startDungeonRun()` so they exercise the same server-side quest, spawn, run, and encounter invariants; `stage-boss-active` only pre-clears adds and lowers boss HP after creating the normal run for QA convenience.
+
+## v0.272 — 259-miniboss-rooms  (2026-06-05 13:24:21)
+
+### Trigger, Defeat Completion, and Rewards
+
+PASS. The stage-boss encounter flow is wired through the shared encounter/objective framework: the boss starts dormant, activates and locks when players reach the encounter radius or clear supports, clears only when the active boss dies, and then marks the `stage_boss` objective complete. `checkRunTerminalState()` then grants normal victory rewards, saves players, and emits completion. Annex Overseer death also follows the existing miniboss-tier card, Magic Stone, and currency drop paths.
+
+### Normal Gameplay Reachability and Debug Scenarios
+
+PASS. The normal path remains intact: clearing `training_caverns` Tier 1 unlocks Tier 2, the quest board exposes the locked/unlocked Tier-2 row, and selecting/deploying Tier 2 uses the same quest/layout/run creation path as the shortcut. The added `training-caverns-tier-2` debug scenario is gated through the existing debug scenario mechanism, reachable only by explicit debug scenario request, and mirrors normal Tier-2 deployment rather than bypassing server-side encounter/objective/reward invariants.
+
+### Design and Foundation Consistency
+
+PASS. The implementation stays consistent with the documented lobby -> dungeon -> objective -> loot loop and preserves the foundational requirements: the capture proves the 3D scene renders, sockets connect, players are visualized, and movement continues to sync. The change is scoped to quest/encounter/layout/enemy presentation and does not regress Tier 1 behavior.
+
+### Tests and Coverage
+
+PASS. The round coverage log shows `110` test files and `1868` tests passing. New and updated tests cover quest catalog exposure, Tier-2 unlock, rigid vault layout, boss/support spawn placement, encounter activation/completion, Annex Overseer stats/radial behavior, drops, client quest copy, model/display registry, and the Tier-2 debug shortcut.
+
+## Remaining gaps
+
+None.
+

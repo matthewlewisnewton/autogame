@@ -1,0 +1,14 @@
+Split ticket **259-miniboss-rooms** into 3 sub-tickets (dependency order). “Rooms” maps to `training_caverns` Tier 2 (crowded rigid grid layout / Initiate Vault). The work reuses the ticket-258 stage-boss framework while adding a rooms-specific arena, enemy, and wire-up — modeled on sub-ticket 05 from ticket 258, but with distinct content.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/259-miniboss-rooms/tickets/259-miniboss-rooms/subtickets/01-vault-dais-arena-landmark/ticket.md`  
+   — `vault_dais` boss pedestal for rigid crowded layouts + client mesh
+
+2. `/home/matt/workspace/.autogame-worktrees/259-miniboss-rooms/tickets/259-miniboss-rooms/subtickets/02-annex-overseer-boss-enemy/ticket.md`  
+   — `annex_overseer` enemy type with radial/area-denial mechanics distinct from arena `miniboss`
+
+3. `/home/matt/workspace/.autogame-worktrees/259-miniboss-rooms/tickets/259-miniboss-rooms/subtickets/03-training-caverns-tier2-stage-boss-wireup/ticket.md`  
+   — Quest config, HUD copy, debug scenario, and end-to-end tests for the full encounter flow
+
+All three use **Verification: code** (structure, server state, tests — not screenshot-only checks). No existing sub-tickets were present to preserve or retire.
