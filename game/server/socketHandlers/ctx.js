@@ -23,6 +23,12 @@
  * @property {(playerId: string) => boolean} savePlayerData
  *   Persists the player's durable progress.
  * @property {import('socket.io').Server} io - Socket.IO server for room-scoped emits.
+ * @property {(socket: import('socket.io').Socket, lobby: object, options?: object) => void} joinPlayerToLobby
+ * @property {(socket: import('socket.io').Socket, lobby: object) => void} joinLobbyWithPhasePolicy
+ * @property {(socket: import('socket.io').Socket) => *} leaveLobbyForSocket
+ * @property {(socket: import('socket.io').Socket, lobby: object, explicitPlayerId?: string) => boolean} reconnectPlayerToLobby
+ * @property {(state: object, questId: string) => void} applyLayoutForQuest
+ * @property {(player: object) => object} buildSessionFromPlayer
  */
 
 /**
@@ -44,6 +50,12 @@ function createSocketContext({
   findSocketByPlayerId,
   savePlayerData,
   io,
+  joinPlayerToLobby,
+  joinLobbyWithPhasePolicy,
+  leaveLobbyForSocket,
+  reconnectPlayerToLobby,
+  applyLayoutForQuest,
+  buildSessionFromPlayer,
 }) {
   return Object.freeze({
     socket,
@@ -58,6 +70,12 @@ function createSocketContext({
     findSocketByPlayerId,
     savePlayerData,
     io,
+    joinPlayerToLobby,
+    joinLobbyWithPhasePolicy,
+    leaveLobbyForSocket,
+    reconnectPlayerToLobby,
+    applyLayoutForQuest,
+    buildSessionFromPlayer,
   });
 }
 
