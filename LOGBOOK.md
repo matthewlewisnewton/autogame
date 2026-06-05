@@ -3988,3 +3988,26 @@ None.
 None blocking. One non-blocking nit (test-stderr noise from the renderer's
 `/models/player.glb` URL parse under jsdom) is recorded in `nits.md`.
 
+
+## v0.231 — 271-telepipe-hub-suspend-resume-integration  (2026-06-05 03:01:59)
+
+## Preservation of run state
+
+PASS. The checkpoint implementation captures player combat state, run/objective, layout, enemies, minions, loot, area effects, and portal state. The round-4 capture verifies objective and enemy preservation across suspend/resume, and the added integration coverage exercises the non-trivial acceptance case by suspending a two-player run with spent Magic Stones, drained card charges, and advanced objective progress, then resuming through the normal all-ready gate without resetting those values.
+
+## Debug scenarios
+
+PASS. The capture uses `telepipe-ready`, which is only requested through `?debugScenario=`/test hooks, is gated to localhost or `ALLOW_DEBUG_SCENARIOS`, and stays in the lobby until the normal ready-up flow starts the run. The added `suspended-run-hub` shortcut is also dev-gated, documents the normal route it mirrors, and calls the same `suspendRunToLobby()` checkpoint path rather than bypassing server-side suspend/resume invariants.
+
+## Design and foundation consistency
+
+PASS. The implementation is consistent with `game/docs/design.md`: Telepipe creates a shared portal, extracted players leave dungeon actions, the run suspends only after no active players remain, and deploy/resume restores the checkpoint instead of generating a fresh run. It does not regress the foundation requirements: the captured page renders, connects over Socket.IO, shows the player/hub or dungeon state, and resumes to synchronized server state.
+
+## Tests and coverage
+
+Ticket-relevant server tests for Telepipe suspend/resume and debug scenarios passed in the coverage run, and the live browser capture validated the end-to-end flow. The coverage log includes one unrelated existing `server/test/auth.test.js` failure around `accountId` in a login JWT assertion; no changed files for this ticket are in that auth path, and the captured game still registers/logs in and runs cleanly.
+
+## Remaining gaps
+
+No blocking gaps.
+

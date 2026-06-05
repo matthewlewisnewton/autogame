@@ -1,0 +1,6 @@
+Wrote the final review artifacts:
+
+- `tickets/271-telepipe-hub-suspend-resume-integration/round-1/review.md`
+- `tickets/271-telepipe-hub-suspend-resume-integration/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL` because `metrics.json` has `ok:false` / `failure_kind: "capture_failed"` and the live capture never proves the resume half of the suspend-to-hub-to-resume flow. No `nits.md` was created because I did not identify non-blocking cleanup worth filing separately.

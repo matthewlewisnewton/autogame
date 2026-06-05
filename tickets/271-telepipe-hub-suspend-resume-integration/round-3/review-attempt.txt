@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+I wrote:
+- `tickets/271-telepipe-hub-suspend-resume-integration/round-3/review.md`
+- `tickets/271-telepipe-hub-suspend-resume-integration/round-3/gaps.md`
+
+The game runs cleanly and suspend/resume preservation works, but the ticket still misses the requested distinct hub resume affordance: resume is routed through the same relabeled `#ready-btn` instead of a separate portal/booth or dedicated resume entry point. No nits file was created.
