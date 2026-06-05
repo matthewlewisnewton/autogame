@@ -1341,6 +1341,99 @@ describe('Server hand authority — useCard validation', () => {
 	});
 });
 
+describe('Socket Integration — in-run deckUpdate', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('emits deckUpdate to the acting player after useCard changes hand', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		const weaponSlot = player.hand.findIndex((c) => c && c.type === 'weapon');
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+		const handBefore = player.hand.map((c) => (c ? c.id : null));
+
+		testGameState().enemies.push({
+			id: 'e_deck_update',
+			type: 'grunt',
+			x: player.x + 3,
+			z: player.z,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z },
+		});
+
+		player.hand[weaponSlot].remainingCharges = 1;
+
+		const deckUpdatePromise = waitForEvent(socket, 'deckUpdate');
+		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		const deckUpdate = await deckUpdatePromise;
+
+		expect(Array.isArray(deckUpdate.hand)).toBe(true);
+		expect(deckUpdate.hand[weaponSlot]).toBeNull();
+		expect(deckUpdate.hand).not.toEqual(handBefore);
+		expect(Array.isArray(deckUpdate.deck)).toBe(true);
+		expect(deckUpdate.deck).toEqual(player.deck);
+		expect(typeof deckUpdate.inDesperation).toBe('boolean');
+		expect(deckUpdate).toHaveProperty('desperationDeck');
+		expect(deckUpdate).toHaveProperty('nextDrawAt');
+	});
+
+	it('does not emit in-run deckUpdate to other players in the lobby', async () => {
+		if (socket && socket.connected) socket.disconnect();
+		const { socket1, socket2, lobbyId } = await connectTwoClients(baseUrl);
+		const state = lobbyGameState(lobbyId);
+
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = state.players[socket1._playerId];
+		const weaponSlot = player.hand.findIndex((c) => c && c.type === 'weapon');
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+
+		state.enemies.push({
+			id: 'e_deck_update_b',
+			type: 'grunt',
+			x: player.x + 3,
+			z: player.z,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z },
+		});
+
+		player.hand[weaponSlot].remainingCharges = 1;
+
+		let socket2DeckUpdate = false;
+		socket2.on('deckUpdate', () => { socket2DeckUpdate = true; });
+
+		const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		await deckUpdatePromise;
+
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(socket2DeckUpdate).toBe(false);
+
+		socket1.disconnect();
+		socket2.disconnect();
+	});
+});
+
 describe('Socket Integration — Heartbeat Event', () => {
 	let baseUrl, socket;
 
