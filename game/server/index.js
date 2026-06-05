@@ -2168,6 +2168,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // Auth
     verifyToken,
     getJWTSecret,
+    // Debug gate
+    isDebugScenarioAllowed,
     // Quests
     QUEST_DEFS,
     DEFAULT_QUEST_ID,
