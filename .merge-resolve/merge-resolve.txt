@@ -1,9 +1,11 @@
-Resolved the `LOGBOOK.md` conflict by combining both sides in chronological version order:
+Merge conflicts are resolved. Both tickets’ behavior is preserved:
 
-1. **v0.264** — 241-free-hat-swap (from `main`)
-2. **v0.265** — 256-level2-sunken-canyon (from `main`)
-3. **v0.266** — 243-retire-2d-lobby-menus (from `main`)
-4. **v0.267** — 213-net-shared-event-name-constants (from `main`)
-5. **v0.268** — 258-miniboss-encounter-framework (from the ticket branch)
+**`game/shared/theme.json`** — All six stage-boss objective strings: trial warden (existing), summit warden (262), and canyon warden (261).
 
-All conflict markers are removed. The logbook now records every ticket that landed on `main` since v0.261, with the miniboss encounter framework entry last. The harness can proceed with commit and merge.
+**`game/client/questBoard.js` & `game/server/quests.js`** — `spire_ascent` uses summit warden copy via early return; `canyon_descent` and default (`arena_trials`) use the canyon/trial warden branching from main.
+
+**`game/client/test/questBoard.test.js`** — Both test blocks kept: spire ascent summit warden and canyon descent canyon warden.
+
+**`LOGBOOK.md`** — Both release entries kept in version order: v0.270 (spire ascent) then v0.269 (sunken canyon).
+
+All conflict markers are removed. `questBoard.test.js` and `quests.test.js` pass (25 tests). The harness can commit and finish the merge.

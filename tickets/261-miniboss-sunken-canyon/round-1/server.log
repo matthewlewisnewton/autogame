@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/261-miniboss-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/261-miniboss-sunken-canyon/game/data
+Server listening on port 3000
+Player connected: socket=pLzdOkpptpriF6ddAAAB, playerId=e9f08d5c-fc0f-43a7-b9d9-0c93b4ceec40
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=Hc00QQcgUtIjEoCsAAAD, playerId=ff6d1467-7042-4c91-84f0-e766c2c7114e
+[loot] spawned id=07b12ead-22a9-4903-9e68-0ec2380f4f4d value=14
+Player disconnected: pLzdOkpptpriF6ddAAAB
+Player disconnected: Hc00QQcgUtIjEoCsAAAD

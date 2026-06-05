@@ -37,13 +37,15 @@ export function formatObjectiveSummary(quest) {
 			}
 			return THEME.objectives.defeatSummitWarden;
 		}
+		const isCanyonWarden = questId === 'canyon_descent';
+		const withSupportsKey = isCanyonWarden
+			? 'defeatCanyonWardenWithSupports'
+			: 'defeatTrialWardenWithSupports';
+		const soloKey = isCanyonWarden ? 'defeatCanyonWarden' : 'defeatTrialWarden';
 		if (addCount > 0) {
-			return THEME.objectives.defeatTrialWardenWithSupports.replace(
-				'{addCount}',
-				String(addCount),
-			);
+			return THEME.objectives[withSupportsKey].replace('{addCount}', String(addCount));
 		}
-		return THEME.objectives.defeatTrialWarden;
+		return THEME.objectives[soloKey];
 	}
 
 	return quest.description || '';

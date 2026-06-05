@@ -4753,3 +4753,25 @@ The changed `spire-ascent-tier-2` debug scenario remains behind the explicit `de
 
 No blocking gaps remain.
 
+## v0.269 — 261-miniboss-sunken-canyon  (2026-06-05 12:47:59)
+
+### Defeat completes and rewards
+
+PASS. The stage-boss flow uses the existing encounter state machine: spawn wires `bossEnemyId`, `startDungeonRun()` attaches the encounter state, `tryActivateEncounter()` activates/locks the fight when players reach the anchor or clear adds, and `onStageBossDefeated()` marks the objective complete. The canyon Tier 2 test covers active boss defeat through `removeDeadEnemies()`, `cleanupAfterDamage()`, and `checkRunTerminalState()`, ending in `run.status === 'victory'`. Reward currency remains on the quest definition and the existing victory reward path grants quest rewards for completed runs.
+
+### Test coverage
+
+PASS. The ticket adds focused coverage for canyon Tier 2 catalog data, objective copy, rigid layout behavior, boss/add spawn placement, encounter activation, boss-defeat victory, Tier 1-to-Tier 2 unlock persistence, Tier 2 gating, debug scenario parity, and quest-board copy. The recorded coverage run passed: 25 test files and 883 tests.
+
+## Design and foundation consistency
+
+PASS. The change fits the design's dungeon/loot combat loop and uses the existing card-combat, lobby quest, objective, and encounter architecture. It preserves the foundational requirements: the captured run renders a 3D scene, connects to the server, shows multiplayer gameplay state, and still exercises movement/dodge in the live capture before the canyon stage transition.
+
+## Debug scenarios
+
+PASS. The changed `canyon-descent-tier-2` debug scenario remains behind the existing debug-scenario event and environment/localhost gate. It is a shortcut to a state that is reachable through normal gameplay: clear Canyon Descent Tier 1, unlock Tier 2, select the Tier 2 quest, and deploy. The scenario follows the same core invariants as normal deployment by applying the quest layout, entering play, spawning enemies, calling `startDungeonRun()`, emitting normal quest/state updates, and not bypassing the server encounter/objective machinery.
+
+## Remaining gaps
+
+None.
+
