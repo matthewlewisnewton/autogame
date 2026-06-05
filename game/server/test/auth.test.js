@@ -313,22 +313,30 @@ describe('initAuth() dev fallback', () => {
 	const origNodeEnv = process.env.NODE_ENV;
 	const origJwtSecret = process.env.JWT_SECRET;
 	const origAllowDevAuth = process.env.ALLOW_DEV_AUTH;
+	const origPort = process.env.PORT;
 
 	beforeEach(() => {
 		resetAuthSecret();
 		delete process.env.JWT_SECRET;
 		delete process.env.ALLOW_DEV_AUTH;
+		delete process.env.PORT;
 	});
 
 	afterEach(() => {
 		process.env.NODE_ENV = origNodeEnv;
 		process.env.JWT_SECRET = origJwtSecret;
 		process.env.ALLOW_DEV_AUTH = origAllowDevAuth;
+		if (origPort === undefined) {
+			delete process.env.PORT;
+		} else {
+			process.env.PORT = origPort;
+		}
 		resetAuthSecret();
 	});
 
-	it('throws in dev mode without ALLOW_DEV_AUTH', () => {
+	it('throws in dev mode with PORT but without ALLOW_DEV_AUTH', () => {
 		process.env.NODE_ENV = 'development';
+		process.env.PORT = '3000';
 		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
 	});
 
