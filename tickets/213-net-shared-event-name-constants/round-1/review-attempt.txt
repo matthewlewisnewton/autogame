@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+I wrote:
+- `tickets/213-net-shared-event-name-constants/round-1/review.md`
+- `tickets/213-net-shared-event-name-constants/round-1/gaps.md`
+
+Runtime was healthy, but the ticket misses acceptance criteria: `game/client/main.js` still has raw client listener strings in `socket.once`/`socket.off`, and the new drift guard does not scan those paths. No `nits.md` was created because I didn’t identify separate non-blocking cleanup items.

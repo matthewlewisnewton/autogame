@@ -1,0 +1,6 @@
+Reviewed and wrote:
+
+- `tickets/213-net-shared-event-name-constants/round-2/review.md`
+- `tickets/213-net-shared-event-name-constants/round-2/gaps.md`
+
+Verdict is `FAIL`. The captured game run is clean, but production client emits in `game/client/renderer.js` and `game/client/characterBooth.js` still use raw event strings and the drift guard only scans `client/main.js`, so the ticket does not fully close the drift-prevention gap. No `nits.md` was created.
