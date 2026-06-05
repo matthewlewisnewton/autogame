@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import dungeonTheme from '../shared/dungeonTheme.json' with { type: 'json' };
 import {
 	wallAABB,
 	resolveWallCollision as resolveWallCollisionPure,
@@ -22,20 +23,114 @@ export const GROUND_Y = -0.02; // background plane sits below room floor bottoms
 export const PASSAGE_WALL_HEIGHT = 1.5;
 export const PASSAGE_WALL_THICKNESS = 0.3;
 
-// ── Shared materials ──
+// ── Profile-keyed dungeon materials ──
 
-export const floorMaterial = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.8 });
-export const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.7 });
-export const passageFloorMaterial = new THREE.MeshStandardMaterial({ color: 0x2d3a4a, roughness: 0.8 });
-const passageWallMaterial = new THREE.MeshStandardMaterial({ color: 0x3d4f63, roughness: 0.7 });
+/** @type {Map<string, ReturnType<typeof buildProfileMaterialSet>>} */
+const profileMaterialCache = new Map();
+
+function parseHex(hex) {
+	return parseInt(String(hex).replace('#', ''), 16);
+}
+
+function tintHex(baseHex, tintHexStr, mix) {
+	const base = parseHex(baseHex);
+	const tint = parseHex(tintHexStr);
+	const br = (base >> 16) & 0xff;
+	const bg = (base >> 8) & 0xff;
+	const bb = base & 0xff;
+	const tr = (tint >> 16) & 0xff;
+	const tg = (tint >> 8) & 0xff;
+	const tb = tint & 0xff;
+	const r = Math.round(br + (tr - br) * mix);
+	const g = Math.round(bg + (tg - bg) * mix);
+	const b = Math.round(bb + (tb - bb) * mix);
+	return (r << 16) | (g << 8) | b;
+}
+
+function materialColorHex(material) {
+	if (typeof material.color === 'number') return material.color;
+	if (material.color && typeof material.color.getHex === 'function') {
+		return material.color.getHex();
+	}
+	return material.color?._value ?? 0;
+}
+
+function buildProfileMaterialSet(themeEntry) {
+	const floorRoughness = themeEntry.floorRoughness ?? 0.8;
+	const wallRoughness = themeEntry.wallRoughness ?? 0.7;
+	const floor = new THREE.MeshStandardMaterial({
+		color: parseHex(themeEntry.floor),
+		roughness: floorRoughness,
+	});
+	const wall = new THREE.MeshStandardMaterial({
+		color: parseHex(themeEntry.wall),
+		roughness: wallRoughness,
+	});
+	const passageFloor = new THREE.MeshStandardMaterial({
+		color: parseHex(themeEntry.passageFloor),
+		roughness: floorRoughness,
+	});
+	const passageWall = new THREE.MeshStandardMaterial({
+		color: parseHex(themeEntry.passageWall),
+		roughness: wallRoughness,
+	});
+
+	const { start: startTint, treasure: treasureTint } = dungeonTheme.roleTints;
+	const roleFloors = {
+		start: new THREE.MeshStandardMaterial({
+			color: tintHex(themeEntry.floor, startTint.color, startTint.mix),
+			roughness: floorRoughness,
+		}),
+		combat: floor,
+		treasure: new THREE.MeshStandardMaterial({
+			color: tintHex(themeEntry.floor, treasureTint.color, treasureTint.mix),
+			roughness: floorRoughness,
+		}),
+	};
+
+	return { floor, wall, passageFloor, passageWall, roleFloors };
+}
+
+function resolveProfileKey(profile) {
+	const key = profile ?? 'crowded';
+	return dungeonTheme.profiles[key] ? key : 'default';
+}
+
+/**
+ * Lazily build and cache MeshStandardMaterial sets per layout profile.
+ * Unknown profiles fall back to the legacy default palette.
+ *
+ * @param {string} [profile]
+ */
+export function getProfileMaterials(profile) {
+	const key = resolveProfileKey(profile);
+	if (!profileMaterialCache.has(key)) {
+		const themeEntry = dungeonTheme.profiles[key];
+		profileMaterialCache.set(key, buildProfileMaterialSet(themeEntry));
+	}
+	return profileMaterialCache.get(key);
+}
+
+/** Hex colors for a profile palette (for tests). */
+export function getProfileMaterialColors(profile) {
+	const { floor, wall, passageFloor, passageWall, roleFloors } = getProfileMaterials(profile);
+	return {
+		floor: materialColorHex(floor),
+		wall: materialColorHex(wall),
+		passageFloor: materialColorHex(passageFloor),
+		passageWall: materialColorHex(passageWall),
+		startFloor: materialColorHex(roleFloors.start),
+		treasureFloor: materialColorHex(roleFloors.treasure),
+	};
+}
+
+const defaultMaterials = getProfileMaterials('default');
+
+// Backward-compatible exports (legacy default palette)
+export const floorMaterial = defaultMaterials.floor;
+export const wallMaterial = defaultMaterials.wall;
+export const passageFloorMaterial = defaultMaterials.passageFloor;
 export const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
-
-// Role-specific floor materials (shared across rooms to avoid per-room allocation)
-const roleFloorMaterials = {
-	start: new THREE.MeshStandardMaterial({ color: 0x3a5a3a, roughness: 0.8 }),
-	combat: floorMaterial, // default — no visual change
-	treasure: new THREE.MeshStandardMaterial({ color: 0x5a5a2a, roughness: 0.8 }),
-};
 
 // Treasure room marker material (emissive gold pillar)
 const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
@@ -204,6 +299,14 @@ export function buildDungeon(scene, layout) {
 	}
 
 	const meshes = [];
+	const profileMaterials = getProfileMaterials(layout.profile);
+	const {
+		floor: profileFloorMaterial,
+		wall: profileWallMaterial,
+		passageFloor: profilePassageFloorMaterial,
+		passageWall: profilePassageWallMaterial,
+		roleFloors,
+	} = profileMaterials;
 
 	// Background ground (large flat plane behind everything)
 	const groundGeo = new THREE.PlaneGeometry(200, 200);
@@ -221,8 +324,8 @@ export function buildDungeon(scene, layout) {
 
 	// ── Build rooms ──
 	for (const room of layout.rooms) {
-		// Pick floor material based on room role (graceful fallback to default)
-		const floorMat = roleFloorMaterials[room.role] || floorMaterial;
+		// Pick floor material based on room role (graceful fallback to profile base)
+		const floorMat = roleFloors[room.role] || profileFloorMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped
 		let floorMesh;
@@ -263,7 +366,7 @@ export function buildDungeon(scene, layout) {
 			}
 
 			const wallBaseY = resolveFloorY(sampleFloorY(layout, wallX, wallZ));
-			const wallMesh = new THREE.Mesh(wallGeo, wallMaterial);
+			const wallMesh = new THREE.Mesh(wallGeo, profileWallMaterial);
 			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
@@ -276,7 +379,7 @@ export function buildDungeon(scene, layout) {
 	// sloped-floor builder. A distinguishable existing material keeps the raised
 	// surface readable. Guarded by `|| []` so non-plaza layouts are unaffected.
 	for (const platform of layout.platforms || []) {
-		const { mesh } = buildSlopedFloor(platform, passageFloorMaterial);
+		const { mesh } = buildSlopedFloor(platform, profilePassageFloorMaterial);
 		scene.add(mesh);
 		meshes.push(mesh);
 	}
@@ -288,7 +391,7 @@ export function buildDungeon(scene, layout) {
 	// `|| []` so non-plaza layouts are unaffected.
 	for (const c of layout.cover || []) {
 		const coverGeo = new THREE.BoxGeometry(c.width, c.height, c.depth);
-		const coverMesh = new THREE.Mesh(coverGeo, wallMaterial);
+		const coverMesh = new THREE.Mesh(coverGeo, profileWallMaterial);
 		const floorY = resolveFloorY(sampleFloorY(layout, c.x, c.z));
 		coverMesh.position.set(c.x, floorY + c.height / 2, c.z);
 		scene.add(coverMesh);
@@ -299,7 +402,7 @@ export function buildDungeon(scene, layout) {
 	for (const passage of layout.passages) {
 		const floorSpec = buildPassageFloorSpec(passage, layout);
 		const passageFloorGeo = new THREE.BoxGeometry(floorSpec.width, floorSpec.height, floorSpec.depth);
-		const passageFloor = new THREE.Mesh(passageFloorGeo, passageFloorMaterial);
+		const passageFloor = new THREE.Mesh(passageFloorGeo, profilePassageFloorMaterial);
 		passageFloor.position.set(floorSpec.x, FLOOR_Y, floorSpec.z);
 		passageFloor.rotation.y = floorSpec.rotationY;
 		scene.add(passageFloor);
@@ -321,7 +424,7 @@ export function buildDungeon(scene, layout) {
 			}
 
 			const wallBaseY = resolveFloorY(sampleFloorY(layout, wallX, wallZ));
-			const wallMesh = new THREE.Mesh(wallGeo, passageWallMaterial);
+			const wallMesh = new THREE.Mesh(wallGeo, profilePassageWallMaterial);
 			wallMesh.position.set(wallX, wallBaseY + PASSAGE_WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);

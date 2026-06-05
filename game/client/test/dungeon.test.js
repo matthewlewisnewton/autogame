@@ -1,5 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT, PASSAGE_WALL_HEIGHT } from '../dungeon.js';
+import {
+	buildDungeon,
+	buildWallColliders,
+	buildPassageFloorSpec,
+	isUniformFloor,
+	buildSlopedFloor,
+	uniformFloorMeshY,
+	getProfileMaterials,
+	getProfileMaterialColors,
+	FLOOR_Y,
+	WALL_HEIGHT,
+	PASSAGE_WALL_HEIGHT,
+} from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -23,6 +35,77 @@ function room(x, z, opts = {}) {
 		walls: opts.walls ?? [],
 	};
 }
+
+function findRoomFloorMesh(meshes, room) {
+	return meshes.find(m =>
+		m.position.x === room.x && m.position.z === room.z &&
+		m.geometry?.parameters?.height === 0.1
+	);
+}
+
+describe('profile material palette', () => {
+	it('defines distinct open (warm sand) and crowded (dark metal) palettes', () => {
+		const open = getProfileMaterialColors('open');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(open.floor).toBe(0xc4a574);
+		expect(crowded.floor).toBe(0x2a3444);
+		expect(open.floor).not.toBe(crowded.floor);
+		expect(open.wall).not.toBe(crowded.wall);
+		expect(open.passageFloor).not.toBe(crowded.passageFloor);
+		expect(open.passageWall).not.toBe(crowded.passageWall);
+	});
+
+	it('caches materials per profile (no per-mesh allocation)', () => {
+		const a = getProfileMaterials('open');
+		const b = getProfileMaterials('open');
+		expect(a.floor).toBe(b.floor);
+		expect(a.wall).toBe(b.wall);
+	});
+
+	it('falls back to the legacy default palette for unknown profiles', () => {
+		const unknown = getProfileMaterialColors('sunken-canyon');
+		const legacy = getProfileMaterialColors('default');
+		expect(unknown).toEqual(legacy);
+	});
+
+	it('derives role floor tints from the active profile base', () => {
+		const open = getProfileMaterialColors('open');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(open.startFloor).not.toBe(open.floor);
+		expect(open.treasureFloor).not.toBe(open.floor);
+		expect(crowded.startFloor).not.toBe(crowded.floor);
+		expect(open.startFloor).not.toBe(crowded.startFloor);
+	});
+
+	it('buildDungeon meshes use different combat-floor colors for open vs crowded (same seed)', () => {
+		const seed = 42;
+		const openLayout = generateLayout(seed, 'open');
+		const crowdedLayout = generateLayout(seed, 'crowded');
+		const openCombat = openLayout.rooms.find(r => r.role === 'combat');
+		const crowdedCombat = crowdedLayout.rooms.find(r => r.role === 'combat');
+		expect(openCombat).toBeDefined();
+		expect(crowdedCombat).toBeDefined();
+
+		const openResult = buildDungeon(mockScene(), openLayout);
+		const crowdedResult = buildDungeon(mockScene(), crowdedLayout);
+
+		const openFloor = findRoomFloorMesh(openResult.meshes, openCombat);
+		const crowdedFloor = findRoomFloorMesh(crowdedResult.meshes, crowdedCombat);
+		expect(openFloor).toBeDefined();
+		expect(crowdedFloor).toBeDefined();
+		expect(openFloor.material.color.getHex()).not.toBe(crowdedFloor.material.color.getHex());
+
+		const openWall = openResult.meshes.find(m =>
+			m.material === getProfileMaterials('open').wall
+		);
+		const crowdedWall = crowdedResult.meshes.find(m =>
+			m.material === getProfileMaterials('crowded').wall
+		);
+		expect(openWall).toBeDefined();
+		expect(crowdedWall).toBeDefined();
+		expect(openWall.material.color.getHex()).not.toBe(crowdedWall.material.color.getHex());
+	});
+});
 
 describe('buildDungeon() spawn position', () => {
 	it('selects spawn position from the room with role "start" even at non-zero index', () => {
