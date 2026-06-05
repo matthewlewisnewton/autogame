@@ -3,6 +3,7 @@
 // that previously lived inline in the io.on('connection') closure in index.js.
 // Deck/shop/inventory handlers live in deckHandlers.js.
 // Trade handlers live in tradeHandlers.js.
+// Key-item handlers live in keyItemHandlers.js.
 //
 // ── Circular-dependency resolution ──
 // This module must NOT require('./index') (circular). Per-connection identity
@@ -12,6 +13,7 @@
 const { LOOT_PICKUP_RADIUS } = require('../config');
 const deckHandlers = require('./deckHandlers');
 const tradeHandlers = require('./tradeHandlers');
+const keyItemHandlers = require('./keyItemHandlers');
 const {
   DEFAULT_QUEST_TIER,
   isValidQuestSelection,
@@ -39,7 +41,6 @@ function register(socket, ctx) {
     playerId,
     sessionPlayer,
     lobbies,
-    getUnlockedKeyItems,
     withLobbyContext,
     applyLayoutForQuest,
     ensureShopOffer,
@@ -65,16 +66,6 @@ function register(socket, ctx) {
 
   socket.on('listLobbies', () => {
     socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-  });
-
-  socket.on('listKeyItems', () => {
-    const items = getUnlockedKeyItems().map((def) => ({
-      id: def.id,
-      name: def.name,
-      description: def.description,
-      cooldownMs: def.cooldownMs,
-    }));
-    socket.emit('keyItemsListed', { items });
   });
 
   socket.on('createLobby', (data) => {
@@ -174,6 +165,7 @@ function register(socket, ctx) {
 
   deckHandlers.register(socket, ctx);
   tradeHandlers.register(socket, ctx);
+  keyItemHandlers.register(socket, ctx);
 
   socket.on('equipKeyItem', (data) => {
     withLobbyPlayer(socket, {
