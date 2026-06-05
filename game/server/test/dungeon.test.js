@@ -1469,9 +1469,11 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     }
   });
 
-  it('has ≥ 2 platforms, each with corner delta ≤ 0.5', () => {
+  it('has ≥ 3 platforms at distinct positions, each with corner delta ≤ 0.5', () => {
     const layout = generateLayout(123, 'open-plaza');
-    expect(layout.platforms.length).toBeGreaterThanOrEqual(2);
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+    const positions = layout.platforms.map(p => `${p.x},${p.z}`);
+    expect(new Set(positions).size).toBe(layout.platforms.length);
     for (const p of layout.platforms) {
       const ys = [p.floorCorners.yNW, p.floorCorners.yNE, p.floorCorners.ySE, p.floorCorners.ySW];
       expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(0.5 + 1e-9);
@@ -1495,6 +1497,41 @@ describe("generateLayout(seed, 'open-plaza')", () => {
       const dx = Math.max(Math.abs(c.x) - c.width / 2, 0);
       const dz = Math.max(Math.abs(c.z) - c.depth / 2, 0);
       expect(dx * dx + dz * dz).toBeGreaterThanOrEqual(RADIUS * RADIUS);
+    }
+  });
+
+  it('includes ≥ 1 pit hazard outside spawn-clear and clear of cover footprints', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const SPAWN_CLEAR = 6;
+    expect(Array.isArray(layout.hazards)).toBe(true);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      expect(h.pitDepth).toBeGreaterThan(0);
+      const dx = Math.max(Math.abs(h.x) - h.width / 2, 0);
+      const dz = Math.max(Math.abs(h.z) - h.depth / 2, 0);
+      expect(dx * dx + dz * dz).toBeGreaterThanOrEqual(SPAWN_CLEAR * SPAWN_CLEAR);
+      const hitsCover = layout.cover.some(c => {
+        const margin = 0.5;
+        return (
+          Math.abs(h.x - c.x) < (h.width + c.width) / 2 + margin &&
+          Math.abs(h.z - c.z) < (h.depth + c.depth) / 2 + margin
+        );
+      });
+      expect(hitsCover).toBe(false);
+    }
+  });
+
+  it('hazards do not add wall colliders or change sampleFloorY at pit centres', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    for (const h of layout.hazards) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - h.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - h.width) < 1e-6
+      );
+      expect(hit).toBe(false);
+      expect(sampleFloorY(layout, h.x, h.z)).toBe(DEFAULT_FLOOR_Y);
     }
   });
 

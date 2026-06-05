@@ -532,6 +532,42 @@ describe('open-plaza cover & platforms', () => {
 	});
 });
 
+describe('open-plaza profile hazards & platforms', () => {
+	it('buildDungeon creates one recessed mesh per pit hazard', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+		expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+
+		const result = buildDungeon(mockScene(), layout);
+		const pitMeshes = result.meshes.filter(m =>
+			m.geometry?.parameters &&
+			layout.hazards.some(h =>
+				h.type === 'pit' &&
+				m.geometry.parameters.width === h.width &&
+				m.geometry.parameters.depth === h.depth &&
+				m.geometry.parameters.height === (h.pitDepth ?? 0.12)
+			)
+		);
+		expect(pitMeshes.length).toBe(layout.hazards.length);
+	});
+
+	it('recesses each pit slightly below the sampled floor surface', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const h of layout.hazards) {
+			const floorY = resolveFloorY(sampleFloorY(layout, h.x, h.z));
+			const recess = h.pitDepth ?? 0.12;
+			const mesh = result.meshes.find(m =>
+				m.position.x === h.x && m.position.z === h.z &&
+				m.geometry?.parameters?.height === recess
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY - recess / 2, 4);
+		}
+	});
+});
+
 describe('open profile hazards & platforms', () => {
 	it('buildDungeon creates one recessed mesh per pit hazard', () => {
 		const layout = generateLayout(42, 'open', { slopes: true });
