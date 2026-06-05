@@ -77,7 +77,7 @@ const {
   cardSellValues: CARD_SELL_VALUES,
 } = require('../shared/cardEconomy.json');
 const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
-const { createEncounterState } = require('./encounters');
+const { createEncounterState, setEncounterBoss } = require('./encounters');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -918,6 +918,10 @@ function createRunState() {
 
 function startDungeonRun() {
   _gameState.run = createRunState();
+  if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
+    setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
+    delete _gameState._pendingEncounterBossId;
+  }
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
     p.runRewards = null;
@@ -1186,7 +1190,7 @@ function isRunObjectiveComplete(objective) {
   if (!def) {
     throw new Error(`Unknown objective type: ${objective.type}`);
   }
-  return def.isComplete(objective);
+  return def.isComplete(objective, _gameState.run);
 }
 
 function buildRunSummary(status) {

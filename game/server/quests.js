@@ -1,3 +1,12 @@
+/**
+ * Optional stage-boss encounter metadata on a quest tier (wired in sub-ticket 05).
+ * @typedef {Object} EncounterConfig
+ * @property {string} [bossType] - Enemy type for the stage boss (default `miniboss`).
+ * @property {string} [landmark] - Layout landmark type for boss spawn (e.g. `arena_dais`).
+ * @property {number} [addCount] - Regular adds spawned from the quest enemy pool (boss excluded).
+ * @property {{ x: number, z: number }} [spawnAnchor] - Encounter state anchor override.
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -227,7 +236,20 @@ function formatObjectiveSummary(quest) {
     const minibossCount = quest.minibossCount ?? 0;
     return `Survive ${totalSpawns} hostiles (${minibossCount} wardens)`;
   }
+  if (quest.objectiveType === 'stage_boss') {
+    const addCount = getEncounterConfig(quest)?.addCount ?? 0;
+    return addCount > 0
+      ? `Defeat the stage warden and ${addCount} supports`
+      : 'Defeat the stage warden';
+  }
   return quest.description || '';
+}
+
+function getEncounterConfig(quest) {
+  if (!quest || !quest.encounter || typeof quest.encounter !== 'object') {
+    return null;
+  }
+  return quest.encounter;
 }
 
 function formatRewardSummary(quest) {
@@ -350,6 +372,7 @@ module.exports = {
   buildQuestUpdatePayload,
   formatObjectiveSummary,
   formatRewardSummary,
+  getEncounterConfig,
   getEnemyPool,
   pickWeightedEnemyType,
 };
