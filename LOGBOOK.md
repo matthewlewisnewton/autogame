@@ -4628,3 +4628,26 @@ PASS. `coverage.log` shows the full suite passing: 79 test files and 1456 tests 
 ## Remaining gaps
 
 None.
+
+## v0.268 — 258-miniboss-encounter-framework  (2026-06-05 12:12:34)
+
+### Per-player HP scaling
+
+PASS. Miniboss HP is scaled centrally in `spawnEnemy()` using live party size at spawn time, with the existing baseline of no scaling for 1-4 players and increased HP for larger parties. Tests cover the stage-boss path and confirm regular adds stay at baseline HP.
+
+### Tests
+
+PASS. `coverage.log` shows 89 test files and 1645 tests passed. The changed behavior has focused coverage for encounter state, stage-boss objective spawning, encounter triggers/locks, boss defeat, Arena Trials Tier 2 wiring, unlock flow, quest board display, and the new debug scenarios.
+
+## Design and requirements consistency
+
+PASS. The implementation fits the documented lobby-to-dungeon core loop and keeps the game server-authoritative: quest selection is still lobby-gated, Tier 2 selection is locked behind persisted account unlocks, run state is created server-side, enemy spawning and objective completion happen on the server, and clients receive state updates. It does not regress the foundation requirements: the captured run renders 3D, connects over WebSockets, shows multiplayer state, and synchronizes movement.
+
+## Debug scenarios
+
+PASS. This ticket added `arena-trials-tier-2`, `stage-boss-dormant`, and `stage-boss-active` shortcuts. They are only reachable through the existing debug scenario socket path, which is gated by `isDebugScenarioAllowed()` and requires the URL/debug harness path to request a named scenario. Normal gameplay reaches the same Tier 2 stage-boss state by clearing Arena Trials Tier 1, unlocking Tier 2, selecting it in the lobby, and deploying. The debug scenarios reuse `applyLayoutForQuest()`, `enterPlayingPhase()`, `spawnEnemies()`, and `startDungeonRun()` so they exercise the same server-side quest, spawn, run, and encounter invariants; `stage-boss-active` only pre-clears adds and lowers boss HP after creating the normal run for QA convenience.
+
+## Remaining gaps
+
+None.
+

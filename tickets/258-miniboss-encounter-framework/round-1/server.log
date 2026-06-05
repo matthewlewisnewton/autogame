@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/game/data
+Server listening on port 3001
+Player connected: socket=s5kYsRx039UABKLkAAAB, playerId=03924a53-b67e-4933-b810-494cf5aeee5b
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=bScQJazqAhvmdVR9AAAD, playerId=7c157672-dc83-4a1d-afa2-23b894203888
+[loot] spawned id=734f0440-0690-4170-b2e7-30d4a588b395 value=17
+Player disconnected: s5kYsRx039UABKLkAAAB
+Player disconnected: bScQJazqAhvmdVR9AAAD

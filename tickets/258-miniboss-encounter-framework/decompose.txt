@@ -1,0 +1,7 @@
+Remediation round 2 has one open gap from `review-feedback.md`: `stage-boss-dormant` and `stage-boss-active` still synthesize a fake Tier 1 stage-boss state instead of using the real Arena Trials Tier 2 flow. Sub-tickets 01–05 are marked `.passed` and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/258-miniboss-encounter-framework/tickets/258-miniboss-encounter-framework/subtickets/06-fix-stage-boss-debug-scenarios/ticket.md`
+
+**06 — Fix stage-boss debug scenarios** rewires both debug shortcuts to follow the `arena-trials-tier-2` pattern (Tier 2 unlock → layout → `enterPlayingPhase()` → `startDungeonRun()`), removes the hand-built objective/encounter/spawn block, and applies only minimal positioning/HP tweaks plus `tryActivateEncounter` for the active variant. Verification mode is `code` (state shape, encounter phase/lock, enemy counts, tests).
