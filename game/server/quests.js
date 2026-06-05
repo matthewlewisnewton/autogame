@@ -86,12 +86,16 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Arena Trials — Tier II',
         description: 'Face the rigid trial grounds where every warden bears a twisted mark.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'arena_trials', tier: 1 },
+        encounter: {
+          bossType: 'miniboss',
+          landmark: 'arena_dais',
+          addCount: 4,
+        },
       },
     },
   },
@@ -162,6 +166,8 @@ const QUEST_DEFS = {
     },
   },
 };
+
+const { THEME } = require('./theme');
 
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
@@ -238,9 +244,13 @@ function formatObjectiveSummary(quest) {
   }
   if (quest.objectiveType === 'stage_boss') {
     const addCount = getEncounterConfig(quest)?.addCount ?? 0;
-    return addCount > 0
-      ? `Defeat the stage warden and ${addCount} supports`
-      : 'Defeat the stage warden';
+    if (addCount > 0) {
+      return THEME.objectives.defeatTrialWardenWithSupports.replace(
+        '{addCount}',
+        String(addCount),
+      );
+    }
+    return THEME.objectives.defeatTrialWarden;
   }
   return quest.description || '';
 }

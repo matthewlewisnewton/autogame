@@ -5,12 +5,19 @@ import path from 'path';
 import os from 'os';
 import {
   getQuest,
+  getEncounterConfig,
+  formatObjectiveSummary,
   getLayoutProfileForQuest,
   getLayoutGenerationOptions,
   isValidQuestSelection,
   listQuestVariants,
 } from '../quests.js';
 import { generateLayout, questLayoutSeed } from '../dungeon.js';
+import {
+  ENCOUNTER_PHASES,
+  tryActivateEncounter,
+  isEncounterCleared,
+} from '../encounters.js';
 import {
   spawnEnemies,
   gameState,
@@ -20,6 +27,11 @@ import {
   checkWallCollision,
   setTestProvider,
   _timeouts,
+  startDungeonRun,
+  removeDeadEnemies,
+  cleanupAfterDamage,
+  recordEnemyDefeated,
+  isRunObjectiveComplete,
 } from '../index.js';
 import {
   startTestServer,
@@ -37,6 +49,7 @@ const QUEST_ID = 'arena_trials';
 const TIER_1 = 1;
 const TIER_2 = 2;
 const SEED = 4242;
+const ADD_COUNT = 4;
 
 function runSimulationInPrimaryLobby(fn) {
   const state = testGameState();
@@ -61,8 +74,51 @@ function assertOnFloor(layout, pos) {
   expect(checkWallCollision(pos.x, pos.z, buildWallColliders(layout))).toBe(false);
 }
 
+function deployArenaTierStageBoss(tier, seed = SEED) {
+  const sim = require('../simulation');
+  const progression = require('../progression');
+  const layout = layoutForArenaTier(tier, seed);
+  gameState.selectedQuestId = QUEST_ID;
+  gameState.selectedQuestTier = tier;
+  gameState.layout = layout;
+  gameState.layoutSeed = seed;
+  gameState.enemies = [];
+  gameState.loot = [];
+  gameState.gamePhase = 'playing';
+  gameState.players = gameState.players || {};
+  if (Object.keys(gameState.players).length === 0) {
+    gameState.players.p1 = {
+      x: 0,
+      y: 0.5,
+      z: 0,
+      hp: 100,
+      dead: false,
+      extracted: false,
+      accountId: 'test',
+    };
+  }
+  progression.setGameState(gameState);
+  sim.setGameState(gameState);
+  spawnEnemies();
+  startDungeonRun();
+  return layout;
+}
+
+function bossEnemy(state) {
+  return state.enemies.find((e) => e.id === state.run.encounter.bossEnemyId);
+}
+
+function activateEncounterForTest(state) {
+  const bossId = state.run.encounter.bossEnemyId;
+  for (const enemy of state.enemies) {
+    if (enemy.id !== bossId) enemy.hp = 0;
+  }
+  state.enemies = state.enemies.filter((e) => e.hp > 0);
+  tryActivateEncounter(state);
+}
+
 describe('arena_trials Tier 2 catalog and layout', () => {
-  it('exposes Tier 2 in listQuestVariants with unlock metadata', () => {
+  it('exposes Tier 2 in listQuestVariants with unlock metadata and stage-boss objective', () => {
     const tier2 = listQuestVariants().find(
       (v) => v.questId === QUEST_ID && v.tier === TIER_2
     );
@@ -70,9 +126,23 @@ describe('arena_trials Tier 2 catalog and layout', () => {
       questId: QUEST_ID,
       tier: TIER_2,
       isTier2: true,
+      objectiveType: 'stage_boss',
       unlockRequires: { questId: QUEST_ID, tier: TIER_1 },
     });
+    expect(tier2.objectiveSummary).toBe(formatObjectiveSummary(getQuest(QUEST_ID, TIER_2)));
+    expect(tier2.objectiveSummary).toContain('trial warden');
     expect(isValidQuestSelection(QUEST_ID, TIER_2)).toBe(true);
+    expect(getEncounterConfig(getQuest(QUEST_ID, TIER_2))).toMatchObject({
+      bossType: 'miniboss',
+      landmark: 'arena_dais',
+      addCount: ADD_COUNT,
+    });
+  });
+
+  it('keeps Tier 1 as defeat_enemies with unchanged enemy count', () => {
+    const tier1 = getQuest(QUEST_ID, TIER_1);
+    expect(tier1.objectiveType).toBe('defeat_enemies');
+    expect(tier1.enemyCount).toBe(6);
   });
 
   it('resolves open-plaza rigid layout options for Tier 2 only', () => {
@@ -138,14 +208,31 @@ describe('arena_trials Tier 2 deploy spawns', () => {
     gameState.loot = [];
     gameState.run = { questTier: tier };
     spawnEnemies();
+    return layout;
   }
 
-  it('places Tier 2 enemies on walkable floor clear of cover', () => {
-    deployArenaTier(TIER_2);
-    expect(gameState.enemies.length).toBe(getQuest(QUEST_ID, TIER_2).enemyCount);
-    for (const enemy of gameState.enemies) {
-      assertOnFloor(gameState.layout, enemy);
+  it('places Tier 2 adds on walkable floor clear of cover', () => {
+    const layout = deployArenaTier(TIER_2);
+    const adds = gameState.enemies.filter((e) => e.type !== 'miniboss');
+    expect(adds.length).toBe(ADD_COUNT);
+    for (const enemy of adds) {
+      assertOnFloor(layout, enemy);
     }
+  });
+
+  it('spawns dormant miniboss on arena_dais with encounter wiring after run open', () => {
+    resetGameState();
+    const layout = deployArenaTierStageBoss(TIER_2);
+    const dais = layout.landmarks.find((lm) => lm.type === 'arena_dais');
+    const boss = bossEnemy(gameState);
+
+    expect(gameState.enemies).toHaveLength(1 + ADD_COUNT);
+    expect(boss.type).toBe('miniboss');
+    expect(boss.x).toBe(dais.x);
+    expect(boss.z).toBe(dais.z);
+    expect(gameState.run.objective.type).toBe('stage_boss');
+    expect(gameState.run.encounter.bossEnemyId).toBe(boss.id);
+    expect(gameState.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
   });
 
   it('tags at least one enemy on Tier 2 under a fixed seed', () => {
@@ -156,8 +243,41 @@ describe('arena_trials Tier 2 deploy spawns', () => {
 
   it('leaves all enemies un-tagged on Tier 1 for the same geometry', () => {
     deployArenaTier(TIER_1, SEED);
-    expect(gameState.enemies.length).toBeGreaterThan(0);
+    expect(gameState.enemies.length).toBe(getQuest(QUEST_ID, TIER_1).enemyCount);
     expect(gameState.enemies.every((e) => e.variant === null)).toBe(true);
+  });
+});
+
+describe('arena_trials Tier 2 stage-boss encounter flow', () => {
+  beforeEach(() => {
+    resetGameState();
+    deployArenaTierStageBoss(TIER_2);
+  });
+
+  it('activating the encounter starts the boss fight', () => {
+    activateEncounterForTest(gameState);
+    expect(gameState.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+    expect(gameState.run.encounter.locked).toBe(true);
+  });
+
+  it('recordEnemyDefeated does not complete the stage_boss objective', () => {
+    const before = { ...gameState.run.objective };
+    recordEnemyDefeated(5);
+    expect(gameState.run.objective).toEqual(before);
+    expect(isRunObjectiveComplete(gameState.run.objective)).toBe(false);
+  });
+
+  it('defeating the boss while active completes the run with victory', () => {
+    activateEncounterForTest(gameState);
+    bossEnemy(gameState).hp = 0;
+    removeDeadEnemies();
+    expect(isEncounterCleared(gameState.run)).toBe(true);
+    expect(gameState.run.objective.bossDefeated).toBe(true);
+    expect(isRunObjectiveComplete(gameState.run.objective)).toBe(true);
+
+    cleanupAfterDamage();
+    checkRunTerminalState();
+    expect(gameState.run.status).toBe('victory');
   });
 });
 
@@ -206,6 +326,7 @@ describe('arena_trials Tier 1 victory unlocks Tier 2', () => {
     const state = testGameState();
     expect(state.run.questId).toBe(QUEST_ID);
     expect(state.run.questTier ?? TIER_1).toBe(TIER_1);
+    expect(state.run.objective.type).toBe('defeat_enemies');
     expect(users.isQuestTierUnlocked(accountId, QUEST_ID, TIER_2)).toBe(false);
 
     state.enemies = [];

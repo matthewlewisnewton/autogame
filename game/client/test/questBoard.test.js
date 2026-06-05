@@ -63,6 +63,21 @@ describe('formatObjectiveSummary()', () => {
 			'Survive 10 hostiles (2 minibosses)',
 		);
 	});
+
+	it('summarizes stage-boss quests with trial warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 4 },
+			}),
+		).toBe('Defeat the trial warden and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the trial warden');
+	});
 });
 
 describe('formatRewardSummary()', () => {

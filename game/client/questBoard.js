@@ -25,6 +25,17 @@ export function formatObjectiveSummary(quest) {
 			.replace('{minibosses}', String(minibossCount));
 	}
 
+	if (quest.objectiveType === 'stage_boss') {
+		const addCount = quest.encounter?.addCount ?? 0;
+		if (addCount > 0) {
+			return THEME.objectives.defeatTrialWardenWithSupports.replace(
+				'{addCount}',
+				String(addCount),
+			);
+		}
+		return THEME.objectives.defeatTrialWarden;
+	}
+
 	return quest.description || '';
 }
 
@@ -72,6 +83,7 @@ function buildQuestBoardRows(quests, questVariants) {
 			enemyCount: quest.enemyCount,
 			totalSpawns: quest.totalSpawns,
 			minibossCount: quest.minibossCount,
+			encounter: quest.encounter,
 			rewardCurrency: quest.rewardCurrency,
 		});
 	}

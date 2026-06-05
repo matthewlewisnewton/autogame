@@ -83,8 +83,10 @@ describe('quest tier catalog', () => {
       questId: 'arena_trials',
       tier: 2,
       isTier2: true,
+      objectiveType: 'stage_boss',
       unlockRequires: { questId: 'arena_trials', tier: 1 },
     });
+    expect(arenaTier2.objectiveSummary).toContain('trial warden');
     const spireTier2 = variants.find(
       (v) => v.questId === 'spire_ascent' && v.tier === 2
     );

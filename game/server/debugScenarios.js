@@ -35,6 +35,7 @@ const {
   inventoryToOwnedCards,
   spawnEnemy,
   spawnEnemies,
+  startDungeonRun,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
   stateSnapshot,
@@ -231,8 +232,10 @@ function applyDebugScenario(socket, name) {
 
       state.enemies = [];
       state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
       spawnEnemies();
-      syncRunObjectiveToEnemies();
+      startDungeonRun();
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
