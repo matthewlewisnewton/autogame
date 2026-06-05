@@ -4272,3 +4272,26 @@ PASS. The implementation is scoped and modular: shared cosmetic UI behavior was 
 ## Remaining gaps
 
 None.
+
+## v0.245 — 240-paid-appearance-change  (2026-06-05 05:34:57)
+
+### 3. Client confirm dialog
+
+PASS. The character booth detects paid edits by mirroring the server's appearance-field comparison and calls `window.confirm` before emitting `applyAppearance`. Hat-only saves skip the paid confirm path, preserving free hat swaps. The confirm text includes the configured formatted price, cancellation prevents the socket emit, server errors are surfaced in the booth, and successful responses synchronize account cosmetic and currency HUD state.
+
+### 4. Tests include insufficient-funds and crash-safety
+
+PASS. Round-2 coverage shows `83` test files and `1593` tests passing. The new and updated tests include the required insufficient-funds rejection and crash-safety ordering checks, plus client confirm/hat-only behavior and profile-bypass rejection.
+
+### Design and requirements consistency
+
+PASS. The implementation fits the documented lobby/economy loop: appearance payment is handled in the hub/lobby layer, uses existing account and persistent player data, and does not alter dungeon rendering, movement synchronization, multiplayer state, or combat flow. The captured smoke run confirms the foundational requirements remain intact: 3D scene present, server/client socket connection active, multiplayer state present, and movement/key-item gameplay functioning.
+
+### Debug shortcuts
+
+PASS. This ticket did not add or change a `?debugScenario=NAME` shortcut. It did add/cover a localhost-only `?booth=character` UI capture shortcut; that shortcut only opens the booth after normal hub lobby entry and does not fabricate account state, currency, server validation, persistence, or replication.
+
+## Remaining gaps
+
+None.
+

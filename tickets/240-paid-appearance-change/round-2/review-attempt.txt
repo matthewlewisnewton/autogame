@@ -1,0 +1,5 @@
+Wrote the final review to `tickets/240-paid-appearance-change/round-2/review.md`.
+
+Verdict: `PASS`
+
+No `gaps.md` or `nits.md` was created because I found no blocking gaps or actionable nits.

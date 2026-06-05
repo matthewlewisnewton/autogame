@@ -1,0 +1,7 @@
+VERDICT: FAIL
+
+Wrote:
+- `tickets/240-paid-appearance-change/round-1/review.md`
+- `tickets/240-paid-appearance-change/round-1/gaps.md`
+
+Blocking gap: the paid booth path works, but the legacy Account profile cosmetic save still allows body/proportion/color appearance edits through `/api/me/profile` without any gold charge, so the no-free-edit criterion is not robustly met.

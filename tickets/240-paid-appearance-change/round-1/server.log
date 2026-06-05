@@ -1,0 +1,11 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/game/data
+Server listening on port 3002
+Player connected: socket=XUYLiIOhyvqAZRThAAAB, playerId=c2ef207a-b0b5-4307-b751-f71b71aab608
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ahiKRQSZLYcXWWD2AAAD, playerId=3efe8683-ea23-49a1-8e69-b5ede95ff153
+Player disconnected: XUYLiIOhyvqAZRThAAAB
+Player disconnected: ahiKRQSZLYcXWWD2AAAD

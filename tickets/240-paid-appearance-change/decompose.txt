@@ -1,0 +1,13 @@
+Remediation round 2 had one open gap: the Account profile path still allowed free paid appearance edits. Sub-tickets 01–04 are marked `.passed` and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/tickets/240-paid-appearance-change/subtickets/05-close-profile-appearance-bypass/ticket.md`
+
+**05 — Close profile appearance bypass** closes the exploit by:
+
+1. **Server** — Reject paid appearance field changes on `PATCH /api/me/profile` via `appearanceFieldsChanged`; allow hat-only updates.
+2. **Client** — Strip paid appearance controls from the Account overlay; save hat only; add a booth hint for paid edits.
+3. **Tests** — Regression coverage in `account.test.js` proving profile cannot change appearance for free.
+
+Verification mode is `code` (handlers, server state, error paths, and tests).
