@@ -914,6 +914,19 @@ canvas {
   background-color: #2563eb;
 }
 
+/* While a run is suspended #ready-btn doubles as the Resume control; the
+   .resuming variant reads as a distinct (teal) resume affordance rather than
+   the blue new-mission Deploy. */
+#ready-btn.resuming {
+  background-color: #0e7490;
+  border: 1px solid rgba(34, 211, 238, 0.55);
+  color: #ecfeff;
+}
+
+#ready-btn.resuming:hover {
+  background-color: #0891b2;
+}
+
 #suspended-run-banner {
   margin: 12px 0;
   padding: 10px 14px;
