@@ -90,3 +90,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [245-cleanup-canyon-walkability-fixes](tickets/245-cleanup-canyon-walkability-fixes/)
 - [ ] [269-cleanup-scaling-thread-lobby-state-explicitly](tickets/269-cleanup-scaling-thread-lobby-state-explicitly/)
 - [ ] [270-cleanup-admin-character-roster-view](tickets/270-cleanup-admin-character-roster-view/)
+- [ ] [273-cleanup-hub-client-render](tickets/273-cleanup-hub-client-render/)

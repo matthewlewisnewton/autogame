@@ -708,6 +708,12 @@ canvas {
   gap: 24px;
   padding: 24px 16px;
   overflow-y: auto;
+  /*
+   * The lobby is an overlay layered above the rendered hub canvas. Keep the
+   * background transparent (decorative gradient/scanline layers only, all
+   * alpha < 1) so the hub scene and the local avatar remain visible during the
+   * lobby phase. Per-panel translucent dark backdrops keep their text legible.
+   */
   background:
     radial-gradient(ellipse at 50% 0%, rgba(167, 139, 250, 0.08) 0%, transparent 55%),
     repeating-linear-gradient(
@@ -716,8 +722,7 @@ canvas {
       transparent 39px,
       rgba(56, 189, 248, 0.04) 39px,
       rgba(56, 189, 248, 0.04) 40px
-    ),
-    #0f172a;
+    );
   color: white;
   z-index: 100;
   pointer-events: auto;
@@ -727,6 +732,8 @@ canvas {
   font-size: 36px;
   font-weight: 800;
   letter-spacing: 2px;
+  /* Title floats over the hub canvas now, so keep it readable. */
+  text-shadow: 0 2px 12px rgba(2, 6, 23, 0.85);
 }
 
 #lobby-player-list-wrapper {

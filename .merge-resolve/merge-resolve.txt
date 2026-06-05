@@ -1,10 +1,7 @@
 `LOGBOOK.md` is resolved.
 
-**What conflicted:** Both sides appended new review entries after v0.217 — `main` had v0.220 (229-hub-stage-layout-server) and v0.221 (272-socketHandlers-extract-lobby); the branch had v0.222 (264-admin-character-roster-view).
+The conflict was two new logbook entries that both landed after v0.224:
+- **main**: v0.225 — `230-hub-client-render` (hub client render)
+- **branch**: v0.226 — `274-socketHandlers-extract-trade` (trade handler extraction)
 
-**Resolution:** Combined all three in version order:
-1. **v0.220** — hub stage layout (from `main`)
-2. **v0.221** — socket handler extraction (from `main`)
-3. **v0.222** — admin character roster view (from the ticket branch)
-
-Conflict markers are removed; the file ends with the existing `## Remaining gaps / None.` footer. The harness can commit and finish the merge.
+Both entries are kept in version order (v0.225, then v0.226). All conflict markers are removed. The harness can finish the merge.

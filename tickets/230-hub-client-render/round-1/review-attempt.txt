@@ -1,0 +1,8 @@
+Review complete: `VERDICT: FAIL`.
+
+Wrote:
+- `tickets/230-hub-client-render/round-1/review.md`
+- `tickets/230-hub-client-render/round-1/gaps.md`
+- `tickets/230-hub-client-render/round-1/nits.md`
+
+Blocking gap: the hub scene/avatar are constructed, but the normal lobby overlay is full-screen and opaque, so the hub/avatar are not visible during `gamePhase === 'lobby'`, missing the top-level acceptance criterion. Runtime health was clean: `ok: true`, no page errors, no fatal console errors.

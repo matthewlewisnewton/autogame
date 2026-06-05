@@ -3966,6 +3966,28 @@ PASS. The new module keeps deck/shop/trade concerns out of the larger lobby hand
 
 None.
 
+## v0.225 — 230-hub-client-render  (2026-06-05 00:33:03)
+
+## Integration / regression checks
+- Lobby↔run transitions refactored cleanly: lobby-join → hub, run-join/deploy → quest,
+  and `returnToGuildLobby({ rebuildHub })` rebuilds the hub once per return (guarded so
+  it does not fire on every lobby-phase `stateUpdate`). `applyQuestLayoutFromServer` now
+  only caches the selected quest layout during the lobby instead of moving the avatar
+  off the hub floor. All geometry-switch paths set `renderedSceneProfile`.
+- `style.css`: the `#lobby` overlay background dropped its opaque `#0f172a` base so the
+  hub canvas shows through; only sub-1-alpha decorative layers remain, and the title got
+  a text-shadow for legibility. Confirmed visually in `01-initial.png`.
+- Debug scenarios: this ticket adds none. The `sunken-canyon-stage` scenario in the
+  capture is pre-existing and untouched by this diff. The URL parameter remains the only
+  entry point and the normal flow is unaffected.
+- Tests: full suite = 1859 passed. The single failure (`field_medic_kit.test.js`,
+  magic-stones regen `10.005` vs `10`) is a pre-existing floating-point/timing flake —
+  this ticket touches no server simulation/regen code, and the test passes on rerun.
+
+## Remaining gaps
+None blocking. One non-blocking nit (test-stderr noise from the renderer's
+`/models/player.glb` URL parse under jsdom) is recorded in `nits.md`.
+
 
 ## v0.226 — 274-socketHandlers-extract-trade  (2026-06-05 00:44:53)
 
