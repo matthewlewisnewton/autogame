@@ -178,6 +178,10 @@ import {
 	updatePreview as updateCosmeticPreview,
 	closePreview as closeCosmeticPreview,
 } from './cosmetic-preview.js';
+import eventsCatalog from '../shared/events.json' with { type: 'json' };
+
+const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
+
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
 const boothPromptEl = document.getElementById('booth-prompt');
@@ -686,7 +690,7 @@ function renderLobbyList(lobbySummaries) {
 		joinBtn.dataset.joinMode = lobby.gamePhase === 'playing' ? 'drop-in' : 'join';
 		joinBtn.textContent = lobby.gamePhase === 'playing' ? 'Drop In' : 'Join';
 		joinBtn.addEventListener('click', () => {
-			if (socket) socket.emit('joinLobby', { lobbyId: lobby.id });
+			if (socket) socket.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: lobby.id });
 		});
 
 		item.appendChild(meta);
@@ -998,9 +1002,9 @@ initInput({
 			// the nearest in-range ally each frame. Other items keep their shape.
 			if (me.equippedKeyItemId === 'phase_step') {
 				const targetPlayerId = getPhaseStepTargetId();
-				socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId });
+				socket.emit(CLIENT_TO_SERVER.USE_KEY_ITEM, { keyItemId: 'phase_step', targetPlayerId });
 			} else {
-				socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
+				socket.emit(CLIENT_TO_SERVER.USE_KEY_ITEM, { keyItemId: me.equippedKeyItemId });
 			}
 		}
 	},
@@ -1139,7 +1143,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('init', (data) => {
+	s.on(SERVER_TO_CLIENT.INIT, (data) => {
 		myId = data.id;
 		rendererSetMyId(data.id);
 		if (data.playerId) {
@@ -1170,7 +1174,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('lobbyJoined', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_JOINED, (data) => {
 		showLobbyBrowserError('');
 		applyLobbyJoinedData(data);
 		// Debug hook: ?booth=launch readies up automatically on a lobby join so a
@@ -1182,7 +1186,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('lobbyLeft', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_LEFT, (data) => {
 		gameState = null;
 		setGameStateRef(null);
 		showLobbyBrowser();
@@ -1192,18 +1196,18 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('lobbyListUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, (data) => {
 		if (lobbyBrowserEl && !lobbyBrowserEl.classList.contains('hidden')) {
 			renderLobbyList((data && data.lobbies) || []);
 		}
 	});
 
-	s.on('lobbyError', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'Lobby action failed';
 		showLobbyBrowserError(reason);
 	});
 
-	s.on('stateUpdate', (state) => {
+	s.on(SERVER_TO_CLIENT.STATE_UPDATE, (state) => {
 		const previousPhase = gameState && gameState.gamePhase;
 		// Verify layout seed consistency on every state update
 		if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
@@ -1371,14 +1375,14 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('heartbeat_ack', (data) => {
+	s.on(SERVER_TO_CLIENT.HEARTBEAT_ACK, (data) => {
 		if (connectionState === 'connected') {
 			latency = data.latency;
 			statusEl.innerText = `Latency: ${latency}ms`;
 		}
 	});
 
-	s.on('debugScenarioResult', (data) => {
+	s.on(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, (data) => {
 		debugScenarioResult = data || null;
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
@@ -1397,7 +1401,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('debugGodmodeResult', (data) => {
+	s.on(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, (data) => {
 		debugGodmodeResult = data || null;
 		if (data && data.ok) {
 			console.log(`[debugGodmode] ${data.enabled ? 'enabled' : 'disabled'}`);
@@ -1406,22 +1410,22 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('playerDisconnected', (id) => {
+	s.on(SERVER_TO_CLIENT.PLAYER_DISCONNECTED, (id) => {
 		removeRemotePlayerVisuals(id);
 	});
 
-	s.on('hubPresenceUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.HUB_PRESENCE_UPDATE, (data) => {
 		if (!data || !gameState || gameState.gamePhase !== 'lobby') return;
 		if (!data.presence) return;
 		applyHubPresence(data.presence, { removedPlayerIds: data.removedPlayerIds });
 	});
 
-	s.on('cardUsed', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_USED, (data) => {
 		if (!data || !getScene()) return;
 		renderCardUsed(data, cardRenderCtx);
 	});
 
-	s.on('volatileExplosion', (data) => {
+	s.on(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, (data) => {
 		if (!data || !getScene()) return;
 		const { x, z, radius } = data;
 		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
@@ -1432,17 +1436,17 @@ function bindSocketHandlers(s) {
 		);
 	});
 
-	s.on('leechHeal', (data) => {
+	s.on(SERVER_TO_CLIENT.LEECH_HEAL, (data) => {
 		if (!data) return;
 		playSound('leechHeal');
 	});
 
-	s.on('shieldBreak', (data) => {
+	s.on(SERVER_TO_CLIENT.SHIELD_BREAK, (data) => {
 		if (!data) return;
 		playSound('shieldBreak');
 	});
 
-	s.on('cardError', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		console.log(`[cardError] ${data.reason}`);
 		showCardErrorToast(data.reason);
@@ -1453,20 +1457,20 @@ function bindSocketHandlers(s) {
 		lastUsedSlot = -1;
 	});
 
-	s.on('boothAction', (data) => {
+	s.on(SERVER_TO_CLIENT.BOOTH_ACTION, (data) => {
 		// Single dispatch hook: later booth tickets subscribe to the
 		// `booth:action` window event instead of re-touching this primitive.
 		if (!data || !data.boothId) return;
 		dispatchBoothAction(data);
 	});
 
-	s.on('boothError', (data) => {
+	s.on(SERVER_TO_CLIENT.BOOTH_ERROR, (data) => {
 		// Booth interactions are best-effort: log and ignore so a rejected
 		// interaction never disrupts the prompt or crashes the client.
 		console.log(`[boothError] ${data && data.reason ? data.reason : 'unknown'}`);
 	});
 
-	s.on('deckUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.DECK_UPDATE, (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
@@ -1498,13 +1502,13 @@ function bindSocketHandlers(s) {
 		if (activeLobbyTab === 'shop') renderCardShop();
 	});
 
-	s.on('deckError', (data) => {
+	s.on(SERVER_TO_CLIENT.DECK_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		if (activeLobbyTab === 'shop') showShopError(data.reason);
 		else showDeckError(data.reason);
 	});
 
-	s.on('medicHealed', (data) => {
+	s.on(SERVER_TO_CLIENT.MEDIC_HEALED, (data) => {
 		if (gameState && myId && gameState.players[myId] && data) {
 			gameState.players[myId].hp = data.hp;
 			gameState.players[myId].currency = data.currency;
@@ -1519,7 +1523,7 @@ function bindSocketHandlers(s) {
 		syncVanguardHud(me, 'lobby');
 	});
 
-	s.on('medicError', (data) => {
+	s.on(SERVER_TO_CLIENT.MEDIC_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'unknown';
 		const messages = {
 			insufficient_gold: `Not enough money (need ${MEDIC_HEAL_COST})`,
@@ -1530,7 +1534,7 @@ function bindSocketHandlers(s) {
 		showMedicError(messages[reason] || `Heal failed: ${reason}`);
 	});
 
-	s.on('keyItemEquipped', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_EQUIPPED, (data) => {
 		if (data && data.keyItemId) {
 			const me = myId && gameState?.players ? gameState.players[myId] : null;
 			if (me) me.equippedKeyItemId = data.keyItemId;
@@ -1538,7 +1542,7 @@ function bindSocketHandlers(s) {
 		renderKeyItemList();
 	});
 
-	s.on('keyItemError', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'unknown';
 		const messages = {
 			not_in_lobby: 'Key items can only be equipped in the lobby',
@@ -1548,7 +1552,7 @@ function bindSocketHandlers(s) {
 		showKeyItemError(messages[reason] || `Equip failed: ${reason}`);
 	});
 
-	s.on('keyItemHealPulse', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_HEAL_PULSE, (data) => {
 		if (!data || !getScene()) return;
 		const { x, z, healRadius } = data;
 		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
@@ -1558,7 +1562,7 @@ function bindSocketHandlers(s) {
 		triggerHealPulseVFX({ x, y: 0, z }, radius);
 	});
 
-	s.on('keyItemUsed', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_USED, (data) => {
 		if (!data) return;
 		const me = myId && gameState?.players ? gameState.players[myId] : null;
 		if (data.ok) {
@@ -1598,7 +1602,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('cardEvolutionResult', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, (data) => {
 		if (!data) return;
 		lastEvolutionResult = data;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
@@ -1607,17 +1611,17 @@ function bindSocketHandlers(s) {
 		renderDeckEditor();
 	});
 
-	s.on('cardEvolutionError', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		showDeckError(data.reason);
 	});
 
-	s.on('questError', (data) => {
+	s.on(SERVER_TO_CLIENT.QUEST_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		showQuestError(data.reason);
 	});
 
-	s.on('cardInventoryUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_INVENTORY_UPDATE, (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
@@ -1631,7 +1635,7 @@ function bindSocketHandlers(s) {
 		if (activeLobbyTab === 'shop') renderCardShop();
 	});
 
-	s.on('cardGrindResult', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_GRIND_RESULT, (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
@@ -1647,13 +1651,13 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('cardGrindError', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_GRIND_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		if (activeLobbyTab === 'forge') showForgeError(data.reason);
 		else showDeckError(data.reason);
 	});
 
-	s.on('hatUnlocked', (data) => {
+	s.on(SERVER_TO_CLIENT.HAT_UNLOCKED, (data) => {
 		if (!data) return;
 		// Record the unlock and refreshed currency from the server (never
 		// optimistically before this event), then re-render the hat list so the
@@ -1667,13 +1671,13 @@ function bindSocketHandlers(s) {
 		rebuildBoothHatList();
 	});
 
-	s.on('hatError', (data) => {
+	s.on(SERVER_TO_CLIENT.HAT_ERROR, (data) => {
 		const message = data && data.reason ? data.reason : 'Unlock failed';
 		showCosmeticError(message);
 		showBoothCosmeticError(message);
 	});
 
-	s.on('appearanceChanged', (data) => {
+	s.on(SERVER_TO_CLIENT.APPEARANCE_CHANGED, (data) => {
 		if (!data) return;
 		if (data.cosmetic) {
 			setAccountCosmetic(data.cosmetic);
@@ -1692,7 +1696,7 @@ function bindSocketHandlers(s) {
 		handleAppearanceChanged();
 	});
 
-	s.on('appearanceError', (data) => {
+	s.on(SERVER_TO_CLIENT.APPEARANCE_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'Appearance save failed';
 		let message = reason;
 		if (reason === 'insufficient_gold' || /not enough/i.test(reason)) {
@@ -1706,13 +1710,13 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('tradeOffer', (data) => {
+	s.on(SERVER_TO_CLIENT.TRADE_OFFER, (data) => {
 		if (!data || !data.tradeId) return;
 		pendingTradeOffer = data;
 		renderTradeOffer();
 	});
 
-	s.on('tradeUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.TRADE_UPDATE, (data) => {
 		if (!data) return;
 		if (data.status === 'accepted' || data.status === 'rejected') {
 			if (pendingTradeOffer && pendingTradeOffer.tradeId === data.tradeId) {
@@ -1722,13 +1726,13 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('playerReconnected', (reconnectedId) => {
+	s.on(SERVER_TO_CLIENT.PLAYER_RECONNECTED, (reconnectedId) => {
 		if (reconnectedId === myId) {
 			console.log('[network] player reconnected');
 		}
 	});
 
-	s.on('lobbyUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_UPDATE, (data) => {
 		renderPlayerList(data.players);
 		renderTradeForm(data.players);
 		if (data.players && myId) {
@@ -1751,7 +1755,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('questUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.QUEST_UPDATE, (data) => {
 		if (!data) return;
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
 			applyQuestBoardFromPayload(data);
@@ -1759,7 +1763,7 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
-	s.on('startGame', () => {
+	s.on(SERVER_TO_CLIENT.START_GAME, () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
@@ -1813,17 +1817,17 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('runComplete', showRunSummary);
-	s.on('runFailed', showRunSummary);
+	s.on(SERVER_TO_CLIENT.RUN_COMPLETE, showRunSummary);
+	s.on(SERVER_TO_CLIENT.RUN_FAILED, showRunSummary);
 
-	s.on('runError', (data) => {
+	s.on(SERVER_TO_CLIENT.RUN_ERROR, (data) => {
 		const reason = (data && data.reason) ? data.reason : 'Run action failed';
 		console.warn(`[run] ${reason}`);
 		showLevelSettingsError(reason);
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 	});
 
-	s.on('runAbandoned', () => {
+	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
@@ -1840,7 +1844,7 @@ function bindSocketHandlers(s) {
 		giveUpBtnEl.onclick = () => requestGiveUp(s);
 	}
 
-	s.on('runSuspended', (summary) => {
+	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
 		if (summary && summary.questName) {
 			console.log(`[run] suspended: ${summary.questName}`);
 		}
@@ -1851,13 +1855,13 @@ function bindSocketHandlers(s) {
 		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary }, { rebuildHub: true });
 	});
 
-	s.on('playerExtracted', (data) => {
+	s.on(SERVER_TO_CLIENT.PLAYER_EXTRACTED, (data) => {
 		if (data && data.playerId === myId) {
 			showExtractedLobbyOverlay();
 		}
 	});
 
-	s.on('cardRewardClaimed', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_REWARD_CLAIMED, (data) => {
 		if (!data || !data.cardId) return;
 		claimedCardRewardId = data.cardId;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
@@ -2017,7 +2021,7 @@ function renderQuestBoardState() {
 		selectedQuestId,
 		(questId, tier) => {
 			if (!socket) return;
-			socket.emit('selectQuest', { questId, tier: tier ?? 1 });
+			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
 		},
 		{
 			selectedQuestTier,
@@ -2040,7 +2044,7 @@ function showQuestError(message) {
 function requestDebugScenario() {
 	if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
 	debugScenarioRequested = true;
-	socket.emit('debugScenario', { name: debugScenario });
+	socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name: debugScenario });
 }
 
 function isDebugGodmodeKeyBlocked(e) {
@@ -2060,7 +2064,7 @@ function isDebugGodmodeKeyBlocked(e) {
 
 function emitToggleDebugGodmode() {
 	if (!socket?.connected) return;
-	socket.emit('toggleDebugGodmode');
+	socket.emit(CLIENT_TO_SERVER.TOGGLE_DEBUG_GODMODE);
 }
 
 window.__openDeckBoothForTest = openDeckBooth;
@@ -2100,7 +2104,7 @@ window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve
 		resolve(data || { ok: false, reason: 'empty debugScenarioResult' });
 	}
 	socket.once('debugScenarioResult', onResult);
-	socket.emit('debugScenario', { name });
+	socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name });
 });
 
 // Test-only: drive the lobby deck editor over the live socket so a smoke test
@@ -2129,14 +2133,14 @@ window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
 		guard += 1;
 		const entry = mySelectedDeck[0];
 		const pending = waitDeck();
-		socket.emit('deckRemoveCard', { instanceId: entry });
+		socket.emit(CLIENT_TO_SERVER.DECK_REMOVE_CARD, { instanceId: entry });
 		const res = await pending;
 		if (!res.ok) return res;
 	}
 	// Add each requested card by id (server picks an available owned instance).
 	for (const cardId of targetCardIds) {
 		const pending = waitDeck();
-		socket.emit('deckAddCard', { cardId });
+		socket.emit(CLIENT_TO_SERVER.DECK_ADD_CARD, { cardId });
 		const res = await pending;
 		if (!res.ok) return { ok: false, reason: `add ${cardId} failed: ${res.reason}` };
 	}
@@ -2173,13 +2177,13 @@ window.__evolveCardForTest = (instanceId, timeoutMs) => new Promise((resolve) =>
 	}
 	socket.once('cardEvolutionResult', onResult);
 	socket.once('cardEvolutionError', onError);
-	socket.emit('evolveCard', { instanceId });
+	socket.emit(CLIENT_TO_SERVER.EVOLVE_CARD, { instanceId });
 });
 
 function startHeartbeat() {
 	if (heartbeatTimer) return;
 	heartbeatTimer = setInterval(() => {
-		socket.emit('heartbeat', { type: 'heartbeat', timestamp: Date.now() });
+		socket.emit(CLIENT_TO_SERVER.HEARTBEAT, { type: 'heartbeat', timestamp: Date.now() });
 	}, 2000);
 }
 
@@ -2901,12 +2905,12 @@ function renderDeckEditor() {
 		const evolveBtn = entry.querySelector('.evolve-card-btn');
 		evolveBtn.addEventListener('click', () => {
 			const instance = findEvolvableInstance(cardId);
-			if (instance) socket.emit('evolveCard', { instanceId: instance.instanceId });
+			if (instance) socket.emit(CLIENT_TO_SERVER.EVOLVE_CARD, { instanceId: instance.instanceId });
 		});
 		const addBtn = entry.querySelector('.deck-add-btn');
 		addBtn.addEventListener('click', () => {
 			const instance = findAvailableInventoryInstance(cardId);
-			socket.emit('deckAddCard', instance ? { instanceId: instance.instanceId, cardId } : { cardId });
+			socket.emit(CLIENT_TO_SERVER.DECK_ADD_CARD, instance ? { instanceId: instance.instanceId, cardId } : { cardId });
 		});
 		ownedCardsListEl.appendChild(entry);
 	}
@@ -2935,7 +2939,7 @@ function renderDeckEditor() {
 		removeBtn.addEventListener('click', () => {
 			const entryId = entryIds[entryIds.length - 1];
 			const instance = inventory.find((card) => card.instanceId === entryId);
-			socket.emit('deckRemoveCard', instance ? { instanceId: entryId, cardId } : { cardId });
+			socket.emit(CLIENT_TO_SERVER.DECK_REMOVE_CARD, instance ? { instanceId: entryId, cardId } : { cardId });
 		});
 		selectedDeckListEl.appendChild(entry);
 	}
@@ -3030,7 +3034,7 @@ function renderTradeForm(players = null) {
 if (acceptTradeBtn) {
 	acceptTradeBtn.addEventListener('click', () => {
 		if (!pendingTradeOffer) return;
-		socket.emit('respondCardTrade', { tradeId: pendingTradeOffer.tradeId, accepted: true });
+		socket.emit(CLIENT_TO_SERVER.RESPOND_CARD_TRADE, { tradeId: pendingTradeOffer.tradeId, accepted: true });
 		pendingTradeOffer = null;
 		renderTradeOffer();
 	});
@@ -3039,7 +3043,7 @@ if (acceptTradeBtn) {
 if (rejectTradeBtn) {
 	rejectTradeBtn.addEventListener('click', () => {
 		if (!pendingTradeOffer) return;
-		socket.emit('respondCardTrade', { tradeId: pendingTradeOffer.tradeId, accepted: false });
+		socket.emit(CLIENT_TO_SERVER.RESPOND_CARD_TRADE, { tradeId: pendingTradeOffer.tradeId, accepted: false });
 		pendingTradeOffer = null;
 		renderTradeOffer();
 	});
@@ -3051,7 +3055,7 @@ if (offerTradeBtn) {
 		const offeredCardId = tradeOfferSelectEl?.value;
 		const requestedCardId = tradeRequestSelectEl?.value;
 		if (!targetPlayerId || !offeredCardId || !requestedCardId) return;
-		socket.emit('offerCardTrade', { targetPlayerId, offeredCardId, requestedCardId });
+		socket.emit(CLIENT_TO_SERVER.OFFER_CARD_TRADE, { targetPlayerId, offeredCardId, requestedCardId });
 	});
 }
 
@@ -3220,7 +3224,7 @@ function renderKeyItemList() {
 				showKeyItemError('Not connected to server');
 				return;
 			}
-			socket.emit('equipKeyItem', { keyItemId: def.id });
+			socket.emit(CLIENT_TO_SERVER.EQUIP_KEY_ITEM, { keyItemId: def.id });
 		};
 
 		entry.addEventListener('click', tryEquip);
@@ -3311,7 +3315,7 @@ function renderCardShopSellList() {
 		sellBtn.addEventListener('click', () => {
 			const instance = findAvailableInventoryInstance(cardId);
 			if (instance) {
-				socket.emit('sellCard', { instanceId: instance.instanceId, cardId });
+				socket.emit(CLIENT_TO_SERVER.SELL_CARD, { instanceId: instance.instanceId, cardId });
 			}
 		});
 		sellListEl.appendChild(entry);
@@ -3471,7 +3475,7 @@ if (buyShopCardBtnEl) {
 		if (!socket || !socket.connected) return;
 		const offer = gameState && gameState.shopOffer;
 		if (!offer || !offer.cardId) return;
-		socket.emit('buyShopCard');
+		socket.emit(CLIENT_TO_SERVER.BUY_SHOP_CARD);
 	});
 }
 	if (document.getElementById('lobby-tab-economy')) {
@@ -3490,13 +3494,13 @@ if (medicHealBtnEl) {
 			showMedicError('Not connected to server');
 			return;
 		}
-		socket.emit('medicHeal');
+		socket.emit(CLIENT_TO_SERVER.MEDIC_HEAL);
 	});
 }
 if (document.getElementById('forge-attune-btn')) {
 	document.getElementById('forge-attune-btn').addEventListener('click', () => {
 		if (!selectedForgeInstanceId) return;
-		socket.emit('grindCard', { instanceId: selectedForgeInstanceId });
+		socket.emit(CLIENT_TO_SERVER.GRIND_CARD, { instanceId: selectedForgeInstanceId });
 	});
 }
 
@@ -3546,7 +3550,7 @@ function useCard(slotIndex) {
 
 	lastUsedSlot = slotIndex;
 	const facing = getPlayerFacingDirection();
-	socket.emit('useCard', {
+	socket.emit(CLIENT_TO_SERVER.USE_CARD, {
 		slotIndex,
 		cardId: card.id,
 		rotation: Math.atan2(facing.z, facing.x),
@@ -3585,7 +3589,7 @@ function discardCard(slotIndex) {
 		return;
 	}
 
-	socket.emit('discardCard', { slotIndex, cardId: card.id });
+	socket.emit(CLIENT_TO_SERVER.DISCARD_CARD, { slotIndex, cardId: card.id });
 }
 
 // Click: delegate on #card-hand, read data-slot-index from .card-slot target
@@ -3819,7 +3823,7 @@ const accountCosmeticForm = createCosmeticForm({
 		const hat = getHatCatalog().find((h) => h.id === hatId);
 		if (!hat || myCurrency < hat.price) return;
 		if (!socket || !socket.connected) return;
-		socket.emit('unlockHat', { hatId });
+		socket.emit(CLIENT_TO_SERVER.UNLOCK_HAT, { hatId });
 	},
 	proportionIdPrefix: 'cosmetic-prop',
 });
@@ -3898,7 +3902,7 @@ function requestGiveUp(activeSocket) {
 	}
 	showLevelSettingsError('');
 	if (giveUpBtnEl) giveUpBtnEl.disabled = true;
-	activeSocket.emit('giveUp');
+	activeSocket.emit(CLIENT_TO_SERVER.GIVE_UP);
 }
 
 if (accountBtnEl) {
@@ -4021,7 +4025,7 @@ readyBtn.addEventListener('click', () => {
 	// Emitting playerReady routes to the resume path in the server's
 	// checkAllReady gate when a suspendedCheckpoint exists, so the same button
 	// resumes the checkpointed run while suspended and launches fresh otherwise.
-	socket.emit('playerReady', isReady);
+	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, isReady);
 	syncReadyButtonRole();
 });
 
@@ -4035,7 +4039,7 @@ readyBtn.addEventListener('click', () => {
 function launchBoothReadyUp() {
 	if (!shouldLaunchReadyUp(isReady)) return;
 	isReady = true;
-	socket.emit('playerReady', true);
+	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
 	syncReadyButtonRole();
 	console.log('[launchBooth] ready-up via booth');
 	window.dispatchEvent(new CustomEvent(LAUNCH_READY_EVENT));
@@ -4300,7 +4304,7 @@ function renderCardChoices(choices) {
 		} else {
 			btn.addEventListener('click', () => {
 				if (claimedCardRewardId) return;
-				socket.emit('claimCardReward', { cardId: choice.id });
+				socket.emit(CLIENT_TO_SERVER.CLAIM_CARD_REWARD, { cardId: choice.id });
 			});
 		}
 
@@ -4373,12 +4377,12 @@ function showRunSummary(data) {
 }
 
 returnToLobbyBtn.addEventListener('click', () => {
-	socket.emit('returnToLobby');
+	socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
 });
 
 if (abandonRunBtn) {
 	abandonRunBtn.addEventListener('click', () => {
-		socket.emit('abandonRun');
+		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
 	});
 }
 
@@ -4391,7 +4395,7 @@ if (abandonRunBtn) {
 if (resumeRunBtn) {
 	resumeRunBtn.addEventListener('click', () => {
 		isReady = true;
-		socket.emit('playerReady', true);
+		socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
 		syncReadyButtonRole();
 	});
 }
@@ -4400,19 +4404,19 @@ if (createLobbyBtnEl) {
 	createLobbyBtnEl.addEventListener('click', () => {
 		if (!socket) return;
 		const name = createLobbyNameEl ? createLobbyNameEl.value.trim() : '';
-		socket.emit('createLobby', name ? { name } : {});
+		socket.emit(CLIENT_TO_SERVER.CREATE_LOBBY, name ? { name } : {});
 	});
 }
 
 if (refreshLobbiesBtnEl) {
 	refreshLobbiesBtnEl.addEventListener('click', () => {
-		if (socket) socket.emit('listLobbies');
+		if (socket) socket.emit(CLIENT_TO_SERVER.LIST_LOBBIES);
 	});
 }
 
 if (leaveLobbyBtnEl) {
 	leaveLobbyBtnEl.addEventListener('click', () => {
-		if (socket) socket.emit('leaveLobby');
+		if (socket) socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
 	});
 }
 
