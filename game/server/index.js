@@ -77,6 +77,7 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const { syncHubPresencePlayer } = require('./hubPresence');
 
 const app = express();
 const server = http.createServer(app);
@@ -965,6 +966,7 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
     lobbyPlayer.x = hubSpawn.x;
     lobbyPlayer.z = hubSpawn.z;
     lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
+    syncHubPresencePlayer(lobby, playerId);
   }
 
   if (options.dropIn) {
@@ -1115,6 +1117,11 @@ function runGameLoopTick() {
       const state = lobby.state;
       if (isLobbyPhase(state)) {
         applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+        for (const [playerId, player] of Object.entries(state.players)) {
+          if (player.connected !== false) {
+            syncHubPresencePlayer(lobby, playerId);
+          }
+        }
         flushDirtyPlayerSaves();
       } else if (isPlayingPhase(state)) {
         applyPlayerMovement(state, buildMovementContext(state));

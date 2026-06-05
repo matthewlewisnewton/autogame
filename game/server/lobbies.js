@@ -1,5 +1,6 @@
 const crypto = require('crypto');
 const { createGameState } = require('./game-state');
+const { createEmptyHubPresence, removeHubPresencePlayer } = require('./hubPresence');
 
 /** @typedef {import('./index').GameState} GameState */
 
@@ -181,6 +182,7 @@ function createLobby(name) {
     id,
     name: typeof name === 'string' && name.trim() ? name.trim().slice(0, 48) : `Lobby ${id}`,
     state: createLobbyGameState(),
+    hubPresence: createEmptyHubPresence(),
     createdAt: Date.now(),
   };
   lobbies.set(id, lobby);
@@ -200,6 +202,7 @@ function removePlayerFromLobby(playerId) {
   const lobby = lobbies.get(lobbyId);
   if (!lobby) return null;
 
+  removeHubPresencePlayer(lobby, playerId);
   delete lobby.state.players[playerId];
   lobby.state.minions = lobby.state.minions.filter((m) => m.ownerId !== playerId);
   delete lobby.state.pendingTrades[playerId];
