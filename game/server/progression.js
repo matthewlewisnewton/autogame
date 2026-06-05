@@ -2834,7 +2834,7 @@ function stateSnapshot() {
     };
   }
 
-  return {
+  const snapshot = {
     players,
     enemies: _gameState.enemies,
     minions: _gameState.minions,
@@ -2851,6 +2851,12 @@ function stateSnapshot() {
     telepipe: _gameState.telepipe || null,
     suspendedRunSummary: buildSuspendedRunSummary(_gameState.suspendedCheckpoint),
   };
+
+  if (_gameState.gamePhase === 'lobby' && _gameState.layout) {
+    snapshot.layout = JSON.parse(JSON.stringify(_gameState.layout));
+  }
+
+  return snapshot;
 }
 
 function returnPlayersToLobby(state = _gameState) {

@@ -172,4 +172,68 @@ describe('hub lobby scene bootstrap', () => {
 		expect(deployedLayout.profile).not.toBe('hub');
 		expect(window.__AUTOGAME_HARNESS_STATE__().layout.profile).toBe('open');
 	});
+
+	it('playing to lobby stateUpdate rebuilds hub walkable geometry', () => {
+		window.applyLobbyJoinedData({
+			id: 'p1',
+			layout: hubLayout,
+			layoutSeed: 0,
+			state: {
+				gamePhase: 'lobby',
+				players: { p1: { x: 3, z: 4, currency: 0 } },
+				enemies: [],
+				minions: [],
+				loot: [],
+			},
+		});
+
+		const socket = {
+			_handlers: {},
+			on(event, callback) {
+				if (!this._handlers[event]) this._handlers[event] = [];
+				this._handlers[event].push(callback);
+				return this;
+			},
+			emit: vi.fn(),
+			io: {
+				_handlers: {},
+				on(event, callback) {
+					if (!this._handlers[event]) this._handlers[event] = [];
+					this._handlers[event].push(callback);
+					return this;
+				},
+			},
+		};
+		window.bindSocketHandlers(socket);
+
+		window.applyQuestLayoutFromServer({
+			layout: questLayout,
+			layoutSeed: 99,
+		});
+		window.__setGameState({
+			gamePhase: 'playing',
+			players: { p1: { x: 10, z: 10, currency: 0 } },
+			enemies: [],
+			minions: [],
+			loot: [],
+		}, 'p1');
+
+		for (const handler of socket._handlers.stateUpdate ?? []) {
+			handler({
+				gamePhase: 'lobby',
+				layout: hubLayout,
+				layoutSeed: 0,
+				players: { p1: { x: 3, z: 4, currency: 0 } },
+				enemies: [],
+				minions: [],
+				loot: [],
+			});
+		}
+
+		expect(rebuildDungeonLayoutMock).toHaveBeenCalledTimes(1);
+		expect(rebuildDungeonLayoutMock).toHaveBeenCalledWith(hubLayout);
+		expect(rebuildDungeonLayoutMock.mock.calls[0][0].profile).toBe('hub');
+		expect(window.__AUTOGAME_HARNESS_STATE__().layout.profile).toBe('hub');
+		expect(setPlayerPositionMock).toHaveBeenCalledWith(3, 4);
+	});
 });

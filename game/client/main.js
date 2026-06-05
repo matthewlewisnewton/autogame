@@ -995,20 +995,33 @@ function bindSocketHandlers(s) {
 
 	s.on('stateUpdate', (state) => {
 		const previousPhase = gameState && gameState.gamePhase;
+		const enteringLobby = previousPhase !== 'lobby' && state.gamePhase === 'lobby';
 		// Verify layout seed consistency on every state update
 		if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
 			console.warn(`[layout] Seed mismatch: local=${currentLayoutSeed} server=${state.layoutSeed}`);
 			currentLayoutSeed = state.layoutSeed;
 		}
+		if (enteringLobby) {
+			if (state.layout) {
+				currentLayout = state.layout;
+			}
+			if (state.layoutSeed !== undefined) {
+				currentLayoutSeed = state.layoutSeed;
+			}
+		}
 		gameState = state;
 		setGameStateRef(state);
-		if (gameState && currentLayout) gameState.layout = currentLayout;
+		if (gameState && currentLayout) {
+			const staleDungeonLayout = enteringLobby && currentLayout.profile !== 'hub' && !state.layout;
+			if (!staleDungeonLayout) {
+				gameState.layout = currentLayout;
+			}
+		}
 		updateLevelSettingsBtnVisibility();
 		if (isLevelSettingsOpen()) syncLevelSettingsRewards();
 
 		const me = myId && gameState.players ? gameState.players[myId] : null;
 		const collectionChanged = syncLocalCollectionState(me);
-		const enteringLobby = previousPhase !== 'lobby' && state.gamePhase === 'lobby';
 		const enteringPlaying = previousPhase !== 'playing' && state.gamePhase === 'playing';
 		const isExtracted = !!(me && me.extracted);
 

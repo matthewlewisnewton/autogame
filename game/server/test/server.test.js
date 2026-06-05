@@ -4539,10 +4539,21 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(snapshot.bounds).toBeUndefined();
 	});
 
-	it('does not include layout', () => {
+	it('includes hub layout in lobby phase and omits layout during playing', () => {
 		addPlayer('p1');
-		const snapshot = stateSnapshot();
-		expect(snapshot.layout).toBeUndefined();
+		gameState.gamePhase = 'lobby';
+		gameState.layout = { profile: 'hub', rooms: [{ role: 'start', x: 0, z: 0 }], passages: [] };
+
+		const lobbySnapshot = stateSnapshot();
+		expect(lobbySnapshot.layout).toEqual({
+			profile: 'hub',
+			rooms: [{ role: 'start', x: 0, z: 0 }],
+			passages: [],
+		});
+
+		gameState.gamePhase = 'playing';
+		const playingSnapshot = stateSnapshot();
+		expect(playingSnapshot.layout).toBeUndefined();
 	});
 
 	it('does not include _victoryCounters', () => {
