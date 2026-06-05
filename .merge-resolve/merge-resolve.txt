@@ -1,6 +1,6 @@
-`LOGBOOK.md` is resolved. Both sides are kept in ascending version order:
+`LOGBOOK.md` is resolved. Both sides are kept in chronological order:
 
-1. **v0.261 — 255-level2-rooms** (from `main`) — rigid layout mode, Tier 2 quest wiring, debug scenarios, and test coverage
-2. **v0.264 — 241-free-hat-swap** (from this branch) — hat equip unlock checks, `?booth=hatswap` debug hook, and design consistency review
+1. **v0.265 — 256-level2-sunken-canyon** (from `main`) — sunken canyon Tier 2 acceptance review
+2. **v0.266 — 243-retire-2d-lobby-menus** (from the ticket branch) — 2D lobby menu retirement review
 
-All conflict markers are removed. The file ends with the v0.264 “Remaining gaps: None.” section, consistent with each ticket’s standalone logbook entry. The harness can proceed with the merge.
+All conflict markers are removed. The file ends with a single `## Remaining gaps / None.` section for v0.266, matching the logbook pattern used by prior entries. The harness can proceed with the merge commit.
