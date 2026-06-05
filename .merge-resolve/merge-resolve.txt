@@ -1,20 +1,22 @@
-Merge conflicts are resolved. Summary of how each side was combined:
+All three conflicted files are marker-free. Summary of how each was merged:
 
-### `game/client/dungeon.js`
-- Kept spire-ascent tier/ramp material functions (summit tints, beacon, edge hazards)
-- Dropped duplicate `materialColorHex` and legacy `roleFloorMaterials` (superseded by main's profile palette)
-- Room loop now uses spire tier materials when `profile === 'spire-ascent'`, otherwise main's `roleFloors` / `profileFloorMaterial` / `profileWallMaterial`
+### `game/server/index.js`
+Combined both sides in `runGameLoopTick()`:
+- **From main:** `try/catch` around each lobby tick (server resilience from booth/deck tickets)
+- **From branch:** `syncAndEmitHubPresenceIfChanged(io, lobby)` in the lobby-phase branch (hub presence broadcast)
 
-### `game/client/test/dungeon.test.js`
-- Merged imports from both branches
-- Updated the non-spire material test to expect crowded profile materials (main's default when no profile is set) instead of legacy `floorMaterial`
-
-### `game/server/debugScenarios.js`
-- Kept all three spire debug scenarios (`spire-summit-beacon`, `spire-mid-tier-hazard`) from the ticket branch
-- Added `open-verticality` from main
+### `TASKS.md`
+Kept all three cleanup backlog entries:
+- `278-cleanup-hub-shared-presence` (branch)
+- `278-cleanup-booth-mission-launch` (main)
+- `278-cleanup-booth-deck-terminal` (main)
 
 ### `LOGBOOK.md`
-- Kept main's v0.234, v0.236, and v0.237 entries
-- Appended v0.238 (spire-tower-identity) at the end
+Merged review entries in version order (newest first):
+- v0.244 — hub-shared-presence (branch)
+- v0.243 — booth-deck-terminal (main)
+- v0.242 — booth-mission-launch (main)
+- v0.241 — booth-character-editor (main)
+- v0.240 — difficulty-scale-with-player-count (main)
 
-All conflict markers are removed. Dungeon-related tests pass (206/206). The harness can commit and complete the merge.
+`index.js` passes syntax check. The harness can commit and run the full test suite.

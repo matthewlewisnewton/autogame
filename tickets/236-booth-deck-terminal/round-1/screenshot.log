@@ -1,0 +1,20 @@
+{
+  "url": "http://localhost:5174/",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/236-booth-deck-terminal/tickets/236-booth-deck-terminal/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Both players in squad lobby."
+    }
+  ],
+  "probes": [],
+  "error": "page.waitForFunction: Timeout 12000ms exceeded.",
+  "pageerrors": []
+}

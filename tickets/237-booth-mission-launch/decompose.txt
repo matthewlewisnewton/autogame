@@ -1,0 +1,6 @@
+Created one new sub-ticket. The passed `01-launch-booth-readyup` folder is untouched (it carries a `.passed` marker).
+
+**Sub-ticket folders created this round:**
+- `/home/matt/workspace/.autogame-worktrees/237-booth-mission-launch/tickets/237-booth-mission-launch/subtickets/02-launch-readyup-observable/`
+
+**Reasoning recap:** The sole open gap is `capture_failed` — a transient capture/env flake (page loaded, lobby UI didn't become visible, Vite dev-server connection was lost, final `goto` hit `ERR_CONNECTION_REFUSED`), not a game-code defect: all 4 ACs passed code review and 182 tests are green. Since I can't re-run the capture or touch the harness, sub-ticket `02` lands a small, in-scope hardening of the exact launch path under test (idempotent `playerReady` emit + an observable `[launchBooth] ready-up via booth` console marker and `launch:ready` event). That both improves verifiability of the launch gate and triggers a fresh top-level capture, which should pass on a clean run. Verified by `code` (idempotency logic, console marker, event dispatch, handler wiring, unchanged 2D button — all diff-inspectable).

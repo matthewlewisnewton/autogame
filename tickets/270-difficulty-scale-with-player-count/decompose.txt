@@ -1,0 +1,14 @@
+I broke the top-level ticket into 4 dependency-ordered sub-tickets. Created folders:
+
+- `tickets/270-difficulty-scale-with-player-count/subtickets/01-difficulty-scale-config/ticket.md`
+- `tickets/270-difficulty-scale-with-player-count/subtickets/02-spawn-rate-scaling/ticket.md`
+- `tickets/270-difficulty-scale-with-player-count/subtickets/03-enemy-damage-scaling/ticket.md`
+- `tickets/270-difficulty-scale-with-player-count/subtickets/04-miniboss-hp-scaling/ticket.md`
+
+**Rationale:**
+- **01 (foundation)** — adds tuning constants to `config.js` plus pure helpers (`difficultyExtraPlayers`, `difficultyScaleFactor`, `runPlayerCount`) that all three components share. Baseline (1–4 players) = factor 1.0; players 5–16 add marginal increments, clamped at the 16 cap. The other three sub-tickets depend on it.
+- **02 spawn rate** — scales the survive spawner's interval (`objectives.js` `tickSpawns`), reading the live count each tick so JOIN/LEAVE tracks up/down.
+- **03 enemy damage** — scales damage at strike time in `simulation.js` (amount passed to `damagePlayer`, not the stored stat), so it tracks the live count.
+- **04 miniboss HP** — scales `hp`/`maxHp` once at spawn in `progression.js` `spawnEnemy` for `type === 'miniboss'`, deliberately not retroactive.
+
+Each component sub-ticket carries its own separate automated test exercising mid-run JOIN and LEAVE, matching the top-level AC. All four are `Verification: code` — every criterion concerns values, server state, timing, and "set at spawn vs. live" behavior that only diff+log QA can check, not screenshots.
