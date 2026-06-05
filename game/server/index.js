@@ -1245,7 +1245,6 @@ function startServer(port) {
       sessionPlayer,
       socket,
       lobbies,
-      getUnlockedKeyItems,
       withLobbyContext,
       applyLayoutForQuest,
       ensureShopOffer,
