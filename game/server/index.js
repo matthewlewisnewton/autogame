@@ -291,6 +291,7 @@ const {
 // Card-use dispatch lives in its own module; wired up via setCallbacks() below
 // once io and the index.js-local helpers it needs are defined.
 const cardEffects = require('./cardEffects');
+const lobbyHandlers = require('./socketHandlers/lobbyHandlers');
 
 // Key-item dispatch lives in its own module; wired up via setCallbacks() below
 // once io is defined.
@@ -1171,9 +1172,15 @@ function startServer(port) {
     const sessionPlayer = buildPlayerRecord(playerId, accountId, username, savedData);
     lobbies.registerSession(playerId, buildSessionFromPlayer(sessionPlayer));
 
-    socket.on('listLobbies', () => {
-      socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
-    });
+    const ctx = {
+      playerId,
+      accountId,
+      username,
+      sessionPlayer,
+      socket,
+      lobbies,
+    };
+    lobbyHandlers.register(socket, ctx);
 
     socket.on('listKeyItems', () => {
       const items = getUnlockedKeyItems().map((def) => ({
