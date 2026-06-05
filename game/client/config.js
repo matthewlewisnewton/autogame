@@ -96,6 +96,18 @@ export const CAMERA_DISTANCE = 10;
 /** Orbit camera height above the player */
 export const CAMERA_HEIGHT = 5;
 
+/** Lower orbit follow height for sunken-canyon layouts only (dramatic vertical drop). */
+export const SUNKEN_CANYON_CAMERA_HEIGHT = 3.5;
+
+/**
+ * Orbit camera Y offset above the player for a dungeon layout profile.
+ * @param {string|undefined|null} profile
+ * @returns {number}
+ */
+export function getCameraFollowHeight(profile) {
+	return profile === 'sunken-canyon' ? SUNKEN_CANYON_CAMERA_HEIGHT : CAMERA_HEIGHT;
+}
+
 /** Horizontal camera rotation speed while right-dragging (rad/px) */
 export const CAMERA_YAW_SENSITIVITY = 0.005;
 
