@@ -18,7 +18,7 @@ const {
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked, getUnlockedQuestTiers } = require('./users');
-const { DEFAULT_COSMETIC, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
+const { DEFAULT_COSMETIC, backfillCosmetic, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
   mulberry32,
@@ -121,6 +121,9 @@ const {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  buildMovementContext,
+  buildHubMovementContext,
+  hubSpawnPosition,
   applyPlayerMovement,
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
@@ -456,6 +459,8 @@ const DEBUG_SCENARIOS = new Set([
   'run-exhausted',
   'quest-objective-near-complete',
   'telepipe-ready',
+  'extracted-in-hub',
+  'suspended-run-hub',
   'sloped-dungeon',
   'key-item-cooldown',
   'medic-kit-ready',
@@ -794,6 +799,35 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
   return player;
 }
 
+function copyCosmetic(cosmetic) {
+  const filled = backfillCosmetic(cosmetic);
+  return {
+    ...filled,
+    proportions: { ...filled.proportions },
+  };
+}
+
+/**
+ * Push a saved account cosmetic onto every connected in-memory player record for
+ * that account (legacy singleton gameState and all active lobby states).
+ */
+function syncLivePlayerCosmetic(accountId, cosmetic) {
+  if (!accountId) return;
+  const assign = (player) => {
+    if (player && player.accountId === accountId) {
+      player.cosmetic = copyCosmetic(cosmetic);
+    }
+  };
+  for (const player of Object.values(gameState.players)) {
+    assign(player);
+  }
+  for (const lobby of lobbies._lobbies.values()) {
+    for (const player of Object.values(lobby.state.players)) {
+      assign(player);
+    }
+  }
+}
+
 function buildSessionFromPlayer(player) {
   return {
     playerId: player.id,
@@ -925,7 +959,12 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   }
 
   if (isLobbyPhase(state)) {
-    revivePlayerInLobby(state.players[playerId]);
+    const lobbyPlayer = state.players[playerId];
+    revivePlayerInLobby(lobbyPlayer);
+    const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+    lobbyPlayer.x = hubSpawn.x;
+    lobbyPlayer.z = hubSpawn.z;
+    lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
   }
 
   if (options.dropIn) {
@@ -968,6 +1007,23 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   return true;
 }
 
+function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false } = {}) {
+  if (emitDisconnect) {
+    io.to(lobby.id).emit('playerDisconnected', playerId);
+  }
+
+  const shouldBroadcast = result === undefined || (result && !result.deleted);
+  if (!shouldBroadcast) return;
+
+  withLobbyContext(lobby, () => {
+    if (isPlayingPhase(lobby.state)) {
+      checkRunTerminalState();
+    } else {
+      broadcastLobbyUpdate(lobby);
+    }
+  });
+}
+
 function softDisconnectPlayerFromLobby(socket) {
   const lobby = getLobbyForSocket(socket);
   if (!lobby) return null;
@@ -990,13 +1046,8 @@ function softDisconnectPlayerFromLobby(socket) {
     player.inputActive = false;
     player.inputDx = 0;
     player.inputDz = 0;
-
-    if (isPlayingPhase(lobby.state)) {
-      checkRunTerminalState();
-    } else {
-      broadcastLobbyUpdate(lobby);
-    }
   });
+  notifyPlayerRemoved(lobby, { playerId, emitDisconnect: false });
   broadcastLobbyList();
   return { lobby, playerId };
 }
@@ -1021,18 +1072,8 @@ function evictDisconnectedPlayers() {
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const result = lobbies.removePlayerFromLobby(playerId);
-      io.to(lobby.id).emit('playerDisconnected', playerId);
+      notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect: true });
       evictedAny = true;
-
-      if (result && !result.deleted) {
-        withLobbyContext(lobby, () => {
-          if (isPlayingPhase(lobby.state)) {
-            checkRunTerminalState();
-          } else {
-            broadcastLobbyUpdate(lobby);
-          }
-        });
-      }
     }
   }
 
@@ -1053,17 +1094,7 @@ function leaveLobbyForSocket(socket) {
   socket.leave(lobby.id);
 
   const result = lobbies.removePlayerFromLobby(playerId);
-  io.to(lobby.id).emit('playerDisconnected', playerId);
-
-  if (result && !result.deleted) {
-    withLobbyContext(lobby, () => {
-      if (isPlayingPhase(lobby.state)) {
-        checkRunTerminalState();
-      } else {
-        broadcastLobbyUpdate(lobby);
-      }
-    });
-  }
+  notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect: true });
 
   broadcastLobbyList();
   return result;
@@ -1082,8 +1113,11 @@ function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
     withLobbyContext(lobby, () => {
       const state = lobby.state;
-      if (isPlayingPhase(state)) {
-        applyPlayerMovement();
+      if (isLobbyPhase(state)) {
+        applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+        flushDirtyPlayerSaves();
+      } else if (isPlayingPhase(state)) {
+        applyPlayerMovement(state, buildMovementContext(state));
         checkTelepipeProximity();
         flushDirtyPlayerSaves();
         updateEnemies();
@@ -1245,7 +1279,6 @@ function startServer(port) {
       sessionPlayer,
       socket,
       lobbies,
-      getUnlockedKeyItems,
       withLobbyContext,
       applyLayoutForQuest,
       ensureShopOffer,
@@ -1352,6 +1385,7 @@ if (typeof module !== 'undefined' && module.exports) {
     firstRoomPosition,
     pickFloorSpawnPosition,
     buildPlayerRecord,
+    syncLivePlayerCosmetic,
     createGameState,
     resetGameState,
     gameState,

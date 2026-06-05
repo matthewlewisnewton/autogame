@@ -40,14 +40,18 @@ const {
   sampleFloorY,
   DEFAULT_FLOOR_Y,
   resolveFloorY,
+  generateHub,
 } = require('./dungeon');
 const {
   enemyDefFor,
   firstRoomPosition,
+  hubSpawnPosition,
   pickFloorSpawnPosition,
   randomWanderTarget,
   spawnVolatileExplosion
 } = require('./simulation');
+
+const HUB_LAYOUT = generateHub(0);
 const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
 const {
   getQuest,
@@ -2631,14 +2635,14 @@ function suspendRunToLobby() {
   _gameState.telepipe = null;
   setGamePhase(_gameState, PHASES.LOBBY);
 
-  const spawn = firstRoomPosition();
+  const spawn = hubSpawnPosition(HUB_LAYOUT);
   for (const player of Object.values(_gameState.players)) {
     player.ready = false;
     player.extracted = false;
     player.dead = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
     player.lastMoveTime = Date.now();
     player.pendingSummons = new Set();
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -2731,14 +2735,14 @@ function abandonSuspendedRun(state = _gameState) {
   delete state.run;
   setGamePhase(state, PHASES.LOBBY);
 
-  const spawn = firstRoomPosition();
+  const spawn = hubSpawnPosition(HUB_LAYOUT);
   for (const player of Object.values(state.players)) {
     revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
     player.hand = [];
     player.deck = [];
     player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
@@ -2936,7 +2940,7 @@ function returnPlayersToLobby(state = _gameState) {
   setGamePhase(state, PHASES.LOBBY);
   delete state.run;
 
-  const spawn = firstRoomPosition();
+  const spawn = hubSpawnPosition(HUB_LAYOUT);
   for (const playerId of Object.keys(state.players)) {
     const player = state.players[playerId];
     const preservedCurrency = player.currency;
@@ -2949,7 +2953,7 @@ function returnPlayersToLobby(state = _gameState) {
     player.extracted = false;
     player.x = spawn.x;
     player.z = spawn.z;
-    player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+    player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
     player.currency = preservedCurrency;
     player.inventory = preservedInventory;
     player.ownedCards = preservedOwnedCards;

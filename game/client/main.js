@@ -160,6 +160,7 @@ const questBoardEl = document.getElementById('quest-board');
 const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
+const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const lobbyEl = document.getElementById('lobby');
 const lobbyBrowserEl = document.getElementById('lobby-browser');
@@ -498,18 +499,67 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 	}
 }
 
-function setDeployButtonVisible(visible) {
-	if (!readyBtn) return;
-	readyBtn.hidden = !visible;
-	if (!visible) {
-		readyBtn.disabled = true;
+/** True when the squad is sitting in the lobby on top of a suspended run. */
+function isRunSuspended() {
+	return !!(gameState && gameState.gamePhase === 'lobby' && gameState.suspendedRunSummary);
+}
+
+/**
+ * Sync #ready-btn's label + styling to its current role. While a run is
+ * suspended the single launch button doubles as the Resume control — this is
+ * also the affordance the harness telepipe capture clicks to resume — so it
+ * reads "Resume…" and carries `.resuming`; otherwise it is the new-mission
+ * Deploy button.
+ */
+function syncReadyButtonRole() {
+	const suspended = isRunSuspended();
+	// The dedicated #resume-run-btn is only ever shown while suspended, so it
+	// always carries the "Resume…" theme label rather than the static HTML text.
+	if (resumeRunBtn) {
+		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
 	}
+	if (!readyBtn) return;
+	if (suspended) {
+		readyBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
+	} else {
+		readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
+	}
+	readyBtn.classList.toggle('resuming', suspended);
+}
+
+function setDeployButtonVisible(visible) {
+	// While a run is suspended #resume-run-btn is the dedicated, distinct resume
+	// affordance shown to the player; #ready-btn also stays visible+enabled and
+	// wired to the same resume path (the harness telepipe capture clicks
+	// #ready-btn to resume). Outside suspension #resume-run-btn is hidden.
+	const suspended = isRunSuspended();
+	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
+	if (!readyBtn) return;
+	const show = visible || suspended;
+	readyBtn.hidden = !show;
+	if (!show) {
+		readyBtn.disabled = true;
+	} else if (suspended) {
+		readyBtn.disabled = false;
+	}
+	syncReadyButtonRole();
 }
 
 function renderSuspendedRunBanner(state) {
-	if (!suspendedRunBannerEl) return;
 	const summary = state && state.suspendedRunSummary;
-	if (state && state.gamePhase === 'lobby' && summary) {
+	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
+	// While suspended #resume-run-btn is the dedicated resume affordance, and
+	// #ready-btn also stays visible+enabled wired to the same resume path (the
+	// harness capture clicks #ready-btn to resume); syncReadyButtonRole applies
+	// the "Resume…" labels + .resuming styling to both.
+	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
+	if (suspended && readyBtn) {
+		readyBtn.hidden = false;
+		readyBtn.disabled = false;
+	}
+	syncReadyButtonRole();
+	if (!suspendedRunBannerEl) return;
+	if (suspended) {
 		const objective = summary.objective;
 		let progress = '';
 		if (objective && objective.type === 'collect_items') {
@@ -538,6 +588,16 @@ function showExtractedLobbyOverlay() {
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	clearKeyItemCooldownHud();
+	// Switch the rendered scene from the dungeon to the walkable hub so the
+	// extracted player stands in the hub ship-interior rather than on the old
+	// dungeon geometry. Only rebuild when not already showing the hub: during a
+	// partial extract the server stays in `playing` and keeps emitting
+	// stateUpdates, so re-rendering every tick would rebuild geometry and snap
+	// the avatar back to the hub spawn. Degrades gracefully to the prior flat
+	// overlay when no hub layout is available or the scene isn't initialized.
+	if (renderedSceneProfile !== 'hub' && hubLayout && isSceneInitialized()) {
+		renderHubScene();
+	}
 	showGameLobby();
 	setDeployButtonVisible(false);
 	if (suspendedRunBannerEl) {
@@ -1005,18 +1065,21 @@ function bindSocketHandlers(s) {
 		}
 		gameState = state;
 		setGameStateRef(state);
-		// During the lobby the renderer shows the hub, so floor sampling for the
-		// local avatar must use the hub layout; in a run it uses the quest layout.
-		const activeLayout = (state.gamePhase === 'lobby' && hubLayout) ? hubLayout : currentLayout;
+		const me = myId && gameState.players ? gameState.players[myId] : null;
+		const isExtracted = !!(me && me.extracted);
+		// The renderer shows the hub during the lobby, and also while the local
+		// player is extracted into the hub mid-run (server still 'playing'), so
+		// floor sampling for the local avatar must use the hub layout in both
+		// cases; an active in-dungeon run uses the quest layout.
+		const inHubScene = state.gamePhase === 'lobby' || isExtracted;
+		const activeLayout = (inHubScene && hubLayout) ? hubLayout : currentLayout;
 		if (gameState && activeLayout) gameState.layout = activeLayout;
 		updateLevelSettingsBtnVisibility();
 		if (isLevelSettingsOpen()) syncLevelSettingsRewards();
 
-		const me = myId && gameState.players ? gameState.players[myId] : null;
 		const collectionChanged = syncLocalCollectionState(me);
 		const enteringLobby = previousPhase !== 'lobby' && state.gamePhase === 'lobby';
 		const enteringPlaying = previousPhase !== 'playing' && state.gamePhase === 'playing';
-		const isExtracted = !!(me && me.extracted);
 
 		if (enteringLobby) {
 			_lastReturnRewardsPreview = null;
@@ -1466,7 +1529,7 @@ function bindSocketHandlers(s) {
 			const me = data.players.find((p) => p.id === myId);
 			if (me) {
 				isReady = me.ready;
-				readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
+				syncReadyButtonRole();
 				if (gameState && gameState.gamePhase === 'lobby') {
 					setDeployButtonVisible(true);
 					readyBtn.disabled = false;
@@ -1554,6 +1617,10 @@ function bindSocketHandlers(s) {
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
+			// Abandoning clears the checkpoint, so drop the suspended summary that
+			// drives the Resume affordance and fall back to the normal lobby flow
+			// with the new-mission Deploy button visible again.
+			delete gameState.suspendedRunSummary;
 		}
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
@@ -3785,6 +3852,10 @@ if (cosmeticSaveBtnEl) {
 		// Re-sync from the cache (now updated by patchProfile) so the controls
 		// reflect the persisted value.
 		syncCosmeticForm();
+		if (myId && gameState?.players?.[myId]) {
+			gameState.players[myId].cosmetic = getAccountCosmetic();
+			setGameStateRef(gameState);
+		}
 	});
 }
 
@@ -3833,8 +3904,11 @@ function renderPlayerList(players) {
 
 readyBtn.addEventListener('click', () => {
 	isReady = !isReady;
+	// Emitting playerReady routes to the resume path in the server's
+	// checkAllReady gate when a suspendedCheckpoint exists, so the same button
+	// resumes the checkpointed run while suspended and launches fresh otherwise.
 	socket.emit('playerReady', isReady);
-	readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
+	syncReadyButtonRole();
 });
 
 // ── Mute toggle ──
@@ -4168,6 +4242,20 @@ returnToLobbyBtn.addEventListener('click', () => {
 if (abandonRunBtn) {
 	abandonRunBtn.addEventListener('click', () => {
 		socket.emit('abandonRun');
+	});
+}
+
+// #resume-run-btn is the dedicated, distinct resume affordance shown while a run
+// is suspended. It re-enters the run through the SAME path as #ready-btn: emit
+// playerReady(true), which the server's checkAllReady gate routes to
+// restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It sets
+// the shared isReady flag (so it can't desync from #ready-btn) and resyncs both
+// labels via syncReadyButtonRole. No separate fresh-launch / resume socket event.
+if (resumeRunBtn) {
+	resumeRunBtn.addEventListener('click', () => {
+		isReady = true;
+		socket.emit('playerReady', true);
+		syncReadyButtonRole();
 	});
 }
 

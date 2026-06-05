@@ -1,6 +1,17 @@
-Resolved `LOGBOOK.md` by keeping **both** sides in version order:
+Merge conflicts are resolved in all three files. Summary:
 
-1. **From `main`:** v0.224 (273-socketHandlers-extract-deck), v0.225 (230-hub-client-render), v0.226 (274-socketHandlers-extract-trade)
-2. **From the ticket branch:** v0.228 (211-net-slim-per-tick-state-broadcast) appended after those entries
+### `game/server/socketHandlers/lobbyHandlers.js`
+- Kept the ticket’s `MAX_PLAYERS` import and the join guard (`Lobby is full` when at cap).
+- Dropped `LOOT_PICKUP_RADIUS` from this file — main moved that to `runHandlers.js` during the socket-handler extraction.
 
-All conflict markers are removed. The harness can proceed with the merge commit.
+### `TASKS.md`
+- Combined both sides’ cleanup backlog entries in order:
+  - `274-cleanup-telepipe-hub-suspend-resume-integration` (main)
+  - `275-cleanup-lobby-enforce-max-players-cap` (ticket)
+  - `277-cleanup-socketHandlers-extract-run-and-cleanup` (main)
+
+### `LOGBOOK.md`
+- Kept main’s review entries (v0.230–v0.233: hub movement, telepipe suspend/resume, avatar cosmetics, run-handler extraction).
+- Appended the ticket’s v0.234 entry for the max-players cap.
+
+All conflict markers are removed. The harness can commit and run the test suite.

@@ -15,7 +15,8 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 
 // Registry mapping entity keys to a model path. Keys match how renderer.js keys
 // its meshes: ENEMY_GEOMETRY (enemy types), MINION_VISUAL (minion types),
-// createLootMesh (loot kinds), and the player. Null means procedural-only.
+// createLootMesh (loot kinds), and the player avatar (via cosmetic.modelId →
+// modelPathFor). Null means procedural-only.
 export const MODEL_REGISTRY = {
 	// Player avatar
 	player: '/models/player.glb',

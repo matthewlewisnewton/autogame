@@ -14,6 +14,21 @@ import { InMemoryProvider } from '../providers.js';
 
 const require = createRequire(import.meta.url);
 
+const serverUsers = require('../users.js');
+
+/**
+ * Point the server's CJS `users` module at a test file (same instance as
+ * auth.js / index.js). Vitest loads users.js twice (ESM import vs CJS
+ * require), so HTTP suites must configure this instance before startServer().
+ */
+export function setServerUsersFilePath(filePath) {
+	serverUsers.setTestFilePath(filePath);
+}
+
+export function clearServerUsers() {
+	serverUsers.clearUsers();
+}
+
 export function createTestToken(accountId, username) {
 	return jwt.sign(
 		{ accountId, username: username || accountId },

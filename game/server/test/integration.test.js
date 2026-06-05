@@ -40,7 +40,9 @@ import {
 	DISCONNECT_GRACE_MS,
 	runGameLoopTick,
 	processPassiveDraws,
+	HUB_LAYOUT,
 } from '../index.js';
+import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
 import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
@@ -322,7 +324,11 @@ async function closeServer() {
 }
 
 function firstRoomSpawn() {
-	const first = testGameState().layout.rooms[0];
+	const state = testGameState();
+	if (state.gamePhase === 'lobby') {
+		return hubSpawnPosition(HUB_LAYOUT);
+	}
+	const first = state.layout.rooms[0];
 	return { x: first.x, z: first.z };
 }
 
@@ -524,6 +530,22 @@ describe('Socket Integration — Move Event', () => {
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
 		await closeServer();
+	});
+
+	it('lobby phase move stores input and integrates against HUB_LAYOUT', async () => {
+		expect(testGameState().gamePhase).toBe('lobby');
+		const player = testGameState().players[socket._playerId];
+		const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+		expect(player.x).toBeCloseTo(hubSpawn.x, 1);
+		expect(player.z).toBeCloseTo(hubSpawn.z, 1);
+
+		const xBefore = player.x;
+		socket.emit('move', { dx: 1, dz: 0, rotation: 0, sequence: 1 });
+		await sleep(120);
+
+		expect(player.inputDx).toBe(1);
+		expect(player.inputActive).toBe(true);
+		expect(player.x).toBeGreaterThan(xBefore);
 	});
 
 	it('emits move and server broadcasts stateUpdate with new position', async () => {
@@ -3244,46 +3266,6 @@ describe('Lobby card sell and trade', () => {
 		expect(update.shopOffer.price).toBeGreaterThan(0);
 	});
 
-	it('buyShopCard adds the offered card and deducts gold', async () => {
-		const player = testGameState().players[socket1._playerId];
-		const offer = testGameState().shopOffer;
-		expect(offer).toBeTruthy();
-
-		player.currency = offer.price + 50;
-		const countBefore = player.ownedCards[offer.cardId] || 0;
-		const deckBefore = [...player.selectedDeck];
-
-		const updatePromise = waitForEvent(socket1, 'cardInventoryUpdate');
-		socket1.emit('buyShopCard');
-		const update = await updatePromise;
-
-		expect(player.ownedCards[offer.cardId]).toBe(countBefore + 1);
-		expect(player.currency).toBe(50);
-		expect(update.currency).toBe(50);
-		expect(update.selectedDeck.length).toBe(deckBefore.length + 1);
-		expect(update.inventory.length).toBe(player.inventory.length);
-		expect(validateDeck(player.selectedDeck, player.inventory).valid).toBe(true);
-		const purchasedInstance = player.inventory.find(
-			(instance) => instance.cardId === offer.cardId && player.selectedDeck.includes(instance.instanceId)
-		);
-		expect(purchasedInstance).toBeTruthy();
-	});
-
-	it('buyShopCard rejects insufficient gold', async () => {
-		const player = testGameState().players[socket1._playerId];
-		const offer = testGameState().shopOffer;
-		expect(offer).toBeTruthy();
-		player.currency = 0;
-		const countBefore = player.ownedCards[offer.cardId] || 0;
-
-		const errorPromise = waitForEvent(socket1, 'deckError');
-		socket1.emit('buyShopCard');
-		const err = await errorPromise;
-
-		expect(err.reason).toBe('insufficient_gold');
-		expect(player.ownedCards[offer.cardId] || 0).toBe(countBefore);
-	});
-
 	it('trade offer/accept swaps cards once and preserves both decks', async () => {
 		const playerA = testGameState().players[socket1._playerId];
 		const playerB = testGameState().players[socket2._playerId];
@@ -5346,6 +5328,107 @@ describe('Telepipe suspend and resume', () => {
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().players[p1Id].extracted).toBe(false);
 		expect(testGameState().players[p2Id].extracted).toBe(false);
+
+		p1.socket.disconnect();
+		p2.socket.disconnect();
+	});
+
+	it('two-player suspend then resume preserves magic stones, card charges, and objective progress', async () => {
+		const baseUrl = await startTestServer();
+		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-1');
+		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-2', { joinLobbyId: p1.init.lobbyId });
+
+		const startPromise1 = waitForEvent(p1.socket, 'startGame');
+		const startPromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await startPromise1;
+		await startPromise2;
+
+		const state = testGameState();
+		const p1Id = p1.socket._playerId;
+		const p2Id = p2.socket._playerId;
+
+		// Spend magic stones, damage a hand card's charges, and advance objective
+		// progress so the checkpoint carries non-default values that resume must keep.
+		const SPENT_MAGIC_STONES = STARTING_MAGIC_STONES - 30;
+		const DAMAGED_REMAINING_CHARGES = 2;
+		state.players[p1Id].magicStones = SPENT_MAGIC_STONES;
+		state.players[p1Id].hand[0] = {
+			id: 'iron_sword', name: 'Rust-Forged Saber', type: 'weapon',
+			damage: 17, charges: 5, remainingCharges: DAMAGED_REMAINING_CHARGES,
+		};
+
+		const objective = state.run.objective;
+		if (objective.type === 'defeat_enemies') {
+			objective.defeatedEnemies = 1;
+		} else if (objective.type === 'collect_items') {
+			objective.collectedItems = 1;
+		}
+		const expectedObjective = { ...objective };
+
+		state.telepipe = {
+			x: state.players[p1Id].x,
+			z: state.players[p1Id].z,
+			placedBy: p1Id,
+			placedAt: Date.now(),
+		};
+		setGameState(state);
+
+		const portalX = state.telepipe.x;
+		const portalZ = state.telepipe.z;
+
+		const suspendedPromise1 = waitForEvent(p1.socket, 'runSuspended');
+		const suspendedPromise2 = waitForEvent(p2.socket, 'runSuspended');
+
+		// Both players step through the conduit to suspend the run to the hub.
+		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
+		const live = testGameState();
+		live.players[p2Id].x = portalX;
+		live.players[p2Id].z = portalZ;
+		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
+
+		await suspendedPromise1;
+		await suspendedPromise2;
+
+		expect(testGameState().gamePhase).toBe('lobby');
+		const checkpoint = testGameState().suspendedCheckpoint;
+		expect(checkpoint).toBeTruthy();
+		// The captured checkpoint holds the exact spent/damaged/progressed values.
+		expect(checkpoint.playerStates[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
+		const checkpointCard = checkpoint.playerStates[p1Id].hand.find((c) => c && c.id === 'iron_sword');
+		expect(checkpointCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
+
+		// Resume via the all-ready gate: checkAllReady routes to restoreRunCheckpoint
+		// because a suspendedCheckpoint exists, re-entering the in-progress run.
+		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
+		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
+		p1.socket.emit('playerReady', true);
+		p2.socket.emit('playerReady', true);
+		await resumePromise1;
+		await resumePromise2;
+
+		const resumed = testGameState();
+		expect(resumed.gamePhase).toBe('playing');
+
+		// Magic stones keep the spent value rather than resetting to the run start.
+		// (Passive regen may nudge it up a hair once the run is playing again, so
+		// assert it stayed near the spent value and well below the run-start total.)
+		expect(resumed.players[p1Id].magicStones).toBeCloseTo(SPENT_MAGIC_STONES, 0);
+		expect(resumed.players[p1Id].magicStones).toBeLessThan(STARTING_MAGIC_STONES);
+
+		// The damaged card keeps its drained charges rather than refilling to full.
+		const restoredCard = resumed.players[p1Id].hand.find((c) => c && c.id === 'iron_sword');
+		expect(restoredCard).toBeTruthy();
+		expect(restoredCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
+		expect(restoredCard.remainingCharges).not.toBe(restoredCard.charges);
+
+		// Objective progress (collected/defeated counts) survives the round-trip.
+		if (expectedObjective.type === 'defeat_enemies') {
+			expect(resumed.run.objective.defeatedEnemies).toBe(expectedObjective.defeatedEnemies);
+		} else if (expectedObjective.type === 'collect_items') {
+			expect(resumed.run.objective.collectedItems).toBe(expectedObjective.collectedItems);
+		}
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();

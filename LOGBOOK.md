@@ -4011,6 +4011,29 @@ PASS. This ticket did not add or change any `?debugScenario=...` shortcut or deb
 
 None.
 
+## v0.229 — 275-socketHandlers-extract-keyitem  (2026-06-05 02:10:56)
+
+## Per-Criterion Findings
+
+### Runtime health
+PASS. The captured run loaded successfully: `metrics.json` has `"ok": true`, no harness failure, and an empty `pageerrors` array. `console.log` contains only expected Vite connection lines plus 409 registration conflicts from the harness flow, with no `pageerror` or `[fatal]` entries from game code. `server.log` shows both players connecting, entering a generated dungeon, and disconnecting cleanly; `client.log` contains only explicitly benign THREE/Vite socket-close noise.
+
+### Key-item handlers moved and registered
+PASS. The live code now has `game/server/socketHandlers/keyItemHandlers.js` registering `listKeyItems`, `equipKeyItem`, and `useKeyItem`, while `game/server/socketHandlers/lobbyHandlers.js` imports that module and calls `keyItemHandlers.register(socket, ctx)` from the existing per-socket registration path. The extracted handlers still use the same context helpers and effect dispatch path as the pre-extraction inline handlers, so lobby-phase equip validation, key-item listing, persistence, and in-dungeon use dispatch remain wired through the authoritative server socket flow.
+
+### Tests green
+PASS. The latest `coverage.log` reports `server/test/server.test.js` and `server/test/field_medic_kit.test.js` passing, with `371 passed (371)`. Existing key-item socket coverage remains applicable because the public socket events and payloads did not change, and the changed field-medic and spawner assertions are limited to timing/float tolerance rather than behavior changes.
+
+### Design and foundation consistency
+PASS. The change is a server-side organization extraction only; it does not alter the documented lobby/dungeon/card loop, run suspend/resume behavior, rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization requirements. The fallback capture exercised auth, lobby creation/join, ready transition, movement, and key-item use in normal gameplay with two connected players.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=NAME` shortcut, and the capture did not use a debug scenario.
+
+## Remaining gaps
+
+None.
+
 ## v0.228 — 211-net-slim-per-tick-state-broadcast  (2026-06-05 01:15:06)
 
 ## Acceptance criteria findings
@@ -4033,6 +4056,94 @@ The branch includes focused server and client tests for the new split: tick payl
 
 No blocking gaps remain for this ticket.
 
+## v0.230 — 231-hub-lobby-phase-movement  (2026-06-05 02:58:43)
+
+PASS. Lobby movement uses `buildHubMovementContext(HUB_LAYOUT)`, which derives walkable AABBs, dungeon bounds, and wall colliders from the deterministic hub layout rather than the selected quest layout. Player Y is sampled from the hub floor, and lobby re-entry paths now seat players at the hub start room. The screenshots show the hub/lobby scene and subsequent movement/run flow rendering cleanly.
+
+### 3. Server validates like in-run move: finite, sequence, magnitude
+PASS. The shared `move` handler still rejects non-object payloads, non-finite `dx`/`dz`/`rotation`, invalid or stale sequence numbers, disconnected players, and normalizes oversized input vectors. Playing-only restrictions for dead/extracted players remain scoped to the run phase, which is appropriate for lobby movement.
+
+### 4. Test for lobby-phase move accept/bounds
+PASS. `server/test/lobby_hub_movement.test.js` covers accepting a lobby move, rejecting invalid payloads, rejecting stale sequence numbers, clamping sustained hub movement inside bounds/walkable AABBs, and resolving movement into a hub wall back to valid floor space. The coverage log shows this test file passed all 6 tests.
+
+### Design and foundation consistency
+PASS. The change matches the design goal that players gather and interact in a lobby before deploying, while preserving server-authoritative movement synchronization from the requirements. It also avoids adding new `_gameState` reads to the move path by threading explicit movement contexts through `applyPlayerMovement()`, `tryPlayerMove()`, `isInsideDungeon()`, and clamping.
+
+### Debug scenarios
+PASS / not applicable. This ticket did not add or change a `?debugScenario=` shortcut, and the round-2 capture used no debug scenarios.
+
+### Validation notes
+The coverage run itself reports one failing test in `server/test/cosmetic_runtime.test.js` (`PATCH /api/me/profile` returned 500 instead of 200), while `server/test/lobby_hub_movement.test.js` and the movement-related integration tests passed. I did not find a movement-ticket regression tied to that cosmetic runtime failure; it appears orthogonal to this ticket's acceptance criteria.
+
+## Remaining gaps
+
+None.
+
+## v0.231 — 271-telepipe-hub-suspend-resume-integration  (2026-06-05 03:01:59)
+
+## Preservation of run state
+
+PASS. The checkpoint implementation captures player combat state, run/objective, layout, enemies, minions, loot, area effects, and portal state. The round-4 capture verifies objective and enemy preservation across suspend/resume, and the added integration coverage exercises the non-trivial acceptance case by suspending a two-player run with spent Magic Stones, drained card charges, and advanced objective progress, then resuming through the normal all-ready gate without resetting those values.
+
+## Debug scenarios
+
+PASS. The capture uses `telepipe-ready`, which is only requested through `?debugScenario=`/test hooks, is gated to localhost or `ALLOW_DEBUG_SCENARIOS`, and stays in the lobby until the normal ready-up flow starts the run. The added `suspended-run-hub` shortcut is also dev-gated, documents the normal route it mirrors, and calls the same `suspendRunToLobby()` checkpoint path rather than bypassing server-side suspend/resume invariants.
+
+## Design and foundation consistency
+
+PASS. The implementation is consistent with `game/docs/design.md`: Telepipe creates a shared portal, extracted players leave dungeon actions, the run suspends only after no active players remain, and deploy/resume restores the checkpoint instead of generating a fresh run. It does not regress the foundation requirements: the captured page renders, connects over Socket.IO, shows the player/hub or dungeon state, and resumes to synchronized server state.
+
+## Tests and coverage
+
+Ticket-relevant server tests for Telepipe suspend/resume and debug scenarios passed in the coverage run, and the live browser capture validated the end-to-end flow. The coverage log includes one unrelated existing `server/test/auth.test.js` failure around `accountId` in a login JWT assertion; no changed files for this ticket are in that auth path, and the captured game still registers/logs in and runs cleanly.
+
+## Remaining gaps
+
+No blocking gaps.
+
+## v0.232 — 238-avatar-cosmetic-render  (2026-06-05 03:10:39)
+
+PASS. The provided `coverage.log` reports `65` test files passing and `1321` tests passing. New/focused coverage includes:
+
+- client model registry and player glTF lookup/fallback behavior;
+- glTF hat attach/removal, body tint, and proportion morph mapping;
+- hub and in-run avatar cosmetic rendering and live cosmetic changes;
+- server account cosmetic propagation into live player records and snapshots;
+- race-safe user persistence cleanup.
+
+### Consistency with design and requirements
+
+PASS. The implementation preserves the documented lobby/dungeon loop and does not regress the foundation requirements: the capture shows a rendered 3D scene, authenticated socket connection, multiplayer visualization, and movement synchronization. The changes are scoped to avatar cosmetics, account persistence/sync, and renderer model loading; they do not alter combat, lobby readiness, dungeon generation, or movement semantics.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify any debug-scenario implementation. Existing debug-scenario code remains gated through the localhost-only `?debugScenario=` path and is not part of normal gameplay.
+
+## Remaining gaps
+
+None.
+
+## v0.233 — 276-socketHandlers-extract-run-and-cleanup  (2026-06-05 03:10:46)
+
+`grep "socket.on("` over `game/server/index.js` returns **nothing** — the connection
+handler now only builds the `ctx` object and calls `lobbyHandlers.register(socket, ctx)`
+(plus reconnect/init bookkeeping). `getUnlockedKeyItems` was correctly dropped from `ctx`
+since `keyItemHandlers` no longer needs it.
+
+### "Tests green" — MET
+984/984 tests pass, including the `move`/`dodge`/`lootPickup` integration paths that
+exercise the relocated handlers.
+
+### Design / requirements consistency
+Pure server-side socket-handler refactor; no change to `game/docs/design.md` behavior or
+the `game/docs/requirements.md` foundation. No debug scenarios were added or changed
+(`debugScenario: null`, `debugScenarioAllowed: true` in probes; the existing
+`debugScenario` handler stays gated in `lobbyHandlers.js`).
+
+## Remaining gaps
+
+None. The refactor is behavior-preserving, fully wired, and the captured run plus the full
+test suite confirm it.
 
 ## v0.234 — 269-lobby-enforce-max-players-cap  (2026-06-05 03:28:36)
 
@@ -4055,4 +4166,3 @@ No blocking gaps remain for this ticket.
 None. All acceptance criteria are satisfied and the captured run is clean.
 
 ---
-

@@ -1,0 +1,14 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order. Each uses **code** verification (handlers, server state, bounds, and tests — not screenshot-only checks).
+
+### Sub-tickets created
+
+1. `/home/matt/workspace/.autogame-worktrees/231-hub-lobby-phase-movement/tickets/231-hub-lobby-phase-movement/subtickets/01-thread-movement-state/ticket.md`  
+   Refactor `applyPlayerMovement` to take explicit `state` + movement context; no lobby behavior change yet.
+
+2. `/home/matt/workspace/.autogame-worktrees/231-hub-lobby-phase-movement/tickets/231-hub-lobby-phase-movement/subtickets/02-lobby-hub-movement/ticket.md`  
+   Accept lobby `move` events, tick lobby movement, bound to `HUB_LAYOUT`, and seat players on hub spawn.
+
+3. `/home/matt/workspace/.autogame-worktrees/231-hub-lobby-phase-movement/tickets/231-hub-lobby-phase-movement/subtickets/03-lobby-movement-tests/ticket.md`  
+   Automated tests for lobby-phase move accept/reject and hub bounds.
+
+No existing sub-ticket folders needed cleanup (none were present). Client changes were omitted — the renderer already emits `move` during lobby; the server was the blocker.
