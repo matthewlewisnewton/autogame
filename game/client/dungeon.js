@@ -22,6 +22,7 @@ export const FLOOR_Y = 0.05; // slightly above background to avoid z-fighting
 export const GROUND_Y = -0.02; // background plane sits below room floor bottoms (y=0)
 export const PASSAGE_WALL_HEIGHT = 1.5;
 export const PASSAGE_WALL_THICKNESS = 0.3;
+export const LARGE_ROOM_MIN_SIZE = 16;
 
 // ── Profile-keyed dungeon materials ──
 
@@ -96,7 +97,15 @@ function buildProfileMaterialSet(themeEntry) {
 		}),
 	};
 
-	return { floor, wall, passageFloor, passageWall, roleFloors };
+	const accentHex = parseHex(themeEntry.accent ?? themeEntry.passageFloor);
+	const accent = new THREE.MeshStandardMaterial({
+		color: accentHex,
+		emissive: accentHex,
+		emissiveIntensity: 0.55,
+		roughness: 0.45,
+	});
+
+	return { floor, wall, passageFloor, passageWall, roleFloors, accent };
 }
 
 function resolveProfileKey(profile) {
@@ -243,6 +252,84 @@ function findRoomAt(layout, x, z) {
 	return layout.rooms.find(r => r.x === x && r.z === z);
 }
 
+function roomPassages(layout, room) {
+	return (layout.passages || []).filter(p =>
+		(p.x1 === room.x && p.z1 === room.z) || (p.x2 === room.x && p.z2 === room.z)
+	);
+}
+
+function passageUsesEdge(room, passage, edge) {
+	const fromThisRoom = passage.x1 === room.x && passage.z1 === room.z;
+	const otherX = fromThisRoom ? passage.x2 : passage.x1;
+	const otherZ = fromThisRoom ? passage.z2 : passage.z1;
+	if (edge === 'north') return otherZ < room.z;
+	if (edge === 'south') return otherZ > room.z;
+	if (edge === 'west') return otherX < room.x;
+	if (edge === 'east') return otherX > room.x;
+	return false;
+}
+
+function hasGapOnEdge(walls, coordKey, edgeVal) {
+	return walls.filter(w => Math.abs(w[coordKey] - edgeVal) < 0.01).length >= 2;
+}
+
+/**
+ * Build emissive floor-stripe markers at passage doorway gaps on large rooms.
+ *
+ * @param {object} room
+ * @param {object} layout
+ * @param {{ accent: THREE.MeshStandardMaterial }} materials
+ * @returns {THREE.Mesh[]}
+ */
+export function buildDoorwayMarkers(room, layout, materials) {
+	if (Math.min(room.width, room.depth) < LARGE_ROOM_MIN_SIZE) return [];
+
+	const halfW = room.width / 2;
+	const halfD = room.depth / 2;
+	const northZ = room.z - halfD;
+	const southZ = room.z + halfD;
+	const westX = room.x - halfW;
+	const eastX = room.x + halfW;
+
+	const xWalls = room.walls.filter(w => w.axis === 'x');
+	const zWalls = room.walls.filter(w => w.axis === 'z');
+	const connected = roomPassages(layout, room);
+	const passageWidth = layout.passageWidth ?? PASSAGE_WIDTH;
+	const markerSpan = passageWidth * 0.8;
+	const markerHeight = 0.15;
+	const markerDepth = 0.4;
+
+	const gapEdges = [];
+	if (hasGapOnEdge(xWalls, 'z', northZ)) gapEdges.push({ edge: 'north', x: room.x, z: northZ });
+	if (hasGapOnEdge(xWalls, 'z', southZ)) gapEdges.push({ edge: 'south', x: room.x, z: southZ });
+	if (hasGapOnEdge(zWalls, 'x', westX)) gapEdges.push({ edge: 'west', x: westX, z: room.z });
+	if (hasGapOnEdge(zWalls, 'x', eastX)) gapEdges.push({ edge: 'east', x: eastX, z: room.z });
+
+	const meshes = [];
+	for (const gap of gapEdges) {
+		if (!connected.some(p => passageUsesEdge(room, p, gap.edge))) continue;
+
+		let geo;
+		let posX = gap.x;
+		let posZ = gap.z;
+		if (gap.edge === 'north' || gap.edge === 'south') {
+			geo = new THREE.BoxGeometry(markerSpan, markerHeight, markerDepth);
+			posZ += gap.edge === 'north' ? markerDepth / 2 : -markerDepth / 2;
+		} else {
+			geo = new THREE.BoxGeometry(markerDepth, markerHeight, markerSpan);
+			posX += gap.edge === 'west' ? markerDepth / 2 : -markerDepth / 2;
+		}
+
+		const floorY = resolveFloorY(sampleFloorY(layout, posX, posZ));
+		const mesh = new THREE.Mesh(geo, materials.accent);
+		mesh.position.set(posX, floorY + markerHeight / 2, posZ);
+		mesh.userData.doorwayMarker = true;
+		meshes.push(mesh);
+	}
+
+	return meshes;
+}
+
 /**
  * Passage floor geometry should cover only the corridor gap between room edges.
  * Full center-to-center strips overlap room floors and z-fight at doorways.
@@ -378,6 +465,12 @@ export function buildDungeon(scene, layout) {
 			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
+		}
+
+		// Doorway markers on large rooms (after walls, before cover/landmarks)
+		for (const marker of buildDoorwayMarkers(room, layout, profileMaterials)) {
+			scene.add(marker);
+			meshes.push(marker);
 		}
 	}
 

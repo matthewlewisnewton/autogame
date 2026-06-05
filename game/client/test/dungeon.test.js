@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	buildDungeon,
+	buildDoorwayMarkers,
 	buildWallColliders,
 	buildPassageFloorSpec,
 	isUniformFloor,
@@ -8,6 +9,7 @@ import {
 	uniformFloorMeshY,
 	getProfileMaterials,
 	getProfileMaterialColors,
+	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
 	PASSAGE_WALL_HEIGHT,
@@ -755,5 +757,112 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 		expect(yTreasure - yBottom).toBeGreaterThanOrEqual(8);
 		expect(marker.position.y).toBeGreaterThan(yBottom + 8);
 		expect(marker.position.y).toBeCloseTo(yTreasure + 0.75, 4);
+	});
+});
+
+function findDoorwayMarkers(meshes) {
+	return meshes.filter(m => m.userData?.doorwayMarker);
+}
+
+/** Synthetic large room with north + east passage gaps (passageWidth 6, room 20×20). */
+function largeRoomWithTwoDoorways() {
+	const half = 10;
+	const gap = 6;
+	const segLen = (20 - gap) / 2;
+	return room(0, 0, {
+		width: 20,
+		depth: 20,
+		walls: [
+			{ x: -gap / 2 - segLen / 2, z: -half, length: segLen, axis: 'x' },
+			{ x: gap / 2 + segLen / 2, z: -half, length: segLen, axis: 'x' },
+			{ x: 0, z: half, length: 20, axis: 'x' },
+			{ x: -half, z: 0, length: 20, axis: 'z' },
+			{ x: half, z: -gap / 2 - segLen / 2, length: segLen, axis: 'z' },
+			{ x: half, z: gap / 2 + segLen / 2, length: segLen, axis: 'z' },
+		],
+	});
+}
+
+describe('buildDoorwayMarkers()', () => {
+	it('places one marker per passage gap on large rooms only', () => {
+		const materials = getProfileMaterials('open');
+		const largeLayout = {
+			profile: 'open',
+			passageWidth: 6,
+			rooms: [largeRoomWithTwoDoorways()],
+			passages: [
+				{ x1: 0, z1: 0, x2: 0, z2: -28, walls: [] },
+				{ x1: 0, z1: 0, x2: 28, z2: 0, walls: [] },
+			],
+		};
+		const markers = buildDoorwayMarkers(largeLayout.rooms[0], largeLayout, materials);
+		expect(markers).toHaveLength(2);
+		for (const m of markers) {
+			expect(m.userData.doorwayMarker).toBe(true);
+			expect(m.material).toBe(materials.accent);
+			expect(m.material.emissiveIntensity).toBeGreaterThan(0);
+		}
+	});
+
+	it('creates no markers below the large-room size threshold', () => {
+		const materials = getProfileMaterials('open');
+		const gap = 4;
+		const segLen = (8 - gap) / 2;
+		const smallRoom = room(0, 0, {
+			width: 8,
+			depth: 8,
+			walls: [
+				{ x: -gap / 2 - segLen / 2, z: -4, length: segLen, axis: 'x' },
+				{ x: gap / 2 + segLen / 2, z: -4, length: segLen, axis: 'x' },
+				{ x: 0, z: 4, length: 8, axis: 'x' },
+				{ x: -4, z: 0, length: 8, axis: 'z' },
+				{ x: 4, z: 0, length: 8, axis: 'z' },
+			],
+		});
+		const smallLayout = {
+			profile: 'open',
+			passageWidth: 4,
+			rooms: [smallRoom],
+			passages: [{ x1: 0, z1: 0, x2: 0, z2: -12, walls: [] }],
+		};
+		expect(Math.min(smallRoom.width, smallRoom.depth)).toBeLessThan(LARGE_ROOM_MIN_SIZE);
+		expect(buildDoorwayMarkers(smallRoom, smallLayout, materials)).toHaveLength(0);
+	});
+
+	it('buildDungeon adds doorway markers for large rooms and none for small rooms', () => {
+		const materials = getProfileMaterials('open');
+		const largeLayout = {
+			profile: 'open',
+			passageWidth: 6,
+			rooms: [largeRoomWithTwoDoorways()],
+			passages: [
+				{ x1: 0, z1: 0, x2: 0, z2: -28, walls: [] },
+				{ x1: 0, z1: 0, x2: 28, z2: 0, walls: [] },
+			],
+		};
+		const largeResult = buildDungeon(mockScene(), largeLayout);
+		expect(findDoorwayMarkers(largeResult.meshes)).toHaveLength(2);
+
+		const gap = 4;
+		const segLen = (8 - gap) / 2;
+		const smallLayout = {
+			profile: 'open',
+			passageWidth: 4,
+			rooms: [room(50, 50, {
+				width: 8,
+				depth: 8,
+				walls: [
+					{ x: 50 - gap / 2 - segLen / 2, z: 46, length: segLen, axis: 'x' },
+					{ x: 50 + gap / 2 + segLen / 2, z: 46, length: segLen, axis: 'x' },
+					{ x: 50, z: 54, length: 8, axis: 'x' },
+					{ x: 46, z: 50, length: 8, axis: 'z' },
+					{ x: 54, z: 50, length: 8, axis: 'z' },
+				],
+			})],
+			passages: [{ x1: 50, z1: 50, x2: 50, z2: 38, walls: [] }],
+		};
+		const smallResult = buildDungeon(mockScene(), smallLayout);
+		expect(findDoorwayMarkers(smallResult.meshes)).toHaveLength(0);
+		expect(materials.accent).toBeDefined();
 	});
 });
