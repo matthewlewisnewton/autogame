@@ -1141,8 +1141,13 @@ function startServer(port) {
     app.use(express.json());
     const authRouter = require('./auth');
     const accountRouter = require('./account');
+    const adminViewRouter = require('./adminView');
     app.use('/api', authRouter);
     app.use('/api', accountRouter);
+    // Mounted at the app root (path is /admin, NOT under /api) and kept
+    // independent of the JWT socket middleware and the account router's
+    // requireAuth — it is gated solely by its own ADMIN_PASSWORD env.
+    app.use(adminViewRouter);
     _routesMounted = true;
   }
 
