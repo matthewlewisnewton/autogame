@@ -1,19 +1,10 @@
-Merge conflicts are resolved. All three files are marker-free and `game/client/main.js` passes a syntax check.
+`LOGBOOK.md` is conflict-free.
 
-### `game/client/main.js`
-Combined booth wiring from both sides:
-- **Imports**: `boothPrompt` (`BOOTH_ACTION_EVENT`), `boothDeck` (deck terminal), and `launchBooth` (mission launch)
-- **Listeners**: `registerDeckBoothListener` + `?booth=deck` debug opener **and** a `BOOTH_ACTION_EVENT` handler for the character booth
-- **Debug hooks**: deck test hooks (`__openDeckBoothForTest`, `__requestDebugBoothOpenForTest`) **and** `requestBoothDebugOpen()` for `?booth=character`
+The conflict was at the end of the file where **main** closed the v0.240 (`270-difficulty-scale-with-player-count`) entry with "No blocking gaps found." and the **235-booth-shop** branch appended the full v0.246 review entry.
 
-Launch booth behavior elsewhere in the file is unchanged.
+The merged result keeps both:
 
-### `TASKS.md`
-Both cleanup backlog entries are kept:
-- `278-cleanup-booth-mission-launch` (from main)
-- `278-cleanup-booth-deck-terminal` (from this ticket)
+1. **Main's v0.240 closing** — `## Remaining gaps` → `No blocking gaps found.`
+2. **Ticket's v0.246 entry** — complete booth-shop review (shop booth wiring, `?booth=shop` hook, 2D shop compatibility, tests, design check) ending with `## Remaining gaps` → `None.`
 
-### `LOGBOOK.md`
-All review entries are kept in version order (v0.240 → v0.241 → v0.242 → v0.243), with a single final “Remaining gaps: None” section.
-
-Spot-checked booth-related client tests (17 + deck booth tests) — all passed; exit code 1 was only from partial-run coverage thresholds. The harness can commit and run the full suite.
+The file already had main's v0.244 (`232-hub-shared-presence`) entry merged above; no other conflict markers remain. The harness can proceed with commit and tests.

@@ -77,6 +77,12 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const {
+  syncHubPresenceFromLobby,
+  getHubPresenceSnapshot,
+  emitHubPresenceUpdate,
+  syncAndEmitHubPresenceIfChanged,
+} = require('./hubPresence');
 
 const app = express();
 // Harness readiness probe — same HTTP server as Socket.IO; no auth required.
@@ -955,7 +961,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   if (!player) return;
   withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
 
-  socket.emit('lobbyJoined', {
+  const joinedPayload = {
     lobbyId: lobby.id,
     lobbyName: lobby.name,
     id: playerId,
@@ -971,7 +977,17 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     ownedCards: player.ownedCards,
     shopOffer: state.shopOffer,
     ...buildQuestUpdatePayload(state, player.accountId),
-  });
+  };
+  if (isLobbyPhase(state)) {
+    try {
+      syncHubPresenceFromLobby(lobby);
+      joinedPayload.hubPresence = getHubPresenceSnapshot(lobby);
+    } catch (err) {
+      console.error('[hubPresence] lobbyJoined snapshot failed for lobby', lobby.id, err);
+      joinedPayload.hubPresence = { schemaVersion: 1, entries: {}, revision: 0 };
+    }
+  }
+  socket.emit('lobbyJoined', joinedPayload);
 
   broadcastLobbyUpdate(lobby);
 }
@@ -1030,6 +1046,13 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby);
+  if (isLobbyPhase(state)) {
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] join broadcast failed for lobby', lobby.id, err);
+    }
+  }
 }
 
 function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
@@ -1052,6 +1075,13 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby, playerId);
+  if (isLobbyPhase(lobby.state)) {
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
+    }
+  }
   io.to(lobby.id).emit('playerReconnected', playerId);
   broadcastLobbyList();
   return true;
@@ -1070,6 +1100,16 @@ function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false }
       checkRunTerminalState();
     } else {
       broadcastLobbyUpdate(lobby);
+      if (isLobbyPhase(lobby.state) && playerId) {
+        try {
+          syncHubPresenceFromLobby(lobby);
+          emitHubPresenceUpdate(io, lobby, {
+            removedPlayerIds: [playerId],
+          });
+        } catch (err) {
+          console.error('[hubPresence] leave/disconnect broadcast failed for lobby', lobby.id, err);
+        }
+      }
     }
   });
 }
@@ -1166,6 +1206,7 @@ function runGameLoopTick() {
         const state = lobby.state;
         if (isLobbyPhase(state)) {
           applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+          syncAndEmitHubPresenceIfChanged(io, lobby);
           flushDirtyPlayerSaves();
         } else if (isPlayingPhase(state)) {
           applyPlayerMovement(state, buildMovementContext(state));

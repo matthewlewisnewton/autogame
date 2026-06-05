@@ -4229,27 +4229,41 @@ PASS. `coverage.log` reports all tests passing: 74 test files and 1479 tests. Co
 
 None.
 
-## v0.240 — 270-difficulty-scale-with-player-count  (2026-06-05 04:32:37)
+## v0.244 — 232-hub-shared-presence  (2026-06-05 05:33:33)
 
-### Enemy damage tracks live count up and down
+The captured run is healthy. `metrics.json` reports `"ok": true`, the servers started, gameplay reached `phase: "playing"` with two players, and `pageerrors` is empty. `console.log` has two non-fatal 409 resource lines but no `pageerror` or `[fatal]` entries from game code. The capture used the fallback full-flow smoke plan; it proves the build loads and the core lobby-to-game flow still runs, though it does not specifically visualize hub-presence movement.
 
-Pass. `game/server/simulation.js` applies the enemy-damage factor at strike resolution for player-directed enemy attacks, leaving stored enemy `attackDamage` unchanged and allowing later joins/leaves to affect subsequent hits. `game/server/test/enemy_damage_scaling.test.js` verifies baseline counts, scaled counts, live join/leave changes, and no mutation of the stored enemy stat.
+## Acceptance criteria findings
 
-### Miniboss HP scales at spawn and is not retroactive
+1. Party-mates' avatars render and move live in the shared hub with cosmetics: satisfied. The server builds presence entries from live lobby players with position, rotation, username, connection state, and backfilled cosmetics. Lobby ticks sync movement into `lobby.hubPresence`, and the client applies `hubPresence` snapshots/updates into `gameState.players`; the renderer then builds/rebuilds remote avatar meshes from cosmetic signatures and moves them from broadcast coordinates. Tests cover remote mesh creation, movement, cosmetic changes, and removed-player disposal.
 
-Pass. `game/server/progression.js` scales miniboss `hp` and `maxHp` inside `spawnEnemy()` only when the enemy is created, using the current party count. Existing minibosses are not revisited when the party later changes. `game/server/test/miniboss_hp_scaling.test.js` covers baseline and scaled spawns, non-miniboss enemies remaining unchanged, and join/leave changes not retroactively altering existing minibosses.
+2. Presence broadcast is per-lobby-scoped and structured for future culling: satisfied. `createLobby()` owns a `hubPresence` object, broadcasts target `io.to(lobby.id)`, and payloads include `lobbyId`, `schemaVersion`, `entries`, and `revision`. There is no global hub-presence store, and the per-entry map is a reasonable base for later per-player filtering.
 
-### Count helper stays correct under churn
+3. Join/leave updates presence correctly: satisfied. `lobbyJoined` includes a full lobby-phase `hubPresence` snapshot for the joining player. Existing members receive `hubPresenceUpdate` on join/reconnect, and leave, soft-disconnect, and eviction paths sync the lobby snapshot and include `removedPlayerIds` so clients can remove stale avatars.
 
-Pass. `game/server/config.js` exposes `runPlayerCount()` as the single helper all three systems read, clamps at `MAX_PLAYERS`, and the config test suite verifies count increases and decreases as players are added and removed. This is consistent with the lobby leave path deleting players from `gameState.players` and the drop-in path adding them.
+4. Tests: satisfied. The latest coverage run passed: 59 test files, 1223 tests. The new coverage includes server hub-presence state tests, socket broadcast tests, end-to-end cosmetic/presence integration tests, and client avatar rendering tests. Coverage thresholds were disabled as requested visibility only.
 
 ## Design and regression check
 
-The implementation is server-side only and does not alter the documented lobby/dungeon/deck loop, rendering, movement synchronization, or socket architecture in `CONTEXT.md`, `game/docs/design.md`, and `game/docs/requirements.md`. It does not add or change any debug scenario URL shortcut, so the debug-scenario review criteria are not applicable.
+The implementation is consistent with the lobby-first multiplayer design in `game/docs/design.md` and `game/docs/lobbies.md`: players still authenticate, create/join a lobby, ready up, and enter a dungeon together. It does not regress the foundation requirements for 3D rendering, server-client WebSocket connection, player visualization, or movement synchronization. The ticket did not add or change a development debug scenario; existing debug URL handling remains gated to localhost-style hosts and is not part of normal gameplay.
 
-## Remaining gaps
+## v0.243 — 236-booth-deck-terminal  (2026-06-05 05:10:08)
 
-No blocking gaps found.
+   Pass. The hook is parsed from the URL, is gated to `localhost`, `127.0.0.1`, and `::1`, and opens only once after a lobby-phase join. It reaches the same `openDeckBooth` end state as the normal booth interaction, so it is a QA shortcut rather than an alternate gameplay implementation.
+
+3. 2D deck editor still works.
+   Pass. The implementation reuses the existing deck editor DOM and `renderDeckEditor` behavior. The capture shows the regular lobby and deployment flow still works, and the tests exercise the existing add-button path through the deck editor.
+
+4. Test.
+   Pass. `coverage.log` reports 59 test files and 1210 tests passing. Added tests cover booth opening, `deckAddCard` emission, debug-hook gating, socket handler fault wrapping, and the ready-to-deploy server resilience path.
+
+## Design and foundation consistency
+
+The change is consistent with the design document's lobby flow: players manage decks in the lobby before readying for a dungeon run. The booth interaction remains server-authoritative for normal gameplay, so normal players must still be in range of the deck booth. The captured run also preserves the foundation requirements: Three.js renders, the client connects to the server, multiplayer state is visible, and movement/deployment continue to work.
+
+## Code quality
+
+No blocking code-quality issue found. The deck booth behavior is small and testable, normal and debug paths share the same editor opener, and the capture logs do not show runtime exceptions. The broad server resilience wrappers are worth tightening later, but they did not mask any observed capture error and are covered by targeted tests.
 
 ## v0.242 — 237-booth-mission-launch  (2026-06-05 05:01:50)
 
@@ -4286,27 +4300,27 @@ PASS. The change stays within the design's lobby customization space and does no
 
 PASS. The implementation is scoped and modular: shared cosmetic UI behavior was extracted into `cosmeticForm.js`, the booth overlay owns only booth-specific lifecycle, and the existing `cosmetic-preview.js` remains the preview renderer. I did not find dead code, broken imports, ungated debug behavior, or console/page errors attributable to this ticket.
 
-## v0.243 — 236-booth-deck-terminal  (2026-06-05 05:10:08)
+## v0.240 — 270-difficulty-scale-with-player-count  (2026-06-05 04:32:37)
 
-   Pass. The hook is parsed from the URL, is gated to `localhost`, `127.0.0.1`, and `::1`, and opens only once after a lobby-phase join. It reaches the same `openDeckBooth` end state as the normal booth interaction, so it is a QA shortcut rather than an alternate gameplay implementation.
+### Enemy damage tracks live count up and down
 
-3. 2D deck editor still works.
-   Pass. The implementation reuses the existing deck editor DOM and `renderDeckEditor` behavior. The capture shows the regular lobby and deployment flow still works, and the tests exercise the existing add-button path through the deck editor.
+Pass. `game/server/simulation.js` applies the enemy-damage factor at strike resolution for player-directed enemy attacks, leaving stored enemy `attackDamage` unchanged and allowing later joins/leaves to affect subsequent hits. `game/server/test/enemy_damage_scaling.test.js` verifies baseline counts, scaled counts, live join/leave changes, and no mutation of the stored enemy stat.
 
-4. Test.
-   Pass. `coverage.log` reports 59 test files and 1210 tests passing. Added tests cover booth opening, `deckAddCard` emission, debug-hook gating, socket handler fault wrapping, and the ready-to-deploy server resilience path.
+### Miniboss HP scales at spawn and is not retroactive
 
-## Design and foundation consistency
+Pass. `game/server/progression.js` scales miniboss `hp` and `maxHp` inside `spawnEnemy()` only when the enemy is created, using the current party count. Existing minibosses are not revisited when the party later changes. `game/server/test/miniboss_hp_scaling.test.js` covers baseline and scaled spawns, non-miniboss enemies remaining unchanged, and join/leave changes not retroactively altering existing minibosses.
 
-The change is consistent with the design document's lobby flow: players manage decks in the lobby before readying for a dungeon run. The booth interaction remains server-authoritative for normal gameplay, so normal players must still be in range of the deck booth. The captured run also preserves the foundation requirements: Three.js renders, the client connects to the server, multiplayer state is visible, and movement/deployment continue to work.
+### Count helper stays correct under churn
 
-## Code quality
+Pass. `game/server/config.js` exposes `runPlayerCount()` as the single helper all three systems read, clamps at `MAX_PLAYERS`, and the config test suite verifies count increases and decreases as players are added and removed. This is consistent with the lobby leave path deleting players from `gameState.players` and the drop-in path adding them.
 
-No blocking code-quality issue found. The deck booth behavior is small and testable, normal and debug paths share the same editor opener, and the capture logs do not show runtime exceptions. The broad server resilience wrappers are worth tightening later, but they did not mask any observed capture error and are covered by targeted tests.
+## Design and regression check
+
+The implementation is server-side only and does not alter the documented lobby/dungeon/deck loop, rendering, movement synchronization, or socket architecture in `CONTEXT.md`, `game/docs/design.md`, and `game/docs/requirements.md`. It does not add or change any debug scenario URL shortcut, so the debug-scenario review criteria are not applicable.
 
 ## Remaining gaps
 
-None.
+No blocking gaps found.
 
 ## v0.246 — 235-booth-shop  (2026-06-05 05:37:49)
 
@@ -4329,4 +4343,3 @@ PASS. The change fits the documented lobby economy loop: players can buy and sel
 ## Remaining gaps
 
 None.
-
