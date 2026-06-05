@@ -112,6 +112,38 @@ function getWallColliders() {
 }
 
 /**
+ * Playing-phase movement context derived from lobby state.
+ * @typedef {{ layout: object, walkableAABBs: object[], dungeonBounds: object, colliders?: object[] }} MovementContext
+ */
+
+function buildMovementContext(state) {
+  if (!state) return null;
+  return {
+    layout: state.layout,
+    walkableAABBs: state.walkableAABBs,
+    dungeonBounds: state.dungeonBounds,
+    colliders: buildWallColliders(state.layout),
+  };
+}
+
+function resolveMovementContext(movementContext) {
+  if (movementContext && movementContext.dungeonBounds) {
+    return {
+      layout: movementContext.layout,
+      walkableAABBs: movementContext.walkableAABBs,
+      dungeonBounds: movementContext.dungeonBounds,
+      colliders: movementContext.colliders || buildWallColliders(movementContext.layout),
+    };
+  }
+  return {
+    layout: _gameState && _gameState.layout,
+    walkableAABBs: _gameState && _gameState.walkableAABBs,
+    dungeonBounds: _gameState && _gameState.dungeonBounds,
+    colliders: getWallColliders(),
+  };
+}
+
+/**
  * Compute the AABB for a wall segment given its half-thickness.
  */
 function wallAABB(wall, halfThickness) {
@@ -232,7 +264,7 @@ function checkSweptCollision(fromX, fromZ, toX, toZ, colliders = getWallCollider
  * Move an entity using direct movement with axis-separated wall sliding.
  * Shared by player movement and enemy knockback/pull resolution.
  */
-function tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, radius) {
+function tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, radius, movementContext) {
   if (checkWallCollision(fromX, fromZ, colliders, radius)) {
     const resolved = resolveWallCollision(fromX, fromZ, colliders, fromX, fromZ, radius);
     fromX = resolved.x;
@@ -244,9 +276,9 @@ function tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, radius) 
   const sweptOptions = { allowEndpointTouch: true, radius };
 
   function attempt(targetX, targetZ) {
-    const clamped = clampToDungeon(targetX, targetZ);
+    const clamped = clampToDungeon(targetX, targetZ, movementContext);
     const resolved = resolveWallCollision(clamped.x, clamped.z, colliders, fromX, fromZ, radius);
-    if (!isInsideDungeon(resolved.x, resolved.z)) return null;
+    if (!isInsideDungeon(resolved.x, resolved.z, movementContext)) return null;
     if (checkWallCollision(resolved.x, resolved.z, colliders, radius)) return null;
     if (checkSweptCollision(fromX, fromZ, resolved.x, resolved.z, colliders, sweptOptions)) {
       return null;
@@ -281,28 +313,44 @@ function tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, radius) 
 }
 
 function tryEntityDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders = getWallColliders()) {
-  return tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, ENTITY_RADIUS);
+  const movementContext = resolveMovementContext(null);
+  if (Array.isArray(colliders)) {
+    movementContext.colliders = colliders;
+  }
+  return tryDisplacement(fromX, fromZ, dirX, dirZ, distance, movementContext.colliders, ENTITY_RADIUS, movementContext);
 }
 
 /**
  * Move a player using direct movement with axis-separated wall sliding.
  */
-function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, colliders = getWallColliders()) {
-  return tryDisplacement(fromX, fromZ, dirX, dirZ, distance, colliders, PLAYER_RADIUS);
+function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, movementContextOrColliders) {
+  let movementContext;
+  if (Array.isArray(movementContextOrColliders)) {
+    movementContext = resolveMovementContext(null);
+    movementContext.colliders = movementContextOrColliders;
+  } else if (movementContextOrColliders) {
+    movementContext = resolveMovementContext(movementContextOrColliders);
+  } else {
+    movementContext = resolveMovementContext(null);
+  }
+  return tryDisplacement(
+    fromX, fromZ, dirX, dirZ, distance,
+    movementContext.colliders, PLAYER_RADIUS, movementContext
+  );
 }
 
 /**
  * Apply one tick of movement for all players with active input.
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
  */
-function applyPlayerMovement() {
-  if (!_gameState || !isPlayingPhase(_gameState)) return;
+function applyPlayerMovement(state, movementContext = buildMovementContext(state)) {
+  if (!state || !isPlayingPhase(state) || !movementContext) return;
 
+  const ctx = resolveMovementContext(movementContext);
   const step = MOVE_SPEED / TICK_RATE;
-  const colliders = getWallColliders();
   const now = Date.now();
 
-  for (const [playerId, player] of Object.entries(_gameState.players)) {
+  for (const [playerId, player] of Object.entries(state.players)) {
     if (!player || player.dead || player.extracted) continue;
     if (player.connected === false) continue;
     if (!player.inputActive) continue;
@@ -327,10 +375,10 @@ function applyPlayerMovement() {
 
     const prevX = player.x;
     const prevZ = player.z;
-    const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, colliders);
+    const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
     player.x = result.x;
     player.z = result.z;
-    player.y = resolveFloorY(sampleFloorY(_gameState.layout, result.x, result.z));
+    player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
     if (Number.isFinite(player.inputRotation)) {
       player.rotation = player.inputRotation;
     }
@@ -579,8 +627,10 @@ function computeWalkableAABBs(layout) {
  * Check if (x, z) is inside any walkable AABB.
  * Returns false when walkableAABBs is unset or empty.
  */
-function isInsideDungeon(x, z) {
-  const aabbs = _gameState && _gameState.walkableAABBs;
+function isInsideDungeon(x, z, movementContext) {
+  const aabbs = movementContext
+    ? movementContext.walkableAABBs
+    : (_gameState && _gameState.walkableAABBs);
   if (!aabbs || aabbs.length === 0) return false;
 
   for (const a of aabbs) {
@@ -648,8 +698,11 @@ function pickFloorSpawnPosition(layout, rng, { maxAttempts = 24 } = {}) {
 /**
  * Clamps (x, z) to dungeon AABB bounds.
  */
-function clampToDungeon(x, z) {
-  const bounds = _gameState.dungeonBounds;
+function clampToDungeon(x, z, movementContext) {
+  const bounds = movementContext
+    ? movementContext.dungeonBounds
+    : (_gameState && _gameState.dungeonBounds);
+  if (!bounds) return { x, z };
   return {
     x: Math.max(bounds.minX, Math.min(bounds.maxX, x)),
     z: Math.max(bounds.minZ, Math.min(bounds.maxZ, z)),
@@ -2343,6 +2396,7 @@ module.exports = {
   buildWallColliders,
   rebuildWallColliders,
   getWallColliders,
+  buildMovementContext,
   wallAABB,
   checkWallCollision,
   resolveWallCollision,

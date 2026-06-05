@@ -121,6 +121,7 @@ const {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  buildMovementContext,
   applyPlayerMovement,
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
@@ -1083,7 +1084,7 @@ function runGameLoopTick() {
     withLobbyContext(lobby, () => {
       const state = lobby.state;
       if (isPlayingPhase(state)) {
-        applyPlayerMovement();
+        applyPlayerMovement(state, buildMovementContext(state));
         checkTelepipeProximity();
         flushDirtyPlayerSaves();
         updateEnemies();
