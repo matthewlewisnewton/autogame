@@ -151,7 +151,7 @@ import {
 	setBoothInRangeListener,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction } from './boothPrompt.js';
-import { registerDeckBoothListener } from './boothDeck.js';
+import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -780,6 +780,7 @@ function applyLobbyJoinedData(data) {
 	if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 	requestDebugScenario();
 	renderHubScene();
+	requestDebugBoothOpen();
 	updateObjectiveHud();
 }
 
@@ -847,6 +848,8 @@ const debugScenario = new URLSearchParams(window.location.search).get('debugScen
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let debugScenarioRequested = false;
 let debugScenarioResult = null;
+const debugBooth = new URLSearchParams(window.location.search).get('booth');
+const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
@@ -930,10 +933,13 @@ if (boothPromptEl) {
 	boothPromptEl.addEventListener('click', () => emitBoothInteract());
 }
 
-registerDeckBoothListener({
-	showGameLobby,
-	setLobbyTab,
-	renderDeckEditor,
+const deckBoothDeps = { showGameLobby, setLobbyTab, renderDeckEditor };
+registerDeckBoothListener(deckBoothDeps);
+const requestDebugBoothOpen = createRequestDebugBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openDeckBooth,
+	deps: deckBoothDeps,
 });
 
 // Context bundle handed to per-card renderers — declared once so the
@@ -1857,6 +1863,9 @@ function requestDebugScenario() {
 	debugScenarioRequested = true;
 	socket.emit('debugScenario', { name: debugScenario });
 }
+
+window.__openDeckBoothForTest = openDeckBooth;
+window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
 window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve) => {
