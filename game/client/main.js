@@ -104,6 +104,7 @@ import {
 	getMsBarTier,
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
+import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 
 // ── Renderer module imports ──
 import {
@@ -165,6 +166,7 @@ import {
 	applyLockOnPress,
 	emitBoothInteract,
 	setBoothInRangeListener,
+	setEnemyDisplayCatalogGetter,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
@@ -1879,6 +1881,7 @@ let myOwnedCards = {};
 let lastEvolutionResult = null;
 let keyItemDefs = {};
 let enemyDisplayCatalog = null;
+setEnemyDisplayCatalogGetter(() => enemyDisplayCatalog);
 let availableQuests = [];
 let questVariants = [];
 let unlockedQuestTiers = {};
@@ -4378,6 +4381,7 @@ window.renderKeyItemList = renderKeyItemList;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
 window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
+window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);

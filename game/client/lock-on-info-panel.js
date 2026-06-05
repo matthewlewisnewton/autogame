@@ -145,3 +145,76 @@ export function buildLockOnPanelModel(enemy, catalog) {
     stats,
   };
 }
+
+function setPanelHidden(panelEl) {
+  panelEl.classList.add('hidden');
+  panelEl.setAttribute('aria-hidden', 'true');
+}
+
+function setPanelVisible(panelEl) {
+  panelEl.classList.remove('hidden');
+  panelEl.setAttribute('aria-hidden', 'false');
+}
+
+/**
+ * Apply a lock-on panel view-model to the HUD DOM and toggle visibility.
+ * Hides the panel when the enemy is missing, dead, or the model cannot be built.
+ */
+export function syncLockOnInfoPanel({
+  panelEl,
+  nameEl,
+  variantEl,
+  hpEl,
+  statsEl,
+  descEl,
+  enemy,
+  catalog,
+}) {
+  if (!panelEl) return;
+
+  const model = buildLockOnPanelModel(enemy, catalog);
+  if (!model) {
+    setPanelHidden(panelEl);
+    return;
+  }
+
+  setPanelVisible(panelEl);
+
+  if (nameEl) nameEl.textContent = model.name;
+
+  if (variantEl) {
+    if (model.variantName) {
+      variantEl.textContent = model.variantName;
+      variantEl.classList.remove('hidden');
+      variantEl.setAttribute('aria-hidden', 'false');
+    } else {
+      variantEl.textContent = '';
+      variantEl.classList.add('hidden');
+      variantEl.setAttribute('aria-hidden', 'true');
+    }
+  }
+
+  if (hpEl) hpEl.textContent = model.hpText;
+
+  if (statsEl) {
+    statsEl.replaceChildren();
+    for (const stat of model.stats) {
+      const row = document.createElement('div');
+      row.className = 'lock-on-stat-row';
+
+      const label = document.createElement('span');
+      label.className = 'lock-on-stat-label';
+      label.textContent = stat.label;
+
+      const value = document.createElement('span');
+      value.className = 'lock-on-stat-value';
+      value.textContent = stat.value;
+
+      row.appendChild(label);
+      row.appendChild(value);
+      statsEl.appendChild(row);
+    }
+  }
+
+  if (descEl) descEl.textContent = model.description;
+}

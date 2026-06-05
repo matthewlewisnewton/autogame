@@ -1,15 +1,52 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { createRequire } from 'module';
 import {
   STAT_LABELS,
   formatStatValue,
   buildLockOnPanelModel,
+  syncLockOnInfoPanel,
 } from '../lock-on-info-panel.js';
 
 const require = createRequire(import.meta.url);
 const { buildEnemyDisplayCatalog } = require('../../server/enemyDisplay.js');
 
 const catalog = buildEnemyDisplayCatalog();
+
+function createPanelDom() {
+  const panelEl = document.createElement('div');
+  panelEl.id = 'lock-on-info-panel';
+  panelEl.classList.add('hidden');
+  panelEl.setAttribute('aria-hidden', 'true');
+
+  const nameEl = document.createElement('h2');
+  nameEl.id = 'lock-on-target-name';
+  panelEl.appendChild(nameEl);
+
+  const variantEl = document.createElement('span');
+  variantEl.id = 'lock-on-target-variant';
+  variantEl.classList.add('lock-on-variant-badge', 'hidden');
+  panelEl.appendChild(variantEl);
+
+  const hpEl = document.createElement('div');
+  hpEl.id = 'lock-on-target-hp';
+  panelEl.appendChild(hpEl);
+
+  const statsEl = document.createElement('div');
+  statsEl.id = 'lock-on-target-stats';
+  panelEl.appendChild(statsEl);
+
+  const descEl = document.createElement('p');
+  descEl.id = 'lock-on-target-description';
+  panelEl.appendChild(descEl);
+
+  document.body.appendChild(panelEl);
+
+  return { panelEl, nameEl, variantEl, hpEl, statsEl, descEl };
+}
+
+afterEach(() => {
+  document.getElementById('lock-on-info-panel')?.remove();
+});
 
 describe('STAT_LABELS', () => {
   it('maps common surfaced stat keys to readable labels', () => {
@@ -93,5 +130,69 @@ describe('buildLockOnPanelModel', () => {
     expect(labels).toContain('Explosion damage');
     const radiusRow = model.stats.find((s) => s.label === 'Explosion radius');
     expect(radiusRow.value).toBe('5');
+  });
+});
+
+describe('syncLockOnInfoPanel', () => {
+  it('shows a populated panel while locked onto a living enemy', () => {
+    const dom = createPanelDom();
+    const enemy = {
+      type: 'grunt',
+      hp: 62,
+      maxHp: 100,
+      attackDamage: 10,
+      attackStyle: 'radial',
+      chaseSpeed: 2.5,
+    };
+
+    syncLockOnInfoPanel({ ...dom, enemy, catalog });
+
+    expect(dom.panelEl.classList.contains('hidden')).toBe(false);
+    expect(dom.panelEl.getAttribute('aria-hidden')).toBe('false');
+    expect(dom.nameEl.textContent).toBe('Bulkhead Drone');
+    expect(dom.hpEl.textContent).toBe('62 / 100');
+    expect(dom.statsEl.querySelectorAll('.lock-on-stat-row')).toHaveLength(3);
+    expect(dom.descEl.textContent).toContain('Slow, durable radial attacker.');
+  });
+
+  it('hides the panel when the enemy is missing or unlocked', () => {
+    const dom = createPanelDom();
+    const enemy = {
+      type: 'grunt',
+      hp: 62,
+      maxHp: 100,
+      attackDamage: 10,
+      attackStyle: 'radial',
+      chaseSpeed: 2.5,
+    };
+
+    syncLockOnInfoPanel({ ...dom, enemy, catalog });
+    expect(dom.panelEl.classList.contains('hidden')).toBe(false);
+
+    syncLockOnInfoPanel({ ...dom, enemy: null, catalog });
+    expect(dom.panelEl.classList.contains('hidden')).toBe(true);
+    expect(dom.panelEl.getAttribute('aria-hidden')).toBe('true');
+  });
+
+  it('updates HP text when the same enemy id receives a new hp value', () => {
+    const dom = createPanelDom();
+    const enemy = {
+      type: 'grunt',
+      hp: 80,
+      maxHp: 100,
+      attackDamage: 10,
+      attackStyle: 'radial',
+      chaseSpeed: 2.5,
+    };
+
+    syncLockOnInfoPanel({ ...dom, enemy, catalog });
+    expect(dom.hpEl.textContent).toBe('80 / 100');
+
+    syncLockOnInfoPanel({
+      ...dom,
+      enemy: { ...enemy, hp: 45 },
+      catalog,
+    });
+    expect(dom.hpEl.textContent).toBe('45 / 100');
   });
 });
