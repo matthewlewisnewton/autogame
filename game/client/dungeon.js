@@ -155,6 +155,36 @@ const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 /** userData.dungeonTag on spire-ascent summit beacon meshes (client tests). */
 export const SPIRE_SUMMIT_BEACON_TAG = 'spireSummitBeacon';
 
+/** userData.dungeonTag on spire-ascent exterior edge hazard warning strips. */
+export const SPIRE_EDGE_HAZARD_TAG = 'spireEdgeHazard';
+
+const edgeHazardStripMaterial = new THREE.MeshStandardMaterial({
+	color: 0x22d3ee,
+	emissive: 0xff00ff,
+	emissiveIntensity: 1.1,
+	roughness: 0.35,
+	metalness: 0.2,
+});
+
+/**
+ * Low emissive warning strip on a spire-ascent tier lip hazard AABB.
+ */
+export function buildSpireEdgeHazardMesh(hazard) {
+	const width = hazard.maxX - hazard.minX;
+	const depth = hazard.maxZ - hazard.minZ;
+	const stripHeight = 0.14;
+	const geo = new THREE.BoxGeometry(width, stripHeight, depth);
+	const mesh = new THREE.Mesh(geo, edgeHazardStripMaterial);
+	const floorY = resolveFloorY(hazard.y);
+	mesh.position.set(
+		(hazard.minX + hazard.maxX) / 2,
+		floorY + stripHeight / 2,
+		(hazard.minZ + hazard.maxZ) / 2,
+	);
+	mesh.userData.dungeonTag = SPIRE_EDGE_HAZARD_TAG;
+	return mesh;
+}
+
 const summitBeaconShaftMaterial = new THREE.MeshStandardMaterial({
 	color: 0xe0f2fe,
 	emissive: 0x38bdf8,
@@ -434,6 +464,12 @@ export function buildDungeon(scene, layout) {
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
 		}
+	}
+
+	for (const hazard of layout.edgeHazards || []) {
+		const hazardMesh = buildSpireEdgeHazardMesh(hazard);
+		scene.add(hazardMesh);
+		meshes.push(hazardMesh);
 	}
 
 	// ── Build open-plaza platforms ──

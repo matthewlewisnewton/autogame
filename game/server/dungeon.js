@@ -129,6 +129,8 @@ const SPIRE_ASCENT = {
   rampDepth: 8,
   minTotalRise: 10,
   minRampSlope: 0.2,
+  edgeHazardStripWidth: 1.2,
+  edgeHazardEndPadding: 0.5,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -916,6 +918,46 @@ function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, {
 }
 
 /**
+ * Thin hazard strips on the outward lateral lip of each combat tier (zig-zag
+ * exposes east on odd tierIndex, west on even). Start/treasure tiers omitted.
+ */
+function buildSpireEdgeHazards(tiers) {
+  const { edgeHazardStripWidth, edgeHazardEndPadding } = SPIRE_ASCENT;
+  const edgeHazards = [];
+
+  for (const tier of tiers) {
+    if (tier.role !== 'combat') continue;
+
+    const halfW = tier.width / 2;
+    const halfD = tier.depth / 2;
+    const y = tier.floorCorners.yNW;
+    const outwardEast = tier.tierIndex % 2 === 1;
+    let minX;
+    let maxX;
+
+    if (outwardEast) {
+      minX = tier.x + halfW - edgeHazardStripWidth;
+      maxX = tier.x + halfW;
+    } else {
+      minX = tier.x - halfW;
+      maxX = tier.x - halfW + edgeHazardStripWidth;
+    }
+
+    edgeHazards.push({
+      tierIndex: tier.tierIndex,
+      minX,
+      maxX,
+      minZ: tier.z - halfD + edgeHazardEndPadding,
+      maxZ: tier.z + halfD - edgeHazardEndPadding,
+      y,
+      side: outwardEast ? 'east' : 'west',
+    });
+  }
+
+  return edgeHazards;
+}
+
+/**
  * Build the spire-ascent stage: 3–5 flat tier platforms along −Z, each step
  * linked by one sloped ramp room. Bottom tier (high +Z) is start; top tier
  * (low −Z) is treasure.
@@ -1033,12 +1075,15 @@ function generateSpireAscent(seed) {
     if (i < ramps.length) rooms.push(ramps[i]);
   }
 
+  const edgeHazards = buildSpireEdgeHazards(tiers);
+
   return {
     rooms,
     passages: [],
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: Math.max(tierWidth, totalSpan),
     profile: 'spire-ascent',
+    edgeHazards,
   };
 }
 
@@ -1343,6 +1388,7 @@ module.exports = {
   generateOpenPlaza,
   generateSunkenCanyon,
   generateSpireAscent,
+  buildSpireEdgeHazards,
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,

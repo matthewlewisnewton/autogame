@@ -12,6 +12,8 @@ import {
 	WALL_HEIGHT,
 	PASSAGE_WALL_HEIGHT,
 	SPIRE_SUMMIT_BEACON_TAG,
+	SPIRE_EDGE_HAZARD_TAG,
+	buildSpireEdgeHazardMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
@@ -531,6 +533,10 @@ describe('spire-ascent floors, ramps & summit beacon', () => {
 		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_SUMMIT_BEACON_TAG);
 	}
 
+	function findEdgeHazardMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_EDGE_HAZARD_TAG);
+	}
+
 	function spireAscentFixture() {
 		const yBottom = DEFAULT_FLOOR_Y;
 		const yMid = DEFAULT_FLOOR_Y + 5;
@@ -651,6 +657,32 @@ describe('spire-ascent floors, ramps & summit beacon', () => {
 		}
 		const shaft = beaconMeshes.find(m => m.userData.beaconPart === 'shaft');
 		expect(shaft.position.y).toBeCloseTo(yTreasure + 1.6, 4);
+	});
+
+	it('renders emissive edge hazard strips for server-generated spire-ascent', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+		const result = buildDungeon(mockScene(), layout);
+		const hazardMeshes = findEdgeHazardMeshes(result.meshes);
+		expect(hazardMeshes.length).toBe(layout.edgeHazards.length);
+		for (const mesh of hazardMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	it('buildSpireEdgeHazardMesh tracks hazard AABB footprint', () => {
+		const hazard = {
+			minX: 4,
+			maxX: 5.2,
+			minZ: -2,
+			maxZ: 8,
+			y: DEFAULT_FLOOR_Y + 5,
+		};
+		const mesh = buildSpireEdgeHazardMesh(hazard);
+		expect(mesh.userData.dungeonTag).toBe(SPIRE_EDGE_HAZARD_TAG);
+		expect(mesh.position.x).toBeCloseTo(4.6, 4);
+		expect(mesh.position.z).toBeCloseTo(3, 4);
 	});
 
 	it('assigns distinct tier floor colors from bottom to summit', () => {

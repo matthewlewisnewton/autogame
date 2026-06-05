@@ -1628,6 +1628,56 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     const b = generateLayout(2024, 'spire-ascent');
     expect(a).toEqual(b);
   });
+
+  it('emits edgeHazards on middle combat tiers only', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(Array.isArray(layout.edgeHazards)).toBe(true);
+      const tiers = tiersByIndex(layout);
+      const combatTiers = tiers.filter((t) => t.role === 'combat');
+      expect(layout.edgeHazards.length).toBe(combatTiers.length);
+      if (combatTiers.length > 0) {
+        expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      }
+      for (const hazard of layout.edgeHazards) {
+        const tier = tiers.find((t) => t.tierIndex === hazard.tierIndex);
+        expect(tier.role).toBe('combat');
+        expect(hazard).toMatchObject({
+          tierIndex: expect.any(Number),
+          minX: expect.any(Number),
+          maxX: expect.any(Number),
+          minZ: expect.any(Number),
+          maxZ: expect.any(Number),
+          y: expect.any(Number),
+        });
+      }
+      expect(layout.edgeHazards.some((h) => h.tierIndex === 0)).toBe(false);
+      expect(layout.edgeHazards.some((h) => h.tierIndex === tiers.length - 1)).toBe(false);
+    }
+  });
+
+  it('edge hazard strips lie on the exterior tier lip without spanning the walk path', () => {
+    const layout = generateLayout(42, 'spire-ascent');
+    for (const hazard of layout.edgeHazards) {
+      const tier = tiersByIndex(layout).find((t) => t.tierIndex === hazard.tierIndex);
+      const halfW = tier.width / 2;
+      const stripW = hazard.maxX - hazard.minX;
+      expect(stripW).toBeGreaterThan(0);
+      expect(stripW).toBeLessThanOrEqual(1.5);
+      const hazardCenterX = (hazard.minX + hazard.maxX) / 2;
+      expect(Math.abs(hazardCenterX - tier.x)).toBeGreaterThan(halfW - stripW - 0.01);
+      expect(hazard.minZ).toBeGreaterThan(tier.z - tier.depth / 2);
+      expect(hazard.maxZ).toBeLessThan(tier.z + tier.depth / 2);
+    }
+  });
+
+  it('spire reachability is unchanged with edge hazards present', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(0);
+      expect(spireReachableFromStart(layout)).toBe(true);
+    }
+  });
 });
 
 // ── hub ship-interior layout ──
