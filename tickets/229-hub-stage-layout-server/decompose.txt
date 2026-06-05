@@ -1,0 +1,9 @@
+Created **2 sub-tickets** (no prior subtickets existed; nothing to retire):
+
+1. `/home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/tickets/229-hub-stage-layout-server/subtickets/01-server-hub-layout/ticket.md`  
+   — `generateHub` + `'hub'` profile: three connected zone rooms (Operations / Commerce / Salon), `boothAnchors` with six named positions, walkable rooms/passages/collision via existing simulation paths.
+
+2. `/home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/tickets/229-hub-stage-layout-server/subtickets/02-hub-layout-unit-tests/ticket.md`  
+   — Server unit tests for layout shape, zone grouping, anchor placement, reachability, and determinism in `dungeon.test.js`.
+
+Both use **Verification: code** (structure, anchors, collision, and tests — not pixel-level rendering).
