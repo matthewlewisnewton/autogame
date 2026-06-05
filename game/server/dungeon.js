@@ -115,10 +115,11 @@ function normalizeLayoutProfile(profile) {
   return { ...DEFAULT_LAYOUT_PROFILE, ...(profile || {}) };
 }
 
-function questLayoutSeed(questId) {
+function questLayoutSeed(questId, tier = 1) {
+  const seedKey = `${questId}:t${tier}`;
   let hash = 0;
-  for (let i = 0; i < questId.length; i++) {
-    hash = (hash * 31 + questId.charCodeAt(i)) | 0;
+  for (let i = 0; i < seedKey.length; i++) {
+    hash = (hash * 31 + seedKey.charCodeAt(i)) | 0;
   }
   return Math.abs(hash) || 1;
 }
