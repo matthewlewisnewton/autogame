@@ -9,6 +9,23 @@
 export const LAUNCH_BOOTH_ID = 'launch';
 
 /**
+ * Window event name dispatched when a booth ready-up actually fires, so the
+ * launch is observable in capture console output / by other modules.
+ */
+export const LAUNCH_READY_EVENT = 'launch:ready';
+
+/**
+ * Decide whether a booth ready-up should proceed. Ready-up only proceeds when
+ * the player is not already ready, so a repeated booth touch / reconnect does
+ * not re-emit `playerReady(true)`.
+ * @param {boolean|undefined|null} currentIsReady - the local ready flag
+ * @returns {boolean} true when ready-up should proceed
+ */
+export function shouldLaunchReadyUp(currentIsReady) {
+	return !currentIsReady;
+}
+
+/**
  * Decide whether a `booth:action` event detail targets the launch booth.
  * @param {{ boothId?: string }|null|undefined} detail
  * @returns {boolean} true when the detail is the launch booth

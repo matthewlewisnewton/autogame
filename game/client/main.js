@@ -151,7 +151,7 @@ import {
 	setBoothInRangeListener,
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
-import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID } from './launchBooth.js';
+import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -3952,11 +3952,16 @@ readyBtn.addEventListener('click', () => {
 // set the shared isReady flag, emit playerReady(true) — which the server's
 // checkAllReady gate routes to startGame once the whole party is ready — and
 // resync the button labels. The Launch Bay booth and the ?booth=launch debug
-// hook both call this; no new socket event is introduced.
+// hook both call this; no new socket event is introduced. Idempotent: a second
+// booth touch or a repeated lobbyJoined (reconnect) does NOT re-emit, since we
+// bail out early when the player is already ready.
 function launchBoothReadyUp() {
+	if (!shouldLaunchReadyUp(isReady)) return;
 	isReady = true;
 	socket.emit('playerReady', true);
 	syncReadyButtonRole();
+	console.log('[launchBooth] ready-up via booth');
+	window.dispatchEvent(new CustomEvent(LAUNCH_READY_EVENT));
 }
 
 // The hub Launch Bay booth's first subscriber: when the player interacts with

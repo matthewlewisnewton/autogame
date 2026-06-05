@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
 	LAUNCH_BOOTH_ID,
+	LAUNCH_READY_EVENT,
 	isLaunchBoothAction,
 	getBoothDebugHook,
+	shouldLaunchReadyUp,
 } from '../launchBooth.js';
 
 // Pure-helper contract for the Launch Bay booth, mirroring boothPrompt.test.js:
@@ -39,6 +41,24 @@ describe('launch booth helpers', () => {
 		it('returns null when the booth param is absent', () => {
 			expect(getBoothDebugHook('')).toBe(null);
 			expect(getBoothDebugHook('?other=1')).toBe(null);
+		});
+	});
+
+	describe('shouldLaunchReadyUp', () => {
+		it('is true when the player is not yet ready', () => {
+			expect(shouldLaunchReadyUp(false)).toBe(true);
+			expect(shouldLaunchReadyUp(undefined)).toBe(true);
+			expect(shouldLaunchReadyUp(null)).toBe(true);
+		});
+
+		it('is false when the player is already ready', () => {
+			expect(shouldLaunchReadyUp(true)).toBe(false);
+		});
+	});
+
+	describe('LAUNCH_READY_EVENT', () => {
+		it('is the stable "launch:ready" window event name', () => {
+			expect(LAUNCH_READY_EVENT).toBe('launch:ready');
 		});
 	});
 });
