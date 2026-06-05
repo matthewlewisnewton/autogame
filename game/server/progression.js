@@ -2782,6 +2782,9 @@ function resetTransientRunState() {
 }
 
 function stateSnapshot() {
+  const shopOffer = ensureShopOffer();
+  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
+
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
     players[id] = {
@@ -2803,7 +2806,7 @@ function stateSnapshot() {
       runRewards: p.runRewards,
       currencyEarnedThisRun: p.currencyEarnedThisRun,
       selectedDeck: p.selectedDeck,
-      inventory: Array.isArray(p.inventory) ? p.inventory.map(instance => ({ ...instance })) : p.inventory,
+      inventory: p.inventory,
       debugScenario: p.debugScenario,
       extracted: !!p.extracted,
       returnRewardsPreview: previewReturnRewards(id),
@@ -2838,9 +2841,9 @@ function stateSnapshot() {
     dungeonBounds: _gameState.dungeonBounds,
     layoutSeed: _gameState.layoutSeed,
     currency: _gameState.currency,
-    shopOffer: ensureShopOffer(),
+    shopOffer,
     telepipe: _gameState.telepipe || null,
-    suspendedRunSummary: buildSuspendedRunSummary(_gameState.suspendedCheckpoint),
+    suspendedRunSummary,
   };
 }
 

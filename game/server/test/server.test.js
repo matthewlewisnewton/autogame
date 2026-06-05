@@ -4588,7 +4588,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(p.currency).toBe(25);
 		expect(p.deck).toEqual(['iron_sword', 'flame_blade']);
 		expect(p.selectedDeck).toEqual(inventory.map((instance) => instance.instanceId));
-		expect(p.inventory).toEqual(inventory);
+		expect(p.inventory).toBe(inventory);
 		expect(p.ownedCards).toEqual({ iron_sword: 2, flame_blade: 1 });
 		expect(p.runRewards).toEqual({ currency: 10, cards: [] });
 		expect(p.currencyEarnedThisRun).toBe(5);
@@ -4599,12 +4599,22 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 		expect(p.ready).toBe(false);
 	});
 
-	it('returns independent objects per call (no shared mutation)', () => {
+	it('returns independent player objects per call (no shared mutation)', () => {
 		addPlayer('p1');
 		const a = stateSnapshot();
 		const b = stateSnapshot();
 		a.players['p1'].hp = 0;
 		expect(b.players['p1'].hp).toBe(100);
+	});
+
+	it('reuses the same inventory array reference across consecutive snapshots when unchanged', () => {
+		const inventory = createInventoryFromOwnedCards({ iron_sword: 1 });
+		addPlayer('p1', { inventory });
+		const a = stateSnapshot();
+		const b = stateSnapshot();
+		expect(a.players['p1'].inventory).toBe(inventory);
+		expect(b.players['p1'].inventory).toBe(inventory);
+		expect(a.players['p1'].inventory).toBe(b.players['p1'].inventory);
 	});
 });
 
