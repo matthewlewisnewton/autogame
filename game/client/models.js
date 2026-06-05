@@ -25,6 +25,7 @@ export const MODEL_REGISTRY = {
 	grunt: '/models/grunt.glb',
 	skirmisher: '/models/skirmisher.glb',
 	miniboss: '/models/miniboss.glb',
+	spire_warden: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)

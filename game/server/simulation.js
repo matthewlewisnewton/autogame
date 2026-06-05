@@ -892,6 +892,13 @@ const ENEMY_DEFS = {
 		hp: 300, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
 	},
+	spire_warden: {
+		name: 'Summit Warden',
+		description: 'Spire summit guardian with crushing reach and tide-like pressure.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',

@@ -7,6 +7,7 @@ const ENTITY_MODEL_PATHS = {
 	grunt: '/models/grunt.glb',
 	skirmisher: '/models/skirmisher.glb',
 	miniboss: '/models/miniboss.glb',
+	spire_warden: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 	ancient_wyrm: '/models/minion-ancient-wyrm.glb',
 	null_crawler: '/models/minion-null-crawler.glb',
@@ -66,7 +67,7 @@ describe('MODEL_REGISTRY', () => {
 		expect(modelPathFor('player')).toBe('/models/player.glb');
 	});
 
-	it('maps all seven enemy/minion keys to parent ticket paths', () => {
+	it('maps all enemy/minion keys to parent ticket paths', () => {
 		for (const [key, path] of Object.entries(ENTITY_MODEL_PATHS)) {
 			expect(MODEL_REGISTRY[key]).toBe(path);
 			expect(modelPathFor(key)).toBe(path);
