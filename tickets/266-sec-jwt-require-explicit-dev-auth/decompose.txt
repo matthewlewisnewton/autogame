@@ -1,0 +1,6 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created sub-ticket:
+
+- `/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/tickets/266-sec-jwt-require-explicit-dev-auth/subtickets/13-recapture-successful-run/ticket.md`
+
+All 10 existing sub-tickets (01–12) already have `.passed` markers. The code and tests are complete — the only open gap is producing a successful harness capture to prove the game runs with `ALLOW_DEV_AUTH=1`. Sub-ticket 13 addresses that by re-running capture from a fresh harness process.

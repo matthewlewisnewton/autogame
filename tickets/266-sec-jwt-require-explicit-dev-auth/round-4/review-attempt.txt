@@ -1,0 +1,17 @@
+## Verdict: FAIL
+
+Round-4 capture did not prove the game runs. `metrics.json` has `"ok": false`; the server exited at `auth.js:77` because `ALLOW_DEV_AUTH=1` was not in effect during that capture (no `pageerrors` — this is not a browser code defect).
+
+**Implementation looks complete.** Acceptance criteria are met in the live codebase:
+
+- `initAuth()` requires `ALLOW_DEV_AUTH=1` for the dev-secret fallback and throws otherwise
+- Tests cover the new behavior (23 auth tests pass)
+- Launch paths are wired: harness `start_game()`, `pnpm run dev`, and all five smoke scripts
+- `game/docs/auth-setup.md` documents the requirement
+
+**Independent check:** A fresh `capture_run()` on the current tree succeeds (`ok: true`, server log shows the expected `ALLOW_DEV_AUTH=1` warning). Round-3 artifacts also captured successfully. Round-4 likely hit a stale harness process that did not pass the env var — same intermittent pattern as rounds 1–2.
+
+**Artifacts written:**
+- `round-4/review.md` — full assessment
+- `round-4/gaps.md` — single infra blocker: re-run capture from a fresh harness process; do not modify `game/`
+- No `nits.md` — prior nits (auth docs, harness assertion) were addressed in commits `46a50408` and `c0c2782b`

@@ -1,0 +1,18 @@
+## Review complete — **VERDICT: FAIL**
+
+Round-8 capture did not produce runnable proof (`metrics.json` has `"ok": false`). The server exited at `auth.js:77` because `ALLOW_DEV_AUTH=1` was not in effect during that harness subprocess — the intended fail-closed behavior from this ticket.
+
+**Code assessment:** All acceptance criteria are met in the working tree:
+- `initAuth()` requires explicit `ALLOW_DEV_AUTH=1` for the dev-secret fallback
+- Throws when `JWT_SECRET` is unset without opt-in (including when only `PORT` is set)
+- Tests cover the behavior (40/40 in coverage.log)
+- Harness, dev script, and smoke tests wire `ALLOW_DEV_AUTH=1`
+
+**Independent verification:** A fresh `capture_run()` on the current tree succeeds; server log shows `[auth] … using dev fallback secret (ALLOW_DEV_AUTH=1)`.
+
+**Blocking gap:** Harness capture env propagation — not a game-code defect. Re-run capture from a fresh harness process; do not modify `game/` or reintroduce a PORT bypass.
+
+Written files:
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-8/review.md`
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-8/gaps.md`
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-8/nits.md` (smoke-script comment drift; intermittent harness env propagation)

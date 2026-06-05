@@ -4166,3 +4166,26 @@ test suite confirm it.
 None. All acceptance criteria are satisfied and the captured run is clean.
 
 ---
+
+## v0.273 — 266-sec-jwt-require-explicit-dev-auth  (2026-06-05 16:23:18)
+
+  throw messages.
+
+No conflict with `game/docs/design.md` / `requirements.md` — this is a
+server-side security hardening with no gameplay surface change, and the capture
+confirms gameplay is intact.
+
+## Code quality
+
+Clean. The branch ordering is correct and short-circuits idempotently
+(`if (JWT_SECRET) return`). Warning on the insecure path is appropriate. Error
+messages are actionable. No dead code in the shipped state (the PORT-based
+fallback that appeared mid-history was removed in commit `9ac0e5ab`; the working
+tree has no PORT heuristic). No debug-scenario shortcuts were added by this
+ticket.
+
+## Remaining gaps
+
+None blocking. Minor nits recorded in `nits.md` (a slightly stale inline comment
+and smoke-script header comments).
+

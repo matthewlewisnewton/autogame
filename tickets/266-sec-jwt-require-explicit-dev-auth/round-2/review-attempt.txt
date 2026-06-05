@@ -1,0 +1,19 @@
+## Review complete
+
+**VERDICT: FAIL**
+
+Round-2 capture artifacts show the game did not start (`metrics.json` has `"ok": false`; server crashed at `auth.js:77`). That alone blocks pass, regardless of code quality.
+
+### What looks good
+- **`initAuth()` security gate** — Requires `ALLOW_DEV_AUTH=1` for the dev-secret fallback; fails closed otherwise. Matches the ticket.
+- **Tests** — 40/40 in the changed-file coverage slice; all `initAuth()` cases covered.
+- **Launch-path wiring** — `harness/steps/game.py`, `game/server/package.json` dev script, and the five smoke scripts that spawn the server all set `ALLOW_DEV_AUTH=1`.
+- **Live verification** — Fresh `capture_run()` and `pnpm -C server run dev` both start the server successfully with the current tree.
+
+### Why it still fails
+Round-2 capture artifacts match round-1 (server died without `ALLOW_DEV_AUTH`), even though the harness fix landed in commit `ca7c6049` before capture ran. Likely a stale harness process or capture that didn’t pick up the updated `game.py`. The implementation appears complete; what’s missing is a successful captured run.
+
+### Files written
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-2/review.md`
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-2/gaps.md` — re-run capture from a fresh harness process
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-2/nits.md` — `CONTEXT.md` docs + harness unit test assertion

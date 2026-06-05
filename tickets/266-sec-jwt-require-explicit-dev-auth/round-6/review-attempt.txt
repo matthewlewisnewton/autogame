@@ -1,0 +1,27 @@
+## Verdict: FAIL
+
+Round-6 capture is healthy (`metrics.json` `ok: true`, `pageerrors: []`, gameplay probes and screenshots look good), but the ticket does not fully meet its acceptance criteria.
+
+### Blocking gap
+
+Commit `efd0e226` added a **PORT-based dev-secret fallback** in `initAuth()` that bypasses the required `ALLOW_DEV_AUTH=1` opt-in. Any non-production deploy with `PORT` set (typical on PaaS/staging) and no `JWT_SECRET` still signs JWTs with the known `dev-secret` — the same class of bypass this ticket was meant to close.
+
+Round-6 `server.log` shows the capture used this path, not the intended opt-in:
+
+```
+[auth] JWT_SECRET not set — using dev fallback secret (PORT=3004; harness-controlled environment).
+```
+
+### What works
+
+- Explicit `ALLOW_DEV_AUTH=1` gate and fail-closed throw when neither opt-in nor `JWT_SECRET` is set (and `PORT` is unset)
+- Production still throws without `JWT_SECRET` regardless of `PORT`
+- Tests, harness wiring, dev script, smoke scripts, and `auth-setup.md` are in good shape
+- All 1904 vitest tests pass
+
+### Files written
+
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-6/review.md` — full assessment
+- `tickets/266-sec-jwt-require-explicit-dev-auth/round-6/gaps.md` — remove PORT bypass, fix harness env propagation
+
+No `nits.md` — the only significant issue is the blocking security gap.

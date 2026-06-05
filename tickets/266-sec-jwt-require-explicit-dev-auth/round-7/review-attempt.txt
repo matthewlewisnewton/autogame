@@ -1,0 +1,25 @@
+## Review complete — VERDICT: FAIL
+
+Round-7 capture artifacts are in `/tickets/266-sec-jwt-require-explicit-dev-auth/round-7/`:
+
+### Runtime (blocking)
+- `metrics.json`: `"ok": false`, `failure_kind: "capture_failed"`
+- Server crashed at `auth.js:77` — missing `JWT_SECRET` / no `ALLOW_DEV_AUTH=1`
+- Vite started; no browser load, no `pageerrors`, no `console.log`
+- This is **not** a game-code defect — it's the intended fail-closed path when the harness subprocess didn't get `ALLOW_DEV_AUTH=1`
+
+### Code (acceptance criteria met)
+After removing the round-6 PORT bypass (commits 11–12):
+- `initAuth()` requires explicit `ALLOW_DEV_AUTH=1` for the dev-secret fallback
+- Staging with `PORT` set but no secret/opt-in now throws (vulnerability closed)
+- Tests updated; all 1901 vitest tests pass
+- Independent `capture_run()` on the current tree succeeds with `[auth] … (ALLOW_DEV_AUTH=1)` in server log
+
+### Gap
+Re-run harness capture from a fresh process — do **not** modify `game/` or reintroduce a PORT bypass. `harness/steps/game.py` already wires `ALLOW_DEV_AUTH=1`.
+
+### Nits (non-blocking)
+- Stale smoke-script header comments
+- Intermittent harness env propagation worth investigating
+
+Full write-up: `round-7/review.md` · Remediation: `round-7/gaps.md` · Backlog: `round-7/nits.md`

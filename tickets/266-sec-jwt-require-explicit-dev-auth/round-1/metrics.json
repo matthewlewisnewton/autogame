@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "\n  VITE v8.0.13  ready in 129 ms\n\n  \u279c  Local:   http://localhost:5177/\n  \u279c  Network: use --host to expose",
+    "server_log_tail": "[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/auth.js:77\n\tthrow new Error(\n\t^\n\nError: Missing JWT_SECRET environment variable. Set JWT_SECRET to a cryptographically random value, or set ALLOW_DEV_AUTH=1 to explicitly enable the insecure dev fallback secret. Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js\n    at initAuth (/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/auth.js:77:8)\n    at startServer (/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/index.js:1172:3)\n    at Object.<anonymous> (/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/index.js:1347:3)\n    at Module._compile (node:internal/modules/cjs/loader:1688:14)\n    at Object..js (node:internal/modules/cjs/loader:1820:10)\n    at Module.load (node:internal/modules/cjs/loader:1423:32)\n    at Function._load (node:internal/modules/cjs/loader:1246:12)\n    at TracingChannel.traceSync (node:diagnostics_channel:322:14)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)\n    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)\n\nNode.js v22.18.0",
+    "port_holders": {
+      "5177": [
+        {
+          "pid": 115113,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/client/node_modules/.bin/../vite/bin/vite.js --port 5177 --strictPort"
+        }
+      ],
+      "3004": []
+    }
+  }
+}

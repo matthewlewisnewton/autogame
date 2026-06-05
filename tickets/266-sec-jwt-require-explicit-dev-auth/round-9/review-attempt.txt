@@ -1,0 +1,13 @@
+Review complete. **VERDICT: PASS**
+
+## Summary
+
+The ticket fully and robustly satisfies its single acceptance criterion, and the captured run is clean.
+
+**Runtime health:** `metrics.json` shows `ok: true`, `pageerrors: []`, no `harness_failure`. The console log shows clean scene init and full gameplay (auth → lobby → ready → movement → dodge with cooldown HUD), 2 players, 5 enemies. The lone `409` is a benign recovered lobby-create race — no page error or fatal.
+
+**AC met:** `initAuth()` (`auth.js:46-83`) now requires `ALLOW_DEV_AUTH=1` to use the insecure `dev-secret`; otherwise it throws when `JWT_SECRET` is unset. This closes the original bypass where any non-production `NODE_ENV` silently used a known key. Fail-closed is genuine — `initAuth()` runs at the top of `startServer()` before the port binds. A new 6-case test suite covers all branches; I ran it: **23/23 passing**.
+
+**Integration:** the opt-in is consistently wired into the dev script, harness `start_game()`, the harness unit test, smoke scripts, and documented in `auth-setup.md`. The transient PORT-based fallback from mid-history was removed; the working tree is clean.
+
+Two minor nits (stale inline comment, smoke-script header comments) filed in `nits.md` — non-blocking. No `gaps.md` written (PASS).

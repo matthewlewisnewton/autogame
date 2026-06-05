@@ -1,0 +1,3 @@
+1. Round-8 capture shows the game did not start — `metrics.json` `ok: false`; server exited at `auth.js:77` with `Missing JWT_SECRET` (no `ALLOW_DEV_AUTH=1` in effect during that capture).
+   Files: none in `game/` — `harness/steps/game.py` already passes `ALLOW_DEV_AUTH: "1"` and a fresh `capture_run()` succeeds with the current tree.
+   Fix: Re-run the ticket harness capture from a fresh `python3 -m harness` process so `start_game` loads the updated env wiring; confirm `round-8/metrics.json` reports `ok: true` with screenshots and server log showing `[auth] … using dev fallback secret (ALLOW_DEV_AUTH=1)`. Do NOT modify `game/` or reintroduce a PORT-based bypass.

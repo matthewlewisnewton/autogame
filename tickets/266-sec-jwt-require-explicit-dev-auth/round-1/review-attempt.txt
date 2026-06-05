@@ -1,0 +1,18 @@
+## Review complete — **VERDICT: FAIL**
+
+Wrote:
+- [`round-1/review.md`](tickets/266-sec-jwt-require-explicit-dev-auth/round-1/review.md)
+- [`round-1/gaps.md`](tickets/266-sec-jwt-require-explicit-dev-auth/round-1/gaps.md)
+- [`round-1/nits.md`](tickets/266-sec-jwt-require-explicit-dev-auth/round-1/nits.md)
+
+### Summary
+
+**Security implementation is correct.** `initAuth()` in `auth.js` now requires `ALLOW_DEV_AUTH=1` before using the `'dev-secret'` fallback, throws otherwise, and has solid unit test coverage (40/40 in the changed-file slice).
+
+**The game does not run.** `metrics.json` has `"ok": false` — the harness capture failed because the server exits at `auth.js:77` with the new fail-closed error. Vite started; the server did not. No browser capture occurred.
+
+**Root cause:** The auth gate landed, but no dev launch path was updated to opt in. The harness (`harness/steps/game.py`), `pnpm run dev`, and several Playwright smoke scripts still start the server without `ALLOW_DEV_AUTH=1` or `JWT_SECRET`.
+
+**Ticket acceptance criteria** for the auth logic itself are met; **holistic pass criteria** are not, because there is no runnable proof and default dev/capture workflows are broken.
+
+The single blocking gap in `gaps.md` is wiring `ALLOW_DEV_AUTH=1` into all non-test server launch paths, then re-running capture.

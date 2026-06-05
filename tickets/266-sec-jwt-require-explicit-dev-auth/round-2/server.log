@@ -1,0 +1,20 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/auth.js:77
+	throw new Error(
+	^
+
+Error: Missing JWT_SECRET environment variable. Set JWT_SECRET to a cryptographically random value, or set ALLOW_DEV_AUTH=1 to explicitly enable the insecure dev fallback secret. Example: JWT_SECRET=$(openssl rand -hex 32) node server/index.js
+    at initAuth (/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/auth.js:77:8)
+    at startServer (/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/index.js:1172:3)
+    at Object.<anonymous> (/home/matt/workspace/.autogame-worktrees/266-sec-jwt-require-explicit-dev-auth/game/server/index.js:1347:3)
+    at Module._compile (node:internal/modules/cjs/loader:1688:14)
+    at Object..js (node:internal/modules/cjs/loader:1820:10)
+    at Module.load (node:internal/modules/cjs/loader:1423:32)
+    at Function._load (node:internal/modules/cjs/loader:1246:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:235:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+
+Node.js v22.18.0

@@ -1,0 +1,3 @@
+1. Round-2 capture shows the game did not start — `metrics.json` `ok: false`; server exited at `auth.js:77` with `Missing JWT_SECRET` (no `ALLOW_DEV_AUTH=1` in effect during that capture).
+   Files: none in `game/` — `harness/steps/game.py` already passes `ALLOW_DEV_AUTH: "1"` and a fresh `capture_run()` succeeds with the current tree.
+   Fix: Re-run the ticket harness capture from a fresh `python -m harness` process so `start_game` loads the updated env wiring; confirm `round-2/metrics.json` reports `ok: true` with screenshots. If capture still fails, debug why the pipeline subprocess did not receive `ALLOW_DEV_AUTH` (e.g. stale long-running supervisor module cache).
