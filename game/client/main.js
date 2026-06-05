@@ -70,13 +70,9 @@ import {
 	getAccountProfile,
 	getAccountCosmetic,
 	setAccountCosmetic,
-	getHatCatalog,
 	setUnlockedHats,
 } from './settings.js';
-import {
-	createCosmeticSelection,
-	createCosmeticForm,
-} from './cosmeticForm.js';
+import { createCosmeticSelection } from './cosmeticForm.js';
 import {
 	initCharacterBooth,
 	openCharacterBooth,
@@ -172,11 +168,6 @@ import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener
 import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
 import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
-import {
-	openPreview as openCosmeticPreview,
-	updatePreview as updateCosmeticPreview,
-	closePreview as closeCosmeticPreview,
-} from './cosmetic-preview.js';
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
 const boothPromptEl = document.getElementById('booth-prompt');
@@ -214,14 +205,6 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
-const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches');
-const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
-const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
-const cosmeticHatListEl = document.getElementById('cosmetic-hat-list');
-const cosmeticProportionsEl = document.getElementById('cosmetic-proportions');
-const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
-const cosmeticErrorEl = document.getElementById('cosmetic-error');
-const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 const attackReticleEl = document.getElementById('attack-reticle');
@@ -1367,9 +1350,6 @@ function bindSocketHandlers(s) {
 			// this field, so normal gameplay is unaffected.
 			if (Array.isArray(data.unlockedHats)) {
 				setUnlockedHats(data.unlockedHats);
-				if (accountOverlayEl && !accountOverlayEl.classList.contains('hidden')) {
-					syncCosmeticForm();
-				}
 				// Mirror the `hatUnlocked` handler: when the character booth is open
 				// (e.g. via the `?booth=hatswap` debug hook), rebuild its hat list so
 				// the newly-unlocked hats appear as selectable (owned) entries.
@@ -1648,13 +1628,11 @@ function bindSocketHandlers(s) {
 			myCurrency = data.currency;
 			updateCurrencyHud(myCurrency);
 		}
-		accountCosmeticForm.rebuildHatList();
 		rebuildBoothHatList();
 	});
 
 	s.on('hatError', (data) => {
 		const message = data && data.reason ? data.reason : 'Unlock failed';
-		showCosmeticError(message);
 		showBoothCosmeticError(message);
 	});
 
@@ -3776,37 +3754,8 @@ function syncAccountForm() {
 
 // ── Character customization ──
 
-// Shared in-progress selection for Account and character-booth overlays.
+// Shared in-progress selection for the character-booth overlay.
 const cosmeticSelection = createCosmeticSelection();
-
-const accountCosmeticForm = createCosmeticForm({
-	elements: {
-		bodySwatches: cosmeticBodySwatchesEl,
-		accentSwatches: cosmeticAccentSwatchesEl,
-		shapeSelect: cosmeticShapeSelectEl,
-		hatList: cosmeticHatListEl,
-		proportions: cosmeticProportionsEl,
-		errorEl: cosmeticErrorEl,
-	},
-	selection: cosmeticSelection,
-	onPreviewChange: refreshCosmeticPreview,
-	getCurrency: () => myCurrency,
-	onUnlockHat: (hatId) => {
-		const hat = getHatCatalog().find((h) => h.id === hatId);
-		if (!hat || myCurrency < hat.price) return;
-		if (!socket || !socket.connected) return;
-		socket.emit('unlockHat', { hatId });
-	},
-	proportionIdPrefix: 'cosmetic-prop',
-});
-
-function showCosmeticError(message) {
-	accountCosmeticForm.showError(message);
-}
-
-function syncCosmeticForm() {
-	accountCosmeticForm.syncFromAccount(getAccountCosmetic);
-}
 
 initCharacterBooth({
 	selection: cosmeticSelection,
@@ -3819,27 +3768,14 @@ initCharacterBooth({
 	getCurrency: () => myCurrency,
 });
 
-// Rebuild the live preview avatar from the current (unsaved) selection. No-op
-// when the preview is closed.
-function refreshCosmeticPreview() {
-	updateCosmeticPreview({ ...cosmeticSelection });
-}
-
 function openAccountOverlay() {
 	syncAccountForm();
-	syncCosmeticForm();
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
-	// Spin up the self-contained preview from the synced selection. Done after
-	// unhiding so the canvas has a layout size to read.
-	openCosmeticPreview(cosmeticPreviewCanvasEl, { ...cosmeticSelection });
 }
 
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
-	showCosmeticError('');
-	// Stop the render loop and release the preview's Three.js resources.
-	closeCosmeticPreview();
 }
 
 function openLevelSettingsOverlay() {
@@ -3918,34 +3854,6 @@ if (accountSaveBtnEl) {
 			createSocket(result.token);
 		}
 		closeAccountOverlay();
-	});
-}
-
-if (cosmeticSaveBtnEl) {
-	cosmeticSaveBtnEl.addEventListener('click', async () => {
-		const cosmetic = {
-			bodyColor: cosmeticSelection.bodyColor,
-			accentColor: cosmeticSelection.accentColor,
-			bodyShape: cosmeticSelection.bodyShape,
-			hat: cosmeticSelection.hat,
-			proportions: { ...cosmeticSelection.proportions },
-		};
-		showCosmeticError('');
-		cosmeticSaveBtnEl.disabled = true;
-		const result = await patchProfile({ cosmetic });
-		cosmeticSaveBtnEl.disabled = false;
-
-		if (result.error) {
-			showCosmeticError(result.error);
-			return;
-		}
-		// Re-sync from the cache (now updated by patchProfile) so the controls
-		// reflect the persisted value.
-		syncCosmeticForm();
-		if (myId && gameState?.players?.[myId]) {
-			gameState.players[myId].cosmetic = getAccountCosmetic();
-			setGameStateRef(gameState);
-		}
 	});
 }
 
