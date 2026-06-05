@@ -99,6 +99,7 @@ const telegraphMeshes = {}; // enemy id → warning ring mesh (ground circle dur
 const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
+const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -2782,6 +2783,54 @@ export function applyVariantEmissiveTint(enemyId, enemy) {
 	}
 }
 
+// ── Frenzied enrage telegraph ring ──
+
+/**
+ * Create a pulsing red ring on the ground around a frenzied enemy during its
+ * pre-enrage telegraph window.
+ * @returns {THREE.Mesh}
+ */
+function createFrenziedTelegraphRing() {
+	const geo = new THREE.RingGeometry(2.5, 3.2, 32);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0xff2222,
+		transparent: true,
+		opacity: 0.7,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+/**
+ * Show or hide the frenzied enrage telegraph ring for an enemy. Driven by
+ * `enemy.enrageTelegraphUntil` from the server snapshot: when the timestamp
+ * is in the future, the ring is shown with pulsing opacity; otherwise it is
+ * disposed.
+ * @param {string} enemyId
+ * @param {object} enemy - { enrageTelegraphUntil, x, z }
+ */
+export function applyFrenziedTelegraphRing(enemyId, enemy) {
+	const now = Date.now();
+	const telegraphActive = enemy && enemy.enrageTelegraphUntil && now < enemy.enrageTelegraphUntil;
+
+	if (telegraphActive) {
+		if (!frenziedTelegraphMeshes[enemyId]) {
+			frenziedTelegraphMeshes[enemyId] = createFrenziedTelegraphRing();
+			scene.add(frenziedTelegraphMeshes[enemyId]);
+		}
+		const ring = frenziedTelegraphMeshes[enemyId];
+		ring.position.set(enemy.x, GROUND_OVERLAY_Y, enemy.z);
+		// Pulse opacity: oscillate between 0.25 and 0.85 at ~2 Hz
+		const pulse = 0.5 + 0.5 * Math.sin((now % 1000) / 1000 * Math.PI * 4);
+		ring.material.opacity = 0.25 + pulse * 0.6;
+	} else if (frenziedTelegraphMeshes[enemyId]) {
+		disposeOne(frenziedTelegraphMeshes, enemyId, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -4378,6 +4427,9 @@ export function animate(timestamp) {
 
 			// ── Variant mesh tint (e.g. leeching) ──
 			applyVariantEmissiveTint(enemy.id, enemy);
+
+			// ── Frenzied enrage telegraph ring ──
+			applyFrenziedTelegraphRing(enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4387,6 +4439,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyHitboxMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
+		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];

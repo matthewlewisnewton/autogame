@@ -28,7 +28,7 @@ const {
   COOLDOWN_MS
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
-const { applyLeechHeal, getFrenziedCombatMultipliers } = require('./enemyVariants');
+const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase } = require('./lobbies');
 
 // ── Circular-dependency resolution ──
@@ -1781,6 +1781,7 @@ function updateEnemies() {
 
 	for (const enemy of _gameState.enemies) {
 		ensureEnemyCombatStats(enemy);
+		checkFrenziedTelegraph(enemy, Date.now());
 		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
 		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult;
 		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;

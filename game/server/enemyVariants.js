@@ -148,11 +148,42 @@ function getVariantBonusDrop(enemy) {
  * @returns {number} HP actually restored (0 when no heal).
  */
 const FRENZIED_ENRAGE_HP_FRACTION = 0.5;
+const FRENZIED_TELEGRAPH_MS = 1500;
+
+/**
+ * Check if a Frenzied enemy should start an enrage telegraph. When HP first
+ * drops to/at/below 50% maxHp and no telegraph is already active, arm the
+ * telegraph timer. The telegraph arms at most once per enrage cycle — once it
+ * expires, the enemy stays enraged (no re-arm) until the enemy is respawning.
+ * No-op when the enemy is not Frenzied or already has a telegraph/enrage in
+ * progress.
+ *
+ * @param {object} enemy
+ * @param {number} nowMs - current timestamp (Date.now())
+ */
+function checkFrenziedTelegraph(enemy, nowMs) {
+  if (!enemy || enemy.variant !== 'frenzied') return;
+  // Already telegraphing or already enraged — nothing to do
+  if (enemy.enrageTelegraphUntil && enemy.enrageTelegraphUntil > nowMs) return;
+  // Already completed enrage cycle (telegraph armed and expired) — stay enraged
+  if (enemy.frenziedEnrageTriggered) return;
+
+  const maxHp = Number.isFinite(enemy.maxHp) ? enemy.maxHp : enemy.hp;
+  if (!Number.isFinite(maxHp) || maxHp <= 0) return;
+
+  // HP at or below threshold and no active telegraph → start telegraph
+  if (enemy.hp <= maxHp * FRENZIED_ENRAGE_HP_FRACTION) {
+    enemy.enrageTelegraphUntil = nowMs + FRENZIED_TELEGRAPH_MS;
+    enemy.frenziedEnrageTriggered = true;
+  }
+}
 
 /**
  * Combat multipliers for a Frenzied enemy. Returns `{ chaseSpeedMult, attackWindupMult }`
  * (both `1` when not enraged). Enraged when `variant === 'frenzied'` and
- * `hp < maxHp * 0.5`.
+ * `hp < maxHp * 0.5` AND the telegraph window has expired. While the telegraph
+ * is active (between HP crossing the threshold and `enrageTelegraphUntil`),
+ * multipliers remain neutral so the player has a reaction window.
  */
 function getFrenziedCombatMultipliers(enemy) {
   if (!enemy || enemy.variant !== 'frenzied') {
@@ -161,6 +192,13 @@ function getFrenziedCombatMultipliers(enemy) {
 
   const maxHp = Number.isFinite(enemy.maxHp) ? enemy.maxHp : enemy.hp;
   if (!Number.isFinite(maxHp) || maxHp <= 0 || enemy.hp >= maxHp * FRENZIED_ENRAGE_HP_FRACTION) {
+    return { chaseSpeedMult: 1, attackWindupMult: 1 };
+  }
+
+  // HP is below threshold — check if telegraph has expired
+  const now = Date.now();
+  if (enemy.enrageTelegraphUntil && now < enemy.enrageTelegraphUntil) {
+    // Still in telegraph window — neutral multipliers
     return { chaseSpeedMult: 1, attackWindupMult: 1 };
   }
 
@@ -192,11 +230,13 @@ module.exports = {
   VARIANT_DEFS,
   LEECH_FRACTION,
   FRENZIED_ENRAGE_HP_FRACTION,
+  FRENZIED_TELEGRAPH_MS,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
   pickVariant,
   applyVariant,
   getVariantBonusDrop,
   getFrenziedCombatMultipliers,
+  checkFrenziedTelegraph,
   applyLeechHeal,
 };

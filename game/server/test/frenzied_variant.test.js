@@ -2,7 +2,9 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import {
   VARIANT_DEFS,
   FRENZIED_ENRAGE_HP_FRACTION,
+  FRENZIED_TELEGRAPH_MS,
   getFrenziedCombatMultipliers,
+  checkFrenziedTelegraph,
 } from '../enemyVariants.js';
 import {
   createGameState,
@@ -105,8 +107,18 @@ describe('frenzied enrage in updateEnemies()', () => {
     resetState();
 
     addPlayer('p1', { x: 0, z: 0, dead: false });
+    // Set expired telegraph so the enemy is past the telegraph window and
+    // already receiving boosted multipliers (simulating post-telegraph state).
     gameState.enemies.push(
-      makeChasingGrunt({ id: 'enraged', variant: 'frenzied', hp: 40, maxHp: 100, x: startDist }),
+      makeChasingGrunt({
+        id: 'enraged',
+        variant: 'frenzied',
+        hp: 40,
+        maxHp: 100,
+        x: startDist,
+        enrageTelegraphUntil: Date.now() - 1,
+        frenziedEnrageTriggered: true,
+      }),
     );
     const enragedXBefore = gameState.enemies[0].x;
     updateEnemies();
@@ -192,8 +204,168 @@ describe('frenzied enrage attack wind-up in updateEnemies()', () => {
       windupTargetId: 'pEnraged',
       windupStartTime: now - baseWindup * enragedMult - 100,
       wanderTarget: { x: 0, z: 0 },
+      enrageTelegraphUntil: now - 1, // past telegraph window — already enraged
+      frenziedEnrageTriggered: true,
     });
     updateEnemies();
     expect(gameState.players.pEnraged.hp).toBeLessThan(100);
+  });
+});
+
+describe('FRENZIED_TELEGRAPH_MS', () => {
+  it('is 1500 ms', () => {
+    expect(FRENZIED_TELEGRAPH_MS).toBe(1500);
+  });
+});
+
+describe('checkFrenziedTelegraph', () => {
+  it('arms telegraph when HP drops to/at/below 50% maxHp', () => {
+    const enemy = { variant: 'frenzied', hp: 49, maxHp: 100 };
+    const now = Date.now();
+    checkFrenziedTelegraph(enemy, now);
+    expect(enemy.enrageTelegraphUntil).toBe(now + FRENZIED_TELEGRAPH_MS);
+  });
+
+  it('arms telegraph when HP is exactly at 50% maxHp', () => {
+    const enemy = { variant: 'frenzied', hp: 50, maxHp: 100 };
+    const now = Date.now();
+    checkFrenziedTelegraph(enemy, now);
+    expect(enemy.enrageTelegraphUntil).toBe(now + FRENZIED_TELEGRAPH_MS);
+  });
+
+  it('does NOT arm telegraph when HP is above 50%', () => {
+    const enemy = { variant: 'frenzied', hp: 51, maxHp: 100 };
+    const now = Date.now();
+    checkFrenziedTelegraph(enemy, now);
+    expect(enemy.enrageTelegraphUntil).toBeUndefined();
+  });
+
+  it('is a no-op for non-frenzied enemies', () => {
+    const enemy = { variant: 'volatile', hp: 10, maxHp: 100 };
+    checkFrenziedTelegraph(enemy, Date.now());
+    expect(enemy.enrageTelegraphUntil).toBeUndefined();
+  });
+
+  it('is idempotent — does not re-arm an active telegraph', () => {
+    const enemy = { variant: 'frenzied', hp: 40, maxHp: 100 };
+    const t0 = Date.now();
+    checkFrenziedTelegraph(enemy, t0);
+    const first = enemy.enrageTelegraphUntil;
+
+    // Calling again with a later timestamp should NOT overwrite
+    checkFrenziedTelegraph(enemy, t0 + 500);
+    expect(enemy.enrageTelegraphUntil).toBe(first);
+  });
+
+  it('does NOT re-arm after telegraph expires (one-shot enrage)', () => {
+    const enemy = { variant: 'frenzied', hp: 40, maxHp: 100 };
+    const t0 = Date.now();
+    checkFrenziedTelegraph(enemy, t0);
+    expect(enemy.frenziedEnrageTriggered).toBe(true);
+    const first = enemy.enrageTelegraphUntil;
+
+    // After telegraph expires, re-check should NOT arm a new telegraph
+    const t1 = first + 100;
+    checkFrenziedTelegraph(enemy, t1);
+    expect(enemy.enrageTelegraphUntil).toBe(first); // unchanged
+  });
+});
+
+describe('getFrenziedCombatMultipliers — telegraph window', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2000, 0, 1));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('returns neutral multipliers during telegraph window', () => {
+    const now = Date.now();
+    const enemy = {
+      variant: 'frenzied',
+      hp: 40,
+      maxHp: 100,
+      enrageTelegraphUntil: now + FRENZIED_TELEGRAPH_MS,
+    };
+    expect(getFrenziedCombatMultipliers(enemy)).toEqual({
+      chaseSpeedMult: 1,
+      attackWindupMult: 1,
+    });
+  });
+
+  it('returns boosted multipliers after telegraph expires', () => {
+    const now = Date.now();
+    const enemy = {
+      variant: 'frenzied',
+      hp: 40,
+      maxHp: 100,
+      enrageTelegraphUntil: now - 1, // expired
+    };
+    expect(getFrenziedCombatMultipliers(enemy)).toEqual({
+      chaseSpeedMult: VARIANT_DEFS.frenzied.chaseSpeedMult,
+      attackWindupMult: VARIANT_DEFS.frenzied.attackWindupMult,
+    });
+  });
+
+  it('returns boosted multipliers when no telegraph timer set (backward compat)', () => {
+    const enemy = {
+      variant: 'frenzied',
+      hp: 40,
+      maxHp: 100,
+      // enrageTelegraphUntil not set
+    };
+    expect(getFrenziedCombatMultipliers(enemy)).toEqual({
+      chaseSpeedMult: VARIANT_DEFS.frenzied.chaseSpeedMult,
+      attackWindupMult: VARIANT_DEFS.frenzied.attackWindupMult,
+    });
+  });
+});
+
+describe('frenzied telegraph in updateEnemies()', () => {
+  beforeEach(() => {
+    resetState();
+  });
+
+  it('frenzied enemy below 50% does NOT speed up during telegraph window', () => {
+    const startDist = DETECTION_RADIUS - 1;
+
+    // First tick: telegraph arms, enemy moves at neutral speed
+    addPlayer('p1', { x: 0, z: 0, dead: false });
+    gameState.enemies.push(
+      makeChasingGrunt({ id: 'telegraph', variant: 'frenzied', hp: 49, maxHp: 100, x: startDist }),
+    );
+    const xBefore = gameState.enemies[0].x;
+    updateEnemies();
+    const telegraphMoved = Math.abs(xBefore - gameState.enemies[0].x);
+    // Telegraph should be armed
+    expect(gameState.enemies[0].enrageTelegraphUntil).toBeDefined();
+
+    // Second tick: manually expire telegraph + mark enrage triggered, enemy moves faster
+    gameState.enemies[0].enrageTelegraphUntil = Date.now() - 1;
+    const xAfterTelegraph = gameState.enemies[0].x;
+    updateEnemies();
+    const postTelegraphMoved = Math.abs(xAfterTelegraph - gameState.enemies[0].x);
+
+    expect(postTelegraphMoved).toBeGreaterThan(telegraphMoved);
+  });
+
+  it('enrageTelegraphUntil is set on enemy after crossing HP threshold', () => {
+    addPlayer('p1', { x: 0, z: 0, dead: false });
+    const startDist = DETECTION_RADIUS - 1;
+    // Start above threshold
+    gameState.enemies.push(
+      makeChasingGrunt({ id: 'e1', variant: 'frenzied', hp: 60, maxHp: 100, x: startDist }),
+    );
+    updateEnemies();
+    expect(gameState.enemies[0].enrageTelegraphUntil).toBeUndefined();
+
+    // Drop below threshold
+    gameState.enemies[0].hp = 49;
+    const before = Date.now();
+    updateEnemies();
+    expect(gameState.enemies[0].enrageTelegraphUntil).toBeGreaterThanOrEqual(before);
+    expect(gameState.enemies[0].enrageTelegraphUntil).toBeLessThanOrEqual(before + FRENZIED_TELEGRAPH_MS);
   });
 });
