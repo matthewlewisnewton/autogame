@@ -4584,3 +4584,26 @@ PASS. The recorded `coverage.log` shows the test suite passed: 77 test files and
 
 None.
 
+
+## v0.261 — 255-level2-rooms  (2026-06-05 09:11:14)
+
+
+### Carries rooms identity
+
+PASS. The rigid `crowded` path preserves crowded identity with combat-room cover and only crowded landmark types (`reactor_coil` / `pipe_stack`). The rigid `open` path preserves open identity with raised platforms, pit hazards, light cover, and only open landmark types (`sand_spire` / `sun_arch`). Existing slope/floor sampling and walkability foundations remain consistent with `game/docs/design.md`.
+
+### Higher variant rate
+
+PASS. Tier 2 runs use the existing quest-tier variant scaling path: `spawnEnemy` resolves `run.questTier` / selected quest tier through `resolveVariantRollTier`, so Tier 2 rolls at full variant chance while Tier 1 remains effectively untagged. The Tier 2 quest tests cover fixed-seed variant tagging for both `training_caverns` and `crystal_rescue`, and the runtime capture still shows normal Tier 1 enemies unbroken.
+
+### Debug scenarios
+
+PASS. The added `training-caverns-tier-2` and `crystal-rescue-tier-2` debug scenarios are behind the existing debug-scenario path: the browser only requests them from the localhost-only `?debugScenario=` parameter, and the server rejects unknown/disabled debug scenarios unless the debug gate allows them. Both shortcuts set quest id/tier and apply the Tier 2 layout before entering playing phase, so run metadata and variant rolls match normal deployment. The same states are reachable through normal gameplay by clearing each Tier 1 quest, unlocking Tier 2, selecting it, and deploying.
+
+### Tests and coverage visibility
+
+PASS. `coverage.log` shows the full suite passing: 79 test files and 1456 tests passed. Coverage was reported for changed files with thresholds disabled. The relevant new tests cover quest catalog/options, rigid layout determinism and identity, spawn placement, variant tagging, unlock persistence, deploy gating, and debug scenarios.
+
+## Remaining gaps
+
+None.
