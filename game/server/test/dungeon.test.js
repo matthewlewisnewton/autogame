@@ -2628,6 +2628,25 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     }
   });
 
+  it('places exactly one spire_summit landmark at the treasure-tier centre (default mode)', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'default' });
+      const treasure = tiersByIndex(layout).find((t) => t.role === 'treasure');
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0]).toEqual({
+        x: treasure.x,
+        z: treasure.z,
+        type: 'spire_summit',
+      });
+    }
+  });
+
+  it('spire_summit landmark placement is deterministic for seed 42', () => {
+    expect(generateLayout(42, 'spire-ascent').landmarks).toEqual(
+      generateLayout(42, 'spire-ascent').landmarks
+    );
+  });
+
   describe('rigid layoutMode', () => {
     it('unknown layoutMode values fall back to default tier variation', () => {
       const tierCounts = new Set();
@@ -2638,7 +2657,7 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
       expect(tierCounts.size).toBeGreaterThan(1);
     });
 
-    it('rigid mode produces identical rooms and edgeHazards across different seeds', () => {
+    it('rigid mode produces identical rooms, edgeHazards, and landmarks across different seeds', () => {
       const seeds = [1, 42, 123, 777, 9999];
       const layouts = seeds.map((seed) =>
         generateLayout(seed, 'spire-ascent', { layoutMode: 'rigid' })
@@ -2646,6 +2665,7 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
       for (let i = 1; i < layouts.length; i++) {
         expect(layouts[i].rooms).toEqual(layouts[0].rooms);
         expect(layouts[i].edgeHazards).toEqual(layouts[0].edgeHazards);
+        expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
       }
     });
 
@@ -2671,6 +2691,14 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
       const combatTiers = tiers.filter((t) => t.role === 'combat');
       expect(layout.edgeHazards.length).toBe(combatTiers.length);
       expect(spireReachableFromStart(layout)).toBe(true);
+
+      const treasure = tiers[tiers.length - 1];
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0]).toEqual({
+        x: treasure.x,
+        z: treasure.z,
+        type: 'spire_summit',
+      });
     });
 
     it('default mode still varies tier count across seeds', () => {
@@ -2688,9 +2716,11 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
       const rigidAgain = generateLayout(9999, 'spire-ascent', { layoutMode: 'rigid' });
       expect(rigid.rooms).toEqual(rigidAgain.rooms);
       expect(rigid.edgeHazards).toEqual(rigidAgain.edgeHazards);
+      expect(rigid.landmarks).toEqual(rigidAgain.landmarks);
       const geometryDiffers =
         JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
-        JSON.stringify(rigid.edgeHazards) !== JSON.stringify(def.edgeHazards);
+        JSON.stringify(rigid.edgeHazards) !== JSON.stringify(def.edgeHazards) ||
+        JSON.stringify(rigid.landmarks) !== JSON.stringify(def.landmarks);
       expect(geometryDiffers).toBe(true);
     });
   });
