@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import {
 	resolveGameServerProxyTarget,
 	isHarnessCapture,
+	probeGameServerHealthz,
 	waitForGameServerReady,
 } from '../vite.config.js';
 
@@ -55,20 +56,66 @@ describe('isHarnessCapture', () => {
 	});
 });
 
+describe('probeGameServerHealthz', () => {
+	it('returns true only for HTTP 200 with { ok: true }', async () => {
+		const fetchImpl = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+		await expect(
+			probeGameServerHealthz('http://127.0.0.1:3001', fetchImpl)
+		).resolves.toBe(true);
+
+		const notReady = vi
+			.fn()
+			.mockResolvedValueOnce({ ok: false, json: async () => ({ ok: false }) });
+		await expect(
+			probeGameServerHealthz('http://127.0.0.1:3001', notReady)
+		).resolves.toBe(false);
+	});
+});
+
 describe('waitForGameServerReady', () => {
-	it('resolves true once /healthz returns { ok: true }', async () => {
+	it('resolves true after consecutive /healthz successes', async () => {
 		const fetchImpl = vi
 			.fn()
 			.mockResolvedValueOnce({ ok: false, json: async () => ({ ok: false }) })
-			.mockResolvedValueOnce({ ok: true, json: async () => ({ ok: true }) });
+			.mockResolvedValue({ ok: true, json: async () => ({ ok: true }) });
 
 		await expect(
 			waitForGameServerReady('http://127.0.0.1:3001', {
 				intervalMs: 1,
+				stableGapMs: 1,
+				stableProbes: 3,
 				fetchImpl,
 			})
 		).resolves.toBe(true);
-		expect(fetchImpl).toHaveBeenCalledTimes(2);
+		expect(fetchImpl).toHaveBeenCalledTimes(4);
+	});
+
+	it('resets the stability streak when /healthz flips back to not-ready', async () => {
+		const sequence = [
+			{ ok: true, json: async () => ({ ok: true }) },
+			{ ok: true, json: async () => ({ ok: true }) },
+			{ ok: false, json: async () => ({ ok: false }) },
+			{ ok: true, json: async () => ({ ok: true }) },
+			{ ok: true, json: async () => ({ ok: true }) },
+			{ ok: true, json: async () => ({ ok: true }) },
+		];
+		const fetchImpl = vi.fn().mockImplementation(() => {
+			const next = sequence.shift();
+			return Promise.resolve(
+				next ?? { ok: true, json: async () => ({ ok: true }) }
+			);
+		});
+
+		await expect(
+			waitForGameServerReady('http://127.0.0.1:3001', {
+				intervalMs: 1,
+				stableGapMs: 1,
+				stableProbes: 3,
+				fetchImpl,
+			})
+		).resolves.toBe(true);
 	});
 
 	it('resolves false when the backend never becomes ready', async () => {

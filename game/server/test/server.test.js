@@ -5011,6 +5011,7 @@ describe('spawnEnemy() variant field', () => {
 
 	it('tags a high-tier spawn when the seeded roll passes, rolling once via spawnEnemy', () => {
 		gameState.enemies = [];
+		gameState.run = { questTier: 2 };
 		// rng always returns 0.1: first call is the variant roll (< chance at
 		// tier 1), the second is the id pick → index 0 of the registry.
 		const enemy = spawnEnemy(0, 0, 'grunt', undefined, { tier: 1, rng: () => 0.1 });

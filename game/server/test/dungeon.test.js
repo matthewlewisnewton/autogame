@@ -1676,6 +1676,71 @@ describe("generateLayout(seed, 'open-plaza')", () => {
   });
 });
 
+// ── open-plaza rigid layoutMode ──
+
+describe("generateLayout(seed, 'open-plaza') rigid layoutMode", () => {
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'open-plaza', { layoutMode: 'default' });
+    const withUnknown = generateLayout(123, 'open-plaza', { layoutMode: 'chaotic' });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.hazards).toEqual(withDefault.hazards);
+  });
+
+  it('rigid mode is deterministic for the same seed', () => {
+    const a = generateLayout(42, 'open-plaza', { layoutMode: 'rigid' });
+    const b = generateLayout(42, 'open-plaza', { layoutMode: 'rigid' });
+    expect(a).toEqual(b);
+    expect(a.cover).toEqual(b.cover);
+    expect(a.hazards).toEqual(b.hazards);
+  });
+
+  it('rigid mode produces identical cover/hazards across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'open-plaza', { layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].hazards).toEqual(layouts[0].hazards);
+    }
+  });
+
+  it('default mode still varies cover or hazards with seed', () => {
+    const ref = generateLayout(1, 'open-plaza', { layoutMode: 'default' });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'open-plaza', { layoutMode: 'default' });
+      if (
+        JSON.stringify(ref.cover) !== JSON.stringify(other.cover) ||
+        JSON.stringify(ref.hazards) !== JSON.stringify(other.hazards)
+      ) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'open-plaza', { layoutMode: 'rigid' });
+    const def = generateLayout(123, 'open-plaza', { layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'open-plaza', { layoutMode: 'rigid' });
+    expect(rigid.cover).toEqual(rigidAgain.cover);
+    expect(rigid.hazards).toEqual(rigidAgain.hazards);
+    const coverDiffers =
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover) ||
+      JSON.stringify(rigid.hazards) !== JSON.stringify(def.hazards);
+    expect(coverDiffers).toBe(true);
+  });
+
+  it('rigid mode still satisfies open-plaza structural requirements', () => {
+    const layout = generateLayout(123, 'open-plaza', { layoutMode: 'rigid' });
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
 // ── sunken-canyon stage layout ──
 
 describe("generateLayout(seed, 'sunken-canyon')", () => {

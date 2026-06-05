@@ -1,18 +1,11 @@
-All four conflicted files are resolved and marker-free. Summary of how each merge was combined:
+Merge conflict in `LOGBOOK.md` is resolved.
 
-**`game/shared/dungeonTheme.json`**
-- Kept main's warm sandy `open-plaza` palette (`#b8a078` / `#e8a317` accent) from plaza-arena-identity
-- Added the ticket's separate `sunken-canyon` profile with band-specific floor tints
+**What conflicted:** `main` had added review entries for **v0.254** (enemy lock-on info panel) and **v0.255** (level-2 mechanics), while this branch had added **v0.256** (sec-hat equip unlock check).
 
-**`game/client/dungeon.js`**
-- `buildLandmarkMesh` now supports both landmark types: `canyon_monolith` (ticket) and `arena_dais` (main), each with its own switch case
+**Resolution:** All three entries are kept in version order (newest last), following the existing log pattern after v0.253:
 
-**`game/client/test/dungeon.test.js`**
-- Imports both `buildCanyonCliffLipMesh` and `buildCoverMesh`
-- Landmark test covers both monolith and dais rendering
-- Updated the palette test to expect main's sandy `open-plaza` floor (`0xb8a078`) while keeping sunken-canyon band assertions (`plateau`/`canyon` hex values)
+1. v0.254 — 252-enemy-lockon-info-panel  
+2. v0.255 — 254-level2-mechanics-and-reference  
+3. v0.256 — 267-sec-hat-equip-unlock-check  
 
-**`LOGBOOK.md`**
-- Preserved main's v0.247–v0.251 entries, then appended the ticket's v0.252 canyon-verticality-identity entry
-
-Dungeon tests pass (872/872). The harness can commit and complete the merge.
+Conflict markers are removed. The harness can finish the merge.

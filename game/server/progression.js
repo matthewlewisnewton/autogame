@@ -56,7 +56,7 @@ const {
 } = require('./simulation');
 
 const HUB_LAYOUT = generateHub(0);
-const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
+const { applyVariant, getVariantBonusDrop, resolveVariantRollTier, VARIANT_DEFS } = require('./enemyVariants');
 const {
   getQuest,
   getSelectedQuest,
@@ -2142,11 +2142,13 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
     enemy.spawnedBy = spawnedBy;
   }
   // Variant seam, centralized so every spawned enemy exposes `variant` (a tag or
-  // null — never undefined). Combat spawns pass the resolved encounterTier and
-  // seeded rng; callers with no known room/tier (spawner adds, ad-hoc spawns)
-  // default to tier 0 → no roll → variant: null. Rolled exactly once per enemy.
-  const tier = Number.isFinite(opts.tier) ? opts.tier : 0;
-  applyVariant(enemy, tier, opts.rng);
+  // null — never undefined). Callers pass the spawn room's encounterTier via
+  // opts.tier; quest-tier scaling is resolved here from the active run (or lobby
+  // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once.
+  const encounterTier = Number.isFinite(opts.tier) ? opts.tier : 0;
+  const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+  const rollTier = resolveVariantRollTier(questTier, encounterTier);
+  applyVariant(enemy, rollTier, opts.rng);
   // Difficulty scaling: minibosses get more HP the larger the party is at spawn.
   // Fixed once here from the live player count — never re-applied retroactively
   // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
@@ -2449,9 +2451,8 @@ function spawnCombatEnemies(layout, rng, quest) {
     const type = pickWeightedEnemyType(enemyPool, rng);
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
-    // Variant seam (centralized in spawnEnemy): scale the roll by the spawn
-    // room's encounterTier (0 for start/treasure rooms or unknown positions, so
-    // they never roll a variant) and use the run's seeded rng.
+    // Variant seam (centralized in spawnEnemy): encounterTier from the spawn
+    // room is combined with run.questTier inside spawnEnemy; seeded rng here.
     const enemy = spawnEnemy(pos.x, pos.z, type, undefined, {
       tier: roomTierAt(layout, pos.x, pos.z),
       rng,

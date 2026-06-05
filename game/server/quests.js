@@ -60,6 +60,17 @@ const QUEST_DEFS = {
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
       },
+      2: {
+        tier: 2,
+        name: 'Arena Trials — Tier II',
+        description: 'Face the rigid trial grounds where every warden bears a twisted mark.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 15,
+        layoutProfile: 'open-plaza',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'arena_trials', tier: 1 },
+      },
     },
   },
   canyon_descent: {
@@ -263,6 +274,17 @@ function getLayoutProfileForQuest(questId, tier) {
   return (quest && quest.layoutProfile) || (fallback && fallback.layoutProfile) || 'crowded';
 }
 
+/**
+ * Layout generation options for a quest tier: slopes always enabled for quest
+ * layouts; optional `layoutMode` on the tier def (defaults to 'default').
+ */
+function getLayoutGenerationOptions(questId, tier) {
+  const quest = getQuest(questId, tier);
+  const rawMode = quest && quest.layoutMode;
+  const layoutMode = rawMode === 'rigid' ? 'rigid' : 'default';
+  return { slopes: true, layoutMode };
+}
+
 // Returns the enemy spawn pool for a quest, falling back to the default quest's
 // pool for an unknown/invalid quest id.
 function getEnemyPool(questId) {
@@ -299,6 +321,7 @@ module.exports = {
   listQuestVariants,
   getSelectedQuest,
   getLayoutProfileForQuest,
+  getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload,
   formatObjectiveSummary,

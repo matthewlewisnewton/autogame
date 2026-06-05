@@ -1,0 +1,46 @@
+[vite] Proxying /api and /socket.io → http://127.0.0.1:3003
+[vite] Game server ready at http://127.0.0.1:3003
+
+  VITE v8.0.13  ready in 130 ms
+
+  ➜  Local:   http://localhost:5176/
+  ➜  Network: use --host to expose
+7:29:12 AM [vite] http proxy error: /api/me
+Error: read ECONNRESET
+    at TCP.onStreamRead (node:internal/stream_base_commons:216:20)
+7:29:12 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0smic5pf
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:14 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0snnjyf0
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:16 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0splnjcp
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:21 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0stgne5x
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:26 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0sxbnqdj
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:28 AM [vite] http proxy error: /api/register
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:28 AM [vite] http proxy error: /api/login
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:31 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0t16wny0
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:36 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0t51vsgm
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:41 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0t8ww4sm
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:46 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0tcs622w
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)
+7:29:51 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0tgn73gj
+Error: connect ECONNREFUSED 127.0.0.1:3003
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)

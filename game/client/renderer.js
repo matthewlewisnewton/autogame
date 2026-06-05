@@ -83,6 +83,7 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
+import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
 
@@ -137,6 +138,10 @@ let lockOnReleaseLookAt = null;
 let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
+/** @type {(() => object | null) | null} */
+let enemyDisplayCatalogGetter = null;
+/** @type {{ panelEl: HTMLElement, nameEl: HTMLElement, variantEl: HTMLElement, hpEl: HTMLElement, statsEl: HTMLElement, descEl: HTMLElement } | null} */
+let lockOnInfoPanelDom = null;
 
 // ── Booth proximity (hub lobby) ──
 // The booth id the local player currently stands within, recomputed each frame
@@ -978,6 +983,46 @@ export function setSocketRef(s) {
 }
 
 /**
+ * Provide a getter for the server enemy display catalog (set from main.js).
+ * @param {() => object | null} getter
+ */
+export function setEnemyDisplayCatalogGetter(getter) {
+	enemyDisplayCatalogGetter = getter;
+}
+
+function getLockOnInfoPanelDom() {
+	if (lockOnInfoPanelDom) return lockOnInfoPanelDom;
+	const panelEl = document.getElementById('lock-on-info-panel');
+	if (!panelEl) return null;
+	lockOnInfoPanelDom = {
+		panelEl,
+		nameEl: document.getElementById('lock-on-target-name'),
+		variantEl: document.getElementById('lock-on-target-variant'),
+		hpEl: document.getElementById('lock-on-target-hp'),
+		statsEl: document.getElementById('lock-on-target-stats'),
+		descEl: document.getElementById('lock-on-target-description'),
+	};
+	return lockOnInfoPanelDom;
+}
+
+function refreshLockOnInfoPanel() {
+	const dom = getLockOnInfoPanelDom();
+	if (!dom) return;
+
+	const showPanel = currentGamePhase === 'playing' && isLockOnActive();
+	const enemy = showPanel
+		? findEnemyById(gameStateRef?.enemies, getLockedEnemyId())
+		: null;
+	const catalog = enemyDisplayCatalogGetter ? enemyDisplayCatalogGetter() : null;
+
+	syncLockOnInfoPanel({
+		...dom,
+		enemy,
+		catalog,
+	});
+}
+
+/**
  * Get the current scene.
  * @returns {THREE.Scene|null}
  */
@@ -1463,6 +1508,9 @@ export function setGamePhase(phase) {
 	if (renderer?.domElement) {
 		renderer.domElement.style.pointerEvents = phase === 'playing' ? 'auto' : 'none';
 	}
+	if (phase !== 'playing') {
+		refreshLockOnInfoPanel();
+	}
 }
 
 // ── Player movement ──
@@ -1481,6 +1529,7 @@ export function updateMyPlayer(delta) {
 		clearAllLockOnState();
 		lockOnToTarget = null;
 		lockOnReleaseLookAt = null;
+		refreshLockOnInfoPanel();
 		return;
 	}
 
@@ -1492,6 +1541,8 @@ export function updateMyPlayer(delta) {
 		cameraYaw,
 		playerRotation,
 	);
+
+	refreshLockOnInfoPanel();
 
 	if (lockState.locked) {
 		playerRotation = lockState.playerRotation;
