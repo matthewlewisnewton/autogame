@@ -1,20 +1,10 @@
-Merge conflicts are resolved. Summary of how both intents were combined:
+`LOGBOOK.md` is resolved.
 
-### `game/server/quests.js`
-- Kept **main’s tier framework** (`tiers: { 1: {...}, 2: {...} }`, tier helpers, payload formatters).
-- Kept **ticket #250’s per-quest `enemyPool`** arrays at the quest root (alongside `tiers`), since pools are per-level, not per-tier.
-- Updated `getEnemyPool()` to read `QUEST_DEFS[questId].enemyPool` directly (works with the tiered shape).
-- Merged exports: tier helpers + `getEnemyPool` / `pickWeightedEnemyType`.
+**What conflicted:** Both sides appended new review entries after v0.217 — `main` had v0.220 (229-hub-stage-layout-server) and v0.221 (272-socketHandlers-extract-lobby); the branch had v0.222 (264-admin-character-roster-view).
 
-### `game/server/progression.js`
-- Combined imports: spawn-pool helpers from the ticket branch, plus `DEFAULT_QUEST_TIER` and user unlock helpers from main.
+**Resolution:** Combined all three in version order:
+1. **v0.220** — hub stage layout (from `main`)
+2. **v0.221** — socket handler extraction (from `main`)
+3. **v0.222** — admin character roster view (from the ticket branch)
 
-### `LOGBOOK.md`
-- Preserved main entries (v0.213, v0.215, v0.216) and appended the ticket entry (v0.217) in chronological order.
-
-### Test fallout (2 lines)
-Two tests still read `QUEST_DEFS.*.enemyCount` from the old flat shape. Updated them to use `getQuest()` so they work with tiered defs:
-- `game/server/test/enemy-spawn-pools-wiring.test.js`
-- `game/server/test/server.test.js`
-
-All conflict markers are removed. Spawn-pool and tier-gating tests pass (33/33). The harness can commit and finish the merge.
+Conflict markers are removed; the file ends with the existing `## Remaining gaps / None.` footer. The harness can commit and finish the merge.

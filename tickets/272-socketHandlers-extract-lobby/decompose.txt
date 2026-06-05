@@ -1,0 +1,21 @@
+Broke ticket **272** into **5 sub-tickets** in dependency order — scaffold first, then browser, lobby UI, run lifecycle, and playing-phase handlers. All use **`code`** verification (refactor + test suite).
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/01-lobby-handlers-scaffold`
+2. `/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/02-lobby-browser-handlers`
+3. `/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/03-lobby-deck-shop-handlers`
+4. `/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/04-run-lifecycle-handlers`
+5. `/home/matt/workspace/.autogame-worktrees/272-socketHandlers-extract-lobby/tickets/272-socketHandlers-extract-lobby/subtickets/05-playing-phase-handlers`
+
+**Decomposition summary:**
+
+| # | Scope | Handlers |
+|---|--------|----------|
+| 01 | Module scaffold + `ctx` wiring | `listLobbies` (proof-of-pattern) |
+| 02 | Lobby browser | `listKeyItems`, `createLobby`, `joinLobby`, `leaveLobby` |
+| 03 | Pre-run lobby UI | quest, ready, deck, shop, grind, trades, key items |
+| 04 | Run lifecycle | `returnToLobby`, `giveUp`, `abandonRun`, `claimCardReward` |
+| 05 | Playing phase + cleanup | `move`, `useCard`, `discardCard`, `lootPickup`, `debugScenario`, `heartbeat`, `disconnect` |
+
+Connection preamble (session setup, resume/reconnect, `init` emit) stays in `index.js` through sub-tickets 01–04 and is finalized in 05.

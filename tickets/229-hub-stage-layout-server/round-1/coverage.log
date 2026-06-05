@@ -1,0 +1,360 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/enemy_variants.test.js (9 tests) 7ms
+ ✓ |server| server/test/quests.test.js (7 tests) 9ms
+ ✓ |server| server/test/quests-spawn-pools.test.js (11 tests) 32ms
+stdout | server/test/simulation.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > spawns only pool-valid types for a representative quest
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/simulation.test.js (17 tests) 5ms
+stdout | server/test/applyPlayerMovement.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > spawns exactly quest.enemyCount enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/quest_tier_gating.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > never spawns miniboss for pools without one (training_caverns, crystal_rescue)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > spawns enemies across bottom, middle, and top tiers (not all on one tier)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/applyPlayerMovement.test.js (10 tests) 7ms
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > spawns enemies across bottom, middle, and top tiers (not all on one tier)
+[loot] spawned id=6c6206cd-70c2-4074-80c3-bc4f8beaadf9 value=7
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > never places enemies on ramp connector rooms
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > never places enemies on ramp connector rooms
+[loot] spawned id=ce32210d-faa3-49fd-a07c-b292d9456241 value=12
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780638303472-z45w0ll7d2.json — starting fresh
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=ac234203-49b0-4289-bdcd-f40806ad2efb value=13
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > never spawns miniboss for pools without one (training_caverns, crystal_rescue)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=fe755648-3b55-46f9-89f5-9e487aff1b96 value=7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=3fb878a6-f372-4f5d-90d9-f673e412aff3 at (8.6, 39.3)
+[crystal] spawned id=ec1ee222-cd3d-4f43-9e79-dac2cbac3476 at (-11.6, 50.1)
+[crystal] spawned id=a12c39f9-4902-4112-9a9a-0b2a3e319da8 at (-12.1, 19.6)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=bafa5e92-69ec-44cc-a896-be29cd37b238 at (7.2, -15.2)
+[crystal] spawned id=a6a71bff-7e89-439a-a907-5aca243e2c82 at (8.5, -49.3)
+[crystal] spawned id=09dae5f6-bafc-45e0-9da5-edc0cef3e5bf at (-22.0, -40.7)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=e1bc87fa-9004-4149-b20a-ab118f6f4431 at (14.7, 35.0)
+[crystal] spawned id=a38a4150-5115-412b-9cf4-780641402b98 at (-7.1, 46.6)
+[crystal] spawned id=01864854-8d95-4ea4-8852-f9d2a15692bf at (47.5, 18.6)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=b83560d0-106d-43de-9f45-b33206458ab1 at (15.9, 7.2)
+[crystal] spawned id=5fd1eb49-8aee-4c7d-bb18-ba9542e94ef2 at (-7.5, 39.3)
+[crystal] spawned id=c4bfacf2-ceb9-43b7-8edd-7777ffee183d at (-12.7, 7.9)
+[loot] spawned id=88a8bcda-e759-4a01-ac06-3af1b554b663 value=13
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=c02f9d2a-ab8c-4aa8-bffc-8c1df39d02f1 at (-10.9, -17.4)
+[crystal] spawned id=10a0f037-668d-449f-a0b8-54d4b47a2a16 at (-35.5, 39.1)
+[crystal] spawned id=204f23e9-ecc5-4adb-ab28-929a115c1c47 at (-15.5, 45.8)
+[loot] spawned id=7f429a14-b7b1-44a1-8f9f-248425774aff value=11
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=6b5e745c-df84-4454-817b-36674b74167d at (41.8, 49.6)
+[crystal] spawned id=5f01166b-033b-4af4-8d4c-c9c474c2f80d at (21.3, 43.5)
+[crystal] spawned id=f82a2833-8137-4261-b661-9ab2d4de59e8 at (-49.0, 46.4)
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places collect-objective crystals only on the top tier
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places collect-objective crystals only on the top tier
+[crystal] spawned id=77a1cc58-2d68-4b3c-9739-717db9385571 at (2.3, -44.9)
+[crystal] spawned id=8f9f11c4-2aa9-44b2-8a57-710a99cf0754 at (-0.0, -44.4)
+[crystal] spawned id=e13eff71-31c5-4f38-ad87-575922168868 at (-1.0, -39.0)
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places optional loot on the top tier when spawn chance passes
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+Server listening on port 0
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places optional loot on the top tier when spawn chance passes
+[loot] spawned id=96088102-4bf9-4f26-9d60-278540356e05 value=11
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > bottom-tier spawn can reach top-tier treasure center via walkable AABBs
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+Player connected: socket=EMf1pZ5m_1fTe9hbAAAB, playerId=92ad5551-9a40-49ce-9250-04bee55020e5
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=48ecf06e-f40b-45d0-b1d5-b5b42770b6b6 value=16
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > never spawns the spire-exclusive `spawner` type for non-spire quests
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+Player disconnected: EMf1pZ5m_1fTe9hbAAAB
+
+ ✓ |server| server/test/spire_ascent_spawn.test.js (7 tests) 62ms
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780638303545-jcbhfew53t.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+Server listening on port 0
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+Player connected: socket=5ZSrX7g0eQYzv8XAAAAD, playerId=0702b32a-61b9-4c95-a0e9-b8f27f6edb64
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+Player disconnected: 5ZSrX7g0eQYzv8XAAAAD
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780638303591-jnnwf7nzyzj.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+Server listening on port 0
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+Player connected: socket=FcCkWn41cWNRpxRzAAAF, playerId=e607f24a-29bd-4ec5-8470-3ce219c07d6c
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[users] Loaded 1 user record(s) from /tmp/claude-1000/quest-tier-gating-1780638303591-jnnwf7nzyzj.json
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+Player disconnected: FcCkWn41cWNRpxRzAAAF
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780638303647-hqb14mvcrz5.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+Server listening on port 0
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+Player connected: socket=t2GKMnf91O3Yzu73AAAH, playerId=0c6e05ca-de83-4162-b5b6-e322651f5b59
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+Player disconnected: t2GKMnf91O3Yzu73AAAH
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[users] No existing user file at /tmp/claude-1000/quest-tier-deploy-gate-1780638303689-ev20cb1lgh6.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Server listening on port 0
+
+ ✓ |client| client/test/dungeon.test.js (31 tests) 43ms
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Player connected: socket=-zrbHJGSvODMttLHAAAJ, playerId=b5dee4e8-77da-4805-a67d-ef43d7e28a0a
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Player connected: socket=mo7dOzT01_cZBXqBAAAL, playerId=a6d1b916-eede-4064-9f50-3d9ff37b474e
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Player disconnected: -zrbHJGSvODMttLHAAAJ
+Player disconnected: mo7dOzT01_cZBXqBAAAL
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[users] No existing user file at /tmp/claude-1000/quest-tier-deploy-gate-1780638303977-h6d9khbwhvr.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Server listening on port 0
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Player connected: socket=lK4Kb2fwab2nTRt4AAAN, playerId=bd4b6ed7-542d-4924-8790-442b2ca44246
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Player connected: socket=rX5_9k0H6bpVfpHcAAAP, playerId=8e0b3f82-95a0-4a3a-8cd9-271093fa2c43
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Player disconnected: lK4Kb2fwab2nTRt4AAAN
+Player disconnected: rX5_9k0H6bpVfpHcAAAP
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[users] No existing user file at /tmp/claude-1000/quest-tier-deploy-gate-1780638304062-kcq6ewwq3yn.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Server listening on port 0
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > never spawns the spire-exclusive `spawner` type for non-spire quests
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=818ae321-62a6-4896-bfec-0358b71dad8f value=13
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=607def20-4bb9-4c89-8ae8-e5f0396744e2 value=13
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=e5c92fa9-d171-4663-b00c-be27d6e10582 value=16
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=6e3bf116-8a93-412e-a801-fa59a5810d1a at (8.6, 39.3)
+[crystal] spawned id=3825266b-aaf4-470f-ba74-21d5d5a5b782 at (-11.6, 50.1)
+[crystal] spawned id=5b6cd51d-a017-4615-a58a-5eead91b3bd8 at (-12.1, 19.6)
+[loot] spawned id=12b34739-1bd6-4ee5-8a12-21f9a963960f value=9
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=60ff8148-b128-44c5-91bb-9a7ed19cbf96 at (14.7, 35.0)
+[crystal] spawned id=4cea9be1-0f07-4725-a313-2dd04b3f1771 at (-7.1, 46.6)
+[crystal] spawned id=1dc4774f-f665-4423-98d8-b05974cbf4cf at (47.5, 18.6)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=b884ec03-80a9-4257-93d3-7ffe9238342c at (15.9, 7.2)
+[crystal] spawned id=5b5adc0b-fbcd-4ac5-b8dd-d4cb20c9faaf at (-7.5, 39.3)
+[crystal] spawned id=05562e2c-ff43-46ab-9ff0-8ec4b0e3d36d at (-12.7, 7.9)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=8c87135f-2d71-43f2-b761-2498a07ad5e6 at (-10.9, -17.4)
+[crystal] spawned id=68f6b593-5987-44ea-80d0-18c297b4369c at (-35.5, 39.1)
+[crystal] spawned id=b69d0e61-e0c0-428f-8386-f3ad65aed5ac at (-15.5, 45.8)
+[loot] spawned id=f835f690-bc4d-47be-8f5a-4f8c223fe8fc value=17
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=8d63398b-9c3f-4f90-9dfb-56858bd55f6d value=5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=71c24a13-ef1c-4f49-9105-88bc45e13524 value=14
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=f362c315-eb16-4c93-a858-b9f4c5647ae0 value=16
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=c8a00251-7b2a-4645-b5b4-e158d84c6a55 value=16
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=0f0ed8e8-15fb-476f-a347-e0313cd1909f value=20
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > can spawn `spawner` for a spire_ascent run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > can spawn `spawner` for a spire_ascent run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > survive regular spawns draw from the quest pool > snapshots the quest enemyPool onto the survive objective
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > survive regular spawns draw from the quest pool > regular (non-miniboss) spawns come from the quest pool, miniboss tail preserved
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/enemy-spawn-pools-wiring.test.js (8 tests) 674ms
+   ✓ spawner cross-level exclusion > never spawns the spire-exclusive `spawner` type for non-spire quests  529ms
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Player connected: socket=xh6_QIHjOa8V4we7AAAR, playerId=2b9a6924-835d-4779-93d1-afbff22aa3bd
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Player connected: socket=lq7mrIxU2ePH_qt_AAAT, playerId=0c80254a-4c5c-431a-af25-d0abecb67f7a
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Player disconnected: xh6_QIHjOa8V4we7AAAR
+Player disconnected: lq7mrIxU2ePH_qt_AAAT
+
+ ✓ |server| server/test/quest_tier_gating.test.js (7 tests) 671ms
+ ✓ |server| server/test/sunken_canyon_walkability.test.js (4 tests) 1468ms
+   ✓ sunken-canyon walkability regressions > keeps ramp axis-z wall gaps ≥ 2 * PLAYER_RADIUS for three-ramp seeds 1..30  579ms
+   ✓ sunken-canyon walkability regressions > supports bidirectional plateau ↔ canyon centre and lateral edge probes  586ms
+ ✓ |server| server/test/dungeon.test.js (132 tests) 3185ms
+   ✓ layout traversability > every room is reachable from the start room for many seeds  1342ms
+   ✓ generateLayout(seed, 'sunken-canyon') > ramp count is 4–5 across many seeds (2 edge connectors + 2–3 central)  580ms
+
+ Test Files  11 passed (11)
+      Tests  243 passed (243)
+   Start at  22:45:02
+   Duration  4.15s (transform 42ms, setup 25ms, collect 1.12s, tests 6.16s, environment 330ms, prepare 1.13s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |    54.6 |    53.96 |      48 |    54.6 |                       
+ client        |   24.87 |       50 |    12.5 |   24.87 |                       
+  collision.js |   24.87 |       50 |    12.5 |   24.87 | ...16,222-230,236-241 
+ server        |   57.62 |    54.03 |   54.76 |   57.62 |                       
+  index.js     |   57.62 |    54.03 |   54.76 |   57.62 | ...991-1997,2029-2030 
+---------------|---------|----------|---------|---------|-----------------------

@@ -1,0 +1,840 @@
+// ── Lobby Socket Handlers ──
+// Registers lobby-browser, deck/shop/trade, run-lifecycle, and playing-phase
+// socket.on handlers that previously lived inline in the io.on('connection')
+// closure in index.js.
+//
+// ── Circular-dependency resolution ──
+// This module must NOT require('./index') (circular). Per-connection identity
+// and index.js-local helpers are supplied via the ctx object passed to
+// register(socket, ctx) from the connection handler.
+
+const { DECK_MAX_SIZE, LOOT_PICKUP_RADIUS } = require('../config');
+const {
+  DEFAULT_QUEST_TIER,
+  isValidQuestSelection,
+  normalizeQuestTier,
+} = require('../quests');
+const { isLobbyPhase, isPlayingPhase } = require('../lobbies');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
+const { backfillUnlockedHats } = require('../cosmetic');
+const keyItemEffects = require('../keyItemEffects');
+const {
+  CARD_DEFS,
+  getKeyItemDef,
+  normalizePlayerInventory,
+  getInventoryInstance,
+  cardIdForDeckEntry,
+  findAvailableInventoryInstance,
+  canAddCardInstanceToDeck,
+  evolveCard,
+  sellCard,
+  buyShopCard,
+  unlockHatForPlayer,
+  healAtMedic,
+  grindCard,
+  offerCardTrade,
+  respondCardTrade,
+  validateDeck,
+  checkAllReady,
+  assignRunSpawnPositions,
+  stateSnapshot,
+  savePlayerData,
+  discardCardFromHand,
+  addMagicStones,
+  recordCrystalCollected,
+  checkRunTerminalState,
+} = require('../progression');
+
+function register(socket, ctx) {
+  const {
+    playerId,
+    sessionPlayer,
+    lobbies,
+    getUnlockedKeyItems,
+    withLobbyContext,
+    applyLayoutForQuest,
+    ensureShopOffer,
+    joinPlayerToLobby,
+    joinLobbyWithPhasePolicy,
+    leaveLobbyForSocket,
+    buildSessionFromPlayer,
+    reconnectPlayerToLobby,
+    withLobbyPlayer,
+    withLobbyFromSocket,
+    broadcastLobbyUpdate,
+    emitQuestPayloadToLobby,
+    findSocketByPlayerId,
+    io,
+    returnPlayersToLobby,
+    giveUpRun,
+    abandonSuspendedRun,
+    claimCardReward,
+    cardEffects,
+    applyDebugScenario,
+    isDebugScenarioAllowed,
+    softDisconnectPlayerFromLobby,
+  } = ctx;
+
+  socket.on('listLobbies', () => {
+    socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
+  });
+
+  socket.on('listKeyItems', () => {
+    const items = getUnlockedKeyItems().map((def) => ({
+      id: def.id,
+      name: def.name,
+      description: def.description,
+      cooldownMs: def.cooldownMs,
+    }));
+    socket.emit('keyItemsListed', { items });
+  });
+
+  socket.on('createLobby', (data) => {
+    if (lobbies.getLobbyForPlayer(playerId)) {
+      socket.emit('lobbyError', { reason: 'Already in a lobby' });
+      return;
+    }
+    const lobby = lobbies.createLobby(data && data.name);
+    withLobbyContext(lobby, () => {
+      applyLayoutForQuest(
+        lobby.state,
+        lobby.state.selectedQuestId,
+        lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+      );
+      ensureShopOffer();
+    });
+    joinPlayerToLobby(socket, lobby);
+  });
+
+  socket.on('joinLobby', (data) => {
+    const existingLobby = lobbies.getLobbyForPlayer(playerId);
+    if (existingLobby) {
+      const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+      const player = existingLobby.state.players[playerId];
+      if (player && player.connected === false && lobbyId === existingLobby.id) {
+        reconnectPlayerToLobby(socket, existingLobby);
+        return;
+      }
+      socket.emit('lobbyError', { reason: 'Already in a lobby' });
+      return;
+    }
+    const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
+    if (!lobbyId) {
+      socket.emit('lobbyError', { reason: 'Missing lobbyId' });
+      return;
+    }
+    const lobby = lobbies.getLobbyById(lobbyId);
+    if (!lobby) {
+      socket.emit('lobbyError', { reason: 'Lobby not found' });
+      return;
+    }
+    joinLobbyWithPhasePolicy(socket, lobby);
+  });
+
+  socket.on('leaveLobby', () => {
+    if (!lobbies.getLobbyForPlayer(playerId)) {
+      socket.emit('lobbyError', { reason: 'Not in a lobby' });
+      return;
+    }
+    leaveLobbyForSocket(socket);
+    const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
+    lobbies.registerSession(playerId, session);
+    socket.emit('lobbyLeft', {
+      lobbies: lobbies.listLobbySummaries(),
+    });
+  });
+
+  socket.on('selectQuest', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (state.suspendedCheckpoint) {
+      socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
+      return;
+    }
+
+    const questId = data && typeof data.questId === 'string' ? data.questId : null;
+    if (!questId) {
+      socket.emit('questError', { reason: 'Missing questId' });
+      return;
+    }
+
+    const tier = normalizeQuestTier(data && data.tier);
+
+    if (!isValidQuestSelection(questId, tier)) {
+      socket.emit('questError', { reason: `Unknown quest or tier: ${questId} tier ${tier}` });
+      return;
+    }
+
+    if (tier >= 2 && !isQuestTierUnlocked(player.accountId, questId, tier)) {
+      socket.emit('questError', { reason: 'tier_locked' });
+      return;
+    }
+
+    state.selectedQuestId = questId;
+    state.selectedQuestTier = tier;
+    applyLayoutForQuest(state, questId, tier);
+    assignRunSpawnPositions(Object.values(state.players));
+    emitQuestPayloadToLobby(lobby, {
+      extraFields: {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      },
+    });
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    broadcastLobbyUpdate(lobby);
+    });
+  });
+
+  socket.on('playerReady', (ready) => {
+    withLobbyPlayer(socket, {}, (state, lobby, player) => {
+    if (ready) {
+      const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+      if (selectedTier >= 2) {
+        const questId = state.selectedQuestId;
+        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+          player.ready = false;
+          socket.emit('questError', { reason: 'tier_locked' });
+          broadcastLobbyUpdate(lobby);
+          return;
+        }
+      }
+
+      normalizePlayerInventory(player);
+      const result = validateDeck(player.selectedDeck, player.inventory);
+      if (!result.valid) {
+        player.ready = false;
+        socket.emit('deckError', { reason: result.reason });
+        broadcastLobbyUpdate(lobby);
+        return;
+      }
+    }
+
+    player.ready = !!ready;
+    broadcastLobbyUpdate(lobby);
+    if (isLobbyPhase(state)) {
+      checkAllReady();
+    }
+    });
+  });
+
+  socket.on('deckAddCard', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    normalizePlayerInventory(player);
+
+    const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!requestedInstanceId && !requestedCardId) {
+      socket.emit('deckError', { reason: 'Missing cardId' });
+      return;
+    }
+
+    let instance = null;
+    if (requestedInstanceId) {
+      instance = getInventoryInstance(player.inventory, requestedInstanceId);
+      if (!instance) {
+        socket.emit('deckError', { reason: `Unknown card instance: ${requestedInstanceId}` });
+        return;
+      }
+    } else {
+      if (!CARD_DEFS[requestedCardId]) {
+        socket.emit('deckError', { reason: `Unknown card: ${requestedCardId}` });
+        return;
+      }
+      instance = findAvailableInventoryInstance(requestedCardId, player.selectedDeck, player.inventory);
+    }
+
+    const cardId = instance ? instance.cardId : requestedCardId;
+    if (!instance) {
+      socket.emit('deckError', { reason: `No extra copies of ${cardId} to add` });
+      return;
+    }
+
+    // Validate deck rules via the selected instance.
+    if (!canAddCardInstanceToDeck(instance.instanceId, player.selectedDeck, player.inventory)) {
+      if (player.selectedDeck.length >= DECK_MAX_SIZE) {
+        socket.emit('deckError', { reason: `Deck is full (${DECK_MAX_SIZE} cards max)` });
+      } else if (!findAvailableInventoryInstance(cardId, player.selectedDeck, player.inventory)) {
+        socket.emit('deckError', { reason: `No extra copies of ${cardId} to add` });
+      } else {
+        socket.emit('deckError', { reason: `Cannot add ${cardId} to deck` });
+      }
+      return;
+    }
+
+    // Add this specific card instance to the deck.
+    player.selectedDeck.push(instance.instanceId);
+
+    // Emit deckUpdate to the requesting player only
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
+
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('equipKeyItem', (data) => {
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
+    const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
+    if (!keyItemId) {
+      socket.emit('keyItemError', { reason: 'missing_key_item_id' });
+      return;
+    }
+
+    const def = getKeyItemDef(keyItemId);
+    if (!def) {
+      socket.emit('keyItemError', { reason: 'unknown_item' });
+      return;
+    }
+
+    player.equippedKeyItemId = keyItemId;
+    savePlayerData(socket.playerId);
+
+    socket.emit('keyItemEquipped', { keyItemId });
+    });
+  });
+
+  socket.on('useKeyItem', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
+      keyItemEffects.handleUseKeyItem(socket, state, lobby, data);
+    });
+  });
+
+  socket.on('deckRemoveCard', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    normalizePlayerInventory(player);
+
+    const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!requestedInstanceId && !requestedCardId) {
+      socket.emit('deckError', { reason: 'Missing cardId' });
+      return;
+    }
+
+    // Find the selected instance in the deck. Legacy cardId payloads remove
+    // the first matching card instance for backward compatibility.
+    let idx = -1;
+    let cardId = requestedCardId;
+    if (requestedInstanceId) {
+      idx = player.selectedDeck.indexOf(requestedInstanceId);
+      cardId = cardIdForDeckEntry(requestedInstanceId, player.inventory) || requestedInstanceId;
+    } else {
+      idx = player.selectedDeck.findIndex(entry =>
+        cardIdForDeckEntry(entry, player.inventory) === requestedCardId
+      );
+    }
+    if (idx === -1) {
+      socket.emit('deckError', { reason: `Card ${cardId} not in deck` });
+      return;
+    }
+
+    // Remove one occurrence
+    player.selectedDeck.splice(idx, 1);
+
+    // Emit deckUpdate to the requesting player only
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
+
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('evolveCard', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const result = evolveCard(player, instanceId);
+    if (!result.ok) {
+      socket.emit('cardEvolutionError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardEvolutionResult', {
+      ...result,
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards
+    });
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('sellCard', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
+    if (!requestedInstanceId && !requestedCardId) {
+      socket.emit('deckError', { reason: 'Missing cardId' });
+      return;
+    }
+
+    let cardId = requestedCardId;
+    if (requestedInstanceId) {
+      const instance = getInventoryInstance(player.inventory, requestedInstanceId);
+      cardId = instance ? instance.cardId : requestedCardId;
+    }
+
+    const result = sellCard(player, cardId, requestedInstanceId);
+    if (!result.ok) {
+      socket.emit('deckError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardInventoryUpdate', {
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency,
+      selectedDeck: player.selectedDeck
+    });
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('buyShopCard', () => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    const result = buyShopCard(player, state.shopOffer);
+    if (!result.ok) {
+      socket.emit('deckError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardInventoryUpdate', {
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency,
+      selectedDeck: player.selectedDeck
+    });
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('unlockHat', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
+    if (!hatId) {
+      socket.emit('hatError', { reason: 'Missing hatId' });
+      return;
+    }
+
+    // Reject early if the account already owns the hat — no currency change.
+    const account = findUserByAccountId(player.accountId);
+    if (!account) {
+      socket.emit('hatError', { reason: 'Account not found' });
+      return;
+    }
+    const owned = backfillUnlockedHats(account.unlockedHats);
+    if (owned.includes(hatId)) {
+      socket.emit('hatError', { reason: 'Hat already unlocked' });
+      return;
+    }
+
+    // Deduct currency (validates the hat exists and affordability).
+    const result = unlockHatForPlayer(player, hatId);
+    if (!result.ok) {
+      socket.emit('hatError', { reason: result.reason });
+      return;
+    }
+
+    // Persist deducted currency before recording the hat on the account.
+    // Safe ordering: currency first, hat second — a crash after this save but
+    // before unlock leaves charged-but-not-unlocked (retryable via unlockHat)
+    // instead of unlocked-but-not-charged (free-hat exploit).
+    const saved = savePlayerData(socket.playerId);
+    if (!saved) {
+      player.currency += result.cost;
+      socket.emit('hatError', { reason: 'Failed to save progress' });
+      return;
+    }
+
+    const unlockResult = unlockHatForAccount(player.accountId, hatId);
+    if (!unlockResult.ok) {
+      // Refund in memory and re-save so disk matches RAM; otherwise the first
+      // save would leave deducted currency on disk without a hat unlock.
+      player.currency += result.cost;
+      savePlayerData(socket.playerId);
+      socket.emit('hatError', { reason: unlockResult.reason });
+      return;
+    }
+
+    socket.emit('hatUnlocked', {
+      unlockedHats: unlockResult.unlockedHats,
+      currency: player.currency
+    });
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('medicHeal', () => {
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
+      const result = healAtMedic(socket.playerId, state);
+      if (!result.ok) {
+        socket.emit('medicError', { reason: result.reason });
+        return;
+      }
+
+      socket.emit('medicHealed', {
+        hp: result.hp,
+        currency: player.currency,
+        cost: result.cost,
+      });
+      io.to(state._lobbyId).emit('stateUpdate', stateSnapshot());
+    });
+  });
+
+  socket.on('grindCard', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
+    const result = grindCard(player, instanceId);
+    if (!result.ok) {
+      socket.emit('cardGrindError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('cardGrindResult', {
+      ...result,
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency
+    });
+    socket.emit('deckUpdate', {
+      selectedDeck: player.selectedDeck,
+      inventory: player.inventory,
+      ownedCards: player.ownedCards,
+      currency: player.currency
+    });
+    savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('offerCardTrade', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (!data) return;
+
+    const targetPlayerId = typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
+    const offeredCardId = typeof data.offeredCardId === 'string' ? data.offeredCardId : null;
+    const requestedCardId = typeof data.requestedCardId === 'string' ? data.requestedCardId : null;
+    if (!targetPlayerId || !offeredCardId || !requestedCardId) {
+      socket.emit('deckError', { reason: 'Invalid trade offer' });
+      return;
+    }
+
+    const result = offerCardTrade(
+      state.pendingTrades,
+      socket.playerId,
+      targetPlayerId,
+      offeredCardId,
+      requestedCardId
+    );
+    if (!result.ok) {
+      socket.emit('deckError', { reason: result.reason });
+      return;
+    }
+
+    socket.emit('tradeUpdate', {
+      tradeId: result.tradeId,
+      status: 'offered',
+      targetPlayerId,
+      offeredCardId,
+      requestedCardId
+    });
+
+    const targetSocket = findSocketByPlayerId(targetPlayerId);
+    if (targetSocket) {
+      targetSocket.emit('tradeOffer', {
+        tradeId: result.tradeId,
+        fromPlayerId: socket.playerId,
+        fromUsername: player.username || socket.playerId,
+        offeredCardId,
+        requestedCardId
+      });
+    }
+    });
+  });
+
+  socket.on('respondCardTrade', (data) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+    if (!data) return;
+
+    const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
+    const accepted = !!data.accepted;
+    if (!tradeId) {
+      socket.emit('deckError', { reason: 'Missing tradeId' });
+      return;
+    }
+
+    const trade = state.pendingTrades[tradeId];
+    const offererId = trade ? trade.fromPlayerId : null;
+    const result = respondCardTrade(state.pendingTrades, socket.playerId, tradeId, accepted);
+    if (!result.ok) {
+      socket.emit('deckError', { reason: result.reason });
+      return;
+    }
+
+    const notifyTradeResolved = (playerId, payload) => {
+      const targetSocket = findSocketByPlayerId(playerId);
+      if (targetSocket) targetSocket.emit('tradeUpdate', payload);
+    };
+
+    if (!result.accepted) {
+      notifyTradeResolved(socket.playerId, { tradeId, status: 'rejected' });
+      if (offererId) {
+        notifyTradeResolved(offererId, { tradeId, status: 'rejected' });
+      }
+      return;
+    }
+
+    const offerer = state.players[result.offererId];
+    const responder = state.players[result.responderId];
+    const inventoryPayload = (p) => ({
+      inventory: p.inventory,
+      ownedCards: p.ownedCards,
+      currency: p.currency,
+      selectedDeck: p.selectedDeck
+    });
+
+    notifyTradeResolved(result.offererId, { tradeId, status: 'accepted' });
+    notifyTradeResolved(result.responderId, { tradeId, status: 'accepted' });
+
+    const offererSocket = findSocketByPlayerId(result.offererId);
+    if (offererSocket) {
+      offererSocket.emit('cardInventoryUpdate', inventoryPayload(offerer));
+    }
+    const responderSocket = findSocketByPlayerId(result.responderId);
+    if (responderSocket) {
+      responderSocket.emit('cardInventoryUpdate', inventoryPayload(responder));
+    }
+
+    savePlayerData(result.offererId);
+    savePlayerData(result.responderId);
+    });
+  });
+
+  socket.on('returnToLobby', () => {
+    withLobbyFromSocket(socket, (state) => {
+    if (state.run && state.run.status === 'playing') {
+      socket.emit('runError', { reason: 'Run still in progress' });
+      return;
+    }
+
+    if (!state.run) return;
+
+    returnPlayersToLobby(state);
+    });
+  });
+
+  socket.on('giveUp', () => {
+    withLobbyFromSocket(socket, (state) => {
+      try {
+        if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
+          socket.emit('runError', { reason: 'No active run' });
+          return;
+        }
+        const result = giveUpRun(state);
+        if (!result.ok) {
+          socket.emit('runError', { reason: result.reason || 'Cannot give up' });
+          return;
+        }
+        socket.emit('runAbandoned');
+      } catch (err) {
+        console.error('[giveUp] failed:', err);
+        socket.emit('runError', { reason: 'Give up failed' });
+      }
+    });
+  });
+
+  socket.on('abandonRun', () => {
+    withLobbyFromSocket(socket, (state) => {
+      if (!state.suspendedCheckpoint) {
+        socket.emit('runError', { reason: 'No suspended expedition' });
+        return;
+      }
+      abandonSuspendedRun(state);
+    });
+  });
+
+  socket.on('claimCardReward', (data) => {
+    withLobbyFromSocket(socket, (state) => {
+    const player = state.players[socket.playerId];
+    if (!player) return;
+    if (!state.run || state.run.status === 'playing') return;
+    if (!data || typeof data.cardId !== 'string') return;
+
+    const result = claimCardReward(socket.playerId, data.cardId, state);
+    if (!result.ok) return;
+
+    savePlayerData(socket.playerId);
+    socket.emit('cardRewardClaimed', {
+      cardId: result.cardId,
+      ownedCards: result.ownedCards,
+      inventory: result.inventory,
+    });
+    });
+  });
+
+  socket.on('move', (data) => {
+    withLobbyFromSocket(socket, (state) => {
+    if (!isPlayingPhase(state)) return;
+
+    const player = state.players[socket.playerId];
+
+    if (!player) return;
+    if (player.dead) return;
+    if (player.extracted) return;
+    if (player.connected === false) return;
+
+    if (!data || typeof data !== 'object' || Array.isArray(data) ||
+        !Number.isFinite(data.dx) || !Number.isFinite(data.dz) || !Number.isFinite(data.rotation)) {
+      console.warn(`Rejected move from ${socket.id}: invalid payload`);
+      return;
+    }
+
+    if (data.sequence !== undefined) {
+      if (!Number.isInteger(data.sequence) || data.sequence <= 0) {
+        console.warn(`Rejected move from ${socket.id}: invalid sequence`);
+        return;
+      }
+      const lastSeq = player.lastInputSequence || 0;
+      if (data.sequence <= lastSeq) {
+        return;
+      }
+      player.lastInputSequence = data.sequence;
+    }
+
+    // Normalize input vector to unit length (defensive against oversized dx/dz)
+    const mag = Math.hypot(data.dx, data.dz);
+    if (mag > 1) { data.dx /= mag; data.dz /= mag; }
+
+    if (player) {
+      player.inputDx = data.dx;
+      player.inputDz = data.dz;
+      if (Number.isFinite(data.rotation)) {
+        player.inputRotation = data.rotation;
+        player.rotation = data.rotation;
+      }
+      player.inputActive = mag > 1e-8;
+      player.lastInputTime = Date.now();
+      player.lastActivity = Date.now();
+      // Batched once per tick via flushDirtyPlayerSaves after applyPlayerMovement.
+      player.persistenceDirty = true;
+    }
+    });
+  });
+
+  socket.on('useCard', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
+      cardEffects.handleUseCard(socket, state, lobby, data);
+    });
+  });
+
+  socket.on('discardCard', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
+    if (!isPlayingPhase(state)) return;
+    if (!state.run || state.run.status !== 'playing') return;
+    if (!data || typeof data.slotIndex !== 'number' || !data.cardId) return;
+
+    const player = state.players[socket.playerId];
+    if (!player || player.dead) return;
+
+    const result = discardCardFromHand(player, data.slotIndex, data.cardId);
+    if (!result.valid) {
+      socket.emit('cardError', { reason: result.reason });
+      return;
+    }
+
+    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    });
+  });
+
+  socket.on('debugScenario', (data) => {
+    const name = data && typeof data.name === 'string' ? data.name : '';
+    if (!isDebugScenarioAllowed(socket)) {
+      socket.emit('debugScenarioResult', { ok: false, reason: 'Debug scenarios are disabled' });
+      return;
+    }
+
+    const result = applyDebugScenario(socket, name);
+    socket.emit('debugScenarioResult', result);
+  });
+
+  socket.on('heartbeat', (data) => {
+    if (!data || !Number.isFinite(data.timestamp)) {
+      console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
+      return;
+    }
+    const lobby = lobbies.getLobbyForPlayer(socket.playerId);
+    if (lobby && lobby.state.players[socket.playerId]) {
+      lobby.state.players[socket.playerId].lastActivity = Date.now();
+    }
+    socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
+  });
+
+  socket.on('lootPickup', (data) => {
+    withLobbyFromSocket(socket, (state, lobby) => {
+    if (!data || !data.lootId) return;
+
+    const player = state.players[socket.playerId];
+    if (!player) return;
+    if (player.dead || player.extracted) return;
+
+    const lootIdx = state.loot.findIndex(l => l.id === data.lootId);
+    if (lootIdx === -1) return;
+
+    const loot = state.loot[lootIdx];
+    const dist = Math.hypot(player.x - loot.x, player.z - loot.z);
+
+    if (dist > LOOT_PICKUP_RADIUS) return;
+
+    const isCrystal = loot.kind === 'crystal';
+    const isMagicStone = loot.kind === 'magic_stone';
+    if (isMagicStone) {
+      addMagicStones(player, loot.value);
+    } else if (isCrystal) {
+      recordCrystalCollected(1);
+    } else {
+      player.currency += loot.value;
+      player.currencyEarnedThisRun += loot.value;
+    }
+    state.loot.splice(lootIdx, 1);
+
+    const lootLabel = isCrystal ? ' (crystal)' : isMagicStone ? ' (magic stone)' : '';
+    console.log(`[loot] picked up id=${loot.id}${lootLabel} value=${loot.value} by ${socket.id} (currency=${player.currency}, ms=${player.magicStones})`);
+
+    savePlayerData(socket.playerId);
+
+    if (isCrystal) {
+      checkRunTerminalState();
+    }
+    });
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`Player disconnected: ${socket.id}`);
+
+    if (!socket.playerId) return;
+
+    const lobby = lobbies.getLobbyForPlayer(socket.playerId);
+    if (lobby && lobby.state.players[socket.playerId]) {
+      softDisconnectPlayerFromLobby(socket);
+      return;
+    }
+
+    lobbies.removeSession(socket.playerId);
+  });
+}
+
+module.exports = { register };

@@ -46,6 +46,20 @@ const OPEN_PLAZA = {
   interiorMargin: 2,        // cover must stay this far inside the perimeter walls
 };
 
+// Hub ship-interior: three zone rooms (Operations, Commerce, Salon) in a compact row.
+const HUB_ROOM_WIDTH = 12;
+const HUB_ROOM_DEPTH = 12;
+const HUB_CELL_SPACING = 20;
+const HUB_ANCHOR_INSET = 4; // booth offset from room centre (≥ 1 unit inside edges)
+
+const HUB = {
+  roomWidth: HUB_ROOM_WIDTH,
+  roomDepth: HUB_ROOM_DEPTH,
+  cellSpacing: HUB_CELL_SPACING,
+  passageWidth: PASSAGE_WIDTH,
+  anchorInset: HUB_ANCHOR_INSET,
+};
+
 const LAYOUT_PROFILES = {
   crowded: {
     ...DEFAULT_LAYOUT_PROFILE,
@@ -82,6 +96,11 @@ const LAYOUT_PROFILES = {
   'spire-ascent': {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
+  },
+  // Hub ship-interior is handled by generateHub() — see that branch.
+  hub: {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: HUB_CELL_SPACING,
   },
 };
 
@@ -145,6 +164,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   if (profile === 'spire-ascent') {
     return generateSpireAscent(seed);
+  }
+  if (profile === 'hub') {
+    return generateHub(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
@@ -984,6 +1006,158 @@ function generateSpireAscent(seed) {
   };
 }
 
+// ── Hub Ship-Interior Stage Generation ──
+
+/**
+ * Build perimeter walls for a hub zone room. Passage gaps are only on sides
+ * listed in `gapSides` ('north' | 'south' | 'east' | 'west').
+ */
+function buildHubRoomWalls(x, z, width, depth, gapSides, passageWidth) {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  const gap = passageWidth;
+  const walls = [];
+
+  // North wall (z = z - halfD), along x-axis
+  if (!gapSides.has('north')) {
+    walls.push({ x, z: z - halfD, length: width, axis: 'x' });
+  } else {
+    const segLen = (width - gap) / 2;
+    walls.push({ x: x - gap / 2 - segLen / 2, z: z - halfD, length: segLen, axis: 'x' });
+    walls.push({ x: x + gap / 2 + segLen / 2, z: z - halfD, length: segLen, axis: 'x' });
+  }
+
+  // South wall (z = z + halfD)
+  if (!gapSides.has('south')) {
+    walls.push({ x, z: z + halfD, length: width, axis: 'x' });
+  } else {
+    const segLen = (width - gap) / 2;
+    walls.push({ x: x - gap / 2 - segLen / 2, z: z + halfD, length: segLen, axis: 'x' });
+    walls.push({ x: x + gap / 2 + segLen / 2, z: z + halfD, length: segLen, axis: 'x' });
+  }
+
+  // West wall (x = x - halfW), along z-axis
+  if (!gapSides.has('west')) {
+    walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
+  } else {
+    const segLen = (depth - gap) / 2;
+    walls.push({ x: x - halfW, z: z - gap / 2 - segLen / 2, length: segLen, axis: 'z' });
+    walls.push({ x: x - halfW, z: z + gap / 2 + segLen / 2, length: segLen, axis: 'z' });
+  }
+
+  // East wall (x = x + halfW)
+  if (!gapSides.has('east')) {
+    walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
+  } else {
+    const segLen = (depth - gap) / 2;
+    walls.push({ x: x + halfW, z: z - gap / 2 - segLen / 2, length: segLen, axis: 'z' });
+    walls.push({ x: x + halfW, z: z + gap / 2 + segLen / 2, length: segLen, axis: 'z' });
+  }
+
+  return walls;
+}
+
+/**
+ * Build a horizontal corridor passage between two rooms on the same Z row.
+ */
+function buildHubHorizontalPassage(fromX, fromZ, toX, toZ, fromRoom, toRoom, passageWidth) {
+  const halfGap = passageWidth / 2;
+  const corridorLength = HUB.cellSpacing - fromRoom.width / 2 - toRoom.width / 2;
+  const wallCentreX = (fromX + toX) / 2;
+  const walls = [
+    { x: wallCentreX, z: fromZ - halfGap, length: corridorLength, axis: 'x' },
+    { x: wallCentreX, z: fromZ + halfGap, length: corridorLength, axis: 'x' },
+  ];
+  return { x1: fromX, z1: fromZ, x2: toX, z2: toZ, walls, corridorLength };
+}
+
+/**
+ * Build the hub ship-interior: three connected zone rooms (Operations west,
+ * Commerce centre, Salon east) with booth anchor positions. Deterministic for
+ * a given seed (layout is hand-placed; seed is accepted for API consistency).
+ *
+ * Returns { rooms, passages, boothAnchors, passageWidth, cellSpacing,
+ *           profile: 'hub' }.
+ */
+function generateHub(seed) {
+  const { roomWidth, roomDepth, cellSpacing, passageWidth, anchorInset } = HUB;
+  const halfSpacing = cellSpacing;
+
+  // West → centre → east along +X
+  const operationsX = -halfSpacing;
+  const commerceX = 0;
+  const salonX = halfSpacing;
+  const rowZ = 0;
+
+  const flatFloor = {
+    yNW: DEFAULT_FLOOR_Y,
+    yNE: DEFAULT_FLOOR_Y,
+    ySE: DEFAULT_FLOOR_Y,
+    ySW: DEFAULT_FLOOR_Y,
+  };
+
+  const operations = {
+    x: operationsX,
+    z: rowZ,
+    width: roomWidth,
+    depth: roomDepth,
+    walls: buildHubRoomWalls(operationsX, rowZ, roomWidth, roomDepth, new Set(['east']), passageWidth),
+    floorCorners: { ...flatFloor },
+    hubZone: 'operations',
+    role: 'start',
+    spawnWeight: 0,
+  };
+
+  const commerce = {
+    x: commerceX,
+    z: rowZ,
+    width: roomWidth,
+    depth: roomDepth,
+    walls: buildHubRoomWalls(commerceX, rowZ, roomWidth, roomDepth, new Set(['west', 'east']), passageWidth),
+    floorCorners: { ...flatFloor },
+    hubZone: 'commerce',
+    role: 'connector',
+    spawnWeight: 0,
+  };
+
+  const salon = {
+    x: salonX,
+    z: rowZ,
+    width: roomWidth,
+    depth: roomDepth,
+    walls: buildHubRoomWalls(salonX, rowZ, roomWidth, roomDepth, new Set(['west']), passageWidth),
+    floorCorners: { ...flatFloor },
+    hubZone: 'salon',
+    role: 'connector',
+    spawnWeight: 0,
+  };
+
+  const rooms = [operations, commerce, salon];
+
+  const passages = [
+    buildHubHorizontalPassage(operationsX, rowZ, commerceX, rowZ, operations, commerce, passageWidth),
+    buildHubHorizontalPassage(commerceX, rowZ, salonX, rowZ, commerce, salon, passageWidth),
+  ];
+
+  const boothAnchors = {
+    quest: { x: operationsX - anchorInset, z: rowZ - anchorInset },
+    launch: { x: operationsX + anchorInset, z: rowZ + anchorInset },
+    shop: { x: commerceX - anchorInset, z: rowZ - anchorInset },
+    deck: { x: commerceX + anchorInset, z: rowZ + anchorInset },
+    character: { x: salonX - anchorInset, z: rowZ - anchorInset },
+    hats: { x: salonX + anchorInset, z: rowZ + anchorInset },
+  };
+
+  return {
+    rooms,
+    passages,
+    boothAnchors,
+    passageWidth,
+    cellSpacing,
+    profile: 'hub',
+  };
+}
+
 // ── Room Role Assignment ──
 
 /**
@@ -1133,6 +1307,7 @@ module.exports = {
   generateOpenPlaza,
   generateSunkenCanyon,
   generateSpireAscent,
+  generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
   buildAdjacencyMap,
@@ -1153,5 +1328,6 @@ module.exports = {
   CELL_SPACING,
   MIN_ROOM_SIZE,
   MAX_ROOM_SIZE_INCLUSIVE,
-  PASSAGE_WIDTH
+  PASSAGE_WIDTH,
+  HUB,
 };

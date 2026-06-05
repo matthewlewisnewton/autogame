@@ -3885,6 +3885,42 @@ PASS. The implementation is small and follows the existing server module boundar
 
 None.
 
+## v0.220 — 229-hub-stage-layout-server  (2026-06-04 22:47:15)
+
+### Walkable geometry and collision like other stages
+
+PASS. The hub rooms use the same room wall and passage wall shapes consumed by existing server/client dungeon systems. The tests validate the anchors are walkable using `buildWallColliders` and `computeWalkableAABBs`, and validate all zone rooms are reachable from the Operations start room across multiple seeds. The live smoke capture did not select the hub profile, but it did confirm the ticket did not break normal gameplay startup or existing stage rendering.
+
+### Server unit tests for layout generation and anchors
+
+PASS. `game/server/test/dungeon.test.js` includes focused tests for hub profile shape, zone grouping, fixed roles/spawn weights, booth-anchor presence and placement, collision-aware walkability, reachability, and determinism. I also ran `pnpm vitest run server/test/dungeon.test.js` from `game/`; all 132 tests passed. The round coverage log also shows the full suite passed: 11 files, 243 tests.
+
+### Design and requirements consistency
+
+PASS. The implementation stays within the existing server-generated modular layout model described in `game/docs/design.md`: rooms/passages, floor corners, and server-side walkability remain compatible with existing collision and floor sampling. It does not regress the foundation requirements for 3D rendering, socket connectivity, multiplayer visualization, or synchronized movement.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify a `?debugScenario=...` shortcut. No debug-scenario gating or normal-flow reachability issue applies.
+
+## v0.221 — 272-socketHandlers-extract-lobby  (2026-06-04 22:54:57)
+
+Pass. The live code keeps the same socket event surface for lobby browser, key items, deck/shop/trade, run lifecycle, playing-phase actions, debug scenario dispatch, heartbeat, loot pickup, and disconnect. Context-sensitive operations still execute through `withLobbyFromSocket`, `withLobbyPlayer`, or `withLobbyContext`, so progression and simulation state continue to point at the active lobby while handlers run.
+
+The captured smoke flow exercised lobby creation/join, readiness transition into gameplay, movement, card/key-item HUD state, and dodge cooldown without browser errors. No new debug scenario was added by this ticket; the existing `debugScenario` socket handler was only moved, and the capture used normal gameplay (`debugScenario: null`).
+
+### Server test suite green
+
+Pass. The round's coverage run reports `42 passed (42)` test files and `942 passed (942)` tests. Coverage visibility shows changed server code remains covered through the existing server/integration suite.
+
+## Design and requirements consistency
+
+Pass. The extraction does not alter the documented lobby-to-dungeon core loop, socket-authenticated multiplayer structure, 3D rendering path, player representation, or movement synchronization. The captured run confirms server/client WebSocket connectivity, multiplayer lobby state, movement into gameplay, and synchronized state updates still work.
+
+## Code quality
+
+Pass. The change is scoped to the intended server socket-handler extraction. There is no obvious dead path, missing export, broken import, or runtime error in the moved module. The ctx boundary is explicit and keeps index-local helpers out of the handler module's dependency graph.
+
 ## v0.222 — 264-admin-character-roster-view  (2026-06-04 23:07:45)
 
 
