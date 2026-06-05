@@ -4144,3 +4144,26 @@ the `game/docs/requirements.md` foundation. No debug scenarios were added or cha
 
 None. The refactor is behavior-preserving, fully wired, and the captured run plus the full
 test suite confirm it.
+
+## v0.238 — 246-spire-tower-identity  (2026-06-05 04:28:30)
+
+### Optional mid-tier edge hazards
+
+PASS. The implementation adds edge hazard strips only to middle combat tiers, renders them as emissive warning strips, and applies server-side chip damage plus a snap-back toward the safe tier interior during normal movement simulation. Tests cover hazard placement, rendering, damage cooldown, and non-regression of reachability.
+
+### Debug scenarios
+
+PASS. New spire shortcuts are URL/debug entry points only: the client only auto-requests `?debugScenario=...` from localhost-style URLs, and the server rejects debug scenarios in production unless explicitly enabled. The shortcuts reuse `generateLayout(seed, 'spire-ascent')` or the real `spire_ascent` quest path, rebuild movement/collider state, and do not replace the normal gameplay path because `spire_ascent` is present in the normal quest list.
+
+### Design and requirements consistency
+
+PASS. The work remains consistent with the dungeon/core-loop design: spire-ascent is a quest-selectable dungeon layout, movement still follows server-sampled floor heights, and the multiplayer client/server loop is intact. The capture confirms two connected players, lobby-to-playing transition, rendered canvas, movement, and active HUD state, satisfying the foundational graphics, websocket, player visualization, and movement requirements.
+
+### Tests and coverage visibility
+
+PASS. `coverage.log` reports all tests passing: 74 test files and 1479 tests. Coverage thresholds are disabled; the visible report shows broad existing coverage plus focused spire layout, rendering, atmosphere, hazard, and proxy-readiness tests.
+
+## Remaining gaps
+
+None.
+

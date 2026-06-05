@@ -1,0 +1,7 @@
+Remediation round 2 has one open gap from `review-feedback.md`: the top-level capture failed because `/socket.io` proxy requests hit `ECONNREFUSED` / 502 while the game server was on a harness-allocated port. Sub-tickets `01`–`05` (spire identity features) all have `.passed` markers and were left untouched.
+
+**New sub-ticket created:**
+
+- `/home/matt/workspace/.autogame-worktrees/246-spire-tower-identity/tickets/246-spire-tower-identity/subtickets/06-dev-capture-socket-proxy/ticket.md`
+
+**Scope:** Harden `game/client/vite.config.js` proxy resolution for parallel harness ports and add `GET /healthz` on `game/server/index.js` so capture can prove the Socket.IO backend stays reachable through Vite. Verification mode is `code` (checks logs, `metrics.json`, and connection state — not pixel-level screenshots).
