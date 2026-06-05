@@ -97,3 +97,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [278-cleanup-hub-shared-presence](tickets/278-cleanup-hub-shared-presence/)
 - [ ] [278-cleanup-booth-mission-launch](tickets/278-cleanup-booth-mission-launch/)
 - [ ] [278-cleanup-booth-deck-terminal](tickets/278-cleanup-booth-deck-terminal/)
+- [ ] [279-cleanup-booth-quest-counter](tickets/279-cleanup-booth-quest-counter/)

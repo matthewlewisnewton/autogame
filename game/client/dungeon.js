@@ -13,6 +13,7 @@ import {
 	resolveFloorY,
 } from './collision.js';
 import { PASSAGE_WIDTH, BOUNDS_MARGIN } from './config.js';
+import { buildHubBoothSigns } from './boothSigns.js';
 
 // ── Visual constants ──
 
@@ -811,6 +812,14 @@ export function buildDungeon(scene, layout) {
 			wallMesh.position.set(wallX, wallBaseY + PASSAGE_WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
+		}
+	}
+
+	// ── Build hub booth signage (kiosk + floating name sign per anchor) ──
+	if (layout.profile === 'hub' && layout.boothAnchors) {
+		for (const obj of buildHubBoothSigns(layout.boothAnchors, FLOOR_Y)) {
+			scene.add(obj);
+			meshes.push(obj);
 		}
 	}
 

@@ -17,6 +17,9 @@ const {
   evolveCard,
   grindCard,
   sellCard,
+  buyShopCard,
+  ensureShopOffer,
+  refreshShopOffer,
   savePlayerData,
 } = require('../progression');
 
@@ -144,6 +147,27 @@ function register(socket, ctx) {
       ownedCards: player.ownedCards
     });
     savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('buyShopCard', () => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+      const offer = ensureShopOffer(state);
+      const result = buyShopCard(player, offer);
+      if (!result.ok) {
+        socket.emit('deckError', { reason: result.reason });
+        return;
+      }
+
+      refreshShopOffer(state);
+      socket.emit('cardInventoryUpdate', {
+        inventory: player.inventory,
+        ownedCards: player.ownedCards,
+        currency: player.currency,
+        selectedDeck: player.selectedDeck,
+      });
+      savePlayerData(socket.playerId);
+      broadcastLobbyUpdate(lobby);
     });
   });
 

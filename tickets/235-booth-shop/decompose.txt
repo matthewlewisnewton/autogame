@@ -1,0 +1,12 @@
+Broke ticket **235-booth-shop** into two sub-tickets (same pattern as **236-booth-deck-terminal**): booth wiring with buy/sell restoration first, then the `?booth=shop` debug hook.
+
+**Sub-ticket folders created:**
+
+1. `/home/matt/workspace/.autogame-worktrees/235-booth-shop/tickets/235-booth-shop/subtickets/01-shop-booth-open/`
+2. `/home/matt/workspace/.autogame-worktrees/235-booth-shop/tickets/235-booth-shop/subtickets/02-booth-shop-debug-hook/`
+
+**01 — shop booth open** wires `booth:action` → `openShopBooth()`, re-adds the `buyShopCard` socket handler and client Buy button emit (removed in ticket 276), and keeps sell + manual tab behavior with `boothShop.test.js`.
+
+**02 — debug hook** adds localhost-only `?booth=shop` one-shot auto-open after hub lobby join, depending on 01.
+
+Both use **Verification: code** (structure, handlers, socket emits, tab state — not screenshot-only checks). No prior sub-tickets existed on this ticket, so nothing was retired.
