@@ -1,0 +1,11 @@
+Created one new sub-ticket to close the single open gap (the rest are `.passed` and untouched).
+
+**`05-capture-launch-via-booth`** — the full-flow capture's `readyAll` still clicks the now-removed `#ready-btn`, so neither player readies up, `startGame` never fires, and the capture times out in the squad lobby (`metrics.json` `ok:false`/`capture_failed`). The fix routes `readyAll` through the existing launch-booth ready-up:
+
+- `game/client/main.js`: add a test-only `window.__launchReadyUpForTest` hook that calls the existing `launchBoothReadyUp()` (no new socket event, idempotent).
+- `harness/screenshot.mjs`: have the `readyAll` step invoke that hook per page instead of clicking the retired `#ready-btn`.
+
+It does **not** re-add the 2D Deploy button (would regress passed sub-ticket 03), leaves `launchBooth.js`, the lobby-finder, and the `?booth=` hooks untouched, and is verified by `code` (criteria are about capture state/metrics, the hook existing, and console markers — not pixels).
+
+Created sub-ticket folder:
+- `/home/matt/workspace/.autogame-worktrees/243-retire-2d-lobby-menus/tickets/243-retire-2d-lobby-menus/subtickets/05-capture-launch-via-booth/ticket.md`
