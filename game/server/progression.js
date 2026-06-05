@@ -2820,55 +2820,55 @@ function resetTransientRunState() {
   _gameState.telepipe = null;
 }
 
-function stateSnapshot() {
-  const shopOffer = ensureShopOffer();
-  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
-
-  const players = {};
-  for (const [id, p] of Object.entries(_gameState.players)) {
-    players[id] = {
-      x: p.x,
-      y: p.y,
-      z: p.z,
-      rotation: p.rotation,
-      deck: p.deck,
-      desperationDeck: Array.isArray(p.desperationDeck) ? [...p.desperationDeck] : [],
-      hand: p.hand,
-      hp: p.hp,
-      dead: p.dead,
-      ready: p.ready,
-      magicStones: p.magicStones,
-      currency: p.currency,
-      inDesperation: !!p.inDesperation,
-      nextDrawAt: p.nextDrawAt ?? null,
-      ownedCards: p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined),
-      runRewards: p.runRewards,
-      currencyEarnedThisRun: p.currencyEarnedThisRun,
-      selectedDeck: p.selectedDeck,
-      inventory: p.inventory,
-      debugScenario: p.debugScenario,
-      extracted: !!p.extracted,
-      returnRewardsPreview: previewReturnRewards(id),
-      equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
-      keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
-      overclockChargesRemaining: p.overclockChargesRemaining || 0,
-      isInvulnerable: Date.now() < (p.invulnerableUntil || 0),
-      isBlocking: Date.now() < (p.blockingUntil || 0),
-      blockingUntil: p.blockingUntil || 0,
-      blockingYaw: p.blockingYaw || 0,
-      barrierDomeUntil: p.barrierDomeUntil || 0,
-      barrierDomeRadius: p.barrierDomeRadius || 0,
-      smokeBombUntil: p.smokeBombUntil || 0,
-      smokeBombRadius: p.smokeBombRadius || 0,
-      smokeBombX: p.smokeBombX || 0,
-      smokeBombZ: p.smokeBombZ || 0,
-      cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
-      username: p.username,
-    };
-  }
-
+function buildPlayerHotSnapshot(id, p) {
   return {
-    players,
+    x: p.x,
+    y: p.y,
+    z: p.z,
+    rotation: p.rotation,
+    hp: p.hp,
+    dead: p.dead,
+    ready: p.ready,
+    magicStones: p.magicStones,
+    currency: p.currency,
+    extracted: !!p.extracted,
+    equippedKeyItemId: p.equippedKeyItemId || 'dodge_roll',
+    keyItemCooldownRemaining: Math.max(0, (p.keyItemCooldownUntil || 0) - Date.now()),
+    overclockChargesRemaining: p.overclockChargesRemaining || 0,
+    isInvulnerable: Date.now() < (p.invulnerableUntil || 0),
+    isBlocking: Date.now() < (p.blockingUntil || 0),
+    blockingUntil: p.blockingUntil || 0,
+    blockingYaw: p.blockingYaw || 0,
+    barrierDomeUntil: p.barrierDomeUntil || 0,
+    barrierDomeRadius: p.barrierDomeRadius || 0,
+    smokeBombUntil: p.smokeBombUntil || 0,
+    smokeBombRadius: p.smokeBombRadius || 0,
+    smokeBombX: p.smokeBombX || 0,
+    smokeBombZ: p.smokeBombZ || 0,
+    cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
+    username: p.username,
+  };
+}
+
+function buildPlayerColdSnapshot(id, p) {
+  return {
+    deck: p.deck,
+    desperationDeck: Array.isArray(p.desperationDeck) ? [...p.desperationDeck] : [],
+    hand: p.hand,
+    inDesperation: !!p.inDesperation,
+    nextDrawAt: p.nextDrawAt ?? null,
+    ownedCards: p.ownedCards ?? (p.inventory ? inventoryToOwnedCards(p.inventory) : undefined),
+    runRewards: p.runRewards,
+    currencyEarnedThisRun: p.currencyEarnedThisRun,
+    selectedDeck: p.selectedDeck,
+    inventory: p.inventory,
+    debugScenario: p.debugScenario,
+    returnRewardsPreview: previewReturnRewards(id),
+  };
+}
+
+function buildWorldSnapshot(shopOffer, suspendedRunSummary) {
+  return {
     enemies: _gameState.enemies,
     minions: _gameState.minions,
     loot: _gameState.loot,
@@ -2883,6 +2883,39 @@ function stateSnapshot() {
     shopOffer,
     telepipe: _gameState.telepipe || null,
     suspendedRunSummary,
+  };
+}
+
+function hotStateSnapshot() {
+  const shopOffer = ensureShopOffer();
+  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
+
+  const players = {};
+  for (const [id, p] of Object.entries(_gameState.players)) {
+    players[id] = buildPlayerHotSnapshot(id, p);
+  }
+
+  return {
+    players,
+    ...buildWorldSnapshot(shopOffer, suspendedRunSummary),
+  };
+}
+
+function stateSnapshot() {
+  const shopOffer = ensureShopOffer();
+  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
+
+  const players = {};
+  for (const [id, p] of Object.entries(_gameState.players)) {
+    players[id] = {
+      ...buildPlayerHotSnapshot(id, p),
+      ...buildPlayerColdSnapshot(id, p),
+    };
+  }
+
+  return {
+    players,
+    ...buildWorldSnapshot(shopOffer, suspendedRunSummary),
   };
 }
 
@@ -3183,6 +3216,7 @@ module.exports = {
   assignRunSpawnPositions,
   applyTelepipeReadyHand,
   stateSnapshot,
+  hotStateSnapshot,
   isPlayerActive,
   hasActivePlayers,
   captureRunCheckpoint,

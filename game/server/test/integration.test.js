@@ -954,13 +954,14 @@ describe('Socket Integration — useCard Event', () => {
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'monster-card' });
 		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
 
-		const initUpdate = await waitForEvent(socket, 'stateUpdate');
-		const playerKey = Object.keys(initUpdate.players).find(
-			k => initUpdate.players[k].debugScenario === 'monster-card'
+		const gs = testGameState();
+		const playerKey = Object.keys(gs.players).find(
+			k => gs.players[k].debugScenario === 'monster-card'
 		);
 		expect(playerKey).toBeDefined();
-		const playerData = initUpdate.players[playerKey];
+		const playerData = gs.players[playerKey];
 
 		const monsterSlot = playerData.hand.findIndex(c => c && c.type === 'creature');
 		expect(monsterSlot).toBeGreaterThanOrEqual(0);
@@ -3080,28 +3081,26 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		// Wait for startGame
 		await Promise.all([startGamePromise1, startGamePromise2]);
 
-		// Wait for stateUpdate broadcast after game start
-		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
-		const stateUpdate = await stateUpdatePromise;
+		// Deck/hand are cold fields — verify from authoritative server state, not tick broadcasts
+		const player1 = testGameState().players[socket1._playerId];
+		const player2 = testGameState().players[socket2._playerId];
 
-		// Verify each player has a populated deck (4 cards drawn into hand, rest remain in deck)
-		expect(stateUpdate.players[socket1._playerId]).toBeDefined();
-		expect(Array.isArray(stateUpdate.players[socket1._playerId].deck)).toBe(true);
+		expect(player1).toBeDefined();
+		expect(Array.isArray(player1.deck)).toBe(true);
 		// 4 cards are dealt into hand, so deck should have selectedDeck.length - 4
-		expect(stateUpdate.players[socket1._playerId].deck.length).toBe(deck1.length - 4);
+		expect(player1.deck.length).toBe(deck1.length - 4);
 
 		// The deck + hand should contain the same card ids as selectedDeck (shuffled)
-		const player1 = testGameState().players[socket1._playerId];
-		const deck1Cards = stateUpdate.players[socket1._playerId].deck
+		const deck1Cards = player1.deck
 			.map((entry) => cardIdForDeckEntry(entry, player1.inventory));
 		const hand1Cards = player1.hand.filter(c => c).map(c => c.id);
 		const allCards = [...deck1Cards, ...hand1Cards].sort();
 		const selected1Sorted = selectedDeckCardIds(player1, deck1).sort();
 		expect(allCards).toEqual(selected1Sorted);
 
-		expect(stateUpdate.players[socket2._playerId]).toBeDefined();
-		expect(Array.isArray(stateUpdate.players[socket2._playerId].deck)).toBe(true);
-		expect(stateUpdate.players[socket2._playerId].deck.length).toBe(deck2.length - 4);
+		expect(player2).toBeDefined();
+		expect(Array.isArray(player2.deck)).toBe(true);
+		expect(player2.deck.length).toBe(deck2.length - 4);
 	});
 });
 
