@@ -1,0 +1,5 @@
+Wrote the senior review to `tickets/210-net-extract-socket-handlers/round-1/review.md` with final verdict:
+
+`VERDICT: PASS`
+
+Also wrote one non-blocking cleanup item to `tickets/210-net-extract-socket-handlers/round-1/nits.md`. No `gaps.md` was created because there are no blocking gaps.

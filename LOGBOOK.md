@@ -3755,3 +3755,26 @@ None blocking. Runtime is healthy; all five acceptance criteria are satisfied fo
 
 See `nits.md` for follow-up backlog items (unused import, residual `ids[0]` assertion in `server.test.js`).
 
+
+## v0.209 — 210-net-extract-socket-handlers  (2026-06-04 17:42:01)
+
+4. Extract `notifyPlayerRemoved()` for repeated leave/eviction broadcast logic: PASS. `notifyPlayerRemoved(lobby, playerId, result)` centralizes the repeated `playerDisconnected` emission plus surviving-lobby update/terminal-state handling, and both disconnect-grace eviction and explicit lobby leave call it.
+
+5. Behavior-preserving with server tests green: PASS. `coverage.log` shows the server test run completed successfully with `42` test files and `927` tests passing. The specifically relevant integration and key-item suites passed, and the capture exercised lobby creation/join, ready/start, movement, and `useKeyItem` behavior without browser errors.
+
+## Design and requirements consistency
+
+PASS. The implementation is a server architecture refactor and does not alter the core lobby/dungeon/card-combat loop described in `game/docs/design.md`. It preserves the foundational requirements in `game/docs/requirements.md`: the browser connects via WebSocket, multiplayer state is present, the 3D scene initializes, and movement/key-item interactions still work in the captured run.
+
+## Debug scenarios
+
+PASS. This ticket did not add a new `?debugScenario=NAME` flow. Existing debug-scenario event handling was moved into `socketHandlers/lifecycle.js`, remains gated by `isDebugScenarioAllowed(socket)`, and normal gameplay paths for lobby creation, ready-up, movement, card use, and key-item use remain available and exercised by tests/capture.
+
+## Code quality
+
+PASS. The refactor follows the existing CommonJS/server style, keeps shared helpers in `index.js` where the surrounding stateful server APIs already live, and passes the existing test suite. No dead socket registrations or obvious broken exports remain.
+
+## Remaining gaps
+
+None.
+
