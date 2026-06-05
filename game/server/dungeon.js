@@ -127,6 +127,10 @@ const SUNKEN_CANYON = {
   // Narrow hazard strips along the plateau south rim between ramp mouths.
   cliffHazardStripDepth: 1.2,
   cliffHazardEndPadding: 0.35,
+  /** Fixed central ramp bridges for `layoutMode: 'rigid'` (all rampXOffsets). */
+  rigidCentralRampCount: 3,
+  /** Fixed yaw for rigid-mode canyon monolith (radians). */
+  rigidMonolithYaw: 0,
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
@@ -187,7 +191,7 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     return generateOpenPlaza(seed, options);
   }
   if (profile === 'sunken-canyon') {
-    return generateSunkenCanyon(seed);
+    return generateSunkenCanyon(seed, options);
   }
   if (profile === 'spire-ascent') {
     return generateSpireAscent(seed, options);
@@ -814,13 +818,14 @@ function placeLandmarks(layout, rng, profile) {
 /**
  * Place a single tall navigation monolith on the sunken-canyon floor (visual only).
  * Clears spawn zone and cover footprints; not routed through LANDMARK_TYPES.
+ * In rigid mode, uses the first valid grid candidate with fixed yaw (no RNG).
  */
-function placeCanyonMonolith(layout, rng) {
+function placeCanyonMonolith(layout, rng, { rigid = false } = {}) {
   const canyon = layout.rooms.find(r => r.band === 'canyon');
   if (!canyon) return null;
 
   const type = 'canyon_monolith';
-  const { spawnClearRadius } = SUNKEN_CANYON;
+  const { spawnClearRadius, rigidMonolithYaw } = SUNKEN_CANYON;
   const blocked = [...(layout.cover || [])];
   const doorwayZones = roomDoorwayZones(canyon, layout.passageWidth ?? PASSAGE_WIDTH);
   const margin = LANDMARK_MARGIN;
@@ -829,6 +834,25 @@ function placeCanyonMonolith(layout, rng) {
   if (halfW <= 0 || halfD <= 0) return null;
 
   const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+
+  if (rigid) {
+    for (const tx of gridSteps) {
+      for (const tz of gridSteps) {
+        const cand = {
+          x: canyon.x + tx * halfW,
+          z: canyon.z + tz * halfD,
+          type,
+          yaw: rigidMonolithYaw,
+        };
+        const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+        if (overlapsSpawnClearAt(fp, spawnClearRadius, canyon.x, canyon.z)) continue;
+        if (!acceptsLandmarkCandidate(cand, canyon, blocked, doorwayZones, margin)) continue;
+        return cand;
+      }
+    }
+    return null;
+  }
+
   const candidates = [];
   for (const tx of gridSteps) {
     for (const tz of gridSteps) {
@@ -1709,12 +1733,14 @@ function generateOpenPlaza(seed, options = {}) {
 /**
  * Build the sunken-canyon stage: a high plateau spawn band overlooking a large
  * lower canyon floor, connected by 2–3 sloped ramp rooms. Deterministic for a
- * given seed.
+ * given seed in `layoutMode: 'default'`. In `layoutMode: 'rigid'`, ramp count,
+ * cover order, and monolith placement are seed-independent.
  *
  * Returns { rooms, passages: [], cover, passageWidth, cellSpacing,
  *           profile: 'sunken-canyon' }.
  */
-function generateSunkenCanyon(seed) {
+function generateSunkenCanyon(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const {
     plateauSize,
@@ -1725,6 +1751,7 @@ function generateSunkenCanyon(seed) {
     spawnClearRadius,
     interiorMargin,
     rampXOffsets,
+    rigidCentralRampCount,
   } = SUNKEN_CANYON;
 
   const yHigh = DEFAULT_FLOOR_Y + yDrop;
@@ -1742,11 +1769,15 @@ function generateSunkenCanyon(seed) {
   const plateauSouthZ = plateauZ + plateauHalf;
 
   // Pick 2 or 3 central ramp bridges; always add west/east edge connectors (4–5 ramps).
-  const numRamps = 2 + Math.floor(rng() * 2);
   const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
-  const centralRampCenters = numRamps === 2
-    ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
-    : sortedOffsets;
+  const centralRampCenters = layoutMode === 'rigid'
+    ? sortedOffsets.slice(0, rigidCentralRampCount)
+    : (() => {
+      const numRamps = 2 + Math.floor(rng() * 2);
+      return numRamps === 2
+        ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
+        : sortedOffsets;
+    })();
   const rampHalfW = rampWidth / 2;
   const edgeRampX = canyonHalf - SUNKEN_CANYON.edgeProbeInset - rampHalfW;
   const edgeRampCenters = [-edgeRampX, edgeRampX];
@@ -1831,15 +1862,25 @@ function generateSunkenCanyon(seed) {
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
   ];
 
-  const cover = scatterCoverInArena(rng, {
-    half: canyonHalf,
-    centerX: canyonX,
-    centerZ: canyonZ,
-    spawnClear: spawnClearRadius,
-    candidatePool: canyonCandidatePool,
-    targetCount: 8,
-    interiorMargin,
-  });
+  const cover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: canyonHalf,
+      centerX: canyonX,
+      centerZ: canyonZ,
+      spawnClear: spawnClearRadius,
+      candidatePool: canyonCandidatePool,
+      targetCount: 8,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: canyonHalf,
+      centerX: canyonX,
+      centerZ: canyonZ,
+      spawnClear: spawnClearRadius,
+      candidatePool: canyonCandidatePool,
+      targetCount: 8,
+      interiorMargin,
+    });
 
   const cliffLips = buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ);
   const edgeHazards = buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh);
@@ -1855,7 +1896,7 @@ function generateSunkenCanyon(seed) {
     profile: 'sunken-canyon',
   };
 
-  const monolith = placeCanyonMonolith(layoutBase, rng);
+  const monolith = placeCanyonMonolith(layoutBase, rng, { rigid: layoutMode === 'rigid' });
 
   return {
     ...layoutBase,

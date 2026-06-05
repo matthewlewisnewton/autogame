@@ -778,6 +778,28 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'sunken-canyon-rigid') {
+      // Sunken-canyon with layoutMode 'rigid' (fixed ramps, cover, monolith).
+      // Not yet reachable via quest tier; future canyon_descent Tier 2 will use this.
+      // Shortcut for rigid-layout QA (plateau spawn, 5 ramps, canyon_monolith).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'sunken-canyon', { layoutMode: 'rigid' });
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'sunken-canyon-stage') {
       // Load the sunken-canyon stage layout for client render / collision QA.
       // Same profile as generateLayout(seed, 'sunken-canyon'); reachable via quests
