@@ -15,6 +15,8 @@ import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import { clearAllSettings, resetSettingsPath } from '../settings.js';
 import { PROPORTION_KEYS, PROPORTION_RANGES } from '../cosmetic.js';
+import { APPEARANCE_CHANGE_COST } from '../config.js';
+import sharedConstants from '../../shared/constants.json' with { type: 'json' };
 
 async function startTestServer() {
 	if (httpServer.listening) {
@@ -129,6 +131,17 @@ describe('GET /api/me', () => {
 		expect(data.modelIds).toBeDefined();
 		expect(Array.isArray(data.modelIds)).toBe(true);
 		expect(data.modelIds).toContain('player');
+	});
+
+	it('returns appearanceChangeCost matching shared constant', async () => {
+		const token = await registerAndLogin('costUser', 'pass');
+
+		const res = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		expect(res.status).toBe(200);
+		const data = await res.json();
+		expect(data.appearanceChangeCost).toBe(APPEARANCE_CHANGE_COST);
+		expect(data.appearanceChangeCost).toBe(sharedConstants.APPEARANCE_CHANGE_COST);
+		expect(data.appearanceChangeCost).toBeGreaterThan(0);
 	});
 
 	it('returns proportionConfig with keys and ranges', async () => {
