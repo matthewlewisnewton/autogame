@@ -1,5 +1,11 @@
 const crypto = require('crypto');
 const { createGameState } = require('./game-state');
+const {
+  ensureHubPresence,
+  syncHubPresencePlayer,
+  removeHubPresencePlayer,
+  buildHubPresenceUpdate,
+} = require('./hubPresence');
 
 /** @typedef {import('./index').GameState} GameState */
 
@@ -183,6 +189,7 @@ function createLobby(name) {
     state: createLobbyGameState(),
     createdAt: Date.now(),
   };
+  ensureHubPresence(lobby);
   lobbies.set(id, lobby);
   lobby.state._lobbyId = id;
   return lobby;
@@ -246,6 +253,10 @@ module.exports = {
   lobbyPlayerSummaries,
   resetAllLobbies,
   getPrimaryLobbyStateForTests,
+  ensureHubPresence,
+  syncHubPresencePlayer,
+  removeHubPresencePlayer,
+  buildHubPresenceUpdate,
   _lobbies: lobbies,
   _playerLobby: playerLobby,
 };
