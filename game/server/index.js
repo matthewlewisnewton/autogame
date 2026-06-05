@@ -13,6 +13,7 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
   getLayoutProfileForQuest,
+  getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload
 } = require('./quests');
@@ -387,7 +388,7 @@ function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   const profile = getLayoutProfileForQuest(questId, normalizedTier);
   const seed = questLayoutSeed(questId, normalizedTier);
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile, { slopes: true });
+  state.layout = generateLayout(seed, profile, getLayoutGenerationOptions(questId, normalizedTier));
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already

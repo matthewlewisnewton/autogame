@@ -7,6 +7,7 @@ import {
   listQuestVariants,
   isValidQuestSelection,
   getLayoutProfileForQuest,
+  getLayoutGenerationOptions,
 } from '../quests.js';
 import { questLayoutSeed } from '../dungeon.js';
 
@@ -73,5 +74,20 @@ describe('quest tier catalog', () => {
       questLayoutSeed('training_caverns', 2)
     );
     expect(questLayoutSeed('training_caverns')).toBe(questLayoutSeed('training_caverns', 1));
+  });
+
+  it('getLayoutGenerationOptions returns slopes and layoutMode from tier def', () => {
+    expect(getLayoutGenerationOptions('training_caverns', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('arena_trials', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('missing_quest', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
   });
 });
