@@ -473,6 +473,7 @@ const DEBUG_SCENARIOS = new Set([
   'smoke-bomb-ready',
   'rally-cry-ready',
   'open-plaza-arena',
+  'open-verticality',
   'sunken-canyon',
   'sunken-canyon-stage',
   'spire-ascent',

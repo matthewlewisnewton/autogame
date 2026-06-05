@@ -478,6 +478,67 @@ describe('open-plaza cover & platforms', () => {
 	});
 });
 
+describe('open profile hazards & platforms', () => {
+	it('buildDungeon creates one recessed mesh per pit hazard', () => {
+		const layout = generateLayout(42, 'open', { slopes: true });
+		expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+
+		const result = buildDungeon(mockScene(), layout);
+		const pitMeshes = result.meshes.filter(m =>
+			m.geometry?.parameters &&
+			layout.hazards.some(h =>
+				h.type === 'pit' &&
+				m.geometry.parameters.width === h.width &&
+				m.geometry.parameters.depth === h.depth &&
+				m.geometry.parameters.height === (h.pitDepth ?? 0.12)
+			)
+		);
+		expect(pitMeshes.length).toBe(layout.hazards.length);
+	});
+
+	it('recesses each pit slightly below the sampled floor surface', () => {
+		const layout = generateLayout(42, 'open');
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const h of layout.hazards) {
+			const floorY = resolveFloorY(sampleFloorY(layout, h.x, h.z));
+			const recess = h.pitDepth ?? 0.12;
+			const mesh = result.meshes.find(m =>
+				m.position.x === h.x && m.position.z === h.z &&
+				m.geometry?.parameters?.height === recess
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY - recess / 2, 4);
+		}
+	});
+
+	it('renders platforms from open layouts via the existing sloped-floor path', () => {
+		const layout = generateLayout(42, 'open', { slopes: true });
+		expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+
+		const result = buildDungeon(mockScene(), layout);
+		const platformMeshes = layout.platforms.map(p =>
+			result.meshes.find(m =>
+				m.position.x === p.x && m.position.z === p.z &&
+				m.geometry?.parameters?.width === p.width
+			)
+		);
+		expect(platformMeshes.every(m => m !== undefined)).toBe(true);
+	});
+
+	it('does not add hazard footprints to wall colliders', () => {
+		const layout = generateLayout(42, 'open');
+		const colliders = buildWallColliders(layout);
+		for (const h of layout.hazards) {
+			const hit = colliders.some(w =>
+				Math.abs((w.minX + w.maxX) / 2 - h.x) < 1e-6 &&
+				Math.abs((w.maxX - w.minX) - h.width) < 1e-6
+			);
+			expect(hit).toBe(false);
+		}
+	});
+});
+
 describe('sunken-canyon cover, floors & treasure marker', () => {
 	const yHigh = DEFAULT_FLOOR_Y + 8;
 	const yLow = DEFAULT_FLOOR_Y;

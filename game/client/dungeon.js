@@ -47,6 +47,14 @@ function tintHex(baseHex, tintHexStr, mix) {
 	return (r << 16) | (g << 8) | b;
 }
 
+function darkenHex(hex, factor = 0.62) {
+	const c = parseHex(hex);
+	const r = Math.round(((c >> 16) & 0xff) * factor);
+	const g = Math.round(((c >> 8) & 0xff) * factor);
+	const b = Math.round((c & 0xff) * factor);
+	return (r << 16) | (g << 8) | b;
+}
+
 function materialColorHex(material) {
 	if (typeof material.color === 'number') return material.color;
 	if (material.color && typeof material.color.getHex === 'function') {
@@ -396,6 +404,24 @@ export function buildDungeon(scene, layout) {
 		coverMesh.position.set(c.x, floorY + c.height / 2, c.z);
 		scene.add(coverMesh);
 		meshes.push(coverMesh);
+	}
+
+	// ── Build hazard pits (visual recess only; no collision) ──
+	const themeEntry = dungeonTheme.profiles[resolveProfileKey(layout.profile)]
+		|| dungeonTheme.profiles.default;
+	const hazardMaterial = new THREE.MeshStandardMaterial({
+		color: darkenHex(themeEntry.floor),
+		roughness: themeEntry.floorRoughness ?? 0.85,
+	});
+	for (const h of layout.hazards || []) {
+		if (h.type !== 'pit') continue;
+		const recess = h.pitDepth ?? 0.12;
+		const floorY = resolveFloorY(sampleFloorY(layout, h.x, h.z));
+		const hazardGeo = new THREE.BoxGeometry(h.width, recess, h.depth);
+		const hazardMesh = new THREE.Mesh(hazardGeo, hazardMaterial);
+		hazardMesh.position.set(h.x, floorY - recess / 2, h.z);
+		scene.add(hazardMesh);
+		meshes.push(hazardMesh);
 	}
 
 	// ── Build passages ──
