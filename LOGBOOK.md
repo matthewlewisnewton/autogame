@@ -4518,6 +4518,71 @@ PASS. The implementation keeps display metadata centralized on the server, uses 
 
 None.
 
+## v0.255 — 254-level2-mechanics-and-reference  (2026-06-05 07:58:43)
+
+Satisfied. `coverage.log` shows the full suite passed: 79 files and 1416 tests. New targeted coverage includes `variant_rate_by_quest_tier.test.js`, open-plaza rigid-mode cases in `dungeon.test.js`, `arena_trials_tier2.test.js`, `quests.test.js`, `debug-scenarios.test.js`, and harness proxy readiness tests.
+
+## Design and Requirements Consistency
+
+The implementation stays within the documented lobby/deploy/dungeon loop: Tier-2 quests are surfaced through the quest board, unlock after clearing Tier 1, and deploy through the same run creation, objective, layout, enemy spawn, movement, and persistence systems as normal gameplay. The captured run confirms the foundation requirements remain intact: 3D scene renders, client connects to the server, players are represented, and movement updates in a running multiplayer session.
+
+## Debug Scenario Review
+
+This ticket adds `?debugScenario=arena-trials-tier-2`. It is properly gated behind the existing debug-scenario socket path: the client only requests it from a localhost URL parameter, and the server rejects debug scenarios in production unless explicitly enabled. Normal gameplay does not call this scenario.
+
+The same end state is reachable normally by clearing `arena_trials` Tier 1, selecting the newly unlocked Tier 2 quest, and readying/deploying. The shortcut sets `selectedQuestId`, `selectedQuestTier`, and the Tier-2 layout before `enterPlayingPhase()`, so `startDungeonRun()` snapshots the correct quest/tier metadata. It does not bypass combat or objective invariants after entry: enemies are spawned through the normal `spawnEnemies()` path, run objective sync is called, and state is broadcast through normal lobby/state update channels.
+
+## Code Quality
+
+The changed code is cohesive and uses existing quest, progression, layout, lobby, and debug-scenario patterns. The harness proxy readiness change is narrowly scoped to harness capture env and keeps normal dev proxy behavior unchanged. I did not find dead/broken code, missing exports, obvious race conditions, or console/page errors attributable to the ticket.
+
+## Remaining gaps
+
+None.
+
+## v0.256 — 267-sec-hat-equip-unlock-check  (2026-06-05 08:11:21)
+
+- `validateCosmetic` correctly remains catalog-only (ticket goal acknowledged this split).
+
+## Code quality
+
+- Defense-in-depth: unlock checked in both `lobbyHandlers` and `updateProfile` — redundant but safe; a future caller of `updateProfile` alone is still protected.
+- Tests assert persisted state, not just return codes — good coverage of the original exploit (free equip of paid hats).
+- No dead code, no new console errors, no debug scenarios added or modified by this ticket.
+
+## Debug scenarios
+
+Not in scope for this ticket. Existing debug scenarios (e.g. `avatar-wizard-hat`) remain URL-gated dev shortcuts; normal equip flow still goes through unlock + `applyAppearanceChange` / `updateProfile`.
+
+## Harness capture note
+
+Round-1 capture used the fallback full-flow smoke plan (lobby → gameplay → movement/dodge). It does not visually exercise hat customization, but the ticket acceptance criteria are server-side enforcement and automated tests — both are satisfied independently of the capture plan.
+
+## Remaining gaps
+
+None. The security fix is in place at both equip entry points, automated tests cover locked-hat rejection on profile update and lobby appearance change, the game starts and runs cleanly in capture, and vitest passes.
+
+## v0.257 — 257-level2-spire-ascent  (2026-06-05 08:22:56)
+
+### Higher variant rate
+
+PASS. Variant scaling is resolved centrally in `spawnEnemy` from the active `run.questTier` or selected tier plus the spawn room encounter tier. Tier 2 maps to a full roll tier even when encounter tier is 0, while Tier 1 remains effectively untagged. The new tests prove Tier 2 spawns tagged enemies under fixed seeds and Tier 1 stays unchanged on the same seed batch.
+
+### Spire identity
+
+PASS. The implementation keeps spire-specific shape and spawn identity: enemies spawn on walkable spire tier rooms rather than ramp connectors, bottom/top tier coverage is forced, top-tier objective/loot placement remains intact, and the spire-exclusive enemy pool continues to include spawners. The design foundation remains consistent with the documented lobby-to-dungeon flow, server-authenticated multiplayer run state, and movement/collision requirements.
+
+### Debug scenarios
+
+PASS. The added `spire-ascent-tier-2` shortcut is registered only in the debug-scenario allowlist path and is reachable through the URL/socket debug scenario flow, not normal gameplay. It mirrors the normal state by unlocking/selecting the quest tier, applying the Tier-2 layout before entering `playing`, then spawning enemies through the same `spawnEnemies`/`startDungeonRun` path so run metadata and variant rolls match deployment. The same state is reachable normally by clearing Spire Ascent Tier 1, selecting Tier 2, and readying/deploying.
+
+### Tests and coverage
+
+PASS. The recorded `coverage.log` shows the test suite passed: 77 test files and 1424 tests. Relevant coverage includes `spire_ascent_tier2.test.js`, `spire_ascent_spawn.test.js`, `debug-scenarios.test.js`, `quest_tier_gating.test.js`, `quests.test.js`, and `variant_rate_by_quest_tier.test.js`.
+
+## Remaining gaps
+
+None.
 
 ## v0.258 — 263-debug-unlimited-health-godmode  (2026-06-05 08:25:20)
 

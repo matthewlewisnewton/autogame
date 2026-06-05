@@ -145,6 +145,23 @@ describe('applyAppearanceChange socket', () => {
 		socket.disconnect();
 	});
 
+	it('rejects a locked hat via applyAppearanceChange without updating live or account cosmetic', async () => {
+		const socket = await connectInLobby();
+		const player = playerForSocket(socket);
+		expect(player.cosmetic.hat).toBe('none');
+		expect(users.findUserByAccountId(accountId).cosmetic.hat).toBe('none');
+
+		const errorPromise = waitForEvent(socket, 'appearanceError');
+		socket.emit('applyAppearanceChange', { cosmetic: { hat: 'wizard' } });
+		const err = await errorPromise;
+
+		expect(err.reason).toMatch(/not unlocked/i);
+		expect(player.cosmetic.hat).toBe('none');
+		expect(users.findUserByAccountId(accountId).cosmetic.hat).toBe('none');
+
+		socket.disconnect();
+	});
+
 	it('rejects PATCH appearance-field updates while in lobby', async () => {
 		const socket = await connectInLobby();
 

@@ -1676,6 +1676,71 @@ describe("generateLayout(seed, 'open-plaza')", () => {
   });
 });
 
+// ── open-plaza rigid layoutMode ──
+
+describe("generateLayout(seed, 'open-plaza') rigid layoutMode", () => {
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'open-plaza', { layoutMode: 'default' });
+    const withUnknown = generateLayout(123, 'open-plaza', { layoutMode: 'chaotic' });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.hazards).toEqual(withDefault.hazards);
+  });
+
+  it('rigid mode is deterministic for the same seed', () => {
+    const a = generateLayout(42, 'open-plaza', { layoutMode: 'rigid' });
+    const b = generateLayout(42, 'open-plaza', { layoutMode: 'rigid' });
+    expect(a).toEqual(b);
+    expect(a.cover).toEqual(b.cover);
+    expect(a.hazards).toEqual(b.hazards);
+  });
+
+  it('rigid mode produces identical cover/hazards across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'open-plaza', { layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].hazards).toEqual(layouts[0].hazards);
+    }
+  });
+
+  it('default mode still varies cover or hazards with seed', () => {
+    const ref = generateLayout(1, 'open-plaza', { layoutMode: 'default' });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'open-plaza', { layoutMode: 'default' });
+      if (
+        JSON.stringify(ref.cover) !== JSON.stringify(other.cover) ||
+        JSON.stringify(ref.hazards) !== JSON.stringify(other.hazards)
+      ) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'open-plaza', { layoutMode: 'rigid' });
+    const def = generateLayout(123, 'open-plaza', { layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'open-plaza', { layoutMode: 'rigid' });
+    expect(rigid.cover).toEqual(rigidAgain.cover);
+    expect(rigid.hazards).toEqual(rigidAgain.hazards);
+    const coverDiffers =
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover) ||
+      JSON.stringify(rigid.hazards) !== JSON.stringify(def.hazards);
+    expect(coverDiffers).toBe(true);
+  });
+
+  it('rigid mode still satisfies open-plaza structural requirements', () => {
+    const layout = generateLayout(123, 'open-plaza', { layoutMode: 'rigid' });
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
 // ── sunken-canyon stage layout ──
 
 describe("generateLayout(seed, 'sunken-canyon')", () => {
@@ -2258,6 +2323,73 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
       expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(0);
       expect(spireReachableFromStart(layout)).toBe(true);
     }
+  });
+
+  describe('rigid layoutMode', () => {
+    it('unknown layoutMode values fall back to default tier variation', () => {
+      const tierCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'chaotic' });
+        tierCounts.add(roomsByBand(layout, 'tier').length);
+      }
+      expect(tierCounts.size).toBeGreaterThan(1);
+    });
+
+    it('rigid mode produces identical rooms and edgeHazards across different seeds', () => {
+      const seeds = [1, 42, 123, 777, 9999];
+      const layouts = seeds.map((seed) =>
+        generateLayout(seed, 'spire-ascent', { layoutMode: 'rigid' })
+      );
+      for (let i = 1; i < layouts.length; i++) {
+        expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+        expect(layouts[i].edgeHazards).toEqual(layouts[0].edgeHazards);
+      }
+    });
+
+    it('rigid mode still satisfies spire-ascent structural invariants', () => {
+      const layout = generateLayout(123, 'spire-ascent', { layoutMode: 'rigid' });
+      expect(layout.profile).toBe('spire-ascent');
+
+      const tiers = tiersByIndex(layout);
+      expect(tiers.length).toBe(4);
+      expect(roomsByBand(layout, 'ramp').length).toBe(tiers.length - 1);
+
+      expect(tiers[0].role).toBe('start');
+      expect(tiers[tiers.length - 1].role).toBe('treasure');
+      for (let i = 1; i < tiers.length - 1; i++) {
+        expect(tiers[i].role).toBe('combat');
+      }
+
+      expect(tiers[0].tierXOffset).toBe(0);
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].x).not.toBe(tiers[i - 1].x);
+      }
+
+      const combatTiers = tiers.filter((t) => t.role === 'combat');
+      expect(layout.edgeHazards.length).toBe(combatTiers.length);
+      expect(spireReachableFromStart(layout)).toBe(true);
+    });
+
+    it('default mode still varies tier count across seeds', () => {
+      const tierCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'default' });
+        tierCounts.add(roomsByBand(layout, 'tier').length);
+      }
+      expect(tierCounts.size).toBeGreaterThan(1);
+    });
+
+    it('rigid and default modes can diverge for the same seed', () => {
+      const rigid = generateLayout(123, 'spire-ascent', { layoutMode: 'rigid' });
+      const def = generateLayout(123, 'spire-ascent', { layoutMode: 'default' });
+      const rigidAgain = generateLayout(9999, 'spire-ascent', { layoutMode: 'rigid' });
+      expect(rigid.rooms).toEqual(rigidAgain.rooms);
+      expect(rigid.edgeHazards).toEqual(rigidAgain.edgeHazards);
+      const geometryDiffers =
+        JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+        JSON.stringify(rigid.edgeHazards) !== JSON.stringify(def.edgeHazards);
+      expect(geometryDiffers).toBe(true);
+    });
   });
 });
 

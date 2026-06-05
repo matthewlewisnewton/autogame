@@ -1,9 +1,8 @@
-`LOGBOOK.md` is resolved. The conflict was two independent logbook appendages competing for the same spot after v0.251.
+`LOGBOOK.md` is resolved.
 
-**Resolution:** Combined both sides in version order:
+**Resolution:** Combined both sides in version order instead of picking one:
 
-1. **v0.252** — `245-canyon-verticality-identity` (from `main`)
-2. **v0.253** — `248-rooms-objective-hud-and-default-profile-bugs` (from `main`)
-3. **v0.254** — `252-enemy-lockon-info-panel` (from this ticket’s branch)
+- **From `main`:** v0.255 (254-level2-mechanics-and-reference), v0.256 (267-sec-hat-equip-unlock-check), v0.257 (257-level2-spire-ascent)
+- **From the ticket branch:** v0.258 (263-debug-unlimited-health-godmode) appended after v0.257
 
-All conflict markers are removed. The harness can continue the merge.
+All conflict markers are removed. No other conflicted files were listed. The harness can commit and finish the merge.

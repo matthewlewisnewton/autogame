@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "7:29:16 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0splnjcp\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:21 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0stgne5x\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:26 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0sxbnqdj\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:28 AM [vite] http proxy error: /api/register\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:28 AM [vite] http proxy error: /api/login\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:31 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0t16wny0\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:36 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0t51vsgm\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:41 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0t8ww4sm\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:46 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0tcs622w\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)\n7:29:51 AM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=0tgn73gj\nError: connect ECONNREFUSED 127.0.0.1:3003\n    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1637:16)",
+    "server_log_tail": "[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/254-level2-mechanics-and-reference/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/254-level2-mechanics-and-reference/game/data\nServer listening on port 3003",
+    "port_holders": {
+      "5176": [
+        {
+          "pid": 943821,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/254-level2-mechanics-and-reference/game/client/node_modules/.bin/../vite/bin/vite.js --port 5176 --strictPort"
+        }
+      ],
+      "3003": []
+    }
+  }
+}

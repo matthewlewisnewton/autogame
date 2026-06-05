@@ -7,6 +7,7 @@ import {
   listQuestVariants,
   isValidQuestSelection,
   getLayoutProfileForQuest,
+  getLayoutGenerationOptions,
 } from '../quests.js';
 import { questLayoutSeed } from '../dungeon.js';
 
@@ -54,7 +55,7 @@ describe('quest tier catalog', () => {
     const trainingTier2 = variants.find(
       (v) => v.questId === 'training_caverns' && v.tier === 2
     );
-    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 1);
+    expect(variants.length).toBe(Object.keys(QUEST_DEFS).length + 3);
     expect(trainingTier2).toMatchObject({
       questId: 'training_caverns',
       tier: 2,
@@ -63,7 +64,25 @@ describe('quest tier catalog', () => {
     });
     expect(trainingTier2.objectiveSummary).toContain('5');
     expect(trainingTier2.rewardSummary).toContain('10');
-    expect(variants.filter((v) => v.isTier2)).toHaveLength(1);
+    const arenaTier2 = variants.find(
+      (v) => v.questId === 'arena_trials' && v.tier === 2
+    );
+    expect(arenaTier2).toMatchObject({
+      questId: 'arena_trials',
+      tier: 2,
+      isTier2: true,
+      unlockRequires: { questId: 'arena_trials', tier: 1 },
+    });
+    const spireTier2 = variants.find(
+      (v) => v.questId === 'spire_ascent' && v.tier === 2
+    );
+    expect(spireTier2).toMatchObject({
+      questId: 'spire_ascent',
+      tier: 2,
+      isTier2: true,
+      unlockRequires: { questId: 'spire_ascent', tier: 1 },
+    });
+    expect(variants.filter((v) => v.isTier2)).toHaveLength(3);
   });
 
   it('layout profile and seed accept tier for future divergence', () => {
@@ -73,5 +92,34 @@ describe('quest tier catalog', () => {
       questLayoutSeed('training_caverns', 2)
     );
     expect(questLayoutSeed('training_caverns')).toBe(questLayoutSeed('training_caverns', 1));
+  });
+
+  it('getLayoutGenerationOptions returns slopes and layoutMode from tier def', () => {
+    expect(getLayoutGenerationOptions('training_caverns', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('arena_trials', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('arena_trials', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
+    });
+    expect(getLayoutGenerationOptions('spire_ascent', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(getLayoutGenerationOptions('spire_ascent', 2)).toEqual({
+      slopes: true,
+      layoutMode: 'rigid',
+    });
+    expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
+    expect(isValidQuestSelection('spire_ascent', 2)).toBe(true);
+    expect(getLayoutGenerationOptions('missing_quest', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
   });
 });

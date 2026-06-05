@@ -1,0 +1,11 @@
+Broke ticket **257-level2-spire-ascent** into **2** sub-tickets in dependency order, mirroring ticket 254’s split (profile-specific rigid layout → quest Tier 2 end-to-end). No prior sub-ticket folders existed, so nothing was deleted.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/257-level2-spire-ascent/tickets/257-level2-spire-ascent/subtickets/01-spire-ascent-rigid-layout-mode/ticket.md`  
+   — Thread `layoutMode: 'rigid'` through `generateSpireAscent`; fixed tier count/dimensions; preserve zig-zag, edge hazards, roles, reachability.
+
+2. `/home/matt/workspace/.autogame-worktrees/257-level2-spire-ascent/tickets/257-level2-spire-ascent/subtickets/02-spire-ascent-tier2-end-to-end/ticket.md`  
+   — `spire_ascent` Tier 2 catalog, deploy/spawn/variant rate, Tier 1 unlock, debug scenario `spire-ascent-tier-2`, and integration tests.
+
+Both use **Verification: code** (layout mode, variant rates, quest catalog, unlock, and debug scenario state are not purely visual).

@@ -140,6 +140,10 @@ const SPIRE_ASCENT = {
   minRampSlope: 0.2,
   edgeHazardStripWidth: 1.2,
   edgeHazardEndPadding: 0.5,
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidTierCount: 4,
+  rigidTierWidth: 14,
+  rigidTierDepth: 14,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -158,24 +162,35 @@ function questLayoutSeed(questId, tier = 1) {
   return Math.abs(hash) || 1;
 }
 
+/** @typedef {'default' | 'rigid'} LayoutMode */
+
+/**
+ * Normalize layoutMode option; unknown values fall back to 'default'.
+ * @param {string|undefined} layoutMode
+ * @returns {LayoutMode}
+ */
+function normalizeLayoutMode(layoutMode) {
+  return layoutMode === 'rigid' ? 'rigid' : 'default';
+}
+
 /**
  * Generate a deterministic dungeon layout from a numeric seed.
  * Returns { rooms: [...], passages: [...], passageWidth, profile }
  *
  * @param {number} seed - PRNG seed for deterministic generation
  * @param {string|object} [profile=DEFAULT_LAYOUT_PROFILE] - Layout profile name or object
- * @param {object} [options={}] - Optional flags: { slopes: boolean }
+ * @param {object} [options={}] - Optional flags: { slopes: boolean, layoutMode: LayoutMode }
  */
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
-    return generateOpenPlaza(seed);
+    return generateOpenPlaza(seed, options);
   }
   if (profile === 'sunken-canyon') {
     return generateSunkenCanyon(seed);
   }
   if (profile === 'spire-ascent') {
-    return generateSpireAscent(seed);
+    return generateSpireAscent(seed, options);
   }
   if (profile === 'hub') {
     return generateHub(seed);
@@ -1225,6 +1240,35 @@ function scatterCoverInArena(rng, {
 }
 
 /**
+ * Accept cover from candidatePool in declaration order (no RNG shuffle).
+ * Used by open-plaza `layoutMode: 'rigid'` — cover placement is seed-independent.
+ */
+function placeCoverInArenaOrdered({
+  half,
+  centerX = 0,
+  centerZ = 0,
+  spawnClear,
+  candidatePool,
+  initialCover = [],
+  targetCount = 8,
+  interiorMargin = OPEN_PLAZA.interiorMargin,
+}) {
+  const cover = initialCover.map(c => ({ ...c }));
+  const interiorMax = half - interiorMargin;
+
+  for (const cand of candidatePool) {
+    if (cover.length >= targetCount) break;
+    if (Math.abs(cand.x - centerX) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z - centerZ) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, centerX, centerZ)) continue;
+    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
+    if (!arenaFullyReachable([...cover, cand], half, centerX, centerZ)) continue;
+    cover.push({ ...cand });
+  }
+  return cover;
+}
+
+/**
  * Build wall segments along a horizontal (axis 'x') edge, leaving open gaps at
  * the given centre positions.
  */
@@ -1397,6 +1441,37 @@ function placeOpenPlazaHazards(rng, half, spawnClear, blocked) {
 }
 
 /**
+ * Fixed pit positions for open-plaza `layoutMode: 'rigid'`.
+ * Seed-independent — rigid layouts differ across seeds only in fields that
+ * remain constant here (platforms, perimeter decor, etc. are also fixed).
+ */
+const OPEN_PLAZA_RIGID_HAZARDS = [
+  { x: -5, z: 10, width: 3.0, depth: 3.0, type: 'pit', pitDepth: OPEN_HAZARD_RECESS },
+  { x: -8, z: -4, width: 3.0, depth: 3.0, type: 'pit', pitDepth: OPEN_HAZARD_RECESS },
+];
+
+/**
+ * Place rigid-mode pit hazards at fixed positions (no RNG).
+ * @param {object[]} blocked - platforms and cover footprints to avoid
+ */
+function placeOpenPlazaHazardsRigid(half, spawnClear, blocked) {
+  const hazards = [];
+  const interiorMax = half - OPEN_PLAZA.interiorMargin;
+
+  for (const template of OPEN_PLAZA_RIGID_HAZARDS) {
+    const cand = { ...template };
+    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, 0, 0)) continue;
+    const allBlocked = [...blocked, ...hazards];
+    if (allBlocked.some(b => footprintsOverlap(cand, b, 0.5))) continue;
+    hazards.push(cand);
+  }
+
+  return hazards;
+}
+
+/**
  * Emissive cliff-edge lip AABBs at the high (plateau) mouth of each descent ramp.
  * Strips sit on the plateau just north of the ramp junction — not over walkable ramp centres.
  */
@@ -1511,12 +1586,14 @@ function buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh) {
 /**
  * Build the open-plaza arena: one large walkable room bounded by four solid
  * perimeter walls, with scattered cover pieces and gently sloped platforms.
- * Deterministic for a given seed (uses mulberry32).
+ * Deterministic for a given seed (uses mulberry32) in `layoutMode: 'default'`.
+ * In `layoutMode: 'rigid'`, cover/hazard placement is seed-independent.
  *
  * Returns { rooms: [plaza], passages: [], cover, platforms, passageWidth,
  *           cellSpacing, profile: 'open-plaza' }.
  */
-function generateOpenPlaza(seed) {
+function generateOpenPlaza(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const size = OPEN_PLAZA.size;
   const half = size / 2;
@@ -1575,18 +1652,32 @@ function generateOpenPlaza(seed) {
     { x: -11, z: 11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
   ];
 
-  const allCover = scatterCoverInArena(rng, {
-    half,
-    spawnClear,
-    candidatePool,
-    initialCover: cover,
-    targetCount: 8,
-    interiorMargin: OPEN_PLAZA.interiorMargin,
-  });
-  cover.length = 0;
-  cover.push(...allCover);
-
-  const hazards = placeOpenPlazaHazards(rng, half, spawnClear, [...platforms, ...cover]);
+  let hazards;
+  if (layoutMode === 'rigid') {
+    const allCover = placeCoverInArenaOrdered({
+      half,
+      spawnClear,
+      candidatePool,
+      initialCover: cover,
+      targetCount: 8,
+      interiorMargin: OPEN_PLAZA.interiorMargin,
+    });
+    cover.length = 0;
+    cover.push(...allCover);
+    hazards = placeOpenPlazaHazardsRigid(half, spawnClear, [...platforms, ...cover]);
+  } else {
+    const allCover = scatterCoverInArena(rng, {
+      half,
+      spawnClear,
+      candidatePool,
+      initialCover: cover,
+      targetCount: 8,
+      interiorMargin: OPEN_PLAZA.interiorMargin,
+    });
+    cover.length = 0;
+    cover.push(...allCover);
+    hazards = placeOpenPlazaHazards(rng, half, spawnClear, [...platforms, ...cover]);
+  }
 
   const layout = {
     rooms: [plaza],
@@ -1864,10 +1955,13 @@ function buildSpireEdgeHazards(tiers) {
  * linked by one sloped ramp room. Bottom tier (high +Z) is start; top tier
  * (low −Z) is treasure.
  *
+ * In `layoutMode: 'default'`, tier count (3–5) and tier width/depth (12–15)
+ * are seed-driven. In `layoutMode: 'rigid'`, those values are fixed.
+ *
  * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent' }.
  */
-function generateSpireAscent(seed) {
-  const rng = mulberry32(seed);
+function generateSpireAscent(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const {
     tierMinSize,
     tierMaxSize,
@@ -1876,17 +1970,30 @@ function generateSpireAscent(seed) {
     rampDepth,
     minTotalRise,
     minRampSlope,
+    rigidTierCount,
+    rigidTierWidth,
+    rigidTierDepth,
   } = SPIRE_ASCENT;
 
-  const tierCount = 3 + Math.floor(rng() * 3);
+  let tierCount;
+  let tierWidth;
+  let tierDepth;
+  if (layoutMode === 'rigid') {
+    tierCount = rigidTierCount;
+    tierWidth = rigidTierWidth;
+    tierDepth = rigidTierDepth;
+  } else {
+    const rng = mulberry32(seed);
+    tierCount = 3 + Math.floor(rng() * 3);
+    const tierSpan = tierMaxSize - tierMinSize + 1;
+    tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
+    tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
+  }
+
   const yStep = minTotalRise / (tierCount - 1);
   if (yStep / rampDepth < minRampSlope) {
     throw new Error('SPIRE_ASCENT rampDepth too large for minRampSlope');
   }
-
-  const tierSpan = tierMaxSize - tierMinSize + 1;
-  const tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
-  const tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
   const halfTierD = tierDepth / 2;
   const halfRampD = rampDepth / 2;
 
@@ -2286,6 +2393,7 @@ function randomRoomPositionByRole(layout, role, rng) {
 
 module.exports = {
   mulberry32,
+  normalizeLayoutMode,
   generateLayout,
   generateOpenPlaza,
   generateSunkenCanyon,
@@ -2296,6 +2404,8 @@ module.exports = {
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
+  placeCoverInArenaOrdered,
+  OPEN_PLAZA_RIGID_HAZARDS,
   scatterCoverInRoom,
   decorateCrowdedLayout,
   decorateOpenLayout,
