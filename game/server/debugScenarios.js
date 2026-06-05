@@ -14,6 +14,7 @@
 // and the DEBUG_SCENARIOS set are supplied via setCallbacks() after the modules
 // are loaded.
 
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
@@ -74,7 +75,7 @@ function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
     emitQuestPayloadToLobby(lobby, { extraFields });
     return;
   }
-  io.to(lobby.id).emit('questUpdate', {
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.QUEST_UPDATE, {
     ...buildQuestUpdatePayload(state),
     ...extraFields,
   });
@@ -189,7 +190,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -239,7 +240,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -289,7 +290,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -339,7 +340,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -388,7 +389,7 @@ function applyDebugScenario(socket, name) {
       }
       // Sync the modified inventory/deck to the client so __AUTOGAME_HARNESS_STATE__
       // reflects the new skeleton_knight instance for the smoke test.
-      socket.emit('deckUpdate', {
+      socket.emit(SERVER_TO_CLIENT.DECK_UPDATE, {
         selectedDeck: player.selectedDeck,
         inventory: player.inventory,
         ownedCards: player.ownedCards,
@@ -1219,7 +1220,7 @@ function applyDebugScenario(socket, name) {
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     return { ok: true, scenario: name };
   });
 }

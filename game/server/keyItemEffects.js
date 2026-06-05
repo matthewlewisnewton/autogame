@@ -10,6 +10,7 @@
 // dungeon / progression) via direct require; the one index.js-local handle the
 // handler needs (io) is supplied via setCallbacks() after both modules load.
 
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const { isPlayingPhase } = require('./lobbies');
 const {
   MAX_HP,
@@ -52,30 +53,30 @@ function setCallbacks(deps) {
 // withLobbyContext).
 function handleUseKeyItem(socket, state, lobby, data) {
     if (!isPlayingPhase(state)) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'not_in_dungeon' });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'not_in_dungeon' });
       return;
     }
 
     const player = state.players[socket.playerId];
     if (!player) return;
     if (player.dead) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'dead' });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'dead' });
       return;
     }
     if (player.extracted) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'extracted' });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'extracted' });
       return;
     }
 
     const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
     if (!keyItemId) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'missing_key_item_id' });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'missing_key_item_id' });
       return;
     }
 
     const def = getKeyItemDef(keyItemId);
     if (!def) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'unknown_item' });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'unknown_item' });
       return;
     }
 
@@ -84,13 +85,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
     const cooldownUntil = player.keyItemCooldownUntil || 0;
     if (now < cooldownUntil) {
       const remainingMs = cooldownUntil - now;
-      socket.emit('keyItemUsed', { ok: false, reason: 'on_cooldown', remainingMs });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'on_cooldown', remainingMs });
       return;
     }
 
     // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, rally_cry, smoke_bomb, and ground_anchor are implemented; all other key items return not_implemented.
     if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'rally_cry' && keyItemId !== 'smoke_bomb' && keyItemId !== 'ground_anchor') {
-      socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'not_implemented' });
       return;
     }
 
@@ -116,14 +117,14 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 7000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
-      io.to(lobby.id).emit('keyItemHealPulse', {
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.KEY_ITEM_HEAL_PULSE, {
         playerId: socket.playerId,
         x: casterX,
         z: casterZ,
         healRadius,
       });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -135,8 +136,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 3500);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -153,8 +154,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 14000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -172,8 +173,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -190,13 +191,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
       if (player.debuffs.length > 0) {
         const removed = player.debuffs.shift();
         const cleared = removed && removed.type != null ? removed.type : null;
-        socket.emit('keyItemUsed', { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
+        socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
       } else {
         // No debuffs to clear — fall back to a one-hit absorb shield.
         player.shieldHitsRemaining = 1;
-        socket.emit('keyItemUsed', { ok: true, keyItemId, shielded: true, cooldownUntil: player.keyItemCooldownUntil });
+        socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, shielded: true, cooldownUntil: player.keyItemCooldownUntil });
       }
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -209,8 +210,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, echoStrikePending: true, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, echoStrikePending: true, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -239,8 +240,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -256,8 +257,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + cooldownMs;
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, anchorUntil: player.anchorUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, anchorUntil: player.anchorUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -280,8 +281,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -343,8 +344,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
       savePlayerData(socket.playerId);
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -352,7 +353,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       // --- summon_recall: teleport all owned minions to ring positions around player ---
       const myMinions = state.minions.filter(m => m.ownerId === socket.playerId);
       if (myMinions.length === 0) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'no_minions' });
+        socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'no_minions' });
         return; // No cooldown burn on soft-fail
       }
 
@@ -427,8 +428,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -439,8 +440,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 13000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -470,13 +471,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
       }
 
       if (!ally) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'no_ally' });
+        socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'no_ally' });
         return; // No cooldown burn on soft-fail
       }
 
       const dist = Math.hypot(ally.x - player.x, ally.z - player.z);
       if (dist > range) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'out_of_range' });
+        socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'out_of_range' });
         return; // No cooldown burn on soft-fail
       }
 
@@ -488,7 +489,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         isEntityPositionBlocked(player.x, player.z, PLAYER_RADIUS) ||
         isEntityPositionBlocked(ally.x, ally.z, PLAYER_RADIUS)
       ) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'invalid_position' });
+        socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: false, reason: 'invalid_position' });
         return; // No cooldown burn on soft-fail
       }
 
@@ -507,7 +508,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       ally.persistenceDirty = true;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 12000);
 
-      socket.emit('keyItemUsed', {
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, {
         ok: true,
         keyItemId,
         targetPlayerId: ally.id,
@@ -516,7 +517,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         z: player.z,
         cooldownUntil: player.keyItemCooldownUntil,
       });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return;
     }
 
@@ -555,8 +556,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
     player.keyItemCooldownUntil = now + (def.cooldownMs || 800);
     player.persistenceDirty = true;
 
-    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
 }
 
 module.exports = {
