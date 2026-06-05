@@ -1,0 +1,10 @@
+Broke ticket **256-level2-sunken-canyon** into two sub-tickets, following the same pattern as ticket 257 (spire-ascent) and reusing the ticket 254 foundation (variant scaling + rigid layout mode).
+
+**Sub-ticket 01** adds `layoutMode: 'rigid'` support to the `sunken-canyon` profile generator — pinning ramp count, cover scatter, and monolith placement while keeping plateau/canyon identity intact.
+
+**Sub-ticket 02** wires `canyon_descent` Tier 2 end-to-end: quest catalog row, rigid layout, high variant rate, spawn behavior, unlock plumbing, debug scenario, and tests.
+
+Created sub-ticket folders:
+
+- `/home/matt/workspace/.autogame-worktrees/256-level2-sunken-canyon/tickets/256-level2-sunken-canyon/subtickets/01-sunken-canyon-rigid-layout-mode/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/256-level2-sunken-canyon/tickets/256-level2-sunken-canyon/subtickets/02-canyon-descent-tier2-end-to-end/ticket.md`

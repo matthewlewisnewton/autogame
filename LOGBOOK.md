@@ -4606,3 +4606,26 @@ None.
 
 None. All acceptance criteria are fully and robustly satisfied; the captured run is clean.
 
+
+## v0.260 — 256-level2-sunken-canyon  (2026-06-05 09:09:44)
+
+Pass. Tier 2 uses the existing sunken-canyon profile and preserves the plateau, ramp, lower canyon floor, cliff lips, edge hazards, canyon cover, and canyon monolith identity. Spawn tests verify enemies remain on walkable plateau/canyon bands and avoid ramp connector rooms, with the majority of enemies in the canyon band.
+
+### Test
+
+Pass. The relevant server/client suite passed in `coverage.log`, including canyon Tier 2 catalog/layout/spawn/unlock tests, debug scenario tests, quest catalog tests, quest board tests, gating tests, and rigid-layout dungeon tests.
+
+## Design and foundation consistency
+
+The implementation remains consistent with the documented lobby -> dungeon -> objective loop. Tier 2 is reached through normal quest progression, still uses server-authoritative quest selection, layout generation, spawning, objective setup, and persistence. It does not regress the foundation requirements: the captured run shows 3D rendering, socket connection, multiplayer state, and movement/dodge updates.
+
+## Debug scenarios
+
+The new `sunken-canyon-tier-2` debug scenario is gated behind the existing debug socket path. The client only requests scenarios via `?debugScenario=NAME` on localhost, and the server denies debug scenarios in production unless explicitly allowed. The shortcut sets the same quest/tier/layout state a player reaches by clearing Canyon Descent Tier 1, selecting Tier 2, and deploying, then uses the normal phase/run/spawn/state-update path. It does not replace or weaken the normal unlock, selection, ready, spawn, or persistence flow.
+
+The capture also used the older `sunken-canyon-stage` visual shortcut. That remains a layout-render QA shortcut for the same `sunken-canyon` profile now reachable through `canyon_descent` quests.
+
+## Remaining gaps
+
+None.
+
