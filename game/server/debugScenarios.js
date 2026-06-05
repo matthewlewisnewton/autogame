@@ -403,9 +403,9 @@ function applyDebugScenario(socket, name) {
       state.selectedQuestId = 'crystal_rescue';
     }
 
-    if (name === 'stage-boss-dormant') {
-      // Open-plaza layout for a dormant stage-boss encounter with adds. Reachable
-      // when a stage_boss quest tier deploys (sub-ticket 05); shortcut for QA.
+    if (name === 'stage-boss-dormant' || name === 'stage-boss-active') {
+      // Open-plaza layout for a stage-boss encounter. Reachable when a
+      // stage_boss quest tier deploys (sub-ticket 05); shortcut for QA.
       state.selectedQuestId = 'arena_trials';
       state.selectedQuestTier = 1;
       applyLayoutForQuest(state, 'arena_trials', 1);
@@ -1202,8 +1202,12 @@ function applyDebugScenario(socket, name) {
       player.rallyUntil = 0;
       player.rallySpeedMultiplier = 1;
       state.enemies = [];
-    } else if (name === 'stage-boss-dormant') {
-      const { createEncounterState, setEncounterBoss } = require('./encounters');
+    } else if (name === 'stage-boss-dormant' || name === 'stage-boss-active') {
+      const {
+        createEncounterState,
+        setEncounterBoss,
+        ENCOUNTER_PHASES,
+      } = require('./encounters');
       player.hp = MAX_HP;
       player.magicStones = MAX_MAGIC_STONES;
       const dais = state.layout?.landmarks?.find((lm) => lm.type === 'arena_dais');
@@ -1221,12 +1225,21 @@ function applyDebugScenario(socket, name) {
       const boss = spawnEnemy(anchor.x, anchor.z, 'miniboss');
       boss.wanderTarget = { x: anchor.x, z: anchor.z };
       setEncounterBoss(state.run, boss.id);
-      const addA = spawnEnemy(anchor.x + 6, anchor.z + 2, 'grunt');
-      addA.wanderTarget = { x: addA.x, z: addA.z };
-      const addB = spawnEnemy(anchor.x - 6, anchor.z - 2, 'skirmisher');
-      addB.wanderTarget = { x: addB.x, z: addB.z };
-      player.x = anchor.x + 30;
-      player.z = anchor.z;
+      if (name === 'stage-boss-dormant') {
+        const addA = spawnEnemy(anchor.x + 6, anchor.z + 2, 'grunt');
+        addA.wanderTarget = { x: addA.x, z: addA.z };
+        const addB = spawnEnemy(anchor.x - 6, anchor.z - 2, 'skirmisher');
+        addB.wanderTarget = { x: addB.x, z: addB.z };
+        player.x = anchor.x + 30;
+        player.z = anchor.z;
+      } else {
+        state.run.encounter.phase = ENCOUNTER_PHASES.ACTIVE;
+        state.run.encounter.locked = true;
+        boss.hp = 1;
+        boss.maxHp = boss.maxHp || boss.hp;
+        player.x = anchor.x + 4;
+        player.z = anchor.z;
+      }
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     } else if (name === 'cinder-snare-ready') {
       // Playing phase with Cinder Snare in hand, full Magic Stones, and a grunt

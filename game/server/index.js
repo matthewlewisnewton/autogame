@@ -514,6 +514,7 @@ const DEBUG_SCENARIOS = new Set([
   'crystal-rescue-tier-2',
   'spire-ascent-tier-2',
   'stage-boss-dormant',
+  'stage-boss-active',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -681,6 +682,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'crystal-rescue-tier-2',
   'spire-ascent-tier-2',
   'stage-boss-dormant',
+  'stage-boss-active',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {

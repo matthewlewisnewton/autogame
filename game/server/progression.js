@@ -83,6 +83,8 @@ const {
   ensureEncounterSpawnAnchor,
   isEncounterLocked,
   tryActivateEncounter,
+  getEncounterBossId,
+  onStageBossDefeated,
 } = require('./encounters');
 
 let _gameState = null;
@@ -2194,6 +2196,14 @@ function removeDeadEnemies() {
     const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
     if (variantDef && variantDef.id === 'volatile') {
       spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+    }
+  }
+
+  const bossId = getEncounterBossId(_gameState.run);
+  if (bossId) {
+    const bossDying = dying.find((e) => e.id === bossId);
+    if (bossDying) {
+      onStageBossDefeated(_gameState, bossDying);
     }
   }
 

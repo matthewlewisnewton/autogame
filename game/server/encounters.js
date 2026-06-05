@@ -135,6 +135,41 @@ function clearNonBossEnemies(gameState, bossId) {
  * While dormant, transitions to active + locked when all non-boss enemies are
  * defeated or any active player enters the trigger radius around spawnAnchor.
  */
+/** Optional hooks invoked once per stage-boss defeat (after loot, before filter). */
+const encounterRewardHooks = [];
+
+function registerEncounterRewardHook(fn) {
+  if (typeof fn === 'function') {
+    encounterRewardHooks.push(fn);
+  }
+}
+
+function clearEncounterRewardHooks() {
+  encounterRewardHooks.length = 0;
+}
+
+/**
+ * Called from `removeDeadEnemies` when the encounter boss dies while active.
+ * Clears the encounter, marks the stage_boss objective, and runs reward hooks.
+ */
+function onStageBossDefeated(gameState, bossEnemy) {
+  const run = gameState?.run;
+  const encounter = run?.encounter;
+  if (!encounter || encounter.phase !== ENCOUNTER_PHASES.ACTIVE) return;
+
+  clearEncounter(run);
+
+  const { getObjectiveDef } = require('./objectives');
+  const def = getObjectiveDef('stage_boss');
+  if (def?.onBossDefeated) {
+    def.onBossDefeated(run, bossEnemy);
+  }
+
+  for (const hook of encounterRewardHooks) {
+    hook(gameState, bossEnemy, run);
+  }
+}
+
 function tryActivateEncounter(gameState) {
   const run = gameState?.run;
   if (!run || run.status !== 'playing' || !isEncounterDormant(run)) return false;
@@ -176,4 +211,8 @@ module.exports = {
   isEncounterCleared,
   ensureEncounterSpawnAnchor,
   tryActivateEncounter,
+  onStageBossDefeated,
+  registerEncounterRewardHook,
+  clearEncounterRewardHooks,
+  encounterRewardHooks,
 };

@@ -256,6 +256,9 @@ const OBJECTIVE_DEFS = {
     clampProgress() {
       // Progress is driven by encounter phase / boss defeat hooks (sub-ticket 04).
     },
+    onBossDefeated(run) {
+      run.objective.bossDefeated = true;
+    },
   },
 };
 
