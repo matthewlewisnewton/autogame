@@ -10,7 +10,7 @@ import {
 	clearAllTimers,
 	getJWTSecret
 } from '../index.js';
-import { clearUsers, setTestFilePath } from '../users.js';
+import { setServerUsersFilePath, clearServerUsers } from './helpers.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import jwt from 'jsonwebtoken';
 
@@ -40,7 +40,7 @@ async function startTestServer() {
 		resetGameState();
 		serverIo.removeAllListeners('connection');
 		clearAllTimers();
-		clearUsers();
+		clearServerUsers();
 
 		startServer(0);
 
@@ -73,8 +73,8 @@ let tmpUserFile;
 
 beforeEach(async () => {
 	tmpUserFile = path.join(os.tmpdir(), `auth-test-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
-	setTestFilePath(tmpUserFile);
-	clearUsers();
+	setServerUsersFilePath(tmpUserFile);
+	clearServerUsers();
 	baseUrl = await startTestServer();
 });
 
@@ -82,7 +82,6 @@ afterEach(async () => {
 	await closeTestServer();
 	// Clean up temp user file
 	try { fs.unlinkSync(tmpUserFile); } catch {}
-	try { fs.unlinkSync(tmpUserFile + '.tmp'); } catch {}
 });
 
 // ── POST /api/register ──

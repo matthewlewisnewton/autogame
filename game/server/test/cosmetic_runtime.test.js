@@ -13,18 +13,12 @@ import {
 	server as httpServer,
 	clearAllTimers,
 } from '../index.js';
-import { connectAndJoinLobby } from './helpers.js';
+import { connectAndJoinLobby, setServerUsersFilePath, clearServerUsers } from './helpers.js';
 
 const require = createRequire(import.meta.url);
 import { DEFAULT_COSMETIC, PROPORTION_KEYS } from '../cosmetic.js';
-import { clearUsers, setTestFilePath } from '../users.js';
 import { initAuth, resetAuthSecret } from '../auth.js';
 import { clearAllSettings, resetSettingsPath } from '../settings.js';
-
-// NOTE: under vitest the CJS `require('./users')` inside index.js resolves to a
-// different module instance than an ESM `import` of users.js, so accounts are
-// seeded through the real HTTP register/profile routes (the same instance the
-// server uses) rather than by importing the users module directly.
 
 const customCosmetic = {
 	bodyColor: '#112233',
@@ -47,7 +41,7 @@ async function startTestServer() {
 		resetGameState();
 		serverIo.removeAllListeners('connection');
 		clearAllTimers();
-		clearUsers();
+		clearServerUsers();
 		startServer(0);
 		httpServer.once('listening', () => {
 			clearTimeout(timeout);
@@ -103,8 +97,8 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		tmpUserFile = path.join(os.tmpdir(), `cosmetic-runtime-users-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
 		tmpDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'cosmetic-runtime-data-'));
 		process.env.PERSISTENCE_PATH = tmpDataDir;
-		setTestFilePath(tmpUserFile);
-		clearUsers();
+		setServerUsersFilePath(tmpUserFile);
+		clearServerUsers();
 		resetSettingsPath();
 		clearAllSettings();
 		resetAuthSecret();
