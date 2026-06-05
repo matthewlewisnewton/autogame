@@ -694,16 +694,19 @@ function removeRemotePlayerVisuals(playerId) {
 function applyHubPresence(presence, opts = {}) {
 	if (!presence || !gameState || gameState.gamePhase !== 'lobby') return;
 
-	const removedPlayerIds = opts.removedPlayerIds || [];
+	const removedPlayerIds = Array.isArray(opts.removedPlayerIds) ? opts.removedPlayerIds : [];
 	for (const id of removedPlayerIds) {
-		if (id === myId) continue;
+		if (!id || id === myId) continue;
 		if (gameState.players[id]) delete gameState.players[id];
 		removeRemotePlayerVisuals(id);
 	}
 
-	const entries = presence.entries || {};
+	const rawEntries = presence.entries;
+	const entries = (rawEntries && typeof rawEntries === 'object' && !Array.isArray(rawEntries))
+		? rawEntries
+		: {};
 	for (const [id, entry] of Object.entries(entries)) {
-		if (!entry) continue;
+		if (!id || !entry || typeof entry !== 'object') continue;
 		if (id === myId) {
 			const local = gameState.players[id];
 			if (!local) continue;
@@ -716,9 +719,10 @@ function applyHubPresence(presence, opts = {}) {
 			gameState.players[id] = { id, hp: 100, dead: false };
 		}
 		const player = gameState.players[id];
-		player.x = entry.x;
-		player.y = entry.y ?? player.y ?? 0.5;
-		player.z = entry.z;
+		if (Number.isFinite(entry.x)) player.x = entry.x;
+		if (Number.isFinite(entry.y)) player.y = entry.y;
+		else if (player.y == null) player.y = 0.5;
+		if (Number.isFinite(entry.z)) player.z = entry.z;
 		if (Number.isFinite(entry.rotation)) player.rotation = entry.rotation;
 		if (entry.cosmetic) player.cosmetic = entry.cosmetic;
 		if (entry.username) player.username = entry.username;
@@ -757,7 +761,6 @@ function renderHubScene() {
 function applyLobbyJoinedData(data) {
 	myId = data.id;
 	rendererSetMyId(data.id);
-	setGameStateRef(gameState);
 	if (data.playerId) {
 		try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
 	}
@@ -765,7 +768,7 @@ function applyLobbyJoinedData(data) {
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
-	if (data.hubPresence) applyHubPresence(data.hubPresence);
+	setGameStateRef(gameState);
 
 	mySelectedDeck = data.selectedDeck || [];
 	myInventory = Array.isArray(data.inventory) ? data.inventory : null;
@@ -788,6 +791,8 @@ function applyLobbyJoinedData(data) {
 	}
 
 	showGameLobby();
+
+	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	const receivedSeed = data.layoutSeed;
 	const joinPhase = data.state && data.state.gamePhase;
@@ -1329,6 +1334,7 @@ function bindSocketHandlers(s) {
 
 	s.on('hubPresenceUpdate', (data) => {
 		if (!data || !gameState || gameState.gamePhase !== 'lobby') return;
+		if (!data.presence) return;
 		applyHubPresence(data.presence, { removedPlayerIds: data.removedPlayerIds });
 	});
 

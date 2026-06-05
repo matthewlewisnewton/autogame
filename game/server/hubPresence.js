@@ -7,6 +7,14 @@ function createEmptyHubPresence() {
   return { schemaVersion: 1, entries: {}, revision: 0 };
 }
 
+function ensureLobbyHubPresence(lobby) {
+  if (!lobby) return null;
+  if (!lobby.hubPresence) {
+    lobby.hubPresence = createEmptyHubPresence();
+  }
+  return lobby.hubPresence;
+}
+
 /**
  * Build a slim hub-presence entry from a live player record.
  * @param {object} player
@@ -25,18 +33,34 @@ function buildHubPresenceEntry(player) {
 }
 
 /**
+ * Like {@link buildHubPresenceEntry} but never throws on malformed records.
+ * @param {object} player
+ */
+function safeBuildHubPresenceEntry(player) {
+  if (!player || typeof player !== 'object' || !player.id) return null;
+  try {
+    return buildHubPresenceEntry(player);
+  } catch (err) {
+    console.error('[hubPresence] failed to build entry for player', player.id, err);
+    return null;
+  }
+}
+
+/**
  * Rebuild `lobby.hubPresence.entries` from lobby-phase players.
  * Skips disconnected players (`connected === false`); ghosts are not kept.
  * Bumps `lobby.hubPresence.revision` when the entry map changes.
  */
 function syncHubPresenceFromLobby(lobby) {
-  if (!lobby?.hubPresence) return;
+  if (!ensureLobbyHubPresence(lobby)) return;
   const prevJson = JSON.stringify(lobby.hubPresence.entries);
   const entries = {};
-  if (lobby.state?.gamePhase === LOBBY_PHASE) {
-    for (const player of Object.values(lobby.state.players)) {
+  const players = lobby.state?.players;
+  if (lobby.state?.gamePhase === LOBBY_PHASE && players && typeof players === 'object') {
+    for (const player of Object.values(players)) {
       if (!player || player.connected === false) continue;
-      entries[player.id] = buildHubPresenceEntry(player);
+      const entry = safeBuildHubPresenceEntry(player);
+      if (entry) entries[player.id] = entry;
     }
   }
   lobby.hubPresence.entries = entries;
@@ -61,6 +85,7 @@ function getHubPresenceSnapshot(lobby) {
  */
 function emitHubPresenceUpdate(io, lobby, opts = {}) {
   if (lobby.state?.gamePhase !== LOBBY_PHASE) return;
+  if (!ensureLobbyHubPresence(lobby)) return;
 
   const payload = {
     lobbyId: lobby.id,
@@ -83,14 +108,32 @@ function emitHubPresenceUpdate(io, lobby, opts = {}) {
  */
 function emitHubPresenceUpdateIfChanged(io, lobby) {
   if (lobby.state?.gamePhase !== LOBBY_PHASE) return;
+  if (!ensureLobbyHubPresence(lobby)) return;
   if (lobby.hubPresence.revision === lobby._lastHubPresenceEmitRevision) return;
   emitHubPresenceUpdate(io, lobby);
 }
 
+/**
+ * Sync lobby hub presence and emit when revision changed; logs and swallows errors.
+ * @param {import('socket.io').Server} io
+ * @param {object} lobby
+ */
+function syncAndEmitHubPresenceIfChanged(io, lobby) {
+  try {
+    syncHubPresenceFromLobby(lobby);
+    emitHubPresenceUpdateIfChanged(io, lobby);
+  } catch (err) {
+    console.error('[hubPresence] sync/emit failed for lobby', lobby?.id, err);
+  }
+}
+
 module.exports = {
   createEmptyHubPresence,
+  ensureLobbyHubPresence,
   buildHubPresenceEntry,
+  safeBuildHubPresenceEntry,
   syncHubPresenceFromLobby,
+  syncAndEmitHubPresenceIfChanged,
   getHubPresenceSnapshot,
   emitHubPresenceUpdate,
   emitHubPresenceUpdateIfChanged,

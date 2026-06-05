@@ -81,7 +81,7 @@ const {
   syncHubPresenceFromLobby,
   getHubPresenceSnapshot,
   emitHubPresenceUpdate,
-  emitHubPresenceUpdateIfChanged,
+  syncAndEmitHubPresenceIfChanged,
 } = require('./hubPresence');
 
 const app = express();
@@ -943,8 +943,13 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     ...buildQuestUpdatePayload(state, player.accountId),
   };
   if (isLobbyPhase(state)) {
-    syncHubPresenceFromLobby(lobby);
-    joinedPayload.hubPresence = getHubPresenceSnapshot(lobby);
+    try {
+      syncHubPresenceFromLobby(lobby);
+      joinedPayload.hubPresence = getHubPresenceSnapshot(lobby);
+    } catch (err) {
+      console.error('[hubPresence] lobbyJoined snapshot failed for lobby', lobby.id, err);
+      joinedPayload.hubPresence = { schemaVersion: 1, entries: {}, revision: 0 };
+    }
   }
   socket.emit('lobbyJoined', joinedPayload);
 
@@ -1006,7 +1011,11 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby);
   if (isLobbyPhase(state)) {
-    emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] join broadcast failed for lobby', lobby.id, err);
+    }
   }
 }
 
@@ -1031,7 +1040,11 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby, playerId);
   if (isLobbyPhase(lobby.state)) {
-    emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
+    }
   }
   io.to(lobby.id).emit('playerReconnected', playerId);
   broadcastLobbyList();
@@ -1052,10 +1065,14 @@ function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false }
     } else {
       broadcastLobbyUpdate(lobby);
       if (isLobbyPhase(lobby.state) && playerId) {
-        syncHubPresenceFromLobby(lobby);
-        emitHubPresenceUpdate(io, lobby, {
-          removedPlayerIds: [playerId],
-        });
+        try {
+          syncHubPresenceFromLobby(lobby);
+          emitHubPresenceUpdate(io, lobby, {
+            removedPlayerIds: [playerId],
+          });
+        } catch (err) {
+          console.error('[hubPresence] leave/disconnect broadcast failed for lobby', lobby.id, err);
+        }
       }
     }
   });
@@ -1152,8 +1169,7 @@ function runGameLoopTick() {
       const state = lobby.state;
       if (isLobbyPhase(state)) {
         applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
-        syncHubPresenceFromLobby(lobby);
-        emitHubPresenceUpdateIfChanged(io, lobby);
+        syncAndEmitHubPresenceIfChanged(io, lobby);
         flushDirtyPlayerSaves();
       } else if (isPlayingPhase(state)) {
         applyPlayerMovement(state, buildMovementContext(state));
