@@ -12,8 +12,6 @@ const LOBBY_PANEL_IDS = [
 ];
 
 const LOBBY_TAB_IDS = [
-	'lobby-tab-deck',
-	'lobby-tab-shop',
 	'lobby-tab-forge',
 	'lobby-tab-economy',
 	'lobby-tab-medic',
@@ -100,7 +98,6 @@ describe('shop booth via booth:action', () => {
 		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('guild-medic').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('key-item-loadout').classList.contains('hidden')).toBe(true);
-		expect(document.getElementById('lobby-tab-shop').classList.contains('active')).toBe(true);
 	});
 
 	it('emits buyShopCard when the buy button is clicked after booth open', async () => {

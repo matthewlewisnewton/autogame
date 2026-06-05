@@ -2822,7 +2822,6 @@ const tradeOfferSelectEl = document.getElementById('trade-offer-select');
 const tradeRequestSelectEl = document.getElementById('trade-request-select');
 const offerTradeBtn = document.getElementById('offer-trade-btn');
 const deckEditorEl = document.getElementById('deck-editor');
-const lobbyTabDeckBtn = document.getElementById('lobby-tab-deck');
 const lobbyTabForgeBtn = document.getElementById('lobby-tab-forge');
 const photonForgeEl = document.getElementById('photon-forge');
 const forgeInventoryGridEl = document.getElementById('forge-inventory-grid');
@@ -2831,7 +2830,7 @@ const forgeSelectedMetaEl = document.getElementById('forge-selected-meta');
 const forgeStatRowsEl = document.getElementById('forge-stat-rows');
 const forgeErrorEl = document.getElementById('forge-error');
 
-let activeLobbyTab = 'deck';
+let activeLobbyTab = 'forge';
 let selectedForgeInstanceId = null;
 
 function getDeckInventory() {
@@ -3263,9 +3262,7 @@ function setLobbyTab(tab) {
 	const cardEconomy = document.getElementById('card-economy');
 	const guildMedic = document.getElementById('guild-medic');
 	const keyItemLoadout = document.getElementById('key-item-loadout');
-	const deckTabBtn = document.getElementById('lobby-tab-deck');
 	const forgeTabBtn = document.getElementById('lobby-tab-forge');
-	const shopTabBtn = document.getElementById('lobby-tab-shop');
 	const economyTabBtn = document.getElementById('lobby-tab-economy');
 	const medicTabBtn = document.getElementById('lobby-tab-medic');
 	const keyItemsTabBtn = document.getElementById('lobby-tab-keyitems');
@@ -3275,9 +3272,7 @@ function setLobbyTab(tab) {
 	if (cardEconomy) cardEconomy.classList.toggle('hidden', activeLobbyTab !== 'economy');
 	if (guildMedic) guildMedic.classList.toggle('hidden', activeLobbyTab !== 'medic');
 	if (keyItemLoadout) keyItemLoadout.classList.toggle('hidden', activeLobbyTab !== 'keyitems');
-	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
 	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
-	if (shopTabBtn) shopTabBtn.classList.toggle('active', activeLobbyTab === 'shop');
 	if (economyTabBtn) economyTabBtn.classList.toggle('active', activeLobbyTab === 'economy');
 	if (medicTabBtn) medicTabBtn.classList.toggle('active', activeLobbyTab === 'medic');
 	if (keyItemsTabBtn) keyItemsTabBtn.classList.toggle('active', activeLobbyTab === 'keyitems');
@@ -3471,14 +3466,8 @@ function renderPhotonForge() {
 	showForgeError('');
 }
 
-if (document.getElementById('lobby-tab-deck')) {
-	document.getElementById('lobby-tab-deck').addEventListener('click', () => setLobbyTab('deck'));
-}
 if (document.getElementById('lobby-tab-forge')) {
 	document.getElementById('lobby-tab-forge').addEventListener('click', () => setLobbyTab('forge'));
-}
-if (document.getElementById('lobby-tab-shop')) {
-	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
 }
 const buyShopCardBtnEl = document.getElementById('buy-shop-card-btn');
 if (buyShopCardBtnEl) {

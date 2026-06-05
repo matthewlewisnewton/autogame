@@ -252,8 +252,6 @@ describe('renderDeckEditor()', () => {
 describe('Photon Forge UI', () => {
 	const FORGE_DOM_IDS = [
 		'deck-editor',
-		'lobby-tab-deck',
-		'lobby-tab-shop',
 		'lobby-tab-forge',
 		'lobby-tab-economy',
 		'card-shop',
@@ -308,7 +306,6 @@ describe('Photon Forge UI', () => {
 		expect(document.getElementById('card-shop').classList.contains('hidden')).toBe(false);
 		expect(document.getElementById('photon-forge').classList.contains('hidden')).toBe(true);
 		expect(document.getElementById('card-economy').classList.contains('hidden')).toBe(true);
-		expect(document.getElementById('lobby-tab-shop').classList.contains('active')).toBe(true);
 
 		window.setLobbyTab('forge');
 		expect(document.getElementById('deck-editor').classList.contains('hidden')).toBe(true);
