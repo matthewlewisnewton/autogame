@@ -1,0 +1,11 @@
+Broke the top-level ticket into **2 sub-tickets** (same pattern as ticket 257 spire-ascent), reusing ticket 254’s `layoutMode: 'rigid'` and quest-tier variant scaling.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/256-level2-sunken-canyon/tickets/256-level2-sunken-canyon/subtickets/01-sunken-canyon-rigid-layout-mode/ticket.md`  
+   — Thread `layoutMode: 'rigid'` through `generateSunkenCanyon` (fixed ramp count, ordered cover, fixed monolith); dungeon tests only.
+
+2. `/home/matt/workspace/.autogame-worktrees/256-level2-sunken-canyon/tickets/256-level2-sunken-canyon/subtickets/02-canyon-descent-tier2-end-to-end/ticket.md`  
+   — `canyon_descent` Tier 2 catalog, deploy/unlock, variant rolls, canyon spawn identity, `sunken-canyon-tier-2` debug scenario, and integration tests.
+
+Both use **Verification: code** (structure, handlers, spawn bands, variant tags, unlock — not screenshot-only layout checks). No prior `subtickets/` folder existed, so nothing was deleted or renumbered.

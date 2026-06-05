@@ -1,0 +1,5 @@
+Review complete. I wrote `tickets/256-level2-sunken-canyon/round-1/review.md` with:
+
+`VERDICT: PASS`
+
+No blocking gaps found, so I did not create `gaps.md`. No nits worth filing, so I did not create `nits.md`.
