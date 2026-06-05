@@ -1281,6 +1281,7 @@ function startServer(port) {
       applyDebugScenario,
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
+      hubLayout: HUB_LAYOUT,
     };
     lobbyHandlers.register(socket, ctx);
 

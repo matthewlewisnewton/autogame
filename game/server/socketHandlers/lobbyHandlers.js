@@ -11,6 +11,7 @@
 // register(socket, ctx) from the connection handler.
 
 const { LOOT_PICKUP_RADIUS } = require('../config');
+const { findBoothInRange } = require('../../shared/boothZones.js');
 const deckHandlers = require('./deckHandlers');
 const tradeHandlers = require('./tradeHandlers');
 const keyItemHandlers = require('./keyItemHandlers');
@@ -60,6 +61,7 @@ function register(socket, ctx) {
     applyDebugScenario,
     isDebugScenarioAllowed,
     softDisconnectPlayerFromLobby,
+    hubLayout,
   } = ctx;
 
   socket.on('listLobbies', () => {
@@ -352,6 +354,43 @@ function register(socket, ctx) {
       player.persistenceDirty = true;
     }
     });
+  });
+
+  socket.on('boothInteract', (data) => {
+    // Booth interactions only exist while in the hub lobby phase. Emit
+    // boothError (not lobbyError) for every rejection so the client can
+    // listen on a single channel.
+    const lobby = lobbies.getLobbyForPlayer(playerId);
+    if (!lobby || !isLobbyPhase(lobby.state)) {
+      socket.emit('boothError', { reason: 'not_in_lobby' });
+      return;
+    }
+    const player = lobby.state.players[playerId];
+    if (!player) {
+      socket.emit('boothError', { reason: 'not_in_lobby' });
+      return;
+    }
+
+    const boothAnchors = hubLayout && hubLayout.boothAnchors;
+    if (!boothAnchors) {
+      socket.emit('boothError', { reason: 'no_booths' });
+      return;
+    }
+
+    const boothId = data && typeof data.boothId === 'string' ? data.boothId : null;
+    if (!boothId || !Object.prototype.hasOwnProperty.call(boothAnchors, boothId)) {
+      socket.emit('boothError', { reason: 'unknown_booth' });
+      return;
+    }
+
+    // Authoritative proximity check against the player's server-side position.
+    const inRange = findBoothInRange(boothAnchors, player.x, player.z);
+    if (inRange !== boothId) {
+      socket.emit('boothError', { reason: 'out_of_range' });
+      return;
+    }
+
+    socket.emit('boothAction', { boothId, action: boothId });
   });
 
   socket.on('useCard', (data) => {
