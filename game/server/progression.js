@@ -755,6 +755,32 @@ function unlockHatForPlayer(player, hatId) {
   };
 }
 
+/**
+ * Deduct a fixed appearance-change fee from a player's currency. Validates
+ * affordability only; recording cosmetic on the account is the caller's job.
+ *
+ * @param {object} player
+ * @param {number} cost
+ * @returns {{ ok: true, cost: number, currency: number } | { ok: false, reason: string }}
+ */
+function chargeAppearanceChange(player, cost) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+
+  const price = Number.isFinite(cost) ? cost : 0;
+  const currency = player.currency || 0;
+  if (currency < price) {
+    return { ok: false, reason: 'insufficient_gold' };
+  }
+
+  player.currency = currency - price;
+
+  return {
+    ok: true,
+    cost: price,
+    currency: player.currency,
+  };
+}
+
 function evolveCard(player, instanceId) {
   if (!player) return { ok: false, reason: 'Player not found' };
   if (typeof instanceId !== 'string' || instanceId.length === 0) {
@@ -3173,6 +3199,7 @@ module.exports = {
   applyWyrmMinionBreathStats,
   grindCard,
   unlockHatForPlayer,
+  chargeAppearanceChange,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,

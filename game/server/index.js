@@ -218,6 +218,7 @@ const {
   applyWyrmMinionBreathStats,
   grindCard,
   unlockHatForPlayer,
+  chargeAppearanceChange,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,
@@ -1323,6 +1324,7 @@ function startServer(port) {
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
       hubLayout: HUB_LAYOUT,
+      syncLivePlayerCosmetic,
     };
     lobbyHandlers.register(socket, ctx);
 
@@ -1498,6 +1500,7 @@ if (typeof module !== 'undefined' && module.exports) {
     applyWyrmMinionBreathStats,
     grindCard,
     unlockHatForPlayer,
+    chargeAppearanceChange,
     createCardInstance,
     createInventoryFromCardIds,
     createInventoryFromOwnedCards,

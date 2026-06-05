@@ -62,6 +62,9 @@ const DEFAULT_COSMETIC = {
 // Case-insensitive 6-digit hex color (e.g. #1a2B3c).
 const HEX_COLOR_REGEX = /^#[0-9a-f]{6}$/i;
 
+// Cosmetic fields that incur a paid appearance change (hat swaps are free).
+const APPEARANCE_KEYS = ['bodyColor', 'accentColor', 'bodyShape', 'modelId'];
+
 /**
  * Validate a partial cosmetic update.
  * Only the provided sub-fields are validated; missing fields are left untouched.
@@ -186,6 +189,28 @@ function backfillCosmetic(existing) {
  * @param {string[]|undefined} existing
  * @returns {string[]}
  */
+/**
+ * Whether any appearance field (excluding hat) differs between two backfilled
+ * cosmetics. Proportions are compared key-by-key after backfillProportions.
+ *
+ * @param {object} current
+ * @param {object} next
+ * @returns {boolean}
+ */
+function appearanceFieldsChanged(current, next) {
+	const cur = backfillCosmetic(current);
+	const nxt = backfillCosmetic(next);
+	for (const key of APPEARANCE_KEYS) {
+		if (cur[key] !== nxt[key]) return true;
+	}
+	const curProps = cur.proportions;
+	const nxtProps = nxt.proportions;
+	for (const key of PROPORTION_KEYS) {
+		if (curProps[key] !== nxtProps[key]) return true;
+	}
+	return false;
+}
+
 function backfillUnlockedHats(existing) {
 	const out = [];
 	const seen = new Set();
@@ -207,6 +232,7 @@ module.exports = {
 	MODEL_IDS,
 	PROPORTION_KEYS,
 	PROPORTION_RANGES,
+	APPEARANCE_KEYS,
 	HAT_CATALOG,
 	HAT_IDS,
 	getHat,
@@ -215,5 +241,6 @@ module.exports = {
 	validateCosmetic,
 	backfillCosmetic,
 	backfillProportions,
+	appearanceFieldsChanged,
 	backfillUnlockedHats
 };
