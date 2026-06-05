@@ -17,6 +17,11 @@
 //   savePlayerData, sellCard, buyShopCard, grindCard, evolveCard,
 //   unlockHatForPlayer, unlockHatForAccount, findUserByAccountId, backfillUnlockedHats
 //
+// Quest / ready / key item / medic / trade (sub-ticket 04):
+//   isValidQuestId, assignRunSpawnPositions, buildQuestUpdatePayload, stateSnapshot,
+//   broadcastLobbyUpdate, checkAllReady, isLobbyPhase, validateDeck, getKeyItemDef,
+//   healAtMedic, offerCardTrade, respondCardTrade, findSocketByPlayerId
+//
 // This module must NOT require('./index') (circular). Use ctx or leaf modules.
 
 const { getUnlockedKeyItems } = require('../progression');
@@ -351,6 +356,218 @@ function registerGrindCard(socket, ctx) {
   });
 }
 
+function registerSelectQuest(socket, ctx) {
+  socket.on('selectQuest', (data) => {
+    ctx.withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, _player) => {
+      if (state.suspendedCheckpoint) {
+        socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
+        return;
+      }
+
+      const questId = data && typeof data.questId === 'string' ? data.questId : null;
+      if (!questId) {
+        socket.emit('questError', { reason: 'Missing questId' });
+        return;
+      }
+
+      if (!ctx.isValidQuestId(questId)) {
+        socket.emit('questError', { reason: `Unknown quest: ${questId}` });
+        return;
+      }
+
+      state.selectedQuestId = questId;
+      ctx.applyLayoutForQuest(state, questId);
+      ctx.assignRunSpawnPositions(Object.values(state.players));
+      const payload = {
+        ...ctx.buildQuestUpdatePayload(state),
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      };
+      ctx.io.to(lobby.id).emit('questUpdate', payload);
+      ctx.io.to(lobby.id).emit('stateUpdate', ctx.stateSnapshot());
+      ctx.broadcastLobbyUpdate(lobby);
+    });
+  });
+}
+
+function registerPlayerReady(socket, ctx) {
+  socket.on('playerReady', (ready) => {
+    ctx.withLobbyPlayer(socket, {}, (state, lobby, player) => {
+      if (ready) {
+        ctx.normalizePlayerInventory(player);
+        const result = ctx.validateDeck(player.selectedDeck, player.inventory);
+        if (!result.valid) {
+          player.ready = false;
+          socket.emit('deckError', { reason: result.reason });
+          ctx.broadcastLobbyUpdate(lobby);
+          return;
+        }
+      }
+
+      player.ready = !!ready;
+      ctx.broadcastLobbyUpdate(lobby);
+      if (ctx.isLobbyPhase(state)) {
+        ctx.checkAllReady();
+      }
+    });
+  });
+}
+
+function registerEquipKeyItem(socket, ctx) {
+  socket.on('equipKeyItem', (data) => {
+    ctx.withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
+      const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
+      if (!keyItemId) {
+        socket.emit('keyItemError', { reason: 'missing_key_item_id' });
+        return;
+      }
+
+      const def = ctx.getKeyItemDef(keyItemId);
+      if (!def) {
+        socket.emit('keyItemError', { reason: 'unknown_item' });
+        return;
+      }
+
+      player.equippedKeyItemId = keyItemId;
+      ctx.savePlayerData(socket.playerId);
+
+      socket.emit('keyItemEquipped', { keyItemId });
+    });
+  });
+}
+
+function registerMedicHeal(socket, ctx) {
+  socket.on('medicHeal', () => {
+    ctx.withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
+      const result = ctx.healAtMedic(socket.playerId);
+      if (!result.ok) {
+        socket.emit('medicError', { reason: result.reason });
+        return;
+      }
+
+      socket.emit('medicHealed', {
+        hp: result.hp,
+        currency: player.currency,
+        cost: result.cost,
+      });
+      ctx.io.to(state._lobbyId).emit('stateUpdate', ctx.stateSnapshot());
+    });
+  });
+}
+
+function registerOfferCardTrade(socket, ctx) {
+  socket.on('offerCardTrade', (data) => {
+    ctx.withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+      if (!data) return;
+
+      const targetPlayerId = typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
+      const offeredCardId = typeof data.offeredCardId === 'string' ? data.offeredCardId : null;
+      const requestedCardId = typeof data.requestedCardId === 'string' ? data.requestedCardId : null;
+      if (!targetPlayerId || !offeredCardId || !requestedCardId) {
+        socket.emit('deckError', { reason: 'Invalid trade offer' });
+        return;
+      }
+
+      const result = ctx.offerCardTrade(
+        state.pendingTrades,
+        socket.playerId,
+        targetPlayerId,
+        offeredCardId,
+        requestedCardId
+      );
+      if (!result.ok) {
+        socket.emit('deckError', { reason: result.reason });
+        return;
+      }
+
+      socket.emit('tradeUpdate', {
+        tradeId: result.tradeId,
+        status: 'offered',
+        targetPlayerId,
+        offeredCardId,
+        requestedCardId
+      });
+
+      const targetSocket = ctx.findSocketByPlayerId(targetPlayerId);
+      if (targetSocket) {
+        targetSocket.emit('tradeOffer', {
+          tradeId: result.tradeId,
+          fromPlayerId: socket.playerId,
+          fromUsername: player.username || socket.playerId,
+          offeredCardId,
+          requestedCardId
+        });
+      }
+    });
+  });
+}
+
+function registerRespondCardTrade(socket, ctx) {
+  socket.on('respondCardTrade', (data) => {
+    ctx.withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
+      if (!data) return;
+
+      const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
+      const accepted = !!data.accepted;
+      if (!tradeId) {
+        socket.emit('deckError', { reason: 'Missing tradeId' });
+        return;
+      }
+
+      const trade = state.pendingTrades[tradeId];
+      const offererId = trade ? trade.fromPlayerId : null;
+      const result = ctx.respondCardTrade(state.pendingTrades, socket.playerId, tradeId, accepted);
+      if (!result.ok) {
+        socket.emit('deckError', { reason: result.reason });
+        return;
+      }
+
+      const notifyTradeResolved = (playerId, payload) => {
+        const targetSocket = ctx.findSocketByPlayerId(playerId);
+        if (targetSocket) targetSocket.emit('tradeUpdate', payload);
+      };
+
+      if (!result.accepted) {
+        notifyTradeResolved(socket.playerId, { tradeId, status: 'rejected' });
+        if (offererId) {
+          notifyTradeResolved(offererId, { tradeId, status: 'rejected' });
+        }
+        return;
+      }
+
+      const offerer = state.players[result.offererId];
+      const responder = state.players[result.responderId];
+      const inventoryPayload = (p) => ({
+        inventory: p.inventory,
+        ownedCards: p.ownedCards,
+        currency: p.currency,
+        selectedDeck: p.selectedDeck
+      });
+
+      notifyTradeResolved(result.offererId, { tradeId, status: 'accepted' });
+      notifyTradeResolved(result.responderId, { tradeId, status: 'accepted' });
+
+      const offererSocket = ctx.findSocketByPlayerId(result.offererId);
+      if (offererSocket) {
+        offererSocket.emit('cardInventoryUpdate', inventoryPayload(offerer));
+      }
+      const responderSocket = ctx.findSocketByPlayerId(result.responderId);
+      if (responderSocket) {
+        responderSocket.emit('cardInventoryUpdate', inventoryPayload(responder));
+      }
+
+      ctx.savePlayerData(result.offererId);
+      ctx.savePlayerData(result.responderId);
+    });
+  });
+}
+
 function registerLobbyHandlers(socket, ctx) {
   registerListLobbies(socket, ctx);
   registerListKeyItems(socket, ctx);
@@ -364,6 +581,12 @@ function registerLobbyHandlers(socket, ctx) {
   registerGrindCard(socket, ctx);
   registerEvolveCard(socket, ctx);
   registerUnlockHat(socket, ctx);
+  registerSelectQuest(socket, ctx);
+  registerPlayerReady(socket, ctx);
+  registerEquipKeyItem(socket, ctx);
+  registerMedicHeal(socket, ctx);
+  registerOfferCardTrade(socket, ctx);
+  registerRespondCardTrade(socket, ctx);
 }
 
 module.exports = {
@@ -380,4 +603,10 @@ module.exports = {
   registerGrindCard,
   registerEvolveCard,
   registerUnlockHat,
+  registerSelectQuest,
+  registerPlayerReady,
+  registerEquipKeyItem,
+  registerMedicHeal,
+  registerOfferCardTrade,
+  registerRespondCardTrade,
 };

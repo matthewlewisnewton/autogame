@@ -1214,6 +1214,19 @@ function startServer(port) {
       unlockHatForAccount,
       findUserByAccountId,
       backfillUnlockedHats,
+      isValidQuestId,
+      assignRunSpawnPositions,
+      buildQuestUpdatePayload,
+      stateSnapshot,
+      broadcastLobbyUpdate,
+      checkAllReady,
+      isLobbyPhase,
+      validateDeck,
+      getKeyItemDef,
+      healAtMedic,
+      offerCardTrade,
+      respondCardTrade,
+      findSocketByPlayerId,
     };
     registerLobbyHandlers(socket, ctx);
 
@@ -1291,59 +1304,6 @@ function startServer(port) {
     });
   });
 
-  socket.on('selectQuest', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, _player) => {
-    if (state.suspendedCheckpoint) {
-      socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
-      return;
-    }
-
-    const questId = data && typeof data.questId === 'string' ? data.questId : null;
-    if (!questId) {
-      socket.emit('questError', { reason: 'Missing questId' });
-      return;
-    }
-
-    if (!isValidQuestId(questId)) {
-      socket.emit('questError', { reason: `Unknown quest: ${questId}` });
-      return;
-    }
-
-    state.selectedQuestId = questId;
-    applyLayoutForQuest(state, questId);
-    assignRunSpawnPositions(Object.values(state.players));
-    const payload = {
-      ...buildQuestUpdatePayload(state),
-      layoutSeed: state.layoutSeed,
-      layout: state.layout,
-    };
-    io.to(lobby.id).emit('questUpdate', payload);
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
-    broadcastLobbyUpdate(lobby);
-    });
-  });
-
-  socket.on('playerReady', (ready) => {
-    withLobbyPlayer(socket, {}, (state, lobby, player) => {
-    if (ready) {
-      normalizePlayerInventory(player);
-      const result = validateDeck(player.selectedDeck, player.inventory);
-      if (!result.valid) {
-        player.ready = false;
-        socket.emit('deckError', { reason: result.reason });
-        broadcastLobbyUpdate(lobby);
-        return;
-      }
-    }
-
-    player.ready = !!ready;
-    broadcastLobbyUpdate(lobby);
-    if (isLobbyPhase(state)) {
-      checkAllReady();
-    }
-    });
-  });
-
   socket.on('returnToLobby', () => {
     withLobbyFromSocket(socket, (state) => {
     if (state.run && state.run.status === 'playing') {
@@ -1406,156 +1366,9 @@ function startServer(port) {
     });
   });
 
-  socket.on('equipKeyItem', (data) => {
-    withLobbyPlayer(socket, {
-      requirePhase: 'lobby',
-      phaseMismatch: { event: 'keyItemError', payload: { reason: 'not_in_lobby' } },
-    }, (state, lobby, player) => {
-    const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
-    if (!keyItemId) {
-      socket.emit('keyItemError', { reason: 'missing_key_item_id' });
-      return;
-    }
-
-    const def = getKeyItemDef(keyItemId);
-    if (!def) {
-      socket.emit('keyItemError', { reason: 'unknown_item' });
-      return;
-    }
-
-    player.equippedKeyItemId = keyItemId;
-    savePlayerData(socket.playerId);
-
-    socket.emit('keyItemEquipped', { keyItemId });
-    });
-  });
-
   socket.on('useKeyItem', (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
       keyItemEffects.handleUseKeyItem(socket, state, lobby, data);
-    });
-  });
-
-  socket.on('medicHeal', () => {
-    withLobbyPlayer(socket, {
-      requirePhase: 'lobby',
-      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
-    }, (state, lobby, player) => {
-      const result = healAtMedic(socket.playerId);
-      if (!result.ok) {
-        socket.emit('medicError', { reason: result.reason });
-        return;
-      }
-
-      socket.emit('medicHealed', {
-        hp: result.hp,
-        currency: player.currency,
-        cost: result.cost,
-      });
-      io.to(state._lobbyId).emit('stateUpdate', stateSnapshot());
-    });
-  });
-
-  socket.on('offerCardTrade', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    if (!data) return;
-
-    const targetPlayerId = typeof data.targetPlayerId === 'string' ? data.targetPlayerId : null;
-    const offeredCardId = typeof data.offeredCardId === 'string' ? data.offeredCardId : null;
-    const requestedCardId = typeof data.requestedCardId === 'string' ? data.requestedCardId : null;
-    if (!targetPlayerId || !offeredCardId || !requestedCardId) {
-      socket.emit('deckError', { reason: 'Invalid trade offer' });
-      return;
-    }
-
-    const result = offerCardTrade(
-      state.pendingTrades,
-      socket.playerId,
-      targetPlayerId,
-      offeredCardId,
-      requestedCardId
-    );
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('tradeUpdate', {
-      tradeId: result.tradeId,
-      status: 'offered',
-      targetPlayerId,
-      offeredCardId,
-      requestedCardId
-    });
-
-    const targetSocket = findSocketByPlayerId(targetPlayerId);
-    if (targetSocket) {
-      targetSocket.emit('tradeOffer', {
-        tradeId: result.tradeId,
-        fromPlayerId: socket.playerId,
-        fromUsername: player.username || socket.playerId,
-        offeredCardId,
-        requestedCardId
-      });
-    }
-    });
-  });
-
-  socket.on('respondCardTrade', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    if (!data) return;
-
-    const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
-    const accepted = !!data.accepted;
-    if (!tradeId) {
-      socket.emit('deckError', { reason: 'Missing tradeId' });
-      return;
-    }
-
-    const trade = state.pendingTrades[tradeId];
-    const offererId = trade ? trade.fromPlayerId : null;
-    const result = respondCardTrade(state.pendingTrades, socket.playerId, tradeId, accepted);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    const notifyTradeResolved = (playerId, payload) => {
-      const targetSocket = findSocketByPlayerId(playerId);
-      if (targetSocket) targetSocket.emit('tradeUpdate', payload);
-    };
-
-    if (!result.accepted) {
-      notifyTradeResolved(socket.playerId, { tradeId, status: 'rejected' });
-      if (offererId) {
-        notifyTradeResolved(offererId, { tradeId, status: 'rejected' });
-      }
-      return;
-    }
-
-    const offerer = state.players[result.offererId];
-    const responder = state.players[result.responderId];
-    const inventoryPayload = (p) => ({
-      inventory: p.inventory,
-      ownedCards: p.ownedCards,
-      currency: p.currency,
-      selectedDeck: p.selectedDeck
-    });
-
-    notifyTradeResolved(result.offererId, { tradeId, status: 'accepted' });
-    notifyTradeResolved(result.responderId, { tradeId, status: 'accepted' });
-
-    const offererSocket = findSocketByPlayerId(result.offererId);
-    if (offererSocket) {
-      offererSocket.emit('cardInventoryUpdate', inventoryPayload(offerer));
-    }
-    const responderSocket = findSocketByPlayerId(result.responderId);
-    if (responderSocket) {
-      responderSocket.emit('cardInventoryUpdate', inventoryPayload(responder));
-    }
-
-    savePlayerData(result.offererId);
-    savePlayerData(result.responderId);
     });
   });
 
