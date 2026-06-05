@@ -470,6 +470,15 @@ const HAT_FALLBACK_WORLD_Y = 1.72;
  * @param {THREE.Object3D} model - the loaded, normalized glTF model.
  */
 function attachGltfHat(host, model) {
+	// Remove any prior glTF hat (e.g. a cosmetic hat swap on the same host) so the
+	// head bone never carries a stale duplicate.
+	const existing = host.userData.gltfHatMesh;
+	if (existing) {
+		if (existing.parent) existing.parent.remove(existing);
+		disposeAvatar(existing);
+		host.userData.gltfHatMesh = null;
+	}
+
 	const hatId = host.userData.hatId;
 	const hat = buildHatMesh(hatId);
 	if (!hat) return; // `none`/unknown → bare head, nothing to attach.
@@ -1882,6 +1891,13 @@ export function applyAvatarProportions(host, proportions) {
 	if (!host) return;
 	applyProportionMorphs(resolveBodyMesh(host), proportions);
 }
+
+/** @internal Test-only exports for avatar cosmetic morph/tint/hat unit coverage. */
+export const __testOnly = {
+	applyProportionMorphs,
+	applyLoadedModelCosmetic,
+	attachGltfHat,
+};
 
 /**
  * Resolve the body mesh from an avatar group (via `userData.bodyMesh`), or
