@@ -1447,14 +1447,25 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(area).toBeGreaterThanOrEqual(4 * 182);
   });
 
+  const OPEN_PLAZA_COVER_TYPES = ['pillar', 'broken_wall', 'barricade', 'crate_stack'];
+
   it('has ≥ 6 cover pieces of valid type, fully inside the interior', () => {
     const layout = generateLayout(123, 'open-plaza');
     expect(layout.cover.length).toBeGreaterThanOrEqual(6);
     const half = layout.rooms[0].width / 2;
     for (const c of layout.cover) {
-      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(OPEN_PLAZA_COVER_TYPES).toContain(c.type);
       expect(Math.abs(c.x) + c.width / 2).toBeLessThanOrEqual(half);
       expect(Math.abs(c.z) + c.depth / 2).toBeLessThanOrEqual(half);
+    }
+  });
+
+  it('uses ≥ 3 distinct cover types and includes every candidate-pool type for seed 123', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const typesInLayout = new Set(layout.cover.map(c => c.type));
+    expect(typesInLayout.size).toBeGreaterThanOrEqual(3);
+    for (const type of OPEN_PLAZA_COVER_TYPES) {
+      expect(typesInLayout.has(type)).toBe(true);
     }
   });
 
@@ -1498,7 +1509,13 @@ describe("generateLayout(seed, 'open-plaza')", () => {
   it('sampleFloorY returns raised height on a platform and DEFAULT_FLOOR_Y elsewhere', () => {
     const layout = generateLayout(123, 'open-plaza');
     const p = layout.platforms[0];
-    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThan(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+    for (const platform of layout.platforms) {
+      const corners = platform.floorCorners;
+      const maxCorner = Math.max(corners.yNW, corners.yNE, corners.ySE, corners.ySW);
+      expect(maxCorner).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+      expect(sampleFloorY(layout, platform.x, platform.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+    }
     // A point on the open plaza floor away from any platform reads the flat floor.
     expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
   });

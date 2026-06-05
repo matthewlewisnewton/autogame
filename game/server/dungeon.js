@@ -1305,10 +1305,10 @@ function generateOpenPlaza(seed) {
     },
   };
 
-  // Two gently sloped platforms (corner heights differ by ≤ 0.5 units).
+  // Two gently sloped platforms (corner heights differ by ≤ 0.5; highest corner ≥ DEFAULT_FLOOR_Y + 1.0).
   const platforms = [
-    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
-    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.4, yNE: 1.1, ySE: 1.2, ySW: 1.3 } },
+    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.3, yNE: 1.6, ySE: 1.7, ySW: 1.4 } },
+    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.6, yNE: 1.4, ySE: 1.6, ySW: 1.5 } },
   ];
 
   // Cover set. Start with one pillar centred on each platform so at least two
@@ -1329,6 +1329,10 @@ function generateOpenPlaza(seed) {
     { x: -9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
     { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: -5, z: -11, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+    { x: 5, z: 11, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+    { x: 11, z: -11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
+    { x: -11, z: 11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
   ];
 
   const allCover = scatterCoverInArena(rng, {

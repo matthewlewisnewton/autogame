@@ -572,6 +572,72 @@ export function buildLandmarkMesh(type, materials) {
 	return group;
 }
 
+/** Collision footprint for open-plaza cover (matches server layout fields). */
+const OPEN_PLAZA_COVER_TYPES = new Set(['pillar', 'broken_wall', 'barricade', 'crate_stack']);
+
+/**
+ * Build cover obstacle mesh(es) for open-plaza. Each type uses distinct proportions;
+ * the returned group's origin sits at the footprint centre with base on local Y = 0.
+ *
+ * @param {{ width: number, depth: number, height: number, type: string }} cover
+ * @param {THREE.Material} material
+ * @returns {THREE.Group}
+ */
+export function buildCoverMesh(cover, material) {
+	const group = new THREE.Group();
+	group.userData.coverType = cover.type;
+
+	const addBox = (w, h, d, y = h / 2) => {
+		const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
+		mesh.position.y = y;
+		group.add(mesh);
+	};
+
+	switch (cover.type) {
+		case 'pillar':
+			addBox(cover.width, cover.height, cover.depth);
+			break;
+		case 'broken_wall':
+			addBox(cover.width, cover.height, cover.depth);
+			break;
+		case 'barricade': {
+			const railH = cover.height * 0.25;
+			const plankH = cover.height - railH;
+			addBox(cover.width, plankH, cover.depth, plankH / 2);
+			const rail = new THREE.Mesh(
+				new THREE.BoxGeometry(cover.width * 0.92, railH, cover.depth * 0.35),
+				material,
+			);
+			rail.position.y = plankH + railH / 2;
+			group.add(rail);
+			break;
+		}
+		case 'crate_stack': {
+			const tierH = cover.height / 3;
+			const shrink = 0.88;
+			let w = cover.width;
+			let d = cover.depth;
+			let y = 0;
+			for (let i = 0; i < 3; i++) {
+				const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, tierH, d), material);
+				mesh.position.y = y + tierH / 2;
+				group.add(mesh);
+				y += tierH;
+				w *= shrink;
+				d *= shrink;
+			}
+			break;
+		}
+		default:
+			if (OPEN_PLAZA_COVER_TYPES.has(cover.type)) {
+				addBox(cover.width, cover.height, cover.depth);
+			}
+			break;
+	}
+
+	return group;
+}
+
 /**
  * Build visual-only perimeter decor for the open-plaza arena (banner pole or tiered seats).
  *
@@ -825,18 +891,23 @@ export function buildDungeon(scene, layout) {
 		meshes.push(markingMesh);
 	}
 
-	// ── Build open-plaza cover pieces ──
-	// Each cover entry (pillar = tall box, broken_wall = low box) is a solid
-	// obstacle rendered as a box that rests on the floor at its (x, z). A piece
-	// sitting on a platform reads the raised surface via sampleFloorY. Guarded by
-	// `|| []` so non-plaza layouts are unaffected.
+	// ── Build cover pieces (open-plaza: distinct mesh per type; others: single box) ──
 	for (const c of layout.cover || []) {
-		const coverGeo = new THREE.BoxGeometry(c.width, c.height, c.depth);
-		const coverMesh = new THREE.Mesh(coverGeo, profileWallMaterial);
 		const floorY = resolveFloorY(sampleFloorY(layout, c.x, c.z));
-		coverMesh.position.set(c.x, floorY + c.height / 2, c.z);
-		scene.add(coverMesh);
-		meshes.push(coverMesh);
+		if (resolveProfileKey(layout.profile) === 'open-plaza') {
+			const coverGroup = buildCoverMesh(c, profileWallMaterial);
+			coverGroup.position.set(c.x, floorY, c.z);
+			scene.add(coverGroup);
+			for (const child of coverGroup.children) {
+				meshes.push(child);
+			}
+		} else {
+			const coverGeo = new THREE.BoxGeometry(c.width, c.height, c.depth);
+			const coverMesh = new THREE.Mesh(coverGeo, profileWallMaterial);
+			coverMesh.position.set(c.x, floorY + c.height / 2, c.z);
+			scene.add(coverMesh);
+			meshes.push(coverMesh);
+		}
 	}
 
 	// ── Build hazard pits (visual recess only; no collision) ──

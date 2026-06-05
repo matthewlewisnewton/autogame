@@ -21,6 +21,7 @@ import {
 	SPIRE_SUMMIT_BEACON_TAG,
 	SPIRE_EDGE_HAZARD_TAG,
 	buildSpireEdgeHazardMesh,
+	buildCoverMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
@@ -427,19 +428,28 @@ describe('open-plaza cover & platforms', () => {
 	// one on the flat floor), and one gently sloped platform.
 	function plazaLayout() {
 		return {
+			profile: 'open-plaza',
 			rooms: [{
 				x: 0, z: 0, width: 40, depth: 40, role: 'start', walls: [],
 				floorCorners: { yNW: DEFAULT_FLOOR_Y, yNE: DEFAULT_FLOOR_Y, ySE: DEFAULT_FLOOR_Y, ySW: DEFAULT_FLOOR_Y },
 			}],
 			passages: [],
 			platforms: [
-				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
+				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.3, yNE: 1.6, ySE: 1.7, ySW: 1.4 } },
 			],
 			cover: [
-				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },       // on platform
-				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },     // on flat floor
+				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+				{ x: 8, z: -8, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+				{ x: -8, z: 8, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
 			],
 		};
+	}
+
+	function coverGroupAt(scene, c) {
+		return scene.added.find(
+			o => o.userData?.coverType === c.type && o.position.x === c.x && o.position.z === c.z,
+		);
 	}
 
 	it('buildWallColliders emits one AABB per cover piece with the correct footprint', () => {
@@ -458,33 +468,59 @@ describe('open-plaza cover & platforms', () => {
 		}
 	});
 
-	it('buildDungeon returns one mesh per cover piece and per platform', () => {
+	it('buildDungeon returns platform meshes plus one child mesh per cover primitive', () => {
 		const layout = plazaLayout();
-		const result = buildDungeon(mockScene(), layout);
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+		const coverChildCount = layout.cover.reduce((n, c) => n + coverGroupAt(scene, c).children.length, 0);
 
-		// ground(1) + plaza floor(1) + platform(1) + 2 cover = 5 meshes
-		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + layout.cover.length);
+		// ground(1) + plaza floor(1) + platform(1) + cover primitives
+		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + coverChildCount);
 	});
 
-	it('rests each cover box on the floor: base at sampleFloorY, centered at floorY + height/2', () => {
+	it('buildCoverMesh uses distinct child counts for barricade and crate_stack', () => {
+		const mat = wallMaterial;
+		expect(buildCoverMesh({ type: 'pillar', width: 1.6, depth: 1.6, height: 3 }, mat).children.length).toBe(1);
+		expect(buildCoverMesh({ type: 'broken_wall', width: 4, depth: 1.2, height: 1 }, mat).children.length).toBe(1);
+		expect(buildCoverMesh({ type: 'barricade', width: 3.5, depth: 1, height: 1.1 }, mat).children.length).toBe(2);
+		expect(buildCoverMesh({ type: 'crate_stack', width: 1.8, depth: 1.8, height: 2.2 }, mat).children.length).toBe(3);
+	});
+
+	it('rests each cover group on sampleFloorY with its top near floorY + height', () => {
 		const layout = plazaLayout();
-		const result = buildDungeon(mockScene(), layout);
+		const scene = mockScene();
+		buildDungeon(scene, layout);
 
 		for (const c of layout.cover) {
-			const floorY = sampleFloorY(layout, c.x, c.z);
-			// Match the cover box by its (x, z) and box height — the platform mesh
-			// can share a pillar's (x, z) but uses a thin sloped-floor geometry.
-			const mesh = result.meshes.find(m =>
-				m.position.x === c.x && m.position.z === c.z &&
-				m.geometry.parameters && m.geometry.parameters.height === c.height
+			const floorY = resolveFloorY(sampleFloorY(layout, c.x, c.z));
+			const group = coverGroupAt(scene, c);
+			expect(group).toBeDefined();
+			expect(group.position.y).toBeCloseTo(floorY, 4);
+			const topY = group.position.y + Math.max(
+				...group.children.map(m => m.position.y + m.geometry.parameters.height / 2),
 			);
-			expect(mesh).toBeDefined();
-			expect(mesh.position.y).toBeCloseTo(floorY + c.height / 2, 4);
+			expect(topY).toBeCloseTo(floorY + c.height, 3);
 		}
 
-		// The pillar standing on the platform sits higher than the floor cover.
-		const onPlatform = sampleFloorY(layout, -9, -9);
-		expect(onPlatform).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(sampleFloorY(layout, -9, -9)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+	});
+
+	it('generated open-plaza layout renders distinct cover footprints per type', () => {
+		const layout = generateLayout(123, 'open-plaza');
+		const scene = mockScene();
+		buildDungeon(scene, layout);
+
+		const byType = new Map();
+		for (const c of layout.cover) {
+			const group = coverGroupAt(scene, c);
+			expect(group).toBeDefined();
+			byType.set(c.type, group);
+		}
+		expect(byType.get('barricade').children.length).toBe(2);
+		expect(byType.get('crate_stack').children.length).toBe(3);
+		const barricadeWidths = byType.get('barricade').children.map(m => m.geometry.parameters.width);
+		const pillarWidths = byType.get('pillar').children.map(m => m.geometry.parameters.width);
+		expect(barricadeWidths.some(w => w > Math.max(...pillarWidths))).toBe(true);
 	});
 
 	it('renders existing room/passage layouts unchanged when cover/platforms are absent', () => {
