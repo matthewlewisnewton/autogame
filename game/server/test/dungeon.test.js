@@ -1138,6 +1138,77 @@ describe('crowded interior cover', () => {
   });
 });
 
+// ── profile landmark props ──
+
+describe('profile landmark props', () => {
+  const SEED = 42;
+  const CROWDED_TYPES = ['reactor_coil', 'pipe_stack'];
+  const OPEN_TYPES = ['sand_spire', 'sun_arch'];
+
+  function landmarkHostRoom(layout, lm) {
+    return layout.rooms.find(r =>
+      Math.abs(lm.x - r.x) <= r.width / 2 + 1e-6 &&
+      Math.abs(lm.z - r.z) <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  function landmarkFootprint(lm) {
+    const sizes = {
+      reactor_coil: { width: 2.4, depth: 2.4 },
+      pipe_stack: { width: 2.0, depth: 2.8 },
+      sand_spire: { width: 2.2, depth: 2.2 },
+      sun_arch: { width: 3.2, depth: 1.6 },
+    };
+    const fp = sizes[lm.type];
+    return { x: lm.x, z: lm.z, width: fp.width, depth: fp.depth };
+  }
+
+  for (const [profile, allowed] of [['crowded', CROWDED_TYPES], ['open', OPEN_TYPES]]) {
+    it(`generateLayout(seed, ${profile}) returns 1–2 landmarks with profile-specific types`, () => {
+      const layout = generateLayout(SEED, profile);
+      expect(Array.isArray(layout.landmarks)).toBe(true);
+      expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
+      expect(layout.landmarks.length).toBeLessThanOrEqual(2);
+      for (const lm of layout.landmarks) {
+        expect(allowed).toContain(lm.type);
+        expect(typeof lm.x).toBe('number');
+        expect(typeof lm.z).toBe('number');
+      }
+    });
+  }
+
+  it('landmarks are placed in non-start rooms and avoid cover footprints', () => {
+    for (const profile of ['crowded', 'open']) {
+      const layout = generateLayout(SEED, profile);
+      for (const lm of layout.landmarks) {
+        const host = landmarkHostRoom(layout, lm);
+        expect(host).toBeDefined();
+        expect(host.role).not.toBe('start');
+        const fp = landmarkFootprint(lm);
+        for (const c of layout.cover || []) {
+          expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('landmark placement is deterministic for a fixed seed', () => {
+    expect(generateLayout(SEED, 'crowded').landmarks).toEqual(
+      generateLayout(SEED, 'crowded').landmarks
+    );
+    expect(generateLayout(SEED, 'open', { slopes: true }).landmarks).toEqual(
+      generateLayout(SEED, 'open', { slopes: true }).landmarks
+    );
+  });
+});
+
 // ── open profile verticality & hazards ──
 
 describe("generateLayout(seed, 'open') verticality & hazards", () => {

@@ -331,6 +331,62 @@ export function buildDoorwayMarkers(room, layout, materials) {
 }
 
 /**
+ * Build a composed landmark prop (visual only — no collision).
+ *
+ * @param {string} type - reactor_coil | pipe_stack | sand_spire | sun_arch
+ * @param {{ wall: THREE.Material, accent: THREE.Material }} materials
+ * @returns {THREE.Group}
+ */
+export function buildLandmarkMesh(type, materials) {
+	const group = new THREE.Group();
+	group.userData.landmarkType = type;
+	const { wall, accent } = materials;
+
+	const addMesh = (geo, mat, x, y, z, rotY = 0) => {
+		const mesh = new THREE.Mesh(geo, mat);
+		mesh.position.set(x, y, z);
+		if (rotY) mesh.rotation.y = rotY;
+		group.add(mesh);
+	};
+
+	switch (type) {
+		case 'reactor_coil': {
+			addMesh(new THREE.CylinderGeometry(0.9, 1.1, 0.35, 12), wall, 0, 0.175, 0);
+			addMesh(new THREE.CylinderGeometry(0.55, 0.7, 1.4, 10), wall, 0, 1.05, 0);
+			addMesh(new THREE.TorusGeometry(0.85, 0.12, 8, 20), accent, 0, 1.55, 0, Math.PI / 2);
+			addMesh(new THREE.CylinderGeometry(0.2, 0.2, 0.6, 8), accent, 0, 2.15, 0);
+			break;
+		}
+		case 'pipe_stack': {
+			addMesh(new THREE.BoxGeometry(1.6, 0.25, 1.6), wall, 0, 0.125, 0);
+			addMesh(new THREE.CylinderGeometry(0.35, 0.35, 2.2, 8), wall, -0.45, 1.35, -0.35);
+			addMesh(new THREE.CylinderGeometry(0.28, 0.28, 1.7, 8), wall, 0.5, 1.1, 0.4);
+			addMesh(new THREE.BoxGeometry(0.5, 0.5, 0.5), accent, 0.5, 2.0, 0.4);
+			addMesh(new THREE.TorusGeometry(0.4, 0.08, 6, 16), accent, -0.45, 2.5, -0.35, Math.PI / 2);
+			break;
+		}
+		case 'sand_spire': {
+			addMesh(new THREE.CylinderGeometry(1.0, 1.3, 0.4, 10), wall, 0, 0.2, 0);
+			addMesh(new THREE.CylinderGeometry(0.75, 1.0, 1.2, 10), wall, 0, 0.9, 0);
+			addMesh(new THREE.CylinderGeometry(0.45, 0.75, 1.5, 10), wall, 0, 2.0, 0);
+			addMesh(new THREE.ConeGeometry(0.35, 0.8, 8), accent, 0, 3.0, 0);
+			break;
+		}
+		case 'sun_arch': {
+			addMesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), wall, -1.2, 1.2, 0);
+			addMesh(new THREE.BoxGeometry(0.5, 2.4, 0.5), wall, 1.2, 1.2, 0);
+			addMesh(new THREE.TorusGeometry(1.1, 0.18, 8, 24, Math.PI), accent, 0, 2.2, 0);
+			addMesh(new THREE.BoxGeometry(2.8, 0.2, 0.6), accent, 0, 0.1, 0);
+			break;
+		}
+		default:
+			break;
+	}
+
+	return group;
+}
+
+/**
  * Passage floor geometry should cover only the corridor gap between room edges.
  * Full center-to-center strips overlap room floors and z-fight at doorways.
  */
@@ -515,6 +571,18 @@ export function buildDungeon(scene, layout) {
 		hazardMesh.position.set(h.x, floorY - recess / 2, h.z);
 		scene.add(hazardMesh);
 		meshes.push(hazardMesh);
+	}
+
+	// ── Build profile landmarks (visual identity only; no collision) ──
+	for (const lm of layout.landmarks || []) {
+		const landmarkGroup = buildLandmarkMesh(lm.type, profileMaterials);
+		const floorY = resolveFloorY(sampleFloorY(layout, lm.x, lm.z));
+		landmarkGroup.position.set(lm.x, floorY, lm.z);
+		if (lm.yaw != null) landmarkGroup.rotation.y = lm.yaw;
+		scene.add(landmarkGroup);
+		for (const child of landmarkGroup.children) {
+			meshes.push(child);
+		}
 	}
 
 	// ── Build passages ──

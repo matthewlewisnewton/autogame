@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	buildDungeon,
 	buildDoorwayMarkers,
+	buildLandmarkMesh,
 	buildWallColliders,
 	buildPassageFloorSpec,
 	isUniformFloor,
@@ -864,5 +865,48 @@ describe('buildDoorwayMarkers()', () => {
 		const smallResult = buildDungeon(mockScene(), smallLayout);
 		expect(findDoorwayMarkers(smallResult.meshes)).toHaveLength(0);
 		expect(materials.accent).toBeDefined();
+	});
+});
+
+describe('profile landmark rendering', () => {
+	it('buildLandmarkMesh composes primitives for each profile type', () => {
+		const crowded = getProfileMaterials('crowded');
+		for (const type of ['reactor_coil', 'pipe_stack']) {
+			const group = buildLandmarkMesh(type, crowded);
+			expect(group).toBeInstanceOf(THREE.Group);
+			expect(group.userData.landmarkType).toBe(type);
+			expect(group.children.length).toBeGreaterThan(0);
+			expect(group.children.some(c => c.material === crowded.accent)).toBe(true);
+		}
+		const open = getProfileMaterials('open');
+		for (const type of ['sand_spire', 'sun_arch']) {
+			const group = buildLandmarkMesh(type, open);
+			expect(group.userData.landmarkType).toBe(type);
+			expect(group.children.length).toBeGreaterThan(0);
+		}
+	});
+
+	it('buildDungeon adds one landmark group per server landmark entry', () => {
+		for (const profile of ['crowded', 'open']) {
+			const layout = generateLayout(42, profile);
+			expect(layout.landmarks?.length).toBeGreaterThanOrEqual(1);
+			const scene = mockScene();
+			const { meshes } = buildDungeon(scene, layout);
+			const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType);
+			expect(landmarkGroups).toHaveLength(layout.landmarks.length);
+			const trackedFromGroups = landmarkGroups.reduce((n, g) => n + g.children.length, 0);
+			const trackedInMeshes = meshes.filter(m =>
+				landmarkGroups.some(g => g.children.includes(m))
+			).length;
+			expect(trackedInMeshes).toBe(trackedFromGroups);
+		}
+	});
+
+	it('buildWallColliders ignores landmarks (visual-only, no collision)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.landmarks.length).toBeGreaterThan(0);
+		const withLandmarks = buildWallColliders(layout);
+		const withoutLandmarks = buildWallColliders({ ...layout, landmarks: [] });
+		expect(withLandmarks).toEqual(withoutLandmarks);
 	});
 });
