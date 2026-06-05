@@ -1,0 +1,15 @@
+Broke the top-level ticket into **2 sub-tickets** (server-only scope; mirrors sunken-canyon / spire-ascent split between layout structure and walkability verification). Both use **code** verification.
+
+### Sub-tickets created
+
+1. **`01-server-hub-layout-and-anchors`** — `generateHub`, `LAYOUT_PROFILES` + `generateLayout` branch, three zone rooms, `boothAnchors`, structural/determinism tests  
+2. **`02-hub-walkability-and-collision`** — Reachability flood, anchor walkability, collision clearance tests; minimal `dungeon.js` fixes only if needed  
+
+### Folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/tickets/229-hub-stage-layout-server/subtickets/01-server-hub-layout-and-anchors/ticket.md
+/home/matt/workspace/.autogame-worktrees/229-hub-stage-layout-server/tickets/229-hub-stage-layout-server/subtickets/02-hub-walkability-and-collision/ticket.md
+```
+
+No prior sub-ticket folders existed, so nothing was deleted or skipped. The parent ticket’s “STAGE_PROFILES” wording maps to **`LAYOUT_PROFILES`** in `game/server/dungeon.js` (same pattern as `open-plaza`, `sunken-canyon`, `spire-ascent`). Client render, quest wiring, and debug scenarios are out of scope for this ticket.

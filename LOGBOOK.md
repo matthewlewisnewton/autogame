@@ -3845,3 +3845,26 @@ PASS. The implementation is narrowly scoped, deterministic, and covered by targe
 
 No blocking gaps remain.
 
+
+## v0.218 — 229-hub-stage-layout-server  (2026-06-04 22:04:06)
+
+The implementation is consistent with the existing bespoke-stage pattern used by `open-plaza`, `sunken-canyon`, and `spire-ascent`: the special profile branches before the generic grid generator, and the server collision helpers consume the returned `rooms`, `passages`, `walls`, `passageWidth`, and `floorCorners` shapes without special casing.
+
+### Server Unit Tests for Layout Generation and Anchor Positions
+
+PASS. `game/server/test/dungeon.test.js` adds a focused `generateLayout(seed, 'hub')` suite covering profile selection, the three zone bands, compact footprints, flat floors, graph connectivity, passage endpoints, exact booth anchor keys, in-zone anchor bounds, pair separation, explicit roles, determinism, and walkability/collision behavior.
+
+The captured `coverage.log` shows the relevant test suite passed: 7 test files and 220 tests passed with coverage collection enabled.
+
+### Design and Foundation Consistency
+
+PASS. The change stays within server-side dungeon layout generation and does not alter the core multiplayer lobby, WebSocket, movement, rendering, combat, or persistence foundations described in `CONTEXT.md`, `game/docs/design.md`, and `game/docs/requirements.md`. The fallback smoke capture confirms the existing game loop still reaches authenticated squad play, enters gameplay, renders a canvas, and maintains connected client/server state.
+
+### Debug Scenarios
+
+PASS. This ticket did not add or modify any `?debugScenario=...` shortcut, so the debug-scenario gating requirements do not apply.
+
+## Remaining gaps
+
+None.
+
