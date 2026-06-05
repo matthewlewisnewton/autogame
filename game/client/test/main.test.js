@@ -18,7 +18,7 @@ describe('renderDeckEditor()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -30,7 +30,7 @@ describe('renderDeckEditor()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' ||
+				const el = (id === 'return-to-lobby-btn' ||
 					id === 'accept-trade-btn' || id === 'reject-trade-btn' || id === 'offer-trade-btn')
 					? document.createElement('button')
 					: id === 'trade-target-select' || id === 'trade-offer-select' || id === 'trade-request-select'
@@ -84,11 +84,6 @@ describe('renderDeckEditor()', () => {
 		// Check deck size display
 		const deckSize = document.getElementById('deck-size-display').textContent;
 		expect(deckSize).toBe('4/24');
-
-		// Check ready button is NOT disabled (deck >= DECK_MIN_SIZE of 4)
-		const readyBtn = document.getElementById('ready-btn');
-		expect(readyBtn.disabled).toBe(false);
-		expect(readyBtn.classList.contains('deck-invalid')).toBe(false);
 	});
 
 	it('renders sell value and sell buttons for sellable owned cards in the card shop', async () => {
@@ -137,20 +132,6 @@ describe('renderDeckEditor()', () => {
 
 		window.renderDeckEditor();
 		expect(document.querySelector('#owned-cards-list .sell-card-btn')).toBeNull();
-	});
-
-	it('disables ready button when deck is too small', async () => {
-		await import('../main.js');
-
-		const mockOwned = { iron_sword: 3, flame_blade: 2 };
-		const mockDeck = ['iron_sword', 'flame_blade']; // only 2 cards, < DECK_MIN_SIZE of 4
-
-		window.__setDeckState(mockDeck, mockOwned);
-		window.renderDeckEditor();
-
-		const readyBtn = document.getElementById('ready-btn');
-		expect(readyBtn.disabled).toBe(true);
-		expect(readyBtn.classList.contains('deck-invalid')).toBe(true);
 	});
 
 	it('groups duplicate loadout cards on one row with a count badge', async () => {
@@ -277,7 +258,7 @@ describe('Photon Forge UI', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
@@ -288,7 +269,7 @@ describe('Photon Forge UI', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id.endsWith('-btn') || id.startsWith('lobby-tab-'))
+				const el = (id === 'return-to-lobby-btn' || id.endsWith('-btn') || id.startsWith('lobby-tab-'))
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -449,7 +430,7 @@ describe('cold state reconciliation', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand', 'deck-stack',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'return-to-lobby-btn',
@@ -457,7 +438,7 @@ describe('cold state reconciliation', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -560,7 +541,7 @@ describe('flashMesh()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -569,7 +550,7 @@ describe('flashMesh()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -662,7 +643,7 @@ describe('spawnDamageNumber()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -671,7 +652,7 @@ describe('spawnDamageNumber()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -767,7 +748,7 @@ describe('spawnHitSpark()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -776,7 +757,7 @@ describe('spawnHitSpark()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -889,7 +870,7 @@ describe('markLootCollected()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -898,7 +879,7 @@ describe('markLootCollected()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -1000,7 +981,7 @@ describe('renderHand()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1009,7 +990,7 @@ describe('renderHand()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -1291,7 +1272,7 @@ describe('playSound() and mute toggle', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1301,7 +1282,7 @@ describe('playSound() and mute toggle', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+				const el = (id === 'return-to-lobby-btn' || id === 'mute-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -1450,7 +1431,7 @@ describe('resumeAudioContext', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1460,7 +1441,7 @@ describe('resumeAudioContext', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+				const el = (id === 'return-to-lobby-btn' || id === 'mute-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -1569,7 +1550,7 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1579,7 +1560,7 @@ describe('cardUsed handler — enemyHit sound throttle', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+				const el = (id === 'return-to-lobby-btn' || id === 'mute-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -1685,7 +1666,7 @@ describe('applyWindupFlash()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1694,7 +1675,7 @@ describe('applyWindupFlash()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -1941,7 +1922,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -1950,7 +1931,7 @@ describe('Cooldown Enforcement (useCard)', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -2203,7 +2184,7 @@ describe('cardError handler — server hand rejection', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
@@ -2211,7 +2192,7 @@ describe('cardError handler — server hand rejection', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -2240,7 +2221,7 @@ describe('createEnemyMesh()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2249,7 +2230,7 @@ describe('createEnemyMesh()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -2347,7 +2328,7 @@ describe('enemyMeshHalfHeight()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2399,7 +2380,7 @@ describe('healthBarColor(hp, maxHp)', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2472,7 +2453,7 @@ describe('auth overlay functions', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2481,7 +2462,7 @@ describe('auth overlay functions', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -2764,7 +2745,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2773,7 +2754,7 @@ describe('bindSocketHandlers() — handler rebinding on socket recreate', () => 
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -2889,7 +2870,7 @@ describe('connect_error handler', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -2904,7 +2885,7 @@ describe('connect_error handler', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'register-btn' || id === 'login-btn' || id === 'ready-btn' ||
+				const el = (id === 'register-btn' || id === 'login-btn' ||
 					id === 'return-to-lobby-btn' || id === 'account-btn' ||
 					id === 'account-save-btn' || id === 'account-logout-btn' ||
 					id === 'show-login-link' || id === 'show-register-link')
@@ -3027,7 +3008,7 @@ describe('connect watchdog', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-browser-error', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-browser-error', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3036,7 +3017,7 @@ describe('connect watchdog', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -3191,7 +3172,7 @@ describe('run summary card choices', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3201,7 +3182,7 @@ describe('run summary card choices', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+				const el = (id === 'return-to-lobby-btn' || id === 'mute-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -3271,7 +3252,7 @@ describe('Mute persistence (localStorage)', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3281,7 +3262,7 @@ describe('Mute persistence (localStorage)', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' || id === 'mute-btn')
+				const el = (id === 'return-to-lobby-btn' || id === 'mute-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -3422,7 +3403,7 @@ describe('Cold-start mute persistence', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3442,7 +3423,7 @@ describe('Cold-start mute persistence', () => {
 			if (existing) existing.remove();
 		});
 		for (const id of requiredIds) {
-			const el = (id === 'ready-btn' || id === 'return-to-lobby-btn' ||
+			const el = (id === 'return-to-lobby-btn' ||
 				id === 'mute-btn' || id === 'register-btn' || id === 'login-btn' ||
 				id === 'account-btn' || id === 'account-save-btn' || id === 'account-logout-btn' ||
 				id === 'show-login-link' || id === 'show-register-link')
@@ -3523,7 +3504,7 @@ describe('Key Items equip UI', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3532,7 +3513,7 @@ describe('Key Items equip UI', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -3739,7 +3720,7 @@ describe('keyItemUsed loot magnet VFX', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3749,7 +3730,7 @@ describe('keyItemUsed loot magnet VFX', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -3808,7 +3789,7 @@ describe('applyRevealHighlight()', () => {
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -3817,7 +3798,7 @@ describe('applyRevealHighlight()', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -3977,7 +3958,7 @@ describe('useKeyItem key capture', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-browser', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
@@ -3985,7 +3966,7 @@ describe('useKeyItem key capture', () => {
 		];
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;
@@ -4076,7 +4057,7 @@ describe('updateObjectiveHud()', () => {
 		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 		'currency-display', 'objective-hud', 'ui', 'card-hand',
-		'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+		'lobby', 'lobby-browser', 'lobby-player-list',
 		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
 	];
@@ -4084,7 +4065,7 @@ describe('updateObjectiveHud()', () => {
 	beforeEach(() => {
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
-				const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+				const el = (id === 'return-to-lobby-btn')
 					? document.createElement('button')
 					: document.createElement('div');
 				el.id = id;

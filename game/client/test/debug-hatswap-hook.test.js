@@ -29,7 +29,7 @@ const MAIN_DOM_IDS = [
 	'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 	'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 	'currency-display', 'objective-hud', 'ui', 'card-hand',
-	'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+	'lobby', 'lobby-browser', 'lobby-player-list',
 	'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 	'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 	'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -151,7 +151,7 @@ function buildCharacterBoothDom() {
 
 function ensureMainDom() {
 	for (const id of MAIN_DOM_IDS) {
-		const tag = (id === 'ready-btn' || id === 'return-to-lobby-btn') ? 'button' : 'div';
+		const tag = (id === 'return-to-lobby-btn') ? 'button' : 'div';
 		ensureElement(id, tag);
 	}
 	const cardHand = document.getElementById('card-hand');

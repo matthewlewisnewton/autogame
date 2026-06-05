@@ -55,7 +55,7 @@ function ensureMainDomElements() {
 		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
 		'currency-display', 'objective-hud', 'ui', 'card-hand',
-		'lobby', 'lobby-browser', 'lobby-player-list', 'ready-btn',
+		'lobby', 'lobby-browser', 'lobby-player-list',
 		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 		'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 		'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
@@ -67,7 +67,7 @@ function ensureMainDomElements() {
 	];
 	for (const id of requiredIds) {
 		if (!document.getElementById(id)) {
-			const el = (id === 'ready-btn' || id === 'return-to-lobby-btn'
+			const el = (id === 'return-to-lobby-btn'
 				|| id === 'accept-trade-btn' || id === 'reject-trade-btn' || id === 'offer-trade-btn')
 				? document.createElement('button')
 				: id === 'trade-target-select' || id === 'trade-offer-select' || id === 'trade-request-select'

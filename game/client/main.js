@@ -51,7 +51,6 @@ import {
 	getReservedKeys,
 } from './input.js';
 import {
-	DECK_MIN_SIZE,
 	DECK_MAX_SIZE,
 	MAX_HP,
 	MAX_MS,
@@ -185,7 +184,6 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
-const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
 const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
@@ -535,58 +533,36 @@ function isRunSuspended() {
 }
 
 /**
- * Sync #ready-btn's label + styling to its current role. While a run is
- * suspended the single launch button doubles as the Resume control — this is
- * also the affordance the harness telepipe capture clicks to resume — so it
- * reads "Resume…" and carries `.resuming`; otherwise it is the new-mission
- * Deploy button.
+ * Sync the #resume-run-btn label to its current role. Fresh deploy and ready-up
+ * now happen only through the hub Launch Bay booth (the 2D #ready-btn is
+ * retired); the dedicated #resume-run-btn is the on-screen resume affordance
+ * shown while a run is suspended, so it always carries the "Resume…" label.
  */
 function syncReadyButtonRole() {
-	const suspended = isRunSuspended();
 	// The dedicated #resume-run-btn is only ever shown while suspended, so it
 	// always carries the "Resume…" theme label rather than the static HTML text.
 	if (resumeRunBtn) {
 		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
 	}
-	if (!readyBtn) return;
-	if (suspended) {
-		readyBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
-	} else {
-		readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
-	}
-	readyBtn.classList.toggle('resuming', suspended);
 }
 
 function setDeployButtonVisible(visible) {
-	// While a run is suspended #resume-run-btn is the dedicated, distinct resume
-	// affordance shown to the player; #ready-btn also stays visible+enabled and
-	// wired to the same resume path (the harness telepipe capture clicks
-	// #ready-btn to resume). Outside suspension #resume-run-btn is hidden.
+	// Fresh deploy / ready-up is handled by the hub Launch Bay booth, so there is
+	// no longer a 2D deploy button to show or hide. While a run is suspended
+	// #resume-run-btn is the dedicated resume affordance; it is hidden otherwise.
+	// `visible` is retained for call-site symmetry with the play↔lobby transitions.
 	const suspended = isRunSuspended();
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	if (!readyBtn) return;
-	const show = visible || suspended;
-	readyBtn.hidden = !show;
-	if (!show) {
-		readyBtn.disabled = true;
-	} else if (suspended) {
-		readyBtn.disabled = false;
-	}
 	syncReadyButtonRole();
 }
 
 function renderSuspendedRunBanner(state) {
 	const summary = state && state.suspendedRunSummary;
 	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
-	// While suspended #resume-run-btn is the dedicated resume affordance, and
-	// #ready-btn also stays visible+enabled wired to the same resume path (the
-	// harness capture clicks #ready-btn to resume); syncReadyButtonRole applies
-	// the "Resume…" labels + .resuming styling to both.
+	// While suspended #resume-run-btn is the dedicated resume affordance; resuming
+	// the run itself goes through the launch booth ready-up path the same as a
+	// fresh deploy. syncReadyButtonRole applies the "Resume…" label.
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	if (suspended && readyBtn) {
-		readyBtn.hidden = false;
-		readyBtn.disabled = false;
-	}
 	syncReadyButtonRole();
 	if (!suspendedRunBannerEl) return;
 	if (suspended) {
@@ -1747,7 +1723,6 @@ function bindSocketHandlers(s) {
 				syncReadyButtonRole();
 				if (gameState && gameState.gamePhase === 'lobby') {
 					setDeployButtonVisible(true);
-					readyBtn.disabled = false;
 				}
 			}
 		}
@@ -2961,14 +2936,6 @@ function renderDeckEditor() {
 
 	deckSizeDisplayEl.textContent = `${mySelectedDeck.length}/${DECK_MAX_SIZE}`;
 
-	if (mySelectedDeck.length < DECK_MIN_SIZE) {
-		readyBtn.classList.add('deck-invalid');
-		readyBtn.disabled = true;
-	} else {
-		readyBtn.classList.remove('deck-invalid');
-		readyBtn.disabled = false;
-	}
-
 	deckErrorEl.style.display = 'none';
 	deckErrorEl.textContent = '';
 
@@ -4025,22 +3992,15 @@ function renderPlayerList(players) {
 	}
 }
 
-readyBtn.addEventListener('click', () => {
-	isReady = !isReady;
-	// Emitting playerReady routes to the resume path in the server's
-	// checkAllReady gate when a suspendedCheckpoint exists, so the same button
-	// resumes the checkpointed run while suspended and launches fresh otherwise.
-	socket.emit('playerReady', isReady);
-	syncReadyButtonRole();
-});
-
-// Ready the local player up through the SAME path as #ready-btn / #resume-run-btn:
-// set the shared isReady flag, emit playerReady(true) — which the server's
-// checkAllReady gate routes to startGame once the whole party is ready — and
-// resync the button labels. The Launch Bay booth and the ?booth=launch debug
-// hook both call this; no new socket event is introduced. Idempotent: a second
-// booth touch or a repeated lobbyJoined (reconnect) does NOT re-emit, since we
-// bail out early when the player is already ready.
+// Ready the local player up through the SAME path as #resume-run-btn: set the
+// shared isReady flag, emit playerReady(true) — which the server's checkAllReady
+// gate routes to startGame once the whole party is ready, or to resume when a
+// suspendedCheckpoint exists, so this single path covers both a fresh deploy and
+// a suspended-run resume sortie that the retired #ready-btn used to serve. The
+// Launch Bay booth and the ?booth=launch debug hook both call this; no new
+// socket event is introduced. Idempotent: a second booth touch or a repeated
+// lobbyJoined (reconnect) does NOT re-emit, since we bail out early when the
+// player is already ready.
 function launchBoothReadyUp() {
 	if (!shouldLaunchReadyUp(isReady)) return;
 	isReady = true;
@@ -4392,11 +4352,11 @@ if (abandonRunBtn) {
 }
 
 // #resume-run-btn is the dedicated, distinct resume affordance shown while a run
-// is suspended. It re-enters the run through the SAME path as #ready-btn: emit
-// playerReady(true), which the server's checkAllReady gate routes to
-// restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It sets
-// the shared isReady flag (so it can't desync from #ready-btn) and resyncs both
-// labels via syncReadyButtonRole. No separate fresh-launch / resume socket event.
+// is suspended. It re-enters the run through the SAME path as the launch booth
+// ready-up: emit playerReady(true), which the server's checkAllReady gate routes
+// to restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It
+// sets the shared isReady flag and resyncs the label via syncReadyButtonRole. No
+// separate fresh-launch / resume socket event.
 if (resumeRunBtn) {
 	resumeRunBtn.addEventListener('click', () => {
 		isReady = true;
@@ -4552,10 +4512,14 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
 	const deckEditorEl = document.getElementById('deck-editor');
 	const deckEditorVisible = !!deckEditorEl && !deckEditorEl.classList.contains('hidden');
-	const readyBtnEl = document.getElementById('ready-btn');
-	const readyBtnUsable = !!readyBtnEl
-		&& !readyBtnEl.disabled
-		&& getComputedStyle(readyBtnEl).pointerEvents !== 'none';
+	// The 2D #ready-btn is retired; fresh deploy / resume now happen through the
+	// hub Launch Bay booth. While a run is suspended #resume-run-btn is the
+	// dedicated on-screen resume affordance, so capture can watch its usability.
+	const resumeBtnEl = document.getElementById('resume-run-btn');
+	const resumeBtnUsable = !!resumeBtnEl
+		&& !resumeBtnEl.classList.contains('hidden')
+		&& !resumeBtnEl.disabled
+		&& getComputedStyle(resumeBtnEl).pointerEvents !== 'none';
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
@@ -4606,7 +4570,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
 		deckEditorVisible,
-		readyBtnUsable,
+		resumeBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',
