@@ -1,0 +1,11 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/238-avatar-cosmetic-render/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/238-avatar-cosmetic-render/game/data
+Server listening on port 3002
+Player connected: socket=cYXFS74rZP0I_5ZYAAAB, playerId=b595d092-228b-458c-851f-91f1226b2422
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=ZwSxpQVlrmw5iNEJAAAD, playerId=f95b0a76-71fd-4579-a255-714d25967cb8
+Player disconnected: cYXFS74rZP0I_5ZYAAAB
+Player disconnected: ZwSxpQVlrmw5iNEJAAAD

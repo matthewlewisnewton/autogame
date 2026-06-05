@@ -4011,3 +4011,26 @@ PASS. This ticket did not add or change any `?debugScenario=...` shortcut or deb
 
 None.
 
+
+## v0.232 — 238-avatar-cosmetic-render  (2026-06-05 03:10:39)
+
+PASS. The provided `coverage.log` reports `65` test files passing and `1321` tests passing. New/focused coverage includes:
+
+- client model registry and player glTF lookup/fallback behavior;
+- glTF hat attach/removal, body tint, and proportion morph mapping;
+- hub and in-run avatar cosmetic rendering and live cosmetic changes;
+- server account cosmetic propagation into live player records and snapshots;
+- race-safe user persistence cleanup.
+
+### Consistency with design and requirements
+
+PASS. The implementation preserves the documented lobby/dungeon loop and does not regress the foundation requirements: the capture shows a rendered 3D scene, authenticated socket connection, multiplayer visualization, and movement synchronization. The changes are scoped to avatar cosmetics, account persistence/sync, and renderer model loading; they do not alter combat, lobby readiness, dungeon generation, or movement semantics.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify any debug-scenario implementation. Existing debug-scenario code remains gated through the localhost-only `?debugScenario=` path and is not part of normal gameplay.
+
+## Remaining gaps
+
+None.
+
