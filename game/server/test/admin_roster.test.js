@@ -68,10 +68,11 @@ function makeRes() {
 
 describe('admin roster + ADMIN_PASSWORD gate', () => {
 	let provider;
+	let baseUrl;
 	const ORIGINAL_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 
 	beforeEach(async () => {
-		await startTestServer();
+		baseUrl = await startTestServer();
 		users.clearUsers();
 		provider = new InMemoryProvider();
 		setTestProvider(provider);
@@ -219,6 +220,118 @@ describe('admin roster + ADMIN_PASSWORD gate', () => {
 			);
 			expect(nextCalled).toBe(false);
 			expect(res.statusCode).toBe(403);
+		});
+	});
+
+	describe('GET /admin (HTTP route)', () => {
+		function seedRoster() {
+			users.createUser('alice', 'pw-alice');
+			users.createUser('bob', 'pw-bob');
+			const aliceId = users.findUserByUsername('alice').accountId;
+			const bobId = users.findUserByUsername('bob').accountId;
+			// Equip a default-unlocked hat so the rendered page shows hat data.
+			users.updateProfile(aliceId, { cosmetic: { hat: 'bandana' } });
+			provider.savePlayer(aliceId, {
+				currency: 1234,
+				inventory: [{ instanceId: 'i1', cardId: 'fireball' }],
+				ownedCards: { fireball: 2 },
+				selectedDeck: ['i1'],
+				equippedKeyItemId: 'blink'
+			});
+			provider.savePlayer(bobId, { currency: 77, selectedDeck: [] });
+			return { aliceId, bobId };
+		}
+
+		it('renders every seeded account with currency/hat/deck data (200, text/html)', async () => {
+			process.env.ADMIN_PASSWORD = 'topsecret';
+			seedRoster();
+
+			const res = await fetch(`${baseUrl}/admin`, {
+				headers: { 'x-admin-password': 'topsecret' }
+			});
+			expect(res.status).toBe(200);
+			expect(res.headers.get('content-type')).toMatch(/text\/html/);
+
+			const html = await res.text();
+			expect(html).toContain('alice');
+			expect(html).toContain('bob');
+			expect(html).toContain('1234'); // alice currency
+			expect(html).toContain('77'); // bob currency
+			expect(html).toContain('bandana'); // alice equipped hat
+			expect(html).toContain('fireball'); // owned card / inventory
+			expect(html).toContain('blink'); // equipped key item
+			// Password hashes must never leak into the page.
+			expect(html).not.toContain('passwordHash');
+		});
+
+		it('accepts the admin password via ?password= query param', async () => {
+			process.env.ADMIN_PASSWORD = 'topsecret';
+			seedRoster();
+
+			const res = await fetch(`${baseUrl}/admin?password=topsecret`);
+			expect(res.status).toBe(200);
+			const html = await res.text();
+			expect(html).toContain('alice');
+		});
+
+		it('returns 403 with no account data for a wrong password', async () => {
+			process.env.ADMIN_PASSWORD = 'topsecret';
+			seedRoster();
+
+			const res = await fetch(`${baseUrl}/admin`, {
+				headers: { 'x-admin-password': 'wrong' }
+			});
+			expect(res.status).toBe(403);
+			const body = await res.text();
+			expect(body).not.toContain('alice');
+			expect(body).not.toContain('1234');
+		});
+
+		it('returns 403 with no account data for a missing password', async () => {
+			process.env.ADMIN_PASSWORD = 'topsecret';
+			seedRoster();
+
+			const res = await fetch(`${baseUrl}/admin`);
+			expect(res.status).toBe(403);
+			const body = await res.text();
+			expect(body).not.toContain('alice');
+		});
+
+		it('returns 403 when ADMIN_PASSWORD is unset (fail closed)', async () => {
+			delete process.env.ADMIN_PASSWORD;
+			seedRoster();
+
+			const res = await fetch(`${baseUrl}/admin`, {
+				headers: { 'x-admin-password': 'anything' }
+			});
+			expect(res.status).toBe(403);
+			const body = await res.text();
+			expect(body).not.toContain('alice');
+		});
+
+		it('ignores a valid player Bearer token and still requires the admin password', async () => {
+			process.env.ADMIN_PASSWORD = 'topsecret';
+			seedRoster();
+
+			// A Bearer-only request (no admin password) must be denied.
+			const res = await fetch(`${baseUrl}/admin`, {
+				headers: { authorization: 'Bearer some.jwt.token' }
+			});
+			expect(res.status).toBe(403);
+			const body = await res.text();
+			expect(body).not.toContain('alice');
+		});
+
+		it('does not accept POST to /admin', async () => {
+			process.env.ADMIN_PASSWORD = 'topsecret';
+			seedRoster();
+
+			const res = await fetch(`${baseUrl}/admin`, {
+				method: 'POST',
+				headers: { 'x-admin-password': 'topsecret' }
+			});
+			// GET-only route — POST is never handled (404 from Express).
+			expect(res.status).toBe(404);
 		});
 	});
 });

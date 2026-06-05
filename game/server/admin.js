@@ -59,6 +59,105 @@ function buildAdminRoster() {
 }
 
 /**
+ * Escape a value for safe interpolation into HTML text/attribute content.
+ * Coerces to string first so numbers/objects don't throw.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function escapeHtml(value) {
+	return String(value)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+}
+
+/**
+ * Pretty-print a JS value (object/array) as escaped HTML for read-only display.
+ *
+ * @param {*} value
+ * @returns {string}
+ */
+function renderJson(value) {
+	return escapeHtml(JSON.stringify(value, null, 2));
+}
+
+/**
+ * Render the full admin roster as a static, read-only HTML document. Contains
+ * no forms, buttons, or scripts — purely a server-rendered view of the data.
+ * Defensively strips `passwordHash` should it ever appear on an entry.
+ *
+ * @param {Array<object>} roster
+ * @returns {string} a complete HTML document
+ */
+function renderAdminRosterHtml(roster) {
+	const rows = roster
+		.map((rawEntry) => {
+			// Defensive: never leak a password hash even if upstream adds it.
+			const { passwordHash, ...entry } = rawEntry || {};
+			const cosmetic = entry.cosmetic && typeof entry.cosmetic === 'object' ? entry.cosmetic : {};
+			const equippedHat = cosmetic.hat !== undefined && cosmetic.hat !== null ? cosmetic.hat : 'none';
+			return `
+		<section class="account">
+			<h2>${escapeHtml(entry.username)}</h2>
+			<table>
+				<tr><th>Account ID</th><td>${escapeHtml(entry.accountId)}</td></tr>
+				<tr><th>Email</th><td>${escapeHtml(entry.email === null || entry.email === undefined ? '—' : entry.email)}</td></tr>
+				<tr><th>Currency</th><td>${escapeHtml(entry.currency)}</td></tr>
+				<tr><th>Equipped hat</th><td>${escapeHtml(equippedHat)}</td></tr>
+				<tr><th>Cosmetic</th><td><pre>${renderJson(cosmetic)}</pre></td></tr>
+				<tr><th>Unlocked hats</th><td><pre>${renderJson(entry.unlockedHats)}</pre></td></tr>
+				<tr><th>Unlocked quest tiers</th><td><pre>${renderJson(entry.unlockedQuestTiers)}</pre></td></tr>
+				<tr><th>Equipped key item</th><td>${escapeHtml(entry.equippedKeyItemId)}</td></tr>
+				<tr><th>Selected deck</th><td><pre>${renderJson(entry.selectedDeck)}</pre></td></tr>
+				<tr><th>Owned cards</th><td><pre>${renderJson(entry.ownedCards)}</pre></td></tr>
+				<tr><th>Inventory</th><td><pre>${renderJson(entry.inventory)}</pre></td></tr>
+			</table>
+		</section>`;
+		})
+		.join('\n');
+
+	return `<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>Admin — Character Roster</title>
+	<style>
+		body { font-family: system-ui, sans-serif; margin: 1.5rem; background: #11151c; color: #e6e6e6; }
+		h1 { font-size: 1.4rem; }
+		.account { border: 1px solid #2a3340; border-radius: 6px; padding: 0.75rem 1rem; margin: 1rem 0; background: #161b24; }
+		.account h2 { margin: 0 0 0.5rem; font-size: 1.1rem; color: #7fb4ff; }
+		table { border-collapse: collapse; width: 100%; }
+		th, td { text-align: left; vertical-align: top; padding: 0.25rem 0.5rem; border-bottom: 1px solid #222a35; }
+		th { width: 12rem; color: #9aa7b8; font-weight: 600; }
+		pre { margin: 0; white-space: pre-wrap; word-break: break-word; font-size: 0.85rem; }
+	</style>
+</head>
+<body>
+	<h1>Character Roster <small>(${roster.length} account${roster.length === 1 ? '' : 's'})</small></h1>
+${rows}
+</body>
+</html>`;
+}
+
+/**
+ * Express GET handler for the read-only admin roster page. Assumes the
+ * `requireAdminPassword` gate has already authorized the request. Read-only:
+ * it only reads via buildAdminRoster() and renders HTML — no mutation.
+ *
+ * @param {object} _req
+ * @param {object} res
+ */
+function adminHandler(_req, res) {
+	const roster = buildAdminRoster();
+	const html = renderAdminRosterHtml(roster);
+	res.type('html').send(html);
+}
+
+/**
  * Constant-time string comparison. Returns false for unequal-length inputs
  * (length is checked before timingSafeEqual, which throws on length mismatch).
  *
@@ -120,5 +219,7 @@ function requireAdminPassword(req, res, next) {
 
 module.exports = {
 	buildAdminRoster,
-	requireAdminPassword
+	requireAdminPassword,
+	renderAdminRosterHtml,
+	adminHandler
 };

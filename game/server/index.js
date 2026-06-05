@@ -1141,8 +1141,12 @@ function startServer(port) {
     app.use(express.json());
     const authRouter = require('./auth');
     const accountRouter = require('./account');
+    const { requireAdminPassword, adminHandler } = require('./admin');
     app.use('/api', authRouter);
     app.use('/api', accountRouter);
+    // Read-only admin roster page, gated by ADMIN_PASSWORD (separate from the
+    // player JWT auth). GET-only — no mutation routes are mounted under /admin.
+    app.get('/admin', requireAdminPassword, adminHandler);
     _routesMounted = true;
   }
 
