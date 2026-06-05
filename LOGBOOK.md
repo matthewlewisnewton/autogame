@@ -3755,3 +3755,26 @@ None blocking. Runtime is healthy; all five acceptance criteria are satisfied fo
 
 See `nits.md` for follow-up backlog items (unused import, residual `ids[0]` assertion in `server.test.js`).
 
+
+## v0.210 — 227-gameplay-enemy-variant-polish  (2026-06-04 19:05:07)
+
+### 3. Variant audio cues
+
+PASS. `game/client/config.js` adds distinct synthesized sound configs for `volatileExplosion`, `leechHeal`, and `shieldBreak`. `game/client/audio.js` is config-driven and respects the existing mute setting before playing any sound.
+
+The event sources are tied to real game outcomes: volatile deaths queue `_pendingVolatileExplosions`, leeching enemies queue `_pendingLeechHeals` only when `applyLeechHeal()` restores HP after damage dealt, and warded enemies queue `_pendingShieldBreaks` when `shieldHp` reaches zero. `game/server/index.js` emits those events to the lobby, and `game/client/main.js` plays the matching sound on receipt. The `volatile-enemy`, `variant-leeching`, and `warded-enemy` debug scenarios cover these paths as QA shortcuts while preserving the normal combat routes.
+
+## Design and requirements consistency
+
+PASS. The changes stay inside the existing lobby/dungeon/combat architecture described in `CONTEXT.md` and `game/docs/design.md`: server combat remains authoritative, state snapshots drive client rendering, and WebSocket events are used for transient effects. The foundation requirements are not regressed: the captured run shows the 3D scene renders, WebSocket connection succeeds, multiplayer state enters gameplay, and movement probes still update during the run.
+
+## Code quality and validation
+
+PASS with a validation caveat. The implementation is cohesive and scoped to variant feedback; I did not find dead code, broken imports, uncaught browser errors, or normal-gameplay shortcuts that bypass server invariants.
+
+`coverage.log` shows 63 server test files passing and one unrelated failure in `server/test/cosmetic_runtime.test.js` during registration: `ENOENT: no such file or directory, rename 'game/data/users.json.tmp' -> 'game/data/users.json'`, leading to an unexpected HTTP 500. The ticket did not change the cosmetic/auth persistence files, and the captured game run is clean, so I am not treating this unrelated coverage-run failure as a blocking gap for this ticket.
+
+## Remaining gaps
+
+None.
+

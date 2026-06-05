@@ -1,0 +1,8 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 3 sub-tickets:
+
+1. `/home/matt/workspace/.autogame-worktrees/227-gameplay-enemy-variant-polish/tickets/227-gameplay-enemy-variant-polish/subtickets/01-frenzied-enrage-telegraph/ticket.md` — 1.5s pre-enrage telegraph window with pulsing red ring; server tracks `enrageTelegraphUntil`, client renders ring mesh
+2. `/home/matt/workspace/.autogame-worktrees/227-gameplay-enemy-variant-polish/tickets/227-gameplay-enemy-variant-polish/subtickets/02-variant-codex-hud/ticket.md` — `C`-key toggle overlay listing all 4 variants with color badge + description
+3. `/home/matt/workspace/.autogame-worktrees/227-gameplay-enemy-variant-polish/tickets/227-gameplay-enemy-variant-polish/subtickets/03-variant-audio-cues/ticket.md` — Synthesized SFX for volatile explosion, leech heal, and warded shield break; new socket events for leech/shield
+
+All three are `code` verification (logic, handlers, server state, socket events). No sub-ticket is purely visual-only.
