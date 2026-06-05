@@ -55,6 +55,11 @@ function syncHubPresenceFromLobbyState(lobby) {
     if (playerRecord?.connected === false) continue;
     syncHubPresencePlayer(lobby, playerId, playerRecord);
   }
+  for (const playerId of Object.keys(lobby.hubPresence.players)) {
+    if (!lobby.state.players[playerId]) {
+      delete lobby.hubPresence.players[playerId];
+    }
+  }
 }
 
 /**
@@ -86,7 +91,7 @@ function buildHubPresenceUpdate(lobby, viewerPlayerId) {
   const players = {};
   for (const [id, entry] of Object.entries(lobby.hubPresence.players)) {
     const statePlayer = lobby.state?.players?.[id];
-    if (statePlayer?.connected === false) {
+    if (!statePlayer || statePlayer.connected === false) {
       continue;
     }
     players[id] = { ...entry };

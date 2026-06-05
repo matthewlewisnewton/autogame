@@ -11,6 +11,7 @@ import {
 	closeServer,
 	createTestToken,
 	waitForEvent,
+	lobbyGameState,
 } from './helpers.js';
 
 const customCosmetic = {
@@ -252,5 +253,41 @@ describe('hub presence broadcast lifecycle (integration)', () => {
 
 		socketA.disconnect();
 		socketB.disconnect();
+	});
+
+	it('mid-run leave does not ghost in hub presence after return to lobby', async () => {
+		const { accountId: accountA } = await registerUser(baseUrl, 'midrun_a');
+		const { accountId: accountB } = await registerUser(baseUrl, 'midrun_b');
+
+		const { socketA, socketB, lobbyId, accountB: leaverId } = await connectTwoInLobby(
+			baseUrl, accountA, 'midrun_a', accountB, 'midrun_b',
+		);
+		await waitForHubPresenceWithPlayer(socketA, leaverId);
+
+		const startA = waitForEvent(socketA, 'startGame');
+		const startB = waitForEvent(socketB, 'startGame');
+		socketA.emit('playerReady', true);
+		socketB.emit('playerReady', true);
+		await Promise.all([startA, startB]);
+		await waitForEvent(socketA, 'stateUpdate');
+
+		socketB.emit('leaveLobby');
+		await waitForEvent(socketA, 'playerDisconnected');
+
+		const state = lobbyGameState(lobbyId);
+		expect(state.gamePhase).toBe('playing');
+		state.run.status = 'victory';
+
+		const returnPromise = waitForEvent(socketA, 'stateUpdate');
+		const presenceAfterReturnPromise = waitForEvent(socketA, 'hubPresenceUpdate');
+		socketA.emit('returnToLobby');
+		await returnPromise;
+		const afterReturn = await presenceAfterReturnPromise;
+
+		expect(lobbyGameState(lobbyId).gamePhase).toBe('lobby');
+		expect(afterReturn.players[leaverId]).toBeUndefined();
+		expect(afterReturn.players[accountA]).toBeDefined();
+
+		socketA.disconnect();
 	});
 });

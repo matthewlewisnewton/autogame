@@ -101,6 +101,24 @@ describe('hubPresence module', () => {
     expect(lobby.hubPresence.players.p2).toBeUndefined();
   });
 
+  it('syncHubPresenceFromLobbyState prunes registry keys absent from state.players', () => {
+    const lobby = createLobby();
+    lobby.hubPresence.players.ghost = {
+      x: 0,
+      y: 0,
+      z: 0,
+      rotation: 0,
+      cosmetic: DEFAULT_COSMETIC,
+      username: 'ghost',
+    };
+    lobby.state.players.p1 = samplePlayer({ connected: true });
+
+    syncHubPresenceFromLobbyState(lobby);
+
+    expect(lobby.hubPresence.players.ghost).toBeUndefined();
+    expect(lobby.hubPresence.players.p1).toBeDefined();
+  });
+
   it('removeHubPresencePlayer deletes one entry and is no-op safe', () => {
     const lobby = createLobby();
     syncHubPresencePlayer(lobby, 'p1', samplePlayer());
@@ -137,6 +155,24 @@ describe('hubPresence module', () => {
         p1: lobby.hubPresence.players.p1,
       },
     });
+  });
+
+  it('buildHubPresenceUpdate omits stale registry entries with no state.players id', () => {
+    const lobby = createLobby();
+    syncHubPresencePlayer(lobby, 'p1', samplePlayer());
+    lobby.state.players.p1 = samplePlayer({ connected: true });
+    lobby.hubPresence.players.ghost = {
+      x: 0,
+      y: 0,
+      z: 0,
+      rotation: 0,
+      cosmetic: DEFAULT_COSMETIC,
+      username: 'ghost',
+    };
+
+    const update = buildHubPresenceUpdate(lobby, null);
+    expect(update.players.p1).toBeDefined();
+    expect(update.players.ghost).toBeUndefined();
   });
 
   it('buildHubPresenceUpdate accepts viewerPlayerId without changing all-players output', () => {

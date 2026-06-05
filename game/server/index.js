@@ -1054,9 +1054,7 @@ function evictDisconnectedPlayers() {
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
       const wasLobbyPhase = isLobbyPhase(lobby.state);
-      if (wasLobbyPhase) {
-        removeHubPresencePlayer(lobby, playerId);
-      }
+      removeHubPresencePlayer(lobby, playerId);
       const result = lobbies.removePlayerFromLobby(playerId);
       io.to(lobby.id).emit('playerDisconnected', playerId);
       evictedAny = true;
@@ -1093,9 +1091,7 @@ function leaveLobbyForSocket(socket) {
   });
   socket.leave(lobby.id);
 
-  if (wasLobbyPhase) {
-    removeHubPresencePlayer(lobby, playerId);
-  }
+  removeHubPresencePlayer(lobby, playerId);
   const result = lobbies.removePlayerFromLobby(playerId);
   io.to(lobby.id).emit('playerDisconnected', playerId);
 
