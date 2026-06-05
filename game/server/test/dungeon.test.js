@@ -1575,6 +1575,37 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     }
   });
 
+  it('tiers have distinct lateral X centres (zig-zag footprint)', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersByIndex(layout);
+      if (tiers.length < 2) continue;
+      const xs = tiers.map(t => t.x);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(0);
+      expect(tiers[0].tierXOffset).toBe(0);
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].tierXOffset).toBe(tiers[i].x);
+        expect(tiers[i].x).not.toBe(tiers[i - 1].x);
+      }
+    }
+  });
+
+  it('each ramp centre X lies between its adjoining tier centres', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersByIndex(layout);
+      const rampList = roomsByBand(layout, 'ramp');
+      for (let i = 0; i < rampList.length; i++) {
+        const lowX = tiers[i].x;
+        const highX = tiers[i + 1].x;
+        const rampX = rampList[i].x;
+        expect(rampX).toBeGreaterThanOrEqual(Math.min(lowX, highX));
+        expect(rampX).toBeLessThanOrEqual(Math.max(lowX, highX));
+        expect(rampX).toBeCloseTo((lowX + highX) / 2, 5);
+      }
+    }
+  });
+
   it('full foot reachability from bottom spawn to top tier via ramps only', () => {
     for (const seed of [1, 42, 123, 777, 9999]) {
       const layout = generateLayout(seed, 'spire-ascent');
