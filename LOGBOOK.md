@@ -3779,6 +3779,50 @@ PASS with a validation caveat. The implementation is cohesive and scoped to vari
 None.
 
 
+## v0.212 — 268-scaling-thread-lobby-state-explicitly  (2026-06-04 21:14:18)
+
+- The migrated socket paths remain wrapped by `withLobbyFromSocket`/`withLobbyContext`, so legacy sub-helpers that still intentionally read context-swapped module state remain behaviorally equivalent for this incremental pass.
+
+This is a meaningful reduction of direct `_gameState` reads in progression/handler call sites without changing public helper call compatibility.
+
+### Tests and coverage
+
+PASS. The round-2 coverage log reports `43 passed (43)` test files and `947 passed (947)` tests. The implementation also fixes the account test's temp user-file collision by adding process/random uniqueness to the path, addressing the full-suite flake documented by the final sub-ticket.
+
+### Behaviour and design consistency
+
+PASS. The capture exercises auth, lobby creation/join, ready transition into dungeon play, movement, and dodge/key-item cooldown while preserving the lobby-to-dungeon loop described in `game/docs/design.md`. The probes show connected multiplayer state, initialized scene/canvas, active run state, card HUD, enemies, and synchronized player movement, so the foundation in `game/docs/requirements.md` is not regressed.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any development debug scenario or `?debugScenario=...` entry point. The capture used the fallback normal flow with `debugScenario: null`, so no debug shortcut is substituting for normal gameplay.
+
+## Remaining gaps
+
+None.
+
+## v0.213 — 265-sec-debug-gate-no-header-spoof  (2026-06-04 21:24:07)
+
+- No browser console errors in capture.
+- `ALLOW_DEBUG_SCENARIOS=1` still bypasses address checks for CI/integration tests — intentional per ticket wording (“and/or explicit env”).
+
+---
+
+## Debug scenario policy (informational)
+
+No new debug scenarios were introduced. Existing scenarios remain behind:
+
+- Server: `isDebugScenarioAllowed(socket)` on every `debugScenario` emit.
+- Client: `?debugScenario=` URL param + localhost hostname guard before auto-request.
+
+Normal gameplay (lobby → ready → dungeon) was exercised in capture without using a debug shortcut.
+
+---
+
+## Remaining gaps
+
+None. Runtime proof is clean, acceptance criteria are fully met, and tests cover the spoof vector described in the ticket.
+
 ## v0.215 — 244-canyon-walkability-fixes  (2026-06-04 21:35:23)
 
 3. Add side/return ramps or widen the canyon north-wall gap so edge players can ascend: PASS. The layout now always adds west/east edge connector ramps aligned to the canyon-edge probes, and the canyon north wall is opened for all ramp centers. The new tests prove lateral edge probes can reach the plateau and return, including a step from each edge probe to its matching edge ramp.

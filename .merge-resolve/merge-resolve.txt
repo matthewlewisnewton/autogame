@@ -1,15 +1,12 @@
-Merge conflicts are resolved. Summary:
+Merge conflicts are resolved in both files.
 
-### `TASKS.md`
-Both cleanup backlog lines are kept: `228-cleanup-lobby-remove-dead-hostid` (main) and `228-cleanup-data-debrittle-model-tests` (ticket).
+**`TASKS.md`** — Kept both cleanup follow-ups at the end of the backlog:
+- `245-cleanup-canyon-walkability-fixes` (from this ticket)
+- `269-cleanup-scaling-thread-lobby-state-explicitly` (from main)
 
-### `LOGBOOK.md`
-Main’s review entries (v0.202–v0.206) are preserved in version order, with the ticket’s v0.207 debrittle entry appended last.
+**`LOGBOOK.md`** — Combined all three review log entries in completion-time order after `v0.210`:
+1. `v0.212` — 268-scaling-thread-lobby-state-explicitly (main)
+2. `v0.213` — 265-sec-debug-gate-no-header-spoof (main)
+3. `v0.215` — 244-canyon-walkability-fixes (this branch)
 
-### `game/client/test/cards.test.js` & `game/server/test/card_acquisition.test.js`
-Ticket intent kept: `>= 42` card-count checks instead of hardcoded `toHaveLength(43)` so new cards on main don’t break these tests.
-
-### `game/server/test/new_card_pack.test.js`
-Ticket intent kept: the `new card pack definitions` block stays removed from this file. Main’s Permafrost Lance / shop-pool coverage already lives in `new_card_pack_definitions.test.js` (with debrittled `>= 42` assertions).
-
-All conflict markers are gone from the five files. Targeted tests (57) pass; the harness will run the full suite next.
+All conflict markers are removed. The harness can commit and finish the merge.

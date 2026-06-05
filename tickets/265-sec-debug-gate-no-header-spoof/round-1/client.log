@@ -1,0 +1,53 @@
+
+  VITE v8.0.13  ready in 112 ms
+
+  ➜  Local:   http://localhost:5177/
+  ➜  Network: use --host to expose
+9:12:09 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=er3iclrb
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:10 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=er3yluim
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:11 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=er565wyu
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:13 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=er68xl42
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:15 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=er7t99tm
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:18 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=era3xpco
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:20 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erbo8sze
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:23 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erdyxtlt
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:25 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erfj7ocj
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:28 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erhtxh4n
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:30 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erje7kr2
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
+9:12:33 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erlowfrk
+AggregateError [ECONNREFUSED]: 
+    at internalConnectMultiple (node:net:1134:18)
+    at afterConnectMultiple (node:net:1715:7)
