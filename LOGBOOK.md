@@ -4289,3 +4289,26 @@ PASS. The implementation is scoped and modular: shared cosmetic UI behavior was 
 ## Remaining gaps
 
 None.
+
+## v0.247 — 234-booth-quest-counter  (2026-06-05 05:38:50)
+
+
+### `selectQuest` works from the booth-opened panel
+PASS. `openQuestPanel()` only scrolls `#quest-board-wrapper` into view and does not create a second quest UI. The existing `renderQuestBoardState()` callback still emits `socket.emit('selectQuest', { questId, tier: tier ?? 1 })`, so selecting from the visible quest board uses the same flow as before.
+
+### `?booth=quest` debug hook
+PASS. `requestBoothDebugOpen()` now accepts `quest` alongside `character`, keeps the existing localhost gate (`debugScenarioAllowed`), requires lobby phase, and uses `boothDebugRequested` to fire at most once per session. It opens the same `openQuestPanel()` path rather than bypassing server quest-selection behavior. No development debug scenario was added, so there is no scenario shortcut that could replace normal gameplay.
+
+### 2D quest menu remains intact
+PASS. The always-present inline quest board remains the selection surface, and the implementation only focuses it. No server, quest data, or quest board rendering changes were made.
+
+### Tests and coverage
+PASS. `coverage.log` shows the captured verification run passed: 5 test files, 198 tests. The new `game/client/test/questBooth.test.js` covers the pure helper, event listener behavior, non-lobby rejection, localhost debug gating, one-shot behavior, and unchanged `?booth=character`/absent-param behavior.
+
+### Design and foundation consistency
+PASS. The change stays within the documented lobby flow where players manage decks and select quests before deployment. It does not regress the foundation requirements for 3D rendering, socket connection, multiplayer visualization, or movement synchronization; the captured run exercised lobby, deployment, movement, and gameplay without runtime errors.
+
+## Remaining gaps
+
+None.
+

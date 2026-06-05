@@ -95,3 +95,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [275-cleanup-lobby-enforce-max-players-cap](tickets/275-cleanup-lobby-enforce-max-players-cap/)
 - [ ] [277-cleanup-socketHandlers-extract-run-and-cleanup](tickets/277-cleanup-socketHandlers-extract-run-and-cleanup/)
 - [ ] [278-cleanup-booth-mission-launch](tickets/278-cleanup-booth-mission-launch/)
+- [ ] [279-cleanup-booth-quest-counter](tickets/279-cleanup-booth-quest-counter/)
