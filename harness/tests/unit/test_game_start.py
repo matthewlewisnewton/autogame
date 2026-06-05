@@ -202,6 +202,7 @@ class TestServerLaunch:
         call = factory.server_calls[0]
         assert call["args"] == ["node", "game/server/index.js"]
         assert call["kwargs"]["env"]["PORT"] == str(PORTS.game_server)
+        assert call["kwargs"]["env"]["ALLOW_DEV_AUTH"] == "1"
         assert call["kwargs"]["start_new_session"] is True
         # PID is appended to the module's tracked list.
         assert call["pid"] in isolate_pids
