@@ -69,9 +69,11 @@ const { getObjectiveDef } = require('./objectives');
 const {
   initRunEncounter,
   isEncounterLocked,
+  isStageBossEnemy,
   getEncounterConfig,
   startStageBossEncounter,
   tryStartStageBossEncounter,
+  onStageBossDefeated,
 } = require('./bossEncounter');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
@@ -1262,7 +1264,10 @@ function grantRunRewards(playerId, summary) {
     const quest = _gameState.run && _gameState.run.questId
       ? getQuest(_gameState.run.questId, _gameState.run.questTier)
       : getSelectedQuest(_gameState);
-    const currencyBonus = (quest && quest.rewardCurrency) || 10;
+    const runReward = _gameState.run && _gameState.run.rewardCurrency;
+    const currencyBonus = runReward != null
+      ? runReward
+      : ((quest && quest.rewardCurrency) || 10);
     player.currency += currencyBonus;
 
     const cardChoices = buildCardChoices(playerId);
@@ -2210,6 +2215,9 @@ function removeDeadEnemies() {
     const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
     if (variantDef && variantDef.id === 'volatile') {
       spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+    }
+    if (isStageBossEnemy(enemy, _gameState.run)) {
+      onStageBossDefeated(_gameState, enemy.id);
     }
   }
 

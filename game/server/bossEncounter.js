@@ -28,6 +28,7 @@
  */
 
 const { roomsByRole } = require('./dungeon');
+const { unlockQuestTier } = require('./users');
 
 const ENCOUNTER_STATUSES = ['pending', 'active', 'cleared'];
 
@@ -378,6 +379,61 @@ function startStageBossEncounter(gameState, spawnCtx) {
   return boss;
 }
 
+/**
+ * Apply configured encounter clear rewards after the stage boss is defeated.
+ * Mutates `run.rewardCurrency` and invokes optional quest-tier unlocks.
+ *
+ * @param {object} gameState
+ */
+function applyEncounterClearRewards(gameState) {
+  const run = gameState?.run;
+  if (!run?.encounter || run.encounter.status !== 'cleared') {
+    return;
+  }
+
+  const bonus = run.encounter.rewardCurrencyBonus;
+  if (Number.isFinite(bonus) && bonus > 0) {
+    run.rewardCurrency = (run.rewardCurrency ?? 0) + bonus;
+  }
+
+  const unlock = run.encounter.unlockOnClear;
+  if (!unlock || typeof unlock.questId !== 'string' || unlock.questId.length === 0) {
+    return;
+  }
+  const tier = Number(unlock.tier);
+  if (!Number.isInteger(tier) || tier <= 0) {
+    return;
+  }
+
+  for (const player of Object.values(gameState.players || {})) {
+    if (player?.accountId) {
+      unlockQuestTier(player.accountId, unlock.questId, tier);
+    }
+  }
+}
+
+/**
+ * Handle defeat of the active stage boss: clear the encounter and grant rewards.
+ * No-op for non-stage-boss enemies or when no encounter is active.
+ *
+ * @param {object} gameState
+ * @param {string} enemyId
+ * @returns {boolean} true when the stage boss was cleared
+ */
+function onStageBossDefeated(gameState, enemyId) {
+  const run = gameState?.run;
+  if (!run?.encounter || run.encounter.status !== 'active') {
+    return false;
+  }
+  if (enemyId !== run.encounter.bossEnemyId) {
+    return false;
+  }
+
+  setEncounterCleared(run);
+  applyEncounterClearRewards(gameState);
+  return true;
+}
+
 module.exports = {
   ENCOUNTER_STATUSES,
   getStageBossEncounterConfig,
@@ -394,4 +450,6 @@ module.exports = {
   startStageBossEncounter,
   playerInRoomWithRole,
   tryStartStageBossEncounter,
+  applyEncounterClearRewards,
+  onStageBossDefeated,
 };
