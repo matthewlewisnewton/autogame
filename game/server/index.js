@@ -807,7 +807,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   const playerId = explicitPlayerId ?? socket.playerId;
   const player = state.players[playerId];
   if (!player) return;
-  withLobbyContext(lobby, () => ensureShopOffer());
+  withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
 
   socket.emit('lobbyJoined', {
     lobbyId: lobby.id,
@@ -1372,7 +1372,7 @@ function startServer(port) {
 
     if (!state.run) return;
 
-    returnPlayersToLobby();
+    returnPlayersToLobby(state);
     });
   });
 
@@ -1383,7 +1383,7 @@ function startServer(port) {
           socket.emit('runError', { reason: 'No active run' });
           return;
         }
-        const result = giveUpRun();
+        const result = giveUpRun(state);
         if (!result.ok) {
           socket.emit('runError', { reason: result.reason || 'Cannot give up' });
           return;
@@ -1402,7 +1402,7 @@ function startServer(port) {
         socket.emit('runError', { reason: 'No suspended expedition' });
         return;
       }
-      abandonSuspendedRun();
+      abandonSuspendedRun(state);
     });
   });
 
@@ -1413,7 +1413,7 @@ function startServer(port) {
     if (!state.run || state.run.status === 'playing') return;
     if (!data || typeof data.cardId !== 'string') return;
 
-    const result = claimCardReward(socket.playerId, data.cardId);
+    const result = claimCardReward(socket.playerId, data.cardId, state);
     if (!result.ok) return;
 
     savePlayerData(socket.playerId);
@@ -1689,7 +1689,7 @@ function startServer(port) {
       requirePhase: 'lobby',
       phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
     }, (state, lobby, player) => {
-      const result = healAtMedic(socket.playerId);
+      const result = healAtMedic(socket.playerId, state);
       if (!result.ok) {
         socket.emit('medicError', { reason: result.reason });
         return;

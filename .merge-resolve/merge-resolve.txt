@@ -1,15 +1,9 @@
-Merge conflicts are resolved. Summary:
+Merge conflict in `LOGBOOK.md` is resolved.
 
-### `TASKS.md`
-Both cleanup backlog lines are kept: `228-cleanup-lobby-remove-dead-hostid` (main) and `228-cleanup-data-debrittle-model-tests` (ticket).
+**What was conflicting:** Both sides appended a new version entry at the end of the logbook — `main` had **v0.212** (268-scaling-thread-lobby-state-explicitly) and the ticket branch had **v0.213** (265-sec-debug-gate-no-header-spoof).
 
-### `LOGBOOK.md`
-Main’s review entries (v0.202–v0.206) are preserved in version order, with the ticket’s v0.207 debrittle entry appended last.
+**Resolution:** Kept both entries in ascending version order:
+1. **v0.212** — scaling thread lobby state migration review (from `main`)
+2. **v0.213** — debug gate header-spoof security fix review (from the ticket branch)
 
-### `game/client/test/cards.test.js` & `game/server/test/card_acquisition.test.js`
-Ticket intent kept: `>= 42` card-count checks instead of hardcoded `toHaveLength(43)` so new cards on main don’t break these tests.
-
-### `game/server/test/new_card_pack.test.js`
-Ticket intent kept: the `new card pack definitions` block stays removed from this file. Main’s Permafrost Lance / shop-pool coverage already lives in `new_card_pack_definitions.test.js` (with debrittled `>= 42` assertions).
-
-All conflict markers are gone from the five files. Targeted tests (57) pass; the harness will run the full suite next.
+All conflict markers are removed; the file is consistent with the rest of the logbook. The harness can proceed with commit and merge.

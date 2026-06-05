@@ -87,3 +87,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [227-cleanup-data-objective-registry](tickets/227-cleanup-data-objective-registry/)
 - [ ] [228-cleanup-lobby-remove-dead-hostid](tickets/228-cleanup-lobby-remove-dead-hostid/)
 - [ ] [228-cleanup-data-debrittle-model-tests](tickets/228-cleanup-data-debrittle-model-tests/)
+- [ ] [269-cleanup-scaling-thread-lobby-state-explicitly](tickets/269-cleanup-scaling-thread-lobby-state-explicitly/)
