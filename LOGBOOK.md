@@ -4321,3 +4321,26 @@ The implementation is server-side only and does not alter the documented lobby/d
 ## Remaining gaps
 
 No blocking gaps found.
+
+## v0.249 — 240-paid-appearance-change  (2026-06-05 06:37:15)
+
+
+### Price in config
+PASS. The appearance fee is configured as `APPEARANCE_CHANGE_COST` on both server and client config paths and is used by the server charge helper and client confirm/cost label.
+
+### Client confirm dialog
+PASS. The character booth shows a paid-save confirmation only when body/color/model/proportion appearance fields differ from the saved account cosmetic. Hat-only changes skip the paid confirmation and remain free. Connected booth saves emit `applyAppearanceChange` instead of the legacy profile PATCH path, and socket errors re-enable the save UI with a visible message.
+
+### Tests, insufficient funds, and crash safety
+PASS. The new server tests cover successful paid charge, insufficient funds, hat-only free changes, profile-route blocking for live lobby appearance edits, persistence ordering, currency-save failure, and simulated crash/update failure cases. Client tests cover the confirmation flow, socket emission, error recovery, cost label, and hat-only behavior. The recorded coverage run passed: 91 test files, 1569 tests.
+
+### Design and requirements consistency
+PASS. The implementation fits the existing lobby/economy loop in `game/docs/design.md`: booth appearance edits use persistent account cosmetics and currency without disturbing dungeon combat, lobby flow, WebSocket connectivity, or movement synchronization. The smoke capture confirms no regression to the foundational requirements.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. The capture used normal auth/lobby/ready/gameplay flow.
+
+## Remaining gaps
+
+None.
+
