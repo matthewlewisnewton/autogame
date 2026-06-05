@@ -27,6 +27,9 @@
 //   returnPlayersToLobby, abandonSuspendedRun, claimCardReward, LOOT_PICKUP_RADIUS,
 //   addMagicStones, recordCrystalCollected, checkRunTerminalState
 //
+// Disconnect / connection cleanup (sub-ticket 06):
+//   softDisconnectPlayerFromLobby
+//
 // This module must NOT require('./index') (circular). Use ctx or leaf modules.
 
 const { getUnlockedKeyItems } = require('../progression');
@@ -729,6 +732,22 @@ function registerUseKeyItem(socket, ctx) {
   });
 }
 
+function registerDisconnect(socket, ctx) {
+  socket.on('disconnect', () => {
+    console.log(`Player disconnected: ${socket.id}`);
+
+    if (!socket.playerId) return;
+
+    const lobby = ctx.lobbies.getLobbyForPlayer(socket.playerId);
+    if (lobby && lobby.state.players[socket.playerId]) {
+      ctx.softDisconnectPlayerFromLobby(socket);
+      return;
+    }
+
+    ctx.lobbies.removeSession(socket.playerId);
+  });
+}
+
 function registerLootPickup(socket, ctx) {
   socket.on('lootPickup', (data) => {
     ctx.withLobbyFromSocket(socket, (state, lobby) => {
@@ -798,6 +817,7 @@ function registerLobbyHandlers(socket, ctx) {
   registerClaimCardReward(socket, ctx);
   registerUseKeyItem(socket, ctx);
   registerLootPickup(socket, ctx);
+  registerDisconnect(socket, ctx);
 }
 
 module.exports = {
@@ -829,4 +849,5 @@ module.exports = {
   registerClaimCardReward,
   registerUseKeyItem,
   registerLootPickup,
+  registerDisconnect,
 };

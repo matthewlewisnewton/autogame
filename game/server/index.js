@@ -1239,6 +1239,7 @@ function startServer(port) {
       addMagicStones,
       recordCrystalCollected,
       checkRunTerminalState,
+      softDisconnectPlayerFromLobby,
     };
     registerLobbyHandlers(socket, ctx);
 
@@ -1263,20 +1264,6 @@ function startServer(port) {
       lobby.state.players[socket.playerId].lastActivity = Date.now();
     }
     socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
-  });
-
-  socket.on('disconnect', () => {
-    console.log(`Player disconnected: ${socket.id}`);
-
-    if (!socket.playerId) return;
-
-    const lobby = lobbies.getLobbyForPlayer(socket.playerId);
-    if (lobby && lobby.state.players[socket.playerId]) {
-      softDisconnectPlayerFromLobby(socket);
-      return;
-    }
-
-    lobbies.removeSession(socket.playerId);
   });
 
   const resumeLobby = lobbies.getLobbyForPlayer(playerId);
