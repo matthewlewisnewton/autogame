@@ -147,6 +147,56 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'training-caverns-tier-2') {
+      // training_caverns Tier 2 with rigid crowded layout and combat-room spawns.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Initiate Vault Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'training_caverns';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      syncRunObjectiveToEnemies();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'arena-trials-tier-2') {
       // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
@@ -166,6 +216,56 @@ function applyDebugScenario(socket, name) {
       const plazaSpawn = firstRoomPosition();
       player.x = plazaSpawn.x;
       player.z = plazaSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      syncRunObjectiveToEnemies();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'crystal-rescue-tier-2') {
+      // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
+      // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
+      // before enterPlayingPhase so startDungeonRun snapshots the correct run.questTier
+      // and spawnEnemy variant rolls. Reachable normally by clearing Prism Salvage
+      // Tier 1, unlocking Tier 2, and deploying; this scenario is a shortcut.
+      const questId = 'crystal_rescue';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
 
       enterPlayingPhase(lobby);

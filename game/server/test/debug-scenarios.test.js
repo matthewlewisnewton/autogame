@@ -19,6 +19,10 @@ import {
 
 const ARENA_TRIALS_ID = 'arena_trials';
 const ARENA_TRIALS_TIER_2 = 2;
+const TRAINING_CAVERNS_ID = 'training_caverns';
+const TRAINING_CAVERNS_TIER_2 = 2;
+const CRYSTAL_RESCUE_ID = 'crystal_rescue';
+const CRYSTAL_RESCUE_TIER_2 = 2;
 const SPIRE_ASCENT_ID = 'spire_ascent';
 const SPIRE_ASCENT_TIER_2 = 2;
 
@@ -265,6 +269,152 @@ describe('debugScenario — arena-trials-tier-2', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		gameState.run = { questTier: ARENA_TRIALS_TIER_2 };
+		setGameState(gameState);
+		spawnEnemies();
+		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
+	});
+});
+
+describe('debugScenario — training-caverns-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys training_caverns Tier 2 with rigid crowded layout, tier-2 run metadata, and variant enemies', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('training-caverns-tier-2');
+
+		const state = testGameState();
+		const tier2Quest = getQuest(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2);
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(TRAINING_CAVERNS_ID);
+		expect(state.selectedQuestTier).toBe(TRAINING_CAVERNS_TIER_2);
+		expect(state.run.questId).toBe(TRAINING_CAVERNS_ID);
+		expect(state.run.questTier).toBe(TRAINING_CAVERNS_TIER_2);
+		expect(state.run.questName).toBe(tier2Quest.name);
+		expect(state.run.objective.label).toContain(tier2Quest.name);
+		expect(state.run.objective.totalEnemies).toBe(tier2Quest.enemyCount);
+		expect(state.layout.profile).toBe('crowded');
+		expect(getLayoutGenerationOptions(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2));
+		expect(state.enemies.length).toBe(tier2Quest.enemyCount);
+		expect(state.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(state.run.questTier, 0)).toBe(1);
+	});
+
+	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)', () => {
+		const SEED = 4242;
+		resetGameState();
+		const layout = generateLayout(
+			SEED,
+			getLayoutProfileForQuest(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2),
+			getLayoutGenerationOptions(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2),
+		);
+		gameState.selectedQuestId = TRAINING_CAVERNS_ID;
+		gameState.selectedQuestTier = TRAINING_CAVERNS_TIER_2;
+		gameState.layout = layout;
+		gameState.layoutSeed = SEED;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.run = { questTier: TRAINING_CAVERNS_TIER_2 };
+		setGameState(gameState);
+		spawnEnemies();
+		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
+	});
+});
+
+describe('debugScenario — crystal-rescue-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys crystal_rescue Tier 2 with rigid open layout, collect_items run metadata, and variant enemies', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'crystal-rescue-tier-2' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('crystal-rescue-tier-2');
+
+		const state = testGameState();
+		const tier2Quest = getQuest(CRYSTAL_RESCUE_ID, CRYSTAL_RESCUE_TIER_2);
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(CRYSTAL_RESCUE_ID);
+		expect(state.selectedQuestTier).toBe(CRYSTAL_RESCUE_TIER_2);
+		expect(state.run.questId).toBe(CRYSTAL_RESCUE_ID);
+		expect(state.run.questTier).toBe(CRYSTAL_RESCUE_TIER_2);
+		expect(state.run.questName).toBe(tier2Quest.name);
+		expect(state.run.objective.type).toBe('collect_items');
+		expect(state.run.objective.label).toContain(tier2Quest.name);
+		expect(state.run.objective.totalItems).toBe(tier2Quest.itemCount);
+		expect(state.layout.profile).toBe('open');
+		expect(getLayoutGenerationOptions(CRYSTAL_RESCUE_ID, CRYSTAL_RESCUE_TIER_2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(CRYSTAL_RESCUE_ID, CRYSTAL_RESCUE_TIER_2));
+		expect(state.enemies.length).toBe(tier2Quest.enemyCount);
+		expect(state.loot.filter((l) => l.kind === 'crystal').length).toBe(tier2Quest.itemCount);
+		expect(state.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(state.run.questTier, 0)).toBe(1);
+	});
+
+	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (crystal_rescue_tier2 parity)', () => {
+		const SEED = 4242;
+		resetGameState();
+		const layout = generateLayout(
+			SEED,
+			getLayoutProfileForQuest(CRYSTAL_RESCUE_ID, CRYSTAL_RESCUE_TIER_2),
+			getLayoutGenerationOptions(CRYSTAL_RESCUE_ID, CRYSTAL_RESCUE_TIER_2),
+		);
+		gameState.selectedQuestId = CRYSTAL_RESCUE_ID;
+		gameState.selectedQuestTier = CRYSTAL_RESCUE_TIER_2;
+		gameState.layout = layout;
+		gameState.layoutSeed = SEED;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.run = { questTier: CRYSTAL_RESCUE_TIER_2 };
 		setGameState(gameState);
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);

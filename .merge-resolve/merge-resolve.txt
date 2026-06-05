@@ -1,8 +1,6 @@
-`LOGBOOK.md` is resolved.
+`LOGBOOK.md` is resolved. Both sides are kept in ascending version order:
 
-**Resolution:** Combined both sides in version order instead of picking one:
+1. **v0.261 — 255-level2-rooms** (from `main`) — rigid layout mode, Tier 2 quest wiring, debug scenarios, and test coverage
+2. **v0.264 — 241-free-hat-swap** (from this branch) — hat equip unlock checks, `?booth=hatswap` debug hook, and design consistency review
 
-- **From `main`:** v0.255 (254-level2-mechanics-and-reference), v0.256 (267-sec-hat-equip-unlock-check), v0.257 (257-level2-spire-ascent)
-- **From the ticket branch:** v0.258 (263-debug-unlimited-health-godmode) appended after v0.257
-
-All conflict markers are removed. No other conflicted files were listed. The harness can commit and finish the merge.
+All conflict markers are removed. The file ends with the v0.264 “Remaining gaps: None.” section, consistent with each ticket’s standalone logbook entry. The harness can proceed with the merge.

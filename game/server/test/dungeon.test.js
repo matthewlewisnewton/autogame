@@ -1325,6 +1325,235 @@ describe("generateLayout(seed, 'open') verticality & hazards", () => {
   });
 });
 
+// ── crowded rigid layoutMode ──
+
+describe("generateLayout(seed, 'crowded') rigid layoutMode", () => {
+  const CROWDED_TYPES = ['reactor_coil', 'pipe_stack'];
+  const MARGIN = 2;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function coverInRoom(cover, room) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    return cover.filter(c =>
+      Math.abs(c.x - room.x) + c.width / 2 <= halfW + 1e-6 &&
+      Math.abs(c.z - room.z) + c.depth / 2 <= halfD + 1e-6
+    );
+  }
+
+  function roomReachability(room, cover) {
+    const halfW = room.width / 2 - MARGIN;
+    const halfD = room.depth / 2 - MARGIN;
+    const step = 0.5;
+    const cellsX = Math.floor((halfW * 2) / step);
+    const cellsZ = Math.floor((halfD * 2) / step);
+    const cellX = i => room.x - halfW + (i + 0.5) * step;
+    const cellZ = j => room.z - halfD + (j + 0.5) * step;
+    const blocked = (x, z) =>
+      cover.some(c =>
+        x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+        z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+      );
+
+    const startI = Math.floor(halfW / step);
+    const startJ = Math.floor(halfD / step);
+    const seen = new Set();
+    const key = (i, j) => `${i},${j}`;
+    const queue = [[startI, startJ]];
+    seen.add(key(startI, startJ));
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di;
+        const nj = j + dj;
+        if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+        if (seen.has(key(ni, nj))) continue;
+        if (blocked(cellX(ni), cellZ(nj))) continue;
+        seen.add(key(ni, nj));
+        queue.push([ni, nj]);
+      }
+    }
+
+    let open = 0;
+    for (let j = 0; j < cellsZ; j++) {
+      for (let i = 0; i < cellsX; i++) {
+        if (!blocked(cellX(i), cellZ(j))) open++;
+      }
+    }
+    return seen.size === open;
+  }
+
+  function assertCrowdedRigidInvariants(layout) {
+    expect(layout.profile).toBe('crowded');
+    const combat = combatRooms(layout);
+    expect(combat.length).toBeGreaterThan(0);
+    for (const room of combat) {
+      const isSloped = new Set(Object.values(room.floorCorners)).size > 1;
+      if (isSloped) continue;
+      expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
+      expect(roomReachability(room, coverInRoom(layout.cover, room))).toBe(true);
+    }
+    expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
+    for (const lm of layout.landmarks) {
+      expect(CROWDED_TYPES).toContain(lm.type);
+    }
+  }
+
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'crowded', { layoutMode: 'default' });
+    const withUnknown = generateLayout(123, 'crowded', { layoutMode: 'chaotic' });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.landmarks).toEqual(withDefault.landmarks);
+  });
+
+  it('rigid mode produces identical rooms/passages and dressing across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'crowded', { slopes: true, layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+      expect(layouts[i].passages).toEqual(layouts[0].passages);
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+    }
+  });
+
+  it('rigid mode still satisfies crowded structural and reachability assertions', () => {
+    assertCrowdedRigidInvariants(
+      generateLayout(123, 'crowded', { slopes: true, layoutMode: 'rigid' })
+    );
+  });
+
+  it('default mode still varies cover across a seed sweep', () => {
+    const ref = generateLayout(1, 'crowded', { layoutMode: 'default' });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'crowded', { layoutMode: 'default' });
+      if (JSON.stringify(ref.cover) !== JSON.stringify(other.cover)) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'crowded', { layoutMode: 'rigid' });
+    const def = generateLayout(123, 'crowded', { layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'crowded', { layoutMode: 'rigid' });
+    expect(rigid.rooms).toEqual(rigidAgain.rooms);
+    expect(rigid.cover).toEqual(rigidAgain.cover);
+    const differs =
+      JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover);
+    expect(differs).toBe(true);
+  });
+});
+
+// ── open rigid layoutMode ──
+
+describe("generateLayout(seed, 'open') rigid layoutMode", () => {
+  const OPEN_TYPES = ['sand_spire', 'sun_arch'];
+  const MARGIN = 2;
+  const SPAWN_CLEAR = 5;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function hostRoom(layout, fp) {
+    return layout.rooms.find(r =>
+      Math.abs(fp.x - r.x) + fp.width / 2 <= r.width / 2 + 1e-6 &&
+      Math.abs(fp.z - r.z) + fp.depth / 2 <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function assertOpenRigidInvariants(layout) {
+    expect(layout.profile).toBe('open');
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    expect(layout.cover.length).toBeLessThanOrEqual(2);
+    for (const p of layout.platforms) {
+      const host = hostRoom(layout, p);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+    }
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      const host = hostRoom(layout, h);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+      expect(Math.hypot(h.x - host.x, h.z - host.z)).toBeGreaterThanOrEqual(SPAWN_CLEAR - 0.01);
+    }
+    expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
+    for (const lm of layout.landmarks) {
+      expect(OPEN_TYPES).toContain(lm.type);
+    }
+  }
+
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'open', { layoutMode: 'default', slopes: true });
+    const withUnknown = generateLayout(123, 'open', { layoutMode: 'chaotic', slopes: true });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.hazards).toEqual(withDefault.hazards);
+    expect(withUnknown.platforms).toEqual(withDefault.platforms);
+  });
+
+  it('rigid mode produces identical rooms/passages and dressing across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'open', { slopes: true, layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+      expect(layouts[i].passages).toEqual(layouts[0].passages);
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+      expect(layouts[i].platforms).toEqual(layouts[0].platforms);
+      expect(layouts[i].hazards).toEqual(layouts[0].hazards);
+    }
+  });
+
+  it('rigid mode still satisfies open structural assertions', () => {
+    assertOpenRigidInvariants(
+      generateLayout(123, 'open', { slopes: true, layoutMode: 'rigid' })
+    );
+  });
+
+  it('default mode still varies cover or hazards across a seed sweep', () => {
+    const ref = generateLayout(1, 'open', { layoutMode: 'default', slopes: true });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'open', { layoutMode: 'default', slopes: true });
+      if (
+        JSON.stringify(ref.cover) !== JSON.stringify(other.cover) ||
+        JSON.stringify(ref.hazards) !== JSON.stringify(other.hazards)
+      ) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'open', { slopes: true, layoutMode: 'rigid' });
+    const def = generateLayout(123, 'open', { slopes: true, layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'open', { slopes: true, layoutMode: 'rigid' });
+    expect(rigid.platforms).toEqual(rigidAgain.platforms);
+    expect(rigid.hazards).toEqual(rigidAgain.hazards);
+    const differs =
+      JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+      JSON.stringify(rigid.hazards) !== JSON.stringify(def.hazards) ||
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover);
+    expect(differs).toBe(true);
+  });
+});
+
 // ── sampleFloorY ──
 
 describe('sampleFloorY(layout, x, z)', () => {
