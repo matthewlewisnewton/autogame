@@ -1,0 +1,394 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/275-socketHandlers-extract-keyitem/game
+      Coverage enabled with v8
+
+stdout | server/test/field_medic_kit.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/275-socketHandlers-extract-keyitem/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/server.test.js
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/275-socketHandlers-extract-keyitem/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > two players in range both heal (HP + MS capped)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > two players in range both heal (HP + MS capped)
+Server listening on port 0
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > two players in range both heal (HP + MS capped)
+Player connected: socket=GqrkPZuCyASrro2aAAAB, playerId=p1-1780650539198
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > two players in range both heal (HP + MS capped)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > two players in range both heal (HP + MS capped)
+Player connected: socket=hFiRJj3EQ8DU8owzAAAD, playerId=p2-1780650539228
+
+stdout | server/test/server.test.js > updateMinions() > removes dead enemies and spawns magic stone and currency loot on death
+[loot] magic stone drop id=7dc00faa-3bc3-4391-aba1-14c7c2a958d8 value=20 at (0.0, 0.0)
+[loot] currency drop id=a6b86a69-bbd9-40bb-91c0-0042f7d6cb5d value=8 at (0.0, 0.0)
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > creates loot with correct structure when it spawns
+[loot] spawned id=5a8f240e-4fe3-4162-a885-0e1400eda714 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot value is in range [5, 20)
+[loot] spawned id=6db9e353-db2e-4e66-ba85-47e21419defe value=13
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot createdAt is a timestamp
+[loot] spawned id=e15a6eba-a078-41e3-adf7-8d8ea7e61af4 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > spawns loot in treasure room when one exists
+[loot] spawned id=a4f9b0c9-e163-45da-afec-b602c0dda14e value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > falls back to non-start room when no treasure room exists
+[loot] spawned id=0469c0f9-217f-4f58-861a-4cb17165cf8e value=11
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies skips currency loot when the drop chance fails
+[loot] magic stone drop id=9ebcb7af-3fa0-4f1d-baed-4b20eab52108 value=20 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies spawns magic stone and currency loot at the enemy position
+[loot] magic stone drop id=8f21e089-5296-4b52-b55b-085d7c8c2778 value=20 at (4.0, -2.0)
+[loot] currency drop id=46b9dbf2-e0db-4ca2-9633-3fa16b099504 value=8 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > calls savePlayerData before deleting stale player
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves stale player data even when provider is null (no crash)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves multiple stale players before deleting
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > disconnects socket by matching socket.playerId (not socket.id)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > gracefully handles stale player with no connected socket
+Player disconnected due to inactivity: p1
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > two players in range both heal (HP + MS capped)
+Player disconnected: GqrkPZuCyASrro2aAAAB
+Player disconnected: hFiRJj3EQ8DU8owzAAAD
+
+stdout | server/test/server.test.js > run state > quest-objective-near-complete debug scenario > leaves one low-HP enemy and reaches victory when it is defeated
+[loot] magic stone drop id=57ddc686-53e6-4fe6-939e-4e5bdd4452b8 value=20 at (5.0, 0.0)
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > captureRunCheckpoint and restoreRunCheckpoint preserve telepipe and enemies
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > tryEnterTelepipe extracts one player while another remains active
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > suspendRunToLobby when all players have extracted
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady restores checkpoint instead of spawning a fresh run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+Server listening on port 0
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > resume does not instantly re-extract players restored at the portal
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > abandonSuspendedRun clears checkpoint and run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady injects telepipe for telepipe-ready debug scenario
+[loot] spawned id=078c1eb9-f60f-44cf-a023-eb1b06ae1998 value=5
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady staggers spawn positions for multiple players
+[loot] spawned id=01360e8f-c571-439e-84fe-e9b93abae024 value=18
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > portal proximity grace prevents immediate extraction after placement
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > single extract keeps dungeon running until all players leave
+[telepipe] player p1 extracted
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+Player connected: socket=mv-e_I8J0Dnpvq0pAAAF, playerId=p1-1780650539261
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > run state > variant enemy bonus drops > spawns an extra magic-stone loot entry for a variant enemy
+[loot] magic stone drop id=e42ceebe-f968-4cad-b66b-741880836810 value=20 at (4.0, -2.0)
+[loot] variant bonus magic stone drop id=da67bc40-d839-4c7d-9d34-a3afc20773fc value=15 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > run state > variant enemy bonus drops > spawns only the normal magic-stone loot entry for a non-variant enemy
+[loot] magic stone drop id=1aba60b3-c41a-4302-a54d-ea8acec13f67 value=20 at (4.0, -2.0)
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+Player connected: socket=Rh-NAW1zwHOY5XlgAAAH, playerId=p2-1780650539271
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardSellValue returns configured sell prices
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardBuyValue is double the sell value
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > pickShopOffer returns a valid card from the shop pool
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard grants a card and deducts gold
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard adds to inventory only when the selected deck is full
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard rejects insufficient gold
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > canSellCardInstance rejects selling deck-required copies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > sellCard removes an extra copy and grants currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > offerCardTrade and respondCardTrade swap one instance each
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > respondCardTrade reject does not mutate inventories
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+Player connected: socket=9gxLVQJZrsN4NDxhAAAJ, playerId=p3-1780650539278
+
+stdout | server/test/server.test.js > spawnEnemy() variant field > produces variant (tag or null) on every combat spawn
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=86bbb6ec-5e61-4a70-807c-cf58b4044cd0 value=18
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > produces quest.enemyCount enemies drawn from the default quest pool
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals and combat enemies for crystal rescue
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals and combat enemies for crystal rescue
+[crystal] spawned id=3632c496-c698-4968-8f93-1c7843de8074 at (24.7, -8.4)
+[crystal] spawned id=37919363-819c-4c44-b0d0-6614404a6ea0 at (6.4, 13.6)
+[crystal] spawned id=ebb5abc2-d53c-4b0d-8b74-67f7b0985d4c at (28.3, 27.4)
+[loot] spawned id=3aa6093a-f1fe-40ae-9530-284ee5ac50fc value=8
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places crystal rescue enemies near the start room
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places crystal rescue enemies near the start room
+[crystal] spawned id=d8d0a7cb-e0bf-4551-9016-95f39e55f49d at (24.7, -8.4)
+[crystal] spawned id=c2aa8503-88f7-48b5-a523-1635641e7a95 at (6.4, 13.6)
+[crystal] spawned id=5b844dc8-6471-4576-ab53-4ce9262f198f at (28.3, 27.4)
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > out-of-range player unchanged
+Player disconnected: mv-e_I8J0Dnpvq0pAAAF
+Player disconnected: Rh-NAW1zwHOY5XlgAAAH
+Player disconnected: 9gxLVQJZrsN4NDxhAAAJ
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > enemy spawn positions exclude the start room when combat rooms exist
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > loot spawn positions prefer treasure room when one exists
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns false for a position in the center of a room
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns true for a position inside a wall
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > accepts a custom radius parameter
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+Server listening on port 0
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > defaults to ENTITY_RADIUS when radius is omitted
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > moves entity toward target in open space
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > reaches target when distance is less than maxDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached when entity is already within stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > respects custom stopDistance option
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: true after direct move lands within stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after wall-slide leaves entity beyond stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after direct move when entity remains farther than stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > clamps final position to dungeon bounds
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns blocked when direct movement hits a wall and both axes are blocked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > performs wall-slide when direct movement is blocked but one axis is free
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > wall-slide moves only the free axis when the other is blocked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+Player connected: socket=gWis2Eu1tnC5yQguAAAL, playerId=p1-1780650539298
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > is deterministic — no timers, randomness, or socket emissions
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > uses custom radius from options
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > assigns entity x and z only to the validated final position
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+Player connected: socket=IJd8vmkQT7-apNGrAAAN, playerId=p2-1780650539306
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+[loot] spawned id=900dc6fb-3f78-43fc-a750-469b02be1fa7 value=19
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > dead players skipped
+Player disconnected: gWis2Eu1tnC5yQguAAAL
+Player disconnected: IJd8vmkQT7-apNGrAAAN
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+Server listening on port 0
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+Player connected: socket=JwK1Ro4GhkFsCUj_AAAP, playerId=p1-1780650539321
+
+ ✓ |server| server/test/server.test.js (364 tests) 96ms
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+Player connected: socket=Pir1GRz0bM4wKmVJAAAR, playerId=p2-1780650539331
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+[loot] spawned id=c06b6479-5629-4525-be34-8bcaeeb80926 value=20
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > cooldown gate: reusing within 7s returns on_cooldown
+Player disconnected: JwK1Ro4GhkFsCUj_AAAP
+Player disconnected: Pir1GRz0bM4wKmVJAAAR
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > caster self-heals (included in AoE)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > caster self-heals (included in AoE)
+Server listening on port 0
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > caster self-heals (included in AoE)
+Player connected: socket=OI_Brgr1Gtosu87cAAAT, playerId=solo-1780650539348
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > caster self-heals (included in AoE)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > caster self-heals (included in AoE)
+[loot] spawned id=2d39e45b-214c-4267-92e9-11d36b91d26a value=16
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > caster self-heals (included in AoE)
+Player disconnected: OI_Brgr1Gtosu87cAAAT
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+Server listening on port 0
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+Player connected: socket=ax6SfzZQyt_rgKOJAAAV, playerId=p1-1780650539359
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+Player connected: socket=NoIggrXbNsq4hQqHAAAX, playerId=p2-1780650539367
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+[loot] spawned id=87776f6f-6f21-40a0-9773-88cc774db90c value=13
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > broadcasts keyItemHealPulse to all lobby clients with caster position and healRadius
+Player disconnected: ax6SfzZQyt_rgKOJAAAV
+Player disconnected: NoIggrXbNsq4hQqHAAAX
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+Server listening on port 0
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+Player connected: socket=7xrNcYFhRJH-AM1aAAAZ, playerId=p1-1780650539385
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+Player connected: socket=UKvuY_GC478Ti9IYAAAb, playerId=p2-1780650539395
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+[loot] spawned id=6fc69580-6c86-4206-82f6-6694f531f404 value=18
+
+stdout | server/test/field_medic_kit.test.js > useKeyItem — field_medic_kit > HP and MS are capped at MAX_HP and MAX_MAGIC_STONES
+Player disconnected: 7xrNcYFhRJH-AM1aAAAZ
+Player disconnected: UKvuY_GC478Ti9IYAAAb
+
+ ✓ |server| server/test/field_medic_kit.test.js (7 tests) 223ms
+
+ Test Files  2 passed (2)
+      Tests  371 passed (371)
+   Start at  02:08:58
+   Duration  1.14s (transform 3ms, setup 0ms, collect 262ms, tests 319ms, environment 0ms, prepare 150ms)
+
+ % Coverage report from v8
+----------|---------|----------|---------|---------|----------------------------
+File      | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s          
+----------|---------|----------|---------|---------|----------------------------
+All files |   77.59 |    61.53 |   54.76 |   77.59 |                            
+ index.js |   77.59 |    61.53 |   54.76 |   77.59 | ...212,1274-1280,1312-1313 
+----------|---------|----------|---------|---------|----------------------------
