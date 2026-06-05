@@ -40,7 +40,9 @@ import {
 	DISCONNECT_GRACE_MS,
 	runGameLoopTick,
 	processPassiveDraws,
+	HUB_LAYOUT,
 } from '../index.js';
+import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
 import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
@@ -322,7 +324,11 @@ async function closeServer() {
 }
 
 function firstRoomSpawn() {
-	const first = testGameState().layout.rooms[0];
+	const state = testGameState();
+	if (state.gamePhase === 'lobby') {
+		return hubSpawnPosition(HUB_LAYOUT);
+	}
+	const first = state.layout.rooms[0];
 	return { x: first.x, z: first.z };
 }
 
@@ -524,6 +530,22 @@ describe('Socket Integration — Move Event', () => {
 	afterEach(async () => {
 		if (socket && socket.connected) socket.disconnect();
 		await closeServer();
+	});
+
+	it('lobby phase move stores input and integrates against HUB_LAYOUT', async () => {
+		expect(testGameState().gamePhase).toBe('lobby');
+		const player = testGameState().players[socket._playerId];
+		const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+		expect(player.x).toBeCloseTo(hubSpawn.x, 1);
+		expect(player.z).toBeCloseTo(hubSpawn.z, 1);
+
+		const xBefore = player.x;
+		socket.emit('move', { dx: 1, dz: 0, rotation: 0, sequence: 1 });
+		await sleep(120);
+
+		expect(player.inputDx).toBe(1);
+		expect(player.inputActive).toBe(true);
+		expect(player.x).toBeGreaterThan(xBefore);
 	});
 
 	it('emits move and server broadcasts stateUpdate with new position', async () => {
@@ -954,13 +976,14 @@ describe('Socket Integration — useCard Event', () => {
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'monster-card' });
 		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
 
-		const initUpdate = await waitForEvent(socket, 'stateUpdate');
-		const playerKey = Object.keys(initUpdate.players).find(
-			k => initUpdate.players[k].debugScenario === 'monster-card'
+		const gs = testGameState();
+		const playerKey = Object.keys(gs.players).find(
+			k => gs.players[k].debugScenario === 'monster-card'
 		);
 		expect(playerKey).toBeDefined();
-		const playerData = initUpdate.players[playerKey];
+		const playerData = gs.players[playerKey];
 
 		const monsterSlot = playerData.hand.findIndex(c => c && c.type === 'creature');
 		expect(monsterSlot).toBeGreaterThanOrEqual(0);
@@ -1338,6 +1361,103 @@ describe('Server hand authority — useCard validation', () => {
 		expect(player.hand[weaponSlot]).toBeNull();
 		expect(player.deck.length).toBe(deckSizeBefore);
 		expect(player.nextDrawAt).toBeTypeOf('number');
+	});
+});
+
+describe('Socket Integration — in-run deckUpdate', () => {
+	let baseUrl, socket;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+		socket = (await connectClient(baseUrl)).socket;
+	});
+
+	afterEach(async () => {
+		if (socket && socket.connected) socket.disconnect();
+		await closeServer();
+	});
+
+	it('emits deckUpdate to the acting player after useCard changes hand', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		const weaponSlot = player.hand.findIndex((c) => c && c.type === 'weapon');
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+		const handBefore = player.hand.map((c) => (c ? c.id : null));
+
+		testGameState().enemies.push({
+			id: 'e_deck_update',
+			type: 'grunt',
+			x: player.x + 3,
+			z: player.z,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z },
+		});
+
+		player.hand[weaponSlot].remainingCharges = 1;
+
+		const deckUpdatePromise = waitForEvent(socket, 'deckUpdate');
+		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		const deckUpdate = await deckUpdatePromise;
+
+		expect(Array.isArray(deckUpdate.hand)).toBe(true);
+		expect(deckUpdate.hand[weaponSlot]).toBeNull();
+		expect(deckUpdate.hand).not.toEqual(handBefore);
+		expect(Array.isArray(deckUpdate.deck)).toBe(true);
+		expect(deckUpdate.deck).toEqual(player.deck);
+		expect(typeof deckUpdate.inDesperation).toBe('boolean');
+		expect(deckUpdate).toHaveProperty('desperationDeck');
+		expect(deckUpdate).toHaveProperty('nextDrawAt');
+		expect(deckUpdate.returnRewardsPreview).toEqual(expect.objectContaining({
+			lootCurrency: expect.any(Number),
+			objectiveComplete: expect.any(Boolean),
+		}));
+	});
+
+	it('does not emit in-run deckUpdate to other players in the lobby', async () => {
+		if (socket && socket.connected) socket.disconnect();
+		const { socket1, socket2, lobbyId } = await connectTwoClients(baseUrl);
+		const state = lobbyGameState(lobbyId);
+
+		const debugResultPromise = waitForEvent(socket1, 'debugScenarioResult');
+		socket1.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket1, 'stateUpdate');
+
+		const player = state.players[socket1._playerId];
+		const weaponSlot = player.hand.findIndex((c) => c && c.type === 'weapon');
+		expect(weaponSlot).toBeGreaterThanOrEqual(0);
+		const weaponCard = player.hand[weaponSlot];
+
+		state.enemies.push({
+			id: 'e_deck_update_b',
+			type: 'grunt',
+			x: player.x + 3,
+			z: player.z,
+			hp: 100,
+			state: 'idle',
+			wanderTarget: { x: player.x + 3, z: player.z },
+		});
+
+		player.hand[weaponSlot].remainingCharges = 1;
+
+		let socket2DeckUpdate = false;
+		socket2.on('deckUpdate', () => { socket2DeckUpdate = true; });
+
+		const deckUpdatePromise = waitForEvent(socket1, 'deckUpdate');
+		socket1.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		await deckUpdatePromise;
+
+		await new Promise((resolve) => setTimeout(resolve, 100));
+		expect(socket2DeckUpdate).toBe(false);
+
+		socket1.disconnect();
+		socket2.disconnect();
 	});
 });
 
@@ -2987,28 +3107,26 @@ describe('Server Ready Validation and Deck-to-Hand', () => {
 		// Wait for startGame
 		await Promise.all([startGamePromise1, startGamePromise2]);
 
-		// Wait for stateUpdate broadcast after game start
-		const stateUpdatePromise = waitForEvent(socket1, 'stateUpdate');
-		const stateUpdate = await stateUpdatePromise;
+		// Deck/hand are cold fields — verify from authoritative server state, not tick broadcasts
+		const player1 = testGameState().players[socket1._playerId];
+		const player2 = testGameState().players[socket2._playerId];
 
-		// Verify each player has a populated deck (4 cards drawn into hand, rest remain in deck)
-		expect(stateUpdate.players[socket1._playerId]).toBeDefined();
-		expect(Array.isArray(stateUpdate.players[socket1._playerId].deck)).toBe(true);
+		expect(player1).toBeDefined();
+		expect(Array.isArray(player1.deck)).toBe(true);
 		// 4 cards are dealt into hand, so deck should have selectedDeck.length - 4
-		expect(stateUpdate.players[socket1._playerId].deck.length).toBe(deck1.length - 4);
+		expect(player1.deck.length).toBe(deck1.length - 4);
 
 		// The deck + hand should contain the same card ids as selectedDeck (shuffled)
-		const player1 = testGameState().players[socket1._playerId];
-		const deck1Cards = stateUpdate.players[socket1._playerId].deck
+		const deck1Cards = player1.deck
 			.map((entry) => cardIdForDeckEntry(entry, player1.inventory));
 		const hand1Cards = player1.hand.filter(c => c).map(c => c.id);
 		const allCards = [...deck1Cards, ...hand1Cards].sort();
 		const selected1Sorted = selectedDeckCardIds(player1, deck1).sort();
 		expect(allCards).toEqual(selected1Sorted);
 
-		expect(stateUpdate.players[socket2._playerId]).toBeDefined();
-		expect(Array.isArray(stateUpdate.players[socket2._playerId].deck)).toBe(true);
-		expect(stateUpdate.players[socket2._playerId].deck.length).toBe(deck2.length - 4);
+		expect(player2).toBeDefined();
+		expect(Array.isArray(player2.deck)).toBe(true);
+		expect(player2.deck.length).toBe(deck2.length - 4);
 	});
 });
 
@@ -4384,7 +4502,7 @@ describe('Fixed tick movement — no elapsed teleport', () => {
 
 // ── Hand Reconciliation ──
 
-describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
+describe('Hand reconciliation — remainingCharges via deckUpdate', () => {
 	let baseUrl, socket;
 
 	beforeEach(async () => {
@@ -4397,7 +4515,7 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 		await closeServer();
 	});
 
-	it('server corrections to remainingCharges are reflected in the client stateUpdate payload', async () => {
+	it('server corrections to remainingCharges are reflected in deckUpdate after card play', async () => {
 		// Enter playing phase
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
 		socket.emit('debugScenario', { name: 'summon-ready' });
@@ -4423,26 +4541,43 @@ describe('Hand reconciliation — remainingCharges via stateUpdate', () => {
 			wanderTarget: { x: player.x + 3, z: player.z }
 		});
 
-		// Listen for stateUpdate after card use — it should contain the corrected remainingCharges
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		player.hand[weaponSlot].remainingCharges = 1;
 
+		const deckUpdatePromise = waitForEvent(socket, 'deckUpdate');
 		socket.emit('useCard', { cardId: weaponCard.id, slotIndex: weaponSlot });
+		const deckUpdate = await deckUpdatePromise;
 
-		const stateUpdate = await stateUpdatePromise;
-
-		// Verify the stateUpdate contains the player's hand with updated remainingCharges
-		expect(stateUpdate.players).toBeDefined();
-		expect(stateUpdate.players[socket._playerId]).toBeDefined();
-		expect(stateUpdate.players[socket._playerId].hand).toBeDefined();
-		const handInPayload = stateUpdate.players[socket._playerId].hand;
-		const updatedCard = handInPayload[weaponSlot];
-		expect(updatedCard).toBeDefined();
-		expect(updatedCard.id).toBe(weaponCard.id);
-		// remainingCharges should have decreased by 1 (server correction)
-		expect(updatedCard.remainingCharges).toBe(chargesBefore - 1);
+		expect(Array.isArray(deckUpdate.hand)).toBe(true);
+		expect(deckUpdate.hand[weaponSlot]).toBeNull();
 
 		// Also verify the server gameState reflects the same
-		expect(player.hand[weaponSlot].remainingCharges).toBe(chargesBefore - 1);
+		expect(player.hand[weaponSlot]).toBeNull();
+		expect(chargesBefore).toBeGreaterThan(0);
+	});
+
+	it('tick stateUpdate omits cold deck fields while server state retains them', async () => {
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'summon-ready' });
+		await debugResultPromise;
+		await waitForEvent(socket, 'stateUpdate');
+
+		const player = testGameState().players[socket._playerId];
+		expect(Array.isArray(player.hand)).toBe(true);
+		expect(player.hand.some((card) => card)).toBe(true);
+
+		const tickUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const tickUpdate = await tickUpdatePromise;
+		const tickPlayer = tickUpdate.players[socket._playerId];
+
+		expect(tickPlayer).toBeDefined();
+		expect(tickPlayer.hand).toBeUndefined();
+		expect(tickPlayer.deck).toBeUndefined();
+		expect(tickPlayer.inventory).toBeUndefined();
+		expect(tickPlayer.returnRewardsPreview).toBeUndefined();
+
+		const authoritative = testGameState().players[socket._playerId];
+		expect(Array.isArray(authoritative.hand)).toBe(true);
+		expect(authoritative.hand.some((card) => card)).toBe(true);
 	});
 });
 

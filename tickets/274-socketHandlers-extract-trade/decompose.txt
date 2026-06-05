@@ -1,0 +1,17 @@
+s
+Read
+path
+/home/matt/workspace/.autogame-worktrees/274-socketHandlers-extract-trade/tickets/274-socketHandlers-extract-trade/log.txt
+
+Grep
+path
+/home/matt/workspace/.autogame-worktrees/274-socketHandlers-extract-trade/game/server/socketHandlers/lobbyHandlers.js
+pattern
+deckHandlers
+
+Glob
+glob_pattern
+**/275*/**
+target_directory
+/home/matt/workspace/.autogame-worktrees/274-socketHandlers-extract-trade/tickets
+

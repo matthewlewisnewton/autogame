@@ -1,6 +1,17 @@
-`LOGBOOK.md` is resolved. Both sides were independent log entries that landed at the same spot after `v0.222`, so I kept **both** in ascending version order:
+Both conflicted files are resolved and marker-free.
 
-1. **v0.224 — 273-socketHandlers-extract-deck** (from `main`) — deck handler extraction review
-2. **v0.225 — 230-hub-client-render** (this ticket) — hub client render / transparent lobby overlay review
+### `LOGBOOK.md`
+Kept all **main** review entries (v0.226 trade extraction, v0.229 keyitem extraction, v0.228 net-slim broadcast, v0.230 hub lobby movement) and appended the **ticket** entry (v0.231 telepipe suspend/resume) at the end in chronological order.
 
-All conflict markers are removed. The file follows the existing logbook pattern (newer versions toward the bottom). No other conflicted files were listed. The harness can commit and finish the merge.
+### `game/server/test/field_medic_kit.test.js`
+Kept **main**’s widened assertion for the out-of-range player magic-stones check:
+
+```javascript
+const p3MsAfter = playerForSocket(players[2].socket).magicStones;
+// Out-of-range player must not receive the +3 MS restore; only ambient regen may apply.
+expect(p3MsAfter).toBeLessThan(p3MsBefore + 1);
+```
+
+This supersedes the ticket’s `toBeCloseTo(p3MsBefore, 1)` precision tweak while preserving the same intent (unblock the flaky local-checks gate): it allows fractional ambient MS regen but still asserts the player did not receive the +3 kit restore.
+
+`field_medic_kit.test.js` — 7/7 tests passing. Ready for the harness to commit and complete the merge.

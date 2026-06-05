@@ -121,6 +121,9 @@ const {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  buildMovementContext,
+  buildHubMovementContext,
+  hubSpawnPosition,
   applyPlayerMovement,
   flushDirtyPlayerSaves,
   segmentAABBEntryT,
@@ -258,6 +261,7 @@ const {
   createDrawDeckFromSelectedDeck,
   drawCardFromDeck,
   initPlayerHand,
+  emitPlayerDeckUpdate,
   drawReplacementCard,
   discardCardFromHand,
   isPlayerOutOfCards,
@@ -281,6 +285,7 @@ const {
   checkAllReady,
   assignRunSpawnPositions,
   stateSnapshot,
+  hotStateSnapshot,
   checkTelepipeProximity,
   abandonSuspendedRun,
   captureRunCheckpoint,
@@ -925,7 +930,12 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   }
 
   if (isLobbyPhase(state)) {
-    revivePlayerInLobby(state.players[playerId]);
+    const lobbyPlayer = state.players[playerId];
+    revivePlayerInLobby(lobbyPlayer);
+    const hubSpawn = hubSpawnPosition(HUB_LAYOUT);
+    lobbyPlayer.x = hubSpawn.x;
+    lobbyPlayer.z = hubSpawn.z;
+    lobbyPlayer.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, hubSpawn.x, hubSpawn.z));
   }
 
   if (options.dropIn) {
@@ -1082,8 +1092,11 @@ function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
     withLobbyContext(lobby, () => {
       const state = lobby.state;
-      if (isPlayingPhase(state)) {
-        applyPlayerMovement();
+      if (isLobbyPhase(state)) {
+        applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+        flushDirtyPlayerSaves();
+      } else if (isPlayingPhase(state)) {
+        applyPlayerMovement(state, buildMovementContext(state));
         checkTelepipeProximity();
         flushDirtyPlayerSaves();
         updateEnemies();
@@ -1126,7 +1139,7 @@ function runGameLoopTick() {
         state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
       }
 
-      const snapshot = stateSnapshot();
+      const snapshot = hotStateSnapshot();
       io.to(lobby.id).emit('stateUpdate', snapshot);
     });
   }
@@ -1363,6 +1376,7 @@ if (typeof module !== 'undefined' && module.exports) {
     reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,
+    hotStateSnapshot,
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
@@ -1405,6 +1419,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createDrawDeckFromSelectedDeck,
     drawCardFromDeck,
     initPlayerHand,
+    emitPlayerDeckUpdate,
     drawReplacementCard,
     replaceConsumedCard,
     exhaustHandSlot,

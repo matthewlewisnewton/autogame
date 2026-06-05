@@ -3989,6 +3989,97 @@ None blocking. One non-blocking nit (test-stderr noise from the renderer's
 `/models/player.glb` URL parse under jsdom) is recorded in `nits.md`.
 
 
+## v0.226 — 274-socketHandlers-extract-trade  (2026-06-05 00:44:53)
+
+### Trade handlers moved and registered
+
+PASS. `game/server/socketHandlers/tradeHandlers.js` now owns the `offerCardTrade` and `respondCardTrade` socket listeners. `game/server/socketHandlers/deckHandlers.js` no longer registers those listeners or imports their progression helpers, and `game/server/socketHandlers/lobbyHandlers.js` imports and calls `tradeHandlers.register(socket, ctx)` alongside `deckHandlers.register(socket, ctx)`. The extracted handlers preserve the prior event names, lobby-phase gating, `findSocketByPlayerId` notifications, inventory update payloads, and persistence calls.
+
+### Tests green
+
+PASS. I ran `pnpm test:quick` from `game/`; it completed successfully with 92 test files passed and 1854 tests passed. Existing integration coverage still exercises the socket-level trade offer, accept, and reject flows through `offerCardTrade` and `respondCardTrade`.
+
+### Design and requirements consistency
+
+PASS. The change is an internal server socket-handler extraction and does not alter the documented lobby, dungeon, combat, loot, or movement foundations. The captured smoke run still demonstrates the requirements baseline: the game renders, connects frontend to backend over sockets, shows multiplayer state, and synchronizes movement/gameplay.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any `?debugScenario=...` shortcut or debug scenario implementation.
+
+## Remaining gaps
+
+None.
+
+## v0.229 — 275-socketHandlers-extract-keyitem  (2026-06-05 02:10:56)
+
+## Per-Criterion Findings
+
+### Runtime health
+PASS. The captured run loaded successfully: `metrics.json` has `"ok": true`, no harness failure, and an empty `pageerrors` array. `console.log` contains only expected Vite connection lines plus 409 registration conflicts from the harness flow, with no `pageerror` or `[fatal]` entries from game code. `server.log` shows both players connecting, entering a generated dungeon, and disconnecting cleanly; `client.log` contains only explicitly benign THREE/Vite socket-close noise.
+
+### Key-item handlers moved and registered
+PASS. The live code now has `game/server/socketHandlers/keyItemHandlers.js` registering `listKeyItems`, `equipKeyItem`, and `useKeyItem`, while `game/server/socketHandlers/lobbyHandlers.js` imports that module and calls `keyItemHandlers.register(socket, ctx)` from the existing per-socket registration path. The extracted handlers still use the same context helpers and effect dispatch path as the pre-extraction inline handlers, so lobby-phase equip validation, key-item listing, persistence, and in-dungeon use dispatch remain wired through the authoritative server socket flow.
+
+### Tests green
+PASS. The latest `coverage.log` reports `server/test/server.test.js` and `server/test/field_medic_kit.test.js` passing, with `371 passed (371)`. Existing key-item socket coverage remains applicable because the public socket events and payloads did not change, and the changed field-medic and spawner assertions are limited to timing/float tolerance rather than behavior changes.
+
+### Design and foundation consistency
+PASS. The change is a server-side organization extraction only; it does not alter the documented lobby/dungeon/card loop, run suspend/resume behavior, rendering, WebSocket connectivity, multiplayer visualization, or movement synchronization requirements. The fallback capture exercised auth, lobby creation/join, ready transition, movement, and key-item use in normal gameplay with two connected players.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=NAME` shortcut, and the capture did not use a debug scenario.
+
+## Remaining gaps
+
+None.
+
+## v0.228 — 211-net-slim-per-tick-state-broadcast  (2026-06-05 01:15:06)
+
+## Acceptance criteria findings
+
+1. Split hot per-tick `stateUpdate` from cold per-player data: satisfied. The live server now builds `hotStateSnapshot()` in `game/server/progression.js` with position, hp, combat/status flags, enemies, minions, loot, run/lobby, quest, layout seed, shop, telepipe, and suspended-run summary fields. The 20Hz loop in `game/server/index.js` emits this hot snapshot from `runGameLoopTick()`, while the full `stateSnapshot()` remains available for one-shot full syncs and transition paths. Tests assert tick-emitted `stateUpdate` omits `deck`, `hand`, `inventory`, `ownedCards`, `selectedDeck`, `runRewards`, `returnRewardsPreview`, `inDesperation`, `nextDrawAt`, and related cold fields while server state retains them.
+
+2. Hoist lobby-level computes and stop hot-path inventory cloning: satisfied. `ensureShopOffer()` and `buildSuspendedRunSummary()` are computed once per snapshot and shared through `buildWorldSnapshot()`. `stateSnapshot()` no longer deep-clones inventory per player, and the periodic path no longer includes inventory at all.
+
+3. Cold state changes use existing reconciliation events without UI desync: satisfied. `emitPlayerDeckUpdate()` sends in-run `deckUpdate` payloads with `deck`, `hand`, `desperationDeck`, `inDesperation`, `nextDrawAt`, and reward preview data to the owning socket. Hand/deck mutation helpers call it for opening hands, passive draws, discards, exhausted cards, and card effects. Existing lobby collection mutations continue through `deckUpdate` or `cardInventoryUpdate`. The client `stateUpdate` handler in `game/client/main.js` guards all cold-field reads and preserves last-known collection/hand data when slim ticks omit those fields; the `deckUpdate` handler applies in-run hand, draw pile, desperation, HUD, and deck-visual updates. The capture probes show no hand, deck, inventory, or cooldown HUD desync after deploy, movement, and dodge cooldown.
+
+4. Design and foundation consistency: satisfied. The changes preserve the documented lobby-to-dungeon multiplayer loop and do not alter combat, movement, dungeon generation, authentication, or rendering foundations. The captured run still renders the Three.js scene, connects two players over sockets, transitions from lobby to dungeon, synchronizes movement, and updates HUD state.
+
+5. Debug scenarios: no ticket-added debug scenario was found. Existing debug-scenario usage remains test-only/socket-driven and was not introduced as a normal gameplay entry point by this ticket.
+
+## Verification notes
+
+The branch includes focused server and client tests for the new split: tick payload shape, in-run `deckUpdate`, and client reconciliation for slim playing updates. The supplied `coverage.log` completed 1163 passing tests and 1 failing test in `server/test/account.test.js` where `/api/register` returned 500 instead of 201 for the unrelated `modelUser` account profile test. I did not find an intersection between that failure and this ticket's changed files or runtime behavior, and the live capture demonstrated successful auth/lobby/gameplay flow.
+
+## Remaining gaps
+
+No blocking gaps remain for this ticket.
+
+
+## v0.230 — 231-hub-lobby-phase-movement  (2026-06-05 02:58:43)
+
+PASS. Lobby movement uses `buildHubMovementContext(HUB_LAYOUT)`, which derives walkable AABBs, dungeon bounds, and wall colliders from the deterministic hub layout rather than the selected quest layout. Player Y is sampled from the hub floor, and lobby re-entry paths now seat players at the hub start room. The screenshots show the hub/lobby scene and subsequent movement/run flow rendering cleanly.
+
+### 3. Server validates like in-run move: finite, sequence, magnitude
+PASS. The shared `move` handler still rejects non-object payloads, non-finite `dx`/`dz`/`rotation`, invalid or stale sequence numbers, disconnected players, and normalizes oversized input vectors. Playing-only restrictions for dead/extracted players remain scoped to the run phase, which is appropriate for lobby movement.
+
+### 4. Test for lobby-phase move accept/bounds
+PASS. `server/test/lobby_hub_movement.test.js` covers accepting a lobby move, rejecting invalid payloads, rejecting stale sequence numbers, clamping sustained hub movement inside bounds/walkable AABBs, and resolving movement into a hub wall back to valid floor space. The coverage log shows this test file passed all 6 tests.
+
+### Design and foundation consistency
+PASS. The change matches the design goal that players gather and interact in a lobby before deploying, while preserving server-authoritative movement synchronization from the requirements. It also avoids adding new `_gameState` reads to the move path by threading explicit movement contexts through `applyPlayerMovement()`, `tryPlayerMove()`, `isInsideDungeon()`, and clamping.
+
+### Debug scenarios
+PASS / not applicable. This ticket did not add or change a `?debugScenario=` shortcut, and the round-2 capture used no debug scenarios.
+
+### Validation notes
+The coverage run itself reports one failing test in `server/test/cosmetic_runtime.test.js` (`PATCH /api/me/profile` returned 500 instead of 200), while `server/test/lobby_hub_movement.test.js` and the movement-related integration tests passed. I did not find a movement-ticket regression tied to that cosmetic runtime failure; it appears orthogonal to this ticket's acceptance criteria.
+
+## Remaining gaps
+
+None.
+
 ## v0.231 — 271-telepipe-hub-suspend-resume-integration  (2026-06-05 03:01:59)
 
 ## Preservation of run state
@@ -4010,4 +4101,3 @@ Ticket-relevant server tests for Telepipe suspend/resume and debug scenarios pas
 ## Remaining gaps
 
 No blocking gaps.
-

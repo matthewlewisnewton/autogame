@@ -397,7 +397,7 @@ function syncLevelSettingsRewards() {
 	}
 
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
-	const preview = me?.returnRewardsPreview;
+	const preview = me?.returnRewardsPreview ?? _lastReturnRewardsPreview;
 
 	if (!me || !gameState?.run || !preview) {
 		levelLootEarnedEl.textContent = 'Money this run: —';
@@ -1081,6 +1081,16 @@ function bindSocketHandlers(s) {
 		const enteringLobby = previousPhase !== 'lobby' && state.gamePhase === 'lobby';
 		const enteringPlaying = previousPhase !== 'playing' && state.gamePhase === 'playing';
 
+		if (enteringLobby) {
+			_lastReturnRewardsPreview = null;
+		} else if (me && state.gamePhase === 'playing') {
+			if (me.returnRewardsPreview != null) {
+				_lastReturnRewardsPreview = me.returnRewardsPreview;
+			} else if (_lastReturnRewardsPreview != null) {
+				gameState.players[myId].returnRewardsPreview = _lastReturnRewardsPreview;
+			}
+		}
+
 		if (isExtracted && state.gamePhase === 'playing') {
 			showExtractedLobbyOverlay();
 		} else if (state.gamePhase === 'lobby') {
@@ -1111,7 +1121,13 @@ function bindSocketHandlers(s) {
 			} else if (state.gamePhase === 'playing') {
 				updateHpBar(me.hp);
 				updateMsBar(me.magicStones);
-				updateDeckStats(me.deck, me.hand, me.inventory);
+				if (Array.isArray(me.deck) || Array.isArray(me.hand)) {
+					updateDeckStats(
+						Array.isArray(me.deck) ? me.deck : deck,
+						Array.isArray(me.hand) ? me.hand : hand,
+						Array.isArray(me.inventory) ? me.inventory : myInventory,
+					);
+				}
 				updateVanguardPortrait();
 			}
 		}
@@ -1147,7 +1163,12 @@ function bindSocketHandlers(s) {
 		}
 
 		if (state.gamePhase === 'playing' && myId && state.players[myId]) {
-			syncDrawPileFromServer();
+			const serverPlayer = state.players[myId];
+			if (Array.isArray(serverPlayer.deck)
+				|| Array.isArray(serverPlayer.desperationDeck)
+				|| serverPlayer.inDesperation != null) {
+				syncDrawPileFromServer();
+			}
 		}
 
 		// Prune pickup retry timestamps for loot that left the world
@@ -1284,6 +1305,24 @@ function bindSocketHandlers(s) {
 			myCurrency = data.currency;
 			updateCurrencyHud(myCurrency);
 		}
+
+		const inRun = gameState?.gamePhase === 'playing';
+		if (inRun) {
+			applyInRunDeckPayload(data);
+			if (Array.isArray(data.hand)
+				|| Array.isArray(data.deck)
+				|| Array.isArray(data.desperationDeck)
+				|| data.inDesperation != null) {
+				renderHand();
+				updateRunDeckTotal();
+				updateDeckStats(deck, hand, myInventory);
+				updateDeckVisuals();
+			}
+			if (data.returnRewardsPreview != null && isLevelSettingsOpen()) {
+				syncLevelSettingsRewards();
+			}
+		}
+
 		renderDeckEditor();
 		if (activeLobbyTab === 'forge') renderPhotonForge();
 		if (activeLobbyTab === 'shop') renderCardShop();
@@ -1656,6 +1695,7 @@ let _lastCurrency = undefined; // tracks previous currency value for flash-on-in
 let _lastMagicStones = undefined; // tracks previous MS for spend/gain flash
 let _prevDashX = null; // previous X for dash-VFX detection (survives stateUpdate)
 let _prevDashZ = null; // previous Z for dash-VFX detection (survives stateUpdate)
+let _lastReturnRewardsPreview = null; // survives slim tick stateUpdate while level settings is open
 
 function sameCollectionValue(a, b) {
 	try {
@@ -2220,19 +2260,67 @@ function updateRunDeckTotal() {
 	runDeckTotal = computeRunDeckTotal(deck.length, hand);
 }
 
+function applyInRunDeckPayload(data) {
+	if (!data) return;
+	if (Array.isArray(data.hand)) {
+		hand.length = 0;
+		for (let i = 0; i < data.hand.length; i++) {
+			hand[i] = data.hand[i] ? { ...data.hand[i] } : null;
+		}
+		if (gameState?.players?.[myId]) {
+			gameState.players[myId].hand = data.hand.map((card) => (card ? { ...card } : null));
+		}
+	}
+	if (Array.isArray(data.deck)) {
+		setDrawPile(data.deck);
+		if (gameState?.players?.[myId]) {
+			gameState.players[myId].deck = [...data.deck];
+		}
+	}
+	if (Array.isArray(data.desperationDeck)) {
+		setDesperationDrawPile(data.desperationDeck);
+		if (gameState?.players?.[myId]) {
+			gameState.players[myId].desperationDeck = [...data.desperationDeck];
+		}
+	}
+	if (data.inDesperation != null) {
+		setInDesperation(data.inDesperation);
+		if (gameState?.players?.[myId]) {
+			gameState.players[myId].inDesperation = data.inDesperation;
+		}
+	}
+	if (data.nextDrawAt !== undefined && gameState?.players?.[myId]) {
+		gameState.players[myId].nextDrawAt = data.nextDrawAt;
+	}
+	if (data.runRewards != null && gameState?.players?.[myId]) {
+		gameState.players[myId].runRewards = data.runRewards;
+	}
+	if (data.returnRewardsPreview != null) {
+		_lastReturnRewardsPreview = data.returnRewardsPreview;
+		if (gameState?.players?.[myId]) {
+			gameState.players[myId].returnRewardsPreview = data.returnRewardsPreview;
+		}
+	}
+}
+
 function syncDrawPileFromServer() {
 	const serverPlayer = gameState && myId && gameState.players[myId];
-	if (serverPlayer && Array.isArray(serverPlayer.deck)) {
+	if (!serverPlayer) return;
+	if (Array.isArray(serverPlayer.deck)) {
 		setDrawPile(serverPlayer.deck);
 	}
-	if (serverPlayer && Array.isArray(serverPlayer.desperationDeck)) {
+	if (Array.isArray(serverPlayer.desperationDeck)) {
 		setDesperationDrawPile(serverPlayer.desperationDeck);
 	}
-	if (serverPlayer && serverPlayer.inDesperation != null) {
+	if (serverPlayer.inDesperation != null) {
 		setInDesperation(serverPlayer.inDesperation);
 	}
 	updateRunDeckTotal();
-	updateDeckStats(deck, hand, serverPlayer?.inventory);
+	updateDeckStats(
+		deck,
+		hand,
+		Array.isArray(serverPlayer.inventory) ? serverPlayer.inventory : myInventory,
+	);
 	updateDeckVisuals();
 }
 
