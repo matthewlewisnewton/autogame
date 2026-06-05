@@ -1,0 +1,14 @@
+I broke the top-level ticket into 2 sub-tickets in dependency order. Created:
+
+- `/home/matt/workspace/.autogame-worktrees/230-hub-client-render/tickets/230-hub-client-render/subtickets/01-server-deliver-hub-layout/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/230-hub-client-render/tickets/230-hub-client-render/subtickets/02-client-render-hub-lobby/ticket.md`
+
+**Reasoning:**
+
+The ticket asks to render the hub stage via the existing world-stage renderer and spawn the local avatar during the lobby phase. I traced the actual code paths and found two distinct concerns:
+
+1. **Server gap (01):** During lobby the server only sends the quest dungeon `layout` (`emitLobbyJoined` in `server/index.js`); the `generateHub` layout from ticket 229 is never delivered to the client. The client can't render a hub it never receives, so the server must include `hubLayout` in the `lobbyJoined` payload.
+
+2. **Client render (02):** The renderer only calls `initScene` during `playing`; the lobby join path returns without building a scene. This sub-ticket renders the hub during lobby and spawns the local avatar — and critically handles the layout swaps I found are required: the `startGame` deploy handler has an `isSceneInitialized()` fast-path that would otherwise drop players into the hub geometry, and returning to lobby must rebuild back to the hub. Floor sampling in the animate loop reads `gameState.layout`, so that must point at the hub during lobby.
+
+**Verification: both `code`.** The ticket's own verification line calls for vitest server+client runs, and the AeCs ("hub layout present", "avatar mesh spawned", "walkable colliders built", "deploy rebuilds quest layout") are about structure/state/transitions — not a single happy-path screenshot. The `#lobby` DOM overlay is opaque fullscreen anyway, so visual QA of a normal lobby run would show nothing; I explicitly scoped the overlay/UI out as a potential follow-up.
