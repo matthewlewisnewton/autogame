@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import config from '../config.js';
+import { getQuest } from '../quests.js';
 import { DEFAULT_COSMETIC } from '../cosmetic.js';
 import { createLobbyGameState } from '../lobbies.js';
 import {
@@ -230,25 +231,27 @@ describe('QUEST_DEFS', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
 		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'endless_siege', 'spire_ascent', 'training_caverns']);
 
-		for (const quest of Object.values(QUEST_DEFS)) {
-			expect(quest.id).toBeTruthy();
-			expect(quest.name).toBeTruthy();
-			expect(quest.description).toBeTruthy();
-			expect(quest.objectiveType).toBeTruthy();
-			expect(typeof quest.rewardCurrency).toBe('number');
-			if (quest.objectiveType === 'defeat_enemies') {
-				expect(typeof quest.enemyCount).toBe('number');
+		for (const [questId, quest] of Object.entries(QUEST_DEFS)) {
+			expect(quest.id).toBe(questId);
+			expect(quest.tiers[1]).toBeTruthy();
+			const tier1 = quest.tiers[1];
+			expect(tier1.name).toBeTruthy();
+			expect(tier1.description).toBeTruthy();
+			expect(tier1.objectiveType).toBeTruthy();
+			expect(typeof tier1.rewardCurrency).toBe('number');
+			if (tier1.objectiveType === 'defeat_enemies') {
+				expect(typeof tier1.enemyCount).toBe('number');
 			}
-			if (quest.objectiveType === 'collect_items') {
-				expect(typeof quest.itemCount).toBe('number');
-				if (quest.enemyCount !== undefined) {
-					expect(typeof quest.enemyCount).toBe('number');
+			if (tier1.objectiveType === 'collect_items') {
+				expect(typeof tier1.itemCount).toBe('number');
+				if (tier1.enemyCount !== undefined) {
+					expect(typeof tier1.enemyCount).toBe('number');
 				}
 			}
-			if (quest.objectiveType === 'survive') {
-				expect(typeof quest.totalSpawns).toBe('number');
-				expect(typeof quest.minibossCount).toBe('number');
-				expect(quest.minibossCount).toBeLessThan(quest.totalSpawns);
+			if (tier1.objectiveType === 'survive') {
+				expect(typeof tier1.totalSpawns).toBe('number');
+				expect(typeof tier1.minibossCount).toBe('number');
+				expect(tier1.minibossCount).toBeLessThan(tier1.totalSpawns);
 			}
 		}
 	});
@@ -2164,10 +2167,10 @@ describe('run state', () => {
 			expect(typeof run.id).toBe('string');
 			expect(run).toHaveProperty('status', 'playing');
 			expect(run).toHaveProperty('questId', DEFAULT_QUEST_ID);
-			expect(run).toHaveProperty('questName', QUEST_DEFS.training_caverns.name);
+			expect(run).toHaveProperty('questName', getQuest('training_caverns').name);
 			expect(run).toHaveProperty('objective');
 			expect(run.objective).toHaveProperty('type', 'defeat_enemies');
-			expect(run.objective.label).toContain(QUEST_DEFS.training_caverns.name);
+			expect(run.objective.label).toContain(getQuest('training_caverns').name);
 			expect(run.objective).toHaveProperty('totalEnemies', 3);
 			expect(run.objective).toHaveProperty('defeatedEnemies', 0);
 			expect(run).toHaveProperty('startedAt');
@@ -2180,7 +2183,7 @@ describe('run state', () => {
 
 			expect(run.questId).toBe('crystal_rescue');
 			expect(run.objective.type).toBe('collect_items');
-			expect(run.objective.totalItems).toBe(QUEST_DEFS.crystal_rescue.itemCount);
+			expect(run.objective.totalItems).toBe(getQuest('crystal_rescue').itemCount);
 			expect(run.objective.collectedItems).toBe(0);
 		});
 
@@ -2188,7 +2191,7 @@ describe('run state', () => {
 			gameState.selectedQuestId = 'endless_siege';
 			const run = createRunState();
 
-			const quest = QUEST_DEFS.endless_siege;
+			const quest = getQuest('endless_siege');
 			expect(run.questId).toBe('endless_siege');
 			expect(run.objective.type).toBe('survive');
 			expect(run.objective.totalSpawns).toBe(quest.totalSpawns);
@@ -2448,8 +2451,8 @@ describe('run state', () => {
 			expect(summary).toHaveProperty('defeatedEnemies', 1);
 			expect(summary).toHaveProperty('currencyCollected', 15);
 			expect(summary).toHaveProperty('questId', DEFAULT_QUEST_ID);
-			expect(summary).toHaveProperty('questName', QUEST_DEFS.training_caverns.name);
-			expect(summary.rewards.currency).toBe(QUEST_DEFS.training_caverns.rewardCurrency);
+			expect(summary).toHaveProperty('questName', getQuest('training_caverns').name);
+			expect(summary.rewards.currency).toBe(getQuest('training_caverns').rewardCurrency);
 		});
 
 		it('sums currencyCollected from multiple players', () => {
@@ -2990,15 +2993,32 @@ describe('run state', () => {
 			const emitCalls = [];
 			const originalTo = serverIo.to;
 			const originalEmit = serverIo.emit;
+			const originalSockets = serverIo.sockets.sockets;
+			const lobbyId = gameState._lobbyId || 'test-lobby';
+
 			serverIo.to = () => ({
 				emit: (event, data) => emitCalls.push({ event, data }),
 			});
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			const mockMap = new Map();
+			for (const playerId of Object.keys(gameState.players)) {
+				const socketId = `mock-${playerId}`;
+				mockMap.set(socketId, {
+					id: socketId,
+					playerId,
+					rooms: new Set([lobbyId]),
+					emit: (event, data) => emitCalls.push({ event, data }),
+				});
+			}
+			serverIo.sockets.sockets = mockMap;
+
 			return {
 				emitCalls,
 				restore: () => {
 					serverIo.to = originalTo;
 					serverIo.emit = originalEmit;
+					serverIo.sockets.sockets = originalSockets;
 				},
 			};
 		}
@@ -3211,15 +3231,32 @@ describe('run state', () => {
 			const emitCalls = [];
 			const originalTo = serverIo.to;
 			const originalEmit = serverIo.emit;
+			const originalSockets = serverIo.sockets.sockets;
+			const lobbyId = gameState._lobbyId || 'test-lobby';
+
 			serverIo.to = () => ({
 				emit: (event, data) => emitCalls.push({ event, data }),
 			});
 			serverIo.emit = (event, data) => emitCalls.push({ event, data });
+
+			const mockMap = new Map();
+			for (const playerId of Object.keys(gameState.players)) {
+				const socketId = `mock-${playerId}`;
+				mockMap.set(socketId, {
+					id: socketId,
+					playerId,
+					rooms: new Set([lobbyId]),
+					emit: (event, data) => emitCalls.push({ event, data }),
+				});
+			}
+			serverIo.sockets.sockets = mockMap;
+
 			return {
 				emitCalls,
 				restore: () => {
 					serverIo.to = originalTo;
 					serverIo.emit = originalEmit;
+					serverIo.sockets.sockets = originalSockets;
 				},
 			};
 		}
@@ -4765,10 +4802,10 @@ describe('spawnEnemies() mixed pack', () => {
 		gameState.enemies = [];
 		spawnEnemies();
 		// Bulk spawning now draws each type from the selected quest's enemyPool.
-		const quest = QUEST_DEFS[DEFAULT_QUEST_ID];
+		const quest = getQuest(DEFAULT_QUEST_ID);
 		expect(gameState.enemies.length).toBe(quest.enemyCount);
 
-		const allowed = new Set(quest.enemyPool.map(entry => entry.type));
+		const allowed = new Set(QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool.map(entry => entry.type));
 		for (const e of gameState.enemies) {
 			expect(allowed.has(e.type)).toBe(true);
 		}
@@ -4782,8 +4819,8 @@ describe('spawnEnemies() mixed pack', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		spawnEnemies();
-		expect(gameState.enemies.length).toBe(QUEST_DEFS.crystal_rescue.enemyCount);
-		expect(gameState.loot.filter(l => l.kind === 'crystal').length).toBe(QUEST_DEFS.crystal_rescue.itemCount);
+		expect(gameState.enemies.length).toBe(getQuest('crystal_rescue').enemyCount);
+		expect(gameState.loot.filter(l => l.kind === 'crystal').length).toBe(getQuest('crystal_rescue').itemCount);
 	});
 
 	it('places crystal rescue enemies near the start room', () => {

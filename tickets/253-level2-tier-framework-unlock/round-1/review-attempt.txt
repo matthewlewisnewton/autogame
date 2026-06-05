@@ -1,0 +1,12 @@
+Completed the senior review.
+
+`review.md` verdict is `VERDICT: FAIL`.
+
+Wrote:
+- `tickets/253-level2-tier-framework-unlock/round-1/review.md`
+- `tickets/253-level2-tier-framework-unlock/round-1/gaps.md`
+- `tickets/253-level2-tier-framework-unlock/round-1/nits.md`
+
+Main blocker: Tier 2 unlock state is not handled robustly per account across lobby clients. A newly unlocked player may not see Tier 2 immediately after clearing Tier 1, while locked clients can receive another player’s unlock map and locked squadmates can enter a Tier 2 run selected by an unlocked player.
+
+Validation: focused tier tests passed locally, but the round coverage log had one unrelated full-suite account persistence race noted in `nits.md`. No game code was edited.

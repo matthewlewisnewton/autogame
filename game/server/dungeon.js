@@ -90,12 +90,15 @@ const LAYOUT_PROFILES = {
 const SUNKEN_CANYON = {
   plateauSize: 13,
   canyonSize: OPEN_PLAZA.size, // 32 × 32 ⇒ ≥ 4× default room area
-  rampWidth: 4,
+  rampWidth: 6,
   rampDepth: 24,
   yDrop: 10,                  // plateau Y − canyon Y (≥ 8 required)
   spawnClearRadius: 6,
   interiorMargin: OPEN_PLAZA.interiorMargin,
-  rampXOffsets: [-3.5, 0, 3.5], // west / centre / east bridge positions
+  rampXOffsets: [-6, 0, 6], // west / centre / east; width 6 ⇒ footprints [-9,-3], [-3,3], [3,9]
+  // Lateral edge connectors (always placed): centre X aligns with canyon-edge probe
+  // (±(canyonHalf − 2)) so north-wall gaps and ramp floors reach the perimeter.
+  edgeProbeInset: 2,
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
@@ -115,10 +118,11 @@ function normalizeLayoutProfile(profile) {
   return { ...DEFAULT_LAYOUT_PROFILE, ...(profile || {}) };
 }
 
-function questLayoutSeed(questId) {
+function questLayoutSeed(questId, tier = 1) {
+  const seedKey = `${questId}:t${tier}`;
   let hash = 0;
-  for (let i = 0; i < questId.length; i++) {
-    hash = (hash * 31 + questId.charCodeAt(i)) | 0;
+  for (let i = 0; i < seedKey.length; i++) {
+    hash = (hash * 31 + seedKey.charCodeAt(i)) | 0;
   }
   return Math.abs(hash) || 1;
 }
@@ -569,9 +573,11 @@ function buildHorizontalWallWithGaps(z, roomX, totalLength, gapCenters, gapWidth
  * @param {number} opts.yLow - floor Y at the low edge
  * @param {'x'|'z'} opts.axis - 'z': high Y at north (−Z), low at south (+Z);
  *   'x': high at west (−X), low at east (+X)
+ * @param {boolean} [opts.openWest] - omit west side wall (axis 'z' only)
+ * @param {boolean} [opts.openEast] - omit east side wall (axis 'z' only)
  * @returns {object} room with floorCorners, side walls, band 'ramp'
  */
-function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis }) {
+function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest = false, openEast = false }) {
   const halfW = width / 2;
   const halfD = depth / 2;
   let floorCorners;
@@ -579,8 +585,8 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis }) {
 
   if (axis === 'z') {
     floorCorners = { yNW: yHigh, yNE: yHigh, ySE: yLow, ySW: yLow };
-    walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
-    walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
+    if (!openWest) walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
+    if (!openEast) walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
   } else {
     floorCorners = { yNW: yHigh, yNE: yLow, ySE: yLow, ySW: yHigh };
     walls.push({ x, z: z - halfD, length: width, axis: 'x' });
@@ -729,14 +735,27 @@ function generateSunkenCanyon(seed) {
   const plateauZ = rampNorthZ - plateauHalf;
   const plateauSouthZ = plateauZ + plateauHalf;
 
-  // Pick 2 or 3 ramp bridges at distinct X offsets.
+  // Pick 2 or 3 central ramp bridges; always add west/east edge connectors (4–5 ramps).
   const numRamps = 2 + Math.floor(rng() * 2);
-  const offsetPool = [...rampXOffsets];
-  for (let i = offsetPool.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [offsetPool[i], offsetPool[j]] = [offsetPool[j], offsetPool[i]];
+  const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
+  const centralRampCenters = numRamps === 2
+    ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
+    : sortedOffsets;
+  const rampHalfW = rampWidth / 2;
+  const edgeRampX = canyonHalf - SUNKEN_CANYON.edgeProbeInset - rampHalfW;
+  const edgeRampCenters = [-edgeRampX, edgeRampX];
+  const rampCenters = [...new Set([...edgeRampCenters, ...centralRampCenters])].sort((a, b) => a - b);
+  const rampIntervals = rampCenters.map(cx => ({
+    cx,
+    minX: cx - rampHalfW,
+    maxX: cx + rampHalfW,
+  }));
+
+  function isRampEdgeInsideOtherRamp(edgeX, ownCenterX) {
+    return rampIntervals.some(
+      ({ cx, minX, maxX }) => cx !== ownCenterX && edgeX > minX && edgeX < maxX
+    );
   }
-  const rampCenters = offsetPool.slice(0, numRamps);
 
   const ramps = rampCenters.map(rampX =>
     buildDescentRampRoom({
@@ -747,6 +766,8 @@ function generateSunkenCanyon(seed) {
       yHigh,
       yLow,
       axis: 'z',
+      openWest: isRampEdgeInsideOtherRamp(rampX - rampHalfW, rampX),
+      openEast: isRampEdgeInsideOtherRamp(rampX + rampHalfW, rampX),
     })
   );
 

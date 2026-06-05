@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { generateLayout } from '../dungeon.js';
-import { getLayoutProfileForQuest, getEnemyPool, QUEST_DEFS } from '../quests.js';
+import { getLayoutProfileForQuest, getEnemyPool, getQuest, QUEST_DEFS } from '../quests.js';
 import {
 	spawnEnemies,
 	updateSurviveSpawns,
@@ -38,7 +38,7 @@ describe('spawnCombatEnemies draws from the quest enemy pool', () => {
 
 	it('spawns exactly quest.enemyCount enemies', () => {
 		deployQuest('arena_trials');
-		expect(gameState.enemies.length).toBe(QUEST_DEFS.arena_trials.enemyCount);
+		expect(gameState.enemies.length).toBe(getQuest('arena_trials').enemyCount);
 	});
 
 	it('never spawns miniboss for pools without one (training_caverns, crystal_rescue)', () => {

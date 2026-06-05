@@ -1,0 +1,21 @@
+Broke the parent ticket into **4 sub-tickets** (dependency order). All use **code** verification — acceptance criteria are wall spacing, walkability, flood-fill, and bidirectional paths, not pure rendering.
+
+### Sub-ticket plan
+
+| # | Folder | Parent AC covered |
+|---|--------|-------------------|
+| 01 | `01-ramp-wall-dedupe` | Dedupe overlapping ramp side walls (x ≈ ±2 wedge) |
+| 02 | `02-widen-descent-ramps` | Widen `rampWidth` / disjoint ramp spans |
+| 03 | `03-canyon-edge-ascent` | Lateral edge ascent back to plateau |
+| 04 | `04-walkability-regression-tests` | Flood-fill + bidirectional walk regression tests |
+
+No prior `subtickets/` folders existed, so nothing was deleted.
+
+### Created paths
+
+```
+/home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/tickets/244-canyon-walkability-fixes/subtickets/01-ramp-wall-dedupe/ticket.md
+/home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/tickets/244-canyon-walkability-fixes/subtickets/02-widen-descent-ramps/ticket.md
+/home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/tickets/244-canyon-walkability-fixes/subtickets/03-canyon-edge-ascent/ticket.md
+/home/matt/workspace/.autogame-worktrees/244-canyon-walkability-fixes/tickets/244-canyon-walkability-fixes/subtickets/04-walkability-regression-tests/ticket.md
+```

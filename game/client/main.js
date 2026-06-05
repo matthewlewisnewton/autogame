@@ -5,6 +5,7 @@
 import {
 	formatObjectiveSummary,
 	formatRewardSummary,
+	formatQuestTierLabel,
 	renderQuestBoard,
 } from './questBoard.js';
 import {
@@ -476,8 +477,14 @@ function returnToGuildLobby(state, { refreshCollection = false } = {}) {
 				if (activeLobbyTab === 'keyitems') renderKeyItemList();
 			}
 		}
-		if (state.selectedQuestId && state.selectedQuestId !== selectedQuestId) {
-			applyQuestBoardState(null, state.selectedQuestId);
+		if (state.selectedQuestId && (
+			state.selectedQuestId !== selectedQuestId
+			|| (state.selectedQuestTier ?? 1) !== (selectedQuestTier ?? 1)
+		)) {
+			applyQuestBoardState({
+				selectedQuestId: state.selectedQuestId,
+				selectedQuestTier: state.selectedQuestTier,
+			});
 		}
 		renderSuspendedRunBanner(state);
 	}
@@ -504,7 +511,11 @@ function renderSuspendedRunBanner(state) {
 		} else if (objective && objective.type === 'defeat_enemies') {
 			progress = `${objective.defeatedEnemies}/${objective.totalEnemies} hostiles`;
 		}
-		suspendedRunBannerEl.textContent = `${THEME.run.resumeSortie}: ${summary.questName || THEME.run.unknownSector}${progress ? ` — ${progress}` : ''}`;
+		const questLabel = formatQuestTierLabel(
+			summary.questName || THEME.run.unknownSector,
+			summary.questTier ?? 1,
+		);
+		suspendedRunBannerEl.textContent = `${THEME.run.resumeSortie}: ${questLabel}${progress ? ` — ${progress}` : ''}`;
 		suspendedRunBannerEl.classList.remove('hidden');
 		if (abandonRunBtn) abandonRunBtn.classList.remove('hidden');
 		return;
@@ -607,7 +618,11 @@ function applyLobbyJoinedData(data) {
 		myCurrency = data.state.players[myId].currency || 0;
 	}
 	renderDeckEditor();
-	applyQuestBoardState(data.quests, data.selectedQuestId || (data.state && data.state.selectedQuestId));
+	applyQuestBoardFromPayload({
+		...data,
+		selectedQuestId: data.selectedQuestId || (data.state && data.state.selectedQuestId),
+		selectedQuestTier: data.selectedQuestTier ?? (data.state && data.state.selectedQuestTier),
+	});
 	if (activeLobbyTab === 'forge') renderPhotonForge();
 
 	if (data.accountId) {
@@ -1367,15 +1382,15 @@ function bindSocketHandlers(s) {
 				}
 			}
 		}
-		if (data.quests || data.selectedQuestId) {
-			applyQuestBoardState(data.quests, data.selectedQuestId);
+		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
+			applyQuestBoardFromPayload(data);
 		}
 	});
 
 	s.on('questUpdate', (data) => {
 		if (!data) return;
-		if (data.quests || data.selectedQuestId) {
-			applyQuestBoardState(data.quests, data.selectedQuestId);
+		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
+			applyQuestBoardFromPayload(data);
 		}
 		applyQuestLayoutFromServer(data);
 	});
@@ -1496,7 +1511,10 @@ let myOwnedCards = {};
 let lastEvolutionResult = null;
 let keyItemDefs = {};
 let availableQuests = [];
+let questVariants = [];
+let unlockedQuestTiers = {};
 let selectedQuestId = 'training_caverns';
+let selectedQuestTier = 1;
 let currentCardChoices = [];
 let claimedCardRewardId = null;
 let myCurrency = 0;
@@ -1540,10 +1558,22 @@ function syncLocalCollectionState(player) {
 	return changed;
 }
 
-function applyQuestBoardState(quests, questId) {
-	if (Array.isArray(quests)) availableQuests = quests;
-	if (typeof questId === 'string') selectedQuestId = questId;
+function applyQuestBoardFromPayload(data) {
+	if (!data) return;
+	if (Array.isArray(data.quests)) availableQuests = data.quests;
+	if (Array.isArray(data.questVariants)) questVariants = data.questVariants;
+	if (data.unlockedQuestTiers && typeof data.unlockedQuestTiers === 'object') {
+		unlockedQuestTiers = data.unlockedQuestTiers;
+	}
+	if (typeof data.selectedQuestId === 'string') selectedQuestId = data.selectedQuestId;
+	if (data.selectedQuestTier !== undefined && data.selectedQuestTier !== null) {
+		selectedQuestTier = data.selectedQuestTier;
+	}
 	renderQuestBoardState();
+}
+
+function applyQuestBoardState(quests, questId) {
+	applyQuestBoardFromPayload({ quests, selectedQuestId: questId });
 }
 
 /** Prefer authoritative server spawn coordinates when starting or resuming a run. */
@@ -1579,10 +1609,20 @@ function applyQuestLayoutFromServer(data) {
 }
 
 function renderQuestBoardState() {
-	renderQuestBoard(questBoardEl, availableQuests, selectedQuestId, (questId) => {
-		if (!socket) return;
-		socket.emit('selectQuest', { questId });
-	});
+	renderQuestBoard(
+		questBoardEl,
+		availableQuests,
+		selectedQuestId,
+		(questId, tier) => {
+			if (!socket) return;
+			socket.emit('selectQuest', { questId, tier: tier ?? 1 });
+		},
+		{
+			selectedQuestTier,
+			unlockedQuestTiers,
+			questVariants,
+		},
+	);
 	if (questErrorEl) {
 		questErrorEl.style.display = 'none';
 		questErrorEl.textContent = '';
@@ -1854,7 +1894,8 @@ function updateObjectiveHud() {
 
 	if (gameState && gameState.gamePhase === 'playing' && run && run.objective) {
 		const obj = run.objective;
-		objectiveHudEl.textContent = `${obj.label}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
+		const title = formatQuestTierLabel(run.questName, run.questTier ?? 1);
+		objectiveHudEl.textContent = `${title}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
 		objectiveHudEl.style.display = 'block';
 	} else {
 		objectiveHudEl.style.display = 'none';
@@ -3908,7 +3949,10 @@ function showRunSummary(data) {
 	const statusText = data.status === 'victory' ? THEME.run.sortieComplete : THEME.run.signalLost;
 	summaryStatusEl.textContent = statusText;
 	if (summaryQuestEl) {
-		const questLabel = data.questName || (data.objective && data.objective.label) || '';
+		const questLabel = formatQuestTierLabel(
+			data.questName || (data.objective && data.objective.label) || '',
+			data.questTier ?? 1,
+		);
 		summaryQuestEl.textContent = questLabel ? `Contract: ${questLabel}` : '';
 	}
 	summaryDurationEl.textContent = `Duration: ${formatDuration(data.durationMs || 0)}`;
@@ -4057,8 +4101,10 @@ window.__setDeckState = (deck, owned, inventory, currency) => {
 	}
 };
 window.renderQuestBoardState = renderQuestBoardState;
-window.__setQuestBoardState = (quests, questId) => applyQuestBoardState(quests, questId);
+window.__setQuestBoardState = (quests, questId, tier) =>
+	applyQuestBoardFromPayload({ quests, selectedQuestId: questId, selectedQuestTier: tier });
 window.__getSelectedQuestId = () => selectedQuestId;
+window.__getSelectedQuestTier = () => selectedQuestTier;
 window.formatObjectiveSummary = formatObjectiveSummary;
 window.formatRewardSummary = formatRewardSummary;
 window.renderQuestBoard = renderQuestBoard;

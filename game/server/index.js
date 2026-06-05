@@ -8,12 +8,16 @@ const { THEME } = require('./theme');
 const {
   QUEST_DEFS,
   DEFAULT_QUEST_ID,
+  DEFAULT_QUEST_TIER,
   isValidQuestId,
+  isValidQuestSelection,
+  normalizeQuestTier,
   getLayoutProfileForQuest,
+  buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload
 } = require('./quests');
 const { InMemoryProvider, FileProvider } = require('./providers');
-const { findUserByAccountId, unlockHat: unlockHatForAccount } = require('./users');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked, getUnlockedQuestTiers } = require('./users');
 const { DEFAULT_COSMETIC, backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { verifyToken, initAuth, getJWTSecret } = require('./auth');
 const {
@@ -349,9 +353,10 @@ cardEffects.setCallbacks({
 // Wire keyItemEffects with io (the only index.js-local handle its handler needs).
 keyItemEffects.setCallbacks({ io });
 
-function applyLayoutForQuest(state, questId) {
-  const profile = getLayoutProfileForQuest(questId);
-  const seed = questLayoutSeed(questId);
+function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
+  const normalizedTier = normalizeQuestTier(tier);
+  const profile = getLayoutProfileForQuest(questId, normalizedTier);
+  const seed = questLayoutSeed(questId, normalizedTier);
   state.layoutSeed = seed;
   state.layout = generateLayout(seed, profile, { slopes: true });
   state.dungeonBounds = computeDungeonBounds(state.layout);
@@ -359,11 +364,15 @@ function applyLayoutForQuest(state, questId) {
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already
   // inside withLobbyContext, because this helper is also invoked at startup/reset with bare state.
   withLobbyContext({ state }, () => rebuildWallColliders());
-  console.log(`[server] Layout for quest "${questId}": seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
+  console.log(`[server] Layout for quest "${questId}" tier ${normalizedTier}: seed=${seed}, profile=${profile}, rooms=${state.layout.rooms.length}`);
 }
 
 // Generate dungeon layout for the default quest at startup (legacy unit-test gameState)
-applyLayoutForQuest(gameState, gameState.selectedQuestId || DEFAULT_QUEST_ID);
+applyLayoutForQuest(
+  gameState,
+  gameState.selectedQuestId || DEFAULT_QUEST_ID,
+  gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+);
 console.log(`[server] Dungeon bounds: x [${gameState.dungeonBounds.minX.toFixed(1)}, ${gameState.dungeonBounds.maxX.toFixed(1)}], z [${gameState.dungeonBounds.minZ.toFixed(1)}, ${gameState.dungeonBounds.maxZ.toFixed(1)}]`);
 
 /**
@@ -405,9 +414,10 @@ function resetGameState() {
   lobbies.resetAllLobbies();
   const fresh = createGameState();
   const questId = fresh.selectedQuestId || DEFAULT_QUEST_ID;
+  const questTier = fresh.selectedQuestTier ?? DEFAULT_QUEST_TIER;
   Object.keys(gameState).forEach(k => delete gameState[k]);
   Object.assign(gameState, fresh);
-  applyLayoutForQuest(gameState, questId);
+  applyLayoutForQuest(gameState, questId, questTier);
   delete gameState.run;
   delete gameState._victoryCounters;
   sim.setGameState(gameState, _timeouts);
@@ -459,6 +469,7 @@ const DEBUG_SCENARIOS = new Set([
   'evolution-ready',
   'deck-viewer-instances',
   'cinder-snare-ready',
+  'quest-tier-2-unlocked',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -472,6 +483,7 @@ debugScenarios.setCallbacks({
   ensureNearbyEnemy,
   applyLayoutForQuest,
   broadcastLobbyUpdate,
+  emitQuestPayloadToLobby,
   DEBUG_SCENARIOS,
 });
 
@@ -481,6 +493,31 @@ function lobbyPlayerList(state) {
     id,
     ready: p.ready
   }));
+}
+
+function unlockedQuestTiersForLobbyPlayer(state, playerId) {
+  const player = state.players[playerId];
+  if (!player || !player.accountId) return {};
+  return getUnlockedQuestTiers(player.accountId) || {};
+}
+
+/** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
+function emitQuestPayloadToLobby(lobby, { event = 'questUpdate', extraFields = {} } = {}) {
+  if (!lobby) return;
+  const state = lobby.state;
+  const shared = {
+    ...buildSharedQuestUpdatePayload(state),
+    ...extraFields,
+  };
+  for (const socket of io.sockets.sockets.values()) {
+    if (!socket.rooms.has(lobby.id)) continue;
+    const player = state.players[socket.playerId];
+    if (!player) continue;
+    socket.emit(event, {
+      ...shared,
+      unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(state, socket.playerId),
+    });
+  }
 }
 
 // Helper: broadcast lobbyUpdate to clients in a lobby room
@@ -493,25 +530,42 @@ function broadcastLobbyUpdate(lobby) {
     if (!activeState || Object.keys(activeState.players).length === 0) return;
     withLobbyContext({ state: activeState }, () => {
       ensureShopOffer();
-      io.emit('lobbyUpdate', {
+      const shared = {
         players: lobbyPlayerList(activeState),
         gamePhase: activeState.gamePhase,
         shopOffer: activeState.shopOffer,
-        ...buildQuestUpdatePayload(activeState),
-      });
+        ...buildSharedQuestUpdatePayload(activeState),
+      };
+      for (const socket of io.sockets.sockets.values()) {
+        const player = activeState.players[socket.playerId];
+        if (!player) continue;
+        socket.emit('lobbyUpdate', {
+          ...shared,
+          unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(activeState, socket.playerId),
+        });
+      }
     });
     broadcastLobbyList();
     return;
   }
   withLobbyContext(lobby, () => {
     ensureShopOffer();
-    io.to(lobby.id).emit('lobbyUpdate', {
+    const shared = {
       lobbyId: lobby.id,
       players: lobbyPlayerList(lobby.state),
       gamePhase: lobby.state.gamePhase,
       shopOffer: lobby.state.shopOffer,
-      ...buildQuestUpdatePayload(lobby.state)
-    });
+      ...buildSharedQuestUpdatePayload(lobby.state),
+    };
+    for (const socket of io.sockets.sockets.values()) {
+      if (!socket.rooms.has(lobby.id)) continue;
+      const player = lobby.state.players[socket.playerId];
+      if (!player) continue;
+      socket.emit('lobbyUpdate', {
+        ...shared,
+        unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(lobby.state, socket.playerId),
+      });
+    }
   });
   broadcastLobbyList();
 }
@@ -545,13 +599,7 @@ function isDebugScenarioAllowed(socket) {
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  const origin = socket.handshake.headers.origin || '';
-  const host = socket.handshake.headers.host || '';
-  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');
-  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin);
-  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
-
-  return localAddress || localOrigin || localHost;
+  return address === '::1' || address === '127.0.0.1' || address.endsWith('.127.0.0.1');
 }
 
 function ensureNearbyEnemy(state, x, z) {
@@ -829,7 +877,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     inventory: player.inventory,
     ownedCards: player.ownedCards,
     shopOffer: state.shopOffer,
-    ...buildQuestUpdatePayload(state),
+    ...buildQuestUpdatePayload(state, player.accountId),
   });
 
   broadcastLobbyUpdate(lobby);
@@ -1198,7 +1246,11 @@ function startServer(port) {
       }
       const lobby = lobbies.createLobby(data && data.name);
       withLobbyContext(lobby, () => {
-        applyLayoutForQuest(lobby.state, lobby.state.selectedQuestId);
+        applyLayoutForQuest(
+          lobby.state,
+          lobby.state.selectedQuestId,
+          lobby.state.selectedQuestTier ?? DEFAULT_QUEST_TIER,
+        );
         ensureShopOffer();
       });
       joinPlayerToLobby(socket, lobby);
@@ -1317,7 +1369,7 @@ function startServer(port) {
   });
 
   socket.on('selectQuest', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, _player) => {
+    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (state.suspendedCheckpoint) {
       socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
       return;
@@ -1329,20 +1381,28 @@ function startServer(port) {
       return;
     }
 
-    if (!isValidQuestId(questId)) {
-      socket.emit('questError', { reason: `Unknown quest: ${questId}` });
+    const tier = normalizeQuestTier(data && data.tier);
+
+    if (!isValidQuestSelection(questId, tier)) {
+      socket.emit('questError', { reason: `Unknown quest or tier: ${questId} tier ${tier}` });
+      return;
+    }
+
+    if (tier >= 2 && !isQuestTierUnlocked(player.accountId, questId, tier)) {
+      socket.emit('questError', { reason: 'tier_locked' });
       return;
     }
 
     state.selectedQuestId = questId;
-    applyLayoutForQuest(state, questId);
+    state.selectedQuestTier = tier;
+    applyLayoutForQuest(state, questId, tier);
     assignRunSpawnPositions(Object.values(state.players));
-    const payload = {
-      ...buildQuestUpdatePayload(state),
-      layoutSeed: state.layoutSeed,
-      layout: state.layout,
-    };
-    io.to(lobby.id).emit('questUpdate', payload);
+    emitQuestPayloadToLobby(lobby, {
+      extraFields: {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      },
+    });
     io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     broadcastLobbyUpdate(lobby);
     });
@@ -1351,6 +1411,17 @@ function startServer(port) {
   socket.on('playerReady', (ready) => {
     withLobbyPlayer(socket, {}, (state, lobby, player) => {
     if (ready) {
+      const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+      if (selectedTier >= 2) {
+        const questId = state.selectedQuestId;
+        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+          player.ready = false;
+          socket.emit('questError', { reason: 'tier_locked' });
+          broadcastLobbyUpdate(lobby);
+          return;
+        }
+      }
+
       normalizePlayerInventory(player);
       const result = validateDeck(player.selectedDeck, player.inventory);
       if (!result.valid) {
@@ -2174,6 +2245,8 @@ if (typeof module !== 'undefined' && module.exports) {
     // Auth
     verifyToken,
     getJWTSecret,
+    // Debug gate
+    isDebugScenarioAllowed,
     // Quests
     QUEST_DEFS,
     DEFAULT_QUEST_ID,

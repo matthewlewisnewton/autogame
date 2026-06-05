@@ -42,7 +42,7 @@ import {
 	processPassiveDraws,
 } from '../index.js';
 import { InMemoryProvider } from '../providers.js';
-import { QUEST_DEFS } from '../quests.js';
+import { getQuest } from '../quests.js';
 import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
 
 // ── Helpers ──
@@ -1807,7 +1807,7 @@ describe('Socket Integration — Quest Selection', () => {
 		await Promise.all([startGame1, startGame2]);
 		expect(testGameState().gamePhase).toBe('playing');
 		expect(testGameState().run.questId).toBe('crystal_rescue');
-		expect(testGameState().enemies.length).toBe(QUEST_DEFS.crystal_rescue.enemyCount);
+		expect(testGameState().enemies.length).toBe(getQuest('crystal_rescue').enemyCount);
 		expect(testGameState().loot.filter(l => l.kind === 'crystal').length).toBe(3);
 		expect(testGameState().run.objective.type).toBe('collect_items');
 		expect(testGameState().run.objective.totalItems).toBe(3);

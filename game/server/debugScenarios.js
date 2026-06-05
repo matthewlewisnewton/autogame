@@ -38,8 +38,9 @@ const {
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
   stateSnapshot,
+  assignRunSpawnPositions,
 } = require('./progression');
-const { unlockHat: unlockHatForAccount } = require('./users');
+const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
@@ -52,6 +53,7 @@ let enterPlayingPhase = null;
 let ensureNearbyEnemy = null;
 let applyLayoutForQuest = null;
 let broadcastLobbyUpdate = null;
+let emitQuestPayloadToLobby = null;
 let DEBUG_SCENARIOS = null;
 
 function setCallbacks(deps) {
@@ -62,7 +64,19 @@ function setCallbacks(deps) {
   ensureNearbyEnemy = deps.ensureNearbyEnemy;
   applyLayoutForQuest = deps.applyLayoutForQuest;
   broadcastLobbyUpdate = deps.broadcastLobbyUpdate;
+  emitQuestPayloadToLobby = deps.emitQuestPayloadToLobby;
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
+}
+
+function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
+  if (emitQuestPayloadToLobby) {
+    emitQuestPayloadToLobby(lobby, { extraFields });
+    return;
+  }
+  io.to(lobby.id).emit('questUpdate', {
+    ...buildQuestUpdatePayload(state),
+    ...extraFields,
+  });
 }
 
 function applyDebugScenario(socket, name) {
@@ -104,6 +118,32 @@ function applyDebugScenario(socket, name) {
       player.hp = MAX_HP;
       player.currency = Math.max(player.currency || 0, 1000);
       return { ok: true, scenario: name };
+    }
+
+    if (name === 'quest-tier-2-unlocked') {
+      // Lobby with training_caverns Tier 2 unlocked and selected so the quest board
+      // shows an unlocked Tier 2 row without completing Tier 1 first. The same state is
+      // reachable normally by clearing the Tier 1 contract once.
+      setPhase(lobby, PHASES.LOBBY);
+      player.ready = false;
+      player.hp = MAX_HP;
+      const questId = 'training_caverns';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+      assignRunSpawnPositions(Object.values(state.players));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     }
 
     if (name === 'hats-unlocked') {
@@ -562,8 +602,7 @@ function applyDebugScenario(socket, name) {
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       withLobbyContext({ state }, () => rebuildWallColliders());
       // Send updated layout to all clients in the lobby
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -585,8 +624,7 @@ function applyDebugScenario(socket, name) {
         player.z = startRoom.z;
       }
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -608,8 +646,7 @@ function applyDebugScenario(socket, name) {
         player.z = startRoom.z;
       }
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -632,8 +669,7 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -651,8 +687,7 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
@@ -670,8 +705,7 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       state.loot = [];
       spawnEnemies();
-      io.to(lobby.id).emit('questUpdate', {
-        ...buildQuestUpdatePayload(state),
+      emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });

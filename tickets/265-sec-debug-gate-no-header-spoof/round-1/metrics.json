@@ -1,0 +1,18 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:18 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=era3xpco\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:20 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erbo8sze\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:23 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erdyxtlt\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:25 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erfj7ocj\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:28 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erhtxh4n\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:30 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erje7kr2\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)\n9:12:33 PM [vite] http proxy error: /socket.io/?EIO=4&transport=polling&t=erlowfrk\nAggregateError [ECONNREFUSED]: \n    at internalConnectMultiple (node:net:1134:18)\n    at afterConnectMultiple (node:net:1715:7)",
+    "server_log_tail": "[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/265-sec-debug-gate-no-header-spoof/game/data/users.json\n[server] Layout for quest \"training_caverns\": seed=1335602341, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/265-sec-debug-gate-no-header-spoof/game/data\nServer listening on port 3004\nPlayer connected: socket=KCWca0pLIQYX50jPAAAB, playerId=687e8048-8b81-4a03-9438-0159ef5879c1\n[server] Layout for quest \"training_caverns\": seed=1335602341, profile=crowded, rooms=10\nPlayer connected: socket=FhBgeHK3D2eOQIZXAAAD, playerId=6bf04963-2ba5-464e-820f-74049036f320",
+    "port_holders": {
+      "5177": [
+        {
+          "pid": 2555316,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/265-sec-debug-gate-no-header-spoof/game/client/node_modules/.bin/../vite/bin/vite.js --port 5177 --strictPort"
+        }
+      ],
+      "3004": []
+    }
+  }
+}
