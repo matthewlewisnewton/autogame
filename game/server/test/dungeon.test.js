@@ -1758,12 +1758,169 @@ describe("generateLayout(seed, 'hub')", () => {
     expect(a).toEqual(b);
   });
 
-  it('hub layout is walkable from operations spawn through all zones', () => {
-    for (const seed of [1, 42, 123, 777]) {
-      const layout = generateLayout(seed, 'hub');
-      const colliders = buildWallColliders(layout);
-      const aabbs = computeWalkableAABBs(layout);
-      expect(countReachableRooms(layout, aabbs, colliders)).toBe(layout.rooms.length);
+  describe('walkability', () => {
+    const HUB_SEEDS = [1, 42, 123, 777, 9999];
+    const MIN_WALL_CLEARANCE = PLAYER_RADIUS + 0.5;
+    const MIN_PASSAGE_CLEARANCE = 2 * PLAYER_RADIUS;
+
+    function hubLayout(seed) {
+      return generateLayout(seed, 'hub');
     }
+
+    function hubWalkContext(layout) {
+      return {
+        colliders: buildWallColliders(layout),
+        aabbs: computeWalkableAABBs(layout),
+      };
+    }
+
+    function anchorZoneBand(key) {
+      if (key === 'quest' || key === 'launch') return 'operations';
+      if (key === 'shop' || key === 'deck') return 'commerce';
+      return 'salon';
+    }
+
+    function minInsetFromAABB(x, z, box) {
+      return Math.min(x - box.minX, box.maxX - x, z - box.minZ, box.maxZ - z);
+    }
+
+    function wallsOnSide(room, side) {
+      const hw = room.width / 2;
+      const hd = room.depth / 2;
+      const eps = 0.01;
+      if (side === 'north') {
+        return room.walls.filter(w => w.axis === 'x' && Math.abs(w.z - (room.z - hd)) < eps);
+      }
+      if (side === 'south') {
+        return room.walls.filter(w => w.axis === 'x' && Math.abs(w.z - (room.z + hd)) < eps);
+      }
+      if (side === 'west') {
+        return room.walls.filter(w => w.axis === 'z' && Math.abs(w.x - (room.x - hw)) < eps);
+      }
+      return room.walls.filter(w => w.axis === 'z' && Math.abs(w.x - (room.x + hw)) < eps);
+    }
+
+    function passageClearanceAtCentre(passage, aabbs, colliders) {
+      const cx = (passage.x1 + passage.x2) / 2;
+      const cz = (passage.z1 + passage.z2) / 2;
+      const horizontal = Math.abs(passage.z1 - passage.z2) < 0.01;
+      const step = 0.05;
+      let maxSpan = 0;
+
+      if (horizontal) {
+        for (let dz = -5; dz <= 5; dz += step) {
+          const z = cz + dz;
+          if (!isWalkable(cx, z, aabbs, colliders)) continue;
+          let zMin = z;
+          let zMax = z;
+          for (let d = step; d < 10; d += step) {
+            if (!isWalkable(cx, zMax + step, aabbs, colliders)) break;
+            zMax += step;
+          }
+          for (let d = step; d < 10; d += step) {
+            if (!isWalkable(cx, zMin - step, aabbs, colliders)) break;
+            zMin -= step;
+          }
+          maxSpan = Math.max(maxSpan, zMax - zMin);
+        }
+      } else {
+        for (let dx = -5; dx <= 5; dx += step) {
+          const x = cx + dx;
+          if (!isWalkable(x, cz, aabbs, colliders)) continue;
+          let xMin = x;
+          let xMax = x;
+          for (let d = step; d < 10; d += step) {
+            if (!isWalkable(xMax + step, cz, aabbs, colliders)) break;
+            xMax += step;
+          }
+          for (let d = step; d < 10; d += step) {
+            if (!isWalkable(xMin - step, cz, aabbs, colliders)) break;
+            xMin -= step;
+          }
+          maxSpan = Math.max(maxSpan, xMax - xMin);
+        }
+      }
+
+      return maxSpan;
+    }
+
+    it('foot-traffic flood from operations reaches every zone room', () => {
+      for (const seed of HUB_SEEDS) {
+        const layout = hubLayout(seed);
+        const { colliders, aabbs } = hubWalkContext(layout);
+        expect(countReachableRooms(layout, aabbs, colliders)).toBe(layout.rooms.length);
+      }
+    });
+
+    it('every boothAnchors position is walkable for PLAYER_RADIUS', () => {
+      for (const seed of HUB_SEEDS) {
+        const layout = hubLayout(seed);
+        const { colliders, aabbs } = hubWalkContext(layout);
+        for (const anchor of Object.values(layout.boothAnchors)) {
+          expect(isWalkable(anchor.x, anchor.z, aabbs, colliders)).toBe(true);
+        }
+      }
+    });
+
+    it('passage centres stay at least player-diameter wide (no wedge)', () => {
+      for (const seed of HUB_SEEDS) {
+        const layout = hubLayout(seed);
+        const { colliders, aabbs } = hubWalkContext(layout);
+        for (const passage of layout.passages) {
+          expect(passageClearanceAtCentre(passage, aabbs, colliders)).toBeGreaterThanOrEqual(
+            MIN_PASSAGE_CLEARANCE
+          );
+        }
+      }
+    });
+
+    it('sampleFloorY returns DEFAULT_FLOOR_Y at every booth anchor', () => {
+      for (const seed of HUB_SEEDS) {
+        const layout = hubLayout(seed);
+        for (const anchor of Object.values(layout.boothAnchors)) {
+          expect(sampleFloorY(layout, anchor.x, anchor.z)).toBe(DEFAULT_FLOOR_Y);
+        }
+      }
+    });
+
+    it('buildWallColliders includes every room perimeter wall segment', () => {
+      for (const seed of HUB_SEEDS) {
+        const layout = hubLayout(seed);
+        const colliders = buildWallColliders(layout);
+        for (const room of layout.rooms) {
+          for (const side of ['north', 'south', 'west', 'east']) {
+            expect(wallsOnSide(room, side).length).toBeGreaterThanOrEqual(1);
+          }
+          for (const wall of room.walls) {
+            const hit = colliders.some(c => {
+              if (wall.axis === 'x') {
+                return (
+                  Math.abs((c.minX + c.maxX) / 2 - wall.x) < 1e-4 &&
+                  Math.abs((c.maxX - c.minX) - wall.length - 0.4) < 0.05 &&
+                  Math.abs((c.minZ + c.maxZ) / 2 - wall.z) < 1e-4
+                );
+              }
+              return (
+                Math.abs((c.minZ + c.maxZ) / 2 - wall.z) < 1e-4 &&
+                Math.abs((c.maxZ - c.minZ) - wall.length - 0.4) < 0.05 &&
+                Math.abs((c.minX + c.maxX) / 2 - wall.x) < 1e-4
+              );
+            });
+            expect(hit).toBe(true);
+          }
+        }
+      }
+    });
+
+    it('booth anchors sit at least PLAYER_RADIUS + 0.5 inside their zone AABB', () => {
+      for (const seed of HUB_SEEDS) {
+        const layout = hubLayout(seed);
+        for (const [key, anchor] of Object.entries(layout.boothAnchors)) {
+          const room = roomsByBand(layout, anchorZoneBand(key))[0];
+          const inset = minInsetFromAABB(anchor.x, anchor.z, roomAABB(room));
+          expect(inset).toBeGreaterThanOrEqual(MIN_WALL_CLEARANCE);
+        }
+      }
+    });
   });
 });
