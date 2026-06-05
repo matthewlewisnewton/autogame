@@ -1,0 +1,10 @@
+Created one new sub-ticket. Summary:
+
+**Open gap (round 2):** only the failing test remains — `account.test.js > GET /api/me` intermittently gets HTTP 500 from `/api/register` under the full coverage run. The state-threading work (sub-tickets 01–03) already passed and is correct.
+
+**Root cause I confirmed:** `game/server/test/account.test.js:85` is the *only* fs-touching server test that builds its temp user-file path from `Date.now()` **without** the `Math.random()` uniqueness suffix every sibling test uses. Under `fileParallelism: true` / `maxWorkers: 4` that path can collide, and a concurrent `afterEach` `unlinkSync` racing a `saveUsers()` `renameSync` throws → the register route's catch returns 500. It passes in isolation and in `test:quick`, but flakes under `pnpm test` (the coverage run QA uses).
+
+All three existing sub-tickets have `.passed` markers, so none were retired.
+
+Sub-ticket folder created:
+- `/home/matt/workspace/.autogame-worktrees/268-scaling-thread-lobby-state-explicitly/tickets/268-scaling-thread-lobby-state-explicitly/subtickets/04-fix-account-test-isolation/ticket.md` (Verification: code)

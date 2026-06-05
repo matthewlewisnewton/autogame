@@ -3778,3 +3778,26 @@ PASS with a validation caveat. The implementation is cohesive and scoped to vari
 
 None.
 
+
+## v0.212 — 268-scaling-thread-lobby-state-explicitly  (2026-06-04 21:14:18)
+
+- The migrated socket paths remain wrapped by `withLobbyFromSocket`/`withLobbyContext`, so legacy sub-helpers that still intentionally read context-swapped module state remain behaviorally equivalent for this incremental pass.
+
+This is a meaningful reduction of direct `_gameState` reads in progression/handler call sites without changing public helper call compatibility.
+
+### Tests and coverage
+
+PASS. The round-2 coverage log reports `43 passed (43)` test files and `947 passed (947)` tests. The implementation also fixes the account test's temp user-file collision by adding process/random uniqueness to the path, addressing the full-suite flake documented by the final sub-ticket.
+
+### Behaviour and design consistency
+
+PASS. The capture exercises auth, lobby creation/join, ready transition into dungeon play, movement, and dodge/key-item cooldown while preserving the lobby-to-dungeon loop described in `game/docs/design.md`. The probes show connected multiplayer state, initialized scene/canvas, active run state, card HUD, enemies, and synchronized player movement, so the foundation in `game/docs/requirements.md` is not regressed.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change any development debug scenario or `?debugScenario=...` entry point. The capture used the fallback normal flow with `debugScenario: null`, so no debug shortcut is substituting for normal gameplay.
+
+## Remaining gaps
+
+None.
+
