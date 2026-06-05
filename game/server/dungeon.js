@@ -425,13 +425,234 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     ? profile
     : 'default';
 
-  return {
+  const layout = {
     rooms,
     passages: passageObjects,
     passageWidth,
     cellSpacing,
     profile: profileName,
   };
+
+  if (profile === 'crowded') {
+    decorateCrowdedLayout(layout, rng);
+  }
+
+  return layout;
+}
+
+// ── Crowded interior cover ──
+
+const CROWDED_COVER_MARGIN = 2;
+const CROWDED_DOORWAY_DEPTH = 3;
+
+const CROWDED_COVER_TYPES = [
+  { width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+  { width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+  { width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+];
+
+function isRoomSloped(room) {
+  const { yNW, yNE, ySE, ySW } = room.floorCorners;
+  return yNW !== yNE || yNE !== ySE || ySE !== ySW;
+}
+
+/**
+ * Derive doorway clear-zone footprints from split wall segments on each edge.
+ * Each zone is a { x, z, width, depth } rectangle extending inward from the gap.
+ */
+function roomDoorwayZones(room, passageWidth) {
+  const halfW = room.width / 2;
+  const halfD = room.depth / 2;
+  const zones = [];
+  const gapW = passageWidth + 0.5;
+  const depth = CROWDED_DOORWAY_DEPTH;
+
+  const xWalls = room.walls.filter(w => w.axis === 'x');
+  const zWalls = room.walls.filter(w => w.axis === 'z');
+
+  const northZ = room.z - halfD;
+  const southZ = room.z + halfD;
+  const westX = room.x - halfW;
+  const eastX = room.x + halfW;
+
+  const hasGapOnEdge = (walls, coordKey, edgeVal) =>
+    walls.filter(w => Math.abs(w[coordKey] - edgeVal) < 0.01).length >= 2;
+
+  if (hasGapOnEdge(xWalls, 'z', northZ)) {
+    zones.push({ x: room.x, z: northZ + depth / 2, width: gapW, depth });
+  }
+  if (hasGapOnEdge(xWalls, 'z', southZ)) {
+    zones.push({ x: room.x, z: southZ - depth / 2, width: gapW, depth });
+  }
+  if (hasGapOnEdge(zWalls, 'x', westX)) {
+    zones.push({ x: westX + depth / 2, z: room.z, width: depth, depth: gapW });
+  }
+  if (hasGapOnEdge(zWalls, 'x', eastX)) {
+    zones.push({ x: eastX - depth / 2, z: room.z, width: depth, depth: gapW });
+  }
+
+  return zones;
+}
+
+/**
+ * Grid flood-fill from a room centre over the interior, treating cover
+ * footprints as blocked. Returns true when every open cell is reachable.
+ */
+function roomFullyReachable(room, cover, margin = CROWDED_COVER_MARGIN) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return cover.length === 0;
+
+  const step = 0.5;
+  const cellsX = Math.floor((halfW * 2) / step);
+  const cellsZ = Math.floor((halfD * 2) / step);
+  const cellX = i => room.x - halfW + (i + 0.5) * step;
+  const cellZ = j => room.z - halfD + (j + 0.5) * step;
+  const isBlocked = (x, z) =>
+    cover.some(c =>
+      x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+      z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+    );
+
+  const startI = Math.floor(halfW / step);
+  const startJ = Math.floor(halfD / step);
+  if (isBlocked(cellX(startI), cellZ(startJ))) return false;
+
+  const seen = new Uint8Array(cellsX * cellsZ);
+  const idx = (i, j) => j * cellsX + i;
+  const queue = [[startI, startJ]];
+  seen[idx(startI, startJ)] = 1;
+  let reached = 0;
+  while (queue.length > 0) {
+    const [i, j] = queue.pop();
+    reached++;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+      if (seen[idx(ni, nj)]) continue;
+      if (isBlocked(cellX(ni), cellZ(nj))) continue;
+      seen[idx(ni, nj)] = 1;
+      queue.push([ni, nj]);
+    }
+  }
+
+  let open = 0;
+  for (let j = 0; j < cellsZ; j++) {
+    for (let i = 0; i < cellsX; i++) {
+      if (!isBlocked(cellX(i), cellZ(j))) open++;
+    }
+  }
+  return reached === open;
+}
+
+function acceptsCoverCandidate(cand, room, cover, doorwayZones, margin) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (Math.abs(cand.x - room.x) + cand.width / 2 > halfW) return false;
+  if (Math.abs(cand.z - room.z) + cand.depth / 2 > halfD) return false;
+  if (doorwayZones.some(z => footprintsOverlap(cand, z, 0.25))) return false;
+  if (cover.some(c => footprintsOverlap(cand, c, 0.5))) return false;
+  if (!roomFullyReachable(room, [...cover, cand], margin)) return false;
+  return true;
+}
+
+/**
+ * Greedily place 1–3 cover candidates inside a combat room AABB, rejecting
+ * overlaps, doorway-blocking positions, and layouts that partition the interior.
+ */
+function scatterCoverInRoom(rng, room, { targetCount = 2, margin = CROWDED_COVER_MARGIN, passageWidth = PASSAGE_WIDTH }) {
+  if (isRoomSloped(room)) return [];
+
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 1 || halfD <= 1) return [];
+
+  const doorwayZones = roomDoorwayZones(room, passageWidth);
+  const cover = [];
+  const goal = Math.max(1, Math.min(3, targetCount));
+
+  const candidatePool = [];
+  const gridSteps = [-0.65, -0.35, 0.35, 0.65];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      const base = CROWDED_COVER_TYPES[Math.floor(rng() * CROWDED_COVER_TYPES.length)];
+      candidatePool.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        width: base.width,
+        depth: base.depth,
+        height: base.height,
+        type: base.type,
+      });
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    const base = CROWDED_COVER_TYPES[Math.floor(rng() * CROWDED_COVER_TYPES.length)];
+    candidatePool.push({
+      x: room.x + (rng() * 2 - 1) * halfW * 0.85,
+      z: room.z + (rng() * 2 - 1) * halfD * 0.85,
+      width: base.width,
+      depth: base.depth,
+      height: base.height,
+      type: base.type,
+    });
+  }
+
+  for (let i = candidatePool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidatePool[i], candidatePool[j]] = [candidatePool[j], candidatePool[i]];
+  }
+
+  for (const cand of candidatePool) {
+    if (cover.length >= goal) break;
+    if (!acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) continue;
+    cover.push({
+      x: cand.x, z: cand.z,
+      width: cand.width, depth: cand.depth, height: cand.height,
+      type: cand.type,
+    });
+  }
+
+  // Guarantee at least one piece when the room is flat and large enough.
+  if (cover.length === 0) {
+    const pillar = CROWDED_COVER_TYPES[0];
+    const fallbacks = [
+      { x: room.x - halfW * 0.55, z: room.z - halfD * 0.55 },
+      { x: room.x + halfW * 0.55, z: room.z - halfD * 0.55 },
+      { x: room.x - halfW * 0.55, z: room.z + halfD * 0.55 },
+      { x: room.x + halfW * 0.55, z: room.z + halfD * 0.55 },
+      { x: room.x, z: room.z - halfD * 0.45 },
+      { x: room.x, z: room.z + halfD * 0.45 },
+    ];
+    for (const pos of fallbacks) {
+      const cand = { ...pos, ...pillar };
+      if (acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) {
+        cover.push(cand);
+        break;
+      }
+    }
+  }
+
+  return cover;
+}
+
+/**
+ * Scatter interior cover into every combat room on a crowded grid layout.
+ */
+function decorateCrowdedLayout(layout, rng) {
+  const cover = [];
+  for (const room of layout.rooms) {
+    if (room.role !== 'combat') continue;
+    const targetCount = 1 + Math.floor(rng() * 3);
+    cover.push(...scatterCoverInRoom(rng, room, {
+      targetCount,
+      margin: CROWDED_COVER_MARGIN,
+      passageWidth: layout.passageWidth,
+    }));
+  }
+  layout.cover = cover;
+  return layout;
 }
 
 // ── Open Plaza Arena Generation ──
@@ -1310,6 +1531,10 @@ module.exports = {
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
+  scatterCoverInRoom,
+  decorateCrowdedLayout,
+  roomDoorwayZones,
+  roomFullyReachable,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,
