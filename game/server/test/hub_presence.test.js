@@ -36,6 +36,9 @@ function makeLobbyPlayer(id, overrides = {}) {
   };
 }
 
+// End-to-end broadcast/join/leave contracts with live sockets live in
+// hub_presence_integration.test.js (and hub_presence_broadcast.test.js).
+
 describe('hub presence', () => {
   beforeEach(() => {
     resetAllLobbies();
