@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/245-canyon-verticality-identity/round-1/review.md`
+- `tickets/245-canyon-verticality-identity/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`
+
+The game runs cleanly, but the final acceptance capture never actually entered `layout.profile === "sunken-canyon"`; the attempted debug scenario was disabled and the final screenshot/probe stayed on the crowded training layout. No `nits.md` was created.

@@ -4343,3 +4343,26 @@ PASS. The change fits the documented lobby economy loop: players can buy and sel
 ## Remaining gaps
 
 None.
+
+## v0.252 — 245-canyon-verticality-identity  (2026-06-05 07:13:32)
+
+### Optional cliff hazard band
+
+Satisfied. The layout emits `edgeHazards` along plateau cliff segments between ramp mouths, plus side flanks when central ramps consume the south rim. Server movement detects the hazard band for `sunken-canyon`, applies chip damage, and snaps players back toward safe plateau interior. Client rendering draws the hazard strips with emissive warning materials. Tests cover hazard placement, reachability preservation, rendering, and movement response.
+
+### Debug scenario gating and normal reachability
+
+Satisfied. The added `sunken-canyon-stage` shortcut is reachable only through the debug-scenario socket path, and `isDebugScenarioAllowed` gates it to explicit debug env or loopback non-production addresses. The same end-state is reachable through normal gameplay via the `canyon_descent` quest, whose tier uses `layoutProfile: 'sunken-canyon'` and flows through `applyLayoutForQuest`, normal run start, spawn, collision, and enemy spawning. The shortcut reuses `generateLayout(seed, 'sunken-canyon')`, recomputes bounds/walkable AABBs/colliders, and emits the standard quest update; it does not bypass persistent progression or combat invariants beyond providing a QA jump into an otherwise normal layout state.
+
+## Design and requirements consistency
+
+The implementation fits the design document's modular dungeon and floor-height model: generated rooms carry `floorCorners`, server movement samples floor height with `sampleFloorY`, and client rendering uses the same layout data for floors, walls, cover, and landmarks. It does not regress the foundation requirements: the captured game renders a 3D scene, connects through the server-client architecture, shows multiplayer state, and movement continues to update during the smoke flow.
+
+## Code quality and verification
+
+The implementation is cohesive and covered by focused tests across server layout generation, client rendering/materials, movement hazard handling, camera height selection, and debug-gate behavior. The coverage run completed with 93 test files and 1742 tests passing. Coverage logs include unrelated expected/handled model-loading messages from tests and a simulated persistence failure, not ticket-blocking runtime defects.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
