@@ -107,6 +107,7 @@ All existing gameplay events (`playerReady`, `move`, `useCard`, …) require the
 | `lobbyLeft` | Left a lobby — `{ lobbies }` for browser refresh |
 | `lobbyError` | `{ reason }` — validation / not-in-lobby errors |
 | `lobbyUpdate` | Player list / phase changes within current lobby |
+| `hubPresenceUpdate` | Lobby hub phase only — per-lobby peer positions/cosmetics for hub avatars. Payload: `{ lobbyId, players: { [id]: { x, y, z, rotation, cosmetic, username } } }`. Emitted on join/leave/reconnect, after each lobby-phase movement tick; not sent during `gamePhase === 'playing'`. |
 | `startGame` | All players ready — scoped to lobby room |
 
 ## Client architecture

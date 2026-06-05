@@ -3,6 +3,7 @@ const { createGameState } = require('./game-state');
 const {
   ensureHubPresence,
   syncHubPresencePlayer,
+  syncHubPresenceFromLobbyState,
   removeHubPresencePlayer,
   buildHubPresenceUpdate,
 } = require('./hubPresence');
@@ -255,6 +256,7 @@ module.exports = {
   getPrimaryLobbyStateForTests,
   ensureHubPresence,
   syncHubPresencePlayer,
+  syncHubPresenceFromLobbyState,
   removeHubPresencePlayer,
   buildHubPresenceUpdate,
   _lobbies: lobbies,

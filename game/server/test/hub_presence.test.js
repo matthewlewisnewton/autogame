@@ -8,6 +8,7 @@ import {
   getLobbyById,
   ensureHubPresence,
   syncHubPresencePlayer,
+  syncHubPresenceFromLobbyState,
   removeHubPresencePlayer,
   buildHubPresenceUpdate,
 } from '../lobbies.js';
@@ -87,6 +88,17 @@ describe('hubPresence module', () => {
       ...DEFAULT_COSMETIC,
       hat: 'crown',
     });
+  });
+
+  it('syncHubPresenceFromLobbyState upserts connected players only', () => {
+    const lobby = createLobby();
+    lobby.state.players.p1 = samplePlayer({ connected: true });
+    lobby.state.players.p2 = samplePlayer({ username: 'Bob', connected: false });
+
+    syncHubPresenceFromLobbyState(lobby);
+
+    expect(lobby.hubPresence.players.p1).toBeDefined();
+    expect(lobby.hubPresence.players.p2).toBeUndefined();
   });
 
   it('removeHubPresencePlayer deletes one entry and is no-op safe', () => {

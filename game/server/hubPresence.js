@@ -45,6 +45,19 @@ function syncHubPresencePlayer(lobby, playerId, playerRecord) {
 }
 
 /**
+ * Refresh hub presence from all connected members in lobby state (tick path).
+ *
+ * @param {{ state?: { players?: object } } | null | undefined} lobby
+ */
+function syncHubPresenceFromLobbyState(lobby) {
+  if (!lobby?.state?.players) return;
+  for (const [playerId, playerRecord] of Object.entries(lobby.state.players)) {
+    if (playerRecord?.connected === false) continue;
+    syncHubPresencePlayer(lobby, playerId, playerRecord);
+  }
+}
+
+/**
  * Remove one member from the lobby-scoped presence registry.
  *
  * @param {{ hubPresence?: { players?: object } } | null | undefined} lobby
@@ -85,6 +98,7 @@ function buildHubPresenceUpdate(lobby, viewerPlayerId) {
 module.exports = {
   ensureHubPresence,
   syncHubPresencePlayer,
+  syncHubPresenceFromLobbyState,
   removeHubPresencePlayer,
   buildHubPresenceUpdate,
 };

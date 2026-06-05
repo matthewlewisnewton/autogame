@@ -77,6 +77,12 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const {
+  syncHubPresencePlayer,
+  syncHubPresenceFromLobbyState,
+  removeHubPresencePlayer,
+  buildHubPresenceUpdate,
+} = require('./hubPresence');
 
 const app = express();
 const server = http.createServer(app);
@@ -581,6 +587,15 @@ function broadcastLobbyUpdate(lobby) {
   broadcastLobbyList();
 }
 
+function broadcastHubPresence(lobby) {
+  if (!lobby || !isLobbyPhase(lobby.state)) return;
+  for (const socket of io.sockets.sockets.values()) {
+    if (!socket.rooms.has(lobby.id)) continue;
+    if (!socket.playerId) continue;
+    socket.emit('hubPresenceUpdate', buildHubPresenceUpdate(lobby, socket.playerId));
+  }
+}
+
 progression.setBroadcastLobbyUpdate(broadcastLobbyUpdate);
 
 // Helper: find a live Socket.IO socket by the stable playerId assigned on connect.
@@ -949,6 +964,11 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby);
+
+  if (isLobbyPhase(state)) {
+    syncHubPresencePlayer(lobby, playerId, player);
+    broadcastHubPresence(lobby);
+  }
 }
 
 function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
@@ -973,6 +993,11 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   emitLobbyJoined(socket, lobby, playerId);
   io.to(lobby.id).emit('playerReconnected', playerId);
   broadcastLobbyList();
+
+  if (isLobbyPhase(lobby.state)) {
+    syncHubPresencePlayer(lobby, playerId, player);
+    broadcastHubPresence(lobby);
+  }
   return true;
 }
 
@@ -1028,6 +1053,10 @@ function evictDisconnectedPlayers() {
         savePlayerData(playerId);
         cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
       });
+      const wasLobbyPhase = isLobbyPhase(lobby.state);
+      if (wasLobbyPhase) {
+        removeHubPresencePlayer(lobby, playerId);
+      }
       const result = lobbies.removePlayerFromLobby(playerId);
       io.to(lobby.id).emit('playerDisconnected', playerId);
       evictedAny = true;
@@ -1040,6 +1069,9 @@ function evictDisconnectedPlayers() {
             broadcastLobbyUpdate(lobby);
           }
         });
+        if (wasLobbyPhase) {
+          broadcastHubPresence(lobby);
+        }
       }
     }
   }
@@ -1054,12 +1086,16 @@ function leaveLobbyForSocket(socket) {
   if (!lobby) return null;
 
   const playerId = socket.playerId;
+  const wasLobbyPhase = isLobbyPhase(lobby.state);
   withLobbyContext(lobby, () => {
     savePlayerData(playerId);
     cancelTradesForPlayer(lobby.state.pendingTrades, playerId);
   });
   socket.leave(lobby.id);
 
+  if (wasLobbyPhase) {
+    removeHubPresencePlayer(lobby, playerId);
+  }
   const result = lobbies.removePlayerFromLobby(playerId);
   io.to(lobby.id).emit('playerDisconnected', playerId);
 
@@ -1071,6 +1107,9 @@ function leaveLobbyForSocket(socket) {
         broadcastLobbyUpdate(lobby);
       }
     });
+    if (wasLobbyPhase) {
+      broadcastHubPresence(lobby);
+    }
   }
 
   broadcastLobbyList();
@@ -1093,6 +1132,8 @@ function runGameLoopTick() {
       if (isLobbyPhase(state)) {
         applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
         flushDirtyPlayerSaves();
+        syncHubPresenceFromLobbyState(lobby);
+        broadcastHubPresence(lobby);
       } else if (isPlayingPhase(state)) {
         applyPlayerMovement(state, buildMovementContext(state));
         checkTelepipeProximity();
