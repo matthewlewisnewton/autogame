@@ -1,0 +1,17 @@
+Broke the top-level ticket into **4 sub-tickets** in dependency order. The plan follows the ticket’s own sequencing: no-behavior-change server wins first, then cold-path `deckUpdate` emits, then slim the 20Hz broadcast, then client reconciliation.
+
+| # | Focus |
+|---|--------|
+| **01** | Hoist `shopOffer` / `suspendedRunSummary`; stop inventory deep-clone (wire shape unchanged) |
+| **02** | Emit `deckUpdate` on in-run hand/deck mutations (redundant with tick payload until 03) |
+| **03** | `hotStateSnapshot()` for the game-loop tick only |
+| **04** | Client stops depending on cold fields in per-tick `stateUpdate` |
+
+All use **code** verification (payload shape, tests, handler logic — not pixel-level visual QA).
+
+### Sub-ticket folder paths created
+
+- `/home/matt/workspace/.autogame-worktrees/211-net-slim-per-tick-state-broadcast/tickets/211-net-slim-per-tick-state-broadcast/subtickets/01-hoist-lobby-computes-drop-inventory-clone/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/211-net-slim-per-tick-state-broadcast/tickets/211-net-slim-per-tick-state-broadcast/subtickets/02-in-run-deck-update-emits/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/211-net-slim-per-tick-state-broadcast/tickets/211-net-slim-per-tick-state-broadcast/subtickets/03-slim-per-tick-state-update/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/211-net-slim-per-tick-state-broadcast/tickets/211-net-slim-per-tick-state-broadcast/subtickets/04-client-cold-state-reconciliation/ticket.md`

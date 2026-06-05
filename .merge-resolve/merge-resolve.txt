@@ -1,7 +1,6 @@
-`LOGBOOK.md` is resolved.
+Resolved the conflict in `LOGBOOK.md` by keeping **both** log entries in reverse-chronological order:
 
-The conflict was two new logbook entries that both landed after v0.224:
-- **main**: v0.225 — `230-hub-client-render` (hub client render)
-- **branch**: v0.226 — `274-socketHandlers-extract-trade` (trade handler extraction)
+1. **v0.229 — 275-socketHandlers-extract-keyitem** (branch/ticket) — key-item handler extraction review
+2. **v0.228 — 211-net-slim-per-tick-state-broadcast** (main) — slim per-tick state broadcast review
 
-Both entries are kept in version order (v0.225, then v0.226). All conflict markers are removed. The harness can finish the merge.
+All conflict markers are removed. The file is ready for the harness to commit and complete the merge.

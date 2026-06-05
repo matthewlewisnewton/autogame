@@ -61,6 +61,7 @@ const {
   applyWyrmMinionBreathStats,
   stateSnapshot,
   cleanupAfterDamage,
+  emitPlayerDeckUpdate,
 } = require('./progression');
 
 // Delay before an armed Echo Strike's second packet lands (a few ticks later).
@@ -426,6 +427,7 @@ function handleUseCard(socket, state, lobby, data) {
         const echo = exhausted ? createEchoCard(exhausted) : null;
         if (echo) {
           player.hand[data.slotIndex] = echo;
+          emitPlayerDeckUpdate(socket.playerId);
         } else {
           const fallbackDamage = cardDef.fallbackDamage || 3;
           const radial = collectRadialHits(

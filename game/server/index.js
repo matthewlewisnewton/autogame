@@ -258,6 +258,7 @@ const {
   createDrawDeckFromSelectedDeck,
   drawCardFromDeck,
   initPlayerHand,
+  emitPlayerDeckUpdate,
   drawReplacementCard,
   discardCardFromHand,
   isPlayerOutOfCards,
@@ -281,6 +282,7 @@ const {
   checkAllReady,
   assignRunSpawnPositions,
   stateSnapshot,
+  hotStateSnapshot,
   checkTelepipeProximity,
   abandonSuspendedRun,
   captureRunCheckpoint,
@@ -1124,7 +1126,7 @@ function runGameLoopTick() {
         state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
       }
 
-      const snapshot = stateSnapshot();
+      const snapshot = hotStateSnapshot();
       io.to(lobby.id).emit('stateUpdate', snapshot);
     });
   }
@@ -1361,6 +1363,7 @@ if (typeof module !== 'undefined' && module.exports) {
     reconnectPlayerToLobby,
     regenMagicStones,
     stateSnapshot,
+    hotStateSnapshot,
     createRunState,
     startDungeonRun,
     recordEnemyDefeated,
@@ -1403,6 +1406,7 @@ if (typeof module !== 'undefined' && module.exports) {
     createDrawDeckFromSelectedDeck,
     drawCardFromDeck,
     initPlayerHand,
+    emitPlayerDeckUpdate,
     drawReplacementCard,
     replaceConsumedCard,
     exhaustHandSlot,
