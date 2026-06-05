@@ -4866,6 +4866,39 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.spawnMaxAlive).toBe(3);
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
 	});
+
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'spawner'];
+	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
+
+	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
+		for (const type of ENEMY_TYPES) {
+			const def = ENEMY_DEFS[type];
+			expect(typeof def.name).toBe('string');
+			expect(def.name.length).toBeGreaterThan(0);
+			expect(def.name).not.toBe(type);
+
+			expect(typeof def.description).toBe('string');
+			expect(def.description.length).toBeGreaterThan(0);
+
+			expect(Array.isArray(def.surfacedStats)).toBe(true);
+			expect(def.surfacedStats.length).toBeGreaterThan(0);
+			expect(def.surfacedStats).toContain('hp');
+			expect(def.surfacedStats).toContain('attackDamage');
+
+			const combatKeys = Object.keys(def).filter((k) => !DISPLAY_ONLY_KEYS.includes(k));
+			for (const statKey of def.surfacedStats) {
+				expect(combatKeys).toContain(statKey);
+			}
+		}
+	});
+
+	it('spawnEnemy does not copy display metadata onto spawned enemies', () => {
+		resetState();
+		const enemy = spawnEnemy(0, 0, 'grunt');
+		for (const key of DISPLAY_ONLY_KEYS) {
+			expect(enemy).not.toHaveProperty(key);
+		}
+	});
 });
 
 // ── enemyDefFor / updateEnemies unknown type ──

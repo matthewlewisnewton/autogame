@@ -841,18 +841,30 @@ function randomWanderTarget() {
 
 const ENEMY_DEFS = {
 	grunt: {
+		name: 'Bulkhead Drone',
+		description: 'Slow, durable radial attacker.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed'],
 		hp: 100, chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800,
 		attackStyle: 'radial',
 	},
 	skirmisher: {
+		name: 'Phase Stalker',
+		description: 'Fast cone striker.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed'],
 		hp: 40, chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6, attackWindupMs: 500,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
 	},
 	miniboss: {
+		name: 'Vault Warden',
+		description: 'Heavy cone boss with extended reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 300, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
 	},
 	spawner: {
+		name: 'Brood Node',
+		description: 'Radial attacker that periodically summons skirmishers.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'spawnIntervalMs', 'spawnType'],
 		hp: 120, chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8, attackWindupMs: 900,
 		attackStyle: 'radial',
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
@@ -908,7 +920,7 @@ function isPlayerInEnemyAttack(enemy, target) {
 function ensureEnemyCombatStats(enemy) {
 	if (enemy.chaseSpeed !== undefined) return;
 	const def = enemyDefFor(enemy.type);
-	const { hp, ...statFields } = def;
+	const { hp, name, description, surfacedStats, ...statFields } = def;
 	Object.assign(enemy, statFields);
 }
 
