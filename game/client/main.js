@@ -3881,6 +3881,10 @@ if (cosmeticSaveBtnEl) {
 		// Re-sync from the cache (now updated by patchProfile) so the controls
 		// reflect the persisted value.
 		syncCosmeticForm();
+		if (myId && gameState?.players?.[myId]) {
+			gameState.players[myId].cosmetic = getAccountCosmetic();
+			setGameStateRef(gameState);
+		}
 	});
 }
 

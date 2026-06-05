@@ -112,6 +112,23 @@ describe('registry attach fallback (renderer)', () => {
 		gltfLoadMock.mockReset();
 	});
 
+	it('createPlayerAvatar({ modelId: "player" }) requests /models/player.glb', async () => {
+		gltfLoadMock.mockImplementation((_path, onLoad) => {
+			onLoad({ scene: makeFakePlayerScene(0x123456) });
+		});
+
+		createPlayerAvatar({ modelId: 'player', bodyColor: 0xff0000 }, true);
+
+		await vi.waitFor(() => {
+			expect(gltfLoadMock).toHaveBeenCalledWith(
+				'/models/player.glb',
+				expect.any(Function),
+				undefined,
+				expect.any(Function),
+			);
+		});
+	});
+
 	it('createPlayerAvatar swaps in the loaded glTF body mesh and hides procedural', async () => {
 		gltfLoadMock.mockImplementation((_path, onLoad) => {
 			onLoad({ scene: makeFakePlayerScene(0x123456) });

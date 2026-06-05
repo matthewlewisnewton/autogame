@@ -1,0 +1,9 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+```
+tickets/269-lobby-enforce-max-players-cap/subtickets/01-add-max-players-cap-and-reject-join-when-full/ticket.md
+tickets/269-lobby-enforce-max-players-cap/subtickets/02-tests-max-players-cap-and-count-management/ticket.md
+```
+
+**Rationale:** The ticket is small-scope — add a config constant and a guard in the join path. Sub-ticket 01 implements the `MAX_PLAYERS=16` constant and the rejection check (single point in `lobbyHandlers.js` before `joinLobbyWithPhasePolicy`). Sub-ticket 02 writes the test coverage for cap enforcement and count-decrement on both leave and disconnect paths. Both are `code` verification since the criteria concern server state, error events, and function behavior rather than visuals.

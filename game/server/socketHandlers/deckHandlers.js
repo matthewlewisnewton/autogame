@@ -17,7 +17,6 @@ const {
   evolveCard,
   grindCard,
   sellCard,
-  buyShopCard,
   savePlayerData,
 } = require('../progression');
 
@@ -164,24 +163,6 @@ function register(socket, ctx) {
     }
 
     const result = sellCard(player, cardId, requestedInstanceId);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardInventoryUpdate', {
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency,
-      selectedDeck: player.selectedDeck
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
-  socket.on('buyShopCard', () => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const result = buyShopCard(player, state.shopOffer);
     if (!result.ok) {
       socket.emit('deckError', { reason: result.reason });
       return;

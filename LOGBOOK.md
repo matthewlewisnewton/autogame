@@ -4056,7 +4056,6 @@ The branch includes focused server and client tests for the new split: tick payl
 
 No blocking gaps remain for this ticket.
 
-
 ## v0.230 — 231-hub-lobby-phase-movement  (2026-06-05 02:58:43)
 
 PASS. Lobby movement uses `buildHubMovementContext(HUB_LAYOUT)`, which derives walkable AABBs, dungeon bounds, and wall colliders from the deterministic hub layout rather than the selected quest layout. Player Y is sampled from the hub floor, and lobby re-entry paths now seat players at the hub start room. The screenshots show the hub/lobby scene and subsequent movement/run flow rendering cleanly.
@@ -4102,6 +4101,68 @@ Ticket-relevant server tests for Telepipe suspend/resume and debug scenarios pas
 
 No blocking gaps.
 
+## v0.232 — 238-avatar-cosmetic-render  (2026-06-05 03:10:39)
+
+PASS. The provided `coverage.log` reports `65` test files passing and `1321` tests passing. New/focused coverage includes:
+
+- client model registry and player glTF lookup/fallback behavior;
+- glTF hat attach/removal, body tint, and proportion morph mapping;
+- hub and in-run avatar cosmetic rendering and live cosmetic changes;
+- server account cosmetic propagation into live player records and snapshots;
+- race-safe user persistence cleanup.
+
+### Consistency with design and requirements
+
+PASS. The implementation preserves the documented lobby/dungeon loop and does not regress the foundation requirements: the capture shows a rendered 3D scene, authenticated socket connection, multiplayer visualization, and movement synchronization. The changes are scoped to avatar cosmetics, account persistence/sync, and renderer model loading; they do not alter combat, lobby readiness, dungeon generation, or movement semantics.
+
+### Debug scenarios
+
+PASS. This ticket did not add or modify any debug-scenario implementation. Existing debug-scenario code remains gated through the localhost-only `?debugScenario=` path and is not part of normal gameplay.
+
+## v0.233 — 276-socketHandlers-extract-run-and-cleanup  (2026-06-05 03:10:46)
+
+`grep "socket.on("` over `game/server/index.js` returns **nothing** — the connection
+handler now only builds the `ctx` object and calls `lobbyHandlers.register(socket, ctx)`
+(plus reconnect/init bookkeeping). `getUnlockedKeyItems` was correctly dropped from `ctx`
+since `keyItemHandlers` no longer needs it.
+
+### "Tests green" — MET
+984/984 tests pass, including the `move`/`dodge`/`lootPickup` integration paths that
+exercise the relocated handlers.
+
+### Design / requirements consistency
+Pure server-side socket-handler refactor; no change to `game/docs/design.md` behavior or
+the `game/docs/requirements.md` foundation. No debug scenarios were added or changed
+(`debugScenario: null`, `debugScenarioAllowed: true` in probes; the existing
+`debugScenario` handler stays gated in `lobbyHandlers.js`).
+
+## Remaining gaps
+
+None. The refactor is behavior-preserving, fully wired, and the captured run plus the full
+test suite confirm it.
+
+## v0.234 — 269-lobby-enforce-max-players-cap  (2026-06-05 03:28:36)
+
+- No changes to client, simulation, or spawn logic — low regression risk.
+- No new debug scenarios added; nothing to audit on that axis.
+- `requirements.md` foundation (connect, render, move) unaffected; capture confirms normal play still works.
+
+---
+
+## Code quality
+
+- Minimal, focused diff: one config constant + one guard in the single join entry point.
+- Cap check is synchronous before player insertion; Node's single-threaded handler model prevents a TOCTOU race within one server process.
+- Tests are thorough for this scope; they duplicate local socket helpers rather than importing shared ones (see nits).
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are satisfied and the captured run is clean.
+
+---
+
 ## v0.236 — 233-booth-interaction-primitive  (2026-06-05 03:44:18)
 
 The captured game run is healthy. `metrics.json` reports `"ok": true`, includes a normal lobby-to-gameplay smoke capture, and has `pageerrors: []`. `console.log` contains only Vite connection messages and scene initialization, with no `pageerror` or `[fatal]` entries from game code. Server/client logs show the dev servers started and the two-player capture completed; the only client warnings are benign THREE.Clock deprecation warnings.
@@ -4123,4 +4184,3 @@ No development debug scenario was added or changed for this ticket, so the debug
 ## Remaining gaps
 
 None.
-

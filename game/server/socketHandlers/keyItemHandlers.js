@@ -5,17 +5,7 @@ const keyItemEffects = require('../keyItemEffects');
 const { getKeyItemDef, savePlayerData } = require('../progression');
 
 function register(socket, ctx) {
-  const { getUnlockedKeyItems, withLobbyPlayer, withLobbyFromSocket } = ctx;
-
-  socket.on('listKeyItems', () => {
-    const items = getUnlockedKeyItems().map((def) => ({
-      id: def.id,
-      name: def.name,
-      description: def.description,
-      cooldownMs: def.cooldownMs,
-    }));
-    socket.emit('keyItemsListed', { items });
-  });
+  const { withLobbyPlayer, withLobbyFromSocket } = ctx;
 
   socket.on('equipKeyItem', (data) => {
     withLobbyPlayer(socket, {

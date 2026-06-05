@@ -131,60 +131,6 @@ describe('extractPersistentData — key item persistence', () => {
 
 // ── Socket handler tests ──
 
-describe('listKeyItems socket handler', () => {
-	let baseUrl;
-
-	beforeEach(async () => {
-		baseUrl = await startTestServer();
-	});
-
-	afterEach(async () => {
-		await closeServer();
-	});
-
-	it('returns all 14 key items with public fields and does not mutate player state', async () => {
-		const { socket } = await connectClient(baseUrl);
-		const player = playerForSocket(socket);
-		const beforeEquipped = player.equippedKeyItemId;
-		const beforeCooldown = player.keyItemCooldownUntil;
-
-		const listedPromise = waitForEvent(socket, 'keyItemsListed');
-		socket.emit('listKeyItems');
-		const { items } = await listedPromise;
-
-		expect(items).toHaveLength(14);
-		expect(items.map((item) => item.id)).toEqual(expect.arrayContaining([
-			'dodge_roll',
-			'summon_recall',
-			'field_medic_kit',
-			'guard_block',
-			'flare_beacon',
-			'loot_magnet',
-			'overclock',
-			'smoke_bomb',
-			'ground_anchor',
-			'phase_step',
-			'purge_charm',
-			'echo_strike',
-			'barrier_dome',
-			'rally_cry',
-		]));
-
-		const dodgeRoll = items.find((item) => item.id === 'dodge_roll');
-		expect(dodgeRoll).toEqual({
-			id: 'dodge_roll',
-			name: 'Dodge Roll',
-			description: 'Quick roll forward with brief invincibility frames',
-			cooldownMs: 800,
-		});
-		expect(dodgeRoll).not.toHaveProperty('type');
-		expect(dodgeRoll).not.toHaveProperty('invincibleDurationMs');
-
-		expect(player.equippedKeyItemId).toBe(beforeEquipped);
-		expect(player.keyItemCooldownUntil).toBe(beforeCooldown);
-	});
-});
-
 describe('equipKeyItem socket handler', () => {
 	let baseUrl;
 

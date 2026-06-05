@@ -92,3 +92,5 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [270-cleanup-admin-character-roster-view](tickets/270-cleanup-admin-character-roster-view/)
 - [ ] [273-cleanup-hub-client-render](tickets/273-cleanup-hub-client-render/)
 - [ ] [274-cleanup-telepipe-hub-suspend-resume-integration](tickets/274-cleanup-telepipe-hub-suspend-resume-integration/)
+- [ ] [275-cleanup-lobby-enforce-max-players-cap](tickets/275-cleanup-lobby-enforce-max-players-cap/)
+- [ ] [277-cleanup-socketHandlers-extract-run-and-cleanup](tickets/277-cleanup-socketHandlers-extract-run-and-cleanup/)

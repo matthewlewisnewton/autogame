@@ -107,16 +107,21 @@ function loadUsers() {
 
 /**
  * Serialize the in-memory user Map to a JSON file using an atomic write
- * pattern (write to .tmp, then rename). Creates parent directories if needed.
+ * pattern (write to a unique .tmp file, then rename). Creates parent directories if needed.
  */
 function saveUsers() {
 	const records = Array.from(users.values());
 	const json = JSON.stringify(records, null, 2);
 	const dir = path.dirname(usersFilePath);
 	fs.mkdirSync(dir, { recursive: true });
-	const tmpPath = usersFilePath + '.tmp';
-	fs.writeFileSync(tmpPath, json, 'utf-8');
-	fs.renameSync(tmpPath, usersFilePath);
+	const tmpPath = `${usersFilePath}.${process.pid}.${Date.now()}.tmp`;
+	try {
+		fs.writeFileSync(tmpPath, json, 'utf-8');
+		fs.renameSync(tmpPath, usersFilePath);
+	} catch (err) {
+		try { fs.unlinkSync(tmpPath); } catch (_) {}
+		throw err;
+	}
 }
 
 // Load existing users on module initialization.

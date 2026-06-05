@@ -1,17 +1,12 @@
-Both conflicted files are resolved and marker-free.
+Merge conflicts are resolved in both files.
+
+### `game/server/socketHandlers/lobbyHandlers.js`
+- **Imports:** `MAX_PLAYERS` (from main) plus `findBoothInRange` and `isLobbyPhase` (from the booth ticket). Dropped `LOOT_PICKUP_RADIUS` — that belongs in `runHandlers.js` after the socket-handler extraction.
+- **Handlers:** Removed duplicate run/playing handlers (`returnToLobby`, `giveUp`, `move`, `useCard`, etc.) that main already moved to `runHandlers.js` via `runHandlers.register(socket, ctx)`.
+- **Kept:** The ticket’s `boothInteract` handler (after `medicHeal`, before `debugScenario`), with the existing `MAX_PLAYERS` join guard unchanged.
 
 ### `LOGBOOK.md`
-Kept all **main** review entries (v0.226 trade extraction, v0.229 keyitem extraction, v0.228 net-slim broadcast, v0.230 hub lobby movement) and appended the **ticket** entry (v0.231 telepipe suspend/resume) at the end in chronological order.
+- Appended entries in version order: **v0.232** (avatar cosmetics), **v0.233** (run-handler extract), **v0.234** (max-players cap), **v0.236** (booth interaction).
+- All conflict markers removed.
 
-### `game/server/test/field_medic_kit.test.js`
-Kept **main**’s widened assertion for the out-of-range player magic-stones check:
-
-```javascript
-const p3MsAfter = playerForSocket(players[2].socket).magicStones;
-// Out-of-range player must not receive the +3 MS restore; only ambient regen may apply.
-expect(p3MsAfter).toBeLessThan(p3MsBefore + 1);
-```
-
-This supersedes the ticket’s `toBeCloseTo(p3MsBefore, 1)` precision tweak while preserving the same intent (unblock the flaky local-checks gate): it allows fractional ambient MS regen but still asserts the player did not receive the +3 kit restore.
-
-`field_medic_kit.test.js` — 7/7 tests passing. Ready for the harness to commit and complete the merge.
+Targeted tests (`boothZones.test.js`, `max_players_cap.test.js`) — 19/19 passed. The harness can finish the merge and run the full suite.
