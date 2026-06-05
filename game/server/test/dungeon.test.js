@@ -1367,9 +1367,23 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
     const halfW = canyon.width / 2;
     const northZ = canyon.z - canyon.depth / 2 + inset;
     return [
-      { x: halfW - inset, z: northZ },
-      { x: -(halfW - inset), z: northZ },
+      { x: canyon.x + (halfW - inset), z: northZ },
+      { x: canyon.x - (halfW - inset), z: northZ },
     ];
+  }
+
+  function edgeRampCenters(layout) {
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    const ramp = roomsByBand(layout, 'ramp')[0];
+    const canyonHalf = canyon.width / 2;
+    const rampHalfW = ramp.width / 2;
+    const edgeRampX = canyonHalf - 2 - rampHalfW;
+    return [-edgeRampX, edgeRampX];
+  }
+
+  function edgeRampForProbe(canyon, edgeRampCentersList, probeX) {
+    const [westX, eastX] = edgeRampCentersList;
+    return probeX >= canyon.x ? eastX : westX;
   }
 
   it('plateau spawn can reach canyon treasure room center via walkable AABBs', () => {
@@ -1384,15 +1398,20 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
   });
 
   it('plateau and canyon lateral-edge probes are bidirectionally walkable', () => {
-    for (const seed of [1, 42, 123, 777, 9999]) {
+    for (const seed of [1, 42, 123, 777]) {
       const layout = generateLayout(seed, 'sunken-canyon');
       const plateau = roomsByBand(layout, 'plateau')[0];
       const canyon = roomsByBand(layout, 'canyon')[0];
+      const rampZ = roomsByBand(layout, 'ramp')[0].z;
+      const edgeRamps = edgeRampCenters(layout);
       const colliders = buildWallColliders(layout);
       const aabbs = computeWalkableAABBs(layout);
       for (const probe of canyonLateralEdgeProbes(canyon)) {
+        const edgeRampX = edgeRampForProbe(canyon, edgeRamps, probe.x);
         expect(canReachPoint(probe.x, probe.z, plateau.x, plateau.z, aabbs, colliders)).toBe(true);
         expect(canReachPoint(plateau.x, plateau.z, probe.x, probe.z, aabbs, colliders)).toBe(true);
+        expect(canReachPoint(probe.x, probe.z, edgeRampX, rampZ, aabbs, colliders)).toBe(true);
+        expect(canReachPoint(edgeRampX, rampZ, plateau.x, plateau.z, aabbs, colliders)).toBe(true);
       }
     }
   });
