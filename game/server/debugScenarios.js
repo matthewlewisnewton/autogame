@@ -14,6 +14,7 @@
 // and the DEBUG_SCENARIOS set are supplied via setCallbacks() after the modules
 // are loaded.
 
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
@@ -130,7 +131,7 @@ function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
     emitQuestPayloadToLobby(lobby, { extraFields });
     return;
   }
-  io.to(lobby.id).emit('questUpdate', {
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.QUEST_UPDATE, {
     ...buildQuestUpdatePayload(state),
     ...extraFields,
   });
@@ -245,7 +246,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -297,7 +298,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -380,6 +381,56 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'canyon-descent-tier-2') {
+      // canyon_descent Tier 2 with rigid sunken-canyon layout and band-aware spawns.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Canyon Descent Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'canyon_descent';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const plateauSpawn = firstRoomPosition();
+      player.x = plateauSpawn.x;
+      player.z = plateauSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      syncRunObjectiveToEnemies();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
       io.to(lobby.id).emit('stateUpdate', stateSnapshot());
       return {
         ok: true,
@@ -430,7 +481,7 @@ function applyDebugScenario(socket, name) {
         layout: state.layout,
       });
       broadcastLobbyUpdate(lobby);
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       return {
         ok: true,
         scenario: name,
@@ -479,7 +530,7 @@ function applyDebugScenario(socket, name) {
       }
       // Sync the modified inventory/deck to the client so __AUTOGAME_HARNESS_STATE__
       // reflects the new skeleton_knight instance for the smoke test.
-      socket.emit('deckUpdate', {
+      socket.emit(SERVER_TO_CLIENT.DECK_UPDATE, {
         selectedDeck: player.selectedDeck,
         inventory: player.inventory,
         ownedCards: player.ownedCards,
@@ -1310,7 +1361,7 @@ function applyDebugScenario(socket, name) {
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     return { ok: true, scenario: name };
   });
 }

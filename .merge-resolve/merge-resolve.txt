@@ -1,8 +1,9 @@
-Conflict resolved in `LOGBOOK.md`.
+Resolved the `LOGBOOK.md` conflict by combining both sides in chronological version order:
 
-Both sides are kept and ordered chronologically after the existing v0.257 entry:
+1. **v0.264** — 241-free-hat-swap (from `main`)
+2. **v0.265** — 256-level2-sunken-canyon (from `main`)
+3. **v0.266** — 243-retire-2d-lobby-menus (from `main`)
+4. **v0.267** — 213-net-shared-event-name-constants (from `main`)
+5. **v0.268** — 258-miniboss-encounter-framework (from the ticket branch)
 
-1. **v0.258 — 263-debug-unlimited-health-godmode** (from `main`, 08:25:20) — godmode debug toggle review
-2. **v0.261 — 255-level2-rooms** (from the branch, 09:11:14) — rigid layout mode, training caverns/crystal rescue Tier 2 wiring
-
-All conflict markers are removed. The harness can proceed with the merge commit.
+All conflict markers are removed. The logbook now records every ticket that landed on `main` since v0.261, with the miniboss encounter framework entry last. The harness can proceed with commit and merge.

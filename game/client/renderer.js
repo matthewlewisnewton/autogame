@@ -86,6 +86,9 @@ import {
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import eventsCatalog from '../shared/events.json' with { type: 'json' };
+
+const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -916,7 +919,7 @@ function syncFacingToServer() {
 		return;
 	}
 	lastEmittedRotation = playerRotation;
-	socketRef.emit('move', { dx: 0, dz: 0, rotation: playerRotation });
+	socketRef.emit(CLIENT_TO_SERVER.MOVE, { dx: 0, dz: 0, rotation: playerRotation });
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
@@ -1277,7 +1280,7 @@ function tryEmitLootPickup(loot, now) {
 	const last = lootPickupAttempts.get(loot.id) || 0;
 	if (now - last < LOOT_PICKUP_RETRY_MS) return;
 	lootPickupAttempts.set(loot.id, now);
-	socketRef.emit('lootPickup', { lootId: loot.id });
+	socketRef.emit(CLIENT_TO_SERVER.LOOT_PICKUP, { lootId: loot.id });
 }
 
 /**
@@ -1315,7 +1318,7 @@ export function setBoothInRangeListener(cb) {
  */
 export function emitBoothInteract() {
 	if (!socketRef || !currentBoothInRange) return null;
-	socketRef.emit('boothInteract', { boothId: currentBoothInRange });
+	socketRef.emit(CLIENT_TO_SERVER.BOOTH_INTERACT, { boothId: currentBoothInRange });
 	return currentBoothInRange;
 }
 
@@ -1601,7 +1604,7 @@ export function updateMyPlayer(delta) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
 			lastEmittedRotation = moveRotation;
-			socketRef.emit('move', {
+			socketRef.emit(CLIENT_TO_SERVER.MOVE, {
 				dx: dirX,
 				dz: dirZ,
 				rotation: moveRotation,

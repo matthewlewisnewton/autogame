@@ -815,11 +815,16 @@ async function executeRecipe(browser, recipe) {
     }
 
     if (step.action === 'readyAll') {
+      // Ready up via the launch-booth path. The 2D #ready-btn was retired
+      // (sub-ticket 03), so route through the test-only booth hook that calls
+      // the same launchBoothReadyUp() → playerReady(true) used by the Launch Bay
+      // booth and the ?booth=launch hook. No new socket event is introduced.
       for (const page of pages.values()) {
-        const btn = page.locator('#ready-btn').first();
-        if (await btn.isVisible().catch(() => false)) {
-          await btn.click().catch(() => {});
-        }
+        await page.evaluate(() => {
+          if (typeof window.__launchReadyUpForTest === 'function') {
+            window.__launchReadyUpForTest();
+          }
+        }).catch(() => {});
       }
       await pageForFallback(pages).waitForTimeout(500);
       continue;

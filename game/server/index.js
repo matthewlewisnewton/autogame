@@ -1,3 +1,4 @@
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const express = require('express');
 const { Server } = require('socket.io');
 const http = require('http');
@@ -359,7 +360,7 @@ function getLobbyForSocket(socket) {
 }
 
 function broadcastLobbyList() {
-  io.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
+  io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
 }
 
 // Initialize simulation and progression modules with gameState and timeouts
@@ -512,6 +513,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-tier-2',
   'training-caverns-tier-2',
   'crystal-rescue-tier-2',
+  'canyon-descent-tier-2',
   'spire-ascent-tier-2',
   'stage-boss-dormant',
   'stage-boss-active',
@@ -547,7 +549,7 @@ function unlockedQuestTiersForLobbyPlayer(state, playerId) {
 }
 
 /** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
-function emitQuestPayloadToLobby(lobby, { event = 'questUpdate', extraFields = {} } = {}) {
+function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE, extraFields = {} } = {}) {
   if (!lobby) return;
   const state = lobby.state;
   const shared = {
@@ -584,7 +586,7 @@ function broadcastLobbyUpdate(lobby) {
       for (const socket of io.sockets.sockets.values()) {
         const player = activeState.players[socket.playerId];
         if (!player) continue;
-        socket.emit('lobbyUpdate', {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
           ...shared,
           unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(activeState, socket.playerId),
         });
@@ -606,7 +608,7 @@ function broadcastLobbyUpdate(lobby) {
       if (!socket.rooms.has(lobby.id)) continue;
       const player = lobby.state.players[socket.playerId];
       if (!player) continue;
-      socket.emit('lobbyUpdate', {
+      socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
         ...shared,
         unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(lobby.state, socket.playerId),
       });
@@ -662,7 +664,7 @@ function ensureNearbyEnemy(state, x, z) {
 
 function emitCardError(socket, reason) {
   console.log(`[cardError] player ${socket.playerId}: ${reason}`);
-  socket.emit('cardError', { reason });
+  socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason });
 }
 
 const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
@@ -680,6 +682,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-tier-2',
   'training-caverns-tier-2',
   'crystal-rescue-tier-2',
+  'canyon-descent-tier-2',
   'spire-ascent-tier-2',
   'stage-boss-dormant',
   'stage-boss-active',
@@ -705,7 +708,7 @@ function enterPlayingPhase(lobby) {
       spawnEnemies();
     }
     startDungeonRun();
-    io.to(lobby.id).emit('startGame');
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.START_GAME);
     broadcastLobbyList();
   }
 }
@@ -777,7 +780,7 @@ let _middlewareRegistered = false;
 function withLobbyFromSocket(socket, fn) {
   const lobby = getLobbyForSocket(socket);
   if (!lobby) {
-    socket.emit('lobbyError', { reason: 'Not in a lobby' });
+    socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Not in a lobby' });
     return;
   }
   return withLobbyContext(lobby, () => fn(lobby.state, lobby));
@@ -982,7 +985,7 @@ function handleDropInJoin(socket, lobby) {
 function joinLobbyWithPhasePolicy(socket, lobby) {
   if (isPlayingPhase(lobby.state)) {
     if (!allowDropInJoin(lobby)) {
-      socket.emit('lobbyError', { reason: 'Drop-in not allowed for this lobby' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Drop-in not allowed for this lobby' });
       return;
     }
     joinPlayerToLobby(socket, lobby, { dropIn: true });
@@ -1024,7 +1027,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
       joinedPayload.hubPresence = { schemaVersion: 1, entries: {}, revision: 0 };
     }
   }
-  socket.emit('lobbyJoined', joinedPayload);
+  socket.emit(SERVER_TO_CLIENT.LOBBY_JOINED, joinedPayload);
 
   broadcastLobbyUpdate(lobby);
 }
@@ -1119,14 +1122,14 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
       console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
     }
   }
-  io.to(lobby.id).emit('playerReconnected', playerId);
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.PLAYER_RECONNECTED, playerId);
   broadcastLobbyList();
   return true;
 }
 
 function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false } = {}) {
   if (emitDisconnect) {
-    io.to(lobby.id).emit('playerDisconnected', playerId);
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.PLAYER_DISCONNECTED, playerId);
   }
 
   const shouldBroadcast = result === undefined || (result && !result.deleted);
@@ -1259,28 +1262,28 @@ function runGameLoopTick() {
 
           if (state._pendingMinionBreaths?.length) {
             for (const event of state._pendingMinionBreaths) {
-              io.to(lobby.id).emit('cardUsed', event);
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, event);
             }
             state._pendingMinionBreaths.length = 0;
           }
 
           if (state._pendingVolatileExplosions?.length) {
             for (const record of state._pendingVolatileExplosions) {
-              io.to(lobby.id).emit('volatileExplosion', record);
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, record);
             }
             state._pendingVolatileExplosions.length = 0;
           }
 
           if (state._pendingLeechHeals?.length) {
             for (const record of state._pendingLeechHeals) {
-              io.to(lobby.id).emit('leechHeal', record);
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.LEECH_HEAL, record);
             }
             state._pendingLeechHeals.length = 0;
           }
 
           if (state._pendingShieldBreaks?.length) {
             for (const record of state._pendingShieldBreaks) {
-              io.to(lobby.id).emit('shieldBreak', record);
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.SHIELD_BREAK, record);
             }
             state._pendingShieldBreaks.length = 0;
           }
@@ -1291,7 +1294,7 @@ function runGameLoopTick() {
         }
 
         const snapshot = hotStateSnapshot();
-        io.to(lobby.id).emit('stateUpdate', snapshot);
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
       });
     } catch (err) {
       console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);
@@ -1458,7 +1461,7 @@ function startServer(port) {
     socket.playerId = playerId;
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    socket.emit('init', {
+    socket.emit(SERVER_TO_CLIENT.INIT, {
       id: playerId,
       playerId,
       accountId,

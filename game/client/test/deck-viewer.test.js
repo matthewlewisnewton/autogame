@@ -166,7 +166,7 @@ describe('renderDeckViewer() / renderDeckStack()', () => {
 			'status', 'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
 			'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
 			'currency-display', 'objective-hud', 'ui', 'card-hand',
-			'lobby', 'lobby-player-list', 'ready-btn',
+			'lobby', 'lobby-player-list',
 			'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
 			'summary-currency', 'summary-rewards', 'summary-rewards-currency',
 			'summary-rewards-cards', 'return-to-lobby-btn',
@@ -174,7 +174,7 @@ describe('renderDeckViewer() / renderDeckStack()', () => {
 			'deck-stack', 'deck-viewer-overlay', 'deck-viewer-grid', 'deck-viewer-count',
 		];
 		for (const id of requiredIds) {
-			const el = (id === 'ready-btn' || id === 'return-to-lobby-btn')
+			const el = (id === 'return-to-lobby-btn')
 				? document.createElement('button')
 				: document.createElement('div');
 			el.id = id;

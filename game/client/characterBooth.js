@@ -13,6 +13,9 @@ import { getHatCatalog } from './settings.js';
 import { APPEARANCE_CHANGE_COST } from './config.js';
 import { hasAppearanceFieldChanges } from '../shared/cosmeticAppearance.esm.js';
 import { formatCurrencyPrice } from './theme.js';
+import eventsCatalog from '../shared/events.json' with { type: 'json' };
+
+const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
 const overlayEl = document.getElementById('character-booth-overlay');
 const closeBtnEl = document.getElementById('character-booth-close-btn');
@@ -156,7 +159,7 @@ export function initCharacterBooth({
 			if (!socket || !socket.connected) return;
 			const hat = getHatCatalog().find((h) => h.id === hatId);
 			if (!hat || getCurrency() < hat.price) return;
-			socket.emit('unlockHat', { hatId });
+			socket.emit(CLIENT_TO_SERVER.UNLOCK_HAT, { hatId });
 		},
 		proportionIdPrefix: 'character-booth-prop',
 	});
@@ -245,7 +248,7 @@ async function emitAppearanceChange(cosmetic) {
 		saveInFlight = true;
 		setSaveDisabled(true);
 		form.showError('');
-		socket.emit('applyAppearanceChange', { cosmetic });
+		socket.emit(CLIENT_TO_SERVER.APPLY_APPEARANCE_CHANGE, { cosmetic });
 		return;
 	}
 

@@ -30,6 +30,8 @@ const CRYSTAL_RESCUE_ID = 'crystal_rescue';
 const CRYSTAL_RESCUE_TIER_2 = 2;
 const SPIRE_ASCENT_ID = 'spire_ascent';
 const SPIRE_ASCENT_TIER_2 = 2;
+const CANYON_DESCENT_ID = 'canyon_descent';
+const CANYON_DESCENT_TIER_2 = 2;
 
 describe('debugScenario — key-item-cooldown', () => {
 	let baseUrl;
@@ -540,6 +542,78 @@ describe('debugScenario — crystal-rescue-tier-2', () => {
 		gameState.enemies = [];
 		gameState.loot = [];
 		gameState.run = { questTier: CRYSTAL_RESCUE_TIER_2 };
+		setGameState(gameState);
+		spawnEnemies();
+		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
+	});
+});
+
+describe('debugScenario — canyon-descent-tier-2', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys canyon_descent Tier 2 with rigid layout, tier-2 run metadata, and variant enemies', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
+		const result = await debugResultPromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('canyon-descent-tier-2');
+
+		const state = testGameState();
+		const tier2Quest = getQuest(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2);
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(CANYON_DESCENT_ID);
+		expect(state.selectedQuestTier).toBe(CANYON_DESCENT_TIER_2);
+		expect(state.run.questId).toBe(CANYON_DESCENT_ID);
+		expect(state.run.questTier).toBe(CANYON_DESCENT_TIER_2);
+		expect(state.run.questName).toBe(tier2Quest.name);
+		expect(state.run.objective.label).toContain(tier2Quest.name);
+		expect(state.run.objective.totalEnemies).toBe(tier2Quest.enemyCount);
+		expect(state.layout.profile).toBe('sunken-canyon');
+		expect(getLayoutGenerationOptions(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2)).toEqual({
+			slopes: true,
+			layoutMode: 'rigid',
+		});
+		expect(state.layoutSeed).toBe(questLayoutSeed(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2));
+		expect(state.enemies.length).toBe(tier2Quest.enemyCount);
+		expect(state.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(state.run.questTier, 0)).toBe(1);
+	});
+
+	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)', () => {
+		const SEED = 4242;
+		resetGameState();
+		const layout = generateLayout(
+			SEED,
+			getLayoutProfileForQuest(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2),
+			getLayoutGenerationOptions(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2),
+		);
+		gameState.selectedQuestId = CANYON_DESCENT_ID;
+		gameState.selectedQuestTier = CANYON_DESCENT_TIER_2;
+		gameState.layout = layout;
+		gameState.layoutSeed = SEED;
+		gameState.enemies = [];
+		gameState.loot = [];
+		gameState.run = { questTier: CANYON_DESCENT_TIER_2 };
 		setGameState(gameState);
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
