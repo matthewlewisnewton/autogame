@@ -51,11 +51,11 @@ import {
 	getReservedKeys,
 } from './input.js';
 import {
-	DECK_MIN_SIZE,
 	DECK_MAX_SIZE,
 	MAX_HP,
 	MAX_MS,
 	MEDIC_HEAL_COST,
+	APPEARANCE_CHANGE_COST,
 	MOVE_SPEED,
 	TICK_RATE,
 	VARIANT_CODEX_DATA,
@@ -69,11 +69,20 @@ import {
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
-	getUnlockedHats,
-	getHatCatalog,
+	setAccountCosmetic,
 	setUnlockedHats,
-	PROPORTION_RANGES,
 } from './settings.js';
+import { createCosmeticSelection } from './cosmeticForm.js';
+import {
+	initCharacterBooth,
+	openCharacterBooth,
+	closeCharacterBooth,
+	rebuildBoothHatList,
+	showBoothCosmeticError,
+	handleAppearanceChanged,
+	handleAppearanceError,
+	isCharacterBoothOpen,
+} from './characterBooth.js';
 import {
 	initControllerCalibration,
 	startControllerCalibration,
@@ -90,6 +99,7 @@ import {
 	getMsBarTier,
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
+import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 
 // ── Renderer module imports ──
 import {
@@ -136,6 +146,8 @@ import {
 	disposeStaleMeshes as rendererDisposeStaleMeshes,
 	disposeOne as rendererDisposeOne,
 	disposeAllLootMeshes as rendererDisposeAllLootMeshes,
+	disposeAvatar as rendererDisposeAvatar,
+	disposeNameplate as rendererDisposeNameplate,
 	getActiveEffects,
 	getPickedUpLootIds,
 	pruneLootPickupAttempts,
@@ -147,18 +159,26 @@ import {
 	triggerLootMagnetVFX,
 	getPhaseStepTargetId,
 	applyLockOnPress,
+	emitBoothInteract,
+	setBoothInRangeListener,
+	setEnemyDisplayCatalogGetter,
 } from './renderer.js';
-import {
-	openPreview as openCosmeticPreview,
-	updatePreview as updateCosmeticPreview,
-	closePreview as closeCosmeticPreview,
-} from './cosmetic-preview.js';
+import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
+import { openDeckBooth, registerDeckBoothListener, createRequestDebugBoothOpener } from './boothDeck.js';
+import { openShopBooth, registerShopBoothListener, createRequestDebugShopBoothOpener } from './boothShop.js';
+import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
+import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
+import eventsCatalog from '../shared/events.json' with { type: 'json' };
+
+const { serverToClient: SERVER_TO_CLIENT, clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
+
 // ── DOM element references ──
 const statusEl = document.getElementById('status');
+const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
+const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
-const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
 const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
@@ -189,14 +209,6 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
-const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches');
-const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
-const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
-const cosmeticHatListEl = document.getElementById('cosmetic-hat-list');
-const cosmeticProportionsEl = document.getElementById('cosmetic-proportions');
-const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
-const cosmeticErrorEl = document.getElementById('cosmetic-error');
-const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
 const cardHandEl = document.getElementById('card-hand');
 const deckStackEl = document.getElementById('deck-stack');
 const attackReticleEl = document.getElementById('attack-reticle');
@@ -357,6 +369,9 @@ function showLobbyBrowser() {
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	// Quest board only appears via the quest booth, so keep it hidden each time
+	// the lobby is (re)shown.
+	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
 	applyLobbyThemeLabels();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
@@ -505,58 +520,36 @@ function isRunSuspended() {
 }
 
 /**
- * Sync #ready-btn's label + styling to its current role. While a run is
- * suspended the single launch button doubles as the Resume control — this is
- * also the affordance the harness telepipe capture clicks to resume — so it
- * reads "Resume…" and carries `.resuming`; otherwise it is the new-mission
- * Deploy button.
+ * Sync the #resume-run-btn label to its current role. Fresh deploy and ready-up
+ * now happen only through the hub Launch Bay booth (the 2D #ready-btn is
+ * retired); the dedicated #resume-run-btn is the on-screen resume affordance
+ * shown while a run is suspended, so it always carries the "Resume…" label.
  */
 function syncReadyButtonRole() {
-	const suspended = isRunSuspended();
 	// The dedicated #resume-run-btn is only ever shown while suspended, so it
 	// always carries the "Resume…" theme label rather than the static HTML text.
 	if (resumeRunBtn) {
 		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
 	}
-	if (!readyBtn) return;
-	if (suspended) {
-		readyBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
-	} else {
-		readyBtn.textContent = isReady ? THEME.lobby.deployReady : THEME.lobby.deploy;
-	}
-	readyBtn.classList.toggle('resuming', suspended);
 }
 
 function setDeployButtonVisible(visible) {
-	// While a run is suspended #resume-run-btn is the dedicated, distinct resume
-	// affordance shown to the player; #ready-btn also stays visible+enabled and
-	// wired to the same resume path (the harness telepipe capture clicks
-	// #ready-btn to resume). Outside suspension #resume-run-btn is hidden.
+	// Fresh deploy / ready-up is handled by the hub Launch Bay booth, so there is
+	// no longer a 2D deploy button to show or hide. While a run is suspended
+	// #resume-run-btn is the dedicated resume affordance; it is hidden otherwise.
+	// `visible` is retained for call-site symmetry with the play↔lobby transitions.
 	const suspended = isRunSuspended();
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	if (!readyBtn) return;
-	const show = visible || suspended;
-	readyBtn.hidden = !show;
-	if (!show) {
-		readyBtn.disabled = true;
-	} else if (suspended) {
-		readyBtn.disabled = false;
-	}
 	syncReadyButtonRole();
 }
 
 function renderSuspendedRunBanner(state) {
 	const summary = state && state.suspendedRunSummary;
 	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
-	// While suspended #resume-run-btn is the dedicated resume affordance, and
-	// #ready-btn also stays visible+enabled wired to the same resume path (the
-	// harness capture clicks #ready-btn to resume); syncReadyButtonRole applies
-	// the "Resume…" labels + .resuming styling to both.
+	// While suspended #resume-run-btn is the dedicated resume affordance; resuming
+	// the run itself goes through the launch booth ready-up path the same as a
+	// fresh deploy. syncReadyButtonRole applies the "Resume…" label.
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
-	if (suspended && readyBtn) {
-		readyBtn.hidden = false;
-		readyBtn.disabled = false;
-	}
 	syncReadyButtonRole();
 	if (!suspendedRunBannerEl) return;
 	if (suspended) {
@@ -659,13 +652,71 @@ function renderLobbyList(lobbySummaries) {
 		joinBtn.dataset.joinMode = lobby.gamePhase === 'playing' ? 'drop-in' : 'join';
 		joinBtn.textContent = lobby.gamePhase === 'playing' ? 'Drop In' : 'Join';
 		joinBtn.addEventListener('click', () => {
-			if (socket) socket.emit('joinLobby', { lobbyId: lobby.id });
+			if (socket) socket.emit(CLIENT_TO_SERVER.JOIN_LOBBY, { lobbyId: lobby.id });
 		});
 
 		item.appendChild(meta);
 		item.appendChild(joinBtn);
 		lobbyListEl.appendChild(item);
 	}
+}
+
+/** Remove a remote player's avatar mesh and username nameplate from the scene. */
+function removeRemotePlayerVisuals(playerId) {
+	const maps = getMeshMaps();
+	const sc = getScene();
+	if (maps.playersMeshes[playerId]) {
+		if (sc) sc.remove(maps.playersMeshes[playerId]);
+		rendererDisposeAvatar(maps.playersMeshes[playerId]);
+		delete maps.playersMeshes[playerId];
+	}
+	rendererDisposeNameplate(playerId);
+}
+
+/**
+ * Merge hub-presence entries into `gameState.players` during the lobby phase.
+ * Remote players are server-authoritative for position/rotation/cosmetic;
+ * the local player keeps client-predicted movement fields.
+ */
+function applyHubPresence(presence, opts = {}) {
+	if (!presence || !gameState || gameState.gamePhase !== 'lobby') return;
+
+	const removedPlayerIds = Array.isArray(opts.removedPlayerIds) ? opts.removedPlayerIds : [];
+	for (const id of removedPlayerIds) {
+		if (!id || id === myId) continue;
+		if (gameState.players[id]) delete gameState.players[id];
+		removeRemotePlayerVisuals(id);
+	}
+
+	const rawEntries = presence.entries;
+	const entries = (rawEntries && typeof rawEntries === 'object' && !Array.isArray(rawEntries))
+		? rawEntries
+		: {};
+	for (const [id, entry] of Object.entries(entries)) {
+		if (!id || !entry || typeof entry !== 'object') continue;
+		if (id === myId) {
+			const local = gameState.players[id];
+			if (!local) continue;
+			if (entry.cosmetic) local.cosmetic = entry.cosmetic;
+			if (entry.username) local.username = entry.username;
+			continue;
+		}
+
+		if (!gameState.players[id]) {
+			gameState.players[id] = { id, hp: 100, dead: false };
+		}
+		const player = gameState.players[id];
+		if (Number.isFinite(entry.x)) player.x = entry.x;
+		if (Number.isFinite(entry.y)) player.y = entry.y;
+		else if (player.y == null) player.y = 0.5;
+		if (Number.isFinite(entry.z)) player.z = entry.z;
+		if (Number.isFinite(entry.rotation)) player.rotation = entry.rotation;
+		if (entry.cosmetic) player.cosmetic = entry.cosmetic;
+		if (entry.username) player.username = entry.username;
+		player.connected = entry.connected !== false;
+	}
+
+	setGameStateRef(gameState);
 }
 
 /**
@@ -691,13 +742,13 @@ function renderHubScene() {
 	const spawn = getSpawnPosition();
 	setPlayerPosition(spawn.x, spawn.z);
 	setGamePhase('lobby');
+	requestBoothDebugOpen();
 	return true;
 }
 
 function applyLobbyJoinedData(data) {
 	myId = data.id;
 	rendererSetMyId(data.id);
-	setGameStateRef(gameState);
 	if (data.playerId) {
 		try { localStorage.setItem(STORAGE_KEY_PLAYER_ID, data.playerId); } catch (_) {}
 	}
@@ -705,6 +756,7 @@ function applyLobbyJoinedData(data) {
 	currentLayout = data.layout || (data.state && data.state.layout) || currentLayout;
 	hubLayout = data.hubLayout || hubLayout;
 	if (gameState && currentLayout) gameState.layout = currentLayout;
+	setGameStateRef(gameState);
 
 	mySelectedDeck = data.selectedDeck || [];
 	myInventory = Array.isArray(data.inventory) ? data.inventory : null;
@@ -727,6 +779,8 @@ function applyLobbyJoinedData(data) {
 	}
 
 	showGameLobby();
+
+	if (data.hubPresence) applyHubPresence(data.hubPresence);
 
 	const receivedSeed = data.layoutSeed;
 	const joinPhase = data.state && data.state.gamePhase;
@@ -775,6 +829,8 @@ function applyLobbyJoinedData(data) {
 	if (receivedSeed !== undefined) currentLayoutSeed = receivedSeed;
 	requestDebugScenario();
 	renderHubScene();
+	requestDebugBoothOpen();
+	requestDebugShopBoothOpen();
 	updateObjectiveHud();
 }
 
@@ -840,8 +896,13 @@ function getCardSlotEl(slotIndex) {
 
 const debugScenario = new URLSearchParams(window.location.search).get('debugScenario');
 const debugScenarioAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+const boothDebugParam = new URLSearchParams(window.location.search).get('booth');
 let debugScenarioRequested = false;
+let boothDebugRequested = false;
 let debugScenarioResult = null;
+let debugGodmodeResult = null;
+const debugBooth = new URLSearchParams(window.location.search).get('booth');
+const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
 let lastUsedSlot = -1; // tracks the most recently clicked/pressed slot index for cardError targeting
 
@@ -903,14 +964,58 @@ initInput({
 			// the nearest in-range ally each frame. Other items keep their shape.
 			if (me.equippedKeyItemId === 'phase_step') {
 				const targetPlayerId = getPhaseStepTargetId();
-				socket.emit('useKeyItem', { keyItemId: 'phase_step', targetPlayerId });
+				socket.emit(CLIENT_TO_SERVER.USE_KEY_ITEM, { keyItemId: 'phase_step', targetPlayerId });
 			} else {
-				socket.emit('useKeyItem', { keyItemId: me.equippedKeyItemId });
+				socket.emit(CLIENT_TO_SERVER.USE_KEY_ITEM, { keyItemId: me.equippedKeyItemId });
 			}
 		}
 	},
 	onLockOn: () => applyLockOnPress(),
+	// Hub booth interaction — not gated behind canUseGameActions so it fires in
+	// the lobby phase. No-op when no booth is in range.
+	onInteract: () => emitBoothInteract(),
 	canUseGameActions,
+});
+
+// Show/hide the booth prompt as the renderer reports the local player entering
+// or leaving a hub booth zone (fires only on transitions).
+setBoothInRangeListener((boothId) => updateBoothPrompt(boothPromptEl, boothId));
+
+// Clicking the prompt is an alternative to pressing the interact key.
+if (boothPromptEl) {
+	boothPromptEl.addEventListener('click', () => emitBoothInteract());
+}
+
+const deckBoothDeps = { showGameLobby, setLobbyTab, renderDeckEditor };
+registerDeckBoothListener(deckBoothDeps);
+const requestDebugBoothOpen = createRequestDebugBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openDeckBooth,
+	deps: deckBoothDeps,
+});
+const shopBoothDeps = { showGameLobby, setLobbyTab, renderCardShop };
+registerShopBoothListener(shopBoothDeps);
+const requestDebugShopBoothOpen = createRequestDebugShopBoothOpener({
+	param: debugBooth,
+	hostname: window.location.hostname,
+	openShopBooth,
+	deps: shopBoothDeps,
+});
+window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
+	const boothId = ev.detail && ev.detail.boothId;
+	if (boothId !== 'character') return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	openCharacterBooth();
+});
+
+// Quest booth: reveal/focus the existing inline quest panel (#quest-board).
+// No second quest UI is introduced — openQuestPanel just scrolls the wrapper
+// into view; selection still flows through renderQuestBoardState's handler.
+window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
+	if (!isQuestBoothAction(ev.detail)) return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	openQuestPanel();
 });
 
 // Context bundle handed to per-card renderers — declared once so the
@@ -1000,7 +1105,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('init', (data) => {
+	s.on(SERVER_TO_CLIENT.INIT, (data) => {
 		myId = data.id;
 		rendererSetMyId(data.id);
 		if (data.playerId) {
@@ -1011,6 +1116,7 @@ function bindSocketHandlers(s) {
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
 		keyItemDefs = data.keyItemDefs || {};
+		enemyDisplayCatalog = data.enemyDisplayCatalog || null;
 		renderDeckEditor();
 
 		if (data.accountId) {
@@ -1030,12 +1136,19 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('lobbyJoined', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_JOINED, (data) => {
 		showLobbyBrowserError('');
 		applyLobbyJoinedData(data);
+		// Debug hook: ?booth=launch readies up automatically on a lobby join so a
+		// run can be launched without walking to the Launch Bay booth. Guarded to
+		// the lobby phase so it never fires when dropping into an in-progress run.
+		const inLobbyPhase = data && data.state && data.state.gamePhase === 'lobby';
+		if (inLobbyPhase && getBoothDebugHook(window.location.search) === LAUNCH_BOOTH_ID) {
+			launchBoothReadyUp();
+		}
 	});
 
-	s.on('lobbyLeft', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_LEFT, (data) => {
 		gameState = null;
 		setGameStateRef(null);
 		showLobbyBrowser();
@@ -1045,18 +1158,18 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('lobbyListUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, (data) => {
 		if (lobbyBrowserEl && !lobbyBrowserEl.classList.contains('hidden')) {
 			renderLobbyList((data && data.lobbies) || []);
 		}
 	});
 
-	s.on('lobbyError', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'Lobby action failed';
 		showLobbyBrowserError(reason);
 	});
 
-	s.on('stateUpdate', (state) => {
+	s.on(SERVER_TO_CLIENT.STATE_UPDATE, (state) => {
 		const previousPhase = gameState && gameState.gamePhase;
 		// Verify layout seed consistency on every state update
 		if (currentLayoutSeed !== null && state.layoutSeed !== undefined && state.layoutSeed !== currentLayoutSeed) {
@@ -1224,14 +1337,14 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('heartbeat_ack', (data) => {
+	s.on(SERVER_TO_CLIENT.HEARTBEAT_ACK, (data) => {
 		if (connectionState === 'connected') {
 			latency = data.latency;
 			statusEl.innerText = `Latency: ${latency}ms`;
 		}
 	});
 
-	s.on('debugScenarioResult', (data) => {
+	s.on(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, (data) => {
 		debugScenarioResult = data || null;
 		if (data && data.ok) {
 			console.log(`[debugScenario] applied ${data.scenario}`);
@@ -1241,8 +1354,11 @@ function bindSocketHandlers(s) {
 			// this field, so normal gameplay is unaffected.
 			if (Array.isArray(data.unlockedHats)) {
 				setUnlockedHats(data.unlockedHats);
-				if (accountOverlayEl && !accountOverlayEl.classList.contains('hidden')) {
-					syncCosmeticForm();
+				// Mirror the `hatUnlocked` handler: when the character booth is open
+				// (e.g. via the `?booth=hatswap` debug hook), rebuild its hat list so
+				// the newly-unlocked hats appear as selectable (owned) entries.
+				if (isCharacterBoothOpen()) {
+					rebuildBoothHatList();
 				}
 			}
 		} else if (data && data.reason) {
@@ -1250,21 +1366,31 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('playerDisconnected', (id) => {
-		const maps = getMeshMaps();
-		if (maps.playersMeshes[id]) {
-			const sc = getScene();
-			if (sc) sc.remove(maps.playersMeshes[id]);
-			delete maps.playersMeshes[id];
+	s.on(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, (data) => {
+		debugGodmodeResult = data || null;
+		if (data && data.ok) {
+			console.log(`[debugGodmode] ${data.enabled ? 'enabled' : 'disabled'}`);
+		} else if (data && data.reason) {
+			console.warn(`[debugGodmode] ${data.reason}`);
 		}
 	});
 
-	s.on('cardUsed', (data) => {
+	s.on(SERVER_TO_CLIENT.PLAYER_DISCONNECTED, (id) => {
+		removeRemotePlayerVisuals(id);
+	});
+
+	s.on(SERVER_TO_CLIENT.HUB_PRESENCE_UPDATE, (data) => {
+		if (!data || !gameState || gameState.gamePhase !== 'lobby') return;
+		if (!data.presence) return;
+		applyHubPresence(data.presence, { removedPlayerIds: data.removedPlayerIds });
+	});
+
+	s.on(SERVER_TO_CLIENT.CARD_USED, (data) => {
 		if (!data || !getScene()) return;
 		renderCardUsed(data, cardRenderCtx);
 	});
 
-	s.on('volatileExplosion', (data) => {
+	s.on(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, (data) => {
 		if (!data || !getScene()) return;
 		const { x, z, radius } = data;
 		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
@@ -1275,17 +1401,17 @@ function bindSocketHandlers(s) {
 		);
 	});
 
-	s.on('leechHeal', (data) => {
+	s.on(SERVER_TO_CLIENT.LEECH_HEAL, (data) => {
 		if (!data) return;
 		playSound('leechHeal');
 	});
 
-	s.on('shieldBreak', (data) => {
+	s.on(SERVER_TO_CLIENT.SHIELD_BREAK, (data) => {
 		if (!data) return;
 		playSound('shieldBreak');
 	});
 
-	s.on('cardError', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		console.log(`[cardError] ${data.reason}`);
 		showCardErrorToast(data.reason);
@@ -1296,7 +1422,20 @@ function bindSocketHandlers(s) {
 		lastUsedSlot = -1;
 	});
 
-	s.on('deckUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.BOOTH_ACTION, (data) => {
+		// Single dispatch hook: later booth tickets subscribe to the
+		// `booth:action` window event instead of re-touching this primitive.
+		if (!data || !data.boothId) return;
+		dispatchBoothAction(data);
+	});
+
+	s.on(SERVER_TO_CLIENT.BOOTH_ERROR, (data) => {
+		// Booth interactions are best-effort: log and ignore so a rejected
+		// interaction never disrupts the prompt or crashes the client.
+		console.log(`[boothError] ${data && data.reason ? data.reason : 'unknown'}`);
+	});
+
+	s.on(SERVER_TO_CLIENT.DECK_UPDATE, (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
@@ -1328,13 +1467,13 @@ function bindSocketHandlers(s) {
 		if (activeLobbyTab === 'shop') renderCardShop();
 	});
 
-	s.on('deckError', (data) => {
+	s.on(SERVER_TO_CLIENT.DECK_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		if (activeLobbyTab === 'shop') showShopError(data.reason);
 		else showDeckError(data.reason);
 	});
 
-	s.on('medicHealed', (data) => {
+	s.on(SERVER_TO_CLIENT.MEDIC_HEALED, (data) => {
 		if (gameState && myId && gameState.players[myId] && data) {
 			gameState.players[myId].hp = data.hp;
 			gameState.players[myId].currency = data.currency;
@@ -1349,7 +1488,7 @@ function bindSocketHandlers(s) {
 		syncVanguardHud(me, 'lobby');
 	});
 
-	s.on('medicError', (data) => {
+	s.on(SERVER_TO_CLIENT.MEDIC_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'unknown';
 		const messages = {
 			insufficient_gold: `Not enough money (need ${MEDIC_HEAL_COST})`,
@@ -1360,7 +1499,7 @@ function bindSocketHandlers(s) {
 		showMedicError(messages[reason] || `Heal failed: ${reason}`);
 	});
 
-	s.on('keyItemEquipped', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_EQUIPPED, (data) => {
 		if (data && data.keyItemId) {
 			const me = myId && gameState?.players ? gameState.players[myId] : null;
 			if (me) me.equippedKeyItemId = data.keyItemId;
@@ -1368,7 +1507,7 @@ function bindSocketHandlers(s) {
 		renderKeyItemList();
 	});
 
-	s.on('keyItemError', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_ERROR, (data) => {
 		const reason = data && data.reason ? data.reason : 'unknown';
 		const messages = {
 			not_in_lobby: 'Key items can only be equipped in the lobby',
@@ -1378,7 +1517,7 @@ function bindSocketHandlers(s) {
 		showKeyItemError(messages[reason] || `Equip failed: ${reason}`);
 	});
 
-	s.on('keyItemHealPulse', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_HEAL_PULSE, (data) => {
 		if (!data || !getScene()) return;
 		const { x, z, healRadius } = data;
 		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
@@ -1388,7 +1527,7 @@ function bindSocketHandlers(s) {
 		triggerHealPulseVFX({ x, y: 0, z }, radius);
 	});
 
-	s.on('keyItemUsed', (data) => {
+	s.on(SERVER_TO_CLIENT.KEY_ITEM_USED, (data) => {
 		if (!data) return;
 		const me = myId && gameState?.players ? gameState.players[myId] : null;
 		if (data.ok) {
@@ -1428,7 +1567,7 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('cardEvolutionResult', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, (data) => {
 		if (!data) return;
 		lastEvolutionResult = data;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
@@ -1437,17 +1576,17 @@ function bindSocketHandlers(s) {
 		renderDeckEditor();
 	});
 
-	s.on('cardEvolutionError', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		showDeckError(data.reason);
 	});
 
-	s.on('questError', (data) => {
+	s.on(SERVER_TO_CLIENT.QUEST_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		showQuestError(data.reason);
 	});
 
-	s.on('cardInventoryUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_INVENTORY_UPDATE, (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
@@ -1461,7 +1600,7 @@ function bindSocketHandlers(s) {
 		if (activeLobbyTab === 'shop') renderCardShop();
 	});
 
-	s.on('cardGrindResult', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_GRIND_RESULT, (data) => {
 		if (!data) return;
 		if (data.selectedDeck) mySelectedDeck = data.selectedDeck;
 		if (Array.isArray(data.inventory)) myInventory = data.inventory;
@@ -1477,13 +1616,13 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('cardGrindError', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_GRIND_ERROR, (data) => {
 		if (!data || !data.reason) return;
 		if (activeLobbyTab === 'forge') showForgeError(data.reason);
 		else showDeckError(data.reason);
 	});
 
-	s.on('hatUnlocked', (data) => {
+	s.on(SERVER_TO_CLIENT.HAT_UNLOCKED, (data) => {
 		if (!data) return;
 		// Record the unlock and refreshed currency from the server (never
 		// optimistically before this event), then re-render the hat list so the
@@ -1493,20 +1632,54 @@ function bindSocketHandlers(s) {
 			myCurrency = data.currency;
 			updateCurrencyHud(myCurrency);
 		}
-		buildHatList();
+		rebuildBoothHatList();
 	});
 
-	s.on('hatError', (data) => {
-		showCosmeticError(data && data.reason ? data.reason : 'Unlock failed');
+	s.on(SERVER_TO_CLIENT.HAT_ERROR, (data) => {
+		const message = data && data.reason ? data.reason : 'Unlock failed';
+		showBoothCosmeticError(message);
 	});
 
-	s.on('tradeOffer', (data) => {
+	s.on(SERVER_TO_CLIENT.APPEARANCE_CHANGED, (data) => {
+		if (!data) return;
+		if (data.cosmetic) {
+			setAccountCosmetic(data.cosmetic);
+		}
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			updateCurrencyHud(myCurrency);
+			if (myId && gameState?.players?.[myId]) {
+				gameState.players[myId].currency = data.currency;
+			}
+		}
+		if (data.cosmetic && myId && gameState?.players?.[myId]) {
+			gameState.players[myId].cosmetic = getAccountCosmetic();
+			setGameStateRef(gameState);
+		}
+		handleAppearanceChanged();
+	});
+
+	s.on(SERVER_TO_CLIENT.APPEARANCE_ERROR, (data) => {
+		const reason = data && data.reason ? data.reason : 'Appearance save failed';
+		let message = reason;
+		if (reason === 'insufficient_gold' || /not enough/i.test(reason)) {
+			message = /need \d+/i.test(reason)
+				? reason
+				: `Not enough money (need ${formatCurrencyPrice(APPEARANCE_CHANGE_COST)})`;
+		}
+		if (isCharacterBoothOpen()) {
+			showBoothCosmeticError(message);
+			handleAppearanceError();
+		}
+	});
+
+	s.on(SERVER_TO_CLIENT.TRADE_OFFER, (data) => {
 		if (!data || !data.tradeId) return;
 		pendingTradeOffer = data;
 		renderTradeOffer();
 	});
 
-	s.on('tradeUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.TRADE_UPDATE, (data) => {
 		if (!data) return;
 		if (data.status === 'accepted' || data.status === 'rejected') {
 			if (pendingTradeOffer && pendingTradeOffer.tradeId === data.tradeId) {
@@ -1516,13 +1689,13 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('playerReconnected', (reconnectedId) => {
+	s.on(SERVER_TO_CLIENT.PLAYER_RECONNECTED, (reconnectedId) => {
 		if (reconnectedId === myId) {
 			console.log('[network] player reconnected');
 		}
 	});
 
-	s.on('lobbyUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.LOBBY_UPDATE, (data) => {
 		renderPlayerList(data.players);
 		renderTradeForm(data.players);
 		if (data.players && myId) {
@@ -1532,16 +1705,19 @@ function bindSocketHandlers(s) {
 				syncReadyButtonRole();
 				if (gameState && gameState.gamePhase === 'lobby') {
 					setDeployButtonVisible(true);
-					readyBtn.disabled = false;
 				}
 			}
 		}
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
 			applyQuestBoardFromPayload(data);
 		}
+		if ('shopOffer' in data && gameState) {
+			gameState.shopOffer = data.shopOffer;
+			if (activeLobbyTab === 'shop') renderCardShop();
+		}
 	});
 
-	s.on('questUpdate', (data) => {
+	s.on(SERVER_TO_CLIENT.QUEST_UPDATE, (data) => {
 		if (!data) return;
 		if (data.quests || data.questVariants || data.selectedQuestId || data.unlockedQuestTiers) {
 			applyQuestBoardFromPayload(data);
@@ -1549,7 +1725,7 @@ function bindSocketHandlers(s) {
 		applyQuestLayoutFromServer(data);
 	});
 
-	s.on('startGame', () => {
+	s.on(SERVER_TO_CLIENT.START_GAME, () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
@@ -1603,17 +1779,17 @@ function bindSocketHandlers(s) {
 		}
 	});
 
-	s.on('runComplete', showRunSummary);
-	s.on('runFailed', showRunSummary);
+	s.on(SERVER_TO_CLIENT.RUN_COMPLETE, showRunSummary);
+	s.on(SERVER_TO_CLIENT.RUN_FAILED, showRunSummary);
 
-	s.on('runError', (data) => {
+	s.on(SERVER_TO_CLIENT.RUN_ERROR, (data) => {
 		const reason = (data && data.reason) ? data.reason : 'Run action failed';
 		console.warn(`[run] ${reason}`);
 		showLevelSettingsError(reason);
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 	});
 
-	s.on('runAbandoned', () => {
+	s.on(SERVER_TO_CLIENT.RUN_ABANDONED, () => {
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
@@ -1630,7 +1806,7 @@ function bindSocketHandlers(s) {
 		giveUpBtnEl.onclick = () => requestGiveUp(s);
 	}
 
-	s.on('runSuspended', (summary) => {
+	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
 		if (summary && summary.questName) {
 			console.log(`[run] suspended: ${summary.questName}`);
 		}
@@ -1641,13 +1817,13 @@ function bindSocketHandlers(s) {
 		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary }, { rebuildHub: true });
 	});
 
-	s.on('playerExtracted', (data) => {
+	s.on(SERVER_TO_CLIENT.PLAYER_EXTRACTED, (data) => {
 		if (data && data.playerId === myId) {
 			showExtractedLobbyOverlay();
 		}
 	});
 
-	s.on('cardRewardClaimed', (data) => {
+	s.on(SERVER_TO_CLIENT.CARD_REWARD_CLAIMED, (data) => {
 		if (!data || !data.cardId) return;
 		claimedCardRewardId = data.cardId;
 		if (data.ownedCards) myOwnedCards = data.ownedCards;
@@ -1680,6 +1856,8 @@ let myInventory = null;
 let myOwnedCards = {};
 let lastEvolutionResult = null;
 let keyItemDefs = {};
+let enemyDisplayCatalog = null;
+setEnemyDisplayCatalogGetter(() => enemyDisplayCatalog);
 let availableQuests = [];
 let questVariants = [];
 let unlockedQuestTiers = {};
@@ -1789,6 +1967,17 @@ function applyQuestLayoutFromServer(data) {
 	}
 }
 
+// Reveal/focus the existing inline quest panel when the hub quest booth fires.
+// The inline #quest-board stays the selection surface (see renderQuestBoardState
+// below); this only brings the wrapper into view. Guarded to the lobby phase.
+function openQuestPanel() {
+	if (gameState?.gamePhase !== 'lobby') return;
+	// The wrapper is hidden by default; the booth is what reveals it.
+	questBoardWrapperEl?.classList.remove('hidden');
+	// jsdom lacks scrollIntoView, so guard defensively for tests.
+	questBoardWrapperEl?.scrollIntoView?.({ block: 'nearest' });
+}
+
 function renderQuestBoardState() {
 	renderQuestBoard(
 		questBoardEl,
@@ -1796,7 +1985,7 @@ function renderQuestBoardState() {
 		selectedQuestId,
 		(questId, tier) => {
 			if (!socket) return;
-			socket.emit('selectQuest', { questId, tier: tier ?? 1 });
+			socket.emit(CLIENT_TO_SERVER.SELECT_QUEST, { questId, tier: tier ?? 1 });
 		},
 		{
 			selectedQuestTier,
@@ -1819,10 +2008,63 @@ function showQuestError(message) {
 function requestDebugScenario() {
 	if (!debugScenario || !debugScenarioAllowed || debugScenarioRequested) return;
 	debugScenarioRequested = true;
-	socket.emit('debugScenario', { name: debugScenario });
+	socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name: debugScenario });
+}
+
+function isDebugGodmodeKeyBlocked(e) {
+	const target = e.target;
+	if (target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target?.isContentEditable) {
+		return true;
+	}
+	return !!(variantCodexOpen || deckViewerOpen || isLevelSettingsOpen() || isCharacterBoothOpen()
+		|| (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden'))
+		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
+		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
+		|| (runSummaryOverlay && !runSummaryOverlay.classList.contains('hidden')));
+}
+
+function emitToggleDebugGodmode() {
+	if (!socket?.connected) return;
+	socket.emit(CLIENT_TO_SERVER.TOGGLE_DEBUG_GODMODE);
+}
+
+window.__openDeckBoothForTest = openDeckBooth;
+window.__openShopBoothForTest = openShopBooth;
+window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
+window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
+// Capture/test hook: ready up via the launch-booth path (no new socket event).
+// Routes through the shared launchBoothReadyUp() so the capture's readyAll step
+// reaches the playing phase without re-introducing the retired 2D #ready-btn.
+// Idempotent — launchBoothReadyUp() bails when the player is already ready.
+window.__launchReadyUpForTest = () => launchBoothReadyUp();
+/** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
+function requestBoothDebugOpen() {
+	if (!debugScenarioAllowed || boothDebugRequested) return;
+	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest' && boothDebugParam !== 'hatswap') return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	boothDebugRequested = true;
+	if (boothDebugParam === 'quest') {
+		openQuestPanel();
+	} else if (boothDebugParam === 'hatswap') {
+		// Debug shortcut: unlock the catalog hats (via the existing
+		// `hats-unlocked` scenario) and open the character booth so the free
+		// unlocked-hat swap can be exercised directly. The booth's hat list is
+		// rebuilt when the scenario result arrives (see debugScenarioResult).
+		if (socket && socket.connected) {
+			socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name: 'hats-unlocked' });
+		}
+		openCharacterBooth();
+	} else {
+		openCharacterBooth();
+	}
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
+window.__toggleDebugGodmodeForTest = emitToggleDebugGodmode;
+
 window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve) => {
 	if (!socket) {
 		resolve({ ok: false, reason: 'no socket' });
@@ -1830,17 +2072,17 @@ window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve
 	}
 	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
 	const timer = setTimeout(() => {
-		socket.off('debugScenarioResult', onResult);
+		socket.off(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, onResult);
 		resolve({ ok: false, reason: 'timeout waiting for debugScenarioResult' });
 	}, timeout);
 	function onResult(data) {
 		clearTimeout(timer);
-		socket.off('debugScenarioResult', onResult);
+		socket.off(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, onResult);
 		debugScenarioResult = data || null;
 		resolve(data || { ok: false, reason: 'empty debugScenarioResult' });
 	}
-	socket.once('debugScenarioResult', onResult);
-	socket.emit('debugScenario', { name });
+	socket.once(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, onResult);
+	socket.emit(CLIENT_TO_SERVER.DEBUG_SCENARIO, { name });
 });
 
 // Test-only: drive the lobby deck editor over the live socket so a smoke test
@@ -1854,14 +2096,14 @@ window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
 		const timeout = Math.max(1000, Math.min(timeoutMs || 5000, 15000));
 		const cleanup = () => {
 			clearTimeout(timer);
-			socket.off('deckUpdate', onUpdate);
-			socket.off('deckError', onError);
+			socket.off(SERVER_TO_CLIENT.DECK_UPDATE, onUpdate);
+			socket.off(SERVER_TO_CLIENT.DECK_ERROR, onError);
 		};
 		const onUpdate = (data) => { cleanup(); resolve({ ok: true, selectedDeck: data?.selectedDeck || [] }); };
 		const onError = (data) => { cleanup(); resolve({ ok: false, reason: data?.reason || 'deckError' }); };
 		const timer = setTimeout(() => { cleanup(); resolve({ ok: false, reason: 'timeout waiting for deckUpdate' }); }, timeout);
-		socket.once('deckUpdate', onUpdate);
-		socket.once('deckError', onError);
+		socket.once(SERVER_TO_CLIENT.DECK_UPDATE, onUpdate);
+		socket.once(SERVER_TO_CLIENT.DECK_ERROR, onError);
 	});
 	// Empty the current deck one instance at a time.
 	let guard = 0;
@@ -1869,14 +2111,14 @@ window.__configureDeckForTest = async (targetCardIds, timeoutMs) => {
 		guard += 1;
 		const entry = mySelectedDeck[0];
 		const pending = waitDeck();
-		socket.emit('deckRemoveCard', { instanceId: entry });
+		socket.emit(CLIENT_TO_SERVER.DECK_REMOVE_CARD, { instanceId: entry });
 		const res = await pending;
 		if (!res.ok) return res;
 	}
 	// Add each requested card by id (server picks an available owned instance).
 	for (const cardId of targetCardIds) {
 		const pending = waitDeck();
-		socket.emit('deckAddCard', { cardId });
+		socket.emit(CLIENT_TO_SERVER.DECK_ADD_CARD, { cardId });
 		const res = await pending;
 		if (!res.ok) return { ok: false, reason: `add ${cardId} failed: ${res.reason}` };
 	}
@@ -1895,31 +2137,31 @@ window.__evolveCardForTest = (instanceId, timeoutMs) => new Promise((resolve) =>
 	}
 	const timeout = Math.max(1000, Math.min(timeoutMs || 10000, 30000));
 	const timer = setTimeout(() => {
-		socket.off('cardEvolutionResult', onResult);
-		socket.off('cardEvolutionError', onError);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 		resolve({ ok: false, reason: 'timeout waiting for evolution result' });
 	}, timeout);
 	function onResult(data) {
 		clearTimeout(timer);
-		socket.off('cardEvolutionResult', onResult);
-		socket.off('cardEvolutionError', onError);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 		resolve({ ok: true, instance: data?.instance, fromCardId: data?.fromCardId, toCardId: data?.toCardId });
 	}
 	function onError(data) {
 		clearTimeout(timer);
-		socket.off('cardEvolutionResult', onResult);
-		socket.off('cardEvolutionError', onError);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+		socket.off(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
 		resolve({ ok: false, reason: data?.reason || 'cardEvolutionError' });
 	}
-	socket.once('cardEvolutionResult', onResult);
-	socket.once('cardEvolutionError', onError);
-	socket.emit('evolveCard', { instanceId });
+	socket.once(SERVER_TO_CLIENT.CARD_EVOLUTION_RESULT, onResult);
+	socket.once(SERVER_TO_CLIENT.CARD_EVOLUTION_ERROR, onError);
+	socket.emit(CLIENT_TO_SERVER.EVOLVE_CARD, { instanceId });
 });
 
 function startHeartbeat() {
 	if (heartbeatTimer) return;
 	heartbeatTimer = setInterval(() => {
-		socket.emit('heartbeat', { type: 'heartbeat', timestamp: Date.now() });
+		socket.emit(CLIENT_TO_SERVER.HEARTBEAT, { type: 'heartbeat', timestamp: Date.now() });
 	}, 2000);
 }
 
@@ -2076,7 +2318,15 @@ function updateObjectiveHud() {
 	if (gameState && gameState.gamePhase === 'playing' && run && run.objective) {
 		const obj = run.objective;
 		const title = formatQuestTierLabel(run.questName, run.questTier ?? 1);
-		objectiveHudEl.textContent = `${title}\nPurged ${obj.defeatedEnemies} / ${obj.totalEnemies} hostiles`;
+		let progress = '';
+		if (obj.type === 'collect_items') {
+			progress = THEME.objectives.collectPrismsProgress
+				.replace('{collected}', String(obj.collectedItems ?? 0))
+				.replace('{total}', String(obj.totalItems ?? 0));
+		} else if (obj.type === 'defeat_enemies') {
+			progress = `Purged ${obj.defeatedEnemies ?? 0} / ${obj.totalEnemies ?? 0} hostiles`;
+		}
+		objectiveHudEl.textContent = progress ? `${title}\n${progress}` : title;
 		objectiveHudEl.style.display = 'block';
 	} else {
 		objectiveHudEl.style.display = 'none';
@@ -2539,7 +2789,6 @@ const tradeOfferSelectEl = document.getElementById('trade-offer-select');
 const tradeRequestSelectEl = document.getElementById('trade-request-select');
 const offerTradeBtn = document.getElementById('offer-trade-btn');
 const deckEditorEl = document.getElementById('deck-editor');
-const lobbyTabDeckBtn = document.getElementById('lobby-tab-deck');
 const lobbyTabForgeBtn = document.getElementById('lobby-tab-forge');
 const photonForgeEl = document.getElementById('photon-forge');
 const forgeInventoryGridEl = document.getElementById('forge-inventory-grid');
@@ -2548,7 +2797,7 @@ const forgeSelectedMetaEl = document.getElementById('forge-selected-meta');
 const forgeStatRowsEl = document.getElementById('forge-stat-rows');
 const forgeErrorEl = document.getElementById('forge-error');
 
-let activeLobbyTab = 'deck';
+let activeLobbyTab = 'forge';
 let selectedForgeInstanceId = null;
 
 function getDeckInventory() {
@@ -2633,12 +2882,12 @@ function renderDeckEditor() {
 		const evolveBtn = entry.querySelector('.evolve-card-btn');
 		evolveBtn.addEventListener('click', () => {
 			const instance = findEvolvableInstance(cardId);
-			if (instance) socket.emit('evolveCard', { instanceId: instance.instanceId });
+			if (instance) socket.emit(CLIENT_TO_SERVER.EVOLVE_CARD, { instanceId: instance.instanceId });
 		});
 		const addBtn = entry.querySelector('.deck-add-btn');
 		addBtn.addEventListener('click', () => {
 			const instance = findAvailableInventoryInstance(cardId);
-			socket.emit('deckAddCard', instance ? { instanceId: instance.instanceId, cardId } : { cardId });
+			socket.emit(CLIENT_TO_SERVER.DECK_ADD_CARD, instance ? { instanceId: instance.instanceId, cardId } : { cardId });
 		});
 		ownedCardsListEl.appendChild(entry);
 	}
@@ -2667,20 +2916,12 @@ function renderDeckEditor() {
 		removeBtn.addEventListener('click', () => {
 			const entryId = entryIds[entryIds.length - 1];
 			const instance = inventory.find((card) => card.instanceId === entryId);
-			socket.emit('deckRemoveCard', instance ? { instanceId: entryId, cardId } : { cardId });
+			socket.emit(CLIENT_TO_SERVER.DECK_REMOVE_CARD, instance ? { instanceId: entryId, cardId } : { cardId });
 		});
 		selectedDeckListEl.appendChild(entry);
 	}
 
 	deckSizeDisplayEl.textContent = `${mySelectedDeck.length}/${DECK_MAX_SIZE}`;
-
-	if (mySelectedDeck.length < DECK_MIN_SIZE) {
-		readyBtn.classList.add('deck-invalid');
-		readyBtn.disabled = true;
-	} else {
-		readyBtn.classList.remove('deck-invalid');
-		readyBtn.disabled = false;
-	}
 
 	deckErrorEl.style.display = 'none';
 	deckErrorEl.textContent = '';
@@ -2762,7 +3003,7 @@ function renderTradeForm(players = null) {
 if (acceptTradeBtn) {
 	acceptTradeBtn.addEventListener('click', () => {
 		if (!pendingTradeOffer) return;
-		socket.emit('respondCardTrade', { tradeId: pendingTradeOffer.tradeId, accepted: true });
+		socket.emit(CLIENT_TO_SERVER.RESPOND_CARD_TRADE, { tradeId: pendingTradeOffer.tradeId, accepted: true });
 		pendingTradeOffer = null;
 		renderTradeOffer();
 	});
@@ -2771,7 +3012,7 @@ if (acceptTradeBtn) {
 if (rejectTradeBtn) {
 	rejectTradeBtn.addEventListener('click', () => {
 		if (!pendingTradeOffer) return;
-		socket.emit('respondCardTrade', { tradeId: pendingTradeOffer.tradeId, accepted: false });
+		socket.emit(CLIENT_TO_SERVER.RESPOND_CARD_TRADE, { tradeId: pendingTradeOffer.tradeId, accepted: false });
 		pendingTradeOffer = null;
 		renderTradeOffer();
 	});
@@ -2783,7 +3024,7 @@ if (offerTradeBtn) {
 		const offeredCardId = tradeOfferSelectEl?.value;
 		const requestedCardId = tradeRequestSelectEl?.value;
 		if (!targetPlayerId || !offeredCardId || !requestedCardId) return;
-		socket.emit('offerCardTrade', { targetPlayerId, offeredCardId, requestedCardId });
+		socket.emit(CLIENT_TO_SERVER.OFFER_CARD_TRADE, { targetPlayerId, offeredCardId, requestedCardId });
 	});
 }
 
@@ -2952,7 +3193,7 @@ function renderKeyItemList() {
 				showKeyItemError('Not connected to server');
 				return;
 			}
-			socket.emit('equipKeyItem', { keyItemId: def.id });
+			socket.emit(CLIENT_TO_SERVER.EQUIP_KEY_ITEM, { keyItemId: def.id });
 		};
 
 		entry.addEventListener('click', tryEquip);
@@ -2980,9 +3221,7 @@ function setLobbyTab(tab) {
 	const cardEconomy = document.getElementById('card-economy');
 	const guildMedic = document.getElementById('guild-medic');
 	const keyItemLoadout = document.getElementById('key-item-loadout');
-	const deckTabBtn = document.getElementById('lobby-tab-deck');
 	const forgeTabBtn = document.getElementById('lobby-tab-forge');
-	const shopTabBtn = document.getElementById('lobby-tab-shop');
 	const economyTabBtn = document.getElementById('lobby-tab-economy');
 	const medicTabBtn = document.getElementById('lobby-tab-medic');
 	const keyItemsTabBtn = document.getElementById('lobby-tab-keyitems');
@@ -2992,9 +3231,7 @@ function setLobbyTab(tab) {
 	if (cardEconomy) cardEconomy.classList.toggle('hidden', activeLobbyTab !== 'economy');
 	if (guildMedic) guildMedic.classList.toggle('hidden', activeLobbyTab !== 'medic');
 	if (keyItemLoadout) keyItemLoadout.classList.toggle('hidden', activeLobbyTab !== 'keyitems');
-	if (deckTabBtn) deckTabBtn.classList.toggle('active', activeLobbyTab === 'deck');
 	if (forgeTabBtn) forgeTabBtn.classList.toggle('active', activeLobbyTab === 'forge');
-	if (shopTabBtn) shopTabBtn.classList.toggle('active', activeLobbyTab === 'shop');
 	if (economyTabBtn) economyTabBtn.classList.toggle('active', activeLobbyTab === 'economy');
 	if (medicTabBtn) medicTabBtn.classList.toggle('active', activeLobbyTab === 'medic');
 	if (keyItemsTabBtn) keyItemsTabBtn.classList.toggle('active', activeLobbyTab === 'keyitems');
@@ -3043,7 +3280,7 @@ function renderCardShopSellList() {
 		sellBtn.addEventListener('click', () => {
 			const instance = findAvailableInventoryInstance(cardId);
 			if (instance) {
-				socket.emit('sellCard', { instanceId: instance.instanceId, cardId });
+				socket.emit(CLIENT_TO_SERVER.SELL_CARD, { instanceId: instance.instanceId, cardId });
 			}
 		});
 		sellListEl.appendChild(entry);
@@ -3188,14 +3425,17 @@ function renderPhotonForge() {
 	showForgeError('');
 }
 
-if (document.getElementById('lobby-tab-deck')) {
-	document.getElementById('lobby-tab-deck').addEventListener('click', () => setLobbyTab('deck'));
-}
 if (document.getElementById('lobby-tab-forge')) {
 	document.getElementById('lobby-tab-forge').addEventListener('click', () => setLobbyTab('forge'));
 }
-if (document.getElementById('lobby-tab-shop')) {
-	document.getElementById('lobby-tab-shop').addEventListener('click', () => setLobbyTab('shop'));
+const buyShopCardBtnEl = document.getElementById('buy-shop-card-btn');
+if (buyShopCardBtnEl) {
+	buyShopCardBtnEl.addEventListener('click', () => {
+		if (!socket || !socket.connected) return;
+		const offer = gameState && gameState.shopOffer;
+		if (!offer || !offer.cardId) return;
+		socket.emit(CLIENT_TO_SERVER.BUY_SHOP_CARD);
+	});
 }
 	if (document.getElementById('lobby-tab-economy')) {
 	document.getElementById('lobby-tab-economy').addEventListener('click', () => setLobbyTab('economy'));
@@ -3213,13 +3453,13 @@ if (medicHealBtnEl) {
 			showMedicError('Not connected to server');
 			return;
 		}
-		socket.emit('medicHeal');
+		socket.emit(CLIENT_TO_SERVER.MEDIC_HEAL);
 	});
 }
 if (document.getElementById('forge-attune-btn')) {
 	document.getElementById('forge-attune-btn').addEventListener('click', () => {
 		if (!selectedForgeInstanceId) return;
-		socket.emit('grindCard', { instanceId: selectedForgeInstanceId });
+		socket.emit(CLIENT_TO_SERVER.GRIND_CARD, { instanceId: selectedForgeInstanceId });
 	});
 }
 
@@ -3269,7 +3509,7 @@ function useCard(slotIndex) {
 
 	lastUsedSlot = slotIndex;
 	const facing = getPlayerFacingDirection();
-	socket.emit('useCard', {
+	socket.emit(CLIENT_TO_SERVER.USE_CARD, {
 		slotIndex,
 		cardId: card.id,
 		rotation: Math.atan2(facing.z, facing.x),
@@ -3308,7 +3548,7 @@ function discardCard(slotIndex) {
 		return;
 	}
 
-	socket.emit('discardCard', { slotIndex, cardId: card.id });
+	socket.emit(CLIENT_TO_SERVER.DISCARD_CARD, { slotIndex, cardId: card.id });
 }
 
 // Click: delegate on #card-hand, read data-slot-index from .card-slot target
@@ -3367,7 +3607,10 @@ if (deckViewerOverlayEl) {
 }
 
 // ── Variant Codex keyboard toggle ──
-window.addEventListener('keydown', (e) => {
+if (window.__variantCodexKeydownHandler) {
+	window.removeEventListener('keydown', window.__variantCodexKeydownHandler);
+}
+window.__variantCodexKeydownHandler = (e) => {
 	const key = e.key.toLowerCase();
 	if (key === 'c' && canUseGameActions()) {
 		e.preventDefault();
@@ -3377,8 +3620,14 @@ window.addEventListener('keydown', (e) => {
 	if (key === 'escape' && variantCodexOpen) {
 		e.preventDefault();
 		hideVariantCodex();
+		return;
 	}
-});
+	if (key === 'g' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
+		e.preventDefault();
+		emitToggleDebugGodmode();
+	}
+};
+window.addEventListener('keydown', window.__variantCodexKeydownHandler);
 
 // ── Auth form event handlers ──
 
@@ -3514,235 +3763,28 @@ function syncAccountForm() {
 
 // ── Character customization ──
 
-// Preset palettes of #RRGGBB swatches offered in the customization panel.
-// Defined client-side only; the server validates any #RRGGBB value, not a
-// fixed list. The first body-color entry mirrors the server default cosmetic.
-const BODY_COLOR_PALETTE = [
-	'#4f9dde', '#ef4444', '#22c55e', '#a855f7',
-	'#f97316', '#14b8a6', '#e2e8f0', '#1e293b',
-];
-const ACCENT_COLOR_PALETTE = [
-	'#f2c94c', '#ffffff', '#ef4444', '#22d3ee',
-	'#a855f7', '#f97316', '#84cc16', '#0f172a',
-];
+// Shared in-progress selection for the character-booth overlay.
+const cosmeticSelection = createCosmeticSelection();
 
-// In-progress selection while the panel is open; persisted on Save.
-const cosmeticSelection = {
-	bodyColor: '',
-	accentColor: '',
-	bodyShape: 'box',
-	hat: 'none',
-	proportions: Object.fromEntries(Object.keys(PROPORTION_RANGES).map((k) => [k, 1.0])),
-};
-
-function showCosmeticError(message) {
-	if (!cosmeticErrorEl) return;
-	if (message) {
-		cosmeticErrorEl.textContent = message;
-		cosmeticErrorEl.hidden = false;
-	} else {
-		cosmeticErrorEl.textContent = '';
-		cosmeticErrorEl.hidden = true;
-	}
-}
-
-/**
- * Build the swatch buttons for a palette into a container, wiring each to set
- * the given selection field and refresh the selected-state highlight.
- * @param {HTMLElement|null} container
- * @param {string[]} palette
- * @param {'bodyColor'|'accentColor'} field
- */
-function buildCosmeticSwatches(container, palette, field) {
-	if (!container) return;
-	container.innerHTML = '';
-	for (const color of palette) {
-		const btn = document.createElement('button');
-		btn.type = 'button';
-		btn.className = 'cosmetic-swatch';
-		btn.style.backgroundColor = color;
-		btn.dataset.color = color;
-		btn.title = color;
-		btn.setAttribute('aria-label', color);
-		btn.addEventListener('click', () => {
-			cosmeticSelection[field] = color;
-			refreshSwatchSelection(container, color);
-			refreshCosmeticPreview();
-		});
-		container.appendChild(btn);
-	}
-}
-
-function refreshSwatchSelection(container, color) {
-	if (!container) return;
-	const target = String(color).toLowerCase();
-	for (const btn of container.querySelectorAll('.cosmetic-swatch')) {
-		const isSel = (btn.dataset.color || '').toLowerCase() === target;
-		btn.classList.toggle('selected', isSel);
-	}
-}
-
-// Build the swatches once at startup; selection state is synced per-open.
-buildCosmeticSwatches(cosmeticBodySwatchesEl, BODY_COLOR_PALETTE, 'bodyColor');
-buildCosmeticSwatches(cosmeticAccentSwatchesEl, ACCENT_COLOR_PALETTE, 'accentColor');
-
-/**
- * Render one entry per catalog hat into the hat-list container, marking each as
- * owned vs locked and the equipped/selected entry. Clicking an owned entry sets
- * it as the in-progress equipped hat and refreshes the live preview. Locked
- * entries show their price and an Unlock control that spends currency via the
- * server `unlockHat` flow (disabled when the player cannot afford the hat).
- */
-function buildHatList() {
-	if (!cosmeticHatListEl) return;
-	const catalog = getHatCatalog();
-	const unlocked = getUnlockedHats();
-	cosmeticHatListEl.innerHTML = '';
-	for (const hat of catalog) {
-		const owned = unlocked.includes(hat.id);
-		// Owned entries are clickable buttons (equip); locked entries are static
-		// rows that contain their own Unlock <button> (no nested buttons).
-		const row = document.createElement(owned ? 'button' : 'div');
-		if (owned) row.type = 'button';
-		row.className = 'cosmetic-hat';
-		row.dataset.hatId = hat.id;
-		row.classList.toggle('owned', owned);
-		row.classList.toggle('locked', !owned);
-
-		const name = document.createElement('span');
-		name.className = 'cosmetic-hat-name';
-		name.textContent = hat.name;
-		row.appendChild(name);
-
-		const status = document.createElement('span');
-		status.className = 'cosmetic-hat-status';
-		status.textContent = owned ? 'Owned' : `Locked · ${hat.price}`;
-		row.appendChild(status);
-
-		if (owned) {
-			row.addEventListener('click', () => {
-				cosmeticSelection.hat = hat.id;
-				refreshHatList();
-				refreshCosmeticPreview();
-			});
-		} else {
-			const affordable = myCurrency >= hat.price;
-			const unlockBtn = document.createElement('button');
-			unlockBtn.type = 'button';
-			unlockBtn.className = 'cosmetic-hat-unlock';
-			unlockBtn.textContent = 'Unlock';
-			unlockBtn.disabled = !affordable;
-			if (!affordable) unlockBtn.setAttribute('aria-disabled', 'true');
-			unlockBtn.addEventListener('click', () => {
-				if (myCurrency < hat.price) return;
-				if (!socket || !socket.connected) return;
-				socket.emit('unlockHat', { hatId: hat.id });
-			});
-			row.appendChild(unlockBtn);
-		}
-		cosmeticHatListEl.appendChild(row);
-	}
-	refreshHatList();
-}
-
-/** Update the equipped/selected highlight on the rendered hat entries. */
-function refreshHatList() {
-	if (!cosmeticHatListEl) return;
-	for (const btn of cosmeticHatListEl.querySelectorAll('.cosmetic-hat')) {
-		btn.classList.toggle('selected', btn.dataset.hatId === cosmeticSelection.hat);
-	}
-}
-
-/** Clamp a numeric proportion value into the configured range for `key`. */
-function clampProportion(key, value) {
-	const range = PROPORTION_RANGES[key];
-	if (!range) return value;
-	const num = Number(value);
-	if (!Number.isFinite(num)) return 1.0;
-	return Math.max(range.min, Math.min(range.max, num));
-}
-
-// Cache of proportion-slider elements (keyed by proportion key) plus their value
-// readout spans, populated once when the controls are wired.
-/** @type {Map<string, { input: HTMLInputElement, value: HTMLElement|null }>} */
-const cosmeticPropEls = new Map();
-
-/**
- * Wire each proportion range slider: configure its min/max/step from
- * `PROPORTION_RANGES` and attach an input handler that clamps and writes
- * `cosmeticSelection.proportions[key]`, updates the readout, and refreshes the
- * live preview. Called once at startup.
- */
-function buildProportionSliders() {
-	if (!cosmeticProportionsEl) return;
-	const sliders = cosmeticProportionsEl.querySelectorAll('input[type="range"][data-prop]');
-	for (const input of sliders) {
-		const key = input.dataset.prop;
-		const range = PROPORTION_RANGES[key];
-		if (!range) continue;
-		input.min = String(range.min);
-		input.max = String(range.max);
-		input.step = '0.01';
-		const valueEl = document.getElementById(`cosmetic-prop-${key}-value`);
-		cosmeticPropEls.set(key, { input, value: valueEl });
-		input.addEventListener('input', () => {
-			const clamped = clampProportion(key, input.value);
-			cosmeticSelection.proportions[key] = clamped;
-			if (valueEl) valueEl.textContent = clamped.toFixed(2);
-			refreshCosmeticPreview();
-		});
-	}
-}
-
-/** Set every proportion slider position + readout from `cosmeticSelection`. */
-function refreshProportionSliders() {
-	for (const [key, { input, value }] of cosmeticPropEls) {
-		const val = clampProportion(key, cosmeticSelection.proportions[key]);
-		cosmeticSelection.proportions[key] = val;
-		input.value = String(val);
-		if (value) value.textContent = val.toFixed(2);
-	}
-}
-
-// Wire the sliders once at startup; positions are synced per-open.
-buildProportionSliders();
-
-function syncCosmeticForm() {
-	const cosmetic = getAccountCosmetic();
-	cosmeticSelection.bodyColor = cosmetic.bodyColor;
-	cosmeticSelection.accentColor = cosmetic.accentColor;
-	cosmeticSelection.bodyShape = cosmetic.bodyShape;
-	cosmeticSelection.hat = cosmetic.hat;
-	cosmeticSelection.proportions = { ...cosmetic.proportions };
-	refreshSwatchSelection(cosmeticBodySwatchesEl, cosmetic.bodyColor);
-	refreshSwatchSelection(cosmeticAccentSwatchesEl, cosmetic.accentColor);
-	if (cosmeticShapeSelectEl) cosmeticShapeSelectEl.value = cosmetic.bodyShape;
-	refreshProportionSliders();
-	buildHatList();
-	showCosmeticError('');
-}
-
-// Rebuild the live preview avatar from the current (unsaved) selection. No-op
-// when the preview is closed.
-function refreshCosmeticPreview() {
-	updateCosmeticPreview({ ...cosmeticSelection });
-}
+initCharacterBooth({
+	selection: cosmeticSelection,
+	patchProfile,
+	getAccountCosmetic,
+	getGameState: () => gameState,
+	getMyId: () => myId,
+	setGameStateRef,
+	getSocket: () => socket,
+	getCurrency: () => myCurrency,
+});
 
 function openAccountOverlay() {
 	syncAccountForm();
-	syncCosmeticForm();
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
-	// Spin up the self-contained preview from the synced selection. Done after
-	// unhiding so the canvas has a layout size to read.
-	openCosmeticPreview(cosmeticPreviewCanvasEl, { ...cosmeticSelection });
 }
 
 function closeAccountOverlay() {
 	if (accountOverlayEl) accountOverlayEl.classList.add('hidden');
 	showAccountError('');
-	showCosmeticError('');
-	// Stop the render loop and release the preview's Three.js resources.
-	closeCosmeticPreview();
 }
 
 function openLevelSettingsOverlay() {
@@ -3777,7 +3819,7 @@ function requestGiveUp(activeSocket) {
 	}
 	showLevelSettingsError('');
 	if (giveUpBtnEl) giveUpBtnEl.disabled = true;
-	activeSocket.emit('giveUp');
+	activeSocket.emit(CLIENT_TO_SERVER.GIVE_UP);
 }
 
 if (accountBtnEl) {
@@ -3824,41 +3866,6 @@ if (accountSaveBtnEl) {
 	});
 }
 
-if (cosmeticShapeSelectEl) {
-	cosmeticShapeSelectEl.addEventListener('change', () => {
-		cosmeticSelection.bodyShape = cosmeticShapeSelectEl.value;
-		refreshCosmeticPreview();
-	});
-}
-
-if (cosmeticSaveBtnEl) {
-	cosmeticSaveBtnEl.addEventListener('click', async () => {
-		const cosmetic = {
-			bodyColor: cosmeticSelection.bodyColor,
-			accentColor: cosmeticSelection.accentColor,
-			bodyShape: cosmeticSelection.bodyShape,
-			hat: cosmeticSelection.hat,
-			proportions: { ...cosmeticSelection.proportions },
-		};
-		showCosmeticError('');
-		cosmeticSaveBtnEl.disabled = true;
-		const result = await patchProfile({ cosmetic });
-		cosmeticSaveBtnEl.disabled = false;
-
-		if (result.error) {
-			showCosmeticError(result.error);
-			return;
-		}
-		// Re-sync from the cache (now updated by patchProfile) so the controls
-		// reflect the persisted value.
-		syncCosmeticForm();
-		if (myId && gameState?.players?.[myId]) {
-			gameState.players[myId].cosmetic = getAccountCosmetic();
-			setGameStateRef(gameState);
-		}
-	});
-}
-
 // ── Toast helper ──
 
 function showCardErrorToast(message) {
@@ -3902,13 +3909,29 @@ function renderPlayerList(players) {
 	}
 }
 
-readyBtn.addEventListener('click', () => {
-	isReady = !isReady;
-	// Emitting playerReady routes to the resume path in the server's
-	// checkAllReady gate when a suspendedCheckpoint exists, so the same button
-	// resumes the checkpointed run while suspended and launches fresh otherwise.
-	socket.emit('playerReady', isReady);
+// Ready the local player up through the SAME path as #resume-run-btn: set the
+// shared isReady flag, emit playerReady(true) — which the server's checkAllReady
+// gate routes to startGame once the whole party is ready, or to resume when a
+// suspendedCheckpoint exists, so this single path covers both a fresh deploy and
+// a suspended-run resume sortie that the retired #ready-btn used to serve. The
+// Launch Bay booth and the ?booth=launch debug hook both call this; no new
+// socket event is introduced. Idempotent: a second booth touch or a repeated
+// lobbyJoined (reconnect) does NOT re-emit, since we bail out early when the
+// player is already ready.
+function launchBoothReadyUp() {
+	if (!shouldLaunchReadyUp(isReady)) return;
+	isReady = true;
+	socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
 	syncReadyButtonRole();
+	console.log('[launchBooth] ready-up via booth');
+	window.dispatchEvent(new CustomEvent(LAUNCH_READY_EVENT));
+}
+
+// The hub Launch Bay booth's first subscriber: when the player interacts with
+// the `launch` booth (server emits boothAction → main.js re-dispatches it as the
+// `booth:action` window event), ready up exactly as the 2D Ready button does.
+window.addEventListener(BOOTH_ACTION_EVENT, (e) => {
+	if (isLaunchBoothAction(e.detail)) launchBoothReadyUp();
 });
 
 // ── Mute toggle ──
@@ -4163,7 +4186,7 @@ function renderCardChoices(choices) {
 		} else {
 			btn.addEventListener('click', () => {
 				if (claimedCardRewardId) return;
-				socket.emit('claimCardReward', { cardId: choice.id });
+				socket.emit(CLIENT_TO_SERVER.CLAIM_CARD_REWARD, { cardId: choice.id });
 			});
 		}
 
@@ -4236,25 +4259,25 @@ function showRunSummary(data) {
 }
 
 returnToLobbyBtn.addEventListener('click', () => {
-	socket.emit('returnToLobby');
+	socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
 });
 
 if (abandonRunBtn) {
 	abandonRunBtn.addEventListener('click', () => {
-		socket.emit('abandonRun');
+		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
 	});
 }
 
 // #resume-run-btn is the dedicated, distinct resume affordance shown while a run
-// is suspended. It re-enters the run through the SAME path as #ready-btn: emit
-// playerReady(true), which the server's checkAllReady gate routes to
-// restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It sets
-// the shared isReady flag (so it can't desync from #ready-btn) and resyncs both
-// labels via syncReadyButtonRole. No separate fresh-launch / resume socket event.
+// is suspended. It re-enters the run through the SAME path as the launch booth
+// ready-up: emit playerReady(true), which the server's checkAllReady gate routes
+// to restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It
+// sets the shared isReady flag and resyncs the label via syncReadyButtonRole. No
+// separate fresh-launch / resume socket event.
 if (resumeRunBtn) {
 	resumeRunBtn.addEventListener('click', () => {
 		isReady = true;
-		socket.emit('playerReady', true);
+		socket.emit(CLIENT_TO_SERVER.PLAYER_READY, true);
 		syncReadyButtonRole();
 	});
 }
@@ -4263,19 +4286,19 @@ if (createLobbyBtnEl) {
 	createLobbyBtnEl.addEventListener('click', () => {
 		if (!socket) return;
 		const name = createLobbyNameEl ? createLobbyNameEl.value.trim() : '';
-		socket.emit('createLobby', name ? { name } : {});
+		socket.emit(CLIENT_TO_SERVER.CREATE_LOBBY, name ? { name } : {});
 	});
 }
 
 if (refreshLobbiesBtnEl) {
 	refreshLobbiesBtnEl.addEventListener('click', () => {
-		if (socket) socket.emit('listLobbies');
+		if (socket) socket.emit(CLIENT_TO_SERVER.LIST_LOBBIES);
 	});
 }
 
 if (leaveLobbyBtnEl) {
 	leaveLobbyBtnEl.addEventListener('click', () => {
-		if (socket) socket.emit('leaveLobby');
+		if (socket) socket.emit(CLIENT_TO_SERVER.LEAVE_LOBBY);
 	});
 }
 
@@ -4291,6 +4314,9 @@ window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
+window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
+window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
+window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
@@ -4378,10 +4404,16 @@ window.openLevelSettingsOverlay = openLevelSettingsOverlay;
 window.closeLevelSettingsOverlay = closeLevelSettingsOverlay;
 window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
+window.openCharacterBooth = openCharacterBooth;
+window.closeCharacterBooth = closeCharacterBooth;
+window.openQuestPanel = openQuestPanel;
+// Test hook: exercise the `?booth=` debug open path (localhost gate + once-per-session).
+window.__requestBoothDebugOpenForTest = requestBoothDebugOpen;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
+window.applyHubPresence = applyHubPresence;
 window.showRegisterForm = showRegisterForm;
 window.showLoginForm = showLoginForm;
 window.clearAuthForms = clearAuthForms;
@@ -4395,6 +4427,16 @@ window.__connectionState = () => connectionState;
 window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const me = gameState && myId ? gameState.players[myId] : null;
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
+	const deckEditorEl = document.getElementById('deck-editor');
+	const deckEditorVisible = !!deckEditorEl && !deckEditorEl.classList.contains('hidden');
+	// The 2D #ready-btn is retired; fresh deploy / resume now happen through the
+	// hub Launch Bay booth. While a run is suspended #resume-run-btn is the
+	// dedicated on-screen resume affordance, so capture can watch its usability.
+	const resumeBtnEl = document.getElementById('resume-run-btn');
+	const resumeBtnUsable = !!resumeBtnEl
+		&& !resumeBtnEl.classList.contains('hidden')
+		&& !resumeBtnEl.disabled
+		&& getComputedStyle(resumeBtnEl).pointerEvents !== 'none';
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
@@ -4417,6 +4459,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugScenario,
 		debugScenarioAllowed,
 		debugScenarioResult,
+		debugGodmodeResult,
 		objective,
 		runObjectiveComplete,
 		lastRunSummary,
@@ -4443,6 +4486,8 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		deckEditorVisible,
+		resumeBtnUsable,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',
 		hpText: hpText ? hpText.textContent : '',

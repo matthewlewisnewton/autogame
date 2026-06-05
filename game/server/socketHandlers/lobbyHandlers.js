@@ -11,7 +11,10 @@
 // and index.js-local helpers are supplied via the ctx object passed to
 // register(socket, ctx) from the connection handler.
 
+const { CLIENT_TO_SERVER, SERVER_TO_CLIENT } = require('../../shared/events.js');
 const { MAX_PLAYERS } = require('../config');
+const { findBoothInRange } = require('../../shared/boothZones.js');
+const { isLobbyPhase } = require('../lobbies');
 const deckHandlers = require('./deckHandlers');
 const tradeHandlers = require('./tradeHandlers');
 const keyItemHandlers = require('./keyItemHandlers');
@@ -21,10 +24,12 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
 } = require('../quests');
-const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
-const { backfillUnlockedHats } = require('../cosmetic');
+const { hasAppearanceFieldChanges } = require('../../shared/cosmeticAppearance.js');
+const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked, updateProfile } = require('../users');
+const { backfillUnlockedHats, backfillCosmetic, validateCosmetic } = require('../cosmetic');
 const {
   unlockHatForPlayer,
+  chargeAppearanceChangeForPlayer,
   healAtMedic,
   assignRunSpawnPositions,
   stateSnapshot,
@@ -51,15 +56,17 @@ function register(socket, ctx) {
     applyDebugScenario,
     isDebugScenarioAllowed,
     softDisconnectPlayerFromLobby,
+    hubLayout,
+    syncLivePlayerCosmetic,
   } = ctx;
 
-  socket.on('listLobbies', () => {
-    socket.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
+  socket.on(CLIENT_TO_SERVER.LIST_LOBBIES, () => {
+    socket.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
   });
 
-  socket.on('createLobby', (data) => {
+  socket.on(CLIENT_TO_SERVER.CREATE_LOBBY, (data) => {
     if (lobbies.getLobbyForPlayer(playerId)) {
-      socket.emit('lobbyError', { reason: 'Already in a lobby' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
       return;
     }
     const lobby = lobbies.createLobby(data && data.name);
@@ -74,7 +81,7 @@ function register(socket, ctx) {
     joinPlayerToLobby(socket, lobby);
   });
 
-  socket.on('joinLobby', (data) => {
+  socket.on(CLIENT_TO_SERVER.JOIN_LOBBY, (data) => {
     const existingLobby = lobbies.getLobbyForPlayer(playerId);
     if (existingLobby) {
       const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
@@ -83,61 +90,61 @@ function register(socket, ctx) {
         reconnectPlayerToLobby(socket, existingLobby);
         return;
       }
-      socket.emit('lobbyError', { reason: 'Already in a lobby' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Already in a lobby' });
       return;
     }
     const lobbyId = data && typeof data.lobbyId === 'string' ? data.lobbyId : null;
     if (!lobbyId) {
-      socket.emit('lobbyError', { reason: 'Missing lobbyId' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Missing lobbyId' });
       return;
     }
     const lobby = lobbies.getLobbyById(lobbyId);
     if (!lobby) {
-      socket.emit('lobbyError', { reason: 'Lobby not found' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby not found' });
       return;
     }
     if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
-      socket.emit('lobbyError', { reason: 'Lobby is full' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Lobby is full' });
       return;
     }
     joinLobbyWithPhasePolicy(socket, lobby);
   });
 
-  socket.on('leaveLobby', () => {
+  socket.on(CLIENT_TO_SERVER.LEAVE_LOBBY, () => {
     if (!lobbies.getLobbyForPlayer(playerId)) {
-      socket.emit('lobbyError', { reason: 'Not in a lobby' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Not in a lobby' });
       return;
     }
     leaveLobbyForSocket(socket);
     const session = lobbies.getSession(playerId) || buildSessionFromPlayer(sessionPlayer);
     lobbies.registerSession(playerId, session);
-    socket.emit('lobbyLeft', {
+    socket.emit(SERVER_TO_CLIENT.LOBBY_LEFT, {
       lobbies: lobbies.listLobbySummaries(),
     });
   });
 
-  socket.on('selectQuest', (data) => {
+  socket.on(CLIENT_TO_SERVER.SELECT_QUEST, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (state.suspendedCheckpoint) {
-      socket.emit('questError', { reason: 'Abandon the suspended expedition before changing quests' });
+      socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'Abandon the suspended expedition before changing quests' });
       return;
     }
 
     const questId = data && typeof data.questId === 'string' ? data.questId : null;
     if (!questId) {
-      socket.emit('questError', { reason: 'Missing questId' });
+      socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'Missing questId' });
       return;
     }
 
     const tier = normalizeQuestTier(data && data.tier);
 
     if (!isValidQuestSelection(questId, tier)) {
-      socket.emit('questError', { reason: `Unknown quest or tier: ${questId} tier ${tier}` });
+      socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: `Unknown quest or tier: ${questId} tier ${tier}` });
       return;
     }
 
     if (tier >= 2 && !isQuestTierUnlocked(player.accountId, questId, tier)) {
-      socket.emit('questError', { reason: 'tier_locked' });
+      socket.emit(SERVER_TO_CLIENT.QUEST_ERROR, { reason: 'tier_locked' });
       return;
     }
 
@@ -151,7 +158,7 @@ function register(socket, ctx) {
         layout: state.layout,
       },
     });
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     broadcastLobbyUpdate(lobby);
     });
   });
@@ -161,30 +168,30 @@ function register(socket, ctx) {
   keyItemHandlers.register(socket, ctx);
   runHandlers.register(socket, ctx);
 
-  socket.on('unlockHat', (data) => {
+  socket.on(CLIENT_TO_SERVER.UNLOCK_HAT, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
     if (!hatId) {
-      socket.emit('hatError', { reason: 'Missing hatId' });
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Missing hatId' });
       return;
     }
 
     // Reject early if the account already owns the hat — no currency change.
     const account = findUserByAccountId(player.accountId);
     if (!account) {
-      socket.emit('hatError', { reason: 'Account not found' });
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Account not found' });
       return;
     }
     const owned = backfillUnlockedHats(account.unlockedHats);
     if (owned.includes(hatId)) {
-      socket.emit('hatError', { reason: 'Hat already unlocked' });
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Hat already unlocked' });
       return;
     }
 
     // Deduct currency (validates the hat exists and affordability).
     const result = unlockHatForPlayer(player, hatId);
     if (!result.ok) {
-      socket.emit('hatError', { reason: result.reason });
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: result.reason });
       return;
     }
 
@@ -195,7 +202,7 @@ function register(socket, ctx) {
     const saved = savePlayerData(socket.playerId);
     if (!saved) {
       player.currency += result.cost;
-      socket.emit('hatError', { reason: 'Failed to save progress' });
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: 'Failed to save progress' });
       return;
     }
 
@@ -205,11 +212,11 @@ function register(socket, ctx) {
       // save would leave deducted currency on disk without a hat unlock.
       player.currency += result.cost;
       savePlayerData(socket.playerId);
-      socket.emit('hatError', { reason: unlockResult.reason });
+      socket.emit(SERVER_TO_CLIENT.HAT_ERROR, { reason: unlockResult.reason });
       return;
     }
 
-    socket.emit('hatUnlocked', {
+    socket.emit(SERVER_TO_CLIENT.HAT_UNLOCKED, {
       unlockedHats: unlockResult.unlockedHats,
       currency: player.currency
     });
@@ -217,38 +224,183 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('medicHeal', () => {
-    withLobbyPlayer(socket, {
-      requirePhase: 'lobby',
-      phaseMismatch: { event: 'medicError', payload: { reason: 'not_in_lobby' } },
-    }, (state, lobby, player) => {
-      const result = healAtMedic(socket.playerId, state);
-      if (!result.ok) {
-        socket.emit('medicError', { reason: result.reason });
+  socket.on(CLIENT_TO_SERVER.APPLY_APPEARANCE_CHANGE, (data) => {
+    const lobby = lobbies.getLobbyForPlayer(playerId);
+    if (!lobby || !isLobbyPhase(lobby.state)) {
+      socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'not_in_lobby' });
+      return;
+    }
+    const player = lobby.state.players[playerId];
+    if (!player) {
+      socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'not_in_lobby' });
+      return;
+    }
+
+    withLobbyContext(lobby, () => {
+      const proposed = data && data.cosmetic;
+      if (!proposed || typeof proposed !== 'object' || Array.isArray(proposed)) {
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Invalid cosmetic' });
         return;
       }
 
-      socket.emit('medicHealed', {
+      const account = findUserByAccountId(player.accountId);
+      if (!account) {
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Account not found' });
+        return;
+      }
+
+      const validation = validateCosmetic(proposed);
+      if (!validation.ok) {
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: validation.reason });
+        return;
+      }
+
+      if (validation.value.hat !== undefined) {
+        const unlocked = backfillUnlockedHats(account.unlockedHats);
+        if (!unlocked.includes(validation.value.hat)) {
+          socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Hat is not unlocked for this account' });
+          return;
+        }
+      }
+
+      const base = backfillCosmetic(account.cosmetic);
+      const value = validation.value;
+      const merged = value.proportions
+        ? { ...base, ...value, proportions: { ...base.proportions, ...value.proportions } }
+        : { ...base, ...value };
+      const paidChange = hasAppearanceFieldChanges(base, merged);
+
+      const finishSuccess = (cost) => {
+        const user = findUserByAccountId(player.accountId);
+        syncLivePlayerCosmetic(player.accountId, user.cosmetic);
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_CHANGED, {
+          cosmetic: user.cosmetic,
+          currency: player.currency,
+          cost,
+        });
+        savePlayerData(socket.playerId);
+      };
+
+      if (!paidChange) {
+        const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
+        if (!profileResult.ok) {
+          socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
+          return;
+        }
+        finishSuccess(0);
+        return;
+      }
+
+      const chargeResult = chargeAppearanceChangeForPlayer(player);
+      if (!chargeResult.ok) {
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: chargeResult.reason });
+        return;
+      }
+
+      // Safe ordering: currency first, cosmetic second — a crash after this save
+      // but before updateProfile leaves charged-but-not-applied (retryable) instead
+      // of applied-but-not-charged (free-appearance exploit).
+      const saved = savePlayerData(socket.playerId);
+      if (!saved) {
+        player.currency += chargeResult.cost;
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: 'Failed to save progress' });
+        return;
+      }
+
+      const profileResult = updateProfile(player.accountId, { cosmetic: proposed });
+      if (!profileResult.ok) {
+        player.currency += chargeResult.cost;
+        savePlayerData(socket.playerId);
+        socket.emit(SERVER_TO_CLIENT.APPEARANCE_ERROR, { reason: profileResult.reason });
+        return;
+      }
+
+      finishSuccess(chargeResult.cost);
+    });
+  });
+
+  socket.on(CLIENT_TO_SERVER.MEDIC_HEAL, () => {
+    withLobbyPlayer(socket, {
+      requirePhase: 'lobby',
+      phaseMismatch: { event: SERVER_TO_CLIENT.MEDIC_ERROR, payload: { reason: 'not_in_lobby' } },
+    }, (state, lobby, player) => {
+      const result = healAtMedic(socket.playerId, state);
+      if (!result.ok) {
+        socket.emit(SERVER_TO_CLIENT.MEDIC_ERROR, { reason: result.reason });
+        return;
+      }
+
+      socket.emit(SERVER_TO_CLIENT.MEDIC_HEALED, {
         hp: result.hp,
         currency: player.currency,
         cost: result.cost,
       });
-      io.to(state._lobbyId).emit('stateUpdate', stateSnapshot());
+      io.to(state._lobbyId).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     });
   });
 
-  socket.on('debugScenario', (data) => {
+  socket.on(CLIENT_TO_SERVER.BOOTH_INTERACT, (data) => {
+    // Booth interactions only exist while in the hub lobby phase. Emit
+    // boothError (not lobbyError) for every rejection so the client can
+    // listen on a single channel.
+    const lobby = lobbies.getLobbyForPlayer(playerId);
+    if (!lobby || !isLobbyPhase(lobby.state)) {
+      socket.emit(SERVER_TO_CLIENT.BOOTH_ERROR, { reason: 'not_in_lobby' });
+      return;
+    }
+    const player = lobby.state.players[playerId];
+    if (!player) {
+      socket.emit(SERVER_TO_CLIENT.BOOTH_ERROR, { reason: 'not_in_lobby' });
+      return;
+    }
+
+    const boothAnchors = hubLayout && hubLayout.boothAnchors;
+    if (!boothAnchors) {
+      socket.emit(SERVER_TO_CLIENT.BOOTH_ERROR, { reason: 'no_booths' });
+      return;
+    }
+
+    const boothId = data && typeof data.boothId === 'string' ? data.boothId : null;
+    if (!boothId || !Object.prototype.hasOwnProperty.call(boothAnchors, boothId)) {
+      socket.emit(SERVER_TO_CLIENT.BOOTH_ERROR, { reason: 'unknown_booth' });
+      return;
+    }
+
+    // Authoritative proximity check against the player's server-side position.
+    const inRange = findBoothInRange(boothAnchors, player.x, player.z);
+    if (inRange !== boothId) {
+      socket.emit(SERVER_TO_CLIENT.BOOTH_ERROR, { reason: 'out_of_range' });
+      return;
+    }
+
+    socket.emit(SERVER_TO_CLIENT.BOOTH_ACTION, { boothId, action: boothId });
+  });
+
+  socket.on(CLIENT_TO_SERVER.DEBUG_SCENARIO, (data) => {
     const name = data && typeof data.name === 'string' ? data.name : '';
     if (!isDebugScenarioAllowed(socket)) {
-      socket.emit('debugScenarioResult', { ok: false, reason: 'Debug scenarios are disabled' });
+      socket.emit(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, { ok: false, reason: 'Debug scenarios are disabled' });
       return;
     }
 
     const result = applyDebugScenario(socket, name);
-    socket.emit('debugScenarioResult', result);
+    socket.emit(SERVER_TO_CLIENT.DEBUG_SCENARIO_RESULT, result);
   });
 
-  socket.on('heartbeat', (data) => {
+  socket.on(CLIENT_TO_SERVER.TOGGLE_DEBUG_GODMODE, () => {
+    if (!isDebugScenarioAllowed(socket)) {
+      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: false, reason: 'Debug godmode is disabled' });
+      return;
+    }
+
+    withLobbyPlayer(socket, {}, (state, lobby, player) => {
+      player.debugGodmode = !player.debugGodmode;
+      socket.emit(SERVER_TO_CLIENT.DEBUG_GODMODE_RESULT, { ok: true, enabled: player.debugGodmode });
+    });
+  });
+
+  socket.on(CLIENT_TO_SERVER.HEARTBEAT, (data) => {
     if (!data || !Number.isFinite(data.timestamp)) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);
       return;
@@ -257,7 +409,7 @@ function register(socket, ctx) {
     if (lobby && lobby.state.players[socket.playerId]) {
       lobby.state.players[socket.playerId].lastActivity = Date.now();
     }
-    socket.emit('heartbeat_ack', { latency: Date.now() - data.timestamp });
+    socket.emit(SERVER_TO_CLIENT.HEARTBEAT_ACK, { latency: Date.now() - data.timestamp });
   });
 
   socket.on('disconnect', () => {

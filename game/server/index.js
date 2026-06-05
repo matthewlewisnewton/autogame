@@ -1,3 +1,4 @@
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const express = require('express');
 const { Server } = require('socket.io');
 const http = require('http');
@@ -13,6 +14,7 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
   getLayoutProfileForQuest,
+  getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload
 } = require('./quests');
@@ -77,8 +79,25 @@ const {
 } = require('./config');
 const lobbies = require('./lobbies');
 const { PHASES, isLobbyPhase, isPlayingPhase } = lobbies;
+const {
+  syncHubPresenceFromLobby,
+  getHubPresenceSnapshot,
+  emitHubPresenceUpdate,
+  syncAndEmitHubPresenceIfChanged,
+} = require('./hubPresence');
 
 const app = express();
+// Harness readiness probe — same HTTP server as Socket.IO; no auth required.
+// Returns 503 until startServer() finishes mounting routes and socket handlers
+// so capture workers never proxy auth/socket traffic to a half-booted server.
+let _harnessReady = false;
+app.get('/healthz', (_req, res) => {
+  if (!_harnessReady) {
+    res.status(503).json({ ok: false });
+    return;
+  }
+  res.status(200).json({ ok: true });
+});
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: {
@@ -171,6 +190,7 @@ const {
   countGroundEnchantmentsForPlayer,
 } = require('./simulation');
 
+const { buildEnemyDisplayCatalog } = require('./enemyDisplay');
 const progression = require('./progression');
 const {
   CARD_DEFS,
@@ -272,6 +292,7 @@ const {
   spawnEnemy,
   spawnEnemies,
   updateSurviveSpawns,
+  updateEncounterTriggers,
   spawnLoot,
   spawnCrystals,
   recordCrystalCollected,
@@ -306,6 +327,7 @@ const {
 // once io and the index.js-local helpers it needs are defined.
 const cardEffects = require('./cardEffects');
 const lobbyHandlers = require('./socketHandlers/lobbyHandlers');
+const { patchSocketOn } = require('./socketSafe');
 
 // Key-item dispatch lives in its own module; wired up via setCallbacks() below
 // once io is defined.
@@ -338,7 +360,7 @@ function getLobbyForSocket(socket) {
 }
 
 function broadcastLobbyList() {
-  io.emit('lobbyListUpdate', { lobbies: lobbies.listLobbySummaries() });
+  io.emit(SERVER_TO_CLIENT.LOBBY_LIST_UPDATE, { lobbies: lobbies.listLobbySummaries() });
 }
 
 // Initialize simulation and progression modules with gameState and timeouts
@@ -369,7 +391,7 @@ function applyLayoutForQuest(state, questId, tier = DEFAULT_QUEST_TIER) {
   const profile = getLayoutProfileForQuest(questId, normalizedTier);
   const seed = questLayoutSeed(questId, normalizedTier);
   state.layoutSeed = seed;
-  state.layout = generateLayout(seed, profile, { slopes: true });
+  state.layout = generateLayout(seed, profile, getLayoutGenerationOptions(questId, normalizedTier));
   state.dungeonBounds = computeDungeonBounds(state.layout);
   state.walkableAABBs = computeWalkableAABBs(state.layout);
   // rebuildWallColliders reads module-level sim state — wrap even when callers are already
@@ -398,10 +420,10 @@ function clearAllTimers() {
 
 function restartBackgroundTimers() {
   if (_intervals.length > 0) return;
-  _intervals.push(setInterval(runGameLoopTick, 1000 / TICK_RATE));
-  _intervals.push(setInterval(cleanupStalePlayersInAllLobbies, STALE_CLEANUP_INTERVAL_MS));
-  _intervals.push(setInterval(evictDisconnectedPlayers, STALE_CLEANUP_INTERVAL_MS));
-  _intervals.push(setInterval(saveAllPlayersInAllLobbies, PERIODIC_SAVE_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('gameLoop', runGameLoopTick), 1000 / TICK_RATE));
+  _intervals.push(setInterval(safeIntervalTick('staleCleanup', cleanupStalePlayersInAllLobbies), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('evictDisconnected', evictDisconnectedPlayers), STALE_CLEANUP_INTERVAL_MS));
+  _intervals.push(setInterval(safeIntervalTick('periodicSave', saveAllPlayersInAllLobbies), PERIODIC_SAVE_INTERVAL_MS));
 }
 
 function cleanupStalePlayersInAllLobbies() {
@@ -458,6 +480,7 @@ const DEBUG_SCENARIOS = new Set([
   'run-failed',
   'run-exhausted',
   'quest-objective-near-complete',
+  'collect-prisms-progress',
   'telepipe-ready',
   'extracted-in-hub',
   'suspended-run-hub',
@@ -473,16 +496,28 @@ const DEBUG_SCENARIOS = new Set([
   'smoke-bomb-ready',
   'rally-cry-ready',
   'open-plaza-arena',
+  'open-verticality',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'sunken-canyon-cliff-hazard',
   'spire-ascent',
   'spire-ascent-stage',
+  'spire-summit-beacon',
+  'spire-mid-tier-hazard',
   'hat-shop-currency',
   'hats-unlocked',
   'evolution-ready',
   'deck-viewer-instances',
   'cinder-snare-ready',
   'quest-tier-2-unlocked',
+  'arena-trials-tier-2',
+  'training-caverns-tier-2',
+  'crystal-rescue-tier-2',
+  'canyon-descent-tier-2',
+  'spire-ascent-tier-2',
+  'stage-boss-dormant',
+  'stage-boss-active',
+  'annex-overseer-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -515,7 +550,7 @@ function unlockedQuestTiersForLobbyPlayer(state, playerId) {
 }
 
 /** Emit questUpdate/lobbyUpdate shared fields to each lobby socket with per-account unlock maps. */
-function emitQuestPayloadToLobby(lobby, { event = 'questUpdate', extraFields = {} } = {}) {
+function emitQuestPayloadToLobby(lobby, { event = SERVER_TO_CLIENT.QUEST_UPDATE, extraFields = {} } = {}) {
   if (!lobby) return;
   const state = lobby.state;
   const shared = {
@@ -552,7 +587,7 @@ function broadcastLobbyUpdate(lobby) {
       for (const socket of io.sockets.sockets.values()) {
         const player = activeState.players[socket.playerId];
         if (!player) continue;
-        socket.emit('lobbyUpdate', {
+        socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
           ...shared,
           unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(activeState, socket.playerId),
         });
@@ -574,7 +609,7 @@ function broadcastLobbyUpdate(lobby) {
       if (!socket.rooms.has(lobby.id)) continue;
       const player = lobby.state.players[socket.playerId];
       if (!player) continue;
-      socket.emit('lobbyUpdate', {
+      socket.emit(SERVER_TO_CLIENT.LOBBY_UPDATE, {
         ...shared,
         unlockedQuestTiers: unlockedQuestTiersForLobbyPlayer(lobby.state, socket.playerId),
       });
@@ -612,7 +647,12 @@ function isDebugScenarioAllowed(socket) {
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  return address === '::1' || address === '127.0.0.1' || address.endsWith('.127.0.0.1');
+  return (
+    address === '::1' ||
+    address === '127.0.0.1' ||
+    address.endsWith('.127.0.0.1') ||
+    address.startsWith('::ffff:127.')
+  );
 }
 
 function ensureNearbyEnemy(state, x, z) {
@@ -625,7 +665,7 @@ function ensureNearbyEnemy(state, x, z) {
 
 function emitCardError(socket, reason) {
   console.log(`[cardError] player ${socket.playerId}: ${reason}`);
-  socket.emit('cardError', { reason });
+  socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason });
 }
 
 const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
@@ -640,6 +680,14 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'minion-combat',
   'run-exhausted',
   'quest-objective-near-complete',
+  'arena-trials-tier-2',
+  'training-caverns-tier-2',
+  'crystal-rescue-tier-2',
+  'canyon-descent-tier-2',
+  'spire-ascent-tier-2',
+  'stage-boss-dormant',
+  'stage-boss-active',
+  'annex-overseer-ready',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -662,7 +710,7 @@ function enterPlayingPhase(lobby) {
       spawnEnemies();
     }
     startDungeonRun();
-    io.to(lobby.id).emit('startGame');
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.START_GAME);
     broadcastLobbyList();
   }
 }
@@ -689,6 +737,41 @@ function findSacrificeTarget(playerId, x, z, radius) {
     })[0] || null;
 }
 
+// Log HTTP listen/runtime errors instead of letting them become fatal
+// 'error' events when no listener is attached (e.g. EADDRINUSE on boot).
+let _httpErrorLoggerInstalled = false;
+
+function ensureHttpErrorLogger() {
+  if (_httpErrorLoggerInstalled) return;
+  _httpErrorLoggerInstalled = true;
+  server.on('error', (err) => {
+    console.error('[server] HTTP server error:', err);
+  });
+}
+
+/**
+ * When run as the main module, log fatal-async errors but keep serving.
+ * Tests that require('./index') are unaffected.
+ */
+function installMainProcessErrorHandlers() {
+  process.on('uncaughtException', (err) => {
+    console.error('[server] uncaughtException:', err && err.stack ? err.stack : err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[server] unhandledRejection:', reason);
+  });
+}
+
+function safeIntervalTick(label, fn) {
+  return () => {
+    try {
+      fn();
+    } catch (err) {
+      console.error(`[interval:${label}]`, err && err.stack ? err.stack : err);
+    }
+  };
+}
+
 // Track whether Express routes have been mounted — prevents stacking
 // on repeated startServer() calls (tests call startServer in beforeEach).
 let _routesMounted = false;
@@ -699,7 +782,7 @@ let _middlewareRegistered = false;
 function withLobbyFromSocket(socket, fn) {
   const lobby = getLobbyForSocket(socket);
   if (!lobby) {
-    socket.emit('lobbyError', { reason: 'Not in a lobby' });
+    socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Not in a lobby' });
     return;
   }
   return withLobbyContext(lobby, () => fn(lobby.state, lobby));
@@ -761,6 +844,7 @@ function buildPlayerRecord(playerId, accountId, username, savedData) {
     currencyEarnedThisRun: progress.currencyEarnedThisRun,
     selectedDeck: defaultDeck,
     debugScenario: null,
+    debugGodmode: false,
     pendingSummons: new Set(),
     slotCooldowns: [null, null, null, null, null, null],
     nextDrawAt: null,
@@ -828,6 +912,20 @@ function syncLivePlayerCosmetic(accountId, cosmetic) {
   }
 }
 
+/** True when the account has a connected player record in an active lobby hub phase. */
+function hasLiveLobbyPlayerForAccount(accountId) {
+  if (!accountId) return false;
+  for (const lobby of lobbies._lobbies.values()) {
+    if (!isLobbyPhase(lobby.state)) continue;
+    const player = lobby.state.players[accountId];
+    if (player && player.accountId === accountId) return true;
+  }
+  if (isLobbyPhase(gameState) && gameState.players[accountId]) {
+    return true;
+  }
+  return false;
+}
+
 function buildSessionFromPlayer(player) {
   return {
     playerId: player.id,
@@ -889,7 +987,7 @@ function handleDropInJoin(socket, lobby) {
 function joinLobbyWithPhasePolicy(socket, lobby) {
   if (isPlayingPhase(lobby.state)) {
     if (!allowDropInJoin(lobby)) {
-      socket.emit('lobbyError', { reason: 'Drop-in not allowed for this lobby' });
+      socket.emit(SERVER_TO_CLIENT.LOBBY_ERROR, { reason: 'Drop-in not allowed for this lobby' });
       return;
     }
     joinPlayerToLobby(socket, lobby, { dropIn: true });
@@ -905,7 +1003,7 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
   if (!player) return;
   withLobbyContext(lobby, () => ensureShopOffer(lobby.state));
 
-  socket.emit('lobbyJoined', {
+  const joinedPayload = {
     lobbyId: lobby.id,
     lobbyName: lobby.name,
     id: playerId,
@@ -921,7 +1019,17 @@ function emitLobbyJoined(socket, lobby, explicitPlayerId) {
     ownedCards: player.ownedCards,
     shopOffer: state.shopOffer,
     ...buildQuestUpdatePayload(state, player.accountId),
-  });
+  };
+  if (isLobbyPhase(state)) {
+    try {
+      syncHubPresenceFromLobby(lobby);
+      joinedPayload.hubPresence = getHubPresenceSnapshot(lobby);
+    } catch (err) {
+      console.error('[hubPresence] lobbyJoined snapshot failed for lobby', lobby.id, err);
+      joinedPayload.hubPresence = { schemaVersion: 1, entries: {}, revision: 0 };
+    }
+  }
+  socket.emit(SERVER_TO_CLIENT.LOBBY_JOINED, joinedPayload);
 
   broadcastLobbyUpdate(lobby);
 }
@@ -980,6 +1088,13 @@ function joinPlayerToLobby(socket, lobby, options = {}) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby);
+  if (isLobbyPhase(state)) {
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] join broadcast failed for lobby', lobby.id, err);
+    }
+  }
 }
 
 function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
@@ -1002,14 +1117,21 @@ function reconnectPlayerToLobby(socket, lobby, explicitPlayerId) {
   lobbies.removeSession(playerId);
   socket.join(lobby.id);
   emitLobbyJoined(socket, lobby, playerId);
-  io.to(lobby.id).emit('playerReconnected', playerId);
+  if (isLobbyPhase(lobby.state)) {
+    try {
+      emitHubPresenceUpdate(io, lobby, { excludeSocketId: socket.id });
+    } catch (err) {
+      console.error('[hubPresence] reconnect broadcast failed for lobby', lobby.id, err);
+    }
+  }
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.PLAYER_RECONNECTED, playerId);
   broadcastLobbyList();
   return true;
 }
 
 function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false } = {}) {
   if (emitDisconnect) {
-    io.to(lobby.id).emit('playerDisconnected', playerId);
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.PLAYER_DISCONNECTED, playerId);
   }
 
   const shouldBroadcast = result === undefined || (result && !result.deleted);
@@ -1020,6 +1142,16 @@ function notifyPlayerRemoved(lobby, { playerId, result, emitDisconnect = false }
       checkRunTerminalState();
     } else {
       broadcastLobbyUpdate(lobby);
+      if (isLobbyPhase(lobby.state) && playerId) {
+        try {
+          syncHubPresenceFromLobby(lobby);
+          emitHubPresenceUpdate(io, lobby, {
+            removedPlayerIds: [playerId],
+          });
+        } catch (err) {
+          console.error('[hubPresence] leave/disconnect broadcast failed for lobby', lobby.id, err);
+        }
+      }
     }
   });
 }
@@ -1111,63 +1243,72 @@ function resolveAttackRotation(player, data) {
 
 function runGameLoopTick() {
   for (const lobby of lobbies._lobbies.values()) {
-    withLobbyContext(lobby, () => {
-      const state = lobby.state;
-      if (isLobbyPhase(state)) {
-        applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
-        flushDirtyPlayerSaves();
-      } else if (isPlayingPhase(state)) {
-        applyPlayerMovement(state, buildMovementContext(state));
-        checkTelepipeProximity();
-        flushDirtyPlayerSaves();
-        updateEnemies();
-        updateMinions();
-        updateSurviveSpawns();
+    try {
+      withLobbyContext(lobby, () => {
+        const state = lobby.state;
+        if (isLobbyPhase(state)) {
+          applyPlayerMovement(state, buildHubMovementContext(HUB_LAYOUT));
+          syncAndEmitHubPresenceIfChanged(io, lobby);
+          flushDirtyPlayerSaves();
+        } else if (isPlayingPhase(state)) {
+          applyPlayerMovement(state, buildMovementContext(state));
+          checkTelepipeProximity();
+          flushDirtyPlayerSaves();
+          updateEnemies();
+          updateMinions();
+          updateEncounterTriggers();
+          updateSurviveSpawns();
 
-        const now = Date.now();
-        processPassiveDraws(now);
+          const now = Date.now();
+          processPassiveDraws(now);
 
-        if (state._pendingMinionBreaths?.length) {
-          for (const event of state._pendingMinionBreaths) {
-            io.to(lobby.id).emit('cardUsed', event);
+          if (state._pendingMinionBreaths?.length) {
+            for (const event of state._pendingMinionBreaths) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, event);
+            }
+            state._pendingMinionBreaths.length = 0;
           }
-          state._pendingMinionBreaths.length = 0;
+
+          if (state._pendingVolatileExplosions?.length) {
+            for (const record of state._pendingVolatileExplosions) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.VOLATILE_EXPLOSION, record);
+            }
+            state._pendingVolatileExplosions.length = 0;
+          }
+
+          if (state._pendingLeechHeals?.length) {
+            for (const record of state._pendingLeechHeals) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.LEECH_HEAL, record);
+            }
+            state._pendingLeechHeals.length = 0;
+          }
+
+          if (state._pendingShieldBreaks?.length) {
+            for (const record of state._pendingShieldBreaks) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.SHIELD_BREAK, record);
+            }
+            state._pendingShieldBreaks.length = 0;
+          }
+
+          regenMagicStones();
+
+          state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
         }
 
-        if (state._pendingVolatileExplosions?.length) {
-          for (const record of state._pendingVolatileExplosions) {
-            io.to(lobby.id).emit('volatileExplosion', record);
-          }
-          state._pendingVolatileExplosions.length = 0;
-        }
-
-        if (state._pendingLeechHeals?.length) {
-          for (const record of state._pendingLeechHeals) {
-            io.to(lobby.id).emit('leechHeal', record);
-          }
-          state._pendingLeechHeals.length = 0;
-        }
-
-        if (state._pendingShieldBreaks?.length) {
-          for (const record of state._pendingShieldBreaks) {
-            io.to(lobby.id).emit('shieldBreak', record);
-          }
-          state._pendingShieldBreaks.length = 0;
-        }
-
-        regenMagicStones();
-
-        state.loot = state.loot.filter(l => (now - l.createdAt) < LOOT_LIFETIME_MS);
-      }
-
-      const snapshot = hotStateSnapshot();
-      io.to(lobby.id).emit('stateUpdate', snapshot);
-    });
+        const snapshot = hotStateSnapshot();
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, snapshot);
+      });
+    } catch (err) {
+      console.error(`[gameLoop] lobby ${lobby.id} tick failed:`, err && err.stack ? err.stack : err);
+    }
   }
   return true;
 }
 
 function startServer(port) {
+  ensureHttpErrorLogger();
+  _harnessReady = false;
+
   // Initialize auth — throws if JWT_SECRET is missing (unless NODE_ENV === 'test')
   initAuth();
 
@@ -1256,6 +1397,9 @@ function startServer(port) {
   }
 
   io.on('connection', (socket) => {
+    try {
+    patchSocketOn(socket);
+
     // ── JWT authentication (required) ──
     // JWT validation is performed by the io.use() middleware above.
     // Failed auth triggers a client-side connect_error (not connect → disconnect),
@@ -1301,6 +1445,8 @@ function startServer(port) {
       applyDebugScenario,
       isDebugScenarioAllowed,
       softDisconnectPlayerFromLobby,
+      hubLayout: HUB_LAYOUT,
+      syncLivePlayerCosmetic,
     };
     lobbyHandlers.register(socket, ctx);
 
@@ -1317,7 +1463,7 @@ function startServer(port) {
     socket.playerId = playerId;
     console.log(`Player connected: socket=${socket.id}, playerId=${playerId}`);
 
-    socket.emit('init', {
+    socket.emit(SERVER_TO_CLIENT.INIT, {
       id: playerId,
       playerId,
       accountId,
@@ -1328,22 +1474,34 @@ function startServer(port) {
       ownedCards: sessionPlayer.ownedCards,
       lobbies: lobbies.listLobbySummaries(),
       keyItemDefs: KEY_ITEM_DEFS,
+      enemyDisplayCatalog: buildEnemyDisplayCatalog(),
     });
 
     broadcastLobbyList();
+    } catch (err) {
+      console.error('[socket:connection] setup error:', err && err.stack ? err.stack : err);
+      try {
+        socket.disconnect(true);
+      } catch (_) {
+        // ignore secondary disconnect errors
+      }
+    }
   });
 
-// Server Game Loop
-restartBackgroundTimers();
-
-const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
-server.listen(listenPort, () => {
-  console.log(`Server listening on port ${listenPort}`);
-});
+  const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
+  if (!server.listening) {
+    server.listen(listenPort, () => {
+      _harnessReady = true;
+      console.log(`Server listening on port ${listenPort}`);
+    });
+  } else {
+    _harnessReady = true;
+  }
 }
 
 // Only start the HTTP server when run directly (not when required by tests)
 if (require.main === module) {
+  installMainProcessErrorHandlers();
   startServer();
 }
 
@@ -1386,6 +1544,7 @@ if (typeof module !== 'undefined' && module.exports) {
     pickFloorSpawnPosition,
     buildPlayerRecord,
     syncLivePlayerCosmetic,
+    hasLiveLobbyPlayerForAccount,
     createGameState,
     resetGameState,
     gameState,

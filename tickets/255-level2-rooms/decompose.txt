@@ -1,0 +1,17 @@
+Broke ticket **255-level2-rooms** into **3 sub-tickets** (dependency order), mirroring ticket 257: rigid layout mode first, then end-to-end Tier 2 for each grid profile's reference quest.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/255-level2-rooms/tickets/255-level2-rooms/subtickets/01-grid-rooms-rigid-layout-mode`
+2. `/home/matt/workspace/.autogame-worktrees/255-level2-rooms/tickets/255-level2-rooms/subtickets/02-training-caverns-tier2-end-to-end`
+3. `/home/matt/workspace/.autogame-worktrees/255-level2-rooms/tickets/255-level2-rooms/subtickets/03-crystal-rescue-tier2-end-to-end`
+
+**Plan summary:**
+
+| # | Scope |
+|---|--------|
+| **01** | Thread `layoutMode: 'rigid'` through the shared `crowded` / `open` grid generator in `dungeon.js` (structural pinning + ordered dressing) with unit tests |
+| **02** | Activate `training_caverns` Tier 2 with `layoutMode: 'rigid'`, deploy/variant/unlock tests, and `training-caverns-tier-2` debug scenario |
+| **03** | Add `crystal_rescue` Tier 2 on the `open` profile with the same 254-framework wiring, tests, and `crystal-rescue-tier-2` debug scenario |
+
+All three use **Verification: code** (structure, spawn logic, server state, and tests — not screenshot-only checks). No existing sub-tickets with `.passed` markers were present, so nothing was deleted or renumbered.

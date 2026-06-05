@@ -12,6 +12,8 @@ import {
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
+  DEFAULT_LAYOUT_PROFILE,
+  normalizeLayoutProfile,
   GRID_COLS,
   GRID_ROWS,
   CELL_SPACING,
@@ -853,6 +855,27 @@ describe('layout profiles', () => {
     expect(open.cellSpacing).toBe(LAYOUT_PROFILES.open.cellSpacing);
     expect(open.profile).toBe('open');
   });
+
+  it("'default' string alias resolves to DEFAULT_LAYOUT_PROFILE, not crowded", () => {
+    const normalized = normalizeLayoutProfile('default');
+    expect(normalized.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+    expect(normalized.cellSpacing).not.toBe(LAYOUT_PROFILES.crowded.cellSpacing);
+    expect(normalized.targetRoomFraction).toBe(DEFAULT_LAYOUT_PROFILE.targetRoomFraction);
+
+    const layout = generateLayout(42, 'default');
+    expect(layout.profile).toBe('default');
+    expect(layout.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+
+    const crowded = generateLayout(42, 'crowded');
+    expect(layout.cellSpacing).not.toBe(crowded.cellSpacing);
+    expect(layout.rooms.length).not.toBe(crowded.rooms.length);
+  });
+
+  it('accepts DEFAULT_LAYOUT_PROFILE object unchanged', () => {
+    const layout = generateLayout(42, DEFAULT_LAYOUT_PROFILE);
+    expect(layout.profile).toBe('default');
+    expect(layout.cellSpacing).toBe(DEFAULT_LAYOUT_PROFILE.cellSpacing);
+  });
 });
 
 // ── Sloped floor corners ──
@@ -982,6 +1005,610 @@ describe('floorCorners on rooms', () => {
       if (heights.size > 1) { hasSlope = true; break; }
     }
     expect(hasSlope).toBe(true);
+  });
+});
+
+// ── crowded interior cover ──
+
+describe('crowded interior cover', () => {
+  const SEED = 42;
+  const MARGIN = 2;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function coverInRoom(cover, room) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    return cover.filter(c =>
+      Math.abs(c.x - room.x) + c.width / 2 <= halfW + 1e-6 &&
+      Math.abs(c.z - room.z) + c.depth / 2 <= halfD + 1e-6
+    );
+  }
+
+  function roomReachability(room, cover) {
+    const halfW = room.width / 2 - MARGIN;
+    const halfD = room.depth / 2 - MARGIN;
+    const step = 0.5;
+    const cellsX = Math.floor((halfW * 2) / step);
+    const cellsZ = Math.floor((halfD * 2) / step);
+    const cellX = i => room.x - halfW + (i + 0.5) * step;
+    const cellZ = j => room.z - halfD + (j + 0.5) * step;
+    const blocked = (x, z) =>
+      cover.some(c =>
+        x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+        z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+      );
+
+    const startI = Math.floor(halfW / step);
+    const startJ = Math.floor(halfD / step);
+    const seen = new Set();
+    const key = (i, j) => `${i},${j}`;
+    const queue = [[startI, startJ]];
+    seen.add(key(startI, startJ));
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di;
+        const nj = j + dj;
+        if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+        if (seen.has(key(ni, nj))) continue;
+        if (blocked(cellX(ni), cellZ(nj))) continue;
+        seen.add(key(ni, nj));
+        queue.push([ni, nj]);
+      }
+    }
+
+    let open = 0;
+    for (let j = 0; j < cellsZ; j++) {
+      for (let i = 0; i < cellsX; i++) {
+        if (!blocked(cellX(i), cellZ(j))) open++;
+      }
+    }
+    return seen.size === open;
+  }
+
+  it('generateLayout(seed, crowded) places ≥ 1 cover piece per combat room', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    expect(Array.isArray(layout.cover)).toBe(true);
+    const combat = combatRooms(layout);
+    expect(combat.length).toBeGreaterThan(0);
+    for (const room of combat) {
+      expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('cover pieces use pillar or broken_wall types and stay inside room margins', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    for (const c of layout.cover) {
+      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(c.height).toBeGreaterThan(0);
+      const host = layout.rooms.find(r =>
+        Math.abs(c.x - r.x) + c.width / 2 <= r.width / 2 + 1e-6 &&
+        Math.abs(c.z - r.z) + c.depth / 2 <= r.depth / 2 + 1e-6
+      );
+      expect(host).toBeDefined();
+      const halfW = host.width / 2 - MARGIN;
+      const halfD = host.depth / 2 - MARGIN;
+      expect(Math.abs(c.x - host.x) + c.width / 2).toBeLessThanOrEqual(halfW + 1e-6);
+      expect(Math.abs(c.z - host.z) + c.depth / 2).toBeLessThanOrEqual(halfD + 1e-6);
+    }
+  });
+
+  it('cover pieces do not overlap each other within a room', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    for (const room of combatRooms(layout)) {
+      const pieces = coverInRoom(layout.cover, room);
+      for (let i = 0; i < pieces.length; i++) {
+        for (let j = i + 1; j < pieces.length; j++) {
+          const a = pieces[i];
+          const b = pieces[j];
+          const overlap =
+            Math.abs(a.x - b.x) < (a.width + b.width) / 2 + 0.5 &&
+            Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + 0.5;
+          expect(overlap).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('every combat room stays fully reachable from its centre after cover placement', () => {
+    for (const seed of [SEED, 1, 123, 777]) {
+      const layout = generateLayout(seed, 'crowded');
+      for (const room of combatRooms(layout)) {
+        const pieces = coverInRoom(layout.cover, room);
+        expect(roomReachability(room, pieces)).toBe(true);
+      }
+    }
+  });
+
+  it('cover footprints become wall colliders', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - c.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - c.width) < 1e-6 &&
+        Math.abs((w.minZ + w.maxZ) / 2 - c.z) < 1e-6 &&
+        Math.abs((w.maxZ - w.minZ) - c.depth) < 1e-6
+      );
+      expect(hit).toBe(true);
+    }
+    const c0 = layout.cover[0];
+    const collides = colliders.some(w =>
+      c0.x + PLAYER_RADIUS > w.minX && c0.x - PLAYER_RADIUS < w.maxX &&
+      c0.z + PLAYER_RADIUS > w.minZ && c0.z - PLAYER_RADIUS < w.maxZ
+    );
+    expect(collides).toBe(true);
+  });
+
+  it('sloped crowded layouts still generate valid cover in flat combat rooms', () => {
+    const layout = generateLayout(SEED, 'crowded', { slopes: true });
+    expect(layout.cover.length).toBeGreaterThan(0);
+    for (const room of combatRooms(layout)) {
+      const isSloped = new Set(Object.values(room.floorCorners)).size > 1;
+      if (!isSloped) {
+        expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('is deterministic for a fixed seed', () => {
+    const a = generateLayout(SEED, 'crowded');
+    const b = generateLayout(SEED, 'crowded');
+    expect(a.cover).toEqual(b.cover);
+  });
+});
+
+// ── profile landmark props ──
+
+describe('profile landmark props', () => {
+  const SEED = 42;
+  const CROWDED_TYPES = ['reactor_coil', 'pipe_stack'];
+  const OPEN_TYPES = ['sand_spire', 'sun_arch'];
+
+  function landmarkHostRoom(layout, lm) {
+    return layout.rooms.find(r =>
+      Math.abs(lm.x - r.x) <= r.width / 2 + 1e-6 &&
+      Math.abs(lm.z - r.z) <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  function landmarkFootprint(lm) {
+    const sizes = {
+      reactor_coil: { width: 2.4, depth: 2.4 },
+      pipe_stack: { width: 2.0, depth: 2.8 },
+      sand_spire: { width: 2.2, depth: 2.2 },
+      sun_arch: { width: 3.2, depth: 1.6 },
+    };
+    const fp = sizes[lm.type];
+    return { x: lm.x, z: lm.z, width: fp.width, depth: fp.depth };
+  }
+
+  for (const [profile, allowed] of [['crowded', CROWDED_TYPES], ['open', OPEN_TYPES]]) {
+    it(`generateLayout(seed, ${profile}) returns 1–2 landmarks with profile-specific types`, () => {
+      const layout = generateLayout(SEED, profile);
+      expect(Array.isArray(layout.landmarks)).toBe(true);
+      expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
+      expect(layout.landmarks.length).toBeLessThanOrEqual(2);
+      for (const lm of layout.landmarks) {
+        expect(allowed).toContain(lm.type);
+        expect(typeof lm.x).toBe('number');
+        expect(typeof lm.z).toBe('number');
+      }
+    });
+  }
+
+  it('landmarks are placed in non-start rooms and avoid cover footprints', () => {
+    for (const profile of ['crowded', 'open']) {
+      const layout = generateLayout(SEED, profile);
+      for (const lm of layout.landmarks) {
+        const host = landmarkHostRoom(layout, lm);
+        expect(host).toBeDefined();
+        expect(host.role).not.toBe('start');
+        const fp = landmarkFootprint(lm);
+        for (const c of layout.cover || []) {
+          expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('landmark placement is deterministic for a fixed seed', () => {
+    expect(generateLayout(SEED, 'crowded').landmarks).toEqual(
+      generateLayout(SEED, 'crowded').landmarks
+    );
+    expect(generateLayout(SEED, 'open', { slopes: true }).landmarks).toEqual(
+      generateLayout(SEED, 'open', { slopes: true }).landmarks
+    );
+  });
+});
+
+// ── open profile verticality & hazards ──
+
+describe("generateLayout(seed, 'open') verticality & hazards", () => {
+  const SEED = 42;
+  const MARGIN = 2;
+  const SPAWN_CLEAR = 5;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function hostRoom(layout, fp) {
+    return layout.rooms.find(r =>
+      Math.abs(fp.x - r.x) + fp.width / 2 <= r.width / 2 + 1e-6 &&
+      Math.abs(fp.z - r.z) + fp.depth / 2 <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function footprintInMargins(room, fp) {
+    const halfW = room.width / 2 - MARGIN;
+    const halfD = room.depth / 2 - MARGIN;
+    return (
+      Math.abs(fp.x - room.x) + fp.width / 2 <= halfW + 1e-6 &&
+      Math.abs(fp.z - room.z) + fp.depth / 2 <= halfD + 1e-6
+    );
+  }
+
+  it('with slopes places ≥ 1 platform in a non-start combat room', () => {
+    const layout = generateLayout(SEED, 'open', { slopes: true });
+    expect(Array.isArray(layout.platforms)).toBe(true);
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+    const startRoom = layout.rooms.find(r => r.role === 'start');
+    for (const p of layout.platforms) {
+      expect(p.floorCorners).toBeDefined();
+      const host = hostRoom(layout, p);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+      expect(host).not.toBe(startRoom);
+      const heights = [p.floorCorners.yNW, p.floorCorners.yNE, p.floorCorners.ySE, p.floorCorners.ySW];
+      expect(Math.max(...heights) - DEFAULT_FLOOR_Y).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it('includes ≥ 1 pit hazard per layout inside a combat room', () => {
+    const layout = generateLayout(SEED, 'open');
+    expect(Array.isArray(layout.hazards)).toBe(true);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      expect(h.pitDepth).toBeGreaterThan(0);
+      const host = hostRoom(layout, h);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+      expect(footprintInMargins(host, h)).toBe(true);
+      expect(Math.hypot(h.x - host.x, h.z - host.z)).toBeGreaterThanOrEqual(SPAWN_CLEAR - 0.01);
+    }
+  });
+
+  it('scatters ≤ 2 cover pieces total (sparse vs crowded)', () => {
+    const layout = generateLayout(SEED, 'open');
+    expect(layout.cover.length).toBeLessThanOrEqual(2);
+    const crowded = generateLayout(SEED, 'crowded');
+    expect(crowded.cover.length).toBeGreaterThan(layout.cover.length);
+  });
+
+  it('with slopes applies ≥ 2 ramp rooms when room count allows', () => {
+    const layout = generateLayout(SEED, 'open', { slopes: true });
+    expect(layout.rooms.length).toBeGreaterThan(3);
+    let rampCount = 0;
+    for (const room of layout.rooms) {
+      if (room.floorCorners.ySE !== room.floorCorners.yNW) rampCount++;
+    }
+    expect(rampCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('is deterministic for a fixed seed', () => {
+    const a = generateLayout(SEED, 'open', { slopes: true });
+    const b = generateLayout(SEED, 'open', { slopes: true });
+    expect(a.platforms).toEqual(b.platforms);
+    expect(a.hazards).toEqual(b.hazards);
+    expect(a.cover).toEqual(b.cover);
+  });
+
+  it('holds across multiple seeds', () => {
+    for (const seed of [1, 7, 99, 2024]) {
+      const layout = generateLayout(seed, 'open', { slopes: true });
+      expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+      expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+      expect(layout.cover.length).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
+// ── crowded rigid layoutMode ──
+
+describe("generateLayout(seed, 'crowded') rigid layoutMode", () => {
+  const RIGID_LANDMARK_TYPE = 'vault_dais';
+  const MARGIN = 2;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function coverInRoom(cover, room) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    return cover.filter(c =>
+      Math.abs(c.x - room.x) + c.width / 2 <= halfW + 1e-6 &&
+      Math.abs(c.z - room.z) + c.depth / 2 <= halfD + 1e-6
+    );
+  }
+
+  function roomReachability(room, cover) {
+    const halfW = room.width / 2 - MARGIN;
+    const halfD = room.depth / 2 - MARGIN;
+    const step = 0.5;
+    const cellsX = Math.floor((halfW * 2) / step);
+    const cellsZ = Math.floor((halfD * 2) / step);
+    const cellX = i => room.x - halfW + (i + 0.5) * step;
+    const cellZ = j => room.z - halfD + (j + 0.5) * step;
+    const blocked = (x, z) =>
+      cover.some(c =>
+        x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+        z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+      );
+
+    const startI = Math.floor(halfW / step);
+    const startJ = Math.floor(halfD / step);
+    const seen = new Set();
+    const key = (i, j) => `${i},${j}`;
+    const queue = [[startI, startJ]];
+    seen.add(key(startI, startJ));
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di;
+        const nj = j + dj;
+        if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+        if (seen.has(key(ni, nj))) continue;
+        if (blocked(cellX(ni), cellZ(nj))) continue;
+        seen.add(key(ni, nj));
+        queue.push([ni, nj]);
+      }
+    }
+
+    let open = 0;
+    for (let j = 0; j < cellsZ; j++) {
+      for (let i = 0; i < cellsX; i++) {
+        if (!blocked(cellX(i), cellZ(j))) open++;
+      }
+    }
+    return seen.size === open;
+  }
+
+  function assertCrowdedRigidInvariants(layout) {
+    expect(layout.profile).toBe('crowded');
+    const combat = combatRooms(layout);
+    expect(combat.length).toBeGreaterThan(0);
+    for (const room of combat) {
+      const isSloped = new Set(Object.values(room.floorCorners)).size > 1;
+      if (isSloped) continue;
+      expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
+      expect(roomReachability(room, coverInRoom(layout.cover, room))).toBe(true);
+    }
+    expect(layout.landmarks).toHaveLength(1);
+    expect(layout.landmarks[0].type).toBe(RIGID_LANDMARK_TYPE);
+  }
+
+  function vaultDaisFootprint(lm) {
+    return { x: lm.x, z: lm.z, width: 2.4, depth: 2.4 };
+  }
+
+  function landmarkHostRoom(layout, lm) {
+    return layout.rooms.find(r =>
+      Math.abs(lm.x - r.x) <= r.width / 2 + 1e-6 &&
+      Math.abs(lm.z - r.z) <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  it('places exactly one vault_dais in the last sorted combat room (seed 123)', () => {
+    const layout = generateLayout(123, 'crowded', { layoutMode: 'rigid' });
+    expect(layout.landmarks).toHaveLength(1);
+    const lm = layout.landmarks[0];
+    expect(lm).toMatchObject({
+      type: RIGID_LANDMARK_TYPE,
+      yaw: 0,
+    });
+    expect(typeof lm.x).toBe('number');
+    expect(typeof lm.z).toBe('number');
+
+    const combatRooms = layout.rooms
+      .filter(r => r.role === 'combat')
+      .sort((a, b) => a.x - b.x || a.z - b.z);
+    const hostRoom = combatRooms[combatRooms.length - 1];
+    const landmarkRoom = landmarkHostRoom(layout, lm);
+    expect(landmarkRoom).toBe(hostRoom);
+    expect(landmarkRoom.role).toBe('combat');
+    expect(landmarkRoom.role).not.toBe('start');
+
+    const fp = vaultDaisFootprint(lm);
+    for (const c of layout.cover) {
+      expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+    }
+  });
+
+  it('vault_dais placement is deterministic across seeds in rigid mode', () => {
+    const ref = generateLayout(123, 'crowded', { layoutMode: 'rigid' }).landmarks;
+    for (const seed of [1, 42, 777, 9999]) {
+      expect(generateLayout(seed, 'crowded', { layoutMode: 'rigid' }).landmarks).toEqual(ref);
+    }
+  });
+
+  it('default crowded layouts still use decorative reactor_coil and pipe_stack only', () => {
+    const layout = generateLayout(123, 'crowded', { layoutMode: 'default' });
+    const decorativeTypes = ['reactor_coil', 'pipe_stack'];
+    expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
+    for (const lm of layout.landmarks) {
+      expect(decorativeTypes).toContain(lm.type);
+    }
+  });
+
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'crowded', { layoutMode: 'default' });
+    const withUnknown = generateLayout(123, 'crowded', { layoutMode: 'chaotic' });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.landmarks).toEqual(withDefault.landmarks);
+  });
+
+  it('rigid mode produces identical rooms/passages and dressing across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'crowded', { slopes: true, layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+      expect(layouts[i].passages).toEqual(layouts[0].passages);
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+    }
+  });
+
+  it('rigid mode still satisfies crowded structural and reachability assertions', () => {
+    assertCrowdedRigidInvariants(
+      generateLayout(123, 'crowded', { slopes: true, layoutMode: 'rigid' })
+    );
+  });
+
+  it('default mode still varies cover across a seed sweep', () => {
+    const ref = generateLayout(1, 'crowded', { layoutMode: 'default' });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'crowded', { layoutMode: 'default' });
+      if (JSON.stringify(ref.cover) !== JSON.stringify(other.cover)) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'crowded', { layoutMode: 'rigid' });
+    const def = generateLayout(123, 'crowded', { layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'crowded', { layoutMode: 'rigid' });
+    expect(rigid.rooms).toEqual(rigidAgain.rooms);
+    expect(rigid.cover).toEqual(rigidAgain.cover);
+    const differs =
+      JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover);
+    expect(differs).toBe(true);
+  });
+});
+
+// ── open rigid layoutMode ──
+
+describe("generateLayout(seed, 'open') rigid layoutMode", () => {
+  const OPEN_TYPES = ['sand_spire', 'sun_arch'];
+  const MARGIN = 2;
+  const SPAWN_CLEAR = 5;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function hostRoom(layout, fp) {
+    return layout.rooms.find(r =>
+      Math.abs(fp.x - r.x) + fp.width / 2 <= r.width / 2 + 1e-6 &&
+      Math.abs(fp.z - r.z) + fp.depth / 2 <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function assertOpenRigidInvariants(layout) {
+    expect(layout.profile).toBe('open');
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    expect(layout.cover.length).toBeLessThanOrEqual(2);
+    for (const p of layout.platforms) {
+      const host = hostRoom(layout, p);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+    }
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      const host = hostRoom(layout, h);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+      expect(Math.hypot(h.x - host.x, h.z - host.z)).toBeGreaterThanOrEqual(SPAWN_CLEAR - 0.01);
+    }
+    expect(layout.landmarks.length).toBeGreaterThanOrEqual(1);
+    for (const lm of layout.landmarks) {
+      expect(OPEN_TYPES).toContain(lm.type);
+    }
+  }
+
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'open', { layoutMode: 'default', slopes: true });
+    const withUnknown = generateLayout(123, 'open', { layoutMode: 'chaotic', slopes: true });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.hazards).toEqual(withDefault.hazards);
+    expect(withUnknown.platforms).toEqual(withDefault.platforms);
+  });
+
+  it('rigid mode produces identical rooms/passages and dressing across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'open', { slopes: true, layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+      expect(layouts[i].passages).toEqual(layouts[0].passages);
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+      expect(layouts[i].platforms).toEqual(layouts[0].platforms);
+      expect(layouts[i].hazards).toEqual(layouts[0].hazards);
+    }
+  });
+
+  it('rigid mode still satisfies open structural assertions', () => {
+    assertOpenRigidInvariants(
+      generateLayout(123, 'open', { slopes: true, layoutMode: 'rigid' })
+    );
+  });
+
+  it('default mode still varies cover or hazards across a seed sweep', () => {
+    const ref = generateLayout(1, 'open', { layoutMode: 'default', slopes: true });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'open', { layoutMode: 'default', slopes: true });
+      if (
+        JSON.stringify(ref.cover) !== JSON.stringify(other.cover) ||
+        JSON.stringify(ref.hazards) !== JSON.stringify(other.hazards)
+      ) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'open', { slopes: true, layoutMode: 'rigid' });
+    const def = generateLayout(123, 'open', { slopes: true, layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'open', { slopes: true, layoutMode: 'rigid' });
+    expect(rigid.platforms).toEqual(rigidAgain.platforms);
+    expect(rigid.hazards).toEqual(rigidAgain.hazards);
+    const differs =
+      JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+      JSON.stringify(rigid.hazards) !== JSON.stringify(def.hazards) ||
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover);
+    expect(differs).toBe(true);
   });
 });
 
@@ -1130,20 +1757,33 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(area).toBeGreaterThanOrEqual(4 * 182);
   });
 
+  const OPEN_PLAZA_COVER_TYPES = ['pillar', 'broken_wall', 'barricade', 'crate_stack'];
+
   it('has ≥ 6 cover pieces of valid type, fully inside the interior', () => {
     const layout = generateLayout(123, 'open-plaza');
     expect(layout.cover.length).toBeGreaterThanOrEqual(6);
     const half = layout.rooms[0].width / 2;
     for (const c of layout.cover) {
-      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(OPEN_PLAZA_COVER_TYPES).toContain(c.type);
       expect(Math.abs(c.x) + c.width / 2).toBeLessThanOrEqual(half);
       expect(Math.abs(c.z) + c.depth / 2).toBeLessThanOrEqual(half);
     }
   });
 
-  it('has ≥ 2 platforms, each with corner delta ≤ 0.5', () => {
+  it('uses ≥ 3 distinct cover types and includes every candidate-pool type for seed 123', () => {
     const layout = generateLayout(123, 'open-plaza');
-    expect(layout.platforms.length).toBeGreaterThanOrEqual(2);
+    const typesInLayout = new Set(layout.cover.map(c => c.type));
+    expect(typesInLayout.size).toBeGreaterThanOrEqual(3);
+    for (const type of OPEN_PLAZA_COVER_TYPES) {
+      expect(typesInLayout.has(type)).toBe(true);
+    }
+  });
+
+  it('has ≥ 3 platforms at distinct positions, each with corner delta ≤ 0.5', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+    const positions = layout.platforms.map(p => `${p.x},${p.z}`);
+    expect(new Set(positions).size).toBe(layout.platforms.length);
     for (const p of layout.platforms) {
       const ys = [p.floorCorners.yNW, p.floorCorners.yNE, p.floorCorners.ySE, p.floorCorners.ySW];
       expect(Math.max(...ys) - Math.min(...ys)).toBeLessThanOrEqual(0.5 + 1e-9);
@@ -1170,6 +1810,41 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     }
   });
 
+  it('includes ≥ 1 pit hazard outside spawn-clear and clear of cover footprints', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const SPAWN_CLEAR = 6;
+    expect(Array.isArray(layout.hazards)).toBe(true);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      expect(h.pitDepth).toBeGreaterThan(0);
+      const dx = Math.max(Math.abs(h.x) - h.width / 2, 0);
+      const dz = Math.max(Math.abs(h.z) - h.depth / 2, 0);
+      expect(dx * dx + dz * dz).toBeGreaterThanOrEqual(SPAWN_CLEAR * SPAWN_CLEAR);
+      const hitsCover = layout.cover.some(c => {
+        const margin = 0.5;
+        return (
+          Math.abs(h.x - c.x) < (h.width + c.width) / 2 + margin &&
+          Math.abs(h.z - c.z) < (h.depth + c.depth) / 2 + margin
+        );
+      });
+      expect(hitsCover).toBe(false);
+    }
+  });
+
+  it('hazards do not add wall colliders or change sampleFloorY at pit centres', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const colliders = buildWallColliders(layout);
+    for (const h of layout.hazards) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - h.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - h.width) < 1e-6
+      );
+      expect(hit).toBe(false);
+      expect(sampleFloorY(layout, h.x, h.z)).toBe(DEFAULT_FLOOR_Y);
+    }
+  });
+
   it('cover never blocks reachability: every interior cell stays reachable from centre', () => {
     for (const seed of [1, 42, 123, 777, 9999]) {
       const layout = generateLayout(seed, 'open-plaza');
@@ -1181,7 +1856,13 @@ describe("generateLayout(seed, 'open-plaza')", () => {
   it('sampleFloorY returns raised height on a platform and DEFAULT_FLOOR_Y elsewhere', () => {
     const layout = generateLayout(123, 'open-plaza');
     const p = layout.platforms[0];
-    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThan(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY(layout, p.x, p.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+    for (const platform of layout.platforms) {
+      const corners = platform.floorCorners;
+      const maxCorner = Math.max(corners.yNW, corners.yNE, corners.ySE, corners.ySW);
+      expect(maxCorner).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+      expect(sampleFloorY(layout, platform.x, platform.z)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+    }
     // A point on the open plaza floor away from any platform reads the flat floor.
     expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
   });
@@ -1190,6 +1871,74 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     const a = generateLayout(2024, 'open-plaza');
     const b = generateLayout(2024, 'open-plaza');
     expect(a).toEqual(b);
+  });
+
+  it('returns exactly one arena_dais landmark at the origin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.landmarks).toEqual([{ x: 0, z: 0, type: 'arena_dais' }]);
+  });
+
+  it('includes a center_ring floor marking inside the spawn-clear radius', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(Array.isArray(layout.floorMarkings)).toBe(true);
+    expect(layout.floorMarkings.length).toBeGreaterThanOrEqual(1);
+    const ring = layout.floorMarkings.find(m => m.type === 'center_ring');
+    expect(ring).toBeDefined();
+    expect(ring.x).toBe(0);
+    expect(ring.z).toBe(0);
+    expect(ring.innerRadius).toBeGreaterThan(0);
+    expect(ring.outerRadius).toBeGreaterThan(ring.innerRadius);
+    const spawnClearRadius = 6;
+    expect(ring.outerRadius).toBeLessThanOrEqual(spawnClearRadius);
+    const maxExtent = Math.hypot(ring.x, ring.z) + ring.outerRadius;
+    expect(maxExtent).toBeLessThanOrEqual(spawnClearRadius);
+  });
+
+  it('floor markings do not affect wall colliders or sampleFloorY at origin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withMarkings = buildWallColliders(layout);
+    const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
+    expect(withMarkings).toEqual(withoutMarkings);
+    expect(sampleFloorY(layout, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+    expect(sampleFloorY({ ...layout, floorMarkings: [] }, 0, 0)).toBe(DEFAULT_FLOOR_Y);
+  });
+
+  it('landmarks do not affect wall colliders', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withLandmark = buildWallColliders(layout);
+    const withoutLandmark = buildWallColliders({ ...layout, landmarks: [] });
+    expect(withLandmark).toEqual(withoutLandmark);
+  });
+
+  it('includes ≥ 8 perimeter decor entries of allowed types, ≥ 2 per wall, inside interior margin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const half = layout.rooms[0].width / 2;
+    const margin = 2;
+    const allowed = ['arena_banner', 'arena_tier'];
+    const walls = ['north', 'south', 'east', 'west'];
+
+    expect(Array.isArray(layout.perimeterDecor)).toBe(true);
+    expect(layout.perimeterDecor.length).toBeGreaterThanOrEqual(8);
+
+    for (const d of layout.perimeterDecor) {
+      expect(allowed).toContain(d.type);
+      expect(walls).toContain(d.wall);
+      expect(Math.abs(d.x)).toBeLessThanOrEqual(half - margin);
+      expect(Math.abs(d.z)).toBeLessThanOrEqual(half - margin);
+    }
+
+    for (const wall of walls) {
+      const onWall = layout.perimeterDecor.filter(d => d.wall === wall);
+      expect(onWall.length).toBeGreaterThanOrEqual(2);
+    }
+  });
+
+  it('perimeter decor does not affect wall colliders or wall gaps', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withDecor = buildWallColliders(layout);
+    const withoutDecor = buildWallColliders({ ...layout, perimeterDecor: [] });
+    expect(withDecor).toEqual(withoutDecor);
+    expect(layout.rooms[0].walls.length).toBe(4);
   });
 
   it('cover footprints become wall colliders (player cannot walk through cover)', () => {
@@ -1211,6 +1960,71 @@ describe("generateLayout(seed, 'open-plaza')", () => {
       c0.z + PLAYER_RADIUS_PLAZA > w.minZ && c0.z - PLAYER_RADIUS_PLAZA < w.maxZ
     );
     expect(collides).toBe(true);
+  });
+});
+
+// ── open-plaza rigid layoutMode ──
+
+describe("generateLayout(seed, 'open-plaza') rigid layoutMode", () => {
+  it('unknown layoutMode values fall back to default scatter behavior', () => {
+    const withDefault = generateLayout(123, 'open-plaza', { layoutMode: 'default' });
+    const withUnknown = generateLayout(123, 'open-plaza', { layoutMode: 'chaotic' });
+    expect(withUnknown.cover).toEqual(withDefault.cover);
+    expect(withUnknown.hazards).toEqual(withDefault.hazards);
+  });
+
+  it('rigid mode is deterministic for the same seed', () => {
+    const a = generateLayout(42, 'open-plaza', { layoutMode: 'rigid' });
+    const b = generateLayout(42, 'open-plaza', { layoutMode: 'rigid' });
+    expect(a).toEqual(b);
+    expect(a.cover).toEqual(b.cover);
+    expect(a.hazards).toEqual(b.hazards);
+  });
+
+  it('rigid mode produces identical cover/hazards across different seeds', () => {
+    const seeds = [1, 42, 123, 777, 9999];
+    const layouts = seeds.map((seed) =>
+      generateLayout(seed, 'open-plaza', { layoutMode: 'rigid' })
+    );
+    for (let i = 1; i < layouts.length; i++) {
+      expect(layouts[i].cover).toEqual(layouts[0].cover);
+      expect(layouts[i].hazards).toEqual(layouts[0].hazards);
+    }
+  });
+
+  it('default mode still varies cover or hazards with seed', () => {
+    const ref = generateLayout(1, 'open-plaza', { layoutMode: 'default' });
+    let foundDifference = false;
+    for (let seed = 2; seed <= 100; seed++) {
+      const other = generateLayout(seed, 'open-plaza', { layoutMode: 'default' });
+      if (
+        JSON.stringify(ref.cover) !== JSON.stringify(other.cover) ||
+        JSON.stringify(ref.hazards) !== JSON.stringify(other.hazards)
+      ) {
+        foundDifference = true;
+        break;
+      }
+    }
+    expect(foundDifference).toBe(true);
+  });
+
+  it('rigid and default modes can diverge for the same seed', () => {
+    const rigid = generateLayout(123, 'open-plaza', { layoutMode: 'rigid' });
+    const def = generateLayout(123, 'open-plaza', { layoutMode: 'default' });
+    const rigidAgain = generateLayout(9999, 'open-plaza', { layoutMode: 'rigid' });
+    expect(rigid.cover).toEqual(rigidAgain.cover);
+    expect(rigid.hazards).toEqual(rigidAgain.hazards);
+    const coverDiffers =
+      JSON.stringify(rigid.cover) !== JSON.stringify(def.cover) ||
+      JSON.stringify(rigid.hazards) !== JSON.stringify(def.hazards);
+    expect(coverDiffers).toBe(true);
+  });
+
+  it('rigid mode still satisfies open-plaza structural requirements', () => {
+    const layout = generateLayout(123, 'open-plaza', { layoutMode: 'rigid' });
+    expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
   });
 });
 
@@ -1444,6 +2258,199 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       expect(rampCount).toBeLessThanOrEqual(5);
     }
   });
+
+  it('emits one cliffLip per ramp at plateau high Y, aligned to ramp X centres', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const ramps = roomsByBand(layout, 'ramp');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+
+      expect(Array.isArray(layout.cliffLips)).toBe(true);
+      expect(layout.cliffLips.length).toBe(ramps.length);
+      expect(layout.cliffLips.length).toBeGreaterThanOrEqual(4);
+      expect(layout.cliffLips.length).toBeLessThanOrEqual(5);
+
+      for (const ramp of ramps) {
+        const lip = layout.cliffLips.find(
+          (l) => Math.abs((l.minX + l.maxX) / 2 - ramp.x) < 0.01
+        );
+        expect(lip).toBeDefined();
+        expect(lip.y).toBe(yPlateau);
+        expect(lip.maxX - lip.minX).toBeCloseTo(ramp.width, 4);
+        const rampHalfD = ramp.depth / 2;
+        const rampNorthZ = ramp.z - rampHalfD;
+        expect(lip.maxZ).toBeLessThanOrEqual(rampNorthZ - 0.01);
+      }
+    }
+  });
+
+  function monolithFootprint(lm) {
+    return { x: lm.x, z: lm.z, width: 2.0, depth: 2.0 };
+  }
+
+  function footprintsOverlap(a, b, margin = 0) {
+    return (
+      Math.abs(a.x - b.x) < (a.width + b.width) / 2 + margin &&
+      Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + margin
+    );
+  }
+
+  function outsideSpawnClear(lm, canyon, radius = 6) {
+    const fp = monolithFootprint(lm);
+    const dx = Math.max(Math.abs(fp.x - canyon.x) - fp.width / 2, 0);
+    const dz = Math.max(Math.abs(fp.z - canyon.z) - fp.depth / 2, 0);
+    return dx * dx + dz * dz >= radius * radius;
+  }
+
+  it('places exactly one canyon_monolith landmark in the canyon band (seed 42)', () => {
+    const layout = generateLayout(42, 'sunken-canyon');
+    const canyon = roomsByBand(layout, 'canyon')[0];
+    expect(layout.landmarks).toHaveLength(1);
+    const lm = layout.landmarks[0];
+    expect(lm.type).toBe('canyon_monolith');
+    expect(typeof lm.x).toBe('number');
+    expect(typeof lm.z).toBe('number');
+    expect(typeof lm.yaw).toBe('number');
+    expect(Math.abs(lm.x - canyon.x) + monolithFootprint(lm).width / 2).toBeLessThanOrEqual(canyon.width / 2);
+    expect(Math.abs(lm.z - canyon.z) + monolithFootprint(lm).depth / 2).toBeLessThanOrEqual(canyon.depth / 2);
+    expect(outsideSpawnClear(lm, canyon)).toBe(true);
+    const fp = monolithFootprint(lm);
+    for (const c of layout.cover) {
+      expect(footprintsOverlap(fp, c, 0.5)).toBe(false);
+    }
+    const floorY = sampleFloorY(layout, lm.x, lm.z);
+    expect(floorY).toBeCloseTo(sampleFloorY(layout, canyon.x, canyon.z), 4);
+  });
+
+  it('canyon monolith placement is deterministic for seed 42', () => {
+    expect(generateLayout(42, 'sunken-canyon').landmarks).toEqual(
+      generateLayout(42, 'sunken-canyon').landmarks
+    );
+  });
+
+  it('emits edgeHazards along plateau south rim between ramp mouths', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const ramps = roomsByBand(layout, 'ramp');
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+      const plateauSouthZ = plateau.z + plateau.depth / 2;
+
+      expect(Array.isArray(layout.edgeHazards)).toBe(true);
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+
+      for (const hazard of layout.edgeHazards) {
+        expect(hazard).toMatchObject({
+          minX: expect.any(Number),
+          maxX: expect.any(Number),
+          minZ: expect.any(Number),
+          maxZ: expect.any(Number),
+          y: yPlateau,
+          side: expect.stringMatching(/^(south|west|east)$/),
+          band: 'plateau',
+        });
+        expect(hazard.maxX - hazard.minX).toBeGreaterThan(0);
+        expect(hazard.maxZ - hazard.minZ).toBeGreaterThan(0);
+
+        if (hazard.side === 'south') {
+          expect(hazard.maxZ).toBeCloseTo(plateauSouthZ, 4);
+          expect(hazard.maxZ - hazard.minZ).toBeLessThanOrEqual(1.5);
+          for (const ramp of ramps) {
+            const rampCenterX = ramp.x;
+            const rampHalfW = ramp.width / 2;
+            const hazardCenterX = (hazard.minX + hazard.maxX) / 2;
+            const overlapsRampMouth =
+              hazardCenterX > rampCenterX - rampHalfW - 0.01 &&
+              hazardCenterX < rampCenterX + rampHalfW + 0.01;
+            expect(overlapsRampMouth).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it('plateau cliff hazards do not reduce canyon reachability', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      expect(canyonReachableFromPlateau(layout)).toBe(true);
+    }
+  });
+
+  describe('rigid layoutMode', () => {
+    it('unknown layoutMode values fall back to default scatter behavior', () => {
+      const withDefault = generateLayout(123, 'sunken-canyon', { layoutMode: 'default' });
+      const withUnknown = generateLayout(123, 'sunken-canyon', { layoutMode: 'chaotic' });
+      expect(withUnknown.rooms).toEqual(withDefault.rooms);
+      expect(withUnknown.cover).toEqual(withDefault.cover);
+      expect(withUnknown.landmarks).toEqual(withDefault.landmarks);
+    });
+
+    it('rigid mode produces identical structural fields across different seeds', () => {
+      const seeds = [1, 42, 123, 777, 9999];
+      const layouts = seeds.map((seed) =>
+        generateLayout(seed, 'sunken-canyon', { layoutMode: 'rigid' })
+      );
+      for (let i = 1; i < layouts.length; i++) {
+        expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+        expect(layouts[i].cover).toEqual(layouts[0].cover);
+        expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+        expect(layouts[i].cliffLips).toEqual(layouts[0].cliffLips);
+        expect(layouts[i].edgeHazards).toEqual(layouts[0].edgeHazards);
+      }
+    });
+
+    it('rigid mode still satisfies sunken-canyon structural and reachability assertions', () => {
+      const layout = generateLayout(123, 'sunken-canyon', { layoutMode: 'rigid' });
+      expect(layout.profile).toBe('sunken-canyon');
+
+      const ramps = roomsByBand(layout, 'ramp');
+      expect(ramps.length).toBe(5);
+
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const canyon = roomsByBand(layout, 'canyon')[0];
+      expect(plateau.role).toBe('start');
+      expect(canyon.role).toBe('treasure');
+      for (const ramp of ramps) {
+        expect(ramp.role).toBe('connector');
+        expect(ramp.spawnWeight).toBe(0);
+      }
+
+      expect(layout.cover.length).toBeGreaterThanOrEqual(6);
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0].type).toBe('canyon_monolith');
+      expect(outsideSpawnClear(layout.landmarks[0], canyon)).toBe(true);
+
+      expect(layout.cliffLips.length).toBe(ramps.length);
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      expect(canyonReachableFromPlateau(layout)).toBe(true);
+    });
+
+    it('default mode still varies ramp count across seeds', () => {
+      const rampCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'sunken-canyon', { layoutMode: 'default' });
+        rampCounts.add(roomsByBand(layout, 'ramp').length);
+      }
+      expect(rampCounts.has(4)).toBe(true);
+      expect(rampCounts.has(5)).toBe(true);
+    });
+
+    it('rigid and default modes can diverge for the same seed', () => {
+      const rigid = generateLayout(123, 'sunken-canyon', { layoutMode: 'rigid' });
+      const def = generateLayout(123, 'sunken-canyon', { layoutMode: 'default' });
+      const rigidAgain = generateLayout(9999, 'sunken-canyon', { layoutMode: 'rigid' });
+      expect(rigid.rooms).toEqual(rigidAgain.rooms);
+      expect(rigid.cover).toEqual(rigidAgain.cover);
+      expect(rigid.landmarks).toEqual(rigidAgain.landmarks);
+      const geometryDiffers =
+        JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+        JSON.stringify(rigid.cover) !== JSON.stringify(def.cover) ||
+        JSON.stringify(rigid.landmarks) !== JSON.stringify(def.landmarks);
+      expect(geometryDiffers).toBe(true);
+    });
+  });
 });
 
 // ── spire-ascent stage layout ──
@@ -1575,6 +2582,37 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     }
   });
 
+  it('tiers have distinct lateral X centres (zig-zag footprint)', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersByIndex(layout);
+      if (tiers.length < 2) continue;
+      const xs = tiers.map(t => t.x);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(0);
+      expect(tiers[0].tierXOffset).toBe(0);
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].tierXOffset).toBe(tiers[i].x);
+        expect(tiers[i].x).not.toBe(tiers[i - 1].x);
+      }
+    }
+  });
+
+  it('each ramp centre X lies between its adjoining tier centres', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersByIndex(layout);
+      const rampList = roomsByBand(layout, 'ramp');
+      for (let i = 0; i < rampList.length; i++) {
+        const lowX = tiers[i].x;
+        const highX = tiers[i + 1].x;
+        const rampX = rampList[i].x;
+        expect(rampX).toBeGreaterThanOrEqual(Math.min(lowX, highX));
+        expect(rampX).toBeLessThanOrEqual(Math.max(lowX, highX));
+        expect(rampX).toBeCloseTo((lowX + highX) / 2, 5);
+      }
+    }
+  });
+
   it('full foot reachability from bottom spawn to top tier via ramps only', () => {
     for (const seed of [1, 42, 123, 777, 9999]) {
       const layout = generateLayout(seed, 'spire-ascent');
@@ -1596,6 +2634,153 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     const a = generateLayout(2024, 'spire-ascent');
     const b = generateLayout(2024, 'spire-ascent');
     expect(a).toEqual(b);
+  });
+
+  it('emits edgeHazards on middle combat tiers only', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(Array.isArray(layout.edgeHazards)).toBe(true);
+      const tiers = tiersByIndex(layout);
+      const combatTiers = tiers.filter((t) => t.role === 'combat');
+      expect(layout.edgeHazards.length).toBe(combatTiers.length);
+      if (combatTiers.length > 0) {
+        expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      }
+      for (const hazard of layout.edgeHazards) {
+        const tier = tiers.find((t) => t.tierIndex === hazard.tierIndex);
+        expect(tier.role).toBe('combat');
+        expect(hazard).toMatchObject({
+          tierIndex: expect.any(Number),
+          minX: expect.any(Number),
+          maxX: expect.any(Number),
+          minZ: expect.any(Number),
+          maxZ: expect.any(Number),
+          y: expect.any(Number),
+        });
+      }
+      expect(layout.edgeHazards.some((h) => h.tierIndex === 0)).toBe(false);
+      expect(layout.edgeHazards.some((h) => h.tierIndex === tiers.length - 1)).toBe(false);
+    }
+  });
+
+  it('edge hazard strips lie on the exterior tier lip without spanning the walk path', () => {
+    const layout = generateLayout(42, 'spire-ascent');
+    for (const hazard of layout.edgeHazards) {
+      const tier = tiersByIndex(layout).find((t) => t.tierIndex === hazard.tierIndex);
+      const halfW = tier.width / 2;
+      const stripW = hazard.maxX - hazard.minX;
+      expect(stripW).toBeGreaterThan(0);
+      expect(stripW).toBeLessThanOrEqual(1.5);
+      const hazardCenterX = (hazard.minX + hazard.maxX) / 2;
+      expect(Math.abs(hazardCenterX - tier.x)).toBeGreaterThan(halfW - stripW - 0.01);
+      expect(hazard.minZ).toBeGreaterThan(tier.z - tier.depth / 2);
+      expect(hazard.maxZ).toBeLessThan(tier.z + tier.depth / 2);
+    }
+  });
+
+  it('spire reachability is unchanged with edge hazards present', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(0);
+      expect(spireReachableFromStart(layout)).toBe(true);
+    }
+  });
+
+  it('places exactly one spire_summit landmark at the treasure-tier centre (default mode)', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'default' });
+      const treasure = tiersByIndex(layout).find((t) => t.role === 'treasure');
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0]).toEqual({
+        x: treasure.x,
+        z: treasure.z,
+        type: 'spire_summit',
+      });
+    }
+  });
+
+  it('spire_summit landmark placement is deterministic for seed 42', () => {
+    expect(generateLayout(42, 'spire-ascent').landmarks).toEqual(
+      generateLayout(42, 'spire-ascent').landmarks
+    );
+  });
+
+  describe('rigid layoutMode', () => {
+    it('unknown layoutMode values fall back to default tier variation', () => {
+      const tierCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'chaotic' });
+        tierCounts.add(roomsByBand(layout, 'tier').length);
+      }
+      expect(tierCounts.size).toBeGreaterThan(1);
+    });
+
+    it('rigid mode produces identical rooms, edgeHazards, and landmarks across different seeds', () => {
+      const seeds = [1, 42, 123, 777, 9999];
+      const layouts = seeds.map((seed) =>
+        generateLayout(seed, 'spire-ascent', { layoutMode: 'rigid' })
+      );
+      for (let i = 1; i < layouts.length; i++) {
+        expect(layouts[i].rooms).toEqual(layouts[0].rooms);
+        expect(layouts[i].edgeHazards).toEqual(layouts[0].edgeHazards);
+        expect(layouts[i].landmarks).toEqual(layouts[0].landmarks);
+      }
+    });
+
+    it('rigid mode still satisfies spire-ascent structural invariants', () => {
+      const layout = generateLayout(123, 'spire-ascent', { layoutMode: 'rigid' });
+      expect(layout.profile).toBe('spire-ascent');
+
+      const tiers = tiersByIndex(layout);
+      expect(tiers.length).toBe(4);
+      expect(roomsByBand(layout, 'ramp').length).toBe(tiers.length - 1);
+
+      expect(tiers[0].role).toBe('start');
+      expect(tiers[tiers.length - 1].role).toBe('treasure');
+      for (let i = 1; i < tiers.length - 1; i++) {
+        expect(tiers[i].role).toBe('combat');
+      }
+
+      expect(tiers[0].tierXOffset).toBe(0);
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].x).not.toBe(tiers[i - 1].x);
+      }
+
+      const combatTiers = tiers.filter((t) => t.role === 'combat');
+      expect(layout.edgeHazards.length).toBe(combatTiers.length);
+      expect(spireReachableFromStart(layout)).toBe(true);
+
+      const treasure = tiers[tiers.length - 1];
+      expect(layout.landmarks).toHaveLength(1);
+      expect(layout.landmarks[0]).toEqual({
+        x: treasure.x,
+        z: treasure.z,
+        type: 'spire_summit',
+      });
+    });
+
+    it('default mode still varies tier count across seeds', () => {
+      const tierCounts = new Set();
+      for (let seed = 1; seed <= 30; seed++) {
+        const layout = generateLayout(seed, 'spire-ascent', { layoutMode: 'default' });
+        tierCounts.add(roomsByBand(layout, 'tier').length);
+      }
+      expect(tierCounts.size).toBeGreaterThan(1);
+    });
+
+    it('rigid and default modes can diverge for the same seed', () => {
+      const rigid = generateLayout(123, 'spire-ascent', { layoutMode: 'rigid' });
+      const def = generateLayout(123, 'spire-ascent', { layoutMode: 'default' });
+      const rigidAgain = generateLayout(9999, 'spire-ascent', { layoutMode: 'rigid' });
+      expect(rigid.rooms).toEqual(rigidAgain.rooms);
+      expect(rigid.edgeHazards).toEqual(rigidAgain.edgeHazards);
+      expect(rigid.landmarks).toEqual(rigidAgain.landmarks);
+      const geometryDiffers =
+        JSON.stringify(rigid.rooms) !== JSON.stringify(def.rooms) ||
+        JSON.stringify(rigid.edgeHazards) !== JSON.stringify(def.edgeHazards) ||
+        JSON.stringify(rigid.landmarks) !== JSON.stringify(def.landmarks);
+      expect(geometryDiffers).toBe(true);
+    });
   });
 });
 

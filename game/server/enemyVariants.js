@@ -13,6 +13,8 @@ const VARIANT_DEFS = {
   test: {
     id: 'test',
     name: 'Test Variant',
+    description: 'Placeholder affix that guarantees extra bonus loot on kill.',
+    surfacedStats: ['bonusDrop'],
     // Placeholder for future behavior. Null means no-op for this ticket.
     apply: null,
     // Guaranteed bonus loot for enemies carrying this variant, consulted by the
@@ -24,6 +26,8 @@ const VARIANT_DEFS = {
   volatile: {
     id: 'volatile',
     name: 'Volatile',
+    description: 'Explodes on death, dealing radial damage to nearby targets.',
+    surfacedStats: ['radius', 'damage'],
     // No stat/AI mutation on spawn; the variant's behavior is an on-death
     // radial explosion resolved by the simulation (spawnVolatileExplosion +
     // the 'volatile_explosion' branch of updateAreaEffects).
@@ -37,6 +41,9 @@ const VARIANT_DEFS = {
   warded: {
     id: 'warded',
     name: 'Warded',
+    description: 'Spawns with a damage shield that must be broken before HP is hit.',
+    // shieldHp / maxShieldHp are applied to the enemy at spawn (see apply below).
+    surfacedStats: ['shieldHp', 'maxShieldHp'],
     apply(enemy) {
       const maxShieldHp = Math.max(20, Math.round((enemy.maxHp || enemy.hp || 0) * 0.4));
       enemy.maxShieldHp = maxShieldHp;
@@ -47,6 +54,8 @@ const VARIANT_DEFS = {
   leeching: {
     id: 'leeching',
     name: 'Leeching',
+    description: 'Heals for a fraction of damage dealt to players.',
+    surfacedStats: ['leechFraction'],
     apply: null,
     leechFraction: LEECH_FRACTION,
     bonusDrop: { card: true, magicStone: 15 },
@@ -54,6 +63,8 @@ const VARIANT_DEFS = {
   frenzied: {
     id: 'frenzied',
     name: 'Frenzied',
+    description: 'Enrages below half HP, gaining chase speed and faster attacks.',
+    surfacedStats: ['chaseSpeedMult', 'attackWindupMult'],
     // No stat mutation on spawn; chase speed and attack wind-up scale up once
     // HP drops below 50% (see getFrenziedCombatMultipliers + updateEnemies).
     apply: null,
@@ -71,9 +82,37 @@ const BASE_VARIANT_CHANCE = 0.25;
 // the effective chance ranges from 0 (tier 0) to BASE_VARIANT_CHANCE (tier 1).
 const TIER_CHANCE_SCALE = 1;
 
+// Quest-tier → variant-roll scaling (input to applyVariant's `tier` param).
+// Tier-1 runs multiply encounterTier by this near-zero factor so multi-room
+// relative scaling is preserved without materially tagging variants.
+const QUEST_TIER_1_VARIANT_SCALE = 0;
+// Tier-2+ runs use at least this roll tier so open-plaza / single-room arenas
+// (encounterTier 0) still roll variants at full BASE_VARIANT_CHANCE.
+const QUEST_TIER_2_VARIANT_BASE = 1.0;
+
 // Ids eligible to be assigned when an enemy is tagged.
 function variantIds() {
   return Object.keys(VARIANT_DEFS);
+}
+
+function normalizeQuestTier(questTier) {
+  const n = Number(questTier);
+  return Number.isInteger(n) && n > 0 ? n : 1;
+}
+
+/**
+ * Map quest tier + optional room encounterTier to the 0–1 roll tier passed to
+ * `applyVariant`. Tier-1 quests stay near 0 (no variant spike in combat rooms);
+ * Tier-2+ quests reach `QUEST_TIER_2_VARIANT_BASE` even when encounterTier is 0.
+ */
+function resolveVariantRollTier(questTier, encounterTier) {
+  const qt = normalizeQuestTier(questTier);
+  const et = Number.isFinite(encounterTier) ? Math.max(0, Math.min(1, encounterTier)) : 0;
+
+  if (qt >= 2) {
+    return Math.max(QUEST_TIER_2_VARIANT_BASE, et);
+  }
+  return et * QUEST_TIER_1_VARIANT_SCALE;
 }
 
 /**
@@ -233,6 +272,9 @@ module.exports = {
   FRENZIED_TELEGRAPH_MS,
   BASE_VARIANT_CHANCE,
   TIER_CHANCE_SCALE,
+  QUEST_TIER_1_VARIANT_SCALE,
+  QUEST_TIER_2_VARIANT_BASE,
+  resolveVariantRollTier,
   pickVariant,
   applyVariant,
   getVariantBonusDrop,

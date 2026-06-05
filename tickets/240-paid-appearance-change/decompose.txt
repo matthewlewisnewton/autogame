@@ -1,0 +1,21 @@
+Broke ticket **240-paid-appearance-change** into **4 sub-tickets** (dependency order), following the ticket-215 currency-then-commit pattern and keeping hat-only swaps free.
+
+### Sub-tickets created
+
+| # | Path | Scope |
+|---|------|--------|
+| 01 | `.../subtickets/01-appearance-price-and-diff-helper/` | `APPEARANCE_CHANGE_COST` config + shared `hasAppearanceFieldChanges` helper |
+| 02 | `.../subtickets/02-server-apply-appearance-socket/` | `applyAppearanceChange` socket handler, atomic charge, PATCH bypass guard |
+| 03 | `.../subtickets/03-client-booth-confirm-and-save/` | Booth confirm dialog, paid save wiring, currency/error UI |
+| 04 | `.../subtickets/04-appearance-change-persistence-tests/` | Insufficient-funds + crash-between-steps regression tests |
+
+All use **Verification: code** (handlers, persistence, tests — not pixel-level look).
+
+### Created folder paths
+
+```
+/home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/tickets/240-paid-appearance-change/subtickets/01-appearance-price-and-diff-helper/ticket.md
+/home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/tickets/240-paid-appearance-change/subtickets/02-server-apply-appearance-socket/ticket.md
+/home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/tickets/240-paid-appearance-change/subtickets/03-client-booth-confirm-and-save/ticket.md
+/home/matt/workspace/.autogame-worktrees/240-paid-appearance-change/tickets/240-paid-appearance-change/subtickets/04-appearance-change-persistence-tests/ticket.md
+```

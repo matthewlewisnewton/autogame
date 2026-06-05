@@ -29,7 +29,7 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from './collision.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY, findBoothInRange } from './collision.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -51,7 +51,7 @@ import {
 	MAX_ELAPSED_MS,
 	TICK_RATE,
 	CAMERA_DISTANCE,
-	CAMERA_HEIGHT,
+	getCameraFollowHeight,
 	CAMERA_YAW_SENSITIVITY,
 	ENEMY_ATTACK_RANGE,
 	MAX_HP,
@@ -83,8 +83,12 @@ import {
 	normalizeAngle,
 	cameraYawFromToTarget,
 } from './lockOn.js';
+import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
 import { getLockOnRepeatAction, getGamepadConfig, areParticlesEnabled, getAccountProfile } from './settings.js';
 import { MODEL_REGISTRY, loadModel, modelPathFor } from './models.js';
+import eventsCatalog from '../shared/events.json' with { type: 'json' };
+
+const { clientToServer: CLIENT_TO_SERVER } = eventsCatalog;
 
 // ── Three.js scene references ──
 let scene, camera, renderer, clock;
@@ -137,6 +141,16 @@ let lockOnReleaseLookAt = null;
 let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
+/** @type {(() => object | null) | null} */
+let enemyDisplayCatalogGetter = null;
+/** @type {{ panelEl: HTMLElement, nameEl: HTMLElement, variantEl: HTMLElement, hpEl: HTMLElement, statsEl: HTMLElement, descEl: HTMLElement } | null} */
+let lockOnInfoPanelDom = null;
+
+// ── Booth proximity (hub lobby) ──
+// The booth id the local player currently stands within, recomputed each frame
+// from the hub layout's anchors. `null` when out of range or not in the hub.
+let currentBoothInRange = null;
+let boothInRangeListener = null; // edge-triggered: fires when the in-range booth changes
 
 // ── Input state ──
 let inputListenersAdded = false;
@@ -205,11 +219,142 @@ const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 // ── Scene init flag ──
 let sceneInitialized = false;
 
+// ── Spire-ascent height atmosphere ──
+/** @type {string|null} */
+let currentLayoutProfile = null;
+/** @type {{ bottomY: number, topY: number }|null} */
+let spireAtmosphereBounds = null;
+
+export const SPIRE_ATMOSPHERE = {
+	baseBackground: 0x0f172a,
+	summitBackground: 0x7ec8e3,
+	baseFogColor: 0x1e293b,
+	summitFogColor: 0xb8e0f0,
+	baseFogNear: 8,
+	baseFogFar: 45,
+	summitFogNear: 28,
+	summitFogFar: 130,
+};
+
+const DEFAULT_SCENE_BACKGROUND = 0x0f172a;
+
+function lerpHexColor(fromHex, toHex, t) {
+	const fr = (fromHex >> 16) & 0xff;
+	const fg = (fromHex >> 8) & 0xff;
+	const fb = fromHex & 0xff;
+	const tr = (toHex >> 16) & 0xff;
+	const tg = (toHex >> 8) & 0xff;
+	const tb = toHex & 0xff;
+	const r = Math.round(fr + (tr - fr) * t);
+	const g = Math.round(fg + (tg - fg) * t);
+	const b = Math.round(fb + (tb - fb) * t);
+	return (r << 16) | (g << 8) | b;
+}
+
+function lerpNumber(a, b, t) {
+	return a + (b - a) * t;
+}
+
+/**
+ * Pure lerp of spire-ascent background/fog for a normalized ascent height (0 = base, 1 = summit).
+ * Exported for unit tests — no scene dependency.
+ *
+ * @param {number} normalizedHeight
+ * @returns {{ background: number, fogColor: number, fogNear: number, fogFar: number }}
+ */
+export function lerpSpireAtmosphere(normalizedHeight) {
+	const t = Math.max(0, Math.min(1, normalizedHeight));
+	return {
+		background: lerpHexColor(SPIRE_ATMOSPHERE.baseBackground, SPIRE_ATMOSPHERE.summitBackground, t),
+		fogColor: lerpHexColor(SPIRE_ATMOSPHERE.baseFogColor, SPIRE_ATMOSPHERE.summitFogColor, t),
+		fogNear: lerpNumber(SPIRE_ATMOSPHERE.baseFogNear, SPIRE_ATMOSPHERE.summitFogNear, t),
+		fogFar: lerpNumber(SPIRE_ATMOSPHERE.baseFogFar, SPIRE_ATMOSPHERE.summitFogFar, t),
+	};
+}
+
+function tierFloorY(room) {
+	return room.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+}
+
+/**
+ * Bottom/top tier floor Y from spire-ascent tier rooms.
+ * @param {object} layout
+ * @returns {{ bottomY: number, topY: number }|null}
+ */
+export function computeSpireAtmosphereBounds(layout) {
+	const tiers = (layout?.rooms ?? []).filter((r) => r.band === 'tier' && r.tierIndex != null);
+	if (tiers.length === 0) return null;
+	const bottom = tiers.reduce((a, b) => (a.tierIndex < b.tierIndex ? a : b));
+	const top = tiers.reduce((a, b) => (a.tierIndex > b.tierIndex ? a : b));
+	return { bottomY: tierFloorY(bottom), topY: tierFloorY(top) };
+}
+
+function normalizedSpireHeight(playerY) {
+	if (!spireAtmosphereBounds) return 0;
+	const { bottomY, topY } = spireAtmosphereBounds;
+	if (topY <= bottomY) return 0;
+	return Math.max(0, Math.min(1, (playerY - bottomY) / (topY - bottomY)));
+}
+
+function applySpireAtmosphereValues(values) {
+	if (!scene) return;
+	scene.background.setHex(values.background);
+	if (!scene.fog) {
+		scene.fog = new THREE.Fog(values.fogColor, values.fogNear, values.fogFar);
+	} else {
+		scene.fog.color.setHex(values.fogColor);
+		scene.fog.near = values.fogNear;
+		scene.fog.far = values.fogFar;
+	}
+}
+
+/**
+ * Restore default stage background and clear fog (hub, lobby, non-spire quests).
+ */
+export function resetAtmosphere() {
+	currentLayoutProfile = null;
+	spireAtmosphereBounds = null;
+	if (!scene) return;
+	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
+	scene.fog = null;
+}
+
+/**
+ * Cache spire tier Y bounds and apply atmosphere for the current player height.
+ * @param {object} layout
+ * @param {number} [playerY]
+ */
+export function initSpireAscentAtmosphere(layout, playerY = DEFAULT_FLOOR_Y) {
+	currentLayoutProfile = 'spire-ascent';
+	spireAtmosphereBounds = computeSpireAtmosphereBounds(layout);
+	updateSpireAscentAtmosphere(playerY, layout);
+}
+
+/**
+ * Interpolate scene background and fog from player height on spire-ascent layouts.
+ * @param {number} playerY
+ * @param {object} [layout]
+ */
+export function updateSpireAscentAtmosphere(playerY, layout) {
+	if (!scene || currentLayoutProfile !== 'spire-ascent') return;
+	if (layout && layout.profile !== 'spire-ascent') {
+		resetAtmosphere();
+		return;
+	}
+	if (!spireAtmosphereBounds && layout) {
+		spireAtmosphereBounds = computeSpireAtmosphereBounds(layout);
+	}
+	applySpireAtmosphereValues(lerpSpireAtmosphere(normalizedSpireHeight(playerY)));
+}
+
 // ── Enemy geometry table ──
 const ENEMY_GEOMETRY = {
 	grunt:      { type: 'cone', radius: 0.5, height: 1, segments: 8, color: 0xdc2626 },
 	skirmisher: { type: 'cone', radius: 0.3, height: 0.6, segments: 8, color: 0xff6600 },
 	miniboss:   { type: 'cone', radius: 0.8, height: 1.8, segments: 12, color: 0x8800cc },
+	annex_overseer: { type: 'cone', radius: 0.95, height: 2.0, segments: 14, color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.3 },
+	arena_champion: { type: 'cone', radius: 1.2, height: 2.8, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
+	spire_warden: { type: 'cone', radius: 0.9, height: 2.0, segments: 12, color: 0x3388cc },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 };
 
@@ -218,6 +363,9 @@ const ENEMY_ATTACK_VISUAL = {
 	grunt:      { style: 'radial' },
 	skirmisher: { style: 'cone', coneAngle: Math.PI / 3, color: 0xff6600, emissive: 0xff3300 },
 	miniboss:   { style: 'cone', coneAngle: Math.PI / 2, range: 5, color: 0xaa44ff, emissive: 0x8800cc },
+	annex_overseer: { style: 'radial', range: 3.5, color: 0x2dd4bf, emissive: 0x0d9488 },
+	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
+	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	spawner:    { style: 'radial' },
 };
 
@@ -777,7 +925,7 @@ function syncFacingToServer() {
 		return;
 	}
 	lastEmittedRotation = playerRotation;
-	socketRef.emit('move', { dx: 0, dz: 0, rotation: playerRotation });
+	socketRef.emit(CLIENT_TO_SERVER.MOVE, { dx: 0, dz: 0, rotation: playerRotation });
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
@@ -786,8 +934,9 @@ function syncFacingToServer() {
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
+	const followHeight = getCameraFollowHeight(currentLayoutProfile);
 	const targetX = playerX + Math.sin(cameraYaw) * CAMERA_DISTANCE;
-	const targetY = playerY + CAMERA_HEIGHT;
+	const targetY = playerY + followHeight;
 	const targetZ = playerZ + Math.cos(cameraYaw) * CAMERA_DISTANCE;
 
 	if (lockOnReleaseLookAt) {
@@ -840,6 +989,46 @@ export function setMyId(id) {
  */
 export function setSocketRef(s) {
 	socketRef = s;
+}
+
+/**
+ * Provide a getter for the server enemy display catalog (set from main.js).
+ * @param {() => object | null} getter
+ */
+export function setEnemyDisplayCatalogGetter(getter) {
+	enemyDisplayCatalogGetter = getter;
+}
+
+function getLockOnInfoPanelDom() {
+	if (lockOnInfoPanelDom) return lockOnInfoPanelDom;
+	const panelEl = document.getElementById('lock-on-info-panel');
+	if (!panelEl) return null;
+	lockOnInfoPanelDom = {
+		panelEl,
+		nameEl: document.getElementById('lock-on-target-name'),
+		variantEl: document.getElementById('lock-on-target-variant'),
+		hpEl: document.getElementById('lock-on-target-hp'),
+		statsEl: document.getElementById('lock-on-target-stats'),
+		descEl: document.getElementById('lock-on-target-description'),
+	};
+	return lockOnInfoPanelDom;
+}
+
+function refreshLockOnInfoPanel() {
+	const dom = getLockOnInfoPanelDom();
+	if (!dom) return;
+
+	const showPanel = currentGamePhase === 'playing' && isLockOnActive();
+	const enemy = showPanel
+		? findEnemyById(gameStateRef?.enemies, getLockedEnemyId())
+		: null;
+	const catalog = enemyDisplayCatalogGetter ? enemyDisplayCatalogGetter() : null;
+
+	syncLockOnInfoPanel({
+		...dom,
+		enemy,
+		catalog,
+	});
 }
 
 /**
@@ -1097,7 +1286,46 @@ function tryEmitLootPickup(loot, now) {
 	const last = lootPickupAttempts.get(loot.id) || 0;
 	if (now - last < LOOT_PICKUP_RETRY_MS) return;
 	lootPickupAttempts.set(loot.id, now);
-	socketRef.emit('lootPickup', { lootId: loot.id });
+	socketRef.emit(CLIENT_TO_SERVER.LOOT_PICKUP, { lootId: loot.id });
+}
+
+/**
+ * Recompute the booth zone the local player stands in. Runs each animate frame.
+ * Only the hub layout carries `boothAnchors`, so this is `null` in dungeons.
+ * Fires the registered listener (if any) on enter/exit transitions so main.js
+ * can show/hide the prompt without polling.
+ */
+function updateBoothInRange() {
+	let next = null;
+	const gs = gameStateRef;
+	if (gs && gs.layout && gs.layout.profile === 'hub' && gs.layout.boothAnchors) {
+		next = findBoothInRange(gs.layout.boothAnchors, myX, myZ);
+	}
+	if (next !== currentBoothInRange) {
+		currentBoothInRange = next;
+		boothInRangeListener?.(next);
+	}
+}
+
+/** @returns {string|null} booth id the local player currently stands within */
+export function getCurrentBoothInRange() {
+	return currentBoothInRange;
+}
+
+/** Register a callback fired with the new booth id (or null) on enter/exit. */
+export function setBoothInRangeListener(cb) {
+	boothInRangeListener = cb;
+}
+
+/**
+ * Emit `boothInteract` for the booth the local player currently stands in.
+ * No-op (returns null) when no booth is in range.
+ * @returns {string|null} the booth id emitted, or null when none in range
+ */
+export function emitBoothInteract() {
+	if (!socketRef || !currentBoothInRange) return null;
+	socketRef.emit(CLIENT_TO_SERVER.BOOTH_INTERACT, { boothId: currentBoothInRange });
+	return currentBoothInRange;
 }
 
 function findClosestLootInRange(lootList, x, z, radius) {
@@ -1135,16 +1363,17 @@ export function initScene(layout, spawnPos) {
 
 	// Scene
 	scene = new THREE.Scene();
-	scene.background = new THREE.Color(0x0f172a);
+	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 
 	// Camera
 	camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, CAMERA_NEAR, CAMERA_FAR);
 	spawnPosition.x = spawnPos ? spawnPos.x : 0;
 	spawnPosition.z = spawnPos ? spawnPos.z : 0;
 	cameraYaw = 0;
+	const initialFollowHeight = getCameraFollowHeight(layout?.profile);
 	camera.position.set(
 		spawnPosition.x + Math.sin(cameraYaw) * CAMERA_DISTANCE,
-		CAMERA_HEIGHT,
+		initialFollowHeight,
 		spawnPosition.z + Math.cos(cameraYaw) * CAMERA_DISTANCE
 	);
 	const spawnFloorY = layout
@@ -1176,6 +1405,14 @@ export function initScene(layout, spawnPos) {
 		walkableAABBs = computeWalkableAABBs(layout);
 		dungeonBounds = computeDungeonBounds(layout);
 		cameraYaw = 0;
+	}
+
+	if (layout?.profile === 'spire-ascent') {
+		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initSpireAscentAtmosphere(layout, initFloorY);
+	} else {
+		resetAtmosphere();
+		if (layout?.profile) currentLayoutProfile = layout.profile;
 	}
 
 	// Place player at spawn position
@@ -1257,6 +1494,14 @@ export function rebuildDungeonLayout(layout) {
 	simZ = spawnPosition.z;
 	prevSimX = spawnPosition.x;
 	prevSimZ = spawnPosition.z;
+
+	if (layout.profile === 'spire-ascent') {
+		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initSpireAscentAtmosphere(layout, floorY);
+	} else {
+		resetAtmosphere();
+		if (layout.profile) currentLayoutProfile = layout.profile;
+	}
 }
 
 // ── Game phase ──
@@ -1271,6 +1516,9 @@ export function setGamePhase(phase) {
 	currentGamePhase = phase;
 	if (renderer?.domElement) {
 		renderer.domElement.style.pointerEvents = phase === 'playing' ? 'auto' : 'none';
+	}
+	if (phase !== 'playing') {
+		refreshLockOnInfoPanel();
 	}
 }
 
@@ -1290,6 +1538,7 @@ export function updateMyPlayer(delta) {
 		clearAllLockOnState();
 		lockOnToTarget = null;
 		lockOnReleaseLookAt = null;
+		refreshLockOnInfoPanel();
 		return;
 	}
 
@@ -1301,6 +1550,8 @@ export function updateMyPlayer(delta) {
 		cameraYaw,
 		playerRotation,
 	);
+
+	refreshLockOnInfoPanel();
 
 	if (lockState.locked) {
 		playerRotation = lockState.playerRotation;
@@ -1359,7 +1610,7 @@ export function updateMyPlayer(delta) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
 			lastEmittedRotation = moveRotation;
-			socketRef.emit('move', {
+			socketRef.emit(CLIENT_TO_SERVER.MOVE, {
 				dx: dirX,
 				dz: dirZ,
 				rotation: moveRotation,
@@ -4094,6 +4345,10 @@ export function animate(timestamp) {
 
 	pollInput();
 
+	// Recompute the hub booth zone each frame so the prompt tracks the local
+	// player's predicted position (not just throttled server stateUpdates).
+	updateBoothInRange();
+
 	const gs = gameStateRef;
 	const myId = myIdRef;
 
@@ -4549,6 +4804,15 @@ export function animate(timestamp) {
 	if (myId != null && playersMeshes[myId]) {
 		const playerPos = playersMeshes[myId].position;
 		updateCameraOrbit(playerPos.x, playerPos.y, playerPos.z, delta);
+	}
+
+	if (gs?.layout?.profile === 'spire-ascent') {
+		const atmosY = myId != null && playersMeshes[myId]
+			? playersMeshes[myId].position.y
+			: camera.position.y;
+		updateSpireAscentAtmosphere(atmosY, gs.layout);
+	} else if (currentLayoutProfile === 'spire-ascent') {
+		resetAtmosphere();
 	}
 
 	// Animate attack visual effects

@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/267-sec-hat-equip-unlock-check/game/data
+Server listening on port 3001
+Player connected: socket=r_o1O54X9HA9q2MnAAAB, playerId=5a8f6381-c9ec-4a14-98ab-37760de69811
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=vT052-SeKh8XJQ8eAAAD, playerId=577768be-28e0-43d0-87c0-4f4f9e19354e
+[loot] spawned id=c0bf07ee-ed66-49e0-908e-1a8f9fb113c8 value=13
+Player disconnected: r_o1O54X9HA9q2MnAAAB
+Player disconnected: vT052-SeKh8XJQ8eAAAD

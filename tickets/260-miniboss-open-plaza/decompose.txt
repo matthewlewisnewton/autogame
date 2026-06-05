@@ -1,0 +1,15 @@
+Both sub-tickets created. No pre-existing sub-ticket folders needed retiring (this is the first planning round for ticket 260).
+
+## Summary
+
+Ticket 260 reuses the 258 stage-boss encounter framework, which already runs `arena_trials` Tier-2 in the open-plaza with the **generic** `miniboss` (Vault Warden). The work is to make that boss a **distinct, unique plaza miniboss** whose defeat completes and rewards the run. I split it into two `code`-verified sub-tickets (visual QA can't reach a Tier-2 boss in its happy-path run, so both must be `code`):
+
+**Created sub-ticket folders:**
+
+- `tickets/260-miniboss-open-plaza/subtickets/01-plaza-boss-type-and-encounter/ticket.md`
+  — New `arena_champion` enemy type (distinct name/stats/drops) in `simulation.js` + `config.js`, wired as the Tier-2 `bossType` in `quests.js`, with defeat → cleared/victory + distinct reward, plus updated/new vitest coverage (and fixing the existing `bossType: 'miniboss'` assertion). This is the core AC deliverable.
+
+- `tickets/260-miniboss-open-plaza/subtickets/02-plaza-boss-visuals/ticket.md`
+  — Distinct client presentation: `MODEL_REGISTRY` entry (models.js) plus distinct `ENEMY_GEOMETRY`/`ENEMY_ATTACK_VISUAL` (renderer.js) so the boss renders as a larger, unique silhouette with a matching telegraph, with client registry tests extended.
+
+01 stands alone and fully satisfies the ticket's acceptance criteria; 02 builds on the type id from 01 to make the boss visually unique.

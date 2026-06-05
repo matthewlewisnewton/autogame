@@ -3,6 +3,9 @@ import { mulberry32 } from '../dungeon';
 import {
   VARIANT_DEFS,
   BASE_VARIANT_CHANCE,
+  QUEST_TIER_1_VARIANT_SCALE,
+  QUEST_TIER_2_VARIANT_BASE,
+  resolveVariantRollTier,
   pickVariant,
   applyVariant,
 } from '../enemyVariants';
@@ -13,6 +16,36 @@ function seqRng(values) {
   return () => values[i++ % values.length];
 }
 
+const DISPLAY_ONLY_KEYS = ['id', 'name', 'description', 'surfacedStats', 'apply'];
+
+// Runtime enemy fields set by apply() rather than static registry keys.
+const COMPOSITE_SURFACED_STATS = {
+  warded: ['shieldHp', 'maxShieldHp'],
+};
+
+describe('VARIANT_DEFS display metadata', () => {
+  for (const id of Object.keys(VARIANT_DEFS)) {
+    it(`${id} has non-empty name, description, and valid surfacedStats`, () => {
+      const def = VARIANT_DEFS[id];
+      expect(typeof def.name).toBe('string');
+      expect(def.name.length).toBeGreaterThan(0);
+
+      expect(typeof def.description).toBe('string');
+      expect(def.description.length).toBeGreaterThan(0);
+
+      expect(Array.isArray(def.surfacedStats)).toBe(true);
+      expect(def.surfacedStats.length).toBeGreaterThan(0);
+
+      const composite = new Set(COMPOSITE_SURFACED_STATS[id] ?? []);
+      const statKeys = Object.keys(def).filter((k) => !DISPLAY_ONLY_KEYS.includes(k));
+      for (const statKey of def.surfacedStats) {
+        expect(typeof statKey).toBe('string');
+        expect(composite.has(statKey) || statKeys.includes(statKey)).toBe(true);
+      }
+    });
+  }
+});
+
 describe('enemy variant registry', () => {
   it('exposes a trivial no-op test variant', () => {
     expect(VARIANT_DEFS.test).toBeDefined();
@@ -20,6 +53,23 @@ describe('enemy variant registry', () => {
     expect(typeof VARIANT_DEFS.test.name).toBe('string');
     // No-op behavior in this ticket: no apply function wired up yet.
     expect(VARIANT_DEFS.test.apply).toBeNull();
+  });
+});
+
+describe('resolveVariantRollTier', () => {
+  it('maps Tier 1 to near-zero roll tier scaled by encounterTier', () => {
+    expect(resolveVariantRollTier(1, 0)).toBe(0);
+    expect(resolveVariantRollTier(1, 0.8)).toBeCloseTo(0.8 * QUEST_TIER_1_VARIANT_SCALE);
+    expect(resolveVariantRollTier(1, 1)).toBeCloseTo(QUEST_TIER_1_VARIANT_SCALE);
+  });
+
+  it('maps Tier 2 to full roll tier even when encounterTier is 0', () => {
+    expect(resolveVariantRollTier(2, 0)).toBe(QUEST_TIER_2_VARIANT_BASE);
+    expect(resolveVariantRollTier(2, 0.5)).toBe(QUEST_TIER_2_VARIANT_BASE);
+  });
+
+  it('defaults invalid quest tiers to Tier 1 scaling', () => {
+    expect(resolveVariantRollTier(undefined, 0.5)).toBeCloseTo(0.5 * QUEST_TIER_1_VARIANT_SCALE);
   });
 });
 

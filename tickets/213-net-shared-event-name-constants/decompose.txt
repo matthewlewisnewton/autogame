@@ -1,0 +1,11 @@
+Remediation round 3 closes the one open gap from `review-feedback.md` with two sub-tickets in dependency order: replace remaining client emit literals first, then extend the drift guard so those files stay covered.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/213-net-shared-event-name-constants/tickets/213-net-shared-event-name-constants/subtickets/08-client-renderer-booth-emits/ticket.md`
+   - Wires `renderer.js` (`MOVE`, `LOOT_PICKUP`, `BOOTH_INTERACT` via `socketRef.emit`) and `characterBooth.js` (`UNLOCK_HAT`, `APPLY_APPEARANCE_CHANGE`) to `CLIENT_TO_SERVER`.
+
+2. `/home/matt/workspace/.autogame-worktrees/213-net-shared-event-name-constants/tickets/213-net-shared-event-name-constants/subtickets/09-drift-guard-all-client-files/ticket.md`
+   - Extends `socket_events_drift.test.js` to scan `main.js`, `renderer.js`, and `characterBooth.js`, including `socketRef.emit`.
+
+Sub-tickets 01–07 are untouched (all have `.passed`). No failed folders needed deletion. Both new tickets use **code** verification.

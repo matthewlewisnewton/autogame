@@ -14,6 +14,7 @@
 // and the DEBUG_SCENARIOS set are supplied via setCallbacks() after the modules
 // are loaded.
 
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
@@ -35,6 +36,7 @@ const {
   inventoryToOwnedCards,
   spawnEnemy,
   spawnEnemies,
+  startDungeonRun,
   syncRunObjectiveToEnemies,
   checkRunTerminalState,
   stateSnapshot,
@@ -45,6 +47,7 @@ const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
+const { tryActivateEncounter, ENCOUNTER_TRIGGER_RADIUS } = require('./encounters');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -69,12 +72,66 @@ function setCallbacks(deps) {
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
 }
 
+function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
+  const questId = 'arena_trials';
+  const tier = 2;
+  unlockQuestTier(player.accountId, questId, tier);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const plazaSpawn = firstRoomPosition();
+  player.x = plazaSpawn.x;
+  player.z = plazaSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
+function resolveArenaDaisAnchor(state) {
+  const dais = state.layout?.landmarks?.find((lm) => lm.type === 'arena_dais');
+  return dais ? { x: dais.x, z: dais.z } : firstRoomPosition();
+}
+
+function finishStageBossDebugScenario(lobby, state, player, name) {
+  emitLobbyQuestUpdate(lobby, state, {
+    layoutSeed: state.layoutSeed,
+    layout: state.layout,
+  });
+  broadcastLobbyUpdate(lobby);
+  io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+  return {
+    ok: true,
+    scenario: name,
+    unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+  };
+}
+
 function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
   if (emitQuestPayloadToLobby) {
     emitQuestPayloadToLobby(lobby, { extraFields });
     return;
   }
-  io.to(lobby.id).emit('questUpdate', {
+  io.to(lobby.id).emit(SERVER_TO_CLIENT.QUEST_UPDATE, {
     ...buildQuestUpdatePayload(state),
     ...extraFields,
   });
@@ -147,6 +204,297 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'training-caverns-tier-2') {
+      // training_caverns Tier 2 stage_boss encounter with rigid crowded layout and
+      // vault_dais boss spawn. Quest/tier and layout must be set before
+      // enterPlayingPhase so startDungeonRun snapshots the correct run.questTier/
+      // objective and spawnEnemy variant rolls. Reachable normally by clearing
+      // Initiate Vault Tier 1, unlocking Tier 2, and deploying.
+      const questId = 'training_caverns';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'arena-trials-tier-2') {
+      // arena_trials Tier 2 with rigid open-plaza layout and cover-aware spawns.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Arena Trials Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'arena_trials';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const plazaSpawn = firstRoomPosition();
+      player.x = plazaSpawn.x;
+      player.z = plazaSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'stage-boss-dormant') {
+      // arena_trials Tier 2 stage_boss encounter left dormant for QA.
+      // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'stage-boss-active') {
+      // arena_trials Tier 2 stage_boss encounter activated for quick-defeat QA.
+      // Reachable normally by clearing adds or entering the trigger radius.
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = state.enemies.filter((e) => e.hp > 0);
+      player.x = anchor.x + 4;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      tryActivateEncounter(state);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (boss) {
+        boss.hp = 1;
+        boss.maxHp = boss.maxHp || boss.hp;
+      }
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'crystal-rescue-tier-2') {
+      // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
+      // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
+      // before enterPlayingPhase so startDungeonRun snapshots the correct run.questTier
+      // and spawnEnemy variant rolls. Reachable normally by clearing Prism Salvage
+      // Tier 1, unlocking Tier 2, and deploying; this scenario is a shortcut.
+      const questId = 'crystal_rescue';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const startSpawn = firstRoomPosition();
+      player.x = startSpawn.x;
+      player.z = startSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      spawnEnemies();
+      syncRunObjectiveToEnemies();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'canyon-descent-tier-2') {
+      // canyon_descent Tier 2 with rigid sunken-canyon layout and band-aware spawns.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Canyon Descent Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'canyon_descent';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const plateauSpawn = firstRoomPosition();
+      player.x = plateauSpawn.x;
+      player.z = plateauSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
+    if (name === 'spire-ascent-tier-2') {
+      // spire_ascent Tier 2 with rigid spire-ascent layout and bottom/top-weighted spawns.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by clearing Spire Ascent Tier 1, unlocking Tier 2, and
+      // deploying; this scenario is a shortcut into that state.
+      const questId = 'spire_ascent';
+      const tier = 2;
+      unlockQuestTier(player.accountId, questId, tier);
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const bottomSpawn = firstRoomPosition();
+      player.x = bottomSpawn.x;
+      player.z = bottomSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'hats-unlocked') {
       // Persist a couple of catalog-hat unlocks on the account (leaving at least
       // one hat locked) so the customization panel's equip flow can be exercised
@@ -188,12 +536,19 @@ function applyDebugScenario(socket, name) {
       }
       // Sync the modified inventory/deck to the client so __AUTOGAME_HARNESS_STATE__
       // reflects the new skeleton_knight instance for the smoke test.
-      socket.emit('deckUpdate', {
+      socket.emit(SERVER_TO_CLIENT.DECK_UPDATE, {
         selectedDeck: player.selectedDeck,
         inventory: player.inventory,
         ownedCards: player.ownedCards,
       });
       return { ok: true, scenario: name };
+    }
+
+    if (name === 'collect-prisms-progress') {
+      // Prism Salvage (collect_items) with partial progress for objective-HUD QA.
+      // The same state is reachable by selecting crystal_rescue, deploying, and
+      // collecting prisms in the dungeon.
+      state.selectedQuestId = 'crystal_rescue';
     }
 
     player.ready = true;
@@ -415,6 +770,14 @@ function applyDebugScenario(socket, name) {
       for (const e of state.enemies) {
         e.wanderTarget = { x: e.x + (Math.random() * 4 - 2), z: e.z + (Math.random() * 4 - 2) };
       }
+    } else if (name === 'annex-overseer-ready') {
+      // Spawn an Annex Overseer beside the player for rooms-boss QA. Reachable
+      // normally once training-caverns tier-2 stage boss wiring lands (sub-ticket 03).
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
+      overseer.wanderTarget = { x: overseer.x, z: overseer.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is
@@ -612,6 +975,16 @@ function applyDebugScenario(socket, name) {
       state.run.objective.totalEnemies = 1;
       state.run.objective.defeatedEnemies = 0;
       checkRunTerminalState();
+    } else if (name === 'collect-prisms-progress') {
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      if (!state.run || state.run.status !== 'playing' || state.run.objective?.type !== 'collect_items') {
+        return { ok: false, reason: 'No active collect_items run for collect-prisms-progress' };
+      }
+      const objective = state.run.objective;
+      const total = Number.isFinite(objective.totalItems) ? objective.totalItems : 3;
+      objective.totalItems = total;
+      objective.collectedItems = Math.min(2, Math.max(0, total - 1));
     } else if (name === 'quest-objective-near-complete') {
       // Leave a defeat_enemies run one trigger away from victory: a single
       // low-HP grunt stands between the player and an objective-complete win.
@@ -683,6 +1056,33 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'sunken-canyon-cliff-hazard') {
+      // Sunken-canyon with the player on the plateau south cliff hazard strip —
+      // same layout as canyon_descent; shortcut for cliff-hazard QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'sunken-canyon');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const hazard = (state.layout.edgeHazards || [])[0];
+      if (hazard) {
+        player.x = (hazard.minX + hazard.maxX) / 2;
+        player.z = (hazard.minZ + hazard.maxZ) / 2;
+      } else {
+        const plateau = state.layout.rooms.find((r) => r.band === 'plateau');
+        if (plateau) {
+          player.x = plateau.x;
+          player.z = plateau.z;
+        }
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'spire-ascent-stage') {
       // Load the spire-ascent tower layout for client render / collision QA.
       // Same profile as generateLayout(seed, 'spire-ascent'); reachable via quests
@@ -699,6 +1099,85 @@ function applyDebugScenario(socket, name) {
       if (startRoom) {
         player.x = startRoom.x;
         player.z = startRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-summit-beacon') {
+      // Spire-ascent layout with the player at the summit treasure tier beside the
+      // beacon — same state as climbing spire_ascent normally; shortcut for beacon QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const summitRoom = state.layout.rooms.find(r => r.role === 'treasure');
+      if (summitRoom) {
+        player.x = summitRoom.x;
+        player.z = summitRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'spire-mid-tier-hazard') {
+      // Spire-ascent with the player on the first combat tier inside an edge
+      // hazard strip — same layout as spire_ascent; shortcut for hazard QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'spire-ascent');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const hazard = (state.layout.edgeHazards || [])[0];
+      if (hazard) {
+        player.x = (hazard.minX + hazard.maxX) / 2;
+        player.z = (hazard.minZ + hazard.maxZ) / 2;
+      } else {
+        const combatTier = state.layout.rooms.find((r) => r.role === 'combat');
+        if (combatTier) {
+          player.x = combatTier.x;
+          player.z = combatTier.z;
+        }
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'open-verticality') {
+      // Crystal Rescue open grid with platforms, pits, and slopes — same layout
+      // profile as deploying into crystal_rescue with slopes enabled; shortcut
+      // places the player beside a platform/hazard for fast visual QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.selectedQuestId = 'crystal_rescue';
+      const seed = state.layoutSeed || questLayoutSeed('crystal_rescue');
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'open', { slopes: true });
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const anchor =
+        (state.layout.platforms && state.layout.platforms[0]) ||
+        (state.layout.hazards && state.layout.hazards[0]);
+      if (anchor) {
+        player.x = anchor.x + 2;
+        player.z = anchor.z + 2;
+      } else {
+        const startRoom = state.layout.rooms.find(r => r.role === 'start');
+        if (startRoom) {
+          player.x = startRoom.x;
+          player.z = startRoom.z;
+        }
       }
       player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
       emitLobbyQuestUpdate(lobby, state, {
@@ -896,7 +1375,7 @@ function applyDebugScenario(socket, name) {
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     return { ok: true, scenario: name };
   });
 }

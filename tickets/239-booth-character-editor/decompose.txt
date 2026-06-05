@@ -1,0 +1,17 @@
+Broke the top-level ticket into **3 sub-tickets** in dependency order:
+
+| # | Scope |
+|---|--------|
+| **01** | In-hub character booth overlay — DOM, cosmetic controls, `cosmetic-preview` lifecycle, save → avatar sync |
+| **02** | Booth interact wiring (`booth:action` for `character`) + `?booth=character` localhost debug hook |
+| **03** | Vitest coverage for overlay, booth open, debug hook, and save-to-avatar |
+
+All use **Verification: code** (handlers, structure, save sync, and URL hook — not screenshot-only checks).
+
+### Sub-ticket folder paths created
+
+```
+/home/matt/workspace/.autogame-worktrees/239-booth-character-editor/tickets/239-booth-character-editor/subtickets/01-character-booth-overlay
+/home/matt/workspace/.autogame-worktrees/239-booth-character-editor/tickets/239-booth-character-editor/subtickets/02-booth-open-and-debug-hook
+/home/matt/workspace/.autogame-worktrees/239-booth-character-editor/tickets/239-booth-character-editor/subtickets/03-character-booth-tests
+```

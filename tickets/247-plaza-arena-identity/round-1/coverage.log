@@ -1,0 +1,1179 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game
+      Coverage enabled with v8
+
+ ✓ |server| server/test/quests.test.js (7 tests) 38ms
+ ✓ |server| server/test/quests-spawn-pools.test.js (11 tests) 55ms
+ ✓ |server| server/test/enemy_variants.test.js (9 tests) 46ms
+stdout | server/test/applyPlayerMovement.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/simulation.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/spire_ascent_spawn.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > spawns enemies across bottom, middle, and top tiers (not all on one tier)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > spawns enemies across bottom, middle, and top tiers (not all on one tier)
+[loot] spawned id=c56616db-8e06-493f-b290-fa59d32827c0 value=18
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > never places enemies on ramp connector rooms
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > never places enemies on ramp connector rooms
+[loot] spawned id=af89f41a-7b5b-4bd6-88a2-7fbc06cdb21c value=19
+
+stdout | server/test/hub_client_payload.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > is deterministic for a fixed seed
+[loot] spawned id=a3586d77-09c4-4c6c-8ae5-8e6a79ce11a7 value=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places collect-objective crystals only on the top tier
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places collect-objective crystals only on the top tier
+[crystal] spawned id=58df1a31-af77-4492-9513-5248c199fd0b at (-13.7, -44.9)
+[crystal] spawned id=b74fce1c-f515-428b-9075-ecb458688c11 at (-16.0, -44.4)
+[crystal] spawned id=98152e13-48b6-45bc-89ab-3571a2766d6d at (-17.0, -39.0)
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places optional loot on the top tier when spawn chance passes
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > places optional loot on the top tier when spawn chance passes
+[loot] spawned id=0598bb81-cd3e-498d-b96c-549ae3a55f9e value=11
+
+ ✓ |server| server/test/simulation.test.js (17 tests) 14ms
+stdout | server/test/spire_ascent_spawn.test.js > spire-ascent quest spawns > bottom-tier spawn can reach top-tier treasure center via walkable AABBs
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780666825286-u6okuesx8t.json — starting fresh
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > spawns only pool-valid types for a representative quest
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/applyPlayerMovement.test.js (12 tests) 26ms
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+Server listening on port 0
+
+ ✓ |server| server/test/hub_client_payload.test.js (4 tests) 9ms
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > spawns only pool-valid types for a representative quest
+[loot] spawned id=a5691406-9207-40a5-878b-f8153a328503 value=19
+
+stdout | server/test/boothZones.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > spawns exactly quest.enemyCount enemies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/spire_ascent_spawn.test.js (7 tests) 159ms
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > never spawns miniboss for pools without one (training_caverns, crystal_rescue)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothAction with the correct id when the player is in range
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothAction with the correct id when the player is in range
+Server listening on port 0
+
+stdout | server/test/server.test.js
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothAction with the correct id when the player is in range
+Player connected: socket=OXMznCNbhrd67xWOAAAB, playerId=test-1780666825475-jb8qpk
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothAction with the correct id when the player is in range
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothAction with the correct id when the player is in range
+Player disconnected: OXMznCNbhrd67xWOAAAB
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when the player is too far away
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when the player is too far away
+Server listening on port 0
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when the player is too far away
+Player connected: socket=8xtY82v-oO74vVkAAAAD, playerId=test-1780666825575-vumkdp
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+Player connected: socket=Gswa5YsGbd9bk1xcAAAB, playerId=9efba9f3-9d2b-4ea8-ade2-c740bb52a06c
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when the player is too far away
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when the player is too far away
+Player disconnected: 8xtY82v-oO74vVkAAAAD
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when standing in a different booth
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when standing in a different booth
+Server listening on port 0
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when standing in a different booth
+Player connected: socket=LQyhYXFytgpFmHfxAAAF, playerId=test-1780666825599-4w619r
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when standing in a different booth
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError out_of_range when standing in a different booth
+Player disconnected: LQyhYXFytgpFmHfxAAAF
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError unknown_booth for an unknown or missing booth id
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError unknown_booth for an unknown or missing booth id
+Server listening on port 0
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError unknown_booth for an unknown or missing booth id
+Player connected: socket=5jyH0EujJp9m533rAAAH, playerId=test-1780666825618-1icubs
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError unknown_booth for an unknown or missing booth id
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > never spawns miniboss for pools without one (training_caverns, crystal_rescue)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=12223ceb-776e-4655-8d8e-a1541da14150 value=20
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=48aa9acb-2b37-41d7-96b6-460e4e0a80fb value=6
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=308749e5-3834-4260-8cdb-5c949d69344f at (8.6, 39.3)
+[crystal] spawned id=e63b4661-14ce-4984-ac66-6f62e2b5b3b6 at (-11.6, 50.1)
+[crystal] spawned id=08dadee5-f2b6-418e-98ee-67fae906017a at (-12.1, 19.6)
+[loot] spawned id=bb947560-8822-45b5-a730-378ce2d75802 value=5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=ee20553e-85df-4239-a090-1264d7f1f5dc at (7.2, -15.2)
+[crystal] spawned id=9db22421-180a-4314-8182-5dd1d250af6f at (8.5, -49.3)
+[crystal] spawned id=93359f1c-ea59-44ba-b8c6-ffdb65795627 at (-22.0, -40.7)
+[loot] spawned id=8cd0971d-8b24-44cb-9671-44ce2a3d131f value=5
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=9801e855-3871-462a-a7c7-6d01019576ea at (14.7, 35.0)
+[crystal] spawned id=c8d4a3a7-062b-4c40-ab32-41dfe74ce1e6 at (-7.1, 46.6)
+[crystal] spawned id=29881bbf-5922-426d-be67-85cfc85ad63d at (47.5, 18.6)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=b8fab251-4f1f-47c4-85a2-95de5e5dc578 at (15.9, 7.2)
+[crystal] spawned id=e17a6d3d-66f6-4350-b74f-9d8334013966 at (-7.5, 39.3)
+[crystal] spawned id=ff64703e-0a2d-4fc6-b3b3-4afac612838d at (-12.7, 7.9)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=d0f770ec-ea68-4db0-bb98-8c71337b7562 at (-10.9, -17.4)
+[crystal] spawned id=ad1e61fa-6171-45e7-b94a-ec2f43235374 at (-35.5, 39.1)
+[crystal] spawned id=6af4776e-e3b9-45b9-a4c2-401b37e43c43 at (-15.5, 45.8)
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=fb550064-9d47-406b-aa64-d025b29dbd43 at (41.8, 49.6)
+[crystal] spawned id=f705ce43-8089-4277-b23d-f2ce549de8b9 at (21.3, 43.5)
+[crystal] spawned id=d75f091b-601d-451b-a810-b765af651764 at (-49.0, 46.4)
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked
+Player disconnected: Gswa5YsGbd9bk1xcAAAB
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780666825611-0212d1zp7ysc.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+Server listening on port 0
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError unknown_booth for an unknown or missing booth id
+Player disconnected: 5jyH0EujJp9m533rAAAH
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError not_in_lobby when the socket is not in a lobby
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError not_in_lobby when the socket is not in a lobby
+Server listening on port 0
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError not_in_lobby when the socket is not in a lobby
+Player connected: socket=fa-nj8cOyIq8q4IfAAAJ, playerId=test-1780666825637-biza0j
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawnCombatEnemies draws from the quest enemy pool > is deterministic for a fixed seed
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > never spawns the spire-exclusive `spawner` type for non-spire quests
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError not_in_lobby when the socket is not in a lobby
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError not_in_lobby when the socket is not in a lobby
+Player connected: socket=9Imse6sC8Ed-Gd8NAAAL, playerId=test-1780666825648-a736ca
+
+stdout | server/test/boothZones.test.js > boothInteract socket handler > emits boothError not_in_lobby when the socket is not in a lobby
+Player disconnected: fa-nj8cOyIq8q4IfAAAJ
+Player disconnected: 9Imse6sC8Ed-Gd8NAAAL
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+Player connected: socket=HduLZstCicj0PDqiAAAD, playerId=39a4caf5-fcd2-42a5-be98-e0fa6d8092a2
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > allows Tier 2 selection after manual unlockQuestTier
+Player disconnected: HduLZstCicj0PDqiAAAD
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780666825686-2pw5hy1sae.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+Server listening on port 0
+
+stdout | server/test/server.test.js > updateMinions() > removes dead enemies and spawns magic stone and currency loot on death
+[loot] magic stone drop id=700a0471-158e-44e1-93b3-1e2b33b17c20 value=20 at (0.0, 0.0)
+[loot] currency drop id=b613b6b5-7f79-405a-9c83-8fd31d514ee0 value=8 at (0.0, 0.0)
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > creates loot with correct structure when it spawns
+[loot] spawned id=45c7ea44-ff64-4a4b-aa93-f871edd92b5a value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot value is in range [5, 20)
+[loot] spawned id=871b3dc4-8d55-4109-9bd2-c7bfe8c13e0a value=13
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > loot createdAt is a timestamp
+[loot] spawned id=a151b453-e2f5-404b-a173-3de8251a7963 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > spawns loot in treasure room when one exists
+[loot] spawned id=f4e9dddc-99d4-442b-bf72-851f71b36ba5 value=11
+
+stdout | server/test/server.test.js > spawnLoot(layout, rng) > falls back to non-start room when no treasure room exists
+[loot] spawned id=5683ca60-9437-4471-bf9c-3241b1712486 value=11
+
+ ✓ |server| server/test/boothZones.test.js (13 tests) 213ms
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+Player connected: socket=B6D_3RvrkcdJ6dHQAAAF, playerId=02daad16-b202-4065-b96e-8a3b976df6bc
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies skips currency loot when the drop chance fails
+[loot] magic stone drop id=6be3b5f5-5c6c-405b-9b13-08ea1a75ef1c value=20 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > enemy magic stone drops and discard > removeDeadEnemies spawns magic stone and currency loot at the enemy position
+[loot] magic stone drop id=6268568b-78d6-4ec7-85fb-53d4bee34a6f value=20 at (4.0, -2.0)
+[loot] currency drop id=943451bb-e5bf-43da-8027-651fd61e3566 value=8 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes players inactive for STALE_THRESHOLD ms
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > removes multiple stale players
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > calls savePlayerData before deleting stale player
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves stale player data even when provider is null (no crash)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > saves multiple stale players before deleting
+Player disconnected due to inactivity: p1
+Player disconnected due to inactivity: p2
+
+stdout | server/test/server.test.js > cleanupStalePlayers > disconnects socket by matching socket.playerId (not socket.id)
+Player disconnected due to inactivity: p1
+
+stdout | server/test/server.test.js > cleanupStalePlayers > gracefully handles stale player with no connected socket
+Player disconnected due to inactivity: p1
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+[users] Loaded 1 user record(s) from /tmp/claude-1000/quest-tier-gating-1780666825686-2pw5hy1sae.json
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > victory on Tier 1 unlocks Tier 2 on disk for in-run players
+Player disconnected: B6D_3RvrkcdJ6dHQAAAF
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+[users] No existing user file at /tmp/claude-1000/quest-tier-gating-1780666825804-lkjgzkv64mo.json — starting fresh
+
+stdout | server/test/server.test.js > run state > quest-objective-near-complete debug scenario > leaves one low-HP enemy and reaches victory when it is defeated
+[loot] magic stone drop id=a9524acb-2efa-4101-995d-e2454d04f528 value=20 at (5.0, 0.0)
+[loot] currency drop id=7ac97f7c-e469-4fac-bcac-28e806c71d83 value=14 at (5.0, 0.0)
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+Server listening on port 0
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > captureRunCheckpoint and restoreRunCheckpoint preserve telepipe and enemies
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > tryEnterTelepipe extracts one player while another remains active
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > suspendRunToLobby when all players have extracted
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady restores checkpoint instead of spawning a fresh run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > resume does not instantly re-extract players restored at the portal
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+[run] checkpoint restored
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > abandonSuspendedRun clears checkpoint and run
+[telepipe] player p1 extracted
+[telepipe] player p2 extracted
+[run] checkpoint captured
+[run] suspended: Initiate Vault
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady injects telepipe for telepipe-ready debug scenario
+[loot] spawned id=c644dcf1-971a-4204-b0e5-44afd55e7a06 value=16
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > checkAllReady staggers spawn positions for multiple players
+[loot] spawned id=8bb28941-e96f-4f38-8969-88c60480856f value=18
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > portal proximity grace prevents immediate extraction after placement
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > telepipe suspend/resume > single extract keeps dungeon running until all players leave
+[telepipe] player p1 extracted
+
+stdout | server/test/server.test.js > run state > variant enemy bonus drops > spawns an extra magic-stone loot entry for a variant enemy
+[loot] magic stone drop id=a3f65564-a642-4206-beeb-f3cfd7e327bd value=20 at (4.0, -2.0)
+[loot] variant bonus magic stone drop id=6656cc69-6973-4866-9f11-f5009fb7cb84 value=15 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > run state > variant enemy bonus drops > spawns only the normal magic-stone loot entry for a non-variant enemy
+[loot] magic stone drop id=41a8abd6-5cf4-4bc7-b0e7-ca32426cc489 value=20 at (4.0, -2.0)
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardSellValue returns configured sell prices
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+Player connected: socket=4AmVTL9yVNj6Aa4AAAAH, playerId=a482c24e-a8aa-4158-9f76-a07ecd1d30d7
+
+stdout | server/test/server.test.js > card sell and trade economy > getCardBuyValue is double the sell value
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > quest tier gating (socket + persistence) > rejects unknown quest tier combinations
+Player disconnected: 4AmVTL9yVNj6Aa4AAAAH
+
+stdout | server/test/server.test.js > card sell and trade economy > pickShopOffer returns a valid card from the shop pool
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[users] No existing user file at /tmp/claude-1000/quest-tier-deploy-gate-1780666825883-s6px92264ap.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Server listening on port 0
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard grants a card and deducts gold
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard adds to inventory only when the selected deck is full
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > buyShopCard rejects insufficient gold
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > canSellCardInstance rejects selling deck-required copies
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > sellCard removes an extra copy and grants currency
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > offerCardTrade and respondCardTrade swap one instance each
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > card sell and trade economy > respondCardTrade reject does not mutate inventories
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > never spawns the spire-exclusive `spawner` type for non-spire quests
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=52a44bc7-c7d5-4c28-a8b4-a234f51a5118 value=8
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=d018f269-c19c-4456-a093-23407c6f4e48 value=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=0c5c6315-22ef-4f79-8856-2e486854e0da at (8.6, 39.3)
+[crystal] spawned id=a38e9a4b-cc6f-42ea-9ab6-20c85c621457 at (-11.6, 50.1)
+[crystal] spawned id=59a7a066-34c9-48e0-96ca-6eb245983a3d at (-12.1, 19.6)
+[loot] spawned id=03dbfbc7-a24d-4a49-8226-6a45eea09a95 value=9
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=5bf7e9ca-16bd-4f20-8b89-90526928f2d8 at (14.7, 35.0)
+[crystal] spawned id=d2f77795-7a26-47f2-9035-019af8ba3404 at (-7.1, 46.6)
+[crystal] spawned id=d12ba75f-3fef-42e2-b35c-1c9dd97eae61 at (47.5, 18.6)
+[loot] spawned id=007db02f-1fdb-43dd-8821-7aebc4ae476f value=7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=c39f68b9-b6ad-404d-906b-c82ebdbeb49b at (15.9, 7.2)
+[crystal] spawned id=03fc24c0-0087-4c0b-b16c-ce3f24d849a0 at (-7.5, 39.3)
+[crystal] spawned id=3411ae1e-691c-473e-bed5-c823034d60a1 at (-12.7, 7.9)
+[loot] spawned id=b355cea5-3cf7-4729-b64d-2b2d29fab681 value=18
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[crystal] spawned id=8f072660-68ac-4235-a468-575789940c62 at (-10.9, -17.4)
+[crystal] spawned id=09bc8e3e-e2e3-498c-8393-3e24eafe6c08 at (-35.5, 39.1)
+[crystal] spawned id=4da5600c-b2bc-456c-a3a4-3b09ccb0cda3 at (-15.5, 45.8)
+[loot] spawned id=dd1807d8-bc7b-4e2b-b4ed-3c590ffc3860 value=11
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=f46680a8-3e0a-471a-922d-6fedc20d56c4 value=12
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=38f16f06-be74-4a4e-a94d-ad6300cb2e58 value=15
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=80d4bae5-6973-4673-8e6e-0b386f9e9b5d value=7
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=cff8a2a0-c17d-4cb0-805e-ccf20b571eef value=17
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=4617c140-998d-4076-80b9-74c81d16731a value=5
+
+stdout | server/test/server.test.js > spawnEnemy() variant field > produces variant (tag or null) on every combat spawn
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=dfa38bf1-9f45-4ca1-a93e-cb34885ad2cc value=18
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > produces quest.enemyCount enemies drawn from the default quest pool
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > can spawn `spawner` for a spire_ascent run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals and combat enemies for crystal rescue
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > spawns crystals and combat enemies for crystal rescue
+[crystal] spawned id=1909454b-1249-4ce8-a880-ba9db6b93e4d at (24.7, -8.4)
+[crystal] spawned id=81afc269-2809-4ffe-a7c6-771fd1f010d1 at (6.4, 13.6)
+[crystal] spawned id=90890f14-c6be-48c3-93b5-336b0728ab80 at (28.3, 27.4)
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places crystal rescue enemies near the start room
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > spawnEnemies() mixed pack > places crystal rescue enemies near the start room
+[crystal] spawned id=569bde94-a443-482a-8bb4-6bdd20846d29 at (24.7, -8.4)
+[crystal] spawned id=d14ef304-b395-4d20-9181-b68ca2045331 at (6.4, 13.6)
+[crystal] spawned id=2ec62ab7-3289-47cd-aa09-3a73d8c6c46d at (28.3, 27.4)
+[loot] spawned id=0cce5740-e8a5-465a-94a0-2680c4e76df3 value=19
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > spawner cross-level exclusion > can spawn `spawner` for a spire_ascent run
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=2bea9eb8-a434-4bcc-880a-610b896dfaa2 value=6
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > survive regular spawns draw from the quest pool > snapshots the quest enemyPool onto the survive objective
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > enemy spawn positions exclude the start room when combat rooms exist
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > enemy spawn positions exclude the start room when combat rooms exist
+[loot] spawned id=fdfa2427-c8fe-4994-bdfd-89fe9abe1404 value=10
+
+stdout | server/test/enemy-spawn-pools-wiring.test.js > survive regular spawns draw from the quest pool > regular (non-miniboss) spawns come from the quest pool, miniboss tail preserved
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > Role-aware spawning constraints > loot spawn positions prefer treasure room when one exists
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Player connected: socket=u-4sijEd_1H9dPPDAAAJ, playerId=f6ee13f0-04d0-4001-90d4-2e7a92abed22
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns false for a position in the center of a room
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > returns true for a position inside a wall
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > accepts a custom radius parameter
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Player connected: socket=zAFIri_4OO-u3V85AAAL, playerId=bbe1e9a0-86aa-4132-a43e-3c27dc6edbeb
+
+stdout | server/test/server.test.js > isEntityPositionBlocked(x, z, radius) > defaults to ENTITY_RADIUS when radius is omitted
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > moves entity toward target in open space
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > reaches target when distance is less than maxDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached when entity is already within stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > respects custom stopDistance option
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: true after direct move lands within stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after wall-slide leaves entity beyond stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+ ✓ |server| server/test/enemy-spawn-pools-wiring.test.js (8 tests) 686ms
+   ✓ spawner cross-level exclusion > never spawns the spire-exclusive `spawner` type for non-spire quests  301ms
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns reached: false after direct move when entity remains farther than stopDistance
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > clamps final position to dungeon bounds
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > returns blocked when direct movement hits a wall and both axes are blocked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > performs wall-slide when direct movement is blocked but one axis is free
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > wall-slide moves only the free axis when the other is blocked
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > is deterministic — no timers, randomness, or socket emissions
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > uses custom radius from options
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/server.test.js > moveEntityToward(entity, target, maxDistance, options) > assigns entity x and z only to the validated final position
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > playing quest layout builds the same avatar with cosmetic applied after mocked glTF load
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > updateEnemyShieldBarMesh scales by shieldHp / maxShieldHp
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4313:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4313:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 144ms
+stderr | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4313:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/renderer-loot.test.js:44:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stderr | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4313:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/hub-lobby-render.test.js:74:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+ ✓ |server| server/test/server.test.js (368 tests) 442ms
+stderr | client/test/renderer-variant.test.js > warded variant visuals > createEnemyMesh stores _origColor from the type palette
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/renderer-variant.test.js:29:16
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 291ms
+stderr | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4313:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/boothPrompt.test.js:76:12 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > resolves null for a missing path without throwing
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:91:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:94:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > caches failure so the same missing path is not re-fetched
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:99:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:102:9
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > hides the prompt when the rendered scene is not the hub
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy
+Player disconnected: u-4sijEd_1H9dPPDAAAJ
+Player disconnected: zAFIri_4OO-u3V85AAAL
+
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[users] No existing user file at /tmp/claude-1000/quest-tier-deploy-gate-1780666826209-p61fbwunzzi.json — starting fresh
+
+stderr | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4313:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/renderer-shield-bar.test.js:75:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4490:18[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/renderer-shield-bar.test.js:75:3 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:4490:18[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/renderer-shield-bar.test.js:75:3 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Server listening on port 0
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > rebuildDungeonLayout re-inits spire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-variant.test.js > warded variant visuals > applyVariantMarker uses per-variant badge colors on the marker mesh
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > emits boothInteract for the in-range booth and nothing when out of range
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createPlayerAvatar keeps procedural visible when the model fails to load
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:156:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:159:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createEnemyMesh keeps procedural visible when loadModel resolves null
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:173:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/models-registry.test.js:176:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > does not create a shield bar when shieldHp is absent or zero
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 291ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > seats the equipped prop on the avatar and tracks the shown id
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > adds no prop for an unequipped/none key item
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:1990:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+ ✓ |client| client/test/hub-lobby-render.test.js (2 tests) 327ms
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Player connected: socket=ktIXSu0OpiUPSXedAAAN, playerId=9eaf279f-1044-4b9a-a754-3b87402440e1
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Player connected: socket=5AZY_QpZbt3y2cWWAAAP, playerId=4c1ec969-2153-4258-992b-05c9b71e74a5
+
+ ✓ |client| client/test/renderer-registry-normalize.test.js (12 tests) 16ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+[loot] spawned id=b368d632-a595-4ed0-9768-c0bd1e477083 value=14
+
+ ✓ |client| client/test/spire-atmosphere.test.js (4 tests) 490ms
+ ✓ |client| client/test/models-registry.test.js (9 tests) 109ms
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > starts Tier 2 run when every connected player has the tier unlock
+Player disconnected: ktIXSu0OpiUPSXedAAAN
+Player disconnected: 5AZY_QpZbt3y2cWWAAAP
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[users] No existing user file at /tmp/claude-1000/quest-tier-deploy-gate-1780666826352-taxb8dy4od.json — starting fresh
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Server listening on port 0
+
+ ✓ |client| client/test/boothPrompt.test.js (5 tests) 459ms
+   ✓ booth interaction prompt > shows the prompt on zone enter and hides it on exit  321ms
+ ✓ |client| client/test/keyItemProp.test.js (7 tests) 64ms
+ ✓ |client| client/test/renderer-shield-bar.test.js (4 tests) 660ms
+   ✓ enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height  424ms
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/avatar-cosmetic-render.test.js (3 tests) 537ms
+ ✓ |client| client/test/avatar-cosmetic.test.js (11 tests) 321ms
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 554ms
+   ✓ renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup  302ms
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 483ms
+   ✓ deck booth via booth:action > opens the loadout bay when booth:action targets the deck booth  318ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Player connected: socket=6hTGY1-8Li5h8ZYGAAAR, playerId=a812e179-adea-490a-84dc-8fac42a66b1a
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Player connected: socket=IV8NBPHtBsWzWEGDAAAT, playerId=61ce3340-33de-46fb-89f7-07077c69b2d7
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+[server] Layout for quest "training_caverns" tier 2: seed=352369971, profile=crowded, rooms=10
+
+stdout | server/test/quest_tier_gating.test.js > Tier 2 squad ready/deploy gate > checkAllReady aborts when a ready player lacks Tier 2 unlock
+Player disconnected: 6hTGY1-8Li5h8ZYGAAAR
+Player disconnected: IV8NBPHtBsWzWEGDAAAT
+
+ ✓ |client| client/test/dungeon.test.js (68 tests) 472ms
+ ✓ |server| server/test/quest_tier_gating.test.js (7 tests) 1195ms
+   ✓ quest tier gating (socket + persistence) > rejects Tier 2 selection before unlock with tier_locked  329ms
+   ✓ Tier 2 squad ready/deploy gate > rejects ready for a locked squad member and does not start deploy  326ms
+ ✓ |client| client/test/renderer-variant.test.js (6 tests) 752ms
+   ✓ warded variant visuals > variantMarkerColor returns cyan for warded and magenta for other variants  300ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 832ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  340ms
+ ✓ |client| client/test/key-item-dodge.test.js (4 tests) 929ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  469ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/characterBooth.test.js (8 tests) 885ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/main.test.js:2281:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/main.test.js:2293:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/main.test.js:2303:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:2712:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/test/main.test.js:2316:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:84:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/models.js:75:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/247-plaza-arena-identity/game/[39mclient/renderer.js:502:11[90m)[39m
+}
+
+ ✓ |server| server/test/sunken_canyon_walkability.test.js (4 tests) 1862ms
+   ✓ sunken-canyon walkability regressions > keeps ramp axis-z wall gaps ≥ 2 * PLAYER_RADIUS for three-ramp seeds 1..30  707ms
+   ✓ sunken-canyon walkability regressions > flood-fills every room from plateau start for regression seeds  372ms
+   ✓ sunken-canyon walkability regressions > supports bidirectional plateau ↔ canyon centre and lateral edge probes  693ms
+ ✓ |client| client/test/main.test.js (151 tests) 1591ms
+ ✓ |server| server/test/dungeon.test.js (163 tests) 4538ms
+   ✓ layout traversability > every room is reachable from the start room for many seeds  2200ms
+   ✓ generateLayout(seed, 'sunken-canyon') > ramp count is 4–5 across many seeds (2 edge connectors + 2–3 central)  552ms
+   ✓ generateLayout(seed, 'spire-ascent') > every tier room is reachable (no orphan tiers)  318ms
+
+ Test Files  33 passed (33)
+      Tests  960 passed (960)
+   Start at  06:40:23
+   Duration  6.03s (transform 1.40s, setup 1.06s, collect 8.40s, tests 19.49s, environment 14.35s, prepare 6.78s)
+
+ % Coverage report from v8
+---------------|---------|----------|---------|---------|-----------------------
+File           | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s     
+---------------|---------|----------|---------|---------|-----------------------
+All files      |   71.35 |    63.84 |   51.89 |   71.35 |                       
+ client        |   55.64 |    65.95 |   45.16 |   55.64 |                       
+  cards.js     |   78.15 |    63.33 |   77.77 |   78.15 | ...07,116-130,227-244 
+  collision.js |   29.14 |      100 |    12.5 |   29.14 | ...28,234-242,248-253 
+  delta.js     |     100 |       50 |     100 |     100 | 12                    
+  hand.js      |   51.25 |    63.63 |   38.46 |   51.25 | ...40,156-157,160-163 
+ server        |   77.93 |    63.07 |   56.25 |   77.93 |                       
+  index.js     |   77.93 |    63.07 |   56.25 |   77.93 | ...416-1422,1448-1450 
+---------------|---------|----------|---------|---------|-----------------------

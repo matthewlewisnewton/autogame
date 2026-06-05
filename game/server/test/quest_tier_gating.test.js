@@ -153,7 +153,7 @@ describe('quest tier gating (socket + persistence)', () => {
 
 	it('rejects unknown quest tier combinations', async () => {
 		const errorPromise = waitForEvent(socket, 'questError');
-		socket.emit('selectQuest', { questId: 'crystal_rescue', tier: 2 });
+		socket.emit('selectQuest', { questId: 'endless_siege', tier: 2 });
 		const err = await errorPromise;
 
 		expect(err.reason).toContain('Unknown quest or tier');

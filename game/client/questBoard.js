@@ -25,6 +25,39 @@ export function formatObjectiveSummary(quest) {
 			.replace('{minibosses}', String(minibossCount));
 	}
 
+	if (quest.objectiveType === 'stage_boss') {
+		const addCount = quest.encounter?.addCount ?? 0;
+		const questId = quest.questId || quest.id;
+		if (questId === 'spire_ascent') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatSummitWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatSummitWarden;
+		}
+		if (questId === 'canyon_descent') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatCanyonWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatCanyonWarden;
+		}
+		const annexOverseer = quest.encounter?.bossType === 'annex_overseer';
+		if (addCount > 0) {
+			const template = annexOverseer
+				? THEME.objectives.defeatAnnexOverseerWithSupports
+				: THEME.objectives.defeatTrialWardenWithSupports;
+			return template.replace('{addCount}', String(addCount));
+		}
+		return annexOverseer
+			? THEME.objectives.defeatAnnexOverseer
+			: THEME.objectives.defeatTrialWarden;
+	}
+
 	return quest.description || '';
 }
 
@@ -72,6 +105,7 @@ function buildQuestBoardRows(quests, questVariants) {
 			enemyCount: quest.enemyCount,
 			totalSpawns: quest.totalSpawns,
 			minibossCount: quest.minibossCount,
+			encounter: quest.encounter,
 			rewardCurrency: quest.rewardCurrency,
 		});
 	}

@@ -1,0 +1,7 @@
+VERDICT: FAIL
+
+Wrote:
+- `tickets/232-hub-shared-presence/round-1/review.md`
+- `tickets/232-hub-shared-presence/round-1/gaps.md`
+
+No `nits.md` was created. The blocking gap is the captured run health: `metrics.json` has `"ok": false` and the browser flow never reached the lobby due repeated backend/socket `ECONNREFUSED`/502 failures.

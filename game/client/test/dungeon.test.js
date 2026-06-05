@@ -1,5 +1,32 @@
 import { describe, it, expect } from 'vitest';
-import { buildDungeon, buildWallColliders, buildPassageFloorSpec, isUniformFloor, buildSlopedFloor, uniformFloorMeshY, FLOOR_Y, WALL_HEIGHT, PASSAGE_WALL_HEIGHT } from '../dungeon.js';
+import {
+	buildDungeon,
+	buildDoorwayMarkers,
+	buildLandmarkMesh,
+	buildPerimeterDecorMesh,
+	buildFloorMarkingMesh,
+	buildWallColliders,
+	buildPassageFloorSpec,
+	isUniformFloor,
+	buildSlopedFloor,
+	uniformFloorMeshY,
+	floorMaterial,
+	wallMaterial,
+	getProfileMaterials,
+	getProfileMaterialColors,
+	getSunkenCanyonBandFloorHex,
+	getSunkenCanyonBandMaterials,
+	LARGE_ROOM_MIN_SIZE,
+	FLOOR_Y,
+	WALL_HEIGHT,
+	PASSAGE_WALL_HEIGHT,
+	SPIRE_SUMMIT_BEACON_TAG,
+	SPIRE_EDGE_HAZARD_TAG,
+	CANYON_CLIFF_LIP_TAG,
+	buildSpireEdgeHazardMesh,
+	buildCanyonCliffLipMesh,
+	buildCoverMesh,
+} from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
 import * as THREE from 'three';
@@ -23,6 +50,97 @@ function room(x, z, opts = {}) {
 		walls: opts.walls ?? [],
 	};
 }
+
+function findRoomFloorMesh(meshes, room) {
+	return meshes.find(m =>
+		m.position.x === room.x && m.position.z === room.z &&
+		m.geometry?.parameters?.height === 0.1
+	);
+}
+
+describe('profile material palette', () => {
+	it('defines distinct open (warm sand) and crowded (dark metal) palettes', () => {
+		const open = getProfileMaterialColors('open');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(open.floor).toBe(0xc4a574);
+		expect(crowded.floor).toBe(0x2a3444);
+		expect(open.floor).not.toBe(crowded.floor);
+		expect(open.wall).not.toBe(crowded.wall);
+		expect(open.passageFloor).not.toBe(crowded.passageFloor);
+		expect(open.passageWall).not.toBe(crowded.passageWall);
+	});
+
+	it('caches materials per profile (no per-mesh allocation)', () => {
+		const a = getProfileMaterials('open');
+		const b = getProfileMaterials('open');
+		expect(a.floor).toBe(b.floor);
+		expect(a.wall).toBe(b.wall);
+	});
+
+	it('falls back to the legacy default palette for unknown profiles', () => {
+		const unknown = getProfileMaterialColors('not-a-real-profile');
+		const legacy = getProfileMaterialColors('default');
+		expect(unknown).toEqual(legacy);
+	});
+
+	it('defines sunken-canyon band palettes distinct from open-plaza and crowded profiles', () => {
+		const plaza = getProfileMaterialColors('open-plaza');
+		const canyon = getProfileMaterialColors('sunken-canyon');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(plaza.floor).toBe(0xb8a078);
+		expect(canyon.floor).toBe(0x2f3d35);
+		expect(plaza.floor).not.toBe(canyon.floor);
+		expect(canyon.floor).not.toBe(crowded.floor);
+		expect(getSunkenCanyonBandFloorHex('plateau')).toBe(0x4a5f4a);
+		expect(getSunkenCanyonBandFloorHex('canyon')).toBe(0x2f3d35);
+	});
+
+	it('derives role floor tints from the active profile base', () => {
+		const open = getProfileMaterialColors('open');
+		const crowded = getProfileMaterialColors('crowded');
+		expect(open.startFloor).not.toBe(open.floor);
+		expect(open.treasureFloor).not.toBe(open.floor);
+		expect(crowded.startFloor).not.toBe(crowded.floor);
+		expect(open.startFloor).not.toBe(crowded.startFloor);
+	});
+
+	it('resolves open-plaza profile palette (warm stone + amber accent)', () => {
+		const plaza = getProfileMaterialColors('open-plaza');
+		const legacy = getProfileMaterialColors('default');
+		expect(plaza).not.toEqual(legacy);
+		expect(plaza.floor).toBe(0xb8a078);
+		expect(plaza.wall).toBe(0x9a8268);
+	});
+
+	it('buildDungeon meshes use different combat-floor colors for open vs crowded (same seed)', () => {
+		const seed = 42;
+		const openLayout = generateLayout(seed, 'open');
+		const crowdedLayout = generateLayout(seed, 'crowded');
+		const openCombat = openLayout.rooms.find(r => r.role === 'combat');
+		const crowdedCombat = crowdedLayout.rooms.find(r => r.role === 'combat');
+		expect(openCombat).toBeDefined();
+		expect(crowdedCombat).toBeDefined();
+
+		const openResult = buildDungeon(mockScene(), openLayout);
+		const crowdedResult = buildDungeon(mockScene(), crowdedLayout);
+
+		const openFloor = findRoomFloorMesh(openResult.meshes, openCombat);
+		const crowdedFloor = findRoomFloorMesh(crowdedResult.meshes, crowdedCombat);
+		expect(openFloor).toBeDefined();
+		expect(crowdedFloor).toBeDefined();
+		expect(openFloor.material.color.getHex()).not.toBe(crowdedFloor.material.color.getHex());
+
+		const openWall = openResult.meshes.find(m =>
+			m.material === getProfileMaterials('open').wall
+		);
+		const crowdedWall = crowdedResult.meshes.find(m =>
+			m.material === getProfileMaterials('crowded').wall
+		);
+		expect(openWall).toBeDefined();
+		expect(crowdedWall).toBeDefined();
+		expect(openWall.material.color.getHex()).not.toBe(crowdedWall.material.color.getHex());
+	});
+});
 
 describe('buildDungeon() spawn position', () => {
 	it('selects spawn position from the room with role "start" even at non-zero index', () => {
@@ -326,19 +444,28 @@ describe('open-plaza cover & platforms', () => {
 	// one on the flat floor), and one gently sloped platform.
 	function plazaLayout() {
 		return {
+			profile: 'open-plaza',
 			rooms: [{
 				x: 0, z: 0, width: 40, depth: 40, role: 'start', walls: [],
 				floorCorners: { yNW: DEFAULT_FLOOR_Y, yNE: DEFAULT_FLOOR_Y, ySE: DEFAULT_FLOOR_Y, ySW: DEFAULT_FLOOR_Y },
 			}],
 			passages: [],
 			platforms: [
-				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
+				{ x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.3, yNE: 1.6, ySE: 1.7, ySW: 1.4 } },
 			],
 			cover: [
-				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },       // on platform
-				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },     // on flat floor
+				{ x: -9, z: -9, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+				{ x: 5, z: 5, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+				{ x: 8, z: -8, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+				{ x: -8, z: 8, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
 			],
 		};
+	}
+
+	function coverGroupAt(scene, c) {
+		return scene.added.find(
+			o => o.userData?.coverType === c.type && o.position.x === c.x && o.position.z === c.z,
+		);
 	}
 
 	it('buildWallColliders emits one AABB per cover piece with the correct footprint', () => {
@@ -357,33 +484,59 @@ describe('open-plaza cover & platforms', () => {
 		}
 	});
 
-	it('buildDungeon returns one mesh per cover piece and per platform', () => {
+	it('buildDungeon returns platform meshes plus one child mesh per cover primitive', () => {
 		const layout = plazaLayout();
-		const result = buildDungeon(mockScene(), layout);
+		const scene = mockScene();
+		const result = buildDungeon(scene, layout);
+		const coverChildCount = layout.cover.reduce((n, c) => n + coverGroupAt(scene, c).children.length, 0);
 
-		// ground(1) + plaza floor(1) + platform(1) + 2 cover = 5 meshes
-		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + layout.cover.length);
+		// ground(1) + plaza floor(1) + platform(1) + cover primitives
+		expect(result.meshes.length).toBe(1 + 1 + layout.platforms.length + coverChildCount);
 	});
 
-	it('rests each cover box on the floor: base at sampleFloorY, centered at floorY + height/2', () => {
+	it('buildCoverMesh uses distinct child counts for barricade and crate_stack', () => {
+		const mat = wallMaterial;
+		expect(buildCoverMesh({ type: 'pillar', width: 1.6, depth: 1.6, height: 3 }, mat).children.length).toBe(1);
+		expect(buildCoverMesh({ type: 'broken_wall', width: 4, depth: 1.2, height: 1 }, mat).children.length).toBe(1);
+		expect(buildCoverMesh({ type: 'barricade', width: 3.5, depth: 1, height: 1.1 }, mat).children.length).toBe(2);
+		expect(buildCoverMesh({ type: 'crate_stack', width: 1.8, depth: 1.8, height: 2.2 }, mat).children.length).toBe(3);
+	});
+
+	it('rests each cover group on sampleFloorY with its top near floorY + height', () => {
 		const layout = plazaLayout();
-		const result = buildDungeon(mockScene(), layout);
+		const scene = mockScene();
+		buildDungeon(scene, layout);
 
 		for (const c of layout.cover) {
-			const floorY = sampleFloorY(layout, c.x, c.z);
-			// Match the cover box by its (x, z) and box height — the platform mesh
-			// can share a pillar's (x, z) but uses a thin sloped-floor geometry.
-			const mesh = result.meshes.find(m =>
-				m.position.x === c.x && m.position.z === c.z &&
-				m.geometry.parameters && m.geometry.parameters.height === c.height
+			const floorY = resolveFloorY(sampleFloorY(layout, c.x, c.z));
+			const group = coverGroupAt(scene, c);
+			expect(group).toBeDefined();
+			expect(group.position.y).toBeCloseTo(floorY, 4);
+			const topY = group.position.y + Math.max(
+				...group.children.map(m => m.position.y + m.geometry.parameters.height / 2),
 			);
-			expect(mesh).toBeDefined();
-			expect(mesh.position.y).toBeCloseTo(floorY + c.height / 2, 4);
+			expect(topY).toBeCloseTo(floorY + c.height, 3);
 		}
 
-		// The pillar standing on the platform sits higher than the floor cover.
-		const onPlatform = sampleFloorY(layout, -9, -9);
-		expect(onPlatform).toBeGreaterThan(DEFAULT_FLOOR_Y);
+		expect(sampleFloorY(layout, -9, -9)).toBeGreaterThanOrEqual(DEFAULT_FLOOR_Y + 1.0);
+	});
+
+	it('generated open-plaza layout renders distinct cover footprints per type', () => {
+		const layout = generateLayout(123, 'open-plaza');
+		const scene = mockScene();
+		buildDungeon(scene, layout);
+
+		const byType = new Map();
+		for (const c of layout.cover) {
+			const group = coverGroupAt(scene, c);
+			expect(group).toBeDefined();
+			byType.set(c.type, group);
+		}
+		expect(byType.get('barricade').children.length).toBe(2);
+		expect(byType.get('crate_stack').children.length).toBe(3);
+		const barricadeWidths = byType.get('barricade').children.map(m => m.geometry.parameters.width);
+		const pillarWidths = byType.get('pillar').children.map(m => m.geometry.parameters.width);
+		expect(barricadeWidths.some(w => w > Math.max(...pillarWidths))).toBe(true);
 	});
 
 	it('renders existing room/passage layouts unchanged when cover/platforms are absent', () => {
@@ -392,6 +545,103 @@ describe('open-plaza cover & platforms', () => {
 		// ground(1) + room floor(1) = 2 meshes; no extra cover/platform geometry.
 		expect(result.meshes.length).toBe(2);
 		expect(buildWallColliders(layout).length).toBe(0);
+	});
+});
+
+describe('open-plaza profile hazards & platforms', () => {
+	it('buildDungeon creates one recessed mesh per pit hazard', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+		expect(layout.platforms.length).toBeGreaterThanOrEqual(3);
+
+		const result = buildDungeon(mockScene(), layout);
+		const pitMeshes = result.meshes.filter(m =>
+			m.geometry?.parameters &&
+			layout.hazards.some(h =>
+				h.type === 'pit' &&
+				m.geometry.parameters.width === h.width &&
+				m.geometry.parameters.depth === h.depth &&
+				m.geometry.parameters.height === (h.pitDepth ?? 0.12)
+			)
+		);
+		expect(pitMeshes.length).toBe(layout.hazards.length);
+	});
+
+	it('recesses each pit slightly below the sampled floor surface', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const h of layout.hazards) {
+			const floorY = resolveFloorY(sampleFloorY(layout, h.x, h.z));
+			const recess = h.pitDepth ?? 0.12;
+			const mesh = result.meshes.find(m =>
+				m.position.x === h.x && m.position.z === h.z &&
+				m.geometry?.parameters?.height === recess
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY - recess / 2, 4);
+		}
+	});
+});
+
+describe('open profile hazards & platforms', () => {
+	it('buildDungeon creates one recessed mesh per pit hazard', () => {
+		const layout = generateLayout(42, 'open', { slopes: true });
+		expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+
+		const result = buildDungeon(mockScene(), layout);
+		const pitMeshes = result.meshes.filter(m =>
+			m.geometry?.parameters &&
+			layout.hazards.some(h =>
+				h.type === 'pit' &&
+				m.geometry.parameters.width === h.width &&
+				m.geometry.parameters.depth === h.depth &&
+				m.geometry.parameters.height === (h.pitDepth ?? 0.12)
+			)
+		);
+		expect(pitMeshes.length).toBe(layout.hazards.length);
+	});
+
+	it('recesses each pit slightly below the sampled floor surface', () => {
+		const layout = generateLayout(42, 'open');
+		const result = buildDungeon(mockScene(), layout);
+
+		for (const h of layout.hazards) {
+			const floorY = resolveFloorY(sampleFloorY(layout, h.x, h.z));
+			const recess = h.pitDepth ?? 0.12;
+			const mesh = result.meshes.find(m =>
+				m.position.x === h.x && m.position.z === h.z &&
+				m.geometry?.parameters?.height === recess
+			);
+			expect(mesh).toBeDefined();
+			expect(mesh.position.y).toBeCloseTo(floorY - recess / 2, 4);
+		}
+	});
+
+	it('renders platforms from open layouts via the existing sloped-floor path', () => {
+		const layout = generateLayout(42, 'open', { slopes: true });
+		expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+
+		const result = buildDungeon(mockScene(), layout);
+		const platformMeshes = layout.platforms.map(p =>
+			result.meshes.find(m =>
+				m.position.x === p.x && m.position.z === p.z &&
+				m.geometry?.parameters?.width === p.width
+			)
+		);
+		expect(platformMeshes.every(m => m !== undefined)).toBe(true);
+	});
+
+	it('does not add hazard footprints to wall colliders', () => {
+		const layout = generateLayout(42, 'open');
+		const colliders = buildWallColliders(layout);
+		for (const h of layout.hazards) {
+			const hit = colliders.some(w =>
+				Math.abs((w.minX + w.maxX) / 2 - h.x) < 1e-6 &&
+				Math.abs((w.maxX - w.minX) - h.width) < 1e-6
+			);
+			expect(hit).toBe(false);
+		}
 	});
 });
 
@@ -502,16 +752,141 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 			1 + layout.rooms.length + layout.cover.length + 1
 		);
 	});
+
+	it('renders one canyon_monolith landmark group on sampleFloorY for seed 42', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.landmarks).toHaveLength(1);
+		expect(layout.landmarks[0].type).toBe('canyon_monolith');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const monolithGroups = scene.added.filter(o => o.userData?.landmarkType === 'canyon_monolith');
+		expect(monolithGroups).toHaveLength(1);
+		const lm = layout.landmarks[0];
+		const floorY = resolveFloorY(sampleFloorY(layout, lm.x, lm.z));
+		expect(monolithGroups[0].position.y).toBeCloseTo(floorY, 4);
+		expect(monolithGroups[0].children.length).toBeGreaterThan(0);
+		expect(meshes.some(m => monolithGroups[0].children.includes(m))).toBe(true);
+	});
+
+	it('assigns three distinct band floor colors for plateau, ramp, and canyon rooms', () => {
+		const layout = sunkenCanyonFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const ramp = layout.rooms.find(r => r.band === 'ramp');
+		const canyon = layout.rooms.find(r => r.band === 'canyon');
+
+		const plateauFloor = findRoomFloorMesh(result.meshes, plateau);
+		const rampFloor = result.meshes.find(m =>
+			m.geometry?.parameters?.height === 0.1 &&
+			Math.abs(m.position.x - ramp.x) < 0.01 &&
+			Math.abs(m.position.z - ramp.z) < 0.01
+		);
+		const canyonFloor = findRoomFloorMesh(result.meshes, canyon);
+
+		expect(plateauFloor).toBeDefined();
+		expect(rampFloor).toBeDefined();
+		expect(canyonFloor).toBeDefined();
+
+		const plateauHex = plateauFloor.material.color.getHex();
+		const rampHex = rampFloor.material.color.getHex();
+		const canyonHex = canyonFloor.material.color.getHex();
+
+		expect(plateauHex).not.toBe(canyonHex);
+		expect(rampHex).not.toBe(plateauHex);
+		expect(rampHex).not.toBe(canyonHex);
+	});
+
+	it('server-generated seed 42: start (plateau) and treasure (canyon) floors differ', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		const startRoom = layout.rooms.find(r => r.role === 'start');
+		const treasureRoom = layout.rooms.find(r => r.role === 'treasure');
+		expect(startRoom?.band).toBe('plateau');
+		expect(treasureRoom?.band).toBe('canyon');
+
+		const result = buildDungeon(mockScene(), layout);
+		const startFloor = findRoomFloorMesh(result.meshes, startRoom);
+		const treasureFloor = findRoomFloorMesh(result.meshes, treasureRoom);
+		expect(startFloor).toBeDefined();
+		expect(treasureFloor).toBeDefined();
+		expect(startFloor.material.color.getHex()).not.toBe(treasureFloor.material.color.getHex());
+	});
+
+	it('caches sunken-canyon band materials as singletons', () => {
+		const a = getSunkenCanyonBandMaterials('plateau');
+		const b = getSunkenCanyonBandMaterials('plateau');
+		expect(a.floor).toBe(b.floor);
+		expect(a.floor.color.getHex()).toBe(getSunkenCanyonBandFloorHex('plateau'));
+	});
+
+	function findCliffLipMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === CANYON_CLIFF_LIP_TAG);
+	}
+
+	it('renders emissive cliff lip strips for server-generated sunken-canyon', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.cliffLips.length).toBeGreaterThanOrEqual(4);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const yHigh = resolveFloorY(sampleFloorY(layout, plateau.x, plateau.z));
+		const result = buildDungeon(mockScene(), layout);
+		const lipMeshes = findCliffLipMeshes(result.meshes);
+		expect(lipMeshes.length).toBe(layout.cliffLips.length);
+		for (const mesh of lipMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThanOrEqual(yHigh);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	function findEdgeHazardMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_EDGE_HAZARD_TAG);
+	}
+
+	it('renders emissive edge hazard strips for server-generated sunken-canyon', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const yHigh = resolveFloorY(sampleFloorY(layout, plateau.x, plateau.z));
+		const result = buildDungeon(mockScene(), layout);
+		const hazardMeshes = findEdgeHazardMeshes(result.meshes);
+		expect(hazardMeshes.length).toBe(layout.edgeHazards.length);
+		for (const mesh of hazardMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThanOrEqual(yHigh);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	it('buildCanyonCliffLipMesh tracks lip AABB footprint', () => {
+		const lip = {
+			minX: -3,
+			maxX: 3,
+			minZ: -28.5,
+			maxZ: -27.3,
+			y: DEFAULT_FLOOR_Y + 10,
+		};
+		const mesh = buildCanyonCliffLipMesh(lip);
+		expect(mesh.userData.dungeonTag).toBe(CANYON_CLIFF_LIP_TAG);
+		expect(mesh.position.x).toBeCloseTo(0, 4);
+		expect(mesh.position.z).toBeCloseTo(-27.9, 4);
+	});
 });
 
-describe('spire-ascent floors, ramps & treasure marker', () => {
-	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+describe('spire-ascent floors, ramps & summit beacon', () => {
+	/** Default gold treasure pillar (non-spire profiles). */
 	function findTreasureMarker(meshes) {
 		return meshes.find(m =>
 			m.geometry?.parameters?.height === 1.5 &&
 			m.geometry?.parameters?.radiusTop === 0.3 &&
 			m.geometry?.parameters?.radiusBottom === 0.3
 		);
+	}
+
+	function findSummitBeaconMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_SUMMIT_BEACON_TAG);
+	}
+
+	function findEdgeHazardMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_EDGE_HAZARD_TAG);
 	}
 
 	function spireAscentFixture() {
@@ -528,6 +903,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 			rooms: [
 				{
 					x: 0, z: 20, width: tierW, depth: tierD, role: 'start', walls: [], band: 'tier',
+					tierIndex: 0,
 					floorCorners: { yNW: yBottom, yNE: yBottom, ySE: yBottom, ySW: yBottom },
 				},
 				{
@@ -536,6 +912,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 				},
 				{
 					x: 0, z: 4, width: tierW, depth: tierD, role: 'combat', walls: [], band: 'tier',
+					tierIndex: 1,
 					floorCorners: { yNW: yMid, yNE: yMid, ySE: yMid, ySW: yMid },
 				},
 				{
@@ -544,6 +921,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 				},
 				{
 					x: 0, z: -12, width: tierW, depth: tierD, role: 'treasure', walls: [], band: 'tier',
+					tierIndex: 2,
 					floorCorners: { yNW: yTop, yNE: yTop, ySE: yTop, ySW: yTop },
 				},
 			],
@@ -551,22 +929,37 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 		};
 	}
 
-	it('buildDungeon emits ground + one floor per room + treasure marker', () => {
+	function findRoomFloorMesh(meshes, room) {
+		return meshes.find(m =>
+			m.position.x === room.x && m.position.z === room.z &&
+			m.geometry?.parameters?.height === 0.1
+		);
+	}
+
+	it('buildDungeon emits ground + one floor per room + summit beacon meshes', () => {
 		const layout = spireAscentFixture();
 		const result = buildDungeon(mockScene(), layout);
-		const expected = 1 + layout.rooms.length + 1; // ground + floors + marker
+		const expected = 1 + layout.rooms.length + 2; // ground + floors + shaft + cap
 		expect(result.meshes.length).toBe(expected);
 	});
 
-	it('places the treasure marker on the top tier, well above DEFAULT_FLOOR_Y', () => {
+	it('places an emissive summit beacon on the top tier, well above DEFAULT_FLOOR_Y', () => {
 		const layout = spireAscentFixture();
 		const top = layout.rooms.find(r => r.role === 'treasure');
 		const result = buildDungeon(mockScene(), layout);
-		const marker = findTreasureMarker(result.meshes);
-		expect(marker).toBeDefined();
+		const beaconMeshes = findSummitBeaconMeshes(result.meshes);
+		expect(beaconMeshes.length).toBeGreaterThanOrEqual(2);
+		expect(findTreasureMarker(result.meshes)).toBeUndefined();
 		const topFloorY = sampleFloorY(layout, top.x, top.z);
-		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
-		expect(marker.position.y).toBeCloseTo(topFloorY + 0.75, 4);
+		const yBottom = sampleFloorY(layout, layout.rooms.find(r => r.role === 'start').x, layout.rooms.find(r => r.role === 'start').z);
+		for (const mesh of beaconMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThan(yBottom + 8);
+		}
+		const shaft = beaconMeshes.find(m => m.userData.beaconPart === 'shaft');
+		expect(shaft).toBeDefined();
+		expect(shaft.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
+		expect(shaft.position.y).toBeCloseTo(topFloorY + 1.6, 4);
 	});
 
 	it('keeps the bottom start tier at DEFAULT_FLOOR_Y elevation', () => {
@@ -599,17 +992,458 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 		}
 	});
 
-	it('renders server-generated spire-ascent with treasure marker ≥ bottom tier + 8', () => {
+	it('renders server-generated spire-ascent with summit beacon ≥ bottom tier + 8', () => {
 		const layout = generateLayout(42, 'spire-ascent');
 		const result = buildDungeon(mockScene(), layout);
 		const bottom = layout.rooms.find(r => r.role === 'start');
 		const treasure = layout.rooms.find(r => r.role === 'treasure');
-		const marker = findTreasureMarker(result.meshes);
-		expect(marker).toBeDefined();
+		const beaconMeshes = findSummitBeaconMeshes(result.meshes);
+		expect(beaconMeshes.length).toBeGreaterThanOrEqual(2);
+		expect(findTreasureMarker(result.meshes)).toBeUndefined();
 		const yBottom = sampleFloorY(layout, bottom.x, bottom.z);
 		const yTreasure = sampleFloorY(layout, treasure.x, treasure.z);
 		expect(yTreasure - yBottom).toBeGreaterThanOrEqual(8);
-		expect(marker.position.y).toBeGreaterThan(yBottom + 8);
-		expect(marker.position.y).toBeCloseTo(yTreasure + 0.75, 4);
+		for (const mesh of beaconMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThan(yBottom + 8);
+		}
+		const shaft = beaconMeshes.find(m => m.userData.beaconPart === 'shaft');
+		expect(shaft.position.y).toBeCloseTo(yTreasure + 1.6, 4);
+	});
+
+	it('renders emissive edge hazard strips for server-generated spire-ascent', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+		const result = buildDungeon(mockScene(), layout);
+		const hazardMeshes = findEdgeHazardMeshes(result.meshes);
+		expect(hazardMeshes.length).toBe(layout.edgeHazards.length);
+		for (const mesh of hazardMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	it('buildSpireEdgeHazardMesh tracks hazard AABB footprint', () => {
+		const hazard = {
+			minX: 4,
+			maxX: 5.2,
+			minZ: -2,
+			maxZ: 8,
+			y: DEFAULT_FLOOR_Y + 5,
+		};
+		const mesh = buildSpireEdgeHazardMesh(hazard);
+		expect(mesh.userData.dungeonTag).toBe(SPIRE_EDGE_HAZARD_TAG);
+		expect(mesh.position.x).toBeCloseTo(4.6, 4);
+		expect(mesh.position.z).toBeCloseTo(3, 4);
+	});
+
+	it('assigns distinct tier floor colors from bottom to summit', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const bottom = layout.rooms.find(r => r.tierIndex === 0);
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		const bottomFloor = findRoomFloorMesh(result.meshes, bottom);
+		const topFloor = findRoomFloorMesh(result.meshes, top);
+		expect(bottomFloor).toBeDefined();
+		expect(topFloor).toBeDefined();
+		expect(bottomFloor.material.color.getHex()).not.toBe(topFloor.material.color.getHex());
+		expect(bottomFloor.material.color.getHex()).toBe(floorMaterial.color.getHex());
+	});
+
+	it('uses ramp floor colors interpolated between adjacent tiers', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const bottom = layout.rooms.find(r => r.tierIndex === 0);
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		const ramp = layout.rooms.find(r => r.band === 'ramp' && r.floorCorners.yNW === DEFAULT_FLOOR_Y + 5 && r.floorCorners.ySE === DEFAULT_FLOOR_Y);
+		const bottomHex = findRoomFloorMesh(result.meshes, bottom).material.color.getHex();
+		const topHex = findRoomFloorMesh(result.meshes, top).material.color.getHex();
+		const rampHex = findRoomFloorMesh(result.meshes, ramp).material.color.getHex();
+		expect(rampHex).not.toBe(bottomHex);
+		expect(rampHex).not.toBe(topHex);
+	});
+
+	it('uses tier-matched wall materials instead of the global default on tiers', () => {
+		const layout = spireAscentFixture();
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		top.walls = [{ axis: 'x', x: top.x, z: top.z - top.depth / 2, length: top.width }];
+		const result = buildDungeon(mockScene(), layout);
+		const wallMesh = result.meshes.find(m =>
+			m.position.x === top.walls[0].x && m.position.z === top.walls[0].z &&
+			m.geometry?.parameters?.height === WALL_HEIGHT
+		);
+		expect(wallMesh).toBeDefined();
+		expect(wallMesh.material.color.getHex()).not.toBe(wallMaterial.color.getHex());
+	});
+
+	it('leaves non-spire layouts on profile materials (not spire tier tints)', () => {
+		const layout = { rooms: [room(0, 0, { walls: [] })], passages: [] };
+		const result = buildDungeon(mockScene(), layout);
+		const floor = result.meshes[1];
+		expect(floor.material).toBe(getProfileMaterials('crowded').floor);
+	});
+});
+
+function findDoorwayMarkers(meshes) {
+	return meshes.filter(m => m.userData?.doorwayMarker);
+}
+
+/** Synthetic large room with north + east passage gaps (passageWidth 6, room 20×20). */
+function largeRoomWithTwoDoorways() {
+	const half = 10;
+	const gap = 6;
+	const segLen = (20 - gap) / 2;
+	return room(0, 0, {
+		width: 20,
+		depth: 20,
+		walls: [
+			{ x: -gap / 2 - segLen / 2, z: -half, length: segLen, axis: 'x' },
+			{ x: gap / 2 + segLen / 2, z: -half, length: segLen, axis: 'x' },
+			{ x: 0, z: half, length: 20, axis: 'x' },
+			{ x: -half, z: 0, length: 20, axis: 'z' },
+			{ x: half, z: -gap / 2 - segLen / 2, length: segLen, axis: 'z' },
+			{ x: half, z: gap / 2 + segLen / 2, length: segLen, axis: 'z' },
+		],
+	});
+}
+
+describe('buildDoorwayMarkers()', () => {
+	it('places one marker per passage gap on large rooms only', () => {
+		const materials = getProfileMaterials('open');
+		const largeLayout = {
+			profile: 'open',
+			passageWidth: 6,
+			rooms: [largeRoomWithTwoDoorways()],
+			passages: [
+				{ x1: 0, z1: 0, x2: 0, z2: -28, walls: [] },
+				{ x1: 0, z1: 0, x2: 28, z2: 0, walls: [] },
+			],
+		};
+		const markers = buildDoorwayMarkers(largeLayout.rooms[0], largeLayout, materials);
+		expect(markers).toHaveLength(2);
+		for (const m of markers) {
+			expect(m.userData.doorwayMarker).toBe(true);
+			expect(m.material).toBe(materials.accent);
+			expect(m.material.emissiveIntensity).toBeGreaterThan(0);
+		}
+	});
+
+	it('creates no markers below the large-room size threshold', () => {
+		const materials = getProfileMaterials('open');
+		const gap = 4;
+		const segLen = (8 - gap) / 2;
+		const smallRoom = room(0, 0, {
+			width: 8,
+			depth: 8,
+			walls: [
+				{ x: -gap / 2 - segLen / 2, z: -4, length: segLen, axis: 'x' },
+				{ x: gap / 2 + segLen / 2, z: -4, length: segLen, axis: 'x' },
+				{ x: 0, z: 4, length: 8, axis: 'x' },
+				{ x: -4, z: 0, length: 8, axis: 'z' },
+				{ x: 4, z: 0, length: 8, axis: 'z' },
+			],
+		});
+		const smallLayout = {
+			profile: 'open',
+			passageWidth: 4,
+			rooms: [smallRoom],
+			passages: [{ x1: 0, z1: 0, x2: 0, z2: -12, walls: [] }],
+		};
+		expect(Math.min(smallRoom.width, smallRoom.depth)).toBeLessThan(LARGE_ROOM_MIN_SIZE);
+		expect(buildDoorwayMarkers(smallRoom, smallLayout, materials)).toHaveLength(0);
+	});
+
+	it('buildDungeon adds doorway markers for large rooms and none for small rooms', () => {
+		const materials = getProfileMaterials('open');
+		const largeLayout = {
+			profile: 'open',
+			passageWidth: 6,
+			rooms: [largeRoomWithTwoDoorways()],
+			passages: [
+				{ x1: 0, z1: 0, x2: 0, z2: -28, walls: [] },
+				{ x1: 0, z1: 0, x2: 28, z2: 0, walls: [] },
+			],
+		};
+		const largeResult = buildDungeon(mockScene(), largeLayout);
+		expect(findDoorwayMarkers(largeResult.meshes)).toHaveLength(2);
+
+		const gap = 4;
+		const segLen = (8 - gap) / 2;
+		const smallLayout = {
+			profile: 'open',
+			passageWidth: 4,
+			rooms: [room(50, 50, {
+				width: 8,
+				depth: 8,
+				walls: [
+					{ x: 50 - gap / 2 - segLen / 2, z: 46, length: segLen, axis: 'x' },
+					{ x: 50 + gap / 2 + segLen / 2, z: 46, length: segLen, axis: 'x' },
+					{ x: 50, z: 54, length: 8, axis: 'x' },
+					{ x: 46, z: 50, length: 8, axis: 'z' },
+					{ x: 54, z: 50, length: 8, axis: 'z' },
+				],
+			})],
+			passages: [{ x1: 50, z1: 50, x2: 50, z2: 38, walls: [] }],
+		};
+		const smallResult = buildDungeon(mockScene(), smallLayout);
+		expect(findDoorwayMarkers(smallResult.meshes)).toHaveLength(0);
+		expect(materials.accent).toBeDefined();
+	});
+});
+
+describe('profile landmark rendering', () => {
+	it('buildLandmarkMesh composes primitives for each profile type', () => {
+		const crowded = getProfileMaterials('crowded');
+		for (const type of ['reactor_coil', 'pipe_stack']) {
+			const group = buildLandmarkMesh(type, crowded);
+			expect(group).toBeInstanceOf(THREE.Group);
+			expect(group.userData.landmarkType).toBe(type);
+			expect(group.children.length).toBeGreaterThan(0);
+			expect(group.children.some(c => c.material === crowded.accent)).toBe(true);
+		}
+		const open = getProfileMaterials('open');
+		for (const type of ['sand_spire', 'sun_arch']) {
+			const group = buildLandmarkMesh(type, open);
+			expect(group.userData.landmarkType).toBe(type);
+			expect(group.children.length).toBeGreaterThan(0);
+		}
+		const canyon = getProfileMaterials('sunken-canyon');
+		const monolith = buildLandmarkMesh('canyon_monolith', canyon);
+		expect(monolith.userData.landmarkType).toBe('canyon_monolith');
+		expect(monolith.children.length).toBeGreaterThan(0);
+		expect(monolith.children.some(c => c.material === canyon.wall)).toBe(true);
+		expect(monolith.children.some(c => c.material === canyon.accent)).toBe(true);
+		const maxChildY = Math.max(...monolith.children.map(c => c.position.y + (c.geometry?.parameters?.height ?? 0) / 2));
+		expect(maxChildY).toBeGreaterThanOrEqual(2.5);
+		const plaza = getProfileMaterials('open-plaza');
+		const dais = buildLandmarkMesh('arena_dais', plaza);
+		expect(dais).toBeInstanceOf(THREE.Group);
+		expect(dais.userData.landmarkType).toBe('arena_dais');
+		expect(dais.children.length).toBeGreaterThan(0);
+		expect(dais.children.every(c => c.geometry)).toBe(true);
+		expect(dais.children.some(c => c.material === plaza.accent)).toBe(true);
+		const vaultDais = buildLandmarkMesh('vault_dais', crowded);
+		expect(vaultDais).toBeInstanceOf(THREE.Group);
+		expect(vaultDais.userData.landmarkType).toBe('vault_dais');
+		expect(vaultDais.children.length).toBeGreaterThan(0);
+		expect(vaultDais.children.filter(c => c.material === crowded.accent).length).toBeGreaterThanOrEqual(3);
+		const vaultMaxY = Math.max(...vaultDais.children.map(c => c.position.y + (c.geometry?.parameters?.height ?? 0) / 2));
+		expect(vaultMaxY).toBeGreaterThan(1.4);
+	});
+
+	it('buildDungeon adds one landmark group per server landmark entry', () => {
+		for (const profile of ['crowded', 'open']) {
+			const layout = generateLayout(42, profile);
+			expect(layout.landmarks?.length).toBeGreaterThanOrEqual(1);
+			const scene = mockScene();
+			const { meshes } = buildDungeon(scene, layout);
+			const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType);
+			expect(landmarkGroups).toHaveLength(layout.landmarks.length);
+			const trackedFromGroups = landmarkGroups.reduce((n, g) => n + g.children.length, 0);
+			const trackedInMeshes = meshes.filter(m =>
+				landmarkGroups.some(g => g.children.includes(m))
+			).length;
+			expect(trackedInMeshes).toBe(trackedFromGroups);
+		}
+	});
+
+	it('buildDungeon on open-plaza layout emits one arena_dais landmark group', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.landmarks).toHaveLength(1);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType === 'arena_dais');
+		expect(landmarkGroups).toHaveLength(1);
+		expect(landmarkGroups[0].position.x).toBe(0);
+		expect(landmarkGroups[0].position.z).toBe(0);
+		const trackedInMeshes = meshes.filter(m =>
+			landmarkGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(landmarkGroups[0].children.length);
+	});
+
+	it('buildDungeon on rigid crowded layout emits one vault_dais landmark group', () => {
+		const layout = generateLayout(123, 'crowded', { layoutMode: 'rigid' });
+		expect(layout.landmarks).toHaveLength(1);
+		expect(layout.landmarks[0].type).toBe('vault_dais');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType === 'vault_dais');
+		expect(landmarkGroups).toHaveLength(1);
+		expect(landmarkGroups[0].position.x).toBe(layout.landmarks[0].x);
+		expect(landmarkGroups[0].position.z).toBe(layout.landmarks[0].z);
+		const trackedInMeshes = meshes.filter(m =>
+			landmarkGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(landmarkGroups[0].children.length);
+	});
+
+	it('buildWallColliders ignores landmarks (visual-only, no collision)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.landmarks.length).toBeGreaterThan(0);
+		const withLandmarks = buildWallColliders(layout);
+		const withoutLandmarks = buildWallColliders({ ...layout, landmarks: [] });
+		expect(withLandmarks).toEqual(withoutLandmarks);
+	});
+});
+
+describe('open-plaza perimeter decor', () => {
+	function minimalPlazaWithDecor(perimeterDecor) {
+		return {
+			profile: 'open-plaza',
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				role: 'start',
+				walls: [
+					{ x: 0, z: -16, length: 32, axis: 'x' },
+					{ x: 0, z: 16, length: 32, axis: 'x' },
+					{ x: -16, z: 0, length: 32, axis: 'z' },
+					{ x: 16, z: 0, length: 32, axis: 'z' },
+				],
+			}],
+			passages: [],
+			perimeterDecor,
+		};
+	}
+
+	it('buildPerimeterDecorMesh sets decorType and accent child on arena_banner', () => {
+		const materials = getProfileMaterials('open-plaza');
+		const banner = buildPerimeterDecorMesh('arena_banner', materials);
+		expect(banner).toBeInstanceOf(THREE.Group);
+		expect(banner.userData.decorType).toBe('arena_banner');
+		expect(banner.children.length).toBeGreaterThan(0);
+		expect(banner.children.some(c => c.material === materials.accent)).toBe(true);
+		const tier = buildPerimeterDecorMesh('arena_tier', materials);
+		expect(tier.userData.decorType).toBe('arena_tier');
+		expect(tier.children.length).toBeGreaterThanOrEqual(3);
+	});
+
+	it('buildDungeon emits one decor group per perimeterDecor entry', () => {
+		const decor = [
+			{ type: 'arena_banner', x: -9, z: -14, wall: 'north', yaw: 0 },
+			{ type: 'arena_tier', x: 9, z: 14, wall: 'south', yaw: Math.PI },
+			{ type: 'arena_tier', x: -14, z: -9, wall: 'west', yaw: Math.PI / 2 },
+			{ type: 'arena_banner', x: 14, z: 9, wall: 'east', yaw: -Math.PI / 2 },
+		];
+		const layout = minimalPlazaWithDecor(decor);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const decorGroups = scene.added.filter(o => o.userData?.decorType);
+		expect(decorGroups).toHaveLength(decor.length);
+		const bannerGroup = decorGroups.find(g => g.userData.decorType === 'arena_banner');
+		expect(bannerGroup.children.some(c => c.material === getProfileMaterials('open-plaza').accent)).toBe(true);
+		const trackedInMeshes = meshes.filter(m =>
+			decorGroups.some(g => g.children.includes(m))
+		).length;
+		const childCount = decorGroups.reduce((n, g) => n + g.children.length, 0);
+		expect(trackedInMeshes).toBe(childCount);
+	});
+
+	it('buildDungeon on generated open-plaza includes perimeter decor groups', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.perimeterDecor?.length).toBeGreaterThanOrEqual(8);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const decorGroups = scene.added.filter(o => o.userData?.decorType);
+		expect(decorGroups.length).toBe(layout.perimeterDecor.length);
+		const trackedInMeshes = meshes.filter(m =>
+			decorGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(
+			layout.perimeterDecor.reduce((n, d) => {
+				const g = decorGroups.find(o => o.userData.decorType === d.type
+					&& Math.abs(o.position.x - d.x) < 1e-6 && Math.abs(o.position.z - d.z) < 1e-6);
+				return n + (g ? g.children.length : 0);
+			}, 0)
+		);
+	});
+
+	it('layouts without perimeterDecor render unchanged (no decor groups)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.perimeterDecor).toBeUndefined();
+		const scene = mockScene();
+		buildDungeon(scene, layout);
+		expect(scene.added.filter(o => o.userData?.decorType)).toHaveLength(0);
+	});
+
+	it('buildWallColliders ignores perimeter decor', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const withDecor = buildWallColliders(layout);
+		const withoutDecor = buildWallColliders({ ...layout, perimeterDecor: [] });
+		expect(withDecor).toEqual(withoutDecor);
+	});
+});
+
+describe('open-plaza center ring floor markings', () => {
+	function minimalPlazaLayout(floorMarkings) {
+		return {
+			profile: 'open-plaza',
+			rooms: [{
+				x: 0,
+				z: 0,
+				width: 32,
+				depth: 32,
+				role: 'start',
+				walls: [
+					{ x: 0, z: -16, length: 32, axis: 'x' },
+					{ x: 0, z: 16, length: 32, axis: 'x' },
+					{ x: -16, z: 0, length: 32, axis: 'z' },
+					{ x: 16, z: 0, length: 32, axis: 'z' },
+				],
+			}],
+			passages: [],
+			floorMarkings,
+		};
+	}
+
+	it('buildFloorMarkingMesh returns a flat RingGeometry mesh with accent material', () => {
+		const materials = getProfileMaterials('open-plaza');
+		const marking = { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 };
+		const mesh = buildFloorMarkingMesh(marking, materials);
+		expect(mesh).toBeInstanceOf(THREE.Mesh);
+		expect(mesh.geometry).toBeInstanceOf(THREE.RingGeometry);
+		expect(mesh.material).toBe(materials.accent);
+		expect(mesh.rotation.x).toBeCloseTo(-Math.PI / 2);
+		expect(mesh.userData.floorMarkingType).toBe('center_ring');
+	});
+
+	it('buildDungeon emits one ring mesh per floor marking near DEFAULT_FLOOR_Y', () => {
+		const layout = minimalPlazaLayout([
+			{ type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
+		]);
+		const materials = getProfileMaterials('open-plaza');
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const ringMeshes = meshes.filter(m => m.userData?.floorMarkingType === 'center_ring');
+		expect(ringMeshes).toHaveLength(1);
+		expect(ringMeshes[0].material).toBe(materials.accent);
+		expect(ringMeshes[0].position.x).toBe(0);
+		expect(ringMeshes[0].position.z).toBe(0);
+		expect(ringMeshes[0].position.y).toBeCloseTo(DEFAULT_FLOOR_Y + 0.02, 5);
+	});
+
+	it('buildDungeon on generated open-plaza includes center ring marking meshes', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.floorMarkings?.length).toBeGreaterThanOrEqual(1);
+		const { meshes } = buildDungeon(mockScene(), layout);
+		const ringMeshes = meshes.filter(m => m.userData?.floorMarkingType === 'center_ring');
+		expect(ringMeshes.length).toBe(layout.floorMarkings.length);
+	});
+
+	it('layouts without floorMarkings render unchanged (no ring meshes)', () => {
+		const layout = generateLayout(42, 'crowded');
+		expect(layout.floorMarkings).toBeUndefined();
+		const { meshes } = buildDungeon(mockScene(), layout);
+		expect(meshes.filter(m => m.userData?.floorMarkingType === 'center_ring')).toHaveLength(0);
+	});
+
+	it('buildWallColliders ignores floor markings', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		const withMarkings = buildWallColliders(layout);
+		const withoutMarkings = buildWallColliders({ ...layout, floorMarkings: [] });
+		expect(withMarkings).toEqual(withoutMarkings);
 	});
 });

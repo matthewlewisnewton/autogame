@@ -63,6 +63,70 @@ describe('formatObjectiveSummary()', () => {
 			'Survive 10 hostiles (2 minibosses)',
 		);
 	});
+
+	it('summarizes stage-boss quests with trial warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 4 },
+			}),
+		).toBe('Defeat the trial warden and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the trial warden');
+	});
+
+	it('summarizes stage-boss quests with annex overseer copy for vault encounters', () => {
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'annex_overseer', addCount: 4 },
+			}),
+		).toBe('Defeat the annex overseer and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'annex_overseer', addCount: 0 },
+			}),
+		).toBe('Defeat the annex overseer');
+	});
+
+	it('summarizes spire_ascent stage-boss quests with summit warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				id: 'spire_ascent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 5 },
+			}),
+		).toBe('Defeat the summit warden and 5 supports');
+		expect(
+			formatObjectiveSummary({
+				questId: 'spire_ascent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the summit warden');
+	});
+
+	it('summarizes canyon_descent stage-boss quests with canyon warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				questId: 'canyon_descent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 4 },
+			}),
+		).toBe('Defeat the canyon warden and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				questId: 'canyon_descent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the canyon warden');
+	});
 });
 
 describe('formatRewardSummary()', () => {

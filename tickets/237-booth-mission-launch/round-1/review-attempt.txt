@@ -1,0 +1,9 @@
+Completed the senior review.
+
+Wrote:
+- `tickets/237-booth-mission-launch/round-1/review.md`
+- `tickets/237-booth-mission-launch/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`
+
+Reason: the captured run is not valid (`metrics.json` has `"ok": false` and the browser capture hit `ERR_CONNECTION_REFUSED`). No `nits.md` was created because I didn’t identify separate non-blocking cleanup items.

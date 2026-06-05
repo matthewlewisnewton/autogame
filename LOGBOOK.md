@@ -4119,10 +4119,6 @@ PASS. The implementation preserves the documented lobby/dungeon loop and does no
 
 PASS. This ticket did not add or modify any debug-scenario implementation. Existing debug-scenario code remains gated through the localhost-only `?debugScenario=` path and is not part of normal gameplay.
 
-## Remaining gaps
-
-None.
-
 ## v0.233 — 276-socketHandlers-extract-run-and-cleanup  (2026-06-05 03:10:46)
 
 `grep "socket.on("` over `game/server/index.js` returns **nothing** — the connection
@@ -4167,9 +4163,670 @@ None. All acceptance criteria are satisfied and the captured run is clean.
 
 ---
 
+## v0.236 — 233-booth-interaction-primitive  (2026-06-05 03:44:18)
+
+The captured game run is healthy. `metrics.json` reports `"ok": true`, includes a normal lobby-to-gameplay smoke capture, and has `pageerrors: []`. `console.log` contains only Vite connection messages and scene initialization, with no `pageerror` or `[fatal]` entries from game code. Server/client logs show the dev servers started and the two-player capture completed; the only client warnings are benign THREE.Clock deprecation warnings.
+
+## Acceptance criteria findings
+
+1. Interaction-zone primitive: PASS. The implementation adds a shared `findBoothInRange()` primitive with a bounded booth radius and uses it on the server in `boothInteract` to validate the current lobby phase, booth id, and authoritative player position before emitting `{ boothId, action: boothId }`. This satisfies proximity detection at booth anchors and named action dispatch without trusting the client.
+
+2. Client prompt when in range: PASS. The renderer recomputes the current hub booth each frame from the hub layout anchors, clears it outside the hub, and notifies `main.js` on enter/exit transitions. `boothPrompt.js` shows a named prompt for known booth ids, hides it out of range, and supports both the interact key and prompt click as dispatch paths.
+
+3. Test coverage for zone enter/exit and action dispatch: PASS. `server/test/boothZones.test.js` covers zone enter, zone exit, nearest-booth behavior, malformed inputs, successful `boothAction`, and rejection paths. `client/test/boothPrompt.test.js` covers prompt enter/exit, clearing outside hub layouts, interact emit/no-op behavior, and the `booth:action` hook. The captured `coverage.log` reports 65 test files and 1359 tests passing.
+
+## Design and regression check
+
+The change fits the design: booth interactions live in the hub/lobby layer and do not alter the dungeon/combat loop. The foundational requirements still hold in the captured run: the 3D scene initializes, both clients connect over WebSockets, two players enter gameplay, movement works, and the run UI remains functional.
+
+No development debug scenario was added or changed for this ticket, so the debug-scenario shortcut checks do not apply.
+
+## Remaining gaps
+
+None.
+
+## v0.237 — 249-rooms-distinctness-identity  (2026-06-05 04:10:22)
+
+**1-2 landmark props per profile: PASS.** `game/server/dungeon.js` places deterministic profile-specific landmarks for `crowded` (`reactor_coil`, `pipe_stack`) and `open` (`sand_spire`, `sun_arch`) in non-start rooms while avoiding cover, hazards, and doorway clear zones. `game/client/dungeon.js` renders each landmark as a composed visual prop and keeps it visual-only, so it does not introduce collision regressions.
+
+**Differentiate crowded vs default structurally: PASS.** The `crowded` profile uses tighter spacing, more rooms, and deterministic interior cover in combat rooms. Cover placement rejects doorway blockers, overlaps, and partitions, then becomes server/client wall collision, which gives the crowded profile a materially different play space rather than only a palette swap.
+
+**Hazards/verticality for the open profile: PASS.** `crystal_rescue` is wired to the normal `open` profile, and normal deployment goes through `applyLayoutForQuest()`, which generates that layout with slopes enabled. The open layout adds raised platforms, sparse cover, shallow pit visuals, and at least two ramp rooms when room count allows. The `open-verticality` debug scenario is gated by the existing debug-scenario path and mirrors the same `crystal_rescue` open layout instead of substituting an unreachable state.
+
+**Doorway markers in large rooms: PASS.** `buildDoorwayMarkers()` only marks connected passage gaps on rooms at or above the large-room threshold, uses the active profile accent material, and places markers at sampled floor height. This covers open-profile large rooms while avoiding false markers in small rooms.
+
+## Design and foundation consistency
+
+The implementation is consistent with `game/docs/design.md`: room floor geometry continues to use `floorCorners`/`sampleFloorY()`, server movement snaps player Y to the sampled floor, and the new visual geometry follows the existing layout contract. It does not regress the foundation requirements: the captured run renders a 3D scene, connects through the server/client architecture, shows multiplayer state, and movement/dodge updates remain live.
+
+## Code quality and validation
+
+The implementation is cohesive and covered by focused server/client tests for palette resolution, profile structure, crowded cover reachability/collision, open platforms/hazards, doorway markers, landmarks, and traversability across seeds. The provided coverage run reports `68` test files and `1461` tests passing.
+
+## Remaining gaps
+
+None.
+
+## v0.238 — 246-spire-tower-identity  (2026-06-05 04:28:30)
+
+### Optional mid-tier edge hazards
+
+PASS. The implementation adds edge hazard strips only to middle combat tiers, renders them as emissive warning strips, and applies server-side chip damage plus a snap-back toward the safe tier interior during normal movement simulation. Tests cover hazard placement, rendering, damage cooldown, and non-regression of reachability.
+
+### Debug scenarios
+
+PASS. New spire shortcuts are URL/debug entry points only: the client only auto-requests `?debugScenario=...` from localhost-style URLs, and the server rejects debug scenarios in production unless explicitly enabled. The shortcuts reuse `generateLayout(seed, 'spire-ascent')` or the real `spire_ascent` quest path, rebuild movement/collider state, and do not replace the normal gameplay path because `spire_ascent` is present in the normal quest list.
+
+### Design and requirements consistency
+
+PASS. The work remains consistent with the dungeon/core-loop design: spire-ascent is a quest-selectable dungeon layout, movement still follows server-sampled floor heights, and the multiplayer client/server loop is intact. The capture confirms two connected players, lobby-to-playing transition, rendered canvas, movement, and active HUD state, satisfying the foundational graphics, websocket, player visualization, and movement requirements.
+
+### Tests and coverage visibility
+
+PASS. `coverage.log` reports all tests passing: 74 test files and 1479 tests. Coverage thresholds are disabled; the visible report shows broad existing coverage plus focused spire layout, rendering, atmosphere, hazard, and proxy-readiness tests.
+
+## Remaining gaps
+
+None.
+
+## v0.244 — 232-hub-shared-presence  (2026-06-05 05:33:33)
+
+The captured run is healthy. `metrics.json` reports `"ok": true`, the servers started, gameplay reached `phase: "playing"` with two players, and `pageerrors` is empty. `console.log` has two non-fatal 409 resource lines but no `pageerror` or `[fatal]` entries from game code. The capture used the fallback full-flow smoke plan; it proves the build loads and the core lobby-to-game flow still runs, though it does not specifically visualize hub-presence movement.
+
+## Acceptance criteria findings
+
+1. Party-mates' avatars render and move live in the shared hub with cosmetics: satisfied. The server builds presence entries from live lobby players with position, rotation, username, connection state, and backfilled cosmetics. Lobby ticks sync movement into `lobby.hubPresence`, and the client applies `hubPresence` snapshots/updates into `gameState.players`; the renderer then builds/rebuilds remote avatar meshes from cosmetic signatures and moves them from broadcast coordinates. Tests cover remote mesh creation, movement, cosmetic changes, and removed-player disposal.
+
+2. Presence broadcast is per-lobby-scoped and structured for future culling: satisfied. `createLobby()` owns a `hubPresence` object, broadcasts target `io.to(lobby.id)`, and payloads include `lobbyId`, `schemaVersion`, `entries`, and `revision`. There is no global hub-presence store, and the per-entry map is a reasonable base for later per-player filtering.
+
+3. Join/leave updates presence correctly: satisfied. `lobbyJoined` includes a full lobby-phase `hubPresence` snapshot for the joining player. Existing members receive `hubPresenceUpdate` on join/reconnect, and leave, soft-disconnect, and eviction paths sync the lobby snapshot and include `removedPlayerIds` so clients can remove stale avatars.
+
+4. Tests: satisfied. The latest coverage run passed: 59 test files, 1223 tests. The new coverage includes server hub-presence state tests, socket broadcast tests, end-to-end cosmetic/presence integration tests, and client avatar rendering tests. Coverage thresholds were disabled as requested visibility only.
+
+## Design and regression check
+
+The implementation is consistent with the lobby-first multiplayer design in `game/docs/design.md` and `game/docs/lobbies.md`: players still authenticate, create/join a lobby, ready up, and enter a dungeon together. It does not regress the foundation requirements for 3D rendering, server-client WebSocket connection, player visualization, or movement synchronization. The ticket did not add or change a development debug scenario; existing debug URL handling remains gated to localhost-style hosts and is not part of normal gameplay.
+
+## v0.243 — 236-booth-deck-terminal  (2026-06-05 05:10:08)
+
+   Pass. The hook is parsed from the URL, is gated to `localhost`, `127.0.0.1`, and `::1`, and opens only once after a lobby-phase join. It reaches the same `openDeckBooth` end state as the normal booth interaction, so it is a QA shortcut rather than an alternate gameplay implementation.
+
+3. 2D deck editor still works.
+   Pass. The implementation reuses the existing deck editor DOM and `renderDeckEditor` behavior. The capture shows the regular lobby and deployment flow still works, and the tests exercise the existing add-button path through the deck editor.
+
+4. Test.
+   Pass. `coverage.log` reports 59 test files and 1210 tests passing. Added tests cover booth opening, `deckAddCard` emission, debug-hook gating, socket handler fault wrapping, and the ready-to-deploy server resilience path.
+
+## Design and foundation consistency
+
+The change is consistent with the design document's lobby flow: players manage decks in the lobby before readying for a dungeon run. The booth interaction remains server-authoritative for normal gameplay, so normal players must still be in range of the deck booth. The captured run also preserves the foundation requirements: Three.js renders, the client connects to the server, multiplayer state is visible, and movement/deployment continue to work.
+
+## Code quality
+
+No blocking code-quality issue found. The deck booth behavior is small and testable, normal and debug paths share the same editor opener, and the capture logs do not show runtime exceptions. The broad server resilience wrappers are worth tightening later, but they did not mask any observed capture error and are covered by targeted tests.
+
+## v0.242 — 237-booth-mission-launch  (2026-06-05 05:01:50)
+
+### Launch booth readies up and starts the run
+PASS. The Launch Bay booth path uses the existing booth primitive: renderer proximity emits `boothInteract`, the server validates the player is in the hub/lobby and in range, then returns `boothAction`. The client listens for the launch booth action and calls `launchBoothReadyUp()`, which sets the shared ready flag and emits the same `playerReady(true)` socket event as the 2D Ready button. Server-side `playerReady` still validates quest tier and deck state, broadcasts lobby readiness, and calls `checkAllReady()`, which emits `startGame` once all connected party members are ready.
+
+### `?booth=launch` debug hook
+PASS. The debug hook is gated to the URL parameter and only runs from `lobbyJoined` while the server state is still in the lobby phase. It calls the same `launchBoothReadyUp()` path as the physical booth, so it does not introduce a separate start-game socket event or bypass server validation. The same end state remains reachable through normal gameplay by walking to the hub Launch Bay booth and using the booth interaction.
+
+### 2D ready/launch still works
+PASS. The existing `#ready-btn` handler remains wired to toggle `isReady`, emit `playerReady`, and update the button role. The launch booth path shares state with that button and is idempotent when already ready, so it does not desync the 2D ready UI. The round-2 capture also reaches `phase: "playing"` with two players, visible combat HUD, movement, and card hand after the ready transition.
+
+### Test coverage
+PASS. `coverage.log` shows the client suite passing, including `client/test/launchBooth.test.js` with 9 tests, and the full visible run lists 185 passing tests. The launch-booth helper tests cover launch booth detection, `?booth=launch` parsing, idempotent ready-up gating, and the observable launch-ready event name.
+
+### Design and foundation consistency
+PASS. The implementation preserves the documented lobby-to-dungeon loop: players remain in the hub lobby, ready through the same party readiness gate, and enter the dungeon through the existing `startGame` transition. It does not weaken the foundation requirements for rendering, WebSocket connectivity, multiplayer presence, or synchronized movement; the capture proves the client/server connection, hub-to-run transition, movement, and gameplay HUD remain functional.
+
+## v0.241 — 239-booth-character-editor  (2026-06-05 04:44:53)
+
+2. **Walking up opens it as an in-hub screen.** PASS. The normal path is present end to end: the generated hub includes a `character` booth anchor, the renderer detects nearby booth zones and emits `boothInteract`, the server validates lobby phase plus authoritative proximity, and `main.js` opens the character booth only for `boothId === 'character'` while in lobby phase. This is consistent with the existing hub lobby flow and does not bypass server validation for normal play.
+
+3. **`?booth=character` debug hook.** PASS. `main.js` reads the `booth` query param, gates it to localhost/loopback using the existing debug allowance check, and opens the booth once after the hub lobby scene is entered. The URL parameter is the only debug entry point, and the same end state remains reachable through the normal proximity/interact path.
+
+4. **Edits apply to the avatar.** PASS. Saving from the booth calls the existing `patchProfile({ cosmetic })` API, then resyncs from the cached account cosmetic and updates `gameState.players[myId].cosmetic`, which is the same live avatar update path used by the Account character editor. Hat unlocks are also wired to rebuild both account and booth hat lists after the authoritative server event.
+
+5. **Test.** PASS. `coverage.log` shows `client/test/characterBooth.test.js` running successfully, including overlay open/close behavior, save-to-avatar syncing, normal `booth:action` handling, lobby-phase gating, and the localhost `?booth=character` one-shot hook. The full captured test set reports 184 passing tests.
+
+## Design and foundation consistency
+
+PASS. The change stays within the design's lobby customization space and does not alter dungeon combat, card flow, multiplayer synchronization, movement, or WebSocket connection fundamentals. The requirements baseline remains covered by the captured run: 3D rendering, client/server connection, multiplayer presence, movement, and gameplay transition all still function.
+
+## Code quality
+
+PASS. The implementation is scoped and modular: shared cosmetic UI behavior was extracted into `cosmeticForm.js`, the booth overlay owns only booth-specific lifecycle, and the existing `cosmetic-preview.js` remains the preview renderer. I did not find dead code, broken imports, ungated debug behavior, or console/page errors attributable to this ticket.
+
+## v0.240 — 270-difficulty-scale-with-player-count  (2026-06-05 04:32:37)
+
+### Enemy damage tracks live count up and down
+
+Pass. `game/server/simulation.js` applies the enemy-damage factor at strike resolution for player-directed enemy attacks, leaving stored enemy `attackDamage` unchanged and allowing later joins/leaves to affect subsequent hits. `game/server/test/enemy_damage_scaling.test.js` verifies baseline counts, scaled counts, live join/leave changes, and no mutation of the stored enemy stat.
+
+### Miniboss HP scales at spawn and is not retroactive
+
+Pass. `game/server/progression.js` scales miniboss `hp` and `maxHp` inside `spawnEnemy()` only when the enemy is created, using the current party count. Existing minibosses are not revisited when the party later changes. `game/server/test/miniboss_hp_scaling.test.js` covers baseline and scaled spawns, non-miniboss enemies remaining unchanged, and join/leave changes not retroactively altering existing minibosses.
+
+### Count helper stays correct under churn
+
+Pass. `game/server/config.js` exposes `runPlayerCount()` as the single helper all three systems read, clamps at `MAX_PLAYERS`, and the config test suite verifies count increases and decreases as players are added and removed. This is consistent with the lobby leave path deleting players from `gameState.players` and the drop-in path adding them.
+
+## Design and regression check
+
+The implementation is server-side only and does not alter the documented lobby/dungeon/deck loop, rendering, movement synchronization, or socket architecture in `CONTEXT.md`, `game/docs/design.md`, and `game/docs/requirements.md`. It does not add or change any debug scenario URL shortcut, so the debug-scenario review criteria are not applicable.
+
+## Remaining gaps
+
+No blocking gaps found.
+
+## v0.246 — 235-booth-shop  (2026-06-05 05:37:49)
+
+   - PASS. `registerShopBoothListener()` opens the existing lobby card shop via `showGameLobby()`, `setLobbyTab('shop')`, and `renderCardShop()`, so it reuses the same 2D shop panel rather than introducing a parallel UI.
+   - PASS. Buy and sell continue through the existing socket events and progression functions. `buyShopCard` now has a client button listener and a lobby-gated server handler that refreshes offers and emits `cardInventoryUpdate`; `sellCard` remains lobby-gated and updates inventory/currency.
+
+2. `?booth=shop` hook.
+   - PASS. The hook is localhost-only, one-shot, and runs from the lobby/hub update path. It uses the same `openShopBooth()` path as booth interaction and does not bypass server-side buy/sell validation or persistence.
+
+3. 2D shop still works.
+   - PASS. The existing shop tab click handler still calls `setLobbyTab('shop')`; the shared `renderCardShop()` and buy/sell socket paths are used by both the 2D tab and the booth shortcut. Lobby updates also refresh `shopOffer` while the shop tab is open.
+
+4. Test.
+   - PASS. `coverage.log` shows all visible Vitest coverage checks passing: 7 test files, 198 tests. The added `client/test/boothShop.test.js` covers booth opening plus buy/sell emits, and `client/test/boothShopDebug.test.js` covers localhost gating and one-shot behavior.
+
+## Design and foundation consistency
+
+PASS. The change fits the documented lobby economy loop: players can buy and sell cards back in the lobby, while dungeon rendering, WebSocket connection, player visualization, and movement synchronization remain intact in the captured run. No regression to the 3D/server-client foundation was found.
+
+## Remaining gaps
+
+None.
+
+## v0.247 — 234-booth-quest-counter  (2026-06-05 05:38:50)
+
+
+### `selectQuest` works from the booth-opened panel
+PASS. `openQuestPanel()` only scrolls `#quest-board-wrapper` into view and does not create a second quest UI. The existing `renderQuestBoardState()` callback still emits `socket.emit('selectQuest', { questId, tier: tier ?? 1 })`, so selecting from the visible quest board uses the same flow as before.
+
+### `?booth=quest` debug hook
+PASS. `requestBoothDebugOpen()` now accepts `quest` alongside `character`, keeps the existing localhost gate (`debugScenarioAllowed`), requires lobby phase, and uses `boothDebugRequested` to fire at most once per session. It opens the same `openQuestPanel()` path rather than bypassing server quest-selection behavior. No development debug scenario was added, so there is no scenario shortcut that could replace normal gameplay.
+
+### 2D quest menu remains intact
+PASS. The always-present inline quest board remains the selection surface, and the implementation only focuses it. No server, quest data, or quest board rendering changes were made.
+
+### Tests and coverage
+PASS. `coverage.log` shows the captured verification run passed: 5 test files, 198 tests. The new `game/client/test/questBooth.test.js` covers the pure helper, event listener behavior, non-lobby rejection, localhost debug gating, one-shot behavior, and unchanged `?booth=character`/absent-param behavior.
+
+### Design and foundation consistency
+PASS. The change stays within the documented lobby flow where players manage decks and select quests before deployment. It does not regress the foundation requirements for 3D rendering, socket connection, multiplayer visualization, or movement synchronization; the captured run exercised lobby, deployment, movement, and gameplay without runtime errors.
+
+## Remaining gaps
+
+None.
+
+
+## v0.248 — 242-hub-polish  (2026-06-05 06:12:09)
+
+1. Booths labeled/signed: PASS. The live implementation adds `game/client/boothSigns.js` and wires it through `buildDungeon()` only when `layout.profile === 'hub'` and `layout.boothAnchors` exists. It builds one kiosk plus one floating label sprite for each known generated hub booth anchor, using the same display names as the interaction prompts. The focused unit tests cover the generated six-anchor hub, label text, positioning, invalid anchors, and missing anchors. The latest `01-initial.png` capture also shows visible hub labels including `Shop` and `Launch Bay`.
+
+2. Interaction prompts: PASS. The existing prompt path is still intact and normal-gameplay gated by actual hub proximity, not a debug shortcut: `renderer.js` computes the current booth only for hub layouts with booth anchors, `main.js` wires the transition callback into `updateBoothPrompt()`, and the interact key/click path emits `boothInteract` for the in-range booth. Existing tests cover prompt text, enter/exit visibility, non-hub clearing, and interact emission.
+
+3. Nameplates over other players: PASS. The live renderer creates canvas-sprite nameplates from remote player usernames, positions them above remote avatars each frame, and disposes them when players leave. Hub presence tests cover building and moving remote lobby avatars through normal hub presence updates; the captured two-player run also shows player labels in the rendered scene without runtime errors.
+
+4. Visual review: PASS. The latest rescue capture is a fallback smoke plan rather than a hub-specific full booth walkthrough, but it includes a hub lobby screenshot with visible booth labels and then proves the game transitions into active dungeon play. Combined with the previously passing visual QA for the sub-tickets and the live code/tests above, I do not see a blocking visual or integration gap.
+
+## Design and requirements consistency
+
+PASS. The changes stay within the lobby/squad hub part of the design loop and do not alter dungeon objectives, combat, loot, persistence, or networking invariants. The foundation requirements remain satisfied by the clean capture: the 3D scene renders, the client connects to the server, players are visualized, and movement/deploy flow continues to work.
+
+## Code quality
+
+PASS. The new signage code is scoped to hub layouts, handles missing or unknown anchors safely, avoids per-rebuild texture churn by caching sign materials, and is covered by focused tests. No debug scenario was added or changed for this ticket. `coverage.log` was not present in the rescue-review directory, so there was no changed-file coverage report to inspect.
+
+## v0.249 — 240-paid-appearance-change  (2026-06-05 06:37:15)
+
+
+### Price in config
+PASS. The appearance fee is configured as `APPEARANCE_CHANGE_COST` on both server and client config paths and is used by the server charge helper and client confirm/cost label.
+
+### Client confirm dialog
+PASS. The character booth shows a paid-save confirmation only when body/color/model/proportion appearance fields differ from the saved account cosmetic. Hat-only changes skip the paid confirmation and remain free. Connected booth saves emit `applyAppearanceChange` instead of the legacy profile PATCH path, and socket errors re-enable the save UI with a visible message.
+
+### Tests, insufficient funds, and crash safety
+PASS. The new server tests cover successful paid charge, insufficient funds, hat-only free changes, profile-route blocking for live lobby appearance edits, persistence ordering, currency-save failure, and simulated crash/update failure cases. Client tests cover the confirmation flow, socket emission, error recovery, cost label, and hat-only behavior. The recorded coverage run passed: 91 test files, 1569 tests.
+
+### Design and requirements consistency
+PASS. The implementation fits the existing lobby/economy loop in `game/docs/design.md`: booth appearance edits use persistent account cosmetics and currency without disturbing dungeon combat, lobby flow, WebSocket connectivity, or movement synchronization. The smoke capture confirms no regression to the foundational requirements.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `?debugScenario=` shortcut. The capture used normal auth/lobby/ready/gameplay flow.
+
+## Remaining gaps
+
+None.
+
+## v0.250 — 247-plaza-arena-identity  (2026-06-05 06:43:14)
+
+### Varied Cover Types And Real Platform Height
+
+PASS. The plaza now has three raised platform patches with non-flat `floorCorners`, and `sampleFloorY()` returns raised heights on them. Cover includes pillars, broken walls, barricades, and crate stacks, with AABB colliders matching the server/player collision footprint. Spawn and loot helpers use cover-aware placement for open-floor layouts, so entities do not appear inside cover.
+
+### Verticality / Hazards
+
+PASS. The plaza includes shallow pit hazards outside the spawn-clear zone and clear of cover/platform footprints. They render as visual recesses and intentionally do not affect collision or `sampleFloorY()`, matching the ticket’s optional hazards scope.
+
+### Design And Foundation Consistency
+
+PASS. The changes stay within the existing quest/layout architecture: `arena_trials` and `endless_siege` select `layoutProfile: 'open-plaza'`, `applyLayoutForQuest()` routes that through `generateLayout()`, and existing multiplayer movement, WebSocket connection, and 3D rendering foundations remain intact. No development debug scenario was added or changed for this ticket.
+
+### Code Quality And Tests
+
+PASS. The implementation is deterministic, scoped to dungeon generation/rendering/theme data, and includes server/client tests for generated layout shape, decor/marking rendering, collider behavior, platform sampling, hazards, and open-plaza entity spawning. The latest coverage run reports 33 test files passed and 960 tests passed.
+
+## Remaining gaps
+
+No blocking gaps.
+
+## v0.251 — 251-enemy-display-metadata  (2026-06-05 07:12:07)
+
+- Minimal, focused diff (~150 lines across 2 commits).
+- Copy is thematic and distinct per type/variant.
+- `surfacedStats` selections are sensible for each role (spawner includes spawn keys; miniboss includes `attackRange`; frenzied surfaces enrage multipliers).
+- No dead code, no client-side leakage, no new console errors.
+- `ENEMY_DEFS` remains exported from `simulation.js` / `index.js` for server-side and test consumers — appropriate for the stated prerequisite role.
+
+---
+
+## Debug scenarios
+
+**Finding: N/A — no new or modified debug scenarios**
+
+This ticket did not add or change any `?debugScenario=` shortcuts. No gating or normal-path bypass review required.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are met; the game starts and runs cleanly in capture; tests pass.
+
+## v0.252 — 245-canyon-verticality-identity  (2026-06-05 07:13:32)
+
+### Optional cliff hazard band
+
+Satisfied. The layout emits `edgeHazards` along plateau cliff segments between ramp mouths, plus side flanks when central ramps consume the south rim. Server movement detects the hazard band for `sunken-canyon`, applies chip damage, and snaps players back toward safe plateau interior. Client rendering draws the hazard strips with emissive warning materials. Tests cover hazard placement, reachability preservation, rendering, and movement response.
+
+### Debug scenario gating and normal reachability
+
+Satisfied. The added `sunken-canyon-stage` shortcut is reachable only through the debug-scenario socket path, and `isDebugScenarioAllowed` gates it to explicit debug env or loopback non-production addresses. The same end-state is reachable through normal gameplay via the `canyon_descent` quest, whose tier uses `layoutProfile: 'sunken-canyon'` and flows through `applyLayoutForQuest`, normal run start, spawn, collision, and enemy spawning. The shortcut reuses `generateLayout(seed, 'sunken-canyon')`, recomputes bounds/walkable AABBs/colliders, and emits the standard quest update; it does not bypass persistent progression or combat invariants beyond providing a QA jump into an otherwise normal layout state.
+
+## Design and requirements consistency
+
+The implementation fits the design document's modular dungeon and floor-height model: generated rooms carry `floorCorners`, server movement samples floor height with `sampleFloorY`, and client rendering uses the same layout data for floors, walls, cover, and landmarks. It does not regress the foundation requirements: the captured game renders a 3D scene, connects through the server-client architecture, shows multiplayer state, and movement continues to update during the smoke flow.
+
+## Code quality and verification
+
+The implementation is cohesive and covered by focused tests across server layout generation, client rendering/materials, movement hazard handling, camera height selection, and debug-gate behavior. The coverage run completed with 93 test files and 1742 tests passing. Coverage logs include unrelated expected/handled model-loading messages from tests and a simulated persistence failure, not ticket-blocking runtime defects.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+
+## v0.253 — 248-rooms-objective-hud-and-default-profile-bugs  (2026-06-05 07:38:35)
+
+| Does not weaken invariants | Acceptable — still runs deck validation and full run start; only patches `collectedItems` on an active `collect_items` run for HUD QA (same pattern as `quest-objective-near-complete`). Does not skip net replication or persistence paths used in normal play. |
+
+No blocking issues with the debug shortcut.
+
+---
+
+## Code quality
+
+- Changes are minimal and follow existing patterns (theme strings, `LAYOUT_PROFILES` structure, debug scenario conventions).
+- No dead code introduced; the previously dead `'default'` alias is now wired correctly.
+- No browser page errors or console fatals in capture.
+
+---
+
+## Remaining gaps
+
+None. Both acceptance criteria are met with targeted tests; the captured run proves the game loads and plays cleanly.
+
+---
+
+## v0.254 — 252-enemy-lockon-info-panel  (2026-06-05 07:55:30)
+
+### Hides when unlocked
+
+PASS. The renderer only supplies an enemy to the panel when the current phase is `playing` and lock-on is active. It refreshes the panel when leaving gameplay, when the local player is dead, and each frame after lock-on state updates; `syncLockOnInfoPanel()` hides the panel when no model can be built. Focused tests cover the unlocked/missing-target hide path.
+
+### Test coverage
+
+PASS. The ticket adds focused unit/integration coverage for the server display catalog and the client panel model/DOM sync. `coverage.log` shows the full Vitest run passed: 82 test files and 1351 tests passed. The lock-on panel test file specifically passed 9 tests.
+
+## Design and requirements consistency
+
+PASS. The change is HUD-only and does not alter the core lobby/dungeon/combat loop, server-client architecture, rendering startup, movement synchronization, or multiplayer state replication described in `game/docs/design.md` and `game/docs/requirements.md`. The captured smoke flow confirms the game still reaches lobby and active gameplay with two connected players, canvas rendering, movement, enemies, and HUD updates.
+
+## Code quality
+
+PASS. The implementation keeps display metadata centralized on the server, uses a small client-side formatter/model builder, and wires the panel through existing renderer lock-on state instead of adding a parallel targeting system. No debug scenario was added or changed for this ticket, so the debug-scenario shortcut checks are not applicable.
+
+## Remaining gaps
+
+None.
+
+## v0.255 — 254-level2-mechanics-and-reference  (2026-06-05 07:58:43)
+
+Satisfied. `coverage.log` shows the full suite passed: 79 files and 1416 tests. New targeted coverage includes `variant_rate_by_quest_tier.test.js`, open-plaza rigid-mode cases in `dungeon.test.js`, `arena_trials_tier2.test.js`, `quests.test.js`, `debug-scenarios.test.js`, and harness proxy readiness tests.
+
+## Design and Requirements Consistency
+
+The implementation stays within the documented lobby/deploy/dungeon loop: Tier-2 quests are surfaced through the quest board, unlock after clearing Tier 1, and deploy through the same run creation, objective, layout, enemy spawn, movement, and persistence systems as normal gameplay. The captured run confirms the foundation requirements remain intact: 3D scene renders, client connects to the server, players are represented, and movement updates in a running multiplayer session.
+
+## Debug Scenario Review
+
+This ticket adds `?debugScenario=arena-trials-tier-2`. It is properly gated behind the existing debug-scenario socket path: the client only requests it from a localhost URL parameter, and the server rejects debug scenarios in production unless explicitly enabled. Normal gameplay does not call this scenario.
+
+The same end state is reachable normally by clearing `arena_trials` Tier 1, selecting the newly unlocked Tier 2 quest, and readying/deploying. The shortcut sets `selectedQuestId`, `selectedQuestTier`, and the Tier-2 layout before `enterPlayingPhase()`, so `startDungeonRun()` snapshots the correct quest/tier metadata. It does not bypass combat or objective invariants after entry: enemies are spawned through the normal `spawnEnemies()` path, run objective sync is called, and state is broadcast through normal lobby/state update channels.
+
+## Code Quality
+
+The changed code is cohesive and uses existing quest, progression, layout, lobby, and debug-scenario patterns. The harness proxy readiness change is narrowly scoped to harness capture env and keeps normal dev proxy behavior unchanged. I did not find dead/broken code, missing exports, obvious race conditions, or console/page errors attributable to the ticket.
+
+## Remaining gaps
+
+None.
+
+## v0.256 — 267-sec-hat-equip-unlock-check  (2026-06-05 08:11:21)
+
+- `validateCosmetic` correctly remains catalog-only (ticket goal acknowledged this split).
+
+## Code quality
+
+- Defense-in-depth: unlock checked in both `lobbyHandlers` and `updateProfile` — redundant but safe; a future caller of `updateProfile` alone is still protected.
+- Tests assert persisted state, not just return codes — good coverage of the original exploit (free equip of paid hats).
+- No dead code, no new console errors, no debug scenarios added or modified by this ticket.
+
+## Debug scenarios
+
+Not in scope for this ticket. Existing debug scenarios (e.g. `avatar-wizard-hat`) remain URL-gated dev shortcuts; normal equip flow still goes through unlock + `applyAppearanceChange` / `updateProfile`.
+
+## Harness capture note
+
+Round-1 capture used the fallback full-flow smoke plan (lobby → gameplay → movement/dodge). It does not visually exercise hat customization, but the ticket acceptance criteria are server-side enforcement and automated tests — both are satisfied independently of the capture plan.
+
+## Remaining gaps
+
+None. The security fix is in place at both equip entry points, automated tests cover locked-hat rejection on profile update and lobby appearance change, the game starts and runs cleanly in capture, and vitest passes.
+
+## v0.257 — 257-level2-spire-ascent  (2026-06-05 08:22:56)
+
+### Higher variant rate
+
+PASS. Variant scaling is resolved centrally in `spawnEnemy` from the active `run.questTier` or selected tier plus the spawn room encounter tier. Tier 2 maps to a full roll tier even when encounter tier is 0, while Tier 1 remains effectively untagged. The new tests prove Tier 2 spawns tagged enemies under fixed seeds and Tier 1 stays unchanged on the same seed batch.
+
+### Spire identity
+
+PASS. The implementation keeps spire-specific shape and spawn identity: enemies spawn on walkable spire tier rooms rather than ramp connectors, bottom/top tier coverage is forced, top-tier objective/loot placement remains intact, and the spire-exclusive enemy pool continues to include spawners. The design foundation remains consistent with the documented lobby-to-dungeon flow, server-authenticated multiplayer run state, and movement/collision requirements.
+
+### Debug scenarios
+
+PASS. The added `spire-ascent-tier-2` shortcut is registered only in the debug-scenario allowlist path and is reachable through the URL/socket debug scenario flow, not normal gameplay. It mirrors the normal state by unlocking/selecting the quest tier, applying the Tier-2 layout before entering `playing`, then spawning enemies through the same `spawnEnemies`/`startDungeonRun` path so run metadata and variant rolls match deployment. The same state is reachable normally by clearing Spire Ascent Tier 1, selecting Tier 2, and readying/deploying.
+
+### Tests and coverage
+
+PASS. The recorded `coverage.log` shows the test suite passed: 77 test files and 1424 tests. Relevant coverage includes `spire_ascent_tier2.test.js`, `spire_ascent_spawn.test.js`, `debug-scenarios.test.js`, `quest_tier_gating.test.js`, `quests.test.js`, and `variant_rate_by_quest_tier.test.js`.
+
+## Remaining gaps
+
+None.
+
+## v0.258 — 263-debug-unlimited-health-godmode  (2026-06-05 08:25:20)
+
+## Code quality
+
+- Implementation is minimal and follows existing patterns (`debugScenario` handler, `debugScenarioResult` logging, harness state exposure).
+- No dead code or obvious bugs in the changed paths.
+- `window.__variantCodexKeydownHandler` refactor (remove/re-add listener) prevents duplicate handlers on hot reload — sensible.
+- Independent test run confirms no regressions in the broader suite.
+
+---
+
+## Integration notes (non-blocking)
+
+- Round-1 browser capture used the generic fallback smoke plan; probes show `debugGodmodeResult: null` because godmode was never toggled during capture. Unit/integration tests provide the functional proof; capture still validates the game runs cleanly with this code loaded.
+- Player HP decreased during capture (expected — godmode was off), confirming normal damage still works when the toggle is not engaged.
+
+---
+
+## Remaining gaps
+
+None. All acceptance criteria are fully and robustly satisfied; the captured run is clean.
+
+## v0.261 — 255-level2-rooms  (2026-06-05 09:11:14)
+
+
+### Carries rooms identity
+
+PASS. The rigid `crowded` path preserves crowded identity with combat-room cover and only crowded landmark types (`reactor_coil` / `pipe_stack`). The rigid `open` path preserves open identity with raised platforms, pit hazards, light cover, and only open landmark types (`sand_spire` / `sun_arch`). Existing slope/floor sampling and walkability foundations remain consistent with `game/docs/design.md`.
+
+### Higher variant rate
+
+PASS. Tier 2 runs use the existing quest-tier variant scaling path: `spawnEnemy` resolves `run.questTier` / selected quest tier through `resolveVariantRollTier`, so Tier 2 rolls at full variant chance while Tier 1 remains effectively untagged. The Tier 2 quest tests cover fixed-seed variant tagging for both `training_caverns` and `crystal_rescue`, and the runtime capture still shows normal Tier 1 enemies unbroken.
+
+### Debug scenarios
+
+PASS. The added `training-caverns-tier-2` and `crystal-rescue-tier-2` debug scenarios are behind the existing debug-scenario path: the browser only requests them from the localhost-only `?debugScenario=` parameter, and the server rejects unknown/disabled debug scenarios unless the debug gate allows them. Both shortcuts set quest id/tier and apply the Tier 2 layout before entering playing phase, so run metadata and variant rolls match normal deployment. The same states are reachable through normal gameplay by clearing each Tier 1 quest, unlocking Tier 2, selecting it, and deploying.
+
+### Tests and coverage visibility
+
+PASS. `coverage.log` shows the full suite passing: 79 test files and 1456 tests passed. Coverage was reported for changed files with thresholds disabled. The relevant new tests cover quest catalog/options, rigid layout determinism and identity, spawn placement, variant tagging, unlock persistence, deploy gating, and debug scenarios.
+
+## Remaining gaps
+
+None.
+
+## v0.264 — 241-free-hat-swap  (2026-06-05 09:57:44)
+
+2. Equipping verifies the hat is unlocked.
+
+PASS. Both server entry points validate the proposed hat against `backfillUnlockedHats(account.unlockedHats)` before applying it. `updateProfile()` rejects hats not unlocked for the account, and the socket `applyAppearanceChange` handler performs the same check before any currency or cosmetic mutation. Tests cover rejection of locked hats without updating live or account cosmetic.
+
+3. Test.
+
+PASS. `coverage.log` shows the vitest run completed successfully: 10 test files passed, 226 tests passed. Relevant coverage includes `apply_appearance_change.test.js`, `appearance_change_persistence.test.js`, `cosmetic_appearance.test.js`, `characterBooth.test.js`, and the new `debug-hatswap-hook.test.js`.
+
+## Debug scenario / shortcut review
+
+PASS. The new `?booth=hatswap` shortcut is only reachable through the URL parameter and only on local debug hosts. It opens the character booth in lobby phase, emits the existing `hats-unlocked` debug scenario once, and rebuilds the booth hat list when the scenario result reports unlocked hats. The server-side debug scenario gate still requires loopback or explicit debug enablement, and the scenario documents that the same owned-hat state is reachable through normal currency earning and hat unlocking. Normal gameplay can still reach the equivalent end state through the character booth plus the regular unlock/equip flow.
+
+## Design / requirements consistency
+
+PASS. The implementation stays within the existing lobby/account customization model and does not affect the 3D rendering, server-client socket architecture, multiplayer visualization, or movement synchronization requirements. No regressions were evident in the live smoke capture.
+
+## Remaining gaps
+
+None.
+
+## v0.265 — 256-level2-sunken-canyon  (2026-06-05 10:35:00)
+
+## Acceptance Criteria
+
+PASS: Canyon Tier-2 is playable and discoverable. `game/server/quests.js` defines `canyon_descent` Tier 2 with canyon-themed metadata, `unlockRequires: { questId: 'canyon_descent', tier: 1 }`, `layoutProfile: 'sunken-canyon'`, and `layoutMode: 'rigid'`; `listQuestVariants()` exposes it. Normal gameplay gates Tier 2 selection in `game/server/socketHandlers/lobbyHandlers.js` and ready-up in `game/server/socketHandlers/deckHandlers.js`, then `applyLayoutForQuest()` applies the tier-specific seed/options before deployment.
+
+PASS: The rigid layout requirement is met. `generateLayout(seed, 'sunken-canyon', { layoutMode: 'rigid' })` now threads the mode into `generateSunkenCanyon()`, pins the central ramp selection, uses ordered canyon cover, and places a fixed monolith while preserving plateau/start, canyon/treasure, ramp connectors, cliff lips, edge hazards, floor elevation drop, and reachability. Default mode still varies ramp count and seed-driven scatter, so Tier 1 behavior remains distinct.
+
+PASS: The higher Tier-2 variant rate is wired through production spawn code. `spawnEnemy()` resolves the active run/selected quest tier and combines it with room encounter tier via `resolveVariantRollTier()`, so Tier 2 canyon spawns use the full variant base chance even for encounterTier 0 rooms. The new canyon Tier-2 tests verify at least one variant under a fixed seed and null variants for Tier 1 under the same seed.
+
+PASS: Canyon identity is preserved. The sunken-canyon layout keeps plateau-to-canyon descent structure, ramp banding, canyon floor cover, cliff hazard/lip decoration, and the canyon monolith. Enemy spawning remains band-aware with plateau presence and a canyon majority, avoiding connector/ramp spawns.
+
+PASS: The debug shortcut is acceptable. `canyon-descent-tier-2` is only reachable through the existing debugScenario socket path and is registered in the debug allowlist; the socket handler still restricts debug scenarios to explicit dev/local allowance. The scenario sets the same quest/tier, applies the same Tier-2 layout before `enterPlayingPhase()`, and uses the same run metadata and spawn/variant machinery as normal deployment. The equivalent state is reachable normally by clearing Canyon Descent Tier 1, unlocking Tier 2, selecting it, and deploying.
+
+PASS: Design and foundation requirements are not regressed. The changes stay within the existing 3D multiplayer dungeon loop, preserve server-authoritative layout/run state, and keep websocket movement/gameplay foundations intact. The captured probes confirm connected multiplayer gameplay, canvas rendering, and movement/key-item smoke flow before and after the canyon layout transition.
+
+PASS: Test coverage is strong for the changed surface. `coverage.log` reports `81` test files and `1481` tests passed. Relevant coverage includes quest catalog/options, rigid canyon determinism and reachability, Tier-2 unlock/gating/deploy flows, debug scenario parity, enemy spawn banding, and variant-rate assertions.
+
+## v0.266 — 243-retire-2d-lobby-menus  (2026-06-05 11:58:29)
+
+5. Tests green.
+
+PASS. `round-2/coverage.log` reports 10 client test files passed, 227 tests passed. Coverage thresholds were disabled as expected.
+
+## Design and requirements consistency
+
+PASS. The implementation is consistent with `game/docs/design.md`: the lobby browser remains the first post-login menu, while squad lobby actions are now spatial booth interactions in the 3D hub. It also preserves the foundation requirements in `game/docs/requirements.md`: Three.js scene initialization, server-client Socket.IO connection, player representation, and movement synchronization are all exercised by the captured run.
+
+## Debug scenarios
+
+PASS. This ticket did not add a new `?debugScenario=NAME` shortcut. The changed `?booth=` shortcuts are gated to localhost and/or lobby phase as appropriate. The `?booth=hatswap` helper requests the existing `hats-unlocked` debug scenario, which remains a QA shortcut for a state normally reachable through hat unlock progression and does not bypass normal gameplay entry points.
+
+## Code quality
+
+PASS. The live code removes obsolete DOM lookups and tests around retired buttons/tabs, keeps launch ready-up idempotent, and uses existing booth dispatch/socket validation rather than adding parallel events. Server-side booth interaction is still lobby-phase and proximity validated. I found no dead entry point that lets normal gameplay open the retired 2D menus.
+
+## Remaining gaps
+
+None.
+
+## v0.267 — 213-net-shared-event-name-constants  (2026-06-05 12:02:29)
+
+2. Replace literals incrementally: satisfied. The changed live code routes production server emits/listeners and client listeners/emits through the shared constants across `game/server/index.js`, `game/server/progression.js`, `game/server/cardEffects.js`, `game/server/keyItemEffects.js`, `game/server/debugScenarios.js`, `game/server/hubPresence.js`, `game/server/socketHandlers/*.js`, `game/client/main.js`, `game/client/renderer.js`, and `game/client/characterBooth.js`. Critical dynamic paths such as run completion/failure now select between `SERVER_TO_CLIENT.RUN_COMPLETE` and `SERVER_TO_CLIENT.RUN_FAILED`, preserving the existing wire protocol.
+
+3. Add a drift guard test: satisfied. `game/server/test/events.test.js` validates the registry shape and critical pairs, and `game/server/test/socket_events_drift.test.js` scans production server/client socket paths for uncatalogued literal Socket.IO events, including `socket.on`, `socket.emit`, `s.on`, `socket.once`, `socket.off`, and `socketRef.emit`. Coverage log shows both new tests ran, with the full server suite passing: 91 test files and 1420 tests.
+
+## Design and requirements fit
+
+The change is infrastructure-only for Socket.IO event naming and does not alter the documented lobby, dungeon, combat, loot, movement, or multiplayer foundations. The captured run still demonstrates login/lobby, ready transition, WebSocket connectivity, 3D rendering, movement, replicated gameplay state, and key-item HUD behavior, so the foundation in `game/docs/requirements.md` remains intact.
+
+## Code quality
+
+The implementation is appropriately mechanical and conservative. The shared catalog keeps existing wire strings stable, avoids protocol renames, and the server/client import choices match their module systems. I did not find dead or broken production socket code, missing catalog entries for changed production call sites, or runtime console defects. `git diff --check` is clean.
+
+## Debug scenarios
+
+No new development debug scenario was introduced. Existing debug scenario event names were converted to shared constants only; the URL/query-param gated debug path and server-side `allowDebugScenario` checks remain in place.
+
+## Remaining gaps
+
+None.
+
+## v0.268 — 258-miniboss-encounter-framework  (2026-06-05 12:12:34)
+
+### Per-player HP scaling
+
+PASS. Miniboss HP is scaled centrally in `spawnEnemy()` using live party size at spawn time, with the existing baseline of no scaling for 1-4 players and increased HP for larger parties. Tests cover the stage-boss path and confirm regular adds stay at baseline HP.
+
+### Tests
+
+PASS. `coverage.log` shows 89 test files and 1645 tests passed. The changed behavior has focused coverage for encounter state, stage-boss objective spawning, encounter triggers/locks, boss defeat, Arena Trials Tier 2 wiring, unlock flow, quest board display, and the new debug scenarios.
+
+## Design and requirements consistency
+
+PASS. The implementation fits the documented lobby-to-dungeon core loop and keeps the game server-authoritative: quest selection is still lobby-gated, Tier 2 selection is locked behind persisted account unlocks, run state is created server-side, enemy spawning and objective completion happen on the server, and clients receive state updates. It does not regress the foundation requirements: the captured run renders 3D, connects over WebSockets, shows multiplayer state, and synchronizes movement.
+
+## Debug scenarios
+
+PASS. This ticket added `arena-trials-tier-2`, `stage-boss-dormant`, and `stage-boss-active` shortcuts. They are only reachable through the existing debug scenario socket path, which is gated by `isDebugScenarioAllowed()` and requires the URL/debug harness path to request a named scenario. Normal gameplay reaches the same Tier 2 stage-boss state by clearing Arena Trials Tier 1, unlocking Tier 2, selecting it in the lobby, and deploying. The debug scenarios reuse `applyLayoutForQuest()`, `enterPlayingPhase()`, `spawnEnemies()`, and `startDungeonRun()` so they exercise the same server-side quest, spawn, run, and encounter invariants; `stage-boss-active` only pre-clears adds and lowers boss HP after creating the normal run for QA convenience.
+
+## v0.272 — 259-miniboss-rooms  (2026-06-05 13:24:21)
+
+### Trigger, Defeat Completion, and Rewards
+
+PASS. The stage-boss encounter flow is wired through the shared encounter/objective framework: the boss starts dormant, activates and locks when players reach the encounter radius or clear supports, clears only when the active boss dies, and then marks the `stage_boss` objective complete. `checkRunTerminalState()` then grants normal victory rewards, saves players, and emits completion. Annex Overseer death also follows the existing miniboss-tier card, Magic Stone, and currency drop paths.
+
+### Normal Gameplay Reachability and Debug Scenarios
+
+PASS. The normal path remains intact: clearing `training_caverns` Tier 1 unlocks Tier 2, the quest board exposes the locked/unlocked Tier-2 row, and selecting/deploying Tier 2 uses the same quest/layout/run creation path as the shortcut. The added `training-caverns-tier-2` debug scenario is gated through the existing debug scenario mechanism, reachable only by explicit debug scenario request, and mirrors normal Tier-2 deployment rather than bypassing server-side encounter/objective/reward invariants.
+
+### Design and Foundation Consistency
+
+PASS. The implementation stays consistent with the documented lobby -> dungeon -> objective -> loot loop and preserves the foundational requirements: the capture proves the 3D scene renders, sockets connect, players are visualized, and movement continues to sync. The change is scoped to quest/encounter/layout/enemy presentation and does not regress Tier 1 behavior.
+
+### Tests and Coverage
+
+PASS. The round coverage log shows `110` test files and `1868` tests passing. New and updated tests cover quest catalog exposure, Tier-2 unlock, rigid vault layout, boss/support spawn placement, encounter activation/completion, Annex Overseer stats/radial behavior, drops, client quest copy, model/display registry, and the Tier-2 debug shortcut.
+
+## v0.271 — 260-miniboss-open-plaza  (2026-06-05 13:17:35)
+
+
+### Debug scenarios
+
+PASS. This ticket did not add a new URL debug scenario, but it changed the expected behavior of the existing `arena-trials-tier-2` and stage-boss debug paths by changing the underlying Tier-2 boss type. The scenarios remain debug-only via `?debugScenario`/localhost socket paths, and the server comments plus tests trace the normal path: clear Arena Trials Tier 1, unlock Tier 2, deploy, activate the encounter, and defeat the stage boss. They use the same quest, layout, spawn, encounter, and run-completion systems as normal gameplay.
+
+### Design and requirements consistency
+
+PASS. The change stays within the documented lobby-to-dungeon action-RPG loop and does not alter foundational rendering, WebSocket connection, multiplayer visualization, or movement synchronization requirements. It reuses the existing stage-boss and reward systems instead of creating a parallel completion path.
+
+## Verification
+
+- Captured run: `metrics.json` ok, no page errors; no fatal console output.
+- Harness coverage log: 71 test files / 1434 tests passed with coverage visibility enabled.
+- Additional focused check: `pnpm exec vitest run server/test/arena_trials_tier2.test.js client/test/renderer-registry-normalize.test.js client/test/models-registry.test.js --coverage.enabled=false` passed 3 files / 38 tests.
+- An ad hoc `pnpm test -- --run ...` invocation also ran the full suite and all 2342 tests passed, but exited nonzero only because global coverage thresholds were active for that command.
+
+## v0.270 — 262-miniboss-spire-ascent  (2026-06-05 13:10:34)
+
+- Defeat completion and rewards are wired through the shared stage-boss flow. `spawnEnemies()` delegates to the objective registry, `startDungeonRun()` wires the pending boss ID into `run.encounter`, `updateEncounterTriggers()` runs every gameplay tick, and boss defeat marks the objective complete so `checkRunTerminalState()` grants normal victory rewards and emits `runComplete`.
+- Visual/contract presentation is consistent enough for the ticket: quest-board summaries use spire-specific "summit warden" copy, and the client has a distinct fallback procedural color/scale/telegraph for `spire_warden`.
+
+## Design and foundation consistency
+
+The implementation fits the existing action-RPG loop in `game/docs/design.md`: players unlock/deploy into a dungeon quest, fight enemies, and receive loot/economy rewards on completion. It also preserves the foundation requirements in `game/docs/requirements.md`: the captured run renders a 3D scene, connects client/server over sockets, visualizes multiplayer players, and accepts synchronized movement.
+
+## Debug scenarios
+
+The changed `spire-ascent-tier-2` debug scenario remains behind the explicit `debugScenario` socket path. The same state is reachable normally by clearing Spire Ascent Tier 1, unlocking Tier 2, selecting the Tier-2 spire quest, and deploying. The scenario uses the normal quest/layout selection, `enterPlayingPhase()`, `spawnEnemies()`, and `startDungeonRun()` path, so it does not bypass encounter wiring, objective creation, or reward/completion invariants.
+
+## Verification reviewed
+
+- `git diff 7c38c21338fe7d884c07984c926971ad4efbdf92 HEAD` and `git log --oneline 7c38c21338fe7d884c07984c926971ad4efbdf92..HEAD` were inspected.
+- `coverage.log` reports `83 passed` test files and `1630 passed` tests. Relevant suites include `spire_ascent_tier2.test.js`, `spire_ascent_spawn.test.js`, `spire_warden.test.js`, `debug-scenarios.test.js`, `quests.test.js`, `dungeon.test.js`, and related stage-boss tests.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+## v0.269 — 261-miniboss-sunken-canyon  (2026-06-05 12:47:59)
+
+### Defeat completes and rewards
+
+PASS. The stage-boss flow uses the existing encounter state machine: spawn wires `bossEnemyId`, `startDungeonRun()` attaches the encounter state, `tryActivateEncounter()` activates/locks the fight when players reach the anchor or clear adds, and `onStageBossDefeated()` marks the objective complete. The canyon Tier 2 test covers active boss defeat through `removeDeadEnemies()`, `cleanupAfterDamage()`, and `checkRunTerminalState()`, ending in `run.status === 'victory'`. Reward currency remains on the quest definition and the existing victory reward path grants quest rewards for completed runs.
+
+### Test coverage
+
+PASS. The ticket adds focused coverage for canyon Tier 2 catalog data, objective copy, rigid layout behavior, boss/add spawn placement, encounter activation, boss-defeat victory, Tier 1-to-Tier 2 unlock persistence, Tier 2 gating, debug scenario parity, and quest-board copy. The recorded coverage run passed: 25 test files and 883 tests.
+
+## Design and foundation consistency
+
+PASS. The change fits the design's dungeon/loot combat loop and uses the existing card-combat, lobby quest, objective, and encounter architecture. It preserves the foundational requirements: the captured run renders a 3D scene, connects to the server, shows multiplayer gameplay state, and still exercises movement/dodge in the live capture before the canyon stage transition.
+
+## Debug scenarios
+
+PASS. The changed `canyon-descent-tier-2` debug scenario remains behind the existing debug-scenario event and environment/localhost gate. It is a shortcut to a state that is reachable through normal gameplay: clear Canyon Descent Tier 1, unlock Tier 2, select the Tier 2 quest, and deploy. The scenario follows the same core invariants as normal deployment by applying the quest layout, entering play, spawning enemies, calling `startDungeonRun()`, emitting normal quest/state updates, and not bypassing the server encounter/objective machinery.
+
+## Remaining gaps
+
+None.
+
 ## v0.273 — 266-sec-jwt-require-explicit-dev-auth  (2026-06-05 16:23:18)
 
-  throw messages.
+The captured run in round-9 is healthy: `metrics.json` ok=true, `pageerrors: []`,
+and full gameplay with `ALLOW_DEV_AUTH=1` supplied by the harness.
+
+### Acceptance criteria
+
+PASS. `initAuth()` requires explicit `ALLOW_DEV_AUTH=1` for the dev-secret
+fallback; otherwise fails closed (throws) when `JWT_SECRET` is unset. Tested in
+`auth.test.js` (23/23 passing).
+
+### Integration / consistency
+
+The opt-in is wired everywhere the server is launched without a real secret:
+dev script, harness `start_game()`, smoke tests, and `game/docs/auth-setup.md`
+documents the local vs production setup and both throw messages.
 
 No conflict with `game/docs/design.md` / `requirements.md` — this is a
 server-side security hardening with no gameplay surface change, and the capture
@@ -4188,4 +4845,5 @@ ticket.
 
 None blocking. Minor nits recorded in `nits.md` (a slightly stale inline comment
 and smoke-script header comments).
+
 

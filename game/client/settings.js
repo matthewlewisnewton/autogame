@@ -93,6 +93,11 @@ export function getAccountCosmetic() {
 	return normalizeCosmetic(cachedCosmetic);
 }
 
+/** Update cached cosmetic after a server-confirmed appearance save. */
+export function setAccountCosmetic(cosmetic) {
+	cachedCosmetic = normalizeCosmetic(cosmetic);
+}
+
 /**
  * Coerce/backfill a proportions map: every key numeric and clamped to its
  * range; missing or invalid values default to 1.0. Returns a new object with

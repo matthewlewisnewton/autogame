@@ -1,6 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import {
   applyPlayerMovement,
+  applySpireEdgeHazardResponse,
+  findSpireEdgeHazardAt,
   buildMovementContext,
   flushDirtyPlayerSaves,
   setGameState,
@@ -10,7 +12,8 @@ import {
   computeDungeonBounds,
 } from '../simulation.js';
 import { createGameState } from '../index.js';
-import { INPUT_STALE_MS, MOVE_SPEED, TICK_RATE } from '../config.js';
+import { INPUT_STALE_MS, MOVE_SPEED, TICK_RATE, MAX_HP, SPIRE_EDGE_HAZARD_DAMAGE } from '../config.js';
+import { generateLayout } from '../dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../dungeon.js';
 
 function buildOpenLayout() {
@@ -327,5 +330,125 @@ describe('applyPlayerMovement() — slope movement', () => {
       // If somehow outside room, should fall back to DEFAULT_FLOOR_Y
       expect(player.y).toBe(DEFAULT_FLOOR_Y);
     }
+  });
+});
+
+describe('spire-ascent edge hazards', () => {
+  let state;
+  let movementContext;
+
+  beforeEach(() => {
+    state = createGameState();
+    state.gamePhase = 'playing';
+    state.layout = generateLayout(42, 'spire-ascent');
+    state.walkableAABBs = computeWalkableAABBs(state.layout);
+    state.dungeonBounds = computeDungeonBounds(state.layout);
+    movementContext = buildMovementContext(state);
+    setGameState(state, {});
+    rebuildWallColliders();
+  });
+
+  afterEach(() => {
+    setGameState(null, null);
+  });
+
+  it('repositions and chips HP when standing inside a hazard strip', () => {
+    const hazard = state.layout.edgeHazards[0];
+    expect(hazard).toBeDefined();
+
+    const startHp = MAX_HP;
+    state.players.p1 = makePlayer({
+      x: (hazard.minX + hazard.maxX) / 2,
+      z: (hazard.minZ + hazard.maxZ) / 2,
+      hp: startHp,
+      inputActive: false,
+    });
+
+    applyPlayerMovement(state, movementContext);
+
+    const player = state.players.p1;
+    expect(findSpireEdgeHazardAt(state.layout, player.x, player.z)).toBeNull();
+    expect(player.hp).toBe(startHp - SPIRE_EDGE_HAZARD_DAMAGE);
+  });
+
+  it('applySpireEdgeHazardResponse snaps player toward tier centre on the same tier', () => {
+    const hazard = state.layout.edgeHazards[0];
+    const tier = state.layout.rooms.find((r) => r.tierIndex === hazard.tierIndex);
+    state.players.p1 = makePlayer({
+      x: hazard.maxX - 0.1,
+      z: (hazard.minZ + hazard.maxZ) / 2,
+      hp: MAX_HP,
+    });
+    const player = state.players.p1;
+
+    const resolved = applySpireEdgeHazardResponse('p1', player, state.layout);
+    expect(resolved).toBe(true);
+    expect(Math.abs(player.x - tier.x)).toBeLessThan(tier.width / 2);
+    expect(player.hp).toBe(MAX_HP - SPIRE_EDGE_HAZARD_DAMAGE);
+  });
+});
+
+describe('sunken-canyon cliff hazards', () => {
+  let state;
+  let movementContext;
+
+  beforeEach(() => {
+    state = createGameState();
+    state.gamePhase = 'playing';
+    state.layout = generateLayout(42, 'sunken-canyon');
+    state.walkableAABBs = computeWalkableAABBs(state.layout);
+    state.dungeonBounds = computeDungeonBounds(state.layout);
+    movementContext = buildMovementContext(state);
+    setGameState(state, {});
+    rebuildWallColliders();
+  });
+
+  afterEach(() => {
+    setGameState(null, null);
+  });
+
+  it('repositions and chips HP when standing inside a plateau cliff hazard strip', () => {
+    const hazard = state.layout.edgeHazards[0];
+    expect(hazard).toBeDefined();
+
+    const startHp = MAX_HP;
+    state.players.p1 = makePlayer({
+      x: (hazard.minX + hazard.maxX) / 2,
+      z: (hazard.minZ + hazard.maxZ) / 2,
+      hp: startHp,
+      inputActive: false,
+    });
+
+    applyPlayerMovement(state, movementContext);
+
+    const player = state.players.p1;
+    expect(findSpireEdgeHazardAt(state.layout, player.x, player.z)).toBeNull();
+    expect(player.hp).toBe(startHp - SPIRE_EDGE_HAZARD_DAMAGE);
+  });
+
+  it('applySpireEdgeHazardResponse snaps player toward plateau interior from cliff hazard', () => {
+    const hazard = state.layout.edgeHazards.find((h) => h.side === 'south')
+      || state.layout.edgeHazards[0];
+    const plateau = state.layout.rooms.find((r) => r.band === 'plateau');
+    const startX = hazard.side === 'west'
+      ? hazard.minX + 0.1
+      : hazard.side === 'east'
+        ? hazard.maxX - 0.1
+        : (hazard.minX + hazard.maxX) / 2;
+    const startZ = hazard.side === 'south'
+      ? hazard.maxZ - 0.1
+      : (hazard.minZ + hazard.maxZ) / 2;
+    state.players.p1 = makePlayer({
+      x: startX,
+      z: startZ,
+      hp: MAX_HP,
+    });
+    const player = state.players.p1;
+
+    const resolved = applySpireEdgeHazardResponse('p1', player, state.layout);
+    expect(resolved).toBe(true);
+    expect(Math.abs(player.x - plateau.x)).toBeLessThan(plateau.width / 2);
+    expect(Math.abs(player.z - plateau.z)).toBeLessThan(plateau.depth / 2);
+    expect(player.hp).toBe(MAX_HP - SPIRE_EDGE_HAZARD_DAMAGE);
   });
 });

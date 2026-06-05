@@ -29,13 +29,15 @@ from harness.workspace.ports import PortAllocation
 # The vite pattern therefore tolerates an optional `.js` suffix and arbitrary
 # args between the binary name and `--port 5173`.
 # The server cmdline is `node game/server/index.js` when start_game launches
-# it from the repo root, but a leftover holder from a run that used cwd=game/
-# shows up as the relative `node server/index.js` (no `game/` prefix). The
-# original pattern hard-required `game/server/index`, so it failed to recognise
-# that leftover as a harness proc — wait_port_free then refused to kill it and
-# the new server died with EADDRINUSE on :3000. Make the leading path (incl.
-# the `game/` segment) optional so both forms match.
-_SERVER_PATTERN = re.compile(r"\bnode\s+\S*\bserver/index(\.js)?(\s|$)")
+# it from the repo root, but leftovers from other dev entrypoints differ:
+#   - cwd=game/  → `node server/index.js` (no `game/` prefix)
+#   - cwd=game/server/ or `pnpm -C server run dev` → bare `node index.js`
+#     (absolute path form: `/…/bin/node index.js`)
+# The original pattern hard-required `server/index` in the path, so those
+# leftovers were not recognised — wait_port_free refused to kill them and the
+# new server died with EADDRINUSE on :3000. Match optional `(server/)?` before
+# `index.js` so all three forms are harness-owned.
+_SERVER_PATTERN = re.compile(r"\bnode\s+\S*\b(?:server/)?index\.js(\s|$)")
 
 
 def _vite_pattern(vite_port: int) -> "re.Pattern":
@@ -259,7 +261,7 @@ def stop_game(ports: "PortAllocation | None" = None) -> None:
     if ports is None:
         # Serial path: belt-and-suspenders pkill of the default-port procs.
         patterns = (
-            r"node[[:space:]]+[^[:space:]]*server/index\.js([[:space:]]|$)",
+            r"node[[:space:]]+([^[:space:]]*/)?(server/)?index\.js([[:space:]]|$)",
             r"vite(\.js)?[[:space:]].*--port[[:space:]]+5173([[:space:]]|$)",
         )
     else:

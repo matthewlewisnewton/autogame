@@ -1,17 +1,13 @@
-Merge conflicts are resolved in all three files. Summary:
-
-### `game/server/socketHandlers/lobbyHandlers.js`
-- Kept the ticket’s `MAX_PLAYERS` import and the join guard (`Lobby is full` when at cap).
-- Dropped `LOOT_PICKUP_RADIUS` from this file — main moved that to `runHandlers.js` during the socket-handler extraction.
+Merge conflicts are resolved in both files.
 
 ### `TASKS.md`
-- Combined both sides’ cleanup backlog entries in order:
-  - `274-cleanup-telepipe-hub-suspend-resume-integration` (main)
-  - `275-cleanup-lobby-enforce-max-players-cap` (ticket)
-  - `277-cleanup-socketHandlers-extract-run-and-cleanup` (main)
+Combined cleanup backlog entries from both sides:
+- All 9 cleanup tickets from `main` (hub presence, booth terminals, plaza arena, etc.)
+- The branch’s `278-cleanup-sec-jwt-require-explicit-dev-auth` entry
 
 ### `LOGBOOK.md`
-- Kept main’s review entries (v0.230–v0.233: hub movement, telepipe suspend/resume, avatar cosmetics, run-handler extraction).
-- Appended the ticket’s v0.234 entry for the max-players cap.
+- Kept all `main` logbook entries (`v0.236` through `v0.269`) after the shared `v0.234` section
+- Appended the ticket’s `v0.273 — 266-sec-jwt-require-explicit-dev-auth` entry at the end
+- Restored the truncated branch entry (it had started mid-sentence with “throw messages.”) using the round-9 review content so the logbook entry is complete and coherent
 
-All conflict markers are removed. The harness can commit and run the test suite.
+No conflict markers remain in either file. The harness can proceed with commit and merge.

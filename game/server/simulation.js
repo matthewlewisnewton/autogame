@@ -25,11 +25,17 @@ const {
   SPAWN_PADDING,
   MAX_HP,
   RESPAWN_DELAY_MS,
-  COOLDOWN_MS
+  COOLDOWN_MS,
+  DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER,
+  difficultyScaleFactor,
+  runPlayerCount,
+  SPIRE_EDGE_HAZARD_DAMAGE,
+  SPIRE_EDGE_HAZARD_COOLDOWN_MS,
 } = require('./config');
 const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
+const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
 
 // ── Circular-dependency resolution ──
 // simulation.js must not require('./index') (circular). Instead, index.js
@@ -364,6 +370,80 @@ function tryPlayerMove(fromX, fromZ, dirX, dirZ, distance, movementContextOrColl
   );
 }
 
+function circleIntersectsAABB(px, pz, aabb, radius = PLAYER_RADIUS) {
+  return px + radius > aabb.minX && px - radius < aabb.maxX
+    && pz + radius > aabb.minZ && pz - radius < aabb.maxZ;
+}
+
+function findEdgeHazardAt(layout, x, z, radius = PLAYER_RADIUS) {
+  if (!layout) return null;
+  const profile = layout.profile;
+  if (profile !== 'spire-ascent' && profile !== 'sunken-canyon') return null;
+  const hazards = layout.edgeHazards;
+  if (!hazards || hazards.length === 0) return null;
+
+  for (const hazard of hazards) {
+    if (circleIntersectsAABB(x, z, hazard, radius)) return hazard;
+  }
+  return null;
+}
+
+/** @deprecated alias — use findEdgeHazardAt */
+const findSpireEdgeHazardAt = findEdgeHazardAt;
+
+/**
+ * Snap a player off an edge-hazard strip toward safe interior and apply chip damage.
+ * Returns true when a hazard was resolved.
+ */
+function applyEdgeHazardResponse(playerId, player, layout) {
+  const hazard = findEdgeHazardAt(layout, player.x, player.z);
+  if (!hazard) return false;
+
+  if (layout.profile === 'spire-ascent') {
+    const tier = layout.rooms.find((r) => r.band === 'tier' && r.tierIndex === hazard.tierIndex);
+    if (!tier) return false;
+
+    const halfW = tier.width / 2;
+    const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+    if (hazard.side === 'east') {
+      player.x = tier.x + halfW - safeInset;
+    } else {
+      player.x = tier.x - halfW + safeInset;
+    }
+  } else if (layout.profile === 'sunken-canyon') {
+    const plateau = layout.rooms.find((r) => r.band === 'plateau');
+    if (!plateau) return false;
+
+    const halfW = plateau.width / 2;
+    const halfD = plateau.depth / 2;
+    if (hazard.side === 'south') {
+      const safeInset = (hazard.maxZ - hazard.minZ) + PLAYER_RADIUS + 0.15;
+      player.z = plateau.z + halfD - safeInset;
+    } else if (hazard.side === 'west') {
+      const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+      player.x = plateau.x - halfW + safeInset;
+    } else if (hazard.side === 'east') {
+      const safeInset = (hazard.maxX - hazard.minX) + PLAYER_RADIUS + 0.15;
+      player.x = plateau.x + halfW - safeInset;
+    } else {
+      return false;
+    }
+  } else {
+    return false;
+  }
+
+  const now = Date.now();
+  if (!player.lastSpireEdgeHazardMs || now - player.lastSpireEdgeHazardMs >= SPIRE_EDGE_HAZARD_COOLDOWN_MS) {
+    player.lastSpireEdgeHazardMs = now;
+    damagePlayer(playerId, SPIRE_EDGE_HAZARD_DAMAGE);
+  }
+
+  return true;
+}
+
+/** @deprecated alias — use applyEdgeHazardResponse */
+const applySpireEdgeHazardResponse = applyEdgeHazardResponse;
+
 /**
  * Apply one tick of movement for all players with active input.
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
@@ -382,38 +462,48 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
     if (!player) continue;
     if (player.connected === false) continue;
     if (inPlaying && (player.dead || player.extracted)) continue;
-    if (!player.inputActive) continue;
-    if (now - (player.lastInputTime || 0) > INPUT_STALE_MS) {
+
+    const inputFresh = player.inputActive
+      && now - (player.lastInputTime || 0) <= INPUT_STALE_MS;
+    if (!inputFresh) {
       player.inputActive = false;
-      continue;
     }
 
-    const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
-    if (mag < 1e-8) continue;
+    if (inputFresh) {
+      const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+      if (mag >= 1e-8) {
+        let dx = player.inputDx;
+        let dz = player.inputDz;
+        if (mag > 1) { dx /= mag; dz /= mag; }
 
-    let dx = player.inputDx;
-    let dz = player.inputDz;
-    if (mag > 1) { dx /= mag; dz /= mag; }
+        // Slow movement to 20% while guard_block is active
+        let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+        // rally_cry: boost move speed while the buff is active
+        if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
+        // ground_anchor: slow move speed while the anchor window is active
+        if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
 
-    // Slow movement to 20% while guard_block is active
-    let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
-    // rally_cry: boost move speed while the buff is active
-    if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
-    // ground_anchor: slow move speed while the anchor window is active
-    if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
-
-    const prevX = player.x;
-    const prevZ = player.z;
-    const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
-    player.x = result.x;
-    player.z = result.z;
-    player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
-    if (Number.isFinite(player.inputRotation)) {
-      player.rotation = player.inputRotation;
+        const prevX = player.x;
+        const prevZ = player.z;
+        const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
+        player.x = result.x;
+        player.z = result.z;
+        player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
+        if (Number.isFinite(player.inputRotation)) {
+          player.rotation = player.inputRotation;
+        }
+        player.lastMoveTime = now;
+        if (result.moved || player.x !== prevX || player.z !== prevZ) {
+          player.persistenceDirty = true;
+        }
+      }
     }
-    player.lastMoveTime = now;
-    if (result.moved || player.x !== prevX || player.z !== prevZ) {
-      player.persistenceDirty = true;
+
+    if (inPlaying && (ctx.layout?.profile === 'spire-ascent' || ctx.layout?.profile === 'sunken-canyon')) {
+      if (applyEdgeHazardResponse(playerId, player, ctx.layout)) {
+        player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
+        player.persistenceDirty = true;
+      }
     }
   }
 }
@@ -782,18 +872,51 @@ function randomWanderTarget() {
 
 const ENEMY_DEFS = {
 	grunt: {
+		name: 'Bulkhead Drone',
+		description: 'Slow, durable radial attacker.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed'],
 		hp: 100, chaseSpeed: 2.5, wanderSpeed: 1.0, attackDamage: 10, attackWindupMs: 800,
 		attackStyle: 'radial',
 	},
 	skirmisher: {
+		name: 'Phase Stalker',
+		description: 'Fast cone striker.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'chaseSpeed'],
 		hp: 40, chaseSpeed: 4.5, wanderSpeed: 1.5, attackDamage: 6, attackWindupMs: 500,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 3,
 	},
 	miniboss: {
+		name: 'Vault Warden',
+		description: 'Heavy cone boss with extended reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
 		hp: 300, chaseSpeed: 1.2, wanderSpeed: 0.6, attackDamage: 18, attackWindupMs: 1200,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5,
 	},
+	annex_overseer: {
+		name: 'Annex Overseer',
+		description: 'Room guardian with a radial shockwave — area denial over reach.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 320, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1400,
+		attackStyle: 'radial', attackRange: 3.5,
+	},
+	arena_champion: {
+		name: 'Plaza Sovereign',
+		description: 'Crowned warlord of the open plaza; strikes harder and reaches farther than any vault warden.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 500, chaseSpeed: 1.5, wanderSpeed: 0.7, attackDamage: 26, attackWindupMs: 1100,
+		attackStyle: 'cone', attackConeAngle: (2 * Math.PI) / 3, attackRange: 6.5,
+	},
+	spire_warden: {
+		name: 'Summit Warden',
+		description: 'Spire summit guardian with crushing reach and tide-like pressure.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
+	},
 	spawner: {
+		name: 'Brood Node',
+		description: 'Radial attacker that periodically summons skirmishers.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'spawnIntervalMs', 'spawnType'],
 		hp: 120, chaseSpeed: 1.8, wanderSpeed: 0.9, attackDamage: 8, attackWindupMs: 900,
 		attackStyle: 'radial',
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
@@ -849,7 +972,7 @@ function isPlayerInEnemyAttack(enemy, target) {
 function ensureEnemyCombatStats(enemy) {
 	if (enemy.chaseSpeed !== undefined) return;
 	const def = enemyDefFor(enemy.type);
-	const { hp, ...statFields } = def;
+	const { hp, name, description, surfacedStats, ...statFields } = def;
 	Object.assign(enemy, statFields);
 }
 
@@ -1756,6 +1879,8 @@ function damagePlayer(playerId, amount, options = {}) {
 
   if (amount <= 0) return null;
 
+  if (player.debugGodmode) return null;
+
   let remaining = amount;
   const now = Date.now();
 
@@ -1867,6 +1992,9 @@ function updateEnemies() {
 
 	const dt = 1 / TICK_RATE;
 	const players = Object.values(_gameState.players).filter(p => !p.dead && !p.extracted);
+	const encounterBossId = getEncounterBossId(_gameState.run);
+	const encounterDormant = isEncounterDormant(_gameState.run);
+	const encounterLocked = isEncounterLocked(_gameState.run);
 
 	for (const enemy of _gameState.enemies) {
 		ensureEnemyCombatStats(enemy);
@@ -1876,6 +2004,12 @@ function updateEnemies() {
 		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
+			continue;
+		}
+
+		if (encounterDormant && encounterBossId && enemy.id === encounterBossId) {
+			enemy.state = 'idle';
+			enemy.attackState = 'idle';
 			continue;
 		}
 
@@ -1905,7 +2039,14 @@ function updateEnemies() {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, enemy.attackDamage);
 					} else {
-						damagePlayer(enemy.windupTargetId, enemy.attackDamage, { attackerEnemyId: enemy.id });
+						// Scale player-directed damage by live party size (1–4 = baseline).
+						// Read at strike resolution so mid-run JOIN/LEAVE tracks up and down
+						// without baking a stale multiplier into the enemy's stored stat.
+						const scaledDamage = enemy.attackDamage * difficultyScaleFactor(
+							runPlayerCount(_gameState),
+							DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER
+						);
+						damagePlayer(enemy.windupTargetId, scaledDamage, { attackerEnemyId: enemy.id });
 					}
 					enemy.attackState = 'recovering';
 					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;
@@ -1920,7 +2061,7 @@ function updateEnemies() {
 		}
 
 		// ── Spawner: periodically spawn adds ──
-		if (enemy.type === 'spawner' && enemy.hp > 0) {
+		if (enemy.type === 'spawner' && enemy.hp > 0 && !encounterLocked) {
 			const spawnInterval = enemy.spawnIntervalMs || 4000;
 			const spawnMaxAlive = enemy.spawnMaxAlive || 3;
 			const spawnType = enemy.spawnType || 'skirmisher';
@@ -2433,6 +2574,11 @@ module.exports = {
   resolveWallCollision,
   checkSweptCollision,
   tryPlayerMove,
+  applyEdgeHazardResponse,
+  findEdgeHazardAt,
+  applySpireEdgeHazardResponse,
+  findSpireEdgeHazardAt,
+  circleIntersectsAABB,
   applyPlayerKnockback,
   applyPlayerMovement,
   flushDirtyPlayerSaves,

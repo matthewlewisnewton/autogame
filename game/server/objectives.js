@@ -5,7 +5,9 @@
  * Quests reference the type via quest.objectiveType in quests.js; progression
  * dispatches through getObjectiveDef — no type switches elsewhere.
  */
-const { getEnemyPool, pickWeightedEnemyType } = require('./quests');
+const { getEnemyPool, getEncounterConfig, pickWeightedEnemyType } = require('./quests');
+const { setEncounterBoss } = require('./encounters');
+const { DIFFICULTY_SPAWN_RATE_PER_PLAYER, difficultyScaleFactor, runPlayerCount } = require('./config');
 
 function clampDefeatedEnemies(objective) {
   objective.defeatedEnemies = Math.min(objective.defeatedEnemies, objective.totalEnemies);
@@ -22,6 +24,30 @@ const SURVIVE_SPAWN_INTERVAL_MS = 3000;
 // Regular (non-miniboss) enemy types used by the staggered survive spawner,
 // cycled in order for the non-miniboss portion of the wave.
 const SURVIVE_REGULAR_TYPES = ['grunt', 'skirmisher'];
+
+function resolveStageBossSpawnPosition(layout, encounterConfig) {
+  const landmarkType = encounterConfig?.landmark;
+  if (landmarkType && Array.isArray(layout?.landmarks)) {
+    const match = layout.landmarks.find((lm) => lm.type === landmarkType);
+    if (match && Number.isFinite(match.x) && Number.isFinite(match.z)) {
+      return { x: match.x, z: match.z };
+    }
+  }
+  const startRoom = layout?.rooms?.find((r) => r.role === 'start') || layout?.rooms?.[0];
+  if (startRoom && Number.isFinite(startRoom.x) && Number.isFinite(startRoom.z)) {
+    return { x: startRoom.x, z: startRoom.z };
+  }
+  return { x: 0, z: 0 };
+}
+
+function wireEncounterBoss(gameState, bossEnemyId) {
+  if (!bossEnemyId || !gameState) return;
+  if (gameState.run?.encounter) {
+    setEncounterBoss(gameState.run, bossEnemyId);
+  } else {
+    gameState._pendingEncounterBossId = bossEnemyId;
+  }
+}
 
 const OBJECTIVE_DEFS = {
   defeat_enemies: {
@@ -107,8 +133,13 @@ const OBJECTIVE_DEFS = {
       if (!(objective.spawnedEnemies < total)) return;
 
       // Throttle on a stored timestamp; the very first spawn fires immediately.
+      // Scale the interval by the live player count: 1–4 players stay at the
+      // baseline, while 5..16 players spawn faster. Re-read the count on every
+      // tick so a mid-run JOIN shortens the interval and a LEAVE lengthens it.
+      const scaleFactor = difficultyScaleFactor(runPlayerCount(gameState), DIFFICULTY_SPAWN_RATE_PER_PLAYER);
+      const interval = SURVIVE_SPAWN_INTERVAL_MS / scaleFactor;
       const last = Number.isFinite(objective.lastSpawnAt) ? objective.lastSpawnAt : 0;
-      if (last !== 0 && now - last < SURVIVE_SPAWN_INTERVAL_MS) return;
+      if (last !== 0 && now - last < interval) return;
 
       const layout = gameState.layout;
       const seed = gameState.layoutSeed || 42;
@@ -165,6 +196,68 @@ const OBJECTIVE_DEFS = {
     onEnemyDefeated(run, count) {
       run.objective.defeatedEnemies += count;
       clampDefeatedEnemies(run.objective);
+    },
+  },
+  stage_boss: {
+    objectiveType: 'stage_boss',
+    skipBulkCombatSpawn() {
+      return true;
+    },
+    preferNearestEnemySpawns() {
+      return false;
+    },
+    spawnQuestEntities(layout, rng, quest, gameState, ctx) {
+      const encounterConfig = getEncounterConfig(quest);
+      if (!encounterConfig) return;
+
+      const bossType = encounterConfig.bossType || 'miniboss';
+      const addCount = Number.isFinite(encounterConfig.addCount) ? encounterConfig.addCount : 0;
+      const bossPos = resolveStageBossSpawnPosition(layout, encounterConfig);
+
+      const boss = ctx.spawnEnemy(bossPos.x, bossPos.z, bossType, undefined, {
+        tier: ctx.roomTierAt(layout, bossPos.x, bossPos.z),
+        rng,
+      });
+      boss.wanderTarget = ctx.randomWanderTarget();
+      wireEncounterBoss(gameState, boss.id);
+
+      const pool = getEnemyPool(quest.id).filter(
+        (entry) => entry.type !== 'miniboss' && entry.type !== bossType,
+      );
+      const addPool = pool.length > 0
+        ? pool
+        : getEnemyPool(quest.id).filter((entry) => entry.type !== 'miniboss');
+
+      for (let i = 0; i < addCount; i++) {
+        const type = addPool.length > 0 ? pickWeightedEnemyType(addPool, rng) : 'grunt';
+        const pos = ctx.pickEnemySpawnPosition(layout, rng, false, i, addCount);
+        const add = ctx.spawnEnemy(pos.x, pos.z, type, undefined, {
+          tier: ctx.roomTierAt(layout, pos.x, pos.z),
+          rng,
+        });
+        add.wanderTarget = ctx.randomWanderTarget();
+      }
+    },
+    createObjective(quest) {
+      const encounterConfig = getEncounterConfig(quest);
+      const addCount = Number.isFinite(encounterConfig?.addCount) ? encounterConfig.addCount : 0;
+      return {
+        type: 'stage_boss',
+        label: `${quest.name}: defeat the stage warden`,
+        bossDefeated: false,
+        addCount,
+      };
+    },
+    isComplete(objective, run) {
+      if (run?.encounter?.phase === 'cleared') return true;
+      if (objective.bossDefeated) return true;
+      return false;
+    },
+    clampProgress() {
+      // Progress is driven by encounter phase / boss defeat hooks (sub-ticket 04).
+    },
+    onBossDefeated(run) {
+      run.objective.bossDefeated = true;
     },
   },
 };

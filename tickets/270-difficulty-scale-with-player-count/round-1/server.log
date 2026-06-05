@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/270-difficulty-scale-with-player-count/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/270-difficulty-scale-with-player-count/game/data
+Server listening on port 3000
+Player connected: socket=9Ciwb4FWiFQEGkgOAAAB, playerId=aa54334d-e250-49eb-8e8a-d579d4c04564
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=1xRfbgx8dm73XQi0AAAD, playerId=2c0561b3-61b8-45e4-b568-032c3fe2eb72
+[loot] spawned id=cb922fcb-d1a2-4328-b1c2-733f264fb994 value=10
+Player disconnected: 9Ciwb4FWiFQEGkgOAAAB
+Player disconnected: 1xRfbgx8dm73XQi0AAAD

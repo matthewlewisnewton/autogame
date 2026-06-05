@@ -2,12 +2,14 @@
 // Player persistence, rewards, deck/hand management, run state, spawning, snapshots.
 // Imported by index.js; re-exported from index.js for test compatibility.
 
+const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const {
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
   MAX_HP,
   MEDIC_HEAL_COST,
+  APPEARANCE_CHANGE_COST,
   LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
@@ -32,6 +34,9 @@ const {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
+  difficultyScaleFactor,
+  runPlayerCount,
 } = require('./config');
 const {
   mulberry32,
@@ -52,7 +57,7 @@ const {
 } = require('./simulation');
 
 const HUB_LAYOUT = generateHub(0);
-const { applyVariant, getVariantBonusDrop, VARIANT_DEFS } = require('./enemyVariants');
+const { applyVariant, getVariantBonusDrop, resolveVariantRollTier, VARIANT_DEFS } = require('./enemyVariants');
 const {
   getQuest,
   getSelectedQuest,
@@ -73,6 +78,15 @@ const {
   cardSellValues: CARD_SELL_VALUES,
 } = require('../shared/cardEconomy.json');
 const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
+const {
+  createEncounterState,
+  setEncounterBoss,
+  ensureEncounterSpawnAnchor,
+  isEncounterLocked,
+  tryActivateEncounter,
+  getEncounterBossId,
+  onStageBossDefeated,
+} = require('./encounters');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -144,7 +158,7 @@ function emitPlayerDeckUpdate(playerId, extra = {}) {
   if (!socketId) return;
   const io = _getIo();
   if (!io || typeof io.to !== 'function') return;
-  io.to(socketId).emit('deckUpdate', buildPlayerDeckUpdatePayload(player, extra));
+  io.to(socketId).emit(SERVER_TO_CLIENT.DECK_UPDATE, buildPlayerDeckUpdatePayload(player, extra));
 }
 
 function maybeEmitPlayerDeckUpdate(player) {
@@ -729,6 +743,31 @@ function grindCard(player, instanceId) {
  * @param {string} hatId
  * @returns {{ ok: true, cost: number, currency: number } | { ok: false, reason: string }}
  */
+/**
+ * Deduct the appearance-change booth fee from a player's currency. Validates
+ * affordability only; persisting the cosmetic is the caller's responsibility.
+ *
+ * @param {object} player
+ * @returns {{ ok: true, cost: number, currency: number } | { ok: false, reason: string }}
+ */
+function chargeAppearanceChangeForPlayer(player) {
+  if (!player) return { ok: false, reason: 'Player not found' };
+
+  const cost = APPEARANCE_CHANGE_COST;
+  const currency = player.currency || 0;
+  if (currency < cost) {
+    return { ok: false, reason: `Not enough ${THEME.currency.short.toLowerCase()} (need ${cost}, have ${currency})` };
+  }
+
+  player.currency = currency - cost;
+
+  return {
+    ok: true,
+    cost,
+    currency: player.currency,
+  };
+}
+
 function unlockHatForPlayer(player, hatId) {
   if (!player) return { ok: false, reason: 'Player not found' };
 
@@ -865,7 +904,7 @@ function createRunState() {
     throw new Error(`Unknown objective type: ${quest.objectiveType}`);
   }
 
-  return {
+  const run = {
     id: crypto.randomUUID(),
     status: 'playing',
     questId: quest.id,
@@ -874,12 +913,27 @@ function createRunState() {
     questDescription: quest.description,
     rewardCurrency: quest.rewardCurrency,
     objective: def.createObjective(quest, { enemyCount: _gameState.enemies.length }),
-    startedAt: Date.now()
+    startedAt: Date.now(),
   };
+
+  if (quest.encounter) {
+    run.encounter = createEncounterState({
+      spawnAnchor: quest.encounter.spawnAnchor ?? null,
+    });
+  }
+
+  return run;
 }
 
 function startDungeonRun() {
   _gameState.run = createRunState();
+  if (_gameState._pendingEncounterBossId != null && _gameState.run.encounter) {
+    setEncounterBoss(_gameState.run, _gameState._pendingEncounterBossId);
+    delete _gameState._pendingEncounterBossId;
+  }
+  if (_gameState.run.encounter) {
+    ensureEncounterSpawnAnchor(_gameState.run, _gameState.enemies);
+  }
   for (const p of Object.values(_gameState.players)) {
     p.currencyEarnedThisRun = 0;
     p.runRewards = null;
@@ -1148,7 +1202,7 @@ function isRunObjectiveComplete(objective) {
   if (!def) {
     throw new Error(`Unknown objective type: ${objective.type}`);
   }
-  return def.isComplete(objective);
+  return def.isComplete(objective, _gameState.run);
 }
 
 function buildRunSummary(status) {
@@ -2093,7 +2147,7 @@ function restoreHandCharges(player, amount, options = {}) {
 
 function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   const def = enemyDefFor(type);
-  const { hp, ...statFieldsFromDef } = def;
+  const { hp, name, description, surfacedStats, ...statFieldsFromDef } = def;
   const enemy = {
     id: crypto.randomUUID(),
     x,
@@ -2113,11 +2167,21 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
     enemy.spawnedBy = spawnedBy;
   }
   // Variant seam, centralized so every spawned enemy exposes `variant` (a tag or
-  // null — never undefined). Combat spawns pass the resolved encounterTier and
-  // seeded rng; callers with no known room/tier (spawner adds, ad-hoc spawns)
-  // default to tier 0 → no roll → variant: null. Rolled exactly once per enemy.
-  const tier = Number.isFinite(opts.tier) ? opts.tier : 0;
-  applyVariant(enemy, tier, opts.rng);
+  // null — never undefined). Callers pass the spawn room's encounterTier via
+  // opts.tier; quest-tier scaling is resolved here from the active run (or lobby
+  // selection). Ad-hoc spawns with no room default encounterTier 0. Rolled once.
+  const encounterTier = Number.isFinite(opts.tier) ? opts.tier : 0;
+  const questTier = _gameState.run?.questTier ?? _gameState.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+  const rollTier = resolveVariantRollTier(questTier, encounterTier);
+  applyVariant(enemy, rollTier, opts.rng);
+  // Difficulty scaling: miniboss-tier bosses get more HP the larger the party is at spawn.
+  // Fixed once here from the live player count — never re-applied retroactively
+  // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
+  if (type === 'miniboss' || type === 'annex_overseer' || type === 'spire_warden') {
+    const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
+    enemy.hp = Math.round(enemy.hp * factor);
+    enemy.maxHp = Math.round(enemy.maxHp * factor);
+  }
   _gameState.enemies.push(enemy);
   return enemy;
 }
@@ -2133,6 +2197,14 @@ function removeDeadEnemies() {
     const variantDef = enemy.variant ? VARIANT_DEFS[enemy.variant] : null;
     if (variantDef && variantDef.id === 'volatile') {
       spawnVolatileExplosion(enemy.x, enemy.z, variantDef);
+    }
+  }
+
+  const bossId = getEncounterBossId(_gameState.run);
+  if (bossId) {
+    const bossDying = dying.find((e) => e.id === bossId);
+    if (bossDying) {
+      onStageBossDefeated(_gameState, bossDying);
     }
   }
 
@@ -2412,9 +2484,8 @@ function spawnCombatEnemies(layout, rng, quest) {
     const type = pickWeightedEnemyType(enemyPool, rng);
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
-    // Variant seam (centralized in spawnEnemy): scale the roll by the spawn
-    // room's encounterTier (0 for start/treasure rooms or unknown positions, so
-    // they never roll a variant) and use the run's seeded rng.
+    // Variant seam (centralized in spawnEnemy): encounterTier from the spawn
+    // room is combined with run.questTier inside spawnEnemy; seeded rng here.
     const enemy = spawnEnemy(pos.x, pos.z, type, undefined, {
       tier: roomTierAt(layout, pos.x, pos.z),
       rng,
@@ -2430,9 +2501,15 @@ function spawnCombatEnemies(layout, rng, quest) {
 function updateSurviveSpawns(now = Date.now()) {
   const run = _gameState.run;
   if (!run?.objective || !isPlayingPhase(_gameState)) return;
+  if (isEncounterLocked(run)) return;
   const def = getObjectiveDef(run.objective.type);
   if (!def?.tickSpawns) return;
   def.tickSpawns(now, _gameState, buildObjectiveSpawnCtx());
+}
+
+function updateEncounterTriggers() {
+  if (!isPlayingPhase(_gameState)) return;
+  tryActivateEncounter(_gameState);
 }
 
 function spawnLoot(layout, rng) {
@@ -2660,8 +2737,8 @@ function suspendRunToLobby() {
   console.log(`[run] suspended: ${summary?.questName || _gameState.suspendedCheckpoint?.run?.questName || 'unknown'}`);
   const io = getIoTarget();
   if (io) {
-    io.emit('runSuspended', summary);
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(SERVER_TO_CLIENT.RUN_SUSPENDED, summary);
+    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
 }
@@ -2705,8 +2782,8 @@ function tryEnterTelepipe(playerId) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('playerExtracted', { playerId });
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(SERVER_TO_CLIENT.PLAYER_EXTRACTED, { playerId });
+    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
 
   maybeSuspendRun();
@@ -2757,7 +2834,7 @@ function abandonSuspendedRun(state = _gameState) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
   return { ok: true };
@@ -2818,7 +2895,7 @@ function checkRunTerminalState() {
   const summary = buildRunSummary(status);
   const io = getIoTarget();
   if (io) {
-    io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);
+    io.emit(status === 'victory' ? SERVER_TO_CLIENT.RUN_COMPLETE : SERVER_TO_CLIENT.RUN_FAILED, summary);
   }
 }
 
@@ -2978,7 +3055,7 @@ function returnPlayersToLobby(state = _gameState) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
 }
@@ -3041,13 +3118,21 @@ function giveUpRun(state = _gameState) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
   }
   _broadcastLobbyUpdate();
   return { ok: true };
 }
 
 function checkAllReady() {
+  try {
+    checkAllReadyInner();
+  } catch (err) {
+    console.error('[checkAllReady] failed:', err && err.stack ? err.stack : err);
+  }
+}
+
+function checkAllReadyInner() {
   const all = Object.values(_gameState.players);
   const connectedPlayers = all.filter(p => p.connected !== false);
   const allConnectedReady = connectedPlayers.length > 0 && connectedPlayers.every(p => p.ready);
@@ -3075,8 +3160,8 @@ function checkAllReady() {
       restoreRunCheckpoint();
       const io = getIoTarget();
       if (io) {
-        io.emit('startGame');
-        io.emit('stateUpdate', stateSnapshot());
+        io.emit(SERVER_TO_CLIENT.START_GAME);
+        io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
       }
       return;
     }
@@ -3098,8 +3183,8 @@ function checkAllReady() {
     startDungeonRun();
     const io = getIoTarget();
     if (io) {
-      io.emit('startGame');
-      io.emit('stateUpdate', stateSnapshot());
+      io.emit(SERVER_TO_CLIENT.START_GAME);
+      io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     }
   }
 }
@@ -3162,6 +3247,7 @@ module.exports = {
   applyWyrmMinionBreathStats,
   grindCard,
   unlockHatForPlayer,
+  chargeAppearanceChangeForPlayer,
   createCardInstance,
   createInventoryFromCardIds,
   createInventoryFromOwnedCards,
@@ -3216,6 +3302,7 @@ module.exports = {
   spawnCrystals,
   spawnEnemies,
   updateSurviveSpawns,
+  updateEncounterTriggers,
   recordCrystalCollected,
   isRunObjectiveComplete,
   checkRunTerminalState,

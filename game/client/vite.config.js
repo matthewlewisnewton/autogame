@@ -1,25 +1,125 @@
+import { defineConfig, loadEnv } from 'vite';
+
 // The backend port is fixed at 3000 in normal local dev, but each parallel
 // harness worker runs its game server on its OWN allocated port (passed as
-// HARNESS_GAME_PORT). Hardcoding 3000 made every non-3000 worker's /api +
-// /socket.io proxy hit the wrong server (or ECONNREFUSED), which broke the
-// capture step and force-failed its review. Honor the allocated port.
-const apiTarget = `http://localhost:${process.env.HARNESS_GAME_PORT || process.env.PORT || 3000}`;
+// HARNESS_GAME_PORT). Resolve the target when Vite starts so non-default
+// workers never proxy /api + /socket.io to the wrong host.
+export function resolveGameServerProxyTarget(
+	env = process.env,
+	mode = 'development',
+	loadedEnv
+) {
+	const loaded = loadedEnv ?? loadEnv(mode, process.cwd(), '');
+	// Subprocess env (harness) wins over .env files so parallel workers never
+	// inherit a stale PORT from disk.
+	const port =
+		env.HARNESS_GAME_PORT ||
+		loaded.HARNESS_GAME_PORT ||
+		env.PORT ||
+		loaded.PORT ||
+		'3000';
+	// 127.0.0.1 avoids localhost → ::1 resolution mismatches in the dev proxy.
+	return `http://127.0.0.1:${port}`;
+}
 
-export default {
-	// Serve files under public/ at the web root (e.g. public/models/*.glb is
-	// reachable at /models/*.glb). Explicit so model assets are served statically.
-	publicDir: 'public',
-	server: {
-		port: 5173,
-		strictPort: true,
-		proxy: {
-			'/socket.io': {
-				target: apiTarget,
-				ws: true
-			},
-			'/api': {
-				target: apiTarget
-			}
-		}
+export function isHarnessCapture(env = process.env, loadedEnv = {}) {
+	return Boolean(env.HARNESS_GAME_PORT || loadedEnv.HARNESS_GAME_PORT);
+}
+
+export async function probeGameServerHealthz(
+	target,
+	fetchImpl = globalThis.fetch
+) {
+	const url = `${target}/healthz`;
+	try {
+		const res = await fetchImpl(url, { signal: AbortSignal.timeout(1000) });
+		if (!res.ok) return false;
+		const body = await res.json().catch(() => null);
+		return body?.ok === true;
+	} catch {
+		return false;
 	}
 }
+
+export async function waitForGameServerReady(
+	target,
+	{
+		timeoutMs = 90000,
+		intervalMs = 200,
+		stableProbes = 3,
+		stableGapMs = 250,
+		fetchImpl = globalThis.fetch,
+	} = {}
+) {
+	const deadline = Date.now() + timeoutMs;
+	while (Date.now() < deadline) {
+		let streak = 0;
+		while (streak < stableProbes && Date.now() < deadline) {
+			if (!(await probeGameServerHealthz(target, fetchImpl))) {
+				streak = 0;
+				break;
+			}
+			streak += 1;
+			if (streak < stableProbes) {
+				await new Promise((resolve) => setTimeout(resolve, stableGapMs));
+			}
+		}
+		if (streak >= stableProbes) return true;
+		await new Promise((resolve) => setTimeout(resolve, intervalMs));
+	}
+	return false;
+}
+
+export default defineConfig(async ({ mode }) => {
+	const loadedEnv = loadEnv(mode, process.cwd(), '');
+	const apiTarget = resolveGameServerProxyTarget(process.env, mode, loadedEnv);
+	const harnessCapture = isHarnessCapture(process.env, loadedEnv);
+
+	const proxy = {
+		'/socket.io': {
+			target: apiTarget,
+			ws: true,
+			changeOrigin: true,
+		},
+		'/api': {
+			target: apiTarget,
+			changeOrigin: true,
+		},
+	};
+
+	if (harnessCapture) {
+		proxy['/healthz'] = {
+			target: apiTarget,
+			changeOrigin: true,
+		};
+	}
+
+	return {
+		// Serve files under public/ at the web root (e.g. public/models/*.glb is
+		// reachable at /models/*.glb). Explicit so model assets are served statically.
+		publicDir: 'public',
+		plugins: [
+			{
+				name: 'game-server-proxy-readiness',
+				async configureServer() {
+					console.log(`[vite] Proxying /api and /socket.io → ${apiTarget}`);
+					if (harnessCapture) {
+						const ready = await waitForGameServerReady(apiTarget);
+						if (ready) {
+							console.log(`[vite] Game server ready at ${apiTarget}`);
+						} else {
+							console.warn(
+								`[vite] Timed out waiting for game server at ${apiTarget}/healthz`
+							);
+						}
+					}
+				},
+			},
+		],
+		server: {
+			port: 5173,
+			strictPort: true,
+			proxy,
+		},
+	};
+});

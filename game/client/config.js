@@ -35,6 +35,9 @@ export const MAX_HP = 100;
 /** Guild medic full-heal cost */
 export const MEDIC_HEAL_COST = 10;
 
+/** Character-booth paid appearance edit cost */
+export const APPEARANCE_CHANGE_COST = 25;
+
 /** Maximum player Magic Stones — synced via shared/constants.json */
 export const MAX_MS = sharedConstants.MAX_MAGIC_STONES;
 export const STARTING_MS = sharedConstants.STARTING_MAGIC_STONES;
@@ -95,6 +98,18 @@ export const CAMERA_DISTANCE = 10;
 
 /** Orbit camera height above the player */
 export const CAMERA_HEIGHT = 5;
+
+/** Lower orbit follow height for sunken-canyon layouts only (dramatic vertical drop). */
+export const SUNKEN_CANYON_CAMERA_HEIGHT = 3.5;
+
+/**
+ * Orbit camera Y offset above the player for a dungeon layout profile.
+ * @param {string|undefined|null} profile
+ * @returns {number}
+ */
+export function getCameraFollowHeight(profile) {
+	return profile === 'sunken-canyon' ? SUNKEN_CANYON_CAMERA_HEIGHT : CAMERA_HEIGHT;
+}
 
 /** Horizontal camera rotation speed while right-dragging (rad/px) */
 export const CAMERA_YAW_SENSITIVITY = 0.005;

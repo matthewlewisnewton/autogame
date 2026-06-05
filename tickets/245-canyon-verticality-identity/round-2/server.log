@@ -1,0 +1,12 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/245-canyon-verticality-identity/game/data
+Server listening on port 3001
+Player connected: socket=vIJ-L17cGFgsoQ6ZAAAB, playerId=feed346f-de55-4052-bd20-9b5bfb7a85f6
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=q74YX1XFsgLXXfxfAAAD, playerId=deaff045-285b-4a77-8c18-9835ce0415dd
+[loot] spawned id=44f65a59-1521-4640-9b79-a57885296f34 value=6
+Player disconnected: vIJ-L17cGFgsoQ6ZAAAB
+Player disconnected: q74YX1XFsgLXXfxfAAAD

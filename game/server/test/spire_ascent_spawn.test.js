@@ -2,7 +2,12 @@ import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import config from '../config.js';
 import { generateLayout } from '../dungeon.js';
 import { buildWallColliders, computeWalkableAABBs } from '../simulation.js';
-import { getLayoutProfileForQuest } from '../quests.js';
+import {
+	getLayoutProfileForQuest,
+	getLayoutGenerationOptions,
+	getQuest,
+} from '../quests.js';
+import { questLayoutSeed } from '../dungeon.js';
 import {
 	mulberry32,
 	spawnCrystals,
@@ -16,8 +21,11 @@ const SEED = 123;
 const PLAYER_RADIUS = 0.45;
 const WALK_STEP = 0.4;
 
-function spireAscentLayout(seed = SEED) {
-	return generateLayout(seed, 'spire-ascent');
+function spireAscentLayout(seed = SEED, tier = 1) {
+	const questId = 'spire_ascent';
+	const profile = getLayoutProfileForQuest(questId, tier);
+	const options = getLayoutGenerationOptions(questId, tier);
+	return generateLayout(seed, profile, options);
 }
 
 function roomAt(layout, x, z) {
@@ -82,12 +90,14 @@ describe('spire-ascent quest wiring', () => {
 describe('spire-ascent quest spawns', () => {
 	beforeEach(() => resetGameState());
 
-	function deploySpire(seed = SEED) {
+	function deploySpire(seed = SEED, tier = 1) {
 		gameState.selectedQuestId = 'spire_ascent';
-		gameState.layout = spireAscentLayout(seed);
+		gameState.selectedQuestTier = tier;
+		gameState.layout = spireAscentLayout(seed, tier);
 		gameState.layoutSeed = seed;
 		gameState.enemies = [];
 		gameState.loot = [];
+		gameState.run = { questTier: tier };
 		spawnEnemies();
 	}
 
@@ -140,6 +150,27 @@ describe('spire-ascent quest spawns', () => {
 		expect(gameState.loot.length).toBe(1);
 		expect(tierAt(layout, gameState.loot[0])).toBe(maxTierIndex(layout));
 		vi.restoreAllMocks();
+	});
+
+	it('Tier 2 rigid layout uses quest tier seed and matches across seeds', () => {
+		const tier2Seed = questLayoutSeed('spire_ascent', 2);
+		const a = spireAscentLayout(tier2Seed, 2);
+		const b = spireAscentLayout(9999, 2);
+		expect(a.rooms).toEqual(b.rooms);
+		expect(getLayoutGenerationOptions('spire_ascent', 2).layoutMode).toBe('rigid');
+	});
+
+	it('Tier 2 deploy spawns adds plus dormant summit boss on spire tiers', () => {
+		deploySpire(SEED, 2);
+		const tier2Quest = getQuest('spire_ascent', 2);
+		const addCount = tier2Quest.encounter.addCount;
+		const adds = gameState.enemies.filter((e) => e.type !== 'spire_warden');
+		expect(adds.length).toBe(addCount);
+		expect(gameState.enemies.some((e) => e.type === 'spire_warden')).toBe(true);
+		const maxTier = maxTierIndex(gameState.layout);
+		const tiers = adds.map(e => tierAt(gameState.layout, e));
+		expect(tiers.filter(t => t === 0).length).toBeGreaterThanOrEqual(1);
+		expect(tiers.filter(t => t === maxTier).length).toBeGreaterThanOrEqual(1);
 	});
 
 	it('bottom-tier spawn can reach top-tier treasure center via walkable AABBs', () => {

@@ -1,0 +1,11 @@
+Split the top-level ticket into **2 sub-tickets** (one per playtest bug, each independently implementable with fix + vitest):
+
+1. `/home/matt/workspace/.autogame-worktrees/248-rooms-objective-hud-and-default-profile-bugs/tickets/248-rooms-objective-hud-and-default-profile-bugs/subtickets/01-objective-hud-by-type/ticket.md`
+2. `/home/matt/workspace/.autogame-worktrees/248-rooms-objective-hud-and-default-profile-bugs/tickets/248-rooms-objective-hud-and-default-profile-bugs/subtickets/02-default-layout-profile-alias/ticket.md`
+
+**Rationale**
+
+- **01** fixes the `updateObjectiveHud()` hardcoded hostiles string — the root cause of `Purged undefined/undefined hostiles` on `collect_items` quests. Branches on `obj.type` like `renderSuspendedRunBanner()` already does.
+- **02** fixes the dead `'default'` layout profile alias in `dungeon.js` so it resolves to `DEFAULT_LAYOUT_PROFILE` instead of silently using crowded params.
+
+Both use **code** verification (logic, tests, structure). No existing sub-ticket folders were present, so nothing was deleted or renumbered.

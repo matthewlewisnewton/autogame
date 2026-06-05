@@ -1,3 +1,12 @@
+/**
+ * Optional stage-boss encounter metadata on a quest tier (wired in sub-ticket 05).
+ * @typedef {Object} EncounterConfig
+ * @property {string} [bossType] - Enemy type for the stage boss (default `miniboss`).
+ * @property {string} [landmark] - Layout landmark type for boss spawn (e.g. `arena_dais`).
+ * @property {number} [addCount] - Regular adds spawned from the quest enemy pool (boss excluded).
+ * @property {{ x: number, z: number }} [spawnAnchor] - Encounter state anchor override.
+ */
+
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
@@ -18,11 +27,16 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Initiate Vault — Tier II',
         description: 'Advanced clearance of the derelict annex sector.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 5,
+        objectiveType: 'stage_boss',
         rewardCurrency: 10,
         layoutProfile: 'crowded',
+        layoutMode: 'rigid',
         unlockRequires: { questId: 'training_caverns', tier: 1 },
+        encounter: {
+          bossType: 'annex_overseer',
+          landmark: 'vault_dais',
+          addCount: 4,
+        },
       },
     },
   },
@@ -42,6 +56,18 @@ const QUEST_DEFS = {
         rewardCurrency: 12,
         layoutProfile: 'open',
       },
+      2: {
+        tier: 2,
+        name: 'Prism Salvage — Tier II',
+        description: 'Recover resonance prisms from the rigid collapsed lattice.',
+        objectiveType: 'collect_items',
+        itemCount: 5,
+        enemyCount: 5,
+        rewardCurrency: 18,
+        layoutProfile: 'open',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'crystal_rescue', tier: 1 },
+      },
     },
   },
   arena_trials: {
@@ -59,6 +85,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 15,
         layoutProfile: 'open-plaza',
+      },
+      2: {
+        tier: 2,
+        name: 'Arena Trials — Tier II',
+        description: 'Face the rigid trial grounds where every warden bears a twisted mark.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 15,
+        layoutProfile: 'open-plaza',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'arena_trials', tier: 1 },
+        encounter: {
+          bossType: 'arena_champion',
+          landmark: 'arena_dais',
+          addCount: 4,
+        },
       },
     },
   },
@@ -78,6 +119,22 @@ const QUEST_DEFS = {
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
       },
+      2: {
+        tier: 2,
+        name: 'Canyon Descent — Tier II',
+        description:
+          'Purge the fixed canyon descent where marked hostiles lurk on plateau and floor alike.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 14,
+        layoutProfile: 'sunken-canyon',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'canyon_descent', tier: 1 },
+        encounter: {
+          bossType: 'miniboss',
+          landmark: 'canyon_monolith',
+          addCount: 4,
+        },
+      },
     },
   },
   spire_ascent: {
@@ -96,6 +153,21 @@ const QUEST_DEFS = {
         enemyCount: 6,
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
+      },
+      2: {
+        tier: 2,
+        name: 'Spire Ascent — Tier II',
+        description: 'Ascend the fixed spire where marked hostiles bear twisted power on every tier.',
+        objectiveType: 'stage_boss',
+        rewardCurrency: 16,
+        layoutProfile: 'spire-ascent',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        encounter: {
+          bossType: 'spire_warden',
+          landmark: 'spire_summit',
+          addCount: 5,
+        },
       },
     },
   },
@@ -118,6 +190,8 @@ const QUEST_DEFS = {
     },
   },
 };
+
+const { THEME } = require('./theme');
 
 const DEFAULT_QUEST_ID = 'training_caverns';
 const DEFAULT_QUEST_TIER = 1;
@@ -192,7 +266,47 @@ function formatObjectiveSummary(quest) {
     const minibossCount = quest.minibossCount ?? 0;
     return `Survive ${totalSpawns} hostiles (${minibossCount} wardens)`;
   }
+  if (quest.objectiveType === 'stage_boss') {
+    const encounter = getEncounterConfig(quest);
+    const addCount = encounter?.addCount ?? 0;
+    const questId = quest.questId || quest.id;
+    if (questId === 'spire_ascent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatSummitWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatSummitWarden;
+    }
+    if (questId === 'canyon_descent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatCanyonWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatCanyonWarden;
+    }
+    const annexOverseer = encounter?.bossType === 'annex_overseer';
+    if (addCount > 0) {
+      const template = annexOverseer
+        ? THEME.objectives.defeatAnnexOverseerWithSupports
+        : THEME.objectives.defeatTrialWardenWithSupports;
+      return template.replace('{addCount}', String(addCount));
+    }
+    return annexOverseer
+      ? THEME.objectives.defeatAnnexOverseer
+      : THEME.objectives.defeatTrialWarden;
+  }
   return quest.description || '';
+}
+
+function getEncounterConfig(quest) {
+  if (!quest || !quest.encounter || typeof quest.encounter !== 'object') {
+    return null;
+  }
+  return quest.encounter;
 }
 
 function formatRewardSummary(quest) {
@@ -263,6 +377,17 @@ function getLayoutProfileForQuest(questId, tier) {
   return (quest && quest.layoutProfile) || (fallback && fallback.layoutProfile) || 'crowded';
 }
 
+/**
+ * Layout generation options for a quest tier: slopes always enabled for quest
+ * layouts; optional `layoutMode` on the tier def (defaults to 'default').
+ */
+function getLayoutGenerationOptions(questId, tier) {
+  const quest = getQuest(questId, tier);
+  const rawMode = quest && quest.layoutMode;
+  const layoutMode = rawMode === 'rigid' ? 'rigid' : 'default';
+  return { slopes: true, layoutMode };
+}
+
 // Returns the enemy spawn pool for a quest, falling back to the default quest's
 // pool for an unknown/invalid quest id.
 function getEnemyPool(questId) {
@@ -299,10 +424,12 @@ module.exports = {
   listQuestVariants,
   getSelectedQuest,
   getLayoutProfileForQuest,
+  getLayoutGenerationOptions,
   buildSharedQuestUpdatePayload,
   buildQuestUpdatePayload,
   formatObjectiveSummary,
   formatRewardSummary,
+  getEncounterConfig,
   getEnemyPool,
   pickWeightedEnemyType,
 };

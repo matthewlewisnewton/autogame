@@ -391,10 +391,15 @@ describe('equipping starter hats on a fresh account', () => {
 		try { fs.unlinkSync(tmpFile + '.tmp'); } catch {}
 	});
 
-	it('lets a default account equip bandana and beanie without unlocking first', () => {
+	it('lets a default account equip none, bandana, and beanie without unlocking first', () => {
 		createUser('starterhats', 'password123');
 		const user = findUserByUsername('starterhats');
 		expect(user.unlockedHats).toEqual(['none', 'bandana', 'beanie']);
+		expect(user.cosmetic.hat).toBe('none');
+
+		const noneResult = updateProfile(user.accountId, { cosmetic: { hat: 'none' } });
+		expect(noneResult.ok).toBe(true);
+		expect(findUserByUsername('starterhats').cosmetic.hat).toBe('none');
 
 		const bandanaResult = updateProfile(user.accountId, { cosmetic: { hat: 'bandana' } });
 		expect(bandanaResult.ok).toBe(true);
@@ -405,11 +410,15 @@ describe('equipping starter hats on a fresh account', () => {
 		expect(findUserByUsername('starterhats').cosmetic.hat).toBe('beanie');
 	});
 
-	it('still blocks equipping a locked purchasable hat', () => {
+	it('rejects updateProfile for a locked hat on a fresh account and leaves cosmetic.hat unchanged', () => {
 		createUser('lockedhats', 'password123');
 		const user = findUserByUsername('lockedhats');
+		expect(user.unlockedHats).toEqual(['none', 'bandana', 'beanie']);
+		expect(user.cosmetic.hat).toBe('none');
+
 		const result = updateProfile(user.accountId, { cosmetic: { hat: 'crown' } });
 		expect(result.ok).toBe(false);
 		expect(result.reason).toMatch(/not unlocked/i);
+		expect(findUserByUsername('lockedhats').cosmetic.hat).toBe('none');
 	});
 });

@@ -1,0 +1,22 @@
+[createLobby] timeout waiting for #lobby visibility: page.waitForFunction: Timeout 10000ms exceeded.
+[joinLobby] no .join-lobby-btn found for player B — continuing
+{
+  "url": "http://localhost:5176/",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/254-level2-mechanics-and-reference/tickets/254-level2-mechanics-and-reference/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Both players in squad lobby."
+    }
+  ],
+  "probes": [],
+  "error": "page.waitForFunction: Timeout 12000ms exceeded.",
+  "pageerrors": []
+}

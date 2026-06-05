@@ -61,6 +61,9 @@ const HUB = {
 };
 
 const LAYOUT_PROFILES = {
+  default: {
+    ...DEFAULT_LAYOUT_PROFILE,
+  },
   crowded: {
     ...DEFAULT_LAYOUT_PROFILE,
     targetRoomFraction: 0.65,
@@ -104,6 +107,32 @@ const LAYOUT_PROFILES = {
   },
 };
 
+/** Fixed grid geometry for `layoutMode: 'rigid'` on crowded/open profiles. */
+const GRID_RIGID = {
+  crowded: {
+    startR: 1,
+    startC: 1,
+    roomWidth: 13,
+    roomDepth: 13,
+    coverPerCombatRoom: 2,
+    landmarkCount: 1,
+    rampCount: 1,
+    rampRoomIndices: [2],
+  },
+  open: {
+    startR: 1,
+    startC: 1,
+    roomWidth: 21,
+    roomDepth: 21,
+    platformCount: 1,
+    hazardCount: 1,
+    coverGoal: 1,
+    landmarkCount: 1,
+    rampCount: 2,
+    rampRoomIndices: [2, 3],
+  },
+};
+
 // Sunken-canyon stage tuning. Plateau (north / high Y) overlooks a large canyon
 // floor (south / low Y) connected by 2–3 sloped ramp rooms.
 const SUNKEN_CANYON = {
@@ -118,16 +147,35 @@ const SUNKEN_CANYON = {
   // Lateral edge connectors (always placed): centre X aligns with canyon-edge probe
   // (±(canyonHalf − 2)) so north-wall gaps and ramp floors reach the perimeter.
   edgeProbeInset: 2,
+  // Emissive lip strips at plateau south edge (one per ramp mouth); visual only.
+  cliffLipStripDepth: 1.2,
+  cliffLipPlateauInset: 0.35,
+  // Narrow hazard strips along the plateau south rim between ramp mouths.
+  cliffHazardStripDepth: 1.2,
+  cliffHazardEndPadding: 0.35,
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidCentralRampCount: 3,
+  /** Normalized interior offsets (−1…1) for rigid monolith placement. */
+  rigidMonolithOffsetX: 0.3,
+  rigidMonolithOffsetZ: -0.5,
+  rigidMonolithYaw: 0,
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
 const SPIRE_ASCENT = {
   tierMinSize: 12,
   tierMaxSize: 15,
+  tierXStep: 4,
   rampWidth: 4,
   rampDepth: 8,
   minTotalRise: 10,
   minRampSlope: 0.2,
+  edgeHazardStripWidth: 1.2,
+  edgeHazardEndPadding: 0.5,
+  /** Fixed geometry for `layoutMode: 'rigid'` — seed-independent. */
+  rigidTierCount: 4,
+  rigidTierWidth: 14,
+  rigidTierDepth: 14,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -146,30 +194,60 @@ function questLayoutSeed(questId, tier = 1) {
   return Math.abs(hash) || 1;
 }
 
+/** @typedef {'default' | 'rigid'} LayoutMode */
+
+/**
+ * Normalize layoutMode option; unknown values fall back to 'default'.
+ * @param {string|undefined} layoutMode
+ * @returns {LayoutMode}
+ */
+function normalizeLayoutMode(layoutMode) {
+  return layoutMode === 'rigid' ? 'rigid' : 'default';
+}
+
+/** Deduplicate frontier cells and pick the lowest (row, col) for rigid grid growth. */
+function pickRigidFrontierCell(frontier) {
+  const seen = new Set();
+  const unique = [];
+  for (const cell of frontier) {
+    const k = `${cell.r},${cell.c}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    unique.push(cell);
+  }
+  unique.sort((a, b) => a.r - b.r || a.c - b.c);
+  return unique[0];
+}
+
 /**
  * Generate a deterministic dungeon layout from a numeric seed.
  * Returns { rooms: [...], passages: [...], passageWidth, profile }
  *
  * @param {number} seed - PRNG seed for deterministic generation
  * @param {string|object} [profile=DEFAULT_LAYOUT_PROFILE] - Layout profile name or object
- * @param {object} [options={}] - Optional flags: { slopes: boolean }
+ * @param {object} [options={}] - Optional flags: { slopes: boolean, layoutMode: LayoutMode }
  */
 function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Open-plaza is a bespoke single-arena layout, not a grid of rooms/passages.
   if (profile === 'open-plaza') {
-    return generateOpenPlaza(seed);
+    return generateOpenPlaza(seed, options);
   }
   if (profile === 'sunken-canyon') {
-    return generateSunkenCanyon(seed);
+    return generateSunkenCanyon(seed, options);
   }
   if (profile === 'spire-ascent') {
-    return generateSpireAscent(seed);
+    return generateSpireAscent(seed, options);
   }
   if (profile === 'hub') {
     return generateHub(seed);
   }
 
   const opts = normalizeLayoutProfile(profile);
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
+  const profileName = typeof profile === 'string' && LAYOUT_PROFILES[profile]
+    ? profile
+    : 'default';
+  const rigidGrid = layoutMode === 'rigid' ? GRID_RIGID[profileName] : null;
   const rng = mulberry32(seed);
   const gridCols = opts.gridCols;
   const gridRows = opts.gridRows;
@@ -192,8 +270,8 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   const cellPositions = []; // [{r, c, x, z}]
 
-  const startR = Math.floor(rng() * gridRows);
-  const startC = Math.floor(rng() * gridCols);
+  const startR = rigidGrid ? rigidGrid.startR : Math.floor(rng() * gridRows);
+  const startC = rigidGrid ? rigidGrid.startC : Math.floor(rng() * gridCols);
   const startZ = (startR - (gridRows - 1) / 2) * cellSpacing;
   const startX = (startC - (gridCols - 1) / 2) * cellSpacing;
   grid[startR][startC] = true;
@@ -215,8 +293,10 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
 
     if (frontier.length === 0) break; // grid is full
 
-    // Pick a random frontier cell and add it
-    const pick = frontier[Math.floor(rng() * frontier.length)];
+    // Pick a frontier cell (deterministic first-in-sort for rigid mode)
+    const pick = rigidGrid
+      ? pickRigidFrontierCell(frontier)
+      : frontier[Math.floor(rng() * frontier.length)];
     grid[pick.r][pick.c] = true;
     const px = (pick.c - (gridCols - 1) / 2) * cellSpacing;
     const pz = (pick.r - (gridRows - 1) / 2) * cellSpacing;
@@ -229,8 +309,8 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   const passages = []; // [{from, to}]  (from/to are indices into cellPositions)
   const key = (r, c) => `${r},${c}`;
 
-  // Pick a random starting cell
-  const startIdx = Math.floor(rng() * cellPositions.length);
+  // Pick a starting cell for the spanning tree (index 0 in rigid mode)
+  const startIdx = rigidGrid ? 0 : Math.floor(rng() * cellPositions.length);
   const stack = [startIdx];
   visited.add(startIdx);
 
@@ -253,8 +333,10 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     }
 
     if (neighbors.length > 0) {
-      // Pick a random unvisited neighbor
-      const nextIdx = neighbors[Math.floor(rng() * neighbors.length)];
+      // Pick an unvisited neighbor (lowest index in rigid mode)
+      const nextIdx = rigidGrid
+        ? neighbors.sort((a, b) => a - b)[0]
+        : neighbors[Math.floor(rng() * neighbors.length)];
       stack.push(nextIdx);
       visited.add(nextIdx);
       passages.push({ from: idx, to: nextIdx });
@@ -282,12 +364,15 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
       }
     }
   }
-  // Shuffle and pick a fraction
-  for (let i = possibleExtra.length - 1; i > 0; i--) {
-    const j = Math.floor(rng() * (i + 1));
-    [possibleExtra[i], possibleExtra[j]] = [possibleExtra[j], possibleExtra[i]];
+  // Shuffle and pick a fraction (rigid mode skips extra loop edges)
+  if (!rigidGrid) {
+    for (let i = possibleExtra.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      [possibleExtra[i], possibleExtra[j]] = [possibleExtra[j], possibleExtra[i]];
+    }
   }
-  const extraCount = Math.min(Math.floor(possibleExtra.length * opts.extraEdgeFraction), possibleExtra.length);
+  const extraEdgeFraction = rigidGrid ? 0 : opts.extraEdgeFraction;
+  const extraCount = Math.min(Math.floor(possibleExtra.length * extraEdgeFraction), possibleExtra.length);
   for (let i = 0; i < extraCount; i++) {
     passages.push(possibleExtra[i]);
   }
@@ -306,8 +391,12 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
 
   // Step 5 — build room objects with walls (gaps for passages)
   const rooms = cellPositions.map((cell, idx) => {
-    const width = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
-    const depth = minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+    const width = rigidGrid
+      ? rigidGrid.roomWidth
+      : minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
+    const depth = rigidGrid
+      ? rigidGrid.roomDepth
+      : minRoomSize + Math.floor(rng() * (maxRoomSize - minRoomSize + 1));
     const halfW = width / 2;
     const halfD = depth / 2;
     const sides = passageSides[idx];
@@ -370,13 +459,23 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
     // Pick 1-2 rooms to become ramps (RNG-driven, deterministic per seed).
     // Skip the start room (index 0) so the spawn area stays flat.
     const candidates = rooms.map((r, i) => i).filter(i => i > 0);
-    const numRamps = Math.min(1 + Math.floor(rng() * 2), candidates.length);
-    for (let i = candidates.length - 1; i > 0; i--) {
-      const j = Math.floor(rng() * (i + 1));
-      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    let rampIndices;
+    if (rigidGrid) {
+      rampIndices = rigidGrid.rampRoomIndices.filter(i => i > 0 && i < rooms.length);
+    } else {
+      let numRamps = Math.min(1 + Math.floor(rng() * 2), candidates.length);
+      // Open profile biases toward more verticality when the dungeon is large enough.
+      if (profile === 'open' && rooms.length > 3) {
+        numRamps = Math.min(Math.max(2, numRamps), candidates.length);
+      }
+      for (let i = candidates.length - 1; i > 0; i--) {
+        const j = Math.floor(rng() * (i + 1));
+        [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+      }
+      rampIndices = candidates.slice(0, numRamps);
     }
-    for (let i = 0; i < numRamps; i++) {
-      const room = rooms[candidates[i]];
+    for (const idx of rampIndices) {
+      const room = rooms[idx];
       // Southward ramp: north edge stays flat, south edge rises to 2.0
       room.floorCorners.yNW = DEFAULT_FLOOR_Y;
       room.floorCorners.yNE = DEFAULT_FLOOR_Y;
@@ -421,17 +520,1053 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   // Assign role metadata to every room
   assignRoomRoles({ rooms, passages: passageObjects });
 
-  const profileName = typeof profile === 'string' && LAYOUT_PROFILES[profile]
-    ? profile
-    : 'default';
-
-  return {
+  const layout = {
     rooms,
     passages: passageObjects,
     passageWidth,
     cellSpacing,
     profile: profileName,
   };
+
+  if (profile === 'crowded') {
+    decorateCrowdedLayout(layout, rng, options);
+  }
+
+  if (profile === 'open') {
+    decorateOpenLayout(layout, rng, options);
+  }
+
+  return layout;
+}
+
+// ── Crowded interior cover ──
+
+const CROWDED_COVER_MARGIN = 2;
+const CROWDED_DOORWAY_DEPTH = 3;
+
+const CROWDED_COVER_TYPES = [
+  { width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+  { width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+  { width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+];
+
+function isRoomSloped(room) {
+  const { yNW, yNE, ySE, ySW } = room.floorCorners;
+  return yNW !== yNE || yNE !== ySE || ySE !== ySW;
+}
+
+/**
+ * Derive doorway clear-zone footprints from split wall segments on each edge.
+ * Each zone is a { x, z, width, depth } rectangle extending inward from the gap.
+ */
+function roomDoorwayZones(room, passageWidth) {
+  const halfW = room.width / 2;
+  const halfD = room.depth / 2;
+  const zones = [];
+  const gapW = passageWidth + 0.5;
+  const depth = CROWDED_DOORWAY_DEPTH;
+
+  const xWalls = room.walls.filter(w => w.axis === 'x');
+  const zWalls = room.walls.filter(w => w.axis === 'z');
+
+  const northZ = room.z - halfD;
+  const southZ = room.z + halfD;
+  const westX = room.x - halfW;
+  const eastX = room.x + halfW;
+
+  const hasGapOnEdge = (walls, coordKey, edgeVal) =>
+    walls.filter(w => Math.abs(w[coordKey] - edgeVal) < 0.01).length >= 2;
+
+  if (hasGapOnEdge(xWalls, 'z', northZ)) {
+    zones.push({ x: room.x, z: northZ + depth / 2, width: gapW, depth });
+  }
+  if (hasGapOnEdge(xWalls, 'z', southZ)) {
+    zones.push({ x: room.x, z: southZ - depth / 2, width: gapW, depth });
+  }
+  if (hasGapOnEdge(zWalls, 'x', westX)) {
+    zones.push({ x: westX + depth / 2, z: room.z, width: depth, depth: gapW });
+  }
+  if (hasGapOnEdge(zWalls, 'x', eastX)) {
+    zones.push({ x: eastX - depth / 2, z: room.z, width: depth, depth: gapW });
+  }
+
+  return zones;
+}
+
+/**
+ * Grid flood-fill from a room centre over the interior, treating cover
+ * footprints as blocked. Returns true when every open cell is reachable.
+ */
+function roomFullyReachable(room, cover, margin = CROWDED_COVER_MARGIN) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return cover.length === 0;
+
+  const step = 0.5;
+  const cellsX = Math.floor((halfW * 2) / step);
+  const cellsZ = Math.floor((halfD * 2) / step);
+  const cellX = i => room.x - halfW + (i + 0.5) * step;
+  const cellZ = j => room.z - halfD + (j + 0.5) * step;
+  const isBlocked = (x, z) =>
+    cover.some(c =>
+      x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+      z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+    );
+
+  const startI = Math.floor(halfW / step);
+  const startJ = Math.floor(halfD / step);
+  if (isBlocked(cellX(startI), cellZ(startJ))) return false;
+
+  const seen = new Uint8Array(cellsX * cellsZ);
+  const idx = (i, j) => j * cellsX + i;
+  const queue = [[startI, startJ]];
+  seen[idx(startI, startJ)] = 1;
+  let reached = 0;
+  while (queue.length > 0) {
+    const [i, j] = queue.pop();
+    reached++;
+    for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const ni = i + di;
+      const nj = j + dj;
+      if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+      if (seen[idx(ni, nj)]) continue;
+      if (isBlocked(cellX(ni), cellZ(nj))) continue;
+      seen[idx(ni, nj)] = 1;
+      queue.push([ni, nj]);
+    }
+  }
+
+  let open = 0;
+  for (let j = 0; j < cellsZ; j++) {
+    for (let i = 0; i < cellsX; i++) {
+      if (!isBlocked(cellX(i), cellZ(j))) open++;
+    }
+  }
+  return reached === open;
+}
+
+function acceptsCoverCandidate(cand, room, cover, doorwayZones, margin) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (Math.abs(cand.x - room.x) + cand.width / 2 > halfW) return false;
+  if (Math.abs(cand.z - room.z) + cand.depth / 2 > halfD) return false;
+  if (doorwayZones.some(z => footprintsOverlap(cand, z, 0.25))) return false;
+  if (cover.some(c => footprintsOverlap(cand, c, 0.5))) return false;
+  if (!roomFullyReachable(room, [...cover, cand], margin)) return false;
+  return true;
+}
+
+/**
+ * Greedily place 1–3 cover candidates inside a combat room AABB, rejecting
+ * overlaps, doorway-blocking positions, and layouts that partition the interior.
+ */
+function scatterCoverInRoom(rng, room, { targetCount = 2, margin = CROWDED_COVER_MARGIN, passageWidth = PASSAGE_WIDTH }) {
+  if (isRoomSloped(room)) return [];
+
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 1 || halfD <= 1) return [];
+
+  const doorwayZones = roomDoorwayZones(room, passageWidth);
+  const cover = [];
+  const goal = Math.max(1, Math.min(3, targetCount));
+
+  const candidatePool = [];
+  const gridSteps = [-0.65, -0.35, 0.35, 0.65];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      const base = CROWDED_COVER_TYPES[Math.floor(rng() * CROWDED_COVER_TYPES.length)];
+      candidatePool.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        width: base.width,
+        depth: base.depth,
+        height: base.height,
+        type: base.type,
+      });
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    const base = CROWDED_COVER_TYPES[Math.floor(rng() * CROWDED_COVER_TYPES.length)];
+    candidatePool.push({
+      x: room.x + (rng() * 2 - 1) * halfW * 0.85,
+      z: room.z + (rng() * 2 - 1) * halfD * 0.85,
+      width: base.width,
+      depth: base.depth,
+      height: base.height,
+      type: base.type,
+    });
+  }
+
+  for (let i = candidatePool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [candidatePool[i], candidatePool[j]] = [candidatePool[j], candidatePool[i]];
+  }
+
+  for (const cand of candidatePool) {
+    if (cover.length >= goal) break;
+    if (!acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) continue;
+    cover.push({
+      x: cand.x, z: cand.z,
+      width: cand.width, depth: cand.depth, height: cand.height,
+      type: cand.type,
+    });
+  }
+
+  // Guarantee at least one piece when the room is flat and large enough.
+  if (cover.length === 0) {
+    const pillar = CROWDED_COVER_TYPES[0];
+    const fallbacks = [
+      { x: room.x - halfW * 0.55, z: room.z - halfD * 0.55 },
+      { x: room.x + halfW * 0.55, z: room.z - halfD * 0.55 },
+      { x: room.x - halfW * 0.55, z: room.z + halfD * 0.55 },
+      { x: room.x + halfW * 0.55, z: room.z + halfD * 0.55 },
+      { x: room.x, z: room.z - halfD * 0.45 },
+      { x: room.x, z: room.z + halfD * 0.45 },
+    ];
+    for (const pos of fallbacks) {
+      const cand = { ...pos, ...pillar };
+      if (acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) {
+        cover.push(cand);
+        break;
+      }
+    }
+  }
+
+  return cover;
+}
+
+function buildCrowdedCoverCandidatePool(room, margin = CROWDED_COVER_MARGIN) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  const candidatePool = [];
+  const gridSteps = [-0.65, -0.35, 0.35, 0.65];
+  for (const base of CROWDED_COVER_TYPES) {
+    for (const tx of gridSteps) {
+      for (const tz of gridSteps) {
+        candidatePool.push({
+          x: room.x + tx * halfW,
+          z: room.z + tz * halfD,
+          width: base.width,
+          depth: base.depth,
+          height: base.height,
+          type: base.type,
+        });
+      }
+    }
+  }
+  const pillar = CROWDED_COVER_TYPES[0];
+  const fallbacks = [
+    { x: room.x - halfW * 0.55, z: room.z - halfD * 0.55 },
+    { x: room.x + halfW * 0.55, z: room.z - halfD * 0.55 },
+    { x: room.x - halfW * 0.55, z: room.z + halfD * 0.55 },
+    { x: room.x + halfW * 0.55, z: room.z + halfD * 0.55 },
+    { x: room.x, z: room.z - halfD * 0.45 },
+    { x: room.x, z: room.z + halfD * 0.45 },
+  ];
+  for (const pos of fallbacks) {
+    candidatePool.push({ ...pos, ...pillar });
+  }
+  return candidatePool;
+}
+
+/**
+ * Place cover in declaration order (no RNG shuffle). Used by crowded rigid mode.
+ */
+function placeCoverInRoomOrdered(room, { targetCount, margin = CROWDED_COVER_MARGIN, passageWidth = PASSAGE_WIDTH }) {
+  if (isRoomSloped(room)) return [];
+
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 1 || halfD <= 1) return [];
+
+  const doorwayZones = roomDoorwayZones(room, passageWidth);
+  const cover = [];
+  const goal = Math.max(1, Math.min(3, targetCount));
+  const candidatePool = buildCrowdedCoverCandidatePool(room, margin);
+
+  for (const cand of candidatePool) {
+    if (cover.length >= goal) break;
+    if (!acceptsCoverCandidate(cand, room, cover, doorwayZones, margin)) continue;
+    cover.push({
+      x: cand.x, z: cand.z,
+      width: cand.width, depth: cand.depth, height: cand.height,
+      type: cand.type,
+    });
+  }
+
+  return cover;
+}
+
+/**
+ * Scatter interior cover into every combat room on a crowded grid layout.
+ */
+function decorateCrowdedLayout(layout, rng, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
+  const cover = [];
+  const rigid = GRID_RIGID.crowded;
+
+  for (const room of layout.rooms) {
+    if (room.role !== 'combat') continue;
+    if (layoutMode === 'rigid') {
+      cover.push(...placeCoverInRoomOrdered(room, {
+        targetCount: rigid.coverPerCombatRoom,
+        margin: CROWDED_COVER_MARGIN,
+        passageWidth: layout.passageWidth,
+      }));
+    } else {
+      const targetCount = 1 + Math.floor(rng() * 3);
+      cover.push(...scatterCoverInRoom(rng, room, {
+        targetCount,
+        margin: CROWDED_COVER_MARGIN,
+        passageWidth: layout.passageWidth,
+      }));
+    }
+  }
+  layout.cover = cover;
+  layout.landmarks = layoutMode === 'rigid'
+    ? (() => {
+        const vault = placeVaultDaisRigid(layout);
+        return vault ? [vault] : [];
+      })()
+    : placeLandmarks(layout, rng, 'crowded');
+  return layout;
+}
+
+// ── Profile landmark props ──
+
+const LANDMARK_TYPES = {
+  crowded: ['reactor_coil', 'pipe_stack'],
+  open: ['sand_spire', 'sun_arch'],
+};
+
+const LANDMARK_FOOTPRINTS = {
+  reactor_coil: { width: 2.4, depth: 2.4 },
+  pipe_stack: { width: 2.0, depth: 2.8 },
+  sand_spire: { width: 2.2, depth: 2.2 },
+  sun_arch: { width: 3.2, depth: 1.6 },
+  canyon_monolith: { width: 2.0, depth: 2.0 },
+  vault_dais: { width: 2.4, depth: 2.4 },
+};
+
+const LANDMARK_MARGIN = 2.5;
+
+function landmarkFootprint(type, x, z) {
+  const fp = LANDMARK_FOOTPRINTS[type];
+  return { x, z, width: fp.width, depth: fp.depth };
+}
+
+function acceptsLandmarkCandidate(cand, room, blocked, doorwayZones, margin = LANDMARK_MARGIN) {
+  const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return false;
+  if (Math.abs(fp.x - room.x) + fp.width / 2 > halfW) return false;
+  if (Math.abs(fp.z - room.z) + fp.depth / 2 > halfD) return false;
+  if (doorwayZones.some(z => footprintsOverlap(fp, z, 0.25))) return false;
+  if (blocked.some(b => footprintsOverlap(fp, b, 0.5))) return false;
+  return true;
+}
+
+function tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, existingLandmarks) {
+  const doorwayZones = roomDoorwayZones(room, layout.passageWidth);
+  const margin = LANDMARK_MARGIN;
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const allBlocked = [...blocked, ...existingLandmarks.map(lm => landmarkFootprint(lm.type, lm.x, lm.z))];
+  const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+  const candidates = [];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      candidates.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        type,
+        yaw: Math.floor(rng() * 4) * (Math.PI / 2),
+      });
+    }
+  }
+  for (let i = 0; i < 12; i++) {
+    candidates.push({
+      x: room.x + (rng() * 2 - 1) * halfW * 0.8,
+      z: room.z + (rng() * 2 - 1) * halfD * 0.8,
+      type,
+      yaw: rng() * Math.PI * 2,
+    });
+  }
+  shuffleInPlace(candidates, rng);
+
+  for (const cand of candidates) {
+    if (!acceptsLandmarkCandidate(cand, room, allBlocked, doorwayZones, margin)) continue;
+    return cand;
+  }
+  return null;
+}
+
+/**
+ * Place 1–2 deterministic landmark props in non-start rooms (combat/treasure preferred).
+ */
+function placeLandmarks(layout, rng, profile) {
+  const types = LANDMARK_TYPES[profile];
+  if (!types) return [];
+
+  const hostRooms = layout.rooms.filter(r => r.role !== 'start' && !isRoomSloped(r));
+  const preferred = hostRooms.filter(r => r.role === 'combat' || r.role === 'treasure');
+  const pool = preferred.length > 0 ? preferred : hostRooms;
+  if (pool.length === 0) return [];
+
+  const blocked = [
+    ...(layout.cover || []),
+    ...(layout.platforms || []),
+    ...(layout.hazards || []),
+  ];
+
+  const shuffled = [...pool];
+  shuffleInPlace(shuffled, rng);
+  const goal = Math.min(1 + Math.floor(rng() * 2), shuffled.length);
+
+  const landmarks = [];
+  for (let i = 0; i < goal; i++) {
+    const room = shuffled[i];
+    const type = types[Math.floor(rng() * types.length)];
+    const placed = tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, landmarks);
+    if (placed) {
+      landmarks.push(placed);
+      blocked.push(landmarkFootprint(placed.type, placed.x, placed.z));
+    }
+  }
+
+  if (landmarks.length === 0) {
+    for (const room of shuffled) {
+      for (const type of types) {
+        const placed = tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, landmarks);
+        if (placed) {
+          landmarks.push(placed);
+          break;
+        }
+      }
+      if (landmarks.length > 0) break;
+    }
+  }
+
+  return landmarks;
+}
+
+function tryPlaceLandmarkInRoomOrdered(room, type, layout, blocked, existingLandmarks) {
+  const doorwayZones = roomDoorwayZones(room, layout.passageWidth);
+  const margin = LANDMARK_MARGIN;
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const allBlocked = [...blocked, ...existingLandmarks.map(lm => landmarkFootprint(lm.type, lm.x, lm.z))];
+  const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+  const candidates = [];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      candidates.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        type,
+        yaw: 0,
+      });
+    }
+  }
+
+  for (const cand of candidates) {
+    if (!acceptsLandmarkCandidate(cand, room, allBlocked, doorwayZones, margin)) continue;
+    return cand;
+  }
+  return null;
+}
+
+/**
+ * Place landmarks in sorted room order with the first allowed type (rigid mode).
+ */
+function placeLandmarksOrdered(layout, profile, goal = 1) {
+  const types = LANDMARK_TYPES[profile];
+  if (!types) return [];
+
+  const hostRooms = layout.rooms.filter(r => r.role !== 'start' && !isRoomSloped(r));
+  const preferred = hostRooms.filter(r => r.role === 'combat' || r.role === 'treasure');
+  const pool = (preferred.length > 0 ? preferred : hostRooms)
+    .sort((a, b) => a.x - b.x || a.z - b.z);
+  if (pool.length === 0) return [];
+
+  const blocked = [
+    ...(layout.cover || []),
+    ...(layout.platforms || []),
+    ...(layout.hazards || []),
+  ];
+
+  const landmarks = [];
+  const type = types[0];
+  for (let i = 0; i < Math.min(goal, pool.length); i++) {
+    const room = pool[i];
+    const placed = tryPlaceLandmarkInRoomOrdered(room, type, layout, blocked, landmarks);
+    if (placed) {
+      landmarks.push(placed);
+      blocked.push(landmarkFootprint(placed.type, placed.x, placed.z));
+    }
+  }
+
+  if (landmarks.length === 0) {
+    for (const room of pool) {
+      for (const fallbackType of types) {
+        const placed = tryPlaceLandmarkInRoomOrdered(room, fallbackType, layout, blocked, landmarks);
+        if (placed) {
+          landmarks.push(placed);
+          break;
+        }
+      }
+      if (landmarks.length > 0) break;
+    }
+  }
+
+  return landmarks;
+}
+
+/**
+ * Place one vault_dais in the last sorted non-start combat room (rigid crowded only).
+ */
+function placeVaultDaisRigid(layout) {
+  const combatRooms = layout.rooms
+    .filter(r => r.role === 'combat' && !isRoomSloped(r))
+    .sort((a, b) => a.x - b.x || a.z - b.z);
+  if (combatRooms.length === 0) return null;
+
+  const room = combatRooms[combatRooms.length - 1];
+  const blocked = [
+    ...(layout.cover || []),
+    ...(layout.platforms || []),
+    ...(layout.hazards || []),
+  ];
+  return tryPlaceLandmarkInRoomOrdered(room, 'vault_dais', layout, blocked, []);
+}
+
+/**
+ * Place a canyon monolith at fixed interior offsets (rigid mode only).
+ */
+function placeCanyonMonolithRigid(layout) {
+  const canyon = layout.rooms.find(r => r.band === 'canyon');
+  if (!canyon) return null;
+
+  const {
+    spawnClearRadius,
+    rigidMonolithOffsetX,
+    rigidMonolithOffsetZ,
+    rigidMonolithYaw,
+  } = SUNKEN_CANYON;
+  const margin = LANDMARK_MARGIN;
+  const halfW = canyon.width / 2 - margin;
+  const halfD = canyon.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const cand = {
+    x: canyon.x + rigidMonolithOffsetX * halfW,
+    z: canyon.z + rigidMonolithOffsetZ * halfD,
+    type: 'canyon_monolith',
+    yaw: rigidMonolithYaw,
+  };
+  const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+  const blocked = [...(layout.cover || [])];
+  const doorwayZones = roomDoorwayZones(canyon, layout.passageWidth ?? PASSAGE_WIDTH);
+  if (overlapsSpawnClearAt(fp, spawnClearRadius, canyon.x, canyon.z)) return null;
+  if (!acceptsLandmarkCandidate(cand, canyon, blocked, doorwayZones, margin)) return null;
+  return cand;
+}
+
+/**
+ * Place a single tall navigation monolith on the sunken-canyon floor (visual only).
+ * Clears spawn zone and cover footprints; not routed through LANDMARK_TYPES.
+ */
+function placeCanyonMonolith(layout, rng) {
+  const canyon = layout.rooms.find(r => r.band === 'canyon');
+  if (!canyon) return null;
+
+  const type = 'canyon_monolith';
+  const { spawnClearRadius } = SUNKEN_CANYON;
+  const blocked = [...(layout.cover || [])];
+  const doorwayZones = roomDoorwayZones(canyon, layout.passageWidth ?? PASSAGE_WIDTH);
+  const margin = LANDMARK_MARGIN;
+  const halfW = canyon.width / 2 - margin;
+  const halfD = canyon.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+  const candidates = [];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      candidates.push({
+        x: canyon.x + tx * halfW,
+        z: canyon.z + tz * halfD,
+        type,
+        yaw: Math.floor(rng() * 4) * (Math.PI / 2),
+      });
+    }
+  }
+  for (let i = 0; i < 16; i++) {
+    candidates.push({
+      x: canyon.x + (rng() * 2 - 1) * halfW * 0.85,
+      z: canyon.z + (rng() * 2 - 1) * halfD * 0.85,
+      type,
+      yaw: rng() * Math.PI * 2,
+    });
+  }
+  shuffleInPlace(candidates, rng);
+
+  for (const cand of candidates) {
+    const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+    if (overlapsSpawnClearAt(fp, spawnClearRadius, canyon.x, canyon.z)) continue;
+    if (!acceptsLandmarkCandidate(cand, canyon, blocked, doorwayZones, margin)) continue;
+    return cand;
+  }
+  return null;
+}
+
+// ── Open profile verticality & hazards ──
+
+const OPEN_DECOR_MARGIN = 2;
+const OPEN_SPAWN_CLEAR = 5;
+const OPEN_PLATFORM_MAX_RISE = 1.5;
+const OPEN_HAZARD_RECESS = 0.12;
+const OPEN_LOW_COVER = { width: 1.6, depth: 1.6, height: 1.0, type: 'pillar' };
+
+function shuffleInPlace(arr, rng) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function awayFromRoomCenter(room, x, z, radius) {
+  return Math.hypot(x - room.x, z - room.z) >= radius;
+}
+
+function footprintInsideRoom(room, fp, margin = OPEN_DECOR_MARGIN) {
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  return (
+    Math.abs(fp.x - room.x) + fp.width / 2 <= halfW + 1e-6 &&
+    Math.abs(fp.z - room.z) + fp.depth / 2 <= halfD + 1e-6
+  );
+}
+
+function makePlatformCorners(rng, baseRise) {
+  const spread = 0.35;
+  const corners = {
+    yNW: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+    yNE: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+    ySE: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+    ySW: DEFAULT_FLOOR_Y + baseRise + (rng() - 0.5) * spread,
+  };
+  const heights = [corners.yNW, corners.yNE, corners.ySE, corners.ySW];
+  const minY = Math.min(...heights);
+  const maxY = Math.max(...heights);
+  if (maxY - minY > 0.5) {
+    const mid = (minY + maxY) / 2;
+    corners.yNW = corners.yNE = corners.ySE = corners.ySW = mid;
+  }
+  return corners;
+}
+
+function acceptsOpenFootprint(fp, room, blocked, doorwayZones) {
+  if (!footprintInsideRoom(room, fp)) return false;
+  if (!awayFromRoomCenter(room, fp.x, fp.z, OPEN_SPAWN_CLEAR)) return false;
+  if (doorwayZones.some(z => footprintsOverlap(fp, z, 0.25))) return false;
+  if (blocked.some(b => footprintsOverlap(fp, b, 0.5))) return false;
+  return true;
+}
+
+function placeOpenPlatforms(rng, combatRooms, passageWidth) {
+  const platforms = [];
+  if (combatRooms.length === 0) return platforms;
+
+  const pool = [...combatRooms];
+  shuffleInPlace(pool, rng);
+  const count = Math.min(1 + Math.floor(rng() * 2), pool.length);
+
+  for (let i = 0; i < count; i++) {
+    const room = pool[i];
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 1;
+    const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 1;
+    const patchW = Math.min(room.width * 0.45, 10);
+    const patchD = Math.min(room.depth * 0.45, 10);
+    const baseRise = 0.6 + rng() * (OPEN_PLATFORM_MAX_RISE - 0.6);
+
+    const offsets = [
+      { tx: 0.45, tz: 0.45 }, { tx: -0.45, tz: 0.45 },
+      { tx: 0.45, tz: -0.45 }, { tx: -0.45, tz: -0.45 },
+      { tx: 0, tz: 0.5 }, { tx: 0, tz: -0.5 },
+    ];
+    shuffleInPlace(offsets, rng);
+
+    for (const { tx, tz } of offsets) {
+      const fp = {
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        width: patchW,
+        depth: patchD,
+      };
+      if (!acceptsOpenFootprint(fp, room, platforms, doorwayZones)) continue;
+      platforms.push({
+        ...fp,
+        floorCorners: makePlatformCorners(rng, baseRise),
+      });
+      break;
+    }
+  }
+
+  // Guarantee at least one raised patch when combat rooms exist.
+  if (platforms.length === 0) {
+    const guaranteed = guaranteeOpenPlatform(rng, combatRooms, passageWidth, platforms);
+    if (guaranteed) platforms.push(guaranteed);
+  }
+
+  return platforms;
+}
+
+function guaranteeOpenPlatform(rng, combatRooms, passageWidth, blocked = []) {
+  for (const room of combatRooms) {
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    for (const size of [8, 6, 5, 4]) {
+      const halfW = room.width / 2 - OPEN_DECOR_MARGIN - size / 2;
+      const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - size / 2;
+      if (halfW <= 0 || halfD <= 0) continue;
+      for (const tx of [-0.55, 0.55, 0]) {
+        for (const tz of [-0.55, 0.55, 0]) {
+          const fp = {
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: size,
+            depth: size,
+          };
+          if (!acceptsOpenFootprint(fp, room, blocked, doorwayZones)) continue;
+          return {
+            ...fp,
+            floorCorners: makePlatformCorners(rng, 0.8),
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function placeOpenHazards(rng, combatRooms, passageWidth, blocked) {
+  const hazards = [];
+  if (combatRooms.length === 0) return hazards;
+
+  const goal = Math.min(1 + Math.floor(rng() * 2), combatRooms.length);
+  const pool = [...combatRooms];
+  shuffleInPlace(pool, rng);
+
+  const pitSizes = [
+    { width: 3.5, depth: 3.5 },
+    { width: 4.0, depth: 2.5 },
+    { width: 2.5, depth: 4.0 },
+  ];
+
+  for (let i = 0; i < goal && hazards.length < goal; i++) {
+    const room = pool[i % pool.length];
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 1;
+    const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 1;
+    const size = pitSizes[Math.floor(rng() * pitSizes.length)];
+
+    const candidates = [];
+    for (let t = 0; t < 12; t++) {
+      candidates.push({
+        x: room.x + (rng() * 2 - 1) * halfW * 0.75,
+        z: room.z + (rng() * 2 - 1) * halfD * 0.75,
+        width: size.width,
+        depth: size.depth,
+        type: 'pit',
+        pitDepth: OPEN_HAZARD_RECESS,
+      });
+    }
+
+    for (const cand of candidates) {
+      const allBlocked = [...blocked, ...hazards];
+      if (!acceptsOpenFootprint(cand, room, allBlocked, doorwayZones)) continue;
+      hazards.push(cand);
+      break;
+    }
+  }
+
+  // Guarantee at least one pit when combat rooms exist.
+  if (hazards.length === 0) {
+    for (const room of combatRooms) {
+      const doorwayZones = roomDoorwayZones(room, passageWidth);
+      const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 2;
+      const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 2;
+      if (halfW <= 0 || halfD <= 0) continue;
+      for (const tx of [-0.5, 0.5, 0.55, -0.55]) {
+        for (const tz of [-0.5, 0.5, 0.55, -0.55]) {
+          const cand = {
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: 3.0,
+            depth: 3.0,
+            type: 'pit',
+            pitDepth: OPEN_HAZARD_RECESS,
+          };
+          if (!acceptsOpenFootprint(cand, room, blocked, doorwayZones)) continue;
+          hazards.push(cand);
+          break;
+        }
+        if (hazards.length > 0) break;
+      }
+      if (hazards.length > 0) break;
+    }
+  }
+
+  return hazards;
+}
+
+function placeOpenCover(rng, combatRooms, passageWidth, blocked, goal) {
+  const cover = [];
+  if (goal <= 0 || combatRooms.length === 0) return cover;
+
+  const pool = [...combatRooms];
+  shuffleInPlace(pool, rng);
+
+  for (const room of pool) {
+    if (cover.length >= goal) break;
+    const pieces = scatterCoverInRoom(rng, room, {
+      targetCount: 1,
+      margin: OPEN_DECOR_MARGIN,
+      passageWidth,
+    });
+    for (const piece of pieces) {
+      if (cover.length >= goal) break;
+      if (blocked.some(b => footprintsOverlap(piece, b, 0.5))) continue;
+      cover.push(piece);
+    }
+  }
+
+  return cover;
+}
+
+function rigidPlatformCorners(baseRise) {
+  const y = DEFAULT_FLOOR_Y + baseRise;
+  return { yNW: y, yNE: y, ySE: y, ySW: y };
+}
+
+function placeOpenPlatformsOrdered(combatRooms, passageWidth, count) {
+  const platforms = [];
+  if (combatRooms.length === 0) return platforms;
+
+  const pool = [...combatRooms].sort((a, b) => a.x - b.x || a.z - b.z);
+  const baseRise = 0.8;
+
+  const offsets = [
+    { tx: 0.45, tz: 0.45 }, { tx: -0.45, tz: 0.45 },
+    { tx: 0.45, tz: -0.45 }, { tx: -0.45, tz: -0.45 },
+    { tx: 0, tz: 0.5 }, { tx: 0, tz: -0.5 },
+  ];
+
+  for (let i = 0; i < Math.min(count, pool.length); i++) {
+    const room = pool[i];
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 1;
+    const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 1;
+    const patchW = Math.min(room.width * 0.45, 10);
+    const patchD = Math.min(room.depth * 0.45, 10);
+
+    for (const { tx, tz } of offsets) {
+      const fp = {
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        width: patchW,
+        depth: patchD,
+      };
+      if (!acceptsOpenFootprint(fp, room, platforms, doorwayZones)) continue;
+      platforms.push({
+        ...fp,
+        floorCorners: rigidPlatformCorners(baseRise),
+      });
+      break;
+    }
+  }
+
+  if (platforms.length === 0) {
+    const guaranteed = guaranteeOpenPlatformOrdered(combatRooms, passageWidth, platforms);
+    if (guaranteed) platforms.push(guaranteed);
+  }
+
+  return platforms;
+}
+
+function guaranteeOpenPlatformOrdered(combatRooms, passageWidth, blocked = []) {
+  const pool = [...combatRooms].sort((a, b) => a.x - b.x || a.z - b.z);
+  for (const room of pool) {
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    for (const size of [8, 6, 5, 4]) {
+      const halfW = room.width / 2 - OPEN_DECOR_MARGIN - size / 2;
+      const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - size / 2;
+      if (halfW <= 0 || halfD <= 0) continue;
+      for (const tx of [-0.55, 0.55, 0]) {
+        for (const tz of [-0.55, 0.55, 0]) {
+          const fp = {
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: size,
+            depth: size,
+          };
+          if (!acceptsOpenFootprint(fp, room, blocked, doorwayZones)) continue;
+          return {
+            ...fp,
+            floorCorners: rigidPlatformCorners(0.8),
+          };
+        }
+      }
+    }
+  }
+  return null;
+}
+
+function placeOpenHazardsOrdered(combatRooms, passageWidth, blocked, goal) {
+  const hazards = [];
+  if (combatRooms.length === 0) return hazards;
+
+  const pool = [...combatRooms].sort((a, b) => a.x - b.x || a.z - b.z);
+  const pitSizes = [
+    { width: 3.5, depth: 3.5 },
+    { width: 4.0, depth: 2.5 },
+    { width: 2.5, depth: 4.0 },
+  ];
+
+  for (let i = 0; i < Math.min(goal, pool.length); i++) {
+    const room = pool[i];
+    const doorwayZones = roomDoorwayZones(room, passageWidth);
+    const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 1;
+    const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 1;
+
+    const candidates = [];
+    for (const size of pitSizes) {
+      for (const tx of [-0.5, 0.5, 0.55, -0.55]) {
+        for (const tz of [-0.5, 0.5, 0.55, -0.55]) {
+          candidates.push({
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: size.width,
+            depth: size.depth,
+            type: 'pit',
+            pitDepth: OPEN_HAZARD_RECESS,
+          });
+        }
+      }
+    }
+
+    for (const cand of candidates) {
+      const allBlocked = [...blocked, ...hazards];
+      if (!acceptsOpenFootprint(cand, room, allBlocked, doorwayZones)) continue;
+      hazards.push(cand);
+      break;
+    }
+  }
+
+  if (hazards.length === 0) {
+    for (const room of pool) {
+      const doorwayZones = roomDoorwayZones(room, passageWidth);
+      const halfW = room.width / 2 - OPEN_DECOR_MARGIN - 2;
+      const halfD = room.depth / 2 - OPEN_DECOR_MARGIN - 2;
+      if (halfW <= 0 || halfD <= 0) continue;
+      for (const tx of [-0.5, 0.5, 0.55, -0.55]) {
+        for (const tz of [-0.5, 0.5, 0.55, -0.55]) {
+          const cand = {
+            x: room.x + tx * halfW,
+            z: room.z + tz * halfD,
+            width: 3.0,
+            depth: 3.0,
+            type: 'pit',
+            pitDepth: OPEN_HAZARD_RECESS,
+          };
+          if (!acceptsOpenFootprint(cand, room, blocked, doorwayZones)) continue;
+          hazards.push(cand);
+          break;
+        }
+        if (hazards.length > 0) break;
+      }
+      if (hazards.length > 0) break;
+    }
+  }
+
+  return hazards;
+}
+
+function placeOpenCoverOrdered(combatRooms, passageWidth, blocked, goal) {
+  const cover = [];
+  if (goal <= 0 || combatRooms.length === 0) return cover;
+
+  const pool = [...combatRooms].sort((a, b) => a.x - b.x || a.z - b.z);
+
+  for (const room of pool) {
+    if (cover.length >= goal) break;
+    const pieces = placeCoverInRoomOrdered(room, {
+      targetCount: 1,
+      margin: OPEN_DECOR_MARGIN,
+      passageWidth,
+    });
+    for (const piece of pieces) {
+      if (cover.length >= goal) break;
+      if (blocked.some(b => footprintsOverlap(piece, b, 0.5))) continue;
+      cover.push(piece);
+    }
+  }
+
+  return cover;
+}
+
+/**
+ * Dress sparse open grid layouts with raised platforms, shallow pit hazards,
+ * and light cover scatter. Invoked only for the `open` profile.
+ */
+function decorateOpenLayout(layout, rng, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
+  const combatRooms = layout.rooms.filter(r => r.role === 'combat');
+  const passageWidth = layout.passageWidth;
+  const rigid = GRID_RIGID.open;
+
+  let platforms;
+  let hazards;
+  let cover;
+  if (layoutMode === 'rigid') {
+    platforms = placeOpenPlatformsOrdered(combatRooms, passageWidth, rigid.platformCount);
+    hazards = placeOpenHazardsOrdered(combatRooms, passageWidth, platforms, rigid.hazardCount);
+    cover = placeOpenCoverOrdered(combatRooms, passageWidth, [...platforms, ...hazards], rigid.coverGoal);
+  } else {
+    platforms = placeOpenPlatforms(rng, combatRooms, passageWidth);
+    hazards = placeOpenHazards(rng, combatRooms, passageWidth, platforms);
+    const coverGoal = Math.floor(rng() * 3); // 0–2 total across the layout
+    cover = placeOpenCover(rng, combatRooms, passageWidth, [...platforms, ...hazards], coverGoal);
+  }
+
+  // Optional low cover centred on a platform when both exist.
+  if (platforms.length > 0 && cover.length < 2) {
+    const platform = platforms[0];
+    const lowCover = {
+      x: platform.x,
+      z: platform.z,
+      ...OPEN_LOW_COVER,
+    };
+    if (!hazards.some(h => footprintsOverlap(lowCover, h, 0.5))) {
+      cover.push(lowCover);
+    }
+  }
+
+  layout.platforms = platforms;
+  layout.hazards = hazards;
+  layout.cover = cover;
+  layout.landmarks = layoutMode === 'rigid'
+    ? placeLandmarksOrdered(layout, 'open', rigid.landmarkCount)
+    : placeLandmarks(layout, rng, 'open');
+  return layout;
 }
 
 // ── Open Plaza Arena Generation ──
@@ -556,6 +1691,35 @@ function scatterCoverInArena(rng, {
 }
 
 /**
+ * Accept cover from candidatePool in declaration order (no RNG shuffle).
+ * Used by open-plaza `layoutMode: 'rigid'` — cover placement is seed-independent.
+ */
+function placeCoverInArenaOrdered({
+  half,
+  centerX = 0,
+  centerZ = 0,
+  spawnClear,
+  candidatePool,
+  initialCover = [],
+  targetCount = 8,
+  interiorMargin = OPEN_PLAZA.interiorMargin,
+}) {
+  const cover = initialCover.map(c => ({ ...c }));
+  const interiorMax = half - interiorMargin;
+
+  for (const cand of candidatePool) {
+    if (cover.length >= targetCount) break;
+    if (Math.abs(cand.x - centerX) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z - centerZ) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, centerX, centerZ)) continue;
+    if (cover.some(c => footprintsOverlap(cand, c, 0.5))) continue;
+    if (!arenaFullyReachable([...cover, cand], half, centerX, centerZ)) continue;
+    cover.push({ ...cand });
+  }
+  return cover;
+}
+
+/**
  * Build wall segments along a horizontal (axis 'x') edge, leaving open gaps at
  * the given centre positions.
  */
@@ -628,15 +1792,259 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest 
   };
 }
 
+/** Inset from each perimeter wall plane for arena banner/tier decor (visual only). */
+const PERIMETER_DECOR_INSET = 2;
+
+/**
+ * Deterministic colosseum dressing along the open-plaza perimeter: banner poles
+ * and tiered seating blocks just inside each wall (no RNG).
+ *
+ * @param {number} half - half-width of the plaza (OPEN_PLAZA.size / 2)
+ * @returns {Array<{ type: string, x: number, z: number, yaw?: number, wall: string }>}
+ */
+function placeOpenPlazaPerimeterDecor(half) {
+  const inset = PERIMETER_DECOR_INSET;
+  const inner = half - inset;
+  const along = [-9, 9];
+
+  /** @type {Array<{ type: string, x: number, z: number, yaw?: number, wall: string }>} */
+  const decor = [];
+
+  for (const x of along) {
+    decor.push({ type: 'arena_banner', x, z: -inner, wall: 'north', yaw: 0 });
+    decor.push({ type: 'arena_tier', x, z: inner, wall: 'south', yaw: Math.PI });
+  }
+  for (const z of along) {
+    decor.push({ type: 'arena_tier', x: -inner, z, wall: 'west', yaw: Math.PI / 2 });
+    decor.push({ type: 'arena_banner', x: inner, z, wall: 'east', yaw: -Math.PI / 2 });
+  }
+
+  return decor;
+}
+
+/**
+ * Place 1–2 shallow pit hazards on the open-plaza floor. Visual-only recesses;
+ * they do not participate in collision or floor sampling.
+ *
+ * @param {object[]} blocked - platforms and cover footprints to avoid
+ */
+function placeOpenPlazaHazards(rng, half, spawnClear, blocked) {
+  const hazards = [];
+  const interiorMax = half - OPEN_PLAZA.interiorMargin;
+  const goal = 1 + Math.floor(rng() * 2);
+
+  const pitSizes = [
+    { width: 3.5, depth: 3.5 },
+    { width: 4.0, depth: 2.5 },
+    { width: 2.5, depth: 4.0 },
+  ];
+
+  const candidates = [];
+  for (let t = 0; t < 24; t++) {
+    const size = pitSizes[Math.floor(rng() * pitSizes.length)];
+    const span = half - OPEN_PLAZA.interiorMargin - Math.max(size.width, size.depth) / 2 - 0.5;
+    if (span <= 0) continue;
+    candidates.push({
+      x: (rng() * 2 - 1) * span,
+      z: (rng() * 2 - 1) * span,
+      width: size.width,
+      depth: size.depth,
+      type: 'pit',
+      pitDepth: OPEN_HAZARD_RECESS,
+    });
+  }
+
+  for (const cand of candidates) {
+    if (hazards.length >= goal) break;
+    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, 0, 0)) continue;
+    const allBlocked = [...blocked, ...hazards];
+    if (allBlocked.some(b => footprintsOverlap(cand, b, 0.5))) continue;
+    hazards.push(cand);
+  }
+
+  if (hazards.length === 0) {
+    const fallbacks = [
+      { x: 0, z: 11, width: 3.0, depth: 3.0 },
+      { x: 11, z: 0, width: 3.0, depth: 3.0 },
+      { x: -11, z: 0, width: 3.0, depth: 3.0 },
+      { x: 0, z: -11, width: 3.0, depth: 3.0 },
+      { x: -11, z: -5, width: 3.5, depth: 3.5 },
+      { x: 11, z: 5, width: 3.5, depth: 3.5 },
+    ];
+    for (const cand of fallbacks) {
+      const pit = {
+        ...cand,
+        type: 'pit',
+        pitDepth: OPEN_HAZARD_RECESS,
+      };
+      if (Math.abs(pit.x) + pit.width / 2 > interiorMax) continue;
+      if (Math.abs(pit.z) + pit.depth / 2 > interiorMax) continue;
+      if (overlapsSpawnClearAt(pit, spawnClear, 0, 0)) continue;
+      if (blocked.some(b => footprintsOverlap(pit, b, 0.5))) continue;
+      hazards.push(pit);
+      break;
+    }
+  }
+
+  return hazards;
+}
+
+/**
+ * Fixed pit positions for open-plaza `layoutMode: 'rigid'`.
+ * Seed-independent — rigid layouts differ across seeds only in fields that
+ * remain constant here (platforms, perimeter decor, etc. are also fixed).
+ */
+const OPEN_PLAZA_RIGID_HAZARDS = [
+  { x: -5, z: 10, width: 3.0, depth: 3.0, type: 'pit', pitDepth: OPEN_HAZARD_RECESS },
+  { x: -8, z: -4, width: 3.0, depth: 3.0, type: 'pit', pitDepth: OPEN_HAZARD_RECESS },
+];
+
+/**
+ * Place rigid-mode pit hazards at fixed positions (no RNG).
+ * @param {object[]} blocked - platforms and cover footprints to avoid
+ */
+function placeOpenPlazaHazardsRigid(half, spawnClear, blocked) {
+  const hazards = [];
+  const interiorMax = half - OPEN_PLAZA.interiorMargin;
+
+  for (const template of OPEN_PLAZA_RIGID_HAZARDS) {
+    const cand = { ...template };
+    if (Math.abs(cand.x) + cand.width / 2 > interiorMax) continue;
+    if (Math.abs(cand.z) + cand.depth / 2 > interiorMax) continue;
+    if (overlapsSpawnClearAt(cand, spawnClear, 0, 0)) continue;
+    const allBlocked = [...blocked, ...hazards];
+    if (allBlocked.some(b => footprintsOverlap(cand, b, 0.5))) continue;
+    hazards.push(cand);
+  }
+
+  return hazards;
+}
+
+/**
+ * Emissive cliff-edge lip AABBs at the high (plateau) mouth of each descent ramp.
+ * Strips sit on the plateau just north of the ramp junction — not over walkable ramp centres.
+ */
+function buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ) {
+  const { cliffLipStripDepth, cliffLipPlateauInset } = SUNKEN_CANYON;
+  const halfW = rampWidth / 2;
+  const maxZ = plateauSouthZ - cliffLipPlateauInset;
+  const minZ = maxZ - cliffLipStripDepth;
+
+  return rampCenters.map(rampX => ({
+    minX: rampX - halfW,
+    maxX: rampX + halfW,
+    minZ,
+    maxZ,
+    y: yHigh,
+  }));
+}
+
+/**
+ * Thin hazard strips along the plateau south cliff between ramp gap openings.
+ * AABBs sit on solid rim segments only — not across ramp mouths.
+ */
+function buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh) {
+  const { cliffHazardStripDepth, cliffHazardEndPadding } = SUNKEN_CANYON;
+  const halfW = plateau.width / 2;
+  const halfD = plateau.depth / 2;
+  const plateauSouthZ = plateau.z + halfD;
+  const leftEdge = plateau.x - halfW;
+  const rightEdge = plateau.x + halfW;
+
+  const rawGaps = rampCenters
+    .map((cx) => ({ left: cx - rampWidth / 2, right: cx + rampWidth / 2 }))
+    .filter((gap) => gap.right > leftEdge && gap.left < rightEdge)
+    .map((gap) => ({
+      left: Math.max(gap.left, leftEdge),
+      right: Math.min(gap.right, rightEdge),
+    }))
+    .sort((a, b) => a.left - b.left);
+
+  const mergedGaps = [];
+  for (const gap of rawGaps) {
+    const last = mergedGaps[mergedGaps.length - 1];
+    if (last && gap.left <= last.right + 0.01) {
+      last.right = Math.max(last.right, gap.right);
+    } else {
+      mergedGaps.push({ ...gap });
+    }
+  }
+
+  const edgeHazards = [];
+  let cursor = leftEdge;
+
+  for (const gap of mergedGaps) {
+    const segLeft = cursor + cliffHazardEndPadding;
+    const segRight = gap.left - cliffHazardEndPadding;
+    if (segRight > segLeft + 0.01) {
+      edgeHazards.push({
+        minX: segLeft,
+        maxX: segRight,
+        minZ: plateauSouthZ - cliffHazardStripDepth,
+        maxZ: plateauSouthZ,
+        y: yHigh,
+        side: 'south',
+        band: 'plateau',
+      });
+    }
+    cursor = Math.max(cursor, gap.right);
+  }
+
+  const segLeft = cursor + cliffHazardEndPadding;
+  const segRight = rightEdge - cliffHazardEndPadding;
+  if (segRight > segLeft + 0.01) {
+    edgeHazards.push({
+      minX: segLeft,
+      maxX: segRight,
+      minZ: plateauSouthZ - cliffHazardStripDepth,
+      maxZ: plateauSouthZ,
+      y: yHigh,
+      side: 'south',
+      band: 'plateau',
+    });
+  }
+
+  // When central ramps tile the south rim (no X gaps), place southern flank
+  // strips on the west/east plateau edges so cliff tension remains reachable.
+  if (edgeHazards.length === 0) {
+    const flankMinZ = plateau.z + halfD * 0.2;
+    const flankMaxZ = plateauSouthZ - cliffHazardEndPadding;
+    edgeHazards.push({
+      minX: leftEdge,
+      maxX: leftEdge + cliffHazardStripDepth,
+      minZ: flankMinZ,
+      maxZ: flankMaxZ,
+      y: yHigh,
+      side: 'west',
+      band: 'plateau',
+    });
+    edgeHazards.push({
+      minX: rightEdge - cliffHazardStripDepth,
+      maxX: rightEdge,
+      minZ: flankMinZ,
+      maxZ: flankMaxZ,
+      y: yHigh,
+      side: 'east',
+      band: 'plateau',
+    });
+  }
+
+  return edgeHazards;
+}
+
 /**
  * Build the open-plaza arena: one large walkable room bounded by four solid
- * perimeter walls, with scattered cover pieces and a couple of gently sloped
- * platforms. Deterministic for a given seed (uses mulberry32).
+ * perimeter walls, with scattered cover pieces and gently sloped platforms.
+ * Deterministic for a given seed (uses mulberry32) in `layoutMode: 'default'`.
+ * In `layoutMode: 'rigid'`, cover/hazard placement is seed-independent.
  *
  * Returns { rooms: [plaza], passages: [], cover, platforms, passageWidth,
  *           cellSpacing, profile: 'open-plaza' }.
  */
-function generateOpenPlaza(seed) {
+function generateOpenPlaza(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const size = OPEN_PLAZA.size;
   const half = size / 2;
@@ -664,10 +2072,11 @@ function generateOpenPlaza(seed) {
     },
   };
 
-  // Two gently sloped platforms (corner heights differ by ≤ 0.5 units).
+  // Three gently sloped platforms at distinct corners (corner delta ≤ 0.5 each).
   const platforms = [
-    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.0, yNE: 1.3, ySE: 1.4, ySW: 1.1 } },
-    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.4, yNE: 1.1, ySE: 1.2, ySW: 1.3 } },
+    { x: -9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.3, yNE: 1.6, ySE: 1.7, ySW: 1.4 } },
+    { x: 9, z: 9, width: 6, depth: 6, floorCorners: { yNW: 1.6, yNE: 1.4, ySE: 1.6, ySW: 1.5 } },
+    { x: 9, z: -9, width: 6, depth: 6, floorCorners: { yNW: 1.6, yNE: 1.5, ySE: 1.7, ySW: 1.5 } },
   ];
 
   // Cover set. Start with one pillar centred on each platform so at least two
@@ -688,24 +2097,50 @@ function generateOpenPlaza(seed) {
     { x: -9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
     { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: -5, z: -11, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+    { x: 5, z: 11, width: 3.5, depth: 1.0, height: 1.1, type: 'barricade' },
+    { x: 11, z: -11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
+    { x: -11, z: 11, width: 1.8, depth: 1.8, height: 2.2, type: 'crate_stack' },
   ];
 
-  const allCover = scatterCoverInArena(rng, {
-    half,
-    spawnClear,
-    candidatePool,
-    initialCover: cover,
-    targetCount: 8,
-    interiorMargin: OPEN_PLAZA.interiorMargin,
-  });
-  cover.length = 0;
-  cover.push(...allCover);
+  let hazards;
+  if (layoutMode === 'rigid') {
+    const allCover = placeCoverInArenaOrdered({
+      half,
+      spawnClear,
+      candidatePool,
+      initialCover: cover,
+      targetCount: 8,
+      interiorMargin: OPEN_PLAZA.interiorMargin,
+    });
+    cover.length = 0;
+    cover.push(...allCover);
+    hazards = placeOpenPlazaHazardsRigid(half, spawnClear, [...platforms, ...cover]);
+  } else {
+    const allCover = scatterCoverInArena(rng, {
+      half,
+      spawnClear,
+      candidatePool,
+      initialCover: cover,
+      targetCount: 8,
+      interiorMargin: OPEN_PLAZA.interiorMargin,
+    });
+    cover.length = 0;
+    cover.push(...allCover);
+    hazards = placeOpenPlazaHazards(rng, half, spawnClear, [...platforms, ...cover]);
+  }
 
   const layout = {
     rooms: [plaza],
     passages: [],
     cover,
+    hazards,
     platforms,
+    floorMarkings: [
+      { type: 'center_ring', x: 0, z: 0, innerRadius: 3.5, outerRadius: 4.5 },
+    ],
+    landmarks: [{ x: 0, z: 0, type: 'arena_dais' }],
+    perimeterDecor: placeOpenPlazaPerimeterDecor(half),
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: size,
     profile: 'open-plaza',
@@ -730,7 +2165,8 @@ function generateOpenPlaza(seed) {
  * Returns { rooms, passages: [], cover, passageWidth, cellSpacing,
  *           profile: 'sunken-canyon' }.
  */
-function generateSunkenCanyon(seed) {
+function generateSunkenCanyon(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const rng = mulberry32(seed);
   const {
     plateauSize,
@@ -741,6 +2177,7 @@ function generateSunkenCanyon(seed) {
     spawnClearRadius,
     interiorMargin,
     rampXOffsets,
+    rigidCentralRampCount,
   } = SUNKEN_CANYON;
 
   const yHigh = DEFAULT_FLOOR_Y + yDrop;
@@ -758,11 +2195,15 @@ function generateSunkenCanyon(seed) {
   const plateauSouthZ = plateauZ + plateauHalf;
 
   // Pick 2 or 3 central ramp bridges; always add west/east edge connectors (4–5 ramps).
-  const numRamps = 2 + Math.floor(rng() * 2);
   const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
-  const centralRampCenters = numRamps === 2
-    ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
-    : sortedOffsets;
+  const centralRampCenters = layoutMode === 'rigid'
+    ? sortedOffsets.slice(0, rigidCentralRampCount)
+    : (() => {
+      const numRamps = 2 + Math.floor(rng() * 2);
+      return numRamps === 2
+        ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
+        : sortedOffsets;
+    })();
   const rampHalfW = rampWidth / 2;
   const edgeRampX = canyonHalf - SUNKEN_CANYON.edgeProbeInset - rampHalfW;
   const edgeRampCenters = [-edgeRampX, edgeRampX];
@@ -847,33 +2288,73 @@ function generateSunkenCanyon(seed) {
     { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
   ];
 
-  const cover = scatterCoverInArena(rng, {
-    half: canyonHalf,
-    centerX: canyonX,
-    centerZ: canyonZ,
-    spawnClear: spawnClearRadius,
-    candidatePool: canyonCandidatePool,
-    targetCount: 8,
-    interiorMargin,
-  });
+  const cover = layoutMode === 'rigid'
+    ? placeCoverInArenaOrdered({
+      half: canyonHalf,
+      centerX: canyonX,
+      centerZ: canyonZ,
+      spawnClear: spawnClearRadius,
+      candidatePool: canyonCandidatePool,
+      targetCount: 8,
+      interiorMargin,
+    })
+    : scatterCoverInArena(rng, {
+      half: canyonHalf,
+      centerX: canyonX,
+      centerZ: canyonZ,
+      spawnClear: spawnClearRadius,
+      candidatePool: canyonCandidatePool,
+      targetCount: 8,
+      interiorMargin,
+    });
 
-  return {
+  const cliffLips = buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ);
+  const edgeHazards = buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh);
+
+  const layoutBase = {
     rooms: [plateau, ...ramps, canyon],
     passages: [],
     cover,
+    cliffLips,
+    edgeHazards,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: canyonSize,
     profile: 'sunken-canyon',
+  };
+
+  const monolith = layoutMode === 'rigid'
+    ? placeCanyonMonolithRigid(layoutBase)
+    : placeCanyonMonolith(layoutBase, rng);
+
+  return {
+    ...layoutBase,
+    landmarks: monolith ? [monolith] : [],
   };
 }
 
 // ── Spire Ascent Stage Generation ──
 
 /**
- * Build perimeter walls for a flat tier platform. North/south edges may leave a
- * ramp-width gap centred on `rampX` where a ramp room connects.
+ * Signed lateral offset for a spire-ascent tier: 0, +step, −2·step, +3·step, …
  */
-function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, rampX, rampW, { northGap, southGap }) {
+function spireTierXOffset(tierIndex, tierXStep) {
+  if (tierIndex === 0) return 0;
+  const sign = tierIndex % 2 === 1 ? 1 : -1;
+  return sign * tierIndex * tierXStep;
+}
+
+/**
+ * Build perimeter walls for a flat tier platform. North/south edges may leave
+ * ramp-width gaps centred on the ramp mouth X for each connecting ramp.
+ */
+function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, {
+  northGap,
+  southGap,
+  northGapX,
+  southGapX,
+  northGapWidth,
+  southGapWidth,
+}) {
   const halfW = tierW / 2;
   const halfD = tierD / 2;
   const northZ = tierZ - halfD;
@@ -884,13 +2365,13 @@ function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, rampX, rampW, { nor
   ];
 
   if (northGap) {
-    walls.push(...buildHorizontalWallWithGaps(northZ, tierX, tierW, [rampX], rampW));
+    walls.push(...buildHorizontalWallWithGaps(northZ, tierX, tierW, [northGapX], northGapWidth));
   } else {
     walls.push({ x: tierX, z: northZ, length: tierW, axis: 'x' });
   }
 
   if (southGap) {
-    walls.push(...buildHorizontalWallWithGaps(southZ, tierX, tierW, [rampX], rampW));
+    walls.push(...buildHorizontalWallWithGaps(southZ, tierX, tierW, [southGapX], southGapWidth));
   } else {
     walls.push({ x: tierX, z: southZ, length: tierW, axis: 'x' });
   }
@@ -899,33 +2380,90 @@ function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, rampX, rampW, { nor
 }
 
 /**
+ * Thin hazard strips on the outward lateral lip of each combat tier (zig-zag
+ * exposes east on odd tierIndex, west on even). Start/treasure tiers omitted.
+ */
+function buildSpireEdgeHazards(tiers) {
+  const { edgeHazardStripWidth, edgeHazardEndPadding } = SPIRE_ASCENT;
+  const edgeHazards = [];
+
+  for (const tier of tiers) {
+    if (tier.role !== 'combat') continue;
+
+    const halfW = tier.width / 2;
+    const halfD = tier.depth / 2;
+    const y = tier.floorCorners.yNW;
+    const outwardEast = tier.tierIndex % 2 === 1;
+    let minX;
+    let maxX;
+
+    if (outwardEast) {
+      minX = tier.x + halfW - edgeHazardStripWidth;
+      maxX = tier.x + halfW;
+    } else {
+      minX = tier.x - halfW;
+      maxX = tier.x - halfW + edgeHazardStripWidth;
+    }
+
+    edgeHazards.push({
+      tierIndex: tier.tierIndex,
+      minX,
+      maxX,
+      minZ: tier.z - halfD + edgeHazardEndPadding,
+      maxZ: tier.z + halfD - edgeHazardEndPadding,
+      y,
+      side: outwardEast ? 'east' : 'west',
+    });
+  }
+
+  return edgeHazards;
+}
+
+/**
  * Build the spire-ascent stage: 3–5 flat tier platforms along −Z, each step
  * linked by one sloped ramp room. Bottom tier (high +Z) is start; top tier
  * (low −Z) is treasure.
  *
- * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent' }.
+ * In `layoutMode: 'default'`, tier count (3–5) and tier width/depth (12–15)
+ * are seed-driven. In `layoutMode: 'rigid'`, those values are fixed.
+ *
+ * Returns { rooms, passages: [], passageWidth, cellSpacing, profile: 'spire-ascent',
+ *   edgeHazards, landmarks: [{ type: 'spire_summit', x, z }] }.
  */
-function generateSpireAscent(seed) {
-  const rng = mulberry32(seed);
+function generateSpireAscent(seed, options = {}) {
+  const layoutMode = normalizeLayoutMode(options.layoutMode);
   const {
     tierMinSize,
     tierMaxSize,
+    tierXStep,
     rampWidth,
     rampDepth,
     minTotalRise,
     minRampSlope,
+    rigidTierCount,
+    rigidTierWidth,
+    rigidTierDepth,
   } = SPIRE_ASCENT;
 
-  const tierCount = 3 + Math.floor(rng() * 3);
+  let tierCount;
+  let tierWidth;
+  let tierDepth;
+  if (layoutMode === 'rigid') {
+    tierCount = rigidTierCount;
+    tierWidth = rigidTierWidth;
+    tierDepth = rigidTierDepth;
+  } else {
+    const rng = mulberry32(seed);
+    tierCount = 3 + Math.floor(rng() * 3);
+    const tierSpan = tierMaxSize - tierMinSize + 1;
+    tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
+    tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
+  }
+
   const yStep = minTotalRise / (tierCount - 1);
   if (yStep / rampDepth < minRampSlope) {
     throw new Error('SPIRE_ASCENT rampDepth too large for minRampSlope');
   }
-
-  const tierSpan = tierMaxSize - tierMinSize + 1;
-  const tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
-  const tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
-  const rampX = 0;
   const halfTierD = tierDepth / 2;
   const halfRampD = rampDepth / 2;
 
@@ -933,14 +2471,27 @@ function generateSpireAscent(seed) {
   const totalSpan = (tierCount - 1) * step + tierDepth;
   const bottomTierZ = totalSpan / 2 - halfTierD;
 
+  const tierXs = Array.from({ length: tierCount }, (_, i) => spireTierXOffset(i, tierXStep));
+  const rampWidths = [];
+  for (let i = 0; i < tierCount - 1; i++) {
+    const lateralSpan = Math.abs(tierXs[i + 1] - tierXs[i]);
+    rampWidths.push(Math.max(rampWidth, lateralSpan + rampWidth));
+  }
+
   const tiers = [];
   const ramps = [];
 
   for (let i = 0; i < tierCount; i++) {
+    const tierX = tierXs[i];
     const tierZ = bottomTierZ - i * step;
     const y = DEFAULT_FLOOR_Y + i * yStep;
     const isBottom = i === 0;
     const isTop = i === tierCount - 1;
+
+    const northGapX = isTop ? tierX : (tierX + tierXs[i + 1]) / 2;
+    const southGapX = isBottom ? tierX : (tierXs[i - 1] + tierX) / 2;
+    const northGapWidth = isTop ? rampWidth : rampWidths[i];
+    const southGapWidth = isBottom ? rampWidth : rampWidths[i - 1];
 
     let role;
     let spawnWeight;
@@ -956,17 +2507,22 @@ function generateSpireAscent(seed) {
     }
 
     tiers.push({
-      x: rampX,
+      x: tierX,
       z: tierZ,
       width: tierWidth,
       depth: tierDepth,
-      walls: buildTierPerimeterWalls(rampX, tierZ, tierWidth, tierDepth, rampX, rampWidth, {
+      walls: buildTierPerimeterWalls(tierX, tierZ, tierWidth, tierDepth, {
         northGap: !isTop,
         southGap: !isBottom,
+        northGapX,
+        southGapX,
+        northGapWidth,
+        southGapWidth,
       }),
       floorCorners: { yNW: y, yNE: y, ySE: y, ySW: y },
       band: 'tier',
       tierIndex: i,
+      tierXOffset: tierX,
       role,
       spawnWeight,
       encounterTier: i,
@@ -977,11 +2533,12 @@ function generateSpireAscent(seed) {
       const yLow = DEFAULT_FLOOR_Y + i * yStep;
       const tierNorthZ = tierZ - halfTierD;
       const rampZ = tierNorthZ - halfRampD;
+      const rampCenterX = (tierX + tierXs[i + 1]) / 2;
       ramps.push(
         buildDescentRampRoom({
-          x: rampX,
+          x: rampCenterX,
           z: rampZ,
-          width: rampWidth,
+          width: rampWidths[i],
           depth: rampDepth,
           yHigh,
           yLow,
@@ -997,12 +2554,17 @@ function generateSpireAscent(seed) {
     if (i < ramps.length) rooms.push(ramps[i]);
   }
 
+  const edgeHazards = buildSpireEdgeHazards(tiers);
+  const treasureRoom = tiers[tierCount - 1];
+
   return {
     rooms,
     passages: [],
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: Math.max(tierWidth, totalSpan),
     profile: 'spire-ascent',
+    edgeHazards,
+    landmarks: [{ x: treasureRoom.x, z: treasureRoom.z, type: 'spire_summit' }],
   };
 }
 
@@ -1303,13 +2865,27 @@ function randomRoomPositionByRole(layout, role, rng) {
 
 module.exports = {
   mulberry32,
+  normalizeLayoutMode,
   generateLayout,
   generateOpenPlaza,
   generateSunkenCanyon,
+  buildSunkenCanyonCliffLips,
+  buildSunkenCanyonCliffHazards,
   generateSpireAscent,
+  buildSpireEdgeHazards,
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,
+  placeCoverInArenaOrdered,
+  OPEN_PLAZA_RIGID_HAZARDS,
+  scatterCoverInRoom,
+  decorateCrowdedLayout,
+  decorateOpenLayout,
+  placeLandmarks,
+  LANDMARK_TYPES,
+  LANDMARK_FOOTPRINTS,
+  roomDoorwayZones,
+  roomFullyReachable,
   buildAdjacencyMap,
   bfsDistances,
   findFarthestRoom,

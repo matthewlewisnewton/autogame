@@ -1,0 +1,11 @@
+Remediation round 2 adds two sub-tickets for the open gaps in `review-feedback.md`. Sub-tickets 01–03 already have `.passed` markers and were left untouched; there were no failed folders without `.passed` to retire.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/254-level2-mechanics-and-reference/tickets/254-level2-mechanics-and-reference/subtickets/04-harness-capture-server-reachable`
+   - Closes gap 1: top-level capture `metrics.json` `ok: false` with `ECONNREFUSED` / empty `port_holders` after Vite reports the server ready.
+
+2. `/home/matt/workspace/.autogame-worktrees/254-level2-mechanics-and-reference/tickets/254-level2-mechanics-and-reference/subtickets/05-arena-trials-tier2-debug-scenario`
+   - Closes gap 2: `arena-trials-tier-2` debug scenario calls `enterPlayingPhase()` before setting Arena Trials Tier 2, leaving stale `run.questTier` for variant rolls and objective metadata.
+
+Both use **Verification: code** because acceptance criteria cover server state, logs, handlers, and run metadata — not purely visual rendering.

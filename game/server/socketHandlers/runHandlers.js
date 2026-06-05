@@ -1,6 +1,7 @@
 // ── Run Socket Handlers ──
 // Registers run-lifecycle and playing-phase socket.on handlers extracted from lobbyHandlers.js.
 
+const { CLIENT_TO_SERVER, SERVER_TO_CLIENT } = require('../../shared/events.js');
 const { LOOT_PICKUP_RADIUS } = require('../config');
 const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
 const {
@@ -23,10 +24,10 @@ function register(socket, ctx) {
     io,
   } = ctx;
 
-  socket.on('returnToLobby', () => {
+  socket.on(CLIENT_TO_SERVER.RETURN_TO_LOBBY, () => {
     withLobbyFromSocket(socket, (state) => {
     if (state.run && state.run.status === 'playing') {
-      socket.emit('runError', { reason: 'Run still in progress' });
+      socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Run still in progress' });
       return;
     }
 
@@ -36,37 +37,37 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('giveUp', () => {
+  socket.on(CLIENT_TO_SERVER.GIVE_UP, () => {
     withLobbyFromSocket(socket, (state) => {
       try {
         if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
-          socket.emit('runError', { reason: 'No active run' });
+          socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No active run' });
           return;
         }
         const result = giveUpRun(state);
         if (!result.ok) {
-          socket.emit('runError', { reason: result.reason || 'Cannot give up' });
+          socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: result.reason || 'Cannot give up' });
           return;
         }
-        socket.emit('runAbandoned');
+        socket.emit(SERVER_TO_CLIENT.RUN_ABANDONED);
       } catch (err) {
         console.error('[giveUp] failed:', err);
-        socket.emit('runError', { reason: 'Give up failed' });
+        socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Give up failed' });
       }
     });
   });
 
-  socket.on('abandonRun', () => {
+  socket.on(CLIENT_TO_SERVER.ABANDON_RUN, () => {
     withLobbyFromSocket(socket, (state) => {
       if (!state.suspendedCheckpoint) {
-        socket.emit('runError', { reason: 'No suspended expedition' });
+        socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No suspended expedition' });
         return;
       }
       abandonSuspendedRun(state);
     });
   });
 
-  socket.on('claimCardReward', (data) => {
+  socket.on(CLIENT_TO_SERVER.CLAIM_CARD_REWARD, (data) => {
     withLobbyFromSocket(socket, (state) => {
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -77,7 +78,7 @@ function register(socket, ctx) {
     if (!result.ok) return;
 
     savePlayerData(socket.playerId);
-    socket.emit('cardRewardClaimed', {
+    socket.emit(SERVER_TO_CLIENT.CARD_REWARD_CLAIMED, {
       cardId: result.cardId,
       ownedCards: result.ownedCards,
       inventory: result.inventory,
@@ -85,7 +86,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('move', (data) => {
+  socket.on(CLIENT_TO_SERVER.MOVE, (data) => {
     withLobbyFromSocket(socket, (state) => {
     if (!isPlayingPhase(state) && !isLobbyPhase(state)) return;
 
@@ -136,13 +137,13 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('useCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.USE_CARD, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
       cardEffects.handleUseCard(socket, state, lobby, data);
     });
   });
 
-  socket.on('discardCard', (data) => {
+  socket.on(CLIENT_TO_SERVER.DISCARD_CARD, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!isPlayingPhase(state)) return;
     if (!state.run || state.run.status !== 'playing') return;
@@ -153,15 +154,15 @@ function register(socket, ctx) {
 
     const result = discardCardFromHand(player, data.slotIndex, data.cardId);
     if (!result.valid) {
-      socket.emit('cardError', { reason: result.reason });
+      socket.emit(SERVER_TO_CLIENT.CARD_ERROR, { reason: result.reason });
       return;
     }
 
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
     });
   });
 
-  socket.on('lootPickup', (data) => {
+  socket.on(CLIENT_TO_SERVER.LOOT_PICKUP, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
 

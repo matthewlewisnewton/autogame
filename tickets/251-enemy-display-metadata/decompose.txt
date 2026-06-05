@@ -1,0 +1,12 @@
+Broke ticket **251-enemy-display-metadata** into **2 sub-tickets** in dependency order:
+
+1. **01-enemy-type-display-metadata** — Adds `name`, `description`, and `surfacedStats` to all four `ENEMY_DEFS` entries and keeps those fields off spawned enemy entities (`spawnEnemy` / `ensureEnemyCombatStats` exclusion).
+
+2. **02-enemy-variant-display-metadata** — Adds `description` and `surfacedStats` to all five `VARIANT_DEFS` entries (display `name` already exists).
+
+Both use **code** verification — this is metadata + tests, not purely visual rendering.
+
+**Created sub-ticket folders:**
+
+- `/home/matt/workspace/.autogame-worktrees/251-enemy-display-metadata/tickets/251-enemy-display-metadata/subtickets/01-enemy-type-display-metadata/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/251-enemy-display-metadata/tickets/251-enemy-display-metadata/subtickets/02-enemy-variant-display-metadata/ticket.md`

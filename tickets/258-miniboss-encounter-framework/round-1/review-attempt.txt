@@ -1,0 +1,8 @@
+Wrote the senior review artifacts:
+
+- `tickets/258-miniboss-encounter-framework/round-1/review.md`
+- `tickets/258-miniboss-encounter-framework/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`
+
+Blocking gap: the added `stage-boss-dormant` / `stage-boss-active` debug scenarios synthesize a Tier 1 stage-boss state instead of using the real Arena Trials Tier 2 encounter path. No `nits.md` was created.

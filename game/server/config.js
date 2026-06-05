@@ -28,7 +28,10 @@ const SPAWN_PADDING = 2;
 const DECK_MIN_SIZE = 4;
 const DECK_MAX_SIZE = 24;
 const MAX_HP = 100;
+const SPIRE_EDGE_HAZARD_DAMAGE = 3;
+const SPIRE_EDGE_HAZARD_COOLDOWN_MS = 500;
 const MEDIC_HEAL_COST = 10;
+const APPEARANCE_CHANGE_COST = 25;
 const LOBBY_REVIVE_HP = 10;
 const RESPAWN_DELAY_MS = 3000;
 const LOOT_LIFETIME_MS = 120000;
@@ -55,6 +58,9 @@ const ENEMY_CARD_DROPS = {
   skirmisher: 'flame_blade',
   drake: 'dungeon_drake',
   miniboss: 'dungeon_drake',
+  annex_overseer: 'dungeon_drake',
+  arena_champion: 'dungeon_drake',
+  spire_warden: 'dungeon_drake',
   spawner: 'battle_familiar',
 };
 
@@ -65,6 +71,9 @@ const ENEMY_MS_DROPS = {
   skirmisher: 15,
   drake: 30,
   miniboss: 50,
+  annex_overseer: 50,
+  arena_champion: 70,
+  spire_warden: 55,
   spawner: 25,
 };
 
@@ -93,6 +102,41 @@ const HAND_SLOT_FILL_ORDER = SHARED_HAND_SLOT_FILL_ORDER;
 const PASSIVE_DRAW_INTERVAL_MS = Number(process.env.PASSIVE_DRAW_INTERVAL_MS) || 5000;
 const MAX_PLAYERS = 16;
 
+// ── Difficulty scaling by live player count ──────────────────────────────────
+// 1–4 players are baseline (factor 1.0). Each additional player from 5 up to the
+// MAX_PLAYERS cap adds a small marginal increment to spawn rate, enemy damage, and
+// miniboss HP. These are the shared tuning knobs; later sub-tickets read them from
+// objectives.js / simulation.js / progression.js via the helpers below.
+const DIFFICULTY_SCALE_MIN_PLAYERS = 4; // players at or below this stay at factor 1.0
+const DIFFICULTY_SPAWN_RATE_PER_PLAYER = 0.08; // +8% spawn rate per extra player (tunable)
+const DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER = 0.05; // +5% enemy damage per extra player (tunable)
+const DIFFICULTY_MINIBOSS_HP_PER_PLAYER = 0.1; // +10% miniboss HP per extra player (tunable)
+
+// Number of players above the baseline threshold, capped at the MAX_PLAYERS span.
+// 0 for any count in 0..4, 1 at 5, +1 per player, clamped to MAX_PLAYERS - threshold
+// (12) for any count >= 16. Never negative.
+function difficultyExtraPlayers(count) {
+  const n = Number(count);
+  if (!Number.isFinite(n)) return 0;
+  const extra = Math.floor(n) - DIFFICULTY_SCALE_MIN_PLAYERS;
+  const cap = MAX_PLAYERS - DIFFICULTY_SCALE_MIN_PLAYERS;
+  return Math.max(0, Math.min(cap, extra));
+}
+
+// Multiplicative scale factor for a given per-player increment: exactly 1.0 for
+// count 1..4, larger for 5..16, and clamped at the 16-player value beyond that.
+function difficultyScaleFactor(count, perPlayerIncrement) {
+  return 1 + difficultyExtraPlayers(count) * perPlayerIncrement;
+}
+
+// Live player count the scaling reads. Drop-in JOIN raises it, LEAVE lowers it.
+// Clamped to [0, MAX_PLAYERS]; 0 when there is no gameState/players map.
+function runPlayerCount(gameState) {
+  if (!gameState || !gameState.players) return 0;
+  const n = Object.keys(gameState.players).length;
+  return Math.max(0, Math.min(MAX_PLAYERS, n));
+}
+
 module.exports = {
   TICK_RATE,
   MOVE_SPEED,
@@ -120,7 +164,10 @@ module.exports = {
   DECK_MIN_SIZE,
   DECK_MAX_SIZE,
   MAX_HP,
+  SPIRE_EDGE_HAZARD_DAMAGE,
+  SPIRE_EDGE_HAZARD_COOLDOWN_MS,
   MEDIC_HEAL_COST,
+  APPEARANCE_CHANGE_COST,
   LOBBY_REVIVE_HP,
   RESPAWN_DELAY_MS,
   LOOT_LIFETIME_MS,
@@ -148,4 +195,11 @@ module.exports = {
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
   MAX_PLAYERS,
+  DIFFICULTY_SCALE_MIN_PLAYERS,
+  DIFFICULTY_SPAWN_RATE_PER_PLAYER,
+  DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER,
+  DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
+  difficultyExtraPlayers,
+  difficultyScaleFactor,
+  runPlayerCount,
 };
