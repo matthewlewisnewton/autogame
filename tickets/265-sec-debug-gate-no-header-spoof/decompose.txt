@@ -1,0 +1,5 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Sub-tickets created:
+
+- `tickets/265-sec-debug-gate-no-header-spoof/subtickets/01-remove-header-checks/ticket.md` — Remove Origin/Host header checks from `isDebugScenarioAllowed()`, keep only peer-address and env-var gates
+- `tickets/265-sec-debug-gate-no-header-spoof/subtickets/02-test-header-spoof-rejected/ticket.md` — Add unit tests proving spoofed headers cannot enable debug scenarios

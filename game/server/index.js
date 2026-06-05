@@ -545,13 +545,7 @@ function isDebugScenarioAllowed(socket) {
   if (process.env.NODE_ENV === 'production') return false;
 
   const address = socket.handshake.address || '';
-  const origin = socket.handshake.headers.origin || '';
-  const host = socket.handshake.headers.host || '';
-  const localAddress = address === '::1' || address === '127.0.0.1' || address.endsWith('127.0.0.1');
-  const localOrigin = /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(origin);
-  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::\d+)?$/i.test(host);
-
-  return localAddress || localOrigin || localHost;
+  return address === '::1' || address === '127.0.0.1' || address.endsWith('.127.0.0.1');
 }
 
 function ensureNearbyEnemy(state, x, z) {
