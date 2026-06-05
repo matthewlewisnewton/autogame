@@ -120,12 +120,16 @@ const QUEST_DEFS = {
         name: 'Canyon Descent — Tier II',
         description:
           'Purge the fixed canyon descent where marked hostiles lurk on plateau and floor alike.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'canyon_descent', tier: 1 },
+        encounter: {
+          bossType: 'miniboss',
+          landmark: 'canyon_monolith',
+          addCount: 4,
+        },
       },
     },
   },
@@ -256,13 +260,16 @@ function formatObjectiveSummary(quest) {
   }
   if (quest.objectiveType === 'stage_boss') {
     const addCount = getEncounterConfig(quest)?.addCount ?? 0;
+    const questId = quest.questId || quest.id;
+    const isCanyonWarden = questId === 'canyon_descent';
+    const withSupportsKey = isCanyonWarden
+      ? 'defeatCanyonWardenWithSupports'
+      : 'defeatTrialWardenWithSupports';
+    const soloKey = isCanyonWarden ? 'defeatCanyonWarden' : 'defeatTrialWarden';
     if (addCount > 0) {
-      return THEME.objectives.defeatTrialWardenWithSupports.replace(
-        '{addCount}',
-        String(addCount),
-      );
+      return THEME.objectives[withSupportsKey].replace('{addCount}', String(addCount));
     }
-    return THEME.objectives.defeatTrialWarden;
+    return THEME.objectives[soloKey];
   }
   return quest.description || '';
 }

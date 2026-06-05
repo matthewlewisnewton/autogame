@@ -78,6 +78,23 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the trial warden');
 	});
+
+	it('summarizes canyon_descent stage-boss quests with canyon warden copy', () => {
+		expect(
+			formatObjectiveSummary({
+				questId: 'canyon_descent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 4 },
+			}),
+		).toBe('Defeat the canyon warden and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				questId: 'canyon_descent',
+				objectiveType: 'stage_boss',
+				encounter: { addCount: 0 },
+			}),
+		).toBe('Defeat the canyon warden');
+	});
 });
 
 describe('formatRewardSummary()', () => {
