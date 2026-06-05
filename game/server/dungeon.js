@@ -569,9 +569,11 @@ function buildHorizontalWallWithGaps(z, roomX, totalLength, gapCenters, gapWidth
  * @param {number} opts.yLow - floor Y at the low edge
  * @param {'x'|'z'} opts.axis - 'z': high Y at north (−Z), low at south (+Z);
  *   'x': high at west (−X), low at east (+X)
+ * @param {boolean} [opts.openWest] - omit west side wall (axis 'z' only)
+ * @param {boolean} [opts.openEast] - omit east side wall (axis 'z' only)
  * @returns {object} room with floorCorners, side walls, band 'ramp'
  */
-function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis }) {
+function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest = false, openEast = false }) {
   const halfW = width / 2;
   const halfD = depth / 2;
   let floorCorners;
@@ -579,8 +581,8 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis }) {
 
   if (axis === 'z') {
     floorCorners = { yNW: yHigh, yNE: yHigh, ySE: yLow, ySW: yLow };
-    walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
-    walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
+    if (!openWest) walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
+    if (!openEast) walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
   } else {
     floorCorners = { yNW: yHigh, yNE: yLow, ySE: yLow, ySW: yHigh };
     walls.push({ x, z: z - halfD, length: width, axis: 'x' });
@@ -737,6 +739,18 @@ function generateSunkenCanyon(seed) {
     [offsetPool[i], offsetPool[j]] = [offsetPool[j], offsetPool[i]];
   }
   const rampCenters = offsetPool.slice(0, numRamps);
+  const rampHalfW = rampWidth / 2;
+  const rampIntervals = rampCenters.map(cx => ({
+    cx,
+    minX: cx - rampHalfW,
+    maxX: cx + rampHalfW,
+  }));
+
+  function isRampEdgeInsideOtherRamp(edgeX, ownCenterX) {
+    return rampIntervals.some(
+      ({ cx, minX, maxX }) => cx !== ownCenterX && edgeX > minX && edgeX < maxX
+    );
+  }
 
   const ramps = rampCenters.map(rampX =>
     buildDescentRampRoom({
@@ -747,6 +761,8 @@ function generateSunkenCanyon(seed) {
       yHigh,
       yLow,
       axis: 'z',
+      openWest: isRampEdgeInsideOtherRamp(rampX - rampHalfW, rampX),
+      openEast: isRampEdgeInsideOtherRamp(rampX + rampHalfW, rampX),
     })
   );
 
