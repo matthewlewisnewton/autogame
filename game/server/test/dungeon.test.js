@@ -1138,6 +1138,99 @@ describe('crowded interior cover', () => {
   });
 });
 
+// ── open profile verticality & hazards ──
+
+describe("generateLayout(seed, 'open') verticality & hazards", () => {
+  const SEED = 42;
+  const MARGIN = 2;
+  const SPAWN_CLEAR = 5;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function hostRoom(layout, fp) {
+    return layout.rooms.find(r =>
+      Math.abs(fp.x - r.x) + fp.width / 2 <= r.width / 2 + 1e-6 &&
+      Math.abs(fp.z - r.z) + fp.depth / 2 <= r.depth / 2 + 1e-6
+    );
+  }
+
+  function footprintInMargins(room, fp) {
+    const halfW = room.width / 2 - MARGIN;
+    const halfD = room.depth / 2 - MARGIN;
+    return (
+      Math.abs(fp.x - room.x) + fp.width / 2 <= halfW + 1e-6 &&
+      Math.abs(fp.z - room.z) + fp.depth / 2 <= halfD + 1e-6
+    );
+  }
+
+  it('with slopes places ≥ 1 platform in a non-start combat room', () => {
+    const layout = generateLayout(SEED, 'open', { slopes: true });
+    expect(Array.isArray(layout.platforms)).toBe(true);
+    expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+    const startRoom = layout.rooms.find(r => r.role === 'start');
+    for (const p of layout.platforms) {
+      expect(p.floorCorners).toBeDefined();
+      const host = hostRoom(layout, p);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+      expect(host).not.toBe(startRoom);
+      const heights = [p.floorCorners.yNW, p.floorCorners.yNE, p.floorCorners.ySE, p.floorCorners.ySW];
+      expect(Math.max(...heights) - DEFAULT_FLOOR_Y).toBeLessThanOrEqual(1.5);
+    }
+  });
+
+  it('includes ≥ 1 pit hazard per layout inside a combat room', () => {
+    const layout = generateLayout(SEED, 'open');
+    expect(Array.isArray(layout.hazards)).toBe(true);
+    expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+    for (const h of layout.hazards) {
+      expect(h.type).toBe('pit');
+      expect(h.pitDepth).toBeGreaterThan(0);
+      const host = hostRoom(layout, h);
+      expect(host).toBeDefined();
+      expect(host.role).toBe('combat');
+      expect(footprintInMargins(host, h)).toBe(true);
+      expect(Math.hypot(h.x - host.x, h.z - host.z)).toBeGreaterThanOrEqual(SPAWN_CLEAR - 0.01);
+    }
+  });
+
+  it('scatters ≤ 2 cover pieces total (sparse vs crowded)', () => {
+    const layout = generateLayout(SEED, 'open');
+    expect(layout.cover.length).toBeLessThanOrEqual(2);
+    const crowded = generateLayout(SEED, 'crowded');
+    expect(crowded.cover.length).toBeGreaterThan(layout.cover.length);
+  });
+
+  it('with slopes applies ≥ 2 ramp rooms when room count allows', () => {
+    const layout = generateLayout(SEED, 'open', { slopes: true });
+    expect(layout.rooms.length).toBeGreaterThan(3);
+    let rampCount = 0;
+    for (const room of layout.rooms) {
+      if (room.floorCorners.ySE !== room.floorCorners.yNW) rampCount++;
+    }
+    expect(rampCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('is deterministic for a fixed seed', () => {
+    const a = generateLayout(SEED, 'open', { slopes: true });
+    const b = generateLayout(SEED, 'open', { slopes: true });
+    expect(a.platforms).toEqual(b.platforms);
+    expect(a.hazards).toEqual(b.hazards);
+    expect(a.cover).toEqual(b.cover);
+  });
+
+  it('holds across multiple seeds', () => {
+    for (const seed of [1, 7, 99, 2024]) {
+      const layout = generateLayout(seed, 'open', { slopes: true });
+      expect(layout.platforms.length).toBeGreaterThanOrEqual(1);
+      expect(layout.hazards.length).toBeGreaterThanOrEqual(1);
+      expect(layout.cover.length).toBeLessThanOrEqual(2);
+    }
+  });
+});
+
 // ── sampleFloorY ──
 
 describe('sampleFloorY(layout, x, z)', () => {
