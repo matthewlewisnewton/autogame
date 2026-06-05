@@ -85,6 +85,14 @@ describe('profile material palette', () => {
 		expect(open.startFloor).not.toBe(crowded.startFloor);
 	});
 
+	it('resolves open-plaza profile palette (warm stone + amber accent)', () => {
+		const plaza = getProfileMaterialColors('open-plaza');
+		const legacy = getProfileMaterialColors('default');
+		expect(plaza).not.toEqual(legacy);
+		expect(plaza.floor).toBe(0xb8a078);
+		expect(plaza.wall).toBe(0x9a8268);
+	});
+
 	it('buildDungeon meshes use different combat-floor colors for open vs crowded (same seed)', () => {
 		const seed = 42;
 		const openLayout = generateLayout(seed, 'open');
@@ -992,6 +1000,13 @@ describe('profile landmark rendering', () => {
 			expect(group.userData.landmarkType).toBe(type);
 			expect(group.children.length).toBeGreaterThan(0);
 		}
+		const plaza = getProfileMaterials('open-plaza');
+		const dais = buildLandmarkMesh('arena_dais', plaza);
+		expect(dais).toBeInstanceOf(THREE.Group);
+		expect(dais.userData.landmarkType).toBe('arena_dais');
+		expect(dais.children.length).toBeGreaterThan(0);
+		expect(dais.children.every(c => c.geometry)).toBe(true);
+		expect(dais.children.some(c => c.material === plaza.accent)).toBe(true);
 	});
 
 	it('buildDungeon adds one landmark group per server landmark entry', () => {
@@ -1008,6 +1023,21 @@ describe('profile landmark rendering', () => {
 			).length;
 			expect(trackedInMeshes).toBe(trackedFromGroups);
 		}
+	});
+
+	it('buildDungeon on open-plaza layout emits one arena_dais landmark group', () => {
+		const layout = generateLayout(42, 'open-plaza');
+		expect(layout.landmarks).toHaveLength(1);
+		const scene = mockScene();
+		const { meshes } = buildDungeon(scene, layout);
+		const landmarkGroups = scene.added.filter(o => o.userData?.landmarkType === 'arena_dais');
+		expect(landmarkGroups).toHaveLength(1);
+		expect(landmarkGroups[0].position.x).toBe(0);
+		expect(landmarkGroups[0].position.z).toBe(0);
+		const trackedInMeshes = meshes.filter(m =>
+			landmarkGroups.some(g => g.children.includes(m))
+		).length;
+		expect(trackedInMeshes).toBe(landmarkGroups[0].children.length);
 	});
 
 	it('buildWallColliders ignores landmarks (visual-only, no collision)', () => {

@@ -1509,6 +1509,18 @@ describe("generateLayout(seed, 'open-plaza')", () => {
     expect(a).toEqual(b);
   });
 
+  it('returns exactly one arena_dais landmark at the origin', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    expect(layout.landmarks).toEqual([{ x: 0, z: 0, type: 'arena_dais' }]);
+  });
+
+  it('landmarks do not affect wall colliders', () => {
+    const layout = generateLayout(123, 'open-plaza');
+    const withLandmark = buildWallColliders(layout);
+    const withoutLandmark = buildWallColliders({ ...layout, landmarks: [] });
+    expect(withLandmark).toEqual(withoutLandmark);
+  });
+
   it('cover footprints become wall colliders (player cannot walk through cover)', () => {
     const layout = generateLayout(123, 'open-plaza');
     const colliders = buildWallColliders(layout);
