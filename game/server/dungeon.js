@@ -660,7 +660,127 @@ function decorateCrowdedLayout(layout, rng) {
     }));
   }
   layout.cover = cover;
+  layout.landmarks = placeLandmarks(layout, rng, 'crowded');
   return layout;
+}
+
+// ── Profile landmark props ──
+
+const LANDMARK_TYPES = {
+  crowded: ['reactor_coil', 'pipe_stack'],
+  open: ['sand_spire', 'sun_arch'],
+};
+
+const LANDMARK_FOOTPRINTS = {
+  reactor_coil: { width: 2.4, depth: 2.4 },
+  pipe_stack: { width: 2.0, depth: 2.8 },
+  sand_spire: { width: 2.2, depth: 2.2 },
+  sun_arch: { width: 3.2, depth: 1.6 },
+};
+
+const LANDMARK_MARGIN = 2.5;
+
+function landmarkFootprint(type, x, z) {
+  const fp = LANDMARK_FOOTPRINTS[type];
+  return { x, z, width: fp.width, depth: fp.depth };
+}
+
+function acceptsLandmarkCandidate(cand, room, blocked, doorwayZones, margin = LANDMARK_MARGIN) {
+  const fp = landmarkFootprint(cand.type, cand.x, cand.z);
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return false;
+  if (Math.abs(fp.x - room.x) + fp.width / 2 > halfW) return false;
+  if (Math.abs(fp.z - room.z) + fp.depth / 2 > halfD) return false;
+  if (doorwayZones.some(z => footprintsOverlap(fp, z, 0.25))) return false;
+  if (blocked.some(b => footprintsOverlap(fp, b, 0.5))) return false;
+  return true;
+}
+
+function tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, existingLandmarks) {
+  const doorwayZones = roomDoorwayZones(room, layout.passageWidth);
+  const margin = LANDMARK_MARGIN;
+  const halfW = room.width / 2 - margin;
+  const halfD = room.depth / 2 - margin;
+  if (halfW <= 0 || halfD <= 0) return null;
+
+  const allBlocked = [...blocked, ...existingLandmarks.map(lm => landmarkFootprint(lm.type, lm.x, lm.z))];
+  const gridSteps = [-0.6, -0.3, 0.3, 0.6];
+  const candidates = [];
+  for (const tx of gridSteps) {
+    for (const tz of gridSteps) {
+      candidates.push({
+        x: room.x + tx * halfW,
+        z: room.z + tz * halfD,
+        type,
+        yaw: Math.floor(rng() * 4) * (Math.PI / 2),
+      });
+    }
+  }
+  for (let i = 0; i < 12; i++) {
+    candidates.push({
+      x: room.x + (rng() * 2 - 1) * halfW * 0.8,
+      z: room.z + (rng() * 2 - 1) * halfD * 0.8,
+      type,
+      yaw: rng() * Math.PI * 2,
+    });
+  }
+  shuffleInPlace(candidates, rng);
+
+  for (const cand of candidates) {
+    if (!acceptsLandmarkCandidate(cand, room, allBlocked, doorwayZones, margin)) continue;
+    return cand;
+  }
+  return null;
+}
+
+/**
+ * Place 1–2 deterministic landmark props in non-start rooms (combat/treasure preferred).
+ */
+function placeLandmarks(layout, rng, profile) {
+  const types = LANDMARK_TYPES[profile];
+  if (!types) return [];
+
+  const hostRooms = layout.rooms.filter(r => r.role !== 'start' && !isRoomSloped(r));
+  const preferred = hostRooms.filter(r => r.role === 'combat' || r.role === 'treasure');
+  const pool = preferred.length > 0 ? preferred : hostRooms;
+  if (pool.length === 0) return [];
+
+  const blocked = [
+    ...(layout.cover || []),
+    ...(layout.platforms || []),
+    ...(layout.hazards || []),
+  ];
+
+  const shuffled = [...pool];
+  shuffleInPlace(shuffled, rng);
+  const goal = Math.min(1 + Math.floor(rng() * 2), shuffled.length);
+
+  const landmarks = [];
+  for (let i = 0; i < goal; i++) {
+    const room = shuffled[i];
+    const type = types[Math.floor(rng() * types.length)];
+    const placed = tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, landmarks);
+    if (placed) {
+      landmarks.push(placed);
+      blocked.push(landmarkFootprint(placed.type, placed.x, placed.z));
+    }
+  }
+
+  if (landmarks.length === 0) {
+    for (const room of shuffled) {
+      for (const type of types) {
+        const placed = tryPlaceLandmarkInRoom(rng, room, type, layout, blocked, landmarks);
+        if (placed) {
+          landmarks.push(placed);
+          break;
+        }
+      }
+      if (landmarks.length > 0) break;
+    }
+  }
+
+  return landmarks;
 }
 
 // ── Open profile verticality & hazards ──
@@ -918,6 +1038,7 @@ function decorateOpenLayout(layout, rng, options = {}) {
   layout.platforms = platforms;
   layout.hazards = hazards;
   layout.cover = cover;
+  layout.landmarks = placeLandmarks(layout, rng, 'open');
   return layout;
 }
 
@@ -1800,6 +1921,9 @@ module.exports = {
   scatterCoverInRoom,
   decorateCrowdedLayout,
   decorateOpenLayout,
+  placeLandmarks,
+  LANDMARK_TYPES,
+  LANDMARK_FOOTPRINTS,
   roomDoorwayZones,
   roomFullyReachable,
   buildAdjacencyMap,
