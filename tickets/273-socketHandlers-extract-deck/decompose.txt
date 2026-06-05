@@ -1,0 +1,18 @@
+Broke ticket **273** into **4 sub-tickets** in dependency order. All use **`code`** verification. Wiring stays `lobbyHandlers.register` → `deckHandlers.register` so **`index.js` is not modified** (consistent with “chained after slice 1”).
+
+| # | Scope | Handlers moved |
+|---|--------|----------------|
+| 01 | Module scaffold + deck edit | `deckAddCard`, `deckRemoveCard` |
+| 02 | Ready-up deck validation | `playerReady` |
+| 03 | Inventory / shop | `evolveCard`, `grindCard`, `sellCard`, `buyShopCard` |
+| 04 | Trades + cleanup | `offerCardTrade`, `respondCardTrade` |
+
+Non-deck lobby handlers (`selectQuest`, `unlockHat`, key items, medic, run lifecycle, playing phase) stay in `lobbyHandlers.js`.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/273-socketHandlers-extract-deck/tickets/273-socketHandlers-extract-deck/subtickets/01-deck-handlers-scaffold`
+2. `/home/matt/workspace/.autogame-worktrees/273-socketHandlers-extract-deck/tickets/273-socketHandlers-extract-deck/subtickets/02-player-ready-deck-validation`
+3. `/home/matt/workspace/.autogame-worktrees/273-socketHandlers-extract-deck/tickets/273-socketHandlers-extract-deck/subtickets/03-deck-inventory-shop-handlers`
+4. `/home/matt/workspace/.autogame-worktrees/273-socketHandlers-extract-deck/tickets/273-socketHandlers-extract-deck/subtickets/04-deck-trade-handlers`
+dic, run lifecycle, playing phase) remain in `lobbyHandlers.js`.
