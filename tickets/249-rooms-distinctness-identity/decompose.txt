@@ -1,0 +1,17 @@
+Broke the top-level ticket into **5 sub-tickets** in dependency order. Each uses **code** verification (materials, layout data, mesh counts, and tests — not screenshot-only QA).
+
+| # | Focus |
+|---|--------|
+| 01 | Profile material palette (sandy open / dark-metal crowded) |
+| 02 | Crowded interior cover (structural differentiation) |
+| 03 | Open verticality + hazard zones (platforms, pits, sparse cover, ramp bias) |
+| 04 | Doorway markers in large rooms (client) |
+| 05 | Profile landmark props (1–2 per layout, server + client) |
+
+**Created sub-ticket paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/tickets/249-rooms-distinctness-identity/subtickets/01-profile-material-palette/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/tickets/249-rooms-distinctness-identity/subtickets/02-crowded-interior-cover/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/tickets/249-rooms-distinctness-identity/subtickets/03-open-verticality-hazards/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/tickets/249-rooms-distinctness-identity/subtickets/04-doorway-markers-large-rooms/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/249-rooms-distinctness-identity/tickets/249-rooms-distinctness-identity/subtickets/05-profile-landmark-props/ticket.md`
