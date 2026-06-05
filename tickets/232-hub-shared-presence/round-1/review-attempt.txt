@@ -1,0 +1,8 @@
+Wrote the final review artifacts:
+
+- `tickets/232-hub-shared-presence/round-1/review.md`
+- `tickets/232-hub-shared-presence/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL` due to one blocking lifecycle gap: players who leave during `gamePhase === 'playing'` can remain in `lobby.hubPresence.players` and reappear as ghost hub avatars when the lobby returns to hub phase.
+
+No `nits.md` was created because I did not identify separate non-blocking nits.

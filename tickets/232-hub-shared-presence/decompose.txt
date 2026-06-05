@@ -1,0 +1,7 @@
+Remediation round 2 had one open gap from `review-feedback.md`: stale `hubPresence` entries after mid-run leave. Sub-tickets `01`–`03` are marked `.passed` and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/232-hub-shared-presence/tickets/232-hub-shared-presence/subtickets/04-mid-run-hub-presence-cleanup/ticket.md`
+
+It covers always removing hub presence on player removal (any phase), filtering/pruning stale registry keys in `hubPresence.js`, and unit + integration regression tests. Verification mode is `code`.
