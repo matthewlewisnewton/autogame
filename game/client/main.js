@@ -161,6 +161,7 @@ import {
 } from './renderer.js';
 import { updateBoothPrompt, dispatchBoothAction, BOOTH_ACTION_EVENT } from './boothPrompt.js';
 import { isLaunchBoothAction, getBoothDebugHook, LAUNCH_BOOTH_ID, shouldLaunchReadyUp, LAUNCH_READY_EVENT } from './launchBooth.js';
+import { QUEST_BOOTH_ID, isQuestBoothAction } from './questBooth.js';
 import {
 	openPreview as openCosmeticPreview,
 	updatePreview as updateCosmeticPreview,
@@ -171,6 +172,7 @@ const statusEl = document.getElementById('status');
 const boothPromptEl = document.getElementById('booth-prompt');
 const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
+const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
 const readyBtn = document.getElementById('ready-btn');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
@@ -947,6 +949,15 @@ window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
 	if (boothId !== 'character') return;
 	if (!gameState || gameState.gamePhase !== 'lobby') return;
 	openCharacterBooth();
+});
+
+// Quest booth: reveal/focus the existing inline quest panel (#quest-board).
+// No second quest UI is introduced — openQuestPanel just scrolls the wrapper
+// into view; selection still flows through renderQuestBoardState's handler.
+window.addEventListener(BOOTH_ACTION_EVENT, (ev) => {
+	if (!isQuestBoothAction(ev.detail)) return;
+	if (!gameState || gameState.gamePhase !== 'lobby') return;
+	openQuestPanel();
 });
 
 // Context bundle handed to per-card renderers — declared once so the
@@ -1846,6 +1857,15 @@ function applyQuestLayoutFromServer(data) {
 		const spawn = getSpawnPosition();
 		setPlayerPosition(spawn.x, spawn.z);
 	}
+}
+
+// Reveal/focus the existing inline quest panel when the hub quest booth fires.
+// The inline #quest-board stays the selection surface (see renderQuestBoardState
+// below); this only brings the wrapper into view. Guarded to the lobby phase.
+function openQuestPanel() {
+	if (gameState?.gamePhase !== 'lobby') return;
+	// jsdom lacks scrollIntoView, so guard defensively for tests.
+	questBoardWrapperEl?.scrollIntoView?.({ block: 'nearest' });
 }
 
 function renderQuestBoardState() {
@@ -4298,6 +4318,7 @@ window.updateLevelSettingsBtnVisibility = updateLevelSettingsBtnVisibility;
 window.closeAccountOverlay = closeAccountOverlay;
 window.openCharacterBooth = openCharacterBooth;
 window.closeCharacterBooth = closeCharacterBooth;
+window.openQuestPanel = openQuestPanel;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
 window.renderLobbyList = renderLobbyList;
