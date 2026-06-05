@@ -934,6 +934,7 @@ const boothDebugParam = new URLSearchParams(window.location.search).get('booth')
 let debugScenarioRequested = false;
 let boothDebugRequested = false;
 let debugScenarioResult = null;
+let debugGodmodeResult = null;
 const debugBooth = new URLSearchParams(window.location.search).get('booth');
 const debugBoothAllowed = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 let lastRunSummary = null; // most recent runComplete payload, for harness-state inspection
@@ -1393,6 +1394,15 @@ function bindSocketHandlers(s) {
 			}
 		} else if (data && data.reason) {
 			console.warn(`[debugScenario] ${data.reason}`);
+		}
+	});
+
+	s.on('debugGodmodeResult', (data) => {
+		debugGodmodeResult = data || null;
+		if (data && data.ok) {
+			console.log(`[debugGodmode] ${data.enabled ? 'enabled' : 'disabled'}`);
+		} else if (data && data.reason) {
+			console.warn(`[debugGodmode] ${data.reason}`);
 		}
 	});
 
@@ -2033,6 +2043,26 @@ function requestDebugScenario() {
 	socket.emit('debugScenario', { name: debugScenario });
 }
 
+function isDebugGodmodeKeyBlocked(e) {
+	const target = e.target;
+	if (target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target?.isContentEditable) {
+		return true;
+	}
+	return !!(variantCodexOpen || deckViewerOpen || isLevelSettingsOpen() || isCharacterBoothOpen()
+		|| (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden'))
+		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
+		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
+		|| (runSummaryOverlay && !runSummaryOverlay.classList.contains('hidden')));
+}
+
+function emitToggleDebugGodmode() {
+	if (!socket?.connected) return;
+	socket.emit('toggleDebugGodmode');
+}
+
 window.__openDeckBoothForTest = openDeckBooth;
 window.__openShopBoothForTest = openShopBooth;
 window.__requestDebugBoothOpenForTest = requestDebugBoothOpen;
@@ -2051,6 +2081,8 @@ function requestBoothDebugOpen() {
 }
 
 /** Test / Playwright hook: apply a debug scenario on demand. */
+window.__toggleDebugGodmodeForTest = emitToggleDebugGodmode;
+
 window.__requestDebugScenarioForTest = (name, timeoutMs) => new Promise((resolve) => {
 	if (!socket) {
 		resolve({ ok: false, reason: 'no socket' });
@@ -3612,7 +3644,10 @@ if (deckViewerOverlayEl) {
 }
 
 // ── Variant Codex keyboard toggle ──
-window.addEventListener('keydown', (e) => {
+if (window.__variantCodexKeydownHandler) {
+	window.removeEventListener('keydown', window.__variantCodexKeydownHandler);
+}
+window.__variantCodexKeydownHandler = (e) => {
 	const key = e.key.toLowerCase();
 	if (key === 'c' && canUseGameActions()) {
 		e.preventDefault();
@@ -3622,8 +3657,14 @@ window.addEventListener('keydown', (e) => {
 	if (key === 'escape' && variantCodexOpen) {
 		e.preventDefault();
 		hideVariantCodex();
+		return;
 	}
-});
+	if (key === 'g' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
+		e.preventDefault();
+		emitToggleDebugGodmode();
+	}
+};
+window.addEventListener('keydown', window.__variantCodexKeydownHandler);
 
 // ── Auth form event handlers ──
 
@@ -4528,6 +4569,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugScenario,
 		debugScenarioAllowed,
 		debugScenarioResult,
+		debugGodmodeResult,
 		objective,
 		runObjectiveComplete,
 		lastRunSummary,
