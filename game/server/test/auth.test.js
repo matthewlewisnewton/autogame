@@ -312,20 +312,29 @@ describe('POST /api/login', () => {
 describe('initAuth() dev fallback', () => {
 	const origNodeEnv = process.env.NODE_ENV;
 	const origJwtSecret = process.env.JWT_SECRET;
+	const origAllowDevAuth = process.env.ALLOW_DEV_AUTH;
 
 	beforeEach(() => {
 		resetAuthSecret();
 		delete process.env.JWT_SECRET;
+		delete process.env.ALLOW_DEV_AUTH;
 	});
 
 	afterEach(() => {
 		process.env.NODE_ENV = origNodeEnv;
 		process.env.JWT_SECRET = origJwtSecret;
+		process.env.ALLOW_DEV_AUTH = origAllowDevAuth;
 		resetAuthSecret();
 	});
 
-	it('uses dev fallback secret when NODE_ENV is not test or production', () => {
+	it('throws in dev mode without ALLOW_DEV_AUTH', () => {
 		process.env.NODE_ENV = 'development';
+		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
+	});
+
+	it('uses dev fallback secret when ALLOW_DEV_AUTH=1', () => {
+		process.env.NODE_ENV = 'development';
+		process.env.ALLOW_DEV_AUTH = '1';
 		const secret = initAuth();
 		expect(secret).toBe('dev-secret');
 	});
@@ -338,6 +347,20 @@ describe('initAuth() dev fallback', () => {
 	it('accepts JWT_SECRET from environment regardless of NODE_ENV', () => {
 		process.env.NODE_ENV = 'development';
 		process.env.JWT_SECRET = 'custom-secret';
+		const secret = initAuth();
+		expect(secret).toBe('custom-secret');
+	});
+
+	it('uses test-secret in NODE_ENV=test without requiring ALLOW_DEV_AUTH', () => {
+		process.env.NODE_ENV = 'test';
+		const secret = initAuth();
+		expect(secret).toBe('test-secret');
+	});
+
+	it('JWT_SECRET env value takes precedence over ALLOW_DEV_AUTH', () => {
+		process.env.NODE_ENV = 'development';
+		process.env.JWT_SECRET = 'custom-secret';
+		process.env.ALLOW_DEV_AUTH = '1';
 		const secret = initAuth();
 		expect(secret).toBe('custom-secret');
 	});
