@@ -5,7 +5,15 @@ const jwt = require('jsonwebtoken');
 const { verifyToken } = require('./auth');
 const { findUserByAccountId, updateProfile } = require('./users');
 const { getSettings, updateSettings } = require('./settings');
-const { HAT_CATALOG, MODEL_IDS, PROPORTION_KEYS, PROPORTION_RANGES } = require('./cosmetic');
+const {
+	HAT_CATALOG,
+	MODEL_IDS,
+	PROPORTION_KEYS,
+	PROPORTION_RANGES,
+	backfillCosmetic,
+	appearanceFieldsChanged,
+	validateCosmetic,
+} = require('./cosmetic');
 const { APPEARANCE_CHANGE_COST } = require('./config');
 
 const router = Router();
@@ -78,6 +86,31 @@ router.patch('/me/profile', (req, res) => {
 	const { username, email, cosmetic } = req.body || {};
 	if (username === undefined && email === undefined && cosmetic === undefined) {
 		return res.status(400).json({ error: 'No profile fields to update' });
+	}
+
+	if (cosmetic !== undefined) {
+		const user = findUserByAccountId(req.accountId);
+		if (!user) {
+			return res.status(404).json({ error: 'Account not found' });
+		}
+		const validation = validateCosmetic(cosmetic);
+		if (!validation.ok) {
+			return res.status(400).json({ error: validation.reason });
+		}
+		const current = backfillCosmetic(user.cosmetic);
+		const merged =
+			validation.value.proportions && typeof validation.value.proportions === 'object'
+				? {
+						...current,
+						...validation.value,
+						proportions: { ...current.proportions, ...validation.value.proportions },
+					}
+				: { ...current, ...validation.value };
+		if (appearanceFieldsChanged(current, merged)) {
+			return res.status(400).json({
+				error: 'Appearance changes require the in-hub character booth',
+			});
+		}
 	}
 
 	const result = updateProfile(req.accountId, { username, email, cosmetic });

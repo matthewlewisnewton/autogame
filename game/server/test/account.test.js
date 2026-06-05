@@ -219,24 +219,41 @@ describe('PATCH /api/me/profile', () => {
 		expect(decoded.username).toBe('eve2');
 	});
 
-	it('updates cosmetic and returns it in the 200 payload', async () => {
+	async function expectPaidAppearanceRejected(token, cosmeticPatch) {
+		const beforeRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const before = await beforeRes.json();
+
+		const res = await fetch(`${baseUrl}/api/me/profile`, {
+			method: 'PATCH',
+			headers: authHeaders(token),
+			body: JSON.stringify({ cosmetic: cosmeticPatch })
+		});
+		expect(res.status).toBe(400);
+		const body = await res.json();
+		expect(body.error).toMatch(/character booth/i);
+
+		const afterRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
+		const after = await afterRes.json();
+		expect(after.cosmetic).toEqual(before.cosmetic);
+	}
+
+	it('updates hat-only cosmetic for free and returns it in the 200 payload', async () => {
 		const token = await registerAndLogin('cosmo', 'pass');
 
 		const res = await fetch(`${baseUrl}/api/me/profile`, {
 			method: 'PATCH',
 			headers: authHeaders(token),
-			body: JSON.stringify({ cosmetic: { bodyColor: '#0a0b0c', bodyShape: 'capsule' } })
+			body: JSON.stringify({ cosmetic: { hat: 'bandana' } })
 		});
 		expect(res.status).toBe(200);
 		const data = await res.json();
-		expect(data.cosmetic.bodyColor).toBe('#0a0b0c');
-		expect(data.cosmetic.bodyShape).toBe('capsule');
-		expect(data.cosmetic.accentColor).toBe('#f2c94c');
+		expect(data.cosmetic.hat).toBe('bandana');
+		expect(data.cosmetic.bodyColor).toBe('#4f9dde');
+		expect(data.cosmetic.bodyShape).toBe('box');
 
-		// Confirms it is reflected on GET /me as well.
 		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
 		const me = await meRes.json();
-		expect(me.cosmetic.bodyColor).toBe('#0a0b0c');
+		expect(me.cosmetic.hat).toBe('bandana');
 	});
 
 	it('returns 400 for invalid cosmetic input', async () => {
@@ -250,25 +267,32 @@ describe('PATCH /api/me/profile', () => {
 		expect(res.status).toBe(400);
 	});
 
-	it('updates cosmetic modelId and proportions and persists correctly', async () => {
-		const token = await registerAndLogin('cosmo3', 'pass');
+	it('rejects bodyColor changes via profile', async () => {
+		const token = await registerAndLogin('cosmoBody', 'pass');
+		await expectPaidAppearanceRejected(token, { bodyColor: '#0a0b0c' });
+	});
 
-		const res = await fetch(`${baseUrl}/api/me/profile`, {
-			method: 'PATCH',
-			headers: authHeaders(token),
-			body: JSON.stringify({ cosmetic: { modelId: 'player', proportions: { height: 1.1 } } })
+	it('rejects accentColor changes via profile', async () => {
+		const token = await registerAndLogin('cosmoAccent', 'pass');
+		await expectPaidAppearanceRejected(token, { accentColor: '#0a0b0c' });
+	});
+
+	it('rejects bodyShape changes via profile', async () => {
+		const token = await registerAndLogin('cosmoShape', 'pass');
+		await expectPaidAppearanceRejected(token, { bodyShape: 'capsule' });
+	});
+
+	it('rejects proportions changes via profile', async () => {
+		const token = await registerAndLogin('cosmoProp', 'pass');
+		await expectPaidAppearanceRejected(token, { proportions: { height: 1.1 } });
+	});
+
+	it('rejects combined paid appearance fields via profile', async () => {
+		const token = await registerAndLogin('cosmoCombo', 'pass');
+		await expectPaidAppearanceRejected(token, {
+			bodyColor: '#0a0b0c',
+			bodyShape: 'capsule',
+			proportions: { height: 1.1 },
 		});
-		expect(res.status).toBe(200);
-		const data = await res.json();
-		expect(data.cosmetic.modelId).toBe('player');
-		expect(data.cosmetic.proportions.height).toBe(1.1);
-		// Other proportions remain at default.
-		expect(data.cosmetic.proportions.headSize).toBe(1.0);
-
-		// Verify it is reflected on subsequent GET /me.
-		const meRes = await fetch(`${baseUrl}/api/me`, { headers: authHeaders(token) });
-		const me = await meRes.json();
-		expect(me.cosmetic.modelId).toBe('player');
-		expect(me.cosmetic.proportions.height).toBe(1.1);
 	});
 });

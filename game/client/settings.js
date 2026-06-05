@@ -322,8 +322,8 @@ export async function patchSettingsImmediate(partial) {
 }
 
 /**
- * Update profile (username / email).
- * @param {{ username?: string, email?: string|null }} fields
+ * Update profile (username / email / hat-only cosmetic).
+ * @param {{ username?: string, email?: string|null, cosmetic?: { hat?: string } }} fields
  * @returns {Promise<{ token?: string, username: string, email: string|null, error?: string }>}
  */
 export async function patchProfile(fields) {

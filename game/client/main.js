@@ -206,11 +206,8 @@ const accountUsernameInputEl = document.getElementById('account-username-input')
 const accountSaveBtnEl = document.getElementById('account-save-btn');
 const accountLogoutBtnEl = document.getElementById('account-logout-btn');
 const accountErrorEl = document.getElementById('account-error');
-const cosmeticBodySwatchesEl = document.getElementById('cosmetic-body-swatches');
-const cosmeticAccentSwatchesEl = document.getElementById('cosmetic-accent-swatches');
-const cosmeticShapeSelectEl = document.getElementById('cosmetic-shape-select');
 const cosmeticHatListEl = document.getElementById('cosmetic-hat-list');
-const cosmeticProportionsEl = document.getElementById('cosmetic-proportions');
+const cosmeticBoothHintEl = document.getElementById('cosmetic-booth-hint');
 const cosmeticSaveBtnEl = document.getElementById('cosmetic-save-btn');
 const cosmeticErrorEl = document.getElementById('cosmetic-error');
 const cosmeticPreviewCanvasEl = document.getElementById('cosmetic-preview-canvas');
@@ -3596,11 +3593,11 @@ const cosmeticSelection = createCosmeticSelection();
 
 const accountCosmeticForm = createCosmeticForm({
 	elements: {
-		bodySwatches: cosmeticBodySwatchesEl,
-		accentSwatches: cosmeticAccentSwatchesEl,
-		shapeSelect: cosmeticShapeSelectEl,
+		bodySwatches: null,
+		accentSwatches: null,
+		shapeSelect: null,
 		hatList: cosmeticHatListEl,
-		proportions: cosmeticProportionsEl,
+		proportions: null,
 		errorEl: cosmeticErrorEl,
 	},
 	selection: cosmeticSelection,
@@ -3644,6 +3641,10 @@ function refreshCosmeticPreview() {
 function openAccountOverlay() {
 	syncAccountForm();
 	syncCosmeticForm();
+	if (cosmeticBoothHintEl) {
+		cosmeticBoothHintEl.textContent =
+			`Body color, shape, and proportions can be changed at the in-hub character booth (${formatCurrencyPrice(getAppearanceChangeCost())} per edit).`;
+	}
 	if (accountOverlayEl) accountOverlayEl.classList.remove('hidden');
 	// Spin up the self-contained preview from the synced selection. Done after
 	// unhiding so the canvas has a layout size to read.
@@ -3739,13 +3740,7 @@ if (accountSaveBtnEl) {
 
 if (cosmeticSaveBtnEl) {
 	cosmeticSaveBtnEl.addEventListener('click', async () => {
-		const cosmetic = {
-			bodyColor: cosmeticSelection.bodyColor,
-			accentColor: cosmeticSelection.accentColor,
-			bodyShape: cosmeticSelection.bodyShape,
-			hat: cosmeticSelection.hat,
-			proportions: { ...cosmeticSelection.proportions },
-		};
+		const cosmetic = { hat: cosmeticSelection.hat };
 		showCosmeticError('');
 		cosmeticSaveBtnEl.disabled = true;
 		const result = await patchProfile({ cosmetic });

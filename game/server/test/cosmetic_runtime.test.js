@@ -78,11 +78,19 @@ async function registerUser(baseUrl, username, password = 'password123') {
 	return { accountId, token };
 }
 
-async function patchCosmetic(baseUrl, token, cosmetic) {
+const { updateProfile } = require('../users.js');
+
+/** Set account cosmetic directly (bypasses HTTP profile route paid-appearance guard). */
+function setAccountCosmetic(accountId, cosmetic) {
+	const result = updateProfile(accountId, { cosmetic });
+	expect(result.ok).toBe(true);
+}
+
+async function patchHatCosmetic(baseUrl, token, hat) {
 	const res = await fetch(`${baseUrl}/api/me/profile`, {
 		method: 'PATCH',
 		headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-		body: JSON.stringify({ cosmetic }),
+		body: JSON.stringify({ cosmetic: { hat } }),
 	});
 	expect(res.status).toBe(200);
 	return res.json();
@@ -114,8 +122,8 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	});
 
 	it('buildPlayerRecord sources the cosmetic from the account record', async () => {
-		const { accountId, token } = await registerUser(baseUrl, 'alice');
-		await patchCosmetic(baseUrl, token, customCosmetic);
+		const { accountId } = await registerUser(baseUrl, 'alice');
+		setAccountCosmetic(accountId, customCosmetic);
 
 		const player = buildPlayerRecord('p1', accountId, 'alice', null);
 		expect(player.cosmetic).toEqual(customCosmetic);
@@ -129,8 +137,8 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	});
 
 	it('stateSnapshot exposes each player cosmetic with the full body/accent/shape', async () => {
-		const { accountId, token } = await registerUser(baseUrl, 'bob');
-		await patchCosmetic(baseUrl, token, customCosmetic);
+		const { accountId } = await registerUser(baseUrl, 'bob');
+		setAccountCosmetic(accountId, customCosmetic);
 
 		gameState.players['p3'] = buildPlayerRecord('p3', accountId, 'bob', null);
 		const snapshot = stateSnapshot();
@@ -149,9 +157,9 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 	});
 
 	it('snapshot reflects an account cosmetic updated before the player joins', async () => {
-		const { accountId, token } = await registerUser(baseUrl, 'carol');
+		const { accountId } = await registerUser(baseUrl, 'carol');
 		// account starts with defaults; update it, then the player joins
-		await patchCosmetic(baseUrl, token, { bodyShape: 'capsule', bodyColor: '#00ff00' });
+		setAccountCosmetic(accountId, { bodyShape: 'capsule', bodyColor: '#00ff00' });
 
 		gameState.players['p5'] = buildPlayerRecord('p5', accountId, 'carol', null);
 		const snapshot = stateSnapshot();
@@ -160,24 +168,23 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 		expect(snapshot.players['p5'].cosmetic.accentColor).toBe(DEFAULT_COSMETIC.accentColor);
 	});
 
-	it('PATCH profile cosmetic syncs an existing live player record and snapshot', async () => {
+	it('PATCH profile hat-only cosmetic syncs an existing live player record and snapshot', async () => {
 		const { gameState: liveState, setGameState, stateSnapshot, buildPlayerRecord: buildPlayer } = require('../index.js');
 		const { accountId, token } = await registerUser(baseUrl, 'dave');
 		liveState.players[accountId] = buildPlayer(accountId, accountId, 'dave', null);
+		expect(liveState.players[accountId].cosmetic.hat).toBe(DEFAULT_COSMETIC.hat);
+
+		await patchHatCosmetic(baseUrl, token, 'bandana');
+
+		expect(liveState.players[accountId].cosmetic.hat).toBe('bandana');
 		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
-
-		await patchCosmetic(baseUrl, token, customCosmetic);
-
-		expect(liveState.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
-		expect(liveState.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
-		expect(liveState.players[accountId].cosmetic.proportions.height).toBe(customCosmetic.proportions.height);
 
 		setGameState(liveState);
 		const snapshot = stateSnapshot();
-		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
+		expect(snapshot.players[accountId].cosmetic.hat).toBe('bandana');
 	});
 
-	it('PATCH profile cosmetic syncs a joined lobby player for the next snapshot', async () => {
+	it('PATCH profile hat-only cosmetic syncs a joined lobby player for the next snapshot', async () => {
 		const { setGameState, stateSnapshot } = require('../index.js');
 		const { getLobbyById } = require('../lobbies.js');
 		const { accountId, token } = await registerUser(baseUrl, 'erin');
@@ -185,16 +192,15 @@ describe('cosmetic in runtime state & stateUpdate snapshot', () => {
 
 		const lobby = getLobbyById(lobbyId);
 		expect(lobby).not.toBeNull();
+		expect(lobby.state.players[accountId].cosmetic.hat).toBe(DEFAULT_COSMETIC.hat);
+
+		await patchHatCosmetic(baseUrl, token, 'beanie');
+
+		expect(lobby.state.players[accountId].cosmetic.hat).toBe('beanie');
 		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(DEFAULT_COSMETIC.bodyColor);
-
-		await patchCosmetic(baseUrl, token, customCosmetic);
-
-		expect(lobby.state.players[accountId].cosmetic.bodyColor).toBe(customCosmetic.bodyColor);
-		expect(lobby.state.players[accountId].cosmetic.hat).toBe(customCosmetic.hat);
-		expect(lobby.state.players[accountId].cosmetic.proportions.height).toBe(customCosmetic.proportions.height);
 
 		setGameState(lobby.state);
 		const snapshot = stateSnapshot();
-		expect(snapshot.players[accountId].cosmetic).toEqual(customCosmetic);
+		expect(snapshot.players[accountId].cosmetic.hat).toBe('beanie');
 	});
 });
