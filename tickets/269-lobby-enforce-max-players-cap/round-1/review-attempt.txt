@@ -1,0 +1,33 @@
+## Review complete
+
+**Verdict: PASS**
+
+Review written to `tickets/269-lobby-enforce-max-players-cap/round-1/review.md`.
+
+### Runtime
+- `metrics.json`: `ok: true`, empty `pageerrors`, no harness failure
+- Game loads and runs (auth → lobby → dungeon gameplay confirmed in capture)
+- No `gaps.md` (FAIL-only)
+
+### Acceptance criteria
+| Criterion | Status |
+|-----------|--------|
+| `MAX_LOBBY_PLAYERS=16` in config | Met (server + client) |
+| Join rejected with `lobbyError: "Lobby is full"` | Met in `joinLobbyWithPhasePolicy` (lobby + drop-in) |
+| Explicit leave frees slot | Met + tested |
+| Disconnect frees slot (connected cap) | Met + tested |
+| Counts don't leak | Met + eviction test |
+| Spawn mod-4 unchanged | Met (no code changes) |
+
+### Commits reviewed (4)
+1. Server constant  
+2. Server reject-on-full  
+3. Client "Full" UI  
+4. `maxPlayers.test.js` (5 tests, all pass; full suite 1365/1365)
+
+### Nits (non-blocking)
+Logged in `nits.md`:
+1. Client **Full** uses `playerCount` (includes ghosts) vs server connected count — grace-window UI mismatch  
+2. Duplicate `MAX_LOBBY_PLAYERS` on client/server instead of shared constants
+
+Ticket **Goal** mentions auto-routing to another lobby when full; that is not in acceptance criteria and was not implemented (manual create/join still works).

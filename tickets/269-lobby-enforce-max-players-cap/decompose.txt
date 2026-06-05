@@ -1,0 +1,16 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 4 sub-tickets:
+
+```
+tickets/269-lobby-enforce-max-players-cap/subtickets/
+├── 01-add-max-players-constant/ticket.md    — Add MAX_LOBBY_PLAYERS=16 to config.js
+├── 02-server-reject-full-lobby/ticket.md    — Reject joinLobby when full (only connected players count; ghosts don't block)
+├── 03-client-full-lobby-ui/ticket.md        — Show "Full" label in lobby-finder; handle lobbyError
+└── 04-test-max-players-cap/ticket.md        — Tests for cap, leave/disconnect slot freeing, count accuracy
+```
+
+**Rationale:**
+- **Spawn assignment** already uses `index % 4` (mod-4) with `RUN_SPAWN_OFFSETS`, so 16 players = 4 per spawn point — no code change needed.
+- **Leave path** already removes players from `state.players` — count naturally decrements.
+- **Disconnect ghosts** (`connected: false`) are excluded from the cap check so they don't block new joins during the 60s grace period.
+- All sub-tickets use `code` verification since they involve logic, handlers, and server state — not just visual rendering.

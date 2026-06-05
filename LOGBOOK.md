@@ -3823,3 +3823,26 @@ Normal gameplay (lobby → ready → dungeon) was exercised in capture without u
 
 None. Runtime proof is clean, acceptance criteria are fully met, and tests cover the spoof vector described in the ticket.
 
+
+## v0.223 — 269-lobby-enforce-max-players-cap  (2026-06-05 00:04:11)
+
+### Debug scenarios
+
+**N/A** — this ticket did not add or modify any `?debugScenario=` shortcuts.
+
+## Test & coverage summary
+
+- Full vitest suite: **1365 passed**, 0 failed (`coverage.log`).
+- Changed-file coverage (harness snapshot): `server/index.js` ~89% statements; client files in snapshot are pre-existing modules, not the small `main.js`/`config.js` delta (thresholds disabled per harness note).
+
+## Remaining gaps
+
+None blocking. All acceptance criteria are satisfied server-side with automated test coverage; runtime capture confirms the game still runs cleanly.
+
+## Nits (non-blocking)
+
+See `nits.md` for follow-up backlog items:
+
+1. Client **Full** label keys off `lobby.playerCount` (total rows including disconnect ghosts) while the server cap keys off connected count — during the grace window a lobby can show **Full** in the browser even though the server would accept a new join.
+2. `MAX_LOBBY_PLAYERS` is duplicated in client and server config rather than shared via `shared/constants.json`.
+

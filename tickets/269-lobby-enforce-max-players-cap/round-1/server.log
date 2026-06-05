@@ -1,0 +1,12 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/269-lobby-enforce-max-players-cap/game/data/users.json
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-35.0, 36.0], z [-35.5, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/269-lobby-enforce-max-players-cap/game/data
+Server listening on port 3004
+Player connected: socket=tooQruQ53hACnadZAAAB, playerId=d06d953a-794b-4a93-bd73-e973ec8755bf
+[server] Layout for quest "training_caverns": seed=1335602341, profile=crowded, rooms=10
+Player connected: socket=PRjbuvKk-pL_AdjiAAAD, playerId=78ecb8b9-4c7a-49ba-9246-dc8305612f53
+[loot] spawned id=91433f07-7a55-49b8-9a4f-b279572e2cad value=19
+Player disconnected: tooQruQ53hACnadZAAAB
+Player disconnected: PRjbuvKk-pL_AdjiAAAD
