@@ -108,6 +108,17 @@ const QUEST_DEFS = {
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
       },
+      2: {
+        tier: 2,
+        name: 'Spire Ascent — Tier II',
+        description: 'Ascend the fixed spire where marked hostiles bear twisted power on every tier.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 16,
+        layoutProfile: 'spire-ascent',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'spire_ascent', tier: 1 },
+      },
     },
   },
   endless_siege: {

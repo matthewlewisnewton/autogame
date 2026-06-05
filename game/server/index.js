@@ -509,6 +509,7 @@ const DEBUG_SCENARIOS = new Set([
   'cinder-snare-ready',
   'quest-tier-2-unlocked',
   'arena-trials-tier-2',
+  'spire-ascent-tier-2',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -672,6 +673,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'run-exhausted',
   'quest-objective-near-complete',
   'arena-trials-tier-2',
+  'spire-ascent-tier-2',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
