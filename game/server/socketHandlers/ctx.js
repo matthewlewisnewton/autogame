@@ -29,6 +29,10 @@
  * @property {(socket: import('socket.io').Socket, lobby: object, explicitPlayerId?: string) => boolean} reconnectPlayerToLobby
  * @property {(state: object, questId: string) => void} applyLayoutForQuest
  * @property {(player: object) => object} buildSessionFromPlayer
+ * @property {(socket: import('socket.io').Socket) => object|null} getLobbyForSocket
+ * @property {(socket: import('socket.io').Socket) => boolean} isDebugScenarioAllowed
+ * @property {(socket: import('socket.io').Socket, name: string) => object} applyDebugScenario
+ * @property {(socket: import('socket.io').Socket) => object|null} softDisconnectPlayerFromLobby
  */
 
 /**
@@ -56,6 +60,10 @@ function createSocketContext({
   reconnectPlayerToLobby,
   applyLayoutForQuest,
   buildSessionFromPlayer,
+  getLobbyForSocket,
+  isDebugScenarioAllowed,
+  applyDebugScenario,
+  softDisconnectPlayerFromLobby,
 }) {
   return Object.freeze({
     socket,
@@ -76,6 +84,10 @@ function createSocketContext({
     reconnectPlayerToLobby,
     applyLayoutForQuest,
     buildSessionFromPlayer,
+    getLobbyForSocket,
+    isDebugScenarioAllowed,
+    applyDebugScenario,
+    softDisconnectPlayerFromLobby,
   });
 }
 
