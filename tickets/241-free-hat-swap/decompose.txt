@@ -1,0 +1,17 @@
+Created one sub-ticket. Done.
+
+**Sub-ticket folder created:**
+- `/home/matt/workspace/.autogame-worktrees/241-free-hat-swap/tickets/241-free-hat-swap/subtickets/01-debug-hatswap-hook/ticket.md`
+
+**Why only one:** I traced the full hat flow and found three of the ticket's four deliverables are already implemented *and* tested by prior tickets:
+
+| Deliverable | Status | Evidence |
+|---|---|---|
+| Free swap at booth | ✅ done | `hasAppearanceFieldChanges` excludes `hat`; client booth drops cost label + confirm for hat-only changes; `apply_appearance_change.test.js:135` |
+| Free swap from main menu | ✅ done | toolbar 👤 → `patchProfile` → `updateProfile` (no charge); `cosmetic.test.js` |
+| Unlock gate (AC #2 dep) | ✅ done | `updateProfile` + socket handler reject locked hats; landed in `267-sec-hat-equip-unlock-check` |
+| Debug hook to open hat-swap | ⚠️ partial | `?booth=character` opens the booth, but with only default hats — no single-step way to land ready-to-swap |
+
+Scoping sub-tickets for the already-done parts would produce empty diffs that QA fails forever, so I scoped only the genuine gap: a `?booth=hatswap` hook that opens the booth *and* unlocks catalog hats in one step, plus refreshing the booth's hat list on the debug-scenario result (a real wiring gap — the `debugScenarioResult` handler currently only refreshes the Account overlay, not the booth). It's logic/handler work, so verification is `code`.
+
+The existing vitest suite covers ACs #1–#3; this sub-ticket closes deliverable #4, completing the top-level ticket.

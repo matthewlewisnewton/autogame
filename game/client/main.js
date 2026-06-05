@@ -1391,6 +1391,12 @@ function bindSocketHandlers(s) {
 				if (accountOverlayEl && !accountOverlayEl.classList.contains('hidden')) {
 					syncCosmeticForm();
 				}
+				// Mirror the `hatUnlocked` handler: when the character booth is open
+				// (e.g. via the `?booth=hatswap` debug hook), rebuild its hat list so
+				// the newly-unlocked hats appear as selectable (owned) entries.
+				if (isCharacterBoothOpen()) {
+					rebuildBoothHatList();
+				}
 			}
 		} else if (data && data.reason) {
 			console.warn(`[debugScenario] ${data.reason}`);
@@ -2070,11 +2076,20 @@ window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
-	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest') return;
+	if (boothDebugParam !== 'character' && boothDebugParam !== 'quest' && boothDebugParam !== 'hatswap') return;
 	if (!gameState || gameState.gamePhase !== 'lobby') return;
 	boothDebugRequested = true;
 	if (boothDebugParam === 'quest') {
 		openQuestPanel();
+	} else if (boothDebugParam === 'hatswap') {
+		// Debug shortcut: unlock the catalog hats (via the existing
+		// `hats-unlocked` scenario) and open the character booth so the free
+		// unlocked-hat swap can be exercised directly. The booth's hat list is
+		// rebuilt when the scenario result arrives (see debugScenarioResult).
+		if (socket && socket.connected) {
+			socket.emit('debugScenario', { name: 'hats-unlocked' });
+		}
+		openCharacterBooth();
 	} else {
 		openCharacterBooth();
 	}

@@ -1,8 +1,7 @@
-Conflict resolved in `LOGBOOK.md`.
+`LOGBOOK.md` is resolved — all conflict markers are gone.
 
-Both sides are kept and ordered chronologically after the existing v0.257 entry:
+**What was conflicting:** Both sides appended a new version entry after v0.261. `main` had **v0.264 — 241-free-hat-swap**; the branch had **v0.265 — 256-level2-sunken-canyon**.
 
-1. **v0.258 — 263-debug-unlimited-health-godmode** (from `main`, 08:25:20) — godmode debug toggle review
-2. **v0.261 — 255-level2-rooms** (from the branch, 09:11:14) — rigid layout mode, training caverns/crystal rescue Tier 2 wiring
+**Resolution:** Kept both entries in chronological order (v0.264, then v0.265), each with its own full content and `## Remaining gaps / None.` section, matching the existing logbook pattern.
 
-All conflict markers are removed. The harness can proceed with the merge commit.
+The harness can proceed with the merge commit and test run.
