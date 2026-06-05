@@ -15,7 +15,7 @@ const {
   isValidQuestSelection,
   normalizeQuestTier,
 } = require('../quests');
-const { isLobbyPhase, isPlayingPhase } = require('../lobbies');
+const { isPlayingPhase } = require('../lobbies');
 const { findUserByAccountId, unlockHat: unlockHatForAccount, isQuestTierUnlocked } = require('../users');
 const { backfillUnlockedHats } = require('../cosmetic');
 const keyItemEffects = require('../keyItemEffects');
@@ -31,8 +31,6 @@ const {
   grindCard,
   offerCardTrade,
   respondCardTrade,
-  validateDeck,
-  checkAllReady,
   assignRunSpawnPositions,
   stateSnapshot,
   savePlayerData,
@@ -178,38 +176,6 @@ function register(socket, ctx) {
     });
     io.to(lobby.id).emit('stateUpdate', stateSnapshot());
     broadcastLobbyUpdate(lobby);
-    });
-  });
-
-  socket.on('playerReady', (ready) => {
-    withLobbyPlayer(socket, {}, (state, lobby, player) => {
-    if (ready) {
-      const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
-      if (selectedTier >= 2) {
-        const questId = state.selectedQuestId;
-        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
-          player.ready = false;
-          socket.emit('questError', { reason: 'tier_locked' });
-          broadcastLobbyUpdate(lobby);
-          return;
-        }
-      }
-
-      normalizePlayerInventory(player);
-      const result = validateDeck(player.selectedDeck, player.inventory);
-      if (!result.valid) {
-        player.ready = false;
-        socket.emit('deckError', { reason: result.reason });
-        broadcastLobbyUpdate(lobby);
-        return;
-      }
-    }
-
-    player.ready = !!ready;
-    broadcastLobbyUpdate(lobby);
-    if (isLobbyPhase(state)) {
-      checkAllReady();
-    }
     });
   });
 

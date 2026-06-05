@@ -2,6 +2,9 @@
 // Registers deck edit socket.on handlers extracted from lobbyHandlers.js.
 
 const { DECK_MAX_SIZE } = require('../config');
+const { DEFAULT_QUEST_TIER } = require('../quests');
+const { isLobbyPhase } = require('../lobbies');
+const { isQuestTierUnlocked } = require('../users');
 const {
   CARD_DEFS,
   normalizePlayerInventory,
@@ -9,11 +12,13 @@ const {
   cardIdForDeckEntry,
   findAvailableInventoryInstance,
   canAddCardInstanceToDeck,
+  validateDeck,
+  checkAllReady,
   savePlayerData,
 } = require('../progression');
 
 function register(socket, ctx) {
-  const { withLobbyPlayer } = ctx;
+  const { withLobbyPlayer, broadcastLobbyUpdate } = ctx;
 
   socket.on('deckAddCard', (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
@@ -112,6 +117,38 @@ function register(socket, ctx) {
     });
 
     savePlayerData(socket.playerId);
+    });
+  });
+
+  socket.on('playerReady', (ready) => {
+    withLobbyPlayer(socket, {}, (state, lobby, player) => {
+    if (ready) {
+      const selectedTier = state.selectedQuestTier ?? DEFAULT_QUEST_TIER;
+      if (selectedTier >= 2) {
+        const questId = state.selectedQuestId;
+        if (!isQuestTierUnlocked(player.accountId, questId, selectedTier)) {
+          player.ready = false;
+          socket.emit('questError', { reason: 'tier_locked' });
+          broadcastLobbyUpdate(lobby);
+          return;
+        }
+      }
+
+      normalizePlayerInventory(player);
+      const result = validateDeck(player.selectedDeck, player.inventory);
+      if (!result.valid) {
+        player.ready = false;
+        socket.emit('deckError', { reason: result.reason });
+        broadcastLobbyUpdate(lobby);
+        return;
+      }
+    }
+
+    player.ready = !!ready;
+    broadcastLobbyUpdate(lobby);
+    if (isLobbyPhase(state)) {
+      checkAllReady();
+    }
     });
   });
 }
