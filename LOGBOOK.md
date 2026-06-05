@@ -3884,3 +3884,26 @@ PASS. The implementation is small and follows the existing server module boundar
 ## Remaining gaps
 
 None.
+
+## v0.222 — 264-admin-character-roster-view  (2026-06-04 23:07:45)
+
+
+### Password-gated via ADMIN_PASSWORD; wrong/no password denied
+PASS. `requireAdminPassword` fails closed when `ADMIN_PASSWORD` is unset, returns 403 for missing or wrong supplied passwords, and uses a constant-time comparison for exact matches. The HTTP route tests cover successful access, missing password, wrong password, unset env, and POST rejection.
+
+### Own admin password, never player auth; not reachable by normal players
+PASS. The admin middleware only reads `x-admin-password` / `?password=` and does not consult bearer/player JWT auth. Tests verify a bearer-only request is denied and that account data is not included in denied responses.
+
+### Consistency with design and requirements
+PASS. The change is isolated to server admin/account inspection and does not alter the documented lobby/dungeon/card loop, WebSocket architecture, 3D scene startup, multiplayer visualization, or movement synchronization. The smoke capture and full test run show no regression to the foundation requirements.
+
+### Tests and coverage
+PASS. `coverage.log` shows 49 test files and 1075 tests passing, including `server/test/admin_roster.test.js` with 17 focused tests for roster aggregation, password gating, route behavior, and read-only expectations. Coverage thresholds were disabled as expected for visibility-only output.
+
+### Debug scenarios
+Not applicable. This ticket did not add or change a `?debugScenario=` shortcut, and the captured flow did not rely on a debug scenario.
+
+## Remaining gaps
+
+None.
+

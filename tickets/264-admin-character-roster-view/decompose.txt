@@ -1,0 +1,20 @@
+I've broken the top-level ticket into two dependency-ordered sub-tickets.
+
+**Created sub-tickets:**
+
+- `tickets/264-admin-character-roster-view/subtickets/01-admin-roster-data-and-gate/ticket.md`
+- `tickets/264-admin-character-roster-view/subtickets/02-admin-view-route/ticket.md`
+
+**Rationale / what I found in the code:**
+
+The required data is split across two stores joined by `accountId`:
+- **Account record** (`users.js` → `users.json`): `username`, `accountId`, `email`, full `cosmetic` (including equipped `hat`), `unlockedHats`, and `unlockedQuestTiers` — the latter is exactly the "progression / level-2 unlocks" (per-quest tier ≥2 map).
+- **Character/progression data** (storage provider, keyed by `accountId` via `loadPlayer`): `currency`, `inventory`/`ownedCards`, `selectedDeck`, `equippedKeyItemId`.
+
+`users.js` has no "list all accounts" getter, and the provider has no "list all" — but since every character is an account, iterating accounts and calling `loadPlayer(accountId)` covers the full roster (accounts that never played get safe defaults).
+
+**Split:**
+- **01** builds the tested, reusable backend: `getAllUsers()`, `buildAdminRoster()` (the read-only join), and the `requireAdminPassword` middleware gated by `ADMIN_PASSWORD` (fail-closed, never consults the player JWT).
+- **02** wires the user-facing `GET /admin` route that renders the roster as a read-only HTML page, with the gate applied.
+
+Both are **`code`** verification: the acceptance criteria turn on a route/handler/middleware existing, auth gating behavior (403 paths), server state joins, and "no mutation / no passwordHash" — none of which the single happy-path visual run (load + two players + WASD) could ever observe. The visual QA never navigates to `/admin`.
