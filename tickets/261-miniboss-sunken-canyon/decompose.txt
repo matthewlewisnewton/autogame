@@ -1,0 +1,11 @@
+Broke ticket **261-miniboss-sunken-canyon** into **2 sub-tickets** (dependency order), mirroring the ticket-258 `arena_trials` pattern but front-loading canyon verticality spawn verification before quest wire-up.
+
+**Decomposition rationale**
+
+- **01** locks in the distinct canyon fight shape using the existing `stage_boss` framework: boss on `canyon_monolith` (canyon floor), adds split across plateau/canyon bands, verified via `sampleFloorY` elevation gap — without touching production quest catalog yet.
+- **02** wires `canyon_descent` Tier 2 to that encounter (quest config, canyon-themed HUD copy, debug scenario, full encounter flow + Tier 1 regression tests).
+
+**Created sub-ticket folders**
+
+- `/home/matt/workspace/.autogame-worktrees/261-miniboss-sunken-canyon/tickets/261-miniboss-sunken-canyon/subtickets/01-canyon-vertical-stage-boss-spawn/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/261-miniboss-sunken-canyon/tickets/261-miniboss-sunken-canyon/subtickets/02-canyon-descent-tier2-stage-boss-wireup/ticket.md`
