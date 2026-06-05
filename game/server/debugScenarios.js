@@ -683,6 +683,33 @@ function applyDebugScenario(socket, name) {
         layoutSeed: state.layoutSeed,
         layout: state.layout,
       });
+    } else if (name === 'sunken-canyon-cliff-hazard') {
+      // Sunken-canyon with the player on the plateau south cliff hazard strip —
+      // same layout as canyon_descent; shortcut for cliff-hazard QA.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'sunken-canyon');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const hazard = (state.layout.edgeHazards || [])[0];
+      if (hazard) {
+        player.x = (hazard.minX + hazard.maxX) / 2;
+        player.z = (hazard.minZ + hazard.maxZ) / 2;
+      } else {
+        const plateau = state.layout.rooms.find((r) => r.band === 'plateau');
+        if (plateau) {
+          player.x = plateau.x;
+          player.z = plateau.z;
+        }
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
     } else if (name === 'spire-ascent-stage') {
       // Load the spire-ascent tower layout for client render / collision QA.
       // Same profile as generateLayout(seed, 'spire-ascent'); reachable via quests

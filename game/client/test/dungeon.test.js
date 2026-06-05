@@ -756,6 +756,25 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		}
 	});
 
+	function findEdgeHazardMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_EDGE_HAZARD_TAG);
+	}
+
+	it('renders emissive edge hazard strips for server-generated sunken-canyon', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const yHigh = resolveFloorY(sampleFloorY(layout, plateau.x, plateau.z));
+		const result = buildDungeon(mockScene(), layout);
+		const hazardMeshes = findEdgeHazardMeshes(result.meshes);
+		expect(hazardMeshes.length).toBe(layout.edgeHazards.length);
+		for (const mesh of hazardMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThanOrEqual(yHigh);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
 	it('buildCanyonCliffLipMesh tracks lip AABB footprint', () => {
 		const lip = {
 			minX: -3,

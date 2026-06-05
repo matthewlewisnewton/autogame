@@ -494,6 +494,7 @@ const DEBUG_SCENARIOS = new Set([
   'open-verticality',
   'sunken-canyon',
   'sunken-canyon-stage',
+  'sunken-canyon-cliff-hazard',
   'spire-ascent',
   'spire-ascent-stage',
   'spire-summit-beacon',

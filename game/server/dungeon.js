@@ -121,6 +121,9 @@ const SUNKEN_CANYON = {
   // Emissive lip strips at plateau south edge (one per ramp mouth); visual only.
   cliffLipStripDepth: 1.2,
   cliffLipPlateauInset: 0.35,
+  // Narrow hazard strips along the plateau south rim between ramp mouths.
+  cliffHazardStripDepth: 1.2,
+  cliffHazardEndPadding: 0.35,
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
@@ -1311,6 +1314,99 @@ function buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ
 }
 
 /**
+ * Thin hazard strips along the plateau south cliff between ramp gap openings.
+ * AABBs sit on solid rim segments only — not across ramp mouths.
+ */
+function buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh) {
+  const { cliffHazardStripDepth, cliffHazardEndPadding } = SUNKEN_CANYON;
+  const halfW = plateau.width / 2;
+  const halfD = plateau.depth / 2;
+  const plateauSouthZ = plateau.z + halfD;
+  const leftEdge = plateau.x - halfW;
+  const rightEdge = plateau.x + halfW;
+
+  const rawGaps = rampCenters
+    .map((cx) => ({ left: cx - rampWidth / 2, right: cx + rampWidth / 2 }))
+    .filter((gap) => gap.right > leftEdge && gap.left < rightEdge)
+    .map((gap) => ({
+      left: Math.max(gap.left, leftEdge),
+      right: Math.min(gap.right, rightEdge),
+    }))
+    .sort((a, b) => a.left - b.left);
+
+  const mergedGaps = [];
+  for (const gap of rawGaps) {
+    const last = mergedGaps[mergedGaps.length - 1];
+    if (last && gap.left <= last.right + 0.01) {
+      last.right = Math.max(last.right, gap.right);
+    } else {
+      mergedGaps.push({ ...gap });
+    }
+  }
+
+  const edgeHazards = [];
+  let cursor = leftEdge;
+
+  for (const gap of mergedGaps) {
+    const segLeft = cursor + cliffHazardEndPadding;
+    const segRight = gap.left - cliffHazardEndPadding;
+    if (segRight > segLeft + 0.01) {
+      edgeHazards.push({
+        minX: segLeft,
+        maxX: segRight,
+        minZ: plateauSouthZ - cliffHazardStripDepth,
+        maxZ: plateauSouthZ,
+        y: yHigh,
+        side: 'south',
+        band: 'plateau',
+      });
+    }
+    cursor = Math.max(cursor, gap.right);
+  }
+
+  const segLeft = cursor + cliffHazardEndPadding;
+  const segRight = rightEdge - cliffHazardEndPadding;
+  if (segRight > segLeft + 0.01) {
+    edgeHazards.push({
+      minX: segLeft,
+      maxX: segRight,
+      minZ: plateauSouthZ - cliffHazardStripDepth,
+      maxZ: plateauSouthZ,
+      y: yHigh,
+      side: 'south',
+      band: 'plateau',
+    });
+  }
+
+  // When central ramps tile the south rim (no X gaps), place southern flank
+  // strips on the west/east plateau edges so cliff tension remains reachable.
+  if (edgeHazards.length === 0) {
+    const flankMinZ = plateau.z + halfD * 0.2;
+    const flankMaxZ = plateauSouthZ - cliffHazardEndPadding;
+    edgeHazards.push({
+      minX: leftEdge,
+      maxX: leftEdge + cliffHazardStripDepth,
+      minZ: flankMinZ,
+      maxZ: flankMaxZ,
+      y: yHigh,
+      side: 'west',
+      band: 'plateau',
+    });
+    edgeHazards.push({
+      minX: rightEdge - cliffHazardStripDepth,
+      maxX: rightEdge,
+      minZ: flankMinZ,
+      maxZ: flankMaxZ,
+      y: yHigh,
+      side: 'east',
+      band: 'plateau',
+    });
+  }
+
+  return edgeHazards;
+}
+
+/**
  * Build the open-plaza arena: one large walkable room bounded by four solid
  * perimeter walls, with scattered cover pieces and a couple of gently sloped
  * platforms. Deterministic for a given seed (uses mulberry32).
@@ -1540,12 +1636,14 @@ function generateSunkenCanyon(seed) {
   });
 
   const cliffLips = buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ);
+  const edgeHazards = buildSunkenCanyonCliffHazards(plateau, rampCenters, rampWidth, yHigh);
 
   const layoutBase = {
     rooms: [plateau, ...ramps, canyon],
     passages: [],
     cover,
     cliffLips,
+    edgeHazards,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: canyonSize,
     profile: 'sunken-canyon',
@@ -2077,6 +2175,7 @@ module.exports = {
   generateOpenPlaza,
   generateSunkenCanyon,
   buildSunkenCanyonCliffLips,
+  buildSunkenCanyonCliffHazards,
   generateSpireAscent,
   buildSpireEdgeHazards,
   generateHub,

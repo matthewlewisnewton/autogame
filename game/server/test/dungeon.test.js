@@ -1831,6 +1831,55 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       generateLayout(42, 'sunken-canyon').landmarks
     );
   });
+
+  it('emits edgeHazards along plateau south rim between ramp mouths', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const ramps = roomsByBand(layout, 'ramp');
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+      const plateauSouthZ = plateau.z + plateau.depth / 2;
+
+      expect(Array.isArray(layout.edgeHazards)).toBe(true);
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+
+      for (const hazard of layout.edgeHazards) {
+        expect(hazard).toMatchObject({
+          minX: expect.any(Number),
+          maxX: expect.any(Number),
+          minZ: expect.any(Number),
+          maxZ: expect.any(Number),
+          y: yPlateau,
+          side: expect.stringMatching(/^(south|west|east)$/),
+          band: 'plateau',
+        });
+        expect(hazard.maxX - hazard.minX).toBeGreaterThan(0);
+        expect(hazard.maxZ - hazard.minZ).toBeGreaterThan(0);
+
+        if (hazard.side === 'south') {
+          expect(hazard.maxZ).toBeCloseTo(plateauSouthZ, 4);
+          expect(hazard.maxZ - hazard.minZ).toBeLessThanOrEqual(1.5);
+          for (const ramp of ramps) {
+            const rampCenterX = ramp.x;
+            const rampHalfW = ramp.width / 2;
+            const hazardCenterX = (hazard.minX + hazard.maxX) / 2;
+            const overlapsRampMouth =
+              hazardCenterX > rampCenterX - rampHalfW - 0.01 &&
+              hazardCenterX < rampCenterX + rampHalfW + 0.01;
+            expect(overlapsRampMouth).toBe(false);
+          }
+        }
+      }
+    }
+  });
+
+  it('plateau cliff hazards do not reduce canyon reachability', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      expect(canyonReachableFromPlateau(layout)).toBe(true);
+    }
+  });
 });
 
 // ── spire-ascent stage layout ──
