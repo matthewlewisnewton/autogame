@@ -1,0 +1,7 @@
+Review complete: `VERDICT: FAIL`.
+
+Wrote:
+- `tickets/231-hub-lobby-phase-movement/round-1/review.md`
+- `tickets/231-hub-lobby-phase-movement/round-1/gaps.md`
+
+Blocking gap: `abandonSuspendedRun()` still returns players to the quest layout spawn, outside `HUB_LAYOUT`, so after abandoning a suspended run players can be left outside hub movement geometry. No nits file was created.
