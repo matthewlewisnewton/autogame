@@ -13,6 +13,7 @@ describe('getRegistryTargetFootprint()', () => {
 		expect(getRegistryTargetFootprint('grunt')).toEqual({ targetHeight: 1 });
 		expect(getRegistryTargetFootprint('skirmisher')).toEqual({ targetHeight: 0.6 });
 		expect(getRegistryTargetFootprint('miniboss')).toEqual({ targetHeight: 1.8 });
+		expect(getRegistryTargetFootprint('arena_champion')).toEqual({ targetHeight: 2.8 });
 	});
 
 	it('uses diameter for octahedron enemies', () => {
@@ -39,6 +40,7 @@ describe('getRegistryHostVerticalOffset()', () => {
 		expect(getRegistryHostVerticalOffset('grunt')).toBe(enemyMeshHalfHeight('grunt'));
 		expect(getRegistryHostVerticalOffset('skirmisher')).toBe(enemyMeshHalfHeight('skirmisher'));
 		expect(getRegistryHostVerticalOffset('miniboss')).toBe(enemyMeshHalfHeight('miniboss'));
+		expect(getRegistryHostVerticalOffset('arena_champion')).toBe(enemyMeshHalfHeight('arena_champion'));
 		expect(getRegistryHostVerticalOffset('spawner')).toBe(enemyMeshHalfHeight('spawner'));
 	});
 
@@ -111,5 +113,17 @@ describe('registry model world grounding', () => {
 describe('ENEMY_GEOMETRY export', () => {
 	it('exposes the enemy geometry table for tests', () => {
 		expect(ENEMY_GEOMETRY.grunt.height).toBe(1);
+	});
+
+	it('gives arena_champion its own distinct, larger silhouette vs miniboss', () => {
+		const champ = ENEMY_GEOMETRY.arena_champion;
+		const boss = ENEMY_GEOMETRY.miniboss;
+		expect(champ).toBeTruthy();
+		expect(champ.radius).toBeGreaterThan(boss.radius);
+		expect(champ.height).toBeGreaterThan(boss.height);
+		expect(champ.color).not.toBe(boss.color);
+		// Half-height helper resolves to its own geometry, not the grunt fallback.
+		expect(enemyMeshHalfHeight('arena_champion')).toBe(champ.height / 2);
+		expect(enemyMeshHalfHeight('arena_champion')).not.toBe(enemyMeshHalfHeight('grunt'));
 	});
 });
