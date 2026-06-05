@@ -3823,3 +3823,26 @@ Normal gameplay (lobby → ready → dungeon) was exercised in capture without u
 
 None. Runtime proof is clean, acceptance criteria are fully met, and tests cover the spoof vector described in the ticket.
 
+
+## v0.221 — 272-socketHandlers-extract-lobby  (2026-06-04 22:54:57)
+
+Pass. The live code keeps the same socket event surface for lobby browser, key items, deck/shop/trade, run lifecycle, playing-phase actions, debug scenario dispatch, heartbeat, loot pickup, and disconnect. Context-sensitive operations still execute through `withLobbyFromSocket`, `withLobbyPlayer`, or `withLobbyContext`, so progression and simulation state continue to point at the active lobby while handlers run.
+
+The captured smoke flow exercised lobby creation/join, readiness transition into gameplay, movement, card/key-item HUD state, and dodge cooldown without browser errors. No new debug scenario was added by this ticket; the existing `debugScenario` socket handler was only moved, and the capture used normal gameplay (`debugScenario: null`).
+
+### Server test suite green
+
+Pass. The round's coverage run reports `42 passed (42)` test files and `942 passed (942)` tests. Coverage visibility shows changed server code remains covered through the existing server/integration suite.
+
+## Design and requirements consistency
+
+Pass. The extraction does not alter the documented lobby-to-dungeon core loop, socket-authenticated multiplayer structure, 3D rendering path, player representation, or movement synchronization. The captured run confirms server/client WebSocket connectivity, multiplayer lobby state, movement into gameplay, and synchronized state updates still work.
+
+## Code quality
+
+Pass. The change is scoped to the intended server socket-handler extraction. There is no obvious dead path, missing export, broken import, or runtime error in the moved module. The ctx boundary is explicit and keeps index-local helpers out of the handler module's dependency graph.
+
+## Remaining gaps
+
+None.
+
