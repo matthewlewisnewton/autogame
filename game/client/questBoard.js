@@ -27,13 +27,16 @@ export function formatObjectiveSummary(quest) {
 
 	if (quest.objectiveType === 'stage_boss') {
 		const addCount = quest.encounter?.addCount ?? 0;
+		const annexOverseer = quest.encounter?.bossType === 'annex_overseer';
 		if (addCount > 0) {
-			return THEME.objectives.defeatTrialWardenWithSupports.replace(
-				'{addCount}',
-				String(addCount),
-			);
+			const template = annexOverseer
+				? THEME.objectives.defeatAnnexOverseerWithSupports
+				: THEME.objectives.defeatTrialWardenWithSupports;
+			return template.replace('{addCount}', String(addCount));
 		}
-		return THEME.objectives.defeatTrialWarden;
+		return annexOverseer
+			? THEME.objectives.defeatAnnexOverseer
+			: THEME.objectives.defeatTrialWarden;
 	}
 
 	return quest.description || '';

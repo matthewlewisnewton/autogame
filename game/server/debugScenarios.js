@@ -205,11 +205,11 @@ function applyDebugScenario(socket, name) {
     }
 
     if (name === 'training-caverns-tier-2') {
-      // training_caverns Tier 2 with rigid crowded layout and combat-room spawns.
-      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
-      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
-      // Reachable normally by clearing Initiate Vault Tier 1, unlocking Tier 2, and
-      // deploying; this scenario is a shortcut into that state.
+      // training_caverns Tier 2 stage_boss encounter with rigid crowded layout and
+      // vault_dais boss spawn. Quest/tier and layout must be set before
+      // enterPlayingPhase so startDungeonRun snapshots the correct run.questTier/
+      // objective and spawnEnemy variant rolls. Reachable normally by clearing
+      // Initiate Vault Tier 1, unlocking Tier 2, and deploying.
       const questId = 'training_caverns';
       const tier = 2;
       unlockQuestTier(player.accountId, questId, tier);
@@ -238,8 +238,10 @@ function applyDebugScenario(socket, name) {
 
       state.enemies = [];
       state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
       spawnEnemies();
-      syncRunObjectiveToEnemies();
+      startDungeonRun();
 
       emitLobbyQuestUpdate(lobby, state, {
         layoutSeed: state.layoutSeed,

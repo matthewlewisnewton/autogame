@@ -421,36 +421,51 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		}
 	});
 
-	it('deploys training_caverns Tier 2 with rigid crowded layout, tier-2 run metadata, and variant enemies', async () => {
+	it('deploys training_caverns Tier 2 stage-boss run with encounter and rigid crowded layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'training-caverns-tier-2' });
 		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
 
 		expect(result.ok).toBe(true);
 		expect(result.scenario).toBe('training-caverns-tier-2');
 
 		const state = testGameState();
 		const tier2Quest = getQuest(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2);
+		const addCount = tier2Quest.encounter.addCount;
 
 		expect(state.gamePhase).toBe('playing');
 		expect(state.selectedQuestId).toBe(TRAINING_CAVERNS_ID);
 		expect(state.selectedQuestTier).toBe(TRAINING_CAVERNS_TIER_2);
-		expect(state.run.questId).toBe(TRAINING_CAVERNS_ID);
-		expect(state.run.questTier).toBe(TRAINING_CAVERNS_TIER_2);
-		expect(state.run.questName).toBe(tier2Quest.name);
-		expect(state.run.objective.label).toContain(tier2Quest.name);
-		expect(state.run.objective.totalEnemies).toBe(tier2Quest.enemyCount);
+		expect(stateUpdate.run.questId).toBe(TRAINING_CAVERNS_ID);
+		expect(stateUpdate.run.questTier).toBe(TRAINING_CAVERNS_TIER_2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(getQuest(TRAINING_CAVERNS_ID, state.selectedQuestTier).encounter?.bossType).toBe(
+			'annex_overseer',
+		);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
 		expect(state.layout.profile).toBe('crowded');
 		expect(getLayoutGenerationOptions(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2)).toEqual({
 			slopes: true,
 			layoutMode: 'rigid',
 		});
 		expect(state.layoutSeed).toBe(questLayoutSeed(TRAINING_CAVERNS_ID, TRAINING_CAVERNS_TIER_2));
-		expect(state.enemies.length).toBe(tier2Quest.enemyCount);
-		expect(state.enemies.every((e) => e.variant !== undefined)).toBe(true);
-		expect(resolveVariantRollTier(state.run.questTier, 0)).toBe(1);
+		expect(state.layout.landmarks.some((lm) => lm.type === 'vault_dais')).toBe(true);
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		expect(
+			stateUpdate.enemies.some((e) => e.id === stateUpdate.run.encounter.bossEnemyId),
+		).toBe(true);
+		expect(
+			stateUpdate.enemies.some((e) => e.type === 'annex_overseer'),
+		).toBe(true);
+		expect(stateUpdate.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 
 	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (training_caverns_tier2 parity)', () => {

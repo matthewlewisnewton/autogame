@@ -27,12 +27,16 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Initiate Vault — Tier II',
         description: 'Advanced clearance of the derelict annex sector.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 5,
+        objectiveType: 'stage_boss',
         rewardCurrency: 10,
         layoutProfile: 'crowded',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'training_caverns', tier: 1 },
+        encounter: {
+          bossType: 'annex_overseer',
+          landmark: 'vault_dais',
+          addCount: 4,
+        },
       },
     },
   },
@@ -255,14 +259,18 @@ function formatObjectiveSummary(quest) {
     return `Survive ${totalSpawns} hostiles (${minibossCount} wardens)`;
   }
   if (quest.objectiveType === 'stage_boss') {
-    const addCount = getEncounterConfig(quest)?.addCount ?? 0;
+    const encounter = getEncounterConfig(quest);
+    const addCount = encounter?.addCount ?? 0;
+    const annexOverseer = encounter?.bossType === 'annex_overseer';
     if (addCount > 0) {
-      return THEME.objectives.defeatTrialWardenWithSupports.replace(
-        '{addCount}',
-        String(addCount),
-      );
+      const template = annexOverseer
+        ? THEME.objectives.defeatAnnexOverseerWithSupports
+        : THEME.objectives.defeatTrialWardenWithSupports;
+      return template.replace('{addCount}', String(addCount));
     }
-    return THEME.objectives.defeatTrialWarden;
+    return annexOverseer
+      ? THEME.objectives.defeatAnnexOverseer
+      : THEME.objectives.defeatTrialWarden;
   }
   return quest.description || '';
 }

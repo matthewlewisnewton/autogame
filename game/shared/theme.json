@@ -69,7 +69,9 @@
     "surviveHostiles": "Survive {count} hostiles ({minibosses} minibosses)",
     "collectPrismsProgress": "{collected}/{total} prisms",
     "defeatTrialWarden": "Defeat the trial warden",
-    "defeatTrialWardenWithSupports": "Defeat the trial warden and {addCount} supports"
+    "defeatTrialWardenWithSupports": "Defeat the trial warden and {addCount} supports",
+    "defeatAnnexOverseer": "Defeat the annex overseer",
+    "defeatAnnexOverseerWithSupports": "Defeat the annex overseer and {addCount} supports"
   },
   "cardDescriptions": {
     "summonAlly": "Channels an invocation",

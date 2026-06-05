@@ -78,6 +78,21 @@ describe('formatObjectiveSummary()', () => {
 			}),
 		).toBe('Defeat the trial warden');
 	});
+
+	it('summarizes stage-boss quests with annex overseer copy for vault encounters', () => {
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'annex_overseer', addCount: 4 },
+			}),
+		).toBe('Defeat the annex overseer and 4 supports');
+		expect(
+			formatObjectiveSummary({
+				objectiveType: 'stage_boss',
+				encounter: { bossType: 'annex_overseer', addCount: 0 },
+			}),
+		).toBe('Defeat the annex overseer');
+	});
 });
 
 describe('formatRewardSummary()', () => {

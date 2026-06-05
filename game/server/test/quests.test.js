@@ -72,9 +72,10 @@ describe('quest tier catalog', () => {
       questId: 'training_caverns',
       tier: 2,
       isTier2: true,
+      objectiveType: 'stage_boss',
       unlockRequires: { questId: 'training_caverns', tier: 1 },
     });
-    expect(trainingTier2.objectiveSummary).toContain('5');
+    expect(trainingTier2.objectiveSummary).toContain('annex overseer');
     expect(trainingTier2.rewardSummary).toContain('10');
     const arenaTier2 = variants.find(
       (v) => v.questId === 'arena_trials' && v.tier === 2
