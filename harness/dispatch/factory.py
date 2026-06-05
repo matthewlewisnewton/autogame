@@ -336,7 +336,17 @@ def build_factory(main_root, *, workers: Optional[int] = None,
         breaker_escalate_attempts=3,
         breaker_max_attempts=6,
         breaker_max_hours=8.0,
+        # Merge-integration breaker: a ticket that passes its worker pipeline but
+        # repeatedly fails to integrate at the merge queue (re-running whole each
+        # time — the 210 case). Lower limits than the worker-side breaker since
+        # each merge reject is a full ticket run: escalate to `hard` after 2 merge
+        # failures, abandon after 4 (or the 8h ceiling above).
+        breaker_merge_escalate=2,
+        breaker_merge_abandon=4,
     )
+    # The merge queue reports integration failures back to the breaker (it can't
+    # be a constructor arg — disp doesn't exist when mq is built).
+    mq.on_reject = disp.note_merge_reject
     return disp, mq, queue, registry
 
 

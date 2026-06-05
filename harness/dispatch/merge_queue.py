@@ -281,6 +281,14 @@ class MergeQueue:
     # falls straight to reject (the pre-resolver behavior). factory wires the real
     # one (it needs the roster); unit tests inject a fake.
     resolve: Optional[Callable[[WorkerHandle], bool]] = None
+    # Called when a PASSED branch fails to integrate (rebase conflict or, the
+    # common case, post-rebase verification failure). The dispatcher's breaker
+    # uses this to COUNT merge-integration failures — the dominant churn mode the
+    # worker-side breaker can't see (the worker passed; the failure is downstream)
+    # — and to abandon a ticket that can never integrate. Returns True if it
+    # handled the ticket (e.g. abandoned it) and the merge queue must NOT requeue;
+    # False/None → requeue as before. factory wires disp.note_merge_reject.
+    on_reject: Optional[Callable[[str, str], bool]] = None
 
     _pending: "deque[WorkerHandle]" = field(default_factory=deque, init=False)
 
@@ -424,10 +432,21 @@ class MergeQueue:
     def _reject(self, h: WorkerHandle, reason: str) -> None:
         log(f"[merge] {h.ticket_id} NOT merged ({reason}) — main untouched, requeuing")
         emit_progress_event("merge_rejected", {"ticket": h.ticket_id, "reason": reason})
-        try:
-            self.queue.requeue(h.ticket_id, note=f"merge rejected: {reason}")
-        except Exception as e:
-            log(f"[merge] WARN: requeue of {h.ticket_id} failed: {e!r}")
+        # Feed the staleness breaker: a passed-but-unmergeable ticket churns by
+        # re-running from scratch every reject (the worker keeps passing). Let the
+        # dispatcher count it and decide — it may ABANDON the ticket (handled=True),
+        # in which case we must NOT requeue it back into the ready pool.
+        handled = False
+        if self.on_reject is not None:
+            try:
+                handled = bool(self.on_reject(h.ticket_id, reason))
+            except Exception as e:
+                log(f"[merge] WARN: on_reject hook failed for {h.ticket_id}: {e!r}")
+        if not handled:
+            try:
+                self.queue.requeue(h.ticket_id, note=f"merge rejected: {reason}")
+            except Exception as e:
+                log(f"[merge] WARN: requeue of {h.ticket_id} failed: {e!r}")
         self._clear_pending(h)  # back to ready — a fresh pass will re-record it
         h.worktree.remove_worktree()
 

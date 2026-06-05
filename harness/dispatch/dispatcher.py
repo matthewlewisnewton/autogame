@@ -129,6 +129,15 @@ class Dispatcher:
     breaker_escalate_attempts: int = 0
     breaker_max_attempts: int = 0
     breaker_max_hours: float = 0.0
+    # Merge-integration breaker (the dominant churn mode: a ticket that PASSES its
+    # worker pipeline but repeatedly fails to integrate at the merge queue, so it
+    # re-runs from scratch each reject — 171/210). The worker-side breaker above
+    # can't see these (the worker keeps passing), so the merge queue reports them
+    # via note_merge_reject(). Counted SEPARATELY and with lower limits, since each
+    # merge reject is a whole completed ticket run (~tens of minutes), not a cheap
+    # decompose failure. 0 = off (default; factory wires real values).
+    breaker_merge_escalate: int = 0
+    breaker_merge_abandon: int = 0
 
     _workers: dict[str, WorkerHandle] = field(default_factory=dict, init=False)
     _free_ports: list[PortAllocation] = field(default_factory=list, init=False)
@@ -140,6 +149,11 @@ class Dispatcher:
     # requeue/respawn loop (cleared on PASS or abandon).
     _attempts: dict[str, int] = field(default_factory=dict, init=False)
     _first_seen: dict[str, float] = field(default_factory=dict, init=False)
+    # Merge-integration breaker bookkeeping (separate from the worker-side counts,
+    # which reset on a worker PASS — these must persist across the pass→merge-fail
+    # →re-run cycle since the worker passes every time).
+    _merge_rejects: dict[str, int] = field(default_factory=dict, init=False)
+    _merge_first_seen: dict[str, float] = field(default_factory=dict, init=False)
 
     def __post_init__(self):
         self._free_ports = list(self.ports_pool)
@@ -425,6 +439,49 @@ class Dispatcher:
     def _clear_breaker(self, tid: str) -> None:
         self._attempts.pop(tid, None)
         self._first_seen.pop(tid, None)
+
+    def note_merge_reject(self, ticket_id: str, reason: str = "") -> bool:
+        """Called by the merge queue when a PASSED branch fails to integrate.
+        This is the churn mode the worker-side breaker misses — the worker passes
+        every time, the failure is downstream at merge, and each reject re-runs the
+        whole ticket from scratch. Count it; ESCALATE the ticket to a stronger
+        agent past the escalate threshold; ABANDON it (close — return True so the
+        merge queue does NOT requeue) past the abandon ceiling or the wall-clock
+        limit. Best-effort: any error falls back to a normal requeue (return False)."""
+        n = self._merge_rejects.get(ticket_id, 0) + 1
+        self._merge_rejects[ticket_id] = n
+        self._merge_first_seen.setdefault(ticket_id, time.time())
+        elapsed_h = (time.time() - self._merge_first_seen.get(ticket_id, time.time())) / 3600.0
+
+        hit_count = self.breaker_merge_abandon and n >= self.breaker_merge_abandon
+        hit_hours = self.breaker_max_hours and elapsed_h >= self.breaker_max_hours
+        if hit_count or hit_hours:
+            r = (f"abandoned by merge-integration breaker: {n} merge failures, "
+                 f"{elapsed_h:.1f}h (last: {reason})")
+            try:
+                self.queue.close(ticket_id, reason=r)
+            except Exception as e:
+                log(f"[dispatch] breaker close failed for {ticket_id}: {e!r} — requeuing")
+                return False
+            log(f"[dispatch] MERGE-BREAKER abandoned {ticket_id} — {r}")
+            emit_progress_event("ticket_abandoned", {
+                "ticket": ticket_id, "kind": "merge_integration",
+                "merge_rejects": n, "hours": round(elapsed_h, 1)})
+            self._merge_rejects.pop(ticket_id, None)
+            self._merge_first_seen.pop(ticket_id, None)
+            return True
+
+        if self.breaker_merge_escalate and n >= self.breaker_merge_escalate:
+            try:
+                self.queue.set_difficulty(ticket_id, "hard")
+                log(f"[dispatch] MERGE-BREAKER escalating {ticket_id} -> hard "
+                    f"after {n} merge failures")
+                emit_progress_event("ticket_escalated", {
+                    "ticket": ticket_id, "to": "hard", "merge_rejects": n,
+                    "kind": "merge_integration"})
+            except Exception as e:
+                log(f"[dispatch] merge-breaker escalate failed for {ticket_id}: {e!r}")
+        return False
 
     def _apply_breaker(self, w: WorkerHandle) -> bool:
         """Staleness circuit-breaker (autogame-sug). Given a FAILED ticket, decide

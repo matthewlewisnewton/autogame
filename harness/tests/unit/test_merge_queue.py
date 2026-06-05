@@ -461,3 +461,28 @@ def test_default_resolve_unresolved_aborts_leaving_clean_tree(tmp_path):
     # merge aborted → clean tree, no MERGE_HEAD, branch tip unmoved (main untouched too)
     assert _RealRepo(repo).run_git("status", "--porcelain").strip() == ""
     assert _RealRepo(repo).run_git("rev-parse", "HEAD").strip() == branch_tip
+
+
+def test_reject_notifies_on_reject_and_skips_requeue_when_handled():
+    """A post-rebase verification failure feeds the breaker via on_reject; when the
+    breaker handles it (abandon → returns True), the merge queue must NOT requeue."""
+    q = FakeQueue()
+    mq, calls = _mq(q, verify=False)         # post-rebase verification fails -> _reject
+    seen = []
+    mq.on_reject = lambda tid, reason: (seen.append((tid, reason)) or True)
+    h = _handle("t1")
+    mq.enqueue(h)
+    assert mq.drain_one() is True
+    assert seen and seen[0][0] == "t1"       # breaker was notified
+    assert q.requeued == []                  # handled (abandoned) -> not requeued
+    assert h.worktree.removed
+
+
+def test_reject_requeues_when_on_reject_returns_false():
+    q = FakeQueue()
+    mq, calls = _mq(q, verify=False)
+    mq.on_reject = lambda tid, reason: False
+    h = _handle("t1")
+    mq.enqueue(h)
+    assert mq.drain_one() is True
+    assert q.requeued == ["t1"]              # not handled -> requeued as before

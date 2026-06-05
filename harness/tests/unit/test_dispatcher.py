@@ -419,3 +419,38 @@ def test_breaker_escalates_to_hard_then_requeues():
     assert q.difficulties.get("t1") == "hard"
     assert "t1" in q.requeued
     assert q.closed == []
+
+
+# --- merge-integration breaker (counts merge-queue rejections) ---------- #
+def test_merge_breaker_off_by_default():
+    q = FakeQueue({})
+    d, _, _ = _dispatcher(q, _registry())
+    for _ in range(10):
+        assert d.note_merge_reject("t1") is False
+    assert q.closed == [] and q.difficulties == {}
+
+
+def test_merge_breaker_escalates_then_abandons():
+    q = FakeQueue({})
+    d, _, _ = _dispatcher(q, _registry())
+    d.breaker_merge_escalate = 2
+    d.breaker_merge_abandon = 4
+    assert d.note_merge_reject("t1", "verify failed") is False   # 1
+    assert q.difficulties == {} and q.closed == []
+    assert d.note_merge_reject("t1") is False                    # 2 -> escalate
+    assert q.difficulties.get("t1") == "hard"
+    assert q.closed == []
+    assert d.note_merge_reject("t1") is False                    # 3
+    assert d.note_merge_reject("t1") is True                     # 4 -> abandon (handled)
+    assert any(tid == "t1" for tid, _ in q.closed)
+    assert "t1" not in d._merge_rejects                          # cleared on abandon
+
+
+def test_merge_breaker_abandons_on_hours():
+    q = FakeQueue({})
+    d, _, _ = _dispatcher(q, _registry())
+    d.breaker_max_hours = 1.0
+    assert d.note_merge_reject("t1") is False                    # seeds merge_first_seen
+    d._merge_first_seen["t1"] = time.time() - 2 * 3600
+    assert d.note_merge_reject("t1") is True                     # 2h >= 1h -> abandon
+    assert any(tid == "t1" for tid, _ in q.closed)
