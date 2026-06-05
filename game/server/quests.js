@@ -43,6 +43,18 @@ const QUEST_DEFS = {
         rewardCurrency: 12,
         layoutProfile: 'open',
       },
+      2: {
+        tier: 2,
+        name: 'Prism Salvage — Tier II',
+        description: 'Recover resonance prisms from the rigid collapsed lattice.',
+        objectiveType: 'collect_items',
+        itemCount: 5,
+        enemyCount: 5,
+        rewardCurrency: 18,
+        layoutProfile: 'open',
+        layoutMode: 'rigid',
+        unlockRequires: { questId: 'crystal_rescue', tier: 1 },
+      },
     },
   },
   arena_trials: {
