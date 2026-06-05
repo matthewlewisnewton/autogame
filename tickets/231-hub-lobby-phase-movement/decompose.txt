@@ -1,0 +1,14 @@
+## Remediation Round 2 Plan
+
+Sub-tickets **01–03** already have `.passed` markers and were left unchanged. The review left **one** open gap: stale dungeon geometry after returning to lobby.
+
+### Created sub-ticket
+
+- `/home/matt/workspace/.autogame-worktrees/231-hub-lobby-phase-movement/tickets/231-hub-lobby-phase-movement/subtickets/04-return-to-lobby-hub-rebuild/ticket.md`
+
+**04-return-to-lobby-hub-rebuild** closes the gap by:
+- Having the server include hub `layout` in lobby-phase `stateSnapshot()` emissions
+- Fixing the client `stateUpdate` handler so it does not overwrite the lobby snapshot with stale dungeon `currentLayout` before `restoreHubLobbyScene` runs
+- Adding a client test for the `playing` → `lobby` rebuild path with `profile: 'hub'`
+
+Verification mode is **code** (tests, diff, and logs — not screenshot-only).

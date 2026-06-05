@@ -1,0 +1,13 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/231-hub-lobby-phase-movement/game/data/users.json
+[server] Hub layout: seed=0, profile=hub, rooms=3
+[server] Dungeon bounds: x [-28.0, 28.0], z [-8.0, 8.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/231-hub-lobby-phase-movement/game/data
+Server listening on port 3002
+Player connected: socket=tP04AvEzarxo7hFlAAAB, playerId=fba66f91-8222-4a48-964e-48ddc506a8bd
+[server] Hub layout: seed=0, profile=hub, rooms=3
+Player connected: socket=819IwvIqRK40pTm3AAAD, playerId=2467a6d6-2b6f-4d03-bae6-282228686aa9
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=137dc759-8e97-42ea-84a4-f6cf25325f2e value=10
+Player disconnected: tP04AvEzarxo7hFlAAAB
+Player disconnected: 819IwvIqRK40pTm3AAAD

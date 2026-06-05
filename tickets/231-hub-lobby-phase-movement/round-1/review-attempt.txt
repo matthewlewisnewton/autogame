@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/231-hub-lobby-phase-movement/round-1/review.md`
+- `tickets/231-hub-lobby-phase-movement/round-1/gaps.md`
+
+Verdict is `VERDICT: FAIL`.
+
+Runtime was clean, but I found a blocking integration gap: after returning from a run to lobby, the client can keep the old dungeon layout instead of rebuilding hub geometry, so lobby-phase hub movement is not robust across the full lobby lifecycle. No `nits.md` was created because I didn’t identify separate non-blocking nits.
