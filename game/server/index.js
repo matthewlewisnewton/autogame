@@ -188,6 +188,7 @@ const {
   countGroundEnchantmentsForPlayer,
 } = require('./simulation');
 
+const { buildEnemyDisplayCatalog } = require('./enemyDisplay');
 const progression = require('./progression');
 const {
   CARD_DEFS,
@@ -1450,6 +1451,7 @@ function startServer(port) {
       ownedCards: sessionPlayer.ownedCards,
       lobbies: lobbies.listLobbySummaries(),
       keyItemDefs: KEY_ITEM_DEFS,
+      enemyDisplayCatalog: buildEnemyDisplayCatalog(),
     });
 
     broadcastLobbyList();

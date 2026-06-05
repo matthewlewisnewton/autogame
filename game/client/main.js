@@ -1147,6 +1147,7 @@ function bindSocketHandlers(s) {
 		myInventory = Array.isArray(data.inventory) ? data.inventory : null;
 		myOwnedCards = data.ownedCards || {};
 		keyItemDefs = data.keyItemDefs || {};
+		enemyDisplayCatalog = data.enemyDisplayCatalog || null;
 		renderDeckEditor();
 
 		if (data.accountId) {
@@ -1877,6 +1878,7 @@ let myInventory = null;
 let myOwnedCards = {};
 let lastEvolutionResult = null;
 let keyItemDefs = {};
+let enemyDisplayCatalog = null;
 let availableQuests = [];
 let questVariants = [];
 let unlockedQuestTiers = {};
@@ -4374,6 +4376,8 @@ window.renderCardShop = renderCardShop;
 window.renderPhotonForge = renderPhotonForge;
 window.renderKeyItemList = renderKeyItemList;
 window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
+window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
+window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
