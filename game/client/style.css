@@ -951,22 +951,27 @@ canvas {
   background: #334155;
 }
 
-/* Resume control — visually distinct from the blue new-mission Deploy so the
-   two launch paths read as separate affordances while a run is suspended. */
+/* Dedicated resume control — the primary, distinct affordance shown while a run
+   is suspended. Styled as a brighter emerald CTA with a glow so it reads as the
+   lead "Resume" action, clearly separate from the blue new-mission Deploy and
+   from the teal #ready-btn.resuming variant beside it. */
 #resume-run-btn {
-  padding: 12px 32px;
-  font-size: 16px;
-  font-weight: 700;
-  border: 1px solid rgba(34, 211, 238, 0.55);
+  padding: 14px 36px;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  border: 1px solid rgba(110, 231, 183, 0.7);
   border-radius: 8px;
-  background-color: #0e7490;
-  color: #ecfeff;
+  background-color: #059669;
+  color: #ecfdf5;
   cursor: pointer;
   pointer-events: auto;
+  box-shadow: 0 0 14px rgba(16, 185, 129, 0.55);
 }
 
 #resume-run-btn:hover {
-  background-color: #0891b2;
+  background-color: #047857;
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.7);
 }
 
 /* ── Vanguard HUD (PSO-inspired) ── */

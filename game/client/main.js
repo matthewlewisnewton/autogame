@@ -512,8 +512,13 @@ function isRunSuspended() {
  * Deploy button.
  */
 function syncReadyButtonRole() {
-	if (!readyBtn) return;
 	const suspended = isRunSuspended();
+	// The dedicated #resume-run-btn is only ever shown while suspended, so it
+	// always carries the "Resume…" theme label rather than the static HTML text.
+	if (resumeRunBtn) {
+		resumeRunBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
+	}
+	if (!readyBtn) return;
 	if (suspended) {
 		readyBtn.textContent = isReady ? THEME.run.resumeReady : THEME.run.resumeSortie;
 	} else {
@@ -523,12 +528,12 @@ function syncReadyButtonRole() {
 }
 
 function setDeployButtonVisible(visible) {
-	// While a run is suspended the launch button doubles as the Resume control,
-	// so it must stay visible+enabled for the squad (and the harness telepipe
-	// capture) to click it back into the checkpointed run. The standalone
-	// #resume-run-btn is superseded by this role and stays hidden.
+	// While a run is suspended #resume-run-btn is the dedicated, distinct resume
+	// affordance shown to the player; #ready-btn also stays visible+enabled and
+	// wired to the same resume path (the harness telepipe capture clicks
+	// #ready-btn to resume). Outside suspension #resume-run-btn is hidden.
 	const suspended = isRunSuspended();
-	if (resumeRunBtn) resumeRunBtn.classList.add('hidden');
+	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
 	if (!readyBtn) return;
 	const show = visible || suspended;
 	readyBtn.hidden = !show;
@@ -543,11 +548,11 @@ function setDeployButtonVisible(visible) {
 function renderSuspendedRunBanner(state) {
 	const summary = state && state.suspendedRunSummary;
 	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
-	// While suspended the launch button becomes the Resume control: keep it
-	// visible+enabled (the harness capture clicks #ready-btn to resume) and let
-	// syncReadyButtonRole apply the "Resume…" label + .resuming styling. The
-	// superseded standalone #resume-run-btn stays hidden.
-	if (resumeRunBtn) resumeRunBtn.classList.add('hidden');
+	// While suspended #resume-run-btn is the dedicated resume affordance, and
+	// #ready-btn also stays visible+enabled wired to the same resume path (the
+	// harness capture clicks #ready-btn to resume); syncReadyButtonRole applies
+	// the "Resume…" labels + .resuming styling to both.
+	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
 	if (suspended && readyBtn) {
 		readyBtn.hidden = false;
 		readyBtn.disabled = false;
@@ -4148,10 +4153,19 @@ if (abandonRunBtn) {
 	});
 }
 
-// The dedicated #resume-run-btn is superseded: while a run is suspended the
-// #ready-btn itself becomes the Resume control (see syncReadyButtonRole), which
-// keeps a single launch affordance and is what the harness capture clicks. The
-// element stays in the DOM (always hidden) so the layout is unchanged.
+// #resume-run-btn is the dedicated, distinct resume affordance shown while a run
+// is suspended. It re-enters the run through the SAME path as #ready-btn: emit
+// playerReady(true), which the server's checkAllReady gate routes to
+// restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It sets
+// the shared isReady flag (so it can't desync from #ready-btn) and resyncs both
+// labels via syncReadyButtonRole. No separate fresh-launch / resume socket event.
+if (resumeRunBtn) {
+	resumeRunBtn.addEventListener('click', () => {
+		isReady = true;
+		socket.emit('playerReady', true);
+		syncReadyButtonRole();
+	});
+}
 
 if (createLobbyBtnEl) {
 	createLobbyBtnEl.addEventListener('click', () => {
