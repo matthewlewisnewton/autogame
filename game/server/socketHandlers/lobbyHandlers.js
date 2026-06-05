@@ -9,7 +9,7 @@
 // and index.js-local helpers are supplied via the ctx object passed to
 // register(socket, ctx) from the connection handler.
 
-const { LOOT_PICKUP_RADIUS } = require('../config');
+const { LOOT_PICKUP_RADIUS, MAX_PLAYERS } = require('../config');
 const deckHandlers = require('./deckHandlers');
 const tradeHandlers = require('./tradeHandlers');
 const {
@@ -114,6 +114,10 @@ function register(socket, ctx) {
     const lobby = lobbies.getLobbyById(lobbyId);
     if (!lobby) {
       socket.emit('lobbyError', { reason: 'Lobby not found' });
+      return;
+    }
+    if (Object.keys(lobby.state.players).length >= MAX_PLAYERS) {
+      socket.emit('lobbyError', { reason: 'Lobby is full' });
       return;
     }
     joinLobbyWithPhasePolicy(socket, lobby);
