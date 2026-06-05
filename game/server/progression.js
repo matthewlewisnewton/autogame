@@ -66,6 +66,7 @@ const {
 } = require('./quests');
 const { unlockQuestTier, isQuestTierUnlocked } = require('./users');
 const { getObjectiveDef } = require('./objectives');
+const { initRunEncounter } = require('./bossEncounter');
 const { THEME } = require('./theme');
 const { DEFAULT_COSMETIC, getHat } = require('./cosmetic');
 const CARD_IDENTITY = require('../shared/cardDefs.json');
@@ -894,7 +895,7 @@ function createRunState() {
     throw new Error(`Unknown objective type: ${quest.objectiveType}`);
   }
 
-  return {
+  const run = {
     id: crypto.randomUUID(),
     status: 'playing',
     questId: quest.id,
@@ -905,6 +906,8 @@ function createRunState() {
     objective: def.createObjective(quest, { enemyCount: _gameState.enemies.length }),
     startedAt: Date.now()
   };
+  initRunEncounter(run, quest);
+  return run;
 }
 
 function startDungeonRun() {

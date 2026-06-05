@@ -1,3 +1,8 @@
+// Quest tier defs may optionally include `stageBossEncounter`:
+//   { bossType, trigger, roomRole?, rewardCurrencyBonus?, unlockOnClear? }
+// See game/server/bossEncounter.js for the documented config shape. No tier is
+// wired with a stage boss in this sub-ticket; later sub-tickets attach encounters
+// to specific quest tiers (e.g. arena_trials tier 2).
 const QUEST_DEFS = {
   training_caverns: {
     id: 'training_caverns',
