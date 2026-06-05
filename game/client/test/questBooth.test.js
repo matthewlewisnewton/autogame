@@ -125,19 +125,50 @@ describe('quest booth booth:action hook (main.js)', () => {
 		vi.unstubAllGlobals();
 	});
 
-	it('scrolls the quest panel into view for boothId quest in lobby and ignores other booths', async () => {
+	it('reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths', async () => {
 		await import('../main.js');
 		const wrapper = document.getElementById('quest-board-wrapper');
 		// jsdom lacks scrollIntoView; stub it so we can observe the open path.
 		wrapper.scrollIntoView = vi.fn();
+		// Quest board is hidden by default; only the booth un-hides it.
+		wrapper.classList.add('hidden');
 
 		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
 
 		dispatchBoothAction({ boothId: 'quest' });
 		expect(wrapper.scrollIntoView).toHaveBeenCalledTimes(1);
+		expect(wrapper.classList.contains('hidden')).toBe(false);
 
 		dispatchBoothAction({ boothId: 'launch' });
 		expect(wrapper.scrollIntoView).toHaveBeenCalledTimes(1);
+	});
+
+	it('keeps the quest panel hidden when boothId quest fires outside the lobby phase', async () => {
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+		wrapper.classList.add('hidden');
+
+		window.__setGameState({ gamePhase: 'playing', players: { p1: {} } }, 'p1');
+
+		dispatchBoothAction({ boothId: 'quest' });
+		expect(wrapper.scrollIntoView).not.toHaveBeenCalled();
+		expect(wrapper.classList.contains('hidden')).toBe(true);
+	});
+
+	it('re-hides the quest panel when the lobby is (re)shown', async () => {
+		await import('../main.js');
+		const wrapper = document.getElementById('quest-board-wrapper');
+		wrapper.scrollIntoView = vi.fn();
+
+		window.__setGameState({ gamePhase: 'lobby', players: { p1: {} } }, 'p1');
+
+		// Open it via the booth, then show the lobby again — it must hide.
+		dispatchBoothAction({ boothId: 'quest' });
+		expect(wrapper.classList.contains('hidden')).toBe(false);
+
+		window.showGameLobby();
+		expect(wrapper.classList.contains('hidden')).toBe(true);
 	});
 
 	it('does not open the panel when gamePhase is not lobby', async () => {

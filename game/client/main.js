@@ -384,6 +384,9 @@ function showLobbyBrowser() {
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	// Quest board only appears via the quest booth, so keep it hidden each time
+	// the lobby is (re)shown.
+	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
 	applyLobbyThemeLabels();
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
@@ -2012,6 +2015,8 @@ function applyQuestLayoutFromServer(data) {
 // below); this only brings the wrapper into view. Guarded to the lobby phase.
 function openQuestPanel() {
 	if (gameState?.gamePhase !== 'lobby') return;
+	// The wrapper is hidden by default; the booth is what reveals it.
+	questBoardWrapperEl?.classList.remove('hidden');
 	// jsdom lacks scrollIntoView, so guard defensively for tests.
 	questBoardWrapperEl?.scrollIntoView?.({ block: 'nearest' });
 }
