@@ -3,6 +3,9 @@ import { mulberry32 } from '../dungeon';
 import {
   VARIANT_DEFS,
   BASE_VARIANT_CHANCE,
+  QUEST_TIER_1_VARIANT_SCALE,
+  QUEST_TIER_2_VARIANT_BASE,
+  resolveVariantRollTier,
   pickVariant,
   applyVariant,
 } from '../enemyVariants';
@@ -20,6 +23,23 @@ describe('enemy variant registry', () => {
     expect(typeof VARIANT_DEFS.test.name).toBe('string');
     // No-op behavior in this ticket: no apply function wired up yet.
     expect(VARIANT_DEFS.test.apply).toBeNull();
+  });
+});
+
+describe('resolveVariantRollTier', () => {
+  it('maps Tier 1 to near-zero roll tier scaled by encounterTier', () => {
+    expect(resolveVariantRollTier(1, 0)).toBe(0);
+    expect(resolveVariantRollTier(1, 0.8)).toBeCloseTo(0.8 * QUEST_TIER_1_VARIANT_SCALE);
+    expect(resolveVariantRollTier(1, 1)).toBeCloseTo(QUEST_TIER_1_VARIANT_SCALE);
+  });
+
+  it('maps Tier 2 to full roll tier even when encounterTier is 0', () => {
+    expect(resolveVariantRollTier(2, 0)).toBe(QUEST_TIER_2_VARIANT_BASE);
+    expect(resolveVariantRollTier(2, 0.5)).toBe(QUEST_TIER_2_VARIANT_BASE);
+  });
+
+  it('defaults invalid quest tiers to Tier 1 scaling', () => {
+    expect(resolveVariantRollTier(undefined, 0.5)).toBeCloseTo(0.5 * QUEST_TIER_1_VARIANT_SCALE);
   });
 });
 
