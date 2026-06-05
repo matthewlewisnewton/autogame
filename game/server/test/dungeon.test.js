@@ -985,6 +985,159 @@ describe('floorCorners on rooms', () => {
   });
 });
 
+// ── crowded interior cover ──
+
+describe('crowded interior cover', () => {
+  const SEED = 42;
+  const MARGIN = 2;
+
+  function combatRooms(layout) {
+    return layout.rooms.filter(r => r.role === 'combat');
+  }
+
+  function coverInRoom(cover, room) {
+    const halfW = room.width / 2;
+    const halfD = room.depth / 2;
+    return cover.filter(c =>
+      Math.abs(c.x - room.x) + c.width / 2 <= halfW + 1e-6 &&
+      Math.abs(c.z - room.z) + c.depth / 2 <= halfD + 1e-6
+    );
+  }
+
+  function roomReachability(room, cover) {
+    const halfW = room.width / 2 - MARGIN;
+    const halfD = room.depth / 2 - MARGIN;
+    const step = 0.5;
+    const cellsX = Math.floor((halfW * 2) / step);
+    const cellsZ = Math.floor((halfD * 2) / step);
+    const cellX = i => room.x - halfW + (i + 0.5) * step;
+    const cellZ = j => room.z - halfD + (j + 0.5) * step;
+    const blocked = (x, z) =>
+      cover.some(c =>
+        x >= c.x - c.width / 2 && x <= c.x + c.width / 2 &&
+        z >= c.z - c.depth / 2 && z <= c.z + c.depth / 2
+      );
+
+    const startI = Math.floor(halfW / step);
+    const startJ = Math.floor(halfD / step);
+    const seen = new Set();
+    const key = (i, j) => `${i},${j}`;
+    const queue = [[startI, startJ]];
+    seen.add(key(startI, startJ));
+    while (queue.length) {
+      const [i, j] = queue.pop();
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const ni = i + di;
+        const nj = j + dj;
+        if (ni < 0 || ni >= cellsX || nj < 0 || nj >= cellsZ) continue;
+        if (seen.has(key(ni, nj))) continue;
+        if (blocked(cellX(ni), cellZ(nj))) continue;
+        seen.add(key(ni, nj));
+        queue.push([ni, nj]);
+      }
+    }
+
+    let open = 0;
+    for (let j = 0; j < cellsZ; j++) {
+      for (let i = 0; i < cellsX; i++) {
+        if (!blocked(cellX(i), cellZ(j))) open++;
+      }
+    }
+    return seen.size === open;
+  }
+
+  it('generateLayout(seed, crowded) places ≥ 1 cover piece per combat room', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    expect(Array.isArray(layout.cover)).toBe(true);
+    const combat = combatRooms(layout);
+    expect(combat.length).toBeGreaterThan(0);
+    for (const room of combat) {
+      expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('cover pieces use pillar or broken_wall types and stay inside room margins', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    for (const c of layout.cover) {
+      expect(['pillar', 'broken_wall']).toContain(c.type);
+      expect(c.height).toBeGreaterThan(0);
+      const host = layout.rooms.find(r =>
+        Math.abs(c.x - r.x) + c.width / 2 <= r.width / 2 + 1e-6 &&
+        Math.abs(c.z - r.z) + c.depth / 2 <= r.depth / 2 + 1e-6
+      );
+      expect(host).toBeDefined();
+      const halfW = host.width / 2 - MARGIN;
+      const halfD = host.depth / 2 - MARGIN;
+      expect(Math.abs(c.x - host.x) + c.width / 2).toBeLessThanOrEqual(halfW + 1e-6);
+      expect(Math.abs(c.z - host.z) + c.depth / 2).toBeLessThanOrEqual(halfD + 1e-6);
+    }
+  });
+
+  it('cover pieces do not overlap each other within a room', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    for (const room of combatRooms(layout)) {
+      const pieces = coverInRoom(layout.cover, room);
+      for (let i = 0; i < pieces.length; i++) {
+        for (let j = i + 1; j < pieces.length; j++) {
+          const a = pieces[i];
+          const b = pieces[j];
+          const overlap =
+            Math.abs(a.x - b.x) < (a.width + b.width) / 2 + 0.5 &&
+            Math.abs(a.z - b.z) < (a.depth + b.depth) / 2 + 0.5;
+          expect(overlap).toBe(false);
+        }
+      }
+    }
+  });
+
+  it('every combat room stays fully reachable from its centre after cover placement', () => {
+    for (const seed of [SEED, 1, 123, 777]) {
+      const layout = generateLayout(seed, 'crowded');
+      for (const room of combatRooms(layout)) {
+        const pieces = coverInRoom(layout.cover, room);
+        expect(roomReachability(room, pieces)).toBe(true);
+      }
+    }
+  });
+
+  it('cover footprints become wall colliders', () => {
+    const layout = generateLayout(SEED, 'crowded');
+    const colliders = buildWallColliders(layout);
+    for (const c of layout.cover) {
+      const hit = colliders.some(w =>
+        Math.abs((w.minX + w.maxX) / 2 - c.x) < 1e-6 &&
+        Math.abs((w.maxX - w.minX) - c.width) < 1e-6 &&
+        Math.abs((w.minZ + w.maxZ) / 2 - c.z) < 1e-6 &&
+        Math.abs((w.maxZ - w.minZ) - c.depth) < 1e-6
+      );
+      expect(hit).toBe(true);
+    }
+    const c0 = layout.cover[0];
+    const collides = colliders.some(w =>
+      c0.x + PLAYER_RADIUS > w.minX && c0.x - PLAYER_RADIUS < w.maxX &&
+      c0.z + PLAYER_RADIUS > w.minZ && c0.z - PLAYER_RADIUS < w.maxZ
+    );
+    expect(collides).toBe(true);
+  });
+
+  it('sloped crowded layouts still generate valid cover in flat combat rooms', () => {
+    const layout = generateLayout(SEED, 'crowded', { slopes: true });
+    expect(layout.cover.length).toBeGreaterThan(0);
+    for (const room of combatRooms(layout)) {
+      const isSloped = new Set(Object.values(room.floorCorners)).size > 1;
+      if (!isSloped) {
+        expect(coverInRoom(layout.cover, room).length).toBeGreaterThanOrEqual(1);
+      }
+    }
+  });
+
+  it('is deterministic for a fixed seed', () => {
+    const a = generateLayout(SEED, 'crowded');
+    const b = generateLayout(SEED, 'crowded');
+    expect(a.cover).toEqual(b.cover);
+  });
+});
+
 // ── sampleFloorY ──
 
 describe('sampleFloorY(layout, x, z)', () => {
