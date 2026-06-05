@@ -22,13 +22,8 @@ const keyItemEffects = require('../keyItemEffects');
 const {
   getKeyItemDef,
   normalizePlayerInventory,
-  getInventoryInstance,
-  evolveCard,
-  sellCard,
-  buyShopCard,
   unlockHatForPlayer,
   healAtMedic,
-  grindCard,
   offerCardTrade,
   respondCardTrade,
   assignRunSpawnPositions,
@@ -211,79 +206,6 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('evolveCard', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
-    const result = evolveCard(player, instanceId);
-    if (!result.ok) {
-      socket.emit('cardEvolutionError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardEvolutionResult', {
-      ...result,
-      selectedDeck: player.selectedDeck,
-      inventory: player.inventory,
-      ownedCards: player.ownedCards
-    });
-    socket.emit('deckUpdate', {
-      selectedDeck: player.selectedDeck,
-      inventory: player.inventory,
-      ownedCards: player.ownedCards
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
-  socket.on('sellCard', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const requestedInstanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
-    const requestedCardId = data && typeof data.cardId === 'string' ? data.cardId : null;
-    if (!requestedInstanceId && !requestedCardId) {
-      socket.emit('deckError', { reason: 'Missing cardId' });
-      return;
-    }
-
-    let cardId = requestedCardId;
-    if (requestedInstanceId) {
-      const instance = getInventoryInstance(player.inventory, requestedInstanceId);
-      cardId = instance ? instance.cardId : requestedCardId;
-    }
-
-    const result = sellCard(player, cardId, requestedInstanceId);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardInventoryUpdate', {
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency,
-      selectedDeck: player.selectedDeck
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
-  socket.on('buyShopCard', () => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const result = buyShopCard(player, state.shopOffer);
-    if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardInventoryUpdate', {
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency,
-      selectedDeck: player.selectedDeck
-    });
-    savePlayerData(socket.playerId);
-    });
-  });
-
   socket.on('unlockHat', (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     const hatId = data && typeof data.hatId === 'string' ? data.hatId : null;
@@ -357,32 +279,6 @@ function register(socket, ctx) {
         cost: result.cost,
       });
       io.to(state._lobbyId).emit('stateUpdate', stateSnapshot());
-    });
-  });
-
-  socket.on('grindCard', (data) => {
-    withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
-    const instanceId = data && typeof data.instanceId === 'string' ? data.instanceId : null;
-    const result = grindCard(player, instanceId);
-    if (!result.ok) {
-      socket.emit('cardGrindError', { reason: result.reason });
-      return;
-    }
-
-    socket.emit('cardGrindResult', {
-      ...result,
-      selectedDeck: player.selectedDeck,
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency
-    });
-    socket.emit('deckUpdate', {
-      selectedDeck: player.selectedDeck,
-      inventory: player.inventory,
-      ownedCards: player.ownedCards,
-      currency: player.currency
-    });
-    savePlayerData(socket.playerId);
     });
   });
 
