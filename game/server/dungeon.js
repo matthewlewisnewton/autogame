@@ -124,10 +124,13 @@ const SUNKEN_CANYON = {
 const SPIRE_ASCENT = {
   tierMinSize: 12,
   tierMaxSize: 15,
+  tierXStep: 4,
   rampWidth: 4,
   rampDepth: 8,
   minTotalRise: 10,
   minRampSlope: 0.2,
+  edgeHazardStripWidth: 1.2,
+  edgeHazardEndPadding: 0.5,
 };
 
 function normalizeLayoutProfile(profile) {
@@ -1478,10 +1481,26 @@ function generateSunkenCanyon(seed) {
 // ── Spire Ascent Stage Generation ──
 
 /**
- * Build perimeter walls for a flat tier platform. North/south edges may leave a
- * ramp-width gap centred on `rampX` where a ramp room connects.
+ * Signed lateral offset for a spire-ascent tier: 0, +step, −2·step, +3·step, …
  */
-function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, rampX, rampW, { northGap, southGap }) {
+function spireTierXOffset(tierIndex, tierXStep) {
+  if (tierIndex === 0) return 0;
+  const sign = tierIndex % 2 === 1 ? 1 : -1;
+  return sign * tierIndex * tierXStep;
+}
+
+/**
+ * Build perimeter walls for a flat tier platform. North/south edges may leave
+ * ramp-width gaps centred on the ramp mouth X for each connecting ramp.
+ */
+function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, {
+  northGap,
+  southGap,
+  northGapX,
+  southGapX,
+  northGapWidth,
+  southGapWidth,
+}) {
   const halfW = tierW / 2;
   const halfD = tierD / 2;
   const northZ = tierZ - halfD;
@@ -1492,18 +1511,58 @@ function buildTierPerimeterWalls(tierX, tierZ, tierW, tierD, rampX, rampW, { nor
   ];
 
   if (northGap) {
-    walls.push(...buildHorizontalWallWithGaps(northZ, tierX, tierW, [rampX], rampW));
+    walls.push(...buildHorizontalWallWithGaps(northZ, tierX, tierW, [northGapX], northGapWidth));
   } else {
     walls.push({ x: tierX, z: northZ, length: tierW, axis: 'x' });
   }
 
   if (southGap) {
-    walls.push(...buildHorizontalWallWithGaps(southZ, tierX, tierW, [rampX], rampW));
+    walls.push(...buildHorizontalWallWithGaps(southZ, tierX, tierW, [southGapX], southGapWidth));
   } else {
     walls.push({ x: tierX, z: southZ, length: tierW, axis: 'x' });
   }
 
   return walls;
+}
+
+/**
+ * Thin hazard strips on the outward lateral lip of each combat tier (zig-zag
+ * exposes east on odd tierIndex, west on even). Start/treasure tiers omitted.
+ */
+function buildSpireEdgeHazards(tiers) {
+  const { edgeHazardStripWidth, edgeHazardEndPadding } = SPIRE_ASCENT;
+  const edgeHazards = [];
+
+  for (const tier of tiers) {
+    if (tier.role !== 'combat') continue;
+
+    const halfW = tier.width / 2;
+    const halfD = tier.depth / 2;
+    const y = tier.floorCorners.yNW;
+    const outwardEast = tier.tierIndex % 2 === 1;
+    let minX;
+    let maxX;
+
+    if (outwardEast) {
+      minX = tier.x + halfW - edgeHazardStripWidth;
+      maxX = tier.x + halfW;
+    } else {
+      minX = tier.x - halfW;
+      maxX = tier.x - halfW + edgeHazardStripWidth;
+    }
+
+    edgeHazards.push({
+      tierIndex: tier.tierIndex,
+      minX,
+      maxX,
+      minZ: tier.z - halfD + edgeHazardEndPadding,
+      maxZ: tier.z + halfD - edgeHazardEndPadding,
+      y,
+      side: outwardEast ? 'east' : 'west',
+    });
+  }
+
+  return edgeHazards;
 }
 
 /**
@@ -1518,6 +1577,7 @@ function generateSpireAscent(seed) {
   const {
     tierMinSize,
     tierMaxSize,
+    tierXStep,
     rampWidth,
     rampDepth,
     minTotalRise,
@@ -1533,7 +1593,6 @@ function generateSpireAscent(seed) {
   const tierSpan = tierMaxSize - tierMinSize + 1;
   const tierWidth = tierMinSize + Math.floor(rng() * tierSpan);
   const tierDepth = tierMinSize + Math.floor(rng() * tierSpan);
-  const rampX = 0;
   const halfTierD = tierDepth / 2;
   const halfRampD = rampDepth / 2;
 
@@ -1541,14 +1600,27 @@ function generateSpireAscent(seed) {
   const totalSpan = (tierCount - 1) * step + tierDepth;
   const bottomTierZ = totalSpan / 2 - halfTierD;
 
+  const tierXs = Array.from({ length: tierCount }, (_, i) => spireTierXOffset(i, tierXStep));
+  const rampWidths = [];
+  for (let i = 0; i < tierCount - 1; i++) {
+    const lateralSpan = Math.abs(tierXs[i + 1] - tierXs[i]);
+    rampWidths.push(Math.max(rampWidth, lateralSpan + rampWidth));
+  }
+
   const tiers = [];
   const ramps = [];
 
   for (let i = 0; i < tierCount; i++) {
+    const tierX = tierXs[i];
     const tierZ = bottomTierZ - i * step;
     const y = DEFAULT_FLOOR_Y + i * yStep;
     const isBottom = i === 0;
     const isTop = i === tierCount - 1;
+
+    const northGapX = isTop ? tierX : (tierX + tierXs[i + 1]) / 2;
+    const southGapX = isBottom ? tierX : (tierXs[i - 1] + tierX) / 2;
+    const northGapWidth = isTop ? rampWidth : rampWidths[i];
+    const southGapWidth = isBottom ? rampWidth : rampWidths[i - 1];
 
     let role;
     let spawnWeight;
@@ -1564,17 +1636,22 @@ function generateSpireAscent(seed) {
     }
 
     tiers.push({
-      x: rampX,
+      x: tierX,
       z: tierZ,
       width: tierWidth,
       depth: tierDepth,
-      walls: buildTierPerimeterWalls(rampX, tierZ, tierWidth, tierDepth, rampX, rampWidth, {
+      walls: buildTierPerimeterWalls(tierX, tierZ, tierWidth, tierDepth, {
         northGap: !isTop,
         southGap: !isBottom,
+        northGapX,
+        southGapX,
+        northGapWidth,
+        southGapWidth,
       }),
       floorCorners: { yNW: y, yNE: y, ySE: y, ySW: y },
       band: 'tier',
       tierIndex: i,
+      tierXOffset: tierX,
       role,
       spawnWeight,
       encounterTier: i,
@@ -1585,11 +1662,12 @@ function generateSpireAscent(seed) {
       const yLow = DEFAULT_FLOOR_Y + i * yStep;
       const tierNorthZ = tierZ - halfTierD;
       const rampZ = tierNorthZ - halfRampD;
+      const rampCenterX = (tierX + tierXs[i + 1]) / 2;
       ramps.push(
         buildDescentRampRoom({
-          x: rampX,
+          x: rampCenterX,
           z: rampZ,
-          width: rampWidth,
+          width: rampWidths[i],
           depth: rampDepth,
           yHigh,
           yLow,
@@ -1605,12 +1683,15 @@ function generateSpireAscent(seed) {
     if (i < ramps.length) rooms.push(ramps[i]);
   }
 
+  const edgeHazards = buildSpireEdgeHazards(tiers);
+
   return {
     rooms,
     passages: [],
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: Math.max(tierWidth, totalSpan),
     profile: 'spire-ascent',
+    edgeHazards,
   };
 }
 
@@ -1915,6 +1996,7 @@ module.exports = {
   generateOpenPlaza,
   generateSunkenCanyon,
   generateSpireAscent,
+  buildSpireEdgeHazards,
   generateHub,
   buildDescentRampRoom,
   scatterCoverInArena,

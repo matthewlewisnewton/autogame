@@ -1,12 +1,7 @@
-Merge conflicts are resolved in both files.
+Resolved `LOGBOOK.md` by combining both sides in version order:
 
-### `game/server/socketHandlers/lobbyHandlers.js`
-- **Imports:** `MAX_PLAYERS` (from main) plus `findBoothInRange` and `isLobbyPhase` (from the booth ticket). Dropped `LOOT_PICKUP_RADIUS` — that belongs in `runHandlers.js` after the socket-handler extraction.
-- **Handlers:** Removed duplicate run/playing handlers (`returnToLobby`, `giveUp`, `move`, `useCard`, etc.) that main already moved to `runHandlers.js` via `runHandlers.register(socket, ctx)`.
-- **Kept:** The ticket’s `boothInteract` handler (after `medicHeal`, before `debugScenario`), with the existing `MAX_PLAYERS` join guard unchanged.
+1. **v0.238 — 246-spire-tower-identity** (from `main`)
+2. **v0.240 — 270-difficulty-scale-with-player-count** (from `main`)
+3. **v0.241 — 239-booth-character-editor** (from this ticket's branch)
 
-### `LOGBOOK.md`
-- Appended entries in version order: **v0.232** (avatar cosmetics), **v0.233** (run-handler extract), **v0.234** (max-players cap), **v0.236** (booth interaction).
-- All conflict markers removed.
-
-Targeted tests (`boothZones.test.js`, `max_players_cap.test.js`) — 19/19 passed. The harness can finish the merge and run the full suite.
+All conflict markers are removed. Each entry keeps its full review content and closing "Remaining gaps" section. The harness can proceed with the merge.

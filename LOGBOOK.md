@@ -4207,6 +4207,49 @@ The implementation is cohesive and covered by focused server/client tests for pa
 
 None.
 
+## v0.238 — 246-spire-tower-identity  (2026-06-05 04:28:30)
+
+### Optional mid-tier edge hazards
+
+PASS. The implementation adds edge hazard strips only to middle combat tiers, renders them as emissive warning strips, and applies server-side chip damage plus a snap-back toward the safe tier interior during normal movement simulation. Tests cover hazard placement, rendering, damage cooldown, and non-regression of reachability.
+
+### Debug scenarios
+
+PASS. New spire shortcuts are URL/debug entry points only: the client only auto-requests `?debugScenario=...` from localhost-style URLs, and the server rejects debug scenarios in production unless explicitly enabled. The shortcuts reuse `generateLayout(seed, 'spire-ascent')` or the real `spire_ascent` quest path, rebuild movement/collider state, and do not replace the normal gameplay path because `spire_ascent` is present in the normal quest list.
+
+### Design and requirements consistency
+
+PASS. The work remains consistent with the dungeon/core-loop design: spire-ascent is a quest-selectable dungeon layout, movement still follows server-sampled floor heights, and the multiplayer client/server loop is intact. The capture confirms two connected players, lobby-to-playing transition, rendered canvas, movement, and active HUD state, satisfying the foundational graphics, websocket, player visualization, and movement requirements.
+
+### Tests and coverage visibility
+
+PASS. `coverage.log` reports all tests passing: 74 test files and 1479 tests. Coverage thresholds are disabled; the visible report shows broad existing coverage plus focused spire layout, rendering, atmosphere, hazard, and proxy-readiness tests.
+
+## Remaining gaps
+
+None.
+
+## v0.240 — 270-difficulty-scale-with-player-count  (2026-06-05 04:32:37)
+
+### Enemy damage tracks live count up and down
+
+Pass. `game/server/simulation.js` applies the enemy-damage factor at strike resolution for player-directed enemy attacks, leaving stored enemy `attackDamage` unchanged and allowing later joins/leaves to affect subsequent hits. `game/server/test/enemy_damage_scaling.test.js` verifies baseline counts, scaled counts, live join/leave changes, and no mutation of the stored enemy stat.
+
+### Miniboss HP scales at spawn and is not retroactive
+
+Pass. `game/server/progression.js` scales miniboss `hp` and `maxHp` inside `spawnEnemy()` only when the enemy is created, using the current party count. Existing minibosses are not revisited when the party later changes. `game/server/test/miniboss_hp_scaling.test.js` covers baseline and scaled spawns, non-miniboss enemies remaining unchanged, and join/leave changes not retroactively altering existing minibosses.
+
+### Count helper stays correct under churn
+
+Pass. `game/server/config.js` exposes `runPlayerCount()` as the single helper all three systems read, clamps at `MAX_PLAYERS`, and the config test suite verifies count increases and decreases as players are added and removed. This is consistent with the lobby leave path deleting players from `gameState.players` and the drop-in path adding them.
+
+## Design and regression check
+
+The implementation is server-side only and does not alter the documented lobby/dungeon/deck loop, rendering, movement synchronization, or socket architecture in `CONTEXT.md`, `game/docs/design.md`, and `game/docs/requirements.md`. It does not add or change any debug scenario URL shortcut, so the debug-scenario review criteria are not applicable.
+
+## Remaining gaps
+
+No blocking gaps found.
 
 ## v0.241 — 239-booth-character-editor  (2026-06-05 04:44:53)
 
@@ -4229,4 +4272,3 @@ PASS. The implementation is scoped and modular: shared cosmetic UI behavior was 
 ## Remaining gaps
 
 None.
-

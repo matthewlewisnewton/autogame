@@ -177,6 +177,33 @@ function expandBoxFromNode(node, min, max, parentScale = { x: 1, y: 1, z: 1 }) {
 	}
 }
 
+function makeColor(hex = 0xffffff) {
+	const c = {
+		r: ((hex >> 16) & 0xff) / 255,
+		g: ((hex >> 8) & 0xff) / 255,
+		b: (hex & 0xff) / 255,
+		getHex() {
+			const r = Math.round(this.r * 255);
+			const g = Math.round(this.g * 255);
+			const b = Math.round(this.b * 255);
+			return (r << 16) | (g << 8) | b;
+		},
+		setHex(value) {
+			this.r = ((value >> 16) & 0xff) / 255;
+			this.g = ((value >> 8) & 0xff) / 255;
+			this.b = (value & 0xff) / 255;
+			return this;
+		},
+		lerp(target, t) {
+			this.r += (target.r - this.r) * t;
+			this.g += (target.g - this.g) * t;
+			this.b += (target.b - this.b) * t;
+			return this;
+		},
+	};
+	return c;
+}
+
 export const THREE = {
 	Scene: stubClass('Scene'),
 	PerspectiveCamera: stubClass('PerspectiveCamera'),
@@ -224,10 +251,22 @@ export const THREE = {
 			return target;
 		}
 	},
-	Color: stubClass('Color'),
+	Color: class Color {
+		constructor(hex = 0xffffff) {
+			Object.assign(this, makeColor(hex));
+		}
+	},
+	Fog: class Fog {
+		constructor(color, near, far) {
+			this.color = makeColor(typeof color === 'number' ? color : 0xffffff);
+			this.near = near;
+			this.far = far;
+		}
+	},
 	Clock: stubClass('Clock'),
 	AmbientLight: stubClass('AmbientLight'),
 	DirectionalLight: stubClass('DirectionalLight'),
+	PointLight: stubClass('PointLight'),
 	WebGLRenderer: stubClass('WebGLRenderer'),
 	BoxGeometry: stubClass('BoxGeometry'),
 	SphereGeometry: stubClass('SphereGeometry'),
@@ -310,6 +349,7 @@ export const Color = THREE.Color;
 export const Clock = THREE.Clock;
 export const AmbientLight = THREE.AmbientLight;
 export const DirectionalLight = THREE.DirectionalLight;
+export const PointLight = THREE.PointLight;
 export const WebGLRenderer = THREE.WebGLRenderer;
 export const BoxGeometry = THREE.BoxGeometry;
 export const SphereGeometry = THREE.SphereGeometry;

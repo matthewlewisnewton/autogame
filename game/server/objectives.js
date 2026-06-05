@@ -6,6 +6,7 @@
  * dispatches through getObjectiveDef — no type switches elsewhere.
  */
 const { getEnemyPool, pickWeightedEnemyType } = require('./quests');
+const { DIFFICULTY_SPAWN_RATE_PER_PLAYER, difficultyScaleFactor, runPlayerCount } = require('./config');
 
 function clampDefeatedEnemies(objective) {
   objective.defeatedEnemies = Math.min(objective.defeatedEnemies, objective.totalEnemies);
@@ -107,8 +108,13 @@ const OBJECTIVE_DEFS = {
       if (!(objective.spawnedEnemies < total)) return;
 
       // Throttle on a stored timestamp; the very first spawn fires immediately.
+      // Scale the interval by the live player count: 1–4 players stay at the
+      // baseline, while 5..16 players spawn faster. Re-read the count on every
+      // tick so a mid-run JOIN shortens the interval and a LEAVE lengthens it.
+      const scaleFactor = difficultyScaleFactor(runPlayerCount(gameState), DIFFICULTY_SPAWN_RATE_PER_PLAYER);
+      const interval = SURVIVE_SPAWN_INTERVAL_MS / scaleFactor;
       const last = Number.isFinite(objective.lastSpawnAt) ? objective.lastSpawnAt : 0;
-      if (last !== 0 && now - last < SURVIVE_SPAWN_INTERVAL_MS) return;
+      if (last !== 0 && now - last < interval) return;
 
       const layout = gameState.layout;
       const seed = gameState.layoutSeed || 42;

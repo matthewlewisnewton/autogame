@@ -1892,6 +1892,37 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     }
   });
 
+  it('tiers have distinct lateral X centres (zig-zag footprint)', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersByIndex(layout);
+      if (tiers.length < 2) continue;
+      const xs = tiers.map(t => t.x);
+      expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(0);
+      expect(tiers[0].tierXOffset).toBe(0);
+      for (let i = 1; i < tiers.length; i++) {
+        expect(tiers[i].tierXOffset).toBe(tiers[i].x);
+        expect(tiers[i].x).not.toBe(tiers[i - 1].x);
+      }
+    }
+  });
+
+  it('each ramp centre X lies between its adjoining tier centres', () => {
+    for (const seed of [1, 42, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      const tiers = tiersByIndex(layout);
+      const rampList = roomsByBand(layout, 'ramp');
+      for (let i = 0; i < rampList.length; i++) {
+        const lowX = tiers[i].x;
+        const highX = tiers[i + 1].x;
+        const rampX = rampList[i].x;
+        expect(rampX).toBeGreaterThanOrEqual(Math.min(lowX, highX));
+        expect(rampX).toBeLessThanOrEqual(Math.max(lowX, highX));
+        expect(rampX).toBeCloseTo((lowX + highX) / 2, 5);
+      }
+    }
+  });
+
   it('full foot reachability from bottom spawn to top tier via ramps only', () => {
     for (const seed of [1, 42, 123, 777, 9999]) {
       const layout = generateLayout(seed, 'spire-ascent');
@@ -1913,6 +1944,56 @@ describe("generateLayout(seed, 'spire-ascent')", () => {
     const a = generateLayout(2024, 'spire-ascent');
     const b = generateLayout(2024, 'spire-ascent');
     expect(a).toEqual(b);
+  });
+
+  it('emits edgeHazards on middle combat tiers only', () => {
+    for (let seed = 1; seed <= 30; seed++) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(Array.isArray(layout.edgeHazards)).toBe(true);
+      const tiers = tiersByIndex(layout);
+      const combatTiers = tiers.filter((t) => t.role === 'combat');
+      expect(layout.edgeHazards.length).toBe(combatTiers.length);
+      if (combatTiers.length > 0) {
+        expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+      }
+      for (const hazard of layout.edgeHazards) {
+        const tier = tiers.find((t) => t.tierIndex === hazard.tierIndex);
+        expect(tier.role).toBe('combat');
+        expect(hazard).toMatchObject({
+          tierIndex: expect.any(Number),
+          minX: expect.any(Number),
+          maxX: expect.any(Number),
+          minZ: expect.any(Number),
+          maxZ: expect.any(Number),
+          y: expect.any(Number),
+        });
+      }
+      expect(layout.edgeHazards.some((h) => h.tierIndex === 0)).toBe(false);
+      expect(layout.edgeHazards.some((h) => h.tierIndex === tiers.length - 1)).toBe(false);
+    }
+  });
+
+  it('edge hazard strips lie on the exterior tier lip without spanning the walk path', () => {
+    const layout = generateLayout(42, 'spire-ascent');
+    for (const hazard of layout.edgeHazards) {
+      const tier = tiersByIndex(layout).find((t) => t.tierIndex === hazard.tierIndex);
+      const halfW = tier.width / 2;
+      const stripW = hazard.maxX - hazard.minX;
+      expect(stripW).toBeGreaterThan(0);
+      expect(stripW).toBeLessThanOrEqual(1.5);
+      const hazardCenterX = (hazard.minX + hazard.maxX) / 2;
+      expect(Math.abs(hazardCenterX - tier.x)).toBeGreaterThan(halfW - stripW - 0.01);
+      expect(hazard.minZ).toBeGreaterThan(tier.z - tier.depth / 2);
+      expect(hazard.maxZ).toBeLessThan(tier.z + tier.depth / 2);
+    }
+  });
+
+  it('spire reachability is unchanged with edge hazards present', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'spire-ascent');
+      expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(0);
+      expect(spireReachableFromStart(layout)).toBe(true);
+    }
   });
 });
 

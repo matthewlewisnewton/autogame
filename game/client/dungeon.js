@@ -149,6 +149,107 @@ export const wallMaterial = defaultMaterials.wall;
 export const passageFloorMaterial = defaultMaterials.passageFloor;
 export const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 1.0 });
 
+// Spire-ascent summit tints — lighter/cooler slate derived from the base dungeon palette
+const SPIRE_SUMMIT_FLOOR_HEX = 0x64748b;
+const SPIRE_SUMMIT_WALL_HEX = 0x7c8fa3;
+
+const spireTierMaterialsCache = new Map();
+const spireRampMaterialsCache = new Map();
+
+function lerpColorHex(fromHex, toHex, t) {
+	const fr = (fromHex >> 16) & 0xff;
+	const fg = (fromHex >> 8) & 0xff;
+	const fb = fromHex & 0xff;
+	const tr = (toHex >> 16) & 0xff;
+	const tg = (toHex >> 8) & 0xff;
+	const tb = toHex & 0xff;
+	const r = Math.round(fr + (tr - fr) * t);
+	const g = Math.round(fg + (tg - fg) * t);
+	const b = Math.round(fb + (tb - fb) * t);
+	return (r << 16) | (g << 8) | b;
+}
+
+/**
+ * Cached floor/wall materials for a spire-ascent tier. Tier 0 matches the base
+ * dungeon slate; the highest tier lerps toward the summit palette.
+ */
+export function getSpireAscentTierMaterials(tierIndex, tierCount) {
+	const key = `t-${tierCount}-${tierIndex}`;
+	if (!spireTierMaterialsCache.has(key)) {
+		const t = tierCount <= 1 ? 0 : tierIndex / (tierCount - 1);
+		const floorHex = lerpColorHex(materialColorHex(floorMaterial), SPIRE_SUMMIT_FLOOR_HEX, t);
+		const wallHex = lerpColorHex(materialColorHex(wallMaterial), SPIRE_SUMMIT_WALL_HEX, t);
+		spireTierMaterialsCache.set(key, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: 0.8 }),
+			wall: new THREE.MeshStandardMaterial({ color: wallHex, roughness: 0.7 }),
+		});
+	}
+	return spireTierMaterialsCache.get(key);
+}
+
+/**
+ * Cached floor/wall materials for a spire-ascent ramp between two tier indices.
+ */
+export function getSpireAscentRampMaterials(fromTierIndex, toTierIndex, tierCount) {
+	const lo = Math.min(fromTierIndex, toTierIndex);
+	const hi = Math.max(fromTierIndex, toTierIndex);
+	const key = `r-${tierCount}-${lo}-${hi}`;
+	if (!spireRampMaterialsCache.has(key)) {
+		const fromMats = getSpireAscentTierMaterials(lo, tierCount);
+		const toMats = getSpireAscentTierMaterials(hi, tierCount);
+		const floorHex = lerpColorHex(materialColorHex(fromMats.floor), materialColorHex(toMats.floor), 0.5);
+		const wallHex = lerpColorHex(materialColorHex(fromMats.wall), materialColorHex(toMats.wall), 0.5);
+		spireRampMaterialsCache.set(key, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: 0.8 }),
+			wall: new THREE.MeshStandardMaterial({ color: wallHex, roughness: 0.7 }),
+		});
+	}
+	return spireRampMaterialsCache.get(key);
+}
+
+function getSpireTierCount(layout) {
+	const tiers = layout.rooms.filter(r => r.band === 'tier');
+	if (tiers.length === 0) return 1;
+	return Math.max(...tiers.map(r => r.tierIndex ?? 0)) + 1;
+}
+
+function inferSpireRampTierIndices(room, layout) {
+	const fc = room.floorCorners;
+	if (!fc) return { from: 0, to: 1 };
+
+	const yLow = Math.min(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+	const yHigh = Math.max(fc.yNW, fc.yNE, fc.ySE, fc.ySW);
+	const tierRooms = layout.rooms.filter(r => r.band === 'tier' && r.tierIndex != null);
+
+	function yToTier(y) {
+		for (const t of tierRooms) {
+			const ty = t.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+			if (Math.abs(ty - y) < 0.001) return t.tierIndex;
+		}
+		const sorted = [...tierRooms].sort(
+			(a, b) => (a.floorCorners?.yNW ?? DEFAULT_FLOOR_Y) - (b.floorCorners?.yNW ?? DEFAULT_FLOOR_Y)
+		);
+		for (const t of sorted) {
+			const ty = t.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+			if (Math.abs(ty - y) < 0.001) return t.tierIndex;
+		}
+		return 0;
+	}
+
+	return { from: yToTier(yLow), to: yToTier(yHigh) };
+}
+
+function resolveSpireRoomMaterials(room, layout, tierCount) {
+	if (room.band === 'tier' && room.tierIndex != null) {
+		return getSpireAscentTierMaterials(room.tierIndex, tierCount);
+	}
+	if (room.band === 'ramp') {
+		const { from, to } = inferSpireRampTierIndices(room, layout);
+		return getSpireAscentRampMaterials(from, to, tierCount);
+	}
+	return null;
+}
+
 // Treasure room marker material (emissive gold pillar)
 const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	color: 0xffd700,
@@ -156,6 +257,83 @@ const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	emissiveIntensity: 0.6,
 	roughness: 0.4,
 });
+
+/** userData.dungeonTag on spire-ascent summit beacon meshes (client tests). */
+export const SPIRE_SUMMIT_BEACON_TAG = 'spireSummitBeacon';
+
+/** userData.dungeonTag on spire-ascent exterior edge hazard warning strips. */
+export const SPIRE_EDGE_HAZARD_TAG = 'spireEdgeHazard';
+
+const edgeHazardStripMaterial = new THREE.MeshStandardMaterial({
+	color: 0x22d3ee,
+	emissive: 0xff00ff,
+	emissiveIntensity: 1.1,
+	roughness: 0.35,
+	metalness: 0.2,
+});
+
+/**
+ * Low emissive warning strip on a spire-ascent tier lip hazard AABB.
+ */
+export function buildSpireEdgeHazardMesh(hazard) {
+	const width = hazard.maxX - hazard.minX;
+	const depth = hazard.maxZ - hazard.minZ;
+	const stripHeight = 0.14;
+	const geo = new THREE.BoxGeometry(width, stripHeight, depth);
+	const mesh = new THREE.Mesh(geo, edgeHazardStripMaterial);
+	const floorY = resolveFloorY(hazard.y);
+	mesh.position.set(
+		(hazard.minX + hazard.maxX) / 2,
+		floorY + stripHeight / 2,
+		(hazard.minZ + hazard.maxZ) / 2,
+	);
+	mesh.userData.dungeonTag = SPIRE_EDGE_HAZARD_TAG;
+	return mesh;
+}
+
+const summitBeaconShaftMaterial = new THREE.MeshStandardMaterial({
+	color: 0xe0f2fe,
+	emissive: 0x38bdf8,
+	emissiveIntensity: 1.2,
+	roughness: 0.35,
+	metalness: 0.15,
+});
+
+const summitBeaconCapMaterial = new THREE.MeshStandardMaterial({
+	color: 0xfef9c3,
+	emissive: 0xfacc15,
+	emissiveIntensity: 1.5,
+	roughness: 0.25,
+	metalness: 0.1,
+});
+
+/**
+ * Taller emissive summit beacon for spire-ascent treasure tiers — visible goal
+ * from lower tiers. Returns shaft + cap meshes; shaft carries an optional glow light.
+ */
+export function buildSpireSummitBeacon(room, layout) {
+	const floorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
+	const shaftHeight = 3.2;
+	const capHeight = 0.55;
+
+	const shaftGeo = new THREE.CylinderGeometry(0.35, 0.48, shaftHeight, 10);
+	const shaft = new THREE.Mesh(shaftGeo, summitBeaconShaftMaterial);
+	shaft.position.set(room.x, floorY + shaftHeight / 2, room.z);
+	shaft.userData.dungeonTag = SPIRE_SUMMIT_BEACON_TAG;
+	shaft.userData.beaconPart = 'shaft';
+
+	const glow = new THREE.PointLight(0x7dd3fc, 1.4, 20, 1.6);
+	glow.position.set(0, shaftHeight / 2 + 0.4, 0);
+	shaft.add(glow);
+
+	const capGeo = new THREE.CylinderGeometry(0.18, 0.42, capHeight, 10);
+	const cap = new THREE.Mesh(capGeo, summitBeaconCapMaterial);
+	cap.position.set(room.x, floorY + shaftHeight + capHeight / 2, room.z);
+	cap.userData.dungeonTag = SPIRE_SUMMIT_BEACON_TAG;
+	cap.userData.beaconPart = 'cap';
+
+	return [shaft, cap];
+}
 
 /**
  * Check whether a room's floorCorners are uniform (flat floor).
@@ -474,9 +652,14 @@ export function buildDungeon(scene, layout) {
 	const spawnPosition = spawnRoom ? { x: spawnRoom.x, z: spawnRoom.z } : { x: 0, z: 0 };
 
 	// ── Build rooms ──
+	const isSpireAscent = layout.profile === 'spire-ascent';
+	const spireTierCount = isSpireAscent ? getSpireTierCount(layout) : 0;
+
 	for (const room of layout.rooms) {
-		// Pick floor material based on room role (graceful fallback to profile base)
-		const floorMat = roleFloors[room.role] || profileFloorMaterial;
+		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
+		// Pick floor material: spire tier/ramp tints, else profile role-based fallback
+		const floorMat = spireMats?.floor ?? (roleFloors[room.role] || profileFloorMaterial);
+		const roomWallMat = spireMats?.wall ?? profileWallMaterial;
 
 		// Room floor: flat (legacy or uniform corners) or sloped
 		let floorMesh;
@@ -491,14 +674,21 @@ export function buildDungeon(scene, layout) {
 		scene.add(floorMesh);
 		meshes.push(floorMesh);
 
-		// Treasure room marker: glowing gold pillar at room center
+		// Treasure room marker: summit beacon on spire-ascent, gold pillar elsewhere
 		if (room.role === 'treasure') {
-			const treasureFloorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
-			const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
-			const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
-			marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
-			scene.add(marker);
-			meshes.push(marker);
+			if (layout.profile === 'spire-ascent') {
+				for (const beaconMesh of buildSpireSummitBeacon(room, layout)) {
+					scene.add(beaconMesh);
+					meshes.push(beaconMesh);
+				}
+			} else {
+				const treasureFloorY = resolveFloorY(sampleFloorY(layout, room.x, room.z));
+				const markerGeo = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
+				const marker = new THREE.Mesh(markerGeo, treasureMarkerMaterial);
+				marker.position.set(room.x, 0.75 + treasureFloorY, room.z);
+				scene.add(marker);
+				meshes.push(marker);
+			}
 		}
 
 		// Room walls
@@ -517,7 +707,7 @@ export function buildDungeon(scene, layout) {
 			}
 
 			const wallBaseY = resolveFloorY(sampleFloorY(layout, wallX, wallZ));
-			const wallMesh = new THREE.Mesh(wallGeo, profileWallMaterial);
+			const wallMesh = new THREE.Mesh(wallGeo, roomWallMat);
 			wallMesh.position.set(wallX, wallBaseY + WALL_HEIGHT / 2, wallZ);
 			scene.add(wallMesh);
 			meshes.push(wallMesh);
@@ -528,6 +718,12 @@ export function buildDungeon(scene, layout) {
 			scene.add(marker);
 			meshes.push(marker);
 		}
+	}
+
+	for (const hazard of layout.edgeHazards || []) {
+		const hazardMesh = buildSpireEdgeHazardMesh(hazard);
+		scene.add(hazardMesh);
+		meshes.push(hazardMesh);
 	}
 
 	// ── Build open-plaza platforms ──

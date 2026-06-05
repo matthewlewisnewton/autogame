@@ -8,12 +8,17 @@ import {
 	isUniformFloor,
 	buildSlopedFloor,
 	uniformFloorMeshY,
+	floorMaterial,
+	wallMaterial,
 	getProfileMaterials,
 	getProfileMaterialColors,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
 	PASSAGE_WALL_HEIGHT,
+	SPIRE_SUMMIT_BEACON_TAG,
+	SPIRE_EDGE_HAZARD_TAG,
+	buildSpireEdgeHazardMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
@@ -651,14 +656,22 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 	});
 });
 
-describe('spire-ascent floors, ramps & treasure marker', () => {
-	/** Treasure exit pillar from dungeon.js (THREE mock has no geometry.type). */
+describe('spire-ascent floors, ramps & summit beacon', () => {
+	/** Default gold treasure pillar (non-spire profiles). */
 	function findTreasureMarker(meshes) {
 		return meshes.find(m =>
 			m.geometry?.parameters?.height === 1.5 &&
 			m.geometry?.parameters?.radiusTop === 0.3 &&
 			m.geometry?.parameters?.radiusBottom === 0.3
 		);
+	}
+
+	function findSummitBeaconMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_SUMMIT_BEACON_TAG);
+	}
+
+	function findEdgeHazardMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === SPIRE_EDGE_HAZARD_TAG);
 	}
 
 	function spireAscentFixture() {
@@ -675,6 +688,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 			rooms: [
 				{
 					x: 0, z: 20, width: tierW, depth: tierD, role: 'start', walls: [], band: 'tier',
+					tierIndex: 0,
 					floorCorners: { yNW: yBottom, yNE: yBottom, ySE: yBottom, ySW: yBottom },
 				},
 				{
@@ -683,6 +697,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 				},
 				{
 					x: 0, z: 4, width: tierW, depth: tierD, role: 'combat', walls: [], band: 'tier',
+					tierIndex: 1,
 					floorCorners: { yNW: yMid, yNE: yMid, ySE: yMid, ySW: yMid },
 				},
 				{
@@ -691,6 +706,7 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 				},
 				{
 					x: 0, z: -12, width: tierW, depth: tierD, role: 'treasure', walls: [], band: 'tier',
+					tierIndex: 2,
 					floorCorners: { yNW: yTop, yNE: yTop, ySE: yTop, ySW: yTop },
 				},
 			],
@@ -698,22 +714,37 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 		};
 	}
 
-	it('buildDungeon emits ground + one floor per room + treasure marker', () => {
+	function findRoomFloorMesh(meshes, room) {
+		return meshes.find(m =>
+			m.position.x === room.x && m.position.z === room.z &&
+			m.geometry?.parameters?.height === 0.1
+		);
+	}
+
+	it('buildDungeon emits ground + one floor per room + summit beacon meshes', () => {
 		const layout = spireAscentFixture();
 		const result = buildDungeon(mockScene(), layout);
-		const expected = 1 + layout.rooms.length + 1; // ground + floors + marker
+		const expected = 1 + layout.rooms.length + 2; // ground + floors + shaft + cap
 		expect(result.meshes.length).toBe(expected);
 	});
 
-	it('places the treasure marker on the top tier, well above DEFAULT_FLOOR_Y', () => {
+	it('places an emissive summit beacon on the top tier, well above DEFAULT_FLOOR_Y', () => {
 		const layout = spireAscentFixture();
 		const top = layout.rooms.find(r => r.role === 'treasure');
 		const result = buildDungeon(mockScene(), layout);
-		const marker = findTreasureMarker(result.meshes);
-		expect(marker).toBeDefined();
+		const beaconMeshes = findSummitBeaconMeshes(result.meshes);
+		expect(beaconMeshes.length).toBeGreaterThanOrEqual(2);
+		expect(findTreasureMarker(result.meshes)).toBeUndefined();
 		const topFloorY = sampleFloorY(layout, top.x, top.z);
-		expect(marker.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
-		expect(marker.position.y).toBeCloseTo(topFloorY + 0.75, 4);
+		const yBottom = sampleFloorY(layout, layout.rooms.find(r => r.role === 'start').x, layout.rooms.find(r => r.role === 'start').z);
+		for (const mesh of beaconMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThan(yBottom + 8);
+		}
+		const shaft = beaconMeshes.find(m => m.userData.beaconPart === 'shaft');
+		expect(shaft).toBeDefined();
+		expect(shaft.position.y).toBeGreaterThan(DEFAULT_FLOOR_Y + 8);
+		expect(shaft.position.y).toBeCloseTo(topFloorY + 1.6, 4);
 	});
 
 	it('keeps the bottom start tier at DEFAULT_FLOOR_Y elevation', () => {
@@ -746,18 +777,95 @@ describe('spire-ascent floors, ramps & treasure marker', () => {
 		}
 	});
 
-	it('renders server-generated spire-ascent with treasure marker ≥ bottom tier + 8', () => {
+	it('renders server-generated spire-ascent with summit beacon ≥ bottom tier + 8', () => {
 		const layout = generateLayout(42, 'spire-ascent');
 		const result = buildDungeon(mockScene(), layout);
 		const bottom = layout.rooms.find(r => r.role === 'start');
 		const treasure = layout.rooms.find(r => r.role === 'treasure');
-		const marker = findTreasureMarker(result.meshes);
-		expect(marker).toBeDefined();
+		const beaconMeshes = findSummitBeaconMeshes(result.meshes);
+		expect(beaconMeshes.length).toBeGreaterThanOrEqual(2);
+		expect(findTreasureMarker(result.meshes)).toBeUndefined();
 		const yBottom = sampleFloorY(layout, bottom.x, bottom.z);
 		const yTreasure = sampleFloorY(layout, treasure.x, treasure.z);
 		expect(yTreasure - yBottom).toBeGreaterThanOrEqual(8);
-		expect(marker.position.y).toBeGreaterThan(yBottom + 8);
-		expect(marker.position.y).toBeCloseTo(yTreasure + 0.75, 4);
+		for (const mesh of beaconMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThan(yBottom + 8);
+		}
+		const shaft = beaconMeshes.find(m => m.userData.beaconPart === 'shaft');
+		expect(shaft.position.y).toBeCloseTo(yTreasure + 1.6, 4);
+	});
+
+	it('renders emissive edge hazard strips for server-generated spire-ascent', () => {
+		const layout = generateLayout(42, 'spire-ascent');
+		expect(layout.edgeHazards.length).toBeGreaterThanOrEqual(1);
+		const result = buildDungeon(mockScene(), layout);
+		const hazardMeshes = findEdgeHazardMeshes(result.meshes);
+		expect(hazardMeshes.length).toBe(layout.edgeHazards.length);
+		for (const mesh of hazardMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	it('buildSpireEdgeHazardMesh tracks hazard AABB footprint', () => {
+		const hazard = {
+			minX: 4,
+			maxX: 5.2,
+			minZ: -2,
+			maxZ: 8,
+			y: DEFAULT_FLOOR_Y + 5,
+		};
+		const mesh = buildSpireEdgeHazardMesh(hazard);
+		expect(mesh.userData.dungeonTag).toBe(SPIRE_EDGE_HAZARD_TAG);
+		expect(mesh.position.x).toBeCloseTo(4.6, 4);
+		expect(mesh.position.z).toBeCloseTo(3, 4);
+	});
+
+	it('assigns distinct tier floor colors from bottom to summit', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const bottom = layout.rooms.find(r => r.tierIndex === 0);
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		const bottomFloor = findRoomFloorMesh(result.meshes, bottom);
+		const topFloor = findRoomFloorMesh(result.meshes, top);
+		expect(bottomFloor).toBeDefined();
+		expect(topFloor).toBeDefined();
+		expect(bottomFloor.material.color.getHex()).not.toBe(topFloor.material.color.getHex());
+		expect(bottomFloor.material.color.getHex()).toBe(floorMaterial.color.getHex());
+	});
+
+	it('uses ramp floor colors interpolated between adjacent tiers', () => {
+		const layout = spireAscentFixture();
+		const result = buildDungeon(mockScene(), layout);
+		const bottom = layout.rooms.find(r => r.tierIndex === 0);
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		const ramp = layout.rooms.find(r => r.band === 'ramp' && r.floorCorners.yNW === DEFAULT_FLOOR_Y + 5 && r.floorCorners.ySE === DEFAULT_FLOOR_Y);
+		const bottomHex = findRoomFloorMesh(result.meshes, bottom).material.color.getHex();
+		const topHex = findRoomFloorMesh(result.meshes, top).material.color.getHex();
+		const rampHex = findRoomFloorMesh(result.meshes, ramp).material.color.getHex();
+		expect(rampHex).not.toBe(bottomHex);
+		expect(rampHex).not.toBe(topHex);
+	});
+
+	it('uses tier-matched wall materials instead of the global default on tiers', () => {
+		const layout = spireAscentFixture();
+		const top = layout.rooms.find(r => r.tierIndex === 2);
+		top.walls = [{ axis: 'x', x: top.x, z: top.z - top.depth / 2, length: top.width }];
+		const result = buildDungeon(mockScene(), layout);
+		const wallMesh = result.meshes.find(m =>
+			m.position.x === top.walls[0].x && m.position.z === top.walls[0].z &&
+			m.geometry?.parameters?.height === WALL_HEIGHT
+		);
+		expect(wallMesh).toBeDefined();
+		expect(wallMesh.material.color.getHex()).not.toBe(wallMaterial.color.getHex());
+	});
+
+	it('leaves non-spire layouts on profile materials (not spire tier tints)', () => {
+		const layout = { rooms: [room(0, 0, { walls: [] })], passages: [] };
+		const result = buildDungeon(mockScene(), layout);
+		const floor = result.meshes[1];
+		expect(floor.material).toBe(getProfileMaterials('crowded').floor);
 	});
 });
 
