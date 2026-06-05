@@ -27,13 +27,25 @@ export function formatObjectiveSummary(quest) {
 
 	if (quest.objectiveType === 'stage_boss') {
 		const addCount = quest.encounter?.addCount ?? 0;
-		if (addCount > 0) {
-			return THEME.objectives.defeatTrialWardenWithSupports.replace(
-				'{addCount}',
-				String(addCount),
-			);
+		const questId = quest.questId || quest.id;
+		if (questId === 'spire_ascent') {
+			if (addCount > 0) {
+				return THEME.objectives.defeatSummitWardenWithSupports.replace(
+					'{addCount}',
+					String(addCount),
+				);
+			}
+			return THEME.objectives.defeatSummitWarden;
 		}
-		return THEME.objectives.defeatTrialWarden;
+		const isCanyonWarden = questId === 'canyon_descent';
+		const withSupportsKey = isCanyonWarden
+			? 'defeatCanyonWardenWithSupports'
+			: 'defeatTrialWardenWithSupports';
+		const soloKey = isCanyonWarden ? 'defeatCanyonWarden' : 'defeatTrialWarden';
+		if (addCount > 0) {
+			return THEME.objectives[withSupportsKey].replace('{addCount}', String(addCount));
+		}
+		return THEME.objectives[soloKey];
 	}
 
 	return quest.description || '';

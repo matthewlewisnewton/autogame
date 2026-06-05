@@ -120,12 +120,16 @@ const QUEST_DEFS = {
         name: 'Canyon Descent — Tier II',
         description:
           'Purge the fixed canyon descent where marked hostiles lurk on plateau and floor alike.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 14,
         layoutProfile: 'sunken-canyon',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'canyon_descent', tier: 1 },
+        encounter: {
+          bossType: 'miniboss',
+          landmark: 'canyon_monolith',
+          addCount: 4,
+        },
       },
     },
   },
@@ -150,12 +154,16 @@ const QUEST_DEFS = {
         tier: 2,
         name: 'Spire Ascent — Tier II',
         description: 'Ascend the fixed spire where marked hostiles bear twisted power on every tier.',
-        objectiveType: 'defeat_enemies',
-        enemyCount: 6,
+        objectiveType: 'stage_boss',
         rewardCurrency: 16,
         layoutProfile: 'spire-ascent',
         layoutMode: 'rigid',
         unlockRequires: { questId: 'spire_ascent', tier: 1 },
+        encounter: {
+          bossType: 'spire_warden',
+          landmark: 'spire_summit',
+          addCount: 5,
+        },
       },
     },
   },
@@ -256,13 +264,25 @@ function formatObjectiveSummary(quest) {
   }
   if (quest.objectiveType === 'stage_boss') {
     const addCount = getEncounterConfig(quest)?.addCount ?? 0;
-    if (addCount > 0) {
-      return THEME.objectives.defeatTrialWardenWithSupports.replace(
-        '{addCount}',
-        String(addCount),
-      );
+    const questId = quest.questId || quest.id;
+    if (questId === 'spire_ascent') {
+      if (addCount > 0) {
+        return THEME.objectives.defeatSummitWardenWithSupports.replace(
+          '{addCount}',
+          String(addCount),
+        );
+      }
+      return THEME.objectives.defeatSummitWarden;
     }
-    return THEME.objectives.defeatTrialWarden;
+    const isCanyonWarden = questId === 'canyon_descent';
+    const withSupportsKey = isCanyonWarden
+      ? 'defeatCanyonWardenWithSupports'
+      : 'defeatTrialWardenWithSupports';
+    const soloKey = isCanyonWarden ? 'defeatCanyonWarden' : 'defeatTrialWarden';
+    if (addCount > 0) {
+      return THEME.objectives[withSupportsKey].replace('{addCount}', String(addCount));
+    }
+    return THEME.objectives[soloKey];
   }
   return quest.description || '';
 }

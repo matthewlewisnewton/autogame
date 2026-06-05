@@ -1,0 +1,12 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/262-miniboss-spire-ascent/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret. Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/262-miniboss-spire-ascent/game/data
+Server listening on port 3001
+Player connected: socket=BOMMiUajBdlV6VkDAAAB, playerId=a8d83d17-6c94-487e-8bb7-2203962a08f1
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=G8Xv1zDI8Y2nKDxsAAAD, playerId=d56f0dfb-2f45-43d7-8fc1-d0f0afcb7242
+[loot] spawned id=71fe5b41-f9fb-41f3-886c-e3a38c03d656 value=6
+Player disconnected: BOMMiUajBdlV6VkDAAAB
+Player disconnected: G8Xv1zDI8Y2nKDxsAAAD

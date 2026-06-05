@@ -1,9 +1,15 @@
-Resolved the `LOGBOOK.md` conflict by combining both sides in chronological version order:
+Merge conflicts are resolved. Every conflict was the same pattern: this branch added `arena_champion` (plaza Tier-2 boss) while `main` had landed `spire_warden` (spire Tier-2 boss). Both are kept everywhere.
 
-1. **v0.264** — 241-free-hat-swap (from `main`)
-2. **v0.265** — 256-level2-sunken-canyon (from `main`)
-3. **v0.266** — 243-retire-2d-lobby-menus (from `main`)
-4. **v0.267** — 213-net-shared-event-name-constants (from `main`)
-5. **v0.268** — 258-miniboss-encounter-framework (from the ticket branch)
+**Resolved files:**
 
-All conflict markers are removed. The logbook now records every ticket that landed on `main` since v0.261, with the miniboss encounter framework entry last. The harness can proceed with commit and merge.
+| File | Resolution |
+|------|------------|
+| `game/client/models.js` | Both model registry entries |
+| `game/client/renderer.js` | Both `ENEMY_GEOMETRY` and `ENEMY_ATTACK_VISUAL` entries |
+| `game/client/test/models-registry.test.js` | Both paths in `ENTITY_MODEL_PATHS` |
+| `game/server/config.js` | Both card drops and MS drops |
+| `game/server/simulation.js` | Both `ENEMY_DEFS` entries as separate objects |
+| `game/server/test/enemy_display_catalog.test.js` | `ENEMY_TYPES` includes both bosses |
+| `LOGBOOK.md` | v0.271 (plaza), v0.270 (spire), and v0.269 (canyon) entries in order |
+
+All conflict markers are removed. Focused tests on the merged enemy types pass (35/35). The harness can commit and run the full suite.

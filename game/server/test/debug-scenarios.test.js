@@ -567,36 +567,47 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		}
 	});
 
-	it('deploys canyon_descent Tier 2 with rigid layout, tier-2 run metadata, and variant enemies', async () => {
+	it('deploys canyon_descent Tier 2 stage-boss run with encounter and rigid layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
 		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
 
 		expect(result.ok).toBe(true);
 		expect(result.scenario).toBe('canyon-descent-tier-2');
 
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 		const tier2Quest = getQuest(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2);
+		const addCount = tier2Quest.encounter.addCount;
 
 		expect(state.gamePhase).toBe('playing');
 		expect(state.selectedQuestId).toBe(CANYON_DESCENT_ID);
 		expect(state.selectedQuestTier).toBe(CANYON_DESCENT_TIER_2);
-		expect(state.run.questId).toBe(CANYON_DESCENT_ID);
-		expect(state.run.questTier).toBe(CANYON_DESCENT_TIER_2);
-		expect(state.run.questName).toBe(tier2Quest.name);
-		expect(state.run.objective.label).toContain(tier2Quest.name);
-		expect(state.run.objective.totalEnemies).toBe(tier2Quest.enemyCount);
+		expect(stateUpdate.run.questId).toBe(CANYON_DESCENT_ID);
+		expect(stateUpdate.run.questTier).toBe(CANYON_DESCENT_TIER_2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(getQuest(CANYON_DESCENT_ID, state.selectedQuestTier).encounter?.addCount).toBe(
+			addCount,
+		);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
 		expect(state.layout.profile).toBe('sunken-canyon');
 		expect(getLayoutGenerationOptions(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2)).toEqual({
 			slopes: true,
 			layoutMode: 'rigid',
 		});
 		expect(state.layoutSeed).toBe(questLayoutSeed(CANYON_DESCENT_ID, CANYON_DESCENT_TIER_2));
-		expect(state.enemies.length).toBe(tier2Quest.enemyCount);
-		expect(state.enemies.every((e) => e.variant !== undefined)).toBe(true);
-		expect(resolveVariantRollTier(state.run.questTier, 0)).toBe(1);
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		expect(
+			stateUpdate.enemies.some((e) => e.id === stateUpdate.run.encounter.bossEnemyId),
+		).toBe(true);
+		expect(stateUpdate.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 
 	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (canyon_descent_tier2 parity)', () => {
@@ -617,6 +628,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		setGameState(gameState);
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
+		expect(gameState.enemies.filter((e) => e.type === 'miniboss')).toHaveLength(1);
 	});
 });
 
@@ -639,36 +651,50 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		}
 	});
 
-	it('deploys spire_ascent Tier 2 with rigid layout, tier-2 run metadata, and variant enemies', async () => {
+	it('deploys spire_ascent Tier 2 stage-boss run with encounter and rigid layout', async () => {
 		const { socket } = await connectClient(baseUrl);
 
 		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
 		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
 		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
 
 		expect(result.ok).toBe(true);
 		expect(result.scenario).toBe('spire-ascent-tier-2');
 
-		const state = testGameState();
+		const state = lobbyStateForSocket(socket);
 		const tier2Quest = getQuest(SPIRE_ASCENT_ID, SPIRE_ASCENT_TIER_2);
+		const addCount = tier2Quest.encounter.addCount;
 
 		expect(state.gamePhase).toBe('playing');
 		expect(state.selectedQuestId).toBe(SPIRE_ASCENT_ID);
 		expect(state.selectedQuestTier).toBe(SPIRE_ASCENT_TIER_2);
-		expect(state.run.questId).toBe(SPIRE_ASCENT_ID);
-		expect(state.run.questTier).toBe(SPIRE_ASCENT_TIER_2);
-		expect(state.run.questName).toBe(tier2Quest.name);
-		expect(state.run.objective.label).toContain(tier2Quest.name);
-		expect(state.run.objective.totalEnemies).toBe(tier2Quest.enemyCount);
+		expect(stateUpdate.run.questId).toBe(SPIRE_ASCENT_ID);
+		expect(stateUpdate.run.questTier).toBe(SPIRE_ASCENT_TIER_2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(getQuest(SPIRE_ASCENT_ID, state.selectedQuestTier).encounter?.addCount).toBe(
+			addCount,
+		);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.label).toContain(tier2Quest.name);
+		expect(stateUpdate.run.encounter).toBeTruthy();
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
 		expect(state.layout.profile).toBe('spire-ascent');
 		expect(getLayoutGenerationOptions(SPIRE_ASCENT_ID, SPIRE_ASCENT_TIER_2)).toEqual({
 			slopes: true,
 			layoutMode: 'rigid',
 		});
 		expect(state.layoutSeed).toBe(questLayoutSeed(SPIRE_ASCENT_ID, SPIRE_ASCENT_TIER_2));
-		expect(state.enemies.length).toBe(tier2Quest.enemyCount);
-		expect(state.enemies.every((e) => e.variant !== undefined)).toBe(true);
-		expect(resolveVariantRollTier(state.run.questTier, 0)).toBe(1);
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		expect(
+			stateUpdate.enemies.some((e) => e.id === stateUpdate.run.encounter.bossEnemyId),
+		).toBe(true);
+		expect(
+			stateUpdate.enemies.some((e) => e.type === 'spire_warden'),
+		).toBe(true);
+		expect(stateUpdate.enemies.every((e) => e.variant !== undefined)).toBe(true);
+		expect(resolveVariantRollTier(stateUpdate.run.questTier, 0)).toBe(1);
 	});
 
 	it('Tier 2 variant rolls tag enemies under fixed seed 4242 (spire_ascent_tier2 parity)', () => {
@@ -685,10 +711,12 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 		gameState.layoutSeed = SEED;
 		gameState.enemies = [];
 		gameState.loot = [];
+		gameState.gamePhase = 'playing';
 		gameState.run = { questTier: SPIRE_ASCENT_TIER_2 };
 		setGameState(gameState);
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
+		expect(gameState.enemies.filter((e) => e.type === 'spire_warden')).toHaveLength(1);
 	});
 });
 

@@ -26,6 +26,7 @@ export const MODEL_REGISTRY = {
 	skirmisher: '/models/skirmisher.glb',
 	miniboss: '/models/miniboss.glb',
 	arena_champion: '/models/arena-champion.glb',
+	spire_warden: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)

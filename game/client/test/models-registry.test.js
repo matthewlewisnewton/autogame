@@ -8,6 +8,7 @@ const ENTITY_MODEL_PATHS = {
 	skirmisher: '/models/skirmisher.glb',
 	miniboss: '/models/miniboss.glb',
 	arena_champion: '/models/arena-champion.glb',
+	spire_warden: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 	ancient_wyrm: '/models/minion-ancient-wyrm.glb',
 	null_crawler: '/models/minion-null-crawler.glb',
