@@ -1,20 +1,19 @@
-Merge conflicts are resolved. Summary of how each side was combined:
+Merge conflicts are resolved. All three files are marker-free and `game/client/main.js` passes a syntax check.
 
-### `game/client/dungeon.js`
-- Kept spire-ascent tier/ramp material functions (summit tints, beacon, edge hazards)
-- Dropped duplicate `materialColorHex` and legacy `roleFloorMaterials` (superseded by main's profile palette)
-- Room loop now uses spire tier materials when `profile === 'spire-ascent'`, otherwise main's `roleFloors` / `profileFloorMaterial` / `profileWallMaterial`
+### `game/client/main.js`
+Combined booth wiring from both sides:
+- **Imports**: `boothPrompt` (`BOOTH_ACTION_EVENT`), `boothDeck` (deck terminal), and `launchBooth` (mission launch)
+- **Listeners**: `registerDeckBoothListener` + `?booth=deck` debug opener **and** a `BOOTH_ACTION_EVENT` handler for the character booth
+- **Debug hooks**: deck test hooks (`__openDeckBoothForTest`, `__requestDebugBoothOpenForTest`) **and** `requestBoothDebugOpen()` for `?booth=character`
 
-### `game/client/test/dungeon.test.js`
-- Merged imports from both branches
-- Updated the non-spire material test to expect crowded profile materials (main's default when no profile is set) instead of legacy `floorMaterial`
+Launch booth behavior elsewhere in the file is unchanged.
 
-### `game/server/debugScenarios.js`
-- Kept all three spire debug scenarios (`spire-summit-beacon`, `spire-mid-tier-hazard`) from the ticket branch
-- Added `open-verticality` from main
+### `TASKS.md`
+Both cleanup backlog entries are kept:
+- `278-cleanup-booth-mission-launch` (from main)
+- `278-cleanup-booth-deck-terminal` (from this ticket)
 
 ### `LOGBOOK.md`
-- Kept main's v0.234, v0.236, and v0.237 entries
-- Appended v0.238 (spire-tower-identity) at the end
+All review entries are kept in version order (v0.240 → v0.241 → v0.242 → v0.243), with a single final “Remaining gaps: None” section.
 
-All conflict markers are removed. Dungeon-related tests pass (206/206). The harness can commit and complete the merge.
+Spot-checked booth-related client tests (17 + deck booth tests) — all passed; exit code 1 was only from partial-run coverage thresholds. The harness can commit and run the full suite.

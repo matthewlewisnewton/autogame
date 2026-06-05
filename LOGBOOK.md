@@ -4229,6 +4229,62 @@ PASS. `coverage.log` reports all tests passing: 74 test files and 1479 tests. Co
 
 None.
 
+## v0.240 — 270-difficulty-scale-with-player-count  (2026-06-05 04:32:37)
+
+### Enemy damage tracks live count up and down
+
+Pass. `game/server/simulation.js` applies the enemy-damage factor at strike resolution for player-directed enemy attacks, leaving stored enemy `attackDamage` unchanged and allowing later joins/leaves to affect subsequent hits. `game/server/test/enemy_damage_scaling.test.js` verifies baseline counts, scaled counts, live join/leave changes, and no mutation of the stored enemy stat.
+
+### Miniboss HP scales at spawn and is not retroactive
+
+Pass. `game/server/progression.js` scales miniboss `hp` and `maxHp` inside `spawnEnemy()` only when the enemy is created, using the current party count. Existing minibosses are not revisited when the party later changes. `game/server/test/miniboss_hp_scaling.test.js` covers baseline and scaled spawns, non-miniboss enemies remaining unchanged, and join/leave changes not retroactively altering existing minibosses.
+
+### Count helper stays correct under churn
+
+Pass. `game/server/config.js` exposes `runPlayerCount()` as the single helper all three systems read, clamps at `MAX_PLAYERS`, and the config test suite verifies count increases and decreases as players are added and removed. This is consistent with the lobby leave path deleting players from `gameState.players` and the drop-in path adding them.
+
+## Design and regression check
+
+The implementation is server-side only and does not alter the documented lobby/dungeon/deck loop, rendering, movement synchronization, or socket architecture in `CONTEXT.md`, `game/docs/design.md`, and `game/docs/requirements.md`. It does not add or change any debug scenario URL shortcut, so the debug-scenario review criteria are not applicable.
+
+## Remaining gaps
+
+No blocking gaps found.
+
+## v0.242 — 237-booth-mission-launch  (2026-06-05 05:01:50)
+
+### Launch booth readies up and starts the run
+PASS. The Launch Bay booth path uses the existing booth primitive: renderer proximity emits `boothInteract`, the server validates the player is in the hub/lobby and in range, then returns `boothAction`. The client listens for the launch booth action and calls `launchBoothReadyUp()`, which sets the shared ready flag and emits the same `playerReady(true)` socket event as the 2D Ready button. Server-side `playerReady` still validates quest tier and deck state, broadcasts lobby readiness, and calls `checkAllReady()`, which emits `startGame` once all connected party members are ready.
+
+### `?booth=launch` debug hook
+PASS. The debug hook is gated to the URL parameter and only runs from `lobbyJoined` while the server state is still in the lobby phase. It calls the same `launchBoothReadyUp()` path as the physical booth, so it does not introduce a separate start-game socket event or bypass server validation. The same end state remains reachable through normal gameplay by walking to the hub Launch Bay booth and using the booth interaction.
+
+### 2D ready/launch still works
+PASS. The existing `#ready-btn` handler remains wired to toggle `isReady`, emit `playerReady`, and update the button role. The launch booth path shares state with that button and is idempotent when already ready, so it does not desync the 2D ready UI. The round-2 capture also reaches `phase: "playing"` with two players, visible combat HUD, movement, and card hand after the ready transition.
+
+### Test coverage
+PASS. `coverage.log` shows the client suite passing, including `client/test/launchBooth.test.js` with 9 tests, and the full visible run lists 185 passing tests. The launch-booth helper tests cover launch booth detection, `?booth=launch` parsing, idempotent ready-up gating, and the observable launch-ready event name.
+
+### Design and foundation consistency
+PASS. The implementation preserves the documented lobby-to-dungeon loop: players remain in the hub lobby, ready through the same party readiness gate, and enter the dungeon through the existing `startGame` transition. It does not weaken the foundation requirements for rendering, WebSocket connectivity, multiplayer presence, or synchronized movement; the capture proves the client/server connection, hub-to-run transition, movement, and gameplay HUD remain functional.
+
+## v0.241 — 239-booth-character-editor  (2026-06-05 04:44:53)
+
+2. **Walking up opens it as an in-hub screen.** PASS. The normal path is present end to end: the generated hub includes a `character` booth anchor, the renderer detects nearby booth zones and emits `boothInteract`, the server validates lobby phase plus authoritative proximity, and `main.js` opens the character booth only for `boothId === 'character'` while in lobby phase. This is consistent with the existing hub lobby flow and does not bypass server validation for normal play.
+
+3. **`?booth=character` debug hook.** PASS. `main.js` reads the `booth` query param, gates it to localhost/loopback using the existing debug allowance check, and opens the booth once after the hub lobby scene is entered. The URL parameter is the only debug entry point, and the same end state remains reachable through the normal proximity/interact path.
+
+4. **Edits apply to the avatar.** PASS. Saving from the booth calls the existing `patchProfile({ cosmetic })` API, then resyncs from the cached account cosmetic and updates `gameState.players[myId].cosmetic`, which is the same live avatar update path used by the Account character editor. Hat unlocks are also wired to rebuild both account and booth hat lists after the authoritative server event.
+
+5. **Test.** PASS. `coverage.log` shows `client/test/characterBooth.test.js` running successfully, including overlay open/close behavior, save-to-avatar syncing, normal `booth:action` handling, lobby-phase gating, and the localhost `?booth=character` one-shot hook. The full captured test set reports 184 passing tests.
+
+## Design and foundation consistency
+
+PASS. The change stays within the design's lobby customization space and does not alter dungeon combat, card flow, multiplayer synchronization, movement, or WebSocket connection fundamentals. The requirements baseline remains covered by the captured run: 3D rendering, client/server connection, multiplayer presence, movement, and gameplay transition all still function.
+
+## Code quality
+
+PASS. The implementation is scoped and modular: shared cosmetic UI behavior was extracted into `cosmeticForm.js`, the booth overlay owns only booth-specific lifecycle, and the existing `cosmetic-preview.js` remains the preview renderer. I did not find dead code, broken imports, ungated debug behavior, or console/page errors attributable to this ticket.
 
 ## v0.243 — 236-booth-deck-terminal  (2026-06-05 05:10:08)
 
@@ -4251,4 +4307,3 @@ No blocking code-quality issue found. The deck booth behavior is small and testa
 ## Remaining gaps
 
 None.
-

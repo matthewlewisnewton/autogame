@@ -26,6 +26,9 @@ const {
   MAX_HP,
   RESPAWN_DELAY_MS,
   COOLDOWN_MS,
+  DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER,
+  difficultyScaleFactor,
+  runPlayerCount,
   SPIRE_EDGE_HAZARD_DAMAGE,
   SPIRE_EDGE_HAZARD_COOLDOWN_MS,
 } = require('./config');
@@ -1961,7 +1964,14 @@ function updateEnemies() {
 					if (enemy.windupTargetType === 'minion') {
 						damageMinion(target, enemy.attackDamage);
 					} else {
-						damagePlayer(enemy.windupTargetId, enemy.attackDamage, { attackerEnemyId: enemy.id });
+						// Scale player-directed damage by live party size (1–4 = baseline).
+						// Read at strike resolution so mid-run JOIN/LEAVE tracks up and down
+						// without baking a stale multiplier into the enemy's stored stat.
+						const scaledDamage = enemy.attackDamage * difficultyScaleFactor(
+							runPlayerCount(_gameState),
+							DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER
+						);
+						damagePlayer(enemy.windupTargetId, scaledDamage, { attackerEnemyId: enemy.id });
 					}
 					enemy.attackState = 'recovering';
 					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;

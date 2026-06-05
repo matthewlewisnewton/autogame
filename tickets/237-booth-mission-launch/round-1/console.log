@@ -1,0 +1,9 @@
+[A:debug] [vite] connecting...
+[A:debug] [vite] connected.
+[A:log] [vite] server connection lost. Polling for restart...
+[A:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[A:error] Failed to load resource: net::ERR_CONNECTION_REFUSED
+[capture:error] page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/
+Call log:
+[2m  - navigating to "http://localhost:5173/", waiting until "load"[22m
+

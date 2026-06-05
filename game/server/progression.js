@@ -32,6 +32,9 @@ const {
   OPENING_HAND_SIZE,
   HAND_SLOT_FILL_ORDER,
   PASSIVE_DRAW_INTERVAL_MS,
+  DIFFICULTY_MINIBOSS_HP_PER_PLAYER,
+  difficultyScaleFactor,
+  runPlayerCount,
 } = require('./config');
 const {
   mulberry32,
@@ -2118,6 +2121,14 @@ function spawnEnemy(x, z, type = 'grunt', spawnedBy, opts = {}) {
   // default to tier 0 → no roll → variant: null. Rolled exactly once per enemy.
   const tier = Number.isFinite(opts.tier) ? opts.tier : 0;
   applyVariant(enemy, tier, opts.rng);
+  // Difficulty scaling: minibosses get more HP the larger the party is at spawn.
+  // Fixed once here from the live player count — never re-applied retroactively
+  // when players later join or leave. 1–4 players stay at baseline (factor 1.0).
+  if (type === 'miniboss') {
+    const factor = difficultyScaleFactor(runPlayerCount(_gameState), DIFFICULTY_MINIBOSS_HP_PER_PLAYER);
+    enemy.hp = Math.round(enemy.hp * factor);
+    enemy.maxHp = Math.round(enemy.maxHp * factor);
+  }
   _gameState.enemies.push(enemy);
   return enemy;
 }

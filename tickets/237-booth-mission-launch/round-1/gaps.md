@@ -1,0 +1,3 @@
+1. Captured run did not load the game, so there is no runnable proof for the ticket (`metrics.json` has `"ok": false`, `failure_kind: "capture_failed"`, and `console.log` shows `page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:5173/`).
+   Files: none confirmed in `game/`; evidence is in `tickets/237-booth-mission-launch/round-1/metrics.json` and `tickets/237-booth-mission-launch/round-1/console.log`.
+   Fix: re-run/fix the capture so the browser can load `http://localhost:5173/` and produce an `"ok": true` metrics file with screenshots/probes; investigate any Vite/client process exit or port availability issue if it recurs.
