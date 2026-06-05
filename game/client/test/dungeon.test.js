@@ -20,7 +20,9 @@ import {
 	PASSAGE_WALL_HEIGHT,
 	SPIRE_SUMMIT_BEACON_TAG,
 	SPIRE_EDGE_HAZARD_TAG,
+	CANYON_CLIFF_LIP_TAG,
 	buildSpireEdgeHazardMesh,
+	buildCanyonCliffLipMesh,
 } from '../dungeon.js';
 import { generateLayout } from '../../server/dungeon.js';
 import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from '../../shared/floorSampling.esm.js';
@@ -718,6 +720,39 @@ describe('sunken-canyon cover, floors & treasure marker', () => {
 		const b = getSunkenCanyonBandMaterials('plateau');
 		expect(a.floor).toBe(b.floor);
 		expect(a.floor.color.getHex()).toBe(getSunkenCanyonBandFloorHex('plateau'));
+	});
+
+	function findCliffLipMeshes(meshes) {
+		return meshes.filter(m => m.userData?.dungeonTag === CANYON_CLIFF_LIP_TAG);
+	}
+
+	it('renders emissive cliff lip strips for server-generated sunken-canyon', () => {
+		const layout = generateLayout(42, 'sunken-canyon');
+		expect(layout.cliffLips.length).toBeGreaterThanOrEqual(4);
+		const plateau = layout.rooms.find(r => r.band === 'plateau');
+		const yHigh = resolveFloorY(sampleFloorY(layout, plateau.x, plateau.z));
+		const result = buildDungeon(mockScene(), layout);
+		const lipMeshes = findCliffLipMeshes(result.meshes);
+		expect(lipMeshes.length).toBe(layout.cliffLips.length);
+		for (const mesh of lipMeshes) {
+			expect(mesh.material.emissiveIntensity).toBeGreaterThan(0);
+			expect(mesh.position.y).toBeGreaterThanOrEqual(yHigh);
+			expect(mesh.geometry.parameters.height).toBeLessThanOrEqual(WALL_HEIGHT);
+		}
+	});
+
+	it('buildCanyonCliffLipMesh tracks lip AABB footprint', () => {
+		const lip = {
+			minX: -3,
+			maxX: 3,
+			minZ: -28.5,
+			maxZ: -27.3,
+			y: DEFAULT_FLOOR_Y + 10,
+		};
+		const mesh = buildCanyonCliffLipMesh(lip);
+		expect(mesh.userData.dungeonTag).toBe(CANYON_CLIFF_LIP_TAG);
+		expect(mesh.position.x).toBeCloseTo(0, 4);
+		expect(mesh.position.z).toBeCloseTo(-27.9, 4);
 	});
 });
 

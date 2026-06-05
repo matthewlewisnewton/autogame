@@ -1761,6 +1761,32 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
       expect(rampCount).toBeLessThanOrEqual(5);
     }
   });
+
+  it('emits one cliffLip per ramp at plateau high Y, aligned to ramp X centres', () => {
+    for (const seed of [1, 42, 123, 777]) {
+      const layout = generateLayout(seed, 'sunken-canyon');
+      const ramps = roomsByBand(layout, 'ramp');
+      const plateau = roomsByBand(layout, 'plateau')[0];
+      const yPlateau = sampleFloorY(layout, plateau.x, plateau.z);
+
+      expect(Array.isArray(layout.cliffLips)).toBe(true);
+      expect(layout.cliffLips.length).toBe(ramps.length);
+      expect(layout.cliffLips.length).toBeGreaterThanOrEqual(4);
+      expect(layout.cliffLips.length).toBeLessThanOrEqual(5);
+
+      for (const ramp of ramps) {
+        const lip = layout.cliffLips.find(
+          (l) => Math.abs((l.minX + l.maxX) / 2 - ramp.x) < 0.01
+        );
+        expect(lip).toBeDefined();
+        expect(lip.y).toBe(yPlateau);
+        expect(lip.maxX - lip.minX).toBeCloseTo(ramp.width, 4);
+        const rampHalfD = ramp.depth / 2;
+        const rampNorthZ = ramp.z - rampHalfD;
+        expect(lip.maxZ).toBeLessThanOrEqual(rampNorthZ - 0.01);
+      }
+    }
+  });
 });
 
 // ── spire-ascent stage layout ──

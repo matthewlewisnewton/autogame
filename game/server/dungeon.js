@@ -118,6 +118,9 @@ const SUNKEN_CANYON = {
   // Lateral edge connectors (always placed): centre X aligns with canyon-edge probe
   // (±(canyonHalf − 2)) so north-wall gaps and ramp floors reach the perimeter.
   edgeProbeInset: 2,
+  // Emissive lip strips at plateau south edge (one per ramp mouth); visual only.
+  cliffLipStripDepth: 1.2,
+  cliffLipPlateauInset: 0.35,
 };
 
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
@@ -1240,6 +1243,25 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest 
 }
 
 /**
+ * Emissive cliff-edge lip AABBs at the high (plateau) mouth of each descent ramp.
+ * Strips sit on the plateau just north of the ramp junction — not over walkable ramp centres.
+ */
+function buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ) {
+  const { cliffLipStripDepth, cliffLipPlateauInset } = SUNKEN_CANYON;
+  const halfW = rampWidth / 2;
+  const maxZ = plateauSouthZ - cliffLipPlateauInset;
+  const minZ = maxZ - cliffLipStripDepth;
+
+  return rampCenters.map(rampX => ({
+    minX: rampX - halfW,
+    maxX: rampX + halfW,
+    minZ,
+    maxZ,
+    y: yHigh,
+  }));
+}
+
+/**
  * Build the open-plaza arena: one large walkable room bounded by four solid
  * perimeter walls, with scattered cover pieces and a couple of gently sloped
  * platforms. Deterministic for a given seed (uses mulberry32).
@@ -1468,10 +1490,13 @@ function generateSunkenCanyon(seed) {
     interiorMargin,
   });
 
+  const cliffLips = buildSunkenCanyonCliffLips(rampCenters, rampWidth, yHigh, plateauSouthZ);
+
   return {
     rooms: [plateau, ...ramps, canyon],
     passages: [],
     cover,
+    cliffLips,
     passageWidth: PASSAGE_WIDTH,
     cellSpacing: canyonSize,
     profile: 'sunken-canyon',
@@ -1995,6 +2020,7 @@ module.exports = {
   generateLayout,
   generateOpenPlaza,
   generateSunkenCanyon,
+  buildSunkenCanyonCliffLips,
   generateSpireAscent,
   buildSpireEdgeHazards,
   generateHub,

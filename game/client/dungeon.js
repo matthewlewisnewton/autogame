@@ -355,6 +355,41 @@ export const SPIRE_SUMMIT_BEACON_TAG = 'spireSummitBeacon';
 /** userData.dungeonTag on spire-ascent exterior edge hazard warning strips. */
 export const SPIRE_EDGE_HAZARD_TAG = 'spireEdgeHazard';
 
+/** userData.dungeonTag on sunken-canyon plateau cliff-edge lip strips at ramp mouths. */
+export const CANYON_CLIFF_LIP_TAG = 'canyonCliffLip';
+
+const canyonCliffLipMaterial = (() => {
+	const entry = sunkenCanyonThemeEntry();
+	const accentHex = parseHex(entry.accent ?? entry.passageFloor);
+	const warningHex = parseHex(dungeonTheme.roleTints.treasure.color);
+	return new THREE.MeshStandardMaterial({
+		color: accentHex,
+		emissive: warningHex,
+		emissiveIntensity: 1.1,
+		roughness: 0.35,
+		metalness: 0.2,
+	});
+})();
+
+/**
+ * Low emissive warning strip on a sunken-canyon cliff-lip AABB at a ramp mouth.
+ */
+export function buildCanyonCliffLipMesh(lip) {
+	const width = lip.maxX - lip.minX;
+	const depth = lip.maxZ - lip.minZ;
+	const stripHeight = 0.14;
+	const geo = new THREE.BoxGeometry(width, stripHeight, depth);
+	const mesh = new THREE.Mesh(geo, canyonCliffLipMaterial);
+	const floorY = resolveFloorY(lip.y);
+	mesh.position.set(
+		(lip.minX + lip.maxX) / 2,
+		floorY + stripHeight / 2,
+		(lip.minZ + lip.maxZ) / 2,
+	);
+	mesh.userData.dungeonTag = CANYON_CLIFF_LIP_TAG;
+	return mesh;
+}
+
 const edgeHazardStripMaterial = new THREE.MeshStandardMaterial({
 	color: 0x22d3ee,
 	emissive: 0xff00ff,
@@ -823,6 +858,12 @@ export function buildDungeon(scene, layout) {
 		const hazardMesh = buildSpireEdgeHazardMesh(hazard);
 		scene.add(hazardMesh);
 		meshes.push(hazardMesh);
+	}
+
+	for (const lip of layout.cliffLips || []) {
+		const lipMesh = buildCanyonCliffLipMesh(lip);
+		scene.add(lipMesh);
+		meshes.push(lipMesh);
 	}
 
 	// ── Build open-plaza platforms ──
