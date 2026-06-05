@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "nodemon index.js",
+    "dev": "ALLOW_DEV_AUTH=1 nodemon index.js",
     "test": "cd .. && vitest run --config vitest.config.js server/test"
   },
   "keywords": [],
