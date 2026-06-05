@@ -219,26 +219,28 @@ describe('POST /api/login', () => {
 	});
 
 	it('returns a JWT containing accountId and username', async () => {
+		const username = `carol-${Date.now()}`;
 		// Register and get accountId
 		const regRes = await fetch(`${baseUrl}/api/register`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username: 'carol', password: 'pass' })
+			body: JSON.stringify({ username, password: 'pass' })
 		});
 		const regData = await regRes.json();
+		expect(regRes.status).toBe(201);
 
 		// Login
 		const loginRes = await fetch(`${baseUrl}/api/login`, {
 			method: 'POST',
 			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ username: 'carol', password: 'pass' })
+			body: JSON.stringify({ username, password: 'pass' })
 		});
 		const loginData = await loginRes.json();
 
 		// Decode JWT — verify with the secret the auth module is using (test-secret in NODE_ENV=test)
 		const decoded = jwt.verify(loginData.token, getJWTSecret());
 		expect(decoded.accountId).toBe(regData.accountId);
-		expect(decoded.username).toBe('carol');
+		expect(decoded.username).toBe(username);
 	});
 
 	it('JWT token has ~24h expiration', async () => {
