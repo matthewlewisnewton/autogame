@@ -46,6 +46,7 @@ const { unlockHat: unlockHatForAccount, unlockQuestTier } = require('./users');
 const { backfillUnlockedHats, HAT_CATALOG } = require('./cosmetic');
 const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
+const { tryActivateEncounter, ENCOUNTER_TRIGGER_RADIUS } = require('./encounters');
 
 // index.js-local helpers + the DEBUG_SCENARIOS set, injected after modules load.
 let io = null;
@@ -68,6 +69,60 @@ function setCallbacks(deps) {
   broadcastLobbyUpdate = deps.broadcastLobbyUpdate;
   emitQuestPayloadToLobby = deps.emitQuestPayloadToLobby;
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
+}
+
+function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
+  const questId = 'arena_trials';
+  const tier = 2;
+  unlockQuestTier(player.accountId, questId, tier);
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const plazaSpawn = firstRoomPosition();
+  player.x = plazaSpawn.x;
+  player.z = plazaSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
+function resolveArenaDaisAnchor(state) {
+  const dais = state.layout?.landmarks?.find((lm) => lm.type === 'arena_dais');
+  return dais ? { x: dais.x, z: dais.z } : firstRoomPosition();
+}
+
+function finishStageBossDebugScenario(lobby, state, player, name) {
+  emitLobbyQuestUpdate(lobby, state, {
+    layoutSeed: state.layoutSeed,
+    layout: state.layout,
+  });
+  broadcastLobbyUpdate(lobby);
+  io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+  return {
+    ok: true,
+    scenario: name,
+    unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+  };
 }
 
 function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
@@ -250,6 +305,39 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'stage-boss-dormant') {
+      // arena_trials Tier 2 stage_boss encounter left dormant for QA.
+      // Reachable normally by unlocking Arena Trials Tier 2 and deploying.
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 2;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
+    if (name === 'stage-boss-active') {
+      // arena_trials Tier 2 stage_boss encounter activated for quick-defeat QA.
+      // Reachable normally by clearing adds or entering the trigger radius.
+      setupArenaTrialsTier2StageBossDebug(lobby, state, player);
+      const anchor = resolveArenaDaisAnchor(state);
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = state.enemies.filter((e) => e.hp > 0);
+      player.x = anchor.x + 4;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      tryActivateEncounter(state);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (boss) {
+        boss.hp = 1;
+        boss.maxHp = boss.maxHp || boss.hp;
+      }
+      return finishStageBossDebugScenario(lobby, state, player, name);
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
@@ -404,14 +492,6 @@ function applyDebugScenario(socket, name) {
       // The same state is reachable by selecting crystal_rescue, deploying, and
       // collecting prisms in the dungeon.
       state.selectedQuestId = 'crystal_rescue';
-    }
-
-    if (name === 'stage-boss-dormant' || name === 'stage-boss-active') {
-      // Open-plaza layout for a stage-boss encounter. Reachable when a
-      // stage_boss quest tier deploys (sub-ticket 05); shortcut for QA.
-      state.selectedQuestId = 'arena_trials';
-      state.selectedQuestTier = 1;
-      applyLayoutForQuest(state, 'arena_trials', 1);
     }
 
     player.ready = true;
@@ -1205,45 +1285,6 @@ function applyDebugScenario(socket, name) {
       player.rallyUntil = 0;
       player.rallySpeedMultiplier = 1;
       state.enemies = [];
-    } else if (name === 'stage-boss-dormant' || name === 'stage-boss-active') {
-      const {
-        createEncounterState,
-        setEncounterBoss,
-        ENCOUNTER_PHASES,
-      } = require('./encounters');
-      player.hp = MAX_HP;
-      player.magicStones = MAX_MAGIC_STONES;
-      const dais = state.layout?.landmarks?.find((lm) => lm.type === 'arena_dais');
-      const anchor = dais
-        ? { x: dais.x, z: dais.z }
-        : { x: spawn.x, z: spawn.z };
-      state.run.objective = {
-        type: 'stage_boss',
-        label: 'Arena Trials: defeat the stage warden',
-        bossDefeated: false,
-        addCount: 2,
-      };
-      state.run.encounter = createEncounterState({ spawnAnchor: anchor });
-      state.enemies = [];
-      const boss = spawnEnemy(anchor.x, anchor.z, 'miniboss');
-      boss.wanderTarget = { x: anchor.x, z: anchor.z };
-      setEncounterBoss(state.run, boss.id);
-      if (name === 'stage-boss-dormant') {
-        const addA = spawnEnemy(anchor.x + 6, anchor.z + 2, 'grunt');
-        addA.wanderTarget = { x: addA.x, z: addA.z };
-        const addB = spawnEnemy(anchor.x - 6, anchor.z - 2, 'skirmisher');
-        addB.wanderTarget = { x: addB.x, z: addB.z };
-        player.x = anchor.x + 30;
-        player.z = anchor.z;
-      } else {
-        state.run.encounter.phase = ENCOUNTER_PHASES.ACTIVE;
-        state.run.encounter.locked = true;
-        boss.hp = 1;
-        boss.maxHp = boss.maxHp || boss.hp;
-        player.x = anchor.x + 4;
-        player.z = anchor.z;
-      }
-      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
     } else if (name === 'cinder-snare-ready') {
       // Playing phase with Cinder Snare in hand, full Magic Stones, and a grunt
       // wandering nearby so QA can drop the trap and watch an enemy walk into it

@@ -6,6 +6,10 @@ import {
 	getLayoutGenerationOptions,
 } from '../quests.js';
 import { resolveVariantRollTier } from '../enemyVariants.js';
+import {
+	ENCOUNTER_PHASES,
+	ENCOUNTER_TRIGGER_RADIUS,
+} from '../encounters.js';
 import { resetGameState, gameState } from '../index.js';
 import { spawnEnemies, setGameState } from '../progression.js';
 import {
@@ -286,6 +290,113 @@ describe('debugScenario — arena-trials-tier-2', () => {
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'miniboss')).toHaveLength(1);
+	});
+});
+
+describe('debugScenario — stage-boss-dormant', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('deploys arena_trials Tier 2 dormant stage-boss encounter via normal run path', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'stage-boss-dormant' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('stage-boss-dormant');
+
+		const state = lobbyStateForSocket(socket);
+		const player = playerForSocket(socket);
+		const tier2Quest = getQuest(ARENA_TRIALS_ID, ARENA_TRIALS_TIER_2);
+		const addCount = tier2Quest.encounter.addCount;
+
+		expect(state.gamePhase).toBe('playing');
+		expect(state.selectedQuestId).toBe(ARENA_TRIALS_ID);
+		expect(state.selectedQuestTier).toBe(ARENA_TRIALS_TIER_2);
+		expect(stateUpdate.run.questTier).toBe(ARENA_TRIALS_TIER_2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.addCount).toBe(addCount);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(stateUpdate.run.encounter.locked).toBe(false);
+		expect(stateUpdate.run.encounter.bossEnemyId).toBeTruthy();
+		expect(stateUpdate.enemies.length).toBe(1 + addCount);
+		expect(stateUpdate.enemies.every((e) => e.hp > 0)).toBe(true);
+		expect(
+			stateUpdate.enemies.some((e) => e.id === stateUpdate.run.encounter.bossEnemyId),
+		).toBe(true);
+
+		const dais = state.layout.landmarks.find((lm) => lm.type === 'arena_dais');
+		expect(dais).toBeTruthy();
+		const dist = Math.hypot(player.x - dais.x, player.z - dais.z);
+		expect(dist).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+});
+
+describe('debugScenario — stage-boss-active', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('activates arena_trials Tier 2 stage-boss encounter with boss at 1 HP', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const debugResultPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'stage-boss-active' });
+		const result = await debugResultPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(result.ok).toBe(true);
+		expect(result.scenario).toBe('stage-boss-active');
+
+		const state = lobbyStateForSocket(socket);
+		const tier2Quest = getQuest(ARENA_TRIALS_ID, ARENA_TRIALS_TIER_2);
+		const addCount = tier2Quest.encounter.addCount;
+		const bossId = stateUpdate.run.encounter.bossEnemyId;
+
+		expect(state.selectedQuestTier).toBe(ARENA_TRIALS_TIER_2);
+		expect(stateUpdate.run.questName).toBe(tier2Quest.name);
+		expect(stateUpdate.run.objective.type).toBe('stage_boss');
+		expect(stateUpdate.run.objective.addCount).toBe(addCount);
+		expect(stateUpdate.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(stateUpdate.run.encounter.locked).toBe(true);
+		expect(stateUpdate.enemies.length).toBe(1);
+		expect(stateUpdate.enemies[0].id).toBe(bossId);
+		expect(stateUpdate.enemies[0].hp).toBe(1);
 	});
 });
 
