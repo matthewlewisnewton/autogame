@@ -103,10 +103,11 @@ All existing gameplay events (`playerReady`, `move`, `useCard`, …) require the
 |-------|------|
 | `init` | Connect — account info, `lobbies[]`, `inLobby: false` |
 | `lobbyListUpdate` | `{ lobbies }` — broadcast on create/join/leave/disconnect |
-| `lobbyJoined` | Entered a lobby — full state, layout, deck, shop, quests |
+| `lobbyJoined` | Entered a lobby — full state, layout, deck, shop, quests; in lobby phase includes `hubPresence` (full snapshot) |
 | `lobbyLeft` | Left a lobby — `{ lobbies }` for browser refresh |
 | `lobbyError` | `{ reason }` — validation / not-in-lobby errors |
 | `lobbyUpdate` | Player list / phase changes within current lobby |
+| `hubPresenceUpdate` | Lobby phase only — `{ lobbyId, presence: { schemaVersion, entries, revision }, removedPlayerIds?: string[] }`. Full snapshot of connected hub avatars; `removedPlayerIds` when a player leaves, is evicted, or disconnects (entry dropped from `presence.entries`). Not emitted during `gamePhase === 'playing'` (dungeon sync uses `stateUpdate`). |
 | `startGame` | All players ready — scoped to lobby room |
 
 ## Client architecture

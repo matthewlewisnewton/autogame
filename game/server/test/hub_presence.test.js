@@ -54,6 +54,7 @@ describe('hub presence', () => {
     expect(getHubPresenceSnapshot(lobby)).toEqual({
       schemaVersion: 1,
       entries: {},
+      revision: 0,
     });
   });
 

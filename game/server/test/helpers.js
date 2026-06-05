@@ -199,3 +199,20 @@ export function connectClient(baseUrl, accountId = `test-${Date.now()}-${Math.ra
 export async function connectAndJoinLobby(baseUrl, accountId, options = {}) {
 	return connectClient(baseUrl, accountId, options);
 }
+
+/**
+ * Two authenticated clients in the same lobby (first creates, second joins).
+ */
+export async function connectTwoClients(baseUrl, accountIdA, accountIdB) {
+	const firstId = accountIdA || `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+	const secondId = accountIdB || `test-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+	const first = await connectClient(baseUrl, firstId);
+	const second = await connectClient(baseUrl, secondId, { joinLobbyId: first.lobbyId });
+	return {
+		socketA: first.socket,
+		socketB: second.socket,
+		lobbyId: first.lobbyId,
+		initA: first.init,
+		initB: second.init,
+	};
+}
