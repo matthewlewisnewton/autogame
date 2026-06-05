@@ -77,6 +77,7 @@ const {
   cardSellValues: CARD_SELL_VALUES,
 } = require('../shared/cardEconomy.json');
 const { PHASES, setGamePhase, isLobbyPhase, isPlayingPhase } = require('./lobbies');
+const { createEncounterState } = require('./encounters');
 
 let _gameState = null;
 let _getIo = () => null;
@@ -894,7 +895,7 @@ function createRunState() {
     throw new Error(`Unknown objective type: ${quest.objectiveType}`);
   }
 
-  return {
+  const run = {
     id: crypto.randomUUID(),
     status: 'playing',
     questId: quest.id,
@@ -903,8 +904,16 @@ function createRunState() {
     questDescription: quest.description,
     rewardCurrency: quest.rewardCurrency,
     objective: def.createObjective(quest, { enemyCount: _gameState.enemies.length }),
-    startedAt: Date.now()
+    startedAt: Date.now(),
   };
+
+  if (quest.encounter) {
+    run.encounter = createEncounterState({
+      spawnAnchor: quest.encounter.spawnAnchor ?? null,
+    });
+  }
+
+  return run;
 }
 
 function startDungeonRun() {
