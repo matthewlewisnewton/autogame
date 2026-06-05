@@ -56,6 +56,7 @@ import {
 	MAX_HP,
 	MAX_MS,
 	MEDIC_HEAL_COST,
+	APPEARANCE_CHANGE_COST,
 	MOVE_SPEED,
 	TICK_RATE,
 	VARIANT_CODEX_DATA,
@@ -69,6 +70,7 @@ import {
 	patchProfile,
 	getAccountProfile,
 	getAccountCosmetic,
+	setAccountCosmetic,
 	getHatCatalog,
 	setUnlockedHats,
 } from './settings.js';
@@ -82,6 +84,9 @@ import {
 	closeCharacterBooth,
 	rebuildBoothHatList,
 	showBoothCosmeticError,
+	handleAppearanceChanged,
+	handleAppearanceError,
+	isCharacterBoothOpen,
 } from './characterBooth.js';
 import {
 	initControllerCalibration,
@@ -1632,6 +1637,39 @@ function bindSocketHandlers(s) {
 		const message = data && data.reason ? data.reason : 'Unlock failed';
 		showCosmeticError(message);
 		showBoothCosmeticError(message);
+	});
+
+	s.on('appearanceChanged', (data) => {
+		if (!data) return;
+		if (data.cosmetic) {
+			setAccountCosmetic(data.cosmetic);
+		}
+		if (Number.isFinite(data.currency)) {
+			myCurrency = data.currency;
+			updateCurrencyHud(myCurrency);
+			if (myId && gameState?.players?.[myId]) {
+				gameState.players[myId].currency = data.currency;
+			}
+		}
+		if (data.cosmetic && myId && gameState?.players?.[myId]) {
+			gameState.players[myId].cosmetic = getAccountCosmetic();
+			setGameStateRef(gameState);
+		}
+		handleAppearanceChanged();
+	});
+
+	s.on('appearanceError', (data) => {
+		const reason = data && data.reason ? data.reason : 'Appearance save failed';
+		let message = reason;
+		if (reason === 'insufficient_gold' || /not enough/i.test(reason)) {
+			message = /need \d+/i.test(reason)
+				? reason
+				: `Not enough money (need ${formatCurrencyPrice(APPEARANCE_CHANGE_COST)})`;
+		}
+		if (isCharacterBoothOpen()) {
+			showBoothCosmeticError(message);
+			handleAppearanceError();
+		}
 	});
 
 	s.on('tradeOffer', (data) => {

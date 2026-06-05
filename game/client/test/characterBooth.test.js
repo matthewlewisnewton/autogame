@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { generateHub } from '../../server/dungeon.js';
 import { dispatchBoothAction, BOOTH_ACTION_EVENT } from '../boothPrompt.js';
 import { createCosmeticSelection } from '../cosmeticForm.js';
+import { APPEARANCE_CHANGE_COST } from '../config.js';
 
 const gltfLoadMock = vi.hoisted(() => vi.fn());
 
@@ -109,6 +110,29 @@ function buildCharacterBoothDom() {
 	errorEl.id = 'character-booth-cosmetic-error';
 	errorEl.hidden = true;
 
+	const confirmEl = document.createElement('div');
+	confirmEl.id = 'character-booth-confirm';
+	confirmEl.classList.add('hidden');
+
+	const confirmMessage = document.createElement('p');
+	confirmMessage.id = 'character-booth-confirm-message';
+	confirmEl.appendChild(confirmMessage);
+
+	const confirmActions = document.createElement('div');
+	confirmActions.className = 'character-booth-confirm-actions';
+
+	const confirmCancel = document.createElement('button');
+	confirmCancel.id = 'character-booth-confirm-cancel';
+	confirmCancel.type = 'button';
+
+	const confirmOk = document.createElement('button');
+	confirmOk.id = 'character-booth-confirm-ok';
+	confirmOk.type = 'button';
+
+	confirmActions.appendChild(confirmCancel);
+	confirmActions.appendChild(confirmOk);
+	confirmEl.appendChild(confirmActions);
+
 	const saveBtn = document.createElement('button');
 	saveBtn.id = 'character-booth-save-btn';
 	saveBtn.type = 'button';
@@ -121,6 +145,7 @@ function buildCharacterBoothDom() {
 	modal.appendChild(hatList);
 	modal.appendChild(proportions);
 	modal.appendChild(errorEl);
+	modal.appendChild(confirmEl);
 	modal.appendChild(saveBtn);
 	overlay.appendChild(modal);
 	document.body.appendChild(overlay);
@@ -270,15 +295,21 @@ describe('character booth overlay (module)', () => {
 		expect(isPreviewOpen()).toBe(false);
 	});
 
-	it('save syncs gameState.players[myId].cosmetic after patchProfile succeeds', async () => {
+	it('shows paid confirm for appearance edits and saves after confirm', async () => {
 		const { openCharacterBooth, selection, gameState, patchProfile } = await initBooth();
 		const saveBtn = document.getElementById('character-booth-save-btn');
+		const confirmEl = document.getElementById('character-booth-confirm');
+		const confirmOk = document.getElementById('character-booth-confirm-ok');
 
 		openCharacterBooth();
 		selection.bodyColor = '#ef4444';
 		selection.bodyShape = 'cylinder';
 
 		saveBtn.click();
+		expect(confirmEl.classList.contains('hidden')).toBe(false);
+		expect(patchProfile).not.toHaveBeenCalled();
+
+		confirmOk.click();
 		await vi.waitFor(() => {
 			expect(patchProfile).toHaveBeenCalledWith({
 				cosmetic: expect.objectContaining({
@@ -290,6 +321,107 @@ describe('character booth overlay (module)', () => {
 
 		expect(gameState.players.p1.cosmetic.bodyColor).toBe('#ef4444');
 		expect(gameState.players.p1.cosmetic.bodyShape).toBe('cylinder');
+		expect(confirmEl.classList.contains('hidden')).toBe(true);
+	});
+
+	it('does not show confirm for hat-only changes', async () => {
+		const { openCharacterBooth, selection, patchProfile } = await initBooth({
+			getCurrency: () => 100,
+		});
+		const saveBtn = document.getElementById('character-booth-save-btn');
+		const confirmEl = document.getElementById('character-booth-confirm');
+
+		openCharacterBooth();
+		selection.hat = 'cap';
+
+		saveBtn.click();
+		await vi.waitFor(() => {
+			expect(patchProfile).toHaveBeenCalled();
+		});
+
+		expect(confirmEl.classList.contains('hidden')).toBe(true);
+	});
+
+	it('cancel on paid confirm aborts without save traffic', async () => {
+		const { openCharacterBooth, selection, patchProfile } = await initBooth();
+		const saveBtn = document.getElementById('character-booth-save-btn');
+		const confirmEl = document.getElementById('character-booth-confirm');
+		const confirmCancel = document.getElementById('character-booth-confirm-cancel');
+
+		openCharacterBooth();
+		selection.bodyColor = '#ef4444';
+
+		saveBtn.click();
+		expect(confirmEl.classList.contains('hidden')).toBe(false);
+
+		confirmCancel.click();
+		expect(confirmEl.classList.contains('hidden')).toBe(true);
+		expect(patchProfile).not.toHaveBeenCalled();
+	});
+
+	it('emits applyAppearanceChange on confirm when socket is connected', async () => {
+		const emit = vi.fn();
+		const socket = { connected: true, emit };
+		const { openCharacterBooth, selection, patchProfile, handleAppearanceChanged } = await initBooth({
+			getSocket: () => socket,
+		});
+		const saveBtn = document.getElementById('character-booth-save-btn');
+		const confirmOk = document.getElementById('character-booth-confirm-ok');
+
+		openCharacterBooth();
+		selection.accentColor = '#22d3ee';
+
+		saveBtn.click();
+		confirmOk.click();
+
+		expect(emit).toHaveBeenCalledWith('applyAppearanceChange', {
+			cosmetic: expect.objectContaining({ accentColor: '#22d3ee' }),
+		});
+		expect(patchProfile).not.toHaveBeenCalled();
+		expect(saveBtn.disabled).toBe(true);
+
+		handleAppearanceChanged();
+		expect(saveBtn.disabled).toBe(false);
+	});
+
+	it('surfaces appearance errors and re-enables save', async () => {
+		const emit = vi.fn();
+		const socket = { connected: true, emit };
+		const { openCharacterBooth, selection, showBoothCosmeticError, handleAppearanceError } = await initBooth({
+			getSocket: () => socket,
+		});
+		const saveBtn = document.getElementById('character-booth-save-btn');
+		const confirmOk = document.getElementById('character-booth-confirm-ok');
+		const errorEl = document.getElementById('character-booth-cosmetic-error');
+
+		openCharacterBooth();
+		selection.bodyColor = '#ef4444';
+
+		saveBtn.click();
+		confirmOk.click();
+		expect(saveBtn.disabled).toBe(true);
+
+		const message = `Not enough money (need ${APPEARANCE_CHANGE_COST})`;
+		showBoothCosmeticError(message);
+		handleAppearanceError();
+
+		expect(errorEl.textContent).toBe(message);
+		expect(saveBtn.disabled).toBe(false);
+	});
+
+	it('save button shows cost hint when appearance fields are dirty', async () => {
+		const { openCharacterBooth } = await initBooth();
+		const saveBtn = document.getElementById('character-booth-save-btn');
+		const bodySwatches = document.getElementById('character-booth-body-swatches');
+
+		openCharacterBooth();
+		expect(saveBtn.textContent).toBe('Save character');
+
+		const redSwatch = bodySwatches.querySelector('[data-color="#ef4444"]');
+		expect(redSwatch).toBeTruthy();
+		redSwatch.click();
+
+		expect(saveBtn.textContent).toMatch(/25/);
 	});
 });
 
