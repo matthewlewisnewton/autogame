@@ -387,6 +387,18 @@ function register(socket, ctx) {
     socket.emit('debugScenarioResult', result);
   });
 
+  socket.on('toggleDebugGodmode', () => {
+    if (!isDebugScenarioAllowed(socket)) {
+      socket.emit('debugGodmodeResult', { ok: false, reason: 'Debug godmode is disabled' });
+      return;
+    }
+
+    withLobbyPlayer(socket, {}, (state, lobby, player) => {
+      player.debugGodmode = !player.debugGodmode;
+      socket.emit('debugGodmodeResult', { ok: true, enabled: player.debugGodmode });
+    });
+  });
+
   socket.on('heartbeat', (data) => {
     if (!data || !Number.isFinite(data.timestamp)) {
       console.warn(`Rejected heartbeat from ${socket.id}: invalid payload`);

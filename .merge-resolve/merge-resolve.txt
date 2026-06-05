@@ -1,10 +1,8 @@
-**`LOGBOOK.md`** is resolved.
+Conflict resolved in `LOGBOOK.md`.
 
-Both sides are kept in version order:
+Both sides are kept and ordered chronologically after the existing v0.257 entry:
 
-1. **v0.256 — 267-sec-hat-equip-unlock-check** (from `main`) — hat equip unlock enforcement review  
-2. **v0.257 — 257-level2-spire-ascent** (from this branch) — Spire Ascent Tier 2 review  
+1. **v0.258 — 263-debug-unlimited-health-godmode** (from `main`, 08:25:20) — godmode debug toggle review
+2. **v0.261 — 255-level2-rooms** (from the branch, 09:11:14) — rigid layout mode, training caverns/crystal rescue Tier 2 wiring
 
-Conflict markers are removed. No other `<<<<<<<` / `=======` / `>>>>>>>` markers remain in the worktree (only decorative `===` lines in unrelated harness docs).
-
-The harness can commit and finish the merge.
+All conflict markers are removed. The harness can proceed with the merge commit.
