@@ -6,11 +6,12 @@ const {
   respondCardTrade,
   savePlayerData,
 } = require('../progression');
+const EVENTS = require('../../shared/events.json');
 
 function register(socket, ctx) {
   const { withLobbyPlayer, findSocketByPlayerId } = ctx;
 
-  socket.on('offerCardTrade', (data) => {
+  socket.on(EVENTS.offerCardTrade, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (!data) return;
 
@@ -18,7 +19,7 @@ function register(socket, ctx) {
     const offeredCardId = typeof data.offeredCardId === 'string' ? data.offeredCardId : null;
     const requestedCardId = typeof data.requestedCardId === 'string' ? data.requestedCardId : null;
     if (!targetPlayerId || !offeredCardId || !requestedCardId) {
-      socket.emit('deckError', { reason: 'Invalid trade offer' });
+      socket.emit(EVENTS.deckError, { reason: 'Invalid trade offer' });
       return;
     }
 
@@ -30,11 +31,11 @@ function register(socket, ctx) {
       requestedCardId
     );
     if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
+      socket.emit(EVENTS.deckError, { reason: result.reason });
       return;
     }
 
-    socket.emit('tradeUpdate', {
+    socket.emit(EVENTS.tradeUpdate, {
       tradeId: result.tradeId,
       status: 'offered',
       targetPlayerId,
@@ -44,7 +45,7 @@ function register(socket, ctx) {
 
     const targetSocket = findSocketByPlayerId(targetPlayerId);
     if (targetSocket) {
-      targetSocket.emit('tradeOffer', {
+      targetSocket.emit(EVENTS.tradeOffer, {
         tradeId: result.tradeId,
         fromPlayerId: socket.playerId,
         fromUsername: player.username || socket.playerId,
@@ -55,14 +56,14 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('respondCardTrade', (data) => {
+  socket.on(EVENTS.respondCardTrade, (data) => {
     withLobbyPlayer(socket, { requirePhase: 'lobby' }, (state, lobby, player) => {
     if (!data) return;
 
     const tradeId = typeof data.tradeId === 'string' ? data.tradeId : null;
     const accepted = !!data.accepted;
     if (!tradeId) {
-      socket.emit('deckError', { reason: 'Missing tradeId' });
+      socket.emit(EVENTS.deckError, { reason: 'Missing tradeId' });
       return;
     }
 
@@ -70,13 +71,13 @@ function register(socket, ctx) {
     const offererId = trade ? trade.fromPlayerId : null;
     const result = respondCardTrade(state.pendingTrades, socket.playerId, tradeId, accepted);
     if (!result.ok) {
-      socket.emit('deckError', { reason: result.reason });
+      socket.emit(EVENTS.deckError, { reason: result.reason });
       return;
     }
 
     const notifyTradeResolved = (playerId, payload) => {
       const targetSocket = findSocketByPlayerId(playerId);
-      if (targetSocket) targetSocket.emit('tradeUpdate', payload);
+      if (targetSocket) targetSocket.emit(EVENTS.tradeUpdate, payload);
     };
 
     if (!result.accepted) {
@@ -101,11 +102,11 @@ function register(socket, ctx) {
 
     const offererSocket = findSocketByPlayerId(result.offererId);
     if (offererSocket) {
-      offererSocket.emit('cardInventoryUpdate', inventoryPayload(offerer));
+      offererSocket.emit(EVENTS.cardInventoryUpdate, inventoryPayload(offerer));
     }
     const responderSocket = findSocketByPlayerId(result.responderId);
     if (responderSocket) {
-      responderSocket.emit('cardInventoryUpdate', inventoryPayload(responder));
+      responderSocket.emit(EVENTS.cardInventoryUpdate, inventoryPayload(responder));
     }
 
     savePlayerData(result.offererId);

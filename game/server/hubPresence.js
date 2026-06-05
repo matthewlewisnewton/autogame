@@ -1,3 +1,4 @@
+const EVENTS = require('../shared/events.json');
 const { backfillCosmetic } = require('./cosmetic');
 
 /** Matches {@link import('./lobbies').PHASES.LOBBY} — inlined to avoid a circular require with lobbies.js. */
@@ -97,7 +98,7 @@ function emitHubPresenceUpdate(io, lobby, opts = {}) {
 
   const room = io.to(lobby.id);
   const target = opts.excludeSocketId ? room.except(opts.excludeSocketId) : room;
-  target.emit('hubPresenceUpdate', payload);
+  target.emit(EVENTS.hubPresenceUpdate, payload);
   lobby._lastHubPresenceEmitRevision = lobby.hubPresence.revision;
 }
 

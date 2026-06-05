@@ -1,6 +1,7 @@
 // ── Run Socket Handlers ──
 // Registers run-lifecycle and playing-phase socket.on handlers extracted from lobbyHandlers.js.
 
+const EVENTS = require('../../shared/events.json');
 const { LOOT_PICKUP_RADIUS } = require('../config');
 const { isPlayingPhase, isLobbyPhase } = require('../lobbies');
 const {
@@ -23,10 +24,10 @@ function register(socket, ctx) {
     io,
   } = ctx;
 
-  socket.on('returnToLobby', () => {
+  socket.on(EVENTS.returnToLobby, () => {
     withLobbyFromSocket(socket, (state) => {
     if (state.run && state.run.status === 'playing') {
-      socket.emit('runError', { reason: 'Run still in progress' });
+      socket.emit(EVENTS.runError, { reason: 'Run still in progress' });
       return;
     }
 
@@ -36,37 +37,37 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('giveUp', () => {
+  socket.on(EVENTS.giveUp, () => {
     withLobbyFromSocket(socket, (state) => {
       try {
         if (!isPlayingPhase(state) || !state.run || state.run.status === 'suspended') {
-          socket.emit('runError', { reason: 'No active run' });
+          socket.emit(EVENTS.runError, { reason: 'No active run' });
           return;
         }
         const result = giveUpRun(state);
         if (!result.ok) {
-          socket.emit('runError', { reason: result.reason || 'Cannot give up' });
+          socket.emit(EVENTS.runError, { reason: result.reason || 'Cannot give up' });
           return;
         }
-        socket.emit('runAbandoned');
+        socket.emit(EVENTS.runAbandoned);
       } catch (err) {
         console.error('[giveUp] failed:', err);
-        socket.emit('runError', { reason: 'Give up failed' });
+        socket.emit(EVENTS.runError, { reason: 'Give up failed' });
       }
     });
   });
 
-  socket.on('abandonRun', () => {
+  socket.on(EVENTS.abandonRun, () => {
     withLobbyFromSocket(socket, (state) => {
       if (!state.suspendedCheckpoint) {
-        socket.emit('runError', { reason: 'No suspended expedition' });
+        socket.emit(EVENTS.runError, { reason: 'No suspended expedition' });
         return;
       }
       abandonSuspendedRun(state);
     });
   });
 
-  socket.on('claimCardReward', (data) => {
+  socket.on(EVENTS.claimCardReward, (data) => {
     withLobbyFromSocket(socket, (state) => {
     const player = state.players[socket.playerId];
     if (!player) return;
@@ -77,7 +78,7 @@ function register(socket, ctx) {
     if (!result.ok) return;
 
     savePlayerData(socket.playerId);
-    socket.emit('cardRewardClaimed', {
+    socket.emit(EVENTS.cardRewardClaimed, {
       cardId: result.cardId,
       ownedCards: result.ownedCards,
       inventory: result.inventory,
@@ -85,7 +86,7 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('move', (data) => {
+  socket.on(EVENTS.move, (data) => {
     withLobbyFromSocket(socket, (state) => {
     if (!isPlayingPhase(state) && !isLobbyPhase(state)) return;
 
@@ -136,13 +137,13 @@ function register(socket, ctx) {
     });
   });
 
-  socket.on('useCard', (data) => {
+  socket.on(EVENTS.useCard, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
       cardEffects.handleUseCard(socket, state, lobby, data);
     });
   });
 
-  socket.on('discardCard', (data) => {
+  socket.on(EVENTS.discardCard, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!isPlayingPhase(state)) return;
     if (!state.run || state.run.status !== 'playing') return;
@@ -153,15 +154,15 @@ function register(socket, ctx) {
 
     const result = discardCardFromHand(player, data.slotIndex, data.cardId);
     if (!result.valid) {
-      socket.emit('cardError', { reason: result.reason });
+      socket.emit(EVENTS.cardError, { reason: result.reason });
       return;
     }
 
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
     });
   });
 
-  socket.on('lootPickup', (data) => {
+  socket.on(EVENTS.lootPickup, (data) => {
     withLobbyFromSocket(socket, (state, lobby) => {
     if (!data || !data.lootId) return;
 

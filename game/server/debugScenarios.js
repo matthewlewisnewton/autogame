@@ -6,6 +6,7 @@
 // original handler exactly.
 //
 // ── Circular-dependency resolution ──
+const EVENTS = require('../shared/events.json');
 // Like simulation.js / cardEffects.js, this module must NOT require('./index')
 // (circular). Plain helpers come from the leaf modules
 // (dungeon/quests/config/simulation/progression/users/cosmetic) via direct
@@ -74,7 +75,7 @@ function emitLobbyQuestUpdate(lobby, state, extraFields = {}) {
     emitQuestPayloadToLobby(lobby, { extraFields });
     return;
   }
-  io.to(lobby.id).emit('questUpdate', {
+  io.to(lobby.id).emit(EVENTS.questUpdate, {
     ...buildQuestUpdatePayload(state),
     ...extraFields,
   });
@@ -188,7 +189,7 @@ function applyDebugScenario(socket, name) {
       }
       // Sync the modified inventory/deck to the client so __AUTOGAME_HARNESS_STATE__
       // reflects the new skeleton_knight instance for the smoke test.
-      socket.emit('deckUpdate', {
+      socket.emit(EVENTS.deckUpdate, {
         selectedDeck: player.selectedDeck,
         inventory: player.inventory,
         ownedCards: player.ownedCards,
@@ -975,7 +976,7 @@ function applyDebugScenario(socket, name) {
     syncRunObjectiveToEnemies();
 
     broadcastLobbyUpdate(lobby);
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
     return { ok: true, scenario: name };
   });
 }

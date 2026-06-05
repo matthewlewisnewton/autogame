@@ -1,10 +1,11 @@
 // ── Key-Item Dispatch Module ──
 // Houses the per-`keyItemId` branches and shared guard checks that previously
-// lived inline inside the socket.on('useKeyItem') closure in index.js. This is
+// lived inline inside the socket.on(EVENTS.useKeyItem) closure in index.js. This is
 // a behavior-preserving extraction: guard order, branch evaluation order, and
 // all emitted payload shapes match the original handler exactly.
 //
 // ── Circular-dependency resolution ──
+const EVENTS = require('../shared/events.json');
 // Like simulation.js / cardEffects.js, this module must NOT require('./index')
 // (circular). Plain helpers come from the leaf modules (config / simulation /
 // dungeon / progression) via direct require; the one index.js-local handle the
@@ -47,35 +48,35 @@ function setCallbacks(deps) {
   io = deps.io;
 }
 
-// Dispatch a useKeyItem event. Called from socket.on('useKeyItem') inside the
+// Dispatch a useKeyItem event. Called from socket.on(EVENTS.useKeyItem) inside the
 // active lobby context (gameState already pointed at lobby.state by
 // withLobbyContext).
 function handleUseKeyItem(socket, state, lobby, data) {
     if (!isPlayingPhase(state)) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'not_in_dungeon' });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'not_in_dungeon' });
       return;
     }
 
     const player = state.players[socket.playerId];
     if (!player) return;
     if (player.dead) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'dead' });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'dead' });
       return;
     }
     if (player.extracted) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'extracted' });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'extracted' });
       return;
     }
 
     const keyItemId = data && typeof data.keyItemId === 'string' ? data.keyItemId : null;
     if (!keyItemId) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'missing_key_item_id' });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'missing_key_item_id' });
       return;
     }
 
     const def = getKeyItemDef(keyItemId);
     if (!def) {
-      socket.emit('keyItemUsed', { ok: false, reason: 'unknown_item' });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'unknown_item' });
       return;
     }
 
@@ -84,13 +85,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
     const cooldownUntil = player.keyItemCooldownUntil || 0;
     if (now < cooldownUntil) {
       const remainingMs = cooldownUntil - now;
-      socket.emit('keyItemUsed', { ok: false, reason: 'on_cooldown', remainingMs });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'on_cooldown', remainingMs });
       return;
     }
 
     // Only dodge_roll, summon_recall, field_medic_kit, guard_block, flare_beacon, loot_magnet, overclock, phase_step, barrier_dome, purge_charm, echo_strike, rally_cry, smoke_bomb, and ground_anchor are implemented; all other key items return not_implemented.
     if (keyItemId !== 'dodge_roll' && keyItemId !== 'summon_recall' && keyItemId !== 'field_medic_kit' && keyItemId !== 'guard_block' && keyItemId !== 'flare_beacon' && keyItemId !== 'loot_magnet' && keyItemId !== 'overclock' && keyItemId !== 'phase_step' && keyItemId !== 'barrier_dome' && keyItemId !== 'purge_charm' && keyItemId !== 'echo_strike' && keyItemId !== 'rally_cry' && keyItemId !== 'smoke_bomb' && keyItemId !== 'ground_anchor') {
-      socket.emit('keyItemUsed', { ok: false, reason: 'not_implemented' });
+      socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'not_implemented' });
       return;
     }
 
@@ -116,14 +117,14 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 7000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
-      io.to(lobby.id).emit('keyItemHealPulse', {
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
+      io.to(lobby.id).emit(EVENTS.keyItemHealPulse, {
         playerId: socket.playerId,
         x: casterX,
         z: casterZ,
         healRadius,
       });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -135,8 +136,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 3500);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, blockingUntil: player.blockingUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -153,8 +154,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 14000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, barrierDomeUntil: player.barrierDomeUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -172,8 +173,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 8000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, smokeBombUntil: player.smokeBombUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -190,13 +191,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
       if (player.debuffs.length > 0) {
         const removed = player.debuffs.shift();
         const cleared = removed && removed.type != null ? removed.type : null;
-        socket.emit('keyItemUsed', { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
+        socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, cleared, cooldownUntil: player.keyItemCooldownUntil });
       } else {
         // No debuffs to clear — fall back to a one-hit absorb shield.
         player.shieldHitsRemaining = 1;
-        socket.emit('keyItemUsed', { ok: true, keyItemId, shielded: true, cooldownUntil: player.keyItemCooldownUntil });
+        socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, shielded: true, cooldownUntil: player.keyItemCooldownUntil });
       }
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -209,8 +210,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, echoStrikePending: true, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, echoStrikePending: true, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -239,8 +240,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, rallyUntil, cooldownUntil: player.keyItemCooldownUntil, affected });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -256,8 +257,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + cooldownMs;
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, anchorUntil: player.anchorUntil, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, anchorUntil: player.anchorUntil, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -280,8 +281,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, revealed, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -343,8 +344,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.persistenceDirty = true;
       savePlayerData(socket.playerId);
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, pulled, collected, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -352,7 +353,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       // --- summon_recall: teleport all owned minions to ring positions around player ---
       const myMinions = state.minions.filter(m => m.ownerId === socket.playerId);
       if (myMinions.length === 0) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'no_minions' });
+        socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'no_minions' });
         return; // No cooldown burn on soft-fail
       }
 
@@ -427,8 +428,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 10000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, recalled: myMinions.length });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -439,8 +440,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
       player.keyItemCooldownUntil = now + (def.cooldownMs || 13000);
       player.persistenceDirty = true;
 
-      socket.emit('keyItemUsed', { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, charges: player.overclockChargesRemaining, cooldownUntil: player.keyItemCooldownUntil });
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -470,13 +471,13 @@ function handleUseKeyItem(socket, state, lobby, data) {
       }
 
       if (!ally) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'no_ally' });
+        socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'no_ally' });
         return; // No cooldown burn on soft-fail
       }
 
       const dist = Math.hypot(ally.x - player.x, ally.z - player.z);
       if (dist > range) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'out_of_range' });
+        socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'out_of_range' });
         return; // No cooldown burn on soft-fail
       }
 
@@ -488,7 +489,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         isEntityPositionBlocked(player.x, player.z, PLAYER_RADIUS) ||
         isEntityPositionBlocked(ally.x, ally.z, PLAYER_RADIUS)
       ) {
-        socket.emit('keyItemUsed', { ok: false, reason: 'invalid_position' });
+        socket.emit(EVENTS.keyItemUsed, { ok: false, reason: 'invalid_position' });
         return; // No cooldown burn on soft-fail
       }
 
@@ -507,7 +508,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
       ally.persistenceDirty = true;
       player.keyItemCooldownUntil = now + (def.cooldownMs || 12000);
 
-      socket.emit('keyItemUsed', {
+      socket.emit(EVENTS.keyItemUsed, {
         ok: true,
         keyItemId,
         targetPlayerId: ally.id,
@@ -516,7 +517,7 @@ function handleUseKeyItem(socket, state, lobby, data) {
         z: player.z,
         cooldownUntil: player.keyItemCooldownUntil,
       });
-      io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+      io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
       return;
     }
 
@@ -555,8 +556,8 @@ function handleUseKeyItem(socket, state, lobby, data) {
     player.keyItemCooldownUntil = now + (def.cooldownMs || 800);
     player.persistenceDirty = true;
 
-    socket.emit('keyItemUsed', { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
-    io.to(lobby.id).emit('stateUpdate', stateSnapshot());
+    socket.emit(EVENTS.keyItemUsed, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, invulnerableUntil: player.invulnerableUntil, x: player.x, y: player.y, z: player.z });
+    io.to(lobby.id).emit(EVENTS.stateUpdate, stateSnapshot());
 }
 
 module.exports = {

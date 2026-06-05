@@ -2,6 +2,7 @@
 // Player persistence, rewards, deck/hand management, run state, spawning, snapshots.
 // Imported by index.js; re-exported from index.js for test compatibility.
 
+const EVENTS = require('../shared/events.json');
 const crypto = require('crypto');
 const {
   DECK_MIN_SIZE,
@@ -147,7 +148,7 @@ function emitPlayerDeckUpdate(playerId, extra = {}) {
   if (!socketId) return;
   const io = _getIo();
   if (!io || typeof io.to !== 'function') return;
-  io.to(socketId).emit('deckUpdate', buildPlayerDeckUpdatePayload(player, extra));
+  io.to(socketId).emit(EVENTS.deckUpdate, buildPlayerDeckUpdatePayload(player, extra));
 }
 
 function maybeEmitPlayerDeckUpdate(player) {
@@ -2671,8 +2672,8 @@ function suspendRunToLobby() {
   console.log(`[run] suspended: ${summary?.questName || _gameState.suspendedCheckpoint?.run?.questName || 'unknown'}`);
   const io = getIoTarget();
   if (io) {
-    io.emit('runSuspended', summary);
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(EVENTS.runSuspended, summary);
+    io.emit(EVENTS.stateUpdate, stateSnapshot());
   }
   _broadcastLobbyUpdate();
 }
@@ -2716,8 +2717,8 @@ function tryEnterTelepipe(playerId) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('playerExtracted', { playerId });
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(EVENTS.playerExtracted, { playerId });
+    io.emit(EVENTS.stateUpdate, stateSnapshot());
   }
 
   maybeSuspendRun();
@@ -2768,7 +2769,7 @@ function abandonSuspendedRun(state = _gameState) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(EVENTS.stateUpdate, stateSnapshot());
   }
   _broadcastLobbyUpdate();
   return { ok: true };
@@ -2829,7 +2830,7 @@ function checkRunTerminalState() {
   const summary = buildRunSummary(status);
   const io = getIoTarget();
   if (io) {
-    io.emit(status === 'victory' ? 'runComplete' : 'runFailed', summary);
+    io.emit(status === 'victory' ? EVENTS.runComplete : EVENTS.runFailed, summary);
   }
 }
 
@@ -2989,7 +2990,7 @@ function returnPlayersToLobby(state = _gameState) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(EVENTS.stateUpdate, stateSnapshot());
   }
   _broadcastLobbyUpdate();
 }
@@ -3052,7 +3053,7 @@ function giveUpRun(state = _gameState) {
 
   const io = getIoTarget();
   if (io) {
-    io.emit('stateUpdate', stateSnapshot());
+    io.emit(EVENTS.stateUpdate, stateSnapshot());
   }
   _broadcastLobbyUpdate();
   return { ok: true };
@@ -3094,8 +3095,8 @@ function checkAllReadyInner() {
       restoreRunCheckpoint();
       const io = getIoTarget();
       if (io) {
-        io.emit('startGame');
-        io.emit('stateUpdate', stateSnapshot());
+        io.emit(EVENTS.startGame);
+        io.emit(EVENTS.stateUpdate, stateSnapshot());
       }
       return;
     }
@@ -3117,8 +3118,8 @@ function checkAllReadyInner() {
     startDungeonRun();
     const io = getIoTarget();
     if (io) {
-      io.emit('startGame');
-      io.emit('stateUpdate', stateSnapshot());
+      io.emit(EVENTS.startGame);
+      io.emit(EVENTS.stateUpdate, stateSnapshot());
     }
   }
 }
