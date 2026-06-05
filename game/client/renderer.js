@@ -29,7 +29,7 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } from './collision.js';
+import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY, findBoothInRange } from './collision.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -137,6 +137,12 @@ let lockOnReleaseLookAt = null;
 let gameStateRef = null; // reference to gameState object set by main.js
 let myIdRef = null; // current player id string
 let socketRef = null; // socket instance for emitting 'move'
+
+// ── Booth proximity (hub lobby) ──
+// The booth id the local player currently stands within, recomputed each frame
+// from the hub layout's anchors. `null` when out of range or not in the hub.
+let currentBoothInRange = null;
+let boothInRangeListener = null; // edge-triggered: fires when the in-range booth changes
 
 // ── Input state ──
 let inputListenersAdded = false;
@@ -1090,6 +1096,45 @@ function tryEmitLootPickup(loot, now) {
 	if (now - last < LOOT_PICKUP_RETRY_MS) return;
 	lootPickupAttempts.set(loot.id, now);
 	socketRef.emit('lootPickup', { lootId: loot.id });
+}
+
+/**
+ * Recompute the booth zone the local player stands in. Runs each animate frame.
+ * Only the hub layout carries `boothAnchors`, so this is `null` in dungeons.
+ * Fires the registered listener (if any) on enter/exit transitions so main.js
+ * can show/hide the prompt without polling.
+ */
+function updateBoothInRange() {
+	let next = null;
+	const gs = gameStateRef;
+	if (gs && gs.layout && gs.layout.profile === 'hub' && gs.layout.boothAnchors) {
+		next = findBoothInRange(gs.layout.boothAnchors, myX, myZ);
+	}
+	if (next !== currentBoothInRange) {
+		currentBoothInRange = next;
+		boothInRangeListener?.(next);
+	}
+}
+
+/** @returns {string|null} booth id the local player currently stands within */
+export function getCurrentBoothInRange() {
+	return currentBoothInRange;
+}
+
+/** Register a callback fired with the new booth id (or null) on enter/exit. */
+export function setBoothInRangeListener(cb) {
+	boothInRangeListener = cb;
+}
+
+/**
+ * Emit `boothInteract` for the booth the local player currently stands in.
+ * No-op (returns null) when no booth is in range.
+ * @returns {string|null} the booth id emitted, or null when none in range
+ */
+export function emitBoothInteract() {
+	if (!socketRef || !currentBoothInRange) return null;
+	socketRef.emit('boothInteract', { boothId: currentBoothInRange });
+	return currentBoothInRange;
 }
 
 function findClosestLootInRange(lootList, x, z, radius) {
@@ -4063,6 +4108,10 @@ export function animate(timestamp) {
 	updateMyPlayer(delta);
 
 	pollInput();
+
+	// Recompute the hub booth zone each frame so the prompt tracks the local
+	// player's predicted position (not just throttled server stateUpdates).
+	updateBoothInRange();
 
 	const gs = gameStateRef;
 	const myId = myIdRef;

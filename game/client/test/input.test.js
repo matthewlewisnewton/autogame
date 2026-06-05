@@ -38,7 +38,7 @@ describe('input.js', () => {
 	it('getReservedKeys lists fixed keyboard bindings and excludes useKeyItem', () => {
 		const reserved = getReservedKeys();
 		expect(reserved).toEqual(
-			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z']),
+			new Set(['w', 'a', 's', 'd', '1', '2', '3', '4', '5', '6', 'v', 'z', 'f']),
 		);
 		expect(reserved.has('e')).toBe(false);
 	});
