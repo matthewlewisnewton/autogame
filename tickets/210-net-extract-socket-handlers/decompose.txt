@@ -1,0 +1,17 @@
+Sub-tickets for **210-net-extract-socket-handlers** (5 slices, dependency order, all `code` verification):
+
+1. **01** — Scaffold `socketHandlers/` + `ctx` + lifecycle (`heartbeat`, `debugScenario`, `disconnect`)
+2. **02** — `notifyPlayerRemoved` dedup + remove dead `listKeyItems` / `buyShopCard` socket handlers + test updates
+3. **03** — Lobby browser + squad prep (`listLobbies`, `create/join/leaveLobby`, `selectQuest`, `playerReady`)
+4. **04** — Deck, trade, key-item modules (11 handlers)
+5. **05** — Run/dungeon module + slim connection closure to session/`registerAll`/`init` only
+
+No prior `subtickets/` folder existed, so nothing was deleted or skipped.
+
+**Created sub-ticket folder paths:**
+
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/01-scaffold-socket-handler-ctx/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/02-notify-player-removed-prune-dead-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/03-extract-lobby-socket-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/04-extract-deck-trade-keyitem-handlers/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/210-net-extract-socket-handlers/tickets/210-net-extract-socket-handlers/subtickets/05-extract-run-socket-handlers/ticket.md`
