@@ -313,28 +313,21 @@ describe('initAuth() dev fallback', () => {
 	const origNodeEnv = process.env.NODE_ENV;
 	const origJwtSecret = process.env.JWT_SECRET;
 	const origAllowDevAuth = process.env.ALLOW_DEV_AUTH;
-	const origPort = process.env.PORT;
 
 	beforeEach(() => {
 		resetAuthSecret();
 		delete process.env.JWT_SECRET;
 		delete process.env.ALLOW_DEV_AUTH;
-		delete process.env.PORT;
 	});
 
 	afterEach(() => {
 		process.env.NODE_ENV = origNodeEnv;
 		process.env.JWT_SECRET = origJwtSecret;
 		process.env.ALLOW_DEV_AUTH = origAllowDevAuth;
-		if (origPort === undefined) {
-			delete process.env.PORT;
-		} else {
-			process.env.PORT = origPort;
-		}
 		resetAuthSecret();
 	});
 
-	it('throws in dev mode without ALLOW_DEV_AUTH or PORT', () => {
+	it('throws in dev mode without ALLOW_DEV_AUTH', () => {
 		process.env.NODE_ENV = 'development';
 		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
 	});
@@ -344,19 +337,6 @@ describe('initAuth() dev fallback', () => {
 		process.env.ALLOW_DEV_AUTH = '1';
 		const secret = initAuth();
 		expect(secret).toBe('dev-secret');
-	});
-
-	it('uses dev fallback secret when PORT is set (harness signal)', () => {
-		process.env.NODE_ENV = 'development';
-		process.env.PORT = '3000';
-		const secret = initAuth();
-		expect(secret).toBe('dev-secret');
-	});
-
-	it('PORT fallback does NOT fire in production', () => {
-		process.env.NODE_ENV = 'production';
-		process.env.PORT = '3000';
-		expect(() => initAuth()).toThrow('Missing JWT_SECRET');
 	});
 
 	it('throws when NODE_ENV is production and JWT_SECRET is missing', () => {
@@ -381,14 +361,6 @@ describe('initAuth() dev fallback', () => {
 		process.env.NODE_ENV = 'development';
 		process.env.JWT_SECRET = 'custom-secret';
 		process.env.ALLOW_DEV_AUTH = '1';
-		const secret = initAuth();
-		expect(secret).toBe('custom-secret');
-	});
-
-	it('JWT_SECRET env value takes precedence over PORT fallback', () => {
-		process.env.NODE_ENV = 'development';
-		process.env.JWT_SECRET = 'custom-secret';
-		process.env.PORT = '3000';
 		const secret = initAuth();
 		expect(secret).toBe('custom-secret');
 	});

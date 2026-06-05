@@ -37,10 +37,9 @@ function isRateLimited(req, action, username) {
  * accepting connections. Reads `JWT_SECRET` from `process.env`; falls back
  * to a fixed test secret when `NODE_ENV === 'test'`; falls back to a
  * dev-only secret when `NODE_ENV` is neither `'test'` nor `'production'`
- * AND `ALLOW_DEV_AUTH=1` is explicitly set; also falls back to dev secret
- * when `PORT` is set (harness-controlled environment signal); throws when
+ * AND `ALLOW_DEV_AUTH=1` is explicitly set; throws when
  * `NODE_ENV === 'production'` and no secret is set; also throws in dev mode
- * unless `ALLOW_DEV_AUTH=1` or `PORT` is set.
+ * unless `ALLOW_DEV_AUTH=1`.
  *
  * @returns {string} The resolved secret.
  */
@@ -69,23 +68,6 @@ function initAuth() {
 	if (process.env.ALLOW_DEV_AUTH === '1') {
 		console.warn(
 			'[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). ' +
-			'Do not use this in production. Set JWT_SECRET to a cryptographically random value.'
-		);
-		JWT_SECRET = 'dev-secret';
-		return JWT_SECRET;
-	}
-
-	// Harness-controlled fallback: the test harness always sets PORT when
-	// spawning the server (harness/steps/game.py).  If PORT is present but
-	// ALLOW_DEV_AUTH wasn't propagated (e.g. stale supervisor module cache),
-	// treat the PORT signal as implicit harness consent and use the dev secret
-	// so the capture run can proceed.  This is a narrow bypass — it only fires
-	// when PORT is explicitly set (the harness does `PORT: str(ports.game_server)`),
-	// not for normal dev usage which relies on the server default.
-	if (process.env.PORT) {
-		console.warn(
-			'[auth] JWT_SECRET not set — using dev fallback secret (PORT=' +
-			process.env.PORT + '; harness-controlled environment). ' +
 			'Do not use this in production. Set JWT_SECRET to a cryptographically random value.'
 		);
 		JWT_SECRET = 'dev-secret';
