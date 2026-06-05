@@ -428,6 +428,22 @@ function unlockQuestTier(accountId, questId, tier) {
 }
 
 /**
+ * Return an array of all in-memory user records, one per account. Each entry is
+ * a shallow copy with `passwordHash` stripped so callers cannot leak the hash.
+ * The underlying records are never mutated.
+ *
+ * @returns {object[]}
+ */
+function getAllUsers() {
+	const out = [];
+	for (const record of users.values()) {
+		const { passwordHash, ...safe } = record;
+		out.push(safe);
+	}
+	return out;
+}
+
+/**
  * Clear all users from the in-memory store (test-only).
  */
 function clearUsers() {
@@ -470,6 +486,7 @@ module.exports = {
 	isQuestTierUnlocked,
 	unlockQuestTier,
 	normalizeEmail,
+	getAllUsers,
 	clearUsers,
 	loadUsers,
 	saveUsers,
