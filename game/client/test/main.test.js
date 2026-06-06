@@ -2293,8 +2293,8 @@ describe('createEnemyMesh()', () => {
 
 		const mesh = window.createEnemyMesh('miniboss');
 		expect(mesh).toBeDefined();
-		expect(mesh.geometry.parameters.radius).toBe(0.8);
-		expect(mesh.geometry.parameters.height).toBe(1.8);
+		expect(mesh.geometry.parameters.radius).toBe(1.0);
+		expect(mesh.geometry.parameters.height).toBe(2.2);
 		expect(mesh.material.color.getHex()).toBe(0x8800cc);
 		expect(mesh._origEmissive).toBe(0x6600aa);
 		expect(mesh._origEmissiveIntensity).toBe(0.3);
@@ -2358,7 +2358,7 @@ describe('enemyMeshHalfHeight()', () => {
 
 		expect(window.enemyMeshHalfHeight('grunt')).toBe(0.5);
 		expect(window.enemyMeshHalfHeight('skirmisher')).toBe(0.3);
-		expect(window.enemyMeshHalfHeight('miniboss')).toBe(0.9);
+		expect(window.enemyMeshHalfHeight('miniboss')).toBe(1.1);
 		expect(window.enemyMeshHalfHeight('spawner')).toBe(0.6);
 	});
 

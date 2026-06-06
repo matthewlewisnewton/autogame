@@ -12,10 +12,10 @@ describe('getRegistryTargetFootprint()', () => {
 	it('uses max(height, diameter) for cone enemies', () => {
 		expect(getRegistryTargetFootprint('grunt')).toEqual({ targetHeight: 1 });
 		expect(getRegistryTargetFootprint('skirmisher')).toEqual({ targetHeight: 0.6 });
-		expect(getRegistryTargetFootprint('miniboss')).toEqual({ targetHeight: 1.8 });
-		expect(getRegistryTargetFootprint('annex_overseer')).toEqual({ targetHeight: 2 });
-		expect(getRegistryTargetFootprint('arena_champion')).toEqual({ targetHeight: 2.8 });
-		expect(getRegistryTargetFootprint('spire_warden')).toEqual({ targetHeight: 2 });
+		expect(getRegistryTargetFootprint('miniboss')).toEqual({ targetHeight: 2.2 });
+		expect(getRegistryTargetFootprint('annex_overseer')).toEqual({ targetHeight: 2.4 });
+		expect(getRegistryTargetFootprint('arena_champion')).toEqual({ targetHeight: 3.0 });
+		expect(getRegistryTargetFootprint('spire_warden')).toEqual({ targetHeight: 2.4 });
 	});
 
 	it('uses diameter for octahedron enemies', () => {

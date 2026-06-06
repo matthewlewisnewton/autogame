@@ -352,10 +352,10 @@ export function updateSpireAscentAtmosphere(playerY, layout) {
 const ENEMY_GEOMETRY = {
 	grunt:      { type: 'cone', radius: 0.5, height: 1, segments: 8, color: 0xdc2626 },
 	skirmisher: { type: 'cone', radius: 0.3, height: 0.6, segments: 8, color: 0xff6600 },
-	miniboss:   { type: 'cone', radius: 0.8, height: 1.8, segments: 12, color: 0x8800cc, emissive: 0x6600aa, emissiveIntensity: 0.3 },
-	annex_overseer: { type: 'cone', radius: 0.95, height: 2.0, segments: 14, color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.3 },
-	arena_champion: { type: 'cone', radius: 1.2, height: 2.8, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
-	spire_warden: { type: 'cone', radius: 0.9, height: 2.0, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
+	miniboss:   { type: 'cone', radius: 1.0, height: 2.2, segments: 12, color: 0x8800cc, emissive: 0x6600aa, emissiveIntensity: 0.3 },
+	annex_overseer: { type: 'cone', radius: 1.1, height: 2.4, segments: 14, color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.3 },
+	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
+	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 };
 
