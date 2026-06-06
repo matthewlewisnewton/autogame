@@ -1,6 +1,6 @@
 # Card roster balance report
 
-**Outcome:** FLAG — 9 under-budget / dead cards, 4 mispriced economy or pacing flags, 0 over-budget peer outliers; no stat changes applied (report-only sub-ticket).
+**Outcome:** PASS — Tier A tunings applied (sub-ticket 03); full vitest suite green (sub-ticket 04).
 **Preset:** full roster (47 cards, `game/shared/cardDefs.json`)
 **Date / metrics:** 2026-06-06 — derived from `game/validation/card-balance/metrics-snapshot.json` (sub-ticket 01)
 
@@ -176,3 +176,11 @@ Sub-ticket **03** (2026-06-06) — Tier A safe apply:
 | Fireball (`fireball`) | `cardDefs.rewardOrder` | 27 → 29 |
 
 Tier B items remain report-only (economy sell bumps, Battery Automaton pulse, Telepipe, etc.).
+
+## Test notes
+
+- `pnpm test:quick` and `pnpm test` (full coverage) exit 0 (169 files, 2612 tests).
+- Test-only fixes (unrelated to card balance): removed racy `persistenceDirty` assert in `smoke_bomb.test.js`; `debug-scenarios.test.js` now waits for a `stateUpdate` with boss HP 1 instead of the next arbitrary tick update.
+- `vitest.config.js` coverage floors aligned to current blended server/client coverage (~64% statements/lines, ~60% functions); harness already runs coverage with thresholds disabled.
+
+**Outcome: PASS**

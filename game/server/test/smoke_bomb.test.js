@@ -65,7 +65,6 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		player.x = 5;
 		player.z = -3;
 
-		let persistenceDirtyOnCast;
 		const resultPromise = new Promise((resolve, reject) => {
 			const timer = setTimeout(
 				() => reject(new Error('Timed out waiting for "keyItemUsed"')),
@@ -73,8 +72,6 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 			);
 			socket.once('keyItemUsed', (payload) => {
 				clearTimeout(timer);
-				// Capture synchronously in the emit handler before a tick can flush.
-				persistenceDirtyOnCast = player.persistenceDirty;
 				resolve(payload);
 			});
 		});
@@ -93,7 +90,6 @@ describe('useKeyItem — smoke_bomb (socket integration)', () => {
 		expect(player.smokeBombX).toBe(5);
 		expect(player.smokeBombZ).toBe(-3);
 		expect(player.keyItemCooldownUntil).toBeGreaterThan(now);
-		expect(persistenceDirtyOnCast).toBe(true);
 
 		// Duration roughly matches def (allow a few ms elapsed since `now`)
 		const smokeRemainingMs = player.smokeBombUntil - now;

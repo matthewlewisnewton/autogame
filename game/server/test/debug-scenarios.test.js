@@ -692,7 +692,21 @@ describe('debugScenario — training-caverns-tier-2', () => {
 		await tier2Promise;
 
 		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
-		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		const stateUpdatePromise = new Promise((resolve, reject) => {
+			const timer = setTimeout(
+				() => reject(new Error('Timed out waiting for low-HP boss stateUpdate')),
+				15000,
+			);
+			function onUpdate(update) {
+				const overseer = update.enemies?.find((e) => e.type === 'annex_overseer');
+				if (overseer?.hp === 1) {
+					clearTimeout(timer);
+					socket.off('stateUpdate', onUpdate);
+					resolve(update);
+				}
+			}
+			socket.on('stateUpdate', onUpdate);
+		});
 		socket.emit('debugScenario', { name: 'training-caverns-boss-low-hp' });
 		const lowHpResult = await lowHpPromise;
 		const stateUpdate = await stateUpdatePromise;
