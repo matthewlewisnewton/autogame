@@ -17,6 +17,38 @@ const SERVER_PORT_RANGE = [3200, 3299];
 const VITE_PORT_RANGE = [5200, 5299];
 
 const procs = [];
+let activeServerChild = null;
+
+/** @param {string | null | undefined} serverLogPath @param {number} [maxLines] */
+export function getServerLogTail(serverLogPath, maxLines = 40) {
+	if (!serverLogPath || !fs.existsSync(serverLogPath)) return '<missing server.log>';
+	const lines = fs.readFileSync(serverLogPath, 'utf8').split('\n');
+	return lines.slice(-maxLines).join('\n');
+}
+
+/**
+ * Fail fast when the isolated game server exits or stops accepting HTTP.
+ * @param {{ serverUrl?: string, serverChild?: import('child_process').ChildProcess | null, serverLogPath?: string | null }} opts
+ */
+export async function assertGameProcessAlive({ serverUrl, serverChild, serverLogPath } = {}) {
+	const child = serverChild ?? activeServerChild;
+	if (child && child.exitCode !== null) {
+		throw new Error(
+			`Game server process exited (code=${child.exitCode}):\n${getServerLogTail(serverLogPath)}`,
+		);
+	}
+	if (!serverUrl) return;
+	try {
+		const res = await fetch(`${serverUrl}/api/me`, { signal: AbortSignal.timeout(3000) });
+		if (!res.ok) {
+			throw new Error(`HTTP ${res.status}`);
+		}
+	} catch (err) {
+		throw new Error(
+			`Game server unreachable at ${serverUrl} (${err.message}):\n${getServerLogTail(serverLogPath)}`,
+		);
+	}
+}
 
 function tryPort(port) {
 	return new Promise((resolve) => {
@@ -97,6 +129,13 @@ export async function startGame({ serverPort, clientPort, serverLogPath } = {}) 
 			PERSISTENCE_BACKEND: 'memory',
 		},
 	});
+	activeServerChild = serverChild;
+	serverChild.once('exit', (code, sig) => {
+		if (activeServerChild === serverChild) activeServerChild = null;
+		if (code && code !== 0) {
+			console.error(`[server] exited during harness run code=${code} sig=${sig}`);
+		}
+	});
 	serverChild.stdout?.on('data', (d) => {
 		serverLogStream?.write(d);
 	});
@@ -118,11 +157,13 @@ export async function startGame({ serverPort, clientPort, serverLogPath } = {}) 
 		serverPort: resolvedServerPort,
 		clientPort: resolvedClientPort,
 		serverLogPath: serverLogPath ?? null,
+		serverChild,
 	};
 }
 
 /** Tear down every spawned process group and wait for exit. */
 export async function stopGame() {
+	activeServerChild = null;
 	const alive = procs.filter((c) => c && c.exitCode === null && c.signalCode === null);
 	for (const child of alive) killProc(child, 'SIGTERM');
 	await Promise.all(alive.map((child) => new Promise((resolve) => {

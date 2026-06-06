@@ -22,7 +22,7 @@ import {
 import { wireConsoleLog, writeConsoleLog } from './lib/consoleLog.mjs';
 import { renderFindings } from './lib/findings.mjs';
 import { renderHubFindings } from './lib/findingsHub.mjs';
-import { startGame, stopGame } from './lib/gameProcess.mjs';
+import { assertGameProcessAlive, getServerLogTail, startGame, stopGame } from './lib/gameProcess.mjs';
 import { readHarness } from './lib/harnessState.mjs';
 import { writeScreenshot } from './lib/screenshot.mjs';
 import { walkToZone } from './lib/hubMovement.mjs';
@@ -850,12 +850,18 @@ async function main() {
 		}
 
 		if (runsTelepipeReset && page) {
+			await assertGameProcessAlive({
+				serverUrl: game.serverUrl,
+				serverChild: game.serverChild,
+				serverLogPath: game.serverLogPath,
+			});
 			summary.telepipeReset = await runTelepipeResetStep({
 				page,
 				preset,
 				outDirAbs,
 				repoRoot: REPO_ROOT,
 				serverLogPath: game.serverLogPath,
+				gameProcess: game,
 			});
 			if (!runsHubFull) {
 				summary.assertions = {
@@ -899,8 +905,15 @@ async function main() {
 		console.log(JSON.stringify(summary));
 	} catch (err) {
 		summary.ok = false;
-		summary.error = err.message;
-		console.error(`playthrough failed: ${err.message}`);
+		let errorText = err.message;
+		if (game?.serverLogPath) {
+			const tail = getServerLogTail(game.serverLogPath);
+			if (tail && !errorText.includes(tail)) {
+				errorText += `\n\n--- server.log tail ---\n${tail}`;
+			}
+		}
+		summary.error = errorText;
+		console.error(`playthrough failed: ${errorText}`);
 		exitCode = 1;
 		if (runsFull && !summary.assertions) {
 			summary.assertions = runsHubFull

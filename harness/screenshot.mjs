@@ -265,22 +265,35 @@ function hasAuthLobbyBefore(steps, index, player) {
  * auth/lobby setup, and auto-inject the standard prefix.
  * Logs when injection occurs so the capture output documents the fix.
  */
-const HUB_VALIDATE_SUBTICKETS_RE = /281-playthrough-validate-ship-hub\/subtickets/i;
-const HUB_TELEPIPE_ABANDON_VALIDATE_RE = /telepipe-reset|telepipe-abandon|abandon-fresh|abandonSuspendedRun/i;
+const HUB_VALIDATE_281_SUBTICKETS_RE = /281-playthrough-validate-ship-hub\/subtickets/i;
+const HUB_VALIDATE_281_ROUND_RE = /281-playthrough-validate-ship-hub\/round-[^/]+/i;
+const HUB_VALIDATION_HUB_DIR_RE = /(?:^|\/)game\/validation\/hub(?:\/|$)/i;
+const HUB_TELEPIPE_ABANDON_VALIDATE_RE = /telepipe-reset|telepipe-abandon|abandon-fresh|abandonSuspendedRun|telepipe[- ]?up|playthrough-validate-ship-hub/i;
 
 function inferSubticketFolder(outDirAbs) {
   const match = outDirAbs.match(/281-playthrough-validate-ship-hub\/subtickets\/([^/]+)/i);
   return match ? match[1] : '';
 }
 
+function isHubValidate281OutputDir(outDirAbs) {
+  return HUB_VALIDATE_281_SUBTICKETS_RE.test(outDirAbs)
+    || HUB_VALIDATE_281_ROUND_RE.test(outDirAbs)
+    || HUB_VALIDATION_HUB_DIR_RE.test(outDirAbs);
+}
+
 /**
- * Ticket 281 hub telepipe-reset / abandon-fresh validation sub-tickets must NOT
- * use the suspend→resume capture (readyAll after suspend poisons server.log with
- * `[run] checkpoint restored`). Detect by path under …/subtickets/ plus folder
- * name or ticket.md prose referencing the abandon/reset keywords.
+ * Ticket 281 hub telepipe-reset / abandon-fresh validation must NOT use the
+ * suspend→resume capture (readyAll after suspend poisons server.log with
+ * `[run] checkpoint restored`). Matches sub-ticket folders, round-* iter dirs,
+ * and game/validation/hub playthrough output. Round folders infer the parent
+ * ticket.md (telepipe-up / hub validation prose) via inferTicketFile().
  */
 function isHubTelepipeAbandonValidateTicket(ticket, outDirAbs) {
-  if (!HUB_VALIDATE_SUBTICKETS_RE.test(outDirAbs)) return false;
+  if (!isHubValidate281OutputDir(outDirAbs)) return false;
+  if (HUB_VALIDATION_HUB_DIR_RE.test(outDirAbs)) return true;
+  if (HUB_VALIDATE_281_ROUND_RE.test(outDirAbs)) {
+    return HUB_TELEPIPE_ABANDON_VALIDATE_RE.test(ticket);
+  }
   const folderName = inferSubticketFolder(outDirAbs);
   return HUB_TELEPIPE_ABANDON_VALIDATE_RE.test(`${folderName}\n${ticket}`);
 }

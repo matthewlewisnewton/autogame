@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { enableGodmode } from './combat.mjs';
+import { assertGameProcessAlive } from './gameProcess.mjs';
 import { readHarness } from './harnessState.mjs';
 import { createLobby, waitForHubLobby } from './multiPlayer.mjs';
 import { writeScreenshot } from './screenshot.mjs';
@@ -316,11 +317,28 @@ export async function abandonSuspendedRun(page) {
 	});
 }
 
+async function assertServerAlive(gameProcess, serverLogPath) {
+	if (!gameProcess) return;
+	await assertGameProcessAlive({
+		serverUrl: gameProcess.serverUrl,
+		serverChild: gameProcess.serverChild,
+		serverLogPath: serverLogPath ?? gameProcess.serverLogPath ?? null,
+	});
+}
+
 /**
  * @param {import('playwright').Page} page
- * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null }} opts
+ * @param {{ preset: object, outDirAbs: string, repoRoot: string, serverLogPath?: string | null, gameProcess?: object | null }} opts
  */
-export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot, serverLogPath = null }) {
+export async function runTelepipeResetStep({
+	page,
+	preset,
+	outDirAbs,
+	repoRoot,
+	serverLogPath = null,
+	gameProcess = null,
+}) {
+	await assertServerAlive(gameProcess, serverLogPath);
 	await createLobby(page, 'Telepipe Reset');
 	await waitForHubLobby(page);
 	await requestScenario(page, preset.telepipeScenario);
@@ -336,6 +354,7 @@ export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot, 
 	if (!probesMatchDepletion(preSuspend)) {
 		throw new Error(`preSuspend probes failed depletion criteria: ${JSON.stringify(preSuspend)}`);
 	}
+	await assertServerAlive(gameProcess, serverLogPath);
 
 	const beforeScreenshotPath = await writeScreenshot(page, outDirAbs, '07-telepipe-before');
 
@@ -344,6 +363,7 @@ export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot, 
 		: 0;
 
 	await suspendViaTelepipe(page);
+	await assertServerAlive(gameProcess, serverLogPath);
 	const suspendedHarness = await readHarness(page);
 	const suspended = suspendedHarness?.runStatus === 'suspended'
 		|| (suspendedHarness?.phase === 'lobby' && suspendedHarness?.suspendedRunSummary)
@@ -353,8 +373,10 @@ export async function runTelepipeResetStep({ page, preset, outDirAbs, repoRoot, 
 	}
 
 	await abandonSuspendedRun(page);
+	await assertServerAlive(gameProcess, serverLogPath);
 
 	await deployViaLaunchBooth(page, preset.telepipeScenario);
+	await assertServerAlive(gameProcess, serverLogPath);
 
 	const postDeploy = await probeHandAndMs(page);
 	const postHarness = await readHarness(page);
