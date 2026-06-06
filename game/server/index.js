@@ -537,6 +537,7 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'field-medic-spawn',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -722,6 +723,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'field-medic-spawn',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
