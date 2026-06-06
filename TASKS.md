@@ -110,3 +110,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [284-cleanup-playthrough-validate-spire-ascent](tickets/284-cleanup-playthrough-validate-spire-ascent/)
 - [ ] [287-cleanup-playthrough-driver-output-quality-findings-victory-path](tickets/287-cleanup-playthrough-driver-output-quality-findings-victory-path/)
 - [ ] [288-cleanup-distinct-stage-boss-visual-identity](tickets/288-cleanup-distinct-stage-boss-visual-identity/)
+- [ ] [289-cleanup-persist-player-health-and-stones-no-telepipe-reset](tickets/289-cleanup-persist-player-health-and-stones-no-telepipe-reset/)

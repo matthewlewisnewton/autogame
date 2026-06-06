@@ -1,0 +1,23 @@
+{
+  "ok": false,
+  "failure_kind": "capture_failed",
+  "capture_diagnosis": {
+    "detected": [],
+    "client_log_tail": "[vite] Proxying /api and /socket.io \u2192 http://127.0.0.1:3003\n[vite] Game server ready at http://127.0.0.1:3003\n\n  VITE v8.0.13  ready in 643 ms\n\n  \u279c  Local:   http://localhost:5176/\n  \u279c  Network: use --host to expose\n11:31:58 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.",
+    "server_log_tail": "[users] Loaded 8 user record(s) from /home/matt/workspace/.autogame-worktrees/287-persist-player-health-and-stones-no-telepipe-reset/game/data/users.json\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]\n[auth] JWT_SECRET not set \u2014 using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.\n[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/287-persist-player-health-and-stones-no-telepipe-reset/game/data\nServer listening on port 3003\nPlayer connected: socket=eg2wXppDX5tPhr6EAAAB, playerId=ba717130-f67d-44e9-bd27-0d83fd412db4\n[server] Layout for quest \"training_caverns\" tier 1: seed=352369970, profile=crowded, rooms=10\n[loot] spawned id=43368e47-910a-40c8-9d86-2671cd3285d0 value=8\n[telepipe] placed at (-9.0, 27.0) by ba717130-f67d-44e9-bd27-0d83fd412db4\n[telepipe] player ba717130-f67d-44e9-bd27-0d83fd412db4 extracted\n[run] suspended: Initiate Vault\n[run] resumed in place\nPlayer disconnected: eg2wXppDX5tPhr6EAAAB",
+    "port_holders": {
+      "5176": [
+        {
+          "pid": 2529649,
+          "cmdline": "node /home/matt/workspace/.autogame-worktrees/287-persist-player-health-and-stones-no-telepipe-reset/game/client/node_modules/.bin/../vite/bin/vite.js --port 5176 --strictPort"
+        }
+      ],
+      "3003": [
+        {
+          "pid": 2529617,
+          "cmdline": "node game/server/index.js"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,7 @@
+Review complete. I wrote:
+
+`round-2/review.md` with final line `VERDICT: FAIL`  
+`round-2/gaps.md` with the two blocking remediation items  
+`round-2/nits.md` for stale Telepipe docs cleanup
+
+Key blockers: HP/Magic Stones are not durably persisted/restored across saved player reloads, and the latest `coverage.log` has a failing server debug-scenario test.

@@ -1,0 +1,16 @@
+[users] Loaded 3 user record(s) from /home/matt/workspace/.autogame-worktrees/287-persist-player-health-and-stones-no-telepipe-reset/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/287-persist-player-health-and-stones-no-telepipe-reset/game/data
+Server listening on port 3003
+Player connected: socket=fyVnb1Euls5sMAKiAAAB, playerId=33153e7c-4952-4557-aec3-b69c0ca37557
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[loot] spawned id=f55e08a6-c851-4342-a18c-2d380b86635a value=14
+[telepipe] placed at (-9.0, 27.0) by 33153e7c-4952-4557-aec3-b69c0ca37557
+[telepipe] player 33153e7c-4952-4557-aec3-b69c0ca37557 extracted
+[run] suspended: Initiate Vault
+[run] resumed in place
+Player disconnected: fyVnb1Euls5sMAKiAAAB
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

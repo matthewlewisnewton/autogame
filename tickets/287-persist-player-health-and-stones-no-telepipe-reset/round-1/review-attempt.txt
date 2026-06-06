@@ -1,0 +1,19 @@
+Review complete. **VERDICT: FAIL** — but with an important nuance that should steer the next round correctly.
+
+## Summary
+
+**Why it fails:** `metrics.json` has `"ok": false` (`failure_kind: capture_failed`) — there is no green runtime proof, which is an automatic fail.
+
+**The root cause is NOT the game code.** The game:
+- Started and loaded cleanly (no `pageerrors`, no `harness_failure`).
+- **Fully satisfies all four acceptance criteria, with passing unit tests** (1507 tests pass):
+  - AC1 (telepipe-up → redeploy preserves HP + Magic Stones) — `server.test.js:3039`
+  - AC2 (med booth heals; lobby no longer auto-heals) — `server.test.js:3013`
+  - AC3 (no fresh-run-on-redeploy; runId/seed continuity) — verified in code + tests
+  - AC4 (server tests exist and pass)
+
+The capture failed because the **harness fallback capture recipe** (`harness/screenshot.mjs`) is still hard-coded for the *old* checkpoint world — it stashes the objective from `harnessState.suspendedRunSummary`, which this ticket *deliberately removed* (and `server.test.js:4881` enforces its absence). So `assertRunPreserved` throws on a null objective.
+
+**Key steering for the next round (in `gaps.md`):** the single blocking gap is to update the harness capture recipe to the new in-memory-pause contract — and explicitly **not** to re-add `suspendedRunSummary` to game code, which would revert the ticket.
+
+I also filed four nits (`nits.md`): stale `design.md` checkpoint language, stale smoke-test wording/controls, no cross-restart durability of HP/MS in `extractPersistentData`, and an owner-clarification on whether in-dungeon death-respawn should still full-heal given the "med booth only" decision. I downgraded the prior reviewer's persistence/respawn items to nits since the explicit acceptance criteria are met and tested in-session.
