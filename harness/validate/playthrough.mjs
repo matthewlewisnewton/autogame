@@ -2,11 +2,10 @@
 /**
  * Headless Playwright playthrough driver for autogame validation.
  *
- *   node harness/validate/playthrough.mjs [--preset rooms] [--out validation/rooms/] [--steps auth]
+ *   node harness/validate/playthrough.mjs [--preset rooms] [--out validation/rooms/] [--steps auth|hub|deploy]
  *
- * Steps: auth (implemented), hub | boss | full (stubbed for later sub-tickets).
- * Sibling presets for tickets 278–281: add harness/validate/presets/<name>.mjs
- * exporting { questId, questTier, bossType, deployScenario } and pass --preset <name>.
+ * Steps: auth (register/login), hub | deploy (ship hub + character save + tier-2 deploy),
+ * boss | full (stubbed for later sub-tickets).
  */
 import { chromium } from 'playwright';
 import fs from 'fs';
@@ -24,7 +23,8 @@ const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
 };
 
-const STUB_STEPS = new Set(['hub', 'boss', 'full']);
+const STUB_STEPS = new Set(['boss', 'full']);
+const HUB_STEPS = new Set(['hub', 'deploy']);
 
 function parseArgs(argv) {
 	const opts = {
@@ -41,7 +41,7 @@ function parseArgs(argv) {
 		} else if (arg === '--steps' && argv[i + 1]) {
 			opts.steps = argv[++i];
 		} else if (arg === '--help' || arg === '-h') {
-			console.log(`usage: node harness/validate/playthrough.mjs [--preset <name>] [--out <dir>] [--steps auth|hub|boss|full]`);
+			console.log('usage: node harness/validate/playthrough.mjs [--preset <name>] [--out <dir>] [--steps auth|hub|deploy|boss|full]');
 			process.exit(0);
 		} else {
 			throw new Error(`Unknown argument: ${arg}`);
@@ -72,6 +72,11 @@ async function waitForLobbyBrowser(page) {
 	});
 }
 
+async function failWithHarness(page, message) {
+	const harness = await readHarness(page);
+	throw new Error(`${message}: ${JSON.stringify(harness)}`);
+}
+
 async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
 	const username = `playthrough-${Date.now()}`;
 	const password = 'harness-test-password';
@@ -92,15 +97,113 @@ async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
 	};
 }
 
+async function runHubStep({ page, preset, outDirAbs }) {
+	await page.evaluate(() => {
+		const name = document.getElementById('create-lobby-name');
+		if (name) name.value = 'Rooms Validation';
+		document.getElementById('create-lobby-btn')?.click();
+	});
+
+	await page.waitForFunction(() => {
+		const lobby = document.getElementById('lobby');
+		return lobby && !lobby.classList.contains('hidden');
+	}, { timeout: 15000 }).catch(async () => {
+		await failWithHarness(page, '#lobby not visible after create channel');
+	});
+
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h
+			&& h.phase === 'lobby'
+			&& h.hasCanvas === true
+			&& h.layout?.profile === 'hub';
+	}, { timeout: 20000 }).catch(async () => {
+		await failWithHarness(page, 'Ship hub lobby not ready');
+	});
+
+	await page.evaluate(() => {
+		if (typeof window.openCharacterBooth !== 'function') {
+			throw new Error('openCharacterBooth missing');
+		}
+		window.openCharacterBooth();
+	});
+
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h?.characterBoothOpen === true;
+	}, { timeout: 5000 }).catch(async () => {
+		await failWithHarness(page, 'Character booth did not open');
+	});
+
+	await page.click('#character-booth-save-btn');
+
+	await page.waitForFunction(() => {
+		const overlay = document.getElementById('character-booth-overlay');
+		const err = document.getElementById('character-booth-cosmetic-error');
+		const errText = err && !err.hidden ? err.textContent.trim() : '';
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return overlay?.classList.contains('hidden')
+			&& h?.characterBoothOpen === false
+			&& !errText;
+	}, { timeout: 15000 }).catch(async () => {
+		await failWithHarness(page, 'Character booth save did not close cleanly');
+	});
+
+	const hubScreenshot = await writeScreenshot(page, outDirAbs, '01-hub');
+
+	const deployResult = await page.evaluate((scenario) => {
+		if (typeof window.__requestDebugScenarioForTest !== 'function') {
+			return { ok: false, reason: '__requestDebugScenarioForTest missing' };
+		}
+		return window.__requestDebugScenarioForTest(scenario);
+	}, preset.deployScenario);
+
+	if (!deployResult?.ok) {
+		await failWithHarness(page, `Debug scenario ${preset.deployScenario} failed: ${deployResult?.reason || 'unknown'}`);
+	}
+
+	await page.waitForFunction(() => {
+		const h = window.__AUTOGAME_HARNESS_STATE__?.();
+		return h
+			&& h.phase === 'playing'
+			&& h.cardHandVisible === true
+			&& h.objective?.type === 'stage_boss';
+	}, { timeout: 25000 }).catch(async () => {
+		await failWithHarness(page, 'Training Caverns Tier II run did not start');
+	});
+
+	const playingHarness = await readHarness(page);
+	const hasOverseer = Array.isArray(playingHarness?.enemyHp)
+		&& playingHarness.enemyHp.some((enemy) => enemy.type === preset.bossType);
+	if (!hasOverseer) {
+		await failWithHarness(page, `Expected ${preset.bossType} in enemyHp`);
+	}
+	if (playingHarness?.encounter?.phase !== 'dormant') {
+		await failWithHarness(page, 'Expected dormant stage-boss encounter after deploy');
+	}
+
+	const entryScreenshot = await writeScreenshot(page, outDirAbs, '02-level-entry');
+
+	return {
+		hubScreenshot: path.relative(REPO_ROOT, hubScreenshot),
+		entryScreenshot: path.relative(REPO_ROOT, entryScreenshot),
+		deployScenario: preset.deployScenario,
+		deployOk: true,
+		objectiveType: playingHarness?.objective?.type ?? null,
+		encounterPhase: playingHarness?.encounter?.phase ?? null,
+		bossTypes: (playingHarness?.enemyHp || []).map((e) => e.type),
+	};
+}
+
 async function main() {
 	const opts = parseArgs(process.argv);
 	const outDirAbs = path.resolve(REPO_ROOT, opts.out);
 	fs.mkdirSync(outDirAbs, { recursive: true });
 
 	if (STUB_STEPS.has(opts.steps)) {
-		throw new Error(`--steps ${opts.steps} is not implemented yet (sub-tickets 03–05)`);
+		throw new Error(`--steps ${opts.steps} is not implemented yet (sub-tickets 04–05)`);
 	}
-	if (opts.steps !== 'auth') {
+	if (opts.steps !== 'auth' && !HUB_STEPS.has(opts.steps)) {
 		throw new Error(`Unknown --steps value: ${opts.steps}`);
 	}
 
@@ -130,6 +233,10 @@ async function main() {
 			presetConfig: preset,
 			auth: authResult,
 		};
+
+		if (HUB_STEPS.has(opts.steps)) {
+			summary.hub = await runHubStep({ page, preset, outDirAbs });
+		}
 
 		const summaryPath = path.join(outDirAbs, 'run-summary.json');
 		fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));

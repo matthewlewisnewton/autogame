@@ -114,6 +114,7 @@ function finishSuccessfulSave() {
 	form.syncFromAccount(deps.getAccountCosmetic);
 	syncSavedCosmeticToGameState();
 	updateSaveButtonLabel();
+	closeCharacterBooth();
 }
 
 /**

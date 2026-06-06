@@ -4152,6 +4152,7 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 	];
 
 	beforeEach(() => {
+		vi.resetModules();
 		for (const id of requiredIds) {
 			if (!document.getElementById(id)) {
 				const el = (id === 'return-to-lobby-btn')
@@ -4161,6 +4162,10 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 				document.body.appendChild(el);
 			}
 		}
+	});
+
+	afterEach(() => {
+		vi.unstubAllGlobals();
 	});
 
 	it('mirrors run.encounter, player.debugGodmode, and objective.bossDefeated', async () => {
@@ -4220,5 +4225,30 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(noEncounter.encounter).toBeNull();
 		expect(noEncounter.objective.bossDefeated).toBeUndefined();
 		expect(noEncounter.player.debugGodmode).toBe(false);
+	});
+
+	it('reports hub layout.profile while the ship hub is rendered in lobby phase', async () => {
+		const { generateHub, generateLayout } = await import('../../server/dungeon.js');
+		const hubLayout = generateHub(0);
+		const questLayout = generateLayout(42, 'default');
+
+		await import('../main.js');
+
+		window.__setHarnessSceneForTest({
+			hubLayout,
+			currentLayout: questLayout,
+			renderedSceneProfile: 'hub',
+		});
+		window.__setGameState({
+			gamePhase: 'lobby',
+			layout: hubLayout,
+			players: { p1: { x: 0, z: 0, hp: 100, dead: false } },
+			enemies: [],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.phase).toBe('lobby');
+		expect(harness.layout?.profile).toBe('hub');
+		expect(questLayout.profile).not.toBe('hub');
 	});
 });

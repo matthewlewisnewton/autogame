@@ -4347,6 +4347,11 @@ window.___test_scene = undefined;
 window.__playSoundCallLog = () => _playSoundCallLog;
 window.__clearPlaySoundLog = () => { _playSoundCallLog.length = 0; };
 window.__setGameState = (gs, id) => { gameState = gs; myId = id; setGameStateRef(gs); rendererSetMyId(id); };
+window.__setHarnessSceneForTest = (ctx = {}) => {
+	if (ctx.hubLayout !== undefined) hubLayout = ctx.hubLayout;
+	if (ctx.currentLayout !== undefined) currentLayout = ctx.currentLayout;
+	if (ctx.renderedSceneProfile !== undefined) renderedSceneProfile = ctx.renderedSceneProfile;
+};
 
 // Expose renderer mesh maps on window for test compatibility
 window.enemyHealthBars = (() => {
@@ -4479,7 +4484,11 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		suspendedRunSummary: gameState ? gameState.suspendedRunSummary : null,
 		telepipe: gameState ? gameState.telepipe : null,
 		layout: (() => {
-			const layout = currentLayout || (gameState && gameState.layout) || null;
+			// During the lobby phase the renderer shows hubLayout while currentLayout
+			// still holds the selected quest layout from lobbyJoined — report the hub.
+			const layout = (gameState?.gamePhase === 'lobby' && hubLayout && renderedSceneProfile === 'hub')
+				? hubLayout
+				: (currentLayout || (gameState && gameState.layout) || null);
 			if (!layout) return null;
 			const rooms = Array.isArray(layout.rooms) ? layout.rooms : [];
 			const start = rooms.find((r) => r && r.role === 'start') || null;
@@ -4494,6 +4503,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		sceneInitialized: isSceneInitialized(),
 		hasCanvas: !!document.querySelector('canvas'),
 		lobbyVisible,
+		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		resumeBtnUsable,
 		cardHandVisible,
