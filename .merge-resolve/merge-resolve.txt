@@ -1,7 +1,8 @@
-Resolved `LOGBOOK.md` by combining both sides in version order:
+Merge conflict in `LOGBOOK.md` is resolved.
 
-1. **v0.290** — chain-lightning card (from `main`)
-2. **v0.291** — rare medic enemy (from `main`)
-3. **v0.292** — burning/slow mutual exclusion (from this ticket)
+**Resolution:** Both ticket log entries are kept in descending version order (matching the rest of the logbook):
 
-Each entry keeps its own **Remaining gaps** section, matching the structure on both branches. All conflict markers are removed; the harness can finish the merge.
+1. **v0.294 — 297-fireball-card-inflicts-burning** (this ticket) — full fireball card review, including its `## Remaining gaps` section
+2. **v0.293 — 298-vault-wyrm-burning-rebalance** (from `main`) — full Vault Wyrm burning rebalance review, including its `## Remaining gaps` section
+
+All conflict markers are removed. The harness can proceed with the merge commit.

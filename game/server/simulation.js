@@ -1510,6 +1510,12 @@ function applyWyrmBreathTick(minion, cardId, config, breathPhase) {
     config.breathDamage,
     { attackerId: minion.ownerId }
   );
+  if (cardId === 'dungeon_drake' && config.burnDurationMs > 0) {
+    for (const hit of hits) {
+      const enemy = _gameState.enemies.find((e) => e.id === hit.enemyId);
+      if (enemy) applyBurning(enemy, config.burnDurationMs);
+    }
+  }
   queueWyrmBreathCardUsed(minion, cardId, {
     specialEffect: config.specialEffect,
     breathRange: config.breathRange,
@@ -2870,7 +2876,8 @@ function updateMinions() {
           breathRange: minion.breathRange ?? (isAncient ? 10 : 6),
           breathHoldDistance: minion.breathHoldDistance ?? Math.max(2.5, (minion.breathRange ?? (isAncient ? 10 : 6)) * 0.58),
           breathConeAngle: minion.breathConeAngle ?? (isAncient ? (Math.PI / 3) : (Math.PI / 4)),
-          breathDamage: minion.breathDamage ?? (isAncient ? 4 : 3),
+          breathDamage: minion.breathDamage ?? (isAncient ? 4 : 2),
+          burnDurationMs: isAncient ? 0 : (minion.burnDurationMs ?? 0),
           breathDurationMs: minion.breathDurationMs ?? (isAncient ? 2500 : 2000),
           breathTickMs: minion.breathTickMs ?? 500,
           breathIntervalMs: minion.breathIntervalMs ?? (isAncient ? 3000 : 2500),
