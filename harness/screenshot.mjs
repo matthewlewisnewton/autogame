@@ -32,9 +32,10 @@ const probes = [];
 const scenarios = new Set();
 // Track hand state before pressCard so the final probe can document before/after
 const cardPressBefore = new Map(); // player -> { slot, cardIdBefore, cardType, handBefore }
-// Track the pre-suspend enemy baseline and suspended objective across Telepipe steps
-// so the post-resume assertRunPreserved step can verify checkpoint preservation.
-const telepipeRunBaseline = new Map(); // player -> { preSuspendEnemies: [{id,hp,type,spawnedBy}], objective }
+// Track the pre-suspend enemy baseline, live objective, and run id/status across
+// Telepipe steps so the post-resume assertRunPreserved step can verify in-memory
+// pause preservation (suspendRunToLobby → resumeSuspendedRunInPlace).
+const telepipeRunBaseline = new Map(); // player -> { preSuspendEnemies, objective, runId, runStatus }
 
 // Benign headless-Chromium rendering noise - not game bugs. Filtered out so the
 // QA agent only sees real signal.
@@ -329,7 +330,7 @@ function buildSoloTelepipeSuspendThroughProbeSteps() {
       action: 'probe',
       player: 'A',
       stashBaseline: true,
-      description: 'PRE-SUSPEND state: record player x/z, enemyHp count, and layout (profile + seed) before placing the telepipe. Stashes the live enemy set (id -> hp/type/spawnedBy) as the checkpoint baseline, since the suspended lobby clears live enemies.',
+      description: 'PRE-SUSPEND state: record player x/z, enemyHp count, and layout (profile + seed) before placing the telepipe. Stashes the live enemy set (id -> hp/type/spawnedBy) as the pre-suspend baseline, since the suspended lobby clears live enemies.',
     },
     // Place the portal (hand slot key `1`) at the player's feet, then nudge so
     // the server-side proximity check auto-extracts the solo player. A solo
@@ -356,7 +357,7 @@ function buildSoloTelepipeSuspendThroughProbeSteps() {
       action: 'probe',
       player: 'A',
       stashObjective: true,
-      description: 'SUSPENDED state: record runStatus/suspendedRunSummary (questId, questName, objective totalEnemies/defeatedEnemies) after suspendRunToLobby. Expect runStatus === "suspended" or suspendedRunSummary present; abandonRunBtnUsable when sub-ticket 09 lands.',
+      description: 'SUSPENDED state: record runStatus, runId, and live harnessState.objective (type, totalEnemies, defeatedEnemies) after suspendRunToLobby. Expect runStatus === "suspended" and a non-null objective.',
     },
   ];
 }
@@ -519,7 +520,7 @@ function fallbackRecipe() {
     summary = 'Deterministic full-flow smoke capture with world-stage fallback: auth, lobby, ready, movement, then before/after screenshots and probes around the sunken-canyon-stage portal transition (default -> sunken-canyon layout swap).';
   } else if (isHubTelepipeAbandonValidate) {
     // Hub telepipe-reset / abandon-fresh validation: suspend-only — never re-ready
-    // after suspend (no restoreRunCheckpoint, no 03-resumed-dungeon.png).
+    // after suspend (no resumeSuspendedRunInPlace, no 03-resumed-dungeon.png).
     steps = buildSoloTelepipeSuspendThroughProbeSteps();
     summary = 'Deterministic solo Telepipe suspend-only capture for hub abandon/reset validation: auth, solo lobby + deploy, telepipe-ready scenario, place telepipe, solo extract until suspended lobby — stops after 02-suspended-lobby probe with no post-suspend readyAll.';
   } else if (isTelepipeTicket) {
@@ -529,7 +530,7 @@ function fallbackRecipe() {
     // two-player baseSteps, which connect player B and would keep the run active.
     steps = [
       ...buildSoloTelepipeSuspendThroughProbeSteps(),
-      // Re-deploy → restoreRunCheckpoint resumes the suspended run.
+      // Re-deploy → resumeSuspendedRunInPlace resumes the in-memory suspended run.
       { action: 'readyAll' },
       { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
       {
@@ -546,10 +547,10 @@ function fallbackRecipe() {
       {
         action: 'assertRunPreserved',
         player: 'A',
-        description: 'VERIFY preservation: compare the resumed enemy set against the pre-suspend baseline and the stashed suspended objective. Records a `preservation` block (preserved/missing/hpChanged ids, added spawner-add enemies, objective echo) and FAILS the capture on any genuine restore mismatch.',
+        description: 'VERIFY preservation: compare the resumed enemy set against the pre-suspend baseline, stashed objective, and run continuity (same runId, runStatus playing). Records a `preservation` block (preserved/missing/hpChanged ids, added spawner-add enemies, objective echo, runId) and FAILS the capture on any genuine resume mismatch.',
       },
     ];
-    summary = 'Deterministic solo Telepipe suspend/resume capture: auth, solo lobby + deploy, telepipe-ready scenario, then in-dungeon / suspended-lobby / resumed-dungeon screenshots with before/after probes around the suspendRunToLobby → restoreRunCheckpoint transition.';
+    summary = 'Deterministic solo Telepipe suspend/resume capture: auth, solo lobby + deploy, telepipe-ready scenario, then in-dungeon / suspended-lobby / resumed-dungeon screenshots with before/after probes around the suspendRunToLobby → resumeSuspendedRunInPlace in-memory pause transition.';
   } else {
     summary = 'Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.';
   }
@@ -977,23 +978,32 @@ async function executeRecipe(browser, recipe) {
         telepipeRunBaseline.set(player, entry);
       }
       if (step.stashObjective) {
-        const objective = data?.harnessState?.suspendedRunSummary?.objective || null;
+        const hs = data?.harnessState;
+        const objective = hs?.objective || null;
         const entry = telepipeRunBaseline.get(player) || {};
         entry.objective = objective
           ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
           : null;
+        entry.runId = hs?.runId ?? null;
+        entry.runStatus = hs?.runStatus ?? null;
         telepipeRunBaseline.set(player, entry);
       }
     } else if (step.action === 'assertRunPreserved') {
-      // Verify the suspend → resume checkpoint preserved the original enemy set and
-      // objective. Records a `preservation` block into the probes/metrics evidence,
-      // then throws on any genuine restore mismatch (propagating out of executeRecipe
-      // so metrics.ok stays false and process.exit(1) fires).
+      // Verify the suspend → resume in-memory pause preserved the original enemy
+      // set, objective, and run id. Records a `preservation` block into the
+      // probes/metrics evidence, then throws on any genuine resume mismatch
+      // (propagating out of executeRecipe so metrics.ok stays false and
+      // process.exit(1) fires).
       const data = await collectProbe(page);
-      const resumedEnemies = (data?.harnessState?.enemyHp) || [];
+      const hs = data?.harnessState;
+      const resumedEnemies = (hs?.enemyHp) || [];
       const entry = telepipeRunBaseline.get(player) || {};
       const preSuspendEnemies = entry.preSuspendEnemies || [];
       const objective = entry.objective || null;
+      const stashedRunId = entry.runId ?? null;
+      const stashedRunStatus = entry.runStatus ?? null;
+      const resumedRunId = hs?.runId ?? null;
+      const resumedRunStatus = hs?.runStatus ?? null;
 
       const preMap = new Map(preSuspendEnemies.map((e) => [e.id, e]));
       const resumedMap = new Map(resumedEnemies.map((e) => [e.id, {
@@ -1033,6 +1043,9 @@ async function executeRecipe(browser, recipe) {
         objective: objective
           ? { type: objective.type, totalEnemies: objective.totalEnemies, defeatedEnemies: objective.defeatedEnemies }
           : null,
+        runId: stashedRunId,
+        runStatusBeforeSuspend: stashedRunStatus,
+        runStatusAfterResume: resumedRunStatus,
       };
 
       probes.push({
@@ -1051,6 +1064,17 @@ async function executeRecipe(browser, recipe) {
       if (!addedAllSpawnerAdds) {
         const conjured = addedEnemies.filter((e) => !e.spawnedBy).map((e) => e.id);
         failures.push(`restore conjured non-spawner enemy id(s): ${conjured.join(', ')}`);
+      }
+      if (!stashedRunId) {
+        failures.push('runId was not captured before assertRunPreserved');
+      } else if (resumedRunId !== stashedRunId) {
+        failures.push(`runId changed across resume: ${stashedRunId} → ${resumedRunId}`);
+      }
+      if (stashedRunStatus !== 'suspended') {
+        failures.push(`runStatus expected 'suspended' at stash time, got '${stashedRunStatus}'`);
+      }
+      if (resumedRunStatus !== 'playing') {
+        failures.push(`runStatus expected 'playing' after resume, got '${resumedRunStatus}'`);
       }
       if (!objective) {
         failures.push('suspended objective was not captured before assertRunPreserved');
