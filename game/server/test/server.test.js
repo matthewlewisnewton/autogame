@@ -483,28 +483,19 @@ describe('damagePlayer(playerId, amount)', () => {
 		expect(gameState.players['p1'].dead).toBe(true);
 	});
 
-	it('schedules respawn after 3 seconds', () => {
-		addPlayer('p1', { hp: 30 });
-		damagePlayer('p1', 30);
-
-		// Before timeout fires
-		expect(gameState.players['p1'].dead).toBe(true);
-
-		// Advance 3 seconds
-		vi.advanceTimersByTime(3000);
-
-		// After respawn
-		expect(gameState.players['p1'].dead).toBe(false);
-		expect(gameState.players['p1'].hp).toBe(100);
-	});
-
-	it('respawn resets position to the first room spawn', () => {
+	it('does not auto-respawn or heal after death', () => {
 		addPlayer('p1', { hp: 30, x: 10, z: 20 });
 		damagePlayer('p1', 30);
+
+		expect(gameState.players['p1'].dead).toBe(true);
+		expect(gameState.players['p1'].hp).toBe(0);
+
 		vi.advanceTimersByTime(3000);
-		const spawn = firstRoomSpawn();
-		expect(gameState.players['p1'].x).toBe(spawn.x);
-		expect(gameState.players['p1'].z).toBe(spawn.z);
+
+		expect(gameState.players['p1'].dead).toBe(true);
+		expect(gameState.players['p1'].hp).toBe(0);
+		expect(gameState.players['p1'].x).toBe(10);
+		expect(gameState.players['p1'].z).toBe(20);
 	});
 
 	it('partial damage does not mark dead', () => {
@@ -542,17 +533,6 @@ describe('damagePlayer(playerId, amount)', () => {
 		expect(gameState.players['p1'].shieldHp).toBe(50); // shield untouched
 	});
 
-	it('respawn resets invulnerableUntil to 0', () => {
-		addPlayer('p1', { hp: 30, invulnerableUntil: 999999999999 });
-		damagePlayer('p1', 30);
-		expect(gameState.players['p1'].invulnerableUntil).toBe(999999999999);
-
-		vi.advanceTimersByTime(3000);
-
-		expect(gameState.players['p1'].invulnerableUntil).toBe(0);
-	});
-
-	// ── Guard block damage reduction ──
 
 	it('reduces frontal damage when blocking (enemy attacker)', () => {
 		const now = 1000000;
@@ -3204,14 +3184,27 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
-		it('revives dead players to LOBBY_REVIVE_HP when returning to lobby', () => {
+		it('clears dead flag without raising HP when returning dead player to lobby', () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
 			returnPlayersToLobby();
 			restore();
 
-			expect(gameState.players.p1.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(gameState.players.p1.hp).toBe(0);
+			expect(gameState.players.p1.dead).toBe(false);
+		});
+
+		it('preserves partial-HP for living player on run-failure return', () => {
+			addPlayer('p1', { hp: 42, dead: false });
+			gameState.gamePhase = 'playing';
+			startDungeonRun();
+
+			const { restore } = mockRoomEmit();
+			returnPlayersToLobby();
+			restore();
+
+			expect(gameState.players.p1.hp).toBe(42);
 			expect(gameState.players.p1.dead).toBe(false);
 		});
 
@@ -3365,17 +3358,17 @@ describe('run state', () => {
 			expect(player.dead).toBe(false);
 		});
 
-		it('revives dead players to LOBBY_REVIVE_HP', () => {
+		it('clears dead flag without raising HP for dead players', () => {
 			const player = { hp: 0, dead: true };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(player.hp).toBe(0);
 			expect(player.dead).toBe(false);
 		});
 
-		it('revives players at zero HP without dead flag to LOBBY_REVIVE_HP', () => {
+		it('clears dead flag without raising HP for zero-HP players without dead flag', () => {
 			const player = { hp: 0, dead: false };
 			revivePlayerInLobby(player);
-			expect(player.hp).toBe(config.LOBBY_REVIVE_HP);
+			expect(player.hp).toBe(0);
 			expect(player.dead).toBe(false);
 		});
 	});
@@ -3385,6 +3378,14 @@ describe('run state', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			gameState.gamePhase = 'lobby';
+		});
+
+		it('heals dead-or-zero-HP hub player to MAX_HP', () => {
+			addPlayer('p1', { hp: 0, dead: true, currency: 25 });
+			const result = healAtMedic('p1');
+			expect(result).toEqual({ ok: true, hp: 100, currency: 15, cost: 10 });
+			expect(gameState.players.p1.hp).toBe(100);
+			expect(gameState.players.p1.dead).toBe(false);
 		});
 
 		it('heals to full and charges 10 currency', () => {

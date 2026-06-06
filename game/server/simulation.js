@@ -28,7 +28,6 @@ const {
   BOUNDS_MARGIN,
   SPAWN_PADDING,
   MAX_HP,
-  RESPAWN_DELAY_MS,
   COOLDOWN_MS,
   DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER,
   difficultyScaleFactor,
@@ -2079,20 +2078,6 @@ function damagePlayer(playerId, amount, options = {}) {
     if (_onTerminalCheck) {
       _onTerminalCheck();
     }
-
-    const respawnId = setTimeout(() => {
-      const p = _gameState.players[playerId];
-      if (!p) return; // player may have disconnected
-      const spawn = firstRoomPosition();
-      p.hp = MAX_HP;
-      p.dead = false;
-      p.invulnerableUntil = 0;
-      p.lastMoveTime = Date.now();
-      p.x = spawn.x;
-      p.y = 0.5;
-      p.z = spawn.z;
-    }, RESPAWN_DELAY_MS);
-    _timeouts.push(respawnId);
   }
 
   return mirrorResult;
