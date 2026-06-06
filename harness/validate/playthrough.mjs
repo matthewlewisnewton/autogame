@@ -377,6 +377,27 @@ async function waitForVictoryState(page, { timeoutMs = 30000 } = {}) {
 	return readHarness(page);
 }
 
+function loadSortieCompleteLabel() {
+	const themePath = path.join(REPO_ROOT, 'game', 'shared', 'theme.json');
+	const theme = JSON.parse(fs.readFileSync(themePath, 'utf8'));
+	return theme.run?.sortieComplete ?? 'Sortie Complete';
+}
+
+async function waitForSortieCompleteOverlay(page, { timeoutMs = 30000 } = {}) {
+	const sortieCompleteLabel = loadSortieCompleteLabel();
+	await page.waitForFunction((expected) => {
+		const overlay = document.getElementById('run-summary-overlay');
+		const status = document.getElementById('summary-status');
+		if (!overlay || !status) return false;
+		const style = getComputedStyle(overlay);
+		if (style.display === 'none' || style.visibility === 'hidden') return false;
+		if (status.textContent.trim() !== expected) return false;
+		return overlay.getBoundingClientRect().height > 0;
+	}, sortieCompleteLabel, { timeout: timeoutMs }).catch(async () => {
+		await failWithHarness(page, 'Sortie Complete overlay not visible');
+	});
+}
+
 async function runVictoryStep({ page, preset, outDirAbs }) {
 	const { bossType, bossLowHpScenario } = preset;
 
@@ -392,6 +413,9 @@ async function runVictoryStep({ page, preset, outDirAbs }) {
 	const bossDefeatedScreenshotPath = await writeScreenshot(page, outDirAbs, '06-boss-defeated');
 
 	const victoryHarness = await waitForVictoryState(page, {
+		timeoutMs: preset.victoryTimeoutMs ?? 30000,
+	});
+	await waitForSortieCompleteOverlay(page, {
 		timeoutMs: preset.victoryTimeoutMs ?? 30000,
 	});
 	const victoryProbe = buildVictoryProbe(victoryHarness);

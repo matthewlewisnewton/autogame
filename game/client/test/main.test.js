@@ -4299,6 +4299,9 @@ describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
 		expect(harness.runObjectiveComplete).toBe(true);
 		expect(harness.objective.bossDefeated).toBe(true);
 		expect(harness.lastRunSummary?.status).toBe('victory');
+		expect(harness.sortieCompleteOverlayVisible).toBe(true);
+		expect(document.getElementById('run-summary-overlay').style.display).toBe('flex');
+		expect(document.getElementById('summary-status').textContent).toBe('Sortie Complete');
 	});
 
 	it('reports hub layout.profile while the ship hub is rendered in lobby phase', async () => {

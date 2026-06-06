@@ -7,6 +7,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { assertDistinctVictoryScreenshots } from './lib/distinctVictoryScreenshots.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -113,6 +114,7 @@ function main() {
 	} else {
 		readRunSummary(errors);
 		checkRequiredFiles(errors);
+		assertDistinctVictoryScreenshots(SUNKEN_CANYON_DIR, errors, `${SUNKEN_CANYON_REL}/`);
 	}
 
 	if (errors.length > 0) {

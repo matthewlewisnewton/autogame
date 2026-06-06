@@ -4219,8 +4219,6 @@ function renderCardChoices(choices) {
 function showRunSummary(data) {
 	if (!data) return;
 
-	lastRunSummary = data;
-
 	if (data.status === 'victory') {
 		playSound('victory');
 	} else {
@@ -4277,8 +4275,12 @@ function showRunSummary(data) {
 		}
 	}
 
-	// Mirror victory onto gameState.run immediately so harness polling sees it
-	// before any delayed server stateUpdate resync.
+	runSummaryOverlay.style.display = 'flex';
+
+	// Mirror victory onto gameState.run and lastRunSummary only after the overlay
+	// is visible so 06-boss-defeated can capture pre-summary combat while the
+	// playthrough driver waits for Sortie Complete before 07-victory.
+	lastRunSummary = data;
 	if (data.status === 'victory' && gameState?.run) {
 		gameState.run.status = 'victory';
 		if (gameState.run.objective?.type === 'stage_boss') {
@@ -4287,8 +4289,6 @@ function showRunSummary(data) {
 			gameState.run.objective.bossDefeated = true;
 		}
 	}
-
-	runSummaryOverlay.style.display = 'flex';
 }
 
 returnToLobbyBtn.addEventListener('click', () => {
@@ -4535,6 +4535,11 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 				: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
 	);
 
+	const sortieCompleteOverlayVisible = !!runSummaryOverlay
+		&& !!summaryStatusEl
+		&& getComputedStyle(runSummaryOverlay).display !== 'none'
+		&& summaryStatusEl.textContent.trim() === THEME.run.sortieComplete;
+
 	return {
 		debugScenario,
 		debugScenarioAllowed,
@@ -4544,6 +4549,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		encounter,
 		runObjectiveComplete,
 		lastRunSummary,
+		sortieCompleteOverlayVisible,
 		myId,
 		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',
