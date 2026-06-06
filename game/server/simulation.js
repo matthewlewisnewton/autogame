@@ -1031,6 +1031,23 @@ function isSlowed(entity) {
   return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
 }
 
+// BURNING status effect: a timed damage-over-time mark that mirrors the
+// frozenUntil/isEnemyFrozen and slowedUntil/isSlowed idioms. Works on any
+// generic entity (player or enemy). The per-tick damage and the client flame
+// animation live in separate sub-tickets; this only manages the status state +
+// helpers.
+function applyBurning(entity, durationMs) {
+  if (!entity) return;
+  const now = Date.now();
+  // Re-application REFRESHES: never shorten an existing longer burn, and never
+  // stack additively — just extend to the later expiry.
+  entity.burningUntil = Math.max(entity.burningUntil || 0, now + durationMs);
+}
+
+function isBurning(entity) {
+  return entity != null && entity.burningUntil != null && Date.now() < entity.burningUntil;
+}
+
 function healPlayer(playerId, amount) {
   const player = _gameState.players[playerId];
   if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
@@ -2667,6 +2684,8 @@ module.exports = {
   isEnemyFrozen,
   applySlow,
   isSlowed,
+  applyBurning,
+  isBurning,
 
   // Magic stones
   regenMagicStones,
