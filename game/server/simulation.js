@@ -483,6 +483,8 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
         if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
         // ground_anchor: slow move speed while the anchor window is active
         if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
+        // SLOW status: stacks multiplicatively with the modifiers above
+        if (isSlowed(player)) playerStep *= (player.slowFactor || 1);
 
         const prevX = player.x;
         const prevZ = player.z;
@@ -2019,7 +2021,10 @@ function updateEnemies() {
 		ensureEnemyCombatStats(enemy);
 		checkFrenziedTelegraph(enemy, Date.now());
 		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
-		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult;
+		// SLOW stacks multiplicatively with the frenzied chase multiplier. Frozen
+		// enemies are handled by the isEnemyFrozen early continue below and never move.
+		const slowMult = isSlowed(enemy) ? (enemy.slowFactor || 1) : 1;
+		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult * slowMult;
 		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
