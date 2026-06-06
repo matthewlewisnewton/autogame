@@ -1284,10 +1284,11 @@ function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, 
     }
   }
 
-  let currentPos = { x: originX, z: originZ };
-  if (primary) {
-    currentPos = recordHit(primary, damage);
+  if (!primary) {
+    return { hits: [], magicStonesGained: 0 };
   }
+
+  let currentPos = recordHit(primary, damage);
 
   let chains = 0;
   while (chains < maxChainTargets) {

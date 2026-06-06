@@ -107,6 +107,19 @@ describe('collectChainLightningHits', () => {
 		expect(enemyIds).toHaveLength(3);
 	});
 
+	it('does not chain when primary ray misses', () => {
+		addEnemy('near-caster', 0, 2);
+
+		const result = collectChainLightningHits(0, 0, 1, 0, attackRange, baseDamage, {
+			chainRadius,
+			maxChainTargets: 2,
+		});
+
+		expect(result.hits).toEqual([]);
+		expect(result.magicStonesGained).toBe(0);
+		expect(gameState.enemies.find((e) => e.id === 'near-caster').hp).toBe(100);
+	});
+
 	it('does not hit enemies beyond projectile range on the primary ray', () => {
 		const outOfRangeMargin = 2;
 		addEnemy('in-range', PROJECTILE_HIT_WIDTH, 0);
