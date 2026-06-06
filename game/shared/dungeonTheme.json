@@ -46,6 +46,17 @@
       "accent": "#6a9a6a",
       "floorRoughness": 0.85,
       "wallRoughness": 0.75
+    },
+    "fire-cavern": {
+      "floor": "#3d2820",
+      "rimFloor": "#2a1f24",
+      "basinFloor": "#5c2818",
+      "wall": "#4a3028",
+      "passageFloor": "#352820",
+      "passageWall": "#2e221c",
+      "accent": "#e85d04",
+      "floorRoughness": 0.85,
+      "wallRoughness": 0.75
     }
   },
   "roleTints": {

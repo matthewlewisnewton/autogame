@@ -16,6 +16,8 @@ import {
 	getProfileMaterialColors,
 	getSunkenCanyonBandFloorHex,
 	getSunkenCanyonBandMaterials,
+	getFireCavernBandFloorHex,
+	getFireCavernBandMaterials,
 	LARGE_ROOM_MIN_SIZE,
 	FLOOR_Y,
 	WALL_HEIGHT,
@@ -93,6 +95,31 @@ describe('profile material palette', () => {
 		expect(canyon.floor).not.toBe(crowded.floor);
 		expect(getSunkenCanyonBandFloorHex('plateau')).toBe(0x4a5f4a);
 		expect(getSunkenCanyonBandFloorHex('canyon')).toBe(0x2f3d35);
+	});
+
+	it('defines fire-cavern band palettes distinct from default and sunken-canyon', () => {
+		const defaults = getProfileMaterialColors('default');
+		const canyon = getProfileMaterialColors('sunken-canyon');
+		const fire = getProfileMaterialColors('fire-cavern');
+		const fireMats = getProfileMaterials('fire-cavern');
+		const canyonMats = getProfileMaterials('sunken-canyon');
+		expect(fire.floor).toBe(0x3d2820);
+		expect(fire.floor).not.toBe(defaults.floor);
+		expect(fire.floor).not.toBe(canyon.floor);
+		expect(fire.wall).not.toBe(canyon.wall);
+		expect(fireMats.accent.color.getHex()).not.toBe(canyonMats.accent.color.getHex());
+		expect(getFireCavernBandFloorHex('rim')).toBe(0x2a1f24);
+		expect(getFireCavernBandFloorHex('basin')).toBe(0x5c2818);
+		expect(getFireCavernBandFloorHex('rim')).not.toBe(getSunkenCanyonBandFloorHex('plateau'));
+	});
+
+	it('getProfileMaterials(fire-cavern) floor hex differs from default and sunken-canyon', () => {
+		const defaults = getProfileMaterials('default');
+		const canyon = getProfileMaterials('sunken-canyon');
+		const fire = getProfileMaterials('fire-cavern');
+		const fireFloorHex = fire.floor.color.getHex();
+		expect(fireFloorHex).not.toBe(defaults.floor.color.getHex());
+		expect(fireFloorHex).not.toBe(canyon.floor.color.getHex());
 	});
 
 	it('derives role floor tints from the active profile base', () => {
@@ -1006,6 +1033,25 @@ describe('fire-cavern cover, floors & treasure marker', () => {
 		expect(result.meshes.length).toBeGreaterThanOrEqual(
 			1 + layout.rooms.length + layout.cover.length + 1
 		);
+	});
+
+	it('applies distinct rim and basin floor materials on server-generated fire-cavern', () => {
+		const layout = generateLayout(42, 'fire-cavern');
+		const rim = layout.rooms.find(r => r.band === 'rim');
+		const basin = layout.rooms.find(r => r.band === 'basin');
+		const result = buildDungeon(mockScene(), layout);
+		const rimFloor = findRoomFloorMesh(result.meshes, rim);
+		const basinFloor = findRoomFloorMesh(result.meshes, basin);
+		expect(rimFloor).toBeDefined();
+		expect(basinFloor).toBeDefined();
+		expect(rimFloor.material.color.getHex()).not.toBe(basinFloor.material.color.getHex());
+	});
+
+	it('caches fire-cavern band materials as singletons', () => {
+		const a = getFireCavernBandMaterials('rim');
+		const b = getFireCavernBandMaterials('rim');
+		expect(a.floor).toBe(b.floor);
+		expect(a.floor.color.getHex()).toBe(getFireCavernBandFloorHex('rim'));
 	});
 
 	it('layouts without fire-cavern profile behave exactly as before', () => {
