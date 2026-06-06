@@ -3124,6 +3124,20 @@ function giveUpRun(state = _gameState) {
   return { ok: true };
 }
 
+function emitLobbyDeploy(io, event, payload) {
+  if (!io) return;
+  const lobbyId = _gameState && _gameState._lobbyId;
+  try {
+    if (lobbyId) {
+      io.to(lobbyId).emit(event, payload);
+    } else {
+      io.emit(event, payload);
+    }
+  } catch (err) {
+    console.error(`[checkAllReady] ${event} emit failed:`, err && err.stack ? err.stack : err);
+  }
+}
+
 function checkAllReady() {
   try {
     checkAllReadyInner();
@@ -3133,6 +3147,8 @@ function checkAllReady() {
 }
 
 function checkAllReadyInner() {
+  if (!isLobbyPhase(_gameState)) return;
+
   const all = Object.values(_gameState.players);
   const connectedPlayers = all.filter(p => p.connected !== false);
   const allConnectedReady = connectedPlayers.length > 0 && connectedPlayers.every(p => p.ready);
@@ -3154,37 +3170,39 @@ function checkAllReadyInner() {
       }
     }
 
-    setGamePhase(_gameState, PHASES.PLAYING);
+    if (!isLobbyPhase(_gameState)) return;
 
-    if (_gameState.suspendedCheckpoint) {
-      restoreRunCheckpoint();
+    try {
+      setGamePhase(_gameState, PHASES.PLAYING);
+
+      if (_gameState.suspendedCheckpoint) {
+        restoreRunCheckpoint();
+        const io = getIoTarget();
+        emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
+        emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        return;
+      }
+
+      assignRunSpawnPositions(all);
+      for (const player of all) {
+        player.extracted = false;
+        player.lastMoveTime = Date.now();
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        if (player.debugScenario === 'telepipe-ready') {
+          applyTelepipeReadyHand(player);
+        }
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        player.magicStones = STARTING_MAGIC_STONES;
+        player.overclockChargesRemaining = 0;
+      }
+      spawnEnemies();
+      startDungeonRun();
       const io = getIoTarget();
-      if (io) {
-        io.emit(SERVER_TO_CLIENT.START_GAME);
-        io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-      }
-      return;
-    }
-
-    assignRunSpawnPositions(all);
-    for (const player of all) {
-      player.extracted = false;
-      player.lastMoveTime = Date.now();
-      createDrawDeckFromSelectedDeck(player);
-      initPlayerHand(player);
-      if (player.debugScenario === 'telepipe-ready') {
-        applyTelepipeReadyHand(player);
-      }
-      player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
-      player.magicStones = STARTING_MAGIC_STONES;
-      player.overclockChargesRemaining = 0;
-    }
-    spawnEnemies();
-    startDungeonRun();
-    const io = getIoTarget();
-    if (io) {
-      io.emit(SERVER_TO_CLIENT.START_GAME);
-      io.emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
+      emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+    } catch (err) {
+      console.error('[checkAllReady] deploy failed:', err && err.stack ? err.stack : err);
     }
   }
 }

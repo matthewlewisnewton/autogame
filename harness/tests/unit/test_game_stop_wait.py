@@ -156,12 +156,12 @@ class TestWaitForGame:
             client_urls.append(url)
             return True
 
-        def fake_http_responding(url):
+        def fake_healthz_ready(url):
             server_urls.append(url)
             return True
 
         monkeypatch.setattr(game, "_http_ok", fake_http_ok)
-        monkeypatch.setattr(game, "_http_responding", fake_http_responding)
+        monkeypatch.setattr(game, "_healthz_ready", fake_healthz_ready)
         monkeypatch.setattr(game.time, "sleep", lambda _s: None)
 
         assert game.wait_for_game(PORTS, timeout_s=45) is True
@@ -179,12 +179,12 @@ class TestWaitForGame:
             client_urls.append(url)
             return True  # client is up immediately
 
-        def fake_http_responding(url):
+        def fake_healthz_ready(url):
             server_urls.append(url)
-            return False  # server never responds
+            return False  # server never ready
 
         monkeypatch.setattr(game, "_http_ok", fake_http_ok)
-        monkeypatch.setattr(game, "_http_responding", fake_http_responding)
+        monkeypatch.setattr(game, "_healthz_ready", fake_healthz_ready)
         monkeypatch.setattr(game.time, "sleep", lambda _s: None)
 
         # Short timeout so the (no-real-sleep) loop bails quickly.
@@ -201,7 +201,7 @@ class TestWaitForGame:
 
         monkeypatch.setattr(game, "_http_ok",
                             lambda url: client_urls.append(url) or True)
-        monkeypatch.setattr(game, "_http_responding",
+        monkeypatch.setattr(game, "_healthz_ready",
                             lambda url: server_urls.append(url) or True)
         monkeypatch.setattr(game.time, "sleep", lambda _s: None)
 

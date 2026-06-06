@@ -92,7 +92,9 @@ const app = express();
 // so capture workers never proxy auth/socket traffic to a half-booted server.
 let _harnessReady = false;
 app.get('/healthz', (_req, res) => {
-  if (!_harnessReady) {
+  // Harness/Vite readiness: 503 until routes, socket handlers, and listen() are
+  // complete so proxies never treat a half-booted or torn-down server as ready.
+  if (!_harnessReady || !server.listening) {
     res.status(503).json({ ok: false });
     return;
   }
@@ -761,17 +763,66 @@ function ensureHttpErrorLogger() {
   });
 }
 
+function flushServerLogs() {
+  try {
+    if (process.stdout && typeof process.stdout.write === 'function') {
+      process.stdout.write('');
+    }
+  } catch (_) {
+    // ignore flush errors
+  }
+}
+
+function logServerFault(label, detail) {
+  console.error(label, detail);
+  flushServerLogs();
+}
+
 /**
  * When run as the main module, log fatal-async errors but keep serving.
- * Tests that require('./index') are unaffected.
+ * Log SIGTERM/SIGINT so harness port-kill paths show up in server.log instead
+ * of a silent empty port holder. Tests that require('./index') are unaffected.
  */
 function installMainProcessErrorHandlers() {
+  let shuttingDown = false;
+
+  const shutdownFromSignal = (signal) => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    _harnessReady = false;
+    logServerFault(`[server] ${signal} received — closing HTTP server`);
+    try {
+      if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections();
+      }
+      server.close(() => {
+        logServerFault(`[server] HTTP server closed after ${signal}`);
+        process.exit(signal === 'SIGINT' ? 130 : 143);
+      });
+    } catch (err) {
+      logServerFault(`[server] error during ${signal} shutdown:`, err && err.stack ? err.stack : err);
+      process.exit(143);
+    }
+    setTimeout(() => {
+      logServerFault(`[server] forced exit after ${signal} shutdown timeout`);
+      process.exit(143);
+    }, 5000).unref();
+  };
+
+  server.on('close', () => {
+    if (!shuttingDown) {
+      logServerFault('[server] HTTP server closed unexpectedly (no signal shutdown in progress)');
+    }
+  });
+
   process.on('uncaughtException', (err) => {
-    console.error('[server] uncaughtException:', err && err.stack ? err.stack : err);
+    logServerFault('[server] uncaughtException:', err && err.stack ? err.stack : err);
   });
   process.on('unhandledRejection', (reason) => {
-    console.error('[server] unhandledRejection:', reason);
+    logServerFault('[server] unhandledRejection:', reason);
   });
+  process.on('SIGTERM', () => shutdownFromSignal('SIGTERM'));
+  process.on('SIGINT', () => shutdownFromSignal('SIGINT'));
 }
 
 function safeIntervalTick(label, fn) {
@@ -1504,6 +1555,8 @@ function startServer(port) {
   const listenPort = (port !== undefined && port !== null) ? port : (process.env.PORT || 3000);
   if (!server.listening) {
     server.listen(listenPort, () => {
+      // Flip readiness only after the listener is bound and every handler from
+      // this startServer() call is mounted — matches /healthz and Vite probes.
       _harnessReady = true;
       console.log(`Server listening on port ${listenPort}`);
     });

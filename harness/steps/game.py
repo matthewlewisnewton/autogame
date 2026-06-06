@@ -6,6 +6,7 @@ HARNESS_BROAD_PORT_KILL=1 falls back to bash behavior.
 """
 from __future__ import annotations
 
+import json
 import os
 import re
 import socket
@@ -288,21 +289,27 @@ def wait_for_game(ports: PortAllocation, timeout_s: int = 45) -> bool:
     while time.time() < deadline:
         if not up_client and _http_ok(f"http://localhost:{ports.vite}/"):
             up_client = True
-        # The server "up" signal is "it answers HTTP at all", not a 2xx on a
-        # specific route. The game server used to expose `/healthz` (returning
-        # 200), but commit f9668ea removed that route, so `/healthz` now 404s
-        # even when the server is fully booted ("Server listening on port
-        # 3000"). The old 2xx-only check therefore never saw the server as up
-        # and wait_for_game timed out, escalating a perfectly healthy run as an
-        # infra failure. Any HTTP response (including a 404) proves the port is
-        # bound and Express is serving requests, so treat that as up and stay
-        # robust to the route coming and going in game code.
-        if not up_server and _http_responding(f"http://localhost:{ports.game_server}/healthz"):
+        # Server is up only when /healthz returns 200 { ok: true } — the same
+        # harness-ready signal Vite's stable healthz probe uses. A bound server
+        # still returning 503 must not flip readiness early.
+        if not up_server and _healthz_ready(f"http://localhost:{ports.game_server}/healthz"):
             up_server = True
         if up_client and up_server:
             return True
         time.sleep(1)
     return False
+
+
+def _healthz_ready(url: str) -> bool:
+    """True when GET /healthz returns 200 { ok: true } — the harness-ready signal."""
+    try:
+        with urllib.request.urlopen(url, timeout=1) as resp:
+            if resp.status != 200:
+                return False
+            body = json.loads(resp.read().decode("utf-8"))
+            return body.get("ok") is True
+    except (urllib.error.URLError, urllib.error.HTTPError, OSError, ValueError, json.JSONDecodeError):
+        return False
 
 
 def _http_ok(url: str) -> bool:

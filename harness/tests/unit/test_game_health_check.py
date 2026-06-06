@@ -1,17 +1,15 @@
 """Regression tests for the harness server health check used by wait_for_game.
 
-Guards the infra failure where the game server was fully booted ("Server
-listening on port 3000") but `wait_for_game` still timed out and escalated the
-run as an infra failure. Cause: the server's `/healthz` route was removed (game
-commit f9668ea), so polling `/healthz` returned 404; the old 2xx-only check
-never recognised the healthy server as up. The fix treats any HTTP response
-(including 404) as "server is up", and only a connection-level failure as down.
+`wait_for_game` now requires GET /healthz → 200 { ok: true }, matching the game
+server's harness-ready probe and Vite's stable healthz gate. A bound server that
+still returns 503 must not count as up.
 """
 import http.server
+import json
 import threading
 from contextlib import closing, contextmanager
 
-from harness.steps.game import _http_ok, _http_responding
+from harness.steps.game import _healthz_ready, _http_ok, _http_responding
 
 
 class _Status404Handler(http.server.BaseHTTPRequestHandler):
@@ -24,9 +22,31 @@ class _Status404Handler(http.server.BaseHTTPRequestHandler):
         pass
 
 
+class _Healthz503Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802 (stdlib naming)
+        self.send_response(503)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"ok": False}).encode())
+
+    def log_message(self, *args):  # silence test output
+        pass
+
+
+class _Healthz200Handler(http.server.BaseHTTPRequestHandler):
+    def do_GET(self):  # noqa: N802 (stdlib naming)
+        self.send_response(200)
+        self.send_header("Content-Type", "application/json")
+        self.end_headers()
+        self.wfile.write(json.dumps({"ok": True}).encode())
+
+    def log_message(self, *args):  # silence test output
+        pass
+
+
 @contextmanager
-def _server_returning_404():
-    httpd = http.server.HTTPServer(("127.0.0.1", 0), _Status404Handler)
+def _local_http_server(handler):
+    httpd = http.server.HTTPServer(("127.0.0.1", 0), handler)
     port = httpd.server_address[1]
     t = threading.Thread(target=httpd.serve_forever, daemon=True)
     t.start()
@@ -35,6 +55,12 @@ def _server_returning_404():
     finally:
         httpd.shutdown()
         t.join(timeout=5)
+
+
+@contextmanager
+def _server_returning_404():
+    with _local_http_server(_Status404Handler) as port:
+        yield port
 
 
 def _free_port() -> int:
@@ -62,3 +88,15 @@ def test_unbound_port_is_not_up():
     # Connection refused (nothing listening) must read as not-up.
     port = _free_port()
     assert _http_responding(f"http://127.0.0.1:{port}/healthz") is False
+    assert _healthz_ready(f"http://127.0.0.1:{port}/healthz") is False
+
+
+def test_healthz_503_is_not_ready():
+    with _local_http_server(_Healthz503Handler) as port:
+        assert _http_responding(f"http://127.0.0.1:{port}/healthz") is True
+        assert _healthz_ready(f"http://127.0.0.1:{port}/healthz") is False
+
+
+def test_healthz_200_ok_is_ready():
+    with _local_http_server(_Healthz200Handler) as port:
+        assert _healthz_ready(f"http://127.0.0.1:{port}/healthz") is True
