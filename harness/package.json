@@ -5,7 +5,8 @@
   "description": "Orchestration harness for the autogame agent loop",
   "type": "module",
   "scripts": {
-    "progress": "node progress/server.mjs --port 8787"
+    "progress": "node progress/server.mjs --port 8787",
+    "validate:playthrough": "node validate/playthrough.mjs"
   },
   "dependencies": {
     "playwright": "^1.60.0"
