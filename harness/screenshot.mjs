@@ -265,6 +265,89 @@ function hasAuthLobbyBefore(steps, index, player) {
  * auth/lobby setup, and auto-inject the standard prefix.
  * Logs when injection occurs so the capture output documents the fix.
  */
+const HUB_VALIDATE_SUBTICKETS_RE = /281-playthrough-validate-ship-hub\/subtickets/i;
+const HUB_TELEPIPE_ABANDON_VALIDATE_RE = /telepipe-reset|telepipe-abandon|abandon-fresh|abandonSuspendedRun/i;
+
+function inferSubticketFolder(outDirAbs) {
+  const match = outDirAbs.match(/281-playthrough-validate-ship-hub\/subtickets\/([^/]+)/i);
+  return match ? match[1] : '';
+}
+
+/**
+ * Ticket 281 hub telepipe-reset / abandon-fresh validation sub-tickets must NOT
+ * use the suspend→resume capture (readyAll after suspend poisons server.log with
+ * `[run] checkpoint restored`). Detect by path under …/subtickets/ plus folder
+ * name or ticket.md prose referencing the abandon/reset keywords.
+ */
+function isHubTelepipeAbandonValidateTicket(ticket, outDirAbs) {
+  if (!HUB_VALIDATE_SUBTICKETS_RE.test(outDirAbs)) return false;
+  const folderName = inferSubticketFolder(outDirAbs);
+  return HUB_TELEPIPE_ABANDON_VALIDATE_RE.test(`${folderName}\n${ticket}`);
+}
+
+/** Solo deploy → telepipe placement → suspend through the 02-suspended-lobby probe. */
+function buildSoloTelepipeSuspendThroughProbeSteps() {
+  return [
+    { action: 'connectPlayer', player: 'A' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    { action: 'createLobby', player: 'A', name: 'Telepipe Suspend QA' },
+    { action: 'wait', player: 'A', ms: 1000 },
+    // Request telepipe-ready WHILE STILL IN THE LOBBY (sets player.debugScenario);
+    // the telepipe card is only injected into hand slot 0 at DEPLOY time
+    // (applyTelepipeReadyHand), so this must precede readyAll — emitting it after
+    // deploy would leave the hand without a telepipe and nothing to place. This
+    // mirrors the passing sub-ticket 01 smoke (request scenario, then click ready).
+    { action: 'emitScenario', player: 'A', scenario: 'telepipe-ready' },
+    { action: 'wait', player: 'A', ms: 500 },
+    // Ready the single connected player → solo deploy with a telepipe in hand.
+    { action: 'readyAll' },
+    { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
+    { action: 'wait', player: 'A', ms: 1000 },
+    {
+      action: 'screenshot',
+      player: 'A',
+      name: '01-in-dungeon',
+      description: 'Solo player in the dungeon with a telepipe in hand slot 0, before suspending.',
+    },
+    {
+      action: 'probe',
+      player: 'A',
+      stashBaseline: true,
+      description: 'PRE-SUSPEND state: record player x/z, enemyHp count, and layout (profile + seed) before placing the telepipe. Stashes the live enemy set (id -> hp/type/spawnedBy) as the checkpoint baseline, since the suspended lobby clears live enemies.',
+    },
+    // Place the portal (hand slot key `1`) at the player's feet, then nudge so
+    // the server-side proximity check auto-extracts the solo player. A solo
+    // extraction leaves zero active players → maybeSuspendRun → suspendRunToLobby.
+    // checkTelepipeProximity runs every tick once PORTAL_PLACEMENT_GRACE_MS
+    // (~2s) elapses, extracting any player still within PORTAL_RADIUS (2.5).
+    // The portal lands at the player's exact position, so nudge OUT and back
+    // (w then s) — MOVE_SPEED is 12 u/s, so a one-way hold would walk the player
+    // clear of the radius and never extract.
+    { action: 'pressKey', player: 'A', key: '1', ms: 400 },
+    { action: 'wait', player: 'A', ms: 500 },
+    { action: 'move', player: 'A', key: 'w', durationMs: 150 },
+    { action: 'move', player: 'A', key: 's', durationMs: 150 },
+    // Wait past PORTAL_PLACEMENT_GRACE_MS (~2s) so the proximity tick fires
+    // checkTelepipeProximity → tryEnterTelepipe → suspendRunToLobby.
+    { action: 'wait', player: 'A', ms: 3000 },
+    {
+      action: 'screenshot',
+      player: 'A',
+      name: '02-suspended-lobby',
+      description: 'Lobby after the solo telepipe extraction suspended the run.',
+    },
+    {
+      action: 'probe',
+      player: 'A',
+      stashObjective: true,
+      description: 'SUSPENDED state: record runStatus/suspendedRunSummary (questId, questName, objective totalEnemies/defeatedEnemies) after suspendRunToLobby. Expect runStatus === "suspended" or suspendedRunSummary present; abandonRunBtnUsable when sub-ticket 09 lands.',
+    },
+  ];
+}
+
 function ensureAuthLobbyPrefix(recipe) {
   const { steps } = recipe;
 
@@ -343,8 +426,10 @@ function fallbackRecipe() {
   // Telepipe suspend/resume detection, computed first so its prose (which
   // mentions portals/suspend) cannot make the world-stage/flare/slope branches
   // fire — those are all guarded with !isTelepipeTicket below.
-  const isTelepipeTicket = /telepipe|suspend[-_ ]?resume|175-qa-telepipe/i.test(ticket) ||
-                           /telepipe|suspend[-_]?resume|175-qa-telepipe/i.test(outDirAbs);
+  const isHubTelepipeAbandonValidate = isHubTelepipeAbandonValidateTicket(ticket, outDirAbs);
+  const isTelepipeTicket = !isHubTelepipeAbandonValidate &&
+                           (/telepipe|suspend[-_ ]?resume|175-qa-telepipe/i.test(ticket) ||
+                            /telepipe|suspend[-_]?resume|175-qa-telepipe/i.test(outDirAbs));
   const isWorldStageTicket = !isTelepipeTicket &&
                              (/world[-_ ]?stage|sunken[-_ ]?canyon|portal[-_ ]?transition|178-qa-world-stage/i.test(ticket) ||
                               /world[-_]?stage|sunken[-_]?canyon|portal[-_]?transition|178-qa-world-stage/i.test(outDirAbs));
@@ -419,69 +504,18 @@ function fallbackRecipe() {
       },
     ];
     summary = 'Deterministic full-flow smoke capture with world-stage fallback: auth, lobby, ready, movement, then before/after screenshots and probes around the sunken-canyon-stage portal transition (default -> sunken-canyon layout swap).';
+  } else if (isHubTelepipeAbandonValidate) {
+    // Hub telepipe-reset / abandon-fresh validation: suspend-only — never re-ready
+    // after suspend (no restoreRunCheckpoint, no 03-resumed-dungeon.png).
+    steps = buildSoloTelepipeSuspendThroughProbeSteps();
+    summary = 'Deterministic solo Telepipe suspend-only capture for hub abandon/reset validation: auth, solo lobby + deploy, telepipe-ready scenario, place telepipe, solo extract until suspended lobby — stops after 02-suspended-lobby probe with no post-suspend readyAll.';
   } else if (isTelepipeTicket) {
     // SOLO suspend → resume capture. A solo extraction leaves zero active
     // players, so the run suspends to the lobby; re-readying restores it. This
     // branch builds its OWN solo steps (player A only) — it must NOT reuse the
     // two-player baseSteps, which connect player B and would keep the run active.
     steps = [
-      { action: 'connectPlayer', player: 'A' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'registerUser', player: 'A', username: 'playerA', password: 'test123' },
-      { action: 'loginUser', player: 'A', username: 'playerA', password: 'test123' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      { action: 'createLobby', player: 'A', name: 'Telepipe Suspend QA' },
-      { action: 'wait', player: 'A', ms: 1000 },
-      // Request telepipe-ready WHILE STILL IN THE LOBBY (sets player.debugScenario);
-      // the telepipe card is only injected into hand slot 0 at DEPLOY time
-      // (applyTelepipeReadyHand), so this must precede readyAll — emitting it after
-      // deploy would leave the hand without a telepipe and nothing to place. This
-      // mirrors the passing sub-ticket 01 smoke (request scenario, then click ready).
-      { action: 'emitScenario', player: 'A', scenario: 'telepipe-ready' },
-      { action: 'wait', player: 'A', ms: 500 },
-      // Ready the single connected player → solo deploy with a telepipe in hand.
-      { action: 'readyAll' },
-      { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
-      { action: 'wait', player: 'A', ms: 1000 },
-      {
-        action: 'screenshot',
-        player: 'A',
-        name: '01-in-dungeon',
-        description: 'Solo player in the dungeon with a telepipe in hand slot 0, before suspending.',
-      },
-      {
-        action: 'probe',
-        player: 'A',
-        stashBaseline: true,
-        description: 'PRE-SUSPEND state: record player x/z, enemyHp count, and layout (profile + seed) before placing the telepipe. Stashes the live enemy set (id -> hp/type/spawnedBy) as the checkpoint baseline, since the suspended lobby clears live enemies.',
-      },
-      // Place the portal (hand slot key `1`) at the player's feet, then nudge so
-      // the server-side proximity check auto-extracts the solo player. A solo
-      // extraction leaves zero active players → maybeSuspendRun → suspendRunToLobby.
-      // checkTelepipeProximity runs every tick once PORTAL_PLACEMENT_GRACE_MS
-      // (~2s) elapses, extracting any player still within PORTAL_RADIUS (2.5).
-      // The portal lands at the player's exact position, so nudge OUT and back
-      // (w then s) — MOVE_SPEED is 12 u/s, so a one-way hold would walk the player
-      // clear of the radius and never extract.
-      { action: 'pressKey', player: 'A', key: '1', ms: 400 },
-      { action: 'wait', player: 'A', ms: 500 },
-      { action: 'move', player: 'A', key: 'w', durationMs: 150 },
-      { action: 'move', player: 'A', key: 's', durationMs: 150 },
-      // Wait past PORTAL_PLACEMENT_GRACE_MS (~2s) so the proximity tick fires
-      // checkTelepipeProximity → tryEnterTelepipe → suspendRunToLobby.
-      { action: 'wait', player: 'A', ms: 3000 },
-      {
-        action: 'screenshot',
-        player: 'A',
-        name: '02-suspended-lobby',
-        description: 'Lobby after the solo telepipe extraction suspended the run.',
-      },
-      {
-        action: 'probe',
-        player: 'A',
-        stashObjective: true,
-        description: 'SUSPENDED state: record runStatus/suspendedRunSummary (questId, questName, objective totalEnemies/defeatedEnemies) after suspendRunToLobby. Stashes objective (type/totalEnemies/defeatedEnemies) for the post-resume preservation assertion.',
-      },
+      ...buildSoloTelepipeSuspendThroughProbeSteps(),
       // Re-deploy → restoreRunCheckpoint resumes the suspended run.
       { action: 'readyAll' },
       { action: 'waitForGame', player: 'A', timeoutMs: 12000 },
