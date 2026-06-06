@@ -105,6 +105,8 @@ const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
 const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
+const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
+const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -3128,6 +3130,60 @@ export function applyFrenziedTelegraphRing(enemyId, enemy) {
 	}
 }
 
+// ── Slow status indicator ──
+
+// Icy cool-blue (0x8fd3ff), deliberately distinct from the amber lock-on ring, red
+// frenzied telegraph, and saturated-cyan phase-step/shield visuals so a slowed
+// entity reads at a glance without being confused with any other status marker.
+
+/**
+ * Create a ground ring marker for a slowed entity. The pale ice-blue colour and
+ * wider radius keep it visually separate from the lock-on/frenzied/phase-step
+ * rings so "slowed" is never mistaken for another status.
+ * @returns {THREE.Mesh}
+ */
+function createSlowMarker() {
+	const geo = new THREE.RingGeometry(0.75, 1.05, 32);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0x8fd3ff,
+		transparent: true,
+		opacity: 0.7,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+/**
+ * Show or hide the slow indicator for an entity (player or enemy). Driven by
+ * `slowedUntil`: while it is in the future the icy ring is shown at the entity's
+ * feet with a gentle pulse; once it passes (or the entity is gone) the marker is
+ * disposed so nothing stays stuck on screen.
+ * @param {Object} markerMap - per-entity marker map (enemySlowMarkers / playerSlowMarkers)
+ * @param {string} id - entity id
+ * @param {object} entity - { slowedUntil, x, z }
+ */
+function applySlowIndicator(markerMap, id, entity) {
+	const now = Date.now();
+	const slowed = entity && entity.slowedUntil && now < entity.slowedUntil;
+
+	if (slowed) {
+		if (!markerMap[id]) {
+			markerMap[id] = createSlowMarker();
+			scene.add(markerMap[id]);
+		}
+		const marker = markerMap[id];
+		marker.position.set(entity.x, GROUND_OVERLAY_Y + 0.01, entity.z);
+		// Slow ~1 Hz pulse so the ring reads as an active "drag" effect.
+		const pulse = 0.5 + 0.5 * Math.sin((now % 1500) / 1500 * Math.PI * 2);
+		marker.material.opacity = 0.4 + pulse * 0.4;
+	} else if (markerMap[id]) {
+		disposeOne(markerMap, id, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -4403,6 +4459,9 @@ export function animate(timestamp) {
 			// (local + remote), so an equip swap takes effect without a reload.
 			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
 
+			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
+			applySlowIndicator(playerSlowMarkers, id, pData);
+
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
@@ -4542,6 +4601,13 @@ export function animate(timestamp) {
 		for (const id of Object.keys(playerNameplates)) {
 			if (!gs.players[id]) {
 				disposeNameplate(id);
+			}
+		}
+
+		// ── Clean up slow markers for players who left ──
+		for (const id of Object.keys(playerSlowMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerSlowMarkers, id, scene);
 			}
 		}
 
@@ -4731,6 +4797,9 @@ export function animate(timestamp) {
 
 			// ── Frenzied enrage telegraph ring ──
 			applyFrenziedTelegraphRing(enemy.id, enemy);
+
+			// ── Slow status ring (driven by the broadcast slowedUntil) ──
+			applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4741,6 +4810,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
+		disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];
