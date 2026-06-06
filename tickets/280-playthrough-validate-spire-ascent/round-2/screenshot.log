@@ -1,0 +1,21 @@
+[joinLobby] no .join-lobby-btn found for player B — continuing
+{
+  "url": "http://localhost:5177/",
+  "ok": false,
+  "ticketFile": "/home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/tickets/280-playthrough-validate-spire-ascent/ticket.md",
+  "capturePlanSource": "fallback",
+  "capturePlanValid": true,
+  "capturePlanAttempts": [],
+  "capturePlanSummary": "Deterministic full-flow smoke capture: auth, lobby create/join, ready transition, movement, dodge/key-item with post-dodge cooldown probe.",
+  "scenarios": [],
+  "screenshots": [
+    {
+      "file": "01-initial.png",
+      "player": "A",
+      "description": "Both players in squad lobby."
+    }
+  ],
+  "probes": [],
+  "error": "page.waitForFunction: Timeout 12000ms exceeded.",
+  "pageerrors": []
+}

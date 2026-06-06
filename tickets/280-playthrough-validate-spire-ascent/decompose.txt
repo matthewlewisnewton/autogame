@@ -1,0 +1,11 @@
+Remediation round 3 adds **2 sub-tickets** for the two open gaps in `review-feedback.md`. Sub-tickets 01–05 are marked `.passed` and were left unchanged; no failed folders needed deletion.
+
+**Created sub-ticket folders:**
+
+1. `/home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/tickets/280-playthrough-validate-spire-ascent/subtickets/06-harness-round-capture-stable/`
+   - Closes gap 1: round-2 `capture_run` loses the game server mid-capture (`SIGTERM` → `ECONNREFUSED`). Harness lifecycle fix in `harness/steps/game.py` and `harness/steps/capture_run.py`.
+
+2. `/home/matt/workspace/.autogame-worktrees/280-playthrough-validate-spire-ascent/tickets/280-playthrough-validate-spire-ascent/subtickets/07-spire-ascent-findings-boss-label/`
+   - Closes gap 2: `findings.md` reports `annex_overseer` instead of `spire_warden` / Summit Warden. Preset-aware `renderFindings`, regen via `pnpm validate:spire-ascent`, stricter artifact check.
+
+Both use **Verification: code** (metrics/logs/findings content, not pixel-only screenshots).

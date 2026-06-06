@@ -1,0 +1,10 @@
+Wrote the review outputs.
+
+`VERDICT: FAIL` because the required round-1 captured run has `"ok": false` and times out after repeated 502 / `ECONNREFUSED 127.0.0.1:3004` errors. No browser page errors were recorded.
+
+Files written:
+- `tickets/280-playthrough-validate-spire-ascent/round-1/review.md`
+- `tickets/280-playthrough-validate-spire-ascent/round-1/gaps.md`
+- `tickets/280-playthrough-validate-spire-ascent/round-1/nits.md`
+
+I also ran `pnpm validate:spire-ascent:check`, which passed for the committed validation artifact set. No game code or git state was changed.
