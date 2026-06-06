@@ -130,7 +130,7 @@ const QUEST_DEFS = {
         layoutMode: 'rigid',
         unlockRequires: { questId: 'canyon_descent', tier: 1 },
         encounter: {
-          bossType: 'miniboss',
+          bossType: 'canyon_warden',
           landmark: 'canyon_monolith',
           addCount: 4,
         },

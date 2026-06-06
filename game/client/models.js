@@ -28,6 +28,7 @@ export const MODEL_REGISTRY = {
 	annex_overseer: '/models/miniboss.glb',
 	arena_champion: '/models/arena-champion.glb',
 	spire_warden: '/models/miniboss.glb',
+	canyon_warden: '/models/miniboss.glb',
 	spawner: '/models/spawner.glb',
 
 	// Minion types (renderer.js MINION_VISUAL)

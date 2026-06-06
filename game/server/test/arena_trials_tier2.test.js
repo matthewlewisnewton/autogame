@@ -244,7 +244,6 @@ describe('arena_trials Tier 2 deploy spawns', () => {
     const layout = deployArenaTier(TIER_2);
     const adds = gameState.enemies.filter((e) => e.type !== 'arena_champion');
     expect(adds.length).toBe(ADD_COUNT);
-    expect(adds.every((e) => e.type !== 'miniboss')).toBe(true);
     for (const enemy of adds) {
       assertOnFloor(layout, enemy);
     }

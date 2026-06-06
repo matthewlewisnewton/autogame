@@ -913,6 +913,13 @@ const ENEMY_DEFS = {
 		hp: 420, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 22, attackWindupMs: 1400,
 		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 6,
 	},
+	canyon_warden: {
+		name: 'Canyon Warden',
+		description: 'Sunken-canyon boss with a sweeping cone strike and amber carapace.',
+		surfacedStats: ['hp', 'attackDamage', 'attackStyle', 'attackRange'],
+		hp: 350, chaseSpeed: 1.0, wanderSpeed: 0.5, attackDamage: 20, attackWindupMs: 1300,
+		attackStyle: 'cone', attackConeAngle: Math.PI / 2, attackRange: 5.5,
+	},
 	spawner: {
 		name: 'Brood Node',
 		description: 'Radial attacker that periodically summons skirmishers.',

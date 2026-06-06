@@ -760,7 +760,7 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		setGameState(gameState);
 		spawnEnemies();
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
-		expect(gameState.enemies.filter((e) => e.type === 'miniboss')).toHaveLength(1);
+		expect(gameState.enemies.filter((e) => e.type === 'canyon_warden')).toHaveLength(1);
 	});
 });
 

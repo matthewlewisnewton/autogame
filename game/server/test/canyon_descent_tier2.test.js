@@ -137,7 +137,7 @@ describe('canyon_descent Tier 2 catalog and layout', () => {
     expect(tier2.objectiveSummary).toContain('canyon warden');
     expect(isValidQuestSelection(QUEST_ID, TIER_2)).toBe(true);
     expect(getEncounterConfig(getQuest(QUEST_ID, TIER_2))).toMatchObject({
-      bossType: 'miniboss',
+      bossType: 'canyon_warden',
       landmark: 'canyon_monolith',
       addCount: ADD_COUNT,
     });
@@ -209,17 +209,17 @@ describe('canyon_descent Tier 2 deploy spawns', () => {
     return layout;
   }
 
-  it('spawns dormant miniboss on canyon_monolith with vertical add split on Tier 2', () => {
+  it('spawns dormant Canyon Warden on canyon_monolith with vertical add split on Tier 2', () => {
     resetGameState();
     const layout = deployCanyonTierStageBoss(TIER_2);
     const monolith = layout.landmarks.find((lm) => lm.type === 'canyon_monolith');
     const boss = bossEnemy(gameState);
-    const adds = gameState.enemies.filter((e) => e.type !== 'miniboss');
+    const adds = gameState.enemies.filter((e) => e.type !== 'canyon_warden');
     const addBands = adds.map((e) => bandAt(layout, e));
 
     expect(monolith).toBeDefined();
     expect(gameState.enemies).toHaveLength(1 + ADD_COUNT);
-    expect(boss.type).toBe('miniboss');
+    expect(boss.type).toBe('canyon_warden');
     expect(boss.x).toBe(monolith.x);
     expect(boss.z).toBe(monolith.z);
     expect(bandAt(layout, boss)).toBe('canyon');
@@ -241,7 +241,7 @@ describe('canyon_descent Tier 2 deploy spawns', () => {
     deployCanyonTier(TIER_2, SEED);
     const tagged = gameState.enemies.filter((e) => e.variant).length;
     expect(tagged).toBeGreaterThan(0);
-    expect(gameState.enemies.filter((e) => e.type === 'miniboss')).toHaveLength(1);
+    expect(gameState.enemies.filter((e) => e.type === 'canyon_warden')).toHaveLength(1);
   });
 
   it('leaves all enemies un-tagged on Tier 1 for the same seed', () => {

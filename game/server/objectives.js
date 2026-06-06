@@ -222,14 +222,11 @@ const OBJECTIVE_DEFS = {
       wireEncounterBoss(gameState, boss.id);
 
       const pool = getEnemyPool(quest.id).filter(
-        (entry) => entry.type !== 'miniboss' && entry.type !== bossType,
+        (entry) => entry.type !== bossType,
       );
-      const addPool = pool.length > 0
-        ? pool
-        : getEnemyPool(quest.id).filter((entry) => entry.type !== 'miniboss');
 
       for (let i = 0; i < addCount; i++) {
-        const type = addPool.length > 0 ? pickWeightedEnemyType(addPool, rng) : 'grunt';
+        const type = pool.length > 0 ? pickWeightedEnemyType(pool, rng) : 'grunt';
         const pos = ctx.pickEnemySpawnPosition(layout, rng, false, i, addCount);
         const add = ctx.spawnEnemy(pos.x, pos.z, type, undefined, {
           tier: ctx.roomTierAt(layout, pos.x, pos.z),

@@ -356,6 +356,7 @@ const ENEMY_GEOMETRY = {
 	annex_overseer: { type: 'cone', radius: 0.95, height: 2.0, segments: 14, color: 0x0d9488, emissive: 0x14b8a6, emissiveIntensity: 0.3 },
 	arena_champion: { type: 'cone', radius: 1.2, height: 2.8, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
 	spire_warden: { type: 'cone', radius: 0.9, height: 2.0, segments: 12, color: 0x3388cc },
+	canyon_warden: { type: 'cone', radius: 0.85, height: 1.9, segments: 12, color: 0xcc8800 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
 };
 
@@ -367,6 +368,7 @@ const ENEMY_ATTACK_VISUAL = {
 	annex_overseer: { style: 'radial', range: 3.5, color: 0x2dd4bf, emissive: 0x0d9488 },
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
+	canyon_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 5.5, color: 0xee9933, emissive: 0xcc8800 },
 	spawner:    { style: 'radial' },
 };
 

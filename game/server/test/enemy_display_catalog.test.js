@@ -16,7 +16,7 @@ import fs from 'fs';
 
 const require = createRequire(import.meta.url);
 
-const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner'];
+const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'canyon_warden', 'spawner'];
 const VARIANT_IDS = ['test', 'volatile', 'warded', 'leeching', 'frenzied'];
 
 const COMBAT_ONLY_KEYS = [
