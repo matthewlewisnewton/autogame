@@ -5028,7 +5028,7 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		c1Reconnect.socket.disconnect();
 	});
 
-	it('resets slotCooldowns and magicStones on active-run reconnect', async () => {
+	it('resets slotCooldowns and preserves magicStones on active-run reconnect', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5059,13 +5059,13 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		const restoredPlayer = testGameState().players[player2Id];
 		expect(restoredPlayer.slotCooldowns).toEqual(new Array(MAX_HAND_SLOTS).fill(null));
-		expect(restoredPlayer.magicStones).toBe(STARTING_MAGIC_STONES);
+		expect(restoredPlayer.magicStones).toBeCloseTo(0, 0);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();
 	});
 
-	it('resets HP and dead flag when reconnecting as dead player during active run', async () => {
+	it('preserves HP and dead flag when reconnecting as dead player during active run', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5095,8 +5095,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
 
 		const restoredPlayer = testGameState().players[player2Id];
-		expect(restoredPlayer.hp).toBe(100); // MAX_HP
-		expect(restoredPlayer.dead).toBe(false);
+		expect(restoredPlayer.hp).toBe(0);
+		expect(restoredPlayer.dead).toBe(true);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();

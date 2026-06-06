@@ -3318,6 +3318,45 @@ describe('run state', () => {
 		});
 	});
 
+	describe('buildPlayerRecord() vitals restoration', () => {
+		it('restores hp, dead, and magicStones from savedData', () => {
+			const savedData = {
+				currency: 10,
+				ownedCards: { iron_sword: 1 },
+				selectedDeck: ['iron_sword'],
+				hp: 42,
+				dead: false,
+				magicStones: 15,
+			};
+			const player = buildPlayerRecord('acct1', 'acct1', 'alice', savedData);
+			expect(player.hp).toBe(42);
+			expect(player.dead).toBe(false);
+			expect(player.magicStones).toBe(15);
+		});
+
+		it('defaults vitals for brand-new accounts with no savedData', () => {
+			const player = buildPlayerRecord('acct-new', 'acct-new', 'newbie', null);
+			expect(player.hp).toBe(100);
+			expect(player.dead).toBe(false);
+			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('preserves dead state and zero HP from savedData', () => {
+			const savedData = {
+				currency: 0,
+				ownedCards: {},
+				selectedDeck: [],
+				hp: 0,
+				dead: true,
+				magicStones: 3,
+			};
+			const player = buildPlayerRecord('acct-dead', 'acct-dead', 'ghost', savedData);
+			expect(player.hp).toBe(0);
+			expect(player.dead).toBe(true);
+			expect(player.magicStones).toBe(3);
+		});
+	});
+
 	describe('revivePlayerInLobby()', () => {
 		it('leaves living players with partial HP unchanged', () => {
 			const player = { hp: 42, dead: false };

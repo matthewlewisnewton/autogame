@@ -11,8 +11,10 @@ import {
 	normalizePlayerInventory,
 	gameState,
 	resetGameState,
-	provider as defaultProvider
+	provider as defaultProvider,
+	buildPlayerRecord,
 } from '../index.js';
+import { MAX_HP, STARTING_MAGIC_STONES } from '../config.js';
 import { StorageProvider } from '../storage.js';
 import { InMemoryProvider, FileProvider } from '../providers.js';
 import * as configMod from '../config.js';
@@ -195,7 +197,7 @@ describe('extractPersistentData', () => {
 		resetGameState();
 	});
 
-	it('extracts currency, ownedCards, selectedDeck, and location from a player', () => {
+	it('extracts currency, ownedCards, selectedDeck, location, and vitals from a player', () => {
 		const player = {
 			x: 3,
 			y: 0.5,
@@ -204,8 +206,9 @@ describe('extractPersistentData', () => {
 			currency: 42,
 			ownedCards: { iron_sword: 3, flame_blade: 2 },
 			selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
-			hp: 100,
+			hp: 42,
 			dead: false,
+			magicStones: 15,
 			ready: false,
 		};
 		gameState.players['p1'] = player;
@@ -221,9 +224,12 @@ describe('extractPersistentData', () => {
 			z: 7,
 			rotation: 1.57,
 		});
+		expect(data.hp).toBe(42);
+		expect(data.dead).toBe(false);
+		expect(data.magicStones).toBe(15);
 	});
 
-	it('returns defaults for missing fields', () => {
+	it('returns defaults for missing fields including vitals', () => {
 		const player = {};
 		const data = extractPersistentData(player);
 
@@ -236,9 +242,12 @@ describe('extractPersistentData', () => {
 			z: 0,
 			rotation: 0,
 		});
+		expect(data.hp).toBe(MAX_HP);
+		expect(data.dead).toBe(false);
+		expect(data.magicStones).toBe(STARTING_MAGIC_STONES);
 	});
 
-	it('does not include transient fields (hp, dead, ready, hand, deck)', () => {
+	it('does not include transient fields (ready, hand, deck)', () => {
 		const player = {
 			x: 5,
 			y: 0.5,
@@ -248,7 +257,8 @@ describe('extractPersistentData', () => {
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
 			hp: 50,
-			dead: false,
+			dead: true,
+			magicStones: 8,
 			ready: true,
 			hand: [{ id: 'iron_sword' }],
 			deck: ['flame_blade'],
@@ -267,12 +277,89 @@ describe('extractPersistentData', () => {
 			z: 10,
 			rotation: 0,
 		});
-		expect(data).not.toHaveProperty('hp');
-		expect(data).not.toHaveProperty('dead');
+		expect(data.hp).toBe(50);
+		expect(data.dead).toBe(true);
+		expect(data.magicStones).toBe(8);
 		expect(data).not.toHaveProperty('ready');
 		expect(data).not.toHaveProperty('hand');
 		expect(data).not.toHaveProperty('deck');
 		expect(data).not.toHaveProperty('runRewards');
+	});
+});
+
+// ── vitals cold-load round-trip ──
+
+describe('vitals persistence cold-load', () => {
+	let testProvider;
+
+	beforeEach(() => {
+		resetGameState();
+		testProvider = new InMemoryProvider();
+		setTestProvider(testProvider);
+	});
+
+	afterEach(() => {
+		setTestProvider(null);
+	});
+
+	it('vitals round-trip through savePlayerData and buildPlayerRecord', () => {
+		gameState.players['acct-vitals'] = {
+			id: 'acct-vitals',
+			accountId: 'acct-vitals',
+			x: 1,
+			y: 0.5,
+			z: 2,
+			rotation: 0,
+			currency: 10,
+			ownedCards: { iron_sword: 1 },
+			selectedDeck: ['iron_sword'],
+			hp: 42,
+			dead: false,
+			magicStones: 15,
+		};
+
+		savePlayerData('acct-vitals');
+
+		const loaded = testProvider.loadPlayer('acct-vitals');
+		expect(loaded.hp).toBe(42);
+		expect(loaded.dead).toBe(false);
+		expect(loaded.magicStones).toBe(15);
+
+		const restored = buildPlayerRecord('acct-vitals', 'acct-vitals', 'tester', loaded);
+		expect(restored.hp).toBe(42);
+		expect(restored.dead).toBe(false);
+		expect(restored.magicStones).toBe(15);
+	});
+
+	it('dead state with low HP round-trips through save and restore', () => {
+		gameState.players['acct-dead'] = {
+			id: 'acct-dead',
+			accountId: 'acct-dead',
+			currency: 0,
+			ownedCards: {},
+			selectedDeck: [],
+			hp: 0,
+			dead: true,
+			magicStones: 3,
+		};
+
+		savePlayerData('acct-dead');
+
+		const loaded = testProvider.loadPlayer('acct-dead');
+		expect(loaded.hp).toBe(0);
+		expect(loaded.dead).toBe(true);
+
+		const restored = buildPlayerRecord('acct-dead', 'acct-dead', 'ghost', loaded);
+		expect(restored.hp).toBe(0);
+		expect(restored.dead).toBe(true);
+		expect(restored.magicStones).toBe(3);
+	});
+
+	it('brand-new accounts get default vitals when savedData is null', () => {
+		const restored = buildPlayerRecord('new-acct', 'new-acct', 'newbie', null);
+		expect(restored.hp).toBe(MAX_HP);
+		expect(restored.dead).toBe(false);
+		expect(restored.magicStones).toBe(STARTING_MAGIC_STONES);
 	});
 });
 
@@ -291,7 +378,7 @@ describe('savePlayerData', () => {
 		setTestProvider(null);
 	});
 
-	it('calls provider.savePlayer with the correct data shape', () => {
+	it('calls provider.savePlayer with the correct data shape including vitals', () => {
 		const player = {
 			x: 2,
 			y: 0.5,
@@ -300,6 +387,9 @@ describe('savePlayerData', () => {
 			currency: 100,
 			ownedCards: { iron_sword: 5 },
 			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
+			hp: 42,
+			dead: false,
+			magicStones: 15,
 		};
 		gameState.players['testPlayer'] = player;
 
@@ -315,9 +405,12 @@ describe('savePlayerData', () => {
 			ownedCards: { iron_sword: 5 },
 			selectedDeck: ['iron_sword', 'iron_sword', 'flame_blade'],
 		});
+		expect(loaded.hp).toBe(42);
+		expect(loaded.dead).toBe(false);
+		expect(loaded.magicStones).toBe(15);
 	});
 
-	it('saves only persistent fields (excludes hp, dead, hand, etc.)', () => {
+	it('saves vitals but excludes transient fields (hand, deck, ready)', () => {
 		const player = {
 			x: 0,
 			y: 0.5,
@@ -327,7 +420,7 @@ describe('savePlayerData', () => {
 			ownedCards: { flame_blade: 2 },
 			selectedDeck: ['flame_blade', 'battle_familiar'],
 			hp: 80,
-			dead: false,
+			dead: true,
 			ready: true,
 			hand: [{ id: 'flame_blade' }],
 			deck: ['battle_familiar'],
@@ -347,8 +440,11 @@ describe('savePlayerData', () => {
 			ownedCards: { flame_blade: 2 },
 			selectedDeck: ['flame_blade', 'battle_familiar'],
 		});
-		expect(loaded).not.toHaveProperty('hp');
+		expect(loaded.hp).toBe(80);
+		expect(loaded.dead).toBe(true);
+		expect(loaded.magicStones).toBe(100);
 		expect(loaded).not.toHaveProperty('hand');
+		expect(loaded).not.toHaveProperty('ready');
 	});
 
 	it('does nothing when player does not exist in gameState', () => {
