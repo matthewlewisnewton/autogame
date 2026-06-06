@@ -894,6 +894,178 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 	});
 });
 
+describe('debugScenario — arena-trials-*', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	const liveAdds = (state) =>
+		state.enemies.filter(
+			(e) =>
+				e.hp > 0 &&
+				e.type !== 'arena_champion' &&
+				(e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+
+	it('repositions beside live adds after arena-trials-tier-2 deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const bossId = state.run.encounter.bossEnemyId;
+		const bossBefore = state.enemies.find((e) => e.id === bossId);
+		const addsBefore = liveAdds(state);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'arena-trials-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('arena-trials-near-adds');
+
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		expect(liveAdds(state).every((e) => e.hp === 1 && !e.shieldHp)).toBe(true);
+
+		const bossAfter = state.enemies.find((e) => e.id === bossId);
+		expect(bossAfter?.x).toBe(bossBefore.x);
+		expect(bossAfter?.z).toBe(bossBefore.z);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
+		let bestDist = Infinity;
+		for (const add of liveAdds(state)) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) bestDist = dist;
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('rejects arena-trials-near-adds without an active arena_trials run', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const resultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-near-adds' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/arena_trials Tier 2 stage-boss run/);
+	});
+
+	it('places player outside dormant boss trigger after adds cleared', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('arena-trials-boss-approach');
+
+		const player = playerForSocket(socket);
+		const anchor = resolveEncounterAnchor(state.run, state);
+		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+	});
+
+	it('rejects arena-trials-boss-approach while adds remain', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		await tier2Promise;
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(false);
+		expect(approachResult.reason).toMatch(/Adds must be cleared/);
+	});
+
+	it('positions arena champion at 1 HP beside the player in playing phase', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-tier-2' });
+		await tier2Promise;
+
+		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
+		const lowHpResult = await lowHpPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(lowHpResult.ok).toBe(true);
+		expect(lowHpResult.scenario).toBe('arena-trials-boss-low-hp');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('arena_champion');
+		expect(boss.hp).toBe(1);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+
+		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		expect(bossUpdate?.hp).toBe(1);
+		expect(bossUpdate?.type).toBe('arena_champion');
+	});
+
+	it('rejects arena-trials-boss-low-hp without an active arena_trials run', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const resultPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'arena-trials-boss-low-hp' });
+		const result = await resultPromise;
+
+		expect(result.ok).toBe(false);
+		expect(result.reason).toMatch(/arena_trials Tier 2 stage-boss run/);
+	});
+});
+
 describe('debugScenario — spire-ascent-tier-2', () => {
 	let baseUrl;
 	let prevAllowDebug;
