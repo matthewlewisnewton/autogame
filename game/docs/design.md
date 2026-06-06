@@ -12,6 +12,19 @@ This game is a 3D multiplayer action-RPG that combines elements from *Phantasy S
 ### Floor Geometry
 Dungeon rooms and passages may have sloped floors (ramps) with varying elevation across their vertices. The walkable surface height at any `(x, z)` coordinate is determined by `sampleFloorY()`, which interpolates across the room's floor corner positions. Each room carries a `floorCorners: { yNW, yNE, ySE, ySW }` object specifying the Y height at each corner; corners are labelled NW/NE/SE/SW relative to room center (NW = top-left, counter-clockwise). Player movement on slopes — adjusting `player.y` to follow the floor surface — is implemented on the server in `applyPlayerMovement` (`game/server/simulation.js`), which snaps `player.y` via `sampleFloorY(_gameState.layout, x, z)`. Floor sampling logic lives in `shared/floorSampling.esm.js`; see `shared/floorSampling.js` for the CJS eval-bridge.
 
+## Stage Bosses
+
+Each stage culminates in a single stage boss (`ENEMY_DEFS` in `game/server/simulation.js`). Their base HP values are deliberately kept in a tight band so that a full-HP boss can be brought to 0 within the 180s `defeatBoss` validation window at the driver's attack DPS:
+
+| Boss | Stage | Base HP |
+| --- | --- | --- |
+| `miniboss` (Vault Warden) | vault | 300 |
+| `annex_overseer` (Annex Overseer) | annex | 320 |
+| `spire_warden` (Summit Warden) | spire summit | 420 |
+| `arena_champion` (Plaza Sovereign) | open plaza | 420 |
+
+`arena_champion` was previously the outlier at **500 HP** — markedly above every other stage boss. At the driver's sustained attack DPS, 500 HP could not be reduced to 0 inside the 180s `defeatBoss` timeout (even in god-mode), which made the open-plaza validation flaky. It was retuned to **420**, aligning it with `spire_warden` (the next-highest boss) so a real, full-HP defeat is achievable within the window while the open plaza stays the joint-toughest encounter. Only `hp` changed; the boss's identity and pressure profile (higher `attackDamage` 26, widest cone `2π/3`, longest `attackRange` 6.5) are unchanged, so it remains the hardest-hitting, farthest-reaching stage boss.
+
 ## Run Suspend / Resume
 Telepipe is a mid-run evacuation spell that lets a squad suspend a dungeon without losing the current run state.
 
