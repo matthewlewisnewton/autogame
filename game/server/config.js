@@ -32,7 +32,6 @@ const SPIRE_EDGE_HAZARD_DAMAGE = 3;
 const SPIRE_EDGE_HAZARD_COOLDOWN_MS = 500;
 const MEDIC_HEAL_COST = 10;
 const APPEARANCE_CHANGE_COST = 25;
-const LOBBY_REVIVE_HP = 10;
 const RESPAWN_DELAY_MS = 3000;
 const LOOT_LIFETIME_MS = 120000;
 // Slightly wider than the client walk-over radius (3.25) so pickups succeed after
@@ -168,7 +167,6 @@ module.exports = {
   SPIRE_EDGE_HAZARD_COOLDOWN_MS,
   MEDIC_HEAL_COST,
   APPEARANCE_CHANGE_COST,
-  LOBBY_REVIVE_HP,
   RESPAWN_DELAY_MS,
   LOOT_LIFETIME_MS,
   LOOT_PICKUP_RADIUS,

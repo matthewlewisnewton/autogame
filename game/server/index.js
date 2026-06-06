@@ -484,6 +484,7 @@ const DEBUG_SCENARIOS = new Set([
   'sloped-dungeon',
   'key-item-cooldown',
   'medic-kit-ready',
+  'hub-partial-hp',
   'guard-block-ready',
   'flare-beacon-ready',
   'loot-magnet-ready',
@@ -1032,7 +1033,7 @@ function initializePlayerForActiveRun(player) {
   if (!player.pendingSummons) {
     player.pendingSummons = new Set();
   }
-  if (player.hp == null || player.hp <= 0) {
+  if (player.hp == null || !Number.isFinite(player.hp)) {
     player.hp = MAX_HP;
     player.dead = false;
   }

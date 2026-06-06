@@ -10,7 +10,6 @@ const {
   MAX_HP,
   MEDIC_HEAL_COST,
   APPEARANCE_CHANGE_COST,
-  LOBBY_REVIVE_HP,
   MAX_MAGIC_STONES,
   STARTING_MAGIC_STONES,
   SPAWN_PADDING,
@@ -443,14 +442,15 @@ function ensureShopOffer(state = _gameState) {
   return state.shopOffer;
 }
 
-/** Restore minimal HP when returning to the lobby ship after death or wipe. */
+/** Sync lobby return state; medic booth is the only HP restore path. */
 function revivePlayerInLobby(player) {
   if (!player) return;
-  const hp = Number.isFinite(player.hp) ? player.hp : 0;
-  if (player.dead || hp <= 0) {
-    player.hp = LOBBY_REVIVE_HP;
+  if (player.hp == null || !Number.isFinite(player.hp)) {
+    player.hp = MAX_HP;
     player.dead = false;
+    return;
   }
+  player.dead = player.hp <= 0;
 }
 
 function healAtMedic(playerId, state = _gameState) {
@@ -2634,7 +2634,8 @@ function suspendRunToLobby() {
     player.suspendDungeonPos = { x: player.x, y: player.y, z: player.z };
     player.ready = false;
     player.extracted = false;
-    player.dead = false;
+    const hp = Number.isFinite(player.hp) ? player.hp : 0;
+    player.dead = hp <= 0;
     player.x = spawn.x;
     player.z = spawn.z;
     player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));

@@ -18,7 +18,7 @@ const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const crypto = require('crypto');
 const { generateLayout, questLayoutSeed, sampleFloorY, resolveFloorY } = require('./dungeon');
 const { DEFAULT_QUEST_ID, getLayoutProfileForQuest, buildQuestUpdatePayload } = require('./quests');
-const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS } = require('./config');
+const { APPEARANCE_CHANGE_COST, DETECTION_RADIUS, MAX_HP, MAX_MAGIC_STONES, MAX_HAND_SLOTS, MEDIC_HEAL_COST } = require('./config');
 const {
   firstRoomPosition,
   computeDungeonBounds,
@@ -1954,6 +1954,15 @@ function applyDebugScenario(socket, name) {
       player.magicStones = MAX_MAGIC_STONES;
       player.equippedKeyItemId = 'dodge_roll';
       player.keyItemCooldownUntil = Date.now() + 5000; // 5-second cooldown remaining
+    } else if (name === 'hub-partial-hp') {
+      // Hub lobby with partial HP and gold for the medic booth — verifies med-booth-as-
+      // only-heal without playing through combat and telepipe-up first. The same state
+      // is reachable normally by taking damage in a run, extracting via Telepipe, and
+      // returning to the hub with HP still below max.
+      player.hp = 40;
+      player.dead = false;
+      player.currency = Math.max(player.currency || 0, MEDIC_HEAL_COST + 5);
+      player.magicStones = MAX_MAGIC_STONES;
     } else if (name === 'medic-kit-ready') {
       // Put player at low HP with some MS to test Field Medic Kit healing.
       player.hp = Math.floor(MAX_HP * 0.3);

@@ -2981,6 +2981,61 @@ describe('run state', () => {
 			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 0);
 		});
 
+		it('partial HP survives telepipe-up, hub wait, and redeploy unchanged', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			const partialHp = 40;
+			addPlayer('p1', {
+				hp: partialHp,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+			const { x: portalX, z: portalZ } = gameState.players.p1;
+			gameState.telepipe = {
+				x: portalX,
+				z: portalZ,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+			expect(tryEnterTelepipe('p1').ok).toBe(true);
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.players.p1.hp).toBe(partialHp);
+
+			gameState.players.p1.ready = true;
+			checkAllReady();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.players.p1.hp).toBe(partialHp);
+		});
+
+		it('healAtMedic restores partial HP after telepipe hub return; without medic HP stays partial', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			const partialHp = 40;
+			addPlayer('p1', {
+				hp: partialHp,
+				currency: 25,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+			const { x: portalX, z: portalZ } = gameState.players.p1;
+			gameState.telepipe = {
+				x: portalX,
+				z: portalZ,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+			tryEnterTelepipe('p1');
+			expect(gameState.players.p1.hp).toBe(partialHp);
+
+			expect(healAtMedic('p1')).toEqual({ ok: true, hp: 100, currency: 15, cost: 10 });
+			expect(gameState.players.p1.hp).toBe(100);
+		});
+
 		it('solo telepipe extract and redeploy preserves run id, layout seed, hp, and magic stones', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
@@ -3167,15 +3222,15 @@ describe('run state', () => {
 			expect(gameState.gamePhase).toBe('lobby');
 		});
 
-		it('revives dead players to LOBBY_REVIVE_HP when returning to lobby', () => {
+		it('keeps dead players at 0 HP when returning to lobby until medic heals', () => {
 			addPlayer('p1', { hp: 0, dead: true });
 
 			const { restore } = mockRoomEmit();
 			returnPlayersToLobby();
 			restore();
 
-			expect(gameState.players.p1.hp).toBe(config.LOBBY_REVIVE_HP);
-			expect(gameState.players.p1.dead).toBe(false);
+			expect(gameState.players.p1.hp).toBe(0);
+			expect(gameState.players.p1.dead).toBe(true);
 		});
 
 		it('clears gameState.run', () => {
