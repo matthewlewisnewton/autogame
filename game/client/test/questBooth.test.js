@@ -69,7 +69,7 @@ const MAIN_DOM_IDS = [
 	'summary-rewards-cards', 'summary-card-choices', 'summary-card-choices-heading',
 	'summary-card-choices-list', 'summary-card-choices-empty', 'return-to-lobby-btn',
 	'owned-cards-list', 'selected-deck-list', 'deck-size-display', 'deck-error',
-	'quest-board', 'quest-board-wrapper', 'quest-error', 'booth-prompt', 'suspended-run-banner',
+	'quest-board', 'quest-board-wrapper', 'quest-error', 'booth-prompt', 'lobby-status-banner',
 ];
 
 function ensureElement(id, tag = 'div') {
