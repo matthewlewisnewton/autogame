@@ -4934,3 +4934,26 @@ PASS. This ticket did not add or change debug scenario entry points. Existing bo
 
 None.
 
+
+## v0.278 — 283-add-stage-boss-health-bar-and-encounter-ui  (2026-06-06 03:36:23)
+
+### Every per-level stage boss is supported
+
+PASS. The implementation is data-driven by `bossEnemyId` plus the enemy display catalog, so it is not hard-coded to a single boss type. The wiring test covers the current stage-boss enemy types from the live quest/catalog data: `annex_overseer`, `arena_champion`, `miniboss`, and `spire_warden`.
+
+### No gameplay changes or foundation regressions
+
+PASS. The branch is scoped to client UI, styling, and tests. Server encounter activation, boss spawn, objective completion, movement, rendering, and multiplayer socket flow are untouched. The captured run still satisfies the foundation requirements: 3D scene renders, socket connection succeeds, two players enter gameplay, and movement/key-item state updates are visible.
+
+### Debug scenarios
+
+PASS. This ticket did not add or change a `?debugScenario=...` shortcut. Existing debug scenarios remain server-side QA conveniences and are not part of the normal gameplay entry path for this HUD.
+
+## Code quality and validation
+
+PASS. The HUD logic is isolated in a small pure module with DOM sync separated from model building, matching existing client test patterns. The coverage log shows `client/test/boss-encounter-hud.test.js` and `client/test/boss-encounter-hud-wiring.test.js` passing, with the overall visible test run at 12 files / 250 tests passed. The only stderr in coverage is pre-existing jsdom model URL noise, not a runtime browser error.
+
+## Remaining gaps
+
+None.
+
