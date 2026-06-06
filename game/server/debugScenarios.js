@@ -49,6 +49,8 @@ const { VARIANT_DEFS } = require('./enemyVariants');
 const { PHASES, setPhase } = require('./lobbies');
 const {
   tryActivateEncounter,
+  activateEncounter,
+  lockEncounter,
   ENCOUNTER_TRIGGER_RADIUS,
   isEncounterDormant,
   areAllNonBossEnemiesDefeated,
@@ -127,6 +129,34 @@ function liveTrainingCavernsAdds(state, bossType = 'annex_overseer') {
   return (state.enemies || []).filter(
     (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
   );
+}
+
+function liveCanyonDescentAdds(state, bossType = 'miniboss') {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== bossType && (e.type === 'grunt' || e.type === 'skirmisher'),
+  );
+}
+
+function roomAt(layout, x, z) {
+  return layout.rooms.find((r) => {
+    const hw = r.width / 2;
+    const hd = r.depth / 2;
+    return x >= r.x - hw && x <= r.x + hw && z >= r.z - hd && z <= r.z + hd;
+  });
+}
+
+function bandAt(layout, x, z) {
+  const room = roomAt(layout, x, z);
+  return room ? room.band : null;
+}
+
+function clusterAnchorForBand(layout, band, player) {
+  if (band === 'plateau' || !band) {
+    return { x: player.x, z: player.z };
+  }
+  const room = layout.rooms.find((r) => r.band === band);
+  if (room) return { x: room.x, z: room.z };
+  return { x: player.x, z: player.z };
 }
 
 function repositionNearEnemy(player, enemy, standoff = 3.5) {
@@ -597,6 +627,139 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'canyon-descent-near-adds') {
+      // Reposition beside live Canyon Descent Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing plateau/canyon bands toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      const adds = liveCanyonDescentAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      const addsByBand = new Map();
+      for (const add of adds) {
+        const band = bandAt(state.layout, add.x, add.z) || 'plateau';
+        if (!addsByBand.has(band)) addsByBand.set(band, []);
+        addsByBand.get(band).push(add);
+      }
+      const clusterRadius = 4;
+      for (const [band, bandAdds] of addsByBand) {
+        const anchor = clusterAnchorForBand(state.layout, band, player);
+        let angle = 0;
+        const step = bandAdds.length > 0 ? (Math.PI * 2) / bandAdds.length : 0;
+        for (const add of bandAdds) {
+          add.hp = 1;
+          add.shieldHp = 0;
+          add.maxShieldHp = 0;
+          add.x = anchor.x + Math.cos(angle) * clusterRadius;
+          add.z = anchor.z + Math.sin(angle) * clusterRadius;
+          add.y = resolveFloorY(sampleFloorY(state.layout, add.x, add.z));
+          add.wanderTarget = { x: add.x, z: add.z };
+          angle += step;
+        }
+      }
+      const playerBand = bandAt(state.layout, player.x, player.z) || 'plateau';
+      const playerAnchor = clusterAnchorForBand(state.layout, playerBand, player);
+      player.x = playerAnchor.x;
+      player.z = playerAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'canyon-descent-boss-approach') {
+      // Place the player just outside the dormant miniboss trigger after adds are cleared.
+      // Reachable normally by defeating adds then walking to the canyon_monolith anchor.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      if (liveCanyonDescentAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveEncounterAnchor(state.run, state);
+      if (!anchor) {
+        return { ok: false, reason: 'No encounter anchor for boss approach' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'canyon-descent-boss-low-hp') {
+      // Canyon Descent Tier 2 miniboss beside the player at 1 HP for fast harness victory.
+      // Reachable normally by clearing adds and engaging the boss; shortcut after deploy.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'canyon_descent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires canyon_descent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'miniboss') {
+        return { ok: false, reason: 'Canyon miniboss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      boss.x = player.x + 4;
+      boss.z = player.z;
+      boss.y = resolveFloorY(sampleFloorY(state.layout, boss.x, boss.z));
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      activateEncounter(state.run);
+      lockEncounter(state.run);
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'spire-ascent-tier-2') {
@@ -1536,8 +1699,13 @@ function applyDebugScenario(socket, name) {
   });
 }
 
+const BOSS_APPROACH_NUDGE_SCENARIOS = new Set([
+  'training-caverns-boss-approach',
+  'canyon-descent-boss-approach',
+]);
+
 /**
- * Debug-only: while `training-caverns-boss-approach` is active, inch the player toward
+ * Debug-only: while a boss-approach scenario is active, inch the player toward
  * the encounter anchor each tick so headless harness walks can enter the trigger radius.
  * Nudging is deferred briefly after setup so dormant probes can read stable state.
  */
@@ -1551,7 +1719,7 @@ function nudgeDebugBossApproachPlayers(state) {
 
   const now = Date.now();
   for (const player of Object.values(state.players)) {
-    if (!player || player.debugScenario !== 'training-caverns-boss-approach') continue;
+    if (!player || !BOSS_APPROACH_NUDGE_SCENARIOS.has(player.debugScenario)) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;

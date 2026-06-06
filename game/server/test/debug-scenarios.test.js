@@ -762,6 +762,136 @@ describe('debugScenario — canyon-descent-tier-2', () => {
 		expect(gameState.enemies.some((e) => e.variant)).toBe(true);
 		expect(gameState.enemies.filter((e) => e.type === 'miniboss')).toHaveLength(1);
 	});
+
+	it('repositions beside live adds after canyon-descent-tier-2 deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const bossId = state.run.encounter.bossEnemyId;
+		const monolith = state.layout.landmarks.find((lm) => lm.type === 'canyon_monolith');
+		const bossBefore = state.enemies.find((e) => e.id === bossId);
+		const addsBefore = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'miniboss' && (e.type === 'grunt' || e.type === 'skirmisher'),
+		);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'canyon-descent-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('canyon-descent-near-adds');
+
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		expect(
+			state.enemies.filter(
+				(e) => e.hp > 0 && e.type !== 'miniboss' && (e.type === 'grunt' || e.type === 'skirmisher'),
+			).every((e) => e.hp === 1 && !e.shieldHp),
+		).toBe(true);
+
+		const bossAfter = state.enemies.find((e) => e.id === bossId);
+		expect(bossAfter?.x).toBe(bossBefore.x);
+		expect(bossAfter?.z).toBe(bossBefore.z);
+		expect(bossAfter?.x).toBe(monolith.x);
+		expect(bossAfter?.z).toBe(monolith.z);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
+		let nearest = addsBefore[0];
+		let bestDist = Infinity;
+		for (const add of state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'miniboss' && (e.type === 'grunt' || e.type === 'skirmisher'),
+		)) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) {
+				bestDist = dist;
+				nearest = add;
+			}
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('places player outside dormant boss trigger after adds cleared', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'canyon-descent-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('canyon-descent-boss-approach');
+
+		const player = playerForSocket(socket);
+		const anchor = resolveEncounterAnchor(state.run, state);
+		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
+		for (let i = 0; i < 30; i++) {
+			runGameLoopTick();
+		}
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		expect(Math.hypot(anchor.x - player.x, anchor.z - player.z)).toBeGreaterThan(
+			ENCOUNTER_TRIGGER_RADIUS,
+		);
+	});
+
+	it('positions miniboss at 1 HP beside the player in playing phase', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'canyon-descent-tier-2' });
+		await tier2Promise;
+
+		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'canyon-descent-boss-low-hp' });
+		const lowHpResult = await lowHpPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(lowHpResult.ok).toBe(true);
+		expect(lowHpResult.scenario).toBe('canyon-descent-boss-low-hp');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('miniboss');
+		expect(boss.hp).toBe(1);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.ACTIVE);
+		expect(state.run.encounter.locked).toBe(true);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+
+		const bossUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		expect(bossUpdate?.hp).toBe(1);
+		expect(bossUpdate?.type).toBe('miniboss');
+	});
 });
 
 describe('debugScenario — spire-ascent-tier-2', () => {

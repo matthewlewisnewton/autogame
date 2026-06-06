@@ -1,0 +1,44 @@
+{
+  "ok": true,
+  "preset": "sunken-canyon",
+  "steps": "hub",
+  "outDir": "game/validation/sunken-canyon",
+  "presetConfig": {
+    "questId": "canyon_descent",
+    "questTier": 2,
+    "bossType": "miniboss",
+    "deployScenario": "canyon-descent-tier-2",
+    "layoutProfile": "sunken-canyon",
+    "lobbyName": "Sunken Canyon Validation",
+    "nearAddsScenario": "canyon-descent-near-adds",
+    "bossApproachScenario": "canyon-descent-boss-approach",
+    "bossLowHpScenario": "canyon-descent-boss-low-hp",
+    "encounterTriggerRadius": 8,
+    "addsTimeoutMs": 90000,
+    "encounterTimeoutMs": 60000
+  },
+  "serverPort": 3275,
+  "clientPort": 5200,
+  "auth": {
+    "username": "playthrough-1780733909038",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "game/validation/sunken-canyon/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "game/validation/sunken-canyon/01-hub.png",
+    "entryScreenshot": "game/validation/sunken-canyon/02-level-entry.png",
+    "deployScenario": "canyon-descent-tier-2",
+    "deployOk": true,
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "miniboss",
+      "grunt",
+      "skirmisher",
+      "grunt",
+      "grunt"
+    ]
+  }
+}
