@@ -38,7 +38,6 @@ const {
   spawnFireTrailEffect,
   spawnInfernoPillarEffect,
   damagePlayer,
-  healPlayer,
   spawnGroundEnchantment,
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
@@ -103,8 +102,6 @@ function applyAstralShieldCast(ctx) {
   const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
     magicStoneOnHit: cardDef.magicStoneOnHit,
     magicStoneOnKill: cardDef.magicStoneOnKill,
-    healOnHit: cardDef.healOnHit,
-    healOnKill: cardDef.healOnKill,
     attackerId: socket.playerId,
   });
   const hits = radial.hits;
@@ -153,7 +150,6 @@ function applyAstralShieldCast(ctx) {
     radius: SUMMON_RADIUS,
     hits,
     magicStonesGained: appliedMagicStones,
-    hpHealed: radial.hpHealed || 0,
     shieldGranted: shieldHp,
     minionId: minion.id,
   });
@@ -559,27 +555,6 @@ function handleUseCard(socket, state, lobby, data) {
       }
 
       if (cardDef.effect === 'healing_font') {
-        const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
-
-        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
-        replaceConsumedCard(player, data.slotIndex, handCard);
-
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
-        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
-          playerId: socket.playerId,
-          cardId: data.cardId,
-          slotIndex: data.slotIndex,
-          specialEffect: cardDef.specialEffect,
-          origin: { x: originX, z: originZ },
-          radius: SUMMON_RADIUS,
-          healAmount: healed,
-        });
-
-        return;
-      }
-
-      if (cardDef.effect === 'divine_grace') {
-        const healed = healPlayer(socket.playerId, cardDef.healAmount || 0);
         const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
 
         applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
@@ -593,7 +568,26 @@ function handleUseCard(socket, state, lobby, data) {
           specialEffect: cardDef.specialEffect,
           origin: { x: originX, z: originZ },
           radius: SUMMON_RADIUS,
-          healAmount: healed,
+          magicStonesGained,
+        });
+
+        return;
+      }
+
+      if (cardDef.effect === 'divine_grace') {
+        const magicStonesGained = addMagicStones(player, cardDef.magicStoneRestore || 0);
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: cardDef.specialEffect,
+          origin: { x: originX, z: originZ },
+          radius: SUMMON_RADIUS,
           magicStonesGained,
         });
 
@@ -772,8 +766,6 @@ function handleUseCard(socket, state, lobby, data) {
       const radial = collectRadialHits(originX, originZ, SUMMON_RADIUS, summonDamage, {
         magicStoneOnHit: cardDef.magicStoneOnHit,
         magicStoneOnKill: cardDef.magicStoneOnKill,
-        healOnHit: cardDef.healOnHit,
-        healOnKill: cardDef.healOnKill,
         attackerId: socket.playerId,
       });
       const hits = radial.hits;
@@ -799,7 +791,6 @@ function handleUseCard(socket, state, lobby, data) {
         radius: SUMMON_RADIUS,
         hits: hits,
         magicStonesGained: appliedMagicStones,
-        hpHealed: radial.hpHealed || 0,
       });
 
       // Do NOT delete pendingSummons here — leave the entry so any duplicate

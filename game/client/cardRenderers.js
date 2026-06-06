@@ -113,12 +113,12 @@ function renderGlacierCollapse(data, ctx) {
 }
 
 /**
- * Divine Grace: heal ring + loot sound when the caster gained Magic Stones.
+ * Restoration Beacon / Sanctum Pulse: MS restore ring + loot sound when stones gained.
  */
-function renderDivineGrace(data, ctx) {
+function renderManaRestore(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
-	if (data.magicStonesGained > 0) ctx.playSound('loot');
+	if (data.magicStonesGained > 0 && data.playerId === ctx.myId) ctx.playSound('loot');
 }
 
 /**
@@ -268,7 +268,8 @@ const CARD_RENDERERS = {
 
 	// Spells
 	glacier_collapse: renderGlacierCollapse,
-	divine_grace: renderDivineGrace,
+	healing_font: renderManaRestore,
+	divine_grace: renderManaRestore,
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
 	telepipe: renderTelepipe,
@@ -378,10 +379,6 @@ export function renderCardUsed(data, ctx) {
 	}
 
 	renderEnchantmentTrigger(data, ctx);
-
-	if (data.hpHealed > 0 && data.playerId === ctx.myId) {
-		ctx.playSound('loot');
-	}
 
 	const accentHex = getAccentHex(data.cardId);
 	applyShockwave(data, ctx, accentHex);

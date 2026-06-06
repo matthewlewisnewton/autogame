@@ -180,16 +180,15 @@
   "healing_font": {
     "magicStoneCost": 0,
     "effect": "healing_font",
-    "healAmount": 25,
-    "specialEffect": "heal"
+    "magicStoneRestore": 6,
+    "specialEffect": "mana_restore"
   },
   "divine_grace": {
     "magicStoneCost": 0,
     "effect": "divine_grace",
-    "healAmount": 38,
     "magicStoneRestore": 10,
     "isEvolved": true,
-    "specialEffect": "heal_and_mana"
+    "specialEffect": "mana_restore"
   },
   "skeleton_knight": {
     "minionHp": 120,
@@ -267,8 +266,6 @@
     "magicStoneCost": 30,
     "damage": 42,
     "magicStoneOnHit": 12,
-    "healOnHit": 4,
-    "healOnKill": 8,
     "isEvolved": true,
     "specialEffect": "soul_drain"
   },

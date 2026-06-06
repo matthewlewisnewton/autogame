@@ -132,25 +132,25 @@ describe('renderCardUsed() — common post-effects', () => {
 		expect(triggerCalls[0][2]).toBe(3);
 	});
 
-	it('plays the heal sound only when the local player was healed', () => {
+	it('plays the loot sound when the local player gained magic stones from Restoration Beacon', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			hpHealed: 12,
+			magicStonesGained: 6,
 			playerId: 'me',
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(true);
 	});
 
-	it('does not play the heal sound when another player was healed', () => {
+	it('does not play the loot sound when another player used Restoration Beacon', () => {
 		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'healing_font',
 			origin: { x: 0, z: 0 },
 			radius: 4,
-			hpHealed: 12,
+			magicStonesGained: 6,
 			playerId: 'someone-else',
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'loot')).toBe(false);
@@ -337,13 +337,14 @@ describe('renderCardUsed() — spell dispatch', () => {
 		expect(ring[3]).toEqual({ color: 0x38bdf8, emissive: 0x0ea5e9 });
 	});
 
-	it('divine_grace renders the heal ring and plays loot when magicStonesGained > 0', () => {
-		const ctx = makeCtx();
+	it('divine_grace renders the MS restore ring and plays loot when magicStonesGained > 0', () => {
+		const ctx = makeCtx({ myId: 'me' });
 		renderCardUsed({
 			cardId: 'divine_grace',
 			origin: { x: 0, z: 0 },
 			radius: 3,
 			magicStonesGained: 8,
+			playerId: 'me',
 			hits: [],
 		}, ctx);
 		expect(ctx._calls.some((c) => c[0] === 'spawnDivineGraceEffect')).toBe(true);

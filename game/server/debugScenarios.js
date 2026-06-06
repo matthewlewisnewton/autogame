@@ -1985,7 +1985,7 @@ function applyDebugScenario(socket, name) {
       player.equippedKeyItemId = 'dodge_roll';
       player.keyItemCooldownUntil = Date.now() + 5000; // 5-second cooldown remaining
     } else if (name === 'medic-kit-ready') {
-      // Put player at low HP with some MS to test Field Medic Kit healing.
+      // Put player at low HP with low MS to test Field Medic Kit MS restore.
       player.hp = Math.floor(MAX_HP * 0.3);
       player.magicStones = 5;
       player.equippedKeyItemId = 'field_medic_kit';

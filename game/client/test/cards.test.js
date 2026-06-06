@@ -189,16 +189,16 @@ describe('CARD_DEFS', () => {
 			name: 'Restoration Beacon',
 			type: 'spell',
 			effect: 'healing_font',
+			magicStoneRestore: 6,
 		});
 		expect(CARD_DEFS.divine_grace).toMatchObject({
 			id: 'divine_grace',
 			name: 'Sanctum Pulse',
 			type: 'spell',
 			effect: 'divine_grace',
-			healAmount: 38,
 			magicStoneRestore: 10,
 			isEvolved: true,
-			specialEffect: 'heal_and_mana',
+			specialEffect: 'mana_restore',
 		});
 		expect(EVOLUTION_TRANSFORMS.healing_font).toBe('divine_grace');
 		expect(CARD_DEFS.skeleton_knight).toMatchObject({

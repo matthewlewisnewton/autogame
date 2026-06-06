@@ -233,8 +233,6 @@ describe('card evolution', () => {
 		expect(CARD_DEFS.soul_drain).toMatchObject({
 			damage: 42,
 			magicStoneOnHit: 12,
-			healOnHit: 4,
-			healOnKill: 8,
 		});
 	});
 

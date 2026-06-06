@@ -230,10 +230,9 @@ const KEY_ITEM_DEFS = {
   field_medic_kit: {
     id: 'field_medic_kit',
     name: 'Field Medic Kit',
-    description: 'Heal nearby allies and restore Magic Stones in an area',
+    description: 'Restore Magic Stones for nearby allies in an area',
     cooldownMs: 7000,
-    type: 'healing',
-    healPercent: 0.4,
+    type: 'support',
     healRadius: 5,
     msRestore: 3,
   },

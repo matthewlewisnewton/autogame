@@ -13,7 +13,6 @@
 const { SERVER_TO_CLIENT } = require('../shared/events.js');
 const { isPlayingPhase } = require('./lobbies');
 const {
-  MAX_HP,
   MAX_MAGIC_STONES,
   MOVE_SPEED,
   LOOT_PICKUP_RADIUS,
@@ -96,28 +95,26 @@ function handleUseKeyItem(socket, state, lobby, data) {
     }
 
     if (keyItemId === 'field_medic_kit') {
-      // --- field_medic_kit: AoE heal + MS restore for nearby living players ---
+      // --- field_medic_kit: AoE MS restore for nearby living players ---
       const healRadius = def.healRadius != null ? def.healRadius : 5;
-      const healPercent = def.healPercent != null ? def.healPercent : 0.4;
       const msRestore = def.msRestore != null ? def.msRestore : 3;
       const casterX = player.x;
       const casterZ = player.z;
-      let healed = 0;
+      let alliesRestored = 0;
 
       for (const p of Object.values(state.players)) {
         if (!p || p.dead || p.extracted) continue;
         const dist = Math.hypot(p.x - casterX, p.z - casterZ);
         if (dist <= healRadius) {
-          p.hp = Math.min(p.hp + MAX_HP * healPercent, MAX_HP);
           p.magicStones = Math.min((p.magicStones || 0) + msRestore, MAX_MAGIC_STONES);
-          healed++;
+          alliesRestored++;
         }
       }
 
       player.keyItemCooldownUntil = now + (def.cooldownMs || 7000);
       player.persistenceDirty = true;
 
-      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, healed });
+      socket.emit(SERVER_TO_CLIENT.KEY_ITEM_USED, { ok: true, keyItemId, cooldownUntil: player.keyItemCooldownUntil, alliesRestored });
       io.to(lobby.id).emit(SERVER_TO_CLIENT.KEY_ITEM_HEAL_PULSE, {
         playerId: socket.playerId,
         x: casterX,

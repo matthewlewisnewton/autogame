@@ -1122,14 +1122,6 @@ function isSlowed(entity) {
   return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
 }
 
-function healPlayer(playerId, amount) {
-  const player = _gameState.players[playerId];
-  if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
-  const before = Number.isFinite(player.hp) ? player.hp : MAX_HP;
-  player.hp = Math.min(MAX_HP, before + amount);
-  return player.hp - before;
-}
-
 // Minimal debuff helper: append a debuff to a player's debuffs array in
 // insertion (oldest-first) order. No per-tick effects are applied here; this
 // exists so debuffs can be placed on a player (e.g. by tests or future systems)
@@ -1174,11 +1166,8 @@ function collectConeHits(originX, originZ, dirX, dirZ, range, coneAngle, damage,
 function collectRadialHits(originX, originZ, radius, damage, options = {}) {
   const hits = [];
   let magicStonesGained = 0;
-  let hpHealed = 0;
   const magicStoneOnHit = options.magicStoneOnHit || 0;
   const magicStoneOnKill = options.magicStoneOnKill || 0;
-  const healOnHit = options.healOnHit || 0;
-  const healOnKill = options.healOnKill || 0;
   const attackerId = options.attackerId;
 
   for (const enemy of _gameState.enemies) {
@@ -1190,13 +1179,10 @@ function collectRadialHits(originX, originZ, radius, damage, options = {}) {
     const hitGain = magicStoneOnHit;
     const killGain = killed ? magicStoneOnKill : 0;
     magicStonesGained += hitGain + killGain;
-    if (attackerId && (healOnHit || healOnKill)) {
-      hpHealed += healPlayer(attackerId, healOnHit + (killed ? healOnKill : 0));
-    }
     hits.push({ enemyId: enemy.id, hp: enemy.hp, magicStonesGained: hitGain + killGain });
   }
 
-  return { hits, magicStonesGained, hpHealed };
+  return { hits, magicStonesGained };
 }
 
 function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
@@ -2714,11 +2700,10 @@ module.exports = {
   // Minion AI
   updateMinions,
 
-  // Player damage / heal
+  // Player damage
   damagePlayer,
   damageEnemy,
   damageMinion,
-  healPlayer,
   addDebuff,
 
   // Card combat helpers

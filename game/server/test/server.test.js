@@ -3411,6 +3411,13 @@ describe('run state', () => {
 			startDungeonRun();
 			expect(healAtMedic('p1')).toEqual({ ok: false, reason: 'not_in_lobby' });
 		});
+
+		it('remains the sole player HP-restore path — combat cards and key items define no HP healing', () => {
+			expect(CARD_DEFS.healing_font.healAmount).toBeUndefined();
+			expect(CARD_DEFS.divine_grace.healAmount).toBeUndefined();
+			expect(CARD_DEFS.soul_drain.healOnHit).toBeUndefined();
+			expect(CARD_DEFS.soul_drain.healOnKill).toBeUndefined();
+		});
 	});
 
 	describe('previewReturnRewards()', () => {
