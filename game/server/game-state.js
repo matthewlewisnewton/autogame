@@ -16,6 +16,9 @@ function createGameState() {
     enemies: [],
     minions: [],
     loot: [],
+    // Traveling enemy projectiles (glacial thrower ice balls). Advanced each tick
+    // by simulation.updateEnemyProjectiles(); shipped in every world snapshot.
+    iceBalls: [],
     areaEffects: [],
     enchantments: [],
     lobby: [],

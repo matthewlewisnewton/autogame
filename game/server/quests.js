@@ -110,6 +110,9 @@ const QUEST_DEFS = {
     enemyPool: [
       { type: 'grunt', weight: 3 },
       { type: 'skirmisher', weight: 2 },
+      // Ice-level signature foe — a ranged thrower that lobs slow ice balls.
+      // Level-exclusive: do not add to non-ice quests.
+      { type: 'glacial_thrower', weight: 2 },
     ],
     tiers: {
       1: {

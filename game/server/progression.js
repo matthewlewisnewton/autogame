@@ -2963,6 +2963,7 @@ function buildWorldSnapshot(shopOffer, suspendedRunSummary) {
     enemies: _gameState.enemies,
     minions: _gameState.minions,
     loot: _gameState.loot,
+    iceBalls: _gameState.iceBalls || [],
     lobby: _gameState.lobby,
     gamePhase: _gameState.gamePhase,
     selectedQuestId: _gameState.selectedQuestId,

@@ -1636,6 +1636,17 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
       medic.wanderTarget = { x: medic.x, z: medic.z };
+    } else if (name === 'glacial-thrower') {
+      // Spawn a Glacial Thrower in front of the player so QA can watch it lob a
+      // slow giant ice ball, see the projectile travel, and take the SLOW + damage
+      // on contact. The same enemy is reachable normally on Frost Crossing runs
+      // (it is in that quest's enemyPool); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      state.iceBalls = [];
+      const thrower = spawnEnemy(player.x + 6, player.z, 'glacial_thrower');
+      thrower.wanderTarget = { x: thrower.x, z: thrower.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is

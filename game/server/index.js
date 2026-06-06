@@ -158,6 +158,8 @@ const {
   MINION_FOLLOW_DISTANCE,
   MINION_FOLLOW_SPEED,
   updateEnemies,
+  updateEnemyProjectiles,
+  spawnIceBall,
   isPlayerConcealed,
   updateMinions,
   processPendingEchoes,
@@ -549,6 +551,7 @@ const DEBUG_SCENARIOS = new Set([
   'field-medic-spawn',
   'chain-lightning-ready',
   'fireball-ready',
+  'glacial-thrower',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -1354,6 +1357,7 @@ function runGameLoopTick() {
           checkTelepipeProximity();
           flushDirtyPlayerSaves();
           updateEnemies();
+          updateEnemyProjectiles();
           updateMinions();
           updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
@@ -1655,6 +1659,8 @@ if (typeof module !== 'undefined' && module.exports) {
     isBurning,
     updateBurning,
     updateEnemies,
+    updateEnemyProjectiles,
+    spawnIceBall,
     isPlayerConcealed,
     updateMinions,
     processPendingEchoes,
