@@ -31,6 +31,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
 const PRESET_MODULES = {
 	rooms: () => import('./presets/rooms.mjs'),
+	'open-plaza': () => import('./presets/open-plaza.mjs'),
 };
 
 const FULL_STEPS = new Set(['full']);
@@ -232,11 +233,13 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	const { bossType, nearAddsScenario, bossApproachScenario, encounterTriggerRadius } = preset;
 
 	await enableGodmode(page);
-	await requestScenario(page, nearAddsScenario);
+	if (nearAddsScenario) {
+		await requestScenario(page, nearAddsScenario);
+	}
 
 	const preCombatHarness = await readHarness(page);
 	if (liveAdds(preCombatHarness, bossType).length === 0) {
-		throw new Error(`nearAddsScenario left no live adds for mid-combat capture: ${JSON.stringify(preCombatHarness)}`);
+		throw new Error(`No live adds for mid-combat capture (nearAddsScenario=${nearAddsScenario ?? 'none'}): ${JSON.stringify(preCombatHarness)}`);
 	}
 
 	let midCombatScreenshot = null;
@@ -263,9 +266,11 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, '04-boss-dormant');
 	const dormantScreenshot = path.relative(REPO_ROOT, dormantScreenshotPath);
 
-	await requestScenario(page, bossApproachScenario);
-	const approachHarness = await readHarness(page);
-	assertDormantBoss(approachHarness, bossType);
+	if (bossApproachScenario) {
+		await requestScenario(page, bossApproachScenario);
+		const approachHarness = await readHarness(page);
+		assertDormantBoss(approachHarness, bossType);
+	}
 
 	const activeHarness = await activateEncounter(page, {
 		bossType,
