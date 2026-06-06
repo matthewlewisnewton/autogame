@@ -852,6 +852,141 @@ describe('debugScenario — spire-ascent-tier-2', () => {
 	});
 });
 
+describe('debugScenario — spire-ascent-tier-2 harness shortcuts', () => {
+	let baseUrl;
+	let prevAllowDebug;
+
+	beforeEach(async () => {
+		prevAllowDebug = process.env.ALLOW_DEBUG_SCENARIOS;
+		process.env.ALLOW_DEBUG_SCENARIOS = '1';
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+		if (prevAllowDebug === undefined) {
+			delete process.env.ALLOW_DEBUG_SCENARIOS;
+		} else {
+			process.env.ALLOW_DEBUG_SCENARIOS = prevAllowDebug;
+		}
+	});
+
+	it('repositions beside live adds after spire-ascent-tier-2 deploy', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
+		const tier2Result = await tier2Promise;
+		expect(tier2Result.ok).toBe(true);
+
+		const state = testGameState();
+		const player = playerForSocket(socket);
+		const addsBefore = state.enemies.filter(
+			(e) => e.hp > 0 && e.type !== 'spire_warden',
+		);
+		expect(addsBefore.length).toBeGreaterThan(0);
+
+		const nearAddsPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'spire-ascent-near-adds' });
+		const nearAddsResult = await nearAddsPromise;
+		await stateUpdatePromise;
+
+		expect(nearAddsResult.ok).toBe(true);
+		expect(nearAddsResult.scenario).toBe('spire-ascent-near-adds');
+
+		expect(player.hand[0]?.type).toBe('weapon');
+		expect(player.hand[0]?.remainingCharges).toBeGreaterThan(0);
+		expect(
+			state.enemies.filter(
+				(e) => e.hp > 0 && e.type !== 'spire_warden',
+			).every((e) => e.hp === 1 && !e.shieldHp),
+		).toBe(true);
+
+		let nearest = addsBefore[0];
+		let bestDist = Infinity;
+		for (const add of addsBefore) {
+			const dist = Math.hypot(add.x - player.x, add.z - player.z);
+			if (dist < bestDist) {
+				bestDist = dist;
+				nearest = add;
+			}
+		}
+		expect(bestDist).toBeGreaterThanOrEqual(2);
+		expect(bestDist).toBeLessThanOrEqual(5);
+	});
+
+	it('places player outside dormant boss trigger after adds cleared', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
+		await tier2Promise;
+
+		const state = testGameState();
+		const bossId = state.run.encounter.bossEnemyId;
+		for (const enemy of state.enemies) {
+			if (enemy.id !== bossId) enemy.hp = 0;
+		}
+		state.enemies = state.enemies.filter((e) => e.hp > 0);
+
+		const approachPromise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-boss-approach' });
+		const approachResult = await approachPromise;
+
+		expect(approachResult.ok).toBe(true);
+		expect(approachResult.scenario).toBe('spire-ascent-boss-approach');
+
+		const player = playerForSocket(socket);
+		const anchor = resolveEncounterAnchor(state.run, state);
+		const distFromAnchor = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(distFromAnchor).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+
+		for (let i = 0; i < 30; i++) {
+			runGameLoopTick();
+		}
+		expect(state.run.encounter.phase).toBe(ENCOUNTER_PHASES.DORMANT);
+		const distAfterTicks = Math.hypot(anchor.x - player.x, anchor.z - player.z);
+		expect(distAfterTicks).toBeGreaterThan(ENCOUNTER_TRIGGER_RADIUS);
+	});
+
+	it('positions spire_warden at 1 HP beside the player in playing phase', async () => {
+		const { socket } = await connectClient(baseUrl);
+
+		const tier2Promise = waitForEvent(socket, 'debugScenarioResult');
+		socket.emit('debugScenario', { name: 'spire-ascent-tier-2' });
+		await tier2Promise;
+
+		const lowHpPromise = waitForEvent(socket, 'debugScenarioResult');
+		const stateUpdatePromise = waitForEvent(socket, 'stateUpdate');
+		socket.emit('debugScenario', { name: 'spire-ascent-boss-low-hp' });
+		const lowHpResult = await lowHpPromise;
+		const stateUpdate = await stateUpdatePromise;
+
+		expect(lowHpResult.ok).toBe(true);
+		expect(lowHpResult.scenario).toBe('spire-ascent-boss-low-hp');
+
+		const state = testGameState();
+		expect(state.gamePhase).toBe('playing');
+
+		const bossId = state.run.encounter.bossEnemyId;
+		const boss = state.enemies.find((e) => e.id === bossId);
+		expect(boss).toBeTruthy();
+		expect(boss.type).toBe('spire_warden');
+		expect(boss.hp).toBe(1);
+
+		const player = playerForSocket(socket);
+		const dist = Math.hypot(boss.x - player.x, boss.z - player.z);
+		expect(dist).toBeGreaterThanOrEqual(2);
+		expect(dist).toBeLessThanOrEqual(5.5);
+
+		const wardenUpdate = stateUpdate.enemies.find((e) => e.id === bossId);
+		expect(wardenUpdate?.hp).toBe(1);
+		expect(wardenUpdate?.type).toBe('spire_warden');
+	});
+});
+
 describe('debugScenario — variant-frenzied', () => {
 	let baseUrl;
 	let prevAllowDebug;

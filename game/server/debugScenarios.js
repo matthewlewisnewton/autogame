@@ -129,6 +129,17 @@ function liveTrainingCavernsAdds(state, bossType = 'annex_overseer') {
   );
 }
 
+function resolveSpireSummitAnchor(state) {
+  const summit = state.layout?.landmarks?.find((lm) => lm.type === 'spire_summit');
+  return summit ? { x: summit.x, z: summit.z } : firstRoomPosition();
+}
+
+function liveSpireAscentAdds(state, bossType = 'spire_warden') {
+  return (state.enemies || []).filter(
+    (e) => e.hp > 0 && e.type !== bossType,
+  );
+}
+
 function repositionNearEnemy(player, enemy, standoff = 3.5) {
   const dx = player.x - enemy.x;
   const dz = player.z - enemy.z;
@@ -649,6 +660,121 @@ function applyDebugScenario(socket, name) {
         scenario: name,
         unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
       };
+    }
+
+    if (name === 'spire-ascent-near-adds') {
+      // Reposition beside live Spire Ascent Tier 2 adds for harness add-combat QA.
+      // Reachable normally by traversing combat tiers toward wandering adds.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      const adds = liveSpireAscentAdds(state);
+      if (adds.length === 0) {
+        return { ok: false, reason: 'No live adds to approach' };
+      }
+      let nearest = adds[0];
+      let bestDist = Infinity;
+      for (const add of adds) {
+        const dist = Math.hypot(add.x - player.x, add.z - player.z);
+        if (dist < bestDist) {
+          bestDist = dist;
+          nearest = add;
+        }
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.hand[0] = {
+        id: 'iron_sword',
+        name: 'Rust-Forged Saber',
+        type: 'weapon',
+        damage: 17,
+        charges: 5,
+        remainingCharges: 5,
+        grind: 0,
+      };
+      const clusterAnchor = firstRoomPosition();
+      const clusterRadius = 4;
+      let angle = 0;
+      const step = adds.length > 0 ? (Math.PI * 2) / adds.length : 0;
+      for (const add of adds) {
+        add.hp = 1;
+        add.shieldHp = 0;
+        add.maxShieldHp = 0;
+        add.x = clusterAnchor.x + Math.cos(angle) * clusterRadius;
+        add.z = clusterAnchor.z + Math.sin(angle) * clusterRadius;
+        add.wanderTarget = { x: add.x, z: add.z };
+        angle += step;
+      }
+      player.x = clusterAnchor.x;
+      player.z = clusterAnchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      repositionNearEnemy(player, nearest);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'spire-ascent-boss-approach') {
+      // Place the player just outside the dormant Summit Warden trigger after adds are cleared.
+      // Reachable normally by defeating adds then walking to the spire_summit boss room.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      if (liveSpireAscentAdds(state).length > 0) {
+        return { ok: false, reason: 'Adds must be cleared before boss approach' };
+      }
+      if (state.run.encounter.phase !== 'dormant') {
+        return { ok: false, reason: 'Encounter must be dormant' };
+      }
+      const anchor = resolveEncounterAnchor(state.run, state) || resolveSpireSummitAnchor(state);
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.x = anchor.x + ENCOUNTER_TRIGGER_RADIUS + 1;
+      player.z = anchor.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      player.debugScenarioNudgeAfter = Date.now() + 1500;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
+    }
+
+    if (name === 'spire-ascent-boss-low-hp') {
+      // Spire Ascent Tier 2 spire_warden beside the player at 1 HP for fast
+      // harness victory. Reachable normally by clearing adds and engaging the boss;
+      // this scenario is a shortcut after deploy or mid-encounter.
+      if (state.gamePhase !== 'playing'
+        || state.selectedQuestId !== 'spire_ascent'
+        || state.selectedQuestTier !== 2
+        || !state.run?.encounter) {
+        return { ok: false, reason: 'Requires spire_ascent Tier 2 stage-boss run' };
+      }
+      const bossId = state.run.encounter.bossEnemyId;
+      for (const enemy of state.enemies || []) {
+        if (enemy.id !== bossId) enemy.hp = 0;
+      }
+      state.enemies = (state.enemies || []).filter((e) => e.hp > 0);
+      const boss = state.enemies.find((e) => e.id === bossId);
+      if (!boss || boss.type !== 'spire_warden') {
+        return { ok: false, reason: 'Summit Warden boss not found' };
+      }
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      repositionNearEnemy(player, boss, 4);
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      boss.hp = 1;
+      boss.maxHp = boss.maxHp || boss.hp;
+      boss.shieldHp = 0;
+      boss.maxShieldHp = 0;
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return { ok: true, scenario: name };
     }
 
     if (name === 'hats-unlocked') {
@@ -1551,7 +1677,10 @@ function nudgeDebugBossApproachPlayers(state) {
 
   const now = Date.now();
   for (const player of Object.values(state.players)) {
-    if (!player || player.debugScenario !== 'training-caverns-boss-approach') continue;
+    if (!player || (
+      player.debugScenario !== 'training-caverns-boss-approach'
+      && player.debugScenario !== 'spire-ascent-boss-approach'
+    )) continue;
     if (player.debugScenarioNudgeAfter && now < player.debugScenarioNudgeAfter) continue;
     const dx = anchor.x - player.x;
     const dz = anchor.z - player.z;
