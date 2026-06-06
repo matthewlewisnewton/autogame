@@ -1177,7 +1177,11 @@ function collectPhaseBeamHits(originX, originZ, dirX, dirZ, range, damage, optio
 
       // Phase beam is a ranged/projectile attack — taggable so an active
       // barrier dome can block it (see damagePlayer's barrier-dome check).
-      damagePlayer(playerId, damage, { attackerId, ranged: true });
+      damagePlayer(playerId, damage, {
+        attackerId,
+        attackerEnemyId: options.attackerEnemyId,
+        ranged: true,
+      });
       hitPlayerIds.add(playerId);
       hits.push({ playerId, hp: player.hp });
     }
@@ -1996,6 +2000,144 @@ function damagePlayer(playerId, amount, options = {}) {
   return mirrorResult;
 }
 
+// ── Field Medic support AI ──
+
+function findNearestVisiblePlayer(enemy, maxRadius, players, now) {
+	let nearest = null;
+	let nearestDist = Infinity;
+	for (const player of players) {
+		if (isPlayerConcealed(player, now)) continue;
+		const dist = Math.hypot(player.x - enemy.x, player.z - enemy.z);
+		if (dist <= maxRadius && dist < nearestDist) {
+			nearestDist = dist;
+			nearest = player;
+		}
+	}
+	return nearest ? { player: nearest, dist: nearestDist } : null;
+}
+
+function healFieldMedicAlly(medic, now) {
+	const healRadius = medic.healRadius;
+	const healAmount = medic.healAmount;
+	let lowestAlly = null;
+	let lowestHpRatio = 1;
+
+	for (const ally of _gameState.enemies) {
+		if (ally.id === medic.id || ally.hp <= 0) continue;
+		if (ally.hp >= ally.maxHp) continue;
+		const dist = Math.hypot(ally.x - medic.x, ally.z - medic.z);
+		if (dist > healRadius) continue;
+		const ratio = ally.hp / ally.maxHp;
+		if (ratio < lowestHpRatio) {
+			lowestHpRatio = ratio;
+			lowestAlly = ally;
+		}
+	}
+
+	if (!lowestAlly) return false;
+
+	lowestAlly.hp = Math.min(lowestAlly.maxHp, lowestAlly.hp + healAmount);
+	medic.lastHealAt = now;
+
+	if (!_gameState._pendingMedicHeals) _gameState._pendingMedicHeals = [];
+	_gameState._pendingMedicHeals.push({
+		medicId: medic.id,
+		targetId: lowestAlly.id,
+		x: medic.x,
+		z: medic.z,
+		healRadius,
+	});
+	return true;
+}
+
+/** Energy bead: instant narrow phase-beam at close range (no wind-up, beadCooldownMs gates fire rate). */
+function fireMedicEnergyBead(medic, target, now) {
+	const dx = target.x - medic.x;
+	const dz = target.z - medic.z;
+	const len = Math.hypot(dx, dz);
+	const dirX = len > 0 ? dx / len : 1;
+	const dirZ = len > 0 ? dz / len : 0;
+	const beadRange = medic.beadRange;
+	const hitWidth = 0.5;
+
+	const { hits } = collectPhaseBeamHits(
+		medic.x,
+		medic.z,
+		dirX,
+		dirZ,
+		beadRange,
+		medic.attackDamage,
+		{ attackerEnemyId: medic.id, hitWidth },
+	);
+
+	medic.lastBeadAt = now;
+
+	if (!_gameState._pendingMedicBeads) _gameState._pendingMedicBeads = [];
+	_gameState._pendingMedicBeads.push({
+		medicId: medic.id,
+		origin: { x: medic.x, z: medic.z },
+		direction: { x: dirX, z: dirZ },
+		beadRange,
+		hitWidth,
+		hits,
+	});
+}
+
+function updateFieldMedicEnemy(enemy, players, dt, now, encounterLocked) {
+	if (enemy.hp <= 0) return;
+
+	enemy.state = 'idle';
+	enemy.attackState = 'idle';
+
+	if (!encounterLocked) {
+		const lastHealAt = enemy.lastHealAt ?? 0;
+		if (now - lastHealAt >= enemy.healCooldownMs) {
+			if (healFieldMedicAlly(enemy, now)) {
+				return;
+			}
+		}
+
+		const lastBeadAt = enemy.lastBeadAt ?? 0;
+		if (now - lastBeadAt >= enemy.beadCooldownMs) {
+			const beadTarget = findNearestVisiblePlayer(enemy, enemy.beadRange, players, now);
+			if (beadTarget) {
+				fireMedicEnergyBead(enemy, beadTarget.player, now);
+			}
+		}
+	}
+
+	const fleeTarget = findNearestVisiblePlayer(enemy, enemy.fleeRadius, players, now);
+	if (fleeTarget) {
+		enemy.state = 'fleeing';
+		const retreatX = enemy.x - (fleeTarget.player.x - enemy.x);
+		const retreatZ = enemy.z - (fleeTarget.player.z - enemy.z);
+		moveEntityToward(enemy, { x: retreatX, z: retreatZ }, enemy.fleeSpeed * dt);
+		return;
+	}
+
+	const wdx = enemy.wanderTarget.x - enemy.x;
+	const wdz = enemy.wanderTarget.z - enemy.z;
+	const wdist = Math.hypot(wdx, wdz);
+
+	if (wdist < 0.5) {
+		enemy.wanderTarget = randomWanderTarget();
+		enemy.blockedTicks = 0;
+		return;
+	}
+
+	const wanderResult = moveEntityToward(enemy, enemy.wanderTarget, enemy.wanderSpeed * dt);
+	if (wanderResult.blocked) {
+		if (!enemy.blockedTicks) enemy.blockedTicks = 0;
+		enemy.blockedTicks += 1;
+		if (enemy.blockedTicks > 10) {
+			enemy.wanderTarget = randomWanderTarget();
+			enemy.blockedTicks = 0;
+		}
+	} else {
+		enemy.blockedTicks = 0;
+	}
+}
+
 // ── Enemy AI Tick ──
 
 function updateEnemies() {
@@ -2104,6 +2246,11 @@ function updateEnemies() {
 			} else {
 				moveEntityToward(enemy, tauntMinion, chaseSpeed * dt);
 			}
+			continue;
+		}
+
+		if (enemy.type === 'field_medic') {
+			updateFieldMedicEnemy(enemy, players, dt, Date.now(), encounterLocked);
 			continue;
 		}
 
