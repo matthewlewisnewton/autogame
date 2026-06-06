@@ -153,6 +153,15 @@
     "specialEffect": "long_range",
     "projectile": { "pierces": true }
   },
+  "chain_lightning": {
+    "magicStoneCost": 42,
+    "effect": "chain_lightning",
+    "damage": 22,
+    "attackRange": 9,
+    "chainRadius": 5,
+    "maxChainTargets": 2,
+    "specialEffect": "chain_lightning"
+  },
   "frost_nova": {
     "magicStoneCost": 35,
     "effect": "frost_nova",

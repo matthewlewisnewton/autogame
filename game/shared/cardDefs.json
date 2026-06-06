@@ -21,6 +21,7 @@
   "photon_slicer": { "id": "photon_slicer", "name": "Photon Slicer", "type": "weapon", "charges": 4, "acquisition": "reward", "rewardOrder": 6 },
   "infinite_disk": { "id": "infinite_disk", "name": "Infinite Disk", "type": "weapon", "charges": 4 },
   "arcane_bolt": { "id": "arcane_bolt", "name": "Arcane Bolt", "type": "weapon", "charges": 4, "acquisition": "reward", "rewardOrder": 7 },
+  "chain_lightning": { "id": "chain_lightning", "name": "Voltaic Chain", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 26 },
   "frost_nova": { "id": "frost_nova", "name": "Cryo Burst", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 4 },
   "permafrost_lance": { "id": "permafrost_lance", "name": "Permafrost Lance", "type": "spell", "charges": 1, "acquisition": "reward", "rewardOrder": 5 },
   "glacier_collapse": { "id": "glacier_collapse", "name": "Glacier Rupture", "type": "spell", "charges": 1 },
