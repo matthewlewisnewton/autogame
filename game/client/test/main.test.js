@@ -4138,3 +4138,87 @@ describe('updateObjectiveHud()', () => {
 		expect(hud.textContent).toContain('Purged 1 / 5 hostiles');
 	});
 });
+
+describe('__AUTOGAME_HARNESS_STATE__ encounter and godmode fields', () => {
+	const requiredIds = [
+		'status', 'vanguard-hud', 'character-id', 'player-level',
+		'hp-bar-container', 'hp-label', 'hp-bar-bg', 'hp-bar-fill', 'hp-text',
+		'ms-bar-container', 'ms-label', 'ms-bar-bg', 'ms-bar-fill', 'ms-text',
+		'deck-count', 'deck-weapon-count', 'deck-spell-count', 'deck-creature-count', 'deck-enchantment-count',
+		'currency-display', 'objective-hud', 'ui', 'card-hand',
+		'lobby', 'lobby-browser', 'lobby-player-list',
+		'run-summary-overlay', 'summary-status', 'summary-duration', 'summary-enemies',
+		'summary-currency', 'summary-rewards', 'return-to-lobby-btn',
+	];
+
+	beforeEach(() => {
+		for (const id of requiredIds) {
+			if (!document.getElementById(id)) {
+				const el = (id === 'return-to-lobby-btn')
+					? document.createElement('button')
+					: document.createElement('div');
+				el.id = id;
+				document.body.appendChild(el);
+			}
+		}
+	});
+
+	it('mirrors run.encounter, player.debugGodmode, and objective.bossDefeated', async () => {
+		await import('../main.js');
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				encounter: {
+					phase: 'active',
+					bossEnemyId: 'boss-1',
+					locked: true,
+					spawnAnchor: { x: 10, z: 5 },
+				},
+				objective: {
+					type: 'stage_boss',
+					defeatedEnemies: 3,
+					totalEnemies: 5,
+					bossDefeated: false,
+				},
+			},
+			players: {
+				p1: {
+					hp: 80,
+					magicStones: 40,
+					x: 0,
+					z: 0,
+					debugGodmode: true,
+				},
+			},
+			enemies: [],
+		}, 'p1');
+
+		const harness = window.__AUTOGAME_HARNESS_STATE__();
+		expect(harness.encounter).toEqual({
+			phase: 'active',
+			bossEnemyId: 'boss-1',
+			locked: true,
+		});
+		expect(harness.player.debugGodmode).toBe(true);
+		expect(harness.objective.bossDefeated).toBe(false);
+
+		window.__setGameState({
+			gamePhase: 'playing',
+			run: {
+				status: 'playing',
+				objective: { type: 'defeat_enemies', defeatedEnemies: 0, totalEnemies: 3 },
+			},
+			players: {
+				p1: { hp: 80, magicStones: 40, x: 0, z: 0, debugGodmode: false },
+			},
+			enemies: [],
+		}, 'p1');
+
+		const noEncounter = window.__AUTOGAME_HARNESS_STATE__();
+		expect(noEncounter.encounter).toBeNull();
+		expect(noEncounter.objective.bossDefeated).toBeUndefined();
+		expect(noEncounter.player.debugGodmode).toBe(false);
+	});
+});

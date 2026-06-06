@@ -4440,6 +4440,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
 	const runObjective = gameState && gameState.run ? gameState.run.objective : null;
+	const runEncounter = gameState && gameState.run ? gameState.run.encounter : null;
 	const objective = runObjective ? {
 		type: runObjective.type,
 		totalEnemies: runObjective.totalEnemies,
@@ -4447,6 +4448,12 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		totalItems: runObjective.totalItems,
 		collectedItems: runObjective.collectedItems,
 		label: runObjective.label,
+		...(runObjective.bossDefeated !== undefined ? { bossDefeated: runObjective.bossDefeated } : {}),
+	} : null;
+	const encounter = runEncounter ? {
+		phase: runEncounter.phase,
+		bossEnemyId: runEncounter.bossEnemyId,
+		locked: runEncounter.locked,
 	} : null;
 	// Mirror the server's isRunObjectiveComplete so a test can watch the flip.
 	const runObjectiveComplete = !!objective && (
@@ -4461,6 +4468,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugScenarioResult,
 		debugGodmodeResult,
 		objective,
+		encounter,
 		runObjectiveComplete,
 		lastRunSummary,
 		myId,
@@ -4497,6 +4505,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			hp: me.hp,
 			magicStones: me.magicStones,
 			debugScenario: me.debugScenario,
+			debugGodmode: !!me.debugGodmode,
 			dead: me.dead,
 			x: me.x,
 			z: me.z,
