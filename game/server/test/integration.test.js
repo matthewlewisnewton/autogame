@@ -45,7 +45,7 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE, MAGIC_STONES_REGEN_PER_TICK } from '../config.js';
 
 // ── Helpers ──
 
@@ -3948,9 +3948,14 @@ describe('magic stone drops — any player can pick up', () => {
 
 		const msBeforePickup = p2.magicStones;
 		socket2.emit('lootPickup', { lootId: drop.id });
-		await sleep(10);
+		const pickupSleepMs = 10;
+		await sleep(pickupSleepMs);
 
-		expect(p2.magicStones).toBeCloseTo(msBeforePickup + drop.value, 5);
+		const regenTicksDuringSleep =
+			Math.ceil(pickupSleepMs / (1000 / TICK_RATE)) + 1;
+		const regenSlack = MAGIC_STONES_REGEN_PER_TICK * regenTicksDuringSleep;
+		expect(p2.magicStones).toBeGreaterThanOrEqual(msBeforePickup + drop.value);
+		expect(p2.magicStones).toBeLessThanOrEqual(msBeforePickup + drop.value + regenSlack);
 		expect(state.loot.find((l) => l.id === drop.id)).toBeUndefined();
 
 		const moneyDrop = moneyLoot[0];
