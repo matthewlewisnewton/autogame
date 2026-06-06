@@ -100,6 +100,7 @@ import {
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
+import { buildBossEncounterModel, syncBossEncounterHud } from './boss-encounter-hud.js';
 import { clearAllLockOnState } from './lockOn.js';
 
 // ── Renderer module imports ──
@@ -1259,6 +1260,10 @@ function bindSocketHandlers(s) {
 		// Update objective HUD
 		updateObjectiveHud();
 
+		// Update stage-boss encounter HUD (boss bar shown while the encounter is
+		// active/locked and the boss enemy is alive; hidden otherwise)
+		updateBossEncounterHud();
+
 		// Reconcile hand with server authority + re-render for .no-ms / .empty classes
 		if (state.gamePhase === 'playing' && myId && state.players[myId] && state.players[myId].hand) {
 			const serverPlayer = state.players[myId];
@@ -2351,6 +2356,40 @@ function updateObjectiveHud() {
 	} else {
 		objectiveHudEl.style.display = 'none';
 	}
+}
+
+// ── Stage-boss encounter HUD ──
+// Lazily resolved + cached refs for the #boss-encounter-hud nodes added in
+// sub-ticket 01. Lazy so the lookup survives jsdom tests that build the DOM
+// after main.js is imported.
+let bossEncounterHudDom = null;
+// Last view-model synced to the boss HUD, exposed for the debug snapshot/hooks.
+let bossEncounterModel = null;
+
+function getBossEncounterHudDom() {
+	if (bossEncounterHudDom) return bossEncounterHudDom;
+	const container = document.getElementById('boss-encounter-hud');
+	if (!container) return null;
+	bossEncounterHudDom = {
+		container,
+		nameEl: document.getElementById('boss-encounter-name'),
+		fillEl: document.getElementById('boss-encounter-hp-fill'),
+	};
+	return bossEncounterHudDom;
+}
+
+// Build the boss-encounter view-model from live server state and sync it to the
+// HUD. Reuses the sub-ticket 01 module unchanged; called from the same per-frame
+// update site that refreshes the objective HUD.
+function updateBossEncounterHud() {
+	bossEncounterModel = buildBossEncounterModel({
+		encounter: gameState?.run?.encounter,
+		enemies: gameState?.enemies,
+		catalog: enemyDisplayCatalog,
+	});
+	const dom = getBossEncounterHudDom();
+	if (dom) syncBossEncounterHud(bossEncounterModel, dom);
+	return bossEncounterModel;
 }
 
 function clearAdjacentCardHighlights() {
@@ -4350,6 +4389,8 @@ window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
 window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
 window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
+window.__updateBossEncounterHud = updateBossEncounterHud;
+window.__getBossEncounterModel = () => (bossEncounterModel ? { ...bossEncounterModel } : null);
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
@@ -4509,6 +4550,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugGodmodeResult,
 		objective,
 		encounter,
+		bossEncounter: bossEncounterModel ? { ...bossEncounterModel } : null,
 		runObjectiveComplete,
 		lastRunSummary,
 		myId,
