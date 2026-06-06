@@ -1,5 +1,7 @@
 /** Sunken Canyon / canyon_descent Tier II preset — ticket 279 playthrough validation. */
 export default {
+	findingsTitle: 'Sunken Canyon validation findings',
+	bossSpawnLabel: 'miniboss (Canyon Warden)',
 	questId: 'canyon_descent',
 	questTier: 2,
 	bossType: 'miniboss',

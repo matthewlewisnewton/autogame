@@ -1,5 +1,7 @@
 /** Rooms / Training Caverns preset — used by tickets 277–281 playthrough validation. */
 export default {
+	findingsTitle: 'Rooms validation findings',
+	bossSpawnLabel: 'annex_overseer (Annex Overseer)',
 	questId: 'training_caverns',
 	questTier: 2,
 	bossType: 'annex_overseer',

@@ -27,6 +27,7 @@
     "validate:rooms": "node ../harness/validate/playthrough.mjs --preset rooms --steps full --out game/validation/rooms",
     "validate:rooms:check": "node ../harness/validate/verify-rooms-artifacts.mjs",
     "validate:sunken-canyon": "node ../harness/validate/playthrough.mjs --preset sunken-canyon --steps full --out game/validation/sunken-canyon",
+    "validate:sunken-canyon:check": "node ../harness/validate/verify-sunken-canyon-artifacts.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },
   "keywords": [],

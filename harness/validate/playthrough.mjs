@@ -120,6 +120,43 @@ function buildEncounterProbe(harness, bossType) {
 	};
 }
 
+async function captureFloorAlignmentProbe(page) {
+	return page.evaluate(async () => {
+		if (typeof window.__sampleFloorAlignmentForHarness === 'function') {
+			return window.__sampleFloorAlignmentForHarness();
+		}
+		const { sampleFloorY, resolveFloorY } = await import('/shared/floorSampling.esm.js');
+		const harness = window.__AUTOGAME_HARNESS_STATE__?.();
+		if (!harness?.player || harness.player.x == null || harness.player.z == null) {
+			return null;
+		}
+		const layout = harness.layout;
+		if (!layout?.rooms || !Array.isArray(layout.rooms)) {
+			return null;
+		}
+		const { x, z } = harness.player;
+		const playerY = Number.isFinite(harness.player.y) ? harness.player.y : null;
+		const floorY = resolveFloorY(sampleFloorY(layout, x, z));
+		let band = null;
+		for (const room of layout.rooms) {
+			const halfW = room.width / 2;
+			const halfD = room.depth / 2;
+			if (x >= room.x - halfW && x <= room.x + halfW && z >= room.z - halfD && z <= room.z + halfD) {
+				band = room.band ?? null;
+				break;
+			}
+		}
+		if (playerY == null) return null;
+		return {
+			playerY,
+			floorY,
+			delta: playerY - floorY,
+			layoutProfile: layout.profile ?? null,
+			band,
+		};
+	});
+}
+
 async function runAuthStep({ page, serverUrl, clientUrl, outDirAbs }) {
 	const username = `playthrough-${Date.now()}`;
 	const password = 'harness-test-password';
@@ -225,6 +262,7 @@ async function runHubStep({ page, preset, outDirAbs }) {
 	}
 
 	const entryScreenshot = await writeScreenshot(page, outDirAbs, '02-level-entry');
+	const levelEntryFloor = await captureFloorAlignmentProbe(page);
 
 	return {
 		hubScreenshot: path.relative(REPO_ROOT, hubScreenshot),
@@ -234,6 +272,7 @@ async function runHubStep({ page, preset, outDirAbs }) {
 		objectiveType: playingHarness?.objective?.type ?? null,
 		encounterPhase: playingHarness?.encounter?.phase ?? null,
 		bossTypes: (playingHarness?.enemyHp || []).map((e) => e.type),
+		floorAlignment: levelEntryFloor ? { levelEntry: levelEntryFloor } : {},
 	};
 }
 
@@ -249,6 +288,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	}
 
 	let midCombatScreenshot = null;
+	const floorAlignment = {};
 	const afterAddsHarness = await defeatAdds(page, {
 		bossType,
 		timeoutMs: preset.addsTimeoutMs ?? 90000,
@@ -260,6 +300,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 			}
 			const shotPath = await writeScreenshot(page, outDirAbs, '03-mid-combat');
 			midCombatScreenshot = path.relative(REPO_ROOT, shotPath);
+			const midCombatFloor = await captureFloorAlignmentProbe(page);
+			if (midCombatFloor) floorAlignment.midCombat = midCombatFloor;
 		},
 	});
 
@@ -271,6 +313,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	const dormantProbe = buildEncounterProbe(afterAddsHarness, bossType);
 	const dormantScreenshotPath = await writeScreenshot(page, outDirAbs, '04-boss-dormant');
 	const dormantScreenshot = path.relative(REPO_ROOT, dormantScreenshotPath);
+	const dormantFloor = await captureFloorAlignmentProbe(page);
+	if (dormantFloor) floorAlignment.bossDormant = dormantFloor;
 
 	await requestScenario(page, bossApproachScenario);
 	const approachHarness = await readHarness(page);
@@ -288,6 +332,8 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 	const activeProbe = buildEncounterProbe(activeHarness, bossType);
 	const activeScreenshotPath = await writeScreenshot(page, outDirAbs, '05-boss-active');
 	const activeScreenshot = path.relative(REPO_ROOT, activeScreenshotPath);
+	const activeFloor = await captureFloorAlignmentProbe(page);
+	if (activeFloor) floorAlignment.bossActive = activeFloor;
 
 	return {
 		midCombatScreenshot,
@@ -298,6 +344,7 @@ async function runBossEncounterStep({ page, preset, outDirAbs }) {
 		probes: {
 			dormant: dormantProbe,
 			active: activeProbe,
+			...(Object.keys(floorAlignment).length > 0 ? { floorAlignment } : {}),
 		},
 	};
 }
@@ -389,9 +436,23 @@ function collectScreenshots(summary) {
 	return shots;
 }
 
-function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
+function mergeFloorAlignmentProbes(summary) {
+	const merged = {
+		...(summary.hub?.floorAlignment || {}),
+		...(summary.bossEncounter?.probes?.floorAlignment || {}),
+	};
+	return Object.keys(merged).length > 0 ? merged : null;
+}
+
+function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
+	const { floorAlignment: _bossFloorAlignment, ...encounterProbes } = summary.bossEncounter?.probes || {};
+	const bossProbes = { ...encounterProbes };
+	const floorAlignment = mergeFloorAlignmentProbes(summary);
+	if (floorAlignment) {
+		bossProbes.floorAlignment = floorAlignment;
+	}
 	const probes = {
-		...(summary.bossEncounter?.probes || {}),
+		...bossProbes,
 		...(summary.victory?.probes || {}),
 	};
 	fs.writeFileSync(path.join(outDirAbs, 'probes.json'), JSON.stringify(probes, null, 2));
@@ -399,7 +460,10 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries }) {
 	const findings = renderFindings({
 		ok: summary.ok === true,
 		preset: summary.preset,
+		findingsTitle: preset?.findingsTitle,
+		bossSpawnLabel: preset?.bossSpawnLabel,
 		assertions: summary.assertions || {},
+		floorAlignment,
 		consoleErrors: consoleEntries || [],
 		screenshots: collectScreenshots(summary),
 		error: summary.error || null,
@@ -486,7 +550,7 @@ async function main() {
 			if (!summary.assertions) {
 				summary.assertions = buildAssertions(summary, preset);
 			}
-			writeFullArtifacts({ outDirAbs, summary, consoleEntries });
+			writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset });
 		} else if (summary.bossEncounter?.probes) {
 			const probesPath = path.join(outDirAbs, 'probes.json');
 			fs.writeFileSync(probesPath, JSON.stringify(summary.bossEncounter.probes, null, 2));

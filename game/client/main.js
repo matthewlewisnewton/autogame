@@ -4462,6 +4462,39 @@ window.renderCardChoices = renderCardChoices;
 window.__claimedCardRewardId = () => claimedCardRewardId;
 window.__currentCardChoices = () => currentCardChoices;
 window.__connectionState = () => connectionState;
+function bandAtLayout(layout, x, z) {
+	if (!layout?.rooms) return null;
+	for (const room of layout.rooms) {
+		const halfW = room.width / 2;
+		const halfD = room.depth / 2;
+		if (x >= room.x - halfW && x <= room.x + halfW && z >= room.z - halfD && z <= room.z + halfD) {
+			return room.band ?? null;
+		}
+	}
+	return null;
+}
+function activeHarnessLayout() {
+	return (gameState?.gamePhase === 'lobby' && hubLayout && renderedSceneProfile === 'hub')
+		? hubLayout
+		: (currentLayout || (gameState && gameState.layout) || null);
+}
+window.__sampleFloorAlignmentForHarness = async () => {
+	const { sampleFloorY, resolveFloorY } = await import('../shared/floorSampling.esm.js');
+	const me = gameState && myId ? gameState.players[myId] : null;
+	const layout = activeHarnessLayout();
+	if (!me || !layout) return null;
+	const x = me.x;
+	const z = me.z;
+	const floorY = resolveFloorY(sampleFloorY(layout, x, z));
+	const playerY = Number.isFinite(me.y) ? me.y : floorY;
+	return {
+		playerY,
+		floorY,
+		delta: playerY - floorY,
+		layoutProfile: layout.profile ?? null,
+		band: bandAtLayout(layout, x, z),
+	};
+};
 window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const me = gameState && myId ? gameState.players[myId] : null;
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
@@ -4553,6 +4586,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			debugGodmode: !!me.debugGodmode,
 			dead: me.dead,
 			x: me.x,
+			y: me.y,
 			z: me.z,
 			equippedKeyItemId: me.equippedKeyItemId ?? null,
 			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),
