@@ -945,8 +945,9 @@ function syncFacingToServer() {
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
-// applyPlayerMovement keeps player.y in sync). Spire-ascent and sunken-canyon
-// need this — pinning to DEFAULT_FLOOR_Y would leave the camera behind on ramps.
+// applyPlayerMovement keeps player.y in sync). Multi-level profiles (spire-ascent,
+// sunken-canyon, fire-cavern) need this — pinning to DEFAULT_FLOOR_Y would leave
+// the camera behind on ramps.
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 

@@ -342,6 +342,15 @@ function resolveSunkenCanyonRoomFloorMaterial(room, layout) {
 	return getSunkenCanyonBandMaterials(band, yT).floor;
 }
 
+/**
+ * Fire-cavern floor material stub — per-band rim/ramp/basin tints land in
+ * sub-ticket 04; until then use the profile role palette (falls back to default).
+ */
+function resolveFireCavernRoomMaterials(room, layout) {
+	const { roleFloors, floor: profileFloor } = getProfileMaterials('fire-cavern');
+	return { floor: roleFloors[room.role] || profileFloor };
+}
+
 // Treasure room marker material (emissive gold pillar)
 const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	color: 0xffd700,
@@ -930,16 +939,20 @@ export function buildDungeon(scene, layout) {
 	// ── Build rooms ──
 	const isSpireAscent = layout.profile === 'spire-ascent';
 	const isSunkenCanyon = layout.profile === 'sunken-canyon';
+	const isFireCavern = layout.profile === 'fire-cavern';
 	const spireTierCount = isSpireAscent ? getSpireTierCount(layout) : 0;
 
 	for (const room of layout.rooms) {
 		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
-		// Pick floor material: spire tier/ramp, sunken-canyon band tints, else profile role fallback
+		const fireCavernMats = isFireCavern ? resolveFireCavernRoomMaterials(room, layout) : null;
+		// Pick floor material: spire tier/ramp, sunken-canyon band tints, fire-cavern stub, else profile role fallback
 		let floorMat;
 		if (spireMats) {
 			floorMat = spireMats.floor;
 		} else if (isSunkenCanyon) {
 			floorMat = resolveSunkenCanyonRoomFloorMaterial(room, layout);
+		} else if (fireCavernMats) {
+			floorMat = fireCavernMats.floor;
 		} else {
 			floorMat = roleFloors[room.role] || profileFloorMaterial;
 		}
