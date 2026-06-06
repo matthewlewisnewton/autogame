@@ -1,0 +1,11 @@
+Wrote the holistic review and remediation file.
+
+`VERDICT: FAIL`
+
+Runtime capture passed cleanly, and Telepipe HP/MS persistence is working, but the ticket still violates the owner decision that only the hub Medic station restores HP. Normal gameplay still has HP restoration through `healing_font`, `divine_grace`, `healOnHit`/`healOnKill`, and `field_medic_kit`.
+
+Files written:
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-2/review.md`
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-2/gaps.md`
+
+No `nits.md` was created.

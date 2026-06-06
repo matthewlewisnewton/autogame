@@ -1,0 +1,9 @@
+Wrote the review artifacts:
+
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-1/review.md`
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-1/gaps.md`
+- `tickets/287-persist-player-health-and-stones-no-telepipe-reset/round-1/nits.md`
+
+Final verdict: `VERDICT: FAIL`.
+
+Main blockers: captured run is red (`metrics.json` ok false), HP/MS are not durably persisted on cold load, health still restores outside the med booth, coverage has a failing debug scenario test, and `game/docs/design.md` still documents the removed checkpoint model.

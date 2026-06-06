@@ -1,0 +1,9 @@
+## Remediation Round 3 Plan
+
+Sub-tickets **01–10** all have `.passed` markers and were left untouched. **Round-2 review** had one open gap: non-Medic HP restoration during normal gameplay (`healing_font`, `divine_grace`, `soul_drain` heal-on-hit/kill, `field_medic_kit`).
+
+One new sub-ticket closes that gap:
+
+- **`/home/matt/workspace/.autogame-worktrees/287-persist-player-health-and-stones-no-telepipe-reset/tickets/287-persist-player-health-and-stones-no-telepipe-reset/subtickets/11-remove-combat-hp-healing/ticket.md`**
+
+It removes or redesigns all combat/key-item HP healing so `healAtMedic()` is the sole production HP-restore path, with verification mode **`code`**.
