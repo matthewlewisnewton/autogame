@@ -487,7 +487,8 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
     const floorSurface = sampleFloorSurface(ctx.layout, player.x, player.z);
 
     if (floorSurface === 'slippery') {
-      const speedScale = playerMoveSpeedScale(player, now);
+      let speedScale = playerMoveSpeedScale(player, now);
+      if (isSlowed(player)) speedScale *= (player.slowFactor || 1);
       const maxSpeed = MOVE_SPEED * speedScale;
       let inputDx = 0;
       let inputDz = 0;
@@ -574,6 +575,7 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
           let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
           if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
           if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
+          if (isSlowed(player)) playerStep *= (player.slowFactor || 1);
 
           const prevX = player.x;
           const prevZ = player.z;
@@ -1101,6 +1103,24 @@ function isPlayerConcealed(player, now) {
 
 function isEnemyFrozen(enemy) {
   return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
+}
+
+// SLOW status effect: a timed movement-speed debuff that mirrors the
+// frozenUntil/isEnemyFrozen idiom. Works on any generic entity (player or
+// enemy). Movement integration and the client indicator live in separate
+// sub-tickets; this only manages the status state + helpers.
+function applySlow(entity, durationMs, factor) {
+  if (!entity) return;
+  const now = Date.now();
+  // Re-application REFRESHES: never shorten an existing longer slow.
+  entity.slowedUntil = Math.max(entity.slowedUntil || 0, now + durationMs);
+  // Clamp factor to (0, 1]; default to 0.5 when omitted or invalid.
+  const f = Number(factor);
+  entity.slowFactor = Number.isFinite(f) && f > 0 && f <= 1 ? f : 0.5;
+}
+
+function isSlowed(entity) {
+  return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
 }
 
 function healPlayer(playerId, amount) {
@@ -2093,7 +2113,10 @@ function updateEnemies() {
 		ensureEnemyCombatStats(enemy);
 		checkFrenziedTelegraph(enemy, Date.now());
 		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
-		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult;
+		// SLOW stacks multiplicatively with the frenzied chase multiplier. Frozen
+		// enemies are handled by the isEnemyFrozen early continue below and never move.
+		const slowMult = isSlowed(enemy) ? (enemy.slowFactor || 1) : 1;
+		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult * slowMult;
 		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
@@ -2734,6 +2757,8 @@ module.exports = {
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
   isEnemyFrozen,
+  applySlow,
+  isSlowed,
 
   // Magic stones
   regenMagicStones,

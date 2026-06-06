@@ -5085,3 +5085,43 @@ PASS. The round-2 coverage run reports `124 passed (124)` test files and `2111 p
 
 No blocking gaps found.
 
+## v0.285 — 295-fire-level  (2026-06-06 11:38:30)
+
+
+### Fire level reachable via debug scenario
+PASS. `fire-cavern` and `fire-cavern-stage` are registered debug scenarios. The `fire-cavern` scenario selects `ember_descent` tier 1, applies the same quest-derived layout seed/profile path, enters playing phase, spawns the quest enemy pack, and starts a normal run state. The client URL entry point remains gated to localhost by `?debugScenario=...`, and the server also gates debug scenario use through `isDebugScenarioAllowed`.
+
+### Layout generation and floor alignment
+PASS. `generateLayout(seed, 'fire-cavern')` dispatches to a deterministic rim/ramp/basin layout with a high rim start room, 2-3 descent ramps, a large lower basin, solid perimeter walls, cover in the basin, and floor corners compatible with shared `sampleFloorY`. Server walkability tests cover rim-to-basin reachability across regression seeds, and client render tests assert elevated rim floors, sloped ramp meshes, basin marker placement, and cover placement on sampled floor Y.
+
+### Themed visuals and atmosphere
+PASS. `dungeonTheme.json`, `game/client/dungeon.js`, and `game/client/renderer.js` add a distinct fire-cavern palette, rim/basin floor material separation, and depth-responsive warm fog/background. The fire-specific render and atmosphere tests passed. The final round-2 browser capture used the fallback sunken-canyon scenario rather than a fire-cavern scenario, but it still proves the game runs cleanly with this ticket applied; fire-specific behavior is covered by the live code tests and earlier sub-ticket visual QA.
+
+### Design and requirements consistency
+PASS. The implementation stays consistent with the design document's floor-height model by using `sampleFloorY`/`resolveFloorY` for player placement, wall placement, cover, and treasure markers. It does not regress the foundation requirements: the captured run renders a 3D scene, connects to the backend, shows multiplayer state, and preserves movement/key-item smoke behavior.
+
+### Code quality and validation
+PASS. The changed server/client code is scoped to quest wiring, layout generation, debug shortcuts, fire-cavern render materials, and atmosphere. The coverage log reports the full vitest suite passing: 109 test files and 1895 tests.
+
+## v0.286 — 290-slow-status-effect-foundation  (2026-06-06 12:09:09)
+
+### Helper exposure for future ice systems
+
+PASS. `applySlow` and `isSlowed` are exported from `game/server/simulation.js` and surfaced through `game/server/index.js`, so the future ice enemy and ice card can call the shared foundation helpers directly instead of reimplementing status state.
+
+### Design and foundation requirements
+
+PASS. The implementation is consistent with the design doc's multiplayer action-combat foundation and does not regress the setup requirements: Three.js rendering, WebSocket connection, multiplayer visualization, and WASD movement synchronization are all still demonstrated by the round-3 capture. The SLOW status is server-authoritative, replicated to clients, and does not alter the lobby/dungeon/deck loop.
+
+### Debug scenarios
+
+PASS. The live code does not add a slow debug scenario or any normal-gameplay shortcut for applying slow. The ticket history includes removal of an intermediate slowed-player debug shortcut, and no `?debugScenario=` path remains for this status, so there is no debug-only path masking a missing normal gameplay path.
+
+### Test and coverage evidence
+
+PASS. `coverage.log` reports `108` test files and `1808` tests passing. Focused coverage includes `game/server/test/slow_status.test.js` for helper semantics, player movement scaling, enemy chase scaling, freeze precedence, expiry, and refresh; `game/client/test/local-slow-prediction.test.js` covers local prediction with valid, missing, expired, and invalid slow factors; and existing snapshot expectations now include the player slow fields.
+
+## Remaining gaps
+
+None.
+

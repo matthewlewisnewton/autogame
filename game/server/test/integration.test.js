@@ -1893,7 +1893,7 @@ describe('Socket Integration — Quest Selection', () => {
 		expect(u1.selectedQuestId).toBe('crystal_rescue');
 		expect(u2.selectedQuestId).toBe('crystal_rescue');
 		expect(Array.isArray(u1.quests)).toBe(true);
-		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'spire_ascent', 'endless_siege']);
+		expect(u1.quests.map(q => q.id)).toEqual(['training_caverns', 'crystal_rescue', 'arena_trials', 'frost_crossing', 'canyon_descent', 'ember_descent', 'spire_ascent', 'endless_siege']);
 		expect(u1.layoutSeed).toBeDefined();
 		expect(u1.layout).toBeDefined();
 		expect(u1.layout.profile).toBe('open');

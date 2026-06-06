@@ -1,0 +1,8 @@
+Wrote the review artifacts:
+
+- `tickets/295-fire-level/round-1/review.md`
+- `tickets/295-fire-level/round-1/gaps.md`
+
+Final verdict: `VERDICT: FAIL`.
+
+The captured game run itself was clean, but the `fire-cavern` debug deploy shortcut starts a default run before switching to Ember Descent, leaving stale run metadata/objective state. No `nits.md` was created.

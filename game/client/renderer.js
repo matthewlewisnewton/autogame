@@ -109,6 +109,8 @@ const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
 const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
+const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
+const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -160,6 +162,9 @@ let boothInRangeListener = null; // edge-triggered: fires when the in-range boot
 // ── Input state ──
 let inputListenersAdded = false;
 const TICK_DT = 1 / TICK_RATE;
+// Mirrors the server's applySlow() default (game/server/simulation.js): used for
+// local prediction when a player is slowed but the snapshot omits slowFactor.
+const DEFAULT_SLOW_FACTOR = 0.5;
 let moveAccumulator = 0;
 let moveEmitAccumulator = 0;
 let moveSequence = 0;
@@ -237,11 +242,13 @@ const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 // ── Scene init flag ──
 let sceneInitialized = false;
 
-// ── Spire-ascent height atmosphere ──
+// ── Layout height atmosphere (spire-ascent, fire-cavern) ──
 /** @type {string|null} */
 let currentLayoutProfile = null;
 /** @type {{ bottomY: number, topY: number }|null} */
 let spireAtmosphereBounds = null;
+/** @type {{ rimY: number, basinY: number }|null} */
+let fireCavernAtmosphereBounds = null;
 
 export const SPIRE_ATMOSPHERE = {
 	baseBackground: 0x0f172a,
@@ -252,6 +259,17 @@ export const SPIRE_ATMOSPHERE = {
 	baseFogFar: 45,
 	summitFogNear: 28,
 	summitFogFar: 130,
+};
+
+export const FIRE_CAVERN_ATMOSPHERE = {
+	rimBackground: 0x0a1018,
+	basinBackground: 0x4a2018,
+	rimFogColor: 0x151f2e,
+	basinFogColor: 0x8b3a20,
+	rimFogNear: 8,
+	basinFogNear: 14,
+	rimFogFar: 42,
+	basinFogFar: 58,
 };
 
 const DEFAULT_SCENE_BACKGROUND = 0x0f172a;
@@ -332,6 +350,7 @@ function applySpireAtmosphereValues(values) {
 export function resetAtmosphere() {
 	currentLayoutProfile = null;
 	spireAtmosphereBounds = null;
+	fireCavernAtmosphereBounds = null;
 	if (!scene) return;
 	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 	scene.fog = null;
@@ -363,6 +382,70 @@ export function updateSpireAscentAtmosphere(playerY, layout) {
 		spireAtmosphereBounds = computeSpireAtmosphereBounds(layout);
 	}
 	applySpireAtmosphereValues(lerpSpireAtmosphere(normalizedSpireHeight(playerY)));
+}
+
+/**
+ * Pure lerp of fire-cavern background/fog for normalized descent depth (0 = rim, 1 = basin).
+ * Exported for unit tests — no scene dependency.
+ *
+ * @param {number} normalizedDepth
+ * @returns {{ background: number, fogColor: number, fogNear: number, fogFar: number }}
+ */
+export function lerpFireCavernAtmosphere(normalizedDepth) {
+	const t = Math.max(0, Math.min(1, normalizedDepth));
+	return {
+		background: lerpHexColor(FIRE_CAVERN_ATMOSPHERE.rimBackground, FIRE_CAVERN_ATMOSPHERE.basinBackground, t),
+		fogColor: lerpHexColor(FIRE_CAVERN_ATMOSPHERE.rimFogColor, FIRE_CAVERN_ATMOSPHERE.basinFogColor, t),
+		fogNear: lerpNumber(FIRE_CAVERN_ATMOSPHERE.rimFogNear, FIRE_CAVERN_ATMOSPHERE.basinFogNear, t),
+		fogFar: lerpNumber(FIRE_CAVERN_ATMOSPHERE.rimFogFar, FIRE_CAVERN_ATMOSPHERE.basinFogFar, t),
+	};
+}
+
+/**
+ * Rim (high) and basin (low) floor Y from fire-cavern band rooms.
+ * @param {object} layout
+ * @returns {{ rimY: number, basinY: number }|null}
+ */
+export function computeFireCavernAtmosphereBounds(layout) {
+	const rim = (layout?.rooms ?? []).find((r) => r.band === 'rim');
+	const basin = (layout?.rooms ?? []).find((r) => r.band === 'basin');
+	if (!rim || !basin) return null;
+	return { rimY: tierFloorY(rim), basinY: tierFloorY(basin) };
+}
+
+function normalizedFireCavernDepth(playerY) {
+	if (!fireCavernAtmosphereBounds) return 0;
+	const { rimY, basinY } = fireCavernAtmosphereBounds;
+	if (rimY <= basinY) return 0;
+	return Math.max(0, Math.min(1, (rimY - playerY) / (rimY - basinY)));
+}
+
+/**
+ * Cache fire-cavern rim/basin Y bounds and apply atmosphere for the current player height.
+ * @param {object} layout
+ * @param {number} [playerY]
+ */
+export function initFireCavernAtmosphere(layout, playerY = DEFAULT_FLOOR_Y) {
+	currentLayoutProfile = 'fire-cavern';
+	fireCavernAtmosphereBounds = computeFireCavernAtmosphereBounds(layout);
+	updateFireCavernAtmosphere(playerY, layout);
+}
+
+/**
+ * Interpolate scene background and fog from player height on fire-cavern layouts.
+ * @param {number} playerY
+ * @param {object} [layout]
+ */
+export function updateFireCavernAtmosphere(playerY, layout) {
+	if (!scene || currentLayoutProfile !== 'fire-cavern') return;
+	if (layout && layout.profile !== 'fire-cavern') {
+		resetAtmosphere();
+		return;
+	}
+	if (!fireCavernAtmosphereBounds && layout) {
+		fireCavernAtmosphereBounds = computeFireCavernAtmosphereBounds(layout);
+	}
+	applySpireAtmosphereValues(lerpFireCavernAtmosphere(normalizedFireCavernDepth(playerY)));
 }
 
 // ── Enemy geometry table ──
@@ -962,8 +1045,9 @@ function syncFacingToServer() {
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
-// applyPlayerMovement keeps player.y in sync). Spire-ascent and sunken-canyon
-// need this — pinning to DEFAULT_FLOOR_Y would leave the camera behind on ramps.
+// applyPlayerMovement keeps player.y in sync). Multi-level profiles (spire-ascent,
+// sunken-canyon, fire-cavern) need this — pinning to DEFAULT_FLOOR_Y would leave
+// the camera behind on ramps.
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
@@ -1444,6 +1528,9 @@ export function initScene(layout, spawnPos) {
 	if (layout?.profile === 'spire-ascent') {
 		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
 		initSpireAscentAtmosphere(layout, initFloorY);
+	} else if (layout?.profile === 'fire-cavern') {
+		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initFireCavernAtmosphere(layout, initFloorY);
 	} else {
 		resetAtmosphere();
 		if (layout?.profile) currentLayoutProfile = layout.profile;
@@ -1535,6 +1622,9 @@ export function rebuildDungeonLayout(layout) {
 	if (layout.profile === 'spire-ascent') {
 		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
 		initSpireAscentAtmosphere(layout, floorY);
+	} else if (layout.profile === 'fire-cavern') {
+		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initFireCavernAtmosphere(layout, floorY);
 	} else {
 		resetAtmosphere();
 		if (layout.profile) currentLayoutProfile = layout.profile;
@@ -1560,6 +1650,21 @@ export function setGamePhase(phase) {
 }
 
 // ── Player movement ──
+
+/**
+ * Local slow factor for movement prediction. Reads the local player's broadcast
+ * snapshot: when it is currently slowed (`slowedUntil` in the future) the
+ * clamped `slowFactor` is returned so prediction advances at the same reduced
+ * speed the server applies (no rubber-band). Returns 1 when not slowed or when
+ * the fields are missing, leaving unslowed movement unchanged.
+ * @param {object} me - local player broadcast snapshot
+ * @returns {number} factor in (0, 1]
+ */
+export function localSlowFactor(me) {
+	if (!me || !me.slowedUntil || Date.now() >= me.slowedUntil) return 1;
+	const f = Number(me.slowFactor);
+	return Number.isFinite(f) && f > 0 && f <= 1 ? f : DEFAULT_SLOW_FACTOR;
+}
 
 /**
  * Read WASD keys, normalize direction, apply movement speed, resolve wall
@@ -1641,7 +1746,7 @@ export function updateMyPlayer(delta) {
 		}
 	}
 
-	const speedScale = clientMoveSpeedScale(me);
+	const speedScale = clientMoveSpeedScale(me) * localSlowFactor(me);
 	while (moveAccumulator >= TICK_DT) {
 		prevSimX = simX;
 		prevSimZ = simZ;
@@ -3177,6 +3282,60 @@ export function applyFrenziedTelegraphRing(enemyId, enemy) {
 	}
 }
 
+// ── Slow status indicator ──
+
+// Icy cool-blue (0x8fd3ff), deliberately distinct from the amber lock-on ring, red
+// frenzied telegraph, and saturated-cyan phase-step/shield visuals so a slowed
+// entity reads at a glance without being confused with any other status marker.
+
+/**
+ * Create a ground ring marker for a slowed entity. The pale ice-blue colour and
+ * wider radius keep it visually separate from the lock-on/frenzied/phase-step
+ * rings so "slowed" is never mistaken for another status.
+ * @returns {THREE.Mesh}
+ */
+function createSlowMarker() {
+	const geo = new THREE.RingGeometry(0.75, 1.05, 32);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0x8fd3ff,
+		transparent: true,
+		opacity: 0.7,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+/**
+ * Show or hide the slow indicator for an entity (player or enemy). Driven by
+ * `slowedUntil`: while it is in the future the icy ring is shown at the entity's
+ * feet with a gentle pulse; once it passes (or the entity is gone) the marker is
+ * disposed so nothing stays stuck on screen.
+ * @param {Object} markerMap - per-entity marker map (enemySlowMarkers / playerSlowMarkers)
+ * @param {string} id - entity id
+ * @param {object} entity - { slowedUntil, x, z }
+ */
+function applySlowIndicator(markerMap, id, entity) {
+	const now = Date.now();
+	const slowed = entity && entity.slowedUntil && now < entity.slowedUntil;
+
+	if (slowed) {
+		if (!markerMap[id]) {
+			markerMap[id] = createSlowMarker();
+			scene.add(markerMap[id]);
+		}
+		const marker = markerMap[id];
+		marker.position.set(entity.x, GROUND_OVERLAY_Y + 0.01, entity.z);
+		// Slow ~1 Hz pulse so the ring reads as an active "drag" effect.
+		const pulse = 0.5 + 0.5 * Math.sin((now % 1500) / 1500 * Math.PI * 2);
+		marker.material.opacity = 0.4 + pulse * 0.4;
+	} else if (markerMap[id]) {
+		disposeOne(markerMap, id, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -4452,6 +4611,20 @@ export function animate(timestamp) {
 			// (local + remote), so an equip swap takes effect without a reload.
 			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
 
+			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
+			// For the local player, anchor the ring to the predicted myX/myZ (the
+			// slower predicted avatar position) so it does not lag behind the avatar
+			// while slowed; remote players use their broadcast x/z directly.
+			if (id === myId) {
+				applySlowIndicator(playerSlowMarkers, id, {
+					slowedUntil: pData.slowedUntil,
+					x: myX,
+					z: myZ,
+				});
+			} else {
+				applySlowIndicator(playerSlowMarkers, id, pData);
+			}
+
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
@@ -4592,6 +4765,13 @@ export function animate(timestamp) {
 		for (const id of Object.keys(playerNameplates)) {
 			if (!gs.players[id]) {
 				disposeNameplate(id);
+			}
+		}
+
+		// ── Clean up slow markers for players who left ──
+		for (const id of Object.keys(playerSlowMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerSlowMarkers, id, scene);
 			}
 		}
 
@@ -4781,6 +4961,9 @@ export function animate(timestamp) {
 
 			// ── Frenzied enrage telegraph ring ──
 			applyFrenziedTelegraphRing(enemy.id, enemy);
+
+			// ── Slow status ring (driven by the broadcast slowedUntil) ──
+			applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4791,6 +4974,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
+		disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];
@@ -4878,6 +5062,13 @@ export function animate(timestamp) {
 			: camera.position.y;
 		updateSpireAscentAtmosphere(atmosY, gs.layout);
 	} else if (currentLayoutProfile === 'spire-ascent') {
+		resetAtmosphere();
+	} else if (gs?.layout?.profile === 'fire-cavern') {
+		const atmosY = myId != null && playersMeshes[myId]
+			? playersMeshes[myId].position.y
+			: camera.position.y;
+		updateFireCavernAtmosphere(atmosY, gs.layout);
+	} else if (currentLayoutProfile === 'fire-cavern') {
 		resetAtmosphere();
 	}
 

@@ -128,7 +128,7 @@ export function tickMovementPrediction({
 					z,
 					dx,
 					dz,
-					moveSpeed * tickDt,
+					moveSpeed * tickDt * speedScale,
 					colliders,
 					walkableAABBs,
 					bounds,

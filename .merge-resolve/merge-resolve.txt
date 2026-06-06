@@ -1,18 +1,26 @@
-All three conflicted files are resolved and marker-free. Summary of the merge:
+Merge conflicts are resolved and all **2526 tests pass**.
 
-### `TASKS.md`
-Kept all cleanup backlog entries from both sides: ship-hub plus open-plaza, sunken-canyon, spire-ascent, and the driver-output-quality ticket.
+## Resolution summary
 
-### `LOGBOOK.md`
-Combined both histories: v0.283 ship-hub validation (ticket 281) at the top, followed by main’s v0.275–v0.281 entries in order, with a single “Remaining gaps: None” footer.
+Combined **both** feature branches rather than picking one side:
 
-### `harness/validate/playthrough.mjs`
-Merged both drivers into one coherent script:
+### Ice level (ticket 292)
+- `ice-cavern` profile in `dungeonTheme.json`, `generateIceCavern()`, slippery floor physics, client ice materials + slippery override
+- `frost_crossing` quest and `frost-crossing-tier-1` debug scenario
+- Client slippery movement prediction (`tickMovementPrediction`, coasting on ice)
 
-- **Presets**: `rooms`, `hub`, `open-plaza`, `spire-ascent`, `sunken-canyon`
-- **Hub ticket behavior**: hub-walk, booth, telepipe-reset steps; lobby-finder probes; `renderHubFindings`; hub-specific screenshots and assertions
-- **Main ticket behavior**: stage presets with configurable `addTypes`; floor-alignment probes; preset-aware findings (`findingsTitle`, `bossSpawnLabel`, `bossType`)
-- **Routing**: `STAGE_PRESETS` so open-plaza/spire-ascent/sunken-canyon run the full stage playthrough path (not only `rooms`)
-- **Output dirs**: `game/validation/<preset>/` for all presets including hub
+### Fire level (ticket 295, from main)
+- `fire-cavern` profile, `generateFireCavern()`, rim/basin layout
+- `ember_descent` quest and `fire-cavern` / `fire-cavern-stage` debug scenarios
+- Client fire-cavern band materials
 
-Syntax check and `--help` both pass. The harness can commit and finish the merge.
+### Slow status (ticket 290, from main)
+- `isSlowed` applied to normal and slippery server movement
+- `localSlowFactor(me)` folded into client `speedScale` for prediction parity
+- `movementPrediction.js` uses `speedScale` on normal floors too
+
+### Other merges
+- **LOGBOOK.md**: v0.287 (ice), v0.285 (fire), and v0.286 (slow) entries
+- **Tests**: separate `ice-cavern` and `fire-cavern` describe blocks; quest lists include both `frost_crossing` and `ember_descent` in `QUEST_DEFS` order
+
+The harness can commit and finish the merge.

@@ -130,6 +130,16 @@ describe('quest tier catalog', () => {
       objectiveType: 'defeat_enemies',
     });
     expect(getLayoutProfileForQuest('frost_crossing')).toBe('ice-cavern');
+    const emberTier1 = variants.find(
+      (v) => v.questId === 'ember_descent' && v.tier === 1
+    );
+    expect(emberTier1).toMatchObject({
+      questId: 'ember_descent',
+      tier: 1,
+      isTier2: false,
+      objectiveType: 'defeat_enemies',
+    });
+    expect(emberTier1.objectiveSummary).toContain('6');
     expect(variants.filter((v) => v.isTier2)).toHaveLength(5);
   });
 
@@ -187,6 +197,15 @@ describe('quest tier catalog', () => {
       slopes: true,
       layoutMode: 'default',
     });
+    expect(getLayoutProfileForQuest('ember_descent')).toBe('fire-cavern');
+    expect(getLayoutProfileForQuest('ember_descent', 1)).toBe('fire-cavern');
+    expect(getQuest('ember_descent', 1).layoutProfile).toBe('fire-cavern');
+    expect(getLayoutGenerationOptions('ember_descent', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
+    });
+    expect(isValidQuestSelection('ember_descent', 1)).toBe(true);
+    expect(isValidQuestSelection('ember_descent', 2)).toBe(false);
     expect(isValidQuestSelection('canyon_descent', 2)).toBe(true);
     expect(isValidQuestSelection('arena_trials', 2)).toBe(true);
     expect(isValidQuestSelection('spire_ascent', 2)).toBe(true);

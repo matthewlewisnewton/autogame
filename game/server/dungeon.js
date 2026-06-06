@@ -100,6 +100,11 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  // Fire-cavern is handled by generateFireCavern() — see that branch.
+  'fire-cavern': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: OPEN_PLAZA.size,
+  },
   // Spire-ascent is handled by generateSpireAscent() — see that branch.
   'spire-ascent': {
     ...DEFAULT_LAYOUT_PROFILE,
@@ -178,6 +183,19 @@ const ICE_CAVERN = {
   treasureGapWidth: 8,
 };
 
+// Fire-cavern stage tuning. Rim (north / high Y) overlooks a large volcanic basin
+// floor (south / low Y) connected by 2–3 sloped ramp rooms.
+const FIRE_CAVERN = {
+  rimSize: 13,
+  basinSize: OPEN_PLAZA.size, // 32 × 32 ⇒ ≥ 4× default room area
+  rampWidth: 6,
+  rampDepth: 24,
+  yDrop: 10,                  // rim Y − basin Y (≥ 8 required)
+  spawnClearRadius: 6,
+  interiorMargin: OPEN_PLAZA.interiorMargin,
+  rampXOffsets: [-6, 0, 6], // west / centre / east; width 6 ⇒ footprints [-9,-3], [-3,3], [3,9]
+};
+
 // Spire-ascent: vertical tower of 3–5 flat tiers linked by ascending ramps along −Z.
 const SPIRE_ASCENT = {
   tierMinSize: 12,
@@ -254,6 +272,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   if (profile === 'ice-cavern') {
     return generateIceCavern(seed, options);
+  }
+  if (profile === 'fire-cavern') {
+    return generateFireCavern(seed, options);
   }
   if (profile === 'spire-ascent') {
     return generateSpireAscent(seed, options);
@@ -2545,6 +2566,147 @@ function generateIceCavern(seed, options = {}) {
   };
 }
 
+
+// ── Fire Cavern Stage Generation ──
+
+/**
+ * Build the fire-cavern stage: a high rim spawn band overlooking a large lower
+ * volcanic basin, connected by 2–3 sloped ramp rooms. Deterministic for a
+ * given seed.
+ *
+ * Returns { rooms, passages: [], cover, passageWidth, cellSpacing,
+ *           profile: 'fire-cavern' }.
+ */
+function generateFireCavern(seed, options = {}) {
+  const rng = mulberry32(seed);
+  const {
+    rimSize,
+    basinSize,
+    rampWidth,
+    rampDepth,
+    yDrop,
+    spawnClearRadius,
+    interiorMargin,
+    rampXOffsets,
+  } = FIRE_CAVERN;
+
+  const yHigh = DEFAULT_FLOOR_Y + yDrop;
+  const yLow = DEFAULT_FLOOR_Y;
+  const basinHalf = basinSize / 2;
+  const rimHalf = rimSize / 2;
+
+  // Basin centred at origin; rim sits to the north (negative Z).
+  const basinX = 0;
+  const basinZ = 0;
+  const basinNorthZ = basinZ - basinHalf;
+  const rampZ = basinNorthZ - rampDepth / 2;
+  const rampNorthZ = rampZ - rampDepth / 2;
+  const rimZ = rampNorthZ - rimHalf;
+  const rimSouthZ = rimZ + rimHalf;
+
+  const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
+  const numRamps = 2 + Math.floor(rng() * 2);
+  const rampCenters = numRamps === 2
+    ? [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]]
+    : sortedOffsets;
+  const rampHalfW = rampWidth / 2;
+  const rampIntervals = rampCenters.map(cx => ({
+    cx,
+    minX: cx - rampHalfW,
+    maxX: cx + rampHalfW,
+  }));
+
+  function isRampEdgeInsideOtherRamp(edgeX, ownCenterX) {
+    return rampIntervals.some(
+      ({ cx, minX, maxX }) => cx !== ownCenterX && edgeX > minX && edgeX < maxX
+    );
+  }
+
+  const ramps = rampCenters.map(rampX =>
+    buildDescentRampRoom({
+      x: rampX,
+      z: rampZ,
+      width: rampWidth,
+      depth: rampDepth,
+      yHigh,
+      yLow,
+      axis: 'z',
+      openWest: isRampEdgeInsideOtherRamp(rampX - rampHalfW, rampX),
+      openEast: isRampEdgeInsideOtherRamp(rampX + rampHalfW, rampX),
+    })
+  );
+
+  const rimWalls = [
+    { x: 0, z: rimZ - rimHalf, length: rimSize, axis: 'x' }, // north
+    { x: -rimHalf, z: rimZ, length: rimSize, axis: 'z' },    // west
+    { x: rimHalf, z: rimZ, length: rimSize, axis: 'z' },     // east
+    ...buildHorizontalWallWithGaps(rimSouthZ, 0, rimSize, rampCenters, rampWidth),
+  ];
+
+  const rim = {
+    x: 0,
+    z: rimZ,
+    width: rimSize,
+    depth: rimSize,
+    walls: rimWalls,
+    floorCorners: { yNW: yHigh, yNE: yHigh, ySE: yHigh, ySW: yHigh },
+    band: 'rim',
+    role: 'start',
+    spawnWeight: 0,
+    encounterTier: 0,
+  };
+
+  const basinWalls = [
+    ...buildHorizontalWallWithGaps(basinNorthZ, basinX, basinSize, rampCenters, rampWidth),
+    { x: basinX, z: basinZ + basinHalf, length: basinSize, axis: 'x' }, // south
+    { x: basinX - basinHalf, z: basinZ, length: basinSize, axis: 'z' }, // west
+    { x: basinX + basinHalf, z: basinZ, length: basinSize, axis: 'z' }, // east
+  ];
+
+  const basin = {
+    x: basinX,
+    z: basinZ,
+    width: basinSize,
+    depth: basinSize,
+    walls: basinWalls,
+    floorCorners: { yNW: yLow, yNE: yLow, ySE: yLow, ySW: yLow },
+    band: 'basin',
+    role: 'treasure',
+    spawnWeight: 2,
+    encounterTier: 0,
+  };
+
+  const basinCandidatePool = [
+    { x: 0, z: -11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 0, z: 11, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 11, z: 0, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 9, z: -9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -9, z: 9, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: -11, z: -11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+    { x: 11, z: 11, width: 1.2, depth: 4.0, height: 1.0, type: 'broken_wall' },
+  ];
+
+  const cover = scatterCoverInArena(rng, {
+    half: basinHalf,
+    centerX: basinX,
+    centerZ: basinZ,
+    spawnClear: spawnClearRadius,
+    candidatePool: basinCandidatePool,
+    targetCount: 8,
+    interiorMargin,
+  });
+
+  return {
+    rooms: [rim, ...ramps, basin],
+    passages: [],
+    cover,
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: basinSize,
+    profile: 'fire-cavern',
+  };
+}
+
 // ── Spire Ascent Stage Generation ──
 
 /**
@@ -3083,6 +3245,7 @@ module.exports = {
   generateOpenPlaza,
   generateSunkenCanyon,
   generateIceCavern,
+  generateFireCavern,
   buildSunkenCanyonCliffLips,
   buildSunkenCanyonCliffHazards,
   generateSpireAscent,
