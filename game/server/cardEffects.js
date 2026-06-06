@@ -31,6 +31,7 @@ const {
   collectProjectileHits,
   collectChainLightningHits,
   collectReturningProjectileHits,
+  applyBurning,
   applyFreezeInRadius,
   pullEnemiesToward,
   applyKnockback,
@@ -246,7 +247,7 @@ function handleUseCard(socket, state, lobby, data) {
 
       for (let swing = 0; swing < swingsPerUse; swing++) {
         let swingResult;
-        if (cardDef.effect === 'throw_rock' || cardDef.effect === 'projectile') {
+        if (cardDef.effect === 'throw_rock' || cardDef.effect === 'projectile' || cardDef.effect === 'fireball') {
           swingResult = collectProjectileHits(originX, originZ, dirX, dirZ, attackRange, damage, {
             magicStoneOnHit: cardDef.magicStoneOnHit,
             magicStoneOnKill: cardDef.magicStoneOnKill,
@@ -273,6 +274,24 @@ function handleUseCard(socket, state, lobby, data) {
           hits.push({ ...hit, swing: swing + 1 });
         }
         magicStonesGained += swingResult.magicStonesGained;
+      }
+
+      // Fireball: every enemy struck by the projectile catches fire (BURNING).
+      // Resolve each hit's enemyId back to its live entity in game state and
+      // ignite it for the card's configured burning duration.
+      if (cardDef.effect === 'fireball') {
+        const burnDurationMs = cardDef.burningDurationMs || 0;
+        if (burnDurationMs > 0) {
+          const ignited = new Set();
+          for (const hit of hits) {
+            if (!hit.enemyId || ignited.has(hit.enemyId)) continue;
+            const enemy = state.enemies.find(e => e.id === hit.enemyId);
+            if (enemy) {
+              applyBurning(enemy, burnDurationMs);
+              ignited.add(hit.enemyId);
+            }
+          }
+        }
       }
 
       let knockbackMoved = [];

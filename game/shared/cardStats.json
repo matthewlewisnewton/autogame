@@ -153,6 +153,14 @@
     "specialEffect": "long_range",
     "projectile": { "pierces": true }
   },
+  "fireball": {
+    "damage": 16,
+    "attackRange": 9,
+    "effect": "fireball",
+    "specialEffect": "burning",
+    "burningDurationMs": 3000,
+    "projectile": { "pierces": true }
+  },
   "chain_lightning": {
     "magicStoneCost": 42,
     "effect": "chain_lightning",

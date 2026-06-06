@@ -368,7 +368,8 @@ describe('card ID sets', () => {
 		expect(weaponCardIds.has('resonance_edge')).toBe(true);
 		expect(weaponCardIds.has('battle_familiar')).toBe(false);
 		expect(weaponCardIds.has('dungeon_drake')).toBe(false);
-		expect(weaponCardIds.size).toBe(16);
+		expect(weaponCardIds.has('fireball')).toBe(true);
+		expect(weaponCardIds.size).toBe(17);
 	});
 
 	it('spellCardIds contains base, evolved, and synergistic spell card IDs', () => {
