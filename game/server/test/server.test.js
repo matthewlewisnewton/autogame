@@ -2999,7 +2999,7 @@ describe('run state', () => {
 			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
 		});
 
-		it('fresh deploy after telepipe extract preserves magicStones and resets card charges', () => {
+		it('fresh deploy after telepipe extract preserves hp and magicStones and resets card charges', () => {
 			resetState();
 			gameState._lobbyId = 'test-lobby';
 			addPlayer('p1', {
@@ -3013,6 +3013,7 @@ describe('run state', () => {
 			checkAllReady();
 			const preExtractRunId = gameState.run.id;
 
+			gameState.players.p1.hp = 42;
 			gameState.players.p1.magicStones = STARTING_MAGIC_STONES - 5;
 			for (const card of gameState.players.p1.hand) {
 				if (card && card.charges != null) {
@@ -3036,6 +3037,7 @@ describe('run state', () => {
 
 			expect(gameState.run.id).not.toBe(preExtractRunId);
 			const preservedMagicStones = STARTING_MAGIC_STONES - 5;
+			expect(gameState.players.p1.hp).toBe(42);
 			expect(gameState.players.p1.magicStones).toBe(preservedMagicStones);
 			for (let tick = 0; tick < 5; tick += 1) {
 				regenMagicStones();

@@ -43,7 +43,7 @@ import {
 import { hubSpawnPosition } from '../simulation.js';
 import { InMemoryProvider } from '../providers.js';
 import { getQuest } from '../quests.js';
-import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, TICK_RATE } from '../config.js';
+import { COOLDOWN_MS, MOVE_SPEED, MAX_HP, MAX_HAND_SLOTS, MAX_MAGIC_STONES, STARTING_MAGIC_STONES, MEDIC_HEAL_COST, TICK_RATE } from '../config.js';
 
 // ── Helpers ──
 
@@ -5212,7 +5212,7 @@ describe('Socket Integration — Wall-Aware Enemy Movement', () => {
 	});
 });
 
-describe('Telepipe suspend and resume', () => {
+describe('Telepipe extract and redeploy vitals persistence', () => {
 	it('single player extract keeps the dungeon running for remaining players', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-partial-1');
@@ -5320,7 +5320,7 @@ describe('Telepipe suspend and resume', () => {
 		p2.socket.disconnect();
 	});
 
-	it('two-player telepipe extract preserves magic stones across hub return and redeploy', async () => {
+	it('two-player telepipe extract preserves damage and spent magic stones across hub return and redeploy', async () => {
 		const baseUrl = await startTestServer();
 		const p1 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-1');
 		const p2 = await connectAndJoinLobby(baseUrl, 'telepipe-preserve-2', { joinLobbyId: p1.init.lobbyId });
@@ -5335,32 +5335,77 @@ describe('Telepipe suspend and resume', () => {
 		const state = testGameState();
 		const p1Id = p1.socket._playerId;
 		const p2Id = p2.socket._playerId;
+		const preExtractRunId = state.run.id;
 
-		const SPENT_MAGIC_STONES = STARTING_MAGIC_STONES - 30;
-		state.players[p1Id].magicStones = SPENT_MAGIC_STONES;
-		state.players[p1Id].hp = 42;
+		runSimulationInPrimaryLobby(() => {
+			damagePlayer(p1Id, 58);
+		});
+		const expectedHp = testGameState().players[p1Id].hp;
+		expect(expectedHp).toBe(42);
 
-		state.telepipe = {
-			x: state.players[p1Id].x,
-			z: state.players[p1Id].z,
-			placedBy: p1Id,
-			placedAt: Date.now(),
-		};
-		setGameState(state);
+		const SUMMON_COST = 50;
+		runSimulationInPrimaryLobby((liveState) => {
+			const player = liveState.players[p1Id];
+			let summonSlot = player.hand.findIndex((c) => c && c.type === 'spell');
+			if (summonSlot < 0) {
+				summonSlot = player.hand.findIndex((c) => !c);
+				player.hand[summonSlot] = {
+					id: 'battle_familiar',
+					name: 'Signal Familiar',
+					type: 'spell',
+					charges: 1,
+					remainingCharges: 1,
+					magicStoneCost: SUMMON_COST,
+					damage: 44,
+				};
+			}
+			player.magicStones = SUMMON_COST + 20;
+			liveState.enemies.push({
+				id: 'e-ms-spend',
+				type: 'grunt',
+				x: player.x + 5,
+				z: player.z,
+				hp: 60,
+				state: 'idle',
+				wanderTarget: { x: player.x + 5, z: player.z },
+			});
+		});
 
-		const portalX = state.telepipe.x;
-		const portalZ = state.telepipe.z;
+		const player = testGameState().players[p1Id];
+		const summonSlot = player.hand.findIndex((c) => c && c.type === 'spell');
+		const summonCard = player.hand[summonSlot];
+		const cardUsedPromise = waitForEvent(p1.socket, 'cardUsed');
+		p1.socket.emit('useCard', { cardId: summonCard.id, slotIndex: summonSlot });
+		await cardUsedPromise;
+
+		const expectedMs = testGameState().players[p1Id].magicStones;
+		expect(expectedMs).toBeCloseTo(20, 0);
+
+		runSimulationInPrimaryLobby((liveState) => {
+			liveState.telepipe = {
+				x: liveState.players[p1Id].x,
+				z: liveState.players[p1Id].z,
+				placedBy: p1Id,
+				placedAt: Date.now(),
+			};
+		});
+
+		const portalState = testGameState();
+		const portalX = portalState.telepipe.x;
+		const portalZ = portalState.telepipe.z;
 
 		expect(tryEnterTelepipe(p1Id).ok).toBe(true);
-		const live = testGameState();
-		live.players[p2Id].x = portalX;
-		live.players[p2Id].z = portalZ;
+		runSimulationInPrimaryLobby((afterP1Extract) => {
+			afterP1Extract.players[p2Id].x = portalX;
+			afterP1Extract.players[p2Id].z = portalZ;
+		});
 		expect(tryEnterTelepipe(p2Id).ok).toBe(true);
 
 		const hub = testGameState();
 		expect(hub.gamePhase).toBe('lobby');
-		expect(hub.players[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
-		expect(hub.players[p1Id].hp).toBe(42);
+		expect(hub.run).toBeUndefined();
+		expect(hub.players[p1Id].magicStones).toBeCloseTo(expectedMs, 0);
+		expect(hub.players[p1Id].hp).toBe(expectedHp);
 
 		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
 		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
@@ -5371,8 +5416,9 @@ describe('Telepipe suspend and resume', () => {
 
 		const redeployed = testGameState();
 		expect(redeployed.gamePhase).toBe('playing');
-		expect(redeployed.players[p1Id].magicStones).toBeCloseTo(SPENT_MAGIC_STONES, 0);
-		expect(redeployed.players[p1Id].hp).toBe(42);
+		expect(redeployed.run.id).not.toBe(preExtractRunId);
+		expect(redeployed.players[p1Id].magicStones).toBeCloseTo(expectedMs, 0);
+		expect(redeployed.players[p1Id].hp).toBe(expectedHp);
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
@@ -5409,6 +5455,42 @@ describe('Telepipe suspend and resume', () => {
 
 		p1.socket.disconnect();
 		p2.socket.disconnect();
+	});
+});
+
+describe('Socket Integration — MEDIC_HEAL', () => {
+	let baseUrl;
+
+	beforeEach(async () => {
+		baseUrl = await startTestServer();
+	});
+
+	afterEach(async () => {
+		await closeServer();
+	});
+
+	it('partial-HP player in hub lobby heals to MAX_HP via medicHeal socket event', async () => {
+		const { socket } = await connectAndJoinLobby(baseUrl, 'medic-heal-1');
+		const playerId = socket._playerId;
+
+		runSimulationInPrimaryLobby((state) => {
+			state.players[playerId].hp = 40;
+			state.players[playerId].currency = 25;
+		});
+
+		const healedPromise = waitForEvent(socket, 'medicHealed');
+		socket.emit('medicHeal');
+		const result = await healedPromise;
+
+		expect(result).toEqual({
+			hp: MAX_HP,
+			currency: 25 - MEDIC_HEAL_COST,
+			cost: MEDIC_HEAL_COST,
+		});
+		expect(testGameState().players[playerId].hp).toBe(MAX_HP);
+		expect(testGameState().players[playerId].currency).toBe(25 - MEDIC_HEAL_COST);
+
+		socket.disconnect();
 	});
 });
 
