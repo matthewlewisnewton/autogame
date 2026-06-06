@@ -2,17 +2,6 @@
  * Render validation findings.md from a playthrough run summary.
  */
 
-const PRESET_FINDINGS = {
-	rooms: {
-		title: 'Rooms validation findings',
-		bossSpawnLabel: 'annex_overseer (Annex Overseer)',
-	},
-	'sunken-canyon': {
-		title: 'Sunken Canyon validation findings',
-		bossSpawnLabel: 'miniboss (Canyon Warden)',
-	},
-};
-
 const FLOOR_ALIGNMENT_STEPS = [
 	['levelEntry', 'Level entry'],
 	['midCombat', 'Mid combat'],
@@ -28,11 +17,18 @@ function formatAssertion(name, passed, detail = '') {
 	return `- **${name}**: ${status}${suffix}`;
 }
 
+function formatPresetTitle(preset) {
+	if (!preset) return 'Playthrough';
+	return preset
+		.split('-')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
+}
+
 function resolvePresetCopy(run) {
-	const preset = PRESET_FINDINGS[run.preset] || {};
 	return {
-		title: run.findingsTitle || preset.title || `${run.preset || 'Playthrough'} validation findings`,
-		bossSpawnLabel: run.bossSpawnLabel || preset.bossSpawnLabel || 'boss',
+		title: run.findingsTitle || `${formatPresetTitle(run.preset)} validation findings`,
+		bossSpawnLabel: run.bossSpawnLabel || run.bossType || 'boss',
 	};
 }
 
@@ -70,6 +66,7 @@ function renderFloorAlignmentSection(floorAlignment) {
  *   preset: string,
  *   findingsTitle?: string,
  *   bossSpawnLabel?: string,
+ *   bossType?: string,
  *   assertions: Record<string, boolean>,
  *   floorAlignment?: Record<string, object>,
  *   consoleErrors?: string[],

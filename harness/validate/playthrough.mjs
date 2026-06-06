@@ -467,6 +467,7 @@ function writeFullArtifacts({ outDirAbs, summary, consoleEntries, preset }) {
 		preset: summary.preset,
 		findingsTitle: preset?.findingsTitle,
 		bossSpawnLabel: preset?.bossSpawnLabel,
+		bossType: preset?.bossType,
 		assertions: summary.assertions || {},
 		floorAlignment,
 		consoleErrors: consoleEntries || [],

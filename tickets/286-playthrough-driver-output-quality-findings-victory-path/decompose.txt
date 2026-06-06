@@ -1,0 +1,17 @@
+Broke ticket **286** into **4 sub-tickets** (dependency order). Each maps to one of the three driver bugs plus artifact regeneration:
+
+| # | Focus |
+|---|--------|
+| **01** | Parameterize `findings.md` title + boss label from preset metadata |
+| **02** | Wait for Sortie Complete overlay before `07-victory.png`; add distinct-PNG verifier guard |
+| **03** | Default `--out` to `game/validation/<preset>/`; add open-plaza npm scripts + verifier |
+| **04** | Re-run open-plaza validation; land artifacts under `game/`; delete stale repo-root tree |
+
+All use **Verification: code** (assertions, file paths, md5 checks, JSON fields — not pixel-only QA).
+
+### Sub-ticket folder paths created
+
+- `/home/matt/workspace/.autogame-worktrees/286-playthrough-driver-output-quality-findings-victory-path/tickets/286-playthrough-driver-output-quality-findings-victory-path/subtickets/01-parameterize-findings-from-preset/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/286-playthrough-driver-output-quality-findings-victory-path/tickets/286-playthrough-driver-output-quality-findings-victory-path/subtickets/02-distinct-victory-screenshot/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/286-playthrough-driver-output-quality-findings-victory-path/tickets/286-playthrough-driver-output-quality-findings-victory-path/subtickets/03-standardize-open-plaza-output-path/ticket.md`
+- `/home/matt/workspace/.autogame-worktrees/286-playthrough-driver-output-quality-findings-victory-path/tickets/286-playthrough-driver-output-quality-findings-victory-path/subtickets/04-regenerate-open-plaza-artifacts/ticket.md`

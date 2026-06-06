@@ -8,6 +8,8 @@
  * driver's optional-scenario guards take the live-gameplay path.
  */
 export default {
+	findingsTitle: 'Open Plaza validation findings',
+	bossSpawnLabel: 'arena_champion (Arena Champion)',
 	questId: 'arena_trials',
 	questTier: 2,
 	bossType: 'arena_champion',
