@@ -184,7 +184,6 @@ const lobbyPlayerList = document.getElementById('lobby-player-list');
 const questBoardEl = document.getElementById('quest-board');
 const questBoardWrapperEl = document.getElementById('quest-board-wrapper');
 const questErrorEl = document.getElementById('quest-error');
-const abandonRunBtn = document.getElementById('abandon-run-btn');
 const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
 const lobbyEl = document.getElementById('lobby');
@@ -515,7 +514,7 @@ function returnToGuildLobby(state, { refreshCollection = false, rebuildHub = fal
 				selectedQuestTier: state.selectedQuestTier,
 			});
 		}
-		renderSuspendedRunBanner(state);
+		syncSuspendedRunUi(state);
 	}
 }
 
@@ -526,7 +525,7 @@ function isSoloSquad(state = gameState) {
 
 /** True when the squad is sitting in the lobby on top of a suspended run. */
 function isRunSuspended() {
-	return !!(gameState && gameState.gamePhase === 'lobby' && gameState.suspendedRunSummary);
+	return !!(gameState && gameState.gamePhase === 'lobby' && gameState.run?.status === 'suspended');
 }
 
 /**
@@ -553,36 +552,13 @@ function setDeployButtonVisible(visible) {
 	syncReadyButtonRole();
 }
 
-function renderSuspendedRunBanner(state) {
-	const summary = state && state.suspendedRunSummary;
-	const suspended = !!(state && state.gamePhase === 'lobby' && summary);
-	// While suspended #resume-run-btn is the dedicated resume affordance; resuming
-	// the run itself goes through the launch booth ready-up path the same as a
-	// fresh deploy. syncReadyButtonRole applies the "Resume…" label.
+function syncSuspendedRunUi(state) {
+	const suspended = !!(state && state.gamePhase === 'lobby' && state.run?.status === 'suspended');
 	if (resumeRunBtn) resumeRunBtn.classList.toggle('hidden', !suspended);
 	syncReadyButtonRole();
-	if (!suspendedRunBannerEl) return;
-	if (suspended) {
-		const objective = summary.objective;
-		let progress = '';
-		if (objective && objective.type === 'collect_items') {
-			progress = THEME.objectives.collectPrismsProgress
-				.replace('{collected}', String(objective.collectedItems))
-				.replace('{total}', String(objective.totalItems));
-		} else if (objective && objective.type === 'defeat_enemies') {
-			progress = `${objective.defeatedEnemies}/${objective.totalEnemies} hostiles`;
-		}
-		const questLabel = formatQuestTierLabel(
-			summary.questName || THEME.run.unknownSector,
-			summary.questTier ?? 1,
-		);
-		suspendedRunBannerEl.textContent = `${THEME.run.resumeSortie}: ${questLabel}${progress ? ` — ${progress}` : ''}`;
-		suspendedRunBannerEl.classList.remove('hidden');
-		if (abandonRunBtn) abandonRunBtn.classList.remove('hidden');
-		return;
+	if (suspendedRunBannerEl && suspended) {
+		suspendedRunBannerEl.classList.add('hidden');
 	}
-	suspendedRunBannerEl.classList.add('hidden');
-	if (abandonRunBtn) abandonRunBtn.classList.add('hidden');
 }
 
 function showExtractedLobbyOverlay() {
@@ -607,7 +583,6 @@ function showExtractedLobbyOverlay() {
 		suspendedRunBannerEl.textContent = THEME.run.awaitingExtract;
 		suspendedRunBannerEl.classList.remove('hidden');
 	}
-	if (abandonRunBtn) abandonRunBtn.classList.add('hidden');
 	const me = myId && gameState?.players ? gameState.players[myId] : null;
 	syncVanguardHud(me, 'lobby');
 }
@@ -1833,10 +1808,6 @@ function bindSocketHandlers(s) {
 		if (gameState) {
 			gameState.gamePhase = 'lobby';
 			delete gameState.run;
-			// Abandoning clears the checkpoint, so drop the suspended summary that
-			// drives the Resume affordance and fall back to the normal lobby flow
-			// with the new-mission Deploy button visible again.
-			delete gameState.suspendedRunSummary;
 		}
 		if (giveUpBtnEl) giveUpBtnEl.disabled = false;
 		returnToGuildLobby(gameState, { refreshCollection: true, rebuildHub: true });
@@ -1846,15 +1817,11 @@ function bindSocketHandlers(s) {
 		giveUpBtnEl.onclick = () => requestGiveUp(s);
 	}
 
-	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, (summary) => {
-		if (summary && summary.questName) {
-			console.log(`[run] suspended: ${summary.questName}`);
-		}
+	s.on(SERVER_TO_CLIENT.RUN_SUSPENDED, () => {
 		if (gameState) {
-			gameState.suspendedRunSummary = summary;
 			gameState.gamePhase = 'lobby';
 		}
-		returnToGuildLobby({ gamePhase: 'lobby', suspendedRunSummary: summary }, { rebuildHub: true });
+		returnToGuildLobby({ gamePhase: 'lobby' }, { rebuildHub: true });
 	});
 
 	s.on(SERVER_TO_CLIENT.PLAYER_EXTRACTED, (data) => {
@@ -2080,13 +2047,6 @@ window.__requestDebugShopBoothOpenForTest = requestDebugShopBoothOpen;
 // reaches the playing phase without re-introducing the retired 2D #ready-btn.
 // Idempotent — launchBoothReadyUp() bails when the player is already ready.
 window.__launchReadyUpForTest = () => launchBoothReadyUp();
-// Test hook: abandon a suspended checkpoint via ABANDON_RUN (mirrors #abandon-run-btn).
-window.__abandonSuspendedRunForTest = () => {
-	if (!socket?.connected) return { ok: false, reason: 'no socket' };
-	if (!isRunSuspended()) return { ok: false, reason: 'not suspended' };
-	socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
-	return { ok: true };
-};
 /** Localhost-only `?booth=<id>` — open a booth once in hub lobby. */
 function requestBoothDebugOpen() {
 	if (!debugScenarioAllowed || boothDebugRequested) return;
@@ -4062,9 +4022,9 @@ function renderPlayerList(players) {
 
 // Ready the local player up through the SAME path as #resume-run-btn: set the
 // shared isReady flag, emit playerReady(true) — which the server's checkAllReady
-// gate routes to startGame once the whole party is ready, or to resume when a
-// suspendedCheckpoint exists, so this single path covers both a fresh deploy and
-// a suspended-run resume sortie that the retired #ready-btn used to serve. The
+// gate routes to startGame once the whole party is ready, or to resume when the
+// in-memory run is suspended, so this single path covers both a fresh deploy
+// and a suspended-run resume sortie that the retired #ready-btn used to serve. The
 // Launch Bay booth and the ?booth=launch debug hook both call this; no new
 // socket event is introduced. Idempotent: a second booth touch or a repeated
 // lobbyJoined (reconnect) does NOT re-emit, since we bail out early when the
@@ -4424,16 +4384,10 @@ returnToLobbyBtn.addEventListener('click', () => {
 	socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
 });
 
-if (abandonRunBtn) {
-	abandonRunBtn.addEventListener('click', () => {
-		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
-	});
-}
-
 // #resume-run-btn is the dedicated, distinct resume affordance shown while a run
 // is suspended. It re-enters the run through the SAME path as the launch booth
 // ready-up: emit playerReady(true), which the server's checkAllReady gate routes
-// to restoreRunCheckpoint → startGame because a suspendedCheckpoint exists. It
+// to resumeSuspendedRunInPlace → startGame when run.status is suspended. It
 // sets the shared isReady flag and resyncs the label via syncReadyButtonRole. No
 // separate fresh-launch / resume socket event.
 if (resumeRunBtn) {
@@ -4639,9 +4593,6 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		&& !resumeBtnEl.classList.contains('hidden')
 		&& !resumeBtnEl.disabled
 		&& getComputedStyle(resumeBtnEl).pointerEvents !== 'none';
-	const abandonRunBtnUsable = !!abandonRunBtn
-		&& !abandonRunBtn.classList.contains('hidden')
-		&& isRunSuspended();
 	const runId = gameState?.run?.id ?? null;
 	const cardHandVisible = !!cardHandEl && getComputedStyle(cardHandEl).display !== 'none';
 
@@ -4691,7 +4642,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		phase: gameState ? gameState.gamePhase : 'unknown',
 		runStatus: gameState && gameState.run ? gameState.run.status : null,
 		extracted: !!(me && me.extracted),
-		suspendedRunSummary: gameState ? gameState.suspendedRunSummary : null,
+		runPaused: isRunSuspended(),
 		telepipe: gameState ? gameState.telepipe : null,
 		layout: (() => {
 			// During the lobby phase the renderer shows hubLayout while currentLayout
@@ -4716,7 +4667,6 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		characterBoothOpen: isCharacterBoothOpen(),
 		deckEditorVisible,
 		resumeBtnUsable,
-		abandonRunBtnUsable,
 		runId,
 		cardHandVisible,
 		status: statusEl ? statusEl.innerText : '',

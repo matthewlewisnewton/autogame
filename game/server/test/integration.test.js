@@ -25,8 +25,6 @@ import {
 	checkRunTerminalState,
 	setGameState,
 	tryEnterTelepipe,
-	captureRunCheckpoint,
-	restoreRunCheckpoint,
 	checkTelepipeProximity,
 	PORTAL_RADIUS,
 	PORTAL_PLACEMENT_GRACE_MS,
@@ -5306,7 +5304,6 @@ describe('Telepipe suspend and resume', () => {
 
 		expect(testGameState().gamePhase).toBe('lobby');
 		expect(testGameState().run.status).toBe('suspended');
-		expect(testGameState().suspendedCheckpoint).toBeNull();
 		expect(testGameState().telepipe).toEqual(
 			expect.objectContaining({ x: portalX, z: portalZ }),
 		);
@@ -5397,7 +5394,6 @@ describe('Telepipe suspend and resume', () => {
 		const suspended = testGameState();
 		expect(suspended.gamePhase).toBe('lobby');
 		expect(suspended.run.status).toBe('suspended');
-		expect(suspended.suspendedCheckpoint).toBeNull();
 		expect(suspended.players[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
 		expect(suspended.telepipe).toEqual(expect.objectContaining({ x: portalX, z: portalZ }));
 
@@ -5419,8 +5415,6 @@ describe('Telepipe suspend and resume', () => {
 		expect(resumed.players[p1Id].magicStones).toBeLessThan(STARTING_MAGIC_STONES);
 		expect(resumed.run.id).toBe(state.run.id);
 		expect(resumed.layoutSeed).toBe(state.layoutSeed);
-		expect(resumed.suspendedCheckpoint).toBeNull();
-
 		// Objective progress (collected/defeated counts) survives the round-trip.
 		if (expectedObjective.type === 'defeat_enemies') {
 			expect(resumed.run.objective.defeatedEnemies).toBe(expectedObjective.defeatedEnemies);

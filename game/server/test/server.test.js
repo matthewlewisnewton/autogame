@@ -43,11 +43,8 @@ import {
 	previewReturnRewards,
 	healAtMedic,
 	checkAllReady,
-	captureRunCheckpoint,
-	restoreRunCheckpoint,
 		tryEnterTelepipe,
 		suspendRunToLobby,
-		abandonSuspendedRun,
 		isPlayerActive,
 		checkTelepipeProximity,
 		PORTAL_PLACEMENT_GRACE_MS,
@@ -2877,22 +2874,11 @@ describe('run state', () => {
 			});
 		});
 
-		it('captureRunCheckpoint and restoreRunCheckpoint preserve telepipe and enemies', () => {
-			gameState.suspendedCheckpoint = captureRunCheckpoint();
-			resetTransientRunState();
-			restoreRunCheckpoint();
-
-			expect(gameState.enemies).toHaveLength(1);
-			expect(gameState.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
-			expect(gameState.players.p1.hand[0].id).toBe('telepipe');
-		});
-
 		it('tryEnterTelepipe extracts one player while another remains active', () => {
 			const result = tryEnterTelepipe('p1');
 			expect(result.ok).toBe(true);
 			expect(gameState.players.p1.extracted).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
-			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
 		});
 
@@ -2912,13 +2898,10 @@ describe('run state', () => {
 
 			expect(gameState.gamePhase).toBe('lobby');
 			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(gameState.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
 			expect(gameState.enemies).toHaveLength(1);
 			expect(gameState.layoutSeed).toBeDefined();
-			expect(stateSnapshot().suspendedRunSummary).toEqual(expect.objectContaining({
-				questName: expect.any(String),
-			}));
+			expect(stateSnapshot().run.status).toBe('suspended');
 		});
 
 		it('checkAllReady resumes in-memory run instead of spawning a fresh run', () => {
@@ -2934,9 +2917,7 @@ describe('run state', () => {
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
 
-			const logSpy = vi.spyOn(console, 'log');
 			checkAllReady();
-			logSpy.mockRestore();
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
@@ -2944,8 +2925,6 @@ describe('run state', () => {
 			expect(gameState.layoutSeed).toBe(layoutSeed);
 			expect(gameState.telepipe.x).toBe(portalX);
 			expect(gameState.enemies).toHaveLength(1);
-			expect(gameState.suspendedCheckpoint).toBeNull();
-			expect(logSpy.mock.calls.some((call) => String(call[0]).includes('checkpoint restored'))).toBe(false);
 		});
 
 		it('resume does not instantly re-extract players restored at the portal', () => {
@@ -2976,93 +2955,6 @@ describe('run state', () => {
 			expect(gameState.players.p2.extracted).toBe(false);
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
-		});
-
-		it('abandonSuspendedRun clears checkpoint and run', () => {
-			tryEnterTelepipe('p1');
-			gameState.players.p2.x = 5;
-			gameState.players.p2.z = 5;
-			tryEnterTelepipe('p2');
-
-			const result = abandonSuspendedRun();
-			expect(result.ok).toBe(true);
-			expect(gameState.suspendedCheckpoint).toBeUndefined();
-			expect(gameState.run).toBeUndefined();
-			expect(gameState.gamePhase).toBe('lobby');
-
-			const spawn = hubSpawnPosition(HUB_LAYOUT);
-			const hubCtx = buildHubMovementContext(HUB_LAYOUT);
-			const bounds = computeDungeonBounds(HUB_LAYOUT);
-			for (const player of Object.values(gameState.players)) {
-				expect(player.x).toBe(spawn.x);
-				expect(player.z).toBe(spawn.z);
-				expect(player.y).toBe(resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z)));
-				expect(player.x).toBeGreaterThanOrEqual(bounds.minX);
-				expect(player.x).toBeLessThanOrEqual(bounds.maxX);
-				expect(player.z).toBeGreaterThanOrEqual(bounds.minZ);
-				expect(player.z).toBeLessThanOrEqual(bounds.maxZ);
-				expect(isInsideDungeon(player.x, player.z, hubCtx)).toBe(true);
-			}
-		});
-
-		it('fresh deploy after telepipe suspend and abandon preserves magicStones and resets card charges', () => {
-			resetState();
-			gameState._lobbyId = 'test-lobby';
-			addPlayer('p1', {
-				x: 5,
-				z: 5,
-				ready: true,
-				debugScenario: 'telepipe-ready',
-				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
-			});
-
-			checkAllReady();
-			const preSuspendRunId = gameState.run.id;
-
-			const spentMagicStones = STARTING_MAGIC_STONES - 5;
-			gameState.players.p1.magicStones = spentMagicStones;
-			for (const card of gameState.players.p1.hand) {
-				if (card && card.charges != null) {
-					card.remainingCharges = Math.max(0, card.charges - 1);
-				}
-			}
-
-			const { x: portalX, z: portalZ } = gameState.players.p1;
-			gameState.telepipe = {
-				x: portalX,
-				z: portalZ,
-				placedBy: 'p1',
-				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
-			};
-			expect(tryEnterTelepipe('p1').ok).toBe(true);
-			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.telepipe).toBeTruthy();
-
-			expect(abandonSuspendedRun().ok).toBe(true);
-			expect(gameState.run).toBeUndefined();
-			expect(gameState.suspendedCheckpoint).toBeFalsy();
-			expect(gameState.enemies).toHaveLength(0);
-
-			gameState.players.p1.debugScenario = null;
-			gameState.players.p1.ready = true;
-			checkAllReady();
-
-			expect(gameState.run.id).not.toBe(preSuspendRunId);
-			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 5);
-			for (let tick = 0; tick < 5; tick += 1) {
-				regenMagicStones();
-			}
-			expect(gameState.players.p1.magicStones).toBeCloseTo(
-				spentMagicStones + 5 * MAGIC_STONES_REGEN_PER_TICK,
-				5,
-			);
-			const occupied = gameState.players.p1.hand.filter(Boolean);
-			expect(occupied.length).toBeGreaterThan(0);
-			for (const card of occupied) {
-				if (card.charges != null) {
-					expect(card.remainingCharges).toBe(card.charges);
-				}
-			}
 		});
 
 		it('checkAllReady preserves magicStones across deploy and redeploy', () => {
@@ -3115,19 +3007,15 @@ describe('run state', () => {
 			expect(tryEnterTelepipe('p1').ok).toBe(true);
 			expect(gameState.gamePhase).toBe('lobby');
 			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.suspendedCheckpoint).toBeNull();
 
 			gameState.players.p1.ready = true;
-			const logSpy = vi.spyOn(console, 'log');
 			checkAllReady();
-			logSpy.mockRestore();
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.id).toBe(runId);
 			expect(gameState.layoutSeed).toBe(layoutSeed);
 			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 5);
 			expect(gameState.players.p1.hp).toBe(damagedHp);
-			expect(logSpy.mock.calls.some((call) => String(call[0]).includes('checkpoint restored'))).toBe(false);
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();
@@ -3212,7 +3100,6 @@ describe('run state', () => {
 			expect(tryEnterTelepipe('p1').ok).toBe(true);
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
-			expect(gameState.suspendedCheckpoint).toBeNull();
 			expect(isPlayerActive(gameState.players.p2)).toBe(true);
 		});
 	});
@@ -4936,7 +4823,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 		expect(snapshot.lobby).toEqual([]);
 		expect(snapshot.dungeonBounds).toEqual(gameState.dungeonBounds);
 		expect(snapshot).toHaveProperty('shopOffer');
-		expect(snapshot).toHaveProperty('suspendedRunSummary');
+		expect(snapshot).not.toHaveProperty('suspendedRunSummary');
 	});
 
 	it('full stateSnapshot still includes cold fields', () => {

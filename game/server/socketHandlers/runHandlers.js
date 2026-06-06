@@ -18,7 +18,6 @@ function register(socket, ctx) {
     withLobbyFromSocket,
     returnPlayersToLobby,
     giveUpRun,
-    abandonSuspendedRun,
     claimCardReward,
     cardEffects,
     io,
@@ -54,16 +53,6 @@ function register(socket, ctx) {
         console.error('[giveUp] failed:', err);
         socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'Give up failed' });
       }
-    });
-  });
-
-  socket.on(CLIENT_TO_SERVER.ABANDON_RUN, () => {
-    withLobbyFromSocket(socket, (state) => {
-      if (!state.run || state.run.status !== 'suspended') {
-        socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No suspended expedition' });
-        return;
-      }
-      abandonSuspendedRun(state);
     });
   });
 

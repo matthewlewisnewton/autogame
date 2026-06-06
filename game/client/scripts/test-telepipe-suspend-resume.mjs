@@ -5,13 +5,13 @@
  * Drives the real game through a solo Telepipe extraction (which leaves zero
  * active players and so SUSPENDS the run to the lobby), then re-deploys to
  * RESUME, and asserts the run state is preserved across the boundary: the
- * suspended quest summary is well-formed, the resumed dungeon layout (seed +
+ * suspended run keeps the same quest objective, the resumed dungeon layout (seed +
  * profile) matches the pre-suspend layout, and the resumed enemy set matches
  * the pre-suspend set (same count + ids; hp preserved for undefeated enemies).
  *
  * Server-side flow exercised (no server logic is modified by this ticket):
  *   tryEnterTelepipe → maybeSuspendRun → suspendRunToLobby  (suspend)
- *   checkAllReady → restoreRunCheckpoint                    (resume)
+ *   checkAllReady → resumeSuspendedRunInPlace              (resume)
  *
  * Like test-world-stage-transition.mjs this script OWNS its servers on isolated
  * high ports so it never collides with a running dev/harness instance. It spawns
@@ -128,7 +128,8 @@ function snapshot(state) {
 	return {
 		phase: state.phase,
 		runStatus: state.runStatus,
-		suspendedRunSummary: state.suspendedRunSummary || null,
+		runPaused: state.runPaused || false,
+		objective: state.objective || null,
 		layout: state.layout ? { profile: state.layout.profile, seed: state.layout.seed } : null,
 		telepipe: state.telepipe ? { x: state.telepipe.x, z: state.telepipe.z } : null,
 		player: state.player ? { x: state.player.x, z: state.player.z } : null,
@@ -188,8 +189,7 @@ async function suspendViaTelepipe(page) {
 	const deadline = Date.now() + 30000;
 	while (Date.now() < deadline) {
 		const h = await readHarness(page);
-		const suspended = h.runStatus === 'suspended'
-			|| (h.phase === 'lobby' && h.suspendedRunSummary);
+		const suspended = h.runStatus === 'suspended' || (h.phase === 'lobby' && h.runPaused);
 		if (suspended) return;
 		// Nudge toward the portal in case the player drifted out of radius.
 		await page.keyboard.press('w');
@@ -197,7 +197,7 @@ async function suspendViaTelepipe(page) {
 	}
 	const h = await readHarness(page);
 	throw new Error(`Run did not suspend: phase=${h.phase} runStatus=${h.runStatus} `
-		+ `extracted=${h.extracted} suspendedRunSummary=${JSON.stringify(h.suspendedRunSummary)}`);
+		+ `extracted=${h.extracted} runPaused=${h.runPaused}`);
 }
 
 function assert(cond, msg) {
@@ -262,18 +262,18 @@ async function main() {
 		const suspendedState = await readHarness(page);
 		const suspended = snapshot(suspendedState);
 		assert(suspended.runStatus === 'suspended'
-			|| (suspended.phase === 'lobby' && suspended.suspendedRunSummary),
+			|| (suspended.phase === 'lobby' && suspended.runPaused),
 			`Run not suspended: ${JSON.stringify(suspended)}`);
-		const summary = suspended.suspendedRunSummary;
-		assert(summary && summary.questId && summary.questName && summary.objective,
-			`Suspended summary missing quest fields: ${JSON.stringify(summary)}`);
+		const objective = suspended.objective;
+		assert(objective && objective.type,
+			`Suspended run missing objective: ${JSON.stringify(objective)}`);
 		console.log('suspended:', JSON.stringify({
 			phase: suspended.phase, runStatus: suspended.runStatus,
-			quest: summary.questName, objective: summary.objective.type,
+			objective: objective.type,
 		}));
 		await screenshot(page, '02-suspended-lobby');
 
-		// 4. RESUME by re-deploying (Ready/Deploy → restoreRunCheckpoint).
+		// 4. RESUME by re-deploying (Ready/Deploy → resumeSuspendedRunInPlace).
 		await page.evaluate(() => document.getElementById('ready-btn')?.click());
 		await waitForPlaying(page);
 		const resumedState = await readHarness(page);
@@ -289,10 +289,6 @@ async function main() {
 		assert(resumed.runStatus !== 'suspended',
 			`runStatus 'suspended' lingered after resume: ${resumed.runStatus}`);
 
-		// Quest / layout identity: the resumed run restores the same dungeon as the
-		// suspended one (suspendedRunSummary is intentionally consumed on resume, so
-		// the suspended quest is proven via the well-formed summary captured above
-		// plus the restored layout seed/profile here).
 		assert(resumed.layout && pre.layout, 'Missing layout on pre-suspend or resumed snapshot');
 		assert(resumed.layout.seed === pre.layout.seed,
 			`Resumed layout seed ${resumed.layout.seed} != pre-suspend ${pre.layout.seed}`);
@@ -312,12 +308,8 @@ async function main() {
 		}
 
 		// 5b. Assert QUEST / OBJECTIVE progress is preserved across suspend → resume.
-		// The playing-phase harness state does not expose a live objective, so pre-
-		// suspend progress is derived from the enemy set: no enemy was defeated this
-		// run, so `defeated = 0` and `total = pre.enemies.length`.
 		const preTotalEnemies = pre.enemies.length;
 		const preDefeatedEnemies = 0;
-		const objective = summary.objective;
 		assert(objective.type === 'defeat_enemies',
 			`Expected a 'defeat_enemies' objective, got '${objective.type}'`);
 		assert(objective.totalEnemies === preTotalEnemies,
@@ -325,8 +317,6 @@ async function main() {
 		assert(objective.defeatedEnemies === preDefeatedEnemies,
 			`Suspended objective.defeatedEnemies ${objective.defeatedEnemies} != expected ${preDefeatedEnemies} (none defeated this run)`);
 
-		// After resume the same enemies remain undefeated (none newly defeated), so
-		// the implied defeated/total is unchanged from pre-suspend.
 		const resumedRemainingUndefeated = resumed.enemies.length;
 		assert(resumedRemainingUndefeated === preTotalEnemies - preDefeatedEnemies,
 			`Resumed undefeated enemy count ${resumedRemainingUndefeated} != pre-suspend undefeated ${preTotalEnemies - preDefeatedEnemies}`);
@@ -360,7 +350,7 @@ async function main() {
 			postResume: resumed,
 			objectiveProgress: {
 				preSuspend: { total: preTotalEnemies, defeated: preDefeatedEnemies },
-				suspendedSummary: {
+				suspendedObjective: {
 					total: objective.totalEnemies, defeated: objective.defeatedEnemies,
 				},
 				postResume: { remainingUndefeated: resumedRemainingUndefeated },
@@ -369,9 +359,9 @@ async function main() {
 		}, null, 2));
 		console.log(`snapshot: ${snapshotFile}`);
 
-		console.log(`PASS: suspended quest '${summary.questName}', resumed same layout `
+		console.log(`PASS: suspended run preserved objective `
+			+ `(${objective.defeatedEnemies}/${objective.totalEnemies}), resumed same layout `
 			+ `(seed ${resumed.layout.seed}, ${resumed.enemies.length} enemies preserved); `
-			+ `objective ${objective.defeatedEnemies}/${objective.totalEnemies} preserved, `
 			+ `resumed player ${resumedPlayerPortalDistance.toFixed(2)} from portal (radius ${PORTAL_RADIUS})`);
 	} finally {
 		await browser.close().catch(() => {});

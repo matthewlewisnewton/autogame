@@ -156,7 +156,6 @@ describe('debugScenario — suspended-run-hub', () => {
 		// the distinct Resume affordance (and the suspended-run banner) in the hub.
 		expect(state.gamePhase).toBe('lobby');
 		expect(state.run.status).toBe('suspended');
-		expect(state.suspendedCheckpoint).toBeNull();
 		expect(state.layoutSeed).toBeDefined();
 		expect(state.enemies.length).toBeGreaterThan(0);
 
