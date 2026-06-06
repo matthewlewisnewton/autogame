@@ -1,0 +1,10 @@
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:debug] [vite] connecting...
+[console:debug] [vite] connected.
+[console:log] [initScene] Initializing Three.js scene...
+[console:log] [debugScenario] applied training-caverns-tier-2
+[console:log] [debugGodmode] enabled
+[console:log] [debugScenario] applied training-caverns-near-adds
+[console:log] [debugScenario] applied training-caverns-boss-approach
+[console:log] [debugScenario] applied training-caverns-boss-low-hp

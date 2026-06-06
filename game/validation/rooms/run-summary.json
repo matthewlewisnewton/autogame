@@ -1,0 +1,89 @@
+{
+  "ok": true,
+  "preset": "rooms",
+  "steps": "full",
+  "outDir": "game/validation/rooms",
+  "presetConfig": {
+    "questId": "training_caverns",
+    "questTier": 2,
+    "bossType": "annex_overseer",
+    "deployScenario": "training-caverns-tier-2",
+    "nearAddsScenario": "training-caverns-near-adds",
+    "bossApproachScenario": "training-caverns-boss-approach",
+    "bossLowHpScenario": "training-caverns-boss-low-hp",
+    "encounterTriggerRadius": 8,
+    "addsTimeoutMs": 90000,
+    "encounterTimeoutMs": 60000
+  },
+  "serverPort": 3221,
+  "clientPort": 5289,
+  "auth": {
+    "username": "playthrough-1780733208069",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "game/validation/rooms/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "game/validation/rooms/01-hub.png",
+    "entryScreenshot": "game/validation/rooms/02-level-entry.png",
+    "deployScenario": "training-caverns-tier-2",
+    "deployOk": true,
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "annex_overseer",
+      "skirmisher",
+      "skirmisher",
+      "skirmisher",
+      "grunt"
+    ]
+  },
+  "bossEncounter": {
+    "midCombatScreenshot": "game/validation/rooms/03-mid-combat.png",
+    "dormantScreenshot": "game/validation/rooms/04-boss-dormant.png",
+    "activeScreenshot": "game/validation/rooms/05-boss-active.png",
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "probes": {
+      "dormant": {
+        "encounterPhase": "dormant",
+        "encounterLocked": false,
+        "bossEnemyId": "e8a52661-2d38-4fce-8010-3e63bf7d93e6",
+        "bossHp": 320,
+        "liveAddCount": 0
+      },
+      "active": {
+        "encounterPhase": "active",
+        "encounterLocked": true,
+        "bossEnemyId": "e8a52661-2d38-4fce-8010-3e63bf7d93e6",
+        "bossHp": 320,
+        "liveAddCount": 0
+      }
+    }
+  },
+  "victory": {
+    "bossDefeatedScreenshot": "game/validation/rooms/06-boss-defeated.png",
+    "victoryScreenshot": "game/validation/rooms/07-victory.png",
+    "probes": {
+      "afterBoss": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      },
+      "victory": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      }
+    }
+  },
+  "assertions": {
+    "bossSpawned": true,
+    "encounterActivated": true,
+    "bossDefeated": true,
+    "victoryFired": true
+  }
+}

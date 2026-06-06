@@ -1,0 +1,28 @@
+{
+  "dormant": {
+    "encounterPhase": "dormant",
+    "encounterLocked": false,
+    "bossEnemyId": "e8a52661-2d38-4fce-8010-3e63bf7d93e6",
+    "bossHp": 320,
+    "liveAddCount": 0
+  },
+  "active": {
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "bossEnemyId": "e8a52661-2d38-4fce-8010-3e63bf7d93e6",
+    "bossHp": 320,
+    "liveAddCount": 0
+  },
+  "afterBoss": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "bossDefeated": true,
+    "lastRunSummaryStatus": "victory"
+  },
+  "victory": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "bossDefeated": true,
+    "lastRunSummaryStatus": "victory"
+  }
+}
