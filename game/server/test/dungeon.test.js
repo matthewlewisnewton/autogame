@@ -9,6 +9,7 @@ import {
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,
+  sampleFloorSurface,
   questLayoutSeed,
   DEFAULT_FLOOR_Y,
   LAYOUT_PROFILES,
@@ -2453,6 +2454,105 @@ describe("generateLayout(seed, 'sunken-canyon')", () => {
   });
 });
 
+// ── ice-cavern stage layout ──
+
+describe("generateLayout(seed, 'ice-cavern')", () => {
+  function roomsByBand(layout, band) {
+    return layout.rooms.filter(r => r.band === band);
+  }
+
+  function canReachPoint(fromX, fromZ, toX, toZ, aabbs, colliders) {
+    const tolerance = 1.5;
+    const seen = new Set();
+    const key = (x, z) => `${Math.round(x * 10)},${Math.round(z * 10)}`;
+    const queue = [{ x: fromX, z: fromZ }];
+    seen.add(key(fromX, fromZ));
+    const dirs = [[WALK_STEP, 0], [-WALK_STEP, 0], [0, WALK_STEP], [0, -WALK_STEP]];
+
+    for (let qi = 0; qi < queue.length && qi < 200000; qi++) {
+      const { x, z } = queue[qi];
+      if (Math.hypot(x - toX, z - toZ) <= tolerance) return true;
+      for (const [dx, dz] of dirs) {
+        const nx = x + dx;
+        const nz = z + dz;
+        const k = key(nx, nz);
+        if (seen.has(k) || !isWalkable(nx, nz, aabbs, colliders)) continue;
+        seen.add(k);
+        queue.push({ x: nx, z: nz });
+      }
+    }
+    return false;
+  }
+
+  it('returns profile ice-cavern with stone, ice, and ramp bands', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    expect(layout.profile).toBe('ice-cavern');
+    expect(layout.passages).toEqual([]);
+    expect(roomsByBand(layout, 'stone').length).toBe(2);
+    expect(roomsByBand(layout, 'ice').length).toBe(1);
+    const ramps = roomsByBand(layout, 'ramp');
+    expect(ramps.length).toBeGreaterThanOrEqual(1);
+    expect(ramps.length).toBeLessThanOrEqual(2);
+  });
+
+  it('tags slippery ice field ≥ 4× default room area and normal stone pads', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const ice = roomsByBand(layout, 'ice')[0];
+    const stoneRooms = roomsByBand(layout, 'stone');
+    expect(ice.width * ice.depth).toBeGreaterThanOrEqual(4 * 182);
+    expect(ice.floorSurface).toBe('slippery');
+    expect(sampleFloorSurface(layout, ice.x, ice.z)).toBe('slippery');
+    for (const stone of stoneRooms) {
+      expect(stone.floorSurface).toBe('normal');
+      expect(sampleFloorSurface(layout, stone.x, stone.z)).toBe('normal');
+    }
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.floorSurface).toBe('normal');
+    }
+  });
+
+  it('assigns explicit roles: stone start, stone treasure, ramps=connector', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const start = layout.rooms.find(r => r.role === 'start');
+    const treasure = layout.rooms.find(r => r.role === 'treasure');
+    expect(start.band).toBe('stone');
+    expect(treasure.band).toBe('stone');
+    for (const ramp of roomsByBand(layout, 'ramp')) {
+      expect(ramp.role).toBe('connector');
+      expect(ramp.spawnWeight).toBe(0);
+    }
+  });
+
+  it('start spawn can reach treasure room center via walkable AABBs', () => {
+    for (const seed of [1, 42, 123, 777, 9999]) {
+      const layout = generateLayout(seed, 'ice-cavern');
+      const start = layout.rooms.find(r => r.role === 'start');
+      const treasure = layout.rooms.find(r => r.role === 'treasure');
+      const colliders = buildWallColliders(layout);
+      const aabbs = computeWalkableAABBs(layout);
+      expect(canReachPoint(start.x, start.z, treasure.x, treasure.z, aabbs, colliders)).toBe(true);
+    }
+  });
+
+  it('is deterministic: same seed yields deep-equal layouts', () => {
+    const a = generateLayout(2024, 'ice-cavern');
+    const b = generateLayout(2024, 'ice-cavern');
+    expect(a).toEqual(b);
+  });
+
+  it('places cover only on stone pads, not on the ice field', () => {
+    const layout = generateLayout(42, 'ice-cavern');
+    const ice = roomsByBand(layout, 'ice')[0];
+    const half = ice.width / 2;
+    for (const c of layout.cover) {
+      const onIce =
+        Math.abs(c.x - ice.x) + c.width / 2 <= half &&
+        Math.abs(c.z - ice.z) + c.depth / 2 <= half;
+      expect(onIce).toBe(false);
+    }
+  });
+});
+
 // ── fire-cavern stage layout ──
 
 describe("generateLayout(seed, 'fire-cavern')", () => {
@@ -2591,7 +2691,6 @@ describe("generateLayout(seed, 'fire-cavern')", () => {
     }
   });
 });
-
 // ── spire-ascent stage layout ──
 
 describe("generateLayout(seed, 'spire-ascent')", () => {

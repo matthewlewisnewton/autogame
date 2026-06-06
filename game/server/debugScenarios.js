@@ -80,6 +80,40 @@ function setCallbacks(deps) {
   DEBUG_SCENARIOS = deps.DEBUG_SCENARIOS;
 }
 
+function setupFrostCrossingTier1Deploy(lobby, state, player) {
+  const questId = 'frost_crossing';
+  const tier = 1;
+  state.selectedQuestId = questId;
+  state.selectedQuestTier = tier;
+  applyLayoutForQuest(state, questId, tier);
+
+  player.ready = true;
+  player.hp = MAX_HP;
+  player.magicStones = MAX_MAGIC_STONES;
+  const startSpawn = firstRoomPosition();
+  player.x = startSpawn.x;
+  player.z = startSpawn.z;
+  player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+  enterPlayingPhase(lobby);
+
+  if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+    if (!player.pendingSummons) {
+      player.pendingSummons = new Set();
+    }
+  }
+
+  state.enemies = [];
+  state.loot = [];
+  delete state.run;
+  delete state._pendingEncounterBossId;
+  spawnEnemies();
+  startDungeonRun();
+}
+
 function setupArenaTrialsTier2StageBossDebug(lobby, state, player) {
   const questId = 'arena_trials';
   const tier = 2;
@@ -799,6 +833,26 @@ function applyDebugScenario(socket, name) {
       return { ok: true, scenario: name };
     }
 
+    if (name === 'frost-crossing-tier-1') {
+      // frost_crossing Tier 1 with ice-cavern layout and defeat_enemies objective.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective. Reachable normally by selecting
+      // Frost Crossing and deploying; this scenario is a shortcut into that state.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
+    }
+
     if (name === 'crystal-rescue-tier-2') {
       // crystal_rescue Tier 2 with rigid open layout, prism collect_items objective,
       // and cover/platform/hazard-aware spawns. Quest/tier and layout must be set
@@ -1304,6 +1358,35 @@ function applyDebugScenario(socket, name) {
       // The same state is reachable by selecting crystal_rescue, deploying, and
       // collecting prisms in the dungeon.
       state.selectedQuestId = 'crystal_rescue';
+    }
+
+    if (name === 'slippery-floor-lab') {
+      // Frost Crossing tier 1 deploy, then seat the player on a production slippery
+      // ice room for momentum physics QA. Reachable normally by deploying Frost
+      // Crossing and walking onto the ice band.
+      setupFrostCrossingTier1Deploy(lobby, state, player);
+
+      const slipperyRoom = state.layout.rooms.find((r) => r.floorSurface === 'slippery')
+        || state.layout.rooms.find((r) => r.band === 'ice');
+      if (slipperyRoom) {
+        player.x = slipperyRoom.x;
+        player.z = slipperyRoom.z;
+        player.vx = 0;
+        player.vz = 0;
+        player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      }
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+        unlockedQuestTiers: buildQuestUpdatePayload(state, player.accountId).unlockedQuestTiers,
+      };
     }
 
     player.ready = true;
@@ -2166,6 +2249,36 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'chain-lightning-ready') {
+      // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
+      // grunts lined up along +X so a cast chains primary → two half-damage hops.
+      // Same state is reachable by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'chain_lightning',
+          name: 'Voltaic Chain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const primary = spawnEnemy(player.x + 5, player.z, 'grunt');
+      primary.hp = 80;
+      primary.maxHp = 80;
+      primary.wanderTarget = { x: primary.x, z: primary.z };
+      const chain1 = spawnEnemy(player.x + 8, player.z, 'grunt');
+      chain1.hp = 80;
+      chain1.maxHp = 80;
+      chain1.wanderTarget = { x: chain1.x, z: chain1.z };
+      const chain2 = spawnEnemy(player.x + 11, player.z, 'grunt');
+      chain2.hp = 80;
+      chain2.maxHp = 80;
+      chain2.wanderTarget = { x: chain2.x, z: chain2.z };
     }
 
     syncRunObjectiveToEnemies();

@@ -146,6 +146,7 @@ export const CARD_ACCENT_STYLE = {
   photon_slicer: { color: '#22d3ee', icon: '⟲' },
   infinite_disk: { color: '#a5f3fc', icon: '∞' },
   arcane_bolt: { color: '#a78bfa', icon: '⟡' },
+  chain_lightning: { color: '#38bdf8', icon: '⚡' },
   frost_nova: { color: '#67e8f9', icon: '❄' },
   permafrost_lance: { color: '#67e8f9', icon: '❄' },
   glacier_collapse: { color: '#38bdf8', icon: '🧊' },

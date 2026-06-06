@@ -167,6 +167,7 @@ const {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
@@ -179,6 +180,11 @@ const {
   spawnVolatileExplosion,
   updateAreaEffects,
   isEnemyFrozen,
+  applySlow,
+  isSlowed,
+  applyBurning,
+  isBurning,
+  updateBurning,
   cleanupStalePlayers,
   regenMagicStones,
   randomWanderTarget,
@@ -487,6 +493,7 @@ const DEBUG_SCENARIOS = new Set([
   'extracted-in-hub',
   'suspended-run-hub',
   'sloped-dungeon',
+  'slippery-floor-lab',
   'key-item-cooldown',
   'medic-kit-ready',
   'guard-block-ready',
@@ -502,6 +509,7 @@ const DEBUG_SCENARIOS = new Set([
   'sunken-canyon',
   'sunken-canyon-stage',
   'sunken-canyon-cliff-hazard',
+  'frost-crossing-tier-1',
   'fire-cavern',
   'fire-cavern-stage',
   'spire-ascent',
@@ -539,6 +547,7 @@ const DEBUG_SCENARIOS = new Set([
   'annex-overseer-ready',
   'field-medic',
   'field-medic-spawn',
+  'chain-lightning-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -726,6 +735,8 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'annex-overseer-ready',
   'field-medic',
   'field-medic-spawn',
+  'slippery-floor-lab',
+  'frost-crossing-tier-1',
 ]);
 
 function shouldSkipDefaultEnemySpawn(state) {
@@ -1343,6 +1354,7 @@ function runGameLoopTick() {
           flushDirtyPlayerSaves();
           updateEnemies();
           updateMinions();
+          updateBurning();
           debugScenarios.nudgeDebugBossApproachPlayers(state);
           updateEncounterTriggers();
           updateSurviveSpawns();
@@ -1623,6 +1635,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectConeHits,
     collectRadialHits,
     collectProjectileHits,
+    collectChainLightningHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,
@@ -1635,6 +1648,11 @@ if (typeof module !== 'undefined' && module.exports) {
     spawnVolatileExplosion,
     updateAreaEffects,
     isEnemyFrozen,
+    applySlow,
+    isSlowed,
+    applyBurning,
+    isBurning,
+    updateBurning,
     updateEnemies,
     isPlayerConcealed,
     updateMinions,

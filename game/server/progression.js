@@ -2932,6 +2932,9 @@ function buildPlayerHotSnapshot(id, p) {
     smokeBombRadius: p.smokeBombRadius || 0,
     smokeBombX: p.smokeBombX || 0,
     smokeBombZ: p.smokeBombZ || 0,
+    slowedUntil: p.slowedUntil || 0,
+    slowFactor: p.slowFactor || 1,
+    burningUntil: p.burningUntil || 0,
     cosmetic: p.cosmetic ?? { ...DEFAULT_COSMETIC },
     username: p.username,
   };

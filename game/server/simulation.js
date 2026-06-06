@@ -6,6 +6,9 @@ const crypto = require('crypto');
 const {
   TICK_RATE,
   MOVE_SPEED,
+  SLIPPERY_ACCEL,
+  SLIPPERY_FRICTION,
+  NORMAL_STOP_FRICTION,
   INPUT_STALE_MS,
   DETECTION_RADIUS,
   ENEMY_ATTACK_RANGE,
@@ -33,7 +36,7 @@ const {
   SPIRE_EDGE_HAZARD_DAMAGE,
   SPIRE_EDGE_HAZARD_COOLDOWN_MS,
 } = require('./config');
-const { PASSAGE_WIDTH, sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
+const { PASSAGE_WIDTH, sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('./dungeon');
 const { applyLeechHeal, getFrenziedCombatMultipliers, checkFrenziedTelegraph } = require('./enemyVariants');
 const { isPlayingPhase, isLobbyPhase } = require('./lobbies');
 const { getEncounterBossId, isEncounterDormant, isEncounterLocked } = require('./encounters');
@@ -445,6 +448,14 @@ function applyEdgeHazardResponse(playerId, player, layout) {
 /** @deprecated alias — use applyEdgeHazardResponse */
 const applySpireEdgeHazardResponse = applyEdgeHazardResponse;
 
+function playerMoveSpeedScale(player, now) {
+  let scale = 1;
+  if (now < (player.blockingUntil || 0)) scale *= 0.2;
+  if (now < (player.rallyUntil || 0)) scale *= (player.rallySpeedMultiplier || 1);
+  if (now < (player.anchorUntil || 0)) scale *= (player.anchorSpeedMultiplier || 0.7);
+  return scale;
+}
+
 /**
  * Apply one tick of movement for all players with active input.
  * Uses a fixed step (MOVE_SPEED / TICK_RATE) so client and server stay aligned.
@@ -470,32 +481,115 @@ function applyPlayerMovement(state, movementContext = buildMovementContext(state
       player.inputActive = false;
     }
 
-    if (inputFresh) {
-      const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
-      if (mag >= 1e-8) {
-        let dx = player.inputDx;
-        let dz = player.inputDz;
-        if (mag > 1) { dx /= mag; dz /= mag; }
+    if (player.vx == null) player.vx = 0;
+    if (player.vz == null) player.vz = 0;
 
-        // Slow movement to 20% while guard_block is active
-        let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
-        // rally_cry: boost move speed while the buff is active
-        if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
-        // ground_anchor: slow move speed while the anchor window is active
-        if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
+    const floorSurface = sampleFloorSurface(ctx.layout, player.x, player.z);
 
-        const prevX = player.x;
-        const prevZ = player.z;
-        const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
+    if (floorSurface === 'slippery') {
+      let speedScale = playerMoveSpeedScale(player, now);
+      if (isSlowed(player)) speedScale *= (player.slowFactor || 1);
+      const maxSpeed = MOVE_SPEED * speedScale;
+      let inputDx = 0;
+      let inputDz = 0;
+      let inputMag = 0;
+
+      if (inputFresh) {
+        inputMag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+        if (inputMag >= 1e-8) {
+          inputDx = player.inputDx;
+          inputDz = player.inputDz;
+          if (inputMag > 1) {
+            inputDx /= inputMag;
+            inputDz /= inputMag;
+          } else {
+            inputMag = Math.min(1, inputMag);
+          }
+
+          const accel = (SLIPPERY_ACCEL / TICK_RATE) * inputMag * speedScale;
+          player.vx += inputDx * accel;
+          player.vz += inputDz * accel;
+        }
+      } else {
+        player.vx *= SLIPPERY_FRICTION;
+        player.vz *= SLIPPERY_FRICTION;
+      }
+
+      let speed = Math.hypot(player.vx, player.vz);
+      if (speed > maxSpeed) {
+        player.vx = (player.vx / speed) * maxSpeed;
+        player.vz = (player.vz / speed) * maxSpeed;
+        speed = maxSpeed;
+      }
+
+      const prevX = player.x;
+      const prevZ = player.z;
+      let moved = false;
+
+      if (speed >= 1e-4) {
+        const dispX = player.vx / TICK_RATE;
+        const dispZ = player.vz / TICK_RATE;
+        const dispMag = Math.hypot(dispX, dispZ);
+        const result = tryPlayerMove(
+          player.x,
+          player.z,
+          dispX / dispMag,
+          dispZ / dispMag,
+          dispMag,
+          ctx
+        );
         player.x = result.x;
         player.z = result.z;
-        player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
-        if (Number.isFinite(player.inputRotation)) {
-          player.rotation = player.inputRotation;
-        }
+        player.vx = (result.x - prevX) * TICK_RATE;
+        player.vz = (result.z - prevZ) * TICK_RATE;
+        moved = result.moved || player.x !== prevX || player.z !== prevZ;
+      } else {
+        player.vx = 0;
+        player.vz = 0;
+      }
+
+      player.y = resolveFloorY(sampleFloorY(ctx.layout, player.x, player.z));
+
+      if (inputFresh && Number.isFinite(player.inputRotation)) {
+        player.rotation = player.inputRotation;
+      }
+      if (moved) {
         player.lastMoveTime = now;
-        if (result.moved || player.x !== prevX || player.z !== prevZ) {
-          player.persistenceDirty = true;
+        player.persistenceDirty = true;
+      }
+    } else {
+      player.vx *= NORMAL_STOP_FRICTION;
+      player.vz *= NORMAL_STOP_FRICTION;
+      if (NORMAL_STOP_FRICTION === 0) {
+        player.vx = 0;
+        player.vz = 0;
+      }
+
+      if (inputFresh) {
+        const mag = Math.hypot(player.inputDx || 0, player.inputDz || 0);
+        if (mag >= 1e-8) {
+          let dx = player.inputDx;
+          let dz = player.inputDz;
+          if (mag > 1) { dx /= mag; dz /= mag; }
+
+          let playerStep = now < (player.blockingUntil || 0) ? step * 0.2 : step;
+          if (now < (player.rallyUntil || 0)) playerStep *= (player.rallySpeedMultiplier || 1);
+          if (now < (player.anchorUntil || 0)) playerStep *= (player.anchorSpeedMultiplier || 0.7);
+          if (isSlowed(player)) playerStep *= (player.slowFactor || 1);
+
+          const prevX = player.x;
+          const prevZ = player.z;
+          const result = tryPlayerMove(player.x, player.z, dx, dz, playerStep, ctx);
+          player.x = result.x;
+          player.z = result.z;
+          player.y = resolveFloorY(sampleFloorY(ctx.layout, result.x, result.z));
+          if (Number.isFinite(player.inputRotation)) {
+            player.rotation = player.inputRotation;
+          }
+          player.lastMoveTime = now;
+          if (result.moved || player.x !== prevX || player.z !== prevZ) {
+            player.persistenceDirty = true;
+          }
         }
       }
     }
@@ -1021,6 +1115,96 @@ function isEnemyFrozen(enemy) {
   return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
 }
 
+// SLOW status effect: a timed movement-speed debuff that mirrors the
+// frozenUntil/isEnemyFrozen idiom. Works on any generic entity (player or
+// enemy). Movement integration and the client indicator live in separate
+// sub-tickets; this only manages the status state + helpers.
+function applySlow(entity, durationMs, factor) {
+  if (!entity) return;
+  const now = Date.now();
+  // Re-application REFRESHES: never shorten an existing longer slow.
+  entity.slowedUntil = Math.max(entity.slowedUntil || 0, now + durationMs);
+  // Clamp factor to (0, 1]; default to 0.5 when omitted or invalid.
+  const f = Number(factor);
+  entity.slowFactor = Number.isFinite(f) && f > 0 && f <= 1 ? f : 0.5;
+}
+
+function isSlowed(entity) {
+  return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
+}
+
+// BURNING status effect: a timed damage-over-time mark that mirrors the
+// frozenUntil/isEnemyFrozen and slowedUntil/isSlowed idioms. Works on any
+// generic entity (player or enemy). This manages the status state + helpers;
+// the per-tick damage pass lives in updateBurning() below and the client flame
+// animation lives in a separate sub-ticket.
+
+// Burn cadence + per-tick damage. A burning entity loses HP every
+// BURN_TICK_INTERVAL_MS rather than every simulation frame, and each tick deals
+// BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE.
+const BURN_TICK_INTERVAL_MS = 500;
+const BURN_BASE_TICK_DAMAGE = 4;
+const BURN_EXTRA_FIRE_DAMAGE = 1;
+
+function applyBurning(entity, durationMs) {
+  if (!entity) return;
+  const now = Date.now();
+  // Re-application REFRESHES: never shorten an existing longer burn, and never
+  // stack additively — just extend to the later expiry.
+  entity.burningUntil = Math.max(entity.burningUntil || 0, now + durationMs);
+}
+
+function isBurning(entity) {
+  return entity != null && entity.burningUntil != null && Date.now() < entity.burningUntil;
+}
+
+// Burn-tick pass: runs every game-loop tick during the playing phase and damages
+// every currently-burning player and enemy. Damage is interval-gated per entity
+// (BURN_TICK_INTERVAL_MS) via a lastBurnTickAt timestamp, mirroring the minion
+// pulse-interval pattern in updateMinions. Players route through damagePlayer so
+// godmode/invulnerability rules apply automatically; enemies route through
+// damageEnemy. Damage continues while isBurning() is true and stops once the
+// burn has expired.
+function updateBurning() {
+  const now = Date.now();
+  const amount = BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE;
+
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!player || player.dead || player.extracted) continue;
+    if (!isBurning(player)) {
+      // Clear the tick clock so a future re-ignition starts fresh instead of
+      // dumping a burst of catch-up ticks for time spent not burning.
+      if (player.lastBurnTickAt != null) player.lastBurnTickAt = null;
+      continue;
+    }
+    if (player.lastBurnTickAt == null) {
+      player.lastBurnTickAt = now; // arm the clock; first tick fires one interval later
+      continue;
+    }
+    if (now - player.lastBurnTickAt >= BURN_TICK_INTERVAL_MS) {
+      const ticks = Math.floor((now - player.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
+      damagePlayer(playerId, ticks * amount);
+      player.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+    }
+  }
+
+  for (const enemy of _gameState.enemies) {
+    if (!isBurning(enemy)) {
+      if (enemy.lastBurnTickAt != null) enemy.lastBurnTickAt = null;
+      continue;
+    }
+    if (enemy.lastBurnTickAt == null) {
+      enemy.lastBurnTickAt = now; // arm the clock; first tick fires one interval later
+      continue;
+    }
+    if (now - enemy.lastBurnTickAt >= BURN_TICK_INTERVAL_MS) {
+      const ticks = Math.floor((now - enemy.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
+      damageEnemy(enemy, ticks * amount);
+      enemy.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+    }
+  }
+}
+
 function healPlayer(playerId, amount) {
   const player = _gameState.players[playerId];
   if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
@@ -1129,6 +1313,80 @@ function collectProjectileHits(originX, originZ, dirX, dirZ, range, damage, opti
         return { hits, magicStonesGained };
       }
     }
+  }
+
+  return { hits, magicStonesGained };
+}
+
+function collectChainLightningHits(originX, originZ, dirX, dirZ, range, damage, options = {}) {
+  const hits = [];
+  let magicStonesGained = 0;
+  const magicStoneOnHit = options.magicStoneOnHit || 0;
+  const magicStoneOnKill = options.magicStoneOnKill || 0;
+  const attackerId = options.attackerId;
+  const chainRadius = options.chainRadius ?? 5;
+  const maxChainTargets = options.maxChainTargets ?? 2;
+  const chainDamage = Math.round(damage * 0.5);
+  const hitWidth = options.hitWidth ?? PROJECTILE_HIT_WIDTH;
+  const hitEnemyIds = new Set();
+
+  function recordHit(enemy, hitDamage) {
+    const hitX = enemy.x;
+    const hitZ = enemy.z;
+    if (attackerId) enemy.lastDamagedBy = attackerId;
+    const { killed } = damageEnemy(enemy, hitDamage);
+    const hitGain = magicStoneOnHit;
+    const killGain = killed ? magicStoneOnKill : 0;
+    magicStonesGained += hitGain + killGain;
+    hitEnemyIds.add(enemy.id);
+    hits.push({
+      enemyId: enemy.id,
+      hp: enemy.hp,
+      damageDealt: hitDamage,
+      x: hitX,
+      z: hitZ,
+      magicStonesGained: hitGain + killGain,
+    });
+    return { x: hitX, z: hitZ };
+  }
+
+  const sampleCount = Math.max(4, Math.ceil(range * 2));
+  let primary = null;
+  for (let i = 0; i <= sampleCount && !primary; i++) {
+    const t = range * (i / sampleCount);
+    const px = originX + dirX * t;
+    const pz = originZ + dirZ * t;
+
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - px, enemy.z - pz);
+      if (dist > hitWidth) continue;
+      primary = enemy;
+      break;
+    }
+  }
+
+  if (!primary) {
+    return { hits: [], magicStonesGained: 0 };
+  }
+
+  let currentPos = recordHit(primary, damage);
+
+  let chains = 0;
+  while (chains < maxChainTargets) {
+    let next = null;
+    let nextDist = Infinity;
+    for (const enemy of _gameState.enemies) {
+      if (hitEnemyIds.has(enemy.id) || enemy.hp <= 0) continue;
+      const dist = Math.hypot(enemy.x - currentPos.x, enemy.z - currentPos.z);
+      if (dist <= chainRadius && dist < nextDist) {
+        nextDist = dist;
+        next = enemy;
+      }
+    }
+    if (!next) break;
+    currentPos = recordHit(next, chainDamage);
+    chains++;
   }
 
   return { hits, magicStonesGained };
@@ -2156,7 +2414,10 @@ function updateEnemies() {
 		ensureEnemyCombatStats(enemy);
 		checkFrenziedTelegraph(enemy, Date.now());
 		const { chaseSpeedMult, attackWindupMult } = getFrenziedCombatMultipliers(enemy);
-		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult;
+		// SLOW stacks multiplicatively with the frenzied chase multiplier. Frozen
+		// enemies are handled by the isEnemyFrozen early continue below and never move.
+		const slowMult = isSlowed(enemy) ? (enemy.slowFactor || 1) : 1;
+		const chaseSpeed = enemy.chaseSpeed * chaseSpeedMult * slowMult;
 		const attackWindupMs = enemy.attackWindupMs * attackWindupMult;
 
 		if (isEnemyFrozen(enemy)) {
@@ -2785,6 +3046,7 @@ module.exports = {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectPhaseBeamHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
@@ -2802,6 +3064,11 @@ module.exports = {
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
   isEnemyFrozen,
+  applySlow,
+  isSlowed,
+  applyBurning,
+  isBurning,
+  updateBurning,
 
   // Magic stones
   regenMagicStones,

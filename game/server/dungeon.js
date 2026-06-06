@@ -1,6 +1,6 @@
 // ── Floor Height Sampling (imported from shared module) ──
 
-const { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY } = require('../shared/floorSampling.js');
+const { sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY } = require('../shared/floorSampling.js');
 
 // ── Seeded PRNG (Mulberry32) ──
 
@@ -95,6 +95,11 @@ const LAYOUT_PROFILES = {
     ...DEFAULT_LAYOUT_PROFILE,
     cellSpacing: OPEN_PLAZA.size,
   },
+  // Ice-cavern is handled by generateIceCavern() — see that branch.
+  'ice-cavern': {
+    ...DEFAULT_LAYOUT_PROFILE,
+    cellSpacing: OPEN_PLAZA.size,
+  },
   // Fire-cavern is handled by generateFireCavern() — see that branch.
   'fire-cavern': {
     ...DEFAULT_LAYOUT_PROFILE,
@@ -164,6 +169,18 @@ const SUNKEN_CANYON = {
   rigidMonolithOffsetX: 0.3,
   rigidMonolithOffsetZ: -0.5,
   rigidMonolithYaw: 0,
+};
+
+// Ice-cavern: stone entry dock, large slippery ice sheet, stone treasure pad.
+const ICE_CAVERN = {
+  stonePadSize: 13,
+  iceSize: OPEN_PLAZA.size, // 32 × 32 ⇒ ≥ 4× default room area
+  rampWidth: 6,
+  rampDepth: 10,
+  spawnClearRadius: 6,
+  interiorMargin: OPEN_PLAZA.interiorMargin,
+  rampXOffsets: [-3, 0, 3], // centres must stay inside stonePadSize with rampWidth
+  treasureGapWidth: 8,
 };
 
 // Fire-cavern stage tuning. Rim (north / high Y) overlooks a large volcanic basin
@@ -252,6 +269,9 @@ function generateLayout(seed, profile = DEFAULT_LAYOUT_PROFILE, options = {}) {
   }
   if (profile === 'sunken-canyon') {
     return generateSunkenCanyon(seed, options);
+  }
+  if (profile === 'ice-cavern') {
+    return generateIceCavern(seed, options);
   }
   if (profile === 'fire-cavern') {
     return generateFireCavern(seed, options);
@@ -1813,6 +1833,33 @@ function buildDescentRampRoom({ x, z, width, depth, yHigh, yLow, axis, openWest 
   };
 }
 
+function flatFloorCorners(y = DEFAULT_FLOOR_Y) {
+  return { yNW: y, yNE: y, ySE: y, ySW: y };
+}
+
+/**
+ * Flat stone connector between ice-cavern bands (no elevation change).
+ */
+function buildIceCavernConnectorRoom({ x, z, width, depth, openWest = false, openEast = false }) {
+  const halfW = width / 2;
+  const halfD = depth / 2;
+  const walls = [];
+  if (!openWest) walls.push({ x: x - halfW, z, length: depth, axis: 'z' });
+  if (!openEast) walls.push({ x: x + halfW, z, length: depth, axis: 'z' });
+  return {
+    x,
+    z,
+    width,
+    depth,
+    walls,
+    floorCorners: flatFloorCorners(),
+    band: 'ramp',
+    role: 'connector',
+    spawnWeight: 0,
+    floorSurface: 'normal',
+  };
+}
+
 /** Inset from each perimeter wall plane for arena banner/tier decor (visual only). */
 const PERIMETER_DECOR_INSET = 2;
 
@@ -2352,6 +2399,173 @@ function generateSunkenCanyon(seed, options = {}) {
     landmarks: monolith ? [monolith] : [],
   };
 }
+
+// ── Ice Cavern Stage Generation ──
+
+/**
+ * Build the ice-cavern stage: a stone entry dock north of a large slippery ice
+ * sheet with a stone treasure pad to the south. One or two flat stone ramps
+ * bridge entry ↔ ice; the treasure pad opens through a centred wall gap.
+ *
+ * Returns { rooms, passages: [], cover, passageWidth, cellSpacing,
+ *           profile: 'ice-cavern' }.
+ */
+function generateIceCavern(seed, options = {}) {
+  const rng = mulberry32(seed);
+  const {
+    stonePadSize,
+    iceSize,
+    rampWidth,
+    rampDepth,
+    spawnClearRadius,
+    interiorMargin,
+    rampXOffsets,
+    treasureGapWidth,
+  } = ICE_CAVERN;
+
+  const y = DEFAULT_FLOOR_Y;
+  const stoneHalf = stonePadSize / 2;
+  const iceHalf = iceSize / 2;
+  const rampHalfW = rampWidth / 2;
+
+  const iceX = 0;
+  const iceZ = 0;
+  const iceNorthZ = iceZ - iceHalf;
+  const iceSouthZ = iceZ + iceHalf;
+
+  const northRampZ = iceNorthZ - rampDepth / 2;
+  const entryZ = northRampZ - rampDepth / 2 - stoneHalf;
+  const treasureZ = iceSouthZ + stoneHalf;
+
+  const sortedOffsets = [...rampXOffsets].sort((a, b) => a - b);
+  const numRamps = 1 + Math.floor(rng() * 2);
+  const rampCenters = numRamps === 1
+    ? [sortedOffsets[1]]
+    : [sortedOffsets[0], sortedOffsets[sortedOffsets.length - 1]];
+
+  const rampIntervals = rampCenters.map(cx => ({
+    cx,
+    minX: cx - rampHalfW,
+    maxX: cx + rampHalfW,
+  }));
+
+  function isRampEdgeInsideOtherRamp(edgeX, ownCenterX) {
+    return rampIntervals.some(
+      ({ cx, minX, maxX }) => cx !== ownCenterX && edgeX > minX && edgeX < maxX
+    );
+  }
+
+  const ramps = rampCenters.map(rampX =>
+    buildIceCavernConnectorRoom({
+      x: rampX,
+      z: northRampZ,
+      width: rampWidth,
+      depth: rampDepth,
+      openWest: isRampEdgeInsideOtherRamp(rampX - rampHalfW, rampX),
+      openEast: isRampEdgeInsideOtherRamp(rampX + rampHalfW, rampX),
+    })
+  );
+
+  const entryWalls = [
+    { x: 0, z: entryZ - stoneHalf, length: stonePadSize, axis: 'x' },
+    { x: -stoneHalf, z: entryZ, length: stonePadSize, axis: 'z' },
+    { x: stoneHalf, z: entryZ, length: stonePadSize, axis: 'z' },
+    ...buildHorizontalWallWithGaps(entryZ + stoneHalf, 0, stonePadSize, rampCenters, rampWidth),
+  ];
+
+  const entry = {
+    x: 0,
+    z: entryZ,
+    width: stonePadSize,
+    depth: stonePadSize,
+    walls: entryWalls,
+    floorCorners: flatFloorCorners(y),
+    band: 'stone',
+    role: 'start',
+    spawnWeight: 0,
+    encounterTier: 0,
+    floorSurface: 'normal',
+  };
+
+  const iceWalls = [
+    ...buildHorizontalWallWithGaps(iceNorthZ, iceX, iceSize, rampCenters, rampWidth),
+    ...buildHorizontalWallWithGaps(iceSouthZ, iceX, iceSize, [iceX], treasureGapWidth),
+    { x: iceX - iceHalf, z: iceZ, length: iceSize, axis: 'z' },
+    { x: iceX + iceHalf, z: iceZ, length: iceSize, axis: 'z' },
+  ];
+
+  const iceField = {
+    x: iceX,
+    z: iceZ,
+    width: iceSize,
+    depth: iceSize,
+    walls: iceWalls,
+    floorCorners: flatFloorCorners(y),
+    band: 'ice',
+    spawnWeight: 2,
+    encounterTier: 0,
+    floorSurface: 'slippery',
+  };
+
+  const treasureNorthZ = treasureZ - stoneHalf;
+  const treasureWalls = [
+    ...buildHorizontalWallWithGaps(treasureNorthZ, iceX, stonePadSize, [iceX], treasureGapWidth),
+    { x: iceX, z: treasureZ + stoneHalf, length: stonePadSize, axis: 'x' },
+    { x: iceX - stoneHalf, z: treasureZ, length: stonePadSize, axis: 'z' },
+    { x: iceX + stoneHalf, z: treasureZ, length: stonePadSize, axis: 'z' },
+  ];
+
+  const treasure = {
+    x: iceX,
+    z: treasureZ,
+    width: stonePadSize,
+    depth: stonePadSize,
+    walls: treasureWalls,
+    floorCorners: flatFloorCorners(y),
+    band: 'stone',
+    role: 'treasure',
+    spawnWeight: 0,
+    encounterTier: 0,
+    floorSurface: 'normal',
+  };
+
+  const stoneCandidatePool = [
+    { x: -3, z: -3, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: 3, z: 3, width: 1.6, depth: 1.6, height: 3.0, type: 'pillar' },
+    { x: -3, z: 3, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+    { x: 3, z: -3, width: 4.0, depth: 1.2, height: 1.0, type: 'broken_wall' },
+  ];
+
+  const entryCover = scatterCoverInArena(rng, {
+    half: stoneHalf,
+    centerX: entry.x,
+    centerZ: entry.z,
+    spawnClear: spawnClearRadius,
+    candidatePool: stoneCandidatePool,
+    targetCount: 2,
+    interiorMargin,
+  });
+
+  const treasureCover = scatterCoverInArena(rng, {
+    half: stoneHalf,
+    centerX: treasure.x,
+    centerZ: treasure.z,
+    spawnClear: spawnClearRadius,
+    candidatePool: stoneCandidatePool,
+    targetCount: 2,
+    interiorMargin,
+  });
+
+  return {
+    rooms: [entry, ...ramps, iceField, treasure],
+    passages: [],
+    cover: [...entryCover, ...treasureCover],
+    passageWidth: PASSAGE_WIDTH,
+    cellSpacing: iceSize,
+    profile: 'ice-cavern',
+  };
+}
+
 
 // ── Fire Cavern Stage Generation ──
 
@@ -3030,6 +3244,7 @@ module.exports = {
   generateLayout,
   generateOpenPlaza,
   generateSunkenCanyon,
+  generateIceCavern,
   generateFireCavern,
   buildSunkenCanyonCliffLips,
   buildSunkenCanyonCliffHazards,
@@ -3055,6 +3270,7 @@ module.exports = {
   roomsByRole,
   randomRoomPositionByRole,
   sampleFloorY,
+  sampleFloorSurface,
   resolveFloorY,
   questLayoutSeed,
   normalizeLayoutProfile,

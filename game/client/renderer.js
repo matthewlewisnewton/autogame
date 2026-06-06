@@ -29,7 +29,7 @@ import {
 	passageFloorMaterial,
 	groundMaterial,
 } from './dungeon.js';
-import { sampleFloorY, DEFAULT_FLOOR_Y, resolveFloorY, findBoothInRange } from './collision.js';
+import { sampleFloorY, sampleFloorSurface, DEFAULT_FLOOR_Y, resolveFloorY, findBoothInRange } from './collision.js';
 import {
 	CARD_HIT_GRACE_MS,
 	ATTACK_RANGE,
@@ -50,6 +50,9 @@ import {
 	MOVE_SPEED,
 	MAX_ELAPSED_MS,
 	TICK_RATE,
+	SLIPPERY_ACCEL,
+	SLIPPERY_FRICTION,
+	NORMAL_STOP_FRICTION,
 	CAMERA_DISTANCE,
 	getCameraFollowHeight,
 	CAMERA_YAW_SENSITIVITY,
@@ -65,6 +68,7 @@ import {
 	resetGamepadState,
 } from './gamepad.js';
 import { pollInput, getMovementDirection, resetInputState } from './input.js';
+import { clientMoveSpeedScale, tickMovementPrediction } from './movementPrediction.js';
 import { playSound } from './audio.js';
 import {
 	isLockOnActive,
@@ -105,6 +109,10 @@ const minionTelegraphMeshes = {}; // minion id → beam telegraph during windup
 const enemyLockOnRings = {}; // enemy id → lock-on reticle ring
 const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("elite") enemies
 const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
+const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
+const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
+const enemyBurnMarkers = {}; // enemy id → flickering flame shown while burning
+const playerBurnMarkers = {}; // player id → flickering flame shown while burning
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -156,6 +164,9 @@ let boothInRangeListener = null; // edge-triggered: fires when the in-range boot
 // ── Input state ──
 let inputListenersAdded = false;
 const TICK_DT = 1 / TICK_RATE;
+// Mirrors the server's applySlow() default (game/server/simulation.js): used for
+// local prediction when a player is slowed but the snapshot omits slowFactor.
+const DEFAULT_SLOW_FACTOR = 0.5;
 let moveAccumulator = 0;
 let moveEmitAccumulator = 0;
 let moveSequence = 0;
@@ -163,10 +174,23 @@ let enemyHitboxPhase = 0;
 /** Fixed-tick simulation position; myX/myZ interpolate between prevSim and sim for smooth rendering. */
 let simX = 0;
 let simZ = 0;
+let simVx = 0;
+let simVz = 0;
 let prevSimX = 0;
 let prevSimZ = 0;
 let lastEmittedRotation = null;
 const ROTATION_SYNC_EPS = 0.02;
+
+function resetSimVelocity() {
+	simVx = 0;
+	simVz = 0;
+}
+
+function isCoastingOnSlippery(layout) {
+	if (!layout) return false;
+	if (sampleFloorSurface(layout, simX, simZ) !== 'slippery') return false;
+	return Math.hypot(simVx, simVz) >= 1e-4;
+}
 
 // ── Loot state ──
 const lootGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.1, 16);
@@ -1218,6 +1242,7 @@ export function setPlayerPosition(x, z) {
 	prevSimX = x;
 	prevSimZ = z;
 	moveAccumulator = 0;
+	resetSimVelocity();
 }
 
 /**
@@ -1523,6 +1548,7 @@ export function initScene(layout, spawnPos) {
 	prevSimX = spawnPosition.x;
 	prevSimZ = spawnPosition.z;
 	moveAccumulator = 0;
+	resetSimVelocity();
 
 	// Reset movement when the tab loses focus (keyboard state lives in input.js).
 	if (!inputListenersAdded) {
@@ -1594,6 +1620,8 @@ export function rebuildDungeonLayout(layout) {
 	simZ = spawnPosition.z;
 	prevSimX = spawnPosition.x;
 	prevSimZ = spawnPosition.z;
+	moveAccumulator = 0;
+	resetSimVelocity();
 
 	if (layout.profile === 'spire-ascent') {
 		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
@@ -1626,6 +1654,21 @@ export function setGamePhase(phase) {
 }
 
 // ── Player movement ──
+
+/**
+ * Local slow factor for movement prediction. Reads the local player's broadcast
+ * snapshot: when it is currently slowed (`slowedUntil` in the future) the
+ * clamped `slowFactor` is returned so prediction advances at the same reduced
+ * speed the server applies (no rubber-band). Returns 1 when not slowed or when
+ * the fields are missing, leaving unslowed movement unchanged.
+ * @param {object} me - local player broadcast snapshot
+ * @returns {number} factor in (0, 1]
+ */
+export function localSlowFactor(me) {
+	if (!me || !me.slowedUntil || Date.now() >= me.slowedUntil) return 1;
+	const f = Number(me.slowFactor);
+	return Number.isFinite(f) && f > 0 && f <= 1 ? f : DEFAULT_SLOW_FACTOR;
+}
 
 /**
  * Read WASD keys, normalize direction, apply movement speed, resolve wall
@@ -1681,6 +1724,10 @@ export function updateMyPlayer(delta) {
 	}
 
 	const movement = getMovementInput();
+	const layout = gameStateRef?.layout;
+	let dirX = 0;
+	let dirZ = 0;
+	let moveRotation = playerRotation;
 
 	if (movement) {
 		moveAccumulator += delta;
@@ -1691,24 +1738,50 @@ export function updateMyPlayer(delta) {
 		const dir = lockState.locked && lockState.liveToTarget
 			? targetRelativeDirection(movement.x, movement.z, lockState.liveToTarget)
 			: cameraRelativeDirection(movement.x, movement.z);
-		const dirX = dir.x;
-		const dirZ = dir.z;
-		const moveRotation = lockState.locked
+		dirX = dir.x;
+		dirZ = dir.z;
+		moveRotation = lockState.locked
 			? playerRotation
 			: Math.atan2(dirZ, dirX);
-
-		while (moveAccumulator >= TICK_DT) {
-			prevSimX = simX;
-			prevSimZ = simZ;
-			const result = tryPlayerMove(
-				simX, simZ, dirX, dirZ, MOVE_SPEED * TICK_DT,
-				wallColliders, walkableAABBs, dungeonBounds
-			);
-			simX = result.x;
-			simZ = result.z;
-			moveAccumulator -= TICK_DT;
+	} else {
+		moveEmitAccumulator = 0;
+		if (isCoastingOnSlippery(layout)) {
+			moveAccumulator += delta;
 		}
+	}
 
+	const speedScale = clientMoveSpeedScale(me) * localSlowFactor(me);
+	while (moveAccumulator >= TICK_DT) {
+		prevSimX = simX;
+		prevSimZ = simZ;
+		const tickResult = tickMovementPrediction({
+			x: simX,
+			z: simZ,
+			vx: simVx,
+			vz: simVz,
+			layout,
+			inputDx: dirX,
+			inputDz: dirZ,
+			inputActive: Boolean(movement),
+			speedScale,
+			tryPlayerMove,
+			colliders: wallColliders,
+			walkableAABBs,
+			bounds: dungeonBounds,
+			tickRate: TICK_RATE,
+			moveSpeed: MOVE_SPEED,
+			slipperyAccel: SLIPPERY_ACCEL,
+			slipperyFriction: SLIPPERY_FRICTION,
+			normalStopFriction: NORMAL_STOP_FRICTION,
+		});
+		simX = tickResult.x;
+		simZ = tickResult.z;
+		simVx = tickResult.vx;
+		simVz = tickResult.vz;
+		moveAccumulator -= TICK_DT;
+	}
+
+	if (movement) {
 		while (moveEmitAccumulator >= TICK_DT && socketRef) {
 			moveEmitAccumulator -= TICK_DT;
 			moveSequence += 1;
@@ -1720,8 +1793,6 @@ export function updateMyPlayer(delta) {
 				sequence: moveSequence,
 			});
 		}
-	} else {
-		moveEmitAccumulator = 0;
 	}
 
 	updatePlayerFacing();
@@ -3271,6 +3342,147 @@ export function applyFrenziedTelegraphRing(enemyId, enemy) {
 	}
 }
 
+// ── Slow status indicator ──
+
+// Icy cool-blue (0x8fd3ff), deliberately distinct from the amber lock-on ring, red
+// frenzied telegraph, and saturated-cyan phase-step/shield visuals so a slowed
+// entity reads at a glance without being confused with any other status marker.
+
+/**
+ * Create a ground ring marker for a slowed entity. The pale ice-blue colour and
+ * wider radius keep it visually separate from the lock-on/frenzied/phase-step
+ * rings so "slowed" is never mistaken for another status.
+ * @returns {THREE.Mesh}
+ */
+function createSlowMarker() {
+	const geo = new THREE.RingGeometry(0.75, 1.05, 32);
+	const mat = new THREE.MeshBasicMaterial({
+		color: 0x8fd3ff,
+		transparent: true,
+		opacity: 0.7,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geo, mat);
+	mesh.rotation.x = -Math.PI / 2;
+	return mesh;
+}
+
+/**
+ * Show or hide the slow indicator for an entity (player or enemy). Driven by
+ * `slowedUntil`: while it is in the future the icy ring is shown at the entity's
+ * feet with a gentle pulse; once it passes (or the entity is gone) the marker is
+ * disposed so nothing stays stuck on screen.
+ * @param {Object} markerMap - per-entity marker map (enemySlowMarkers / playerSlowMarkers)
+ * @param {string} id - entity id
+ * @param {object} entity - { slowedUntil, x, z }
+ */
+function applySlowIndicator(markerMap, id, entity) {
+	const now = Date.now();
+	const slowed = entity && entity.slowedUntil && now < entity.slowedUntil;
+
+	if (slowed) {
+		if (!markerMap[id]) {
+			markerMap[id] = createSlowMarker();
+			scene.add(markerMap[id]);
+		}
+		const marker = markerMap[id];
+		marker.position.set(entity.x, GROUND_OVERLAY_Y + 0.01, entity.z);
+		// Slow ~1 Hz pulse so the ring reads as an active "drag" effect.
+		const pulse = 0.5 + 0.5 * Math.sin((now % 1500) / 1500 * Math.PI * 2);
+		marker.material.opacity = 0.4 + pulse * 0.4;
+	} else if (markerMap[id]) {
+		disposeOne(markerMap, id, scene);
+	}
+}
+
+// ── Burning status indicator ──
+
+// Warm fire palette (orange shell + bright yellow core), deliberately the
+// opposite end of the spectrum from the icy cool-blue slow ring and the pale
+// freeze visuals so a burning entity reads instantly and is never confused with
+// "slowed" or "frozen".
+
+/**
+ * Create an attached flame for a burning entity: two stacked additive cones
+ * (an orange outer shell and a brighter yellow inner core) that rise from the
+ * entity's feet. Returned as a group so the per-frame flicker can scale the two
+ * cones independently. The warm colour keeps it distinct from the icy slow ring.
+ * @returns {THREE.Group}
+ */
+function createBurnMarker() {
+	const group = new THREE.Group();
+	// Outer shell — broad, deeper orange, semi-transparent.
+	const outer = new THREE.Mesh(
+		new THREE.ConeGeometry(0.45, 1.3, 12, 1, true),
+		new THREE.MeshBasicMaterial({
+			color: 0xff5a1e,
+			transparent: true,
+			opacity: 0.6,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		}),
+	);
+	outer.position.y = 0.65;
+	group.add(outer);
+	// Inner core — narrower, brighter yellow so the flame has a hot centre.
+	const inner = new THREE.Mesh(
+		new THREE.ConeGeometry(0.25, 0.85, 12, 1, true),
+		new THREE.MeshBasicMaterial({
+			color: 0xffd24a,
+			transparent: true,
+			opacity: 0.8,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		}),
+	);
+	inner.position.y = 0.45;
+	group.add(inner);
+	group.userData.outer = outer;
+	group.userData.inner = inner;
+	return group;
+}
+
+/**
+ * Show or hide the burning flame for an entity (player or enemy). Driven by
+ * `burningUntil`: while it is in the future a flickering flame is shown at the
+ * entity's feet; once it passes (or the entity is gone) the flame is disposed so
+ * nothing stays stuck on screen. The flicker (fast scale/opacity variation on
+ * both cones, plus a slow spin) makes the fire read as alive rather than a
+ * static sprite, and contrasts with the slow ring's gentle ~1 Hz pulse.
+ * @param {Object} markerMap - per-entity marker map (enemyBurnMarkers / playerBurnMarkers)
+ * @param {string} id - entity id
+ * @param {object} entity - { burningUntil, x, z }
+ */
+function applyBurnIndicator(markerMap, id, entity) {
+	const now = Date.now();
+	const burning = entity && entity.burningUntil && now < entity.burningUntil;
+
+	if (burning) {
+		if (!markerMap[id]) {
+			markerMap[id] = createBurnMarker();
+			scene.add(markerMap[id]);
+		}
+		const marker = markerMap[id];
+		marker.position.set(entity.x, GROUND_OVERLAY_Y, entity.z);
+		// Two out-of-phase fast flickers (~4 Hz / ~6 Hz) drive the cones'
+		// height and opacity so the flame jitters like real fire.
+		const flickerA = 0.5 + 0.5 * Math.sin((now % 250) / 250 * Math.PI * 2);
+		const flickerB = 0.5 + 0.5 * Math.sin((now % 170) / 170 * Math.PI * 2);
+		const { outer, inner } = marker.userData;
+		outer.scale.set(1, 0.85 + flickerA * 0.4, 1);
+		outer.material.opacity = 0.45 + flickerA * 0.35;
+		inner.scale.set(1, 0.8 + flickerB * 0.5, 1);
+		inner.material.opacity = 0.6 + flickerB * 0.35;
+		// Slow spin so the flame shimmers instead of sitting flat.
+		marker.rotation.y = (now % 2000) / 2000 * Math.PI * 2;
+	} else if (markerMap[id]) {
+		disposeOne(markerMap, id, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -4054,6 +4266,66 @@ export function spawnHitSpark(position, style = {}) {
 	}
 }
 
+const LIGHTNING_ARC_Y = 1.2;
+
+/**
+ * Build a jagged polyline between two floor points for a brief lightning arc.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style]
+ * @returns {{ line: THREE.Line, points: THREE.Vector3[] }}
+ */
+function createLightningArcLine(from, to, style = {}) {
+	const y = style.y ?? LIGHTNING_ARC_Y;
+	const color = style.emissive ?? style.color ?? 0x0ea5e9;
+	const dx = to.x - from.x;
+	const dz = to.z - from.z;
+	const len = Math.hypot(dx, dz) || 1;
+	const segments = Math.max(3, Math.floor(len * 2));
+	const perpX = -dz / len;
+	const perpZ = dx / len;
+	const points = [];
+
+	for (let i = 0; i <= segments; i++) {
+		const t = i / segments;
+		const jitter = (i === 0 || i === segments) ? 0 : (Math.random() - 0.5) * 0.4;
+		points.push(new THREE.Vector3(
+			from.x + dx * t + perpX * jitter,
+			y + (Math.random() - 0.5) * 0.15,
+			from.z + dz * t + perpZ * jitter,
+		));
+	}
+
+	const geometry = new THREE.BufferGeometry().setFromPoints(points);
+	const material = new THREE.LineBasicMaterial({
+		color,
+		transparent: true,
+		opacity: 1.0,
+		depthWrite: false,
+	});
+	return { line: new THREE.Line(geometry, material), points };
+}
+
+/**
+ * Spawn a short-lived cyan lightning arc between two floor points.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style] - optional color/emissive/y/duration overrides
+ */
+export function spawnLightningArc(from, to, style = {}) {
+	const { line } = createLightningArcLine(from, to, style);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(line);
+
+	activeEffects.push({
+		mesh: line,
+		_scene: targetScene,
+		isLightningArc: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? ATTACK_EFFECT_DURATION,
+	});
+}
+
 /**
  * Spawn a cyan lightning bolt projectile (Thunderbird ranged/chain feedback).
  * @param {object} origin - { x, z }
@@ -4108,6 +4380,20 @@ export function updateAttackEffects() {
 
 			if (elapsed >= fx.duration) {
 				scene.remove(fx.mesh);
+				fx.mesh.geometry.dispose();
+				fx.mesh.material.dispose();
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Lightning arc (chain segments) ──
+		if (fx.isLightningArc) {
+			const lifeRatio = 1.0 - (elapsed / fx.duration);
+			fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
+
+			if (elapsed >= fx.duration) {
+				(fx._scene || scene).remove(fx.mesh);
 				fx.mesh.geometry.dispose();
 				fx.mesh.material.dispose();
 				activeEffects.splice(i, 1);
@@ -4546,6 +4832,33 @@ export function animate(timestamp) {
 			// (local + remote), so an equip swap takes effect without a reload.
 			updateKeyItemProp(playersMeshes[id], pData.equippedKeyItemId);
 
+			// Slow status ring (local + remote) — driven by the broadcast slowedUntil.
+			// For the local player, anchor the ring to the predicted myX/myZ (the
+			// slower predicted avatar position) so it does not lag behind the avatar
+			// while slowed; remote players use their broadcast x/z directly.
+			if (id === myId) {
+				applySlowIndicator(playerSlowMarkers, id, {
+					slowedUntil: pData.slowedUntil,
+					x: myX,
+					z: myZ,
+				});
+			} else {
+				applySlowIndicator(playerSlowMarkers, id, pData);
+			}
+
+			// Burning flame (local + remote) — driven by the broadcast burningUntil.
+			// Local player anchors to the predicted myX/myZ like the slow ring so
+			// the flame tracks the avatar; remote players use broadcast x/z.
+			if (id === myId) {
+				applyBurnIndicator(playerBurnMarkers, id, {
+					burningUntil: pData.burningUntil,
+					x: myX,
+					z: myZ,
+				});
+			} else {
+				applyBurnIndicator(playerBurnMarkers, id, pData);
+			}
+
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
@@ -4602,6 +4915,7 @@ export function animate(timestamp) {
 				prevSimX = spawnPosition.x;
 				prevSimZ = spawnPosition.z;
 				moveAccumulator = 0;
+				resetSimVelocity();
 				playerRotation = 0;
 				lastEmittedRotation = null;
 				clearAllLockOnState();
@@ -4685,6 +4999,20 @@ export function animate(timestamp) {
 		for (const id of Object.keys(playerNameplates)) {
 			if (!gs.players[id]) {
 				disposeNameplate(id);
+			}
+		}
+
+		// ── Clean up slow markers for players who left ──
+		for (const id of Object.keys(playerSlowMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerSlowMarkers, id, scene);
+			}
+		}
+
+		// ── Clean up burn markers for players who left ──
+		for (const id of Object.keys(playerBurnMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerBurnMarkers, id, scene);
 			}
 		}
 
@@ -4874,6 +5202,12 @@ export function animate(timestamp) {
 
 			// ── Frenzied enrage telegraph ring ──
 			applyFrenziedTelegraphRing(enemy.id, enemy);
+
+			// ── Slow status ring (driven by the broadcast slowedUntil) ──
+			applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
+
+			// ── Burning flame (driven by the broadcast burningUntil) ──
+			applyBurnIndicator(enemyBurnMarkers, enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -4884,6 +5218,8 @@ export function animate(timestamp) {
 		disposeStaleMeshes(enemyLockOnRings, currentEnemyIds, scene);
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
+		disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
+		disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];

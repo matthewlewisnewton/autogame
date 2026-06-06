@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/290-slow-status-effect-foundation/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/290-slow-status-effect-foundation/game/data
+Server listening on port 3001
+Player connected: socket=hqGFsIRj_UkMfwZvAAAB, playerId=ba0d66e3-6109-44d9-af35-59f9674de939
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=WmXHmpUbpjwcAQV7AAAD, playerId=a30a76c0-2afc-4a40-bd76-68e66a8b657d
+Player disconnected: hqGFsIRj_UkMfwZvAAAB
+Player disconnected: WmXHmpUbpjwcAQV7AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

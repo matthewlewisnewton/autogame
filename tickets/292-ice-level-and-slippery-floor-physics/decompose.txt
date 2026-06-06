@@ -1,0 +1,12 @@
+Remediation round 2 has two open gaps, both about non-production debug URL scenarios. Sub-tickets `01`–`05` already have `.passed` markers and were left untouched.
+
+**New sub-ticket**
+
+`/home/matt/workspace/.autogame-worktrees/292-ice-level-and-slippery-floor-physics/tickets/292-ice-level-and-slippery-floor-physics/subtickets/06-align-ice-debug-scenarios-production`
+
+This single ticket closes both review gaps:
+
+1. **`ice-cavern-stage`** — remove or delegate through the full `frost-crossing-tier-1` deploy path (no bare `generateLayout` swap).
+2. **`slippery-floor-lab`** — remove or convert to Frost Crossing deploy with the player on a production `floorSurface: 'slippery'` ice room (no synthetic `slippery-floor-lab` profile).
+
+Verification is `code` (handler structure, scenario registration, test pass), since the criteria are about deploy-path equivalence and handler existence, not pixel-level rendering.

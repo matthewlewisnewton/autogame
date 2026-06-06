@@ -294,7 +294,7 @@ describe('runGameLoopTick()', () => {
 describe('QUEST_DEFS', () => {
 	it('exposes stable quest ids with required metadata', () => {
 		expect(DEFAULT_QUEST_ID).toBe('training_caverns');
-		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'ember_descent', 'endless_siege', 'spire_ascent', 'training_caverns']);
+		expect(Object.keys(QUEST_DEFS).sort()).toEqual(['arena_trials', 'canyon_descent', 'crystal_rescue', 'ember_descent', 'endless_siege', 'frost_crossing', 'spire_ascent', 'training_caverns']);
 
 		for (const [questId, quest] of Object.entries(QUEST_DEFS)) {
 			expect(quest.id).toBe(questId);
@@ -4658,6 +4658,9 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			smokeBombRadius: 0,
 			smokeBombX: 0,
 			smokeBombZ: 0,
+			slowedUntil: 0,
+			slowFactor: 1,
+			burningUntil: 0,
 			cosmetic: { ...DEFAULT_COSMETIC },
 			username: undefined,
 		});

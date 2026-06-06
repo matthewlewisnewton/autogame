@@ -1,0 +1,14 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/291-burning-status-effect-foundation/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/291-burning-status-effect-foundation/game/data
+Server listening on port 3001
+Player connected: socket=01z3i40VUqzZirByAAAB, playerId=7aa56aa6-55a5-46a3-a039-377c35c60ee2
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=tBb1YIPv_nJO6ej2AAAD, playerId=b9ce2d07-9134-413e-aebd-823ec1393481
+[loot] spawned id=2abd4b66-5de2-46d0-8cc3-6ce88a5b275b value=15
+Player disconnected: 01z3i40VUqzZirByAAAB
+Player disconnected: tBb1YIPv_nJO6ej2AAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

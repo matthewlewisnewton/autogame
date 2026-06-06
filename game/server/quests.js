@@ -105,6 +105,23 @@ const QUEST_DEFS = {
       },
     },
   },
+  frost_crossing: {
+    id: 'frost_crossing',
+    enemyPool: [
+      { type: 'grunt', weight: 3 },
+      { type: 'skirmisher', weight: 2 },
+    ],
+    tiers: {
+      1: {
+        name: 'Frost Crossing',
+        description: 'Cross the frozen cavern and purge hostiles from the ice field.',
+        objectiveType: 'defeat_enemies',
+        enemyCount: 6,
+        rewardCurrency: 14,
+        layoutProfile: 'ice-cavern',
+      },
+    },
+  },
   canyon_descent: {
     id: 'canyon_descent',
     enemyPool: [

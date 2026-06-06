@@ -123,6 +123,13 @@ describe('quest tier catalog', () => {
     expect(canyonTier2.objectiveSummary).toContain('canyon warden');
     expect(getQuest('canyon_descent', 2).layoutProfile).toBe('sunken-canyon');
     expect(getQuest('canyon_descent', 2).layoutMode).toBe('rigid');
+    const frostTier1 = variants.find((v) => v.questId === 'frost_crossing' && v.tier === 1);
+    expect(frostTier1).toMatchObject({
+      questId: 'frost_crossing',
+      tier: 1,
+      objectiveType: 'defeat_enemies',
+    });
+    expect(getLayoutProfileForQuest('frost_crossing')).toBe('ice-cavern');
     const emberTier1 = variants.find(
       (v) => v.questId === 'ember_descent' && v.tier === 1
     );
@@ -185,6 +192,10 @@ describe('quest tier catalog', () => {
     expect(getLayoutGenerationOptions('canyon_descent', 2)).toEqual({
       slopes: true,
       layoutMode: 'rigid',
+    });
+    expect(getLayoutGenerationOptions('frost_crossing', 1)).toEqual({
+      slopes: true,
+      layoutMode: 'default',
     });
     expect(getLayoutProfileForQuest('ember_descent')).toBe('fire-cavern');
     expect(getLayoutProfileForQuest('ember_descent', 1)).toBe('fire-cavern');

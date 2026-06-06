@@ -1,0 +1,9 @@
+**Remediation round 2 plan**
+
+Sub-tickets `01`–`03` already have `.passed` markers and were left untouched. Review feedback has **one** open gap: chain hits can apply without a primary full-damage strike when the primary ray misses.
+
+**New sub-ticket created:**
+
+- `/home/matt/workspace/.autogame-worktrees/302-chain-lightning-card/tickets/302-chain-lightning-card/subtickets/04-chain-lightning-primary-required/ticket.md`
+
+It scopes a focused fix in `collectChainLightningHits()` (early return when no primary target) plus a regression test for an enemy near the caster but off the primary ray. Verification mode is `code`. No failed sub-ticket folders needed deletion.

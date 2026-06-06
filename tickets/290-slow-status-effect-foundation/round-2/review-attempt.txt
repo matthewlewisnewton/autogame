@@ -1,0 +1,5 @@
+Wrote the holistic review to `tickets/290-slow-status-effect-foundation/round-2/review.md`.
+
+Verdict is `VERDICT: FAIL` because the new `?debugScenario=slowed-player` shortcut creates a slow state that is not reachable through normal gameplay yet. I also wrote the compact remediation to `tickets/290-slow-status-effect-foundation/round-2/gaps.md`.
+
+No `nits.md` was created.

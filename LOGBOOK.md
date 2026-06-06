@@ -5063,6 +5063,28 @@ Pass. The implementation is narrowly scoped to `game/client/models.js`, `game/cl
 None.
 
 
+## v0.287 — 292-ice-level-and-slippery-floor-physics  (2026-06-06 12:14:08)
+
+### Client visuals and movement feel
+
+PASS. `ice-cavern` has a distinct cold palette in `dungeonTheme.json`; the renderer uses ice-cavern band materials, applies a profile-independent emissive slippery material override for slippery rooms/platforms, and places the treasure marker using sampled floor height. Client prediction was extracted into `movementPrediction.js` and mirrors the server's acceleration/coast/stop behavior, with velocity reset on spawn/layout changes. Client tests cover slippery material rendering and local movement carry/normal-stop behavior.
+
+### Debug scenarios
+
+PASS. The remaining ice/slippery URL shortcuts are gated by the existing localhost/dev debug-scenario mechanism. `frost-crossing-tier-1` is the canonical deploy shortcut and uses the production Frost Crossing path: selected quest/tier, `applyLayoutForQuest`, `enterPlayingPhase`, enemy spawn, and `startDungeonRun`. `slippery-floor-lab` no longer builds a synthetic URL-only lab layout; it deploys Frost Crossing and then positions the player on a real slippery room from that generated layout. The equivalent states remain reachable through normal play by selecting Frost Crossing, deploying, and walking from the stone start onto the ice field.
+
+### Design and foundation consistency
+
+PASS. The work fits the documented dungeon-room/floor-sampling model and preserves the foundation requirements: Three.js rendering still initializes, sockets connect, multiplayer state is present, and movement continues to sync through the server. The new slippery system extends floor metadata without regressing existing normal-floor movement semantics.
+
+### Tests and coverage
+
+PASS. The round-2 coverage run reports `124 passed (124)` test files and `2111 passed (2111)` tests. Relevant ticket suites include `server/test/slippery_floor.test.js`, `server/test/frost_crossing_spawn.test.js`, and `client/test/slippery_movement.test.js`; coverage was reported for visibility with thresholds disabled.
+
+## Remaining gaps
+
+No blocking gaps found.
+
 ## v0.285 — 295-fire-level  (2026-06-06 11:38:30)
 
 
@@ -5080,6 +5102,70 @@ PASS. The implementation stays consistent with the design document's floor-heigh
 
 ### Code quality and validation
 PASS. The changed server/client code is scoped to quest wiring, layout generation, debug shortcuts, fire-cavern render materials, and atmosphere. The coverage log reports the full vitest suite passing: 109 test files and 1895 tests.
+
+## v0.286 — 290-slow-status-effect-foundation  (2026-06-06 12:09:09)
+
+### Helper exposure for future ice systems
+
+PASS. `applySlow` and `isSlowed` are exported from `game/server/simulation.js` and surfaced through `game/server/index.js`, so the future ice enemy and ice card can call the shared foundation helpers directly instead of reimplementing status state.
+
+### Design and foundation requirements
+
+PASS. The implementation is consistent with the design doc's multiplayer action-combat foundation and does not regress the setup requirements: Three.js rendering, WebSocket connection, multiplayer visualization, and WASD movement synchronization are all still demonstrated by the round-3 capture. The SLOW status is server-authoritative, replicated to clients, and does not alter the lobby/dungeon/deck loop.
+
+### Debug scenarios
+
+PASS. The live code does not add a slow debug scenario or any normal-gameplay shortcut for applying slow. The ticket history includes removal of an intermediate slowed-player debug shortcut, and no `?debugScenario=` path remains for this status, so there is no debug-only path masking a missing normal gameplay path.
+
+### Test and coverage evidence
+
+PASS. `coverage.log` reports `108` test files and `1808` tests passing. Focused coverage includes `game/server/test/slow_status.test.js` for helper semantics, player movement scaling, enemy chase scaling, freeze precedence, expiry, and refresh; `game/client/test/local-slow-prediction.test.js` covers local prediction with valid, missing, expired, and invalid slow factors; and existing snapshot expectations now include the player slow fields.
+
+## Remaining gaps
+
+None.
+
+
+## v0.289 — 291-burning-status-effect-foundation  (2026-06-06 13:14:08)
+
+PASS. The implementation is entity-generic and covers players and enemies separately in the server tick pass. Player `burningUntil` is included in the hot state snapshot in `game/server/progression.js`, and enemies are already broadcast as live world objects, so the client receives the status timestamp for both entity classes.
+
+### Burning animation on players and enemies
+
+PASS. `game/client/renderer.js` adds distinct player and enemy burn marker maps, creates a warm additive flame marker, updates it every animation frame while `burningUntil` is active, anchors the local-player marker to predicted local position, anchors remote players/enemies to broadcast positions, and disposes markers on expiry or entity removal. The effect is visually distinct from the existing slow/freeze indicators.
+
+### Server tests
+
+PASS for the burning acceptance coverage. `game/server/test/burning_status.test.js` covers helper state, expiry, reapplication, player/enemy-shaped entities, and null tolerance. `game/server/test/burning_tick_damage.test.js` covers player and enemy periodic damage, expiry, godmode immunity, dead/extracted player skips, refreshed duration, and re-ignition after a gap. The latest `coverage.log` shows both new burning test files passing.
+
+Note: the full coverage run in `coverage.log` has one unrelated existing failure in `server/test/debug-scenarios.test.js` for the `arena-trials` debug scenario expecting an `arena_champion` at 1 HP and receiving 420 HP. This ticket did not add or change debug scenarios and the failing area is outside the burning-status diff, so I am not counting it as a burning-status blocking gap.
+
+### Design and requirements consistency
+
+PASS. The change preserves the documented multiplayer client/server foundation: server state remains authoritative, clients receive status state through snapshots, and rendering remains a Three.js overlay effect. The captured smoke run still satisfies the foundation requirements for scene rendering, WebSocket connectivity, multiplayer visualization, and movement synchronization.
+
+## Remaining gaps
+
+None.
+
+
+## v0.290 — 302-chain-lightning-card  (2026-06-06 13:15:58)
+
+PASS. Client arc rendering is wired from server payload to visual effect. The card effect emits `chainSegments` from caster to primary and each subsequent hop; `cardRenderers.js` registers a Voltaic Chain renderer that spawns a cyan `spawnLightningArc()` for every segment, with a legacy directional fallback. `renderer.js` creates and fades short-lived jagged line arcs, and the client renderer tests assert that chain segments invoke arc rendering instead of the legacy bolt.
+
+PASS. The implementation stays consistent with the design document's active card-combat model: this is a single-use spell with an instant combat effect, consumes Magic Stones through the existing spell branch, uses existing hand validation/cooldown/consumption flow, and does not alter the lobby/dungeon/core loop or foundation requirements.
+
+## Debug scenario review
+
+PASS. The added `chain-lightning-ready` shortcut is reachable only through the existing debug scenario URL/client socket path. The client only requests debug scenarios from localhost-style hosts, and the server rejects production/non-loopback use unless `ALLOW_DEBUG_SCENARIOS=1` is explicitly set.
+
+PASS. The same end state is reachable through normal gameplay: `chain_lightning` is a reward-acquisition card included in the reward rotation, and normal run combat can put the player near multiple enemies in range. The debug setup only makes that state deterministic by putting Voltaic Chain in hand, restoring Magic Stones, and lining up three grunts.
+
+PASS. The scenario does not replace or weaken production validation. It still enters a normal playing phase, uses the regular hand/card structures, and any cast goes through the normal authoritative `useCard` validation, Magic Stone cost, cooldown, card consumption, damage, cleanup, state update, and `cardUsed` broadcast paths.
+
+## Test and coverage review
+
+PASS. The round-2 coverage log shows the full Vitest suite passing: 114 test files and 1971 tests. Relevant ticket coverage includes `server/test/chain_lightning.test.js` with 7 passing tests and `client/test/cardRenderers.test.js` with the new chain segment renderer coverage. Overall coverage is visible at 72.71% statements / 72.68% lines with thresholds disabled.
 
 ## Remaining gaps
 
