@@ -7,6 +7,8 @@ import {
 	spawnIceBall,
 	spawnCombatEnemies,
 	isSlowed,
+	resetTransientRunState,
+	buildWorldSnapshot,
 	ENEMY_DEFS,
 } from '../index.js';
 // Pure layout helpers (no shared module state) — safe to import directly.
@@ -184,6 +186,37 @@ describe('glacial_thrower ice-ball projectile', () => {
 		const ticks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed * dt)) + 2;
 		for (let i = 0; i < ticks; i++) updateEnemyProjectiles();
 		expect(gameState.iceBalls).toHaveLength(0);
+	});
+});
+
+// ── run-exit cleanup clears in-flight ice balls ──
+
+describe('run-exit cleanup clears in-flight ice balls', () => {
+	beforeEach(() => {
+		resetGameState();
+	});
+
+	it('resetTransientRunState() empties iceBalls, so the world snapshot has none', () => {
+		// Seed a live projectile (mirrors what spawnIceBall leaves behind mid-run).
+		gameState.iceBalls.push({
+			id: 'ice-1',
+			ownerId: 'thrower',
+			x: 5,
+			z: 0,
+			dirX: 1,
+			dirZ: 0,
+			traveled: 2,
+		});
+		expect(gameState.iceBalls).toHaveLength(1);
+		// Pre-cleanup the snapshot still carries the stale projectile.
+		expect(buildWorldSnapshot().iceBalls).toHaveLength(1);
+
+		// Run-exit cleanup path (shared by suspend/return-to-lobby/give-up).
+		resetTransientRunState();
+
+		expect(gameState.iceBalls).toEqual([]);
+		// No stale projectiles leak into the broadcast snapshot.
+		expect(buildWorldSnapshot().iceBalls).toEqual([]);
 	});
 });
 

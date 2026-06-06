@@ -2910,6 +2910,7 @@ function resetTransientRunState() {
   _gameState.minions = [];
   _gameState.loot = [];
   _gameState.areaEffects = [];
+  _gameState.iceBalls = [];
   _gameState.telepipe = null;
 }
 
@@ -3343,6 +3344,7 @@ module.exports = {
   applyTelepipeReadyHand,
   stateSnapshot,
   hotStateSnapshot,
+  buildWorldSnapshot,
   isPlayerActive,
   hasActivePlayers,
   captureRunCheckpoint,
