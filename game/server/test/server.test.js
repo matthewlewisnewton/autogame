@@ -4660,6 +4660,7 @@ describe('stateSnapshot() — explicit public snapshot', () => {
 			smokeBombZ: 0,
 			slowedUntil: 0,
 			slowFactor: 1,
+			burningUntil: 0,
 			cosmetic: { ...DEFAULT_COSMETIC },
 			username: undefined,
 		});

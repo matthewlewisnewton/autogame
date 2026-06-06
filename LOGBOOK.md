@@ -5126,6 +5126,29 @@ PASS. `coverage.log` reports `108` test files and `1808` tests passing. Focused 
 None.
 
 
+## v0.289 — 291-burning-status-effect-foundation  (2026-06-06 13:14:08)
+
+PASS. The implementation is entity-generic and covers players and enemies separately in the server tick pass. Player `burningUntil` is included in the hot state snapshot in `game/server/progression.js`, and enemies are already broadcast as live world objects, so the client receives the status timestamp for both entity classes.
+
+### Burning animation on players and enemies
+
+PASS. `game/client/renderer.js` adds distinct player and enemy burn marker maps, creates a warm additive flame marker, updates it every animation frame while `burningUntil` is active, anchors the local-player marker to predicted local position, anchors remote players/enemies to broadcast positions, and disposes markers on expiry or entity removal. The effect is visually distinct from the existing slow/freeze indicators.
+
+### Server tests
+
+PASS for the burning acceptance coverage. `game/server/test/burning_status.test.js` covers helper state, expiry, reapplication, player/enemy-shaped entities, and null tolerance. `game/server/test/burning_tick_damage.test.js` covers player and enemy periodic damage, expiry, godmode immunity, dead/extracted player skips, refreshed duration, and re-ignition after a gap. The latest `coverage.log` shows both new burning test files passing.
+
+Note: the full coverage run in `coverage.log` has one unrelated existing failure in `server/test/debug-scenarios.test.js` for the `arena-trials` debug scenario expecting an `arena_champion` at 1 HP and receiving 420 HP. This ticket did not add or change debug scenarios and the failing area is outside the burning-status diff, so I am not counting it as a burning-status blocking gap.
+
+### Design and requirements consistency
+
+PASS. The change preserves the documented multiplayer client/server foundation: server state remains authoritative, clients receive status state through snapshots, and rendering remains a Three.js overlay effect. The captured smoke run still satisfies the foundation requirements for scene rendering, WebSocket connectivity, multiplayer visualization, and movement synchronization.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.290 — 302-chain-lightning-card  (2026-06-06 13:15:58)
 
 PASS. Client arc rendering is wired from server payload to visual effect. The card effect emits `chainSegments` from caster to primary and each subsequent hop; `cardRenderers.js` registers a Voltaic Chain renderer that spawns a cyan `spawnLightningArc()` for every segment, with a legacy directional fallback. `renderer.js` creates and fades short-lived jagged line arcs, and the client renderer tests assert that chain segments invoke arc rendering instead of the legacy bolt.

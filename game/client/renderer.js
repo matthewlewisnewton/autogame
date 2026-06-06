@@ -111,6 +111,8 @@ const variantMarkerMeshes = {}; // enemy id → floating badge for variant ("eli
 const frenziedTelegraphMeshes = {}; // enemy id → pulsing red ring (pre-enrage telegraph)
 const enemySlowMarkers = {}; // enemy id → icy ground ring shown while slowed
 const playerSlowMarkers = {}; // player id → icy ground ring shown while slowed
+const enemyBurnMarkers = {}; // enemy id → flickering flame shown while burning
+const playerBurnMarkers = {}; // player id → flickering flame shown while burning
 
 // phase_step ally targeting: nearest in-range ally id (or null) recomputed each
 // frame, plus the ground ring that highlights it. Read by main.js via
@@ -3336,6 +3338,93 @@ function applySlowIndicator(markerMap, id, entity) {
 	}
 }
 
+// ── Burning status indicator ──
+
+// Warm fire palette (orange shell + bright yellow core), deliberately the
+// opposite end of the spectrum from the icy cool-blue slow ring and the pale
+// freeze visuals so a burning entity reads instantly and is never confused with
+// "slowed" or "frozen".
+
+/**
+ * Create an attached flame for a burning entity: two stacked additive cones
+ * (an orange outer shell and a brighter yellow inner core) that rise from the
+ * entity's feet. Returned as a group so the per-frame flicker can scale the two
+ * cones independently. The warm colour keeps it distinct from the icy slow ring.
+ * @returns {THREE.Group}
+ */
+function createBurnMarker() {
+	const group = new THREE.Group();
+	// Outer shell — broad, deeper orange, semi-transparent.
+	const outer = new THREE.Mesh(
+		new THREE.ConeGeometry(0.45, 1.3, 12, 1, true),
+		new THREE.MeshBasicMaterial({
+			color: 0xff5a1e,
+			transparent: true,
+			opacity: 0.6,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		}),
+	);
+	outer.position.y = 0.65;
+	group.add(outer);
+	// Inner core — narrower, brighter yellow so the flame has a hot centre.
+	const inner = new THREE.Mesh(
+		new THREE.ConeGeometry(0.25, 0.85, 12, 1, true),
+		new THREE.MeshBasicMaterial({
+			color: 0xffd24a,
+			transparent: true,
+			opacity: 0.8,
+			side: THREE.DoubleSide,
+			depthWrite: false,
+			blending: THREE.AdditiveBlending,
+		}),
+	);
+	inner.position.y = 0.45;
+	group.add(inner);
+	group.userData.outer = outer;
+	group.userData.inner = inner;
+	return group;
+}
+
+/**
+ * Show or hide the burning flame for an entity (player or enemy). Driven by
+ * `burningUntil`: while it is in the future a flickering flame is shown at the
+ * entity's feet; once it passes (or the entity is gone) the flame is disposed so
+ * nothing stays stuck on screen. The flicker (fast scale/opacity variation on
+ * both cones, plus a slow spin) makes the fire read as alive rather than a
+ * static sprite, and contrasts with the slow ring's gentle ~1 Hz pulse.
+ * @param {Object} markerMap - per-entity marker map (enemyBurnMarkers / playerBurnMarkers)
+ * @param {string} id - entity id
+ * @param {object} entity - { burningUntil, x, z }
+ */
+function applyBurnIndicator(markerMap, id, entity) {
+	const now = Date.now();
+	const burning = entity && entity.burningUntil && now < entity.burningUntil;
+
+	if (burning) {
+		if (!markerMap[id]) {
+			markerMap[id] = createBurnMarker();
+			scene.add(markerMap[id]);
+		}
+		const marker = markerMap[id];
+		marker.position.set(entity.x, GROUND_OVERLAY_Y, entity.z);
+		// Two out-of-phase fast flickers (~4 Hz / ~6 Hz) drive the cones'
+		// height and opacity so the flame jitters like real fire.
+		const flickerA = 0.5 + 0.5 * Math.sin((now % 250) / 250 * Math.PI * 2);
+		const flickerB = 0.5 + 0.5 * Math.sin((now % 170) / 170 * Math.PI * 2);
+		const { outer, inner } = marker.userData;
+		outer.scale.set(1, 0.85 + flickerA * 0.4, 1);
+		outer.material.opacity = 0.45 + flickerA * 0.35;
+		inner.scale.set(1, 0.8 + flickerB * 0.5, 1);
+		inner.material.opacity = 0.6 + flickerB * 0.35;
+		// Slow spin so the flame shimmers instead of sitting flat.
+		marker.rotation.y = (now % 2000) / 2000 * Math.PI * 2;
+	} else if (markerMap[id]) {
+		disposeOne(markerMap, id, scene);
+	}
+}
+
 // ── Attack visual effects ──
 
 // Room floors are 0.1-tall boxes centered at FLOOR_Y (top ≈ FLOOR_Y + 0.05).
@@ -4699,6 +4788,19 @@ export function animate(timestamp) {
 				applySlowIndicator(playerSlowMarkers, id, pData);
 			}
 
+			// Burning flame (local + remote) — driven by the broadcast burningUntil.
+			// Local player anchors to the predicted myX/myZ like the slow ring so
+			// the flame tracks the avatar; remote players use broadcast x/z.
+			if (id === myId) {
+				applyBurnIndicator(playerBurnMarkers, id, {
+					burningUntil: pData.burningUntil,
+					x: myX,
+					z: myZ,
+				});
+			} else {
+				applyBurnIndicator(playerBurnMarkers, id, pData);
+			}
+
 			if (id === myId) continue;
 
 			const body = playersMeshes[id].userData.bodyMesh;
@@ -4846,6 +4948,13 @@ export function animate(timestamp) {
 		for (const id of Object.keys(playerSlowMarkers)) {
 			if (!gs.players[id]) {
 				disposeOne(playerSlowMarkers, id, scene);
+			}
+		}
+
+		// ── Clean up burn markers for players who left ──
+		for (const id of Object.keys(playerBurnMarkers)) {
+			if (!gs.players[id]) {
+				disposeOne(playerBurnMarkers, id, scene);
 			}
 		}
 
@@ -5038,6 +5147,9 @@ export function animate(timestamp) {
 
 			// ── Slow status ring (driven by the broadcast slowedUntil) ──
 			applySlowIndicator(enemySlowMarkers, enemy.id, enemy);
+
+			// ── Burning flame (driven by the broadcast burningUntil) ──
+			applyBurnIndicator(enemyBurnMarkers, enemy.id, enemy);
 		}
 
 		// Clean up removed enemies
@@ -5049,6 +5161,7 @@ export function animate(timestamp) {
 		disposeStaleMeshes(variantMarkerMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(frenziedTelegraphMeshes, currentEnemyIds, scene);
 		disposeStaleMeshes(enemySlowMarkers, currentEnemyIds, scene);
+		disposeStaleMeshes(enemyBurnMarkers, currentEnemyIds, scene);
 		for (const id of Object.keys(previousEnemyHp)) {
 			if (!currentEnemyIds.has(id)) {
 				delete previousEnemyHp[id];
