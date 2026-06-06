@@ -108,6 +108,7 @@ import {
 	io as serverIo,
 	STALE_THRESHOLD,
 	MAX_MAGIC_STONES,
+	MAX_HP,
 	STARTING_MAGIC_STONES,
 	MAGIC_STONES_REGEN_PER_TICK,
 	DETECTION_RADIUS,
@@ -3482,6 +3483,36 @@ describe('run state', () => {
 			expect(gameState.players['p1'].currency).toBe(75);
 			expect(gameState.players['p1'].currencyEarnedThisRun).toBe(0);
 			expect(gameState.players['p1'].ready).toBe(false);
+		});
+	});
+
+	describe('buildPlayerRecord()', () => {
+		it('uses MAX_HP and STARTING_MAGIC_STONES for brand-new players', () => {
+			const player = buildPlayerRecord('p-new', 'acct-new', 'newbie', null);
+			expect(player.hp).toBe(MAX_HP);
+			expect(player.dead).toBe(false);
+			expect(player.magicStones).toBe(STARTING_MAGIC_STONES);
+		});
+
+		it('restores partial hp and magicStones from savedData without full-healing', () => {
+			const player = buildPlayerRecord('p-saved', 'acct-saved', 'veteran', {
+				hp: 40,
+				magicStones: 15,
+				currency: 10,
+			});
+			expect(player.hp).toBe(40);
+			expect(player.dead).toBe(false);
+			expect(player.magicStones).toBe(15);
+		});
+
+		it('preserves dead state when saved hp is zero', () => {
+			const player = buildPlayerRecord('p-dead', 'acct-dead', 'ghost', {
+				hp: 0,
+				magicStones: 3,
+			});
+			expect(player.hp).toBe(0);
+			expect(player.dead).toBe(true);
+			expect(player.magicStones).toBe(3);
 		});
 	});
 

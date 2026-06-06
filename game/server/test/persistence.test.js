@@ -16,6 +16,7 @@ import {
 import { StorageProvider } from '../storage.js';
 import { InMemoryProvider, FileProvider } from '../providers.js';
 import * as configMod from '../config.js';
+const { MAX_HP, STARTING_MAGIC_STONES } = configMod;
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -221,6 +222,8 @@ describe('extractPersistentData', () => {
 			z: 7,
 			rotation: 1.57,
 		});
+		expect(data.hp).toBe(100);
+		expect(data.magicStones).toBe(STARTING_MAGIC_STONES);
 	});
 
 	it('returns defaults for missing fields', () => {
@@ -236,9 +239,11 @@ describe('extractPersistentData', () => {
 			z: 0,
 			rotation: 0,
 		});
+		expect(data.hp).toBe(MAX_HP);
+		expect(data.magicStones).toBe(STARTING_MAGIC_STONES);
 	});
 
-	it('does not include transient fields (hp, dead, ready, hand, deck)', () => {
+	it('includes hp and magicStones but excludes run-transient fields (dead, ready, hand, deck)', () => {
 		const player = {
 			x: 5,
 			y: 0.5,
@@ -248,6 +253,7 @@ describe('extractPersistentData', () => {
 			ownedCards: { iron_sword: 1 },
 			selectedDeck: ['iron_sword'],
 			hp: 50,
+			magicStones: 15,
 			dead: false,
 			ready: true,
 			hand: [{ id: 'iron_sword' }],
@@ -267,7 +273,8 @@ describe('extractPersistentData', () => {
 			z: 10,
 			rotation: 0,
 		});
-		expect(data).not.toHaveProperty('hp');
+		expect(data.hp).toBe(50);
+		expect(data.magicStones).toBe(15);
 		expect(data).not.toHaveProperty('dead');
 		expect(data).not.toHaveProperty('ready');
 		expect(data).not.toHaveProperty('hand');
@@ -317,7 +324,7 @@ describe('savePlayerData', () => {
 		});
 	});
 
-	it('saves only persistent fields (excludes hp, dead, hand, etc.)', () => {
+	it('saves persistent fields including hp and magicStones (excludes dead, hand, etc.)', () => {
 		const player = {
 			x: 0,
 			y: 0.5,
@@ -347,8 +354,10 @@ describe('savePlayerData', () => {
 			ownedCards: { flame_blade: 2 },
 			selectedDeck: ['flame_blade', 'battle_familiar'],
 		});
-		expect(loaded).not.toHaveProperty('hp');
+		expect(loaded.hp).toBe(80);
+		expect(loaded.magicStones).toBe(100);
 		expect(loaded).not.toHaveProperty('hand');
+		expect(loaded).not.toHaveProperty('dead');
 	});
 
 	it('does nothing when player does not exist in gameState', () => {

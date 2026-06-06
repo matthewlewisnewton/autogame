@@ -5059,14 +5059,50 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 
 		const restoredPlayer = testGameState().players[player2Id];
 		expect(restoredPlayer.slotCooldowns).toEqual(new Array(MAX_HAND_SLOTS).fill(null));
-		// Cold reconnect after eviction rebuilds via buildPlayerRecord (STARTING), not initializePlayerForActiveRun reset.
-		expect(restoredPlayer.magicStones).toBe(STARTING_MAGIC_STONES);
+		expect(restoredPlayer.magicStones).not.toBe(STARTING_MAGIC_STONES);
+		expect(restoredPlayer.magicStones).toBeCloseTo(0, 1);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();
 	});
 
-	it('resets HP and dead flag when reconnecting as dead player during active run', async () => {
+	it('preserves partial HP and magic stones on cold reconnect after eviction', async () => {
+		const c1 = await connectClient(baseUrl);
+		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
+
+		const startGamePromise1 = waitForEvent(c1.socket, 'startGame');
+		const startGamePromise2 = waitForEvent(c2.socket, 'startGame');
+		c1.socket.emit('playerReady', true);
+		c2.socket.emit('playerReady', true);
+		await Promise.all([startGamePromise1, startGamePromise2]);
+		await waitForEvent(c1.socket, 'stateUpdate');
+
+		const player2Id = c2.socket._playerId;
+		const player2 = testGameState().players[player2Id];
+		player2.hp = 40;
+		player2.dead = false;
+		player2.magicStones = 15;
+
+		savePlayerInPrimaryLobby(player2Id);
+
+		c2.socket.disconnect();
+		await sleep(100);
+
+		forceEvictGracePeriodPlayers(c1.lobbyId);
+
+		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
+
+		const restoredPlayer = testGameState().players[player2Id];
+		expect(restoredPlayer.hp).toBe(40);
+		expect(restoredPlayer.dead).toBe(false);
+		expect(restoredPlayer.magicStones).not.toBe(STARTING_MAGIC_STONES);
+		expect(restoredPlayer.magicStones).toBeCloseTo(15, 1);
+
+		c1.socket.disconnect();
+		c2Reconnect.socket.disconnect();
+	});
+
+	it('preserves dead state and zero HP when reconnecting as dead player during active run', async () => {
 		// --- Connect two players and start a run ---
 		const c1 = await connectClient(baseUrl);
 		const c2 = await connectClient(baseUrl, undefined, { joinLobbyId: c1.lobbyId });
@@ -5096,8 +5132,8 @@ describe('Initialize Combat Hand on Active-Run Reconnect', () => {
 		const c2Reconnect = await reconnectClient(baseUrl, player2Id, c1.lobbyId);
 
 		const restoredPlayer = testGameState().players[player2Id];
-		expect(restoredPlayer.hp).toBe(100); // MAX_HP
-		expect(restoredPlayer.dead).toBe(false);
+		expect(restoredPlayer.hp).toBe(0);
+		expect(restoredPlayer.dead).toBe(true);
 
 		c1.socket.disconnect();
 		c2Reconnect.socket.disconnect();

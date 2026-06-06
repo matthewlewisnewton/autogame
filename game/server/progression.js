@@ -863,7 +863,9 @@ function extractPersistentData(player) {
     y: player.y || 0.5,
     z: player.z || 0,
     rotation: player.rotation || 0,
-    equippedKeyItemId: player.equippedKeyItemId || 'dodge_roll'
+    equippedKeyItemId: player.equippedKeyItemId || 'dodge_roll',
+    hp: player.hp ?? MAX_HP,
+    magicStones: player.magicStones ?? STARTING_MAGIC_STONES,
   };
 }
 
