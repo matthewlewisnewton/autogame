@@ -4124,6 +4124,74 @@ export function spawnDivineGraceEffect(origin, radius) {
 	});
 }
 
+const PURIFYING_HEAL_COLOR = 0x6ee7b7;
+const PURIFYING_HEAL_EMISSIVE = 0x34d399;
+const CLEANSE_BURST_COLOR = 0xffffff;
+const CLEANSE_BURST_EMISSIVE = 0x5eead4;
+const CLEANSE_BURST_SPARK_COUNT = 10;
+const CLEANSE_BURST_SPARK_SPREAD = 1.2;
+const CLEANSE_BURST_SPARK_DURATION = 450;
+
+/**
+ * Mint-green expanding heal ring for Purifying Pulse (distinct from Divine Grace gold).
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnPurifyingPulseHealRing(origin, radius) {
+	const geometry = new THREE.RingGeometry(0.1, 0.5, 32);
+	const material = new THREE.MeshStandardMaterial({
+		color: PURIFYING_HEAL_COLOR,
+		emissive: PURIFYING_HEAL_EMISSIVE,
+		emissiveIntensity: 1.2,
+		transparent: true,
+		opacity: 1.0,
+		side: THREE.DoubleSide,
+		depthWrite: false,
+	});
+	const mesh = new THREE.Mesh(geometry, material);
+	mesh.position.set(origin.x, 0.1, origin.z);
+	mesh.rotation.x = -Math.PI / 2;
+	mesh.scale.setScalar(0.001);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(mesh);
+
+	activeEffects.push({
+		mesh,
+		origin: { x: origin.x, z: origin.z },
+		radius,
+		createdAt: performance.now(),
+		duration: SUMMON_EFFECT_DURATION,
+	});
+}
+
+/**
+ * Brief white/teal upward sparkle burst for the cleanse half of Purifying Pulse.
+ * @param {object} origin - { x, z }
+ */
+export function spawnCleanseBurstEffect(origin) {
+	if (!origin) return;
+	spawnHitSpark(
+		{ x: origin.x, y: 0.35, z: origin.z },
+		{
+			color: CLEANSE_BURST_COLOR,
+			emissive: CLEANSE_BURST_EMISSIVE,
+			count: CLEANSE_BURST_SPARK_COUNT,
+			spread: CLEANSE_BURST_SPARK_SPREAD,
+			duration: CLEANSE_BURST_SPARK_DURATION,
+		},
+	);
+}
+
+/**
+ * Purifying Pulse: mint heal ring plus a white/teal cleanse sparkle burst.
+ * @param {object} origin - { x, z }
+ * @param {number} radius
+ */
+export function spawnPurifyingPulseEffect(origin, radius) {
+	spawnPurifyingPulseHealRing(origin, radius);
+	spawnCleanseBurstEffect(origin);
+}
+
 export function spawnFireTrailEffect(origin, direction, style = {}) {
 	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
 	if (!targetScene) return;

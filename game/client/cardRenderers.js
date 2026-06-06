@@ -14,6 +14,9 @@
 //   spawnAttackEffect(origin, direction, style?)
 //   spawnSummonEffect(origin, radius, styleOrColor?)
 //   spawnDivineGraceEffect(origin, radius)
+//   spawnPurifyingPulseHealRing(origin, radius)
+//   spawnCleanseBurstEffect(origin)
+//   spawnPurifyingPulseEffect(origin, radius)
 //   spawnInfernoPillarEffect(origin, radius)
 //   spawnChainLightningEffect(origin, direction)
 //   spawnLightningArc(from, to, style?)
@@ -120,6 +123,17 @@ function renderDivineGrace(data, ctx) {
 	if (data.radius === undefined) return;
 	ctx.spawnDivineGraceEffect(originOf(data), data.radius);
 	if (data.magicStonesGained > 0) ctx.playSound('loot');
+}
+
+/**
+ * Purifying Pulse: mint AoE heal ring plus a white/teal cleanse sparkle burst.
+ */
+function renderPurifyingPulse(data, ctx) {
+	if (data.radius === undefined) return;
+	const origin = originOf(data);
+	ctx.spawnPurifyingPulseHealRing(origin, data.radius);
+	ctx.spawnCleanseBurstEffect(origin);
+	ctx.playSound('heal');
 }
 
 /**
@@ -294,6 +308,7 @@ const CARD_RENDERERS = {
 	chain_lightning: renderChainLightningArcs,
 	glacier_collapse: renderGlacierCollapse,
 	divine_grace: renderDivineGrace,
+	purifying_pulse: renderPurifyingPulse,
 	event_horizon: renderEventHorizon,
 	inferno_pillar: [renderInfernoPillar, renderGenericSpellBurst],
 	telepipe: renderTelepipe,
