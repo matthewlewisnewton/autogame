@@ -1112,6 +1112,11 @@ function isEnemyFrozen(enemy) {
 function applySlow(entity, durationMs, factor) {
   if (!entity) return;
   const now = Date.now();
+  // BURNING and SLOW are mutually exclusive (fire vs ice): applying slow
+  // extinguishes any active/lingering burn first, and resets its tick clock so
+  // a later re-ignition does not dump a burst of catch-up damage ticks.
+  entity.burningUntil = 0;
+  entity.lastBurnTickAt = null;
   // Re-application REFRESHES: never shorten an existing longer slow.
   entity.slowedUntil = Math.max(entity.slowedUntil || 0, now + durationMs);
   // Clamp factor to (0, 1]; default to 0.5 when omitted or invalid.
@@ -1139,6 +1144,10 @@ const BURN_EXTRA_FIRE_DAMAGE = 1;
 function applyBurning(entity, durationMs) {
   if (!entity) return;
   const now = Date.now();
+  // BURNING and SLOW are mutually exclusive (fire vs ice): igniting clears any
+  // active/lingering slow first so isSlowed(entity) becomes false. Leaving
+  // slowFactor is harmless since isSlowed gates solely on slowedUntil.
+  entity.slowedUntil = 0;
   // Re-application REFRESHES: never shorten an existing longer burn, and never
   // stack additively — just extend to the later expiry.
   entity.burningUntil = Math.max(entity.burningUntil || 0, now + durationMs);
