@@ -5020,3 +5020,26 @@ PASS. The harness preset changes are narrow and preserve the existing Rooms defa
 
 None.
 
+
+## v0.284 — 284-distinct-stage-boss-visual-identity  (2026-06-06 06:37:26)
+
+### Boss identity is preserved in real encounters
+
+Pass. Quest metadata maps tier-2 stage-boss encounters to the expected boss types: training caverns uses `annex_overseer`, arena trials uses `arena_champion`, canyon descent uses `miniboss`, and spire ascent uses `spire_warden`. Stage-boss spawning filters adds with `entry.type !== 'miniboss' && entry.type !== bossType`, so the Canyon boss is not spawned alongside same-type miniboss adds in its boss encounter.
+
+### Consistency with design and requirements
+
+Pass. The change is visual-only and aligns with `game/docs/design.md` stage-boss identity without changing boss HP, combat stats, objective wiring, movement, multiplayer, or client/server connectivity. The captured smoke run confirms the foundational rendering, socket connection, player presence, and movement loop remain intact.
+
+### Debug scenarios
+
+Pass. This ticket did not add or modify `?debugScenario=...` entry points. Existing debug scenarios are outside this ticket's diff.
+
+### Code quality and validation
+
+Pass. The implementation is narrowly scoped to `game/client/models.js`, `game/client/renderer.js`, and tests. The model fallback path is robust because null registry entries skip glTF loading and keep procedural geometry visible. The provided coverage run passed: 25 test files and 315 tests passed. Coverage visibility for changed files was present, with no thresholds enabled.
+
+## Remaining gaps
+
+None.
+

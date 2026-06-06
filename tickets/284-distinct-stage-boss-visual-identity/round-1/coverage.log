@@ -1,0 +1,518 @@
+
+ RUN  v3.2.4 /home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game
+      Coverage enabled with v8
+
+ ✓ |client-glb| client/test/playerModel.test.js (5 tests) 96ms
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > lobby hub layout builds local avatar whose cosmeticKey matches non-default cosmetic
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > resolves null for a missing path without throwing
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:101:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:104:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stderr | client/test/models-registry.test.js > loadModel() resilience > caches failure so the same missing path is not re-fetched
+[models] failed to load model "/models/__missing__.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:109:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+    at new Promise (<anonymous>)
+    at Module.loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:112:9
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:26
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:1897:20
+
+stdout | client/test/renderer-clock.test.js > renderer animation loop clock > uses THREE.Clock.getDelta without requiring a clock.update method
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > createEnemyShieldBarMesh uses cyan above the enemy half-height
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > playing quest layout builds the same avatar with cosmetic applied after mocked glTF load
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > updateEnemyShieldBarMesh scales by shieldHp / maxShieldHp
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > seats the equipped prop on the avatar and tracks the shown id
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stderr | client/test/keyItemProp.test.js > createPlayerAvatar key-item prop > adds no prop for an unequipped/none key item
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/keyItemProp.test.js:50:36
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stdout | client/test/questBooth.test.js > quest booth booth:action hook (main.js) > reveals and scrolls the quest panel into view for boothId quest in lobby and ignores other booths
+[launchBooth] ready-up via booth
+
+stderr | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > builds meshes for local and remote lobby players
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4391:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4391:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/hub-presence-avatars.test.js:187:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+ ✓ |client| client/test/settings-effects.test.js (2 tests) 139ms
+stderr | client/test/boothPrompt.test.js > booth interaction prompt > shows the prompt on zone enter and hides it on exit
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at Module.animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4391:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/boothPrompt.test.js:76:12 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createPlayerAvatar keeps procedural visible when the model fails to load
+[models] failed to load model "/models/player.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:166:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at Module.createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:169:18
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/models-registry.test.js > registry attach fallback (renderer) > createEnemyMesh keeps procedural visible when loadModel resolves null
+[models] failed to load model "/models/grunt.glb": Error: 404
+    at t.<anonymous> [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:183:12[90m)[39m
+    at t.mockCall [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+spy@3.2.4/node_modules/[4m@vitest[24m/spy/dist/index.js:96:15[90m)[39m
+    at t.spy [as load] [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/tinyspy@4.0.4/node_modules/[4mtinyspy[24m/dist/index.js:47:80[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+    at new Promise (<anonymous>)
+    at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at Module.createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/models-registry.test.js:186:16
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:155:11
+
+stderr | client/test/renderer-loot.test.js > renderer loot helpers > getPickedUpLootIds reflects lootPickupAttempts after walk-over pickup
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4391:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/renderer-loot.test.js:44:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-registry-normalize.test.js (13 tests) 7ms
+stderr | client/test/hub-lobby-render.test.js > hub lobby render > renders the hub during the lobby and spawns the local avatar on the hub floor
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4391:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/hub-lobby-render.test.js:74:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > resetAtmosphere restores default background and removes fog
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-variant.test.js > warded variant visuals > createEnemyMesh stores _origColor from the type palette
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/renderer-variant.test.js:29:16
+[90m    at processTicksAndRejections (node:internal/process/task_queues:105:5)[39m {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+ ✓ |client| client/test/renderer-clock.test.js (1 test) 200ms
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/keyItemProp.test.js (7 tests) 64ms
+stdout | client/test/avatar-cosmetic-render.test.js > avatar cosmetic render (hub + in-run) > rebuilds avatar when cosmetic changes between animate() calls
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/renderer-shield-bar.test.js > enemy shield bar > animate sync creates, updates, and disposes shield bars from game state
+[renderer] failed to apply model "/models/player.glb" for "player": TypeError: Failed to parse URL from /models/player.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createPlayerAvatar [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2068:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4391:20[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/renderer-shield-bar.test.js:75:3 {
+  [cause]: TypeError: Invalid URL: /models/player.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4568:18[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/renderer-shield-bar.test.js:75:3 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at animate [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:4568:18[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/renderer-shield-bar.test.js:75:3 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+ ✓ |client| client/test/models-registry.test.js (10 tests) 114ms
+ ✓ |client| client/test/deck-viewer.test.js (21 tests) 194ms
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > hides the prompt when the rendered scene is not the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > moves the remote mesh when hub presence coordinates change
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/hub-lobby-render.test.js > hub lobby render > rebuilds to the quest layout on deploy, moving the avatar off the hub
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected shows "+N MS" for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boss-encounter-hud-wiring.test.js (6 tests) 254ms
+stdout | client/test/spire-atmosphere.test.js > spire-ascent atmosphere > rebuildDungeonLayout re-inits spire atmosphere when swapping layouts
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-shield-bar.test.js > enemy shield bar > does not create a shield bar when shieldHp is absent or zero
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/hub-lobby-render.test.js (2 tests) 329ms
+stdout | client/test/boothPrompt.test.js > booth interaction prompt > emits boothInteract for the in-range booth and nothing when out of range
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-shield-bar.test.js (4 tests) 568ms
+stdout | client/test/renderer-variant.test.js > warded variant visuals > applyVariantMarker uses per-variant badge colors on the marker mesh
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > markLootCollected plays loot SFX only for magic stone pickups
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/spire-atmosphere.test.js (4 tests) 533ms
+ ✓ |client| client/test/avatar-cosmetic-render.test.js (3 tests) 406ms
+ ✓ |client| client/test/avatar-cosmetic.test.js (11 tests) 323ms
+ ✓ |client| client/test/boothPrompt.test.js (5 tests) 480ms
+stdout | client/test/renderer-loot.test.js > renderer loot helpers > updateCollectingLoot disposes cloned loot materials when animation finishes
+[initScene] Initializing Three.js scene...
+
+stdout | client/test/key-item-dodge.test.js > dash VFX > triggerDashVFX applies squash scale when a player mesh exists
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/boothDeck.test.js (4 tests) 554ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence sequence updates remote mesh position and cosmeticKey
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/renderer-loot.test.js (4 tests) 592ms
+ ✓ |client| client/test/renderer-variant.test.js (6 tests) 616ms
+stdout | client/test/hub-presence-avatars.test.js > hub presence avatars (lobby) > applyHubPresence removedPlayerIds disposes remote avatar mesh
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/debug-hatswap-hook.test.js (3 tests) 681ms
+ ✓ |client| client/test/hub-presence-avatars.test.js (4 tests) 815ms
+   ✓ hub presence avatars (lobby) > builds meshes for local and remote lobby players  353ms
+ ✓ |client| client/test/key-item-dodge.test.js (4 tests) 794ms
+   ✓ key item cooldown HUD > updateKeyItemCooldownHud toggles cooldown class and countdown text  328ms
+ ✓ |client| client/test/boothShop.test.js (5 tests) 853ms
+   ✓ shop booth via booth:action > opens the card shop when booth:action targets the shop booth  395ms
+stdout | client/test/debug-godmode.test.js > debug godmode toggle (main.js) > mirrors debugGodmode onto local player when toggle succeeds
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+[debugGodmode] enabled
+
+ ✓ |client| client/test/debug-godmode.test.js (6 tests) 867ms
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > auto-opens once after hub lobby entry on localhost with ?booth=character
+[initScene] Initializing Three.js scene...
+
+ ✓ |client| client/test/questBooth.test.js (16 tests) 1048ms
+stdout | client/test/main.test.js > cardError handler — server hand rejection > shows a toast when the server rejects an unauthorized card use
+[cardError] Card not in hand
+
+stdout | client/test/characterBooth.test.js > character booth ?booth=character debug hook (main.js) > stays closed without the booth URL param
+[initScene] Initializing Three.js scene...
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a red cone for grunt (default) type
+[renderer] failed to apply model "/models/grunt.glb" for "grunt": TypeError: Failed to parse URL from /models/grunt.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/main.test.js:2259:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/grunt.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates an orange cone for skirmisher type
+[renderer] failed to apply model "/models/skirmisher.glb" for "skirmisher": TypeError: Failed to parse URL from /models/skirmisher.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/main.test.js:2271:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/skirmisher.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a teal octahedron for spawner type
+[renderer] failed to apply model "/models/spawner.glb" for "spawner": TypeError: Failed to parse URL from /models/spawner.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/main.test.js:2281:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/spawner.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+stderr | client/test/main.test.js > createEnemyMesh() > creates a purple cone for miniboss type
+[renderer] failed to apply model "/models/miniboss.glb" for "miniboss": TypeError: Failed to parse URL from /models/miniboss.glb
+[90m    at new Request (node:internal/deps/undici/undici:9588:19)[39m
+    at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+[90m    ... 4 lines matching cause stack trace ...[39m
+    at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+    at createEnemyMesh [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:2790:2[90m)[39m
+    at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/test/main.test.js:2294:23
+    at [90mfile:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/@vitest+runner@3.2.4/node_modules/[4m@vitest[24m/runner/dist/chunk-hooks.js:752:20 {
+  [cause]: TypeError: Invalid URL: /models/miniboss.glb
+      at new URLImpl [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL-impl.js:20:13[90m)[39m
+      at Object.exports.setup [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:54:12[90m)[39m
+      at new URL [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/whatwg-url@14.2.0/node_modules/[4mwhatwg-url[24m/lib/URL.js:115:22[90m)[39m
+  [90m    at new Request (node:internal/deps/undici/undici:9586:25)[39m
+      at FileLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/build/three.core.js:44150:15[90m)[39m
+      at GLTFLoader.load [90m(file:///home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mnode_modules/[4m.pnpm[24m/three@0.184.0/node_modules/[4mthree[24m/examples/jsm/loaders/GLTFLoader.js:319:10[90m)[39m
+      at [90m/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:87:11
+      at new Promise (<anonymous>)
+      at loadModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/models.js:78:11[90m)[39m
+      at attachRegistryModel [90m(/home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/[39mclient/renderer.js:517:11[90m)[39m
+}
+
+ ✓ |client| client/test/characterBooth.test.js (13 tests) 1036ms
+ ✓ |client| client/test/main.test.js (156 tests) 1661ms
+
+ Test Files  25 passed (25)
+      Tests  315 passed (315)
+   Start at  06:35:26
+   Duration  3.68s (transform 790ms, setup 862ms, collect 2.49s, tests 13.22s, environment 12.87s, prepare 4.41s)
+
+ % Coverage report from v8
+--------------|---------|----------|---------|---------|------------------------
+File          | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s      
+--------------|---------|----------|---------|---------|------------------------
+All files     |   55.64 |    65.95 |   45.16 |   55.64 |                        
+ cards.js     |   78.15 |    63.33 |   77.77 |   78.15 | ...107,116-130,227-244 
+ collision.js |   29.14 |      100 |    12.5 |   29.14 | ...228,234-242,248-253 
+ delta.js     |     100 |       50 |     100 |     100 | 12                     
+ hand.js      |   51.25 |    63.63 |   38.46 |   51.25 | ...140,156-157,160-163 
+--------------|---------|----------|---------|---------|------------------------
