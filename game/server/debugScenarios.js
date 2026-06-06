@@ -849,6 +849,56 @@ function applyDebugScenario(socket, name) {
       };
     }
 
+    if (name === 'fire-cavern') {
+      // ember_descent Tier 1 with fire-cavern layout and rim spawn.
+      // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
+      // snapshots the correct run.questTier/objective and spawnEnemy variant rolls.
+      // Reachable normally by selecting Ember Descent tier 1 and deploying;
+      // this scenario is a shortcut into that state.
+      const questId = 'ember_descent';
+      const tier = 1;
+      state.selectedQuestId = questId;
+      state.selectedQuestTier = tier;
+      applyLayoutForQuest(state, questId, tier);
+
+      player.ready = true;
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const rimSpawn = firstRoomPosition();
+      player.x = rimSpawn.x;
+      player.z = rimSpawn.z;
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+
+      enterPlayingPhase(lobby);
+
+      if (state.gamePhase === 'playing' && (!player.hand || player.hand.length === 0)) {
+        createDrawDeckFromSelectedDeck(player);
+        initPlayerHand(player);
+        player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+        if (!player.pendingSummons) {
+          player.pendingSummons = new Set();
+        }
+      }
+
+      state.enemies = [];
+      state.loot = [];
+      delete state.run;
+      delete state._pendingEncounterBossId;
+      spawnEnemies();
+      startDungeonRun();
+
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+      broadcastLobbyUpdate(lobby);
+      io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+      return {
+        ok: true,
+        scenario: name,
+      };
+    }
+
     if (name === 'canyon-descent-tier-2') {
       // canyon_descent Tier 2 with rigid sunken-canyon layout and band-aware spawns.
       // Quest/tier and layout must be set before enterPlayingPhase so startDungeonRun
@@ -1748,6 +1798,27 @@ function applyDebugScenario(socket, name) {
       const seed = state.layoutSeed || 42;
       state.layoutSeed = seed;
       state.layout = generateLayout(seed, 'sunken-canyon');
+      state.dungeonBounds = computeDungeonBounds(state.layout);
+      state.walkableAABBs = computeWalkableAABBs(state.layout);
+      rebuildWallColliders();
+      const startRoom = state.layout.rooms.find(r => r.role === 'start');
+      if (startRoom) {
+        player.x = startRoom.x;
+        player.z = startRoom.z;
+      }
+      player.y = resolveFloorY(sampleFloorY(state.layout, player.x, player.z));
+      emitLobbyQuestUpdate(lobby, state, {
+        layoutSeed: state.layoutSeed,
+        layout: state.layout,
+      });
+    } else if (name === 'fire-cavern-stage') {
+      // Load the fire-cavern stage layout for client render / collision QA.
+      // Same profile as generateLayout(seed, 'fire-cavern').
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      const seed = state.layoutSeed || 42;
+      state.layoutSeed = seed;
+      state.layout = generateLayout(seed, 'fire-cavern');
       state.dungeonBounds = computeDungeonBounds(state.layout);
       state.walkableAABBs = computeWalkableAABBs(state.layout);
       rebuildWallColliders();

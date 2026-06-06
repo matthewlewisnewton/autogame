@@ -1,0 +1,7 @@
+Remediation round 2 had one open gap: the `fire-cavern` debug scenario leaves stale `state.run` metadata because it switches quest/layout after the generic `enterPlayingPhase` / `startDungeonRun` path. Sub-tickets 01–04 are marked `.passed` and were left untouched.
+
+**Created sub-ticket:**
+
+- `/home/matt/workspace/.autogame-worktrees/295-fire-level/tickets/295-fire-level/subtickets/05-fire-cavern-debug-run-invariant/ticket.md`
+
+This sub-ticket refactors the `fire-cavern` debug handler so Ember Descent is selected and the run is rebuilt before or after phase entry (mirroring tier-2 debug scenarios), and extends `debug-scenarios.test.js` with assertions on `state.run.questId`, tier, name, objective label, and enemy count.

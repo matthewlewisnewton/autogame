@@ -342,6 +342,100 @@ function resolveSunkenCanyonRoomFloorMaterial(room, layout) {
 	return getSunkenCanyonBandMaterials(band, yT).floor;
 }
 
+// ── Fire-cavern band floor materials (rim / ramp / basin) ──
+
+const fireCavernBandMaterialsCache = new Map();
+const fireCavernRoleFloorCache = new Map();
+
+function fireCavernThemeEntry() {
+	return dungeonTheme.profiles['fire-cavern'];
+}
+
+function fireCavernRimFloorHex() {
+	const entry = fireCavernThemeEntry();
+	return parseHex(entry.rimFloor ?? entry.floor);
+}
+
+function fireCavernBasinFloorHex() {
+	const entry = fireCavernThemeEntry();
+	return parseHex(entry.basinFloor ?? entry.floor);
+}
+
+/**
+ * Hex color for a fire-cavern vertical band floor (tests).
+ *
+ * @param {'rim'|'basin'|'ramp'|string} band
+ * @param {number} [yT] - 0 = rim hue, 1 = basin hue (ramps)
+ */
+export function getFireCavernBandFloorHex(band, yT = 0.5) {
+	const rimHex = fireCavernRimFloorHex();
+	const basinHex = fireCavernBasinFloorHex();
+	if (band === 'rim') return rimHex;
+	if (band === 'basin') return basinHex;
+	const t = band === 'ramp' ? yT : 0.5;
+	return lerpColorHex(rimHex, basinHex, t);
+}
+
+/**
+ * Cached floor material for a fire-cavern vertical band.
+ *
+ * @param {'rim'|'basin'|'ramp'|string} band
+ * @param {number} [yT] - ramp lerp factor (0 = rim, 1 = basin)
+ */
+export function getFireCavernBandMaterials(band, yT = 0.5) {
+	const cacheKey = band === 'ramp' ? `ramp-${Math.round(yT * 100)}` : (band || 'basin');
+	if (!fireCavernBandMaterialsCache.has(cacheKey)) {
+		const entry = fireCavernThemeEntry();
+		const floorRoughness = entry.floorRoughness ?? 0.85;
+		const floorHex = getFireCavernBandFloorHex(band, yT);
+		fireCavernBandMaterialsCache.set(cacheKey, {
+			floor: new THREE.MeshStandardMaterial({ color: floorHex, roughness: floorRoughness }),
+		});
+	}
+	return fireCavernBandMaterialsCache.get(cacheKey);
+}
+
+function inferFireCavernRampYT(room, layout) {
+	const fc = room.floorCorners;
+	if (!fc) return 0.5;
+
+	const avgY = (fc.yNW + fc.yNE + fc.ySE + fc.ySW) / 4;
+	const rimRoom = layout.rooms.find(r => r.band === 'rim');
+	const basinRoom = layout.rooms.find(r => r.band === 'basin');
+	const yHigh = rimRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+	const yLow = basinRoom?.floorCorners?.yNW ?? DEFAULT_FLOOR_Y;
+	if (Math.abs(yHigh - yLow) < 0.001) return 0.5;
+	return (avgY - yHigh) / (yLow - yHigh);
+}
+
+function getFireCavernRoleFloorMaterial(band, yT, role) {
+	const cacheKey = `role-${band}-${role}-${band === 'ramp' ? Math.round(yT * 100) : ''}`;
+	if (!fireCavernRoleFloorCache.has(cacheKey)) {
+		const entry = fireCavernThemeEntry();
+		const floorRoughness = entry.floorRoughness ?? 0.85;
+		const baseHex = getFireCavernBandFloorHex(band, yT);
+		const tint = dungeonTheme.roleTints[role];
+		const color = tint ? tintHex(baseHex, tint.color, tint.mix) : baseHex;
+		fireCavernRoleFloorCache.set(cacheKey, new THREE.MeshStandardMaterial({
+			color,
+			roughness: floorRoughness,
+		}));
+	}
+	return fireCavernRoleFloorCache.get(cacheKey);
+}
+
+function resolveFireCavernRoomMaterials(room, layout) {
+	const band = room.band ?? 'basin';
+	const yT = band === 'ramp' ? inferFireCavernRampYT(room, layout) : 0.5;
+	let floor;
+	if (room.role === 'start' || room.role === 'treasure') {
+		floor = getFireCavernRoleFloorMaterial(band, yT, room.role);
+	} else {
+		floor = getFireCavernBandMaterials(band, yT).floor;
+	}
+	return { floor };
+}
+
 // Treasure room marker material (emissive gold pillar)
 const treasureMarkerMaterial = new THREE.MeshStandardMaterial({
 	color: 0xffd700,
@@ -930,16 +1024,20 @@ export function buildDungeon(scene, layout) {
 	// ── Build rooms ──
 	const isSpireAscent = layout.profile === 'spire-ascent';
 	const isSunkenCanyon = layout.profile === 'sunken-canyon';
+	const isFireCavern = layout.profile === 'fire-cavern';
 	const spireTierCount = isSpireAscent ? getSpireTierCount(layout) : 0;
 
 	for (const room of layout.rooms) {
 		const spireMats = isSpireAscent ? resolveSpireRoomMaterials(room, layout, spireTierCount) : null;
-		// Pick floor material: spire tier/ramp, sunken-canyon band tints, else profile role fallback
+		const fireCavernMats = isFireCavern ? resolveFireCavernRoomMaterials(room, layout) : null;
+		// Pick floor material: spire tier/ramp, sunken-canyon band tints, fire-cavern stub, else profile role fallback
 		let floorMat;
 		if (spireMats) {
 			floorMat = spireMats.floor;
 		} else if (isSunkenCanyon) {
 			floorMat = resolveSunkenCanyonRoomFloorMaterial(room, layout);
+		} else if (fireCavernMats) {
+			floorMat = fireCavernMats.floor;
 		} else {
 			floorMat = roleFloors[room.role] || profileFloorMaterial;
 		}

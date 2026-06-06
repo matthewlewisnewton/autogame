@@ -1,18 +1,8 @@
-All three conflicted files are resolved and marker-free. Summary of the merge:
+`LOGBOOK.md` is resolved.
 
-### `TASKS.md`
-Kept all cleanup backlog entries from both sides: ship-hub plus open-plaza, sunken-canyon, spire-ascent, and the driver-output-quality ticket.
+Both sides were kept and ordered by version (newest last, per the logbook convention):
 
-### `LOGBOOK.md`
-Combined both histories: v0.283 ship-hub validation (ticket 281) at the top, followed by main’s v0.275–v0.281 entries in order, with a single “Remaining gaps: None” footer.
+1. **v0.285 — 295-fire-level** (from `main`) — fire cavern layout, debug scenarios, themed visuals
+2. **v0.286 — 290-slow-status-effect-foundation** (from this ticket) — SLOW status helpers, movement scaling, client prediction, slow indicator
 
-### `harness/validate/playthrough.mjs`
-Merged both drivers into one coherent script:
-
-- **Presets**: `rooms`, `hub`, `open-plaza`, `spire-ascent`, `sunken-canyon`
-- **Hub ticket behavior**: hub-walk, booth, telepipe-reset steps; lobby-finder probes; `renderHubFindings`; hub-specific screenshots and assertions
-- **Main ticket behavior**: stage presets with configurable `addTypes`; floor-alignment probes; preset-aware findings (`findingsTitle`, `bossSpawnLabel`, `bossType`)
-- **Routing**: `STAGE_PRESETS` so open-plaza/spire-ascent/sunken-canyon run the full stage playthrough path (not only `rooms`)
-- **Output dirs**: `game/validation/<preset>/` for all presets including hub
-
-Syntax check and `--help` both pass. The harness can commit and finish the merge.
+All conflict markers are removed. The file ends with the standard `## Remaining gaps / None.` section. The harness can commit and finish the merge.

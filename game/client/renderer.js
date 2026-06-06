@@ -225,11 +225,13 @@ const lootPickupAttempts = new Map(); // lootId → last emit timestamp (ms)
 // ── Scene init flag ──
 let sceneInitialized = false;
 
-// ── Spire-ascent height atmosphere ──
+// ── Layout height atmosphere (spire-ascent, fire-cavern) ──
 /** @type {string|null} */
 let currentLayoutProfile = null;
 /** @type {{ bottomY: number, topY: number }|null} */
 let spireAtmosphereBounds = null;
+/** @type {{ rimY: number, basinY: number }|null} */
+let fireCavernAtmosphereBounds = null;
 
 export const SPIRE_ATMOSPHERE = {
 	baseBackground: 0x0f172a,
@@ -240,6 +242,17 @@ export const SPIRE_ATMOSPHERE = {
 	baseFogFar: 45,
 	summitFogNear: 28,
 	summitFogFar: 130,
+};
+
+export const FIRE_CAVERN_ATMOSPHERE = {
+	rimBackground: 0x0a1018,
+	basinBackground: 0x4a2018,
+	rimFogColor: 0x151f2e,
+	basinFogColor: 0x8b3a20,
+	rimFogNear: 8,
+	basinFogNear: 14,
+	rimFogFar: 42,
+	basinFogFar: 58,
 };
 
 const DEFAULT_SCENE_BACKGROUND = 0x0f172a;
@@ -320,6 +333,7 @@ function applySpireAtmosphereValues(values) {
 export function resetAtmosphere() {
 	currentLayoutProfile = null;
 	spireAtmosphereBounds = null;
+	fireCavernAtmosphereBounds = null;
 	if (!scene) return;
 	scene.background = new THREE.Color(DEFAULT_SCENE_BACKGROUND);
 	scene.fog = null;
@@ -351,6 +365,70 @@ export function updateSpireAscentAtmosphere(playerY, layout) {
 		spireAtmosphereBounds = computeSpireAtmosphereBounds(layout);
 	}
 	applySpireAtmosphereValues(lerpSpireAtmosphere(normalizedSpireHeight(playerY)));
+}
+
+/**
+ * Pure lerp of fire-cavern background/fog for normalized descent depth (0 = rim, 1 = basin).
+ * Exported for unit tests — no scene dependency.
+ *
+ * @param {number} normalizedDepth
+ * @returns {{ background: number, fogColor: number, fogNear: number, fogFar: number }}
+ */
+export function lerpFireCavernAtmosphere(normalizedDepth) {
+	const t = Math.max(0, Math.min(1, normalizedDepth));
+	return {
+		background: lerpHexColor(FIRE_CAVERN_ATMOSPHERE.rimBackground, FIRE_CAVERN_ATMOSPHERE.basinBackground, t),
+		fogColor: lerpHexColor(FIRE_CAVERN_ATMOSPHERE.rimFogColor, FIRE_CAVERN_ATMOSPHERE.basinFogColor, t),
+		fogNear: lerpNumber(FIRE_CAVERN_ATMOSPHERE.rimFogNear, FIRE_CAVERN_ATMOSPHERE.basinFogNear, t),
+		fogFar: lerpNumber(FIRE_CAVERN_ATMOSPHERE.rimFogFar, FIRE_CAVERN_ATMOSPHERE.basinFogFar, t),
+	};
+}
+
+/**
+ * Rim (high) and basin (low) floor Y from fire-cavern band rooms.
+ * @param {object} layout
+ * @returns {{ rimY: number, basinY: number }|null}
+ */
+export function computeFireCavernAtmosphereBounds(layout) {
+	const rim = (layout?.rooms ?? []).find((r) => r.band === 'rim');
+	const basin = (layout?.rooms ?? []).find((r) => r.band === 'basin');
+	if (!rim || !basin) return null;
+	return { rimY: tierFloorY(rim), basinY: tierFloorY(basin) };
+}
+
+function normalizedFireCavernDepth(playerY) {
+	if (!fireCavernAtmosphereBounds) return 0;
+	const { rimY, basinY } = fireCavernAtmosphereBounds;
+	if (rimY <= basinY) return 0;
+	return Math.max(0, Math.min(1, (rimY - playerY) / (rimY - basinY)));
+}
+
+/**
+ * Cache fire-cavern rim/basin Y bounds and apply atmosphere for the current player height.
+ * @param {object} layout
+ * @param {number} [playerY]
+ */
+export function initFireCavernAtmosphere(layout, playerY = DEFAULT_FLOOR_Y) {
+	currentLayoutProfile = 'fire-cavern';
+	fireCavernAtmosphereBounds = computeFireCavernAtmosphereBounds(layout);
+	updateFireCavernAtmosphere(playerY, layout);
+}
+
+/**
+ * Interpolate scene background and fog from player height on fire-cavern layouts.
+ * @param {number} playerY
+ * @param {object} [layout]
+ */
+export function updateFireCavernAtmosphere(playerY, layout) {
+	if (!scene || currentLayoutProfile !== 'fire-cavern') return;
+	if (layout && layout.profile !== 'fire-cavern') {
+		resetAtmosphere();
+		return;
+	}
+	if (!fireCavernAtmosphereBounds && layout) {
+		fireCavernAtmosphereBounds = computeFireCavernAtmosphereBounds(layout);
+	}
+	applySpireAtmosphereValues(lerpFireCavernAtmosphere(normalizedFireCavernDepth(playerY)));
 }
 
 // ── Enemy geometry table ──
@@ -950,8 +1028,9 @@ function syncFacingToServer() {
 }
 
 // Orbit height/lookAt follow the local avatar Y (sampleFloorY on slopes; server
-// applyPlayerMovement keeps player.y in sync). Spire-ascent and sunken-canyon
-// need this — pinning to DEFAULT_FLOOR_Y would leave the camera behind on ramps.
+// applyPlayerMovement keeps player.y in sync). Multi-level profiles (spire-ascent,
+// sunken-canyon, fire-cavern) need this — pinning to DEFAULT_FLOOR_Y would leave
+// the camera behind on ramps.
 function updateCameraOrbit(playerX, playerY, playerZ, delta) {
 	if (!camera) return;
 
@@ -1431,6 +1510,9 @@ export function initScene(layout, spawnPos) {
 	if (layout?.profile === 'spire-ascent') {
 		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
 		initSpireAscentAtmosphere(layout, initFloorY);
+	} else if (layout?.profile === 'fire-cavern') {
+		const initFloorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initFireCavernAtmosphere(layout, initFloorY);
 	} else {
 		resetAtmosphere();
 		if (layout?.profile) currentLayoutProfile = layout.profile;
@@ -1519,6 +1601,9 @@ export function rebuildDungeonLayout(layout) {
 	if (layout.profile === 'spire-ascent') {
 		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
 		initSpireAscentAtmosphere(layout, floorY);
+	} else if (layout.profile === 'fire-cavern') {
+		const floorY = resolveFloorY(sampleFloorY(layout, spawnPosition.x, spawnPosition.z));
+		initFireCavernAtmosphere(layout, floorY);
 	} else {
 		resetAtmosphere();
 		if (layout.profile) currentLayoutProfile = layout.profile;
@@ -4932,6 +5017,13 @@ export function animate(timestamp) {
 			: camera.position.y;
 		updateSpireAscentAtmosphere(atmosY, gs.layout);
 	} else if (currentLayoutProfile === 'spire-ascent') {
+		resetAtmosphere();
+	} else if (gs?.layout?.profile === 'fire-cavern') {
+		const atmosY = myId != null && playersMeshes[myId]
+			? playersMeshes[myId].position.y
+			: camera.position.y;
+		updateFireCavernAtmosphere(atmosY, gs.layout);
+	} else if (currentLayoutProfile === 'fire-cavern') {
 		resetAtmosphere();
 	}
 
