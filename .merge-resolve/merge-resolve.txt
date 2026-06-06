@@ -1,26 +1,7 @@
-Merge conflicts are resolved and all **2526 tests pass**.
+Resolved `LOGBOOK.md` by combining both sides in version order:
 
-## Resolution summary
+1. **v0.290** — chain-lightning card (from `main`)
+2. **v0.291** — rare medic enemy (from `main`)
+3. **v0.292** — burning/slow mutual exclusion (from this ticket)
 
-Combined **both** feature branches rather than picking one side:
-
-### Ice level (ticket 292)
-- `ice-cavern` profile in `dungeonTheme.json`, `generateIceCavern()`, slippery floor physics, client ice materials + slippery override
-- `frost_crossing` quest and `frost-crossing-tier-1` debug scenario
-- Client slippery movement prediction (`tickMovementPrediction`, coasting on ice)
-
-### Fire level (ticket 295, from main)
-- `fire-cavern` profile, `generateFireCavern()`, rim/basin layout
-- `ember_descent` quest and `fire-cavern` / `fire-cavern-stage` debug scenarios
-- Client fire-cavern band materials
-
-### Slow status (ticket 290, from main)
-- `isSlowed` applied to normal and slippery server movement
-- `localSlowFactor(me)` folded into client `speedScale` for prediction parity
-- `movementPrediction.js` uses `speedScale` on normal floors too
-
-### Other merges
-- **LOGBOOK.md**: v0.287 (ice), v0.285 (fire), and v0.286 (slow) entries
-- **Tests**: separate `ice-cavern` and `fire-cavern` describe blocks; quest lists include both `frost_crossing` and `ember_descent` in `QUEST_DEFS` order
-
-The harness can commit and finish the merge.
+Each entry keeps its own **Remaining gaps** section, matching the structure on both branches. All conflict markers are removed; the harness can finish the merge.

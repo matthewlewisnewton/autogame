@@ -1,0 +1,13 @@
+[users] Loaded 4 user record(s) from /home/matt/workspace/.autogame-worktrees/302-chain-lightning-card/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/302-chain-lightning-card/game/data
+Server listening on port 3002
+Player connected: socket=wQ4VYMM5bd4U22KCAAAB, playerId=23b45f3a-4083-42bc-806d-422a55d4eaa6
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=1XF2eXsjKZ5W13pUAAAD, playerId=ed5f97b7-d968-47a7-94b7-cfe66c166ca3
+Player disconnected: wQ4VYMM5bd4U22KCAAAB
+Player disconnected: 1XF2eXsjKZ5W13pUAAAD
+[server] SIGTERM received — closing HTTP server undefined
+[server] HTTP server closed after SIGTERM undefined

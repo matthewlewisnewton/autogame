@@ -19,6 +19,7 @@ function makeCtx(overrides = {}) {
 		spawnDivineGraceEffect: record('spawnDivineGraceEffect'),
 		spawnInfernoPillarEffect: record('spawnInfernoPillarEffect'),
 		spawnChainLightningEffect: record('spawnChainLightningEffect'),
+		spawnLightningArc: record('spawnLightningArc'),
 		flashMesh: record('flashMesh'),
 		spawnHitSpark: record('spawnHitSpark'),
 		enemyMeshes: () => ({}),
@@ -73,6 +74,10 @@ describe('resolveRenderers()', () => {
 	it('returns bespoke attack renderers for Phase Stalker and Bulkhead Mauler', () => {
 		expect(resolveRenderers('null_crawler')).toHaveLength(1);
 		expect(resolveRenderers('bulkhead_mauler')).toHaveLength(1);
+	});
+
+	it('returns the chain_lightning arc renderer for Voltaic Chain', () => {
+		expect(resolveRenderers('chain_lightning')).toHaveLength(1);
 	});
 
 	it('returns an empty list for unknown card ids', () => {
@@ -537,6 +542,31 @@ describe('renderCardUsed() — creature dispatch', () => {
 		expect(ctx._calls.some((c) => c[0] === 'spawnAttackEffect')).toBe(true);
 		const hitSounds = ctx._calls.filter((c) => c[0] === 'playSound' && c[1] === 'enemyHit');
 		expect(hitSounds).toHaveLength(1);
+	});
+
+	it('chain_lightning with two chainSegments invokes spawnLightningArc twice', () => {
+		const ctx = makeCtx();
+		renderCardUsed({
+			cardId: 'chain_lightning',
+			origin: { x: 0, z: 0 },
+			direction: { x: 1, z: 0 },
+			chainSegments: [
+				{ from: { x: 0, z: 0 }, to: { x: 5, z: 0 } },
+				{ from: { x: 5, z: 0 }, to: { x: 8, z: 0 } },
+			],
+			hits: [
+				{ enemyId: 'e1', hp: 50 },
+				{ enemyId: 'e2', hp: 30 },
+			],
+		}, ctx);
+		const arcs = ctx._calls.filter((c) => c[0] === 'spawnLightningArc');
+		expect(arcs).toHaveLength(2);
+		expect(arcs[0][1]).toEqual({ x: 0, z: 0 });
+		expect(arcs[0][2]).toEqual({ x: 5, z: 0 });
+		expect(arcs[1][1]).toEqual({ x: 5, z: 0 });
+		expect(arcs[1][2]).toEqual({ x: 8, z: 0 });
+		expect(ctx._calls.some((c) => c[0] === 'spawnChainLightningEffect')).toBe(false);
+		expect(ctx._calls.some((c) => c[0] === 'playSound' && c[1] === 'enemyHit')).toBe(true);
 	});
 });
 

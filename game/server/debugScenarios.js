@@ -1616,6 +1616,26 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
       overseer.wanderTarget = { x: overseer.x, z: overseer.z };
+    } else if (name === 'field-medic') {
+      // Field Medic with a wounded grunt ally for heal/flee/bead QA. Same enemies
+      // are reachable on tier-2 runs with tier2EnemyPool; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 3, player.z, 'field_medic');
+      const grunt = spawnEnemy(player.x + 1, player.z + 2, 'grunt');
+      grunt.hp = Math.max(1, Math.floor(grunt.maxHp * 0.4));
+      medic.wanderTarget = { x: medic.x, z: medic.z };
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'field-medic-spawn') {
+      // Spawn a Field Medic beside the player for tier-2 rare-spawn QA. The same
+      // enemy type is reachable normally on tier-2 runs for quests with
+      // tier2EnemyPool (e.g. crystal_rescue); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
+      medic.wanderTarget = { x: medic.x, z: medic.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is
@@ -2229,6 +2249,36 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const grunt = spawnEnemy(player.x + 4, player.z, 'grunt');
       grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'chain-lightning-ready') {
+      // Playing phase with Voltaic Chain in hand, full Magic Stones, and three
+      // grunts lined up along +X so a cast chains primary → two half-damage hops.
+      // Same state is reachable by earning the reward card and entering combat.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      player.rotation = 0;
+      const replaceSlot = player.hand.findIndex(c => c != null);
+      if (replaceSlot >= 0) {
+        player.hand[replaceSlot] = {
+          id: 'chain_lightning',
+          name: 'Voltaic Chain',
+          type: 'spell',
+          charges: 1,
+          remainingCharges: 1,
+        };
+      }
+      state.enemies = [];
+      const primary = spawnEnemy(player.x + 5, player.z, 'grunt');
+      primary.hp = 80;
+      primary.maxHp = 80;
+      primary.wanderTarget = { x: primary.x, z: primary.z };
+      const chain1 = spawnEnemy(player.x + 8, player.z, 'grunt');
+      chain1.hp = 80;
+      chain1.maxHp = 80;
+      chain1.wanderTarget = { x: chain1.x, z: chain1.z };
+      const chain2 = spawnEnemy(player.x + 11, player.z, 'grunt');
+      chain2.hp = 80;
+      chain2.maxHp = 80;
+      chain2.wanderTarget = { x: chain2.x, z: chain2.z };
     }
 
     syncRunObjectiveToEnemies();

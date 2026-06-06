@@ -70,6 +70,77 @@ describe('getEnemyPool', () => {
     expect(getEnemyPool(undefined)).toBe(fallback);
     expect(getEnemyPool(42)).toBe(fallback);
   });
+
+  it('returns the base pool only for tier 1 (default and explicit)', () => {
+    expect(getEnemyPool('crystal_rescue')).toBe(QUEST_DEFS.crystal_rescue.enemyPool);
+    expect(getEnemyPool('crystal_rescue', 1)).toBe(QUEST_DEFS.crystal_rescue.enemyPool);
+  });
+
+  it('merges tier2EnemyPool into the base pool for tier 2 eligible quests', () => {
+    const tier2Pool = getEnemyPool('crystal_rescue', 2);
+    expect(tier2Pool).toEqual([
+      ...QUEST_DEFS.crystal_rescue.enemyPool,
+      ...QUEST_DEFS.crystal_rescue.tier2EnemyPool,
+    ]);
+    expect(tier2Pool.some((entry) => entry.type === 'field_medic')).toBe(true);
+  });
+
+  it('keeps field_medic out of base enemyPool and tier-2-ineligible quests', () => {
+    for (const quest of Object.values(QUEST_DEFS)) {
+      expect(quest.enemyPool.some((entry) => entry.type === 'field_medic')).toBe(false);
+    }
+    expect(getEnemyPool('arena_trials', 2).some((entry) => entry.type === 'field_medic')).toBe(
+      false,
+    );
+    expect(getEnemyPool('spire_ascent', 2).some((entry) => entry.type === 'field_medic')).toBe(
+      false,
+    );
+  });
+
+  it('includes field_medic on at least two tier-2-capable quests', () => {
+    const questsWithMedic = Object.keys(QUEST_DEFS).filter((questId) =>
+      getEnemyPool(questId, 2).some((entry) => entry.type === 'field_medic'),
+    );
+    expect(questsWithMedic).toEqual(
+      expect.arrayContaining(['training_caverns', 'crystal_rescue', 'canyon_descent']),
+    );
+    expect(questsWithMedic.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('field_medic tier-2 spawn weighting', () => {
+  it('never appears in tier-1 pool draws for an eligible quest', () => {
+    const pool = getEnemyPool('crystal_rescue', 1);
+    const poolTypes = new Set(pool.map((entry) => entry.type));
+    expect(poolTypes.has('field_medic')).toBe(false);
+    const rng = mulberry32(4242);
+    for (let i = 0; i < 500; i++) {
+      expect(pickWeightedEnemyType(pool, rng)).not.toBe('field_medic');
+    }
+  });
+
+  it('can appear on tier 2 but less often than common types over many seeds', () => {
+    const pool = getEnemyPool('crystal_rescue', 2);
+    const counts = { field_medic: 0, grunt: 0, skirmisher: 0 };
+    const drawsPerSeed = 5;
+    const seeds = 400;
+    let sawMedic = false;
+    for (let seed = 1; seed <= seeds; seed++) {
+      const rng = mulberry32(seed);
+      for (let i = 0; i < drawsPerSeed; i++) {
+        const type = pickWeightedEnemyType(pool, rng);
+        if (type in counts) {
+          counts[type] += 1;
+        }
+        if (type === 'field_medic') {
+          sawMedic = true;
+        }
+      }
+    }
+    expect(sawMedic).toBe(true);
+    expect(counts.field_medic).toBeLessThan(counts.grunt);
+    expect(counts.field_medic).toBeLessThan(counts.skirmisher);
+  });
 });
 
 describe('pickWeightedEnemyType', () => {

@@ -459,6 +459,7 @@ const ENEMY_GEOMETRY = {
 	arena_champion: { type: 'cone', radius: 1.4, height: 3.0, segments: 16, color: 0xffaa00, emissive: 0xcc3300, emissiveIntensity: 0.45 },
 	spire_warden: { type: 'cone', radius: 1.1, height: 2.4, segments: 12, color: 0x3388cc, emissive: 0x2266aa, emissiveIntensity: 0.3 },
 	spawner:    { type: 'octahedron', radius: 0.6, color: 0x00ccaa, emissive: 0x00ccaa, emissiveIntensity: 0.4 },
+	field_medic: { type: 'octahedron', radius: 0.4, color: 0x10b981, emissive: 0x2dd4bf, emissiveIntensity: 0.55 },
 };
 
 /** Windup telegraph shape per enemy type — mirrors server ENEMY_DEFS attackStyle */
@@ -470,6 +471,7 @@ const ENEMY_ATTACK_VISUAL = {
 	arena_champion: { style: 'cone', coneAngle: (2 * Math.PI) / 3, range: 6.5, color: 0xffcc44, emissive: 0xcc3300 },
 	spire_warden: { style: 'cone', coneAngle: Math.PI / 2, range: 6, color: 0x55aaff, emissive: 0x3388cc },
 	spawner:    { style: 'radial' },
+	field_medic: { style: 'projectile', range: 8, color: 0x2dd4bf, emissive: 0x14b8a6, hitWidth: 0.5 },
 };
 
 /** Minion mesh presets keyed by minion.type */
@@ -2596,6 +2598,62 @@ export function triggerHealPulseVFX(position, healRadius) {
 	requestAnimationFrame(animatePulse);
 }
 
+const MEDIC_BEAD_COLOR = 0x2dd4bf;
+const MEDIC_BEAD_EMISSIVE = 0x14b8a6;
+const MEDIC_HEAL_DEFAULT_RADIUS = 6;
+
+/**
+ * Ally-heal pulse at the medic position (wraps the Field Medic Kit ring VFX).
+ *
+ * @param {{ x: number, y?: number, z: number }} position
+ * @param {number} [healRadius] — metres; matches server ENEMY_DEFS.field_medic.healRadius
+ */
+export function triggerMedicAllyHealVFX(position, healRadius) {
+	if (!scene || !position) return;
+	if (!Number.isFinite(position.x) || !Number.isFinite(position.z)) return;
+	const radius = Number.isFinite(healRadius) && healRadius > 0
+		? healRadius
+		: MEDIC_HEAL_DEFAULT_RADIUS;
+	triggerHealPulseVFX(position, radius);
+}
+
+/**
+ * Narrow energy-bead beam along the medic attack vector (phase-beam corridor).
+ *
+ * @param {{ origin: { x: number, z: number }, direction: { x: number, z: number }, beadRange?: number, hitWidth?: number, hits?: Array<{ playerId?: string }> }} record
+ */
+export function triggerMedicEnergyBeadVFX(record) {
+	if (!scene || !record) return;
+	const { origin, direction, beadRange, hitWidth, hits } = record;
+	if (!origin || !direction) return;
+	if (!Number.isFinite(origin.x) || !Number.isFinite(origin.z)) return;
+	if (!Number.isFinite(direction.x) || !Number.isFinite(direction.z)) return;
+
+	spawnAttackEffect(
+		{ x: origin.x, z: origin.z },
+		{ x: direction.x, z: direction.z },
+		{
+			effect: 'returning_projectile',
+			returnPasses: 0,
+			range: Number.isFinite(beadRange) ? beadRange : 8,
+			projectileHitWidth: Number.isFinite(hitWidth) ? hitWidth : 0.5,
+			color: MEDIC_BEAD_COLOR,
+			emissive: MEDIC_BEAD_EMISSIVE,
+		},
+	);
+
+	if (!hits?.length) return;
+	for (const hit of hits) {
+		if (!hit.playerId) continue;
+		const mesh = playersMeshes[hit.playerId];
+		if (!mesh) continue;
+		spawnHitSpark(
+			{ x: mesh.position.x, y: mesh.position.y + 0.6, z: mesh.position.z },
+			{ color: MEDIC_BEAD_COLOR, emissive: MEDIC_BEAD_EMISSIVE, count: 5, spread: 0.55 },
+		);
+	}
+}
+
 // ── Loot magnet VFX ──
 
 const LOOT_MAGNET_DURATION = 700;
@@ -4208,6 +4266,66 @@ export function spawnHitSpark(position, style = {}) {
 	}
 }
 
+const LIGHTNING_ARC_Y = 1.2;
+
+/**
+ * Build a jagged polyline between two floor points for a brief lightning arc.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style]
+ * @returns {{ line: THREE.Line, points: THREE.Vector3[] }}
+ */
+function createLightningArcLine(from, to, style = {}) {
+	const y = style.y ?? LIGHTNING_ARC_Y;
+	const color = style.emissive ?? style.color ?? 0x0ea5e9;
+	const dx = to.x - from.x;
+	const dz = to.z - from.z;
+	const len = Math.hypot(dx, dz) || 1;
+	const segments = Math.max(3, Math.floor(len * 2));
+	const perpX = -dz / len;
+	const perpZ = dx / len;
+	const points = [];
+
+	for (let i = 0; i <= segments; i++) {
+		const t = i / segments;
+		const jitter = (i === 0 || i === segments) ? 0 : (Math.random() - 0.5) * 0.4;
+		points.push(new THREE.Vector3(
+			from.x + dx * t + perpX * jitter,
+			y + (Math.random() - 0.5) * 0.15,
+			from.z + dz * t + perpZ * jitter,
+		));
+	}
+
+	const geometry = new THREE.BufferGeometry().setFromPoints(points);
+	const material = new THREE.LineBasicMaterial({
+		color,
+		transparent: true,
+		opacity: 1.0,
+		depthWrite: false,
+	});
+	return { line: new THREE.Line(geometry, material), points };
+}
+
+/**
+ * Spawn a short-lived cyan lightning arc between two floor points.
+ * @param {object} from - { x, z }
+ * @param {object} to - { x, z }
+ * @param {object} [style] - optional color/emissive/y/duration overrides
+ */
+export function spawnLightningArc(from, to, style = {}) {
+	const { line } = createLightningArcLine(from, to, style);
+	const targetScene = (typeof window !== 'undefined' && window.___test_scene) || scene;
+	if (targetScene) targetScene.add(line);
+
+	activeEffects.push({
+		mesh: line,
+		_scene: targetScene,
+		isLightningArc: true,
+		createdAt: performance.now(),
+		duration: style.duration ?? ATTACK_EFFECT_DURATION,
+	});
+}
+
 /**
  * Spawn a cyan lightning bolt projectile (Thunderbird ranged/chain feedback).
  * @param {object} origin - { x, z }
@@ -4262,6 +4380,20 @@ export function updateAttackEffects() {
 
 			if (elapsed >= fx.duration) {
 				scene.remove(fx.mesh);
+				fx.mesh.geometry.dispose();
+				fx.mesh.material.dispose();
+				activeEffects.splice(i, 1);
+			}
+			continue;
+		}
+
+		// ── Lightning arc (chain segments) ──
+		if (fx.isLightningArc) {
+			const lifeRatio = 1.0 - (elapsed / fx.duration);
+			fx.mesh.material.opacity = Math.max(0.01, lifeRatio);
+
+			if (elapsed >= fx.duration) {
+				(fx._scene || scene).remove(fx.mesh);
 				fx.mesh.geometry.dispose();
 				fx.mesh.material.dispose();
 				activeEffects.splice(i, 1);

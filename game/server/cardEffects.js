@@ -29,6 +29,7 @@ const {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
@@ -761,6 +762,73 @@ function handleUseCard(socket, state, lobby, data) {
           socket, state, lobby, data, cardDef, handCard, player,
           originX, originZ, now, hasOverclock,
         });
+        return;
+      }
+
+      if (cardDef.effect === 'chain_lightning') {
+        const rotation = resolveAttackRotation(player, data);
+        player.rotation = rotation;
+        const dirX = Math.cos(rotation);
+        const dirZ = Math.sin(rotation);
+        const attackRange = cardDef.attackRange || ATTACK_RANGE;
+        const chainRadius = cardDef.chainRadius || 5;
+        const grind = handCard.grind || 0;
+        const damage = handCard.echoDamage != null
+          ? handCard.echoDamage
+          : scaledGrindStat(cardDef.damage || 0, grind);
+
+        const { hits: rawHits, magicStonesGained: rawMagicStones } = collectChainLightningHits(
+          originX,
+          originZ,
+          dirX,
+          dirZ,
+          attackRange,
+          damage,
+          {
+            chainRadius,
+            maxChainTargets: cardDef.maxChainTargets ?? 2,
+            magicStoneOnHit: cardDef.magicStoneOnHit,
+            magicStoneOnKill: cardDef.magicStoneOnKill,
+            attackerId: socket.playerId,
+          }
+        );
+        const appliedMagicStones = addMagicStones(player, rawMagicStones);
+
+        const chainSegments = [];
+        let from = { x: originX, z: originZ };
+        const hits = [];
+        for (const hit of rawHits) {
+          const to = { x: hit.x, z: hit.z };
+          chainSegments.push({ from, to });
+          from = to;
+          hits.push({
+            enemyId: hit.enemyId,
+            hp: hit.hp,
+            damageDealt: hit.damageDealt,
+            ...(hit.magicStonesGained ? { magicStonesGained: hit.magicStonesGained } : {}),
+          });
+        }
+
+        cleanupAfterDamage();
+
+        applySlotCooldown(player, data.slotIndex, hasOverclock, now, cardDef.cooldownMs || COOLDOWN_MS);
+        replaceConsumedCard(player, data.slotIndex, handCard);
+
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());
+        io.to(lobby.id).emit(SERVER_TO_CLIENT.CARD_USED, {
+          playerId: socket.playerId,
+          cardId: data.cardId,
+          slotIndex: data.slotIndex,
+          specialEffect: 'chain_lightning',
+          origin: { x: originX, z: originZ },
+          direction: { x: dirX, z: dirZ },
+          attackRange,
+          chainRadius,
+          hits,
+          chainSegments,
+          magicStonesGained: appliedMagicStones,
+        });
+
         return;
       }
 

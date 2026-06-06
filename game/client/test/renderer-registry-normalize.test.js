@@ -20,6 +20,7 @@ describe('getRegistryTargetFootprint()', () => {
 
 	it('uses diameter for octahedron enemies', () => {
 		expect(getRegistryTargetFootprint('spawner')).toEqual({ targetHeight: 1.2 });
+		expect(getRegistryTargetFootprint('field_medic')).toEqual({ targetHeight: 0.8 });
 	});
 
 	it('applies minion height and scale multiplier', () => {
@@ -46,6 +47,7 @@ describe('getRegistryHostVerticalOffset()', () => {
 		expect(getRegistryHostVerticalOffset('arena_champion')).toBe(enemyMeshHalfHeight('arena_champion'));
 		expect(getRegistryHostVerticalOffset('spire_warden')).toBe(enemyMeshHalfHeight('spire_warden'));
 		expect(getRegistryHostVerticalOffset('spawner')).toBe(enemyMeshHalfHeight('spawner'));
+		expect(getRegistryHostVerticalOffset('field_medic')).toBe(enemyMeshHalfHeight('field_medic'));
 	});
 
 	it('returns 0.5 for minion registry keys', () => {
@@ -114,9 +116,45 @@ describe('registry model world grounding', () => {
 	});
 });
 
+describe('triggerMedicEnergyBeadVFX', () => {
+	it('spawns a narrow returning-projectile corridor along the bead vector', async () => {
+		const {
+			initScene,
+			triggerMedicEnergyBeadVFX,
+			getActiveEffects,
+		} = await import('../renderer.js');
+
+		initScene(null, { x: 0, z: 0 });
+		const before = getActiveEffects().length;
+
+		triggerMedicEnergyBeadVFX({
+			origin: { x: 2, z: 3 },
+			direction: { x: 1, z: 0 },
+			beadRange: 8,
+			hitWidth: 0.5,
+		});
+
+		expect(getActiveEffects().length).toBe(before + 1);
+		const effect = getActiveEffects()[getActiveEffects().length - 1];
+		expect(effect.returning).toBe(true);
+		expect(effect.returnPasses).toBe(0);
+		expect(effect.range).toBe(8);
+		expect(effect.hitWidth).toBe(0.5);
+	});
+});
+
 describe('ENEMY_GEOMETRY export', () => {
 	it('exposes the enemy geometry table for tests', () => {
 		expect(ENEMY_GEOMETRY.grunt.height).toBe(1);
+	});
+
+	it('gives field_medic a distinct small octahedron vs spawner', () => {
+		const medic = ENEMY_GEOMETRY.field_medic;
+		const spawner = ENEMY_GEOMETRY.spawner;
+		expect(medic.type).toBe('octahedron');
+		expect(medic.radius).toBeLessThan(spawner.radius);
+		expect(medic.color).not.toBe(spawner.color);
+		expect(enemyMeshHalfHeight('field_medic')).toBe(medic.radius);
 	});
 
 	it('gives arena_champion its own distinct, larger silhouette vs miniboss', () => {

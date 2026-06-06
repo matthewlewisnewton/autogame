@@ -142,6 +142,7 @@ import {
 	spawnSummonEffect as rendererSpawnSummonEffect,
 	spawnDivineGraceEffect as rendererSpawnDivineGraceEffect,
 	spawnChainLightningEffect as rendererSpawnChainLightningEffect,
+	spawnLightningArc as rendererSpawnLightningArc,
 	spawnInfernoPillarEffect as rendererSpawnInfernoPillarEffect,
 	spawnVolatileExplosionEffect as rendererSpawnVolatileExplosionEffect,
 	spawnFireTrailEffect as rendererSpawnFireTrailEffect,
@@ -159,6 +160,8 @@ import {
 	getWindupFlashing,
 	triggerDashVFX,
 	triggerHealPulseVFX,
+	triggerMedicAllyHealVFX,
+	triggerMedicEnergyBeadVFX,
 	triggerShieldVFX,
 	triggerSmokeVFX,
 	triggerLootMagnetVFX,
@@ -1038,6 +1041,7 @@ const cardRenderCtx = {
 	spawnInfernoPillarEffect: rendererSpawnInfernoPillarEffect,
 	spawnVolatileExplosionEffect: rendererSpawnVolatileExplosionEffect,
 	spawnChainLightningEffect: rendererSpawnChainLightningEffect,
+	spawnLightningArc: rendererSpawnLightningArc,
 	flashMesh: rendererFlashMesh,
 	markCardHitEnemies: rendererMarkCardHitEnemies,
 	spawnHitSpark: rendererSpawnHitSpark,
@@ -1565,6 +1569,18 @@ function bindSocketHandlers(s) {
 			? healRadius
 			: (keyItemDefs.field_medic_kit?.healRadius ?? 5);
 		triggerHealPulseVFX({ x, y: 0, z }, radius);
+	});
+
+	s.on(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, (data) => {
+		if (!data || !getScene()) return;
+		const { x, z, healRadius } = data;
+		if (!Number.isFinite(x) || !Number.isFinite(z)) return;
+		triggerMedicAllyHealVFX({ x, y: 0, z }, healRadius);
+	});
+
+	s.on(SERVER_TO_CLIENT.MEDIC_BEAD, (data) => {
+		if (!data || !getScene()) return;
+		triggerMedicEnergyBeadVFX(data);
 	});
 
 	s.on(SERVER_TO_CLIENT.KEY_ITEM_USED, (data) => {

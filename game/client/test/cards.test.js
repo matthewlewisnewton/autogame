@@ -388,8 +388,9 @@ describe('card ID sets', () => {
 		expect(spellCardIds.has('soul_drain')).toBe(true);
 		expect(spellCardIds.has('dragons_breath')).toBe(true);
 		expect(spellCardIds.has('inferno_pillar')).toBe(true);
+		expect(spellCardIds.has('chain_lightning')).toBe(true);
 		expect(spellCardIds.has('iron_sword')).toBe(false);
-		expect(spellCardIds.size).toBe(18);
+		expect(spellCardIds.size).toBe(19);
 	});
 
 	it('creatureCardIds contains base, evolved, and synergistic creature card IDs', () => {

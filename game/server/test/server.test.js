@@ -4892,7 +4892,7 @@ describe('hotStateSnapshot() — slim per-tick payload', () => {
 // ── ENEMY_DEFS ──
 
 describe('ENEMY_DEFS', () => {
-	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner keys', () => {
+	it('is exported and contains grunt, skirmisher, miniboss, annex_overseer, arena_champion, spire_warden, spawner, field_medic keys', () => {
 		expect(ENEMY_DEFS).toBeDefined();
 		expect(ENEMY_DEFS).toHaveProperty('grunt');
 		expect(ENEMY_DEFS).toHaveProperty('skirmisher');
@@ -4901,6 +4901,7 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS).toHaveProperty('arena_champion');
 		expect(ENEMY_DEFS).toHaveProperty('spire_warden');
 		expect(ENEMY_DEFS).toHaveProperty('spawner');
+		expect(ENEMY_DEFS).toHaveProperty('field_medic');
 	});
 
 	it('grunt has correct stat values', () => {
@@ -4954,7 +4955,28 @@ describe('ENEMY_DEFS', () => {
 		expect(ENEMY_DEFS.spawner.spawnType).toBe('skirmisher');
 	});
 
-	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner'];
+	it('field_medic has fragile support tuning and medic AI fields', () => {
+		const def = ENEMY_DEFS.field_medic;
+		expect(def.name).toBe('Field Medic');
+		expect(def.description).toMatch(/heal|kite|bead/i);
+		expect(def.hp).toBeGreaterThanOrEqual(50);
+		expect(def.hp).toBeLessThanOrEqual(80);
+		expect(def.attackDamage).toBeGreaterThanOrEqual(4);
+		expect(def.attackDamage).toBeLessThanOrEqual(8);
+		expect(def.attackStyle).toBe('projectile');
+		expect(def.fleeSpeed).toBeGreaterThan(def.chaseSpeed);
+		expect(def.fleeRadius).toBeGreaterThan(0);
+		expect(def.healAmount).toBeGreaterThan(0);
+		expect(def.healRadius).toBeGreaterThan(0);
+		expect(def.healCooldownMs).toBeGreaterThan(0);
+		expect(def.beadRange).toBeGreaterThan(0);
+		expect(def.beadCooldownMs).toBeGreaterThan(0);
+		expect(def.surfacedStats).toEqual(
+			expect.arrayContaining(['hp', 'attackDamage', 'healAmount', 'healCooldownMs', 'fleeSpeed']),
+		);
+	});
+
+	const ENEMY_TYPES = ['grunt', 'skirmisher', 'miniboss', 'annex_overseer', 'arena_champion', 'spire_warden', 'spawner', 'field_medic'];
 	const DISPLAY_ONLY_KEYS = ['name', 'description', 'surfacedStats'];
 
 	it('every type has non-empty display metadata with valid surfacedStats keys', () => {
@@ -4982,6 +5004,21 @@ describe('ENEMY_DEFS', () => {
 	it('spawnEnemy does not copy display metadata onto spawned enemies', () => {
 		resetState();
 		const enemy = spawnEnemy(0, 0, 'grunt');
+		for (const key of DISPLAY_ONLY_KEYS) {
+			expect(enemy).not.toHaveProperty(key);
+		}
+	});
+
+	it('spawnEnemy(field_medic) spreads combat stats but omits display metadata', () => {
+		resetState();
+		const enemy = spawnEnemy(0, 0, 'field_medic');
+		expect(enemy.type).toBe('field_medic');
+		expect(enemy.hp).toBe(ENEMY_DEFS.field_medic.hp);
+		expect(enemy.maxHp).toBe(ENEMY_DEFS.field_medic.hp);
+		expect(enemy.attackDamage).toBe(ENEMY_DEFS.field_medic.attackDamage);
+		expect(enemy.healAmount).toBe(ENEMY_DEFS.field_medic.healAmount);
+		expect(enemy.fleeSpeed).toBe(ENEMY_DEFS.field_medic.fleeSpeed);
+		expect(enemy.beadRange).toBe(ENEMY_DEFS.field_medic.beadRange);
 		for (const key of DISPLAY_ONLY_KEYS) {
 			expect(enemy).not.toHaveProperty(key);
 		}
@@ -5038,7 +5075,8 @@ describe('spawnEnemy() type validation', () => {
 		expect(() => spawnEnemy(0, 0, 'annex_overseer')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spire_warden')).not.toThrow();
 		expect(() => spawnEnemy(0, 0, 'spawner')).not.toThrow();
-		expect(gameState.enemies.length).toBe(6);
+		expect(() => spawnEnemy(0, 0, 'field_medic')).not.toThrow();
+		expect(gameState.enemies.length).toBe(7);
 	});
 });
 

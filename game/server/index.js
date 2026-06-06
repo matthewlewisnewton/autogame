@@ -167,6 +167,7 @@ const {
   collectConeHits,
   collectRadialHits,
   collectProjectileHits,
+  collectChainLightningHits,
   collectReturningProjectileHits,
   applyFreezeInRadius,
   pullEnemiesToward,
@@ -544,6 +545,9 @@ const DEBUG_SCENARIOS = new Set([
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'field-medic',
+  'field-medic-spawn',
+  'chain-lightning-ready',
 ]);
 
 // Wire debugScenarios with io, the index.js-local helpers its setup chain needs,
@@ -729,6 +733,8 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'arena-trials-boss-approach',
   'arena-trials-boss-low-hp',
   'annex-overseer-ready',
+  'field-medic',
+  'field-medic-spawn',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
 ]);
@@ -1377,6 +1383,20 @@ function runGameLoopTick() {
             state._pendingLeechHeals.length = 0;
           }
 
+          if (state._pendingMedicHeals?.length) {
+            for (const record of state._pendingMedicHeals) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.MEDIC_ALLY_HEAL, record);
+            }
+            state._pendingMedicHeals.length = 0;
+          }
+
+          if (state._pendingMedicBeads?.length) {
+            for (const record of state._pendingMedicBeads) {
+              io.to(lobby.id).emit(SERVER_TO_CLIENT.MEDIC_BEAD, record);
+            }
+            state._pendingMedicBeads.length = 0;
+          }
+
           if (state._pendingShieldBreaks?.length) {
             for (const record of state._pendingShieldBreaks) {
               io.to(lobby.id).emit(SERVER_TO_CLIENT.SHIELD_BREAK, record);
@@ -1615,6 +1635,7 @@ if (typeof module !== 'undefined' && module.exports) {
     collectConeHits,
     collectRadialHits,
     collectProjectileHits,
+    collectChainLightningHits,
     collectReturningProjectileHits,
     applyFreezeInRadius,
     pullEnemiesToward,
