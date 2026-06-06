@@ -193,6 +193,8 @@ const questErrorEl = document.getElementById('quest-error');
 const abandonRunBtn = document.getElementById('abandon-run-btn');
 const resumeRunBtn = document.getElementById('resume-run-btn');
 const suspendedRunBannerEl = document.getElementById('suspended-run-banner');
+const lobbyHudEl = document.getElementById('lobby-hud');
+const lobbyCloseBtnEl = document.getElementById('lobby-close-btn');
 const lobbyEl = document.getElementById('lobby');
 const lobbyBrowserEl = document.getElementById('lobby-browser');
 const lobbyListEl = document.getElementById('lobby-list');
@@ -312,6 +314,8 @@ const showRegisterLinkEl = document.getElementById('show-register-link');
 
 const TOKEN_KEY = 'autogame_token';
 let currentLobbyName = '';
+/** When true, the dismissible #lobby menu stays hidden until showGameLobby(). */
+let lobbyMenuDismissed = false;
 
 function setLoggedInStatus(username, lobbyName) {
 	if (!statusEl || !username) return;
@@ -325,6 +329,7 @@ function showAuthOverlay() {
 	if (authOverlayEl) authOverlayEl.classList.remove('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	hideAppToolbar();
 }
 
@@ -367,9 +372,41 @@ function applyLobbyThemeLabels() {
 
 applyLobbyThemeLabels();
 
+function setLobbyHudVisible(visible) {
+	if (lobbyHudEl) lobbyHudEl.classList.toggle('hidden', !visible);
+}
+
+function isGameLobbyMenuVisible() {
+	return !!lobbyEl && !lobbyEl.classList.contains('hidden');
+}
+
+function isLobbyMenuDismissKeyBlocked(e) {
+	const target = e.target;
+	if (target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement ||
+		target?.isContentEditable) {
+		return true;
+	}
+	return !!(variantCodexOpen || deckViewerOpen || isLevelSettingsOpen() || isCharacterBoothOpen()
+		|| (settingsOverlayEl && !settingsOverlayEl.classList.contains('hidden'))
+		|| (authOverlayEl && !authOverlayEl.classList.contains('hidden'))
+		|| (accountOverlayEl && !accountOverlayEl.classList.contains('hidden'))
+		|| (levelSettingsOverlayEl && !levelSettingsOverlayEl.classList.contains('hidden'))
+		|| (runSummaryOverlay && getComputedStyle(runSummaryOverlay).display !== 'none'));
+}
+
+function dismissGameLobby() {
+	if (!lobbyEl) return;
+	lobbyMenuDismissed = true;
+	lobbyEl.classList.add('hidden');
+	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
+}
+
 function showLobbyBrowser() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
@@ -379,7 +416,9 @@ function showLobbyBrowser() {
 
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
+	lobbyMenuDismissed = false;
 	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	setLobbyHudVisible(true);
 	// Quest board only appears via the quest booth, so keep it hidden each time
 	// the lobby is (re)shown.
 	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
@@ -812,6 +851,7 @@ function applyLobbyJoinedData(data) {
 
 		if (!isSceneInitialized()) {
 			lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			uiEl.style.display = 'block';
 			showCardHand();
 			setDeckStackVisible(true);
@@ -1110,6 +1150,7 @@ function bindSocketHandlers(s) {
 			hideVariantCodex();
 			setDeckStackVisible(false);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 			showAuthOverlay();
@@ -1245,6 +1286,7 @@ function bindSocketHandlers(s) {
 			showCardHand();
 			setDeckStackVisible(true);
 			if (lobbyEl) lobbyEl.classList.add('hidden');
+			setLobbyHudVisible(false);
 			setDeployButtonVisible(false);
 			setGamePhase('playing');
 			if (enteringPlaying) {
@@ -1791,6 +1833,7 @@ function bindSocketHandlers(s) {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
 		lobbyEl.classList.add('hidden');
+		setLobbyHudVisible(false);
 		uiEl.style.display = 'block';
 		showCardHand();
 		setDeckStackVisible(true);
@@ -3795,6 +3838,11 @@ window.__variantCodexKeydownHandler = (e) => {
 		hideVariantCodex();
 		return;
 	}
+	if (key === 'escape' && isGameLobbyMenuVisible() && !isLobbyMenuDismissKeyBlocked(e)) {
+		e.preventDefault();
+		dismissGameLobby();
+		return;
+	}
 	if (key === 'g' && e.shiftKey && debugScenarioAllowed && socket?.connected && !isDebugGodmodeKeyBlocked(e)) {
 		e.preventDefault();
 		emitToggleDebugGodmode();
@@ -3904,6 +3952,7 @@ function performLogout() {
 	hideVariantCodex();
 	setDeckStackVisible(false);
 	if (lobbyEl) lobbyEl.classList.add('hidden');
+	setLobbyHudVisible(false);
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	updateStatus('Disconnected', 'disconnected');
 	showAuthOverlay();
@@ -4446,6 +4495,12 @@ returnToLobbyBtn.addEventListener('click', () => {
 	socket.emit(CLIENT_TO_SERVER.RETURN_TO_LOBBY);
 });
 
+if (lobbyCloseBtnEl) {
+	lobbyCloseBtnEl.addEventListener('click', () => {
+		dismissGameLobby();
+	});
+}
+
 if (abandonRunBtn) {
 	abandonRunBtn.addEventListener('click', () => {
 		socket.emit(CLIENT_TO_SERVER.ABANDON_RUN);
@@ -4602,6 +4657,8 @@ window.openQuestPanel = openQuestPanel;
 window.__requestBoothDebugOpenForTest = requestBoothDebugOpen;
 window.performLogout = performLogout;
 window.showGameLobby = showGameLobby;
+window.dismissGameLobby = dismissGameLobby;
+window.__getLobbyMenuDismissed = () => lobbyMenuDismissed;
 window.renderLobbyList = renderLobbyList;
 window.applyLobbyJoinedData = applyLobbyJoinedData;
 window.applyHubPresence = applyHubPresence;
