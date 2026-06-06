@@ -4870,3 +4870,26 @@ PASS. The captured coverage run reports `101` test files and `1600` tests passin
 
 None.
 
+
+## v0.276 — 279-playthrough-validate-sunken-canyon  (2026-06-06 02:45:41)
+
+- **Reach, activate, and defeat the stage boss:** PASS. `run-summary.json` has all four assertions true: `bossSpawned`, `encounterActivated`, `bossDefeated`, and `victoryFired`. The active probe shows the encounter locked/active, and the victory probes show `runStatus: "victory"`, `runObjectiveComplete: true`, `bossDefeated: true`, and `lastRunSummaryStatus: "victory"`.
+- **Capture required screenshots and findings under `game/validation/sunken-canyon/`:** PASS. The directory contains hub/lobby, level entry, mid-combat, boss dormant, boss active, boss defeated, and victory screenshots, plus `findings.md`, `probes.json`, `console.log`, and `run-summary.json`. The screenshots show the expected lobby, Sunken Canyon run, boss encounter states, and sortie-complete overlay.
+- **Pay attention to multi-level canyon floor alignment:** PASS. `probes.json` records floor samples at level entry, mid-combat, boss dormant, and boss active. All sampled `playerY - floorY` deltas are `0`, including the canyon-band boss-active probe at `playerY: 0.5`.
+
+## Design and requirements consistency
+
+PASS. The implementation remains aligned with the documented lobby-to-dungeon loop and server-authoritative floor sampling in `game/docs/design.md`. It does not regress the foundation requirements: the captured run renders a 3D scene, connects client/server over sockets, shows multiplayer state, and preserves movement/gameplay responsiveness in the smoke capture.
+
+## Debug scenario review
+
+PASS. The newly used Canyon Descent shortcuts are debug-only socket scenarios gated by `isDebugScenarioAllowed`, and the URL `?debugScenario=...` path remains localhost-only on the client. The same gameplay states remain reachable normally by unlocking Canyon Descent Tier II, deploying into the stage-boss run, clearing adds, approaching the `canyon_monolith`, and defeating the boss. The scenarios use the normal quest/run/encounter helpers (`applyLayoutForQuest`, `spawnEnemies`, `startDungeonRun`, `activateEncounter`, `lockEncounter`) and do not alter production gameplay paths.
+
+## Code quality and validation
+
+PASS. The changed code is scoped to the validation harness, artifacts, debug/test hooks, and focused tests. Full Vitest coverage visibility completed with `79` test files and `1406` tests passing, and `pnpm validate:sunken-canyon:check` exits `0` against the committed artifacts. I found only a minor cleanup nit, recorded separately in `nits.md`.
+
+## Remaining gaps
+
+None.
+
