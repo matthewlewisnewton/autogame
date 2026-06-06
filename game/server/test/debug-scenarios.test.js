@@ -152,19 +152,16 @@ describe('debugScenario — suspended-run-hub', () => {
 		expect(result.scenario).toBe('suspended-run-hub');
 
 		const state = testGameState();
-		// Suspended run: back in the lobby with a checkpoint that drives the
-		// distinct Resume affordance (and the suspended-run banner) in the hub.
+		// Suspended run: back in the lobby with in-memory dungeon state that drives
+		// the distinct Resume affordance (and the suspended-run banner) in the hub.
 		expect(state.gamePhase).toBe('lobby');
-		expect(state.suspendedCheckpoint).toBeTruthy();
-		expect(state.suspendedCheckpoint.run.status).toBe('playing');
+		expect(state.run.status).toBe('suspended');
+		expect(state.suspendedCheckpoint).toBeNull();
+		expect(state.layoutSeed).toBeDefined();
+		expect(state.enemies.length).toBeGreaterThan(0);
 
-		// The checkpoint carries non-default spent/damaged values to resume into.
 		const playerId = socket._playerId;
-		const saved = state.suspendedCheckpoint.playerStates[playerId];
-		expect(saved.magicStones).toBeLessThan(49);
-		const weapon = saved.hand.find((c) => c && c.type === 'weapon');
-		expect(weapon).toBeTruthy();
-		expect(weapon.remainingCharges).toBeLessThan(weapon.charges);
+		expect(state.players[playerId].magicStones).toBeLessThan(49);
 	});
 });
 

@@ -2912,28 +2912,40 @@ describe('run state', () => {
 
 			expect(gameState.gamePhase).toBe('lobby');
 			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.suspendedCheckpoint.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(gameState.telepipe).toEqual(expect.objectContaining({ x: 5, z: 5 }));
+			expect(gameState.enemies).toHaveLength(1);
+			expect(gameState.layoutSeed).toBeDefined();
 			expect(stateSnapshot().suspendedRunSummary).toEqual(expect.objectContaining({
 				questName: expect.any(String),
 			}));
 		});
 
-		it('checkAllReady restores checkpoint instead of spawning a fresh run', () => {
+		it('checkAllReady resumes in-memory run instead of spawning a fresh run', () => {
+			const runId = gameState.run.id;
+			const layoutSeed = gameState.layoutSeed;
+
 			tryEnterTelepipe('p1');
 			gameState.players.p2.x = 5;
 			gameState.players.p2.z = 5;
 			tryEnterTelepipe('p2');
 
-			const portalX = gameState.suspendedCheckpoint.telepipe.x;
+			const portalX = gameState.telepipe.x;
 			gameState.players.p1.ready = true;
 			gameState.players.p2.ready = true;
+
+			const logSpy = vi.spyOn(console, 'log');
 			checkAllReady();
+			logSpy.mockRestore();
 
 			expect(gameState.gamePhase).toBe('playing');
 			expect(gameState.run.status).toBe('playing');
+			expect(gameState.run.id).toBe(runId);
+			expect(gameState.layoutSeed).toBe(layoutSeed);
 			expect(gameState.telepipe.x).toBe(portalX);
 			expect(gameState.enemies).toHaveLength(1);
-			expect(gameState.suspendedCheckpoint).toBeUndefined();
+			expect(gameState.suspendedCheckpoint).toBeNull();
+			expect(logSpy.mock.calls.some((call) => String(call[0]).includes('checkpoint restored'))).toBe(false);
 		});
 
 		it('resume does not instantly re-extract players restored at the portal', () => {
@@ -3024,11 +3036,12 @@ describe('run state', () => {
 			};
 			expect(tryEnterTelepipe('p1').ok).toBe(true);
 			expect(gameState.run.status).toBe('suspended');
-			expect(gameState.suspendedCheckpoint).toBeDefined();
+			expect(gameState.telepipe).toBeTruthy();
 
 			expect(abandonSuspendedRun().ok).toBe(true);
 			expect(gameState.run).toBeUndefined();
-			expect(gameState.suspendedCheckpoint).toBeUndefined();
+			expect(gameState.suspendedCheckpoint).toBeFalsy();
+			expect(gameState.enemies).toHaveLength(0);
 
 			gameState.players.p1.debugScenario = null;
 			gameState.players.p1.ready = true;
@@ -3074,6 +3087,47 @@ describe('run state', () => {
 
 			expect(gameState.run).toBeDefined();
 			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 0);
+		});
+
+		it('solo telepipe extract and redeploy preserves run id, layout seed, hp, and magic stones', () => {
+			resetState();
+			gameState._lobbyId = 'test-lobby';
+			const spentMagicStones = STARTING_MAGIC_STONES - 12;
+			const damagedHp = 62;
+			addPlayer('p1', {
+				magicStones: spentMagicStones,
+				hp: damagedHp,
+				ready: true,
+				selectedDeck: ['iron_sword', 'flame_blade', 'battle_familiar', 'dungeon_drake'],
+			});
+
+			checkAllReady();
+			const runId = gameState.run.id;
+			const layoutSeed = gameState.layoutSeed;
+
+			const { x: portalX, z: portalZ } = gameState.players.p1;
+			gameState.telepipe = {
+				x: portalX,
+				z: portalZ,
+				placedBy: 'p1',
+				placedAt: Date.now() - PORTAL_PLACEMENT_GRACE_MS - 1,
+			};
+			expect(tryEnterTelepipe('p1').ok).toBe(true);
+			expect(gameState.gamePhase).toBe('lobby');
+			expect(gameState.run.status).toBe('suspended');
+			expect(gameState.suspendedCheckpoint).toBeNull();
+
+			gameState.players.p1.ready = true;
+			const logSpy = vi.spyOn(console, 'log');
+			checkAllReady();
+			logSpy.mockRestore();
+
+			expect(gameState.gamePhase).toBe('playing');
+			expect(gameState.run.id).toBe(runId);
+			expect(gameState.layoutSeed).toBe(layoutSeed);
+			expect(gameState.players.p1.magicStones).toBeCloseTo(spentMagicStones, 5);
+			expect(gameState.players.p1.hp).toBe(damagedHp);
+			expect(logSpy.mock.calls.some((call) => String(call[0]).includes('checkpoint restored'))).toBe(false);
 		});
 		it('checkAllReady does not start when a disconnected player has stale ready', () => {
 			resetState();

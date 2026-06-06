@@ -59,7 +59,7 @@ function register(socket, ctx) {
 
   socket.on(CLIENT_TO_SERVER.ABANDON_RUN, () => {
     withLobbyFromSocket(socket, (state) => {
-      if (!state.suspendedCheckpoint) {
+      if (!state.run || state.run.status !== 'suspended') {
         socket.emit(SERVER_TO_CLIENT.RUN_ERROR, { reason: 'No suspended expedition' });
         return;
       }

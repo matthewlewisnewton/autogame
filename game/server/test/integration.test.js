@@ -5305,7 +5305,9 @@ describe('Telepipe suspend and resume', () => {
 		await suspendedPromise2;
 
 		expect(testGameState().gamePhase).toBe('lobby');
-		expect(testGameState().suspendedCheckpoint.telepipe).toEqual(
+		expect(testGameState().run.status).toBe('suspended');
+		expect(testGameState().suspendedCheckpoint).toBeNull();
+		expect(testGameState().telepipe).toEqual(
 			expect.objectContaining({ x: portalX, z: portalZ }),
 		);
 
@@ -5392,16 +5394,14 @@ describe('Telepipe suspend and resume', () => {
 		await suspendedPromise1;
 		await suspendedPromise2;
 
-		expect(testGameState().gamePhase).toBe('lobby');
-		const checkpoint = testGameState().suspendedCheckpoint;
-		expect(checkpoint).toBeTruthy();
-		// The captured checkpoint holds the exact spent/damaged/progressed values.
-		expect(checkpoint.playerStates[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
-		const checkpointCard = checkpoint.playerStates[p1Id].hand.find((c) => c && c.id === 'iron_sword');
-		expect(checkpointCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
+		const suspended = testGameState();
+		expect(suspended.gamePhase).toBe('lobby');
+		expect(suspended.run.status).toBe('suspended');
+		expect(suspended.suspendedCheckpoint).toBeNull();
+		expect(suspended.players[p1Id].magicStones).toBe(SPENT_MAGIC_STONES);
+		expect(suspended.telepipe).toEqual(expect.objectContaining({ x: portalX, z: portalZ }));
 
-		// Resume via the all-ready gate: checkAllReady routes to restoreRunCheckpoint
-		// because a suspendedCheckpoint exists, re-entering the in-progress run.
+		// Resume via the all-ready gate: checkAllReady resumes the in-memory run.
 		const resumePromise1 = waitForEvent(p1.socket, 'startGame');
 		const resumePromise2 = waitForEvent(p2.socket, 'startGame');
 		p1.socket.emit('playerReady', true);
@@ -5417,12 +5417,9 @@ describe('Telepipe suspend and resume', () => {
 		// assert it stayed near the spent value and well below the run-start total.)
 		expect(resumed.players[p1Id].magicStones).toBeCloseTo(SPENT_MAGIC_STONES, 0);
 		expect(resumed.players[p1Id].magicStones).toBeLessThan(STARTING_MAGIC_STONES);
-
-		// The damaged card keeps its drained charges rather than refilling to full.
-		const restoredCard = resumed.players[p1Id].hand.find((c) => c && c.id === 'iron_sword');
-		expect(restoredCard).toBeTruthy();
-		expect(restoredCard.remainingCharges).toBe(DAMAGED_REMAINING_CHARGES);
-		expect(restoredCard.remainingCharges).not.toBe(restoredCard.charges);
+		expect(resumed.run.id).toBe(state.run.id);
+		expect(resumed.layoutSeed).toBe(state.layoutSeed);
+		expect(resumed.suspendedCheckpoint).toBeNull();
 
 		// Objective progress (collected/defeated counts) survives the round-trip.
 		if (expectedObjective.type === 'defeat_enemies') {

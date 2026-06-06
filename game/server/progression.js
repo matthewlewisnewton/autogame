@@ -2636,14 +2636,21 @@ function captureRunCheckpoint() {
   };
 }
 
-function buildSuspendedRunSummary(checkpoint) {
-  if (!checkpoint || !checkpoint.run) return null;
+function buildSuspendedRunSummary(source) {
+  const run = source?.run ?? source;
+  if (!run || !run.questId) return null;
   return {
-    questId: checkpoint.run.questId,
-    questTier: checkpoint.run.questTier ?? DEFAULT_QUEST_TIER,
-    questName: checkpoint.run.questName,
-    objective: { ...checkpoint.run.objective },
+    questId: run.questId,
+    questTier: run.questTier ?? DEFAULT_QUEST_TIER,
+    questName: run.questName,
+    objective: { ...run.objective },
   };
+}
+
+function getSuspendedRunSummarySource() {
+  if (_gameState.suspendedCheckpoint) return _gameState.suspendedCheckpoint;
+  if (_gameState.run?.status === 'suspended') return _gameState.run;
+  return null;
 }
 
 function clearSuspendedRunData() {
@@ -2701,19 +2708,49 @@ function restoreRunCheckpoint() {
   return true;
 }
 
+function resumeSuspendedRunInPlace() {
+  if (!_gameState.run || _gameState.run.status !== 'suspended') return false;
+
+  _gameState.run.status = 'playing';
+
+  for (const player of Object.values(_gameState.players)) {
+    if (player.suspendDungeonPos) {
+      player.x = player.suspendDungeonPos.x;
+      player.y = player.suspendDungeonPos.y;
+      player.z = player.suspendDungeonPos.z;
+      delete player.suspendDungeonPos;
+    }
+    player.extracted = false;
+    player.ready = false;
+    player.pendingSummons = new Set();
+    player.lastMoveTime = Date.now();
+    player.inputActive = false;
+    player.inputDx = 0;
+    player.inputDz = 0;
+    delete player.lastTelepipeEnterAt;
+    createDrawDeckFromSelectedDeck(player);
+    initPlayerHand(player);
+    player.slotCooldowns = new Array(MAX_HAND_SLOTS).fill(null);
+  }
+
+  if (_gameState.telepipe) {
+    _gameState.telepipe.placedAt = Date.now();
+  }
+  repositionPlayersAwayFromPortal(_gameState.players);
+  _rebuildWallColliders();
+  console.log('[run] resumed in place');
+  return true;
+}
+
 function suspendRunToLobby() {
   if (!_gameState.run || _gameState.run.status !== 'playing') return;
 
-  _gameState.suspendedCheckpoint = captureRunCheckpoint();
-  console.log('[run] checkpoint captured');
-
   _gameState.run.status = 'suspended';
-  resetTransientRunState();
-  _gameState.telepipe = null;
   setGamePhase(_gameState, PHASES.LOBBY);
 
   const spawn = hubSpawnPosition(HUB_LAYOUT);
   for (const player of Object.values(_gameState.players)) {
+    player.suspendDungeonPos = { x: player.x, y: player.y, z: player.z };
     player.ready = false;
     player.extracted = false;
     player.dead = false;
@@ -2733,8 +2770,8 @@ function suspendRunToLobby() {
 
   refreshShopOffer();
 
-  const summary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
-  console.log(`[run] suspended: ${summary?.questName || _gameState.suspendedCheckpoint?.run?.questName || 'unknown'}`);
+  const summary = buildSuspendedRunSummary(_gameState.run);
+  console.log(`[run] suspended: ${summary?.questName || _gameState.run?.questName || 'unknown'}`);
   const io = getIoTarget();
   if (io) {
     io.emit(SERVER_TO_CLIENT.RUN_SUSPENDED, summary);
@@ -2804,11 +2841,12 @@ function checkTelepipeProximity() {
 }
 
 function abandonSuspendedRun(state = _gameState) {
-  if (!state.suspendedCheckpoint) {
+  if (!state.run || state.run.status !== 'suspended') {
     return { ok: false, reason: 'no_checkpoint' };
   }
 
   clearSuspendedRunData();
+  resetTransientRunState();
   delete state.run;
   setGamePhase(state, PHASES.LOBBY);
 
@@ -2817,6 +2855,7 @@ function abandonSuspendedRun(state = _gameState) {
     revivePlayerInLobby(player);
     player.ready = false;
     player.extracted = false;
+    delete player.suspendDungeonPos;
     player.x = spawn.x;
     player.z = spawn.z;
     player.y = resolveFloorY(sampleFloorY(HUB_LAYOUT, player.x, player.z));
@@ -2975,7 +3014,7 @@ function buildWorldSnapshot(shopOffer, suspendedRunSummary) {
 
 function hotStateSnapshot() {
   const shopOffer = ensureShopOffer();
-  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
+  const suspendedRunSummary = buildSuspendedRunSummary(getSuspendedRunSummarySource());
 
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
@@ -2990,7 +3029,7 @@ function hotStateSnapshot() {
 
 function stateSnapshot() {
   const shopOffer = ensureShopOffer();
-  const suspendedRunSummary = buildSuspendedRunSummary(_gameState.suspendedCheckpoint);
+  const suspendedRunSummary = buildSuspendedRunSummary(getSuspendedRunSummarySource());
 
   const players = {};
   for (const [id, p] of Object.entries(_gameState.players)) {
@@ -3175,8 +3214,8 @@ function checkAllReadyInner() {
     try {
       setGamePhase(_gameState, PHASES.PLAYING);
 
-      if (_gameState.suspendedCheckpoint) {
-        restoreRunCheckpoint();
+      if (_gameState.run?.status === 'suspended') {
+        resumeSuspendedRunInPlace();
         const io = getIoTarget();
         emitLobbyDeploy(io, SERVER_TO_CLIENT.START_GAME);
         emitLobbyDeploy(io, SERVER_TO_CLIENT.STATE_UPDATE, stateSnapshot());

@@ -1363,8 +1363,8 @@ function applyDebugScenario(socket, name) {
       // Resume affordance (vs. the new-mission Deploy) can be verified without
       // playing a full run then extracting the whole squad through a Telepipe.
       // We spend magic stones, drain a hand card's charges, and advance the
-      // objective before capturing the checkpoint so the resume round-trip has
-      // visibly non-default values to preserve. The SAME suspended-lobby state
+      // objective before suspending so the resume round-trip has visibly
+      // non-default values to preserve. The SAME suspended-lobby state
       // is reachable normally by deploying, placing a Telepipe, and extracting
       // every squadmate through it, which suspends the run to the hub.
       player.hp = MAX_HP;
@@ -1390,7 +1390,7 @@ function applyDebugScenario(socket, name) {
           objective.collectedItems = 1;
         }
       }
-      // Capture the checkpoint and drop the squad into the hub lobby with the
+      // Suspend in place and drop the squad into the hub lobby with the
       // suspended-run banner + Resume control showing.
       suspendRunToLobby();
       return { ok: true, scenario: name };
