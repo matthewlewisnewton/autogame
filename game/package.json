@@ -26,6 +26,8 @@
     "test:smoke:hub-lobby-visible": "node client/scripts/test-hub-lobby-visible.mjs",
     "validate:rooms": "node ../harness/validate/playthrough.mjs --preset rooms --steps full --out game/validation/rooms",
     "validate:rooms:check": "node ../harness/validate/verify-rooms-artifacts.mjs",
+    "validate:spire-ascent": "node ../harness/validate/playthrough.mjs --preset spire-ascent --steps full --out game/validation/spire-ascent",
+    "validate:spire-ascent:check": "node ../harness/validate/verify-spire-ascent-artifacts.mjs",
     "cleanup:vitest": "bash scripts/kill-vitest.sh"
   },
   "keywords": [],
