@@ -104,3 +104,4 @@ Completed tickets are archived in [TASKS_ARCHIVE.md](TASKS_ARCHIVE.md).
 - [ ] [281-cleanup-rooms-objective-hud-and-default-profile-bugs](tickets/281-cleanup-rooms-objective-hud-and-default-profile-bugs/)
 - [ ] [282-cleanup-debug-unlimited-health-godmode](tickets/282-cleanup-debug-unlimited-health-godmode/)
 - [ ] [283-cleanup-miniboss-spire-ascent](tickets/283-cleanup-miniboss-spire-ascent/)
+- [ ] [285-cleanup-distinct-stage-boss-visual-identity](tickets/285-cleanup-distinct-stage-boss-visual-identity/)

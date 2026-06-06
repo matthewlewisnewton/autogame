@@ -1,0 +1,11 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/284-distinct-stage-boss-visual-identity/game/data
+Server listening on port 3000
+Player connected: socket=1_bRDpSEo8FUATtOAAAB, playerId=3ce5f115-df05-442c-a0db-736007b90a69
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=GHT01rbEvEzARzNiAAAD, playerId=95573f9d-0595-4cd8-b52e-7deac84fbcd7
+Player disconnected: 1_bRDpSEo8FUATtOAAAB
+Player disconnected: GHT01rbEvEzARzNiAAAD

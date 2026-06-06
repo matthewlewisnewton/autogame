@@ -4870,3 +4870,26 @@ PASS. The captured coverage run reports `101` test files and `1600` tests passin
 
 None.
 
+
+## v0.282 — 284-distinct-stage-boss-visual-identity  (2026-06-06 05:37:11)
+
+### All four stage bosses are wired to their stage-boss encounters
+
+PASS. `game/server/quests.js` maps the four Tier II stage-boss encounters to `annex_overseer`, `arena_champion`, `canyon_warden`, and `spire_warden`. `game/server/objectives.js` spawns the configured `bossType` and wires it as the encounter boss. `game/server/simulation.js` defines `canyon_warden` with its own display name, surfaced stats, HP, attack damage, attack range, and cone attack style. `game/client/models.js` and `ENEMY_ATTACK_VISUAL` also include the Canyon Warden key.
+
+### Normal gameplay and debug scenarios
+
+PASS. This ticket did not add a new debug scenario entry point. Existing Tier II debug scenarios remain gated by the debug scenario socket path and tests exercise the normal deploy/state path for the corresponding quests. Normal gameplay still reaches the same stage-boss states via quest selection, ready/deploy, objective spawning, encounter activation, and boss defeat handling.
+
+### Consistency with design and foundation requirements
+
+PASS. The implementation stays within the low-poly action-RPG style described in `game/docs/design.md` by using enlarged cone silhouettes, color, and emissive accents rather than a broader enemy-art overhaul. The captured run confirms the core foundation from `game/docs/requirements.md`: the 3D scene renders, client/server WebSocket connection is established, multiplayer lobby/gameplay state loads, and movement/dodge probes continue to function.
+
+### Tests and coverage
+
+PASS. The round-3 coverage run reports 56 test files passed and 1336 tests passed. Relevant coverage includes renderer footprint/grounding tests plus server tests for enemy display catalog and Tier II boss quest wiring.
+
+## Remaining gaps
+
+None.
+

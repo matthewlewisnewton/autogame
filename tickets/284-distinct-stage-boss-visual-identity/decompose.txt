@@ -1,0 +1,11 @@
+Warning: running headless with --yolo / approval-mode=yolo and no sandbox. All tool calls (shell, write, edit) auto-execute at this process's privilege level. Enable a sandbox via --sandbox / QWEN_SANDBOX, or set QWEN_CODE_SUPPRESS_YOLO_WARNING=1 to silence this notice.
+Created 2 sub-tickets:
+
+1. **`tickets/284-distinct-stage-boss-visual-identity/subtickets/01-canyon-warden-distinct-type/ticket.md`** — Create a `canyon_warden` enemy type (server `ENEMY_DEFS` + client `ENEMY_GEOMETRY` + `MODEL_REGISTRY` + quest config change). Verification: **code** (data/structure changes with test coverage).
+
+2. **`tickets/284-distinct-stage-boss-visual-identity/subtickets/02-boss-scale-and-emissive/ticket.md`** — Increase all 4 boss cone dimensions to ~2× trash size and ensure every boss has emissive glow. Verification: **visual** (purely about on-screen scale and glow).
+
+**Rationale for 2 sub-tickets:**
+- Sub-ticket 01 is a data-layer change (new enemy type registration across server + client) — verifiable by code/tests alone
+- Sub-ticket 02 is purely visual tuning (scale + emissive parameters) — best verified by screenshot comparison showing bosses read as "boss" vs adds
+- Together they cover all 4 bosses: Canyon Warden gets its own type (01) + all 4 get boosted scale/emissive (02)
