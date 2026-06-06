@@ -62,6 +62,7 @@ const {
   getQuest,
   getSelectedQuest,
   getEnemyPool,
+  getGuaranteedEnemyType,
   pickWeightedEnemyType,
   DEFAULT_QUEST_TIER,
 } = require('./quests');
@@ -2480,9 +2481,13 @@ function spawnCombatEnemies(layout, rng, quest) {
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : enemyPool.length;
   const preferNearest = def?.preferNearestEnemySpawns?.(quest) ?? false;
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;
+  // Level-scoped signature foe: if the quest declares a guaranteed enemy type,
+  // force the first spawn to it and draw the rest from the weighted pool as
+  // usual. Quests without one (`getGuaranteedEnemyType` → null) are unchanged.
+  const guaranteedType = enemyCount > 0 ? getGuaranteedEnemyType(quest.id) : null;
 
   for (let i = 0; i < enemyCount; i++) {
-    const type = pickWeightedEnemyType(enemyPool, rng);
+    const type = i === 0 && guaranteedType ? guaranteedType : pickWeightedEnemyType(enemyPool, rng);
     const useNearest = preferNearest && i < nearbyCount;
     const pos = pickEnemySpawnPosition(layout, rng, useNearest, i, enemyCount);
     // Variant seam (centralized in spawnEnemy): encounterTier from the spawn
@@ -3324,6 +3329,7 @@ module.exports = {
   spawnLoot,
   spawnCrystals,
   spawnEnemies,
+  spawnCombatEnemies,
   updateSurviveSpawns,
   updateEncounterTriggers,
   recordCrystalCollected,

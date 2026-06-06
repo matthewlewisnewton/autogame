@@ -5,6 +5,7 @@ import {
 	updateEnemies,
 	updateEnemyProjectiles,
 	spawnIceBall,
+	spawnCombatEnemies,
 	isSlowed,
 	ENEMY_DEFS,
 } from '../index.js';
@@ -13,6 +14,8 @@ import {
 	computeWalkableAABBs,
 	computeDungeonBounds,
 } from '../simulation.js';
+// Pure quest data/accessors (no shared module state) — safe to import directly.
+import { getQuest, getGuaranteedEnemyType } from '../quests.js';
 
 const DEF = ENEMY_DEFS.glacial_thrower;
 
@@ -181,5 +184,91 @@ describe('glacial_thrower ice-ball projectile', () => {
 		const ticks = Math.ceil(DEF.iceBallMaxRange / (DEF.iceBallSpeed * dt)) + 2;
 		for (let i = 0; i < ticks; i++) updateEnemyProjectiles();
 		expect(gameState.iceBalls).toHaveLength(0);
+	});
+});
+
+// Deterministic seeded RNG mirroring the server's mulberry32 so the spawn tests
+// can replay the same seed independently of the live run state.
+function makeRng(seed) {
+	let a = seed >>> 0;
+	return function () {
+		a |= 0;
+		a = (a + 0x6d2b79f5) | 0;
+		let t = Math.imul(a ^ (a >>> 15), 1 | a);
+		t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+		return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+	};
+}
+
+// A layout with a dedicated combat room so spawnCombatEnemies places enemies via
+// the standard combat-room sampler (avoids open-floor / canyon / spire paths).
+function buildCombatLayout() {
+	return {
+		rooms: [
+			{ x: 0, z: 0, width: 20, depth: 20, role: 'start', walls: [] },
+			{ x: 60, z: 0, width: 40, depth: 40, role: 'combat', walls: [], encounterTier: 0 },
+		],
+		passages: [],
+	};
+}
+
+// Drive the real spawn path for a quest at a given seed and return the spawned
+// enemy types in order.
+function spawnTypesForQuest(questId, seed) {
+	resetGameState();
+	gameState.enemies = [];
+	gameState.run = { status: 'playing', questId, questTier: 1 };
+	const quest = getQuest(questId, 1);
+	spawnCombatEnemies(buildCombatLayout(), makeRng(seed), quest);
+	return gameState.enemies.map((e) => e.type);
+}
+
+describe('Frost Crossing guaranteed glacial_thrower spawn', () => {
+	const SEEDS = [1, 7, 42, 123, 2026, 99999];
+
+	it('declares glacial_thrower as the frost_crossing signature foe', () => {
+		expect(getGuaranteedEnemyType('frost_crossing')).toBe('glacial_thrower');
+	});
+
+	it('always spawns at least one glacial_thrower across representative seeds', () => {
+		for (const seed of SEEDS) {
+			const types = spawnTypesForQuest('frost_crossing', seed);
+			expect(types.length).toBe(6); // quest enemyCount
+			expect(types).toContain('glacial_thrower');
+		}
+	});
+
+	it('still draws the remaining enemies from the weighted pool', () => {
+		// Across all seeds, non-guaranteed slots should produce at least one
+		// non-glacial pool type (grunt/skirmisher), proving the pool still draws.
+		const otherTypes = new Set();
+		for (const seed of SEEDS) {
+			const types = spawnTypesForQuest('frost_crossing', seed);
+			for (const t of types) {
+				if (t !== 'glacial_thrower') otherTypes.add(t);
+			}
+		}
+		expect(otherTypes.size).toBeGreaterThan(0);
+		for (const t of otherTypes) {
+			expect(['grunt', 'skirmisher']).toContain(t);
+		}
+	});
+
+	it('is deterministic: same seed yields the same spawn set', () => {
+		for (const seed of SEEDS) {
+			expect(spawnTypesForQuest('frost_crossing', seed)).toEqual(
+				spawnTypesForQuest('frost_crossing', seed),
+			);
+		}
+	});
+
+	it('does not force the signature foe onto non-ice quests', () => {
+		// A quest with no declared guaranteed type is unaffected.
+		expect(getGuaranteedEnemyType('training_caverns')).toBeNull();
+		expect(getGuaranteedEnemyType('ember_descent')).toBeNull();
+		for (const seed of SEEDS) {
+			const types = spawnTypesForQuest('training_caverns', seed);
+			expect(types).not.toContain('glacial_thrower');
+		}
 	});
 });
