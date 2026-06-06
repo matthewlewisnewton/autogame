@@ -194,6 +194,13 @@ function tryActivateEncounter(gameState) {
   if (anchor && !run.encounter.spawnAnchor) {
     run.encounter.spawnAnchor = { x: anchor.x, z: anchor.z };
   }
+  const deadAddCount = gameState.enemies.filter(
+    (e) => e.id !== bossId && e.hp <= 0,
+  ).length;
+  if (deadAddCount > 0) {
+    const { recordEnemyDefeated } = require('./progression');
+    recordEnemyDefeated(deadAddCount);
+  }
   clearNonBossEnemies(gameState, bossId);
   return true;
 }

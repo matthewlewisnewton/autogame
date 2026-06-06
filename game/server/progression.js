@@ -1227,7 +1227,7 @@ function buildRunSummary(status) {
     questName: run.questName,
     objective: { ...run.objective },
     players,
-    defeatedEnemies: run.objective.defeatedEnemies,
+    defeatedEnemies: run.objective.defeatedEnemies ?? 0,
     currencyCollected: players.reduce((sum, p) => sum + p.currency, 0),
     rewards: {
       currency: run.rewardCurrency ?? 0

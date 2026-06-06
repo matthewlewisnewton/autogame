@@ -1,0 +1,12 @@
+[users] Loaded 2 user record(s) from /home/matt/workspace/.autogame-worktrees/279-playthrough-validate-sunken-canyon/game/data/users.json
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+[server] Dungeon bounds: x [-36.0, 36.0], z [-18.0, 36.0]
+[auth] JWT_SECRET not set — using dev fallback secret (ALLOW_DEV_AUTH=1). Do not use this in production. Set JWT_SECRET to a cryptographically random value.
+[persistence] FileProvider initialized at /home/matt/workspace/.autogame-worktrees/279-playthrough-validate-sunken-canyon/game/data
+Server listening on port 3002
+Player connected: socket=M8RxBwuOKKQ1F77zAAAB, playerId=4fb9980c-5302-4e85-be84-d15455be3d62
+[server] Layout for quest "training_caverns" tier 1: seed=352369970, profile=crowded, rooms=10
+Player connected: socket=-JTN34PXxVUjIb2NAAAD, playerId=e5aef8b0-c78e-4fd9-9a93-9f04959ffea3
+[loot] spawned id=1e293761-df8c-4295-8c51-43c3ad9aa337 value=11
+Player disconnected: M8RxBwuOKKQ1F77zAAAB
+Player disconnected: -JTN34PXxVUjIb2NAAAD

@@ -1,13 +1,17 @@
-Merge conflicts are resolved in both files.
+All seven conflicted files are resolved. Summary of how each merge was handled:
 
-### `TASKS.md`
-Combined cleanup backlog entries from both sides:
-- All 9 cleanup tickets from `main` (hub presence, booth terminals, plaza arena, etc.)
-- The branch’s `278-cleanup-sec-jwt-require-explicit-dev-auth` entry
+**`TASKS.md`** — Kept all cleanup backlog entries: open-plaza, sunken-canyon, spire-ascent, and the driver-output ticket.
 
-### `LOGBOOK.md`
-- Kept all `main` logbook entries (`v0.236` through `v0.269`) after the shared `v0.234` section
-- Appended the ticket’s `v0.273 — 266-sec-jwt-require-explicit-dev-auth` entry at the end
-- Restored the truncated branch entry (it had started mid-sentence with “throw messages.”) using the round-9 review content so the logbook entry is complete and coherent
+**`game/package.json`** — Combined all six `validate:*` npm scripts (open-plaza, sunken-canyon, and spire-ascent).
 
-No conflict markers remain in either file. The harness can proceed with commit and merge.
+**`harness/validate/lib/findings.mjs`** — Used main’s preset-aware renderer (`findingsTitle` / `bossSpawnLabel` with fallbacks) plus floor-alignment support. Dropped the branch’s hard-coded `PRESET_TITLES` map and `bossType` requirement.
+
+**`harness/validate/playthrough.mjs`** — Registered all four presets; kept main’s `deployRunLabel`, hub-step messaging, and preset-driven findings fields; kept the branch’s `addTypes` threading for Spire’s wider add pool.
+
+**`game/server/debugScenarios.js`** — Kept both sides’ helper functions (`liveSpireAscentAdds`, `resolveSpireSummitAnchor` from the branch; canyon/arena helpers and band clustering from main). Added `spire-ascent-boss-approach` to `BOSS_APPROACH_NUDGE_SCENARIOS`.
+
+**`LOGBOOK.md`** — Merged log entries in version order (v0.275 → v0.281), ending with the spire-ascent ticket.
+
+**`game/server/test/findings_render.test.js`** — Removed the obsolete `requires bossType` test (main’s API no longer throws); the remaining spire-ascent assertions still pass via fallback.
+
+No conflict markers remain. The harness can commit and run the full test suite.

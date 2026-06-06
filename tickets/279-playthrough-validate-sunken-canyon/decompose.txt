@@ -1,0 +1,19 @@
+Broke ticket **279** into **4 sub-tickets** (dependency order), mirroring the 277 rooms validation pattern: harness preset → canyon combat debug hooks → artifact/floor probes → full execute run.
+
+**Note:** The parent ticket says "level-1" but the Canyon Warden stage boss lives on `canyon_descent` **Tier 2** (`bossType: 'miniboss'`, deploy scenario `canyon-descent-tier-2`). Sub-tickets target that tier since Tier 1 is `defeat_enemies` only.
+
+### Sub-ticket folder paths created
+
+1. `/home/matt/workspace/.autogame-worktrees/279-playthrough-validate-sunken-canyon/tickets/279-playthrough-validate-sunken-canyon/subtickets/01-sunken-canyon-harness-preset/`
+2. `/home/matt/workspace/.autogame-worktrees/279-playthrough-validate-sunken-canyon/tickets/279-playthrough-validate-sunken-canyon/subtickets/02-canyon-combat-debug-scenarios/`
+3. `/home/matt/workspace/.autogame-worktrees/279-playthrough-validate-sunken-canyon/tickets/279-playthrough-validate-sunken-canyon/subtickets/03-sunken-canyon-artifacts-and-floor-probes/`
+4. `/home/matt/workspace/.autogame-worktrees/279-playthrough-validate-sunken-canyon/tickets/279-playthrough-validate-sunken-canyon/subtickets/04-execute-sunken-canyon-validation/`
+
+| # | Focus | Scope |
+|---|--------|--------|
+| **01** | `sunken-canyon` preset + driver registration + `pnpm validate:sunken-canyon` | `harness/validate/**` |
+| **02** | `canyon-descent-near-adds` / `boss-approach` / `boss-low-hp` debug scenarios | minimal `game/server/` hook |
+| **03** | `verify-sunken-canyon-artifacts.mjs`, preset-aware findings, floor-alignment probes | `harness/validate/**` |
+| **04** | Run full playthrough; land `game/validation/sunken-canyon/` artifacts | execute only |
+
+All sub-tickets use **Verification: code**.

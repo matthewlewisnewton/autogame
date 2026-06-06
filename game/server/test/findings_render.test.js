@@ -33,8 +33,4 @@ describe('renderFindings', () => {
 		expect(md).toContain('**bossSpawned (spire_warden)**: PASS');
 		expect(md).not.toContain('annex_overseer');
 	});
-
-	it('requires bossType', () => {
-		expect(() => renderFindings({ ...baseRun, preset: 'rooms' })).toThrow(/bossType/);
-	});
 });

@@ -100,6 +100,7 @@ import {
 	getCardMagicStoneCost,
 } from './vanguard-hud.js';
 import { syncLockOnInfoPanel } from './lock-on-info-panel.js';
+import { buildBossEncounterModel, syncBossEncounterHud } from './boss-encounter-hud.js';
 import { clearAllLockOnState } from './lockOn.js';
 
 // ── Renderer module imports ──
@@ -1259,6 +1260,10 @@ function bindSocketHandlers(s) {
 		// Update objective HUD
 		updateObjectiveHud();
 
+		// Update stage-boss encounter HUD (boss bar shown while the encounter is
+		// active/locked and the boss enemy is alive; hidden otherwise)
+		updateBossEncounterHud();
+
 		// Reconcile hand with server authority + re-render for .no-ms / .empty classes
 		if (state.gamePhase === 'playing' && myId && state.players[myId] && state.players[myId].hand) {
 			const serverPlayer = state.players[myId];
@@ -2351,6 +2356,40 @@ function updateObjectiveHud() {
 	} else {
 		objectiveHudEl.style.display = 'none';
 	}
+}
+
+// ── Stage-boss encounter HUD ──
+// Lazily resolved + cached refs for the #boss-encounter-hud nodes added in
+// sub-ticket 01. Lazy so the lookup survives jsdom tests that build the DOM
+// after main.js is imported.
+let bossEncounterHudDom = null;
+// Last view-model synced to the boss HUD, exposed for the debug snapshot/hooks.
+let bossEncounterModel = null;
+
+function getBossEncounterHudDom() {
+	if (bossEncounterHudDom) return bossEncounterHudDom;
+	const container = document.getElementById('boss-encounter-hud');
+	if (!container) return null;
+	bossEncounterHudDom = {
+		container,
+		nameEl: document.getElementById('boss-encounter-name'),
+		fillEl: document.getElementById('boss-encounter-hp-fill'),
+	};
+	return bossEncounterHudDom;
+}
+
+// Build the boss-encounter view-model from live server state and sync it to the
+// HUD. Reuses the sub-ticket 01 module unchanged; called from the same per-frame
+// update site that refreshes the objective HUD.
+function updateBossEncounterHud() {
+	bossEncounterModel = buildBossEncounterModel({
+		encounter: gameState?.run?.encounter,
+		enemies: gameState?.enemies,
+		catalog: enemyDisplayCatalog,
+	});
+	const dom = getBossEncounterHudDom();
+	if (dom) syncBossEncounterHud(bossEncounterModel, dom);
+	return bossEncounterModel;
 }
 
 function clearAdjacentCardHighlights() {
@@ -4219,8 +4258,6 @@ function renderCardChoices(choices) {
 function showRunSummary(data) {
 	if (!data) return;
 
-	lastRunSummary = data;
-
 	if (data.status === 'victory') {
 		playSound('victory');
 	} else {
@@ -4277,8 +4314,12 @@ function showRunSummary(data) {
 		}
 	}
 
-	// Mirror victory onto gameState.run immediately so harness polling sees it
-	// before any delayed server stateUpdate resync.
+	runSummaryOverlay.style.display = 'flex';
+
+	// Mirror victory onto gameState.run and lastRunSummary only after the overlay
+	// is visible so 06-boss-defeated can capture pre-summary combat while the
+	// playthrough driver waits for Sortie Complete before 07-victory.
+	lastRunSummary = data;
 	if (data.status === 'victory' && gameState?.run) {
 		gameState.run.status = 'victory';
 		if (gameState.run.objective?.type === 'stage_boss') {
@@ -4287,8 +4328,6 @@ function showRunSummary(data) {
 			gameState.run.objective.bossDefeated = true;
 		}
 	}
-
-	runSummaryOverlay.style.display = 'flex';
 }
 
 returnToLobbyBtn.addEventListener('click', () => {
@@ -4350,6 +4389,8 @@ window.__setKeyItemDefs = (defs) => { keyItemDefs = defs || {}; };
 window.__getEnemyDisplayCatalog = () => enemyDisplayCatalog;
 window.__setEnemyDisplayCatalog = (catalog) => { enemyDisplayCatalog = catalog; };
 window.__syncLockOnInfoPanel = syncLockOnInfoPanel;
+window.__updateBossEncounterHud = updateBossEncounterHud;
+window.__getBossEncounterModel = () => (bossEncounterModel ? { ...bossEncounterModel } : null);
 window.__updateKeyItemCooldownHud = updateKeyItemCooldownHud;
 window.__flashKeyItemIndicator = flashKeyItemIndicator;
 window.__isSocketReady = () => !!(socket && socket.connected);
@@ -4462,6 +4503,39 @@ window.renderCardChoices = renderCardChoices;
 window.__claimedCardRewardId = () => claimedCardRewardId;
 window.__currentCardChoices = () => currentCardChoices;
 window.__connectionState = () => connectionState;
+function bandAtLayout(layout, x, z) {
+	if (!layout?.rooms) return null;
+	for (const room of layout.rooms) {
+		const halfW = room.width / 2;
+		const halfD = room.depth / 2;
+		if (x >= room.x - halfW && x <= room.x + halfW && z >= room.z - halfD && z <= room.z + halfD) {
+			return room.band ?? null;
+		}
+	}
+	return null;
+}
+function activeHarnessLayout() {
+	return (gameState?.gamePhase === 'lobby' && hubLayout && renderedSceneProfile === 'hub')
+		? hubLayout
+		: (currentLayout || (gameState && gameState.layout) || null);
+}
+window.__sampleFloorAlignmentForHarness = async () => {
+	const { sampleFloorY, resolveFloorY } = await import('../shared/floorSampling.esm.js');
+	const me = gameState && myId ? gameState.players[myId] : null;
+	const layout = activeHarnessLayout();
+	if (!me || !layout) return null;
+	const x = me.x;
+	const z = me.z;
+	const floorY = resolveFloorY(sampleFloorY(layout, x, z));
+	const playerY = Number.isFinite(me.y) ? me.y : floorY;
+	return {
+		playerY,
+		floorY,
+		delta: playerY - floorY,
+		layoutProfile: layout.profile ?? null,
+		band: bandAtLayout(layout, x, z),
+	};
+};
 window.__AUTOGAME_HARNESS_STATE__ = () => {
 	const me = gameState && myId ? gameState.players[myId] : null;
 	const lobbyVisible = !!lobbyEl && !lobbyEl.classList.contains('hidden');
@@ -4502,6 +4576,11 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 				: (objective.defeatedEnemies ?? 0) >= (objective.totalEnemies ?? 0)
 	);
 
+	const sortieCompleteOverlayVisible = !!runSummaryOverlay
+		&& !!summaryStatusEl
+		&& getComputedStyle(runSummaryOverlay).display !== 'none'
+		&& summaryStatusEl.textContent.trim() === THEME.run.sortieComplete;
+
 	return {
 		debugScenario,
 		debugScenarioAllowed,
@@ -4509,8 +4588,10 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 		debugGodmodeResult,
 		objective,
 		encounter,
+		bossEncounter: bossEncounterModel ? { ...bossEncounterModel } : null,
 		runObjectiveComplete,
 		lastRunSummary,
+		sortieCompleteOverlayVisible,
 		myId,
 		selectedDeck: Array.isArray(mySelectedDeck) ? [...mySelectedDeck] : [],
 		phase: gameState ? gameState.gamePhase : 'unknown',
@@ -4553,6 +4634,7 @@ window.__AUTOGAME_HARNESS_STATE__ = () => {
 			debugGodmode: !!me.debugGodmode,
 			dead: me.dead,
 			x: me.x,
+			y: me.y,
 			z: me.z,
 			equippedKeyItemId: me.equippedKeyItemId ?? null,
 			keyItemCooldownRemaining: getKeyItemCooldownRemainingMs(me),

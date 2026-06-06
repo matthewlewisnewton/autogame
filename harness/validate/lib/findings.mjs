@@ -1,15 +1,15 @@
 /**
- * Render validation findings markdown from a playthrough run summary.
+ * Render validation findings.md from a playthrough run summary.
  */
 
-const PRESET_TITLES = {
-	rooms: 'Rooms validation findings',
-	'spire-ascent': 'Spire Ascent validation findings',
-};
+const FLOOR_ALIGNMENT_STEPS = [
+	['levelEntry', 'Level entry'],
+	['midCombat', 'Mid combat'],
+	['bossDormant', 'Boss dormant'],
+	['bossActive', 'Boss active'],
+];
 
-function findingsTitle(preset) {
-	return PRESET_TITLES[preset] ?? `${preset} validation findings`;
-}
+const FLOOR_ALIGNMENT_THRESHOLD = 0.5;
 
 function formatAssertion(name, passed, detail = '') {
 	const status = passed ? 'PASS' : 'FAIL';
@@ -17,12 +17,58 @@ function formatAssertion(name, passed, detail = '') {
 	return `- **${name}**: ${status}${suffix}`;
 }
 
+function formatPresetTitle(preset) {
+	if (!preset) return 'Playthrough';
+	return preset
+		.split('-')
+		.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+		.join(' ');
+}
+
+function resolvePresetCopy(run) {
+	return {
+		title: run.findingsTitle || `${formatPresetTitle(run.preset)} validation findings`,
+		bossSpawnLabel: run.bossSpawnLabel || run.bossType || 'boss',
+	};
+}
+
+function renderFloorAlignmentSection(floorAlignment) {
+	const lines = ['', '## Floor alignment', ''];
+	const probes = floorAlignment && typeof floorAlignment === 'object' ? floorAlignment : {};
+	let hasProbe = false;
+
+	for (const [key, label] of FLOOR_ALIGNMENT_STEPS) {
+		const probe = probes[key];
+		if (!probe || typeof probe !== 'object') continue;
+		hasProbe = true;
+		const delta = Number(probe.delta);
+		const deltaText = Number.isFinite(delta) ? delta.toFixed(3) : String(probe.delta);
+		const band = probe.band ?? '(none)';
+		const profile = probe.layoutProfile ?? '(unknown)';
+		lines.push(
+			`- **${label}**: playerY=${probe.playerY}, floorY=${probe.floorY}, delta=${deltaText}, profile=${profile}, band=${band}`,
+		);
+		if (Number.isFinite(delta) && Math.abs(delta) > FLOOR_ALIGNMENT_THRESHOLD) {
+			lines.push(`  - Note: |delta| > ${FLOOR_ALIGNMENT_THRESHOLD} — player may be floating or sunken.`);
+		}
+	}
+
+	if (!hasProbe) {
+		lines.push('No floor-alignment probes recorded.');
+	}
+
+	return lines;
+}
+
 /**
  * @param {{
  *   ok: boolean,
  *   preset: string,
- *   bossType: string,
+ *   findingsTitle?: string,
+ *   bossSpawnLabel?: string,
+ *   bossType?: string,
  *   assertions: Record<string, boolean>,
+ *   floorAlignment?: Record<string, object>,
  *   consoleErrors?: string[],
  *   screenshots?: string[],
  *   visualNotes?: string[],
@@ -31,19 +77,16 @@ function formatAssertion(name, passed, detail = '') {
  * @returns {string}
  */
 export function renderFindings(run) {
-	if (!run.bossType) {
-		throw new Error('renderFindings requires bossType');
-	}
-
+	const { title, bossSpawnLabel } = resolvePresetCopy(run);
 	const lines = [
-		`# ${findingsTitle(run.preset)}`,
+		`# ${title}`,
 		'',
 		`**Outcome:** ${run.ok ? 'PASS' : 'FAIL'}`,
 		`**Preset:** ${run.preset}`,
 		'',
 		'## Assertions',
 		'',
-		formatAssertion(`bossSpawned (${run.bossType})`, run.assertions?.bossSpawned === true),
+		formatAssertion(`bossSpawned (${bossSpawnLabel})`, run.assertions?.bossSpawned === true),
 		formatAssertion('encounterActivated', run.assertions?.encounterActivated === true),
 		formatAssertion('bossDefeated', run.assertions?.bossDefeated === true),
 		formatAssertion('victoryFired', run.assertions?.victoryFired === true),
@@ -72,6 +115,8 @@ export function renderFindings(run) {
 			lines.push(`- ${note}`);
 		}
 	}
+
+	lines.push(...renderFloorAlignmentSection(run.floorAlignment));
 
 	lines.push('', '## Screenshots', '');
 	for (const shot of run.screenshots || []) {

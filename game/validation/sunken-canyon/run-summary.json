@@ -1,0 +1,125 @@
+{
+  "ok": true,
+  "preset": "sunken-canyon",
+  "steps": "full",
+  "outDir": "game/validation/sunken-canyon",
+  "presetConfig": {
+    "findingsTitle": "Sunken Canyon validation findings",
+    "bossSpawnLabel": "miniboss (Canyon Warden)",
+    "questId": "canyon_descent",
+    "questTier": 2,
+    "bossType": "miniboss",
+    "deployScenario": "canyon-descent-tier-2",
+    "layoutProfile": "sunken-canyon",
+    "lobbyName": "Sunken Canyon Validation",
+    "nearAddsScenario": "canyon-descent-near-adds",
+    "bossApproachScenario": "canyon-descent-boss-approach",
+    "bossLowHpScenario": "canyon-descent-boss-low-hp",
+    "encounterTriggerRadius": 8,
+    "addsTimeoutMs": 90000,
+    "encounterTimeoutMs": 60000
+  },
+  "serverPort": 3200,
+  "clientPort": 5272,
+  "auth": {
+    "username": "playthrough-1780738075307",
+    "connected": true,
+    "lobbyBrowserVisible": true,
+    "harnessPhase": "unknown",
+    "screenshot": "game/validation/sunken-canyon/01-lobby-browser.png"
+  },
+  "hub": {
+    "hubScreenshot": "game/validation/sunken-canyon/01-hub.png",
+    "entryScreenshot": "game/validation/sunken-canyon/02-level-entry.png",
+    "deployScenario": "canyon-descent-tier-2",
+    "deployOk": true,
+    "objectiveType": "stage_boss",
+    "encounterPhase": "dormant",
+    "bossTypes": [
+      "miniboss",
+      "grunt",
+      "skirmisher",
+      "grunt",
+      "grunt"
+    ],
+    "floorAlignment": {
+      "levelEntry": {
+        "playerY": 10.5,
+        "floorY": 10.5,
+        "delta": 0,
+        "layoutProfile": "sunken-canyon",
+        "band": "plateau"
+      }
+    }
+  },
+  "bossEncounter": {
+    "midCombatScreenshot": "game/validation/sunken-canyon/03-mid-combat.png",
+    "dormantScreenshot": "game/validation/sunken-canyon/04-boss-dormant.png",
+    "activeScreenshot": "game/validation/sunken-canyon/05-boss-active.png",
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "probes": {
+      "dormant": {
+        "encounterPhase": "dormant",
+        "encounterLocked": false,
+        "bossEnemyId": "442bd37c-47ec-407c-835d-f11a47b00bd3",
+        "bossHp": 300,
+        "liveAddCount": 0
+      },
+      "active": {
+        "encounterPhase": "active",
+        "encounterLocked": true,
+        "bossEnemyId": "442bd37c-47ec-407c-835d-f11a47b00bd3",
+        "bossHp": 300,
+        "liveAddCount": 0
+      },
+      "floorAlignment": {
+        "midCombat": {
+          "playerY": 10.5,
+          "floorY": 10.5,
+          "delta": 0,
+          "layoutProfile": "sunken-canyon",
+          "band": "plateau"
+        },
+        "bossDormant": {
+          "playerY": 10.5,
+          "floorY": 10.5,
+          "delta": 0,
+          "layoutProfile": "sunken-canyon",
+          "band": "plateau"
+        },
+        "bossActive": {
+          "playerY": 0.5,
+          "floorY": 0.5,
+          "delta": 0,
+          "layoutProfile": "sunken-canyon",
+          "band": "canyon"
+        }
+      }
+    }
+  },
+  "victory": {
+    "bossDefeatedScreenshot": "game/validation/sunken-canyon/06-boss-defeated.png",
+    "victoryScreenshot": "game/validation/sunken-canyon/07-victory.png",
+    "probes": {
+      "afterBoss": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      },
+      "victory": {
+        "runStatus": "victory",
+        "runObjectiveComplete": true,
+        "bossDefeated": true,
+        "lastRunSummaryStatus": "victory"
+      }
+    }
+  },
+  "assertions": {
+    "bossSpawned": true,
+    "encounterActivated": true,
+    "bossDefeated": true,
+    "victoryFired": true
+  }
+}

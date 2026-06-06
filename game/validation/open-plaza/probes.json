@@ -1,0 +1,58 @@
+{
+  "dormant": {
+    "encounterPhase": "dormant",
+    "encounterLocked": false,
+    "bossEnemyId": "f08b7105-b8da-4c0b-8150-5b74fad8e768",
+    "bossHp": 500,
+    "liveAddCount": 0
+  },
+  "active": {
+    "encounterPhase": "active",
+    "encounterLocked": true,
+    "bossEnemyId": "f08b7105-b8da-4c0b-8150-5b74fad8e768",
+    "bossHp": 500,
+    "liveAddCount": 0
+  },
+  "floorAlignment": {
+    "levelEntry": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "open-plaza",
+      "band": null
+    },
+    "midCombat": {
+      "playerY": 1.3,
+      "floorY": 1.3,
+      "delta": 0,
+      "layoutProfile": "open-plaza",
+      "band": null
+    },
+    "bossDormant": {
+      "playerY": 1.3,
+      "floorY": 1.3,
+      "delta": 0,
+      "layoutProfile": "open-plaza",
+      "band": null
+    },
+    "bossActive": {
+      "playerY": 0.5,
+      "floorY": 0.5,
+      "delta": 0,
+      "layoutProfile": "open-plaza",
+      "band": null
+    }
+  },
+  "afterBoss": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "bossDefeated": true,
+    "lastRunSummaryStatus": "victory"
+  },
+  "victory": {
+    "runStatus": "victory",
+    "runObjectiveComplete": true,
+    "bossDefeated": true,
+    "lastRunSummaryStatus": "victory"
+  }
+}

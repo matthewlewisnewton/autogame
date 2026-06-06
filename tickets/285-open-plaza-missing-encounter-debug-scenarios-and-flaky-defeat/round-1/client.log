@@ -1,0 +1,9 @@
+[vite] Proxying /api and /socket.io → http://127.0.0.1:3001
+[vite] Game server ready at http://127.0.0.1:3001
+
+  VITE v8.0.13  ready in 636 ms
+
+  ➜  Local:   http://localhost:5174/
+  ➜  Network: use --host to expose
+4:03:25 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
+4:03:31 AM [vite] (client) [console.warn] THREE.Clock: This module has been deprecated. Please use THREE.Timer instead.
