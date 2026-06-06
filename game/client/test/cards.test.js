@@ -452,4 +452,11 @@ describe('card ID sets', () => {
 			icon: '✧',
 		});
 	});
+
+	it('CARD_ACCENT_STYLE defines icon and color for Ice Ball', () => {
+		expect(CARD_ACCENT_STYLE.ice_ball).toMatchObject({
+			color: '#67e8f9',
+			icon: '❄',
+		});
+	});
 });

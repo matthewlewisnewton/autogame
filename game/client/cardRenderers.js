@@ -257,6 +257,22 @@ function renderFireball(data, ctx) {
 }
 
 /**
+ * Ice Ball: a slow-moving icy sphere projectile. Slow-on-hit visuals are
+ * driven separately by the broadcast `slowedUntil` state, not here.
+ */
+function renderIceBall(data, ctx) {
+	if (!data.origin) return;
+	const accentHex = getAccentHex(data.cardId);
+	ctx.spawnAttackEffect(originOf(data), directionOf(data), {
+		effect: 'ice_ball',
+		range: data.attackRange,
+		projectileTravelMs: data.projectileTravelMs,
+		color: accentHex ?? 0x67e8f9,
+		emissive: 0x38bdf8,
+	});
+}
+
+/**
  * Phase Stalker: narrow cyan beam corridor along the projectile path.
  */
 function renderPhaseBeam(data, ctx) {
@@ -324,6 +340,7 @@ const CARD_RENDERERS = {
 
 	// Spells
 	chain_lightning: renderChainLightningArcs,
+	ice_ball: renderIceBall,
 	glacier_collapse: renderGlacierCollapse,
 	divine_grace: renderDivineGrace,
 	purifying_pulse: renderPurifyingPulse,

@@ -4043,6 +4043,34 @@ export function spawnAttackEffect(origin, direction, style = {}) {
 		return;
 	}
 
+	if (effect === 'ice_ball') {
+		// Icy sphere projectile — same travel/cleanup shape as `fireball` but
+		// with cool cyan/blue colors and a slower `projectileTravelMs` duration.
+		const geometry = new THREE.SphereGeometry(0.35, 12, 12);
+		const material = new THREE.MeshStandardMaterial({
+			color: style.color ?? 0x67e8f9,
+			emissive: style.emissive ?? 0x38bdf8,
+			emissiveIntensity: 1.2,
+			roughness: 0.35,
+			metalness: 0.1,
+			transparent: true,
+			opacity: 1.0,
+		});
+		const mesh = new THREE.Mesh(geometry, material);
+		mesh.position.set(origin.x, 1.0, origin.z);
+		targetScene.add(mesh);
+
+		activeEffects.push({
+			mesh,
+			origin: { x: origin.x, z: origin.z },
+			direction: { x: direction.x, z: direction.z },
+			range,
+			createdAt: performance.now(),
+			duration: style.projectileTravelMs ?? 1200,
+		});
+		return;
+	}
+
 	if (effect === 'returning_projectile' || effect === 'triple_returning_projectile') {
 		const hitWidth = style.projectileHitWidth ?? PROJECTILE_HIT_WIDTH;
 		const { group, head } = createProjectileHitboxGroup(direction, range, hitWidth, { color, emissive });
