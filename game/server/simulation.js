@@ -1011,6 +1011,24 @@ function isEnemyFrozen(enemy) {
   return enemy.frozenUntil != null && Date.now() < enemy.frozenUntil;
 }
 
+// SLOW status effect: a timed movement-speed debuff that mirrors the
+// frozenUntil/isEnemyFrozen idiom. Works on any generic entity (player or
+// enemy). Movement integration and the client indicator live in separate
+// sub-tickets; this only manages the status state + helpers.
+function applySlow(entity, durationMs, factor) {
+  if (!entity) return;
+  const now = Date.now();
+  // Re-application REFRESHES: never shorten an existing longer slow.
+  entity.slowedUntil = Math.max(entity.slowedUntil || 0, now + durationMs);
+  // Clamp factor to (0, 1]; default to 0.5 when omitted or invalid.
+  const f = Number(factor);
+  entity.slowFactor = Number.isFinite(f) && f > 0 && f <= 1 ? f : 0.5;
+}
+
+function isSlowed(entity) {
+  return entity != null && entity.slowedUntil != null && Date.now() < entity.slowedUntil;
+}
+
 function healPlayer(playerId, amount) {
   const player = _gameState.players[playerId];
   if (!player || player.dead || !Number.isFinite(amount) || amount <= 0) return 0;
@@ -2642,6 +2660,8 @@ module.exports = {
   armSelfEnchantment,
   countGroundEnchantmentsForPlayer,
   isEnemyFrozen,
+  applySlow,
+  isSlowed,
 
   // Magic stones
   regenMagicStones,
