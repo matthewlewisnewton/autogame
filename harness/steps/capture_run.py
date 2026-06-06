@@ -135,7 +135,7 @@ def _classify_capture_failure(dir: Path, ports: PortAllocation) -> dict:
 def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
     dir = Path(dir)
     dir.mkdir(parents=True, exist_ok=True)
-    start_game(dir, ports)
+    launch_pids = start_game(dir, ports)
     # The game is served on the ALLOCATED vite port (start_game uses ports.vite),
     # so the capture must hit that port — not the static game_url default, which
     # in a parallel worker points at port 5173 (a sibling's, or nothing). The
@@ -187,7 +187,7 @@ def capture_run(dir: Path, *, game_url: str, ports: PortAllocation) -> bool:
         )
         return False
     finally:
-        stop_game(ports)
+        stop_game(ports, pids=launch_pids)
 
 
 __all__ = ["capture_run", "_classify_capture_failure", "_read_pageerrors", "_diagnose_servers_did_not_start"]

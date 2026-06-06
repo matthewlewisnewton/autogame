@@ -541,13 +541,32 @@ class TestExceptionDuringCaptureWritesMetrics:
     def test_stop_game_called_on_exception(self, tmp_path, monkeypatch):
         """Ensure stop_game is called even when an exception occurs."""
         stop_called = []
-        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: None)
+        launch = [111, 222]
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: launch)
         monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
-        monkeypatch.setattr(cr_mod, "stop_game", lambda *_a, **_kw: stop_called.append(True))
+        monkeypatch.setattr(
+            cr_mod, "stop_game",
+            lambda *_a, **kw: stop_called.append(kw.get("pids")),
+        )
         monkeypatch.setattr(cr_mod, "capture", lambda u, d: (_ for _ in ()).throw(RuntimeError("fail")))
         ports = PortAllocation(game_server=3000, vite=5173)
         cr_mod.capture_run(tmp_path, game_url="http://localhost:5173", ports=ports)
-        assert stop_called == [True]
+        assert stop_called == [launch]
+
+    def test_capture_run_passes_launch_pids_to_stop_game(self, tmp_path, monkeypatch):
+        """Regression: teardown must target only this capture's launch PIDs."""
+        launch = [301, 302]
+        stopped: list[list[int] | None] = []
+        monkeypatch.setattr(cr_mod, "start_game", lambda d, p: launch)
+        monkeypatch.setattr(cr_mod, "wait_for_game", lambda p, timeout_s=45: True)
+        monkeypatch.setattr(cr_mod, "capture", lambda u, d: True)
+        monkeypatch.setattr(
+            cr_mod, "stop_game",
+            lambda *_a, **kw: stopped.append(kw.get("pids")),
+        )
+        ports = PortAllocation(game_server=3004, vite=5177)
+        assert cr_mod.capture_run(tmp_path, game_url="http://localhost:5173/", ports=ports) is True
+        assert stopped == [launch]
 
     def test_captures_at_allocated_vite_port_not_static_game_url(self, tmp_path, monkeypatch):
         """Regression: a parallel worker's game runs on its ALLOCATED vite port;

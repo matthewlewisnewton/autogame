@@ -47,6 +47,9 @@ def _vite_pattern(vite_port: int) -> "re.Pattern":
     return re.compile(rf"\bvite(\.js)?\b[^\n]*?--port\s+{vite_port}(\s|$)")
 
 
+# PIDs for the most recent start_game() call. Replaced (not appended) on each
+# launch so a later stop_game() cannot SIGTERM a server owned by an in-progress
+# capture_run that still holds its own launch_pids reference.
 _GAME_PIDS: list[int] = []
 
 
@@ -191,9 +194,28 @@ def _kill_proc_group(pid: int, signal_num: int = 15) -> None:
         _kill_pid(pid, signal_num)
 
 
-def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3) -> None:
+def _kill_harness_server_on_port(game_port: int) -> None:
+    """Reclaim a harness game server bound to *game_port* (parallel-path helper).
+
+    The server cmdline has no port argument (PORT is env-only), so port-scoped
+    teardown must inspect listeners on the allocated game port.
+    """
+    for pid, cmdline in _port_holders(game_port):
+        if _SERVER_PATTERN.search(cmdline):
+            _kill_proc_group(pid, signal_num=15)
+
+
+def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3) -> list[int]:
     """Launch dev servers (server + vite). Per ticket 105 the pre-launch
-    cleanup only kills harness-owned holders by default."""
+    cleanup only kills harness-owned holders by default.
+
+    Returns the PID list for this launch so capture_run can stop only these
+    processes in its ``finally`` block even if another ``start_game`` runs
+    concurrently and replaces ``_GAME_PIDS``.
+    """
+    global _GAME_PIDS
+    launch_pids: list[int] = []
+    _GAME_PIDS = launch_pids
     logdir = Path(logdir)
     logdir.mkdir(parents=True, exist_ok=True)
     # protect_review chmods round-N artifact dirs a-w after a previous
@@ -223,7 +245,7 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
         stdin=subprocess.DEVNULL, stdout=server_log, stderr=subprocess.STDOUT,
         start_new_session=True,
     )
-    _GAME_PIDS.append(server_proc.pid)
+    launch_pids.append(server_proc.pid)
 
     client_log_path = logdir / "client.log"
     for attempt in range(1, max_vite_retries + 1):
@@ -235,7 +257,7 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
             stdin=subprocess.DEVNULL, stdout=client_log, stderr=subprocess.STDOUT,
             start_new_session=True,
         )
-        _GAME_PIDS.append(client_proc.pid)
+        launch_pids.append(client_proc.pid)
         time.sleep(3)
         try:
             text = client_log_path.read_text(errors="replace")
@@ -247,18 +269,30 @@ def start_game(logdir: Path, ports: PortAllocation, *, max_vite_retries: int = 3
             # only the npx leader leaks the vite.js child, which keeps holding the
             # port and re-triggers EADDRINUSE on the next attempt.
             _kill_proc_group(client_proc.pid, signal_num=9)
-            _GAME_PIDS.pop()
+            launch_pids.pop()
             wait_port_free(ports.vite, timeout_s=10)
             continue
-        return
+        return launch_pids
     log(f"[error] Vite failed to start after {max_vite_retries} attempts")
+    return launch_pids
 
 
-def stop_game(ports: "PortAllocation | None" = None) -> None:
+def stop_game(ports: "PortAllocation | None" = None, *, pids: list[int] | None = None) -> None:
+    """Stop harness game processes.
+
+    When *pids* is given (capture_run passes its launch list), only those PIDs
+    are signalled — not whatever ``_GAME_PIDS`` currently tracks. This prevents
+    a concurrent ``start_game`` + ``stop_game`` from SIGTERM-ing another capture's
+    backend mid-run.
+    """
     emit_progress_event("game_stop", {})
-    for pid in _GAME_PIDS:
+    if pids is not None:
+        targets = list(pids)
+    else:
+        targets = list(_GAME_PIDS)
+        _GAME_PIDS.clear()
+    for pid in targets:
         _kill_proc_group(pid, signal_num=15)
-    _GAME_PIDS.clear()
     if ports is None:
         # Serial path: belt-and-suspenders pkill of the default-port procs.
         patterns = (
@@ -266,14 +300,13 @@ def stop_game(ports: "PortAllocation | None" = None) -> None:
             r"vite(\.js)?[[:space:]].*--port[[:space:]]+5173([[:space:]]|$)",
         )
     else:
-        # Parallel path: reclaim ONLY this worker's vite port. The blanket
-        # `server/index.js` pkill is deliberately omitted here — the server
-        # cmdline carries no port (it's set via PORT env), so a blanket pkill
-        # would kill sibling workers' servers. The tracked-PID kills above plus
-        # the next start_game's port-scoped wait_port_free reclaim our server.
+        # Parallel path: reclaim ONLY this worker's vite port and game server
+        # listener. Never blanket-pkill server/index.js — that would reap sibling
+        # workers' servers (PORT is env-only, not in the cmdline).
         patterns = (
             rf"vite(\.js)?[[:space:]].*--port[[:space:]]+{ports.vite}([[:space:]]|$)",
         )
+        _kill_harness_server_on_port(ports.game_server)
     for pat in patterns:
         try:
             subprocess.run(["pkill", "-f", pat], stdout=subprocess.DEVNULL,

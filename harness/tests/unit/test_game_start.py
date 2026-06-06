@@ -74,12 +74,11 @@ def isolate_pids():
     """Snapshot/restore ``game._GAME_PIDS`` so module state never leaks across
     tests, and start each test from an empty list."""
     snapshot = list(game._GAME_PIDS)
-    game._GAME_PIDS.clear()
+    game._GAME_PIDS = []
     try:
         yield game._GAME_PIDS
     finally:
-        game._GAME_PIDS.clear()
-        game._GAME_PIDS.extend(snapshot)
+        game._GAME_PIDS = list(snapshot)
 
 
 @pytest.fixture
@@ -205,7 +204,7 @@ class TestServerLaunch:
         assert call["kwargs"]["env"]["ALLOW_DEV_AUTH"] == "1"
         assert call["kwargs"]["start_new_session"] is True
         # PID is appended to the module's tracked list.
-        assert call["pid"] in isolate_pids
+        assert call["pid"] in game._GAME_PIDS
 
     def test_server_env_uses_allocated_port(self, tmp_path, patched, isolate_pids):
         factory = patched.set_popen(FakePopenFactory([""]))
@@ -229,7 +228,7 @@ class TestViteCleanStart:
         assert len(factory.vite_calls) == 1  # no retry
         server_pid = factory.server_calls[0]["pid"]
         vite_pid = factory.vite_calls[0]["pid"]
-        assert isolate_pids == [server_pid, vite_pid]
+        assert game._GAME_PIDS == [server_pid, vite_pid]
         assert patched.kills == []  # nothing killed on the happy path
 
     def test_vite_env_harness_game_port_matches_allocated_server(
@@ -262,7 +261,7 @@ class TestViteRetry:
         # The failed vite proc's group is killed and its PID popped; the good
         # one stays tracked.
         assert (failed_pid, 9) in patched.kills
-        assert isolate_pids == [server_pid, good_pid]
+        assert game._GAME_PIDS == [server_pid, good_pid]
         # The retry re-frees the vite port after cleanup.
         assert PORTS.vite in [port for port, _vp in patched.port_calls]
 
@@ -287,7 +286,7 @@ class TestViteRetry:
         assert len(factory.vite_calls) == 2
         # Both vite PIDs were popped; only the server PID remains tracked.
         server_pid = factory.server_calls[0]["pid"]
-        assert isolate_pids == [server_pid]
+        assert game._GAME_PIDS == [server_pid]
         # Each failed attempt killed its proc group.
         assert len(patched.kills) == 2
         # An error is logged on giving up.
@@ -301,7 +300,7 @@ class TestViteRetry:
 
         assert len(factory.vite_calls) == 1
         server_pid = factory.server_calls[0]["pid"]
-        assert isolate_pids == [server_pid]
+        assert game._GAME_PIDS == [server_pid]
 
 
 # --------------------------------------------------------------------------- #
@@ -311,4 +310,12 @@ class TestPidIsolation:
     def test_fixture_starts_with_empty_pids(self, isolate_pids):
         # The isolate_pids fixture clears module state before each test.
         assert isolate_pids == []
-        assert game._GAME_PIDS is isolate_pids
+        assert game._GAME_PIDS == []
+
+    def test_start_game_returns_launch_pid_list(self, tmp_path, patched):
+        factory = patched.set_popen(FakePopenFactory())
+        launch_pids = game.start_game(tmp_path, PORTS, max_vite_retries=1)
+        server_pid = factory.server_calls[0]["pid"]
+        vite_pid = factory.vite_calls[0]["pid"]
+        assert launch_pids == [server_pid, vite_pid]
+        assert game._GAME_PIDS is launch_pids

@@ -20,6 +20,8 @@ no ``pkill`` runs, and the polling loops run instantly:
 """
 from __future__ import annotations
 
+import subprocess
+
 import pytest
 
 import harness.steps.game as game
@@ -34,12 +36,11 @@ def isolate_pids():
     """Snapshot/restore ``game._GAME_PIDS`` so module state never leaks across
     tests, and start each test from an empty list."""
     snapshot = list(game._GAME_PIDS)
-    game._GAME_PIDS.clear()
+    game._GAME_PIDS = []
     try:
         yield game._GAME_PIDS
     finally:
-        game._GAME_PIDS.clear()
-        game._GAME_PIDS.extend(snapshot)
+        game._GAME_PIDS = list(snapshot)
 
 
 @pytest.fixture
@@ -59,10 +60,12 @@ def stop_seams(monkeypatch: pytest.MonkeyPatch):
     )
 
     def fake_run(argv, **kwargs):
-        # start_game/stop_game only shell out to pkill here; record its pattern.
-        assert argv[:2] == ["pkill", "-f"]
-        pkill_patterns.append(argv[2])
-        return None
+        if argv[:2] == ["pkill", "-f"]:
+            pkill_patterns.append(argv[2])
+            return None
+        if argv[:1] == ["ss"] or argv[:1] == ["lsof"]:
+            return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+        raise AssertionError(f"unexpected subprocess.run argv: {argv!r}")
 
     monkeypatch.setattr(game.subprocess, "run", fake_run)
     monkeypatch.setattr(game.time, "sleep", lambda _s: None)
@@ -142,6 +145,29 @@ class TestStopGameParallelPath:
 
         assert stop_seams.kills == [(900, 15), (901, 15)]
         assert game._GAME_PIDS == []
+
+    def test_parallel_reclaims_server_on_allocated_port(self, stop_seams, isolate_pids, monkeypatch):
+        """Parallel teardown must port-scope the game server, not blanket-pkill."""
+        server_kills: list[int] = []
+
+        def fake_kill_server(game_port: int) -> None:
+            server_kills.append(game_port)
+
+        monkeypatch.setattr(game, "_kill_harness_server_on_port", fake_kill_server)
+
+        game.stop_game(ports=PORTS_ALT)
+
+        assert server_kills == [PORTS_ALT.game_server]
+
+    def test_explicit_pids_do_not_kill_other_session(self, stop_seams, isolate_pids):
+        """Regression: capture_run's finally must not SIGTERM another session's server."""
+        capture_launch = [401, 402]
+        isolate_pids.extend([501, 502])  # concurrent sub-ticket session
+
+        game.stop_game(ports=PORTS_ALT, pids=capture_launch)
+
+        assert stop_seams.kills == [(401, 15), (402, 15)]
+        assert game._GAME_PIDS == [501, 502]
 
 
 # --------------------------------------------------------------------------- #
