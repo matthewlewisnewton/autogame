@@ -1,0 +1,9 @@
+Wrote the review artifacts:
+
+- `tickets/300-rare-medic-enemy-in-level2/round-1/review.md`
+- `tickets/300-rare-medic-enemy-in-level2/round-1/gaps.md`
+- `tickets/300-rare-medic-enemy-in-level2/round-1/nits.md`
+
+Verdict is `VERDICT: FAIL`.
+
+The captured game run loaded cleanly, but the medic energy bead currently damages the firing medic/allied enemies due to using `collectPhaseBeamHits` from the medic origin, and the recorded coverage run has one failing server integration test. No game code was edited.

@@ -1616,6 +1616,26 @@ function applyDebugScenario(socket, name) {
       state.enemies = [];
       const overseer = spawnEnemy(player.x + 4, player.z, 'annex_overseer');
       overseer.wanderTarget = { x: overseer.x, z: overseer.z };
+    } else if (name === 'field-medic') {
+      // Field Medic with a wounded grunt ally for heal/flee/bead QA. Same enemies
+      // are reachable on tier-2 runs with tier2EnemyPool; this is a shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 3, player.z, 'field_medic');
+      const grunt = spawnEnemy(player.x + 1, player.z + 2, 'grunt');
+      grunt.hp = Math.max(1, Math.floor(grunt.maxHp * 0.4));
+      medic.wanderTarget = { x: medic.x, z: medic.z };
+      grunt.wanderTarget = { x: grunt.x, z: grunt.z };
+    } else if (name === 'field-medic-spawn') {
+      // Spawn a Field Medic beside the player for tier-2 rare-spawn QA. The same
+      // enemy type is reachable normally on tier-2 runs for quests with
+      // tier2EnemyPool (e.g. crystal_rescue); this is a deterministic shortcut.
+      player.hp = MAX_HP;
+      player.magicStones = MAX_MAGIC_STONES;
+      state.enemies = [];
+      const medic = spawnEnemy(player.x + 4, player.z, 'field_medic');
+      medic.wanderTarget = { x: medic.x, z: medic.z };
     } else if (name === 'variant-enemy') {
       // Spawn one variant ("elite") enemy beside a plain one of the same type so
       // the client variant marker can be verified side-by-side. The same state is

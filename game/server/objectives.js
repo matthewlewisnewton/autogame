@@ -181,7 +181,7 @@ const OBJECTIVE_DEFS = {
         totalSpawns,
         minibossCount,
         // Snapshot the quest's pool so staggered regular spawns draw from it.
-        enemyPool: getEnemyPool(quest.id),
+        enemyPool: getEnemyPool(quest.id, quest.tier),
         spawnedEnemies: 0,
         defeatedEnemies: 0,
         totalEnemies: totalSpawns,
@@ -221,12 +221,12 @@ const OBJECTIVE_DEFS = {
       boss.wanderTarget = ctx.randomWanderTarget();
       wireEncounterBoss(gameState, boss.id);
 
-      const pool = getEnemyPool(quest.id).filter(
+      const pool = getEnemyPool(quest.id, quest.tier).filter(
         (entry) => entry.type !== 'miniboss' && entry.type !== bossType,
       );
       const addPool = pool.length > 0
         ? pool
-        : getEnemyPool(quest.id).filter((entry) => entry.type !== 'miniboss');
+        : getEnemyPool(quest.id, quest.tier).filter((entry) => entry.type !== 'miniboss');
 
       for (let i = 0; i < addCount; i++) {
         const type = addPool.length > 0 ? pickWeightedEnemyType(addPool, rng) : 'grunt';

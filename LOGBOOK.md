@@ -5172,6 +5172,52 @@ PASS. The round-2 coverage log shows the full Vitest suite passing: 114 test fil
 None.
 
 
+## v0.291 — 300-rare-medic-enemy-in-level2  (2026-06-06 13:24:25)
+
+PASS - Medic flees, heals allies, and does not chase. `game/server/simulation.js` gives `field_medic` its own AI path before the regular chase/windup branch. It prioritizes wounded nearby allies when heal cooldown is ready, fires only when a visible player is within bead range, flees from players inside `fleeRadius`, and otherwise wanders rather than entering the normal chasing state. `game/server/test/field_medic.test.js` covers flee movement, lowest-HP ally healing, close-range bead damage, no self/ally friendly fire, and no closing distance to a distant player.
+
+PASS - Close-range defensive energy bead works. The bead uses the existing phase-beam hit collector with `playersOnly: true`, applies weak ranged damage to players, queues a `medicBead` event for clients, and avoids damaging the firing medic or allied enemies. Client-side handling in `game/client/main.js` and `game/client/renderer.js` renders the bead and hit sparks from the server event.
+
+PASS - Display metadata and lock-on info are present. `ENEMY_DEFS.field_medic` includes name, description, surfaced stats, and combat tuning. The server display catalog includes the type, and the client lock-on panel test verifies the Field Medic name, HP, support stats, and description are shown.
+
+PASS - Client visuals are integrated. `game/client/renderer.js` defines a distinct small green-teal octahedron for `field_medic`, registers a projectile telegraph style, and renders medic ally-heal and bead VFX from the new socket events. Renderer tests cover the mesh shape/scale and registry normalization.
+
+PASS - Debug scenarios are acceptable. The new `field-medic` and `field-medic-spawn` scenarios are only reachable through the existing debug scenario path, with browser auto-request gated to localhost and `?debugScenario=...`. The same end states are reachable through normal tier-2 quest selection and weighted spawn pools, and the scenarios reuse server `spawnEnemy` state rather than bypassing combat or persistence invariants.
+
+PASS - Consistency with design and foundation requirements. The change stays within the existing multiplayer dungeon combat loop, preserves server-authoritative enemy behavior and WebSocket event delivery, and does not regress the documented basics: 3D render, server-client connection, multiplayer visualization, or movement synchronization. The round-2 smoke capture reached lobby and gameplay with two connected players and live movement probes.
+
+## Verification
+
+Observed evidence: `coverage.log` reports 114 passed test files and 1856 passed tests. Relevant passing suites include `server/test/field_medic.test.js`, `server/test/enemy-spawn-pools-wiring.test.js`, `server/test/quests-spawn-pools.test.js`, `server/test/enemy_display_catalog.test.js`, `client/test/lock-on-info-panel.test.js`, `client/test/main.test.js`, and `client/test/renderer-registry-normalize.test.js`.
+
+## Remaining gaps
+
+No blocking gaps remain.
+
+
+## v0.292 — 301-burning-and-slow-mutually-exclusive  (2026-06-06 13:37:01)
+
+
+### Burning and slow are mutually exclusive on any entity
+PASS. `applySlow()` now clears `burningUntil` and resets `lastBurnTickAt` before applying slow, while `applyBurning()` clears `slowedUntil` before applying burn. Because these helpers operate on generic entities and are the shared status entry points, both player and enemy sources inherit the most-recent-wins behavior.
+
+### Both application orders are covered for players and enemies
+PASS. `server/test/burn_slow_mutual_exclusion.test.js` covers slowed-then-burned, burned-then-slowed, repeated toggles, and "never both" assertions for player-shaped and enemy-shaped entities. It also covers the burn tick clock reset when slow douses burn. The captured coverage log shows the new test file passed as part of the server suite, with 24 test files and 966 tests passing.
+
+### Client shows only the active status
+PASS. The client slow and burn indicators are separately driven by `slowedUntil` and `burningUntil` from the server snapshot. Since the server now zeroes the opposing timestamp on every status application, the existing renderer path disposes the inactive marker and displays only the current effect for local players, remote players, and enemies.
+
+### Design and foundation consistency
+PASS. The change is consistent with the combat status model in `game/docs/design.md`: it keeps the existing card-combat/status-effect architecture and does not alter the lobby, dungeon, rendering, networking, or movement foundations in `game/docs/requirements.md`. The captured run still demonstrates 3D rendering, client/server connectivity, multiplayer presence, and movement.
+
+### Debug scenarios
+PASS. This ticket did not add or change any `debugScenario` shortcut. The captured scenarios list is empty, so there is no debug-only path to validate for this ticket.
+
+## Remaining gaps
+
+None.
+
+
 ## v0.293 — 298-vault-wyrm-burning-rebalance  (2026-06-06 13:54:54)
 
 PASS. The shared `dungeon_drake` stats add `burnDurationMs: 2000` and `specialEffect: "burning_breath"`. Both server and client build `CARD_DEFS` from the shared JSON sources, and the client card HUD renders `specialEffect` by replacing underscores with spaces, producing the captured `BURNING BREATH` label on the Vault Wyrm cards.

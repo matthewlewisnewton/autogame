@@ -31,6 +31,8 @@
     "LOBBY_LEFT": "lobbyLeft",
     "LOBBY_LIST_UPDATE": "lobbyListUpdate",
     "LOBBY_UPDATE": "lobbyUpdate",
+    "MEDIC_ALLY_HEAL": "medicAllyHeal",
+    "MEDIC_BEAD": "medicBead",
     "MEDIC_ERROR": "medicError",
     "MEDIC_HEALED": "medicHealed",
     "PLAYER_DISCONNECTED": "playerDisconnected",

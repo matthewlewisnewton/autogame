@@ -1,0 +1,15 @@
+Remediation round 2 adds **two** sub-tickets for the open gaps in `review-feedback.md`. Sub-tickets `01`–`04` all have `.passed` markers and were left untouched.
+
+### Created sub-tickets
+
+1. **`/home/matt/workspace/.autogame-worktrees/300-rare-medic-enemy-in-level2/tickets/300-rare-medic-enemy-in-level2/subtickets/05-medic-bead-no-friendly-fire/ticket.md`**
+   - Closes gap #1: medic energy beads must not damage the firing medic or allied enemies.
+   - Fix `collectPhaseBeamHits` / `fireMedicEnergyBead` in `simulation.js`; add regression tests in `field_medic.test.js`.
+   - Verification: **code**
+
+2. **`/home/matt/workspace/.autogame-worktrees/300-rare-medic-enemy-in-level2/tickets/300-rare-medic-enemy-in-level2/subtickets/06-magic-stone-pickup-test-regen-tolerance/ticket.md`**
+   - Closes gap #2: flaky magic-stone pickup assertion in `integration.test.js` due to passive MS regen during `sleep(10)`.
+   - Test-only fix with bounds that still prove loot removal and pickup gain.
+   - Verification: **code**
+
+No failed sub-ticket folders needed deletion (all prior folders passed).

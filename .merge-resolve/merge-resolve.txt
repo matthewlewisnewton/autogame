@@ -1,8 +1,9 @@
-`LOGBOOK.md` is resolved.
+`LOGBOOK.md` is resolved. The conflict was two parallel version histories: `main` had landed v0.291 (Field Medic) and v0.292 (burn/slow mutual exclusion) while this branch added v0.293 (Vault Wyrm burning rebalance).
 
-The conflict was two independent review entries landing at the same spot after v0.286. The merged file keeps **both**:
+**Resolution:** Combined all three entries in chronological version order after the existing v0.290 chain-lightning entry:
 
-1. **v0.289 — 291-burning-status-effect-foundation** (from `main`) — burning status helpers, tick damage, and client flame animation
-2. **v0.290 — 302-chain-lightning-card** (from this branch) — Voltaic Chain spell, arc rendering, and debug scenario review
+1. **v0.291** — Field Medic enemy (from `main`)
+2. **v0.292** — Burning/slow mutual exclusion (from `main`)
+3. **v0.293** — Vault Wyrm burning breath rebalance (from this ticket)
 
-Each entry has its own `## Remaining gaps` section, matching the logbook pattern elsewhere. All conflict markers are removed; the harness can finish the merge.
+Each entry keeps its own review sections and `## Remaining gaps` footer, matching the LOGBOOK pattern used by prior entries. All conflict markers are removed; the harness can proceed with the merge commit.

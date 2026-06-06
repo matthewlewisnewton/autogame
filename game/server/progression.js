@@ -2476,7 +2476,7 @@ function spawnCombatEnemies(layout, rng, quest) {
   // only its thematically-appropriate enemies (and level-exclusive types like
   // `spawner` never leak into other levels). Uses the run's seeded `rng` so
   // type selection stays deterministic for a given seed.
-  const enemyPool = getEnemyPool(quest.id);
+  const enemyPool = getEnemyPool(quest.id, quest.tier);
   const enemyCount = Number.isFinite(quest.enemyCount) ? quest.enemyCount : enemyPool.length;
   const preferNearest = def?.preferNearestEnemySpawns?.(quest) ?? false;
   const nearbyCount = preferNearest ? Math.min(2, enemyCount) : 0;

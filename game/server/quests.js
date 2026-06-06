@@ -14,6 +14,7 @@ const QUEST_DEFS = {
       { type: 'grunt', weight: 3 },
       { type: 'skirmisher', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Initiate Vault',
@@ -46,6 +47,7 @@ const QUEST_DEFS = {
       { type: 'skirmisher', weight: 3 },
       { type: 'grunt', weight: 2 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Prism Salvage',
@@ -127,6 +129,7 @@ const QUEST_DEFS = {
       { type: 'grunt', weight: 2 },
       { type: 'miniboss', weight: 1 },
     ],
+    tier2EnemyPool: [{ type: 'field_medic', weight: 1 }],
     tiers: {
       1: {
         name: 'Canyon Descent',
@@ -423,13 +426,22 @@ function getLayoutGenerationOptions(questId, tier) {
 }
 
 // Returns the enemy spawn pool for a quest, falling back to the default quest's
-// pool for an unknown/invalid quest id.
-function getEnemyPool(questId) {
+// pool for an unknown/invalid quest id. Tier 2 merges the base pool with an
+// optional quest-level tier2EnemyPool (weights add to the draw).
+function getEnemyPool(questId, tier = DEFAULT_QUEST_TIER) {
   const def = isValidQuestId(questId) ? QUEST_DEFS[questId] : null;
-  if (def && def.enemyPool) {
-    return def.enemyPool;
+  if (!def || !def.enemyPool) {
+    return QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool;
   }
-  return QUEST_DEFS[DEFAULT_QUEST_ID].enemyPool;
+  const normalizedTier = normalizeQuestTier(tier);
+  if (
+    normalizedTier === 2
+    && Array.isArray(def.tier2EnemyPool)
+    && def.tier2EnemyPool.length > 0
+  ) {
+    return [...def.enemyPool, ...def.tier2EnemyPool];
+  }
+  return def.enemyPool;
 }
 
 // Draws an enemy `type` from a `[{ type, weight }]` pool in proportion to the
