@@ -922,6 +922,16 @@ const ENEMY_DEFS = {
 		attackStyle: 'radial',
 		spawnIntervalMs: 4000, spawnMaxAlive: 3, spawnType: 'skirmisher',
 	},
+	field_medic: {
+		name: 'Field Medic',
+		description: 'Fragile support drone that kites attackers, heals nearby allies, and fires defensive suppression beads.',
+		surfacedStats: ['hp', 'attackDamage', 'healAmount', 'healCooldownMs', 'fleeSpeed'],
+		hp: 65, chaseSpeed: 3.0, wanderSpeed: 1.2, attackDamage: 6, attackWindupMs: 600,
+		attackStyle: 'projectile',
+		fleeSpeed: 5.0, fleeRadius: 4,
+		healAmount: 18, healRadius: 6, healCooldownMs: 4000,
+		beadRange: 8, beadCooldownMs: 2500,
+	},
 };
 
 function enemyDefFor(type) {
