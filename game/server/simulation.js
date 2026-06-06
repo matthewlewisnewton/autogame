@@ -1125,9 +1125,17 @@ function isSlowed(entity) {
 
 // BURNING status effect: a timed damage-over-time mark that mirrors the
 // frozenUntil/isEnemyFrozen and slowedUntil/isSlowed idioms. Works on any
-// generic entity (player or enemy). The per-tick damage and the client flame
-// animation live in separate sub-tickets; this only manages the status state +
-// helpers.
+// generic entity (player or enemy). This manages the status state + helpers;
+// the per-tick damage pass lives in updateBurning() below and the client flame
+// animation lives in a separate sub-ticket.
+
+// Burn cadence + per-tick damage. A burning entity loses HP every
+// BURN_TICK_INTERVAL_MS rather than every simulation frame, and each tick deals
+// BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE.
+const BURN_TICK_INTERVAL_MS = 500;
+const BURN_BASE_TICK_DAMAGE = 4;
+const BURN_EXTRA_FIRE_DAMAGE = 1;
+
 function applyBurning(entity, durationMs) {
   if (!entity) return;
   const now = Date.now();
@@ -1138,6 +1146,53 @@ function applyBurning(entity, durationMs) {
 
 function isBurning(entity) {
   return entity != null && entity.burningUntil != null && Date.now() < entity.burningUntil;
+}
+
+// Burn-tick pass: runs every game-loop tick during the playing phase and damages
+// every currently-burning player and enemy. Damage is interval-gated per entity
+// (BURN_TICK_INTERVAL_MS) via a lastBurnTickAt timestamp, mirroring the minion
+// pulse-interval pattern in updateMinions. Players route through damagePlayer so
+// godmode/invulnerability rules apply automatically; enemies route through
+// damageEnemy. Damage continues while isBurning() is true and stops once the
+// burn has expired.
+function updateBurning() {
+  const now = Date.now();
+  const amount = BURN_BASE_TICK_DAMAGE + BURN_EXTRA_FIRE_DAMAGE;
+
+  for (const [playerId, player] of Object.entries(_gameState.players)) {
+    if (!player || player.dead || player.extracted) continue;
+    if (!isBurning(player)) {
+      // Clear the tick clock so a future re-ignition starts fresh instead of
+      // dumping a burst of catch-up ticks for time spent not burning.
+      if (player.lastBurnTickAt != null) player.lastBurnTickAt = null;
+      continue;
+    }
+    if (player.lastBurnTickAt == null) {
+      player.lastBurnTickAt = now; // arm the clock; first tick fires one interval later
+      continue;
+    }
+    if (now - player.lastBurnTickAt >= BURN_TICK_INTERVAL_MS) {
+      const ticks = Math.floor((now - player.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
+      damagePlayer(playerId, ticks * amount);
+      player.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+    }
+  }
+
+  for (const enemy of _gameState.enemies) {
+    if (!isBurning(enemy)) {
+      if (enemy.lastBurnTickAt != null) enemy.lastBurnTickAt = null;
+      continue;
+    }
+    if (enemy.lastBurnTickAt == null) {
+      enemy.lastBurnTickAt = now; // arm the clock; first tick fires one interval later
+      continue;
+    }
+    if (now - enemy.lastBurnTickAt >= BURN_TICK_INTERVAL_MS) {
+      const ticks = Math.floor((now - enemy.lastBurnTickAt) / BURN_TICK_INTERVAL_MS);
+      damageEnemy(enemy, ticks * amount);
+      enemy.lastBurnTickAt += ticks * BURN_TICK_INTERVAL_MS;
+    }
+  }
 }
 
 function healPlayer(playerId, amount) {
@@ -2778,6 +2833,7 @@ module.exports = {
   isSlowed,
   applyBurning,
   isBurning,
+  updateBurning,
 
   // Magic stones
   regenMagicStones,
