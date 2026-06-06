@@ -2487,6 +2487,9 @@ function updateEnemies() {
 							DIFFICULTY_ENEMY_DAMAGE_PER_PLAYER
 						);
 						damagePlayer(enemy.windupTargetId, scaledDamage, { attackerEnemyId: enemy.id });
+						if (enemy.burnDurationMs > 0) {
+							applyBurning(target, enemy.burnDurationMs);
+						}
 					}
 					enemy.attackState = 'recovering';
 					enemy.recoverUntil = Date.now() + ENEMY_ATTACK_RECOVERY_MS;

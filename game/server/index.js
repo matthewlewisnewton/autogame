@@ -547,6 +547,7 @@ const DEBUG_SCENARIOS = new Set([
   'annex-overseer-ready',
   'field-medic',
   'field-medic-spawn',
+  'ember-wraith',
   'chain-lightning-ready',
 ]);
 
@@ -735,6 +736,7 @@ const DEBUG_SCENARIOS_WITHOUT_DEFAULT_SPAWN = new Set([
   'annex-overseer-ready',
   'field-medic',
   'field-medic-spawn',
+  'ember-wraith',
   'slippery-floor-lab',
   'frost-crossing-tier-1',
 ]);
