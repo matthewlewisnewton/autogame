@@ -21,10 +21,10 @@
       "hats"
     ]
   },
-  "serverPort": 3263,
-  "clientPort": 5221,
+  "serverPort": 3204,
+  "clientPort": 5216,
   "auth": {
-    "username": "playthrough-1780749858266",
+    "username": "playthrough-1780785844532",
     "connected": true,
     "lobbyBrowserVisible": true,
     "harnessPhase": "unknown",
@@ -39,9 +39,9 @@
     "screenshot": "game/validation/hub/09-lobby-finder.png"
   },
   "hubWalk": {
-    "lobbyName": "Hub Walk 1780749858743",
-    "hostUsername": "hub-host-1780749858743",
-    "joinerUsername": "hub-joiner-1780749858743",
+    "lobbyName": "Hub Walk 1780785845059",
+    "hostUsername": "hub-host-1780785845059",
+    "joinerUsername": "hub-joiner-1780785845059",
     "playersOnHost": 2,
     "overviewScreenshot": "game/validation/hub/01-hub-overview.png",
     "zoneScreenshots": {
@@ -71,24 +71,12 @@
   "telepipeReset": {
     "telepipeScenario": "telepipe-ready",
     "preSuspend": {
-      "magicStones": 15.55500000000058,
-      "msText": "15/99",
+      "magicStones": 16.57999999999868,
+      "msText": "16/99",
       "hand": [
         {
           "id": "telepipe",
           "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
-        },
-        {
-          "id": "battle_familiar",
-          "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
-        },
-        {
-          "id": "dungeon_drake",
-          "type": "creature",
           "remainingCharges": 1,
           "charges": 1
         },
@@ -99,10 +87,22 @@
           "charges": 5
         },
         {
-          "id": "iron_sword",
+          "id": "dungeon_drake",
+          "type": "creature",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "battle_familiar",
+          "type": "spell",
+          "remainingCharges": 1,
+          "charges": 1
+        },
+        {
+          "id": "flame_blade",
           "type": "weapon",
-          "remainingCharges": 4,
-          "charges": 5
+          "remainingCharges": 2,
+          "charges": 3
         },
         null
       ],
@@ -111,7 +111,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 352369970,
-      "runId": "61c27093-6f6e-4893-9a5a-ee62d24c856c"
+      "runId": "774388fa-73f8-4acf-8335-3f7cab542040"
     },
     "postDeploy": {
       "magicStones": 49.005,
@@ -124,10 +124,10 @@
           "charges": 1
         },
         {
-          "id": "battle_familiar",
-          "type": "spell",
-          "remainingCharges": 1,
-          "charges": 1
+          "id": "iron_sword",
+          "type": "weapon",
+          "remainingCharges": 5,
+          "charges": 5
         },
         null,
         {
@@ -137,10 +137,10 @@
           "charges": 3
         },
         {
-          "id": "iron_sword",
+          "id": "flame_blade",
           "type": "weapon",
-          "remainingCharges": 5,
-          "charges": 5
+          "remainingCharges": 3,
+          "charges": 3
         },
         null
       ],
@@ -149,7 +149,7 @@
       "extracted": false,
       "suspendedRunSummary": null,
       "layoutSeed": 352369970,
-      "runId": "ea6c2887-ea50-46b1-b558-7c2d56b5c1ec"
+      "runId": "182ec9fa-b7fd-4809-93dc-a395411b2df3"
     },
     "telepipeUpReset": true,
     "freshRunIdConfirmed": true,

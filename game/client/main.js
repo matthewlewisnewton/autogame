@@ -318,7 +318,7 @@ function setLoggedInStatus(username, lobbyName) {
 function showAuthOverlay() {
 	if (authOverlayEl) authOverlayEl.classList.remove('hidden');
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
-	if (lobbyEl) lobbyEl.classList.add('hidden');
+	withLobbyGuard(() => { if (lobbyEl) lobbyEl.classList.add('hidden'); });
 	hideAppToolbar();
 }
 
@@ -361,9 +361,44 @@ function applyLobbyThemeLabels() {
 
 applyLobbyThemeLabels();
 
+/**
+ * Sticky-dismiss guard for hub validation screenshots.
+ *
+ * The harness adds `.hidden` to #lobby via page.evaluate() to capture the
+ * walkable 3D hub without the 2D "Lobby Connection" menu overlay.  However
+ * the server emits STATE_UPDATE at ~20Hz during the lobby phase, each
+ * triggering showGameLobby() which re-shows #lobby within ~50ms.
+ *
+ * This observer detects externally-added .hidden class (harness) vs
+ * game-initiated transitions and sets a sticky flag so showGameLobby()
+ * stops fighting the dismissal.  Game-side modifications are gated behind
+ * `_gameModifyingLobby` (cleared via rAF so the async observer fires while
+ * the guard is still active).  Flag is per-page — hub walk uses dedicated
+ * pages closed after screenshots.
+ */
+let _gameModifyingLobby = false;
+function withLobbyGuard(fn) {
+	_gameModifyingLobby = true;
+	fn();
+	requestAnimationFrame(() => { _gameModifyingLobby = false; });
+}
+if (lobbyEl) {
+	new MutationObserver((mutations, obs) => {
+		for (const m of mutations) {
+			if (m.attributeName === 'class' &&
+				!_gameModifyingLobby &&
+				lobbyEl.classList.contains('hidden')) {
+				window.__testKeepLobbyDismissed = true;
+				obs.disconnect();
+				break;
+			}
+		}
+	}).observe(lobbyEl, { attributes: true, attributeFilter: ['class'] });
+}
+
 function showLobbyBrowser() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.remove('hidden');
-	if (lobbyEl) lobbyEl.classList.add('hidden');
+	withLobbyGuard(() => { if (lobbyEl) lobbyEl.classList.add('hidden'); });
 	if (uiEl) uiEl.style.display = 'none';
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
@@ -373,7 +408,9 @@ function showLobbyBrowser() {
 
 function showGameLobby() {
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
-	if (lobbyEl) lobbyEl.classList.remove('hidden');
+	if (lobbyEl && !window.__testKeepLobbyDismissed) {
+		lobbyEl.classList.remove('hidden');
+	}
 	// Quest board only appears via the quest booth, so keep it hidden each time
 	// the lobby is (re)shown.
 	if (questBoardWrapperEl) questBoardWrapperEl.classList.add('hidden');
@@ -805,7 +842,7 @@ function applyLobbyJoinedData(data) {
 		requestDebugScenario();
 
 		if (!isSceneInitialized()) {
-			lobbyEl.classList.add('hidden');
+			withLobbyGuard(() => { lobbyEl.classList.add('hidden'); });
 			uiEl.style.display = 'block';
 			showCardHand();
 			setDeckStackVisible(true);
@@ -1099,7 +1136,7 @@ function bindSocketHandlers(s) {
 			if (cardHandEl) hideCardHand();
 			hideVariantCodex();
 			setDeckStackVisible(false);
-			if (lobbyEl) lobbyEl.classList.add('hidden');
+			withLobbyGuard(() => { if (lobbyEl) lobbyEl.classList.add('hidden'); });
 			if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 			if (runSummaryOverlay) runSummaryOverlay.style.display = 'none';
 			showAuthOverlay();
@@ -1234,7 +1271,7 @@ function bindSocketHandlers(s) {
 		if (state.gamePhase === 'playing' && !isExtracted) {
 			showCardHand();
 			setDeckStackVisible(true);
-			if (lobbyEl) lobbyEl.classList.add('hidden');
+			withLobbyGuard(() => { if (lobbyEl) lobbyEl.classList.add('hidden'); });
 			setDeployButtonVisible(false);
 			setGamePhase('playing');
 			if (enteringPlaying) {
@@ -1768,7 +1805,7 @@ function bindSocketHandlers(s) {
 	s.on(SERVER_TO_CLIENT.START_GAME, () => {
 		claimedCardRewardId = null;
 		currentCardChoices = [];
-		lobbyEl.classList.add('hidden');
+		withLobbyGuard(() => { lobbyEl.classList.add('hidden'); });
 		uiEl.style.display = 'block';
 		showCardHand();
 		setDeckStackVisible(true);
@@ -3881,7 +3918,7 @@ function performLogout() {
 	if (cardHandEl) hideCardHand();
 	hideVariantCodex();
 	setDeckStackVisible(false);
-	if (lobbyEl) lobbyEl.classList.add('hidden');
+	withLobbyGuard(() => { if (lobbyEl) lobbyEl.classList.add('hidden'); });
 	if (lobbyBrowserEl) lobbyBrowserEl.classList.add('hidden');
 	updateStatus('Disconnected', 'disconnected');
 	showAuthOverlay();
